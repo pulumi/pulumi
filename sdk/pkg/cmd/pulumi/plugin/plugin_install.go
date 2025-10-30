@@ -25,10 +25,10 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
-	"github.com/pulumi/pulumi/pkg/v3/util"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	cmdCmd "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/packageresolution"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -46,9 +46,9 @@ func newPluginInstallCmd(packageResolutionOptions packageresolution.Options) *co
 	var picmd pluginInstallCmd
 	picmd.packageResolutionOptions = packageResolutionOptions
 	cmd := &cobra.Command{
-		Use:   "install [KIND NAME [VERSION]]",
-		Args:  cmdutil.MaximumNArgs(3),
-		Short: "Install one or more plugins",
+		Use:	"install [KIND NAME [VERSION]]",
+		Args:	cmdutil.MaximumNArgs(3),
+		Short:	"Install one or more plugins",
 		Long: "Install one or more plugins.\n" +
 			"\n" +
 			"This command is used to manually install plugins required by your program. It\n" +
@@ -81,28 +81,28 @@ func newPluginInstallCmd(packageResolutionOptions packageresolution.Options) *co
 }
 
 type pluginInstallCmd struct {
-	serverURL string
-	exact     bool
-	file      string
-	reinstall bool
-	checksum  string
+	serverURL	string
+	exact		bool
+	file		string
+	reinstall	bool
+	checksum	string
 
-	diag     diag.Sink
-	env      env.Env
-	color    colors.Colorization
-	registry registry.Registry
+	diag		diag.Sink
+	env		env.Env
+	color		colors.Colorization
+	registry	registry.Registry
 
-	packageResolutionOptions packageresolution.Options
+	packageResolutionOptions	packageresolution.Options
 
-	pluginGetLatestVersion func(
+	pluginGetLatestVersion	func(
 		workspace.PluginSpec, context.Context,
-	) (*semver.Version, error) // == workspace.PluginSpec.GetLatestVersion
+	) (*semver.Version, error)	// == workspace.PluginSpec.GetLatestVersion
 
-	installPluginSpec func(
+	installPluginSpec	func(
 		ctx context.Context, label string,
 		install workspace.PluginSpec, file string,
 		sink diag.Sink, color colors.Colorization, reinstall bool,
-	) error // == installPluginSpec
+	) error	// == installPluginSpec
 }
 
 func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
@@ -183,9 +183,9 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 				diag.Message("", "Plugin download URL set to %s"), pluginSpec.PluginDownloadURL)
 		}
 
-		if pluginSpec.Kind == apitype.ResourcePlugin && // The registry only supports resource plugins
-			pluginSpec.PluginDownloadURL == "" && // Don't override explicit pluginDownloadURLs
-			cmd.file == "" { // We don't need help looking up the download URL when we are not downloading a file
+		if pluginSpec.Kind == apitype.ResourcePlugin &&	// The registry only supports resource plugins
+			pluginSpec.PluginDownloadURL == "" &&	// Don't override explicit pluginDownloadURLs
+			cmd.file == "" {	// We don't need help looking up the download URL when we are not downloading a file
 			cwd, err := os.Getwd()
 			if err != nil {
 				return fmt.Errorf("getting current working directory: %w", err)

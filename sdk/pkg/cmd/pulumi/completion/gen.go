@@ -28,10 +28,10 @@ import (
 // NewGenCompletionCmd returns a new command that, when run, generates a bash or zsh completion script for the CLI.
 func NewGenCompletionCmd(root *cobra.Command) *cobra.Command {
 	return &cobra.Command{
-		Use:     "gen-completion <SHELL>",
-		Aliases: []string{"completion"},
-		Args:    cmdutil.ExactArgs(1),
-		Short:   "Generate completion scripts for the Pulumi CLI",
+		Use:		"gen-completion <SHELL>",
+		Aliases:	[]string{"completion"},
+		Args:		cmdutil.ExactArgs(1),
+		Short:		"Generate completion scripts for the Pulumi CLI",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			switch args[0] {
 			case "bash":
@@ -49,7 +49,7 @@ func NewGenCompletionCmd(root *cobra.Command) *cobra.Command {
 
 const (
 	// Inspired by https://github.com/kubernetes/kubernetes/blob/master/pkg/kubectl/cmd/completion.go
-	zshHead = `#compdef pulumi
+	zshHead	= `#compdef pulumi
 __pulumi_bash_source() {
 	alias shopt=':'
 	alias _expand=_bash_expand
@@ -175,7 +175,7 @@ fi
 	<<'BASH_COMPLETION_EOF'
 `
 
-	zshTail = `
+	zshTail	= `
 BASH_COMPLETION_EOF
 }
 __pulumi_bash_source <(__pulumi_convert_bash_to_zsh)
@@ -189,7 +189,7 @@ func genZshCompletion(out io.Writer, root *cobra.Command) error {
 		return err
 	}
 
-	if _, err := fmt.Fprintf(out, "%s", zshHead); err != nil { //nolint
+	if _, err := fmt.Fprintf(out, "%s", zshHead); err != nil {	//nolint
 		return err
 	}
 

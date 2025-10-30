@@ -24,11 +24,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	. "github.com/pulumi/pulumi/sdk/v3/pkg/engine"	//nolint:revive
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -146,8 +146,8 @@ func TestProtectInheritance(t *testing.T) {
 		// Override protect true from parent
 		protectB := false
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Parent:  resp.URN,
-			Protect: &protectB,
+			Parent:		resp.URN,
+			Protect:	&protectB,
 		})
 		require.NoError(t, err)
 
@@ -185,8 +185,8 @@ func TestProtectedDeleteChainsWithDuplicateDeletedResources(t *testing.T) {
 	// Arrange.
 
 	p := &lt.TestPlan{
-		Project: "test-project",
-		Stack:   "test-stack",
+		Project:	"test-project",
+		Stack:		"test-stack",
 	}
 	project := p.GetProject()
 
@@ -220,8 +220,8 @@ func TestProtectedDeleteChainsWithDuplicateDeletedResources(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:modA:typA", "resB", true, deploytest.ResourceOptions{
-			Protect:      ptr(true),
-			Dependencies: []resource.URN{resA.URN},
+			Protect:	ptr(true),
+			Dependencies:	[]resource.URN{resA.URN},
 		})
 		require.NoError(t, err)
 
@@ -230,8 +230,8 @@ func TestProtectedDeleteChainsWithDuplicateDeletedResources(t *testing.T) {
 
 	setupHostF1 := deploytest.NewPluginHostF(nil, nil, setupProgramF1, setupLoaders1...)
 	setupOpts1 := lt.TestUpdateOptions{
-		T:     t,
-		HostF: setupHostF1,
+		T:	t,
+		HostF:	setupHostF1,
 	}
 	setupSnap1, err := lt.TestOp(engine.Update).
 		RunStep(project, p.GetTarget(t, nil), setupOpts1, false, p.BackendClient, nil, "0")
@@ -245,8 +245,8 @@ func TestProtectedDeleteChainsWithDuplicateDeletedResources(t *testing.T) {
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
 					if req.URN.Name() == "resA" {
 						return plugin.DiffResponse{
-							Changes:     plugin.DiffSome,
-							ReplaceKeys: []resource.PropertyKey{"__replace"},
+							Changes:	plugin.DiffSome,
+							ReplaceKeys:	[]resource.PropertyKey{"__replace"},
 						}, nil
 					}
 
@@ -268,8 +268,8 @@ func TestProtectedDeleteChainsWithDuplicateDeletedResources(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:modA:typA", "resB", true, deploytest.ResourceOptions{
-			Protect:      ptr(true),
-			Dependencies: []resource.URN{resA.URN},
+			Protect:	ptr(true),
+			Dependencies:	[]resource.URN{resA.URN},
 		})
 		require.NoError(t, err)
 
@@ -278,8 +278,8 @@ func TestProtectedDeleteChainsWithDuplicateDeletedResources(t *testing.T) {
 
 	setupHostF2 := deploytest.NewPluginHostF(nil, nil, setupProgramF2, setupLoaders2...)
 	setupOpts2 := lt.TestUpdateOptions{
-		T:     t,
-		HostF: setupHostF2,
+		T:	t,
+		HostF:	setupHostF2,
 	}
 	setupSnap2, err := lt.TestOp(engine.Update).
 		RunStep(project, p.GetTarget(t, setupSnap1), setupOpts2, false, p.BackendClient, nil, "1")
@@ -302,8 +302,8 @@ func TestProtectedDeleteChainsWithDuplicateDeletedResources(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	opts := lt.TestUpdateOptions{
-		T:     t,
-		HostF: hostF,
+		T:	t,
+		HostF:	hostF,
 		UpdateOptions: engine.UpdateOptions{
 			ContinueOnError: false,
 		},

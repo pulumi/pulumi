@@ -19,7 +19,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 )
 
 //nolint:lll
@@ -132,18 +132,18 @@ namespace {{.Namespace}}
 var csharpUtilitiesTemplate = template.Must(template.New("CSharpUtilities").Parse(csharpUtilitiesTemplateText))
 
 type csharpUtilitiesTemplateContext struct {
-	Name                          string
-	Namespace                     string
-	ClassName                     string
-	Tool                          string
-	PluginDownloadURL             string
-	HasParameterization           bool
-	PackageName                   string
-	PackageVersion                string
-	BaseProviderName              string
-	BaseProviderVersion           string
-	BaseProviderPluginDownloadURL string
-	ParameterValue                string
+	Name				string
+	Namespace			string
+	ClassName			string
+	Tool				string
+	PluginDownloadURL		string
+	HasParameterization		bool
+	PackageName			string
+	PackageVersion			string
+	BaseProviderName		string
+	BaseProviderVersion		string
+	BaseProviderPluginDownloadURL	string
+	ParameterValue			string
 }
 
 // TODO(pdg): parameterize package name
@@ -234,10 +234,10 @@ var csharpProjectFileTemplate = template.Must(template.New("CSharpProject").Func
 }).Parse(csharpProjectFileTemplateText))
 
 type csharpProjectFileTemplateContext struct {
-	XMLDoc            string
-	Package           *schema.Package
-	PackageReferences map[string]string
-	ProjectReferences []string
-	Version           string
-	RestoreSources    string
+	XMLDoc			string
+	Package			*schema.Package
+	PackageReferences	map[string]string
+	ProjectReferences	[]string
+	Version			string
+	RestoreSources		string
 }

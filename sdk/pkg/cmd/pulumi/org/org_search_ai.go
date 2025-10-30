@@ -21,11 +21,11 @@ import (
 	"os"
 
 	"github.com/pkg/browser"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -33,8 +33,8 @@ import (
 
 type searchAICmd struct {
 	searchCmd
-	queryString string
-	openWeb     bool
+	queryString	string
+	openWeb		bool
 }
 
 func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
@@ -51,11 +51,11 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	if cmd.currentBackend == nil {
 		cmd.currentBackend = cmdBackend.CurrentBackend
 	}
-	currentBackend := cmd.currentBackend // shadow the top-level function
+	currentBackend := cmd.currentBackend	// shadow the top-level function
 
 	displayOpts := display.Options{
-		Color:         cmdutil.GetGlobalColorization(),
-		IsInteractive: interactive,
+		Color:		cmdutil.GetGlobalColorization(),
+		IsInteractive:	interactive,
 	}
 	// Try to read the current project
 	ws := pkgWorkspace.Instance
@@ -117,10 +117,10 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 func newSearchAICmd() *cobra.Command {
 	var scmd searchAICmd
 	cmd := &cobra.Command{
-		Use:   "ai",
-		Short: "Search for resources in Pulumi Cloud using Pulumi AI",
-		Long:  "Search for resources in Pulumi Cloud using Pulumi AI",
-		Args:  cmdutil.NoArgs,
+		Use:	"ai",
+		Short:	"Search for resources in Pulumi Cloud using Pulumi AI",
+		Long:	"Search for resources in Pulumi Cloud using Pulumi AI",
+		Args:	cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			return scmd.Run(ctx, args)

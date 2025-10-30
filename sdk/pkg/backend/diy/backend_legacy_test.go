@@ -25,10 +25,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -298,8 +298,8 @@ func TestHtmlEscaping_legacy(t *testing.T) {
 	sm := b64.NewBase64SecretsManager()
 	resources := []*resource.State{
 		{
-			URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "name"),
-			Type: "a:b:c",
+			URN:	resource.NewURN("a", "proj", "d:e:f", "a:b:c", "name"),
+			Type:	"a:b:c",
 			Inputs: resource.PropertyMap{
 				resource.PropertyKey("html"): resource.NewProperty("<html@tags>"),
 			},
@@ -389,12 +389,12 @@ func TestParallelStackFetch_legacy(t *testing.T) {
 
 	// Create a custom environment with DIYBackendParallel set
 	s := make(declared.MapStore)
-	s[env.DIYBackendParallel.Var().Name()] = "5" // Set parallel to 5
+	s[env.DIYBackendParallel.Var().Name()] = "5"	// Set parallel to 5
 
 	b, err := newDIYBackend(
 		ctx,
 		diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir),
-		nil, // No project for legacy backend
+		nil,	// No project for legacy backend
 		&diyBackendOptions{Env: declared.NewEnv(s)},
 	)
 	require.NoError(t, err)
@@ -414,7 +414,7 @@ func TestParallelStackFetch_legacy(t *testing.T) {
 	}
 
 	// List stacks to trigger parallel fetching
-	filter := backend.ListStacksFilter{} // No filter
+	filter := backend.ListStacksFilter{}	// No filter
 	stacks, token, err := b.ListStacks(ctx, filter, nil)
 	require.NoError(t, err)
 	assert.Nil(t, token)

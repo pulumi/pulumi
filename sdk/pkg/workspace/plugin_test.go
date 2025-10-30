@@ -34,56 +34,56 @@ func TestInstallPluginErrorText(t *testing.T) {
 	v1 := semver.MustParse("0.1.0")
 	err := errors.New("some error")
 	tests := []struct {
-		Name          string
-		Err           InstallPluginError
-		ExpectedError string
+		Name		string
+		Err		InstallPluginError
+		ExpectedError	string
 	}{
 		{
-			Name: "Just name",
+			Name:	"Just name",
 			Err: InstallPluginError{
-				Err: err,
+				Err:	err,
 				Spec: workspace.PluginSpec{
-					Name: "myplugin",
-					Kind: apitype.ResourcePlugin,
+					Name:	"myplugin",
+					Kind:	apitype.ResourcePlugin,
 				},
 			},
 			ExpectedError: "Could not automatically download and install resource plugin 'pulumi-resource-myplugin'," +
 				" install the plugin using `pulumi plugin install resource myplugin`: some error",
 		},
 		{
-			Name: "Different kind",
+			Name:	"Different kind",
 			Err: InstallPluginError{
-				Err: err,
+				Err:	err,
 				Spec: workspace.PluginSpec{
-					Name: "myplugin",
-					Kind: apitype.ConverterPlugin,
+					Name:	"myplugin",
+					Kind:	apitype.ConverterPlugin,
 				},
 			},
 			ExpectedError: "Could not automatically download and install converter plugin 'pulumi-converter-myplugin'," +
 				" install the plugin using `pulumi plugin install converter myplugin`: some error",
 		},
 		{
-			Name: "Name and version",
+			Name:	"Name and version",
 			Err: InstallPluginError{
-				Err: err,
+				Err:	err,
 				Spec: workspace.PluginSpec{
-					Name:    "myplugin",
-					Kind:    apitype.ResourcePlugin,
-					Version: &v1,
+					Name:		"myplugin",
+					Kind:		apitype.ResourcePlugin,
+					Version:	&v1,
 				},
 			},
 			ExpectedError: "Could not automatically download and install resource plugin 'pulumi-resource-myplugin'" +
 				" at version v0.1.0, install the plugin using `pulumi plugin install resource myplugin v0.1.0`: some error",
 		},
 		{
-			Name: "Name and version and URL",
+			Name:	"Name and version and URL",
 			Err: InstallPluginError{
-				Err: err,
+				Err:	err,
 				Spec: workspace.PluginSpec{
-					Name:              "myplugin",
-					Kind:              apitype.ResourcePlugin,
-					Version:           &v1,
-					PluginDownloadURL: "github://owner/repo",
+					Name:			"myplugin",
+					Kind:			apitype.ResourcePlugin,
+					Version:		&v1,
+					PluginDownloadURL:	"github://owner/repo",
 				},
 			},
 			ExpectedError: "Could not automatically download and install resource plugin 'pulumi-resource-myplugin'" +
@@ -91,13 +91,13 @@ func TestInstallPluginErrorText(t *testing.T) {
 				" --server github://owner/repo`: some error",
 		},
 		{
-			Name: "Name and URL",
+			Name:	"Name and URL",
 			Err: InstallPluginError{
-				Err: err,
+				Err:	err,
 				Spec: workspace.PluginSpec{
-					Name:              "myplugin",
-					Kind:              apitype.ResourcePlugin,
-					PluginDownloadURL: "github://owner/repo",
+					Name:			"myplugin",
+					Kind:			apitype.ResourcePlugin,
+					PluginDownloadURL:	"github://owner/repo",
 				},
 			},
 			ExpectedError: "Could not automatically download and install resource plugin 'pulumi-resource-myplugin'," +
@@ -125,9 +125,9 @@ func TestPluginInstallCancellation(t *testing.T) {
 	// fail because we are operating on an already-cancelled context.
 	v4 := semver.MustParse("4.0.0")
 	spec := workspace.PluginSpec{
-		Name:    "random",
-		Kind:    apitype.ResourcePlugin,
-		Version: &v4,
+		Name:		"random",
+		Kind:		apitype.ResourcePlugin,
+		Version:	&v4,
 	}
 
 	// On the first pass, test that everything succeeds; then trigger cancellation, and

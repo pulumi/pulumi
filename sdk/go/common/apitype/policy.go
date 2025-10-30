@@ -27,117 +27,117 @@ type CreatePolicyPackRequest struct {
 	// If the name has already been used by the organization, then the request will
 	// create a new version of the Policy Pack (incremented by one). This is supplied
 	// by the CLI.
-	Name string `json:"name"`
+	Name	string	`json:"name"`
 
 	// A pretty name for the Policy Pack that is supplied by the package.
-	DisplayName string `json:"displayName"`
+	DisplayName	string	`json:"displayName"`
 
 	// VersionTag is the semantic version of the Policy Pack. One a version is published, it
 	// cannot never be republished. Older clients will not have a version tag.
-	VersionTag string `json:"versionTag,omitempty"`
+	VersionTag	string	`json:"versionTag,omitempty"`
 
 	// The Policies outline the specific Policies in the package, and are derived
 	// from the package by the CLI.
-	Policies []Policy `json:"policies"`
+	Policies	[]Policy	`json:"policies"`
 
 	// A brief description of the policy pack.
-	Description string `json:"description,omitempty"`
+	Description	string	`json:"description,omitempty"`
 
 	// README text about the policy pack.
-	Readme string `json:"readme,omitempty"`
+	Readme	string	`json:"readme,omitempty"`
 
 	// The cloud provider/platform this policy pack is associated with, e.g. AWS, Azure, etc.
-	Provider string `json:"provider,omitempty"`
+	Provider	string	`json:"provider,omitempty"`
 
 	// Tags for this policy pack.
-	Tags []string `json:"tags,omitempty"`
+	Tags	[]string	`json:"tags,omitempty"`
 
 	// A URL to the repository where the policy pack is defined.
-	Repository string `json:"repository,omitempty"`
+	Repository	string	`json:"repository,omitempty"`
 
 	// Metadata contains optional data about the environment performing the publish operation,
 	// e.g. the current source code control commit information.
-	Metadata map[string]string `json:"metadata,omitempty"`
+	Metadata	map[string]string	`json:"metadata,omitempty"`
 }
 
 // CreatePolicyPackResponse is the response from creating a Policy Pack. It returns
 // a URI to upload the Policy Pack zip file to.
 type CreatePolicyPackResponse struct {
-	Version   int    `json:"version"`
-	UploadURI string `json:"uploadURI"`
+	Version		int	`json:"version"`
+	UploadURI	string	`json:"uploadURI"`
 	// RequiredHeaders represents headers that the CLI must set in order
 	// for the upload to succeed.
-	RequiredHeaders map[string]string `json:"requiredHeaders,omitempty"`
+	RequiredHeaders	map[string]string	`json:"requiredHeaders,omitempty"`
 }
 
 // RequiredPolicy is the information regarding a particular Policy that is required
 // by an organization.
 type RequiredPolicy struct {
 	// The name (unique and URL-safe) of the required Policy Pack.
-	Name string `json:"name"`
+	Name	string	`json:"name"`
 
 	// The version of the required Policy Pack.
-	Version int `json:"version"`
+	Version	int	`json:"version"`
 
 	// The version tag of the required Policy Pack.
-	VersionTag string `json:"versionTag"`
+	VersionTag	string	`json:"versionTag"`
 
 	// The pretty name of the required Policy Pack.
-	DisplayName string `json:"displayName"`
+	DisplayName	string	`json:"displayName"`
 
 	// Where the Policy Pack can be downloaded from.
-	PackLocation string `json:"packLocation,omitempty"`
+	PackLocation	string	`json:"packLocation,omitempty"`
 
 	// The configuration that is to be passed to the Policy Pack. This is map a of policies
 	// mapped to their configuration. Each individual configuration must comply with the
 	// JSON schema for each Policy within the Policy Pack.
-	Config map[string]*json.RawMessage `json:"config,omitempty"`
+	Config	map[string]*json.RawMessage	`json:"config,omitempty"`
 }
 
 // Policy defines the metadata for an individual Policy within a Policy Pack.
 type Policy struct {
 	// Unique URL-safe name for the policy.  This is unique to a specific version
 	// of a Policy Pack.
-	Name        string `json:"name"`
-	DisplayName string `json:"displayName"`
+	Name		string	`json:"name"`
+	DisplayName	string	`json:"displayName"`
 
 	// Description is used to provide more context about the purpose of the policy.
-	Description      string           `json:"description"`
-	EnforcementLevel EnforcementLevel `json:"enforcementLevel"`
+	Description		string			`json:"description"`
+	EnforcementLevel	EnforcementLevel	`json:"enforcementLevel"`
 
 	// Message is the message that will be displayed to end users when they violate
 	// this policy.
-	Message string `json:"message"`
+	Message	string	`json:"message"`
 
 	// The JSON schema for the Policy's configuration.
-	ConfigSchema *PolicyConfigSchema `json:"configSchema,omitempty"`
+	ConfigSchema	*PolicyConfigSchema	`json:"configSchema,omitempty"`
 
 	// The severity of the policy.
-	Severity PolicySeverity `json:"severity,omitempty"`
+	Severity	PolicySeverity	`json:"severity,omitempty"`
 
 	// The compliance framework that this policy belongs to.
-	Framework *PolicyComplianceFramework `json:"framework,omitempty"`
+	Framework	*PolicyComplianceFramework	`json:"framework,omitempty"`
 
 	// Tags associated with the policy.
-	Tags []string `json:"tags,omitempty"`
+	Tags	[]string	`json:"tags,omitempty"`
 
 	// A description of the steps to take to remediate a policy violation.
-	RemediationSteps string `json:"remediationSteps,omitempty"`
+	RemediationSteps	string	`json:"remediationSteps,omitempty"`
 
 	// A URL to more information about the policy.
-	URL string `json:"url,omitempty"`
+	URL	string	`json:"url,omitempty"`
 }
 
 // PolicyConfigSchema defines the JSON schema of a particular Policy's
 // configuration.
 type PolicyConfigSchema struct {
 	// Config property name to JSON Schema map.
-	Properties map[string]*json.RawMessage `json:"properties,omitempty"`
+	Properties	map[string]*json.RawMessage	`json:"properties,omitempty"`
 	// Required config properties.
-	Required []string `json:"required,omitempty"`
+	Required	[]string	`json:"required,omitempty"`
 
 	// Type defines the data type allowed for the schema.
-	Type JSONSchemaType `json:"type"`
+	Type	JSONSchemaType	`json:"type"`
 }
 
 // JSONSchemaType in an enum of allowed data types for a schema.
@@ -154,27 +154,27 @@ type EnforcementLevel string
 const (
 	// Advisory is an enforcement level where the resource is still created, but a
 	// message is displayed to the user for informational / warning purposes.
-	Advisory EnforcementLevel = "advisory"
+	Advisory	EnforcementLevel	= "advisory"
 
 	// Mandatory is an enforcement level that prevents a resource from being created.
-	Mandatory EnforcementLevel = "mandatory"
+	Mandatory	EnforcementLevel	= "mandatory"
 
 	// Remediate is an enforcement level that fixes policy issues instead of issuing diagnostics.
-	Remediate EnforcementLevel = "remediate"
+	Remediate	EnforcementLevel	= "remediate"
 
 	// Disabled is an enforcement level that disables the policy from being enforced.
-	Disabled EnforcementLevel = "disabled"
+	Disabled	EnforcementLevel	= "disabled"
 )
 
 // Indicates the severity of a policy.
 type PolicySeverity string
 
 const (
-	PolicySeverityUnspecified PolicySeverity = ""
-	PolicySeverityLow         PolicySeverity = "low"
-	PolicySeverityMedium      PolicySeverity = "medium"
-	PolicySeverityHigh        PolicySeverity = "high"
-	PolicySeverityCritical    PolicySeverity = "critical"
+	PolicySeverityUnspecified	PolicySeverity	= ""
+	PolicySeverityLow		PolicySeverity	= "low"
+	PolicySeverityMedium		PolicySeverity	= "medium"
+	PolicySeverityHigh		PolicySeverity	= "high"
+	PolicySeverityCritical		PolicySeverity	= "critical"
 )
 
 // IsValid returns true if the EnforcementLevel is a valid value.
@@ -191,10 +191,10 @@ type EntityType string
 
 const (
 	// Stacks indicates the policy group applies to stacks
-	Stacks EntityType = "stacks"
+	Stacks	EntityType	= "stacks"
 
 	// Accounts indicates the policy group applies to accounts
-	Accounts EntityType = "accounts"
+	Accounts	EntityType	= "accounts"
 )
 
 // IsValid returns true if the EntityType is a valid value.
@@ -209,12 +209,12 @@ func (et EntityType) IsValid() bool {
 // GetPolicyPackResponse is the response to get a specific Policy Pack's
 // metadata and policies.
 type GetPolicyPackResponse struct {
-	Name        string   `json:"name"`
-	DisplayName string   `json:"displayName"`
-	Version     int      `json:"version"`
-	VersionTag  string   `json:"versionTag"`
-	Policies    []Policy `json:"policies"`
-	Applied     bool     `json:"applied"`
+	Name		string		`json:"name"`
+	DisplayName	string		`json:"displayName"`
+	Version		int		`json:"version"`
+	VersionTag	string		`json:"versionTag"`
+	Policies	[]Policy	`json:"policies"`
+	Applied		bool		`json:"applied"`
 }
 
 // GetStackPolicyPacksResponse is the response to getting the applicable Policy Packs
@@ -227,31 +227,31 @@ type GetStackPolicyPacksResponse struct {
 
 // UpdatePolicyGroupRequest modifies a Policy Group.
 type UpdatePolicyGroupRequest struct {
-	NewName *string `json:"newName,omitempty"`
+	NewName	*string	`json:"newName,omitempty"`
 
-	AddStack    *PulumiStackReference `json:"addStack,omitempty"`
-	RemoveStack *PulumiStackReference `json:"removeStack,omitempty"`
+	AddStack	*PulumiStackReference	`json:"addStack,omitempty"`
+	RemoveStack	*PulumiStackReference	`json:"removeStack,omitempty"`
 
-	AddPolicyPack    *PolicyPackMetadata `json:"addPolicyPack,omitempty"`
-	RemovePolicyPack *PolicyPackMetadata `json:"removePolicyPack,omitempty"`
+	AddPolicyPack		*PolicyPackMetadata	`json:"addPolicyPack,omitempty"`
+	RemovePolicyPack	*PolicyPackMetadata	`json:"removePolicyPack,omitempty"`
 }
 
 // PulumiStackReference contains the StackName and ProjectName of the stack.
 type PulumiStackReference struct {
-	Name           string `json:"name"`
-	RoutingProject string `json:"routingProject"`
+	Name		string	`json:"name"`
+	RoutingProject	string	`json:"routingProject"`
 }
 
 // PolicyPackMetadata is the metadata of a Policy Pack.
 type PolicyPackMetadata struct {
-	Name        string `json:"name"`
-	DisplayName string `json:"displayName"`
-	Version     int    `json:"version"`
-	VersionTag  string `json:"versionTag"`
+	Name		string	`json:"name"`
+	DisplayName	string	`json:"displayName"`
+	Version		int	`json:"version"`
+	VersionTag	string	`json:"versionTag"`
 
 	// The configuration that is to be passed to the Policy Pack. This
 	// map ties Policies with their configuration.
-	Config map[string]*json.RawMessage `json:"config,omitempty"`
+	Config	map[string]*json.RawMessage	`json:"config,omitempty"`
 }
 
 // ListPolicyPacksResponse is the response to list an organization's
@@ -262,10 +262,10 @@ type ListPolicyPacksResponse struct {
 
 // PolicyPackWithVersions details the specifics of a Policy Pack and all its available versions.
 type PolicyPackWithVersions struct {
-	Name        string   `json:"name"`
-	DisplayName string   `json:"displayName"`
-	Versions    []int    `json:"versions"`
-	VersionTags []string `json:"versionTags"`
+	Name		string		`json:"name"`
+	DisplayName	string		`json:"displayName"`
+	Versions	[]int		`json:"versions"`
+	VersionTags	[]string	`json:"versionTags"`
 }
 
 // ListPolicyGroupsResponse lists a summary of the organization's Policy Groups.
@@ -276,12 +276,12 @@ type ListPolicyGroupsResponse struct {
 // PolicyGroupSummary details the name, applicable stacks and the applied Policy
 // Packs for an organization's Policy Group.
 type PolicyGroupSummary struct {
-	Name                  string     `json:"name"`
-	IsOrgDefault          bool       `json:"isOrgDefault"`
-	NumStacks             int        `json:"numStacks"`
-	NumAccounts           int        `json:"numAccounts,omitempty"`
-	EntityType            EntityType `json:"entityType"`
-	NumEnabledPolicyPacks int        `json:"numEnabledPolicyPacks"`
+	Name			string		`json:"name"`
+	IsOrgDefault		bool		`json:"isOrgDefault"`
+	NumStacks		int		`json:"numStacks"`
+	NumAccounts		int		`json:"numAccounts,omitempty"`
+	EntityType		EntityType	`json:"entityType"`
+	NumEnabledPolicyPacks	int		`json:"numEnabledPolicyPacks"`
 }
 
 // GetPolicyPackConfigSchemaResponse is the response that includes the JSON
@@ -294,11 +294,11 @@ type GetPolicyPackConfigSchemaResponse struct {
 // PolicyComplianceFramework represents a compliance framework that a policy belongs to.
 type PolicyComplianceFramework struct {
 	// The compliance framework name.
-	Name string `json:"name,omitempty"`
+	Name	string	`json:"name,omitempty"`
 	// The compliance framework version.
-	Version string `json:"version,omitempty"`
+	Version	string	`json:"version,omitempty"`
 	// The compliance framework reference.
-	Reference string `json:"reference,omitempty"`
+	Reference	string	`json:"reference,omitempty"`
 	// The compliance framework specification.
-	Specification string `json:"specification,omitempty"`
+	Specification	string	`json:"specification,omitempty"`
 }

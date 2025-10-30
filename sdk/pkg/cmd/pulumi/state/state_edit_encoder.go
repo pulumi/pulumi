@@ -18,10 +18,10 @@ import (
 	"context"
 	"errors"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -55,8 +55,8 @@ func (se *jsonSnapshotEncoder) TextToSnapshot(ctx context.Context, s snapshotTex
 	contract.Requiref(ctx != nil, "ctx", "must not be nil")
 
 	dep, err := stack.DeserializeUntypedDeployment(ctx, &apitype.UntypedDeployment{
-		Version:    3,
-		Deployment: []byte(s),
+		Version:	3,
+		Deployment:	[]byte(s),
 	}, secrets.DefaultProvider)
 	if err != nil {
 		return nil, err

@@ -23,17 +23,17 @@ import (
 	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	backend_secrets "github.com/pulumi/pulumi/sdk/v3/pkg/backend/secrets"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/graph"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
@@ -46,13 +46,13 @@ import (
 const providerPrefix = "pulumi:providers:"
 
 type stateMoveCmd struct {
-	Stdin          io.Reader
-	Stdout         io.Writer
-	Colorizer      colors.Colorization
-	Yes            bool
-	IncludeParents bool
+	Stdin		io.Reader
+	Stdout		io.Writer
+	Colorizer	colors.Colorization
+	Yes		bool
+	IncludeParents	bool
 
-	ws pkgWorkspace.Context
+	ws	pkgWorkspace.Context
 }
 
 func newStateMoveCommand() *cobra.Command {
@@ -64,14 +64,14 @@ func newStateMoveCommand() *cobra.Command {
 		Colorizer: cmdutil.GetGlobalColorization(),
 	}
 	cmd := &cobra.Command{
-		Use:   "move [flags] <urn>...",
-		Short: "Move resources from one stack to another",
+		Use:	"move [flags] <urn>...",
+		Short:	"Move resources from one stack to another",
 		Long: `Move resources from one stack to another
 
 This command can be used to move resources from one stack to another. This can be useful when
 splitting a stack into multiple stacks or when merging multiple stacks into one.
 `,
-		Args: cmdutil.MinimumNArgs(1),
+		Args:	cmdutil.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()
@@ -88,8 +88,8 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 				sourceStackName,
 				cmdStack.LoadOnly,
 				display.Options{
-					Color:         cmdutil.GetGlobalColorization(),
-					IsInteractive: true,
+					Color:		cmdutil.GetGlobalColorization(),
+					IsInteractive:	true,
 				},
 			)
 			if err != nil {
@@ -103,8 +103,8 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 				destStackName,
 				cmdStack.LoadOnly,
 				display.Options{
-					Color:         cmdutil.GetGlobalColorization(),
-					IsInteractive: true,
+					Color:		cmdutil.GetGlobalColorization(),
+					IsInteractive:	true,
 				},
 			)
 			if err != nil {
@@ -515,16 +515,16 @@ func resourceMatches(res *resource.State, args []string) string {
 type dependencyType int
 
 const (
-	dependency dependencyType = iota
+	dependency	dependencyType	= iota
 	propertyDependency
 	deletedWith
 )
 
 type brokenDependency struct {
-	dependencyURN  urn.URN
-	dependencyType dependencyType
-	propdepKey     resource.PropertyKey
-	resourceURN    urn.URN
+	dependencyURN	urn.URN
+	dependencyType	dependencyType
+	propdepKey	resource.PropertyKey
+	resourceURN	urn.URN
 }
 
 func breakDependencies(res *resource.State, resourcesToMove map[string]*resource.State) []brokenDependency {
@@ -544,9 +544,9 @@ func breakDependencies(res *resource.State, resourcesToMove map[string]*resource
 		case resource.ResourceDependency:
 			if _, ok := resourcesToMove[string(dep.URN)]; ok {
 				brokenDeps = append(brokenDeps, brokenDependency{
-					dependencyURN:  dep.URN,
-					dependencyType: dependency,
-					resourceURN:    res.URN,
+					dependencyURN:	dep.URN,
+					dependencyType:	dependency,
+					resourceURN:	res.URN,
 				})
 			} else {
 				preservedDeps = append(preservedDeps, dep.URN)
@@ -554,10 +554,10 @@ func breakDependencies(res *resource.State, resourcesToMove map[string]*resource
 		case resource.ResourcePropertyDependency:
 			if _, ok := resourcesToMove[string(dep.URN)]; ok {
 				brokenDeps = append(brokenDeps, brokenDependency{
-					dependencyURN:  dep.URN,
-					dependencyType: propertyDependency,
-					propdepKey:     dep.Key,
-					resourceURN:    res.URN,
+					dependencyURN:	dep.URN,
+					dependencyType:	propertyDependency,
+					propdepKey:	dep.Key,
+					resourceURN:	res.URN,
 				})
 			} else {
 				preservedPropDeps[dep.Key] = append(preservedPropDeps[dep.Key], dep.URN)
@@ -565,9 +565,9 @@ func breakDependencies(res *resource.State, resourcesToMove map[string]*resource
 		case resource.ResourceDeletedWith:
 			if _, ok := resourcesToMove[string(dep.URN)]; ok {
 				brokenDeps = append(brokenDeps, brokenDependency{
-					dependencyURN:  dep.URN,
-					dependencyType: deletedWith,
-					resourceURN:    res.URN,
+					dependencyURN:	dep.URN,
+					dependencyType:	deletedWith,
+					resourceURN:	res.URN,
 				})
 			} else {
 				preservedDeletedWith = dep.URN

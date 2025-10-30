@@ -18,11 +18,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/cloud"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/passphrase"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/service"
 )
 
 // DefaultProvider is the default DefaultProvider to use when deserializing deployments.

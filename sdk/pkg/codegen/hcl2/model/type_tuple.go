@@ -24,20 +24,20 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model/pretty"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 )
 
 // TupleType represents values that are a sequence of independently-typed elements.
 type TupleType struct {
 	// ElementTypes are the types of the tuple's elements.
-	ElementTypes []Type
+	ElementTypes	[]Type
 
-	elementUnion Type
-	s            atomic.Value // Value<string>
+	elementUnion	Type
+	s		atomic.Value	// Value<string>
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache	*gsync.Map[Type, cacheEntry]
 }
 
 // NewTupleType creates a new tuple type with the given element types.
@@ -57,13 +57,13 @@ func (t *TupleType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Form
 		}
 	}
 	return &pretty.Wrap{
-		Prefix: "(",
+		Prefix:	"(",
 		Value: &pretty.List{
-			AdjoinSeparator: true,
-			Separator:       ", ",
-			Elements:        elements,
+			AdjoinSeparator:	true,
+			Separator:		", ",
+			Elements:		elements,
 		},
-		Postfix: ")",
+		Postfix:	")",
 	}
 }
 
@@ -146,9 +146,9 @@ func (t *TupleType) AssignableFrom(src Type) bool {
 }
 
 type tupleElementUnifier struct {
-	elementTypes   []Type
-	any            bool
-	conversionKind ConversionKind
+	elementTypes	[]Type
+	any		bool
+	conversionKind	ConversionKind
 }
 
 func (u *tupleElementUnifier) unify(t *TupleType) {
@@ -310,4 +310,4 @@ func (t *TupleType) unify(other Type) (Type, ConversionKind) {
 	})
 }
 
-func (*TupleType) isType() {}
+func (*TupleType) isType()	{}

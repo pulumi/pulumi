@@ -25,40 +25,40 @@ func TestRoundtripDiagnostics(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name string
-		diag hcl.Diagnostic
+		name	string
+		diag	hcl.Diagnostic
 	}{
 		{
-			name: "simple",
+			name:	"simple",
 			diag: hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "Some issue",
-				Detail:   "More info",
+				Severity:	hcl.DiagError,
+				Summary:	"Some issue",
+				Detail:		"More info",
 			},
 		},
 		{
-			name: "with subject",
+			name:	"with subject",
 			diag: hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "Some issue",
-				Detail:   "More info",
+				Severity:	hcl.DiagError,
+				Summary:	"Some issue",
+				Detail:		"More info",
 				Subject: &hcl.Range{
-					Filename: "foo",
-					Start:    hcl.Pos{Line: 1, Column: 2, Byte: 3},
-					End:      hcl.Pos{Line: 4, Column: 5, Byte: 6},
+					Filename:	"foo",
+					Start:		hcl.Pos{Line: 1, Column: 2, Byte: 3},
+					End:		hcl.Pos{Line: 4, Column: 5, Byte: 6},
 				},
 			},
 		},
 		{
-			name: "with context",
+			name:	"with context",
 			diag: hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "Some issue",
-				Detail:   "More info",
+				Severity:	hcl.DiagError,
+				Summary:	"Some issue",
+				Detail:		"More info",
 				Context: &hcl.Range{
-					Filename: "foo",
-					Start:    hcl.Pos{Line: 1, Column: 2, Byte: 3},
-					End:      hcl.Pos{Line: 4, Column: 5, Byte: 6},
+					Filename:	"foo",
+					Start:		hcl.Pos{Line: 1, Column: 2, Byte: 3},
+					End:		hcl.Pos{Line: 4, Column: 5, Byte: 6},
 				},
 			},
 		},

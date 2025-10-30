@@ -26,11 +26,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	. "github.com/pulumi/pulumi/sdk/v3/pkg/engine"	//nolint:revive
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -73,16 +73,16 @@ func TestDestroyWithProgram(t *testing.T) {
 						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
-							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
-							Status:     resource.StatusOK,
+							ID:		resource.ID(uuid.String()),
+							Properties:	createOutputs,
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
-						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
-						Status:     resource.StatusOK,
+						ID:		resource.ID(uuid.String()),
+						Properties:	resource.PropertyMap{},
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -115,8 +115,8 @@ func TestDestroyWithProgram(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 		},
 	}
 
@@ -181,16 +181,16 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
-							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
-							Status:     resource.StatusOK,
+							ID:		resource.ID(uuid.String()),
+							Properties:	createOutputs,
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
-						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
-						Status:     resource.StatusOK,
+						ID:		resource.ID(uuid.String()),
+						Properties:	resource.PropertyMap{},
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -223,8 +223,8 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 		},
 	}
 
@@ -289,16 +289,16 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
-							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
-							Status:     resource.StatusOK,
+							ID:		resource.ID(uuid.String()),
+							Properties:	createOutputs,
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
-						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
-						Status:     resource.StatusOK,
+						ID:		resource.ID(uuid.String()),
+						Properties:	resource.PropertyMap{},
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -331,8 +331,8 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 		programExecutions++
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs:  programInputs,
-			Version: pkgVersion,
+			Inputs:		programInputs,
+			Version:	pkgVersion,
 		})
 		require.NoError(t, err)
 		// Should see the create outputs both times we run this program
@@ -341,8 +341,8 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 		// Only register resB on the first run
 		if programExecutions == 1 {
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-				Inputs:  programInputs,
-				Version: pkgVersion,
+				Inputs:		programInputs,
+				Version:	pkgVersion,
 			})
 			require.NoError(t, err)
 			assert.Equal(t, createOutputs, resp.Outputs)
@@ -354,8 +354,8 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 		},
 	}
 
@@ -407,16 +407,16 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
-							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
-							Status:     resource.StatusOK,
+							ID:		resource.ID(uuid.String()),
+							Properties:	createOutputs,
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
-						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
-						Status:     resource.StatusOK,
+						ID:		resource.ID(uuid.String()),
+						Properties:	resource.PropertyMap{},
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -457,8 +457,8 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 		require.NoError(t, err)
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs:   programInputs,
-			Provider: provRef.String(),
+			Inputs:		programInputs,
+			Provider:	provRef.String(),
 		})
 		require.NoError(t, err)
 		// Should see the create outputs both times we run this program
@@ -467,8 +467,8 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 		// Only register resB on the first run
 		if programExecutions == 1 {
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-				Inputs:   programInputs,
-				Provider: provRef.String(),
+				Inputs:		programInputs,
+				Provider:	provRef.String(),
 			})
 			require.NoError(t, err)
 			assert.Equal(t, createOutputs, resp.Outputs)
@@ -480,8 +480,8 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 		},
 	}
 
@@ -547,16 +547,16 @@ func TestDestroyWithProgramWithComponents(t *testing.T) {
 						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
-							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
-							Status:     resource.StatusOK,
+							ID:		resource.ID(uuid.String()),
+							Properties:	createOutputs,
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
-						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
-						Status:     resource.StatusOK,
+						ID:		resource.ID(uuid.String()),
+						Properties:	resource.PropertyMap{},
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -571,8 +571,8 @@ func TestDestroyWithProgramWithComponents(t *testing.T) {
 		require.NoError(t, err)
 
 		resp, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: programInputs,
-			Parent: resp.URN,
+			Inputs:	programInputs,
+			Parent:	resp.URN,
 		})
 		require.NoError(t, err)
 		assert.Equal(t, createOutputs, resp.Outputs)
@@ -583,8 +583,8 @@ func TestDestroyWithProgramWithComponents(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 		},
 	}
 
@@ -646,9 +646,9 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
-							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
-							Status:     resource.StatusOK,
+							ID:		resource.ID(uuid.String()),
+							Properties:	createOutputs,
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
@@ -686,8 +686,8 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 
 			// And then create the original custom resource as a child of the component, remember to alias it
 			resp, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-				Inputs:       programInputs,
-				Dependencies: []resource.URN{resp.URN},
+				Inputs:		programInputs,
+				Dependencies:	[]resource.URN{resp.URN},
 			})
 			require.NoError(t, err)
 			assert.Equal(t, createOutputs, resp.Outputs)
@@ -698,8 +698,8 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 		},
 	}
 
@@ -761,9 +761,9 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
-							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
-							Status:     resource.StatusOK,
+							ID:		resource.ID(uuid.String()),
+							Properties:	createOutputs,
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
@@ -794,8 +794,8 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 
 			// And then create the original custom resource as a child of the component, remember to alias it
 			resp, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-				Inputs: programInputs,
-				Parent: resp.URN,
+				Inputs:	programInputs,
+				Parent:	resp.URN,
 				Aliases: []*pulumirpc.Alias{
 					{
 						Alias: &pulumirpc.Alias_Spec_{
@@ -817,8 +817,8 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 		},
 	}
 
@@ -883,9 +883,9 @@ func TestDestroyWithProgramResourceRead(t *testing.T) {
 						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
-							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
-							Status:     resource.StatusOK,
+							ID:		resource.ID(uuid.String()),
+							Properties:	createOutputs,
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
@@ -899,11 +899,11 @@ func TestDestroyWithProgramResourceRead(t *testing.T) {
 
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								Inputs:  readInputs,
-								Outputs: readOutputs,
-								ID:      req.ID,
+								Inputs:		readInputs,
+								Outputs:	readOutputs,
+								ID:		req.ID,
 							},
-							Status: resource.StatusOK,
+							Status:	resource.StatusOK,
 						}, nil
 					}
 
@@ -945,9 +945,9 @@ func TestDestroyWithProgramResourceRead(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:			t,
+			HostF:			hostF,
+			SkipDisplayTests:	true,
 		},
 	}
 
@@ -981,17 +981,17 @@ func TestDestroyV2ProtectedWithProviderDependencies(t *testing.T) {
 	initialSnap := &deploy.Snapshot{
 		Resources: []*resource.State{
 			{
-				Type:   "pulumi:providers:pkgA",
-				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::prov",
-				Custom: true,
-				ID:     "prov",
+				Type:	"pulumi:providers:pkgA",
+				URN:	"urn:pulumi:test::test::pulumi:providers:pkgA::prov",
+				Custom:	true,
+				ID:	"prov",
 			},
 			{
-				Type:     "pkgA:m:typA",
-				URN:      "urn:pulumi:test::test::pkgA:m:typA::resA",
-				Provider: "urn:pulumi:test::test::pulumi:providers:pkgA::prov::prov",
-				ID:       "0",
-				Protect:  true,
+				Type:		"pkgA:m:typA",
+				URN:		"urn:pulumi:test::test::pkgA:m:typA::resA",
+				Provider:	"urn:pulumi:test::test::pulumi:providers:pkgA::prov::prov",
+				ID:		"0",
+				Protect:	true,
 			},
 		},
 	}
@@ -1009,8 +1009,8 @@ func TestDestroyV2ProtectedWithProviderDependencies(t *testing.T) {
 		protect := true
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Protect:  &protect,
-			Provider: provRef.String(),
+			Protect:	&protect,
+			Provider:	provRef.String(),
 		})
 		require.NoError(t, err)
 		return nil
@@ -1018,8 +1018,8 @@ func TestDestroyV2ProtectedWithProviderDependencies(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	opts := lt.TestUpdateOptions{
-		T:     t,
-		HostF: hostF,
+		T:	t,
+		HostF:	hostF,
 	}
 	p := &lt.TestPlan{
 		Options: opts,

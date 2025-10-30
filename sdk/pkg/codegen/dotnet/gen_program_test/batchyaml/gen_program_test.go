@@ -20,8 +20,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/dotnet"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/testing/test"
 )
 
 // This specifically tests the synced examples from pulumi/yaml with

@@ -32,29 +32,29 @@ import (
 // underlying resources of the `@pulumi/cloud-aws` implementation.
 func CloudOperationsProvider(config map[config.Key]string, component *Resource) (Provider, error) {
 	prov := &cloudOpsProvider{
-		config:    config,
-		component: component,
+		config:		config,
+		component:	component,
 	}
 	return prov, nil
 }
 
 type cloudOpsProvider struct {
-	config    map[config.Key]string
-	component *Resource
+	config		map[config.Key]string
+	component	*Resource
 }
 
 var _ Provider = (*cloudOpsProvider)(nil)
 
 const (
 	// Pulumi Framework component types
-	cloudFunctionType     = tokens.Type("cloud:function:Function")
-	cloudLogCollectorType = tokens.Type("cloud:logCollector:LogCollector")
-	cloudServiceType      = tokens.Type("cloud:service:Service")
-	cloudTaskType         = tokens.Type("cloud:task:Task")
+	cloudFunctionType	= tokens.Type("cloud:function:Function")
+	cloudLogCollectorType	= tokens.Type("cloud:logCollector:LogCollector")
+	cloudServiceType	= tokens.Type("cloud:service:Service")
+	cloudTaskType		= tokens.Type("cloud:task:Task")
 
 	// AWS resource types
-	awsLambdaFunctionTypeName = "aws:lambda/function:Function"
-	awsLogGroupTypeName       = "aws:cloudwatch/logGroup:LogGroup"
+	awsLambdaFunctionTypeName	= "aws:lambda/function:Function"
+	awsLogGroupTypeName		= "aws:cloudwatch/logGroup:LogGroup"
 )
 
 func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
@@ -157,9 +157,9 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		var logs []LogEntry
 		for _, rawLog := range *rawLogs {
 			logs = append(logs, LogEntry{
-				ID:        name,
-				Message:   rawLog.Message,
-				Timestamp: rawLog.Timestamp,
+				ID:		name,
+				Message:	rawLog.Message,
+				Timestamp:	rawLog.Timestamp,
 			})
 		}
 		logging.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logs))
@@ -172,25 +172,25 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 }
 
 type encodedLogEvent struct {
-	ID        string `json:"id"`
-	Timestamp int64  `json:"timestamp"`
-	Message   string `json:"message"`
+	ID		string	`json:"id"`
+	Timestamp	int64	`json:"timestamp"`
+	Message		string	`json:"message"`
 }
 
 type encodedLogMessage struct {
-	MessageType         string            `json:"messageType"`
-	Owner               string            `json:"owner"`
-	LogGroup            string            `json:"logGroup"`
-	LogStream           string            `json:"logStream"`
-	SubscriptionFilters []string          `json:"subscriptionFilters"`
-	LogEvents           []encodedLogEvent `json:"logEvents"`
+	MessageType		string			`json:"messageType"`
+	Owner			string			`json:"owner"`
+	LogGroup		string			`json:"logGroup"`
+	LogStream		string			`json:"logStream"`
+	SubscriptionFilters	[]string		`json:"subscriptionFilters"`
+	LogEvents		[]encodedLogEvent	`json:"logEvents"`
 }
 
 var (
 	// Extract function name from LogGroup name
-	functionNameFromLogGroupNameRegExp = regexp.MustCompile(`^/aws/lambda/(.*)-[0-9A-Fa-f]{7}$`)
+	functionNameFromLogGroupNameRegExp	= regexp.MustCompile(`^/aws/lambda/(.*)-[0-9A-Fa-f]{7}$`)
 	// Used prior to pulumi-terraform@1307256eeeefdd87ffd76581cd3ab73c3d7cfd4a
-	oldFunctionNameFromLogGroupNameRegExp = regexp.MustCompile(`^/aws/lambda/(.*)[0-9A-Fa-f]{8}$`)
+	oldFunctionNameFromLogGroupNameRegExp	= regexp.MustCompile(`^/aws/lambda/(.*)[0-9A-Fa-f]{8}$`)
 	// Extract Lambda log parts from Lambda log format
 	// * Starts with a timestamp
 	// * Then a tab
@@ -198,7 +198,7 @@ var (
 	// * Then a tab
 	// * Then the message
 	// * Finally a newline
-	logRegexp = regexp.MustCompile("^(.{23}Z)\t[a-z0-9\\-]+\t((?s).*)\n")
+	logRegexp	= regexp.MustCompile("^(.{23}Z)\t[a-z0-9\\-]+\t((?s).*)\n")
 )
 
 // extractLambdaLogMessage extracts out only the log messages associated with user logs, skipping Lambda-specific
@@ -222,9 +222,9 @@ func extractLambdaLogMessage(message string, id string) *LogEntry {
 		logging.V(9).Infof("Matched Lambda log message as [%v]:'%s' from: %s", timestamp, innerMatches[0][2], message)
 		contract.Assertf(err == nil, "expected to be able to parse timestamp")
 		return &LogEntry{
-			ID:        id,
-			Message:   innerMatches[0][2],
-			Timestamp: timestamp.UnixNano() / 1000000, // milliseconds
+			ID:		id,
+			Message:	innerMatches[0][2],
+			Timestamp:	timestamp.UnixNano() / 1000000,	// milliseconds
 		}
 	}
 	logging.V(9).Infof("Could not match Lambda log message: %s", message)

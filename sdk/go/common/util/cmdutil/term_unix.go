@@ -47,6 +47,6 @@ func shutdownProcessGroup(pid int) error {
 //
 // A Windows version of this function is defined in term_windows.go.
 func isWaitAlreadyExited(err error) bool {
-	return errors.Is(err, syscall.ESRCH) || //  no such process
-		errors.Is(err, syscall.ECHILD) //  no child processes
+	return errors.Is(err, syscall.ESRCH) ||	//  no such process
+		errors.Is(err, syscall.ECHILD)	//  no child processes
 }

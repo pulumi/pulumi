@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 )
 
 // DocLanguageHelper is the DotNet-specific implementation of the DocLanguageHelper.
@@ -74,11 +74,11 @@ func (d DocLanguageHelper) GetTypeName(pkg schema.PackageReference, t schema.Typ
 		info, _ = a.(CSharpPackageInfo)
 	}
 	mod := &modContext{
-		pkg:           pkg,
-		mod:           relativeToModule,
-		typeDetails:   map[*schema.ObjectType]*typeDetails{},
-		namespaces:    info.Namespaces,
-		rootNamespace: info.GetRootNamespace(),
+		pkg:		pkg,
+		mod:		relativeToModule,
+		typeDetails:	map[*schema.ObjectType]*typeDetails{},
+		namespaces:	info.Namespaces,
+		rootNamespace:	info.GetRootNamespace(),
 	}
 	qualifier := "Inputs"
 	if !input {
@@ -123,11 +123,11 @@ func (d DocLanguageHelper) GetMethodResultName(pkg schema.PackageReference, modN
 			returnType = objectType
 		} else {
 			mod := &modContext{
-				pkg:           pkg,
-				mod:           modName,
-				typeDetails:   map[*schema.ObjectType]*typeDetails{},
-				namespaces:    info.Namespaces,
-				rootNamespace: info.GetRootNamespace(),
+				pkg:		pkg,
+				mod:		modName,
+				typeDetails:	map[*schema.ObjectType]*typeDetails{},
+				namespaces:	info.Namespaces,
+				rootNamespace:	info.GetRootNamespace(),
 			}
 			return mod.typeString(m.Function.ReturnType, "", false, false, false)
 		}
@@ -135,11 +135,11 @@ func (d DocLanguageHelper) GetMethodResultName(pkg schema.PackageReference, modN
 
 	if info.LiftSingleValueMethodReturns && returnType != nil && len(returnType.Properties) == 1 {
 		mod := &modContext{
-			pkg:           pkg,
-			mod:           modName,
-			typeDetails:   map[*schema.ObjectType]*typeDetails{},
-			namespaces:    info.Namespaces,
-			rootNamespace: info.GetRootNamespace(),
+			pkg:		pkg,
+			mod:		modName,
+			typeDetails:	map[*schema.ObjectType]*typeDetails{},
+			namespaces:	info.Namespaces,
+			rootNamespace:	info.GetRootNamespace(),
 		}
 		return mod.typeString(returnType.Properties[0].Type, "", false, false, false)
 	}

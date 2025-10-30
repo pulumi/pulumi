@@ -20,10 +20,10 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -90,23 +90,23 @@ func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expre
 
 		if currentExpression == nil {
 			currentExpression = &model.ScopeTraversalExpression{
-				RootName:  rootName,
-				Traversal: currentTraversal,
-				Parts:     currentParts,
+				RootName:	rootName,
+				Traversal:	currentTraversal,
+				Parts:		currentParts,
 			}
 
 			currentTraversal, currentParts = nil, nil
 		} else if len(currentTraversal) > 0 {
 			currentExpression = &model.RelativeTraversalExpression{
-				Source:    currentExpression,
-				Traversal: currentTraversal,
-				Parts:     currentParts,
+				Source:		currentExpression,
+				Traversal:	currentTraversal,
+				Parts:		currentParts,
 			}
 			currentTraversal, currentParts = nil, []model.Traversable{currentExpression.Type()}
 		}
 
 		currentExpression = &model.IndexExpression{
-			Collection: currentExpression,
+			Collection:	currentExpression,
 			Key: &model.LiteralValueExpression{
 				Value: cty.StringVal(keyVal),
 			},
@@ -120,15 +120,15 @@ func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expre
 
 	if currentExpression == nil {
 		currentExpression = &model.ScopeTraversalExpression{
-			RootName:  rootName,
-			Traversal: currentTraversal,
-			Parts:     currentParts,
+			RootName:	rootName,
+			Traversal:	currentTraversal,
+			Parts:		currentParts,
 		}
 	} else if len(currentTraversal) > 0 {
 		currentExpression = &model.RelativeTraversalExpression{
-			Source:    currentExpression,
-			Traversal: currentTraversal,
-			Parts:     currentParts,
+			Source:		currentExpression,
+			Traversal:	currentTraversal,
+			Parts:		currentParts,
 		}
 	}
 
@@ -140,9 +140,9 @@ func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expre
 }
 
 type quoteTemp struct {
-	Name         string
-	VariableType model.Type
-	Value        model.Expression
+	Name		string
+	VariableType	model.Type
+	Value		model.Expression
 }
 
 func (qt *quoteTemp) Type() model.Type {
@@ -158,14 +158,14 @@ func (qt *quoteTemp) SyntaxNode() hclsyntax.Node {
 }
 
 type quoteAllocations struct {
-	quotes map[model.Expression]string
-	temps  []*quoteTemp
+	quotes	map[model.Expression]string
+	temps	[]*quoteTemp
 }
 
 type quoteAllocator struct {
-	allocations *quoteAllocations
-	allocated   codegen.StringSet
-	stack       []model.Expression
+	allocations	*quoteAllocations
+	allocated	codegen.StringSet
+	stack		[]model.Expression
 }
 
 func (qa *quoteAllocator) allocate(longString bool) (string, bool) {
@@ -255,16 +255,16 @@ func (qa *quoteAllocator) allocateExpression(x model.Expression) (model.Expressi
 	value, valueDiags := model.VisitExpression(x, allocator.allocateExpression, allocator.freeExpression)
 
 	temp := &quoteTemp{
-		Name:         fmt.Sprintf("str%d", len(qa.allocations.temps)),
-		VariableType: x.Type(),
-		Value:        value,
+		Name:		fmt.Sprintf("str%d", len(qa.allocations.temps)),
+		VariableType:	x.Type(),
+		Value:		value,
 	}
 	qa.allocations.temps = append(qa.allocations.temps, temp)
 
 	return &model.ScopeTraversalExpression{
-		RootName:  temp.Name,
-		Traversal: hcl.Traversal{hcl.TraverseRoot{Name: ""}},
-		Parts:     []model.Traversable{temp},
+		RootName:	temp.Name,
+		Traversal:	hcl.Traversal{hcl.TraverseRoot{Name: ""}},
+		Parts:		[]model.Traversable{temp},
 	}, valueDiags
 }
 

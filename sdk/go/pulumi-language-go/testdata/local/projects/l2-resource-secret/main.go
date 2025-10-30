@@ -8,15 +8,15 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		_, err := secret.NewResource(ctx, "res", &secret.ResourceArgs{
-			Private: pulumi.String("closed"),
-			Public:  pulumi.String("open"),
+			Private:	pulumi.String("closed"),
+			Public:		pulumi.String("open"),
 			PrivateData: &secret.DataArgs{
-				Private: pulumi.String("closed"),
-				Public:  pulumi.String("open"),
+				Private:	pulumi.String("closed"),
+				Public:		pulumi.String("open"),
 			},
 			PublicData: &secret.DataArgs{
-				Private: pulumi.String("closed"),
-				Public:  pulumi.String("open"),
+				Private:	pulumi.String("closed"),
+				Public:		pulumi.String("open"),
 			},
 		})
 		if err != nil {

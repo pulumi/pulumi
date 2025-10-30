@@ -47,11 +47,11 @@ import (
 )
 
 const (
-	arrayTypeName   = "array"
-	integerTypeName = "integer"
-	stringTypeName  = "string"
-	booleanTypeName = "boolean"
-	objectTypeName  = "object"
+	arrayTypeName	= "array"
+	integerTypeName	= "integer"
+	stringTypeName	= "string"
+	booleanTypeName	= "boolean"
+	objectTypeName	= "object"
 )
 
 //go:embed project.json
@@ -97,16 +97,16 @@ type ProjectOptions struct {
 }
 
 type PluginOptions struct {
-	Name    string `json:"name" yaml:"name"`
-	Version string `json:"version,omitempty" yaml:"version,omitempty"`
-	Path    string `json:"path" yaml:"path"`
+	Name	string	`json:"name" yaml:"name"`
+	Version	string	`json:"version,omitempty" yaml:"version,omitempty"`
+	Path	string	`json:"path" yaml:"path"`
 }
 
 // PackageSpec defines the structured format for a package dependency
 type PackageSpec struct {
-	Source     string   `json:"source" yaml:"source"`
-	Version    string   `json:"version,omitempty" yaml:"version,omitempty"`
-	Parameters []string `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	Source		string		`json:"source" yaml:"source"`
+	Version		string		`json:"version,omitempty" yaml:"version,omitempty"`
+	Parameters	[]string	`json:"parameters,omitempty" yaml:"parameters,omitempty"`
 }
 
 // packageValue can be either a string or a PackageSpec
@@ -127,8 +127,8 @@ func (pv *packageValue) Spec() PackageSpec {
 		parts := strings.Split(v, "@")
 		if len(parts) == 2 {
 			return PackageSpec{
-				Source:  parts[0],
-				Version: parts[1],
+				Source:		parts[0],
+				Version:	parts[1],
 			}
 		}
 		return PackageSpec{Source: v}
@@ -186,23 +186,23 @@ func (pv packageValue) MarshalYAML() (any, error) {
 }
 
 type Plugins struct {
-	Providers []PluginOptions `json:"providers,omitempty" yaml:"providers,omitempty"`
-	Languages []PluginOptions `json:"languages,omitempty" yaml:"languages,omitempty"`
-	Analyzers []PluginOptions `json:"analyzers,omitempty" yaml:"analyzers,omitempty"`
+	Providers	[]PluginOptions	`json:"providers,omitempty" yaml:"providers,omitempty"`
+	Languages	[]PluginOptions	`json:"languages,omitempty" yaml:"languages,omitempty"`
+	Analyzers	[]PluginOptions	`json:"analyzers,omitempty" yaml:"analyzers,omitempty"`
 }
 
 type ProjectConfigItemsType struct {
-	Type  string                  `json:"type,omitempty" yaml:"type,omitempty"`
-	Items *ProjectConfigItemsType `json:"items,omitempty" yaml:"items,omitempty"`
+	Type	string			`json:"type,omitempty" yaml:"type,omitempty"`
+	Items	*ProjectConfigItemsType	`json:"items,omitempty" yaml:"items,omitempty"`
 }
 
 type ProjectConfigType struct {
-	Type        *string                 `json:"type,omitempty" yaml:"type,omitempty"`
-	Description string                  `json:"description,omitempty" yaml:"description,omitempty"`
-	Items       *ProjectConfigItemsType `json:"items,omitempty" yaml:"items,omitempty"`
-	Default     any                     `json:"default,omitempty" yaml:"default,omitempty"`
-	Value       any                     `json:"value,omitempty" yaml:"value,omitempty"`
-	Secret      bool                    `json:"secret,omitempty" yaml:"secret,omitempty"`
+	Type		*string			`json:"type,omitempty" yaml:"type,omitempty"`
+	Description	string			`json:"description,omitempty" yaml:"description,omitempty"`
+	Items		*ProjectConfigItemsType	`json:"items,omitempty" yaml:"items,omitempty"`
+	Default		any			`json:"default,omitempty" yaml:"default,omitempty"`
+	Value		any			`json:"value,omitempty" yaml:"value,omitempty"`
+	Secret		bool			`json:"secret,omitempty" yaml:"secret,omitempty"`
 }
 
 // IsExplicitlyTyped returns whether the project config type is explicitly typed.
@@ -239,47 +239,47 @@ type BaseProject interface {
 // TODO[pulumi/pulumi#423]: use DOM based marshalling so we can roundtrip the seralized structure perfectly.
 type Project struct {
 	// Name is a required fully qualified name.
-	Name tokens.PackageName `json:"name" yaml:"name"`
+	Name	tokens.PackageName	`json:"name" yaml:"name"`
 	// Runtime is a required runtime that executes code.
-	Runtime ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`
+	Runtime	ProjectRuntimeInfo	`json:"runtime" yaml:"runtime"`
 	// Main is an optional override for the program's main entry-point location.
-	Main string `json:"main,omitempty" yaml:"main,omitempty"`
+	Main	string	`json:"main,omitempty" yaml:"main,omitempty"`
 
 	// Description is an optional informational description.
-	Description *string `json:"description,omitempty" yaml:"description,omitempty"`
+	Description	*string	`json:"description,omitempty" yaml:"description,omitempty"`
 	// Author is an optional author that created this project.
-	Author *string `json:"author,omitempty" yaml:"author,omitempty"`
+	Author	*string	`json:"author,omitempty" yaml:"author,omitempty"`
 	// Website is an optional website for additional info about this project.
-	Website *string `json:"website,omitempty" yaml:"website,omitempty"`
+	Website	*string	`json:"website,omitempty" yaml:"website,omitempty"`
 	// License is the optional license governing this project's usage.
-	License *string `json:"license,omitempty" yaml:"license,omitempty"`
+	License	*string	`json:"license,omitempty" yaml:"license,omitempty"`
 
 	// Config has been renamed to StackConfigDir.
-	Config map[string]ProjectConfigType `json:"config,omitempty" yaml:"config,omitempty"`
+	Config	map[string]ProjectConfigType	`json:"config,omitempty" yaml:"config,omitempty"`
 
 	// StackConfigDir indicates where to store the Pulumi.<stack-name>.yaml files, combined with the folder
 	// Pulumi.yaml is in.
-	StackConfigDir string `json:"stackConfigDir,omitempty" yaml:"stackConfigDir,omitempty"`
+	StackConfigDir	string	`json:"stackConfigDir,omitempty" yaml:"stackConfigDir,omitempty"`
 
 	// Template is an optional template manifest, if this project is a template.
-	Template *ProjectTemplate `json:"template,omitempty" yaml:"template,omitempty"`
+	Template	*ProjectTemplate	`json:"template,omitempty" yaml:"template,omitempty"`
 
 	// Backend is an optional backend configuration
-	Backend *ProjectBackend `json:"backend,omitempty" yaml:"backend,omitempty"`
+	Backend	*ProjectBackend	`json:"backend,omitempty" yaml:"backend,omitempty"`
 
 	// Options is an optional set of project options
-	Options *ProjectOptions `json:"options,omitempty" yaml:"options,omitempty"`
+	Options	*ProjectOptions	`json:"options,omitempty" yaml:"options,omitempty"`
 
 	// Packages is a map of package dependencies that can be either strings or PackageSpecs
-	Packages map[string]packageValue `json:"packages,omitempty" yaml:"packages,omitempty"`
+	Packages	map[string]packageValue	`json:"packages,omitempty" yaml:"packages,omitempty"`
 
-	Plugins *Plugins `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Plugins	*Plugins	`json:"plugins,omitempty" yaml:"plugins,omitempty"`
 
 	// Handle additional keys, albeit in a way that will remove comments and trivia.
-	AdditionalKeys map[string]any `yaml:",inline"`
+	AdditionalKeys	map[string]any	`yaml:",inline"`
 
 	// The original byte representation of the file, used to attempt trivia-preserving edits
-	raw []byte
+	raw	[]byte
 }
 
 var _ BaseProject = (*Project)(nil)
@@ -846,25 +846,25 @@ func (proj *Project) Save(path string) error {
 
 type PolicyPackProject struct {
 	// Runtime is a required runtime that executes code.
-	Runtime ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`
+	Runtime	ProjectRuntimeInfo	`json:"runtime" yaml:"runtime"`
 	// Version specifies the version of the policy pack. If set, it will override the
 	// version specified in `package.json` for Node.js policy packs.
-	Version string `json:"version,omitempty" yaml:"version,omitempty"`
+	Version	string	`json:"version,omitempty" yaml:"version,omitempty"`
 
 	// Main is an optional override for the program's main entry-point location.
-	Main string `json:"main,omitempty" yaml:"main,omitempty"`
+	Main	string	`json:"main,omitempty" yaml:"main,omitempty"`
 
 	// Description is an optional informational description.
-	Description *string `json:"description,omitempty" yaml:"description,omitempty"`
+	Description	*string	`json:"description,omitempty" yaml:"description,omitempty"`
 	// Author is an optional author that created this project.
-	Author *string `json:"author,omitempty" yaml:"author,omitempty"`
+	Author	*string	`json:"author,omitempty" yaml:"author,omitempty"`
 	// Website is an optional website for additional info about this project.
-	Website *string `json:"website,omitempty" yaml:"website,omitempty"`
+	Website	*string	`json:"website,omitempty" yaml:"website,omitempty"`
 	// License is the optional license governing this project's usage.
-	License *string `json:"license,omitempty" yaml:"license,omitempty"`
+	License	*string	`json:"license,omitempty" yaml:"license,omitempty"`
 
 	// The original byte representation of the file, used to attempt trivia-preserving edits
-	raw []byte
+	raw	[]byte
 }
 
 func (proj PolicyPackProject) RawValue() []byte {
@@ -889,9 +889,9 @@ func (proj *PolicyPackProject) Save(path string) error {
 
 type PluginProject struct {
 	// Runtime is a required runtime that executes code.
-	Runtime ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`
+	Runtime	ProjectRuntimeInfo	`json:"runtime" yaml:"runtime"`
 	// Packages is a map of package dependencies that can be either strings or PackageSpecs
-	Packages map[string]packageValue `json:"packages,omitempty" yaml:"packages,omitempty"`
+	Packages	map[string]packageValue	`json:"packages,omitempty" yaml:"packages,omitempty"`
 }
 
 var _ BaseProject = (*PluginProject)(nil)
@@ -934,9 +934,9 @@ func (proj *PluginProject) Validate() error {
 }
 
 type Environment struct {
-	envs    []string
-	message json.RawMessage
-	node    *yaml.Node
+	envs	[]string
+	message	json.RawMessage
+	node	*yaml.Node
 }
 
 func NewEnvironment(envs []string) *Environment {
@@ -1019,14 +1019,14 @@ func (e *Environment) Append(envs ...string) *Environment {
 			if imports == nil {
 				root.Content = append([]*yaml.Node{
 					{
-						Kind:  yaml.ScalarNode,
-						Style: root.Style,
-						Tag:   "!!str",
-						Value: "imports",
+						Kind:	yaml.ScalarNode,
+						Style:	root.Style,
+						Tag:	"!!str",
+						Value:	"imports",
 					},
 					{
-						Kind:  yaml.SequenceNode,
-						Style: root.Style,
+						Kind:	yaml.SequenceNode,
+						Style:	root.Style,
 					},
 				}, root.Content...)
 				imports = root.Content[1]
@@ -1034,10 +1034,10 @@ func (e *Environment) Append(envs ...string) *Environment {
 			if imports.Kind == yaml.SequenceNode {
 				nodes := fx.ToSlice(fx.Map(fx.IterSlice(envs), func(env string) *yaml.Node {
 					return &yaml.Node{
-						Kind:  yaml.ScalarNode,
-						Style: imports.Style,
-						Tag:   "!!str",
-						Value: env,
+						Kind:	yaml.ScalarNode,
+						Style:	imports.Style,
+						Tag:	"!!str",
+						Value:	env,
 					}
 				}))
 				imports.Content = append(imports.Content, nodes...)
@@ -1166,20 +1166,20 @@ func (e *Environment) UnmarshalYAML(n *yaml.Node) error {
 // ProjectStack holds stack specific information about a project.
 type ProjectStack struct {
 	// SecretsProvider is this stack's secrets provider.
-	SecretsProvider string `json:"secretsprovider,omitempty" yaml:"secretsprovider,omitempty"`
+	SecretsProvider	string	`json:"secretsprovider,omitempty" yaml:"secretsprovider,omitempty"`
 	// EncryptedKey is the KMS-encrypted ciphertext for the data key used for secrets encryption.
 	// Only used for cloud-based secrets providers.
-	EncryptedKey string `json:"encryptedkey,omitempty" yaml:"encryptedkey,omitempty"`
+	EncryptedKey	string	`json:"encryptedkey,omitempty" yaml:"encryptedkey,omitempty"`
 	// EncryptionSalt is this stack's base64 encoded encryption salt.  Only used for
 	// passphrase-based secrets providers.
-	EncryptionSalt string `json:"encryptionsalt,omitempty" yaml:"encryptionsalt,omitempty"`
+	EncryptionSalt	string	`json:"encryptionsalt,omitempty" yaml:"encryptionsalt,omitempty"`
 	// Config is an optional config bag.
-	Config config.Map `json:"config,omitempty" yaml:"config,omitempty"`
+	Config	config.Map	`json:"config,omitempty" yaml:"config,omitempty"`
 	// Environment is an optional environment definition or list of environments.
-	Environment *Environment `json:"environment,omitempty" yaml:"environment,omitempty"`
+	Environment	*Environment	`json:"environment,omitempty" yaml:"environment,omitempty"`
 
 	// The original byte representation of the file, used to attempt trivia-preserving edits
-	raw []byte
+	raw	[]byte
 }
 
 func (ps ProjectStack) EnvironmentBytes() []byte {
@@ -1198,8 +1198,8 @@ func (ps *ProjectStack) Save(path string) error {
 }
 
 type ProjectRuntimeInfo struct {
-	name    string
-	options map[string]any
+	name	string
+	options	map[string]any
 }
 
 type ProjectStackDeployment struct {
@@ -1214,8 +1214,8 @@ func (psd *ProjectStackDeployment) Save(path string) error {
 
 func NewProjectRuntimeInfo(name string, options map[string]any) ProjectRuntimeInfo {
 	return ProjectRuntimeInfo{
-		name:    name,
-		options: options,
+		name:		name,
+		options:	options,
 	}
 }
 
@@ -1240,8 +1240,8 @@ func (info ProjectRuntimeInfo) MarshalYAML() (any, error) {
 	}
 
 	return map[string]any{
-		"name":    info.name,
-		"options": info.options,
+		"name":		info.name,
+		"options":	info.options,
 	}, nil
 }
 
@@ -1251,8 +1251,8 @@ func (info ProjectRuntimeInfo) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(map[string]any{
-		"name":    info.name,
-		"options": info.options,
+		"name":		info.name,
+		"options":	info.options,
 	})
 }
 
@@ -1262,8 +1262,8 @@ func (info *ProjectRuntimeInfo) UnmarshalJSON(data []byte) error {
 	}
 
 	var payload struct {
-		Name    string         `json:"name"`
-		Options map[string]any `json:"options"`
+		Name	string		`json:"name"`
+		Options	map[string]any	`json:"options"`
 	}
 
 	if err := json.Unmarshal(data, &payload); err == nil {
@@ -1281,8 +1281,8 @@ func (info *ProjectRuntimeInfo) UnmarshalYAML(unmarshal func(any) error) error {
 	}
 
 	var payload struct {
-		Name    string         `yaml:"name"`
-		Options map[string]any `yaml:"options"`
+		Name	string		`yaml:"name"`
+		Options	map[string]any	`yaml:"options"`
 	}
 
 	if err := unmarshal(&payload); err == nil {

@@ -30,11 +30,11 @@ import (
 	"unicode"
 
 	"github.com/dustin/go-humanize/english"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display/internal/terminal"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -46,17 +46,17 @@ import (
 
 // DiagInfo contains the bundle of diagnostic information for a single resource.
 type DiagInfo struct {
-	ErrorCount, WarningCount, InfoCount, DebugCount int
+	ErrorCount, WarningCount, InfoCount, DebugCount	int
 
 	// The very last diagnostic event we got for this resource (regardless of severity). We'll print
 	// this out in the non-interactive mode whenever we get new events. Importantly, we don't want
 	// to print out the most significant diagnostic, as that means a flurry of event swill cause us
 	// to keep printing out the most significant diagnostic over and over again.
-	LastDiag *engine.DiagEventPayload
+	LastDiag	*engine.DiagEventPayload
 
 	// The last error we received.  If we have an error, and we're in tree-view, we'll prefer to
 	// show this over the last non-error diag so that users know about something bad early on.
-	LastError *engine.DiagEventPayload
+	LastError	*engine.DiagEventPayload
 
 	// All the diagnostic events we've heard about this resource.  We'll print the last diagnostic
 	// in the status region while a resource is in progress.  At the end we'll print out all
@@ -64,7 +64,7 @@ type DiagInfo struct {
 	//
 	// Diagnostic events are bucketed by their associated stream ID (with 0 being the default
 	// stream).
-	StreamIDToDiagPayloads map[int32][]engine.DiagEventPayload
+	StreamIDToDiagPayloads	map[int32][]engine.DiagEventPayload
 }
 
 type progressRenderer interface {
@@ -88,31 +88,31 @@ type progressRenderer interface {
 type ProgressDisplay struct {
 	// eventMutex is used to synchronize access to eventUrnToResourceRow, which is accessed
 	// by the treeRenderer
-	eventMutex sync.RWMutex
+	eventMutex	sync.RWMutex
 	// stopwatchMutex is used to synchronixe access to opStopwatch, which is used to track the times
 	// taken to perform actions on resources.
-	stopwatchMutex sync.RWMutex
+	stopwatchMutex	sync.RWMutex
 
-	opts Options
+	opts	Options
 
-	renderer progressRenderer
+	renderer	progressRenderer
 
 	// action is the kind of action (preview, update, refresh, etc) being performed.
-	action apitype.UpdateKind
+	action	apitype.UpdateKind
 	// stack is the stack this progress pertains to.
-	stack tokens.StackName
+	stack	tokens.StackName
 	// proj is the project this progress pertains to.
-	proj tokens.PackageName
+	proj	tokens.PackageName
 
 	// Whether or not we're previewing.  We don't know what we are actually doing until
 	// we get the initial 'prelude' event.
 	//
 	// this flag is only used to adjust how we describe what's going on to the user.
 	// i.e. if we're previewing we say things like "Would update" instead of "Updating".
-	isPreview bool
+	isPreview	bool
 
 	// The urn of the stack.
-	stackUrn resource.URN
+	stackUrn	resource.URN
 
 	// The set of observed unchanged (same) resources we've seen. In the event
 	// that we've not been explicitly asked to show unchanged resources
@@ -121,72 +121,72 @@ type ProgressDisplay struct {
 	// making progress in the event that there are a large number of unchanged
 	// resources (which otherwise would result in no visible change to the
 	// display).
-	sames map[resource.URN]bool
+	sames	map[resource.URN]bool
 
 	// Whether or not we've seen outputs for the stack yet.
-	seenStackOutputs bool
+	seenStackOutputs	bool
 
 	// The summary event from the engine.  If we get this, we'll print this after all
 	// normal resource events are heard.  That way we don't interfere with all the progress
 	// messages we're outputting for them.
-	summaryEventPayload *engine.SummaryEventPayload
+	summaryEventPayload	*engine.SummaryEventPayload
 
 	// Any system events we've received. They will be printed at the bottom of all
 	// the status rows.
-	systemEventPayloads []engine.StdoutEventPayload
+	systemEventPayloads	[]engine.StdoutEventPayload
 
 	// Any active download progress events that we've received.
-	progressEventPayloads *gsync.Map[string, engine.ProgressEventPayload]
+	progressEventPayloads	*gsync.Map[string, engine.ProgressEventPayload]
 
 	// Used to record the order that rows are created in.  That way, when we present in a tree, we
 	// can keep things ordered so they will not jump around.
-	displayOrderCounter int
+	displayOrderCounter	int
 
 	// What tick we're currently on.  Used to determine the number of ellipses to concat to
 	// a status message to help indicate that things are still working.
-	currentTick int
+	currentTick	int
 
-	headerRow    Row
-	resourceRows []ResourceRow
+	headerRow	Row
+	resourceRows	[]ResourceRow
 
 	// A mapping from each resource URN we are told about to its current status.
-	eventUrnToResourceRow map[resource.URN]ResourceRow
+	eventUrnToResourceRow	map[resource.URN]ResourceRow
 
 	// Remember if we're a terminal or not.  In a terminal we get a little bit fancier.
 	// For example, we'll go back and update previous status messages to make sure things
 	// align.  We don't need to do that in non-terminal situations.
-	isTerminal bool
+	isTerminal	bool
 
 	// If all progress messages are done and we can print out the final display.
-	done atomic.Bool
+	done	atomic.Bool
 
 	// True if one or more resource operations have failed.
-	failed bool
+	failed	bool
 
 	// The column that the suffix should be added to
-	suffixColumn int
+	suffixColumn	int
 
 	// the list of suffixes to rotate through
-	suffixesArray []string
+	suffixesArray	[]string
 
 	// Structure that tracks the time taken to perform an action on a resource.
-	opStopwatch opStopwatch
+	opStopwatch	opStopwatch
 
 	// Indicates whether we already printed the loading policy packs message.
-	shownPolicyLoadEvent bool
+	shownPolicyLoadEvent	bool
 
-	permalink string
+	permalink	string
 }
 
 type opStopwatch struct {
-	start map[resource.URN]time.Time
-	end   map[resource.URN]time.Time
+	start	map[resource.URN]time.Time
+	end	map[resource.URN]time.Time
 }
 
 func newOpStopwatch() opStopwatch {
 	return opStopwatch{
-		start: map[resource.URN]time.Time{},
-		end:   map[resource.URN]time.Time{},
+		start:	map[resource.URN]time.Time{},
+		end:	map[resource.URN]time.Time{},
 	}
 }
 
@@ -259,20 +259,20 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 	}
 
 	display := &ProgressDisplay{
-		action:                action,
-		isPreview:             isPreview,
-		isTerminal:            isInteractive,
-		opts:                  opts,
-		renderer:              renderer,
-		stack:                 stack,
-		proj:                  proj,
-		sames:                 make(map[resource.URN]bool),
-		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		suffixColumn:          int(statusColumn),
-		suffixesArray:         []string{"", ".", "..", "..."},
-		displayOrderCounter:   1,
-		opStopwatch:           newOpStopwatch(),
-		permalink:             permalink,
+		action:			action,
+		isPreview:		isPreview,
+		isTerminal:		isInteractive,
+		opts:			opts,
+		renderer:		renderer,
+		stack:			stack,
+		proj:			proj,
+		sames:			make(map[resource.URN]bool),
+		eventUrnToResourceRow:	make(map[resource.URN]ResourceRow),
+		suffixColumn:		int(statusColumn),
+		suffixesArray:		[]string{"", ".", "..", "..."},
+		displayOrderCounter:	1,
+		opStopwatch:		newOpStopwatch(),
+		permalink:		permalink,
 	}
 	defer func() {
 		contract.IgnoreClose(display.renderer)
@@ -323,20 +323,20 @@ func RenderProgressEvents(
 	printPermalinkInteractive(o.term, o, permalink, "")
 	renderer := newInteractiveRenderer(o.term, permalink, o)
 	display := &ProgressDisplay{
-		action:                action,
-		isPreview:             isPreview,
-		isTerminal:            true,
-		opts:                  o,
-		renderer:              renderer,
-		stack:                 stack,
-		proj:                  proj,
-		sames:                 make(map[resource.URN]bool),
-		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		suffixColumn:          int(statusColumn),
-		suffixesArray:         []string{"", ".", "..", "..."},
-		displayOrderCounter:   1,
-		opStopwatch:           newOpStopwatch(),
-		permalink:             permalink,
+		action:			action,
+		isPreview:		isPreview,
+		isTerminal:		true,
+		opts:			o,
+		renderer:		renderer,
+		stack:			stack,
+		proj:			proj,
+		sames:			make(map[resource.URN]bool),
+		eventUrnToResourceRow:	make(map[resource.URN]ResourceRow),
+		suffixColumn:		int(statusColumn),
+		suffixesArray:		[]string{"", ".", "..", "..."},
+		displayOrderCounter:	1,
+		opStopwatch:		newOpStopwatch(),
+		permalink:		permalink,
 	}
 	renderer.initializeDisplay(display)
 
@@ -348,10 +348,10 @@ func RenderProgressEvents(
 }
 
 type CaptureProgressEvents struct {
-	Buffer  *bytes.Buffer
-	Stack   tokens.StackName
-	Proj    tokens.PackageName
-	display *ProgressDisplay
+	Buffer	*bytes.Buffer
+	Stack	tokens.StackName
+	Proj	tokens.PackageName
+	display	*ProgressDisplay
 }
 
 // NewCaptureProgressEvents renders the provided engine events channel to an internal buffer. It returns a
@@ -382,28 +382,28 @@ func NewCaptureProgressEvents(
 	printPermalinkInteractive(o.term, o, permalink, "")
 	renderer := newInteractiveRenderer(o.term, permalink, o)
 	display := &ProgressDisplay{
-		action:                action,
-		isPreview:             isPreview,
-		isTerminal:            true,
-		opts:                  o,
-		renderer:              renderer,
-		stack:                 stack,
-		proj:                  proj,
-		sames:                 make(map[resource.URN]bool),
-		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		suffixColumn:          int(statusColumn),
-		suffixesArray:         []string{"", ".", "..", "..."},
-		displayOrderCounter:   1,
-		opStopwatch:           newOpStopwatch(),
-		permalink:             permalink,
+		action:			action,
+		isPreview:		isPreview,
+		isTerminal:		true,
+		opts:			o,
+		renderer:		renderer,
+		stack:			stack,
+		proj:			proj,
+		sames:			make(map[resource.URN]bool),
+		eventUrnToResourceRow:	make(map[resource.URN]ResourceRow),
+		suffixColumn:		int(statusColumn),
+		suffixesArray:		[]string{"", ".", "..", "..."},
+		displayOrderCounter:	1,
+		opStopwatch:		newOpStopwatch(),
+		permalink:		permalink,
 	}
 	renderer.initializeDisplay(display)
 
 	return &CaptureProgressEvents{
-		Buffer:  buffer,
-		Stack:   stack,
-		Proj:    proj,
-		display: display,
+		Buffer:		buffer,
+		Stack:		stack,
+		Proj:		proj,
+		display:	display,
 	}
 }
 
@@ -455,12 +455,12 @@ func (display *ProgressDisplay) println(line string) {
 }
 
 type treeNode struct {
-	row Row
+	row	Row
 
-	colorizedColumns []string
-	colorizedSuffix  string
+	colorizedColumns	[]string
+	colorizedSuffix		string
 
-	childNodes []*treeNode
+	childNodes	[]*treeNode
 }
 
 func (display *ProgressDisplay) getOrCreateTreeNode(
@@ -472,9 +472,9 @@ func (display *ProgressDisplay) getOrCreateTreeNode(
 	}
 
 	node = &treeNode{
-		row:              row,
-		colorizedColumns: row.ColorizedColumns(),
-		colorizedSuffix:  row.ColorizedSuffix(),
+		row:			row,
+		colorizedColumns:	row.ColorizedColumns(),
+		colorizedSuffix:	row.ColorizedSuffix(),
 	}
 
 	urnToTreeNode[urn] = node
@@ -516,8 +516,8 @@ func (display *ProgressDisplay) generateTreeNodes() []*treeNode {
 	result := []*treeNode{}
 
 	result = append(result, &treeNode{
-		row:              display.headerRow,
-		colorizedColumns: display.headerRow.ColorizedColumns(),
+		row:			display.headerRow,
+		colorizedColumns:	display.headerRow.ColorizedColumns(),
 	})
 
 	urnToTreeNode := make(map[resource.URN]*treeNode)
@@ -834,10 +834,10 @@ func (display *ProgressDisplay) printDiagnostics() {
 }
 
 type policyPackSummary struct {
-	HasCloudPack      bool
-	LocalPaths        []string
-	ViolationEvents   []engine.PolicyViolationEventPayload
-	RemediationEvents []engine.PolicyRemediationEventPayload
+	HasCloudPack		bool
+	LocalPaths		[]string
+	ViolationEvents		[]engine.PolicyViolationEventPayload
+	RemediationEvents	[]engine.PolicyRemediationEventPayload
 }
 
 func (display *ProgressDisplay) printPolicies() bool {
@@ -1016,10 +1016,10 @@ func (display *ProgressDisplay) printOutputs() {
 
 	props := getResourceOutputsPropertiesString(
 		stackStep,
-		1, /* indent */
+		1,	/* indent */
 		display.isPreview,
 		display.opts.Debug,
-		false, /* refresh */
+		false,	/* refresh */
 		display.opts.ShowSameResources,
 		display.opts.ShowSecrets,
 		display.opts.TruncateOutput)
@@ -1061,13 +1061,13 @@ func (display *ProgressDisplay) mergeStreamPayloadsToSinglePayload(
 	firstPayload := payloads[0]
 	msg := buf.String()
 	return engine.DiagEventPayload{
-		URN:       firstPayload.URN,
-		Message:   msg,
-		Prefix:    firstPayload.Prefix,
-		Color:     firstPayload.Color,
-		Severity:  firstPayload.Severity,
-		StreamID:  firstPayload.StreamID,
-		Ephemeral: firstPayload.Ephemeral,
+		URN:		firstPayload.URN,
+		Message:	msg,
+		Prefix:		firstPayload.Prefix,
+		Color:		firstPayload.Color,
+		Severity:	firstPayload.Severity,
+		StreamID:	firstPayload.StreamID,
+		Ephemeral:	firstPayload.Ephemeral,
 	}
 }
 
@@ -1128,12 +1128,12 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 	}
 
 	row = &resourceRowData{
-		display:              display,
-		tick:                 display.currentTick,
-		diagInfo:             &DiagInfo{},
-		policyPayloads:       policyPayloads,
-		step:                 step,
-		hideRowIfUnnecessary: true,
+		display:		display,
+		tick:			display.currentTick,
+		diagInfo:		&DiagInfo{},
+		policyPayloads:		policyPayloads,
+		step:			step,
+		hideRowIfUnnecessary:	true,
 	}
 
 	display.eventUrnToResourceRow[urn] = row
@@ -1154,10 +1154,10 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		preludeEventString := renderPreludeEvent(payload, display.opts)
 		if display.isTerminal {
 			display.processNormalEvent(engine.NewEvent(engine.DiagEventPayload{
-				Ephemeral: false,
-				Severity:  diag.Info,
-				Color:     cmdutil.GetGlobalColorization(),
-				Message:   preludeEventString,
+				Ephemeral:	false,
+				Severity:	diag.Info,
+				Color:		cmdutil.GetGlobalColorization(),
+				Message:	preludeEventString,
 			}))
 		} else {
 			display.println(preludeEventString)
@@ -1216,10 +1216,10 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 			// associated at the top level with the stack.  That way if things are taking a while,
 			// there's insight in the display as to what's going on.
 			display.processNormalEvent(engine.NewEvent(engine.DiagEventPayload{
-				Ephemeral: true,
-				Severity:  diag.Info,
-				Color:     cmdutil.GetGlobalColorization(),
-				Message:   fmt.Sprintf("read %v %v", eventUrn.Type().DisplayName(), eventUrn.Name()),
+				Ephemeral:	true,
+				Severity:	diag.Info,
+				Color:		cmdutil.GetGlobalColorization(),
+				Message:	fmt.Sprintf("read %v %v", eventUrn.Type().DisplayName(), eventUrn.Name()),
 			}))
 			return
 		}
@@ -1246,7 +1246,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		row.SetHideRowIfUnnecessary(false)
 	}
 
-	switch event.Type { //nolint:exhaustive // golangci-lint v2 upgrade
+	switch event.Type {	//nolint:exhaustive // golangci-lint v2 upgrade
 	case engine.ResourcePreEvent:
 		step := event.Payload().(engine.ResourcePreEventPayload).Metadata
 
@@ -1370,12 +1370,12 @@ func (display *ProgressDisplay) ensureHeaderAndStackRows() {
 	}
 
 	stackRow := &resourceRowData{
-		display:              display,
-		tick:                 display.currentTick,
-		diagInfo:             &DiagInfo{},
-		policyPayloads:       policyPayloads,
-		step:                 engine.StepEventMetadata{Op: deploy.OpSame},
-		hideRowIfUnnecessary: false,
+		display:		display,
+		tick:			display.currentTick,
+		diagInfo:		&DiagInfo{},
+		policyPayloads:		policyPayloads,
+		step:			engine.StepEventMetadata{Op: deploy.OpSame},
+		hideRowIfUnnecessary:	false,
 	}
 
 	display.eventUrnToResourceRow[display.stackUrn] = stackRow
@@ -1781,7 +1781,7 @@ func enforcementRank(el apitype.EnforcementLevel) int {
 	case apitype.Disabled:
 		return 3
 	default:
-		return 99 // unknowns last
+		return 99	// unknowns last
 	}
 }
 
@@ -1798,6 +1798,6 @@ func severityRank(s apitype.PolicySeverity) int {
 	case apitype.PolicySeverityUnspecified:
 		return 4
 	default:
-		return 99 // unknowns last
+		return 99	// unknowns last
 	}
 }

@@ -31,11 +31,11 @@ import (
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"gopkg.in/yaml.v3"
 
-	codeasset "github.com/pulumi/pulumi/pkg/v3/asset"
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	codeasset "github.com/pulumi/pulumi/sdk/v3/pkg/asset"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
@@ -235,14 +235,14 @@ func PrintObject(
 	indent int, op display.StepOp, prefix bool, truncateOutput bool, debug bool, showSecrets bool,
 ) {
 	p := propertyPrinter{
-		dest:           b,
-		planning:       planning,
-		indent:         indent,
-		op:             op,
-		prefix:         prefix,
-		debug:          debug,
-		truncateOutput: truncateOutput,
-		showSecrets:    showSecrets,
+		dest:		b,
+		planning:	planning,
+		indent:		indent,
+		op:		op,
+		prefix:		prefix,
+		debug:		debug,
+		truncateOutput:	truncateOutput,
+		showSecrets:	showSecrets,
 	}
 	p.printObject(props)
 }
@@ -270,12 +270,12 @@ func PrintResourceReference(
 	indent int, op display.StepOp, prefix bool, debug bool,
 ) {
 	p := propertyPrinter{
-		dest:     b,
-		planning: planning,
-		indent:   indent,
-		op:       op,
-		prefix:   prefix,
-		debug:    debug,
+		dest:		b,
+		planning:	planning,
+		indent:		indent,
+		op:		op,
+		prefix:		prefix,
+		debug:		debug,
 	}
 	p.printResourceReference(resRef)
 }
@@ -470,13 +470,13 @@ func getResourceOutputsPropertiesString(
 
 	b := &bytes.Buffer{}
 	p := propertyPrinter{
-		dest:           b,
-		planning:       planning,
-		indent:         indent,
-		op:             op,
-		debug:          debug,
-		showSecrets:    showSecrets,
-		truncateOutput: truncateOutput,
+		dest:		b,
+		planning:	planning,
+		indent:		indent,
+		op:		op,
+		debug:		debug,
+		showSecrets:	showSecrets,
+		truncateOutput:	truncateOutput,
 	}
 
 	if len(hiddenDiffs) > 0 {
@@ -549,16 +549,16 @@ func considerSameIfNotCreateOrDelete(op display.StepOp) display.StepOp {
 
 func shouldPrintPropertyValue(v resource.PropertyValue, outs bool) bool {
 	if v.IsNull() {
-		return false // don't print nulls (they just clutter up the output).
+		return false	// don't print nulls (they just clutter up the output).
 	}
 	if v.IsString() && v.StringValue() == "" {
-		return false // don't print empty strings either.
+		return false	// don't print empty strings either.
 	}
 	if v.IsArray() && len(v.ArrayValue()) == 0 {
-		return false // skip empty arrays, since they are often uninteresting default values.
+		return false	// skip empty arrays, since they are often uninteresting default values.
 	}
 	if v.IsObject() && len(v.ObjectValue()) == 0 {
-		return false // skip objects with no properties, since they are also uninteresting.
+		return false	// skip objects with no properties, since they are also uninteresting.
 	}
 	if v.IsOutput() && !outs {
 		// also don't show output properties until the outs parameter tells us to.
@@ -568,17 +568,17 @@ func shouldPrintPropertyValue(v resource.PropertyValue, outs bool) bool {
 }
 
 type propertyPrinter struct {
-	dest io.StringWriter
+	dest	io.StringWriter
 
-	op             display.StepOp
-	planning       bool
-	prefix         bool
-	debug          bool
-	summary        bool
-	truncateOutput bool
-	showSecrets    bool
+	op		display.StepOp
+	planning	bool
+	prefix		bool
+	debug		bool
+	summary		bool
+	truncateOutput	bool
+	showSecrets	bool
 
-	indent int
+	indent	int
 }
 
 func (p *propertyPrinter) indented(amt int) *propertyPrinter {
@@ -796,14 +796,14 @@ func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resour
 	hidden []resource.PropertyPath,
 ) {
 	p := propertyPrinter{
-		dest:           b,
-		planning:       planning,
-		indent:         indent,
-		prefix:         true,
-		debug:          debug,
-		summary:        summary,
-		truncateOutput: truncateOutput,
-		showSecrets:    showSecrets,
+		dest:		b,
+		planning:	planning,
+		indent:		indent,
+		prefix:		true,
+		debug:		debug,
+		summary:	summary,
+		truncateOutput:	truncateOutput,
+		showSecrets:	showSecrets,
 	}
 	p.printHiddenPaths(hidden)
 	p.printObjectDiff(diff, include)
@@ -1448,8 +1448,8 @@ func (p *propertyPrinter) translateYAMLValue(v any) (any, bool) {
 // if string exceeds three lines or is >150 characters, truncate and add "..."
 func (p *propertyPrinter) truncatePropertyString(propertyString string) string {
 	const (
-		contextLines  = 3
-		maxLineLength = 150
+		contextLines	= 3
+		maxLineLength	= 150
 	)
 
 	lines := strings.Split(propertyString, "\n")

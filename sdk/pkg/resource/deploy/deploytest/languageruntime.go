@@ -41,8 +41,8 @@ func NewLanguageRuntimeF(program ProgramFunc, requiredPackages ...workspace.Pack
 
 func NewLanguageRuntime(program ProgramFunc, requiredPackages ...workspace.PackageDescriptor) plugin.LanguageRuntime {
 	return &languageRuntime{
-		requiredPackages: requiredPackages,
-		program:          program,
+		requiredPackages:	requiredPackages,
+		program:		program,
 	}
 }
 
@@ -50,17 +50,17 @@ func NewLanguageRuntimeWithShutdown(
 	program ProgramFunc, shutdown func(), requiredPackages ...workspace.PackageDescriptor,
 ) plugin.LanguageRuntime {
 	return &languageRuntime{
-		requiredPackages: requiredPackages,
-		program:          program,
-		shutdown:         shutdown,
+		requiredPackages:	requiredPackages,
+		program:		program,
+		shutdown:		shutdown,
 	}
 }
 
 type languageRuntime struct {
-	requiredPackages []workspace.PackageDescriptor
-	program          ProgramFunc
-	closed           bool
-	shutdown         func()
+	requiredPackages	[]workspace.PackageDescriptor
+	program			ProgramFunc
+	closed			bool
+	shutdown		func()
 }
 
 func (p *languageRuntime) Close() error {

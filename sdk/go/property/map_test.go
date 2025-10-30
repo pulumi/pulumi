@@ -25,25 +25,25 @@ func TestMapSet(t *testing.T) {
 	t.Run("basic functionality", func(t *testing.T) {
 		t.Parallel()
 		m := NewMap(map[string]Value{
-			"a": New("alpha"),
-			"b": New("beta"),
-			"c": New("gamma"),
+			"a":	New("alpha"),
+			"b":	New("beta"),
+			"c":	New("gamma"),
 		})
 
 		cp := m.Set("d", New("delta")).Set("e", New("epsilon"))
 
 		assert.Equal(t, NewMap(map[string]Value{
-			"a": New("alpha"),
-			"b": New("beta"),
-			"c": New("gamma"),
+			"a":	New("alpha"),
+			"b":	New("beta"),
+			"c":	New("gamma"),
 		}), m)
 
 		assert.Equal(t, NewMap(map[string]Value{
-			"a": New("alpha"),
-			"b": New("beta"),
-			"c": New("gamma"),
-			"d": New("delta"),
-			"e": New("epsilon"),
+			"a":	New("alpha"),
+			"b":	New("beta"),
+			"c":	New("gamma"),
+			"d":	New("delta"),
+			"e":	New("epsilon"),
 		}), cp)
 	})
 
@@ -59,13 +59,13 @@ func TestMapSet(t *testing.T) {
 		}), m)
 
 		assert.Equal(t, NewMap(map[string]Value{
-			"key1": New(1.0),
-			"key2": New(2.0),
+			"key1":	New(1.0),
+			"key2":	New(2.0),
 		}), m2)
 
 		assert.Equal(t, NewMap(map[string]Value{
-			"key1": New(1.0),
-			"key3": New(3.0),
+			"key1":	New(1.0),
+			"key3":	New(3.0),
 		}), m3)
 	})
 }
@@ -73,19 +73,19 @@ func TestMapSet(t *testing.T) {
 func TestMapDelete(t *testing.T) {
 	t.Parallel()
 	m := NewMap(map[string]Value{
-		"a": New("alpha"),
-		"b": New("beta"),
-		"c": New("gamma"),
+		"a":	New("alpha"),
+		"b":	New("beta"),
+		"c":	New("gamma"),
 	})
 
 	assert.Equal(t, NewMap(map[string]Value{
-		"a": New("alpha"),
-		"b": New("beta"),
+		"a":	New("alpha"),
+		"b":	New("beta"),
 	}), m.Delete("c"))
 
 	assert.Equal(t, NewMap(map[string]Value{
-		"a": New("alpha"),
-		"b": New("beta"),
+		"a":	New("alpha"),
+		"b":	New("beta"),
 	}), m.Delete("c", "d"))
 
 	assert.Equal(t, m, m.Delete("d"))
@@ -99,9 +99,9 @@ func TestMapLen(t *testing.T) {
 	t.Parallel()
 
 	assert.Equal(t, 3, NewMap(map[string]Value{
-		"one":   New(1.0),
-		"two":   New(2.0),
-		"three": New(3.0),
+		"one":		New(1.0),
+		"two":		New(2.0),
+		"three":	New(3.0),
 	}).Len())
 
 	assert.Equal(t, 0, NewMap(nil).Len())
@@ -113,8 +113,8 @@ func TestMapGet(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		t.Parallel()
 		m := NewMap(map[string]Value{
-			"key1": New(1.0),
-			"key2": New(2.0),
+			"key1":	New(1.0),
+			"key2":	New(2.0),
 		})
 		assert.Equal(t, New(2.0), m.Get("key2"))
 	})
@@ -124,7 +124,7 @@ func TestMapGet(t *testing.T) {
 		m := NewMap(map[string]Value{
 			"key1": New(1.0),
 		})
-		assert.Equal(t, New(Null), m.Get("key2")) // Assuming 'New(nil)' represents a null value.
+		assert.Equal(t, New(Null), m.Get("key2"))	// Assuming 'New(nil)' represents a null value.
 	})
 }
 
@@ -229,9 +229,9 @@ func TestMapAllStable(t *testing.T) {
 	t.Run("multiple elements", func(t *testing.T) {
 		t.Parallel()
 		m := NewMap(map[string]Value{
-			"key3": New("v3"),
-			"key1": New("v1"),
-			"key2": New("v2"),
+			"key3":	New("v3"),
+			"key1":	New("v1"),
+			"key2":	New("v2"),
 		})
 
 		expectedKeys := []string{"key1", "key2", "key3"}
@@ -241,7 +241,7 @@ func TestMapAllStable(t *testing.T) {
 				assert.Fail(t, "unexpected call")
 			}
 			assert.Equal(t, expectedKeys[index], k)
-			assert.Equal(t, New("v"+string(expectedKeys[index][3])), v) // Matches "v1", "v2", "v3"
+			assert.Equal(t, New("v"+string(expectedKeys[index][3])), v)	// Matches "v1", "v2", "v3"
 			index++
 			return true
 		})
@@ -251,8 +251,8 @@ func TestMapAllStable(t *testing.T) {
 	t.Run("early exit", func(t *testing.T) {
 		t.Parallel()
 		m := NewMap(map[string]Value{
-			"key1": New("v1"),
-			"key2": New("v2"),
+			"key1":	New("v1"),
+			"key2":	New("v2"),
 		})
 		var callCount int
 		m.AllStable(func(k string, v Value) bool {
@@ -274,8 +274,8 @@ func TestMapGetOk(t *testing.T) {
 	t.Run("existing key", func(t *testing.T) {
 		t.Parallel()
 		m := NewMap(map[string]Value{
-			"key1": New(1.0),
-			"key2": New(2.0),
+			"key1":	New(1.0),
+			"key2":	New(2.0),
 		})
 
 		value, ok := m.GetOk("key1")
@@ -291,7 +291,7 @@ func TestMapGetOk(t *testing.T) {
 
 		value, ok := m.GetOk("key3")
 		assert.False(t, ok, "Expected key to be absent")
-		assert.Equal(t, New(Null), value) // Assuming 'New(nil)' represents a null or zero value
+		assert.Equal(t, New(Null), value)	// Assuming 'New(nil)' represents a null or zero value
 	})
 
 	t.Run("empty map", func(t *testing.T) {
@@ -300,7 +300,7 @@ func TestMapGetOk(t *testing.T) {
 
 		value, ok := m.GetOk("key1")
 		assert.False(t, ok, "Expected key not to be found in an empty map")
-		assert.Equal(t, New(Null), value) // Assuming 'New(nil)' represents a null or zero value
+		assert.Equal(t, New(Null), value)	// Assuming 'New(nil)' represents a null or zero value
 	})
 }
 

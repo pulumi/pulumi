@@ -22,9 +22,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	. "github.com/pulumi/pulumi/sdk/v3/pkg/engine"	//nolint:revive
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 )
@@ -57,18 +57,18 @@ func TestAutonaming(t *testing.T) {
 
 	// Create an autonamer that will return specific options
 	expectedAutonaming := &plugin.AutonamingOptions{
-		ProposedName:    "test",
-		Mode:            plugin.AutonamingModeEnforce,
-		WarnIfNoSupport: false,
+		ProposedName:		"test",
+		Mode:			plugin.AutonamingModeEnforce,
+		WarnIfNoSupport:	false,
 	}
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...),
-			T:     t,
+			HostF:	deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+			T:	t,
 			UpdateOptions: UpdateOptions{
-				GeneratePlan: true,
-				Autonamer:    &mockAutonamer{opts: expectedAutonaming},
+				GeneratePlan:	true,
+				Autonamer:	&mockAutonamer{opts: expectedAutonaming},
 			},
 		},
 	}

@@ -136,8 +136,8 @@ func (md *mapper) DecodeValue(obj map[string]any, ty reflect.Type, key string,
 }
 
 var (
-	emptyObject         = map[string]any{}
-	textUnmarshalerType = reflect.TypeOf(new(encoding.TextUnmarshaler)).Elem()
+	emptyObject		= map[string]any{}
+	textUnmarshalerType	= reflect.TypeOf(new(encoding.TextUnmarshaler)).Elem()
 )
 
 // adjustValueForAssignment converts if possible to produce the target type.
@@ -152,14 +152,14 @@ func (md *mapper) adjustValueForAssignment(val reflect.Value,
 			val = val.Convert(to)
 		} else if to.Kind() == reflect.Ptr && val.Type().AssignableTo(to.Elem()) {
 			// Here the destination type (to) is a pointer to a type that accepts val.
-			var adjusted reflect.Value // var adjusted *toElem
+			var adjusted reflect.Value	// var adjusted *toElem
 			if val.CanAddr() && val.Addr().Type().AssignableTo(to) {
 				// If taking the address of val makes this right, do it.
-				adjusted = val.Addr() // adjusted = &val
+				adjusted = val.Addr()	// adjusted = &val
 			} else {
 				// Otherwise create a fresh pointer of the desired type and point it to val.
-				adjusted = reflect.New(to.Elem()) // adjusted = new(toElem)
-				adjusted.Elem().Set(val)          // *adjusted = val
+				adjusted = reflect.New(to.Elem())	// adjusted = new(toElem)
+				adjusted.Elem().Set(val)		// *adjusted = val
 			}
 			// In either case, the loop condition should be sastisfied at this point.
 			contract.Assertf(adjusted.Type().AssignableTo(to), "type %v is not assignable to %v", adjusted.Type(), to)

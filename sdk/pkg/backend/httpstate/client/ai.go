@@ -26,10 +26,10 @@ import (
 // Tokens are 3-4 characters as a rough estimate.
 const (
 	// 4kb, we're optimizing for latency here. ~1000 tokens.
-	maxCopilotSummarizeUpdateContentLength = 4000
+	maxCopilotSummarizeUpdateContentLength	= 4000
 	// 200kb, send a good amount of content to Copilot without incurring a large latency penalty.
 	// This will be trimmed on the backend depending on the model used etc.
-	maxCopilotExplainPreviewContentLength = 200000
+	maxCopilotExplainPreviewContentLength	= 200000
 )
 
 // createSummarizeUpdateRequest creates a new CopilotSummarizeUpdateRequest with the given content and org ID
@@ -47,18 +47,18 @@ func createSummarizeUpdateRequest(
 			State: apitype.CopilotState{
 				Client: apitype.CopilotClientState{
 					CloudContext: apitype.CopilotCloudContext{
-						OrgID: orgID,
-						URL:   "https://app.pulumi.com",
+						OrgID:	orgID,
+						URL:	"https://app.pulumi.com",
 					},
 				},
 			},
 		},
 		DirectSkillCall: apitype.CopilotSummarizeUpdate{
-			Skill: apitype.SkillSummarizeUpdate,
+			Skill:	apitype.SkillSummarizeUpdate,
 			Params: apitype.CopilotSummarizeUpdateParams{
-				PulumiUpdateOutput: content,
-				Model:              model,
-				MaxLen:             maxSummaryLen,
+				PulumiUpdateOutput:	content,
+				Model:			model,
+				MaxLen:			maxSummaryLen,
 			},
 		},
 	}
@@ -78,16 +78,16 @@ func createExplainPreviewRequest(
 			State: apitype.CopilotState{
 				Client: apitype.CopilotClientState{
 					CloudContext: apitype.CopilotCloudContext{
-						OrgID: orgID,
-						URL:   "https://app.pulumi.com",
+						OrgID:	orgID,
+						URL:	"https://app.pulumi.com",
 					},
 				},
 			},
 		},
 		DirectSkillCall: apitype.CopilotExplainPreviewSkill{
-			Skill: apitype.SkillExplainPreview,
+			Skill:	apitype.SkillExplainPreview,
 			Params: apitype.CopilotExplainPreviewParams{
-				PulumiPreviewOutput: content,
+				PulumiPreviewOutput:	content,
 				PreviewDetails: apitype.CopilotExplainPreviewDetails{
 					Kind: kind,
 				},

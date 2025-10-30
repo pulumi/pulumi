@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate/client"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
@@ -39,15 +39,15 @@ const Type = "service"
 
 // serviceCrypter is an encrypter/decrypter that uses the Pulumi servce to encrypt/decrypt a stack's secrets.
 type serviceCrypter struct {
-	client                  *client.Client
-	stack                   client.StackIdentifier
-	supportsBatchEncryption *promise.Promise[bool]
+	client			*client.Client
+	stack			client.StackIdentifier
+	supportsBatchEncryption	*promise.Promise[bool]
 }
 
 func newServiceCrypter(client *client.Client, stack client.StackIdentifier) config.Crypter {
 	return &serviceCrypter{
-		client: client,
-		stack:  stack,
+		client:	client,
+		stack:	stack,
 		supportsBatchEncryption: promise.Run(func() (bool, error) {
 			capabilitiesResponse, err := client.GetCapabilities(context.Background())
 			if err != nil {
@@ -130,18 +130,18 @@ func (c *serviceCrypter) BatchDecrypt(ctx context.Context, secrets []string) ([]
 }
 
 type serviceSecretsManagerState struct {
-	URL      string `json:"url,omitempty"`
-	Owner    string `json:"owner"`
-	Project  string `json:"project"`
-	Stack    string `json:"stack"`
-	Insecure bool   `json:"insecure,omitempty"`
+	URL		string	`json:"url,omitempty"`
+	Owner		string	`json:"owner"`
+	Project		string	`json:"project"`
+	Stack		string	`json:"stack"`
+	Insecure	bool	`json:"insecure,omitempty"`
 }
 
 var _ secrets.Manager = &serviceSecretsManager{}
 
 type serviceSecretsManager struct {
-	state   json.RawMessage
-	crypter config.Crypter
+	state	json.RawMessage
+	crypter	config.Crypter
 }
 
 func (sm *serviceSecretsManager) Type() string {
@@ -182,11 +182,11 @@ func NewServiceSecretsManager(
 	info.EncryptedKey = ""
 
 	state, err := json.Marshal(serviceSecretsManagerState{
-		URL:      client.URL(),
-		Owner:    id.Owner,
-		Project:  id.Project,
-		Stack:    id.Stack.String(),
-		Insecure: client.Insecure(),
+		URL:		client.URL(),
+		Owner:		id.Owner,
+		Project:	id.Project,
+		Stack:		id.Stack.String(),
+		Insecure:	client.Insecure(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("marshalling state: %w", err)
@@ -195,8 +195,8 @@ func NewServiceSecretsManager(
 	crypter := newServiceCrypter(client, id)
 	cachedCrypter := config.NewCiphertextToPlaintextCachedCrypter(crypter, crypter)
 	return &serviceSecretsManager{
-		state:   state,
-		crypter: cachedCrypter,
+		state:		state,
+		crypter:	cachedCrypter,
 	}, nil
 }
 
@@ -224,9 +224,9 @@ func NewServiceSecretsManagerFromState(state json.RawMessage) (secrets.Manager, 
 	}
 
 	id := client.StackIdentifier{
-		Owner:   s.Owner,
-		Project: s.Project,
-		Stack:   stack,
+		Owner:		s.Owner,
+		Project:	s.Project,
+		Stack:		stack,
 	}
 	c := client.NewClient(s.URL, token, s.Insecure, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 		Color: colors.Never,
@@ -235,7 +235,7 @@ func NewServiceSecretsManagerFromState(state json.RawMessage) (secrets.Manager, 
 	crypter := newServiceCrypter(c, id)
 	cachedCrypter := config.NewCiphertextToPlaintextCachedCrypter(crypter, crypter)
 	return &serviceSecretsManager{
-		state:   state,
-		crypter: cachedCrypter,
+		state:		state,
+		crypter:	cachedCrypter,
 	}, nil
 }

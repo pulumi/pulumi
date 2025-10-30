@@ -21,9 +21,9 @@ import (
 
 func NewPolicyCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "policy",
-		Short: "Manage resource policies",
-		Args:  cmdutil.NoArgs,
+		Use:	"policy",
+		Short:	"Manage resource policies",
+		Args:	cmdutil.NoArgs,
 	}
 
 	cmd.AddCommand(newPolicyDisableCmd())

@@ -26,12 +26,12 @@ func newConfigEnvAddCmd(parent *configEnvCmd) *cobra.Command {
 	impl := configEnvAddCmd{parent: parent}
 
 	cmd := &cobra.Command{
-		Use:   "add <environment-name>...",
-		Short: "Add environments to a stack",
+		Use:	"add <environment-name>...",
+		Short:	"Add environments to a stack",
 		Long: "Adds environments to the end of a stack's import list. Imported environments are merged in order\n" +
 			"per the ESC merge rules. The list of stacks behaves as if it were the import list in an anonymous\n" +
 			"environment.",
-		Args: cmdutil.MinimumNArgs(1),
+		Args:	cmdutil.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			parent.initArgs()
 			return impl.run(cmd.Context(), args)
@@ -49,10 +49,10 @@ func newConfigEnvAddCmd(parent *configEnvCmd) *cobra.Command {
 }
 
 type configEnvAddCmd struct {
-	parent *configEnvCmd
+	parent	*configEnvCmd
 
-	showSecrets bool
-	yes         bool
+	showSecrets	bool
+	yes		bool
 }
 
 func (cmd *configEnvAddCmd) run(ctx context.Context, args []string) error {

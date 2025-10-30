@@ -38,11 +38,11 @@ type Mapper interface {
 // appropriate Pulumi packages to satisfy mapping requests.
 type MapperPackageHint struct {
 	// The name of the Pulumi plugin that is expected to provide the mapping.
-	PluginName string
+	PluginName	string
 
 	// An optional parameterization that should be used on the named plugin before asking it for mappings. E.g. in the
 	// case of a dynamically bridged Terraform provider, callers may wish to express that a mapping is most likely offered
 	// by the "terraform-provider" plugin, but only when it is parameterized with the appropriate Terraform provider
 	// information.
-	Parameterization *workspace.Parameterization
+	Parameterization	*workspace.Parameterization
 }

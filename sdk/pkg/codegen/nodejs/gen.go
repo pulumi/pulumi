@@ -35,9 +35,9 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs/tstypes"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/nodejs/tstypes"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -48,16 +48,16 @@ import (
 
 const (
 	// The minimum version of @pulumi/pulumi compatible with the generated SDK.
-	MinimumValidSDKVersion   string = "^3.142.0"
-	MinimumTypescriptVersion string = "^4.3.5"
-	MinimumNodeTypesVersion  string = "^18"
+	MinimumValidSDKVersion		string	= "^3.142.0"
+	MinimumTypescriptVersion	string	= "^4.3.5"
+	MinimumNodeTypesVersion		string	= "^18"
 )
 
 type typeDetails struct {
-	outputType bool
-	inputType  bool
+	outputType	bool
+	inputType	bool
 
-	usedInFunctionOutputVersionInputs bool // helps decide naming under the tfbridge20 flag
+	usedInFunctionOutputVersionInputs	bool	// helps decide naming under the tfbridge20 flag
 }
 
 // title capitalizes the first rune in s.
@@ -133,24 +133,24 @@ func externalModuleName(s string) string {
 }
 
 type modContext struct {
-	pkg              schema.PackageReference
-	mod              string
-	types            []*schema.ObjectType
-	enums            []*schema.EnumType
-	resources        []*schema.Resource
-	functions        []*schema.Function
-	typeDetails      map[*schema.ObjectType]*typeDetails
-	children         []*modContext
-	extraSourceFiles []string
-	tool             string
+	pkg			schema.PackageReference
+	mod			string
+	types			[]*schema.ObjectType
+	enums			[]*schema.EnumType
+	resources		[]*schema.Resource
+	functions		[]*schema.Function
+	typeDetails		map[*schema.ObjectType]*typeDetails
+	children		[]*modContext
+	extraSourceFiles	[]string
+	tool			string
 
 	// Name overrides set in NodeJSInfo
-	modToPkg                map[string]string // Module name -> package name
-	compatibility           string            // Toggle compatibility mode for a specified target.
-	disableUnionOutputTypes bool              // Disable unions in output types.
+	modToPkg		map[string]string	// Module name -> package name
+	compatibility		string			// Toggle compatibility mode for a specified target.
+	disableUnionOutputTypes	bool			// Disable unions in output types.
 
 	// Determine whether to lift single-value method return values
-	liftSingleValueMethodReturns bool
+	liftSingleValueMethodReturns	bool
 }
 
 func (mod *modContext) String() string {
@@ -201,9 +201,9 @@ func (mod *modContext) namingContext(pkg schema.PackageReference) (namingCtx *mo
 			info = v
 		}
 		namingCtx = &modContext{
-			pkg:           pkg,
-			modToPkg:      info.ModuleToPackage,
-			compatibility: info.Compatibility,
+			pkg:		pkg,
+			modToPkg:	info.ModuleToPackage,
+			compatibility:	info.Compatibility,
 		}
 	}
 	return namingCtx, pkgName, external
@@ -1803,10 +1803,10 @@ func (mod *modContext) genTypes() (string, string, error) {
 }
 
 type namespace struct {
-	name     string
-	types    []*schema.ObjectType
-	enums    []*schema.EnumType
-	children []*namespace
+	name		string
+	types		[]*schema.ObjectType
+	enums		[]*schema.EnumType
+	children	[]*namespace
 }
 
 func (mod *modContext) getNamespaces() map[string]*namespace {
@@ -1950,8 +1950,8 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 	files := slice.Prealloc[fileInfo](len(mod.extraSourceFiles))
 	for _, path := range mod.extraSourceFiles {
 		files = append(files, fileInfo{
-			fileType:         otherFileType,
-			pathToNodeModule: path,
+			fileType:		otherFileType,
+			pathToNodeModule:	path,
 		})
 	}
 
@@ -1960,8 +1960,8 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 	addFile := func(fileType fileType, name, contents string) {
 		p := path.Join(modDir, name)
 		files = append(files, fileInfo{
-			fileType:         fileType,
-			pathToNodeModule: p,
+			fileType:		fileType,
+			pathToNodeModule:	p,
 		})
 		fs.Add(p, []byte(contents))
 	}
@@ -1969,9 +1969,9 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 	addResourceFile := func(resourceFileInfo resourceFileInfo, name, contents string) {
 		p := path.Join(modDir, name)
 		files = append(files, fileInfo{
-			fileType:         resourceFileType,
-			resourceFileInfo: resourceFileInfo,
-			pathToNodeModule: p,
+			fileType:		resourceFileType,
+			resourceFileInfo:	resourceFileInfo,
+			pathToNodeModule:	p,
 		})
 		fs.Add(p, []byte(contents))
 	}
@@ -1979,9 +1979,9 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 	addFunctionFile := func(info functionFileInfo, name, contents string) {
 		p := path.Join(modDir, name)
 		files = append(files, fileInfo{
-			fileType:         functionFileType,
-			functionFileInfo: info,
-			pathToNodeModule: p,
+			fileType:		functionFileType,
+			functionFileInfo:	info,
+			pathToNodeModule:	p,
 		})
 		fs.Add(p, []byte(contents))
 	}
@@ -2379,21 +2379,21 @@ func genPackageMetadata(
 }
 
 type npmPackage struct {
-	Name             string                  `json:"name"`
-	Version          string                  `json:"version"`
-	Type             string                  `json:"type,omitempty"`
-	Description      string                  `json:"description,omitempty"`
-	Keywords         []string                `json:"keywords,omitempty"`
-	Homepage         string                  `json:"homepage,omitempty"`
-	Repository       string                  `json:"repository,omitempty"`
-	License          string                  `json:"license,omitempty"`
-	Main             string                  `json:"main,omitempty"`
-	Scripts          map[string]string       `json:"scripts,omitempty"`
-	Dependencies     map[string]string       `json:"dependencies,omitempty"`
-	DevDependencies  map[string]string       `json:"devDependencies,omitempty"`
-	PeerDependencies map[string]string       `json:"peerDependencies,omitempty"`
-	Resolutions      map[string]string       `json:"resolutions,omitempty"`
-	Pulumi           plugin.PulumiPluginJSON `json:"pulumi,omitempty"`
+	Name			string			`json:"name"`
+	Version			string			`json:"version"`
+	Type			string			`json:"type,omitempty"`
+	Description		string			`json:"description,omitempty"`
+	Keywords		[]string		`json:"keywords,omitempty"`
+	Homepage		string			`json:"homepage,omitempty"`
+	Repository		string			`json:"repository,omitempty"`
+	License			string			`json:"license,omitempty"`
+	Main			string			`json:"main,omitempty"`
+	Scripts			map[string]string	`json:"scripts,omitempty"`
+	Dependencies		map[string]string	`json:"dependencies,omitempty"`
+	DevDependencies		map[string]string	`json:"devDependencies,omitempty"`
+	PeerDependencies	map[string]string	`json:"peerDependencies,omitempty"`
+	Resolutions		map[string]string	`json:"resolutions,omitempty"`
+	Pulumi			plugin.PulumiPluginJSON	`json:"pulumi,omitempty"`
 }
 
 func genNPMPackageMetadata(
@@ -2446,40 +2446,40 @@ func genNPMPackageMetadata(
 	var pulumiPlugin plugin.PulumiPluginJSON
 	if pkg.Parameterization != nil {
 		pulumiPlugin = plugin.PulumiPluginJSON{
-			Resource: true,
-			Server:   pkg.PluginDownloadURL,
-			Name:     pkg.Parameterization.BaseProvider.Name,
-			Version:  pkg.Parameterization.BaseProvider.Version.String(),
+			Resource:	true,
+			Server:		pkg.PluginDownloadURL,
+			Name:		pkg.Parameterization.BaseProvider.Name,
+			Version:	pkg.Parameterization.BaseProvider.Version.String(),
 			Parameterization: &plugin.PulumiParameterizationJSON{
-				Name:    pkg.Name,
-				Version: pkg.Version.String(),
-				Value:   pkg.Parameterization.Parameter,
+				Name:		pkg.Name,
+				Version:	pkg.Version.String(),
+				Value:		pkg.Parameterization.Parameter,
 			},
 		}
 	} else {
 		pulumiPlugin = plugin.PulumiPluginJSON{
-			Resource: true,
-			Server:   pkg.PluginDownloadURL,
-			Name:     pkg.Name,
-			Version:  pluginVersion,
+			Resource:	true,
+			Server:		pkg.PluginDownloadURL,
+			Name:		pkg.Name,
+			Version:	pluginVersion,
 		}
 	}
 
 	// Create info that will get serialized into an NPM package.json.
 	npminfo := npmPackage{
-		Name:        packageName,
-		Version:     version,
-		Description: info.PackageDescription,
-		Keywords:    pkg.Keywords,
-		Homepage:    pkg.Homepage,
-		Repository:  pkg.Repository,
-		License:     pkg.License,
+		Name:		packageName,
+		Version:	version,
+		Description:	info.PackageDescription,
+		Keywords:	pkg.Keywords,
+		Homepage:	pkg.Homepage,
+		Repository:	pkg.Repository,
+		License:	pkg.License,
 		Scripts: map[string]string{
 			"build": "tsc",
 		},
-		DevDependencies: devDependencies,
-		Dependencies:    dependencies,
-		Pulumi:          pulumiPlugin,
+		DevDependencies:	devDependencies,
+		Dependencies:		dependencies,
+		Pulumi:			pulumiPlugin,
 	}
 
 	if localSDK {
@@ -2658,13 +2658,13 @@ func generateModuleContextMap(tool string, pkg *schema.Package, extraFiles map[s
 		mod, ok := modules[modName]
 		if !ok {
 			mod = &modContext{
-				pkg:                          pkg.Reference(),
-				mod:                          modName,
-				tool:                         tool,
-				compatibility:                info.Compatibility,
-				modToPkg:                     info.ModuleToPackage,
-				disableUnionOutputTypes:      info.DisableUnionOutputTypes,
-				liftSingleValueMethodReturns: info.LiftSingleValueMethodReturns,
+				pkg:				pkg.Reference(),
+				mod:				modName,
+				tool:				tool,
+				compatibility:			info.Compatibility,
+				modToPkg:			info.ModuleToPackage,
+				disableUnionOutputTypes:	info.DisableUnionOutputTypes,
+				liftSingleValueMethodReturns:	info.LiftSingleValueMethodReturns,
 			}
 
 			if modName != "" {
@@ -2690,7 +2690,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, extraFiles map[s
 
 	// Create the config module if necessary.
 	if len(pkg.Config) > 0 &&
-		info.Compatibility != kubernetes20 { // k8s SDK doesn't use config.
+		info.Compatibility != kubernetes20 {	// k8s SDK doesn't use config.
 		_ = getMod("config")
 	}
 
@@ -2810,16 +2810,16 @@ func generateModuleContextMap(tool string, pkg *schema.Package, extraFiles map[s
 type LanguageResource struct {
 	*schema.Resource
 
-	Name       string             // The resource name (e.g., "FlowSchema")
-	Package    string             // The name of the package containing the resource definition (e.g., "flowcontrol.v1alpha1")
-	Properties []LanguageProperty // Properties of the resource
+	Name		string			// The resource name (e.g., "FlowSchema")
+	Package		string			// The name of the package containing the resource definition (e.g., "flowcontrol.v1alpha1")
+	Properties	[]LanguageProperty	// Properties of the resource
 }
 
 // LanguageProperty holds information about a resource property to be used by downstream codegen.
 type LanguageProperty struct {
-	ConstValue string // If set, the constant value of the property (e.g., "flowcontrol.apiserver.k8s.io/v1alpha1")
-	Name       string // The name of the property (e.g., "FlowSchemaSpec")
-	Package    string // The package path containing the property definition (e.g., "outputs.flowcontrol.v1alpha1")
+	ConstValue	string	// If set, the constant value of the property (e.g., "flowcontrol.apiserver.k8s.io/v1alpha1")
+	Name		string	// The name of the property (e.g., "FlowSchemaSpec")
+	Package		string	// The package path containing the property definition (e.g., "outputs.flowcontrol.v1alpha1")
 }
 
 // LanguageResources returns a map of resources that can be used by downstream codegen. The map
@@ -2841,9 +2841,9 @@ func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error)
 
 			packagePath := strings.ReplaceAll(modName, "/", ".")
 			lr := LanguageResource{
-				Resource: r,
-				Name:     resourceName(r),
-				Package:  packagePath,
+				Resource:	r,
+				Name:		resourceName(r),
+				Package:	packagePath,
 			}
 			for _, p := range r.Properties {
 				lp := LanguageProperty{

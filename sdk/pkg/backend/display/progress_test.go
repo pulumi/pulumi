@@ -23,10 +23,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display/internal/terminal"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -39,14 +39,14 @@ import (
 
 func defaultOpts() Options {
 	return Options{
-		Color:                colors.Raw,
-		ShowConfig:           true,
-		ShowReplacementSteps: true,
-		ShowSameResources:    true,
-		ShowReads:            true,
-		DeterministicOutput:  true,
-		ShowLinkToCopilot:    false,
-		RenderOnDirty:        true,
+		Color:			colors.Raw,
+		ShowConfig:		true,
+		ShowReplacementSteps:	true,
+		ShowSameResources:	true,
+		ShowReads:		true,
+		DeterministicOutput:	true,
+		ShowLinkToCopilot:	false,
+		RenderOnDirty:		true,
 	}
 }
 
@@ -196,9 +196,9 @@ func TestCaptureProgressEventsCapturesOutput(t *testing.T) {
 	// Push some example events
 	events := []engine.Event{
 		engine.NewEvent(engine.StdoutEventPayload{
-			Message: "Hello, world!",
+			Message:	"Hello, world!",
 			// Note: System events need their own Color instance
-			Color: colors.Never,
+			Color:	colors.Never,
 		}),
 	}
 	eventsChannel := sliceToBufferedChan(events)
@@ -217,8 +217,8 @@ func TestCaptureProgressEventsDetectsResourceOperationFailed(t *testing.T) {
 	// If we see a ResourceOperationFailed event, the update is marked as failed.
 	resourceOperationFailedEvent := engine.NewEvent(engine.ResourceOperationFailedPayload{
 		Metadata: engine.StepEventMetadata{
-			URN: "urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev",
-			Op:  deploy.OpUpdate,
+			URN:	"urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev",
+			Op:	deploy.OpUpdate,
 		},
 	})
 	failureEvents := []engine.Event{resourceOperationFailedEvent}
@@ -235,9 +235,9 @@ func TestCaptureProgressEventsDetectsDiagnosticsWithErrors(t *testing.T) {
 	t.Parallel()
 
 	diagEventWithErrors := engine.NewEvent(engine.DiagEventPayload{
-		URN:      "urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev",
-		Message:  "Failed to update",
-		Severity: diag.Error,
+		URN:		"urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev",
+		Message:	"Failed to update",
+		Severity:	diag.Error,
 	})
 	failureEvents := []engine.Event{diagEventWithErrors}
 	eventsChannel := sliceToBufferedChan(failureEvents)
@@ -318,9 +318,9 @@ func TestStatusDisplayFlags(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name         string
-		stepOp       display.StepOp
-		shouldRetain bool
+		name		string
+		stepOp		display.StepOp
+		shouldRetain	bool
 	}{
 		// Should display `retain`.
 		{"delete", deploy.OpDelete, true},
@@ -352,20 +352,20 @@ func TestStatusDisplayFlags(t *testing.T) {
 			name := resource.NewURN("test", "test", "test", "test", "test")
 
 			step := engine.StepEventMetadata{
-				URN: name,
-				Op:  tt.stepOp,
+				URN:	name,
+				Op:	tt.stepOp,
 				Old: &engine.StepEventStateMetadata{
 					RetainOnDelete: true,
 				},
 			}
 
 			doneStatus := d.getStepStatus(step,
-				true,  // done
-				false, // failed
+				true,	// done
+				false,	// failed
 			)
 			inProgressStatus := d.getStepStatus(step,
-				false, // done
-				false, // failed
+				false,	// done
+				false,	// failed
 			)
 			if tt.shouldRetain {
 				assert.Contains(t, doneStatus, "[retain]", "%s should contain [retain] (done)", step.Op)
@@ -388,16 +388,16 @@ func TestProgressPolicyPacks(t *testing.T) {
 	go ShowProgressEvents(
 		"test", "update", tokens.MustParseStackName("stack"), "project", "link", eventChannel, doneChannel,
 		Options{
-			IsInteractive:        true,
-			Color:                colors.Raw,
-			ShowConfig:           true,
-			ShowReplacementSteps: true,
-			ShowSameResources:    true,
-			ShowReads:            true,
-			Stdout:               &stdout,
-			Stderr:               &stderr,
-			term:                 terminal.NewMockTerminal(&stdout, 80, 24, true),
-			DeterministicOutput:  true,
+			IsInteractive:		true,
+			Color:			colors.Raw,
+			ShowConfig:		true,
+			ShowReplacementSteps:	true,
+			ShowSameResources:	true,
+			ShowReads:		true,
+			Stdout:			&stdout,
+			Stderr:			&stderr,
+			term:			terminal.NewMockTerminal(&stdout, 80, 24, true),
+			DeterministicOutput:	true,
 		}, false)
 
 	// Send policy pack event to the channel

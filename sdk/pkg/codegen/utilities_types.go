@@ -15,7 +15,7 @@
 package codegen
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
@@ -74,10 +74,10 @@ func SimplifyInputUnion(t schema.Type) schema.Type {
 		}
 	}
 	return &schema.UnionType{
-		ElementTypes:  elements,
-		DefaultType:   union.DefaultType,
-		Discriminator: union.Discriminator,
-		Mapping:       union.Mapping,
+		ElementTypes:	elements,
+		DefaultType:	union.DefaultType,
+		Discriminator:	union.Discriminator,
+		Mapping:	union.Mapping,
 	}
 }
 
@@ -187,10 +187,10 @@ func resolvedType(t schema.Type, plainObjects bool) schema.Type {
 			return typ
 		}
 		return &schema.UnionType{
-			ElementTypes:  elems,
-			DefaultType:   typ.DefaultType,
-			Discriminator: typ.Discriminator,
-			Mapping:       typ.Mapping,
+			ElementTypes:	elems,
+			DefaultType:	typ.DefaultType,
+			Discriminator:	typ.Discriminator,
+			Mapping:	typ.Mapping,
 		}
 	default:
 		return t

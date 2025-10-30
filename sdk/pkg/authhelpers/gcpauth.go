@@ -31,10 +31,10 @@ import (
 )
 
 type GoogleCredentials struct {
-	PrivateKeyID string `json:"private_key_id"`
-	PrivateKey   string `json:"private_key"`
-	ClientEmail  string `json:"client_email"`
-	ClientID     string `json:"client_id"`
+	PrivateKeyID	string	`json:"private_key_id"`
+	PrivateKey	string	`json:"private_key"`
+	ClientEmail	string	`json:"client_email"`
+	ClientID	string	`json:"client_id"`
 }
 
 // ResolveGoogleCredentials loads the google credentials using the pulumi-specific
@@ -99,8 +99,8 @@ func GoogleCredentialsMux(ctx context.Context) (*blob.URLMux, error) {
 
 	blobmux := &blob.URLMux{}
 	blobmux.RegisterBucket(gcsblob.Scheme, &gcsblob.URLOpener{
-		Client:  client,
-		Options: options,
+		Client:		client,
+		Options:	options,
 	})
 
 	return blobmux, nil

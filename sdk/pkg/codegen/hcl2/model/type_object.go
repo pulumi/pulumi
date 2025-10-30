@@ -25,9 +25,9 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model/pretty"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -35,25 +35,25 @@ import (
 // ObjectType represents schematized maps from strings to particular types.
 type ObjectType struct {
 	// Properties records the types of the object's properties.
-	Properties map[string]Type
+	Properties	map[string]Type
 	// Annotations records any annotations associated with the object type.
-	Annotations []any
+	Annotations	[]any
 
-	propertyUnion Type
-	s             atomic.Value // Value<string>
+	propertyUnion	Type
+	s		atomic.Value	// Value<string>
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache	*gsync.Map[Type, cacheEntry]
 	// Whether typechecking and traversal emit error or warning diagnostics. Non-strict mode returns warnings.
-	Strict bool
+	Strict	bool
 }
 
 // NewObjectType creates a new object type with the given properties and annotations.
 func NewObjectType(properties map[string]Type, annotations ...any) *ObjectType {
 	return &ObjectType{
-		Properties:  properties,
-		Annotations: annotations,
-		cache:       &gsync.Map[Type, cacheEntry]{},
-		Strict:      true,
+		Properties:	properties,
+		Annotations:	annotations,
+		cache:		&gsync.Map[Type, cacheEntry]{},
+		Strict:		true,
 	}
 }
 
@@ -148,10 +148,10 @@ func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 			rng := traverser.SourceRange()
 			return propertyType, hcl.Diagnostics{
 				{
-					Severity: hcl.DiagWarning,
-					Subject:  &rng,
-					Summary:  "Found matching case-insensitive property",
-					Detail:   fmt.Sprintf("Matched %s with %s", propertyName, propertyNameOrig),
+					Severity:	hcl.DiagWarning,
+					Subject:	&rng,
+					Summary:	"Found matching case-insensitive property",
+					Detail:		fmt.Sprintf("Matched %s with %s", propertyName, propertyNameOrig),
 				},
 			}
 		}
@@ -225,9 +225,9 @@ func (t *ObjectType) AssignableFrom(src Type) bool {
 }
 
 type objectTypeUnifier struct {
-	properties     map[string]Type
-	any            bool
-	conversionKind ConversionKind
+	properties	map[string]Type
+	any		bool
+	conversionKind	ConversionKind
 }
 
 func (u *objectTypeUnifier) unify(t *ObjectType) {
@@ -389,4 +389,4 @@ func (t *ObjectType) unify(other Type) (Type, ConversionKind) {
 	})
 }
 
-func (*ObjectType) isType() {}
+func (*ObjectType) isType()	{}

@@ -22,34 +22,34 @@ import (
 )
 
 type ResourceImport struct {
-	Type        string
-	Name        string
-	ID          string
-	LogicalName string
-	IsComponent bool
-	IsRemote    bool
+	Type		string
+	Name		string
+	ID		string
+	LogicalName	string
+	IsComponent	bool
+	IsRemote	bool
 
-	Version           string
-	PluginDownloadURL string
+	Version			string
+	PluginDownloadURL	string
 }
 
 type ConvertStateRequest struct {
-	MapperTarget string
-	Args         []string
+	MapperTarget	string
+	Args		[]string
 }
 
 type ConvertStateResponse struct {
-	Resources   []ResourceImport
-	Diagnostics hcl.Diagnostics
+	Resources	[]ResourceImport
+	Diagnostics	hcl.Diagnostics
 }
 
 type ConvertProgramRequest struct {
-	SourceDirectory           string
-	TargetDirectory           string
-	MapperTarget              string
-	LoaderTarget              string
-	Args                      []string
-	GeneratedProjectDirectory string
+	SourceDirectory			string
+	TargetDirectory			string
+	MapperTarget			string
+	LoaderTarget			string
+	Args				[]string
+	GeneratedProjectDirectory	string
 }
 
 type ConvertProgramResponse struct {

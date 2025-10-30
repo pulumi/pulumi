@@ -18,8 +18,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -61,14 +61,14 @@ func Refresh(
 	}
 
 	return update(ctx, info, &deploymentOptions{
-		UpdateOptions: opts,
-		SourceFunc:    newRefreshSource,
-		Events:        emitter,
-		Diag:          newEventSink(emitter, false),
-		StatusDiag:    newEventSink(emitter, true),
-		isRefresh:     true,
-		DryRun:        dryRun,
-		pluginManager: ctx.PluginManager,
+		UpdateOptions:	opts,
+		SourceFunc:	newRefreshSource,
+		Events:		emitter,
+		Diag:		newEventSink(emitter, false),
+		StatusDiag:	newEventSink(emitter, true),
+		isRefresh:	true,
+		DryRun:		dryRun,
+		pluginManager:	ctx.PluginManager,
 	})
 }
 
@@ -163,13 +163,13 @@ func RefreshV2(
 	}
 
 	return update(ctx, info, &deploymentOptions{
-		UpdateOptions: opts,
-		SourceFunc:    newUpdateSource,
-		Events:        emitter,
-		Diag:          newEventSink(emitter, false),
-		StatusDiag:    newEventSink(emitter, true),
-		isRefresh:     true,
-		DryRun:        dryRun,
-		pluginManager: ctx.PluginManager,
+		UpdateOptions:	opts,
+		SourceFunc:	newUpdateSource,
+		Events:		emitter,
+		Diag:		newEventSink(emitter, false),
+		StatusDiag:	newEventSink(emitter, true),
+		isRefresh:	true,
+		DryRun:		dryRun,
+		pluginManager:	ctx.PluginManager,
 	})
 }

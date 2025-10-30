@@ -28,9 +28,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
-	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/testing/utils"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
@@ -370,14 +370,14 @@ type SchemaVersion = string
 // Schemas are downloaded in the makefile, and the versions specified here
 // should be in sync with the makefile.
 const (
-	AwsSchema              SchemaVersion = "4.26.0"
-	AzureNativeSchema      SchemaVersion = "1.29.0"
-	AzureSchema            SchemaVersion = "4.18.0"
-	KubernetesSchema       SchemaVersion = "3.7.2"
-	RandomSchema           SchemaVersion = "4.11.2"
-	EksSchema              SchemaVersion = "0.37.1"
-	AwsStaticWebsiteSchema SchemaVersion = "0.4.0"
-	AwsNativeSchema        SchemaVersion = "0.99.0"
+	AwsSchema		SchemaVersion	= "4.26.0"
+	AzureNativeSchema	SchemaVersion	= "1.29.0"
+	AzureSchema		SchemaVersion	= "4.18.0"
+	KubernetesSchema	SchemaVersion	= "3.7.2"
+	RandomSchema		SchemaVersion	= "4.11.2"
+	EksSchema		SchemaVersion	= "0.37.1"
+	AwsStaticWebsiteSchema	SchemaVersion	= "0.4.0"
+	AwsNativeSchema		SchemaVersion	= "0.99.0"
 )
 
 // PulumiDotnetSDKVersion is the version of the Pulumi .NET SDK to use in program-gen tests

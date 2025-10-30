@@ -23,24 +23,24 @@ import (
 
 func NewCachedLoader(loader ReferenceLoader) ReferenceLoader {
 	return &cachedLoader{
-		loader:  loader,
-		entries: make(map[string]PackageReference),
+		loader:		loader,
+		entries:	make(map[string]PackageReference),
 	}
 }
 
 // NewCachedLoaderWithEntries creates a new cached loader with the passed in entries pre-loaded.
 func NewCachedLoaderWithEntries(loader ReferenceLoader, entries map[string]PackageReference) ReferenceLoader {
 	return &cachedLoader{
-		loader:  loader,
-		entries: entries,
+		loader:		loader,
+		entries:	entries,
 	}
 }
 
 type cachedLoader struct {
-	loader ReferenceLoader
+	loader	ReferenceLoader
 
-	m       sync.RWMutex
-	entries map[string]PackageReference
+	m	sync.RWMutex
+	entries	map[string]PackageReference
 }
 
 func (l *cachedLoader) LoadPackage(pkg string, version *semver.Version) (*Package, error) {
@@ -61,8 +61,8 @@ func (l *cachedLoader) LoadPackageV2(ctx context.Context, descriptor *PackageDes
 
 func (l *cachedLoader) LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error) {
 	return l.LoadPackageReferenceV2(context.Background(), &PackageDescriptor{
-		Name:    pkg,
-		Version: version,
+		Name:		pkg,
+		Version:	version,
 	})
 }
 

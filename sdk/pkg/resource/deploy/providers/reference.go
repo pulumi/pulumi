@@ -78,8 +78,8 @@ func validateURN(urn resource.URN) error {
 
 // Reference represents a reference to a particular provider.
 type Reference struct {
-	urn resource.URN
-	id  resource.ID
+	urn	resource.URN
+	id	resource.ID
 }
 
 // URN returns the provider reference's URN.

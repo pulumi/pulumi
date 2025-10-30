@@ -18,12 +18,12 @@ import "github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 // As of time of writing, the Pulumi Service batch encrypt and decrypt endpoints have a limit of 200MB per request.
 // To avoid hitting this limit, we chunk secrets into pieces no larger than half this size as conservative limit.
-var defaultMaxChunkSize = 100 * 1024 * 1024 // 100MB
+var defaultMaxChunkSize = 100 * 1024 * 1024	// 100MB
 
 // A "reference" to where a value is located in a container (slice or map).
 type containerRef struct {
-	container any // pointer to slice or map
-	key       any // string (for map) or int (for slice)
+	container	any	// pointer to slice or map
+	key		any	// string (for map) or int (for slice)
 }
 
 func (r *containerRef) setObject(obj object) {

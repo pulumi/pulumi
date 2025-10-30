@@ -25,8 +25,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	hcl2 "github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	hcl2 "github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
@@ -46,48 +46,48 @@ type Reporter interface {
 func New(name, version string) Reporter {
 	return &reporter{
 		data: Summary{
-			Name:    name,
-			Version: version,
+			Name:		name,
+			Version:	version,
 		},
 	}
 }
 
 type Summary struct {
 	Stats
-	Name          string               `json:"name"`
-	Version       string               `json:"version"`
-	ReportVersion string               `json:"reportVersion"`
-	Languages     map[string]*Language `json:"languages"`
+	Name		string			`json:"name"`
+	Version		string			`json:"version"`
+	ReportVersion	string			`json:"reportVersion"`
+	Languages	map[string]*Language	`json:"languages"`
 }
 
 type Stats struct {
-	NumConversions int
-	Successes      int
+	NumConversions	int
+	Successes	int
 }
 
 type Language struct {
 	Stats
 
 	// A mapping from Error:(title:occurrences)
-	Warnings map[string]map[string]int `json:"warning,omitempty"`
-	Errors   map[string]map[string]int `json:"errors,omitempty"`
+	Warnings	map[string]map[string]int	`json:"warning,omitempty"`
+	Errors		map[string]map[string]int	`json:"errors,omitempty"`
 
 	// A mapping from between titles and Go errors (as opposed to diag errors)
-	GoErrors map[string]string `json:"goerrors,omitempty"`
+	GoErrors	map[string]string	`json:"goerrors,omitempty"`
 
 	// A mapping from title:files
-	Files map[string][]File `json:"files,omitempty"`
+	Files	map[string][]File	`json:"files,omitempty"`
 }
 
 type File struct {
-	Name string `json:"name,omitempty"`
-	Body string `json:"body,omitempty"`
+	Name	string	`json:"name,omitempty"`
+	Body	string	`json:"body,omitempty"`
 }
 
 type reporter struct {
-	data     Summary
-	reported bool
-	m        sync.Mutex
+	data		Summary
+	reported	bool
+	m		sync.Mutex
 }
 
 func (s *Stats) update(succeed bool) {
@@ -138,8 +138,8 @@ func (r *reporter) Report(title, language string, files []*syntax.File, diags hc
 		var txts []File
 		for _, file := range files {
 			txts = append(txts, File{
-				Name: file.Name,
-				Body: string(file.Bytes),
+				Name:	file.Name,
+				Body:	string(file.Bytes),
 			})
 		}
 		if lang.Files == nil {

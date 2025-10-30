@@ -19,7 +19,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
 )
 
 // useLegacyName are names that should return a legacy result from PyName, for compatibility.
@@ -28,17 +28,17 @@ var useLegacyName = codegen.NewStringSet(
 	// (`open_xjson_ser_de`). It should be the legacy name of `open_x_json_ser_de`.
 	// TODO[pulumi/pulumi#5199]: We should see if we can fix this in the algorithm of PyName so it doesn't need to
 	// be special-cased in this set.
-	"openXJsonSerDe", // AWS
+	"openXJsonSerDe",	// AWS
 
 	// The following function name has already shipped with the legacy name (`get_public_i_ps`).
 	// TODO[pulumi/pulumi#5200]: Consider emitting two functions: one with the correct name (`get_public_ips`)
 	// and another function with the legacy name (`get_public_i_ps`) marked as deprecated.
-	"GetPublicIPs", // Azure
+	"GetPublicIPs",	// Azure
 
 	// The following function name has already shipped with the legacy name (`get_uptime_check_i_ps`).
 	// TODO[pulumi/pulumi#5200]: Consider emitting two functions: one with the correct name (`get_uptime_check_ips`)
 	// and another function with the legacy name (`get_uptime_check_i_ps`) marked as deprecated.
-	"GetUptimeCheckIPs", // GCP
+	"GetUptimeCheckIPs",	// GCP
 )
 
 // PyName turns a variable or function name, normally using camelCase, to an underscore_case name.
@@ -89,14 +89,14 @@ func pyName(name string, legacy bool) string {
 	// As for why this is a state machine, the libraries that do this all pretty much use
 	// either regular expressions or state machines, which I suppose are ultimately the same thing.
 	const (
-		stateFirst = iota
+		stateFirst	= iota
 		stateUpper
 		stateAcronym
 		stateLowerOrNumber
 	)
 
-	var result strings.Builder           // The components of the name, joined together with underscores.
-	var currentComponent strings.Builder // The characters composing the current component being built
+	var result strings.Builder		// The components of the name, joined together with underscores.
+	var currentComponent strings.Builder	// The characters composing the current component being built
 
 	// Preallocate enough space for the name + 5 underscores. '5' is based on a wild guess that most names will consist
 	// of 5 or fewer words.

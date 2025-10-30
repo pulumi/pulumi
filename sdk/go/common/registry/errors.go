@@ -15,9 +15,9 @@
 package registry
 
 var (
-	ErrNotFound     NotFoundError
-	ErrForbidden    ForbiddenError
-	ErrUnauthorized UnauthorizedError
+	ErrNotFound	NotFoundError
+	ErrForbidden	ForbiddenError
+	ErrUnauthorized	UnauthorizedError
 )
 
 type NotFoundError struct{}

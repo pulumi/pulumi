@@ -44,9 +44,9 @@ func UseSpecifiedDir(dir string) (string, error) {
 // File or directory names that are considered invisible
 // when considering whether a directory is empty.
 var invisibleDirEntries = map[string]struct{}{
-	".git": {},
-	".hg":  {},
-	".bzr": {},
+	".git":	{},
+	".hg":	{},
+	".bzr":	{},
 }
 
 // ErrorIfNotEmptyDirectory returns an error if path is not empty.

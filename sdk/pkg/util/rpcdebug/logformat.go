@@ -22,9 +22,9 @@ import (
 // one entry for each req-resp conversation, streaming methods have
 // one entry per each request or response over the stream.
 type debugInterceptorLogEntry struct {
-	Method   string          `json:"method"`
-	Request  json.RawMessage `json:"request,omitempty"`
-	Response json.RawMessage `json:"response,omitempty"`
-	Errors   []string        `json:"errors,omitempty"`
-	Metadata any             `json:"metadata,omitempty"`
+	Method		string		`json:"method"`
+	Request		json.RawMessage	`json:"request,omitempty"`
+	Response	json.RawMessage	`json:"response,omitempty"`
+	Errors		[]string	`json:"errors,omitempty"`
+	Metadata	any		`json:"metadata,omitempty"`
 }

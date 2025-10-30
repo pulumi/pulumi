@@ -31,9 +31,9 @@ import (
 
 const (
 	// Verify that this generated code is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
+	_	= protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
+	_	= protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
 // Represents the kind of operation performed by a step.
@@ -41,76 +41,76 @@ type ViewStep_Op int32
 
 const (
 	// An unspecified operation.
-	ViewStep_UNSPECIFIED ViewStep_Op = 0
+	ViewStep_UNSPECIFIED	ViewStep_Op	= 0
 	// Nothing to do.
-	ViewStep_SAME ViewStep_Op = 1
+	ViewStep_SAME	ViewStep_Op	= 1
 	// Creating a new resource.
-	ViewStep_CREATE ViewStep_Op = 2
+	ViewStep_CREATE	ViewStep_Op	= 2
 	// Updating an existing resource.
-	ViewStep_UPDATE ViewStep_Op = 3
+	ViewStep_UPDATE	ViewStep_Op	= 3
 	// Deleting an existing resource.
-	ViewStep_DELETE ViewStep_Op = 4
+	ViewStep_DELETE	ViewStep_Op	= 4
 	// Replacing a resource with a new one.
-	ViewStep_REPLACE ViewStep_Op = 5
+	ViewStep_REPLACE	ViewStep_Op	= 5
 	// Creating a new resource for a replacement.
-	ViewStep_CREATE_REPLACEMENT ViewStep_Op = 6
+	ViewStep_CREATE_REPLACEMENT	ViewStep_Op	= 6
 	// Deleting an existing resource after replacement.
-	ViewStep_DELETE_REPLACED ViewStep_Op = 7
+	ViewStep_DELETE_REPLACED	ViewStep_Op	= 7
 	// Reading an existing resource.
-	ViewStep_READ ViewStep_Op = 8
+	ViewStep_READ	ViewStep_Op	= 8
 	// Reading an existing resource for a replacement.
-	ViewStep_READ_REPLACEMENT ViewStep_Op = 9
+	ViewStep_READ_REPLACEMENT	ViewStep_Op	= 9
 	// Refreshing an existing resource.
-	ViewStep_REFRESH ViewStep_Op = 10
+	ViewStep_REFRESH	ViewStep_Op	= 10
 	// Removing a resource that was read.
-	ViewStep_READ_DISCARD ViewStep_Op = 11
+	ViewStep_READ_DISCARD	ViewStep_Op	= 11
 	// Discarding a read resource that was replaced.
-	ViewStep_DISCARD_REPLACED ViewStep_Op = 12
+	ViewStep_DISCARD_REPLACED	ViewStep_Op	= 12
 	// Removing a pending replace resource.
-	ViewStep_REMOVE_PENDING_REPLACE ViewStep_Op = 13
+	ViewStep_REMOVE_PENDING_REPLACE	ViewStep_Op	= 13
 	// Import an existing resource.
-	ViewStep_IMPORT ViewStep_Op = 14
+	ViewStep_IMPORT	ViewStep_Op	= 14
 	// Replace an existing resource.
-	ViewStep_IMPORT_REPLACEMENT ViewStep_Op = 15
+	ViewStep_IMPORT_REPLACEMENT	ViewStep_Op	= 15
 )
 
 // Enum value maps for ViewStep_Op.
 var (
-	ViewStep_Op_name = map[int32]string{
-		0:  "UNSPECIFIED",
-		1:  "SAME",
-		2:  "CREATE",
-		3:  "UPDATE",
-		4:  "DELETE",
-		5:  "REPLACE",
-		6:  "CREATE_REPLACEMENT",
-		7:  "DELETE_REPLACED",
-		8:  "READ",
-		9:  "READ_REPLACEMENT",
-		10: "REFRESH",
-		11: "READ_DISCARD",
-		12: "DISCARD_REPLACED",
-		13: "REMOVE_PENDING_REPLACE",
-		14: "IMPORT",
-		15: "IMPORT_REPLACEMENT",
+	ViewStep_Op_name	= map[int32]string{
+		0:	"UNSPECIFIED",
+		1:	"SAME",
+		2:	"CREATE",
+		3:	"UPDATE",
+		4:	"DELETE",
+		5:	"REPLACE",
+		6:	"CREATE_REPLACEMENT",
+		7:	"DELETE_REPLACED",
+		8:	"READ",
+		9:	"READ_REPLACEMENT",
+		10:	"REFRESH",
+		11:	"READ_DISCARD",
+		12:	"DISCARD_REPLACED",
+		13:	"REMOVE_PENDING_REPLACE",
+		14:	"IMPORT",
+		15:	"IMPORT_REPLACEMENT",
 	}
-	ViewStep_Op_value = map[string]int32{
-		"UNSPECIFIED":            0,
-		"SAME":                   1,
-		"CREATE":                 2,
-		"UPDATE":                 3,
-		"DELETE":                 4,
-		"REPLACE":                5,
-		"CREATE_REPLACEMENT":     6,
-		"DELETE_REPLACED":        7,
-		"READ":                   8,
-		"READ_REPLACEMENT":       9,
-		"REFRESH":                10,
-		"READ_DISCARD":           11,
-		"DISCARD_REPLACED":       12,
-		"REMOVE_PENDING_REPLACE": 13,
-		"IMPORT":                 14,
-		"IMPORT_REPLACEMENT":     15,
+	ViewStep_Op_value	= map[string]int32{
+		"UNSPECIFIED":			0,
+		"SAME":				1,
+		"CREATE":			2,
+		"UPDATE":			3,
+		"DELETE":			4,
+		"REPLACE":			5,
+		"CREATE_REPLACEMENT":		6,
+		"DELETE_REPLACED":		7,
+		"READ":				8,
+		"READ_REPLACEMENT":		9,
+		"REFRESH":			10,
+		"READ_DISCARD":			11,
+		"DISCARD_REPLACED":		12,
+		"REMOVE_PENDING_REPLACE":	13,
+		"IMPORT":			14,
+		"IMPORT_REPLACEMENT":		15,
 	}
 )
 
@@ -147,22 +147,22 @@ func (ViewStep_Op) EnumDescriptor() ([]byte, []int) {
 type ViewStep_Status int32
 
 const (
-	ViewStep_OK              ViewStep_Status = 0
-	ViewStep_PARTIAL_FAILURE ViewStep_Status = 1
-	ViewStep_UNKNOWN         ViewStep_Status = 2
+	ViewStep_OK			ViewStep_Status	= 0
+	ViewStep_PARTIAL_FAILURE	ViewStep_Status	= 1
+	ViewStep_UNKNOWN		ViewStep_Status	= 2
 )
 
 // Enum value maps for ViewStep_Status.
 var (
-	ViewStep_Status_name = map[int32]string{
-		0: "OK",
-		1: "PARTIAL_FAILURE",
-		2: "UNKNOWN",
+	ViewStep_Status_name	= map[int32]string{
+		0:	"OK",
+		1:	"PARTIAL_FAILURE",
+		2:	"UNKNOWN",
 	}
-	ViewStep_Status_value = map[string]int32{
-		"OK":              0,
-		"PARTIAL_FAILURE": 1,
-		"UNKNOWN":         2,
+	ViewStep_Status_value	= map[string]int32{
+		"OK":			0,
+		"PARTIAL_FAILURE":	1,
+		"UNKNOWN":		2,
 	}
 )
 
@@ -196,13 +196,13 @@ func (ViewStep_Status) EnumDescriptor() ([]byte, []int) {
 // `PublishViewStepsRequest` is the type of requests sent as part of a
 // [](pulumirpc.ResourceStatus.PublishViewSteps) call.
 type PublishViewStepsRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The service context token.
-	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	Token	string	`protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 	// The steps to publish.
-	Steps         []*ViewStep `protobuf:"bytes,2,rep,name=steps,proto3" json:"steps,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Steps		[]*ViewStep	`protobuf:"bytes,2,rep,name=steps,proto3" json:"steps,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *PublishViewStepsRequest) Reset() {
@@ -216,7 +216,7 @@ func (x *PublishViewStepsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PublishViewStepsRequest) ProtoMessage() {}
+func (*PublishViewStepsRequest) ProtoMessage()	{}
 
 func (x *PublishViewStepsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_resource_status_proto_msgTypes[0]
@@ -252,9 +252,9 @@ func (x *PublishViewStepsRequest) GetSteps() []*ViewStep {
 // `PublishViewStepsResponse` is the type of responses sent as part of a
 // [](pulumirpc.ResourceStatus.PublishViewSteps) call.
 type PublishViewStepsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *PublishViewStepsResponse) Reset() {
@@ -268,7 +268,7 @@ func (x *PublishViewStepsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PublishViewStepsResponse) ProtoMessage() {}
+func (*PublishViewStepsResponse) ProtoMessage()	{}
 
 func (x *PublishViewStepsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_resource_status_proto_msgTypes[1]
@@ -289,32 +289,32 @@ func (*PublishViewStepsResponse) Descriptor() ([]byte, []int) {
 
 // `ViewStep` represents a deployment operation step for a view resource.
 type ViewStep struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The status of the operation.
-	Status ViewStep_Status `protobuf:"varint,1,opt,name=status,proto3,enum=pulumirpc.ViewStep_Status" json:"status,omitempty"`
+	Status	ViewStep_Status	`protobuf:"varint,1,opt,name=status,proto3,enum=pulumirpc.ViewStep_Status" json:"status,omitempty"`
 	// An optional error message indicating the operation failed.
-	Error string `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	Error	string	`protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 	// The operation being performed.
-	Op ViewStep_Op `protobuf:"varint,3,opt,name=op,proto3,enum=pulumirpc.ViewStep_Op" json:"op,omitempty"`
+	Op	ViewStep_Op	`protobuf:"varint,3,opt,name=op,proto3,enum=pulumirpc.ViewStep_Op" json:"op,omitempty"`
 	// The type of the view resource.
-	Type string `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`
+	Type	string	`protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`
 	// The name of the view resource.
-	Name string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
+	Name	string	`protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
 	// The state of the view resource before performing the step.
-	Old *ViewStepState `protobuf:"bytes,6,opt,name=old,proto3" json:"old,omitempty"`
+	Old	*ViewStepState	`protobuf:"bytes,6,opt,name=old,proto3" json:"old,omitempty"`
 	// The state of the view resource after performing the step.
-	New *ViewStepState `protobuf:"bytes,7,opt,name=new,proto3" json:"new,omitempty"`
+	New	*ViewStepState	`protobuf:"bytes,7,opt,name=new,proto3" json:"new,omitempty"`
 	// The keys causing a replacement (only applicable for "create" and "replace" ops).
-	Keys []string `protobuf:"bytes,8,rep,name=keys,proto3" json:"keys,omitempty"`
+	Keys	[]string	`protobuf:"bytes,8,rep,name=keys,proto3" json:"keys,omitempty"`
 	// The keys that changed with this step.
-	Diffs []string `protobuf:"bytes,9,rep,name=diffs,proto3" json:"diffs,omitempty"`
+	Diffs	[]string	`protobuf:"bytes,9,rep,name=diffs,proto3" json:"diffs,omitempty"`
 	// A detailed diff is a map from [property paths](property-paths) to [](pulumirpc.PropertyDiff)s,
 	// which describe the kind of change that occurred to the property located at that path.
-	DetailedDiff map[string]*PropertyDiff `protobuf:"bytes,10,rep,name=detailed_diff,json=detailedDiff,proto3" json:"detailed_diff,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	DetailedDiff	map[string]*PropertyDiff	`protobuf:"bytes,10,rep,name=detailed_diff,json=detailedDiff,proto3" json:"detailed_diff,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// Whether the detailed diff is present.
-	HasDetailedDiff bool `protobuf:"varint,11,opt,name=has_detailed_diff,json=hasDetailedDiff,proto3" json:"has_detailed_diff,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	HasDetailedDiff	bool	`protobuf:"varint,11,opt,name=has_detailed_diff,json=hasDetailedDiff,proto3" json:"has_detailed_diff,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *ViewStep) Reset() {
@@ -328,7 +328,7 @@ func (x *ViewStep) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ViewStep) ProtoMessage() {}
+func (*ViewStep) ProtoMessage()	{}
 
 func (x *ViewStep) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_resource_status_proto_msgTypes[2]
@@ -426,27 +426,27 @@ func (x *ViewStep) GetHasDetailedDiff() bool {
 
 // `ViewStepState` represents the state of a view resource.
 type ViewStepState struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The type of the view resource.
-	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Type	string	`protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
 	// The name of the view resource.
-	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Name	string	`protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// An optional type of the parent view resource. By default, a view resource will
 	// be a child of the owning resource, but views can be nested within other views,
 	// as long as they're all under the same owner. Both parent_type and parent_name
 	// must be set together.
-	ParentType string `protobuf:"bytes,3,opt,name=parent_type,json=parentType,proto3" json:"parent_type,omitempty"`
+	ParentType	string	`protobuf:"bytes,3,opt,name=parent_type,json=parentType,proto3" json:"parent_type,omitempty"`
 	// An optional name of the parent view resource. By default, a view resource will
 	// be a child of the owning resource, but views can be nested within other views,
 	// as long as they're all under the same owner. Both parent_type and parent_name
 	// must be set together.
-	ParentName string `protobuf:"bytes,4,opt,name=parent_name,json=parentName,proto3" json:"parent_name,omitempty"`
+	ParentName	string	`protobuf:"bytes,4,opt,name=parent_name,json=parentName,proto3" json:"parent_name,omitempty"`
 	// The view resource's inputs.
-	Inputs *structpb.Struct `protobuf:"bytes,5,opt,name=inputs,proto3" json:"inputs,omitempty"`
+	Inputs	*structpb.Struct	`protobuf:"bytes,5,opt,name=inputs,proto3" json:"inputs,omitempty"`
 	// The view resource's outputs.
-	Outputs       *structpb.Struct `protobuf:"bytes,6,opt,name=outputs,proto3" json:"outputs,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Outputs		*structpb.Struct	`protobuf:"bytes,6,opt,name=outputs,proto3" json:"outputs,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *ViewStepState) Reset() {
@@ -460,7 +460,7 @@ func (x *ViewStepState) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ViewStepState) ProtoMessage() {}
+func (*ViewStepState) ProtoMessage()	{}
 
 func (x *ViewStepState) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_resource_status_proto_msgTypes[3]
@@ -585,8 +585,8 @@ const file_pulumi_resource_status_proto_rawDesc = "" +
 	"\x10PublishViewSteps\x12\".pulumirpc.PublishViewStepsRequest\x1a#.pulumirpc.PublishViewStepsResponse\"\x00B4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3"
 
 var (
-	file_pulumi_resource_status_proto_rawDescOnce sync.Once
-	file_pulumi_resource_status_proto_rawDescData []byte
+	file_pulumi_resource_status_proto_rawDescOnce	sync.Once
+	file_pulumi_resource_status_proto_rawDescData	[]byte
 )
 
 func file_pulumi_resource_status_proto_rawDescGZIP() []byte {
@@ -599,36 +599,36 @@ func file_pulumi_resource_status_proto_rawDescGZIP() []byte {
 var file_pulumi_resource_status_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_pulumi_resource_status_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_pulumi_resource_status_proto_goTypes = []any{
-	(ViewStep_Op)(0),                 // 0: pulumirpc.ViewStep.Op
-	(ViewStep_Status)(0),             // 1: pulumirpc.ViewStep.Status
-	(*PublishViewStepsRequest)(nil),  // 2: pulumirpc.PublishViewStepsRequest
-	(*PublishViewStepsResponse)(nil), // 3: pulumirpc.PublishViewStepsResponse
-	(*ViewStep)(nil),                 // 4: pulumirpc.ViewStep
-	(*ViewStepState)(nil),            // 5: pulumirpc.ViewStepState
-	nil,                              // 6: pulumirpc.ViewStep.DetailedDiffEntry
-	(*structpb.Struct)(nil),          // 7: google.protobuf.Struct
-	(*PropertyDiff)(nil),             // 8: pulumirpc.PropertyDiff
+	(ViewStep_Op)(0),			// 0: pulumirpc.ViewStep.Op
+	(ViewStep_Status)(0),			// 1: pulumirpc.ViewStep.Status
+	(*PublishViewStepsRequest)(nil),	// 2: pulumirpc.PublishViewStepsRequest
+	(*PublishViewStepsResponse)(nil),	// 3: pulumirpc.PublishViewStepsResponse
+	(*ViewStep)(nil),			// 4: pulumirpc.ViewStep
+	(*ViewStepState)(nil),			// 5: pulumirpc.ViewStepState
+	nil,					// 6: pulumirpc.ViewStep.DetailedDiffEntry
+	(*structpb.Struct)(nil),		// 7: google.protobuf.Struct
+	(*PropertyDiff)(nil),			// 8: pulumirpc.PropertyDiff
 }
 var file_pulumi_resource_status_proto_depIdxs = []int32{
-	4,  // 0: pulumirpc.PublishViewStepsRequest.steps:type_name -> pulumirpc.ViewStep
-	1,  // 1: pulumirpc.ViewStep.status:type_name -> pulumirpc.ViewStep.Status
-	0,  // 2: pulumirpc.ViewStep.op:type_name -> pulumirpc.ViewStep.Op
-	5,  // 3: pulumirpc.ViewStep.old:type_name -> pulumirpc.ViewStepState
-	5,  // 4: pulumirpc.ViewStep.new:type_name -> pulumirpc.ViewStepState
-	6,  // 5: pulumirpc.ViewStep.detailed_diff:type_name -> pulumirpc.ViewStep.DetailedDiffEntry
-	7,  // 6: pulumirpc.ViewStepState.inputs:type_name -> google.protobuf.Struct
-	7,  // 7: pulumirpc.ViewStepState.outputs:type_name -> google.protobuf.Struct
-	8,  // 8: pulumirpc.ViewStep.DetailedDiffEntry.value:type_name -> pulumirpc.PropertyDiff
-	2,  // 9: pulumirpc.ResourceStatus.PublishViewSteps:input_type -> pulumirpc.PublishViewStepsRequest
-	3,  // 10: pulumirpc.ResourceStatus.PublishViewSteps:output_type -> pulumirpc.PublishViewStepsResponse
-	10, // [10:11] is the sub-list for method output_type
-	9,  // [9:10] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	4,	// 0: pulumirpc.PublishViewStepsRequest.steps:type_name -> pulumirpc.ViewStep
+	1,	// 1: pulumirpc.ViewStep.status:type_name -> pulumirpc.ViewStep.Status
+	0,	// 2: pulumirpc.ViewStep.op:type_name -> pulumirpc.ViewStep.Op
+	5,	// 3: pulumirpc.ViewStep.old:type_name -> pulumirpc.ViewStepState
+	5,	// 4: pulumirpc.ViewStep.new:type_name -> pulumirpc.ViewStepState
+	6,	// 5: pulumirpc.ViewStep.detailed_diff:type_name -> pulumirpc.ViewStep.DetailedDiffEntry
+	7,	// 6: pulumirpc.ViewStepState.inputs:type_name -> google.protobuf.Struct
+	7,	// 7: pulumirpc.ViewStepState.outputs:type_name -> google.protobuf.Struct
+	8,	// 8: pulumirpc.ViewStep.DetailedDiffEntry.value:type_name -> pulumirpc.PropertyDiff
+	2,	// 9: pulumirpc.ResourceStatus.PublishViewSteps:input_type -> pulumirpc.PublishViewStepsRequest
+	3,	// 10: pulumirpc.ResourceStatus.PublishViewSteps:output_type -> pulumirpc.PublishViewStepsResponse
+	10,	// [10:11] is the sub-list for method output_type
+	9,	// [9:10] is the sub-list for method input_type
+	9,	// [9:9] is the sub-list for extension type_name
+	9,	// [9:9] is the sub-list for extension extendee
+	0,	// [0:9] is the sub-list for field type_name
 }
 
-func init() { file_pulumi_resource_status_proto_init() }
+func init()	{ file_pulumi_resource_status_proto_init() }
 func file_pulumi_resource_status_proto_init() {
 	if File_pulumi_resource_status_proto != nil {
 		return
@@ -637,17 +637,17 @@ func file_pulumi_resource_status_proto_init() {
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
-			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_resource_status_proto_rawDesc), len(file_pulumi_resource_status_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   5,
-			NumExtensions: 0,
-			NumServices:   1,
+			GoPackagePath:	reflect.TypeOf(x{}).PkgPath(),
+			RawDescriptor:	unsafe.Slice(unsafe.StringData(file_pulumi_resource_status_proto_rawDesc), len(file_pulumi_resource_status_proto_rawDesc)),
+			NumEnums:	2,
+			NumMessages:	5,
+			NumExtensions:	0,
+			NumServices:	1,
 		},
-		GoTypes:           file_pulumi_resource_status_proto_goTypes,
-		DependencyIndexes: file_pulumi_resource_status_proto_depIdxs,
-		EnumInfos:         file_pulumi_resource_status_proto_enumTypes,
-		MessageInfos:      file_pulumi_resource_status_proto_msgTypes,
+		GoTypes:		file_pulumi_resource_status_proto_goTypes,
+		DependencyIndexes:	file_pulumi_resource_status_proto_depIdxs,
+		EnumInfos:		file_pulumi_resource_status_proto_enumTypes,
+		MessageInfos:		file_pulumi_resource_status_proto_msgTypes,
 	}.Build()
 	File_pulumi_resource_status_proto = out.File
 	file_pulumi_resource_status_proto_goTypes = nil

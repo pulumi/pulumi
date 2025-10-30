@@ -32,8 +32,8 @@ func newGitIgnoreIgnorer(pathToPulumiIgnore string) (ignorer, error) {
 }
 
 type gitIngoreIgnorer struct {
-	root    string
-	ignorer *ignore.GitIgnore
+	root	string
+	ignorer	*ignore.GitIgnore
 }
 
 func (g *gitIngoreIgnorer) IsIgnored(f string) bool {

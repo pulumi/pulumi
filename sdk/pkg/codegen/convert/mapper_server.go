@@ -26,9 +26,9 @@ import (
 )
 
 type mapperServer struct {
-	codegenrpc.UnsafeMapperServer // opt out of forward compat
+	codegenrpc.UnsafeMapperServer	// opt out of forward compat
 
-	mapper Mapper
+	mapper	Mapper
 }
 
 func NewMapperServer(mapper Mapper) codegenrpc.MapperServer {
@@ -52,9 +52,9 @@ func (m *mapperServer) GetMapping(ctx context.Context,
 			}
 
 			hint.Parameterization = &workspace.Parameterization{
-				Name:    req.ParameterizationHint.Name,
-				Version: version,
-				Value:   req.ParameterizationHint.Value,
+				Name:		req.ParameterizationHint.Name,
+				Version:	version,
+				Value:		req.ParameterizationHint.Value,
 			}
 		}
 	}

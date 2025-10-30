@@ -40,14 +40,14 @@ type Filter interface {
 }
 
 var (
-	LogToStderr = false // true if logging is being redirected to stderr.
-	Verbose     = 0     // >0 if verbose logging is enabled at a particular level.
-	LogFlow     = false // true to flow logging settings to child processes.
+	LogToStderr	= false	// true if logging is being redirected to stderr.
+	Verbose		= 0	// >0 if verbose logging is enabled at a particular level.
+	LogFlow		= false	// true to flow logging settings to child processes.
 )
 
 var (
-	rwLock  sync.RWMutex
-	filters []Filter
+	rwLock	sync.RWMutex
+	filters	[]Filter
 )
 
 // VerboseLogger logs messages only if verbosity matches the level it was built with.

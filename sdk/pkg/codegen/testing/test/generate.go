@@ -17,10 +17,10 @@ package test
 import "testing"
 
 const (
-	TestDotnet = "dotnet"
-	TestGo     = "go"
-	TestNodeJS = "nodejs"
-	TestPython = "python"
+	TestDotnet	= "dotnet"
+	TestGo		= "go"
+	TestNodeJS	= "nodejs"
+	TestPython	= "python"
 )
 
 // GenerateProgramBatchTest returns a batch generator for the given language.

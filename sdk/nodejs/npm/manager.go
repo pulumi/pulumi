@@ -28,11 +28,11 @@ type PackageManagerType string
 
 const (
 	// AutoPackageManager automatically choses a packagemanager by looking for environment variables and lockfiles.
-	AutoPackageManager PackageManagerType = "auto"
-	NpmPackageManager  PackageManagerType = "npm"
-	YarnPackageManager PackageManagerType = "yarn"
-	PnpmPackageManager PackageManagerType = "pnpm"
-	BunPackageManager  PackageManagerType = "bun"
+	AutoPackageManager	PackageManagerType	= "auto"
+	NpmPackageManager	PackageManagerType	= "npm"
+	YarnPackageManager	PackageManagerType	= "yarn"
+	PnpmPackageManager	PackageManagerType	= "pnpm"
+	BunPackageManager	PackageManagerType	= "bun"
 )
 
 // A `PackageManager` is responsible for installing dependencies,

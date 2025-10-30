@@ -24,8 +24,8 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -43,7 +43,7 @@ func TestBundledError(t *testing.T) {
 	t.Parallel()
 
 	cmd := &pluginInstallCmd{
-		diag: diagtest.LogSink(t),
+		diag:	diagtest.LogSink(t),
 		env: env.NewEnv(
 			env.MapStore{"PULUMI_DEV": "false"},
 		),
@@ -67,7 +67,7 @@ func TestBundledDev(t *testing.T) {
 	}()
 
 	cmd := &pluginInstallCmd{
-		diag: diagtest.LogSink(t),
+		diag:	diagtest.LogSink(t),
 		env: env.NewEnv(
 			env.MapStore{"PULUMI_DEV": "true"},
 		),
@@ -92,7 +92,7 @@ func TestGetLatestPluginIncludedVersion(t *testing.T) {
 	}()
 
 	cmd := &pluginInstallCmd{
-		diag: diagtest.LogSink(t),
+		diag:	diagtest.LogSink(t),
 		pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
 			assert.Fail(t, "GetLatestVersion should not have been called")
 			return nil, nil
@@ -105,11 +105,11 @@ func TestGetLatestPluginIncludedVersion(t *testing.T) {
 			pluginWasInstalled = true
 			assert.Empty(t, file)
 			assert.Equal(t, workspace.PluginSpec{
-				Name: "aws",
-				Kind: apitype.ResourcePlugin,
+				Name:	"aws",
+				Kind:	apitype.ResourcePlugin,
 				Version: &semver.Version{
-					Major: 1000,
-					Minor: 78,
+					Major:	1000,
+					Minor:	78,
 				},
 			}, install)
 			return nil
@@ -129,10 +129,10 @@ func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
 	}()
 
 	cmd := &pluginInstallCmd{
-		diag: diagtest.LogSink(t),
+		diag:	diagtest.LogSink(t),
 		packageResolutionOptions: packageresolution.Options{
-			DisableRegistryResolve: false,
-			Experimental:           true,
+			DisableRegistryResolve:	false,
+			Experimental:		true,
 		},
 		pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
 			assert.Fail(t, "GetLatestVersion should not have been called")
@@ -144,11 +144,11 @@ func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
 			) iter.Seq2[apitype.PackageMetadata, error] {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
 					yield(apitype.PackageMetadata{
-						Name:              "foo",
-						Publisher:         "pulumi",
-						Source:            "pulumi",
-						Version:           semver.Version{Major: 2},
-						PluginDownloadURL: "http://example.com/download",
+						Name:			"foo",
+						Publisher:		"pulumi",
+						Source:			"pulumi",
+						Version:		semver.Version{Major: 2},
+						PluginDownloadURL:	"http://example.com/download",
 					}, nil)
 				}
 			},
@@ -160,12 +160,12 @@ func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
 		) error {
 			pluginWasInstalled = true
 			assert.Equal(t, workspace.PluginSpec{
-				Name: "foo",
-				Kind: apitype.ResourcePlugin,
+				Name:	"foo",
+				Kind:	apitype.ResourcePlugin,
 				Version: &semver.Version{
 					Major: 2,
 				},
-				PluginDownloadURL: "http://example.com/download",
+				PluginDownloadURL:	"http://example.com/download",
 			}, install)
 			return nil
 		},
@@ -185,7 +185,7 @@ func TestGetPluginDownloadFromKnownUnpublishedPackage(t *testing.T) {
 	}()
 
 	cmd := &pluginInstallCmd{
-		diag: diagtest.LogSink(t),
+		diag:	diagtest.LogSink(t),
 		pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
 			assert.Fail(t, "GetLatestVersion should not have been called")
 			return nil, nil
@@ -207,10 +207,10 @@ func TestGetPluginDownloadFromKnownUnpublishedPackage(t *testing.T) {
 			) iter.Seq2[apitype.PackageMetadata, error] {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
 					yield(apitype.PackageMetadata{
-						Name:      "random",
-						Publisher: "pulumi",
-						Source:    "pulumi",
-						Version:   semver.Version{Major: 2},
+						Name:		"random",
+						Publisher:	"pulumi",
+						Source:		"pulumi",
+						Version:	semver.Version{Major: 2},
 					}, nil)
 				}
 			},
@@ -222,11 +222,11 @@ func TestGetPluginDownloadFromKnownUnpublishedPackage(t *testing.T) {
 		) error {
 			pluginWasInstalled = true
 			assert.Equal(t, workspace.PluginSpec{
-				Name: "random",
-				Kind: apitype.ResourcePlugin,
+				Name:	"random",
+				Kind:	apitype.ResourcePlugin,
 				Version: &semver.Version{
-					Major: 1,
-					Minor: 48,
+					Major:	1,
+					Minor:	48,
 				},
 			}, install)
 			return nil
@@ -244,10 +244,10 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 		t.Parallel()
 
 		cmd := &pluginInstallCmd{
-			diag: diagtest.LogSink(t),
+			diag:	diagtest.LogSink(t),
 			packageResolutionOptions: packageresolution.Options{
-				DisableRegistryResolve: false,
-				Experimental:           true,
+				DisableRegistryResolve:	false,
+				Experimental:		true,
 			},
 			pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
 				assert.Fail(t, "GetLatestVersion should not have been called")
@@ -271,10 +271,10 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 		t.Parallel()
 
 		cmd := &pluginInstallCmd{
-			diag: diagtest.LogSink(t),
+			diag:	diagtest.LogSink(t),
 			packageResolutionOptions: packageresolution.Options{
-				DisableRegistryResolve: false,
-				Experimental:           true,
+				DisableRegistryResolve:	false,
+				Experimental:		true,
 			},
 			pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
 				assert.Fail(t, "GetLatestVersion should not have been called")
@@ -303,13 +303,13 @@ func TestRegistryIsNotUsedWhenAFileIsSpecified(t *testing.T) {
 	var wasInstalled bool
 	defer func() { assert.True(t, wasInstalled) }()
 	cmd := &pluginInstallCmd{
-		diag: diagtest.LogSink(t),
+		diag:	diagtest.LogSink(t),
 		pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
 			require.Fail(t, "GetLatestVersion should not have been called")
 			return nil, nil
 		},
-		registry: &backend.MockCloudRegistry{ /* empty registry will fail when used */ },
-		file:     "./pulumi-resource-some-file.tar.gz", // This is a flag: --file
+		registry:	&backend.MockCloudRegistry{ /* empty registry will fail when used */ },
+		file:		"./pulumi-resource-some-file.tar.gz",	// This is a flag: --file
 		installPluginSpec: func(
 			_ context.Context, _ string,
 			install workspace.PluginSpec, file string,
@@ -318,9 +318,9 @@ func TestRegistryIsNotUsedWhenAFileIsSpecified(t *testing.T) {
 			wasInstalled = true
 			assert.Equal(t, "./pulumi-resource-some-file.tar.gz", file)
 			assert.Equal(t, workspace.PluginSpec{
-				Name:    "some-file",
-				Kind:    "resource",
-				Version: &semver.Version{Major: 1},
+				Name:		"some-file",
+				Kind:		"resource",
+				Version:	&semver.Version{Major: 1},
 			}, install)
 			return nil
 		},
@@ -348,7 +348,7 @@ packages:
 	}()
 
 	cmd := &pluginInstallCmd{
-		diag: diagtest.LogSink(t),
+		diag:	diagtest.LogSink(t),
 		pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
 			return &semver.Version{Major: 1}, nil
 		},
@@ -379,10 +379,10 @@ func TestSuggestedPackagesDisplay(t *testing.T) {
 	sink := diagtest.MockSink(&stdout, &stderr)
 
 	cmd := &pluginInstallCmd{
-		diag: sink,
+		diag:	sink,
 		packageResolutionOptions: packageresolution.Options{
-			DisableRegistryResolve: false,
-			Experimental:           true,
+			DisableRegistryResolve:	false,
+			Experimental:		true,
 		},
 		pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
 			assert.Fail(t, "GetLatestVersion should not have been called")
@@ -392,18 +392,18 @@ func TestSuggestedPackagesDisplay(t *testing.T) {
 			ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
 					if !yield(apitype.PackageMetadata{
-						Source:    "community",
-						Publisher: "example",
-						Name:      "similar-pkg",
-						Version:   semver.Version{Major: 1, Minor: 0, Patch: 0},
+						Source:		"community",
+						Publisher:	"example",
+						Name:		"similar-pkg",
+						Version:	semver.Version{Major: 1, Minor: 0, Patch: 0},
 					}, nil) {
 						return
 					}
 					yield(apitype.PackageMetadata{
-						Source:    "github",
-						Publisher: "someuser",
-						Name:      "another-similar-pkg",
-						Version:   semver.Version{Major: 2, Minor: 1, Patch: 0},
+						Source:		"github",
+						Publisher:	"someuser",
+						Name:		"another-similar-pkg",
+						Version:	semver.Version{Major: 2, Minor: 1, Patch: 0},
 					}, nil)
 				}
 			},

@@ -63,16 +63,16 @@ func TestMappable(t *testing.T) {
 	t.Parallel()
 
 	ma1 := map[string]any{
-		"a": float64(42.3),
-		"b": false,
-		"c": "foobar",
-		"d": []any{"x", float64(99), true},
+		"a":	float64(42.3),
+		"b":	false,
+		"c":	"foobar",
+		"d":	[]any{"x", float64(99), true},
 		"e": map[string]any{
-			"e.1": "z",
-			"e.n": float64(676.767),
-			"e.^": []any{"bbb"},
+			"e.1":	"z",
+			"e.n":	float64(676.767),
+			"e.^":	[]any{"bbb"},
 		},
-		"f": []any{},
+		"f":	[]any{},
 	}
 	ma1p := NewPropertyMapFromMap(ma1)
 	assert.Equal(t, len(ma1), len(ma1p))
@@ -87,14 +87,14 @@ func TestMapReplValues(t *testing.T) {
 
 	// First, no replacements (nil repl).
 	ma1 := map[string]any{
-		"a": float64(42.3),
-		"b": false,
-		"c": "foobar",
-		"d": []any{"x", float64(99), true},
+		"a":	float64(42.3),
+		"b":	false,
+		"c":	"foobar",
+		"d":	[]any{"x", float64(99), true},
 		"e": map[string]any{
-			"e.1": "z",
-			"e.n": float64(676.767),
-			"e.^": []any{"bbb"},
+			"e.1":	"z",
+			"e.n":	float64(676.767),
+			"e.^":	[]any{"bbb"},
 		},
 	}
 	ma1p := NewPropertyMapFromMap(ma1)
@@ -104,14 +104,14 @@ func TestMapReplValues(t *testing.T) {
 
 	// First, no replacements (false-returning repl).
 	ma2 := map[string]any{
-		"a": float64(42.3),
-		"b": false,
-		"c": "foobar",
-		"d": []any{"x", float64(99), true},
+		"a":	float64(42.3),
+		"b":	false,
+		"c":	"foobar",
+		"d":	[]any{"x", float64(99), true},
 		"e": map[string]any{
-			"e.1": "z",
-			"e.n": float64(676.767),
-			"e.^": []any{"bbb"},
+			"e.1":	"z",
+			"e.n":	float64(676.767),
+			"e.^":	[]any{"bbb"},
 		},
 	}
 	ma2p := NewPropertyMapFromMap(ma2)
@@ -123,14 +123,14 @@ func TestMapReplValues(t *testing.T) {
 
 	// Finally, actually replace some numbers with ints.
 	ma3 := map[string]any{
-		"a": float64(42.3),
-		"b": false,
-		"c": "foobar",
-		"d": []any{"x", float64(99), true},
+		"a":	float64(42.3),
+		"b":	false,
+		"c":	"foobar",
+		"d":	[]any{"x", float64(99), true},
 		"e": map[string]any{
-			"e.1": "z",
-			"e.n": float64(676.767),
-			"e.^": []any{"bbb"},
+			"e.1":	"z",
+			"e.n":	float64(676.767),
+			"e.^":	[]any{"bbb"},
 		},
 	}
 	ma3p := NewPropertyMapFromMap(ma3)
@@ -152,14 +152,14 @@ func TestMapReplKeys(t *testing.T) {
 	t.Parallel()
 
 	m := map[string]any{
-		"a": float64(42.3),
-		"b": false,
-		"c": "foobar",
-		"d": []any{"x", float64(99), true},
+		"a":	float64(42.3),
+		"b":	false,
+		"c":	"foobar",
+		"d":	[]any{"x", float64(99), true},
 		"e": map[string]any{
-			"e.1": "z",
-			"e.n": float64(676.767),
-			"e.^": []any{"bbb"},
+			"e.1":	"z",
+			"e.n":	float64(676.767),
+			"e.^":	[]any{"bbb"},
 		},
 	}
 	ma := NewPropertyMapFromMap(m)
@@ -192,8 +192,8 @@ func TestCopy(t *testing.T) {
 	t.Parallel()
 
 	src := NewPropertyMapFromMap(map[string]any{
-		"a": "str",
-		"b": 42,
+		"a":	"str",
+		"b":	42,
 	})
 	dst := src.Copy()
 	require.NotNil(t, dst)
@@ -223,35 +223,35 @@ func TestTypeString(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		prop     PropertyValue
-		expected string
+		prop		PropertyValue
+		expected	string
 	}{
 		{
-			prop:     MakeComputed(NewProperty("")),
-			expected: "output<string>",
+			prop:		MakeComputed(NewProperty("")),
+			expected:	"output<string>",
 		},
 		{
-			prop:     MakeSecret(NewProperty("")),
-			expected: "secret<string>",
+			prop:		MakeSecret(NewProperty("")),
+			expected:	"secret<string>",
 		},
 		{
-			prop:     MakeOutput(NewProperty("")),
-			expected: "output<string>",
-		},
-		{
-			prop: NewProperty(Output{
-				Element: NewProperty(""),
-				Known:   true,
-			}),
-			expected: "string",
+			prop:		MakeOutput(NewProperty("")),
+			expected:	"output<string>",
 		},
 		{
 			prop: NewProperty(Output{
-				Element: NewProperty(""),
-				Known:   true,
-				Secret:  true,
+				Element:	NewProperty(""),
+				Known:		true,
 			}),
-			expected: "secret<string>",
+			expected:	"string",
+		},
+		{
+			prop: NewProperty(Output{
+				Element:	NewProperty(""),
+				Known:		true,
+				Secret:		true,
+			}),
+			expected:	"secret<string>",
 		},
 	}
 	for _, tt := range tests {
@@ -267,35 +267,35 @@ func TestString(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		prop     PropertyValue
-		expected string
+		prop		PropertyValue
+		expected	string
 	}{
 		{
-			prop:     MakeComputed(NewProperty("")),
-			expected: "output<string>{}",
+			prop:		MakeComputed(NewProperty("")),
+			expected:	"output<string>{}",
 		},
 		{
-			prop:     MakeSecret(NewProperty("shh")),
-			expected: "{&{{shh}}}",
+			prop:		MakeSecret(NewProperty("shh")),
+			expected:	"{&{{shh}}}",
 		},
 		{
-			prop:     MakeOutput(NewProperty("")),
-			expected: "output<string>{}",
-		},
-		{
-			prop: NewProperty(Output{
-				Element: NewProperty("hello"),
-				Known:   true,
-			}),
-			expected: "{hello}",
+			prop:		MakeOutput(NewProperty("")),
+			expected:	"output<string>{}",
 		},
 		{
 			prop: NewProperty(Output{
-				Element: NewProperty("shh"),
-				Known:   true,
-				Secret:  true,
+				Element:	NewProperty("hello"),
+				Known:		true,
 			}),
-			expected: "{&{{shh}}}",
+			expected:	"{hello}",
+		},
+		{
+			prop: NewProperty(Output{
+				Element:	NewProperty("shh"),
+				Known:		true,
+				Secret:		true,
+			}),
+			expected:	"{&{{shh}}}",
 		},
 	}
 	for _, tt := range tests {
@@ -311,27 +311,27 @@ func TestContainsUnknowns(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		prop     PropertyValue
-		expected bool
+		name		string
+		prop		PropertyValue
+		expected	bool
 	}{
 		{
-			name:     "computed unknown",
-			prop:     MakeComputed(NewProperty("")),
-			expected: true,
+			name:		"computed unknown",
+			prop:		MakeComputed(NewProperty("")),
+			expected:	true,
 		},
 		{
-			name:     "output unknown",
-			prop:     MakeOutput(NewProperty("")),
-			expected: true,
+			name:		"output unknown",
+			prop:		MakeOutput(NewProperty("")),
+			expected:	true,
 		},
 		{
-			name: "output known",
+			name:	"output known",
 			prop: NewProperty(Output{
-				Element: NewProperty(""),
-				Known:   true,
+				Element:	NewProperty(""),
+				Known:		true,
 			}),
-			expected: false,
+			expected:	false,
 		},
 	}
 	for _, tt := range tests {
@@ -347,41 +347,41 @@ func TestContainsSecrets(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		prop     PropertyValue
-		expected bool
+		name		string
+		prop		PropertyValue
+		expected	bool
 	}{
 		{
-			name:     "secret",
-			prop:     MakeSecret(NewProperty("")),
-			expected: true,
+			name:		"secret",
+			prop:		MakeSecret(NewProperty("")),
+			expected:	true,
 		},
 		{
-			name:     "output unknown",
-			prop:     MakeOutput(NewProperty("")),
-			expected: false,
+			name:		"output unknown",
+			prop:		MakeOutput(NewProperty("")),
+			expected:	false,
 		},
 		{
-			name:     "output unknown containing secret",
-			prop:     MakeOutput(MakeSecret(NewProperty(""))),
-			expected: true,
+			name:		"output unknown containing secret",
+			prop:		MakeOutput(MakeSecret(NewProperty(""))),
+			expected:	true,
 		},
 		{
-			name: "output unknown secret",
+			name:	"output unknown secret",
 			prop: NewProperty(Output{
-				Element: NewProperty(""),
-				Secret:  true,
+				Element:	NewProperty(""),
+				Secret:		true,
 			}),
-			expected: true,
+			expected:	true,
 		},
 		{
-			name: "output known secret",
+			name:	"output known secret",
 			prop: NewProperty(Output{
-				Element: NewProperty(""),
-				Known:   true,
-				Secret:  true,
+				Element:	NewProperty(""),
+				Known:		true,
+				Secret:		true,
 			}),
-			expected: true,
+			expected:	true,
 		},
 	}
 	for _, tt := range tests {
@@ -397,32 +397,32 @@ func TestHasValue(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		prop     PropertyValue
-		expected bool
+		name		string
+		prop		PropertyValue
+		expected	bool
 	}{
 		{
-			name:     "null",
-			prop:     NewNullProperty(),
-			expected: false,
+			name:		"null",
+			prop:		NewNullProperty(),
+			expected:	false,
 		},
 		{
-			name:     "string",
-			prop:     NewProperty(""),
-			expected: true,
+			name:		"string",
+			prop:		NewProperty(""),
+			expected:	true,
 		},
 		{
-			name:     "output unknown",
-			prop:     MakeOutput(NewProperty("")),
-			expected: false,
+			name:		"output unknown",
+			prop:		MakeOutput(NewProperty("")),
+			expected:	false,
 		},
 		{
-			name: "output known",
+			name:	"output known",
 			prop: NewProperty(Output{
-				Element: NewProperty(""),
-				Known:   true,
+				Element:	NewProperty(""),
+				Known:		true,
 			}),
-			expected: true,
+			expected:	true,
 		},
 	}
 	for _, tt := range tests {
@@ -439,7 +439,7 @@ func TestMapFromMapNestedPropertyValues(t *testing.T) {
 	t.Parallel()
 
 	actual := NewPropertyMapFromMap(map[string]any{
-		"prop": NewProperty("value"),
+		"prop":	NewProperty("value"),
 		"nested": map[string]any{
 			"obj": NewProperty(PropertyMap{
 				"k": NewProperty("v"),
@@ -448,7 +448,7 @@ func TestMapFromMapNestedPropertyValues(t *testing.T) {
 	})
 
 	expected := PropertyMap{
-		"prop": NewProperty("value"),
+		"prop":	NewProperty("value"),
 		"nested": NewProperty(PropertyMap{
 			"obj": NewProperty(PropertyMap{
 				"k": NewProperty("v"),

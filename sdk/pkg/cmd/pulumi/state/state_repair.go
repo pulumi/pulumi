@@ -24,14 +24,14 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/secrets"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -43,28 +43,28 @@ import (
 
 type stateRepairCmd struct {
 	// A string containing the set of flags passed to the command, for use in error messages.
-	FlagsString string
+	FlagsString	string
 	// Parsed arguments to the command.
-	Args *stateRepairArgs
+	Args	*stateRepairArgs
 
 	// The command's standard input.
-	Stdin terminal.FileReader
+	Stdin	terminal.FileReader
 	// The command's standard output.
-	Stdout terminal.FileWriter
+	Stdout	terminal.FileWriter
 	// The command's standard error.
-	Stderr io.Writer
+	Stderr	io.Writer
 
 	// The workspace to operate on.
-	Workspace pkgWorkspace.Context
+	Workspace	pkgWorkspace.Context
 	// The login manager to use for authenticating with and loading backends.
-	LoginManager cmdBackend.LoginManager
+	LoginManager	cmdBackend.LoginManager
 }
 
 // A set of arguments for the `state repair` command.
 type stateRepairArgs struct {
-	Stack     string
-	Colorizer colors.Colorization
-	Yes       bool
+	Stack		string
+	Colorizer	colors.Colorization
+	Yes		bool
 }
 
 func newStateRepairCommand() *cobra.Command {
@@ -72,16 +72,16 @@ func newStateRepairCommand() *cobra.Command {
 		Args: &stateRepairArgs{
 			Colorizer: cmdutil.GetGlobalColorization(),
 		},
-		Stdin:        os.Stdin,
-		Stdout:       os.Stdout,
-		Stderr:       os.Stderr,
-		Workspace:    pkgWorkspace.Instance,
-		LoginManager: cmdBackend.DefaultLoginManager,
+		Stdin:		os.Stdin,
+		Stdout:		os.Stdout,
+		Stderr:		os.Stderr,
+		Workspace:	pkgWorkspace.Instance,
+		LoginManager:	cmdBackend.DefaultLoginManager,
 	}
 
 	cmd := &cobra.Command{
-		Use:   "repair",
-		Short: "Repair an invalid state",
+		Use:	"repair",
+		Short:	"Repair an invalid state",
 		Long: `Repair an invalid state,
 
 This command can be used to repair an invalid state file. It will attempt to
@@ -91,7 +91,7 @@ will not attempt to make or write any changes. If the state is not already
 valid, and remains invalid after repair has been attempted, this command will
 not write any changes.
 `,
-		Args: cmdutil.NoArgs,
+		Args:	cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.Flags().Visit(func(f *pflag.Flag) {
 				stateRepair.FlagsString += fmt.Sprintf(" --%s=%q", f.Name, f.Value)
@@ -190,7 +190,7 @@ func (cmd *stateRepairCmd) run(ctx context.Context) error {
 	// If not, we'll render a summary of the operations we've performed and ask for confirmation before writing.
 	if !cmd.Args.Yes {
 		sink.Infof(diag.RawMessage(
-			"", /*urn*/
+			"",	/*urn*/
 			renderStateRepairOperations(cmd.Args.Colorizer, reorderings, pruneResults),
 		))
 

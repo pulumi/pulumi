@@ -22,9 +22,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	. "github.com/pulumi/pulumi/sdk/v3/pkg/engine"	//nolint:revive
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
@@ -49,25 +49,25 @@ func TestResourceReferences(t *testing.T) {
 
 					if req.URN.Name() == "resC" {
 						assert.True(t, req.Properties.DeepEquals(resource.PropertyMap{
-							"resA": resource.MakeComponentResourceReference(urnA, ""),
-							"resB": resource.MakeCustomResourceReference(urnB, idB, ""),
+							"resA":	resource.MakeComponentResourceReference(urnA, ""),
+							"resB":	resource.MakeCustomResourceReference(urnB, idB, ""),
 						}))
 					}
 
 					return plugin.CreateResponse{
-						ID:         resource.ID(id),
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		resource.ID(id),
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							ID:		req.ID,
+							Inputs:		req.Inputs,
+							Outputs:	req.State,
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}
@@ -90,15 +90,15 @@ func TestResourceReferences(t *testing.T) {
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"resA": resource.MakeComponentResourceReference(urnA, ""),
-				"resB": resource.MakeCustomResourceReference(urnB, idB, ""),
+				"resA":	resource.MakeComponentResourceReference(urnA, ""),
+				"resB":	resource.MakeCustomResourceReference(urnB, idB, ""),
 			},
 		})
 		require.NoError(t, err)
 
 		assert.True(t, resp.Outputs.DeepEquals(resource.PropertyMap{
-			"resA": resource.MakeComponentResourceReference(urnA, ""),
-			"resB": resource.MakeCustomResourceReference(urnB, idB, ""),
+			"resA":	resource.MakeComponentResourceReference(urnA, ""),
+			"resB":	resource.MakeCustomResourceReference(urnB, idB, ""),
 		}))
 		return nil
 	})
@@ -106,8 +106,8 @@ func TestResourceReferences(t *testing.T) {
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
-		Steps:   lt.MakeBasicLifecycleSteps(t, 4),
+		Options:	lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Steps:		lt.MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
 }
@@ -133,25 +133,25 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 					state := resource.PropertyMap{}
 					if req.URN.Name() == "resC" {
 						state = resource.PropertyMap{
-							"resA": resource.MakeComponentResourceReference(urnA, ""),
-							"resB": resource.MakeCustomResourceReference(urnB, idB, ""),
+							"resA":	resource.MakeComponentResourceReference(urnA, ""),
+							"resB":	resource.MakeCustomResourceReference(urnB, idB, ""),
 						}
 					}
 
 					return plugin.CreateResponse{
-						ID:         resource.ID(id),
-						Properties: state,
-						Status:     resource.StatusOK,
+						ID:		resource.ID(id),
+						Properties:	state,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							ID:		req.ID,
+							Inputs:		req.Inputs,
+							Outputs:	req.State,
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}
@@ -188,8 +188,8 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
-		Steps:   lt.MakeBasicLifecycleSteps(t, 4),
+		Options:	lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Steps:		lt.MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
 }
@@ -218,19 +218,19 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 					}
 
 					return plugin.CreateResponse{
-						ID:         resource.ID(id),
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		resource.ID(id),
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							ID:		req.ID,
+							Inputs:		req.Inputs,
+							Outputs:	req.State,
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}
@@ -253,8 +253,8 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 		refB = resource.MakeCustomResourceReference(respB.URN, respB.ID, "")
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"resA": resource.MakeComponentResourceReference(urnA, ""),
-				"resB": refB,
+				"resA":	resource.MakeComponentResourceReference(urnA, ""),
+				"resB":	refB,
 			},
 		})
 		require.NoError(t, err)
@@ -273,12 +273,12 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			UpdateOptions:    UpdateOptions{DisableResourceReferences: true},
-			SkipDisplayTests: true,
+			T:			t,
+			HostF:			hostF,
+			UpdateOptions:		UpdateOptions{DisableResourceReferences: true},
+			SkipDisplayTests:	true,
 		},
-		Steps: lt.MakeBasicLifecycleSteps(t, 4),
+		Steps:	lt.MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
 }
@@ -297,19 +297,19 @@ func TestResourceReferences_GetResource(t *testing.T) {
 						id = ""
 					}
 					return plugin.CreateResponse{
-						ID:         resource.ID(id),
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		resource.ID(id),
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							ID:		req.ID,
+							Inputs:		req.Inputs,
+							Outputs:	req.State,
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}
@@ -349,8 +349,8 @@ func TestResourceReferences_GetResource(t *testing.T) {
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
-		Steps:   lt.MakeBasicLifecycleSteps(t, 4),
+		Options:	lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Steps:		lt.MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
 }

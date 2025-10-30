@@ -18,8 +18,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
@@ -46,22 +46,22 @@ type mockRegisterResourceOutputsEvent struct {
 
 var _ = RegisterResourceOutputsEvent((*mockRegisterResourceOutputsEvent)(nil))
 
-func (e *mockRegisterResourceOutputsEvent) event() {}
+func (e *mockRegisterResourceOutputsEvent) event()	{}
 
-func (e *mockRegisterResourceOutputsEvent) URN() resource.URN { return e.urn }
+func (e *mockRegisterResourceOutputsEvent) URN() resource.URN	{ return e.urn }
 
 func (e *mockRegisterResourceOutputsEvent) Outputs() resource.PropertyMap {
 	return resource.PropertyMap{}
 }
 
-func (e *mockRegisterResourceOutputsEvent) Done() {}
+func (e *mockRegisterResourceOutputsEvent) Done()	{}
 
 type mockEvents struct {
-	OnResourceStepPreF   func(step Step) (any, error)
-	OnResourceStepPostF  func(ctx any, step Step, status resource.Status, err error) error
-	OnResourceOutputsF   func(step Step) error
-	OnPolicyViolationF   func(resource.URN, plugin.AnalyzeDiagnostic)
-	OnPolicyRemediationF func(resource.URN, plugin.Remediation, resource.PropertyMap, resource.PropertyMap)
+	OnResourceStepPreF	func(step Step) (any, error)
+	OnResourceStepPostF	func(ctx any, step Step, status resource.Status, err error) error
+	OnResourceOutputsF	func(step Step) error
+	OnPolicyViolationF	func(resource.URN, plugin.AnalyzeDiagnostic)
+	OnPolicyRemediationF	func(resource.URN, plugin.Remediation, resource.PropertyMap, resource.PropertyMap)
 }
 
 func (e *mockEvents) OnResourceStepPre(step Step) (any, error) {
@@ -124,10 +124,10 @@ func TestStepExecutor(t *testing.T) {
 
 			se := &stepExecutor{
 				deployment: &Deployment{
-					opts: &Options{},
-					plan: &Plan{},
+					opts:	&Options{},
+					plan:	&Plan{},
 				},
-				pendingNews: gsync.Map[resource.URN, Step]{},
+				pendingNews:	gsync.Map[resource.URN, Step]{},
 			}
 			notInPlan := resource.NewURN("test", "test", "", "test", "not-in-plan")
 			se.pendingNews.Store(notInPlan, &CreateStep{new: &resource.State{}})
@@ -143,9 +143,9 @@ func TestStepExecutor(t *testing.T) {
 					opts: &Options{
 						GeneratePlan: true,
 					},
-					newPlans: &resourcePlans{},
+					newPlans:	&resourcePlans{},
 				},
-				pendingNews: gsync.Map[resource.URN, Step]{},
+				pendingNews:	gsync.Map[resource.URN, Step]{},
 			}
 			notInPlan := resource.NewURN("test", "test", "", "test", "not-in-plan")
 			se.pendingNews.Store(notInPlan, &CreateStep{new: &resource.State{}})
@@ -165,14 +165,14 @@ func TestStepExecutor(t *testing.T) {
 					ctx: &plugin.Context{
 						Diag: &deploytest.NoopSink{},
 					},
-					opts: &Options{},
+					opts:	&Options{},
 					events: &mockEvents{
 						OnResourceOutputsF: func(step Step) error {
 							return errors.New("expected error")
 						},
 					},
 				},
-				pendingNews: gsync.Map[resource.URN, Step]{},
+				pendingNews:	gsync.Map[resource.URN, Step]{},
 			}
 			notInPlan := resource.NewURN("test", "test", "", "test", "not-in-plan")
 			se.pendingNews.Store(notInPlan, &CreateStep{new: &resource.State{
@@ -195,14 +195,14 @@ func TestStepExecutor(t *testing.T) {
 					ctx: &plugin.Context{
 						Diag: &deploytest.NoopSink{},
 					},
-					opts: &Options{},
+					opts:	&Options{},
 					events: &mockEvents{
 						OnResourceStepPreF: func(step Step) (any, error) {
 							return nil, expectedErr
 						},
 					},
 				},
-				pendingNews: gsync.Map[resource.URN, Step]{},
+				pendingNews:	gsync.Map[resource.URN, Step]{},
 			}
 			se.pendingNews.Store(resource.URN("not-in-plan"), &CreateStep{new: &resource.State{}})
 			assert.ErrorIs(t, se.executeStep(0, &CreateStep{
@@ -218,7 +218,7 @@ func TestStepExecutor(t *testing.T) {
 					ctx: &plugin.Context{
 						Diag: &deploytest.NoopSink{},
 					},
-					opts: &Options{},
+					opts:	&Options{},
 					events: &mockEvents{
 						OnResourceStepPreF: func(step Step) (any, error) {
 							return nil, nil
@@ -229,20 +229,20 @@ func TestStepExecutor(t *testing.T) {
 							return expectedErr
 						},
 					},
-					goals: &gsync.Map[resource.URN, *resource.Goal]{},
-					news:  &gsync.Map[resource.URN, *resource.State]{},
+					goals:	&gsync.Map[resource.URN, *resource.Goal]{},
+					news:	&gsync.Map[resource.URN, *resource.State]{},
 				},
-				pendingNews: gsync.Map[resource.URN, Step]{},
+				pendingNews:	gsync.Map[resource.URN, Step]{},
 			}
 			step := &CreateStep{
 				new: &resource.State{
-					URN: "urn:pulumi:some-urn",
+					URN:	"urn:pulumi:some-urn",
 					AdditionalSecretOutputs: []resource.PropertyKey{
 						"id",
 						"non-existent-property",
 					},
 				},
-				provider: &deploytest.Provider{},
+				provider:	&deploytest.Provider{},
 			}
 			assert.ErrorContains(t, se.executeStep(0, step), "post-step event returned an error")
 		})

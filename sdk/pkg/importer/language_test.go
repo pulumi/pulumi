@@ -25,10 +25,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/testing/utils"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -51,22 +51,22 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 
 			snapshot := []*resource.State{
 				{
-					ID:     "123",
-					Custom: true,
-					Type:   "pulumi:providers:aws",
-					URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+					ID:	"123",
+					Custom:	true,
+					Type:	"pulumi:providers:aws",
+					URN:	"urn:pulumi:stack::project::pulumi:providers:aws::default_123",
 				},
 				{
-					ID:     "123",
-					Custom: true,
-					Type:   "pulumi:providers:random",
-					URN:    "urn:pulumi:stack::project::pulumi:providers:random::default_123",
+					ID:	"123",
+					Custom:	true,
+					Type:	"pulumi:providers:random",
+					URN:	"urn:pulumi:stack::project::pulumi:providers:random::default_123",
 				},
 				{
-					ID:     "id",
-					Custom: true,
-					Type:   "pulumi:providers:pkg",
-					URN:    "urn:pulumi:stack::project::pulumi:providers:pkg::provider",
+					ID:	"id",
+					Custom:	true,
+					Type:	"pulumi:providers:pkg",
+					URN:	"urn:pulumi:stack::project::pulumi:providers:pkg::provider",
 				},
 			}
 
@@ -121,10 +121,10 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 
 	snapshot := []*resource.State{
 		{
-			ID:     "123",
-			Custom: true,
-			Type:   "pulumi:providers:aws",
-			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+			ID:	"123",
+			Custom:	true,
+			Type:	"pulumi:providers:aws",
+			URN:	"urn:pulumi:stack::project::pulumi:providers:aws::default_123",
 		},
 	}
 
@@ -133,24 +133,24 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 	// without guessing the dependencies between the resources.
 	resources := []apitype.ResourceV3{
 		{
-			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::first",
-			ID:     "bucket-object-1",
-			Custom: true,
-			Type:   "aws:s3/bucketObject:BucketObject",
+			URN:	"urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::first",
+			ID:	"bucket-object-1",
+			Custom:	true,
+			Type:	"aws:s3/bucketObject:BucketObject",
 			Inputs: map[string]any{
 				"bucket": "bucket-object-2",
 			},
-			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			Provider:	fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
 		},
 		{
-			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::second",
-			ID:     "bucket-object-2",
-			Custom: true,
-			Type:   "aws:s3/bucketObject:BucketObject",
+			URN:	"urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::second",
+			ID:	"bucket-object-2",
+			Custom:	true,
+			Type:	"aws:s3/bucketObject:BucketObject",
 			Inputs: map[string]any{
 				"bucket": "bucket-object-1",
 			},
-			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			Provider:	fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
 		},
 	}
 
@@ -211,20 +211,20 @@ func TestGenerateLanguageDefinitionsAllowsGeneratingParentVariables(t *testing.T
 
 	snapshot := []*resource.State{
 		{
-			ID:     "123",
-			Custom: true,
-			Type:   "pulumi:providers:random",
-			URN:    "urn:pulumi:stack::project::pulumi:providers:random::default_123",
+			ID:	"123",
+			Custom:	true,
+			Type:	"pulumi:providers:random",
+			URN:	"urn:pulumi:stack::project::pulumi:providers:random::default_123",
 		},
 	}
 
 	resources := []apitype.ResourceV3{
 		{
-			URN:      childURN,
-			Custom:   true,
-			Type:     "random:index/randomPet:RandomPet",
-			Parent:   componentURN,
-			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			URN:		childURN,
+			Custom:		true,
+			Type:		"random:index/randomPet:RandomPet",
+			Parent:		componentURN,
+			Provider:	fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
 		},
 	}
 

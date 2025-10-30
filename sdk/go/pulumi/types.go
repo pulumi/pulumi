@@ -33,8 +33,8 @@ import (
 type Output = internal.Output
 
 var (
-	outputType = reflect.TypeOf((*Output)(nil)).Elem()
-	inputType  = reflect.TypeOf((*Input)(nil)).Elem()
+	outputType	= reflect.TypeOf((*Output)(nil)).Elem()
+	inputType	= reflect.TypeOf((*Input)(nil)).Elem()
 )
 
 // RegisterOutputType registers an Output type with the Pulumi runtime. If a value of this type's concrete type is

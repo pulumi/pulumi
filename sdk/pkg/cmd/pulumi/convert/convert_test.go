@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -104,15 +104,15 @@ func TestProjectNameDefaults(t *testing.T) {
 		context.Background(),
 		pkgWorkspace.Instance,
 		env.Global(),
-		[]string{}, /*args*/
-		cwd,        /*cwd*/
-		[]string{}, /*mappings*/
-		"pcl",      /*from*/
-		"yaml",     /*language*/
+		[]string{},	/*args*/
+		cwd,		/*cwd*/
+		[]string{},	/*mappings*/
+		"pcl",		/*from*/
+		"yaml",		/*language*/
 		outDir,
-		true, /*generateOnly*/
-		true, /*strict*/
-		"",   /*name*/
+		true,	/*generateOnly*/
+		true,	/*strict*/
+		"",	/*name*/
 	)
 	require.NoError(t, err)
 
@@ -138,14 +138,14 @@ func TestProjectNameOverrides(t *testing.T) {
 		context.Background(),
 		pkgWorkspace.Instance,
 		env.Global(),
-		[]string{}, /*args*/
-		cwd,        /*cwd*/
-		[]string{}, /*mappings*/
-		"pcl",      /*from*/
-		"yaml",     /*language*/
+		[]string{},	/*args*/
+		cwd,		/*cwd*/
+		[]string{},	/*mappings*/
+		"pcl",		/*from*/
+		"yaml",		/*language*/
 		outDir,
-		true, /*generateOnly*/
-		true, /*strict*/
+		true,	/*generateOnly*/
+		true,	/*strict*/
 		name,
 	)
 	require.NoError(t, err)

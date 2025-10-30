@@ -19,7 +19,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -68,11 +68,11 @@ func TestRebuildBaseStateDanglingParentsTree(t *testing.T) {
 
 	// Assert.
 	assert.EqualValues(t, map[resource.URN]*resource.State{
-		"A": {URN: "A"},
-		"I": {URN: "I"},
-		"F": {URN: "F", Parent: "A"},
-		"G": {URN: "G", Parent: "D"},
-		"D": {URN: "D", Parent: "A"},
+		"A":	{URN: "A"},
+		"I":	{URN: "I"},
+		"F":	{URN: "F", Parent: "A"},
+		"G":	{URN: "G", Parent: "D"},
+		"D":	{URN: "D", Parent: "A"},
 	}, ex.deployment.olds)
 }
 
@@ -97,11 +97,11 @@ func TestRebuildBaseStateDependencies(t *testing.T) {
 
 	// Assert.
 	assert.EqualValues(t, map[resource.URN]*resource.State{
-		"B": {URN: "B", Dependencies: []resource.URN{}},
-		"C": {URN: "C", Dependencies: []resource.URN{}},
+		"B":	{URN: "B", Dependencies: []resource.URN{}},
+		"C":	{URN: "C", Dependencies: []resource.URN{}},
 
-		"E": {URN: "E"},
-		"G": {URN: "G", Parent: "E", Dependencies: []resource.URN{}},
+		"E":	{URN: "E"},
+		"G":	{URN: "G", Parent: "E", Dependencies: []resource.URN{}},
 	}, ex.deployment.olds)
 }
 
@@ -126,11 +126,11 @@ func TestRebuildBaseStateDeletedWith(t *testing.T) {
 
 	// Assert.
 	assert.EqualValues(t, map[resource.URN]*resource.State{
-		"B": {URN: "B"},
-		"C": {URN: "C"},
+		"B":	{URN: "B"},
+		"C":	{URN: "C"},
 
-		"E": {URN: "E"},
-		"G": {URN: "G", Parent: "E"},
+		"E":	{URN: "E"},
+		"G":	{URN: "G", Parent: "E"},
 	}, ex.deployment.olds)
 }
 
@@ -145,8 +145,8 @@ func TestRebuildBaseStatePropertyDependencies(t *testing.T) {
 		}},
 
 		&resource.State{URN: "C", PropertyDependencies: map[resource.PropertyKey][]resource.URN{
-			"propC1": {"A"},
-			"propC2": {"B"},
+			"propC1":	{"A"},
+			"propC2":	{"B"},
 		}},
 
 		// "D" is missing.
@@ -154,9 +154,9 @@ func TestRebuildBaseStatePropertyDependencies(t *testing.T) {
 		&resource.State{URN: "E"},
 		// "F" is missing.
 		&resource.State{URN: "G", Parent: "E", PropertyDependencies: map[resource.PropertyKey][]resource.URN{
-			"propG1": {"F"},
-			"propG2": {"E"},
-			"propG3": {"F"},
+			"propG1":	{"F"},
+			"propG2":	{"E"},
+			"propG3":	{"F"},
 		}},
 	)
 
@@ -165,12 +165,12 @@ func TestRebuildBaseStatePropertyDependencies(t *testing.T) {
 
 	// Assert.
 	assert.EqualValues(t, map[resource.URN]*resource.State{
-		"B": {URN: "B", PropertyDependencies: map[resource.PropertyKey][]resource.URN{}},
+		"B":	{URN: "B", PropertyDependencies: map[resource.PropertyKey][]resource.URN{}},
 		"C": {URN: "C", PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 			"propC2": {"B"},
 		}},
 
-		"E": {URN: "E"},
+		"E":	{URN: "E"},
 		"G": {URN: "G", Parent: "E", PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 			"propG2": {"E"},
 		}},
@@ -198,15 +198,15 @@ type source struct {
 	iterator SourceIterator
 }
 
-func (src *source) Close() error                { return nil }
-func (src *source) Project() tokens.PackageName { return "project" }
+func (src *source) Close() error		{ return nil }
+func (src *source) Project() tokens.PackageName	{ return "project" }
 func (src *source) Iterate(ctx context.Context, providers ProviderSource) (SourceIterator, error) {
 	return src.iterator, nil
 }
 
 type iterator struct {
-	closed      bool
-	returnError bool
+	closed		bool
+	returnError	bool
 }
 
 func (iter *iterator) Cancel(context.Context) error {
@@ -226,15 +226,15 @@ func TestSourceIteratorClose(t *testing.T) {
 	iter := &iterator{}
 	ex := &deploymentExecutor{
 		deployment: &Deployment{
-			source: &source{iter},
-			opts:   &Options{},
+			source:	&source{iter},
+			opts:	&Options{},
 			ctx: &plugin.Context{
-				Diag: &deploytest.NoopSink{},
-				Host: deploytest.NewPluginHost(nil, nil, nil),
+				Diag:	&deploytest.NoopSink{},
+				Host:	deploytest.NewPluginHost(nil, nil, nil),
 			},
-			newPlans: &resourcePlans{},
+			newPlans:	&resourcePlans{},
 		},
-		stepGen: &stepGenerator{},
+		stepGen:	&stepGenerator{},
 	}
 
 	_, err := ex.Execute(context.Background())
@@ -248,15 +248,15 @@ func TestSourceIteratorNoCloseOnError(t *testing.T) {
 	iter := &iterator{returnError: true}
 	ex := &deploymentExecutor{
 		deployment: &Deployment{
-			source: &source{iter},
-			opts:   &Options{},
+			source:	&source{iter},
+			opts:	&Options{},
 			ctx: &plugin.Context{
-				Diag: &deploytest.NoopSink{},
-				Host: deploytest.NewPluginHost(nil, nil, nil),
+				Diag:	&deploytest.NoopSink{},
+				Host:	deploytest.NewPluginHost(nil, nil, nil),
 			},
-			newPlans: &resourcePlans{},
+			newPlans:	&resourcePlans{},
 		},
-		stepGen: &stepGenerator{},
+		stepGen:	&stepGenerator{},
 	}
 
 	_, err := ex.Execute(context.Background())

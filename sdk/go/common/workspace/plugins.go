@@ -83,8 +83,8 @@ var pluginDownloadURLOverridesParsed pluginDownloadOverrideArray
 
 // pluginDownloadURLOverride represents a plugin download URL override, parsed from `pluginDownloadURLOverrides`.
 type pluginDownloadURLOverride struct {
-	reg *regexp.Regexp // The regex used to match against the plugin's name.
-	url string         // The URL to use for the matched plugin.
+	reg	*regexp.Regexp	// The regex used to match against the plugin's name.
+	url	string		// The URL to use for the matched plugin.
 }
 
 // pluginDownloadOverrideArray represents an array of overrides.
@@ -145,8 +145,8 @@ func parsePluginDownloadURLOverrides(overrides string) (pluginDownloadOverrideAr
 			return nil, err
 		}
 		result = append(result, pluginDownloadURLOverride{
-			reg: reg,
-			url: split[1],
+			reg:	reg,
+			url:	split[1],
 		})
 	}
 	return result, nil
@@ -155,9 +155,9 @@ func parsePluginDownloadURLOverrides(overrides string) (pluginDownloadOverrideAr
 // MissingError is returned by functions that attempt to load plugins if a plugin can't be located.
 type MissingError struct {
 	// PluginSpec of the plugin that couldn't be found.
-	spec PluginSpec
+	spec	PluginSpec
 	// includeAmbient is true if we search $PATH for this plugin
-	includeAmbient bool
+	includeAmbient	bool
 }
 
 // NewMissingError allocates a new error indicating the given plugin info was not found.
@@ -165,8 +165,8 @@ func NewMissingError(
 	spec PluginSpec, includeAmbient bool,
 ) error {
 	return &MissingError{
-		spec:           spec,
-		includeAmbient: includeAmbient,
+		spec:		spec,
+		includeAmbient:	includeAmbient,
 	}
 }
 
@@ -215,8 +215,8 @@ func standardAssetName(name string, kind apitype.PluginKind, version semver.Vers
 
 // getPulumiSource can download a plugin from get.pulumi.com
 type getPulumiSource struct {
-	name string
-	kind apitype.PluginKind
+	name	string
+	kind	apitype.PluginKind
 }
 
 func newGetPulumiSource(name string, kind apitype.PluginKind) *getPulumiSource {
@@ -243,12 +243,12 @@ func (source *getPulumiSource) Download(
 
 // gitlabSource can download a plugin from gitlab releases.
 type gitlabSource struct {
-	host    string
-	project string
-	name    string
-	kind    apitype.PluginKind
+	host	string
+	project	string
+	name	string
+	kind	apitype.PluginKind
 
-	token string
+	token	string
 }
 
 // Creates a new GitLab source from a gitlab://<host>/<project_id> url.
@@ -269,12 +269,12 @@ func newGitlabSource(url *url.URL, name string, kind apitype.PluginKind) (*gitla
 	}
 
 	return &gitlabSource{
-		host:    host,
-		project: project,
-		name:    name,
-		kind:    kind,
+		host:		host,
+		project:	project,
+		name:		name,
+		kind:		kind,
 
-		token: os.Getenv("GITLAB_TOKEN"),
+		token:	os.Getenv("GITLAB_TOKEN"),
 	}, nil
 }
 
@@ -354,14 +354,14 @@ func isPreReleaseVersion(version semver.Version) bool {
 // gitSource is used to download a plugin from a git repository.
 type gitSource struct {
 	// The git url to clone the plugin from.
-	url string
+	url	string
 	// The path within the repo to the plugin.
-	path string
+	path	string
 
 	// function to clone and checkout the repo.  Used so gitutil.GitCloneAndCheckoutCommit can be mocked in tests.
-	cloneAndCheckoutRevision func(context.Context, string, plumbing.Revision, string) error
+	cloneAndCheckoutRevision	func(context.Context, string, plumbing.Revision, string) error
 	// function to clone or pull the repo.  Used so gitutil.GitCloneOrPull can be mocked in tests.
-	cloneOrPull func(context.Context, string, plumbing.ReferenceName, string, bool) error
+	cloneOrPull	func(context.Context, string, plumbing.ReferenceName, string, bool) error
 }
 
 func newGitHTTPSSource(url *url.URL) (*gitSource, error) {
@@ -371,10 +371,10 @@ func newGitHTTPSSource(url *url.URL) (*gitSource, error) {
 		return nil, err
 	}
 	return &gitSource{
-		url:                      u,
-		path:                     path,
-		cloneAndCheckoutRevision: gitutil.GitCloneAndCheckoutRevision,
-		cloneOrPull:              gitutil.GitCloneOrPull,
+		url:				u,
+		path:				path,
+		cloneAndCheckoutRevision:	gitutil.GitCloneAndCheckoutRevision,
+		cloneOrPull:			gitutil.GitCloneOrPull,
 	}, nil
 }
 
@@ -447,16 +447,16 @@ func (source *gitSource) URL() string {
 
 // githubSource can download a plugin from github releases
 type githubSource struct {
-	host         string
-	organization string
-	repository   string
-	name         string
-	kind         apitype.PluginKind
+	host		string
+	organization	string
+	repository	string
+	name		string
+	kind		apitype.PluginKind
 
-	token string
+	token	string
 
 	// If true we explicitly disabled the token due to 401 errors and won't try it again
-	tokenDisabled bool
+	tokenDisabled	bool
 }
 
 // Creates a new github source adding authentication data in the environment, if it exists
@@ -518,13 +518,13 @@ func newGithubSource(url *url.URL, name string, kind apitype.PluginKind) (*githu
 	}
 
 	return &githubSource{
-		host:         host,
-		organization: organization,
-		repository:   repository,
-		name:         name,
-		kind:         kind,
+		host:		host,
+		organization:	organization,
+		repository:	repository,
+		name:		name,
+		kind:		kind,
 
-		token: os.Getenv("GITHUB_TOKEN"),
+		token:	os.Getenv("GITHUB_TOKEN"),
 	}, nil
 }
 
@@ -644,8 +644,8 @@ func (source *githubSource) Download(
 
 	var release struct {
 		Assets []struct {
-			Name string `json:"name"`
-			URL  string `json:"url"`
+			Name	string	`json:"name"`
+			URL	string	`json:"url"`
 		} `json:"assets"`
 	}
 	if err = json.NewDecoder(resp).Decode(&release); err != nil {
@@ -675,9 +675,9 @@ func (source *githubSource) URL() string {
 
 // httpSource can download a plugin from a given http url, it doesn't support GetLatestVersion
 type httpSource struct {
-	name string
-	kind apitype.PluginKind
-	url  string
+	name	string
+	kind	apitype.PluginKind
+	url	string
 }
 
 func newHTTPSource(name string, kind apitype.PluginKind, url *url.URL) *httpSource {
@@ -686,9 +686,9 @@ func newHTTPSource(name string, kind apitype.PluginKind, url *url.URL) *httpSour
 		"url", `scheme must be "http" or "https", was %q`, url.Scheme)
 
 	return &httpSource{
-		name: name,
-		kind: kind,
-		url:  url.String(),
+		name:	name,
+		kind:	kind,
+		url:	url.String(),
 	}
 }
 
@@ -735,14 +735,14 @@ func (source *httpSource) URL() string {
 
 // fallbackSource handles our current default logic of trying the pulumi public github then get.pulumi.com.
 type fallbackSource struct {
-	name string
-	kind apitype.PluginKind
+	name	string
+	kind	apitype.PluginKind
 }
 
 func newFallbackSource(name string, kind apitype.PluginKind) *fallbackSource {
 	return &fallbackSource{
-		name: name,
-		kind: kind,
+		name:	name,
+		kind:	kind,
 	}
 }
 
@@ -799,8 +799,8 @@ func (source *fallbackSource) URL() string {
 }
 
 type checksumError struct {
-	expected []byte
-	actual   []byte
+	expected	[]byte
+	actual		[]byte
 }
 
 func (err *checksumError) Error() string {
@@ -809,14 +809,14 @@ func (err *checksumError) Error() string {
 
 // checksumSource will validate that the archive downloaded from the inner source matches a checksum
 type checksumSource struct {
-	source   PluginSource
-	checksum map[string][]byte
+	source		PluginSource
+	checksum	map[string][]byte
 }
 
 func newChecksumSource(source PluginSource, checksum map[string][]byte) *checksumSource {
 	return &checksumSource{
-		source:   source,
-		checksum: checksum,
+		source:		source,
+		checksum:	checksum,
 	}
 }
 
@@ -828,9 +828,9 @@ func (source *checksumSource) GetLatestVersion(
 }
 
 type checksumReader struct {
-	checksum []byte
-	io       io.ReadCloser
-	hasher   hash.Hash
+	checksum	[]byte
+	io		io.ReadCloser
+	hasher		hash.Hash
 }
 
 func (reader *checksumReader) Read(p []byte) (int, error) {
@@ -873,9 +873,9 @@ func (source *checksumSource) Download(
 	}
 
 	return &checksumReader{
-		checksum: checksum,
-		hasher:   sha256.New(),
-		io:       response,
+		checksum:	checksum,
+		hasher:		sha256.New(),
+		io:		response,
 	}, length, nil
 }
 
@@ -885,10 +885,10 @@ func (source *checksumSource) URL() string {
 
 // ProjectPlugin Information about a locally installed plugin specified by the project.
 type ProjectPlugin struct {
-	Name    string             // the simple name of the plugin.
-	Kind    apitype.PluginKind // the kind of the plugin (language, resource, etc).
-	Version *semver.Version    // the plugin's semantic version, if present.
-	Path    string             // the path that a plugin is to be loaded from (this will always be a directory)
+	Name	string			// the simple name of the plugin.
+	Kind	apitype.PluginKind	// the kind of the plugin (language, resource, etc).
+	Version	*semver.Version		// the plugin's semantic version, if present.
+	Path	string			// the path that a plugin is to be loaded from (this will always be a directory)
 }
 
 // Spec Return a PluginSpec object for this project plugin.
@@ -900,9 +900,9 @@ func (pp ProjectPlugin) Spec(ctx context.Context) (PluginSpec, error) {
 // PackageDescriptor into a project.
 type LinkablePackageDescriptor struct {
 	// Path to the package, either a binary artifact like a Python wheel, or a source directory.
-	Path string
+	Path	string
 	// The descriptor for the package
-	Descriptor PackageDescriptor
+	Descriptor	PackageDescriptor
 }
 
 // A PackageDescriptor specifies a package: the source PluginSpec that provides it, and any parameterization
@@ -913,13 +913,13 @@ type PackageDescriptor struct {
 
 	// An optional parameterization to apply to the providing plugin to produce
 	// the package.
-	Parameterization *Parameterization
+	Parameterization	*Parameterization
 }
 
 func NewPackageDescriptor(spec PluginSpec, parameterization *Parameterization) PackageDescriptor {
 	return PackageDescriptor{
-		PluginSpec:       spec,
-		Parameterization: parameterization,
+		PluginSpec:		spec,
+		Parameterization:	parameterization,
 	}
 }
 
@@ -990,24 +990,24 @@ func SortPackageDescriptors(x PackageDescriptor, y PackageDescriptor) int {
 // A Parameterization may be applied to a supporting plugin to yield a package.
 type Parameterization struct {
 	// The name of the package that will be produced by the parameterization.
-	Name string
+	Name	string
 	// The version of the package that will be produced by the parameterization.
-	Version semver.Version
+	Version	semver.Version
 	// A plugin-dependent bytestring representing the value of the parameter to be
 	// passed to the plugin.
-	Value []byte
+	Value	[]byte
 }
 
 // PluginSpec provides basic specification for a plugin.
 type PluginSpec struct {
-	Name              string             // the simple name of the plugin.
-	Kind              apitype.PluginKind // the kind of the plugin (language, resource, etc).
-	Version           *semver.Version    // the plugin's semantic version, if present.
-	PluginDownloadURL string             // an optional server to use when downloading this plugin.
-	PluginDir         string             // if set, will be used as the root plugin dir instead of ~/.pulumi/plugins.
+	Name			string			// the simple name of the plugin.
+	Kind			apitype.PluginKind	// the kind of the plugin (language, resource, etc).
+	Version			*semver.Version		// the plugin's semantic version, if present.
+	PluginDownloadURL	string			// an optional server to use when downloading this plugin.
+	PluginDir		string			// if set, will be used as the root plugin dir instead of ~/.pulumi/plugins.
 
 	// if set will be used to validate the plugin downloaded matches. This is keyed by "$os-$arch", e.g. "linux-x64".
-	Checksums map[string][]byte
+	Checksums	map[string][]byte
 }
 
 type PluginVersionNotFoundError error
@@ -1057,8 +1057,8 @@ func NewPluginSpec(
 }
 
 type parsePluginSpecInference struct {
-	explicitVersion           bool
-	explicitPluginDownloadURL bool
+	explicitVersion			bool
+	explicitPluginDownloadURL	bool
 }
 
 func parsePluginSpec(
@@ -1119,20 +1119,20 @@ func parsePluginSpecFromURL(
 	// in the folder name, 2) want to be able to reuse the same plugin even if the auth infoo
 	// changes and 3) avoid issues with the auth info being too long for a folder name.
 	urlWithoutAuth := &url.URL{
-		Scheme: parsedURL.Scheme,
-		Host:   parsedURL.Host,
-		Path:   parsedURL.Path,
+		Scheme:	parsedURL.Scheme,
+		Host:	parsedURL.Host,
+		Path:	parsedURL.Path,
 	}
 	nameURL, _, err := gitutil.ParseGitRepoURL(urlWithoutAuth.String())
 	if err != nil {
 		return PluginSpec{}, inference, err
 	}
 	pluginSpec := PluginSpec{
-		Name:    strings.ReplaceAll(strings.TrimPrefix(nameURL, "https://"), "/", "_"),
-		Kind:    kind,
-		Version: version,
+		Name:		strings.ReplaceAll(strings.TrimPrefix(nameURL, "https://"), "/", "_"),
+		Kind:		kind,
+		Version:	version,
 		// Prefix the url with `git://`, so we can later recognize this as a git URL.
-		PluginDownloadURL: func(url url.URL) string { url.Scheme = "git"; return url.String() }(*parsedURL),
+		PluginDownloadURL:	func(url url.URL) string { url.Scheme = "git"; return url.String() }(*parsedURL),
 	}
 	inference.explicitPluginDownloadURL = true
 
@@ -1171,9 +1171,9 @@ func parsePluginSpecFromName(
 	})
 
 	return PluginSpec{
-		Name:    spec,
-		Kind:    kind,
-		Version: version,
+		Name:		spec,
+		Kind:		kind,
+		Version:	version,
 	}, inference, err
 }
 
@@ -1264,16 +1264,16 @@ func (spec PluginSpec) String() string {
 // location, by default `~/.pulumi/plugins/<kind>-<name>-<version>/`.  A plugin may contain multiple files,
 // however the primary loadable executable must be named `pulumi-<kind>-<name>`.
 type PluginInfo struct {
-	Name         string             // the simple name of the plugin.
-	Path         string             // the path that a plugin was loaded from (this will always be a directory)
-	Kind         apitype.PluginKind // the kind of the plugin (language, resource, etc).
-	Version      *semver.Version    // the plugin's semantic version, if present.
-	InstallTime  time.Time          // the time the plugin was installed.
-	LastUsedTime time.Time          // the last time the plugin was used.
-	SchemaPath   string             // if set, used as the path for loading and caching the schema
-	SchemaTime   time.Time          // if set and newer than the file at SchemaPath, used to invalidate a cached schema
+	Name		string			// the simple name of the plugin.
+	Path		string			// the path that a plugin was loaded from (this will always be a directory)
+	Kind		apitype.PluginKind	// the kind of the plugin (language, resource, etc).
+	Version		*semver.Version		// the plugin's semantic version, if present.
+	InstallTime	time.Time		// the time the plugin was installed.
+	LastUsedTime	time.Time		// the last time the plugin was used.
+	SchemaPath	string			// if set, used as the path for loading and caching the schema
+	SchemaTime	time.Time		// if set and newer than the file at SchemaPath, used to invalidate a cached schema
 
-	size uint64 // cached plugin size in bytes
+	size	uint64	// cached plugin size in bytes
 }
 
 // Size calculates the size of the plugin, in bytes.
@@ -1504,9 +1504,9 @@ func getHTTPResponseWithRetry(req *http.Request) (io.ReadCloser, int64, error) {
 
 // downloadError is an error that happened during the HTTP download of a plugin.
 type downloadError struct {
-	msg    string
-	code   int
-	header http.Header
+	msg	string
+	code	int
+	header	http.Header
 }
 
 func (e *downloadError) Error() string {
@@ -1516,7 +1516,7 @@ func (e *downloadError) Error() string {
 // Create a new downloadError with a message that indicates GITHUB_TOKEN should be set.
 func newGithubPrivateRepoError(statusCode int, url *url.URL) error {
 	return &downloadError{
-		code: statusCode,
+		code:	statusCode,
 		msg: fmt.Sprintf("%d HTTP error fetching plugin from %s. "+
 			"If this is a private GitHub repository, try "+
 			"providing a token via the GITHUB_TOKEN environment variable. "+
@@ -1531,9 +1531,9 @@ func newDownloadError(statusCode int, url *url.URL, header http.Header) error {
 		return newGithubPrivateRepoError(statusCode, url)
 	}
 	return &downloadError{
-		code:   statusCode,
-		msg:    fmt.Sprintf("%d HTTP error fetching plugin from %s", statusCode, url),
-		header: header,
+		code:	statusCode,
+		msg:	fmt.Sprintf("%d HTTP error fetching plugin from %s", statusCode, url),
+		header:	header,
 	}
 }
 
@@ -1546,7 +1546,7 @@ func newDownloadError(statusCode int, url *url.URL, header http.Header) error {
 type pluginDownloader struct {
 	// WrapStream wraps the stream returned by the plugin source.
 	// This is useful for things like reporting progress.
-	WrapStream func(stream io.ReadCloser, size int64) io.ReadCloser
+	WrapStream	func(stream io.ReadCloser, size int64) io.ReadCloser
 
 	// OnRetry receives a notification when a download fails
 	// and is about to be retried.
@@ -1555,10 +1555,10 @@ type pluginDownloader struct {
 	// limit is the maximum number of attempts.
 	// delay is the amount of time that will be slept before the next attempt.
 	// DO NOT sleep in this function. It's for observation only.
-	OnRetry func(err error, attempt int, limit int, delay time.Duration)
+	OnRetry	func(err error, attempt int, limit int, delay time.Duration)
 
 	// Controls how to sleep between retries.
-	After func(time.Duration) <-chan time.Time // == time.After
+	After	func(time.Duration) <-chan time.Time	// == time.After
 }
 
 // copyBuffer copies from src to dst until either EOF is reached on src or an error occurs.
@@ -1656,8 +1656,8 @@ func (d *pluginDownloader) downloadToFileWithRetry(ctx context.Context, pkgPlugi
 	_, path, err := (&retry.Retryer{
 		After: d.After,
 	}).Until(context.Background(), retry.Acceptor{
-		Delay:   &delay,
-		Backoff: &backoff,
+		Delay:		&delay,
+		Backoff:	&backoff,
 		Accept: func(attempt int, nextRetryTime time.Duration) (bool, any, error) {
 			if attempt >= maxAttempts {
 				return false, nil, fmt.Errorf("failed all %d attempts", maxAttempts)
@@ -1723,8 +1723,8 @@ func DownloadToFile(
 	retry func(err error, attempt int, limit int, delay time.Duration),
 ) (*os.File, error) {
 	return (&pluginDownloader{
-		WrapStream: wrapper,
-		OnRetry:    retry,
+		WrapStream:	wrapper,
+		OnRetry:	retry,
 	}).DownloadToFile(ctx, pkgPlugin)
 }
 
@@ -1799,9 +1799,9 @@ func (spec PluginSpec) InstallDependencies(ctx context.Context) error {
 				}
 
 				tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-					Toolchain:  toolchain.Pip,
-					Root:       subdir,
-					Virtualenv: "venv",
+					Toolchain:	toolchain.Pip,
+					Root:		subdir,
+					Virtualenv:	"venv",
 				})
 				if err != nil {
 					return fmt.Errorf("getting python toolchain: %w", err)
@@ -1819,14 +1819,14 @@ func (spec PluginSpec) InstallDependencies(ctx context.Context) error {
 
 			// TODO[pulumi/pulumi/issues/16287]: Support toolchain options for installing plugins.
 			tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-				Toolchain:  toolchain.Pip,
-				Root:       subdir,
-				Virtualenv: "venv",
+				Toolchain:	toolchain.Pip,
+				Root:		subdir,
+				Virtualenv:	"venv",
 			})
 			if err != nil {
 				return fmt.Errorf("getting python toolchain: %w", err)
 			}
-			if err := tc.InstallDependencies(ctx, subdir, false, /*useLanguageVersionTools */
+			if err := tc.InstallDependencies(ctx, subdir, false,	/*useLanguageVersionTools */
 				false /*showOutput*/, os.Stdout, os.Stderr); err != nil {
 				return fmt.Errorf("installing plugin dependencies: %w", err)
 			}
@@ -1845,11 +1845,11 @@ type PluginKind = apitype.PluginKind
 //
 // Deprecated: PluginKind type was moved to "github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 const (
-	AnalyzerPlugin  = apitype.AnalyzerPlugin
-	LanguagePlugin  = apitype.LanguagePlugin
-	ResourcePlugin  = apitype.ResourcePlugin
-	ConverterPlugin = apitype.ConverterPlugin
-	ToolPlugin      = apitype.ToolPlugin
+	AnalyzerPlugin	= apitype.AnalyzerPlugin
+	LanguagePlugin	= apitype.LanguagePlugin
+	ResourcePlugin	= apitype.ResourcePlugin
+	ConverterPlugin	= apitype.ConverterPlugin
+	ToolPlugin	= apitype.ToolPlugin
 )
 
 // IsPluginKind returns true if k is a valid plugin kind, and false otherwise.
@@ -1976,10 +1976,10 @@ func GetPluginsFromDir(dir string) ([]PluginInfo, error) {
 		if kind, name, version, ok := tryPlugin(file); ok {
 			path := filepath.Join(dir, file.Name())
 			plugin := PluginInfo{
-				Name:    name,
-				Kind:    kind,
-				Version: &version,
-				Path:    path,
+				Name:		name,
+				Kind:		kind,
+				Version:	&version,
+				Path:		path,
 			}
 			if _, err := os.Stat(path + ".partial"); err == nil {
 				// Skip it if the partial file exists, meaning the plugin is not fully installed.
@@ -2103,10 +2103,10 @@ func getPluginInfoAndPath(
 			return nil, "", err
 		}
 		info := &PluginInfo{
-			Name:    localSpec.Name,
-			Kind:    localSpec.Kind,
-			Version: localSpec.Version,
-			Path:    filepath.Clean(plugin.Path),
+			Name:		localSpec.Name,
+			Kind:		localSpec.Kind,
+			Version:	localSpec.Version,
+			Path:		filepath.Clean(plugin.Path),
 		}
 		// computing plugin sizes can be very expensive (nested node_modules)
 		if !skipMetadata {
@@ -2184,9 +2184,9 @@ func getPluginInfoAndPath(
 	}
 	if pluginPath != "" {
 		info := &PluginInfo{
-			Kind: spec.Kind,
-			Name: spec.Name,
-			Path: filepath.Dir(pluginPath),
+			Kind:	spec.Kind,
+			Name:	spec.Name,
+			Path:	filepath.Dir(pluginPath),
 		}
 		// computing plugin sizes can be very expensive (nested node_modules)
 		if !skipMetadata {
@@ -2246,7 +2246,7 @@ func getPluginInfoAndPath(
 // SortedPluginInfo is a wrapper around PluginInfo that allows for sorting by version.
 type SortedPluginInfo []PluginInfo
 
-func (sp SortedPluginInfo) Len() int { return len(sp) }
+func (sp SortedPluginInfo) Len() int	{ return len(sp) }
 func (sp SortedPluginInfo) Less(i, j int) bool {
 	iVersion := sp[i].Version
 	jVersion := sp[j].Version
@@ -2263,7 +2263,7 @@ func (sp SortedPluginInfo) Less(i, j int) bool {
 		return iVersion.LT(*jVersion)
 	}
 }
-func (sp SortedPluginInfo) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
+func (sp SortedPluginInfo) Swap(i, j int)	{ sp[i], sp[j] = sp[j], sp[i] }
 
 // SelectPrereleasePlugin selects a plugin from the list of plugins, which matches the exact version we
 // are looking for, based on the commit hash.
@@ -2301,7 +2301,7 @@ func LegacySelectCompatiblePlugin(
 			if match == nil {
 				// no existing match
 				if spec.Version == nil {
-					m = &plugin // no version spec, accept anything
+					m = &plugin	// no version spec, accept anything
 				} else if plugin.Version == nil || plugin.Version.GTE(*spec.Version) {
 					// Either the plugin doesn't have a version, in which case we'll take it but prefer
 					// anything else, or it has a version >= requested.
@@ -2421,8 +2421,8 @@ func ReadCloserProgressBar(
 	bar.Start()
 
 	return &barCloser{
-		bar:        bar,
-		readCloser: bar.NewProxyReader(closer),
+		bar:		bar,
+		readCloser:	bar.NewProxyReader(closer),
 	}
 }
 
@@ -2446,9 +2446,9 @@ var PluginNameRegexp = func() *regexp.Regexp {
 
 // pluginRegexp matches plugin directory names: pulumi-KIND-NAME-VERSION.
 var pluginRegexp = regexp.MustCompile(
-	"^(?P<Kind>[a-z]+)-" + // KIND
-		"(?P<Name>[a-zA-Z0-9-][a-zA-Z0-9-_.]*[a-zA-Z0-9])-" + // NAME
-		"v(?P<Version>.*)$") // VERSION
+	"^(?P<Kind>[a-z]+)-" +	// KIND
+		"(?P<Name>[a-zA-Z0-9-][a-zA-Z0-9-_.]*[a-zA-Z0-9])-" +	// NAME
+		"v(?P<Version>.*)$")	// VERSION
 
 // installingPluginRegexp matches the name of temporary folders. Previous versions of Pulumi first extracted
 // plugins to a temporary folder with a suffix of `.tmpXXXXXX` (where `XXXXXX`) is a random number, from
@@ -2544,8 +2544,8 @@ func getPluginSize(path string) (uint64, error) {
 }
 
 type barCloser struct {
-	bar        *pb.ProgressBar
-	readCloser io.ReadCloser
+	bar		*pb.ProgressBar
+	readCloser	io.ReadCloser
 }
 
 func (bc *barCloser) Read(dest []byte) (int, error) {

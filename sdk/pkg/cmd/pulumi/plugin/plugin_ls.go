@@ -22,8 +22,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -32,9 +32,9 @@ func newPluginLsCmd() *cobra.Command {
 	var projectOnly bool
 	var jsonOut bool
 	cmd := &cobra.Command{
-		Use:   "ls",
-		Short: "List plugins",
-		Args:  cmdutil.NoArgs,
+		Use:	"ls",
+		Short:	"List plugins",
+		Args:	cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Produce a list of plugins, sorted by name and version.
 			var plugins []workspace.PluginInfo
@@ -87,12 +87,12 @@ func newPluginLsCmd() *cobra.Command {
 // pluginInfoJSON is the shape of the --json output for a configuration value.  While we can add fields to this
 // structure in the future, we should not change existing fields.
 type pluginInfoJSON struct {
-	Name         string  `json:"name"`
-	Kind         string  `json:"kind"`
-	Version      string  `json:"version"`
-	Size         uint64  `json:"size"`
-	InstallTime  *string `json:"installTime,omitempty"`
-	LastUsedTime *string `json:"lastUsedTime,omitempty"`
+	Name		string	`json:"name"`
+	Kind		string	`json:"kind"`
+	Version		string	`json:"version"`
+	Size		uint64	`json:"size"`
+	InstallTime	*string	`json:"installTime,omitempty"`
+	LastUsedTime	*string	`json:"lastUsedTime,omitempty"`
 }
 
 func formatPluginsJSON(plugins []workspace.PluginInfo) error {
@@ -107,10 +107,10 @@ func formatPluginsJSON(plugins []workspace.PluginInfo) error {
 			version = plugin.Version.String()
 		}
 		jsonPluginInfo[idx] = pluginInfoJSON{
-			Name:    plugin.Name,
-			Kind:    string(plugin.Kind),
-			Version: version,
-			Size:    plugin.Size(),
+			Name:		plugin.Name,
+			Kind:		string(plugin.Kind),
+			Version:	version,
+			Size:		plugin.Size(),
 		}
 
 		if !plugin.InstallTime.IsZero() {
@@ -162,8 +162,8 @@ func formatPluginConsole(plugins []workspace.PluginInfo) error {
 	}
 
 	ui.PrintTable(cmdutil.Table{
-		Headers: []string{"NAME", "KIND", "VERSION", "SIZE", "INSTALLED", "LAST USED"},
-		Rows:    rows,
+		Headers:	[]string{"NAME", "KIND", "VERSION", "SIZE", "INSTALLED", "LAST USED"},
+		Rows:		rows,
 	}, nil)
 
 	fmt.Printf("\n")
@@ -173,6 +173,6 @@ func formatPluginConsole(plugins []workspace.PluginInfo) error {
 }
 
 const (
-	humanNeverTime = "never"
-	naString       = "n/a"
+	humanNeverTime	= "never"
+	naString	= "n/a"
 )

@@ -30,56 +30,56 @@ func TestGetCurrentCloudURL(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		ws             Context
-		e              env.Env
-		project        *workspace.Project
-		expectedString string
-		expectedError  error
+		name		string
+		ws		Context
+		e		env.Env
+		project		*workspace.Project
+		expectedString	string
+		expectedError	error
 	}{
 		{
-			name:           "no project, env, or credentials",
-			ws:             &MockContext{},
-			e:              env.NewEnv(env.MapStore{}),
-			expectedString: "",
+			name:		"no project, env, or credentials",
+			ws:		&MockContext{},
+			e:		env.NewEnv(env.MapStore{}),
+			expectedString:	"",
 		},
 		{
-			name: "stored credentials",
+			name:	"stored credentials",
 			ws: &MockContext{
 				GetStoredCredentialsF: credsF,
 			},
-			e:              env.NewEnv(env.MapStore{}),
-			expectedString: "https://credentials.com",
+			e:		env.NewEnv(env.MapStore{}),
+			expectedString:	"https://credentials.com",
 		},
 		{
-			name: "project setting takes precedence",
+			name:	"project setting takes precedence",
 			ws: &MockContext{
 				GetStoredCredentialsF: credsF,
 			},
-			e:              env.NewEnv(env.MapStore{}),
-			project:        &workspace.Project{Backend: &workspace.ProjectBackend{URL: "https://project.com"}},
-			expectedString: "https://project.com",
+			e:		env.NewEnv(env.MapStore{}),
+			project:	&workspace.Project{Backend: &workspace.ProjectBackend{URL: "https://project.com"}},
+			expectedString:	"https://project.com",
 		},
 		{
-			name: "envvar takes precedence",
+			name:	"envvar takes precedence",
 			ws: &MockContext{
 				GetStoredCredentialsF: credsF,
 			},
 			e: env.NewEnv(env.MapStore{
 				env.BackendURL.Var().Name(): "https://env.com",
 			}),
-			project:        &workspace.Project{Backend: &workspace.ProjectBackend{URL: "https://project.com"}},
-			expectedString: "https://env.com",
+			project:	&workspace.Project{Backend: &workspace.ProjectBackend{URL: "https://project.com"}},
+			expectedString:	"https://env.com",
 		},
 		{
-			name: "report error from stored credentials",
+			name:	"report error from stored credentials",
 			ws: &MockContext{
 				GetStoredCredentialsF: func() (workspace.Credentials, error) {
 					return workspace.Credentials{}, assert.AnError
 				},
 			},
-			e:             env.NewEnv(env.MapStore{}),
-			expectedError: assert.AnError,
+			e:		env.NewEnv(env.MapStore{}),
+			expectedError:	assert.AnError,
 		},
 	}
 

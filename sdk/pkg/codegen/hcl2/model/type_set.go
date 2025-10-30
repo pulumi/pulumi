@@ -19,17 +19,17 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model/pretty"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 )
 
 // SetType represents sets of particular element types.
 type SetType struct {
 	// ElementType is the element type of the set.
-	ElementType Type
+	ElementType	Type
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache	*gsync.Map[Type, cacheEntry]
 }
 
 // NewSetType creates a new set type with the given element type.
@@ -111,9 +111,9 @@ func (t *SetType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Format
 	}
 
 	return &pretty.Wrap{
-		Prefix:  "set(",
-		Postfix: ")",
-		Value:   formatter,
+		Prefix:		"set(",
+		Postfix:	")",
+		Value:		formatter,
 	}
 }
 
@@ -160,4 +160,4 @@ func (t *SetType) unify(other Type) (Type, ConversionKind) {
 	})
 }
 
-func (*SetType) isType() {}
+func (*SetType) isType()	{}

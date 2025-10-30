@@ -30,59 +30,59 @@ func TestMarshalMap(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Value        Map
-		ExpectedYAML string
-		ExpectedJSON string
+		Value		Map
+		ExpectedYAML	string
+		ExpectedJSON	string
 	}{
 		{
 			Value: Map{
-				MustMakeKey("my", "testKey"):        NewValue("testValue"),
-				MustMakeKey("my", "anotherTestKey"): NewValue("anotherTestValue"),
+				MustMakeKey("my", "testKey"):		NewValue("testValue"),
+				MustMakeKey("my", "anotherTestKey"):	NewValue("anotherTestValue"),
 			},
-			ExpectedYAML: "my:anotherTestKey: anotherTestValue\nmy:testKey: testValue\n",
-			ExpectedJSON: `{"my:anotherTestKey":"anotherTestValue","my:testKey":"testValue"}`,
+			ExpectedYAML:	"my:anotherTestKey: anotherTestValue\nmy:testKey: testValue\n",
+			ExpectedJSON:	`{"my:anotherTestKey":"anotherTestValue","my:testKey":"testValue"}`,
 		},
 		{
 			Value: Map{
 				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":12321123131}`),
 			},
-			ExpectedYAML: "my:parent:\n  nested: 12321123131\n",
-			ExpectedJSON: `{"my:parent":{"nested":12321123131}}`,
+			ExpectedYAML:	"my:parent:\n  nested: 12321123131\n",
+			ExpectedJSON:	`{"my:parent":{"nested":12321123131}}`,
 		},
 		{
 			Value: Map{
 				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":[12321123131]}`),
 			},
-			ExpectedYAML: "my:parent:\n  nested:\n  - 12321123131\n",
-			ExpectedJSON: `{"my:parent":{"nested":[12321123131]}}`,
+			ExpectedYAML:	"my:parent:\n  nested:\n  - 12321123131\n",
+			ExpectedJSON:	`{"my:parent":{"nested":[12321123131]}}`,
 		},
 		{
 			Value: Map{
 				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":{"foo":12321123131}}`),
 			},
-			ExpectedYAML: "my:parent:\n  nested:\n    foo: 12321123131\n",
-			ExpectedJSON: `{"my:parent":{"nested":{"foo":12321123131}}}`,
+			ExpectedYAML:	"my:parent:\n  nested:\n    foo: 12321123131\n",
+			ExpectedJSON:	`{"my:parent":{"nested":{"foo":12321123131}}}`,
 		},
 		{
 			Value: Map{
 				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":4.2}`),
 			},
-			ExpectedYAML: "my:parent:\n  nested: 4.2\n",
-			ExpectedJSON: `{"my:parent":{"nested":4.2}}`,
+			ExpectedYAML:	"my:parent:\n  nested: 4.2\n",
+			ExpectedJSON:	`{"my:parent":{"nested":4.2}}`,
 		},
 		{
 			Value: Map{
 				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":[4.2]}`),
 			},
-			ExpectedYAML: "my:parent:\n  nested:\n  - 4.2\n",
-			ExpectedJSON: `{"my:parent":{"nested":[4.2]}}`,
+			ExpectedYAML:	"my:parent:\n  nested:\n  - 4.2\n",
+			ExpectedJSON:	`{"my:parent":{"nested":[4.2]}}`,
 		},
 		{
 			Value: Map{
 				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":{"foo":4.2}}`),
 			},
-			ExpectedYAML: "my:parent:\n  nested:\n    foo: 4.2\n",
-			ExpectedJSON: `{"my:parent":{"nested":{"foo":4.2}}}`,
+			ExpectedYAML:	"my:parent:\n  nested:\n    foo: 4.2\n",
+			ExpectedJSON:	`{"my:parent":{"nested":{"foo":4.2}}}`,
 		},
 	}
 	for _, test := range tests {
@@ -110,17 +110,17 @@ func TestMarshalling(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Value    map[string]any
-		Expected Map
+		Value		map[string]any
+		Expected	Map
 	}{
 		{
 			Value: map[string]any{
-				"my:anotherTestKey": "anotherTestValue",
-				"my:testKey":        "testValue",
+				"my:anotherTestKey":	"anotherTestValue",
+				"my:testKey":		"testValue",
 			},
 			Expected: Map{
-				MustMakeKey("my", "testKey"):        NewValue("testValue"),
-				MustMakeKey("my", "anotherTestKey"): NewValue("anotherTestValue"),
+				MustMakeKey("my", "testKey"):		NewValue("testValue"),
+				MustMakeKey("my", "anotherTestKey"):	NewValue("anotherTestValue"),
 			},
 		},
 		{
@@ -144,8 +144,8 @@ func TestMarshalling(t *testing.T) {
 		{
 			Value: map[string]any{
 				"my:mapKey": map[string]any{
-					"a": "b",
-					"c": "d",
+					"a":	"b",
+					"c":	"d",
 				},
 			},
 			Expected: Map{
@@ -175,8 +175,8 @@ func TestMarshalling(t *testing.T) {
 		{
 			Value: map[string]any{
 				"my:mapKey": map[string]any{
-					"a": map[string]any{"secure": "securevalue"},
-					"c": "d",
+					"a":	map[string]any{"secure": "securevalue"},
+					"c":	"d",
 				},
 			},
 			Expected: Map{
@@ -187,8 +187,8 @@ func TestMarshalling(t *testing.T) {
 			Value: map[string]any{
 				"my:servers": []any{
 					map[string]any{
-						"port": 80,
-						"host": "example",
+						"port":	80,
+						"host":	"example",
 						"token": map[string]any{
 							"secure": "securevalue",
 						},
@@ -197,16 +197,16 @@ func TestMarshalling(t *testing.T) {
 			},
 			Expected: Map{
 				Key{
-					namespace: "my",
-					name:      "servers",
+					namespace:	"my",
+					name:		"servers",
 				}: NewSecureObjectValue(`[{"host":"example","port":80,"token":{"secure":"securevalue"}}]`),
 			},
 		},
 		{
 			Value: map[string]any{
 				"my:mapKey": map[string]any{
-					"a": map[string]any{"secure": "foo", "bar": "blah"},
-					"c": "d",
+					"a":	map[string]any{"secure": "foo", "bar": "blah"},
+					"c":	"d",
 				},
 			},
 			Expected: Map{
@@ -255,9 +255,9 @@ func TestDecrypt(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Config     Map
-		Expected   map[Key]string
-		SecureKeys []Key
+		Config		Map
+		Expected	map[Key]string
+		SecureKeys	[]Key
 	}{
 		{
 			Config: Map{
@@ -274,7 +274,7 @@ func TestDecrypt(t *testing.T) {
 			Expected: map[Key]string{
 				MustMakeKey("my", "testKey"): "[secret]",
 			},
-			SecureKeys: []Key{MustMakeKey("my", "testKey")},
+			SecureKeys:	[]Key{MustMakeKey("my", "testKey")},
 		},
 		{
 			Config: Map{
@@ -291,7 +291,7 @@ func TestDecrypt(t *testing.T) {
 			Expected: map[Key]string{
 				MustMakeKey("my", "testKey"): `{"inner":"[secret]"}`,
 			},
-			SecureKeys: []Key{MustMakeKey("my", "testKey")},
+			SecureKeys:	[]Key{MustMakeKey("my", "testKey")},
 		},
 		{
 			Config: Map{
@@ -301,7 +301,7 @@ func TestDecrypt(t *testing.T) {
 			Expected: map[Key]string{
 				MustMakeKey("my", "testKey"): `[{"inner":"[secret]"},"[secret]"]`,
 			},
-			SecureKeys: []Key{MustMakeKey("my", "testKey")},
+			SecureKeys:	[]Key{MustMakeKey("my", "testKey")},
 		},
 	}
 
@@ -325,184 +325,184 @@ func TestGetSuccess(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Key            string
-		Path           bool
-		Config         Map
-		Expected       Value
-		ExpectNotFound bool
+		Key		string
+		Path		bool
+		Config		Map
+		Expected	Value
+		ExpectNotFound	bool
 	}{
 		{
-			Key: "my:testKey",
+			Key:	"my:testKey",
 			Config: Map{
 				MustMakeKey("my", "testKey"): NewValue("testValue"),
 			},
-			Expected: NewValue("testValue"),
+			Expected:	NewValue("testValue"),
 		},
 		{
-			Key: "my:testKey",
+			Key:	"my:testKey",
 			Config: Map{
 				MustMakeKey("my", "testKey"): NewSecureValue("secureValue"),
 			},
-			Expected: NewSecureValue("secureValue"),
+			Expected:	NewSecureValue("secureValue"),
 		},
 		{
-			Key: "my:test.Key",
+			Key:	"my:test.Key",
 			Config: Map{
 				MustMakeKey("my", "test.Key"): NewValue("testValue"),
 			},
-			Expected: NewValue("testValue"),
+			Expected:	NewValue("testValue"),
 		},
 		{
-			Key:  "my:0",
-			Path: true,
+			Key:	"my:0",
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "0"): NewValue("testValue"),
 			},
-			Expected: NewValue("testValue"),
+			Expected:	NewValue("testValue"),
 		},
 		{
-			Key:  `my:["testKey"]`,
-			Path: true,
+			Key:	`my:["testKey"]`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "testKey"): NewValue("testValue"),
 			},
-			Expected: NewValue("testValue"),
+			Expected:	NewValue("testValue"),
 		},
 		{
-			Key:  `my:outer.inner`,
-			Path: true,
+			Key:	`my:outer.inner`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":"value"}`),
 			},
-			Expected: NewValue("value"),
+			Expected:	NewValue("value"),
 		},
 		{
-			Key:  `my:outer.inner`,
-			Path: true,
+			Key:	`my:outer.inner`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":{"secure":"securevalue"}}`),
 			},
-			Expected: NewSecureValue("securevalue"),
+			Expected:	NewSecureValue("securevalue"),
 		},
 		{
-			Key:  `my:outer.inner`,
-			Path: true,
+			Key:	`my:outer.inner`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":true}`),
 			},
-			Expected: NewValue("true"),
+			Expected:	NewValue("true"),
 		},
 		{
-			Key:  `my:outer.inner`,
-			Path: true,
+			Key:	`my:outer.inner`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":false}`),
 			},
-			Expected: NewValue("false"),
+			Expected:	NewValue("false"),
 		},
 		{
-			Key:  `my:outer.inner`,
-			Path: true,
+			Key:	`my:outer.inner`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":100}`),
 			},
-			Expected: NewValue("100"),
+			Expected:	NewValue("100"),
 		},
 		{
-			Key:  `my:outer.inner`,
-			Path: true,
+			Key:	`my:outer.inner`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":-2}`),
 			},
-			Expected: NewValue("-2"),
+			Expected:	NewValue("-2"),
 		},
 		{
-			Key:  `my:outer.inner`,
-			Path: true,
+			Key:	`my:outer.inner`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":{"nested":"foo"}}`),
 			},
-			Expected: NewObjectValue(`{"nested":"foo"}`),
+			Expected:	NewObjectValue(`{"nested":"foo"}`),
 		},
 		{
-			Key:  `my:outer.inner`,
-			Path: true,
+			Key:	`my:outer.inner`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":{"nested":{"secure":"securevalue"}}}`),
 			},
-			Expected: NewSecureObjectValue(`{"nested":{"secure":"securevalue"}}`),
+			Expected:	NewSecureObjectValue(`{"nested":{"secure":"securevalue"}}`),
 		},
 		{
-			Key:  `my:outer.inner`,
-			Path: true,
+			Key:	`my:outer.inner`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":{"nested":{"a":"b","secure":"val"}}}`),
 			},
-			Expected: NewObjectValue(`{"nested":{"a":"b","secure":"val"}}`),
+			Expected:	NewObjectValue(`{"nested":{"a":"b","secure":"val"}}`),
 		},
 		{
-			Key:  `my:testKey`,
-			Path: true,
+			Key:	`my:testKey`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "testKey"): NewObjectValue(`["a"]`),
 			},
-			Expected: NewObjectValue(`["a"]`),
+			Expected:	NewObjectValue(`["a"]`),
 		},
 		{
-			Key:  `my:names[0]`,
-			Path: true,
+			Key:	`my:names[0]`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "names"): NewObjectValue(`["a","b","c"]`),
 			},
-			Expected: NewValue("a"),
+			Expected:	NewValue("a"),
 		},
 		{
-			Key:  `my:names[1]`,
-			Path: true,
+			Key:	`my:names[1]`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "names"): NewObjectValue(`["a","b","c"]`),
 			},
-			Expected: NewValue("b"),
+			Expected:	NewValue("b"),
 		},
 		{
-			Key:  `my:names[2]`,
-			Path: true,
+			Key:	`my:names[2]`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "names"): NewObjectValue(`["a","b","c"]`),
 			},
-			Expected: NewValue("c"),
+			Expected:	NewValue("c"),
 		},
 		{
-			Key:  `my:names[3]`,
-			Path: true,
+			Key:	`my:names[3]`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "names"): NewObjectValue(`["a","b","c"]`),
 			},
-			ExpectNotFound: true,
+			ExpectNotFound:	true,
 		},
 		{
-			Key:  `my:outer.inner.nested`,
-			Path: true,
+			Key:	`my:outer.inner.nested`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":"hi"}`),
 			},
-			ExpectNotFound: true,
+			ExpectNotFound:	true,
 		},
 		{
-			Key:  `my:parent.nested`,
-			Path: true,
+			Key:	`my:parent.nested`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":12321123131}`),
 			},
-			Expected: NewValue("12321123131"),
+			Expected:	NewValue("12321123131"),
 		},
 		{
-			Key:  `my:parent.nested`,
-			Path: true,
+			Key:	`my:parent.nested`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":4.2}`),
 			},
-			Expected: NewValue("4.2"),
+			Expected:	NewValue("4.2"),
 		},
 	}
 
@@ -531,12 +531,12 @@ func TestGetFail(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Key           string
-		ExpectedError string
+		Key		string
+		ExpectedError	string
 	}{
 		{
-			Key:           `my:["foo`,
-			ExpectedError: "invalid config key path: missing closing quote in property name",
+			Key:		`my:["foo`,
+			ExpectedError:	"invalid config key path: missing closing quote in property name",
 		},
 	}
 
@@ -561,18 +561,18 @@ func TestRemoveSuccess(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Key      string
-		Path     bool
-		Config   Map
-		Expected Map
+		Key		string
+		Path		bool
+		Config		Map
+		Expected	Map
 	}{
 		{
-			Key:      "my:testKey",
-			Config:   Map{},
-			Expected: Map{},
+			Key:		"my:testKey",
+			Config:		Map{},
+			Expected:	Map{},
 		},
 		{
-			Key: "my:testKey",
+			Key:	"my:testKey",
 			Config: Map{
 				MustMakeKey("my", "anotherTestKey"): NewValue("testValue"),
 			},
@@ -581,40 +581,40 @@ func TestRemoveSuccess(t *testing.T) {
 			},
 		},
 		{
-			Key: "my:testKey",
+			Key:	"my:testKey",
 			Config: Map{
 				MustMakeKey("my", "testKey"): NewValue("testValue"),
 			},
-			Expected: Map{},
+			Expected:	Map{},
 		},
 		{
-			Key: "my:anotherTestKey",
+			Key:	"my:anotherTestKey",
 			Config: Map{
-				MustMakeKey("my", "testKey"):        NewValue("testValue"),
-				MustMakeKey("my", "anotherTestKey"): NewValue("anotherTestValue"),
+				MustMakeKey("my", "testKey"):		NewValue("testValue"),
+				MustMakeKey("my", "anotherTestKey"):	NewValue("anotherTestValue"),
 			},
 			Expected: Map{
 				MustMakeKey("my", "testKey"): NewValue("testValue"),
 			},
 		},
 		{
-			Key: "my:testKey",
+			Key:	"my:testKey",
 			Config: Map{
 				MustMakeKey("my", "testKey"): NewSecureValue("secureValue"),
 			},
-			Expected: Map{},
+			Expected:	Map{},
 		},
 		{
-			Key:  `my:outer`,
-			Path: true,
+			Key:	`my:outer`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":"value"}`),
 			},
-			Expected: Map{},
+			Expected:	Map{},
 		},
 		{
-			Key:  `my:outer.inner`,
-			Path: true,
+			Key:	`my:outer.inner`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":"value"}`),
 			},
@@ -623,8 +623,8 @@ func TestRemoveSuccess(t *testing.T) {
 			},
 		},
 		{
-			Key:  `my:names[0]`,
-			Path: true,
+			Key:	`my:names[0]`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "names"): NewObjectValue(`["a","b","c"]`),
 			},
@@ -633,8 +633,8 @@ func TestRemoveSuccess(t *testing.T) {
 			},
 		},
 		{
-			Key:  `my:names[1]`,
-			Path: true,
+			Key:	`my:names[1]`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "names"): NewObjectValue(`["a","b","c"]`),
 			},
@@ -643,8 +643,8 @@ func TestRemoveSuccess(t *testing.T) {
 			},
 		},
 		{
-			Key:  `my:names[2]`,
-			Path: true,
+			Key:	`my:names[2]`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "names"): NewObjectValue(`["a","b","c"]`),
 			},
@@ -653,8 +653,8 @@ func TestRemoveSuccess(t *testing.T) {
 			},
 		},
 		{
-			Key:  `my:names[3]`,
-			Path: true,
+			Key:	`my:names[3]`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "names"): NewObjectValue(`["a","b","c"]`),
 			},
@@ -663,8 +663,8 @@ func TestRemoveSuccess(t *testing.T) {
 			},
 		},
 		{
-			Key:  `my:outer.inner.nested`,
-			Path: true,
+			Key:	`my:outer.inner.nested`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":{"nested": "value"}}`),
 			},
@@ -673,8 +673,8 @@ func TestRemoveSuccess(t *testing.T) {
 			},
 		},
 		{
-			Key:  `my:outer[0].nested`,
-			Path: true,
+			Key:	`my:outer[0].nested`,
+			Path:	true,
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`[{"nested": "value"}]`),
 			},
@@ -702,21 +702,21 @@ func TestRemoveFail(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Key           string
-		Config        Map
-		ExpectedError string
+		Key		string
+		Config		Map
+		ExpectedError	string
 	}{
 		{
-			Key:           `my:["foo`,
-			Config:        Map{},
-			ExpectedError: "invalid config key path: missing closing quote in property name",
+			Key:		`my:["foo`,
+			Config:		Map{},
+			ExpectedError:	"invalid config key path: missing closing quote in property name",
 		},
 		{
-			Key: `my:foo.bar`,
+			Key:	`my:foo.bar`,
 			Config: Map{
 				MustMakeKey("my", "foo"): NewObjectValue(`{"bar":"baz","secure":"myvalue"}`),
 			},
-			ExpectedError: "bar.bar: maps with the single key \"secure\" are reserved",
+			ExpectedError:	"bar.bar: maps with the single key \"secure\" are reserved",
 		},
 	}
 
@@ -738,119 +738,119 @@ func TestSetSuccess(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Key      string
-		Value    Value
-		Path     bool
-		Config   Map
-		Expected Map
+		Key		string
+		Value		Value
+		Path		bool
+		Config		Map
+		Expected	Map
 	}{
 		{
-			Key:   "my:testKey",
-			Value: NewValue("testValue"),
+			Key:	"my:testKey",
+			Value:	NewValue("testValue"),
 			Expected: Map{
 				MustMakeKey("my", "testKey"): NewValue("testValue"),
 			},
 		},
 		{
-			Key:   "my:anotherTestKey",
-			Value: NewValue("anotherTestValue"),
+			Key:	"my:anotherTestKey",
+			Value:	NewValue("anotherTestValue"),
 			Config: Map{
 				MustMakeKey("my", "testKey"): NewValue("testValue"),
 			},
 			Expected: Map{
-				MustMakeKey("my", "testKey"):        NewValue("testValue"),
-				MustMakeKey("my", "anotherTestKey"): NewValue("anotherTestValue"),
+				MustMakeKey("my", "testKey"):		NewValue("testValue"),
+				MustMakeKey("my", "anotherTestKey"):	NewValue("anotherTestValue"),
 			},
 		},
 		{
-			Key:   "my:0",
-			Value: NewValue("testValue"),
+			Key:	"my:0",
+			Value:	NewValue("testValue"),
 			Expected: Map{
 				MustMakeKey("my", "0"): NewValue("testValue"),
 			},
 		},
 		{
-			Key:   "my:true",
-			Value: NewValue("testValue"),
+			Key:	"my:true",
+			Value:	NewValue("testValue"),
 			Expected: Map{
 				MustMakeKey("my", "true"): NewValue("testValue"),
 			},
 		},
 		{
-			Key:   "my:test.Key",
-			Value: NewValue("testValue"),
+			Key:	"my:test.Key",
+			Value:	NewValue("testValue"),
 			Expected: Map{
 				MustMakeKey("my", "test.Key"): NewValue("testValue"),
 			},
 		},
 		{
-			Key:   "my:testKey",
-			Path:  true,
-			Value: NewValue("testValue"),
+			Key:	"my:testKey",
+			Path:	true,
+			Value:	NewValue("testValue"),
 			Expected: Map{
 				MustMakeKey("my", "testKey"): NewValue("testValue"),
 			},
 		},
 		{
-			Key:   "my:0",
-			Path:  true,
-			Value: NewValue("testValue"),
+			Key:	"my:0",
+			Path:	true,
+			Value:	NewValue("testValue"),
 			Expected: Map{
 				MustMakeKey("my", "0"): NewValue("testValue"),
 			},
 		},
 		{
-			Key:   "my:true",
-			Path:  true,
-			Value: NewValue("testValue"),
+			Key:	"my:true",
+			Path:	true,
+			Value:	NewValue("testValue"),
 			Expected: Map{
 				MustMakeKey("my", "true"): NewValue("testValue"),
 			},
 		},
 		{
-			Key:   `my:["0"]`,
-			Path:  true,
-			Value: NewValue("testValue"),
+			Key:	`my:["0"]`,
+			Path:	true,
+			Value:	NewValue("testValue"),
 			Expected: Map{
 				MustMakeKey("my", "0"): NewValue("testValue"),
 			},
 		},
 		{
-			Key:   `my:["true"]`,
-			Path:  true,
-			Value: NewValue("testValue"),
+			Key:	`my:["true"]`,
+			Path:	true,
+			Value:	NewValue("testValue"),
 			Expected: Map{
 				MustMakeKey("my", "true"): NewValue("testValue"),
 			},
 		},
 		{
-			Key:   `my:["test.Key"]`,
-			Path:  true,
-			Value: NewValue("testValue"),
+			Key:	`my:["test.Key"]`,
+			Path:	true,
+			Value:	NewValue("testValue"),
 			Expected: Map{
 				MustMakeKey("my", "test.Key"): NewValue("testValue"),
 			},
 		},
 		{
-			Key:   `my:nested["test.Key"]`,
-			Path:  true,
-			Value: NewValue("value"),
+			Key:	`my:nested["test.Key"]`,
+			Path:	true,
+			Value:	NewValue("value"),
 			Expected: Map{
 				MustMakeKey("my", "nested"): NewObjectValue(`{"test.Key":"value"}`),
 			},
 		},
 		{
-			Key:   `my:outer.inner`,
-			Path:  true,
-			Value: NewValue("value"),
+			Key:	`my:outer.inner`,
+			Path:	true,
+			Value:	NewValue("value"),
 			Expected: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":"value"}`),
 			},
 		},
 		{
-			Key:   `my:outer.inner`,
-			Path:  true,
-			Value: NewValue("value"),
+			Key:	`my:outer.inner`,
+			Path:	true,
+			Value:	NewValue("value"),
 			Config: Map{
 				MustMakeKey("my", "outer"): NewValue("value"),
 			},
@@ -859,9 +859,9 @@ func TestSetSuccess(t *testing.T) {
 			},
 		},
 		{
-			Key:   `my:outer.inner`,
-			Path:  true,
-			Value: NewValue("value"),
+			Key:	`my:outer.inner`,
+			Path:	true,
+			Value:	NewValue("value"),
 			Config: Map{
 				MustMakeKey("my", "outer"): NewSecureValue("securevalue"),
 			},
@@ -870,73 +870,73 @@ func TestSetSuccess(t *testing.T) {
 			},
 		},
 		{
-			Key:   `my:outer.inner`,
-			Path:  true,
-			Value: NewValue("true"),
+			Key:	`my:outer.inner`,
+			Path:	true,
+			Value:	NewValue("true"),
 			Expected: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":true}`),
 			},
 		},
 		{
-			Key:   `my:outer.inner`,
-			Path:  true,
-			Value: NewValue("false"),
+			Key:	`my:outer.inner`,
+			Path:	true,
+			Value:	NewValue("false"),
 			Expected: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":false}`),
 			},
 		},
 		{
-			Key:   `my:outer.inner`,
-			Path:  true,
-			Value: NewValue("10"),
+			Key:	`my:outer.inner`,
+			Path:	true,
+			Value:	NewValue("10"),
 			Expected: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":10}`),
 			},
 		},
 		{
-			Key:   `my:outer.inner`,
-			Path:  true,
-			Value: NewValue("0"),
+			Key:	`my:outer.inner`,
+			Path:	true,
+			Value:	NewValue("0"),
 			Expected: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":0}`),
 			},
 		},
 		{
-			Key:   `my:outer.inner`,
-			Path:  true,
-			Value: NewValue("-1"),
+			Key:	`my:outer.inner`,
+			Path:	true,
+			Value:	NewValue("-1"),
 			Expected: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":-1}`),
 			},
 		},
 		{
-			Key:   `my:outer.inner`,
-			Path:  true,
-			Value: NewValue("00"),
+			Key:	`my:outer.inner`,
+			Path:	true,
+			Value:	NewValue("00"),
 			Expected: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":"00"}`),
 			},
 		},
 		{
-			Key:   `my:outer.inner`,
-			Path:  true,
-			Value: NewValue("01"),
+			Key:	`my:outer.inner`,
+			Path:	true,
+			Value:	NewValue("01"),
 			Expected: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":"01"}`),
 			},
 		},
 		{
-			Key:   `my:outer.inner`,
-			Path:  true,
-			Value: NewValue("0123456"),
+			Key:	`my:outer.inner`,
+			Path:	true,
+			Value:	NewValue("0123456"),
 			Expected: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":"0123456"}`),
 			},
 		},
 		{
-			Key:   `my:array[0]`,
-			Path:  true,
-			Value: NewValue("value"),
+			Key:	`my:array[0]`,
+			Path:	true,
+			Value:	NewValue("value"),
 			Config: Map{
 				MustMakeKey("my", "array"): NewValue("value"),
 			},
@@ -945,9 +945,9 @@ func TestSetSuccess(t *testing.T) {
 			},
 		},
 		{
-			Key:   `my:array[0]`,
-			Path:  true,
-			Value: NewValue("value"),
+			Key:	`my:array[0]`,
+			Path:	true,
+			Value:	NewValue("value"),
 			Config: Map{
 				MustMakeKey("my", "array"): NewSecureValue("value"),
 			},
@@ -956,9 +956,9 @@ func TestSetSuccess(t *testing.T) {
 			},
 		},
 		{
-			Key:   `my:outer.inner`,
-			Path:  true,
-			Value: NewValue("value"),
+			Key:	`my:outer.inner`,
+			Path:	true,
+			Value:	NewValue("value"),
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"existing":"existingValue"}`),
 			},
@@ -967,41 +967,41 @@ func TestSetSuccess(t *testing.T) {
 			},
 		},
 		{
-			Key:   `my:outer.inner`,
-			Path:  true,
-			Value: NewSecureValue("securevalue"),
+			Key:	`my:outer.inner`,
+			Path:	true,
+			Value:	NewSecureValue("securevalue"),
 			Expected: Map{
 				MustMakeKey("my", "outer"): NewSecureObjectValue(`{"inner":{"secure":"securevalue"}}`),
 			},
 		},
 		{
-			Key:   `my:outer.inner.nested`,
-			Path:  true,
-			Value: NewValue("value"),
+			Key:	`my:outer.inner.nested`,
+			Path:	true,
+			Value:	NewValue("value"),
 			Expected: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":{"nested":"value"}}`),
 			},
 		},
 		{
-			Key:   `my:name[0]`,
-			Path:  true,
-			Value: NewValue("value"),
+			Key:	`my:name[0]`,
+			Path:	true,
+			Value:	NewValue("value"),
 			Expected: Map{
 				MustMakeKey("my", "name"): NewObjectValue(`["value"]`),
 			},
 		},
 		{
-			Key:   `my:name[0][0]`,
-			Path:  true,
-			Value: NewValue("value"),
+			Key:	`my:name[0][0]`,
+			Path:	true,
+			Value:	NewValue("value"),
 			Expected: Map{
 				MustMakeKey("my", "name"): NewObjectValue(`[["value"]]`),
 			},
 		},
 		{
-			Key:   `my:name[0]`,
-			Path:  true,
-			Value: NewValue("value"),
+			Key:	`my:name[0]`,
+			Path:	true,
+			Value:	NewValue("value"),
 			Config: Map{
 				MustMakeKey("my", "name"): NewObjectValue(`["a","b","c"]`),
 			},
@@ -1010,9 +1010,9 @@ func TestSetSuccess(t *testing.T) {
 			},
 		},
 		{
-			Key:   `my:name[1]`,
-			Path:  true,
-			Value: NewValue("value"),
+			Key:	`my:name[1]`,
+			Path:	true,
+			Value:	NewValue("value"),
 			Config: Map{
 				MustMakeKey("my", "name"): NewObjectValue(`["a","b","c"]`),
 			},
@@ -1021,9 +1021,9 @@ func TestSetSuccess(t *testing.T) {
 			},
 		},
 		{
-			Key:   `my:name[2]`,
-			Path:  true,
-			Value: NewValue("value"),
+			Key:	`my:name[2]`,
+			Path:	true,
+			Value:	NewValue("value"),
 			Config: Map{
 				MustMakeKey("my", "name"): NewObjectValue(`["a","b","c"]`),
 			},
@@ -1032,9 +1032,9 @@ func TestSetSuccess(t *testing.T) {
 			},
 		},
 		{
-			Key:   `my:name[3]`,
-			Path:  true,
-			Value: NewValue("value"),
+			Key:	`my:name[3]`,
+			Path:	true,
+			Value:	NewValue("value"),
 			Config: Map{
 				MustMakeKey("my", "name"): NewObjectValue(`["a","b","c"]`),
 			},
@@ -1043,9 +1043,9 @@ func TestSetSuccess(t *testing.T) {
 			},
 		},
 		{
-			Key:   `my:name[3][0]`,
-			Path:  true,
-			Value: NewValue("value"),
+			Key:	`my:name[3][0]`,
+			Path:	true,
+			Value:	NewValue("value"),
 			Config: Map{
 				MustMakeKey("my", "name"): NewObjectValue(`["a","b","c"]`),
 			},
@@ -1054,9 +1054,9 @@ func TestSetSuccess(t *testing.T) {
 			},
 		},
 		{
-			Key:   `my:name[3][0]nested`,
-			Path:  true,
-			Value: NewValue("value"),
+			Key:	`my:name[3][0]nested`,
+			Path:	true,
+			Value:	NewValue("value"),
 			Config: Map{
 				MustMakeKey("my", "name"): NewObjectValue(`["a","b","c"]`),
 			},
@@ -1065,9 +1065,9 @@ func TestSetSuccess(t *testing.T) {
 			},
 		},
 		{
-			Key:   `my:name[3].foo.bar`,
-			Path:  true,
-			Value: NewValue("value"),
+			Key:	`my:name[3].foo.bar`,
+			Path:	true,
+			Value:	NewValue("value"),
 			Config: Map{
 				MustMakeKey("my", "name"): NewObjectValue(`["a","b","c"]`),
 			},
@@ -1076,17 +1076,17 @@ func TestSetSuccess(t *testing.T) {
 			},
 		},
 		{
-			Key:   `my:servers[0].name`,
-			Path:  true,
-			Value: NewValue("foo"),
+			Key:	`my:servers[0].name`,
+			Path:	true,
+			Value:	NewValue("foo"),
 			Expected: Map{
 				MustMakeKey("my", "servers"): NewObjectValue(`[{"name":"foo"}]`),
 			},
 		},
 		{
-			Key:   `my:servers[0].host`,
-			Path:  true,
-			Value: NewValue("example"),
+			Key:	`my:servers[0].host`,
+			Path:	true,
+			Value:	NewValue("example"),
 			Config: Map{
 				MustMakeKey("my", "servers"): NewObjectValue(`[{"name":"foo"}]`),
 			},
@@ -1095,9 +1095,9 @@ func TestSetSuccess(t *testing.T) {
 			},
 		},
 		{
-			Key:   `my:name[0]`,
-			Path:  true,
-			Value: NewSecureValue("securevalue"),
+			Key:	`my:name[0]`,
+			Path:	true,
+			Value:	NewSecureValue("securevalue"),
 			Config: Map{
 				MustMakeKey("my", "name"): NewObjectValue(`["a","b","c"]`),
 			},
@@ -1106,101 +1106,101 @@ func TestSetSuccess(t *testing.T) {
 			},
 		},
 		{
-			Key:   `my:testKey`,
-			Value: NewValue("false"),
+			Key:	`my:testKey`,
+			Value:	NewValue("false"),
 			Expected: Map{
 				MustMakeKey("my", "testKey"): NewValue("false"),
 			},
 		},
 		{
-			Key:   `my:testKey`,
-			Value: NewValue("true"),
+			Key:	`my:testKey`,
+			Value:	NewValue("true"),
 			Expected: Map{
 				MustMakeKey("my", "testKey"): NewValue("true"),
 			},
 		},
 		{
-			Key:   `my:testKey`,
-			Value: NewValue("10"),
+			Key:	`my:testKey`,
+			Value:	NewValue("10"),
 			Expected: Map{
 				MustMakeKey("my", "testKey"): NewValue("10"),
 			},
 		},
 		{
-			Key:   `my:testKey`,
-			Value: NewValue("-1"),
+			Key:	`my:testKey`,
+			Value:	NewValue("-1"),
 			Expected: Map{
 				MustMakeKey("my", "testKey"): NewValue("-1"),
 			},
 		},
 		{
-			Key:   `my:testKey[0]`,
-			Path:  true,
-			Value: NewValue("false"),
+			Key:	`my:testKey[0]`,
+			Path:	true,
+			Value:	NewValue("false"),
 			Expected: Map{
 				MustMakeKey("my", "testKey"): NewObjectValue(`[false]`),
 			},
 		},
 		{
-			Key:   `my:testKey[0]`,
-			Path:  true,
-			Value: NewValue("true"),
+			Key:	`my:testKey[0]`,
+			Path:	true,
+			Value:	NewValue("true"),
 			Expected: Map{
 				MustMakeKey("my", "testKey"): NewObjectValue(`[true]`),
 			},
 		},
 		{
-			Key:   `my:testKey[0]`,
-			Path:  true,
-			Value: NewValue("10"),
+			Key:	`my:testKey[0]`,
+			Path:	true,
+			Value:	NewValue("10"),
 			Expected: Map{
 				MustMakeKey("my", "testKey"): NewObjectValue(`[10]`),
 			},
 		},
 		{
-			Key:   `my:testKey[0]`,
-			Path:  true,
-			Value: NewValue("0"),
+			Key:	`my:testKey[0]`,
+			Path:	true,
+			Value:	NewValue("0"),
 			Expected: Map{
 				MustMakeKey("my", "testKey"): NewObjectValue(`[0]`),
 			},
 		},
 		{
-			Key:   `my:testKey[0]`,
-			Path:  true,
-			Value: NewValue("-1"),
+			Key:	`my:testKey[0]`,
+			Path:	true,
+			Value:	NewValue("-1"),
 			Expected: Map{
 				MustMakeKey("my", "testKey"): NewObjectValue(`[-1]`),
 			},
 		},
 		{
-			Key:   `my:testKey[0]`,
-			Path:  true,
-			Value: NewValue("00"),
+			Key:	`my:testKey[0]`,
+			Path:	true,
+			Value:	NewValue("00"),
 			Expected: Map{
 				MustMakeKey("my", "testKey"): NewObjectValue(`["00"]`),
 			},
 		},
 		{
-			Key:   `my:testKey[0]`,
-			Path:  true,
-			Value: NewValue("01"),
+			Key:	`my:testKey[0]`,
+			Path:	true,
+			Value:	NewValue("01"),
 			Expected: Map{
 				MustMakeKey("my", "testKey"): NewObjectValue(`["01"]`),
 			},
 		},
 		{
-			Key:   `my:testKey[0]`,
-			Path:  true,
-			Value: NewValue("0123456"),
+			Key:	`my:testKey[0]`,
+			Path:	true,
+			Value:	NewValue("0123456"),
 			Expected: Map{
 				MustMakeKey("my", "testKey"): NewObjectValue(`["0123456"]`),
 			},
 		},
 		{
-			Key:   `my:key.secure`,
-			Path:  true,
-			Value: NewValue("value"),
+			Key:	`my:key.secure`,
+			Path:	true,
+			Value:	NewValue("value"),
 			Config: Map{
 				MustMakeKey("my", "key"): NewObjectValue(`{"bar":"baz"}`),
 			},
@@ -1209,9 +1209,9 @@ func TestSetSuccess(t *testing.T) {
 			},
 		},
 		{
-			Key:   `my:special.object`,
-			Path:  true,
-			Value: NewObjectValue(`{"foo":"bar","fizz":"buzz"}`),
+			Key:	`my:special.object`,
+			Path:	true,
+			Value:	NewObjectValue(`{"foo":"bar","fizz":"buzz"}`),
 			Config: Map{
 				MustMakeKey("my", "special"): NewObjectValue(`{"thing1":1,"thing2":2}`),
 			},
@@ -1245,91 +1245,91 @@ func TestSetFail(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Key           string
-		Config        Map
-		ExpectedError string
+		Key		string
+		Config		Map
+		ExpectedError	string
 	}{
 		// Syntax errors.
 		{
-			Key:           "my:root[",
-			ExpectedError: "invalid config key path: missing closing bracket in array index",
+			Key:		"my:root[",
+			ExpectedError:	"invalid config key path: missing closing bracket in array index",
 		},
 		{
-			Key:           `my:root["nested]`,
-			ExpectedError: "invalid config key path: missing closing quote in property name",
+			Key:		`my:root["nested]`,
+			ExpectedError:	"invalid config key path: missing closing quote in property name",
 		},
 		{
-			Key:           "my:root.array[abc]",
-			ExpectedError: "invalid config key path: invalid array index: strconv.ParseInt: parsing \"abc\": invalid syntax",
+			Key:		"my:root.array[abc]",
+			ExpectedError:	"invalid config key path: invalid array index: strconv.ParseInt: parsing \"abc\": invalid syntax",
 		},
 
 		// First path component must be a string.
 		{
-			Key:           `my:[""]`,
-			ExpectedError: "config key is empty",
+			Key:		`my:[""]`,
+			ExpectedError:	"config key is empty",
 		},
 		{
-			Key:           "my:[0]",
-			ExpectedError: "first path segement of config key must be a string",
+			Key:		"my:[0]",
+			ExpectedError:	"first path segement of config key must be a string",
 		},
 
 		// Index out of range.
 		{
-			Key:           `my:name[-1]`,
-			ExpectedError: "name[-1]: array index out of range",
+			Key:		`my:name[-1]`,
+			ExpectedError:	"name[-1]: array index out of range",
 		},
 		{
-			Key: `my:name[4]`,
+			Key:	`my:name[4]`,
 			Config: Map{
 				MustMakeKey("my", "name"): NewObjectValue(`["a","b","c"]`),
 			},
-			ExpectedError: "name[4]: array index out of range",
+			ExpectedError:	"name[4]: array index out of range",
 		},
 
 		// A "secure" key that is a map with a single string value is reserved by the system.
 		{
-			Key:           `my:key.secure`,
-			ExpectedError: "maps with the single key \"secure\" are reserved",
+			Key:		`my:key.secure`,
+			ExpectedError:	"maps with the single key \"secure\" are reserved",
 		},
 		{
-			Key:           `my:super.nested.map.secure`,
-			ExpectedError: "maps with the single key \"secure\" are reserved",
+			Key:		`my:super.nested.map.secure`,
+			ExpectedError:	"maps with the single key \"secure\" are reserved",
 		},
 
 		// Type mismatches.
 		{
-			Key: `my:outer.inner`,
+			Key:	`my:outer.inner`,
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue("[1,2,3]"),
 			},
-			ExpectedError: "outer.inner: key for an array must be an int",
+			ExpectedError:	"outer.inner: key for an array must be an int",
 		},
 		{
-			Key: `my:array[0]`,
+			Key:	`my:array[0]`,
 			Config: Map{
 				MustMakeKey("my", "array"): NewObjectValue(`{"inner":"value"}`),
 			},
-			ExpectedError: "array[0]: key for a map must be a string",
+			ExpectedError:	"array[0]: key for a map must be a string",
 		},
 		{
-			Key: `my:outer.inner.nested`,
+			Key:	`my:outer.inner.nested`,
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":"value"}`),
 			},
-			ExpectedError: "outer.inner: expected a map",
+			ExpectedError:	"outer.inner: expected a map",
 		},
 		{
-			Key: `my:outer.inner[0]`,
+			Key:	`my:outer.inner[0]`,
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":"value"}`),
 			},
-			ExpectedError: "outer.inner: expected an array",
+			ExpectedError:	"outer.inner: expected an array",
 		},
 
 		// Strict path parsing
 		{
-			Key:           `my:root.[1]"`,
-			ExpectedError: "invalid config key path: expected property name after '.'",
+			Key:		`my:root.[1]"`,
+			ExpectedError:	"invalid config key path: expected property name after '.'",
 		},
 	}
 
@@ -1355,8 +1355,8 @@ func TestCopyMap(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Config   Map
-		Expected Map
+		Config		Map
+		Expected	Map
 	}{
 		{
 			Config: Map{
@@ -1435,8 +1435,8 @@ func TestPropertyMap(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Config   Map
-		Expected resource.PropertyMap
+		Config		Map
+		Expected	resource.PropertyMap
 	}{
 		{
 			Config: Map{

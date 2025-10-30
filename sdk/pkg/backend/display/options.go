@@ -17,7 +17,7 @@ package display
 import (
 	"io"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
@@ -26,7 +26,7 @@ type Type int
 
 const (
 	// DisplayProgress displays an update as it progresses.
-	DisplayProgress Type = iota
+	DisplayProgress	Type	= iota
 	// DisplayDiff displays a rich diff.
 	DisplayDiff
 	// DisplayWatch displays watch output.
@@ -35,41 +35,41 @@ const (
 
 // Options controls how the output of events are rendered
 type Options struct {
-	Color                    colors.Colorization // colorization to apply to events.
-	ShowConfig               bool                // true if we should show configuration information.
-	ShowPolicyRemediations   bool                // true if we should show detailed policy remediations.
-	ShowResourceChanges      bool                // true if we should print detailed resource changes.
-	ShowReplacementSteps     bool                // true to show the replacement steps in the plan.
-	ShowSameResources        bool                // true to show the resources that aren't updated in addition to updates.
-	ShowReads                bool                // true to show resources that are being read in
-	TruncateOutput           bool                // true if we should truncate long outputs
-	SuppressOutputs          bool                // true to suppress output summarization, e.g. if contains sensitive info.
-	SuppressPermalink        bool                // true to suppress state permalink (including in DIY backends)
-	SummaryDiff              bool                // true if diff display should be summarized.
-	IsInteractive            bool                // true if we should display things interactively.
-	Type                     Type                // type of display (rich diff, progress, or query).
-	JSONDisplay              bool                // true if we should emit the entire diff as JSON.
-	EventLogPath             string              // the path to the file to use for logging events, if any.
-	Debug                    bool                // true to enable debug output.
-	Stdin                    io.Reader           // the reader to use for stdin. Defaults to os.Stdin if unset.
-	Stdout                   io.Writer           // the writer to use for stdout. Defaults to os.Stdout if unset.
-	Stderr                   io.Writer           // the writer to use for stderr. Defaults to os.Stderr if unset.
-	SuppressTimings          bool                // true to suppress displaying timings of resource actions
-	SuppressProgress         bool                // true to suppress displaying progress spinner.
-	ShowSecrets              bool                // true to display secrets in the output.
-	SuppressDiagEventsInDiff bool                // true to suppress displaying diagnostic events in the diff display
+	Color				colors.Colorization	// colorization to apply to events.
+	ShowConfig			bool			// true if we should show configuration information.
+	ShowPolicyRemediations		bool			// true if we should show detailed policy remediations.
+	ShowResourceChanges		bool			// true if we should print detailed resource changes.
+	ShowReplacementSteps		bool			// true to show the replacement steps in the plan.
+	ShowSameResources		bool			// true to show the resources that aren't updated in addition to updates.
+	ShowReads			bool			// true to show resources that are being read in
+	TruncateOutput			bool			// true if we should truncate long outputs
+	SuppressOutputs			bool			// true to suppress output summarization, e.g. if contains sensitive info.
+	SuppressPermalink		bool			// true to suppress state permalink (including in DIY backends)
+	SummaryDiff			bool			// true if diff display should be summarized.
+	IsInteractive			bool			// true if we should display things interactively.
+	Type				Type			// type of display (rich diff, progress, or query).
+	JSONDisplay			bool			// true if we should emit the entire diff as JSON.
+	EventLogPath			string			// the path to the file to use for logging events, if any.
+	Debug				bool			// true to enable debug output.
+	Stdin				io.Reader		// the reader to use for stdin. Defaults to os.Stdin if unset.
+	Stdout				io.Writer		// the writer to use for stdout. Defaults to os.Stdout if unset.
+	Stderr				io.Writer		// the writer to use for stderr. Defaults to os.Stderr if unset.
+	SuppressTimings			bool			// true to suppress displaying timings of resource actions
+	SuppressProgress		bool			// true to suppress displaying progress spinner.
+	ShowSecrets			bool			// true to display secrets in the output.
+	SuppressDiagEventsInDiff	bool			// true to suppress displaying diagnostic events in the diff display
 
 	// Copilot options
-	ShowLinkToCopilot   bool // true to display a 'explainFailure' link to Copilot.
-	ShowCopilotFeatures bool // true to display Copilot features like summaries and explanations.
+	ShowLinkToCopilot	bool	// true to display a 'explainFailure' link to Copilot.
+	ShowCopilotFeatures	bool	// true to display Copilot features like summaries and explanations.
 	// Copilot options that are ignored if ShowCopilotFeatures is false.
-	CopilotSummaryModel  string // the Copilot summary model to use (default: "gpt-4o-mini")
-	CopilotSummaryMaxLen int    // the maximum length of the Copilot summary. (default 80 characters)
+	CopilotSummaryModel	string	// the Copilot summary model to use (default: "gpt-4o-mini")
+	CopilotSummaryMaxLen	int	// the maximum length of the Copilot summary. (default 80 characters)
 
 	// Low level options
-	term                terminal.Terminal
-	DeterministicOutput bool // true to disable timing-based rendering
-	RenderOnDirty       bool // true to always render frames when marked dirty
+	term			terminal.Terminal
+	DeterministicOutput	bool	// true to disable timing-based rendering
+	RenderOnDirty		bool	// true to always render frames when marked dirty
 }
 
 func (opts Options) WithIsInteractive(isInteractive bool) Options {

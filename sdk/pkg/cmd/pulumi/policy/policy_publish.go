@@ -21,11 +21,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -36,9 +36,9 @@ import (
 func newPolicyPublishCmd() *cobra.Command {
 	var policyPublishCmd policyPublishCmd
 	cmd := &cobra.Command{
-		Use:   "publish [org-name]",
-		Args:  cmdutil.MaximumNArgs(1),
-		Short: "Publish a Policy Pack to the Pulumi Cloud",
+		Use:	"publish [org-name]",
+		Args:	cmdutil.MaximumNArgs(1),
+		Short:	"Publish a Policy Pack to the Pulumi Cloud",
 		Long: "Publish a Policy Pack to the Pulumi Cloud\n" +
 			"\n" +
 			"If an organization name is not specified, the default org (if set) or the current user account is used.",
@@ -51,8 +51,8 @@ func newPolicyPublishCmd() *cobra.Command {
 }
 
 type policyPublishCmd struct {
-	getwd      func() (string, error)
-	defaultOrg func(context.Context, backend.Backend, *workspace.Project) (string, error)
+	getwd		func() (string, error)
+	defaultOrg	func(context.Context, backend.Backend, *workspace.Project) (string, error)
 }
 
 func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager, args []string) error {
@@ -139,11 +139,11 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 	//
 
 	err = policyPack.Publish(ctx, backend.PublishOperation{
-		Root:       root,
-		PlugCtx:    plugctx,
-		PolicyPack: proj,
-		Scopes:     backend.CancellationScopes,
-		Metadata:   m,
+		Root:		root,
+		PlugCtx:	plugctx,
+		PolicyPack:	proj,
+		Scopes:		backend.CancellationScopes,
+		Metadata:	m,
 	})
 	if err != nil {
 		return err

@@ -47,20 +47,20 @@ import (
 // alter the Workspace Pulumi.yaml file, and setting config on a Stack will modify the Pulumi.<stack>.yaml file.
 // This is identical to the behavior of Pulumi CLI driven workspaces.
 type LocalWorkspace struct {
-	workDir                       string
-	pulumiHome                    string
-	program                       pulumi.RunFunc
-	envvars                       map[string]string
-	secretsProvider               string
-	repo                          *GitRepo
-	remote                        bool
-	remoteEnvVars                 map[string]EnvVarValue
-	preRunCommands                []string
-	remoteSkipInstallDependencies bool
-	remoteInheritSettings         bool
-	pulumiCommand                 PulumiCommand
-	remoteExecutorImage           *ExecutorImage
-	remoteAgentPoolID             string
+	workDir				string
+	pulumiHome			string
+	program				pulumi.RunFunc
+	envvars				map[string]string
+	secretsProvider			string
+	repo				*GitRepo
+	remote				bool
+	remoteEnvVars			map[string]EnvVarValue
+	preRunCommands			[]string
+	remoteSkipInstallDependencies	bool
+	remoteInheritSettings		bool
+	pulumiCommand			PulumiCommand
+	remoteExecutorImage		*ExecutorImage
+	remoteAgentPoolID		string
 }
 
 var settingsExtensions = []string{".yaml", ".yml", ".json"}
@@ -816,8 +816,8 @@ func (l *LocalWorkspace) StackOutputs(ctx context.Context, stackName string) (Ou
 		rawString := string(raw)
 		isSecret := strings.Contains(rawString, secretSentinel)
 		res[k] = OutputValue{
-			Value:  v,
-			Secret: isSecret,
+			Value:	v,
+			Secret:	isSecret,
 		}
 	}
 
@@ -967,18 +967,18 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 	}
 
 	l := &LocalWorkspace{
-		workDir:                       workDir,
-		preRunCommands:                lwOpts.PreRunCommands,
-		program:                       program,
-		pulumiHome:                    lwOpts.PulumiHome,
-		remote:                        lwOpts.Remote,
-		remoteEnvVars:                 lwOpts.RemoteEnvVars,
-		remoteSkipInstallDependencies: lwOpts.RemoteSkipInstallDependencies,
-		remoteExecutorImage:           lwOpts.RemoteExecutorImage,
-		remoteAgentPoolID:             lwOpts.RemoteAgentPoolID,
-		remoteInheritSettings:         lwOpts.RemoteInheritSettings,
-		repo:                          lwOpts.Repo,
-		pulumiCommand:                 pulumiCommand,
+		workDir:			workDir,
+		preRunCommands:			lwOpts.PreRunCommands,
+		program:			program,
+		pulumiHome:			lwOpts.PulumiHome,
+		remote:				lwOpts.Remote,
+		remoteEnvVars:			lwOpts.RemoteEnvVars,
+		remoteSkipInstallDependencies:	lwOpts.RemoteSkipInstallDependencies,
+		remoteExecutorImage:		lwOpts.RemoteExecutorImage,
+		remoteAgentPoolID:		lwOpts.RemoteAgentPoolID,
+		remoteInheritSettings:		lwOpts.RemoteInheritSettings,
+		repo:				lwOpts.Repo,
+		pulumiCommand:			pulumiCommand,
 	}
 
 	// If remote was specified, ensure the CLI supports it.
@@ -1034,49 +1034,49 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 // EnvVarValue represents the value of an envvar. A value can be a secret, which is passed along
 // to remote operations when used with remote workspaces, otherwise, it has no affect.
 type EnvVarValue struct {
-	Value  string
-	Secret bool
+	Value	string
+	Secret	bool
 }
 
 type localWorkspaceOptions struct {
 	// WorkDir is the directory to execute commands from and store state.
 	// Defaults to a tmp dir.
-	WorkDir string
+	WorkDir	string
 	// Program is the Pulumi Program to execute. If none is supplied,
 	// the program identified in $WORKDIR/Pulumi.yaml will be used instead.
-	Program pulumi.RunFunc
+	Program	pulumi.RunFunc
 	// PulumiHome overrides the metadata directory for pulumi commands.
 	// This customizes the location of $PULUMI_HOME where metadata is stored and plugins are installed.
-	PulumiHome string
+	PulumiHome	string
 	// PulumiCommand is the PulumiCommand instance to use. If none is
 	// supplied, the workspace will create an instance using the PulumiCommand
 	// CLI found in $PATH.
-	PulumiCommand PulumiCommand
+	PulumiCommand	PulumiCommand
 	// Project is the project settings for the workspace.
-	Project *workspace.Project
+	Project	*workspace.Project
 	// Stacks is a map of [stackName -> stack settings objects] to seed the workspace.
-	Stacks map[string]workspace.ProjectStack
+	Stacks	map[string]workspace.ProjectStack
 	// Repo is a git repo with a Pulumi Project to clone into the WorkDir.
-	Repo *GitRepo
+	Repo	*GitRepo
 	// Secrets Provider to use with the current Stack
-	SecretsProvider string
+	SecretsProvider	string
 	// EnvVars is a map of environment values scoped to the workspace.
 	// These values will be passed to all Workspace and Stack level commands.
-	EnvVars map[string]string
+	EnvVars	map[string]string
 	// Whether the workspace represents a remote workspace.
-	Remote bool
+	Remote	bool
 	// Remote environment variables to be passed to the remote Pulumi operation.
-	RemoteEnvVars map[string]EnvVarValue
+	RemoteEnvVars	map[string]EnvVarValue
 	// PreRunCommands is an optional list of arbitrary commands to run before the remote Pulumi operation is invoked.
-	PreRunCommands []string
+	PreRunCommands	[]string
 	// RemoteSkipInstallDependencies sets whether to skip the default dependency installation step
-	RemoteSkipInstallDependencies bool
+	RemoteSkipInstallDependencies	bool
 	// RemoteExecutorImage is the image to use for the remote Pulumi operation.
-	RemoteExecutorImage *ExecutorImage
+	RemoteExecutorImage	*ExecutorImage
 	// RemoteAgentPoolID is the agent pool (also called deployment runner pool) to use for the remote Pulumi operation.
-	RemoteAgentPoolID string
+	RemoteAgentPoolID	string
 	// RemoteInheritSettings sets whether to inherit settings from the remote workspace.
-	RemoteInheritSettings bool
+	RemoteInheritSettings	bool
 }
 
 // LocalWorkspaceOption is used to customize and configure a LocalWorkspace at initialization time.
@@ -1094,20 +1094,20 @@ func (o localWorkspaceOption) applyLocalWorkspaceOption(opts *localWorkspaceOpti
 // GitRepo contains info to acquire and setup a Pulumi program from a git repository.
 type GitRepo struct {
 	// URL to clone git repo
-	URL string
+	URL	string
 	// Optional path relative to the repo root specifying location of the pulumi program.
 	// Specifying this option will update the Workspace's WorkDir accordingly.
-	ProjectPath string
+	ProjectPath	string
 	// Optional branch to checkout.
-	Branch string
+	Branch	string
 	// Optional commit to checkout.
-	CommitHash string
+	CommitHash	string
 	// Optional function to execute after enlisting in the specified repo.
-	Setup SetupFn
+	Setup	SetupFn
 	// GitAuth is the different Authentication options for the Git repository
-	Auth *GitAuth
+	Auth	*GitAuth
 	// Shallow disables fetching the repo's entire history.
-	Shallow bool
+	Shallow	bool
 }
 
 // GitAuth is the authentication details that can be specified for a private Git repo.
@@ -1121,18 +1121,18 @@ type GitAuth struct {
 	// When using `SSHPrivateKeyPath`, the URL of the repository must be in the format
 	// git@github.com:org/repository.git - if the url is not in this format, then an error
 	// `unable to clone repo: invalid auth method` will be returned
-	SSHPrivateKeyPath string
+	SSHPrivateKeyPath	string
 	// The (contents) private key for access to the git repo.
 	// When using `SSHPrivateKey`, the URL of the repository must be in the format
 	// git@github.com:org/repository.git - if the url is not in this format, then an error
 	// `unable to clone repo: invalid auth method` will be returned
-	SSHPrivateKey string
+	SSHPrivateKey	string
 	// The password that pairs with a username or as part of an SSH Private Key
-	Password string
+	Password	string
 	// PersonalAccessToken is a Git personal access token in replacement of your password
-	PersonalAccessToken string
+	PersonalAccessToken	string
 	// Username is the username to use when authenticating to a git repository
-	Username string
+	Username	string
 }
 
 // SetupFn is a function to execute after enlisting in a git repo.
@@ -1463,9 +1463,9 @@ func defaultInlineProject(projectName string) (workspace.Project, error) {
 		return proj, err
 	}
 	proj = workspace.Project{
-		Name:    tokens.PackageName(projectName),
-		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
-		Main:    cwd,
+		Name:		tokens.PackageName(projectName),
+		Runtime:	workspace.NewProjectRuntimeInfo("go", nil),
+		Main:		cwd,
 	}
 
 	return proj, nil

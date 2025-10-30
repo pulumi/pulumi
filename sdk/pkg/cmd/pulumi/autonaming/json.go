@@ -32,7 +32,7 @@ type autonamingSectionJSON struct {
 
 	// Providers maps provider names to their configurations
 	// Key format: provider name (e.g., "aws")
-	Providers map[string]providerConfigJSON `json:"providers,omitempty"`
+	Providers	map[string]providerConfigJSON	`json:"providers,omitempty"`
 }
 
 // providerConfigJSON represents the configuration for a provider
@@ -41,7 +41,7 @@ type providerConfigJSON struct {
 
 	// Resources maps resource types to their specific configurations
 	// Key format: provider:module:type (e.g., "aws:s3/bucket:Bucket")
-	Resources map[string]namingConfigJSON `json:"resources,omitempty"`
+	Resources	map[string]namingConfigJSON	`json:"resources,omitempty"`
 }
 
 // namingConfigJSON represents the base configuration for resource naming.
@@ -49,12 +49,12 @@ type providerConfigJSON struct {
 type namingConfigJSON struct {
 	// Mode specifies the autonaming mode: default (standard Pulumi behavior),
 	// verbatim (use logical names), or disabled (require explicit names)
-	Mode *string `json:"mode,omitempty"`
+	Mode	*string	`json:"mode,omitempty"`
 
 	// Pattern is a template string for custom name generation.
 	// Example: "${stack}-${name}-${hex(6)}"
-	Pattern *string `json:"pattern,omitempty"`
+	Pattern	*string	`json:"pattern,omitempty"`
 
 	// Enforce prevents providers from modifying the specified naming pattern when true
-	Enforce *bool `json:"enforce,omitempty"`
+	Enforce	*bool	`json:"enforce,omitempty"`
 }

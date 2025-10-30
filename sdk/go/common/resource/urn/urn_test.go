@@ -93,8 +93,8 @@ func TestComponentAccess(t *testing.T) {
 	t.Parallel()
 
 	type ComponentTestCase struct {
-		urn      string
-		expected string
+		urn		string
+		expected	string
 	}
 
 	t.Run("Stack component", func(t *testing.T) {
@@ -190,20 +190,20 @@ func TestComponentAccess(t *testing.T) {
 			{urn: "urn:pulumi:stack::proj::qualified$type::", expected: ""},
 			{urn: "urn:pulumi:::::::", expected: ""},
 			{
-				urn:      "urn:pulumi::stack::proj::type::a-longer-name",
-				expected: "a-longer-name",
+				urn:		"urn:pulumi::stack::proj::type::a-longer-name",
+				expected:	"a-longer-name",
 			},
 			{
-				urn:      "urn:pulumi::stack::proj::type::a name with spaces",
-				expected: "a name with spaces",
+				urn:		"urn:pulumi::stack::proj::type::a name with spaces",
+				expected:	"a name with spaces",
 			},
 			{
-				urn:      "urn:pulumi::stack::proj::type::a-name-with::a-name-separator",
-				expected: "a-name-with::a-name-separator",
+				urn:		"urn:pulumi::stack::proj::type::a-name-with::a-name-separator",
+				expected:	"a-name-with::a-name-separator",
 			},
 			{
-				urn:      "urn:pulumi::stack::proj::type::a-name-with::many::name::separators",
-				expected: "a-name-with::many::name::separators",
+				urn:		"urn:pulumi::stack::proj::type::a-name-with::many::name::separators",
+				expected:	"a-name-with::many::name::separators",
 			},
 		}
 

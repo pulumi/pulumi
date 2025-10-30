@@ -29,17 +29,17 @@ type CreateUpdateConfig struct {
 // UpdateProgramRequest is the request type for updating (aka deploying) a Pulumi program.
 type UpdateProgramRequest struct {
 	// Properties from the Project file. Subset of pack.Package.
-	Name        string `json:"name"`
-	Runtime     string `json:"runtime"`
-	Main        string `json:"main"`
-	Description string `json:"description"`
+	Name		string	`json:"name"`
+	Runtime		string	`json:"runtime"`
+	Main		string	`json:"main"`
+	Description	string	`json:"description"`
 
-	Options UpdateOptions `json:"options"`
+	Options	UpdateOptions	`json:"options"`
 
 	// Configuration values.
-	Config map[string]ConfigValue `json:"config"`
+	Config	map[string]ConfigValue	`json:"config"`
 
-	Metadata UpdateMetadata `json:"metadata"`
+	Metadata	UpdateMetadata	`json:"metadata"`
 }
 
 // UpdateOptions is the set of operations for configuring the output of an update.
@@ -47,15 +47,15 @@ type UpdateProgramRequest struct {
 // Should generally mirror engine.UpdateOptions, but we clone it in this package to add
 // flexibility in case there is a breaking change in the engine-type.
 type UpdateOptions struct {
-	LocalPolicyPackPaths []string            `json:"localPolicyPackPaths"`
-	Color                colors.Colorization `json:"color"`
-	DryRun               bool                `json:"dryRun"`
-	Parallel             int32               `json:"parallel"`
-	ShowConfig           bool                `json:"showConfig"`
-	ShowReplacementSteps bool                `json:"showReplacementSteps"`
-	ShowSames            bool                `json:"showNames"`
-	Summary              bool                `json:"summary"`
-	Debug                bool                `json:"debug"`
+	LocalPolicyPackPaths	[]string		`json:"localPolicyPackPaths"`
+	Color			colors.Colorization	`json:"color"`
+	DryRun			bool			`json:"dryRun"`
+	Parallel		int32			`json:"parallel"`
+	ShowConfig		bool			`json:"showConfig"`
+	ShowReplacementSteps	bool			`json:"showReplacementSteps"`
+	ShowSames		bool			`json:"showNames"`
+	Summary			bool			`json:"summary"`
+	Debug			bool			`json:"debug"`
 }
 
 // UpdateMetadata describes optional metadata about an update.
@@ -64,10 +64,10 @@ type UpdateOptions struct {
 // flexibility in case there is a breaking change in the backend-type.
 type UpdateMetadata struct {
 	// Message is an optional message associated with the update.
-	Message string `json:"message"`
+	Message	string	`json:"message"`
 	// Environment contains optional data from the deploying environment. e.g. the current
 	// source code control commit information.
-	Environment map[string]string `json:"environment"`
+	Environment	map[string]string	`json:"environment"`
 }
 
 // EscEnvironmentMetadata describes the ESC Environments used in an update.
@@ -79,17 +79,17 @@ type EscEnvironmentMetadata struct {
 type MessageSeverity string
 
 const (
-	MessageSeverityWarning MessageSeverity = "warning"
-	MessageSeverityError   MessageSeverity = "error"
-	MessageSeverityInfo    MessageSeverity = "info"
+	MessageSeverityWarning	MessageSeverity	= "warning"
+	MessageSeverityError	MessageSeverity	= "error"
+	MessageSeverityInfo	MessageSeverity	= "info"
 )
 
 // Message is a message from the backend to be displayed to the user.
 type Message struct {
 	// Severity is the severity of the message.
-	Severity MessageSeverity `json:"severity,omitempty"`
+	Severity	MessageSeverity	`json:"severity,omitempty"`
 	// Message is the message to display to the user.
-	Message string `json:"message"`
+	Message	string	`json:"message"`
 }
 
 type AISettingsForUpdate struct {
@@ -100,44 +100,44 @@ type AISettingsForUpdate struct {
 type UpdateProgramResponse struct {
 	// UpdateID is the opaque identifier of the requested update. This value is needed to begin an update, as
 	// well as poll for its progress.
-	UpdateID string `json:"updateID"`
+	UpdateID	string	`json:"updateID"`
 
 	// RequiredPolicies is a list of required Policy Packs to run during the update.
-	RequiredPolicies []RequiredPolicy `json:"requiredPolicies,omitempty"`
+	RequiredPolicies	[]RequiredPolicy	`json:"requiredPolicies,omitempty"`
 
 	// Messages is a list of messages that should be displayed to the user.
-	Messages []Message `json:"messages,omitempty"`
+	Messages	[]Message	`json:"messages,omitempty"`
 
-	AISettings AISettingsForUpdate `json:"aiSettings,omitempty"`
+	AISettings	AISettingsForUpdate	`json:"aiSettings,omitempty"`
 }
 
 // StartUpdateRequest requests that an update starts getting applied to a stack.
 type StartUpdateRequest struct {
 	// Tags contains an updated set of Tags for the stack. If non-nil, will replace the current
 	// set of tags associated with the stack.
-	Tags map[StackTagName]string `json:"tags,omitempty"`
+	Tags	map[StackTagName]string	`json:"tags,omitempty"`
 
 	// JournalVersion indicates the maximum journal version the client supports.  If 0, journaling
 	// is not supported.
-	JournalVersion int64 `json:"journalVersion,omitempty"`
+	JournalVersion	int64	`json:"journalVersion,omitempty"`
 }
 
 // StartUpdateResponse is the result of the command to start an update.
 type StartUpdateResponse struct {
 	// Version is the version of the program once the update is complete.
 	// (Will be the current, unchanged value for previews.)
-	Version int `json:"version"`
+	Version	int	`json:"version"`
 
 	// Token is the lease token (if any) to be used to authorize operations on this update.
-	Token string `json:"token,omitempty"`
+	Token	string	`json:"token,omitempty"`
 
 	// TokenExpiration is a UNIX timestamp by which the token will expire.
-	TokenExpiration int64 `json:"tokenExpiration,omitempty"`
+	TokenExpiration	int64	`json:"tokenExpiration,omitempty"`
 
 	// JournalVersion indicates the maximum version of journal entries that should be
 	// sent to the server. Is expected to be less or equal than the JournalVersion we
 	// sent in the update request.  If 0, journaling is disabled.
-	JournalVersion int64 `json:"journalVersion,omitempty"`
+	JournalVersion	int64	`json:"journalVersion,omitempty"`
 }
 
 // UpdateEventKind is an enum for the type of update events.
@@ -145,16 +145,16 @@ type UpdateEventKind string
 
 const (
 	// StdoutEvent is used to mark the event being emitted to STDOUT.
-	StdoutEvent UpdateEventKind = "stdout"
+	StdoutEvent	UpdateEventKind	= "stdout"
 	// StderrEvent is used to mark the event being emitted to STDERR.
-	StderrEvent UpdateEventKind = "stderr"
+	StderrEvent	UpdateEventKind	= "stderr"
 )
 
 // UpdateEvent describes an event that happened on the Pulumi Cloud while processing an update.
 type UpdateEvent struct {
-	Index  string          `json:"index"`
-	Kind   UpdateEventKind `json:"kind"`
-	Fields map[string]any  `json:"fields"`
+	Index	string		`json:"index"`
+	Kind	UpdateEventKind	`json:"kind"`
+	Fields	map[string]any	`json:"fields"`
 }
 
 // UpdateStatus is an enum describing the current state during the lifecycle of an update.
@@ -162,22 +162,22 @@ type UpdateStatus string
 
 const (
 	// StatusNotStarted is returned when the Update has been created but not applied.
-	StatusNotStarted UpdateStatus = "not started"
+	StatusNotStarted	UpdateStatus	= "not started"
 	// StatusRequested is returned when the Update application has been requested but not started.
-	StatusRequested UpdateStatus = "requested"
+	StatusRequested	UpdateStatus	= "requested"
 	// StatusRunning is returned when the Update is in progress.
-	StatusRunning UpdateStatus = "running"
+	StatusRunning	UpdateStatus	= "running"
 	// StatusFailed is returned when the update has failed.
-	StatusFailed UpdateStatus = "failed"
+	StatusFailed	UpdateStatus	= "failed"
 	// StatusSucceeded is returned when the update has succeeded.
-	StatusSucceeded UpdateStatus = "succeeded"
+	StatusSucceeded	UpdateStatus	= "succeeded"
 )
 
 // UpdateResults returns a series of events and the current status of an update. The events can be filtered. See
 // API call for more details.
 type UpdateResults struct {
-	Status UpdateStatus  `json:"status"`
-	Events []UpdateEvent `json:"events"`
+	Status	UpdateStatus	`json:"status"`
+	Events	[]UpdateEvent	`json:"events"`
 
 	// ContinuationToken is an opaque value used to indiciate the end of the returned update
 	// results. Pass it in the next request to obtain subsequent update events.
@@ -187,30 +187,30 @@ type UpdateResults struct {
 	//
 	// A value of nil means that no new updates will be available. Everything has been returned to
 	// the client and the update has completed.
-	ContinuationToken *string `json:"continuationToken,omitempty"`
+	ContinuationToken	*string	`json:"continuationToken,omitempty"`
 }
 
 // UpdateProgram describes the metadata associated with an update's Pulumi program. Note that this does not
 // include the contents of the program itself.
 type UpdateProgram struct {
 	// Name is the name of the program.
-	Name string `json:"name"`
+	Name	string	`json:"name"`
 
 	// Runtime is the language runtime used to execute the program.
-	Runtime string `json:"runtime"`
+	Runtime	string	`json:"runtime"`
 
 	// Main is an optional redirect for the main program location. (e.g. a subfolder under Pulumi.yaml
 	// containing package.json.)
-	Main string `json:"main"`
+	Main	string	`json:"main"`
 
 	// Analyzers is the set of analyzers to run when this program is executed.
-	Analyzers []string `json:"analyzers"`
+	Analyzers	[]string	`json:"analyzers"`
 
 	// Destroy indicates whether or not this program is the nil program (i.e. the program that generates no resources).
-	Destroy bool `json:"destroy"`
+	Destroy	bool	`json:"destroy"`
 
 	// Refresh is true if this is a refresh-style update, which simply takes state from the current cloud resources.
-	Refresh bool `json:"refresh"`
+	Refresh	bool	`json:"refresh"`
 }
 
 // RenewUpdateLeaseRequest defines the body of a request to the update lease renewal endpoint of the service API.
@@ -219,27 +219,27 @@ type RenewUpdateLeaseRequest struct {
 	// DEPRECATED as of Pulumi API version 5+. Pulumi API will expect the update token
 	// in the Authorization header instead of this property. This property will be removed
 	// when the minimum supported API version on the service is raised to 5.
-	Token string `json:"token"`
+	Token	string	`json:"token"`
 	// The duration for which to renew the lease in seconds (maximum 300).
-	Duration int `json:"duration"`
+	Duration	int	`json:"duration"`
 }
 
 // RenewUpdateLeaseResponse defines the data returned by the update lease renewal endpoint of the service API.
 type RenewUpdateLeaseResponse struct {
 	// The renewed token.
-	Token string `json:"token"`
+	Token	string	`json:"token"`
 
 	// TokenExpiration is a UNIX timestamp by which the token will expire.
-	TokenExpiration int64 `json:"tokenExpiration,omitempty"`
+	TokenExpiration	int64	`json:"tokenExpiration,omitempty"`
 }
 
 const (
 	// UpdateStatusSucceeded indicates that an update completed successfully.
-	UpdateStatusSucceeded UpdateStatus = "succeeded"
+	UpdateStatusSucceeded	UpdateStatus	= "succeeded"
 	// UpdateStatusFailed indicates that an update completed with one or more failures.
-	UpdateStatusFailed UpdateStatus = "failed"
+	UpdateStatusFailed	UpdateStatus	= "failed"
 	// UpdateStatusCancelled indicates that an update completed due to cancellation.
-	UpdateStatusCancelled UpdateStatus = "cancelled"
+	UpdateStatusCancelled	UpdateStatus	= "cancelled"
 )
 
 // CompleteUpdateRequest defines the body of a request to the update completion endpoint of the service API.
@@ -251,10 +251,10 @@ type CompleteUpdateRequest struct {
 // API. The `Deployment` field is expected to contain a serialized `Deployment` value, the schema of which is indicated
 // by the `Version` field.
 type PatchUpdateCheckpointRequest struct {
-	IsInvalid  bool            `json:"isInvalid"`
-	Version    int             `json:"version"`
-	Features   []string        `json:"features,omitempty"`
-	Deployment json.RawMessage `json:"deployment,omitempty"`
+	IsInvalid	bool		`json:"isInvalid"`
+	Version		int		`json:"version"`
+	Features	[]string	`json:"features,omitempty"`
+	Deployment	json.RawMessage	`json:"deployment,omitempty"`
 }
 
 // PatchUpdateVerbatimCheckpointRequest defines the body of a request to a patch update checkpoint endpoint of the
@@ -264,11 +264,11 @@ type PatchUpdateCheckpointRequest struct {
 // Designed to be compatible with the PatchUpdateCheckpointDeltaRequest API, where formatting is critical in calculating
 // textual diffs.
 type PatchUpdateVerbatimCheckpointRequest struct {
-	Version           int             `json:"version"`
-	UntypedDeployment json.RawMessage `json:"untypedDeployment,omitempty"`
+	Version			int		`json:"version"`
+	UntypedDeployment	json.RawMessage	`json:"untypedDeployment,omitempty"`
 
 	// Idempotency key incremented by the client on every PATCH call within the same update.
-	SequenceNumber int `json:"sequenceNumber"`
+	SequenceNumber	int	`json:"sequenceNumber"`
 }
 
 // PatchUpdateCheckpointDeltaRequest defines the body of a request to the bandwidth-optimized version of the patch
@@ -277,29 +277,29 @@ type PatchUpdateVerbatimCheckpointRequest struct {
 // deployment. This conserves bandwidth on large resources.
 type PatchUpdateCheckpointDeltaRequest struct {
 	// Protocol version.
-	Version int `json:"version"`
+	Version	int	`json:"version"`
 
 	// SHA256 hash of the result of aplying the DeploymentDelta to the previously saved deployment.
-	CheckpointHash string `json:"checkpointHash"`
+	CheckpointHash	string	`json:"checkpointHash"`
 
 	// Idempotency key incremented by the client on every PATCH call within the same update.
-	SequenceNumber int `json:"sequenceNumber"`
+	SequenceNumber	int	`json:"sequenceNumber"`
 
 	// Textual diff that recovers the desired deployment JSON when applied to the previously saved deployment JSON.
-	DeploymentDelta json.RawMessage `json:"deploymentDelta,omitempty"`
+	DeploymentDelta	json.RawMessage	`json:"deploymentDelta,omitempty"`
 }
 
 // AppendUpdateLogEntryRequest defines the body of a request to the append update log entry endpoint of the service API.
 // No longer sent from the CLI, but the type definition is still required for backwards compat with older clients.
 type AppendUpdateLogEntryRequest struct {
-	Kind   string         `json:"kind"`
-	Fields map[string]any `json:"fields"`
+	Kind	string		`json:"kind"`
+	Fields	map[string]any	`json:"fields"`
 }
 
 // StackRenameRequest is the shape of the request to change an existing stack's name.
 // If either NewName or NewProject is the empty string, the current project/name will
 // be preserved. (But at least one should be set.)
 type StackRenameRequest struct {
-	NewName    string `json:"newName"`
-	NewProject string `json:"newProject"`
+	NewName		string	`json:"newName"`
+	NewProject	string	`json:"newProject"`
 }

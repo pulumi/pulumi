@@ -18,7 +18,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
@@ -101,70 +101,70 @@ func TestSerializeCheckpoint(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name             string
-		resources        []*resource.State
-		expectedVersion  int
-		expectedFeatures []string
+		name			string
+		resources		[]*resource.State
+		expectedVersion		int
+		expectedFeatures	[]string
 	}{
 		{
-			name: "v3 deployment with no features",
+			name:	"v3 deployment with no features",
 			resources: []*resource.State{
 				{
 					URN: "urn1",
 				},
 			},
-			expectedVersion:  3,
-			expectedFeatures: nil,
+			expectedVersion:	3,
+			expectedFeatures:	nil,
 		},
 		{
-			name: "v4 deployment with refreshBeforeUpdate",
+			name:	"v4 deployment with refreshBeforeUpdate",
 			resources: []*resource.State{
 				{
-					URN:                 "urn1",
-					RefreshBeforeUpdate: true,
+					URN:			"urn1",
+					RefreshBeforeUpdate:	true,
 				},
 			},
-			expectedVersion:  4,
-			expectedFeatures: []string{"refreshBeforeUpdate"},
+			expectedVersion:	4,
+			expectedFeatures:	[]string{"refreshBeforeUpdate"},
 		},
 		{
-			name: "v4 deployment with views",
+			name:	"v4 deployment with views",
 			resources: []*resource.State{
 				{
 					URN: "urn1",
 				},
 				{
-					URN:    "urn2",
-					Parent: "urn1",
-					ViewOf: "urn1",
+					URN:	"urn2",
+					Parent:	"urn1",
+					ViewOf:	"urn1",
 				},
 			},
-			expectedVersion:  4,
-			expectedFeatures: []string{"views"},
+			expectedVersion:	4,
+			expectedFeatures:	[]string{"views"},
 		},
 		{
-			name: "v4 deployment with hooks",
+			name:	"v4 deployment with hooks",
 			resources: []*resource.State{
 				{
-					URN: "urn1",
+					URN:	"urn1",
 					ResourceHooks: map[resource.HookType][]string{
 						resource.AfterCreate: {"hook1"},
 					},
 				},
 			},
-			expectedVersion:  4,
-			expectedFeatures: []string{"hooks"},
+			expectedVersion:	4,
+			expectedFeatures:	[]string{"hooks"},
 		},
 		{
-			name: "v4 deployment with taint",
+			name:	"v4 deployment with taint",
 			resources: []*resource.State{
 				{
-					URN:   "urn1",
-					Taint: true,
+					URN:	"urn1",
+					Taint:	true,
 				},
 			},
-			expectedVersion:  4,
-			expectedFeatures: []string{"taint"},
+			expectedVersion:	4,
+			expectedFeatures:	[]string{"taint"},
 		},
 	}
 	for _, tt := range tests {

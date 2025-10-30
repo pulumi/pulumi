@@ -19,7 +19,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -42,17 +42,17 @@ func TestCloudBackendReference(t *testing.T) {
 			// preferring what has already been configured.
 			stubClient := &client.Client{}
 			backend := &cloudBackend{
-				client:         stubClient,
-				currentProject: project,
-				d:              diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
+				client:		stubClient,
+				currentProject:	project,
+				d:		diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
 			}
 
 			ref := cloudBackendReference{
-				name:       stackName,
-				project:    tokens.Name(project.Name.String()),
-				defaultOrg: defaultOrg,
-				owner:      defaultOrg,
-				b:          backend,
+				name:		stackName,
+				project:	tokens.Name(project.Name.String()),
+				defaultOrg:	defaultOrg,
+				owner:		defaultOrg,
+				b:		backend,
 			}
 
 			stack := ref.String()
@@ -66,19 +66,19 @@ func TestCloudBackendReference(t *testing.T) {
 			// preferring what has already been configured.
 			stubClient := &client.Client{}
 			backend := &cloudBackend{
-				client:         stubClient,
-				currentProject: project,
-				d:              diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
+				client:		stubClient,
+				currentProject:	project,
+				d:		diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
 			}
 
 			someOtherOrg := "some-other-org"
 
 			ref := cloudBackendReference{
-				name:       stackName,
-				project:    tokens.Name(project.Name.String()),
-				defaultOrg: defaultOrg,
-				owner:      someOtherOrg,
-				b:          backend,
+				name:		stackName,
+				project:	tokens.Name(project.Name.String()),
+				defaultOrg:	defaultOrg,
+				owner:		someOtherOrg,
+				b:		backend,
 			}
 
 			stack := ref.String()
@@ -92,9 +92,9 @@ func TestCloudBackendReference(t *testing.T) {
 			// preferring what has already been configured.
 			stubClient := &client.Client{}
 			backend := &cloudBackend{
-				client:         stubClient,
-				currentProject: project,
-				d:              diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
+				client:		stubClient,
+				currentProject:	project,
+				d:		diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
 			}
 
 			otherProject := &workspace.Project{
@@ -102,11 +102,11 @@ func TestCloudBackendReference(t *testing.T) {
 			}
 
 			ref := cloudBackendReference{
-				name:       stackName,
-				project:    tokens.Name(otherProject.Name.String()),
-				defaultOrg: defaultOrg,
-				owner:      defaultOrg,
-				b:          backend,
+				name:		stackName,
+				project:	tokens.Name(otherProject.Name.String()),
+				defaultOrg:	defaultOrg,
+				owner:		defaultOrg,
+				b:		backend,
 			}
 
 			stack := ref.String()

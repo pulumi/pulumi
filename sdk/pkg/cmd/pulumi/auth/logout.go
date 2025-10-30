@@ -20,8 +20,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -33,8 +33,8 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var all bool
 
 	cmd := &cobra.Command{
-		Use:   "logout <url>",
-		Short: "Log out of the Pulumi Cloud",
+		Use:	"logout <url>",
+		Short:	"Log out of the Pulumi Cloud",
 		Long: "Log out of the Pulumi Cloud.\n" +
 			"\n" +
 			"This command deletes stored credentials on the local machine for a single login.\n" +
@@ -45,7 +45,7 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 			"\n\n" +
 			"If you would like to log out of all backends simultaneously, you can pass `--all`,\n\n" +
 			"    $ pulumi logout --all",
-		Args: cmdutil.MaximumNArgs(1),
+		Args:	cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// If a <cloud> was specified as an argument, use it.
 			if len(args) > 0 {

@@ -19,14 +19,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate"
+	backend_secrets "github.com/pulumi/pulumi/sdk/v3/pkg/backend/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/cloud"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/passphrase"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -171,17 +171,17 @@ type SecretsManagerState string
 
 const (
 	// The state of the stack's secret manager configuration is unchanged.
-	SecretsManagerUnchanged SecretsManagerState = "unchanged"
+	SecretsManagerUnchanged	SecretsManagerState	= "unchanged"
 
 	// The stack's secret manager configuration has changed and should be saved to
 	// the stack configuration file if possible. If saving is not possible, the
 	// configuration can be restored by falling back to the state file.
-	SecretsManagerShouldSave SecretsManagerState = "should-save"
+	SecretsManagerShouldSave	SecretsManagerState	= "should-save"
 
 	// The stack's secret manager configuration has changed and must be saved to the
 	// stack configuration file. Changes have been made that do not align with the
 	// state and so the state file cannot be used to restore the configuration.
-	SecretsManagerMustSave SecretsManagerState = "must-save"
+	SecretsManagerMustSave	SecretsManagerState	= "must-save"
 )
 
 // Creates a new stack secrets manager loader from the environment.
@@ -237,12 +237,12 @@ func (l *SecretsManagerLoader) GetSecretsManager(
 		sm, err = cloud.NewCloudSecretsManager(
 			ps,
 			ps.SecretsProvider,
-			false, /* rotateSecretsProvider */
+			false,	/* rotateSecretsProvider */
 		)
 	} else if ps.EncryptionSalt != "" {
 		sm, err = passphrase.NewPromptingPassphraseSecretsManager(
 			ps,
-			false, /* rotateSecretsProvider */
+			false,	/* rotateSecretsProvider */
 		)
 	} else {
 		var fallbackManager secrets.Manager

@@ -67,10 +67,10 @@ func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.
 	case int:
 		if parent.Array == nil {
 			parent.Array = &resource.ArrayDiff{
-				Adds:    make(map[int]resource.PropertyValue),
-				Deletes: make(map[int]resource.PropertyValue),
-				Sames:   make(map[int]resource.PropertyValue),
-				Updates: make(map[int]resource.ValueDiff),
+				Adds:		make(map[int]resource.PropertyValue),
+				Deletes:	make(map[int]resource.PropertyValue),
+				Sames:		make(map[int]resource.PropertyValue),
+				Updates:	make(map[int]resource.ValueDiff),
 			}
 		}
 
@@ -106,10 +106,10 @@ func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.
 	case string:
 		if parent.Object == nil {
 			parent.Object = &resource.ObjectDiff{
-				Adds:    make(resource.PropertyMap),
-				Deletes: make(resource.PropertyMap),
-				Sames:   make(resource.PropertyMap),
-				Updates: make(map[resource.PropertyKey]resource.ValueDiff),
+				Adds:		make(resource.PropertyMap),
+				Deletes:	make(resource.PropertyMap),
+				Sames:		make(resource.PropertyMap),
+				Updates:	make(map[resource.PropertyKey]resource.ValueDiff),
 			}
 		}
 

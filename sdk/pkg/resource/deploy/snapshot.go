@@ -20,8 +20,8 @@ import (
 	"runtime/debug"
 
 	"github.com/go-test/deep"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -31,11 +31,11 @@ import (
 // IDs, names, and properties; their dependencies; and more.  A snapshot is a diffable entity and can be used to create
 // or apply an infrastructure deployment plan in order to make reality match the snapshot state.
 type Snapshot struct {
-	Manifest          Manifest             // a deployment manifest of versions, checksums, and so on.
-	SecretsManager    secrets.Manager      // the manager to use use when serializing this snapshot.
-	Resources         []*resource.State    // fetches all resources and their associated states.
-	PendingOperations []resource.Operation // all currently pending resource operations.
-	Metadata          SnapshotMetadata     // metadata associated with the snapshot.
+	Manifest		Manifest		// a deployment manifest of versions, checksums, and so on.
+	SecretsManager		secrets.Manager		// the manager to use use when serializing this snapshot.
+	Resources		[]*resource.State	// fetches all resources and their associated states.
+	PendingOperations	[]resource.Operation	// all currently pending resource operations.
+	Metadata		SnapshotMetadata	// metadata associated with the snapshot.
 }
 
 // SnapshotMetadata contains metadata about a snapshot.
@@ -48,11 +48,11 @@ type SnapshotMetadata struct {
 // and invocation of the Pulumi engine that caused it.
 type SnapshotIntegrityErrorMetadata struct {
 	// The version of the Pulumi engine that caused the integrity error.
-	Version string
+	Version	string
 	// The command/invocation of the Pulumi engine that caused the integrity error.
-	Command string
+	Command	string
 	// The error message associated with the integrity error.
-	Error string
+	Error	string
 }
 
 // NewSnapshot creates a snapshot from the given arguments.  The resources must be in topologically sorted order.
@@ -62,11 +62,11 @@ func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
 	metadata SnapshotMetadata,
 ) *Snapshot {
 	return &Snapshot{
-		Manifest:          manifest,
-		SecretsManager:    secretsManager,
-		Resources:         resources,
-		PendingOperations: ops,
-		Metadata:          metadata,
+		Manifest:		manifest,
+		SecretsManager:		secretsManager,
+		Resources:		resources,
+		PendingOperations:	ops,
+		Metadata:		metadata,
 	}
 }
 
@@ -167,10 +167,10 @@ func (snap *Snapshot) Prune() []PruneResult {
 			// If we rewrote the URN or removed any dependencies, add a PruneResult.
 			if state.URN != newURN || len(removedDeps) > 0 {
 				results = append(results, PruneResult{
-					OldURN:              state.URN,
-					NewURN:              newURN,
-					Delete:              state.Delete,
-					RemovedDependencies: removedDeps,
+					OldURN:			state.URN,
+					NewURN:			newURN,
+					Delete:			state.Delete,
+					RemovedDependencies:	removedDeps,
 				})
 			}
 
@@ -196,14 +196,14 @@ func (snap *Snapshot) Prune() []PruneResult {
 // A PruneResult describes the changes made to a resource in a snapshot as a result of pruning dangling dependencies.
 type PruneResult struct {
 	// The URN of the resource before it was pruned.
-	OldURN resource.URN
+	OldURN	resource.URN
 	// The URN of the resource after it was pruned. This will differ from the OldURN if the resource URN was changed as a
 	// result of pruning (e.g. because a missing parent dependency was removed).
-	NewURN resource.URN
+	NewURN	resource.URN
 	// True if and only if the resource was pending deletion.
-	Delete bool
+	Delete	bool
 	// A list of dependencies that were removed as a result of pruning.
-	RemovedDependencies []resource.StateDependency
+	RemovedDependencies	[]resource.StateDependency
 }
 
 // Toposort attempts sorts this snapshot so that it is topologically sorted with respect to dependencies (where a
@@ -744,7 +744,7 @@ func (snap *Snapshot) withUpdatedResources(update func(*resource.State) *resourc
 	if !edited {
 		return snap
 	}
-	newSnap := *snap // shallow copy
+	newSnap := *snap	// shallow copy
 	newSnap.Resources = new
 	return &newSnap
 }
@@ -754,16 +754,16 @@ func (snap *Snapshot) withUpdatedResources(update func(*resource.State) *resourc
 // unparseable data).
 type SnapshotIntegrityError struct {
 	// The underlying error that caused this integrity error, if applicable.
-	Err error
+	Err	error
 
 	// The operation which caused the error. Defaults to SnapshotIntegrityWrite.
-	Op SnapshotIntegrityOperation
+	Op	SnapshotIntegrityOperation
 
 	// The stack trace at the point the error was raised.
-	Stack []byte
+	Stack	[]byte
 
 	// Metadata about the operation that caused the error, if available.
-	Metadata *SnapshotIntegrityErrorMetadata
+	Metadata	*SnapshotIntegrityErrorMetadata
 }
 
 // The set of operations alongside which snapshot integrity checks can be
@@ -772,9 +772,9 @@ type SnapshotIntegrityOperation int
 
 const (
 	// Snapshot integrity checks were performed at write time.
-	SnapshotIntegrityWrite SnapshotIntegrityOperation = 0
+	SnapshotIntegrityWrite	SnapshotIntegrityOperation	= 0
 	// Snapshot integrity checks were performed at read time.
-	SnapshotIntegrityRead SnapshotIntegrityOperation = 1
+	SnapshotIntegrityRead	SnapshotIntegrityOperation	= 1
 )
 
 // Creates a new snapshot integrity error with a message produced by the given
@@ -784,9 +784,9 @@ const (
 // unparseable data).
 func SnapshotIntegrityErrorf(format string, args ...any) error {
 	return &SnapshotIntegrityError{
-		Err:   fmt.Errorf(format, args...),
-		Op:    SnapshotIntegrityWrite,
-		Stack: debug.Stack(),
+		Err:	fmt.Errorf(format, args...),
+		Op:	SnapshotIntegrityWrite,
+		Stack:	debug.Stack(),
 	}
 }
 
@@ -807,10 +807,10 @@ func (s *SnapshotIntegrityError) Unwrap() error {
 // metadata.
 func (s *SnapshotIntegrityError) ForRead(snap *Snapshot) *SnapshotIntegrityError {
 	return &SnapshotIntegrityError{
-		Err:      s.Err,
-		Op:       SnapshotIntegrityRead,
-		Stack:    s.Stack,
-		Metadata: snap.Metadata.IntegrityErrorMetadata,
+		Err:		s.Err,
+		Op:		SnapshotIntegrityRead,
+		Stack:		s.Stack,
+		Metadata:	snap.Metadata.IntegrityErrorMetadata,
 	}
 }
 

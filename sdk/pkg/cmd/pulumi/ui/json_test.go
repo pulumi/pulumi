@@ -22,38 +22,38 @@ func Test_MakeJSONString(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name      string
-		input     any
-		multiline bool
-		expected  string
+		name		string
+		input		any
+		multiline	bool
+		expected	string
 	}{
 		{
-			name:      "simple-string/multiline",
-			input:     map[string]any{"my_password": "password"},
-			multiline: true,
+			name:		"simple-string/multiline",
+			input:		map[string]any{"my_password": "password"},
+			multiline:	true,
 			expected: `{
   "my_password": "password"
 }
 `,
 		},
 		{
-			name:     "simple-string",
-			input:    map[string]any{"my_password": "password"},
-			expected: `{"my_password":"password"}`,
+			name:		"simple-string",
+			input:		map[string]any{"my_password": "password"},
+			expected:	`{"my_password":"password"}`,
 		},
 		{
-			name:      "special-char-string/multiline",
-			input:     map[string]any{"special_password": "pass&word"},
-			multiline: true,
+			name:		"special-char-string/multiline",
+			input:		map[string]any{"special_password": "pass&word"},
+			multiline:	true,
 			expected: `{
   "special_password": "pass&word"
 }
 `,
 		},
 		{
-			name:     "special-char-string",
-			input:    map[string]any{"special_password": "pass&word"},
-			expected: `{"special_password":"pass&word"}`,
+			name:		"special-char-string",
+			input:		map[string]any{"special_password": "pass&word"},
+			expected:	`{"special_password":"pass&word"}`,
 		},
 	}
 	for _, tt := range tests {

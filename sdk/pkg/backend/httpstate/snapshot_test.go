@@ -37,12 +37,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate/client"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -69,9 +69,9 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 	ctx := context.Background()
 
 	stackID := client.StackIdentifier{
-		Owner:   "owner",
-		Project: "project",
-		Stack:   tokens.MustParseStackName("stack"),
+		Owner:		"owner",
+		Project:	"project",
+		Stack:		tokens.MustParseStackName("stack"),
 	}
 	updateID := "update-id"
 
@@ -86,9 +86,9 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 		require.NoError(t, err)
 
 		bytes, err := json.Marshal(&apitype.UntypedDeployment{
-			Version:    req.Version,
-			Features:   req.Features,
-			Deployment: req.Deployment,
+			Version:	req.Version,
+			Features:	req.Features,
+			Deployment:	req.Deployment,
 		})
 		require.NoError(t, err)
 		persistedState = json.RawMessage(bytes)
@@ -137,15 +137,15 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 		var result []apitype.APICapabilityConfig
 		if delta {
 			result = append(result, apitype.APICapabilityConfig{
-				Capability:    apitype.DeltaCheckpointUploads,
-				Configuration: json.RawMessage(`{"checkpointCutoffSizeBytes":1}`),
+				Capability:	apitype.DeltaCheckpointUploads,
+				Configuration:	json.RawMessage(`{"checkpointCutoffSizeBytes":1}`),
 			})
 		}
 		if v4 {
 			result = append(result, apitype.APICapabilityConfig{
-				Capability:    apitype.DeploymentSchemaVersion,
-				Version:       1,
-				Configuration: json.RawMessage(`{"version":4}`),
+				Capability:	apitype.DeploymentSchemaVersion,
+				Version:	1,
+				Configuration:	json.RawMessage(`{"version":4}`),
 			})
 		}
 		return result
@@ -189,9 +189,9 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 		require.NoError(t, err)
 		backend := backendGeneric.(*cloudBackend)
 		persister := backend.newSnapshotPersister(ctx, client.UpdateIdentifier{
-			StackIdentifier: stackID,
-			UpdateKind:      apitype.UpdateUpdate,
-			UpdateID:        updateID,
+			StackIdentifier:	stackID,
+			UpdateKind:		apitype.UpdateUpdate,
+			UpdateID:		updateID,
 		}, newMockTokenSource())
 		return persister
 	}
@@ -219,8 +219,8 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 	err = persister.Save(&deploy.Snapshot{
 		Resources: []*resource.State{
 			{
-				URN:                 resource.URN("urn-1"),
-				RefreshBeforeUpdate: true, // This is a v4 feature.
+				URN:			resource.URN("urn-1"),
+				RefreshBeforeUpdate:	true,	// This is a v4 feature.
 			},
 		},
 	})
@@ -231,8 +231,8 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 	assert.Empty(t, untypedPersistedState().Features)
 	assert.Equal(t, []apitype.ResourceV3{
 		{
-			URN:                 resource.URN("urn-1"),
-			RefreshBeforeUpdate: true,
+			URN:			resource.URN("urn-1"),
+			RefreshBeforeUpdate:	true,
 		},
 	}, typedPersistedState().Resources)
 
@@ -280,8 +280,8 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 	err = persister.Save(&deploy.Snapshot{
 		Resources: []*resource.State{
 			{
-				URN:                 resource.URN("urn-1"),
-				RefreshBeforeUpdate: true, // This is a v4 feature.
+				URN:			resource.URN("urn-1"),
+				RefreshBeforeUpdate:	true,	// This is a v4 feature.
 			},
 		},
 	})
@@ -292,8 +292,8 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 	assert.Empty(t, untypedPersistedState().Features)
 	assert.Equal(t, []apitype.ResourceV3{
 		{
-			URN:                 resource.URN("urn-1"),
-			RefreshBeforeUpdate: true,
+			URN:			resource.URN("urn-1"),
+			RefreshBeforeUpdate:	true,
 		},
 	}, typedPersistedState().Resources)
 
@@ -302,8 +302,8 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 	err = persister.Save(&deploy.Snapshot{
 		Resources: []*resource.State{
 			{
-				URN:                 resource.URN("urn-1"),
-				RefreshBeforeUpdate: true, // This is a v4 feature.
+				URN:			resource.URN("urn-1"),
+				RefreshBeforeUpdate:	true,	// This is a v4 feature.
 			},
 			{URN: resource.URN("urn-2")},
 		},
@@ -315,8 +315,8 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 	assert.Empty(t, untypedPersistedState().Features)
 	assert.Equal(t, []apitype.ResourceV3{
 		{
-			URN:                 resource.URN("urn-1"),
-			RefreshBeforeUpdate: true,
+			URN:			resource.URN("urn-1"),
+			RefreshBeforeUpdate:	true,
 		},
 		{URN: resource.URN("urn-2")},
 	}, typedPersistedState().Resources)
@@ -347,8 +347,8 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 	err = persister.Save(&deploy.Snapshot{
 		Resources: []*resource.State{
 			{
-				URN:                 resource.URN("urn-1"),
-				RefreshBeforeUpdate: true, // This is a v4 feature.
+				URN:			resource.URN("urn-1"),
+				RefreshBeforeUpdate:	true,	// This is a v4 feature.
 			},
 		},
 	})
@@ -359,8 +359,8 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 	assert.Equal(t, []string{"refreshBeforeUpdate"}, untypedPersistedState().Features)
 	assert.Equal(t, []apitype.ResourceV3{
 		{
-			URN:                 resource.URN("urn-1"),
-			RefreshBeforeUpdate: true,
+			URN:			resource.URN("urn-1"),
+			RefreshBeforeUpdate:	true,
 		},
 	}, typedPersistedState().Resources)
 
@@ -408,8 +408,8 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 	err = persister.Save(&deploy.Snapshot{
 		Resources: []*resource.State{
 			{
-				URN:                 resource.URN("urn-1"),
-				RefreshBeforeUpdate: true, // This is a v4 feature.
+				URN:			resource.URN("urn-1"),
+				RefreshBeforeUpdate:	true,	// This is a v4 feature.
 			},
 		},
 	})
@@ -420,8 +420,8 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 	assert.Equal(t, []string{"refreshBeforeUpdate"}, untypedPersistedState().Features)
 	assert.Equal(t, []apitype.ResourceV3{
 		{
-			URN:                 resource.URN("urn-1"),
-			RefreshBeforeUpdate: true,
+			URN:			resource.URN("urn-1"),
+			RefreshBeforeUpdate:	true,
 		},
 	}, typedPersistedState().Resources)
 
@@ -430,8 +430,8 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 	err = persister.Save(&deploy.Snapshot{
 		Resources: []*resource.State{
 			{
-				URN:                 resource.URN("urn-1"),
-				RefreshBeforeUpdate: true, // This is a v4 feature.
+				URN:			resource.URN("urn-1"),
+				RefreshBeforeUpdate:	true,	// This is a v4 feature.
 			},
 			{URN: resource.URN("urn-2")},
 		},
@@ -443,8 +443,8 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 	assert.Equal(t, []string{"refreshBeforeUpdate"}, untypedPersistedState().Features)
 	assert.Equal(t, []apitype.ResourceV3{
 		{
-			URN:                 resource.URN("urn-1"),
-			RefreshBeforeUpdate: true,
+			URN:			resource.URN("urn-1"),
+			RefreshBeforeUpdate:	true,
 		},
 		{URN: resource.URN("urn-2")},
 	}, typedPersistedState().Resources)
@@ -490,9 +490,9 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	}
 
 	stackID := client.StackIdentifier{
-		Owner:   "owner",
-		Project: "project",
-		Stack:   tokens.MustParseStackName("stack"),
+		Owner:		"owner",
+		Project:	"project",
+		Stack:		tokens.MustParseStackName("stack"),
 	}
 	updateID := "update-id"
 
@@ -548,13 +548,13 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 			case "/api/capabilities":
 				resp := apitype.CapabilitiesResponse{Capabilities: []apitype.APICapabilityConfig{
 					{
-						Capability:    apitype.DeltaCheckpointUploads,
-						Configuration: json.RawMessage(`{"checkpointCutoffSizeBytes":1}`),
+						Capability:	apitype.DeltaCheckpointUploads,
+						Configuration:	json.RawMessage(`{"checkpointCutoffSizeBytes":1}`),
 					},
 					{
-						Capability:    apitype.DeploymentSchemaVersion,
-						Version:       1,
-						Configuration: json.RawMessage(`{"version":4}`),
+						Capability:	apitype.DeploymentSchemaVersion,
+						Version:	1,
+						Configuration:	json.RawMessage(`{"version":4}`),
 					},
 				}}
 				err := json.NewEncoder(rw).Encode(resp)
@@ -591,9 +591,9 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 		require.NoError(t, err)
 		backend := backendGeneric.(*cloudBackend)
 		persister := backend.newSnapshotPersister(ctx, client.UpdateIdentifier{
-			StackIdentifier: stackID,
-			UpdateKind:      apitype.UpdateUpdate,
-			UpdateID:        updateID,
+			StackIdentifier:	stackID,
+			UpdateKind:		apitype.UpdateUpdate,
+			UpdateID:		updateID,
 		}, newMockTokenSource())
 		return persister
 	}
@@ -671,8 +671,8 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	err = persister.Save(&deploy.Snapshot{
 		Resources: []*resource.State{
 			{
-				URN:                 resource.URN("urn-1"),
-				RefreshBeforeUpdate: true, // This is a v4 feature.
+				URN:			resource.URN("urn-1"),
+				RefreshBeforeUpdate:	true,	// This is a v4 feature.
 			},
 		},
 	})
@@ -688,8 +688,8 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	assert.Equal(t, []string{"refreshBeforeUpdate"}, untypedPersistedState().Features)
 	assert.Equal(t, []apitype.ResourceV3{
 		{
-			URN:                 resource.URN("urn-1"),
-			RefreshBeforeUpdate: true,
+			URN:			resource.URN("urn-1"),
+			RefreshBeforeUpdate:	true,
 		},
 	}, typedPersistedState().Resources)
 }
@@ -705,11 +705,11 @@ func (tsf tokenSourceFn) GetToken(_ context.Context) (string, error) {
 func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloadBytes int) []*apitype.DeploymentV3 {
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
-			Project:     info.Project,
-			Stack:       info.Stack,
-			Parallel:    info.Parallel,
-			DryRun:      info.DryRun,
-			MonitorAddr: info.MonitorAddress,
+			Project:	info.Project,
+			Stack:		info.Stack,
+			Parallel:	info.Parallel,
+			DryRun:		info.DryRun,
+			MonitorAddr:	info.MonitorAddress,
 		})
 		require.NoError(t, err)
 
@@ -740,11 +740,11 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 	p := &lt.TestPlan{
 		// This test generates big amounts of data so the event streams that would need to be
 		// checked in get too big.  Skip them instead.
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options:	lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 		Steps: []lt.TestStep{
 			{
-				Op:          engine.Update,
-				SkipPreview: true,
+				Op:		engine.Update,
+				SkipPreview:	true,
 				Validate: func(
 					_ workspace.Project,
 					_ deploy.Target,
@@ -780,8 +780,8 @@ func testMarshalDeployment(t *testing.T, snaps []*apitype.DeploymentV3) {
 		require.NoError(t, err)
 
 		marshaled, err := json.Marshal(apitype.PatchUpdateVerbatimCheckpointRequest{
-			Version:           3,
-			UntypedDeployment: expected.raw,
+			Version:		3,
+			UntypedDeployment:	expected.raw,
 		})
 		require.NoError(t, err)
 
@@ -878,9 +878,9 @@ func testOrBenchmarkDiffStack[TB testingTB[TB], Case diffStackCase](
 }
 
 type dynamicStackCase struct {
-	seed                 int
-	resourceCount        int
-	resourcePayloadBytes int
+	seed			int
+	resourceCount		int
+	resourcePayloadBytes	int
 }
 
 func (c dynamicStackCase) getName() string {
@@ -965,8 +965,8 @@ func (c recordedStackCase) getSnaps(tb testing.TB) []*apitype.DeploymentV3 {
 	dec := json.NewDecoder(f)
 	for {
 		var d struct {
-			Version    int
-			Deployment *apitype.DeploymentV3
+			Version		int
+			Deployment	*apitype.DeploymentV3
 		}
 		err := dec.Decode(&d)
 		if err == io.EOF {

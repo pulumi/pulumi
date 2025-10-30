@@ -28,49 +28,49 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
 
 const (
-	pulumiPackage          = "pulumi"
-	LogicalNamePropertyKey = "__logicalName"
+	pulumiPackage		= "pulumi"
+	LogicalNamePropertyKey	= "__logicalName"
 )
 
 type ComponentProgramBinderArgs struct {
-	AllowMissingVariables        bool
-	AllowMissingProperties       bool
-	SkipResourceTypecheck        bool
-	SkipInvokeTypecheck          bool
-	SkipRangeTypecheck           bool
-	PreferOutputVersionedInvokes bool
-	BinderDirPath                string
-	BinderLoader                 schema.Loader
-	ComponentSource              string
-	ComponentNodeRange           hcl.Range
-	PackageCache                 *PackageCache
+	AllowMissingVariables		bool
+	AllowMissingProperties		bool
+	SkipResourceTypecheck		bool
+	SkipInvokeTypecheck		bool
+	SkipRangeTypecheck		bool
+	PreferOutputVersionedInvokes	bool
+	BinderDirPath			string
+	BinderLoader			schema.Loader
+	ComponentSource			string
+	ComponentNodeRange		hcl.Range
+	PackageCache			*PackageCache
 }
 
 type ComponentProgramBinder = func(ComponentProgramBinderArgs) (*Program, hcl.Diagnostics, error)
 
 type bindOptions struct {
-	allowMissingVariables        bool
-	allowMissingProperties       bool
-	skipResourceTypecheck        bool
-	skipInvokeTypecheck          bool
-	skipRangeTypecheck           bool
-	preferOutputVersionedInvokes bool
-	loader                       schema.Loader
-	packageCache                 *PackageCache
+	allowMissingVariables		bool
+	allowMissingProperties		bool
+	skipResourceTypecheck		bool
+	skipInvokeTypecheck		bool
+	skipRangeTypecheck		bool
+	preferOutputVersionedInvokes	bool
+	loader				schema.Loader
+	packageCache			*PackageCache
 	// the directory path of the PCL program being bound
 	// we use this to locate the source of the component blocks
 	// which refer to a component resource in a relative directory
-	dirPath                string
-	componentProgramBinder ComponentProgramBinder
+	dirPath			string
+	componentProgramBinder	ComponentProgramBinder
 }
 
 func (opts bindOptions) modelOptions() []model.BindOption {
@@ -85,15 +85,15 @@ func (opts bindOptions) modelOptions() []model.BindOption {
 }
 
 type binder struct {
-	options bindOptions
+	options	bindOptions
 
-	packageDescriptors map[string]*schema.PackageDescriptor
-	referencedPackages map[string]schema.PackageReference
-	schemaTypes        map[schema.Type]model.Type
+	packageDescriptors	map[string]*schema.PackageDescriptor
+	referencedPackages	map[string]schema.PackageReference
+	schemaTypes		map[schema.Type]model.Type
 
-	tokens syntax.TokenMap
-	nodes  []Node
-	root   *model.Scope
+	tokens	syntax.TokenMap
+	nodes	[]Node
+	root	*model.Scope
 }
 
 type BindOption func(*bindOptions)
@@ -190,18 +190,18 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 	}
 
 	b := &binder{
-		options:            options,
-		tokens:             syntax.NewTokenMapForFiles(files),
-		packageDescriptors: map[string]*schema.PackageDescriptor{},
-		referencedPackages: map[string]schema.PackageReference{},
-		schemaTypes:        map[schema.Type]model.Type{},
-		root:               model.NewRootScope(syntax.None),
+		options:		options,
+		tokens:			syntax.NewTokenMapForFiles(files),
+		packageDescriptors:	map[string]*schema.PackageDescriptor{},
+		referencedPackages:	map[string]schema.PackageReference{},
+		schemaTypes:		map[schema.Type]model.Type{},
+		root:			model.NewRootScope(syntax.None),
 	}
 
 	// Define null.
 	b.root.Define("null", &model.Constant{
-		Name:          "null",
-		ConstantValue: cty.NullVal(cty.DynamicPseudoType),
+		Name:		"null",
+		ConstantValue:	cty.NullVal(cty.DynamicPseudoType),
 	})
 	// Define builtin functions.
 	for name, fn := range pulumiBuiltins(options) {
@@ -243,9 +243,9 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 	}
 
 	return &Program{
-		Nodes:  b.nodes,
-		files:  files,
-		binder: b,
+		Nodes:	b.nodes,
+		files:	files,
+		binder:	b,
 	}, diagnostics, nil
 }
 
@@ -336,10 +336,10 @@ func ReadAllPackageDescriptors(files []*syntax.File) (map[string]*schema.Package
 				message := fmt.Sprintf("package %q was already defined", packageName)
 				subjectRange := file.Body.Range()
 				diagnostics = append(diagnostics, &hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  message,
-					Detail:   message,
-					Subject:  &subjectRange,
+					Severity:	hcl.DiagError,
+					Summary:	message,
+					Detail:		message,
+					Subject:	&subjectRange,
 				})
 				continue
 			}
@@ -439,8 +439,8 @@ func (b *binder) declareNodes(ctx context.Context, file *syntax.File) (hcl.Diagn
 				// TODO(pdg): check body for valid contents
 
 				v := &ConfigVariable{
-					typ:    typ,
-					syntax: item,
+					typ:	typ,
+					syntax:	item,
 				}
 				diags := b.declareNode(name, v)
 				diagnostics = append(diagnostics, diags...)
@@ -464,8 +464,8 @@ func (b *binder) declareNodes(ctx context.Context, file *syntax.File) (hcl.Diagn
 				}
 
 				v := &OutputVariable{
-					typ:    typ,
-					syntax: item,
+					typ:	typ,
+					syntax:	item,
 				}
 				diags := b.declareNode(name, v)
 				diagnostics = append(diagnostics, diags...)
@@ -482,10 +482,10 @@ func (b *binder) declareNodes(ctx context.Context, file *syntax.File) (hcl.Diagn
 				source := item.Labels[1]
 
 				v := &Component{
-					name:         name,
-					syntax:       item,
-					source:       source,
-					VariableType: model.DynamicType,
+					name:		name,
+					syntax:		item,
+					source:		source,
+					VariableType:	model.DynamicType,
 				}
 				diags := b.declareNode(name, v)
 				diagnostics = append(diagnostics, diags...)

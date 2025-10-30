@@ -30,9 +30,9 @@ type tokenSourceCapability interface {
 
 // tokenSource is a helper type that manages the renewal of the lease token for a managed update.
 type tokenSource struct {
-	clock    clockwork.Clock
-	requests chan tokenRequest
-	done     chan bool
+	clock		clockwork.Clock
+	requests	chan tokenRequest
+	done		chan bool
 }
 
 var _ tokenSourceCapability = &tokenSource{}
@@ -52,8 +52,8 @@ func (e expiredTokenError) Unwrap() error {
 }
 
 type tokenResponse struct {
-	token string
-	err   error
+	token	string
+	err	error
 }
 
 func newTokenSource(
@@ -89,12 +89,12 @@ func (ts *tokenSource) handleRequests(
 	defer renewTicker.Stop()
 
 	state := struct {
-		token   string    // most recently renewed token
-		error   error     // non-nil indicates a terminal error state
-		expires time.Time // assumed expiry of the token
+		token	string		// most recently renewed token
+		error	error		// non-nil indicates a terminal error state
+		expires	time.Time	// assumed expiry of the token
 	}{
-		token:   initialToken,
-		expires: initialTokenExpires,
+		token:		initialToken,
+		expires:	initialTokenExpires,
 	}
 
 	renewUpdateLeaseIfStale := func() {

@@ -28,7 +28,7 @@ import (
 type clientLanguageRuntimeHost struct {
 	plugin.Host
 
-	languageRuntime plugin.LanguageRuntime
+	languageRuntime	plugin.LanguageRuntime
 }
 
 func connectToLanguageRuntime(ctx *plugin.Context, address string) (plugin.Host, error) {
@@ -40,8 +40,8 @@ func connectToLanguageRuntime(ctx *plugin.Context, address string) (plugin.Host,
 
 	client := pulumirpc.NewLanguageRuntimeClient(conn)
 	return &clientLanguageRuntimeHost{
-		Host:            ctx.Host,
-		languageRuntime: plugin.NewLanguageRuntimeClient(ctx, clientRuntimeName, client),
+		Host:			ctx.Host,
+		languageRuntime:	plugin.NewLanguageRuntimeClient(ctx, clientRuntimeName, client),
 	}, nil
 }
 
@@ -67,8 +67,8 @@ func langRuntimePluginDialOptions(ctx *plugin.Context, address string) []grpc.Di
 
 	if ctx.DialOptions != nil {
 		metadata := map[string]any{
-			"mode": "client",
-			"kind": "language",
+			"mode":	"client",
+			"kind":	"language",
 		}
 		if address != "" {
 			metadata["address"] = address

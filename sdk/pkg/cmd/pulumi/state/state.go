@@ -17,20 +17,20 @@ package state
 import (
 	"github.com/spf13/cobra"
 
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 func NewStateCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "state",
-		Short: "Edit the current stack's state",
+		Use:	"state",
+		Short:	"Edit the current stack's state",
 		Long: `Edit the current stack's state
 
 Subcommands of this command can be used to surgically edit parts of a stack's state. These can be useful when
 troubleshooting a stack or when performing specific edits that otherwise would require editing the state file by hand.`,
-		Args: cmdutil.NoArgs,
+		Args:	cmdutil.NoArgs,
 	}
 
 	cmd.AddCommand(newStateDeleteCommand(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))

@@ -20,11 +20,11 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/diy"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -35,13 +35,13 @@ import (
 func newStateUpgradeCommand(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
 	var yes bool
 	cmd := &cobra.Command{
-		Use:   "upgrade",
-		Short: "Migrates the current backend to the latest supported version",
+		Use:	"upgrade",
+		Short:	"Migrates the current backend to the latest supported version",
 		Long: `Migrates the current backend to the latest supported version
 
 This only has an effect on DIY backends.
 `,
-		Args: cmdutil.NoArgs,
+		Args:	cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			stdout := cmd.OutOrStdout()
@@ -49,9 +49,9 @@ This only has an effect on DIY backends.
 			stderr := cmd.ErrOrStderr()
 
 			dopts := display.Options{
-				Color:  cmdutil.GetGlobalColorization(),
-				Stdin:  stdin,
-				Stdout: stdout,
+				Color:	cmdutil.GetGlobalColorization(),
+				Stdin:	stdin,
+				Stdout:	stdout,
 			}
 
 			b, err := cmdBackend.CurrentBackend(
@@ -89,9 +89,9 @@ This only has an effect on DIY backends.
 				opts.ProjectsForDetachedStacks = func(stacks []tokens.StackName) ([]tokens.Name, error) {
 					projects := make([]tokens.Name, len(stacks))
 					err := (&stateUpgradeProjectNameWidget{
-						Stdin:  stdin,
-						Stdout: stdout,
-						Stderr: stderr,
+						Stdin:	stdin,
+						Stdout:	stdout,
+						Stderr:	stderr,
 					}).Prompt(stacks, projects)
 					return projects, err
 				}
@@ -109,9 +109,9 @@ This only has an effect on DIY backends.
 // It is used by the 'pulumi state upgrade' command
 // when it encounters stacks without a project name.
 type stateUpgradeProjectNameWidget struct {
-	Stdin  io.Reader // required
-	Stdout io.Writer // required
-	Stderr io.Writer // required
+	Stdin	io.Reader	// required
+	Stdout	io.Writer	// required
+	Stderr	io.Writer	// required
 }
 
 // Prompt prompts the user for a project name for each stack
@@ -141,8 +141,8 @@ func (w *stateUpgradeProjectNameWidget) Prompt(stacks []tokens.StackName, projec
 		var project string
 		err := survey.AskOne(
 			&survey.Input{
-				Message: fmt.Sprintf("Stack %s", stack),
-				Help:    "Enter a name for the project, or press enter to skip",
+				Message:	fmt.Sprintf("Stack %s", stack),
+				Help:		"Enter a name for the project, or press enter to skip",
 			},
 			&project,
 			survey.WithStdio(stdin, stdout, w.Stderr),

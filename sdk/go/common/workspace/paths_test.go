@@ -68,9 +68,9 @@ func TestProjectStackPath(t *testing.T) {
 	}
 
 	tests := []struct {
-		name         string
-		yamlContents string
-		validate     func(t *testing.T, projectDir, path string, err error)
+		name		string
+		yamlContents	string
+		validate	func(t *testing.T, projectDir, path string, err error)
 	}{{
 		"WithoutStackConfigDir",
 		"name: some_project\ndescription: Some project\nruntime: nodejs\n",

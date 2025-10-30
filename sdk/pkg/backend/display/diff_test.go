@@ -25,7 +25,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -89,14 +89,14 @@ func testDiffEvents(t *testing.T, path string, accept bool, truncateOutput bool)
 	var stderr bytes.Buffer
 
 	go ShowDiffEvents("test", eventChannel, doneChannel, Options{
-		Color:                colors.Raw,
-		ShowConfig:           true,
-		ShowReplacementSteps: true,
-		ShowSameResources:    true,
-		ShowReads:            true,
-		TruncateOutput:       truncateOutput,
-		Stdout:               &stdout,
-		Stderr:               &stderr,
+		Color:			colors.Raw,
+		ShowConfig:		true,
+		ShowReplacementSteps:	true,
+		ShowSameResources:	true,
+		ShowReads:		true,
+		TruncateOutput:		truncateOutput,
+		Stdout:			&stdout,
+		Stderr:			&stderr,
 	})
 
 	for _, e := range events {
@@ -186,12 +186,12 @@ func assertExpectedCreateDiff(t *testing.T, path string, accept, truncateOutput 
 	}
 
 	diff, err := CreateDiff(events, Options{
-		ShowConfig:           true,
-		ShowReplacementSteps: true,
-		ShowSameResources:    true,
-		ShowReads:            true,
-		TruncateOutput:       truncateOutput,
-		Color:                colors.Never,
+		ShowConfig:		true,
+		ShowReplacementSteps:	true,
+		ShowSameResources:	true,
+		ShowReads:		true,
+		TruncateOutput:		truncateOutput,
+		Color:			colors.Never,
 	})
 	require.NoError(t, err)
 

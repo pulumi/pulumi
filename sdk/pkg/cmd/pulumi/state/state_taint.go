@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -37,14 +37,14 @@ func newStateTaintCommand() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "taint [resource URN...]",
-		Short: "Taint one or more resources in the stack's state",
+		Use:	"taint [resource URN...]",
+		Short:	"Taint one or more resources in the stack's state",
 		Long: `Taint one or more resources in the stack's state.
 
 This has the effect of ensuring the resources are destroyed and recreated upon the next ` + "`pulumi up`" + `.
 
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
-		Args: cobra.ArbitraryArgs,
+		Args:	cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()

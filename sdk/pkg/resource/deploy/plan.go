@@ -24,8 +24,8 @@ import (
 
 	"github.com/mitchellh/copystructure"
 
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -40,24 +40,24 @@ import (
 // a replace step, and an update is allowed in place of a replace step. All resource options are required to match
 // exactly.
 type Plan struct {
-	ResourcePlans map[resource.URN]*ResourcePlan
-	Manifest      Manifest
+	ResourcePlans	map[resource.URN]*ResourcePlan
+	Manifest	Manifest
 	// The configuration in use during the plan.
-	Config config.Map
+	Config	config.Map
 }
 
 func NewPlan(config config.Map) Plan {
 	manifest := Manifest{
-		Time:    time.Now(),
-		Version: version.Version,
+		Time:		time.Now(),
+		Version:	version.Version,
 		// Plugins: sm.plugins, - Explicitly dropped, since we don't use the plugin list in the manifest anymore.
 	}
 	manifest.Magic = manifest.NewMagic()
 
 	return Plan{
-		ResourcePlans: make(map[resource.URN]*ResourcePlan),
-		Manifest:      manifest,
-		Config:        config,
+		ResourcePlans:	make(map[resource.URN]*ResourcePlan),
+		Manifest:	manifest,
+		Config:		config,
 	}
 }
 
@@ -68,9 +68,9 @@ func (plan *Plan) Clone() *Plan {
 
 // PlanDiff holds the results of diffing two object property maps.
 type PlanDiff struct {
-	Adds    resource.PropertyMap   // the resource's properties we expect to add.
-	Deletes []resource.PropertyKey // the resource's properties we expect to delete.
-	Updates resource.PropertyMap   // the resource's properties we expect to update.
+	Adds	resource.PropertyMap	// the resource's properties we expect to add.
+	Deletes	[]resource.PropertyKey	// the resource's properties we expect to delete.
+	Updates	resource.PropertyMap	// the resource's properties we expect to update.
 }
 
 // Returns true if the Deletes array contains the given key
@@ -122,37 +122,37 @@ func (planDiff *PlanDiff) MakeError(
 // a program, however if Output is true, it represents a more complete, post-deployment view of the state.
 type GoalPlan struct {
 	// the type of resource.
-	Type tokens.Type
+	Type	tokens.Type
 	// the name for the resource's URN.
-	Name string
+	Name	string
 	// true if this resource is custom, managed by a plugin.
-	Custom bool
+	Custom	bool
 	// the resource's checked input properties we expect to change.
-	InputDiff PlanDiff
+	InputDiff	PlanDiff
 	// the resource's output properties we expect to change (only set for RegisterResourceOutputs)
-	OutputDiff PlanDiff
+	OutputDiff	PlanDiff
 	// an optional parent URN for this resource.
-	Parent resource.URN
+	Parent	resource.URN
 	// true to protect this resource from deletion.
-	Protect bool
+	Protect	bool
 	// dependencies of this resource object.
-	Dependencies []resource.URN
+	Dependencies	[]resource.URN
 	// the provider to use for this resource.
-	Provider string
+	Provider	string
 	// the set of dependencies that affect each property.
-	PropertyDependencies map[resource.PropertyKey][]resource.URN
+	PropertyDependencies	map[resource.PropertyKey][]resource.URN
 	// true if this resource should be deleted prior to replacement.
-	DeleteBeforeReplace *bool
+	DeleteBeforeReplace	*bool
 	// a list of property names to ignore during changes.
-	IgnoreChanges []string
+	IgnoreChanges	[]string
 	// outputs that should always be treated as secrets.
-	AdditionalSecretOutputs []resource.PropertyKey
+	AdditionalSecretOutputs	[]resource.PropertyKey
 	// Structured Alias objects to be assigned to this resource
-	Aliases []resource.Alias
+	Aliases	[]resource.Alias
 	// the expected ID of the resource, if any.
-	ID resource.ID
+	ID	resource.ID
 	// an optional config object for resource options
-	CustomTimeouts resource.CustomTimeouts
+	CustomTimeouts	resource.CustomTimeouts
 }
 
 func NewPlanDiff(inputDiff *resource.ObjectDiff) PlanDiff {
@@ -193,33 +193,33 @@ func NewGoalPlan(inputDiff *resource.ObjectDiff, goal *resource.Goal) *GoalPlan 
 	}
 
 	return &GoalPlan{
-		Type:                    goal.Type,
-		Name:                    goal.Name,
-		Custom:                  goal.Custom,
-		InputDiff:               diff,
-		OutputDiff:              PlanDiff{},
-		Parent:                  goal.Parent,
-		Protect:                 protect,
-		Dependencies:            goal.Dependencies,
-		Provider:                goal.Provider,
-		PropertyDependencies:    goal.PropertyDependencies,
-		DeleteBeforeReplace:     goal.DeleteBeforeReplace,
-		IgnoreChanges:           goal.IgnoreChanges,
-		AdditionalSecretOutputs: goal.AdditionalSecretOutputs,
-		Aliases:                 goal.Aliases,
-		ID:                      goal.ID,
-		CustomTimeouts:          goal.CustomTimeouts,
+		Type:				goal.Type,
+		Name:				goal.Name,
+		Custom:				goal.Custom,
+		InputDiff:			diff,
+		OutputDiff:			PlanDiff{},
+		Parent:				goal.Parent,
+		Protect:			protect,
+		Dependencies:			goal.Dependencies,
+		Provider:			goal.Provider,
+		PropertyDependencies:		goal.PropertyDependencies,
+		DeleteBeforeReplace:		goal.DeleteBeforeReplace,
+		IgnoreChanges:			goal.IgnoreChanges,
+		AdditionalSecretOutputs:	goal.AdditionalSecretOutputs,
+		Aliases:			goal.Aliases,
+		ID:				goal.ID,
+		CustomTimeouts:			goal.CustomTimeouts,
 	}
 }
 
 // A ResourcePlan represents the planned goal state and resource operations for a single resource. The operations are
 // ordered.
 type ResourcePlan struct {
-	Goal    *GoalPlan
-	Ops     []display.StepOp
-	Outputs resource.PropertyMap
+	Goal	*GoalPlan
+	Ops	[]display.StepOp
+	Outputs	resource.PropertyMap
 	// The random byte seed used for resource goal.
-	Seed []byte
+	Seed	[]byte
 }
 
 func (rp *ResourcePlan) diffURNs(a, b []resource.URN) (message string, changed bool) {
@@ -339,22 +339,22 @@ func checkMissingPlan(
 ) error {
 	// We new up a fake ResourcePlan that matches the old state and then simply call checkGoal on it.
 	goal := &GoalPlan{
-		Type:                    oldState.Type,
-		Name:                    oldState.URN.Name(),
-		Custom:                  oldState.Custom,
-		InputDiff:               PlanDiff{},
-		OutputDiff:              PlanDiff{},
-		Parent:                  oldState.Parent,
-		Protect:                 oldState.Protect,
-		Dependencies:            oldState.Dependencies,
-		Provider:                oldState.Provider,
-		PropertyDependencies:    oldState.PropertyDependencies,
-		DeleteBeforeReplace:     nil,
-		IgnoreChanges:           nil,
-		AdditionalSecretOutputs: oldState.AdditionalSecretOutputs,
-		Aliases:                 oldState.GetAliases(),
-		ID:                      "",
-		CustomTimeouts:          oldState.CustomTimeouts,
+		Type:				oldState.Type,
+		Name:				oldState.URN.Name(),
+		Custom:				oldState.Custom,
+		InputDiff:			PlanDiff{},
+		OutputDiff:			PlanDiff{},
+		Parent:				oldState.Parent,
+		Protect:			oldState.Protect,
+		Dependencies:			oldState.Dependencies,
+		Provider:			oldState.Provider,
+		PropertyDependencies:		oldState.PropertyDependencies,
+		DeleteBeforeReplace:		nil,
+		IgnoreChanges:			nil,
+		AdditionalSecretOutputs:	oldState.AdditionalSecretOutputs,
+		Aliases:			oldState.GetAliases(),
+		ID:				"",
+		CustomTimeouts:			oldState.CustomTimeouts,
 	}
 
 	rp := ResourcePlan{Goal: goal}

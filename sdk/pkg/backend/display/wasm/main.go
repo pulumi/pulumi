@@ -17,7 +17,7 @@
 package main
 
 import (
-	_ "github.com/pulumi/pulumi/pkg/v3/backend/display"
+	_ "github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
 )
 
 func main() {

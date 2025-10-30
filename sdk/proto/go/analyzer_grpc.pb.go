@@ -34,15 +34,15 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Analyzer_Analyze_FullMethodName         = "/pulumirpc.Analyzer/Analyze"
-	Analyzer_AnalyzeStack_FullMethodName    = "/pulumirpc.Analyzer/AnalyzeStack"
-	Analyzer_Remediate_FullMethodName       = "/pulumirpc.Analyzer/Remediate"
-	Analyzer_GetAnalyzerInfo_FullMethodName = "/pulumirpc.Analyzer/GetAnalyzerInfo"
-	Analyzer_GetPluginInfo_FullMethodName   = "/pulumirpc.Analyzer/GetPluginInfo"
-	Analyzer_Configure_FullMethodName       = "/pulumirpc.Analyzer/Configure"
-	Analyzer_Handshake_FullMethodName       = "/pulumirpc.Analyzer/Handshake"
-	Analyzer_ConfigureStack_FullMethodName  = "/pulumirpc.Analyzer/ConfigureStack"
-	Analyzer_Cancel_FullMethodName          = "/pulumirpc.Analyzer/Cancel"
+	Analyzer_Analyze_FullMethodName		= "/pulumirpc.Analyzer/Analyze"
+	Analyzer_AnalyzeStack_FullMethodName	= "/pulumirpc.Analyzer/AnalyzeStack"
+	Analyzer_Remediate_FullMethodName	= "/pulumirpc.Analyzer/Remediate"
+	Analyzer_GetAnalyzerInfo_FullMethodName	= "/pulumirpc.Analyzer/GetAnalyzerInfo"
+	Analyzer_GetPluginInfo_FullMethodName	= "/pulumirpc.Analyzer/GetPluginInfo"
+	Analyzer_Configure_FullMethodName	= "/pulumirpc.Analyzer/Configure"
+	Analyzer_Handshake_FullMethodName	= "/pulumirpc.Analyzer/Handshake"
+	Analyzer_ConfigureStack_FullMethodName	= "/pulumirpc.Analyzer/ConfigureStack"
+	Analyzer_Cancel_FullMethodName		= "/pulumirpc.Analyzer/Cancel"
 )
 
 // AnalyzerClient is the client API for Analyzer service.
@@ -258,8 +258,8 @@ func (UnimplementedAnalyzerServer) ConfigureStack(context.Context, *AnalyzerStac
 func (UnimplementedAnalyzerServer) Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Cancel not implemented")
 }
-func (UnimplementedAnalyzerServer) mustEmbedUnimplementedAnalyzerServer() {}
-func (UnimplementedAnalyzerServer) testEmbeddedByValue()                  {}
+func (UnimplementedAnalyzerServer) mustEmbedUnimplementedAnalyzerServer()	{}
+func (UnimplementedAnalyzerServer) testEmbeddedByValue()			{}
 
 // UnsafeAnalyzerServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to AnalyzerServer will
@@ -288,8 +288,8 @@ func _Analyzer_Analyze_Handler(srv interface{}, ctx context.Context, dec func(in
 		return srv.(AnalyzerServer).Analyze(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Analyzer_Analyze_FullMethodName,
+		Server:		srv,
+		FullMethod:	Analyzer_Analyze_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AnalyzerServer).Analyze(ctx, req.(*AnalyzeRequest))
@@ -306,8 +306,8 @@ func _Analyzer_AnalyzeStack_Handler(srv interface{}, ctx context.Context, dec fu
 		return srv.(AnalyzerServer).AnalyzeStack(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Analyzer_AnalyzeStack_FullMethodName,
+		Server:		srv,
+		FullMethod:	Analyzer_AnalyzeStack_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AnalyzerServer).AnalyzeStack(ctx, req.(*AnalyzeStackRequest))
@@ -324,8 +324,8 @@ func _Analyzer_Remediate_Handler(srv interface{}, ctx context.Context, dec func(
 		return srv.(AnalyzerServer).Remediate(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Analyzer_Remediate_FullMethodName,
+		Server:		srv,
+		FullMethod:	Analyzer_Remediate_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AnalyzerServer).Remediate(ctx, req.(*AnalyzeRequest))
@@ -342,8 +342,8 @@ func _Analyzer_GetAnalyzerInfo_Handler(srv interface{}, ctx context.Context, dec
 		return srv.(AnalyzerServer).GetAnalyzerInfo(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Analyzer_GetAnalyzerInfo_FullMethodName,
+		Server:		srv,
+		FullMethod:	Analyzer_GetAnalyzerInfo_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AnalyzerServer).GetAnalyzerInfo(ctx, req.(*emptypb.Empty))
@@ -360,8 +360,8 @@ func _Analyzer_GetPluginInfo_Handler(srv interface{}, ctx context.Context, dec f
 		return srv.(AnalyzerServer).GetPluginInfo(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Analyzer_GetPluginInfo_FullMethodName,
+		Server:		srv,
+		FullMethod:	Analyzer_GetPluginInfo_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AnalyzerServer).GetPluginInfo(ctx, req.(*emptypb.Empty))
@@ -378,8 +378,8 @@ func _Analyzer_Configure_Handler(srv interface{}, ctx context.Context, dec func(
 		return srv.(AnalyzerServer).Configure(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Analyzer_Configure_FullMethodName,
+		Server:		srv,
+		FullMethod:	Analyzer_Configure_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AnalyzerServer).Configure(ctx, req.(*ConfigureAnalyzerRequest))
@@ -396,8 +396,8 @@ func _Analyzer_Handshake_Handler(srv interface{}, ctx context.Context, dec func(
 		return srv.(AnalyzerServer).Handshake(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Analyzer_Handshake_FullMethodName,
+		Server:		srv,
+		FullMethod:	Analyzer_Handshake_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AnalyzerServer).Handshake(ctx, req.(*AnalyzerHandshakeRequest))
@@ -414,8 +414,8 @@ func _Analyzer_ConfigureStack_Handler(srv interface{}, ctx context.Context, dec 
 		return srv.(AnalyzerServer).ConfigureStack(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Analyzer_ConfigureStack_FullMethodName,
+		Server:		srv,
+		FullMethod:	Analyzer_ConfigureStack_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AnalyzerServer).ConfigureStack(ctx, req.(*AnalyzerStackConfigureRequest))
@@ -432,8 +432,8 @@ func _Analyzer_Cancel_Handler(srv interface{}, ctx context.Context, dec func(int
 		return srv.(AnalyzerServer).Cancel(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Analyzer_Cancel_FullMethodName,
+		Server:		srv,
+		FullMethod:	Analyzer_Cancel_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AnalyzerServer).Cancel(ctx, req.(*emptypb.Empty))
@@ -445,46 +445,46 @@ func _Analyzer_Cancel_Handler(srv interface{}, ctx context.Context, dec func(int
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Analyzer_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "pulumirpc.Analyzer",
-	HandlerType: (*AnalyzerServer)(nil),
+	ServiceName:	"pulumirpc.Analyzer",
+	HandlerType:	(*AnalyzerServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Analyze",
-			Handler:    _Analyzer_Analyze_Handler,
+			MethodName:	"Analyze",
+			Handler:	_Analyzer_Analyze_Handler,
 		},
 		{
-			MethodName: "AnalyzeStack",
-			Handler:    _Analyzer_AnalyzeStack_Handler,
+			MethodName:	"AnalyzeStack",
+			Handler:	_Analyzer_AnalyzeStack_Handler,
 		},
 		{
-			MethodName: "Remediate",
-			Handler:    _Analyzer_Remediate_Handler,
+			MethodName:	"Remediate",
+			Handler:	_Analyzer_Remediate_Handler,
 		},
 		{
-			MethodName: "GetAnalyzerInfo",
-			Handler:    _Analyzer_GetAnalyzerInfo_Handler,
+			MethodName:	"GetAnalyzerInfo",
+			Handler:	_Analyzer_GetAnalyzerInfo_Handler,
 		},
 		{
-			MethodName: "GetPluginInfo",
-			Handler:    _Analyzer_GetPluginInfo_Handler,
+			MethodName:	"GetPluginInfo",
+			Handler:	_Analyzer_GetPluginInfo_Handler,
 		},
 		{
-			MethodName: "Configure",
-			Handler:    _Analyzer_Configure_Handler,
+			MethodName:	"Configure",
+			Handler:	_Analyzer_Configure_Handler,
 		},
 		{
-			MethodName: "Handshake",
-			Handler:    _Analyzer_Handshake_Handler,
+			MethodName:	"Handshake",
+			Handler:	_Analyzer_Handshake_Handler,
 		},
 		{
-			MethodName: "ConfigureStack",
-			Handler:    _Analyzer_ConfigureStack_Handler,
+			MethodName:	"ConfigureStack",
+			Handler:	_Analyzer_ConfigureStack_Handler,
 		},
 		{
-			MethodName: "Cancel",
-			Handler:    _Analyzer_Cancel_Handler,
+			MethodName:	"Cancel",
+			Handler:	_Analyzer_Cancel_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "pulumi/analyzer.proto",
+	Streams:	[]grpc.StreamDesc{},
+	Metadata:	"pulumi/analyzer.proto",
 }

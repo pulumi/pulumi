@@ -44,20 +44,20 @@ type ContinueResourceDiffEvent interface {
 }
 
 type continueDiffResourceEvent struct {
-	evt        RegisterResourceEvent
-	err        error
-	diff       plugin.DiffResult
-	urn        resource.URN
-	old        *resource.State
-	new        *resource.State
-	provider   plugin.Provider
-	autonaming *plugin.AutonamingOptions
-	randomSeed []byte
+	evt		RegisterResourceEvent
+	err		error
+	diff		plugin.DiffResult
+	urn		resource.URN
+	old		*resource.State
+	new		*resource.State
+	provider	plugin.Provider
+	autonaming	*plugin.AutonamingOptions
+	randomSeed	[]byte
 }
 
 var _ ContinueResourceDiffEvent = (*continueDiffResourceEvent)(nil)
 
-func (g *continueDiffResourceEvent) event() {}
+func (g *continueDiffResourceEvent) event()	{}
 
 func (g *continueDiffResourceEvent) Event() RegisterResourceEvent {
 	return g.evt
@@ -109,16 +109,16 @@ type ContinueResourceRefreshEvent interface {
 
 type continueResourceRefreshEvent struct {
 	RegisterResourceEvent
-	urn     resource.URN    // the URN of the resource being processed.
-	old     *resource.State // the old state of the resource being processed.
-	new     *resource.State // the new state of the resource being processed.
-	invalid bool            // whether the resource is invalid.
-	err     error           // any error that occurred during refresh
+	urn	resource.URN	// the URN of the resource being processed.
+	old	*resource.State	// the old state of the resource being processed.
+	new	*resource.State	// the new state of the resource being processed.
+	invalid	bool		// whether the resource is invalid.
+	err	error		// any error that occurred during refresh
 }
 
 var _ ContinueResourceRefreshEvent = (*continueResourceRefreshEvent)(nil)
 
-func (g *continueResourceRefreshEvent) event() {}
+func (g *continueResourceRefreshEvent) event()	{}
 
 func (g *continueResourceRefreshEvent) URN() resource.URN {
 	return g.urn
@@ -158,22 +158,22 @@ type ContinueResourceImportEvent interface {
 
 type continueResourceImportEvent struct {
 	RegisterResourceEvent
-	err        error
-	urn        resource.URN // the URN of the resource being processed.
-	old        *resource.State
-	new        *resource.State
-	provider   plugin.Provider
-	invalid    bool
-	recreating bool
-	randomSeed []byte
+	err		error
+	urn		resource.URN	// the URN of the resource being processed.
+	old		*resource.State
+	new		*resource.State
+	provider	plugin.Provider
+	invalid		bool
+	recreating	bool
+	randomSeed	[]byte
 	// whether the resource is actually imported, or if we're just continuing the step generation for a
 	// normal resource.
-	isImported bool
+	isImported	bool
 }
 
 var _ ContinueResourceImportEvent = (*continueResourceImportEvent)(nil)
 
-func (g *continueResourceImportEvent) event() {}
+func (g *continueResourceImportEvent) event()	{}
 
 func (g *continueResourceImportEvent) Error() error {
 	return g.err

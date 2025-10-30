@@ -28,9 +28,9 @@ func TestUrlAlreadySet(t *testing.T) {
 	t.Parallel()
 
 	spec := workspace.PluginSpec{
-		Name:              "acme",
-		Kind:              apitype.ResourcePlugin,
-		PluginDownloadURL: "github://api.github.com/pulumiverse",
+		Name:			"acme",
+		Kind:			apitype.ResourcePlugin,
+		PluginDownloadURL:	"github://api.github.com/pulumiverse",
 	}
 	res := SetKnownPluginDownloadURL(&spec)
 	assert.False(t, res)
@@ -40,8 +40,8 @@ func TestKnownProvider(t *testing.T) {
 	t.Parallel()
 
 	spec := workspace.PluginSpec{
-		Name: "acme",
-		Kind: apitype.ResourcePlugin,
+		Name:	"acme",
+		Kind:	apitype.ResourcePlugin,
 	}
 	res := SetKnownPluginDownloadURL(&spec)
 	assert.True(t, res)

@@ -45,10 +45,10 @@ func TestGitClone(t *testing.T) {
 	require.NoError(t, err)
 	nondefaultHead, err := w.Commit("nondefault branch", &git.CommitOptions{
 		Author: &object.Signature{
-			Name:  "testo",
-			Email: "testo@example.com",
+			Name:	"testo",
+			Email:	"testo@example.com",
 		},
-		AllowEmptyCommits: true,
+		AllowEmptyCommits:	true,
 	})
 	require.NoError(t, err)
 
@@ -56,8 +56,8 @@ func TestGitClone(t *testing.T) {
 	// when cloning, since it's left as the HEAD of the repo.
 
 	require.NoError(t, w.Checkout(&git.CheckoutOptions{
-		Branch: plumbing.NewBranchReferenceName("nondefault"),
-		Create: true,
+		Branch:	plumbing.NewBranchReferenceName("nondefault"),
+		Create:	true,
 	}))
 
 	// tag the nondefault head so we can test getting a tag too
@@ -66,29 +66,29 @@ func TestGitClone(t *testing.T) {
 
 	// make a branch with slashes in it, so that can be tested too
 	require.NoError(t, w.Checkout(&git.CheckoutOptions{
-		Branch: plumbing.NewBranchReferenceName("branch/with/slashes"),
-		Create: true,
+		Branch:	plumbing.NewBranchReferenceName("branch/with/slashes"),
+		Create:	true,
 	}))
 
 	require.NoError(t, w.Checkout(&git.CheckoutOptions{
-		Branch: plumbing.NewBranchReferenceName("default"),
-		Create: true,
+		Branch:	plumbing.NewBranchReferenceName("default"),
+		Create:	true,
 	}))
 	defaultHead, err := w.Commit("default branch", &git.CommitOptions{
 		Author: &object.Signature{
-			Name:  "testo",
-			Email: "testo@example.com",
+			Name:	"testo",
+			Email:	"testo@example.com",
 		},
-		AllowEmptyCommits: true,
+		AllowEmptyCommits:	true,
 	})
 	require.NoError(t, err)
 
 	type testcase struct {
-		branchName    string
-		commitHash    string
-		testName      string // use when supplying a hash, for a stable name
-		expectedHead  plumbing.Hash
-		expectedError string
+		branchName	string
+		commitHash	string
+		testName	string	// use when supplying a hash, for a stable name
+		expectedHead	plumbing.Hash
+		expectedError	string
 	}
 
 	for _, tc := range []testcase{
@@ -117,13 +117,13 @@ func TestGitClone(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			t.Parallel()
 			repo := &GitRepo{
-				URL:        originDir,
-				Branch:     tc.branchName,
-				CommitHash: tc.commitHash,
+				URL:		originDir,
+				Branch:		tc.branchName,
+				CommitHash:	tc.commitHash,
 			}
 
 			//nolint:usetesting // Need to use a specific location for the tmp dir
-			tmp, err := os.MkdirTemp(tmpDir, "testcase") // i.e., under the tmp dir from earlier
+			tmp, err := os.MkdirTemp(tmpDir, "testcase")	// i.e., under the tmp dir from earlier
 			require.NoError(t, err)
 
 			_, err = setupGitRepo(context.Background(), tmp, repo)
@@ -140,28 +140,28 @@ func TestGitClone(t *testing.T) {
 	// test that these result in errors
 	for _, tc := range []testcase{
 		{
-			testName:      "simple branch doesn't exist",
-			branchName:    "doesnotexist",
-			expectedError: "unable to clone repo: reference not found",
+			testName:	"simple branch doesn't exist",
+			branchName:	"doesnotexist",
+			expectedError:	"unable to clone repo: reference not found",
 		},
 		{
-			testName:      "full branch doesn't exist",
-			branchName:    "refs/heads/doesnotexist",
-			expectedError: "unable to clone repo: reference not found",
+			testName:	"full branch doesn't exist",
+			branchName:	"refs/heads/doesnotexist",
+			expectedError:	"unable to clone repo: reference not found",
 		},
 		{
-			testName:      "malformed branch name",
-			branchName:    "refs/notathing/default",
-			expectedError: "unable to clone repo: reference not found",
+			testName:	"malformed branch name",
+			branchName:	"refs/notathing/default",
+			expectedError:	"unable to clone repo: reference not found",
 		},
 		{
-			testName:      "simple tag name won't work",
-			branchName:    "v1.0.0",
-			expectedError: "unable to clone repo: reference not found",
+			testName:	"simple tag name won't work",
+			branchName:	"v1.0.0",
+			expectedError:	"unable to clone repo: reference not found",
 		},
 		{
-			testName:   "wrong remote",
-			branchName: "refs/remotes/upstream/default",
+			testName:	"wrong remote",
+			branchName:	"refs/remotes/upstream/default",
 			expectedError: "a remote ref must begin with 'refs/remote/origin/', " +
 				"but got \"refs/remotes/upstream/default\"",
 		},
@@ -172,13 +172,13 @@ func TestGitClone(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			t.Parallel()
 			repo := &GitRepo{
-				URL:        originDir,
-				Branch:     tc.branchName,
-				CommitHash: tc.commitHash,
+				URL:		originDir,
+				Branch:		tc.branchName,
+				CommitHash:	tc.commitHash,
 			}
 
 			//nolint:usetesting // Need to use a specific location for the tmp dir
-			tmp, err := os.MkdirTemp(tmpDir, "testcase") // i.e., under the tmp dir from earlier
+			tmp, err := os.MkdirTemp(tmpDir, "testcase")	// i.e., under the tmp dir from earlier
 			require.NoError(t, err)
 
 			_, err = setupGitRepo(context.Background(), tmp, repo)

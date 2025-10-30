@@ -25,23 +25,23 @@ type APICapability string
 
 const (
 	// Deprecated. Use DeltaCheckpointUploadsV2.
-	DeltaCheckpointUploads APICapability = "delta-checkpoint-uploads"
+	DeltaCheckpointUploads	APICapability	= "delta-checkpoint-uploads"
 
 	// DeltaCheckpointUploads is the feature that enables the CLI to upload checkpoints
 	// via the PatchUpdateCheckpointDeltaRequest API to save on network bytes.
-	DeltaCheckpointUploadsV2 APICapability = "delta-checkpoint-uploads-v2"
+	DeltaCheckpointUploadsV2	APICapability	= "delta-checkpoint-uploads-v2"
 
 	// Indicates that the service backend supports batch encryption.
-	BatchEncrypt APICapability = "batch-encrypt"
+	BatchEncrypt	APICapability	= "batch-encrypt"
 
 	// Indicates whether the service supports summarizing errors via Copilot.
-	CopilotSummarizeError APICapability = "copilot-summarize-error"
+	CopilotSummarizeError	APICapability	= "copilot-summarize-error"
 
 	// Indicates whether the service supports the Copilot explainer.
-	CopilotExplainPreview APICapability = "copilot-explain-preview"
+	CopilotExplainPreview	APICapability	= "copilot-explain-preview"
 
 	// Indicates the maximum deployment schema version that the service supports.
-	DeploymentSchemaVersion APICapability = "deployment-schema-version"
+	DeploymentSchemaVersion	APICapability	= "deployment-schema-version"
 )
 
 type DeltaCheckpointUploadsConfigV2 struct {
@@ -59,9 +59,9 @@ type DeploymentSchemaVersionConfig struct {
 // APICapabilityConfig captures a service backend capability and any associated
 // configuration that may be required for integration.
 type APICapabilityConfig struct {
-	Capability    APICapability   `json:"capability"`
-	Version       int             `json:"version,omitempty"`
-	Configuration json.RawMessage `json:"configuration,omitempty"`
+	Capability	APICapability	`json:"capability"`
+	Version		int		`json:"version,omitempty"`
+	Configuration	json.RawMessage	`json:"configuration,omitempty"`
 }
 
 // CapabilitiesResponse defines all feature sets that are available in the service
@@ -74,19 +74,19 @@ type CapabilitiesResponse struct {
 // This is a user-friendly representation of the CapabilitiesResponse.
 type Capabilities struct {
 	// If non-nil, indicates that delta checkpoint updates are supported.
-	DeltaCheckpointUpdates *DeltaCheckpointUploadsConfigV2
+	DeltaCheckpointUpdates	*DeltaCheckpointUploadsConfigV2
 
 	// Indicates whether the service supports batch encryption.
-	BatchEncryption bool
+	BatchEncryption	bool
 
 	// Indicates whether the service supports summarizing errors via Copilot.
-	CopilotSummarizeErrorV1 bool
+	CopilotSummarizeErrorV1	bool
 
 	// Indicates whether the service supports the Copilot explainer.
-	CopilotExplainPreviewV1 bool
+	CopilotExplainPreviewV1	bool
 
 	// Indicates the maximum deployment schema version that the service supports.
-	DeploymentSchemaVersion int
+	DeploymentSchemaVersion	int
 }
 
 // Parse decodes the CapabilitiesResponse into a Capabilities struct for ease of use.

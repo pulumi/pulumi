@@ -78,8 +78,8 @@ func AWSOperationsProvider(
 	}
 
 	prov := &awsOpsProvider{
-		awsConnection: connection,
-		component:     component,
+		awsConnection:	connection,
+		component:	component,
 	}
 	return prov, nil
 }
@@ -96,25 +96,25 @@ func getPropertyMapStringValue(m resource.PropertyMap, k resource.PropertyKey) s
 }
 
 type awsOpsProvider struct {
-	awsConnection *awsConnection
-	component     *Resource
+	awsConnection	*awsConnection
+	component	*Resource
 }
 
 var _ Provider = (*awsOpsProvider)(nil)
 
 var (
 	// AWS config keys
-	regionKey = config.MustMakeKey("aws", "region")
-	accessKey = config.MustMakeKey("aws", "accessKey")
-	secretKey = config.MustMakeKey("aws", "secretKey")
-	token     = config.MustMakeKey("aws", "token")
-	profile   = config.MustMakeKey("aws", "profile")
+	regionKey	= config.MustMakeKey("aws", "region")
+	accessKey	= config.MustMakeKey("aws", "accessKey")
+	secretKey	= config.MustMakeKey("aws", "secretKey")
+	token		= config.MustMakeKey("aws", "token")
+	profile		= config.MustMakeKey("aws", "profile")
 )
 
 const (
 	// AWS resource types
-	awsFunctionType = tokens.Type("aws:lambda/function:Function")
-	awsLogGroupType = tokens.Type("aws:cloudwatch/logGroup:LogGroup")
+	awsFunctionType	= tokens.Type("aws:lambda/function:Function")
+	awsLogGroupType	= tokens.Type("aws:cloudwatch/logGroup:LogGroup")
 )
 
 func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
@@ -160,8 +160,8 @@ type awsConnection struct {
 }
 
 var (
-	awsDefaultSessions     map[string]*session.Session = map[string]*session.Session{}
-	awsDefaultSessionMutex sync.Mutex
+	awsDefaultSessions	map[string]*session.Session	= map[string]*session.Session{}
+	awsDefaultSessionMutex	sync.Mutex
 )
 
 // getSession gets or creates a Session instance to use for making AWS SDK calls using the provided credentials
@@ -187,9 +187,9 @@ func getAWSSession(
 		}
 
 		sess, err := session.NewSessionWithOptions(session.Options{
-			Profile:           awsProfile,
-			SharedConfigState: session.SharedConfigEnable,
-			Config:            config,
+			Profile:		awsProfile,
+			SharedConfigState:	session.SharedConfigEnable,
+			Config:			config,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create AWS session: %w", err)
@@ -233,9 +233,9 @@ func (p *awsConnection) getLogsForLogGroupsConcurrently(
 		go func(logGroup string) {
 			var ret []*cloudwatchlogs.FilteredLogEvent
 			err := p.logSvc.FilterLogEventsPages(&cloudwatchlogs.FilterLogEventsInput{
-				LogGroupName: aws.String(logGroup),
-				StartTime:    startMilli,
-				EndTime:      endMilli,
+				LogGroupName:	aws.String(logGroup),
+				StartTime:	startMilli,
+				EndTime:	endMilli,
 			}, func(resp *cloudwatchlogs.FilterLogEventsOutput, lastPage bool) bool {
 				ret = append(ret, resp.Events...)
 				if !lastPage {
@@ -256,9 +256,9 @@ func (p *awsConnection) getLogsForLogGroupsConcurrently(
 		logEvents := <-ch
 		for _, event := range logEvents {
 			logs = append(logs, LogEntry{
-				ID:        names[i],
-				Message:   aws.StringValue(event.Message),
-				Timestamp: aws.Int64Value(event.Timestamp),
+				ID:		names[i],
+				Message:	aws.StringValue(event.Message),
+				Timestamp:	aws.Int64Value(event.Timestamp),
 			})
 		}
 	}

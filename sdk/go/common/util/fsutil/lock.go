@@ -24,9 +24,9 @@ import (
 // caller holds exclusive access over te protected resources, even if there are other consumers both within and outside
 // of the same process.
 type FileMutex struct {
-	proclock sync.Mutex        // lock serializing in-process access to the protected resource
-	fslock   *lockedfile.Mutex // lock serializing out-of-process access to the protected resource
-	fsunlock func()
+	proclock	sync.Mutex		// lock serializing in-process access to the protected resource
+	fslock		*lockedfile.Mutex	// lock serializing out-of-process access to the protected resource
+	fsunlock	func()
 }
 
 // NewFileMutex creates a new FileMutex using the given file as a file lock.

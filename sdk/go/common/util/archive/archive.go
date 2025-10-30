@@ -132,8 +132,8 @@ func ExtractTGZ(r io.Reader, dir string) error {
 }
 
 const (
-	gitDir        = ".git"
-	gitIgnoreFile = ".gitignore"
+	gitDir		= ".git"
+	gitIgnoreFile	= ".gitignore"
 )
 
 func addDirectoryToTar(writer *tar.Writer, root, dir, prefixPathInsideTar string,

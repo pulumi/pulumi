@@ -49,9 +49,9 @@ func ProviderFactoryFromHost(ctx context.Context, host plugin.Host) ProviderFact
 		if descriptor.Parameterization != nil {
 			_, err := provider.Parameterize(ctx, plugin.ParameterizeRequest{
 				Parameters: &plugin.ParameterizeValue{
-					Name:    descriptor.Parameterization.Name,
-					Version: descriptor.Parameterization.Version,
-					Value:   descriptor.Parameterization.Value,
+					Name:		descriptor.Parameterization.Name,
+					Version:	descriptor.Parameterization.Version,
+					Value:		descriptor.Parameterization.Value,
 				},
 			})
 			if err != nil {
@@ -60,8 +60,8 @@ func ProviderFactoryFromHost(ctx context.Context, host plugin.Host) ProviderFact
 		}
 
 		return &hostManagedProvider{
-			Provider: provider,
-			host:     host,
+			Provider:	provider,
+			host:		host,
 		}, nil
 	}
 }
@@ -70,7 +70,7 @@ func ProviderFactoryFromHost(ctx context.Context, host plugin.Host) ProviderFact
 type hostManagedProvider struct {
 	plugin.Provider
 
-	host plugin.Host
+	host	plugin.Host
 }
 
 var _ plugin.Provider = (*hostManagedProvider)(nil)

@@ -54,7 +54,7 @@ func TestBasePluginMapper_UsesEntries(t *testing.T) {
 
 	mapper, err := NewBasePluginMapper(
 		ws,
-		"key", /*conversionKey*/
+		"key",	/*conversionKey*/
 		providerFactory,
 		installPlugin,
 		[]string{mappingFile},
@@ -78,15 +78,15 @@ func TestBasePluginMapper_InstalledPluginMatches(t *testing.T) {
 	ws := &testWorkspace{
 		infos: []workspace.PluginInfo{
 			{
-				Name:    "provider",
-				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Name:		"provider",
+				Kind:		apitype.ResourcePlugin,
+				Version:	semverMustParse("1.0.0"),
 			},
 		},
 	}
 
 	testProvider := &testProvider{
-		pkg: "provider",
+		pkg:	"provider",
 		GetMappingF: func(key, provider string) ([]byte, string, error) {
 			assert.Equal(t, "key", key)
 			assert.Equal(t, "", provider)
@@ -107,10 +107,10 @@ func TestBasePluginMapper_InstalledPluginMatches(t *testing.T) {
 
 	mapper, err := NewBasePluginMapper(
 		ws,
-		"key", /*conversionKey*/
+		"key",	/*conversionKey*/
 		providerFactory,
 		installPlugin,
-		nil, /*mappings*/
+		nil,	/*mappings*/
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
@@ -132,15 +132,15 @@ func TestBasePluginMapper_MappedNameDiffersFromPulumiName(t *testing.T) {
 	ws := &testWorkspace{
 		infos: []workspace.PluginInfo{
 			{
-				Name:    "pulumiProvider",
-				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Name:		"pulumiProvider",
+				Kind:		apitype.ResourcePlugin,
+				Version:	semverMustParse("1.0.0"),
 			},
 		},
 	}
 
 	testProvider := &testProvider{
-		pkg: "pulumiProvider",
+		pkg:	"pulumiProvider",
 		GetMappingF: func(key, provider string) ([]byte, string, error) {
 			assert.Equal(t, "key", key)
 			assert.Equal(t, "", provider)
@@ -168,10 +168,10 @@ func TestBasePluginMapper_MappedNameDiffersFromPulumiName(t *testing.T) {
 
 	mapper, err := NewBasePluginMapper(
 		ws,
-		"key", /*conversionKey*/
+		"key",	/*conversionKey*/
 		providerFactory,
 		installPlugin,
-		nil, /*mappings*/
+		nil,	/*mappings*/
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
@@ -194,9 +194,9 @@ func TestBasePluginMapper_NoPluginMatches_ButCanBeInstalled(t *testing.T) {
 	ws := &testWorkspace{
 		infos: []workspace.PluginInfo{
 			{
-				Name:    "pulumiProvider",
-				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Name:		"pulumiProvider",
+				Kind:		apitype.ResourcePlugin,
+				Version:	semverMustParse("1.0.0"),
 			},
 		},
 	}
@@ -204,7 +204,7 @@ func TestBasePluginMapper_NoPluginMatches_ButCanBeInstalled(t *testing.T) {
 	// This provider will be returned by the factory, but since it's not specified in the workspace we'll expect an
 	// "install" to be requested beforehand.
 	testProvider := &testProvider{
-		pkg: "yetAnotherProvider",
+		pkg:	"yetAnotherProvider",
 		GetMappingF: func(key, provider string) ([]byte, string, error) {
 			assert.Equal(t, "key", key)
 			assert.Equal(t, "", provider)
@@ -229,10 +229,10 @@ func TestBasePluginMapper_NoPluginMatches_ButCanBeInstalled(t *testing.T) {
 
 	mapper, err := NewBasePluginMapper(
 		ws,
-		"key", /*conversionKey*/
+		"key",	/*conversionKey*/
 		providerFactory,
 		installPlugin,
-		nil, /*mappings*/
+		nil,	/*mappings*/
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
@@ -255,20 +255,20 @@ func TestBasePluginMapper_UseMatchingNameFirst(t *testing.T) {
 	ws := &testWorkspace{
 		infos: []workspace.PluginInfo{
 			{
-				Name:    "otherProvider",
-				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Name:		"otherProvider",
+				Kind:		apitype.ResourcePlugin,
+				Version:	semverMustParse("1.0.0"),
 			},
 			{
-				Name:    "provider",
-				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Name:		"provider",
+				Kind:		apitype.ResourcePlugin,
+				Version:	semverMustParse("1.0.0"),
 			},
 		},
 	}
 
 	testProvider := &testProvider{
-		pkg: "provider",
+		pkg:	"provider",
 		GetMappingF: func(key, provider string) ([]byte, string, error) {
 			assert.Equal(t, "key", key)
 			assert.Equal(t, "", provider)
@@ -289,10 +289,10 @@ func TestBasePluginMapper_UseMatchingNameFirst(t *testing.T) {
 
 	mapper, err := NewBasePluginMapper(
 		ws,
-		"key", /*conversionKey*/
+		"key",	/*conversionKey*/
 		providerFactory,
 		installPlugin,
-		nil, /*mappings*/
+		nil,	/*mappings*/
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
@@ -314,20 +314,20 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 	ws := &testWorkspace{
 		infos: []workspace.PluginInfo{
 			{
-				Name:    "pulumiProviderAws",
-				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Name:		"pulumiProviderAws",
+				Kind:		apitype.ResourcePlugin,
+				Version:	semverMustParse("1.0.0"),
 			},
 			{
-				Name:    "pulumiProviderGcp",
-				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Name:		"pulumiProviderGcp",
+				Kind:		apitype.ResourcePlugin,
+				Version:	semverMustParse("1.0.0"),
 			},
 		},
 	}
 
 	testProviderAws := &testProvider{
-		pkg: "pulumiProviderAws",
+		pkg:	"pulumiProviderAws",
 		GetMappingF: func(key, provider string) ([]byte, string, error) {
 			assert.Equal(t, "key", key)
 			assert.Equal(t, "", provider)
@@ -336,7 +336,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 	}
 
 	testProviderGcp := &testProvider{
-		pkg: "pulumiProviderGcp",
+		pkg:	"pulumiProviderGcp",
 		GetMappingF: func(key, provider string) ([]byte, string, error) {
 			assert.Equal(t, "key", key)
 			assert.Equal(t, "", provider)
@@ -375,10 +375,10 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 
 	mapper, err := NewBasePluginMapper(
 		ws,
-		"key", /*conversionKey*/
+		"key",	/*conversionKey*/
 		providerFactory,
 		installPlugin,
-		nil, /*mappings*/
+		nil,	/*mappings*/
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
@@ -409,20 +409,20 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithHint(t *testing.T) 
 	ws := &testWorkspace{
 		infos: []workspace.PluginInfo{
 			{
-				Name:    "pulumiProviderAws",
-				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Name:		"pulumiProviderAws",
+				Kind:		apitype.ResourcePlugin,
+				Version:	semverMustParse("1.0.0"),
 			},
 			{
-				Name:    "pulumiProviderGcp",
-				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Name:		"pulumiProviderGcp",
+				Kind:		apitype.ResourcePlugin,
+				Version:	semverMustParse("1.0.0"),
 			},
 		},
 	}
 
 	testProvider := &testProvider{
-		pkg: "pulumiProviderGcp",
+		pkg:	"pulumiProviderGcp",
 		GetMappingF: func(key, provider string) ([]byte, string, error) {
 			assert.Equal(t, "key", key)
 			assert.Equal(t, "", provider)
@@ -443,10 +443,10 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithHint(t *testing.T) 
 
 	mapper, err := NewBasePluginMapper(
 		ws,
-		"key", /*conversionKey*/
+		"key",	/*conversionKey*/
 		providerFactory,
 		installPlugin,
-		nil, /*mappings*/
+		nil,	/*mappings*/
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
@@ -471,20 +471,20 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithParameterizedHint(t
 	ws := &testWorkspace{
 		infos: []workspace.PluginInfo{
 			{
-				Name:    "pulumiProviderAws",
-				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Name:		"pulumiProviderAws",
+				Kind:		apitype.ResourcePlugin,
+				Version:	semverMustParse("1.0.0"),
 			},
 			{
-				Name:    "terraform-provider",
-				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Name:		"terraform-provider",
+				Kind:		apitype.ResourcePlugin,
+				Version:	semverMustParse("1.0.0"),
 			},
 		},
 	}
 
 	testProvider := &testProvider{
-		pkg: "terraform-provider",
+		pkg:	"terraform-provider",
 		GetMappingF: func(key, provider string) ([]byte, string, error) {
 			assert.Equal(t, "key", key)
 			assert.Equal(t, "", provider)
@@ -511,21 +511,21 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithParameterizedHint(t
 
 	mapper, err := NewBasePluginMapper(
 		ws,
-		"key", /*conversionKey*/
+		"key",	/*conversionKey*/
 		providerFactory,
 		installPlugin,
-		nil, /*mappings*/
+		nil,	/*mappings*/
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
 
 	// Act.
 	data, err := mapper.GetMapping(context.Background(), "gcp", &MapperPackageHint{
-		PluginName: "terraform-provider",
+		PluginName:	"terraform-provider",
 		Parameterization: &workspace.Parameterization{
-			Name:    "gcp",
-			Version: semver.MustParse("2.0.0"),
-			Value:   []byte("value"),
+			Name:		"gcp",
+			Version:	semver.MustParse("2.0.0"),
+			Value:		[]byte("value"),
 		},
 	})
 
@@ -543,15 +543,15 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithUnusableParameteriz
 	ws := &testWorkspace{
 		infos: []workspace.PluginInfo{
 			{
-				Name:    "pulumiProviderAws",
-				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Name:		"pulumiProviderAws",
+				Kind:		apitype.ResourcePlugin,
+				Version:	semverMustParse("1.0.0"),
 			},
 		},
 	}
 
 	testProvider := &testProvider{
-		pkg: "pulumiProviderAws",
+		pkg:	"pulumiProviderAws",
 		GetMappingF: func(key, provider string) ([]byte, string, error) {
 			assert.Equal(t, "key", key)
 			assert.Equal(t, "", provider)
@@ -575,21 +575,21 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithUnusableParameteriz
 
 	mapper, err := NewBasePluginMapper(
 		ws,
-		"key", /*conversionKey*/
+		"key",	/*conversionKey*/
 		providerFactory,
 		installPlugin,
-		nil, /*mappings*/
+		nil,	/*mappings*/
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
 
 	// Act.
 	data, err := mapper.GetMapping(context.Background(), "aws", &MapperPackageHint{
-		PluginName: "aws",
+		PluginName:	"aws",
 		Parameterization: &workspace.Parameterization{
-			Name:    "aws",
-			Version: semver.MustParse("2.0.0"),
-			Value:   []byte("value"),
+			Name:		"aws",
+			Version:	semver.MustParse("2.0.0"),
+			Value:		[]byte("value"),
 		},
 	})
 
@@ -606,15 +606,15 @@ func TestBasePluginMapper_InfiniteLoopRegression(t *testing.T) {
 	ws := &testWorkspace{
 		infos: []workspace.PluginInfo{
 			{
-				Name:    "pulumiProviderAws",
-				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Name:		"pulumiProviderAws",
+				Kind:		apitype.ResourcePlugin,
+				Version:	semverMustParse("1.0.0"),
 			},
 		},
 	}
 
 	testProviderAws := &testProvider{
-		pkg: "pulumiProviderAws",
+		pkg:	"pulumiProviderAws",
 		GetMappingF: func(key, provider string) ([]byte, string, error) {
 			assert.Equal(t, "key", key)
 			assert.Equal(t, "", provider)
@@ -642,10 +642,10 @@ func TestBasePluginMapper_InfiniteLoopRegression(t *testing.T) {
 
 	mapper, err := NewBasePluginMapper(
 		ws,
-		"key", /*conversionKey*/
+		"key",	/*conversionKey*/
 		providerFactory,
 		installPlugin,
-		nil, /*mappings*/
+		nil,	/*mappings*/
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
@@ -673,10 +673,10 @@ func (ws *testWorkspace) GetPlugins() ([]workspace.PluginInfo, error) {
 type testProvider struct {
 	plugin.UnimplementedProvider
 
-	pkg string
+	pkg	string
 
-	GetMappingF  func(key, provider string) ([]byte, string, error)
-	GetMappingsF func(key string) ([]string, error)
+	GetMappingF	func(key, provider string) ([]byte, string, error)
+	GetMappingsF	func(key string) ([]string, error)
 }
 
 func (prov *testProvider) Pkg() tokens.Package {
@@ -689,8 +689,8 @@ func (prov *testProvider) GetMapping(
 ) (plugin.GetMappingResponse, error) {
 	data, provider, err := prov.GetMappingF(req.Key, req.Provider)
 	return plugin.GetMappingResponse{
-		Data:     data,
-		Provider: provider,
+		Data:		data,
+		Provider:	provider,
 	}, err
 }
 

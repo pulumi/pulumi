@@ -19,12 +19,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/report"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/dotnet"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/nodejs"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/report"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/testing/utils"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -39,8 +39,8 @@ func TestReportExample(t *testing.T) {
 	defer reporter.Close()
 
 	examples := []struct {
-		title string
-		body  string
+		title	string
+		body	string
 	}{
 		{"Our basic bucket", `resource bucket "aws:s3:BucketV2" {  }`},
 		{"A resource group", `resource group "azure:core:ResourceGroup" { location: "westus2" }`},
@@ -64,16 +64,16 @@ func TestReportExample(t *testing.T) {
 	}
 
 	assert.Equal(t, report.Summary{
-		Name: "example",
+		Name:	"example",
 		Stats: report.Stats{
-			NumConversions: 5,
-			Successes:      4,
+			NumConversions:	5,
+			Successes:	4,
 		},
 		Languages: map[string]*report.Language{
 			"": {
 				Stats: report.Stats{
-					NumConversions: 1,
-					Successes:      0,
+					NumConversions:	1,
+					Successes:	0,
 				},
 				GoErrors: map[string]string{
 					"Might not bind": "error: could not locate a compatible plugin in " +
@@ -86,18 +86,18 @@ func TestReportExample(t *testing.T) {
 			},
 			"dotnet": {
 				Stats: report.Stats{
-					NumConversions: 2,
-					Successes:      2,
+					NumConversions:	2,
+					Successes:	2,
 				},
 			},
 			"nodejs": {
 				Stats: report.Stats{
-					NumConversions: 2,
-					Successes:      2,
+					NumConversions:	2,
+					Successes:	2,
 				},
 			},
 		},
 	}, reporter.Summary())
 }
 
-func handleAsNormal(args ...any) {}
+func handleAsNormal(args ...any)	{}

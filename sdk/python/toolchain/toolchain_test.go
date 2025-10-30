@@ -35,8 +35,8 @@ func TestValidateVenv(t *testing.T) {
 
 	for _, opts := range []PythonOptions{
 		{
-			Toolchain:  Pip,
-			Virtualenv: "venv",
+			Toolchain:	Pip,
+			Virtualenv:	"venv",
 		},
 		{
 			Toolchain: Poetry,
@@ -80,8 +80,8 @@ func TestCommand(t *testing.T) {
 
 	for _, opts := range []PythonOptions{
 		{
-			Toolchain:  Pip,
-			Virtualenv: venvDir,
+			Toolchain:	Pip,
+			Virtualenv:	venvDir,
 		},
 		{
 			Toolchain: Poetry,
@@ -153,32 +153,32 @@ func TestListPackages(t *testing.T) {
 	})
 
 	for _, test := range []struct {
-		opts             PythonOptions
-		expectedPackages []string
+		opts			PythonOptions
+		expectedPackages	[]string
 	}{
 		{
 			opts: PythonOptions{
-				Toolchain:  Pip,
-				Virtualenv: "venv",
+				Toolchain:	Pip,
+				Virtualenv:	"venv",
 			},
 			// The virtualenv created by the pip toolchain always has pip
 			// installed. Additionally it always installs setuptools and wheel
 			// into the virtualenv.
-			expectedPackages: []string{"pip", "setuptools", "wheel"},
+			expectedPackages:	[]string{"pip", "setuptools", "wheel"},
 		},
 		{
 			opts: PythonOptions{
 				Toolchain: Poetry,
 			},
 			// Virtual environments created by Poetry always include pip.
-			expectedPackages: []string{"pip"},
+			expectedPackages:	[]string{"pip"},
 		},
 		{
 			opts: PythonOptions{
 				Toolchain: Uv,
 			},
 			// Virtual environments created by uv are empty.
-			expectedPackages: []string{},
+			expectedPackages:	[]string{},
 		},
 	} {
 		t.Run("empty/"+Name(test.opts.Toolchain), func(t *testing.T) {
@@ -254,8 +254,8 @@ func TestAbout(t *testing.T) {
 
 	for _, opts := range []PythonOptions{
 		{
-			Toolchain:  Pip,
-			Virtualenv: "venv",
+			Toolchain:	Pip,
+			Virtualenv:	"venv",
 		},
 		{
 			Toolchain: Poetry,
@@ -348,7 +348,7 @@ func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 	case Pip:
 		tc, err := ResolveToolchain(opts)
 		require.NoError(t, err)
-		err = tc.InstallDependencies(context.Background(), opts.Root, false, /*useLanguageVersionTools*/
+		err = tc.InstallDependencies(context.Background(), opts.Root, false,	/*useLanguageVersionTools*/
 			true /*showOutput */, os.Stdout, os.Stderr)
 		require.NoError(t, err)
 
@@ -365,7 +365,7 @@ func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 		writePoetryToml(t, opts.Root)
 		tc, err := ResolveToolchain(opts)
 		require.NoError(t, err)
-		err = tc.InstallDependencies(context.Background(), opts.Root, false, /*useLanguageVersionTools*/
+		err = tc.InstallDependencies(context.Background(), opts.Root, false,	/*useLanguageVersionTools*/
 			true /*showOutput */, os.Stdout, os.Stderr)
 		require.NoError(t, err)
 
@@ -379,7 +379,7 @@ func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 		writePyprojectForUv(t, opts.Root)
 		tc, err := ResolveToolchain(opts)
 		require.NoError(t, err)
-		err = tc.InstallDependencies(context.Background(), opts.Root, false, /*useLanguageVersionTools*/
+		err = tc.InstallDependencies(context.Background(), opts.Root, false,	/*useLanguageVersionTools*/
 			true /*showOutput */, os.Stdout, os.Stderr)
 		require.NoError(t, err)
 
@@ -450,11 +450,11 @@ no-setuptools = true
 
 func copyOptions(opts PythonOptions) PythonOptions {
 	return PythonOptions{
-		Root:        opts.Root,
-		ProgramDir:  opts.ProgramDir,
-		Virtualenv:  opts.Virtualenv,
-		Typechecker: opts.Typechecker,
-		Toolchain:   opts.Toolchain,
+		Root:		opts.Root,
+		ProgramDir:	opts.ProgramDir,
+		Virtualenv:	opts.Virtualenv,
+		Typechecker:	opts.Typechecker,
+		Toolchain:	opts.Toolchain,
 	}
 }
 

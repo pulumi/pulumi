@@ -22,15 +22,15 @@ import (
 	"path/filepath"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 type SchemaProvider struct {
-	name    string
-	version string
+	name	string
+	version	string
 }
 
 func NewSchemaProvider(name, version string) SchemaProvider {
@@ -52,8 +52,8 @@ func NewHostWithProviders(schemaDirectoryPath string, providers ...SchemaProvide
 						version = paramValues.Version
 					}
 					return plugin.ParameterizeResponse{
-						Name:    name,
-						Version: version,
+						Name:		name,
+						Version:	version,
 					}, nil
 				},
 				GetSchemaF: func(_ context.Context, req plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {

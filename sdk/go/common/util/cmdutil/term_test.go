@@ -47,8 +47,8 @@ func TestTerminate_gracefulShutdown(t *testing.T) {
 	//   - It MAY print diagnostic messages to stderr.
 
 	tests := []struct {
-		desc string
-		prog testProgram
+		desc	string
+		prog	testProgram
 	}{
 		{desc: "go", prog: goTestProgram.From("graceful.go")},
 		{desc: "node", prog: nodeTestProgram.From("graceful.js")},
@@ -134,8 +134,8 @@ func TestTerminate_forceKill(t *testing.T) {
 	//   - It MAY exit with a non-zero code if it receives a SIGINT.
 
 	tests := []struct {
-		desc string
-		prog testProgram
+		desc	string
+		prog	testProgram
 	}{
 		{desc: "go", prog: goTestProgram.From("frozen.go")},
 		{desc: "node", prog: nodeTestProgram.From("frozen.js")},
@@ -253,8 +253,8 @@ func TestTerminate_unhandledInterrupt(t *testing.T) {
 	// - It MUST exit with a non-zero code if it does not get terminated within 3 seconds.
 
 	tests := []struct {
-		desc string
-		prog testProgram
+		desc	string
+		prog	testProgram
 	}{
 		{desc: "go", prog: goTestProgram.From("unhandled.go")},
 		{desc: "node", prog: nodeTestProgram.From("unhandled.js")},
@@ -306,7 +306,7 @@ func TestTerminate_unhandledInterrupt(t *testing.T) {
 type testProgramKind int
 
 const (
-	goTestProgram testProgramKind = iota
+	goTestProgram	testProgramKind	= iota
 	nodeTestProgram
 	pythonTestProgram
 )
@@ -332,22 +332,22 @@ func (k testProgramKind) String() string {
 //	goTestProgram.From("main.go")
 func (k testProgramKind) From(path string) testProgram {
 	return testProgram{
-		kind: k,
-		src:  path,
+		kind:	k,
+		src:	path,
 	}
 }
 
 // testProgram is a test program inside the testdata directory.
 type testProgram struct {
 	// kind is the kind of test program.
-	kind testProgramKind
+	kind	testProgramKind
 
 	// src is the path to the source file
 	// relative to the testdata directory.
-	src string
+	src	string
 
 	// args specifies additional arguments to pass to the program.
-	args []string
+	args	[]string
 }
 
 func (p testProgram) Args(args ...string) testProgram {
@@ -406,7 +406,7 @@ func (p testProgram) Build(t *testing.T) (cmd *exec.Cmd) {
 			t.Skipf("Skipping test: could not find python3 or python executable")
 			return nil
 		}
-		return exec.Command(pythonBin, append([]string{src}, p.args...)...) //nolint:gosec
+		return exec.Command(pythonBin, append([]string{src}, p.args...)...)	//nolint:gosec
 
 	default:
 		t.Fatalf("unknown test program kind: %v", p.kind)
@@ -425,8 +425,8 @@ func lookPathOrSkip(t *testing.T, name string) string {
 // lockedBuffer is a thread-safe bytes.Buffer
 // that can be used to capture stdout/stderr of a command.
 type lockedBuffer struct {
-	mu sync.RWMutex
-	b  bytes.Buffer
+	mu	sync.RWMutex
+	b	bytes.Buffer
 }
 
 func (b *lockedBuffer) Write(p []byte) (int, error) {
@@ -450,8 +450,8 @@ func waitPidDead(pid int, timeout time.Duration) error {
 	defer cancel()
 
 	var (
-		proc ps.Process
-		err  error
+		proc	ps.Process
+		err	error
 	)
 	for {
 		select {

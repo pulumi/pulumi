@@ -29,11 +29,11 @@ import (
 
 const (
 	// ExamplesShortcode is the name for the `{{% examples %}}` shortcode, which demarcates a set of example sections.
-	ExamplesShortcode = "examples"
+	ExamplesShortcode	= "examples"
 
 	// ExampleShortcode is the name for the `{{% example %}}` shortcode, which demarcates the content for a single
 	// example.
-	ExampleShortcode = "example"
+	ExampleShortcode	= "example"
 )
 
 // Shortcode represents a shortcode element and its contents, e.g. `{{% examples %}}`.
@@ -41,7 +41,7 @@ type Shortcode struct {
 	ast.BaseBlock
 
 	// Name is the name of the shortcode.
-	Name []byte
+	Name	[]byte
 }
 
 func (s *Shortcode) Dump(w io.Writer, source []byte, level int) {

@@ -21,15 +21,15 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/secrets"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/metadata"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -55,9 +55,9 @@ func NewWatchCmd() *cobra.Command {
 	var secretsProvider string
 
 	cmd := &cobra.Command{
-		Use:        "watch",
-		SuggestFor: []string{"developer", "dev"},
-		Short:      "Continuously update the resources in a stack",
+		Use:		"watch",
+		SuggestFor:	[]string{"developer", "dev"},
+		Short:		"Continuously update the resources in a stack",
 		Long: "[EXPERIMENTAL] Continuously update the resources in a stack.\n" +
 			"\n" +
 			"This command watches the working directory or specified paths for the current project and updates\n" +
@@ -66,29 +66,29 @@ func NewWatchCmd() *cobra.Command {
 			"\n" +
 			"The program to watch is loaded from the project in the current directory by default. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
-		Args: cmdutil.MaximumNArgs(1),
+		Args:	cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
 
-			opts, err := updateFlagsToOptions(false /* interactive */, true /* skipPreview */, true, /* autoApprove */
+			opts, err := updateFlagsToOptions(false /* interactive */, true /* skipPreview */, true,	/* autoApprove */
 				false /* previewOnly */)
 			if err != nil {
 				return err
 			}
 
 			opts.Display = display.Options{
-				Color:                cmdutil.GetGlobalColorization(),
-				ShowConfig:           showConfig,
-				ShowReplacementSteps: showReplacementSteps,
-				ShowSameResources:    showSames,
-				SuppressOutputs:      true,
-				SuppressProgress:     true,
-				SuppressPermalink:    false,
-				IsInteractive:        false,
-				Type:                 display.DisplayWatch,
-				Debug:                debug,
+				Color:			cmdutil.GetGlobalColorization(),
+				ShowConfig:		showConfig,
+				ShowReplacementSteps:	showReplacementSteps,
+				ShowSameResources:	showSames,
+				SuppressOutputs:	true,
+				SuppressProgress:	true,
+				SuppressPermalink:	false,
+				IsInteractive:		false,
+				Type:			display.DisplayWatch,
+				Debug:			debug,
 			}
 
 			if err := validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
@@ -145,28 +145,28 @@ func NewWatchCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				ParallelDiff:              env.ParallelDiff.Value(),
-				LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
-				Parallel:                  parallel,
-				Debug:                     debug,
-				Refresh:                   refresh,
-				UseLegacyDiff:             env.EnableLegacyDiff.Value(),
-				UseLegacyRefreshDiff:      env.EnableLegacyRefreshDiff.Value(),
-				DisableProviderPreview:    env.DisableProviderPreview.Value(),
-				DisableResourceReferences: env.DisableResourceReferences.Value(),
-				DisableOutputValues:       env.DisableOutputValues.Value(),
-				Experimental:              env.Experimental.Value(),
+				ParallelDiff:			env.ParallelDiff.Value(),
+				LocalPolicyPacks:		engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
+				Parallel:			parallel,
+				Debug:				debug,
+				Refresh:			refresh,
+				UseLegacyDiff:			env.EnableLegacyDiff.Value(),
+				UseLegacyRefreshDiff:		env.EnableLegacyRefreshDiff.Value(),
+				DisableProviderPreview:		env.DisableProviderPreview.Value(),
+				DisableResourceReferences:	env.DisableResourceReferences.Value(),
+				DisableOutputValues:		env.DisableOutputValues.Value(),
+				Experimental:			env.Experimental.Value(),
 			}
 
 			err = backend.WatchStack(ctx, s, backend.UpdateOperation{
-				Proj:               proj,
-				Root:               root,
-				M:                  m,
-				Opts:               opts,
-				StackConfiguration: cfg,
-				SecretsManager:     sm,
-				SecretsProvider:    secrets.DefaultProvider,
-				Scopes:             backend.CancellationScopes,
+				Proj:			proj,
+				Root:			root,
+				M:			m,
+				Opts:			opts,
+				StackConfiguration:	cfg,
+				SecretsManager:		sm,
+				SecretsProvider:	secrets.DefaultProvider,
+				Scopes:			backend.CancellationScopes,
 			}, pathArray)
 
 			switch {

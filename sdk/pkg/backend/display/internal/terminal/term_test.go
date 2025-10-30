@@ -24,11 +24,11 @@ import (
 )
 
 type ansiCase struct {
-	in           string
-	kind         ansiKind
-	params       string
-	intermediate string
-	final        byte
+	in		string
+	kind		ansiKind
+	params		string
+	intermediate	string
+	final		byte
 }
 
 func (c ansiCase) run(t *testing.T) {
@@ -47,11 +47,11 @@ func (c ansiCase) run(t *testing.T) {
 
 func ansiErrorCase(lead, params, intermediate string, final byte) ansiCase {
 	return ansiCase{
-		in:           fmt.Sprintf("%v%v%v%v", lead, params, intermediate, string([]byte{final})),
-		kind:         ansiError,
-		params:       params,
-		intermediate: intermediate,
-		final:        final,
+		in:		fmt.Sprintf("%v%v%v%v", lead, params, intermediate, string([]byte{final})),
+		kind:		ansiError,
+		params:		params,
+		intermediate:	intermediate,
+		final:		final,
 	}
 }
 
@@ -61,20 +61,20 @@ func ansiKeyCase(in byte) ansiCase {
 
 func ansiEscapeCase(intermediate string, final byte) ansiCase {
 	return ansiCase{
-		in:           fmt.Sprintf("\x1b%v%v", intermediate, string([]byte{final})),
-		kind:         ansiEscape,
-		intermediate: intermediate,
-		final:        final,
+		in:		fmt.Sprintf("\x1b%v%v", intermediate, string([]byte{final})),
+		kind:		ansiEscape,
+		intermediate:	intermediate,
+		final:		final,
 	}
 }
 
 func ansiControlCase(params, intermediate string, final byte) ansiCase {
 	return ansiCase{
-		in:           fmt.Sprintf("\x1b[%v%v%v", params, intermediate, string([]byte{final})),
-		kind:         ansiControl,
-		params:       params,
-		intermediate: intermediate,
-		final:        final,
+		in:		fmt.Sprintf("\x1b[%v%v%v", params, intermediate, string([]byte{final})),
+		kind:		ansiControl,
+		params:		params,
+		intermediate:	intermediate,
+		final:		final,
 	}
 }
 

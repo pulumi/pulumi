@@ -23,19 +23,19 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model/pretty"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // EnumType represents values of a single type, and a closed set of possible values.
 type EnumType struct {
 	// Elements are the possible values of the enum.
-	Elements []cty.Value
+	Elements	[]cty.Value
 
 	// The type of the enum's values.
-	Type Type
+	Type	Type
 
 	// Token that uniquely identifies a EnumType.
 	// Given EnumA, EnumB of type EnumType
@@ -47,16 +47,16 @@ type EnumType struct {
 	// 		EnumA.Token = EnumB.Token => EnumA = EnumB (all fields match)
 	//
 	// Failure to do so may lead to panics.
-	Token string
+	Token	string
 	// TODO: Refactor the token out into NamedType<EnumType>
 	// See https://github.com/pulumi/pulumi/pull/9290#discussion_r851356288
 
 	// Annotations records any annotations associated with the object type.
-	Annotations []any
+	Annotations	[]any
 
-	s atomic.Value // Value<string>
+	s	atomic.Value	// Value<string>
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache	*gsync.Map[Type, cacheEntry]
 }
 
 func NewEnumType(token string, typ Type, elements []cty.Value, annotations ...any) *EnumType {
@@ -69,11 +69,11 @@ func NewEnumType(token string, typ Type, elements []cty.Value, annotations ...an
 	}
 
 	return &EnumType{
-		Type:        typ,
-		Annotations: annotations,
-		Elements:    elements,
-		Token:       token,
-		cache:       &gsync.Map[Type, cacheEntry]{},
+		Type:		typ,
+		Annotations:	annotations,
+		Elements:	elements,
+		Token:		token,
+		cache:		&gsync.Map[Type, cacheEntry]{},
 	}
 }
 
@@ -90,11 +90,11 @@ func (t *EnumType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Forma
 		)
 	}
 	seenFormatters[t] = &pretty.Wrap{
-		Prefix:  "enum(",
-		Postfix: ")",
+		Prefix:		"enum(",
+		Postfix:	")",
 		Value: &pretty.List{
-			Separator: " | ",
-			Elements:  types,
+			Separator:	" | ",
+			Elements:	types,
 		},
 	}
 
@@ -198,4 +198,4 @@ func (t *EnumType) unify(other Type) (Type, ConversionKind) {
 		return nil, NoConversion
 	})
 }
-func (*EnumType) isType() {}
+func (*EnumType) isType()	{}

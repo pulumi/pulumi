@@ -24,8 +24,8 @@ import (
 )
 
 type (
-	Asset   = *asset.Asset
-	Archive = *archive.Archive
+	Asset	= *asset.Asset
+	Archive	= *archive.Archive
 )
 
 // Value is an imitable representation of a Pulumi property value. To create a new Value
@@ -37,28 +37,28 @@ type (
 //
 // The zero value of Value is null, and is valid for use.
 type Value struct {
-	isSecret bool
+	isSecret	bool
 
-	dependencies []urn.URN // the dependencies associated with this value.
+	dependencies	[]urn.URN	// the dependencies associated with this value.
 
 	// The inner go value for the Value.
 	//
 	// Note: null{} is not a valid value for v. null{} should be normalized to nil
 	// during creation, so that the zero value of Value is bit for bit equivalent to
 	// `New(Null)`.
-	v any
+	v	any
 }
 
 // GoValue defines the set of go values that can be contained inside a [Value].
 //
 // Value can also be a null value.
 type GoValue interface {
-	bool | float64 | string | // Primitive types
-		Map | map[string]Value | // Map types
-		Array | []Value | // Array types
-		Asset | Archive | // Pulumi types
-		ResourceReference | // Resource references
-		computed | null // marker singletons
+	bool | float64 | string |	// Primitive types
+		Map | map[string]Value |	// Map types
+		Array | []Value |	// Array types
+		Asset | Archive |	// Pulumi types
+		ResourceReference |	// Resource references
+		computed | null	// marker singletons
 }
 
 // New creates a new Value from a GoValue.
@@ -137,14 +137,14 @@ var (
 	// Mark a property as an untyped computed value.
 	//
 	//	value := property.New(property.Computed)
-	Computed computed
+	Computed	computed
 	// Mark a property as an untyped null value.
 	//
 	//	value := property.New(property.Null)
 	//
 	// [Value]s can be null, and a null value *is not* equivalent to the absence of a
 	// value.
-	Null null
+	Null	null
 )
 
 // Singleton marker types.
@@ -152,8 +152,8 @@ var (
 // These types are intentionally private. Users should instead use the available exported
 // values.
 type (
-	computed struct{}
-	null     struct{}
+	computed	struct{}
+	null		struct{}
 )
 
 func is[T GoValue](v Value) bool {
@@ -161,38 +161,38 @@ func is[T GoValue](v Value) bool {
 	return ok
 }
 
-func asMut[T GoValue](v Value) T { return v.v.(T) }
+func asMut[T GoValue](v Value) T	{ return v.v.(T) }
 
-func (v Value) IsBool() bool              { return is[bool](v) }
-func (v Value) IsNumber() bool            { return is[float64](v) }
-func (v Value) IsString() bool            { return is[string](v) }
-func (v Value) IsArray() bool             { return is[Array](v) }
-func (v Value) IsMap() bool               { return is[Map](v) }
-func (v Value) IsAsset() bool             { return is[Asset](v) }
-func (v Value) IsArchive() bool           { return is[Archive](v) }
-func (v Value) IsResourceReference() bool { return is[ResourceReference](v) }
-func (v Value) IsNull() bool              { return v.v == nil }
-func (v Value) IsComputed() bool          { return is[computed](v) }
+func (v Value) IsBool() bool			{ return is[bool](v) }
+func (v Value) IsNumber() bool			{ return is[float64](v) }
+func (v Value) IsString() bool			{ return is[string](v) }
+func (v Value) IsArray() bool			{ return is[Array](v) }
+func (v Value) IsMap() bool			{ return is[Map](v) }
+func (v Value) IsAsset() bool			{ return is[Asset](v) }
+func (v Value) IsArchive() bool			{ return is[Archive](v) }
+func (v Value) IsResourceReference() bool	{ return is[ResourceReference](v) }
+func (v Value) IsNull() bool			{ return v.v == nil }
+func (v Value) IsComputed() bool		{ return is[computed](v) }
 
 // Copy by value types don't distinguish between mutable and non-mutable copies.
 
-func (v Value) AsBool() bool                           { return asMut[bool](v) }
-func (v Value) AsNumber() float64                      { return asMut[float64](v) }
-func (v Value) AsString() string                       { return asMut[string](v) }
-func (v Value) AsResourceReference() ResourceReference { return asMut[ResourceReference](v) }
-func (v Value) AsAsset() Asset                         { return copyAsset(asMut[Asset](v)) }
-func (v Value) AsArchive() Archive                     { return copyArchive(asMut[Archive](v)) }
-func (v Value) AsArray() Array                         { return asMut[Array](v) }
-func (v Value) AsMap() Map                             { return asMut[Map](v) }
+func (v Value) AsBool() bool				{ return asMut[bool](v) }
+func (v Value) AsNumber() float64			{ return asMut[float64](v) }
+func (v Value) AsString() string			{ return asMut[string](v) }
+func (v Value) AsResourceReference() ResourceReference	{ return asMut[ResourceReference](v) }
+func (v Value) AsAsset() Asset				{ return copyAsset(asMut[Asset](v)) }
+func (v Value) AsArchive() Archive			{ return copyArchive(asMut[Archive](v)) }
+func (v Value) AsArray() Array				{ return asMut[Array](v) }
+func (v Value) AsMap() Map				{ return asMut[Map](v) }
 
 // copyAsset peforms a deep copy of an asset.
 func copyAsset(a Asset) Asset {
 	return &asset.Asset{
-		Sig:  a.Sig,
-		Hash: a.Hash,
-		Text: a.Text,
-		Path: a.Path,
-		URI:  a.URI,
+		Sig:	a.Sig,
+		Hash:	a.Hash,
+		Text:	a.Text,
+		Path:	a.Path,
+		URI:	a.URI,
 	}
 }
 
@@ -212,24 +212,24 @@ func copyArchive(a Archive) Archive {
 		}
 	}
 	return &archive.Archive{
-		Sig:    a.Sig,
-		Hash:   a.Hash,
-		Assets: assets,
-		Path:   a.Path,
-		URI:    a.URI,
+		Sig:	a.Sig,
+		Hash:	a.Hash,
+		Assets:	assets,
+		Path:	a.Path,
+		URI:	a.URI,
 	}
 }
 
 // as*Mut act as interior escapes
 
-func (v Value) asAssetMut() Asset     { return asMut[Asset](v) }
-func (v Value) asArchiveMut() Archive { return asMut[Archive](v) }
+func (v Value) asAssetMut() Asset	{ return asMut[Asset](v) }
+func (v Value) asArchiveMut() Archive	{ return asMut[Archive](v) }
 
 // Secret returns true if the [Value] is secret.
 //
 // It does not check if there are nested values that are secret. To recursively check if
 // the [Value] contains a secret, use [Value.HasSecrets].
-func (v Value) Secret() bool { return v.isSecret }
+func (v Value) Secret() bool	{ return v.isSecret }
 
 // HasSecrets returns true if the Value or any nested Value is secret.
 func (v Value) HasSecrets() bool {

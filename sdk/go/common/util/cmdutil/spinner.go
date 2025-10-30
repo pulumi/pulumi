@@ -46,13 +46,13 @@ func NewSpinnerAndTicker(prefix string, ttyFrames []string,
 
 	if Interactive() {
 		return &ttySpinner{
-			prefix: prefix,
-			frames: ttyFrames,
+			prefix:	prefix,
+			frames:	ttyFrames,
 		}, time.NewTicker(time.Second / timesPerSecond)
 	}
 	return &dotSpinner{
-		color:  color,
-		prefix: prefix,
+		color:	color,
+		prefix:	prefix,
 	}, time.NewTicker(time.Second * 20)
 }
 
@@ -68,11 +68,11 @@ type Spinner interface {
 
 var (
 	// DefaultASCIISpinFrames is the default set of symbols to show while spinning in an ASCII TTY setting.
-	DefaultASCIISpinFrames = []string{
+	DefaultASCIISpinFrames	= []string{
 		"|", "/", "-", "\\",
 	}
 	// DefaultEmojiSpinFrames is the default set of symbols to show while spinning in a Unicode-enabled TTY setting.
-	DefaultEmojiSpinFrames = []string{
+	DefaultEmojiSpinFrames	= []string{
 		"⠋", "⠙", "⠚", "⠒", "⠂", "⠂", "⠒", "⠲", "⠴", "⠦", "⠖", "⠒", "⠐", "⠐", "⠒", "⠓", "⠋",
 	}
 )
@@ -80,10 +80,10 @@ var (
 // ttySpinner is the spinner that can be used when standard out is a tty. When we are connected to a TTY we can erase
 // characters we've written and provide a nice quick progress spinner.
 type ttySpinner struct {
-	prefix      string
-	frames      []string
-	index       int
-	lastWritten int
+	prefix		string
+	frames		[]string
+	index		int
+	lastWritten	int
 }
 
 func (spin *ttySpinner) Tick() {
@@ -113,9 +113,9 @@ func (spin *ttySpinner) Reset() {
 // dotSpinner is the spinner that can be used when standard out is not a tty. In this case, we just write a single
 // dot on each tick.
 type dotSpinner struct {
-	color      colors.Colorization
-	prefix     string
-	hasWritten bool
+	color		colors.Colorization
+	prefix		string
+	hasWritten	bool
 }
 
 func (spin *dotSpinner) Tick() {
@@ -135,5 +135,5 @@ func (spin *dotSpinner) Reset() {
 
 type noopSpinner struct{}
 
-func (spin *noopSpinner) Tick()  {}
-func (spin *noopSpinner) Reset() {}
+func (spin *noopSpinner) Tick()		{}
+func (spin *noopSpinner) Reset()	{}

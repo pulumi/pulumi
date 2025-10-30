@@ -34,17 +34,17 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ResourceMonitor_SupportsFeature_FullMethodName              = "/pulumirpc.ResourceMonitor/SupportsFeature"
-	ResourceMonitor_Invoke_FullMethodName                       = "/pulumirpc.ResourceMonitor/Invoke"
-	ResourceMonitor_Call_FullMethodName                         = "/pulumirpc.ResourceMonitor/Call"
-	ResourceMonitor_ReadResource_FullMethodName                 = "/pulumirpc.ResourceMonitor/ReadResource"
-	ResourceMonitor_RegisterResource_FullMethodName             = "/pulumirpc.ResourceMonitor/RegisterResource"
-	ResourceMonitor_RegisterResourceOutputs_FullMethodName      = "/pulumirpc.ResourceMonitor/RegisterResourceOutputs"
-	ResourceMonitor_RegisterStackTransform_FullMethodName       = "/pulumirpc.ResourceMonitor/RegisterStackTransform"
-	ResourceMonitor_RegisterStackInvokeTransform_FullMethodName = "/pulumirpc.ResourceMonitor/RegisterStackInvokeTransform"
-	ResourceMonitor_RegisterResourceHook_FullMethodName         = "/pulumirpc.ResourceMonitor/RegisterResourceHook"
-	ResourceMonitor_RegisterPackage_FullMethodName              = "/pulumirpc.ResourceMonitor/RegisterPackage"
-	ResourceMonitor_SignalAndWaitForShutdown_FullMethodName     = "/pulumirpc.ResourceMonitor/SignalAndWaitForShutdown"
+	ResourceMonitor_SupportsFeature_FullMethodName			= "/pulumirpc.ResourceMonitor/SupportsFeature"
+	ResourceMonitor_Invoke_FullMethodName				= "/pulumirpc.ResourceMonitor/Invoke"
+	ResourceMonitor_Call_FullMethodName				= "/pulumirpc.ResourceMonitor/Call"
+	ResourceMonitor_ReadResource_FullMethodName			= "/pulumirpc.ResourceMonitor/ReadResource"
+	ResourceMonitor_RegisterResource_FullMethodName			= "/pulumirpc.ResourceMonitor/RegisterResource"
+	ResourceMonitor_RegisterResourceOutputs_FullMethodName		= "/pulumirpc.ResourceMonitor/RegisterResourceOutputs"
+	ResourceMonitor_RegisterStackTransform_FullMethodName		= "/pulumirpc.ResourceMonitor/RegisterStackTransform"
+	ResourceMonitor_RegisterStackInvokeTransform_FullMethodName	= "/pulumirpc.ResourceMonitor/RegisterStackInvokeTransform"
+	ResourceMonitor_RegisterResourceHook_FullMethodName		= "/pulumirpc.ResourceMonitor/RegisterResourceHook"
+	ResourceMonitor_RegisterPackage_FullMethodName			= "/pulumirpc.ResourceMonitor/RegisterPackage"
+	ResourceMonitor_SignalAndWaitForShutdown_FullMethodName		= "/pulumirpc.ResourceMonitor/SignalAndWaitForShutdown"
 )
 
 // ResourceMonitorClient is the client API for ResourceMonitor service.
@@ -268,8 +268,8 @@ func (UnimplementedResourceMonitorServer) RegisterPackage(context.Context, *Regi
 func (UnimplementedResourceMonitorServer) SignalAndWaitForShutdown(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SignalAndWaitForShutdown not implemented")
 }
-func (UnimplementedResourceMonitorServer) mustEmbedUnimplementedResourceMonitorServer() {}
-func (UnimplementedResourceMonitorServer) testEmbeddedByValue()                         {}
+func (UnimplementedResourceMonitorServer) mustEmbedUnimplementedResourceMonitorServer()	{}
+func (UnimplementedResourceMonitorServer) testEmbeddedByValue()				{}
 
 // UnsafeResourceMonitorServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to ResourceMonitorServer will
@@ -298,8 +298,8 @@ func _ResourceMonitor_SupportsFeature_Handler(srv interface{}, ctx context.Conte
 		return srv.(ResourceMonitorServer).SupportsFeature(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceMonitor_SupportsFeature_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceMonitor_SupportsFeature_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceMonitorServer).SupportsFeature(ctx, req.(*SupportsFeatureRequest))
@@ -316,8 +316,8 @@ func _ResourceMonitor_Invoke_Handler(srv interface{}, ctx context.Context, dec f
 		return srv.(ResourceMonitorServer).Invoke(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceMonitor_Invoke_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceMonitor_Invoke_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceMonitorServer).Invoke(ctx, req.(*ResourceInvokeRequest))
@@ -334,8 +334,8 @@ func _ResourceMonitor_Call_Handler(srv interface{}, ctx context.Context, dec fun
 		return srv.(ResourceMonitorServer).Call(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceMonitor_Call_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceMonitor_Call_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceMonitorServer).Call(ctx, req.(*ResourceCallRequest))
@@ -352,8 +352,8 @@ func _ResourceMonitor_ReadResource_Handler(srv interface{}, ctx context.Context,
 		return srv.(ResourceMonitorServer).ReadResource(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceMonitor_ReadResource_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceMonitor_ReadResource_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceMonitorServer).ReadResource(ctx, req.(*ReadResourceRequest))
@@ -370,8 +370,8 @@ func _ResourceMonitor_RegisterResource_Handler(srv interface{}, ctx context.Cont
 		return srv.(ResourceMonitorServer).RegisterResource(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceMonitor_RegisterResource_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceMonitor_RegisterResource_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceMonitorServer).RegisterResource(ctx, req.(*RegisterResourceRequest))
@@ -388,8 +388,8 @@ func _ResourceMonitor_RegisterResourceOutputs_Handler(srv interface{}, ctx conte
 		return srv.(ResourceMonitorServer).RegisterResourceOutputs(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceMonitor_RegisterResourceOutputs_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceMonitor_RegisterResourceOutputs_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceMonitorServer).RegisterResourceOutputs(ctx, req.(*RegisterResourceOutputsRequest))
@@ -406,8 +406,8 @@ func _ResourceMonitor_RegisterStackTransform_Handler(srv interface{}, ctx contex
 		return srv.(ResourceMonitorServer).RegisterStackTransform(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceMonitor_RegisterStackTransform_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceMonitor_RegisterStackTransform_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceMonitorServer).RegisterStackTransform(ctx, req.(*Callback))
@@ -424,8 +424,8 @@ func _ResourceMonitor_RegisterStackInvokeTransform_Handler(srv interface{}, ctx 
 		return srv.(ResourceMonitorServer).RegisterStackInvokeTransform(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceMonitor_RegisterStackInvokeTransform_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceMonitor_RegisterStackInvokeTransform_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceMonitorServer).RegisterStackInvokeTransform(ctx, req.(*Callback))
@@ -442,8 +442,8 @@ func _ResourceMonitor_RegisterResourceHook_Handler(srv interface{}, ctx context.
 		return srv.(ResourceMonitorServer).RegisterResourceHook(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceMonitor_RegisterResourceHook_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceMonitor_RegisterResourceHook_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceMonitorServer).RegisterResourceHook(ctx, req.(*RegisterResourceHookRequest))
@@ -460,8 +460,8 @@ func _ResourceMonitor_RegisterPackage_Handler(srv interface{}, ctx context.Conte
 		return srv.(ResourceMonitorServer).RegisterPackage(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceMonitor_RegisterPackage_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceMonitor_RegisterPackage_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceMonitorServer).RegisterPackage(ctx, req.(*RegisterPackageRequest))
@@ -478,8 +478,8 @@ func _ResourceMonitor_SignalAndWaitForShutdown_Handler(srv interface{}, ctx cont
 		return srv.(ResourceMonitorServer).SignalAndWaitForShutdown(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceMonitor_SignalAndWaitForShutdown_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceMonitor_SignalAndWaitForShutdown_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceMonitorServer).SignalAndWaitForShutdown(ctx, req.(*emptypb.Empty))
@@ -491,54 +491,54 @@ func _ResourceMonitor_SignalAndWaitForShutdown_Handler(srv interface{}, ctx cont
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ResourceMonitor_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "pulumirpc.ResourceMonitor",
-	HandlerType: (*ResourceMonitorServer)(nil),
+	ServiceName:	"pulumirpc.ResourceMonitor",
+	HandlerType:	(*ResourceMonitorServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "SupportsFeature",
-			Handler:    _ResourceMonitor_SupportsFeature_Handler,
+			MethodName:	"SupportsFeature",
+			Handler:	_ResourceMonitor_SupportsFeature_Handler,
 		},
 		{
-			MethodName: "Invoke",
-			Handler:    _ResourceMonitor_Invoke_Handler,
+			MethodName:	"Invoke",
+			Handler:	_ResourceMonitor_Invoke_Handler,
 		},
 		{
-			MethodName: "Call",
-			Handler:    _ResourceMonitor_Call_Handler,
+			MethodName:	"Call",
+			Handler:	_ResourceMonitor_Call_Handler,
 		},
 		{
-			MethodName: "ReadResource",
-			Handler:    _ResourceMonitor_ReadResource_Handler,
+			MethodName:	"ReadResource",
+			Handler:	_ResourceMonitor_ReadResource_Handler,
 		},
 		{
-			MethodName: "RegisterResource",
-			Handler:    _ResourceMonitor_RegisterResource_Handler,
+			MethodName:	"RegisterResource",
+			Handler:	_ResourceMonitor_RegisterResource_Handler,
 		},
 		{
-			MethodName: "RegisterResourceOutputs",
-			Handler:    _ResourceMonitor_RegisterResourceOutputs_Handler,
+			MethodName:	"RegisterResourceOutputs",
+			Handler:	_ResourceMonitor_RegisterResourceOutputs_Handler,
 		},
 		{
-			MethodName: "RegisterStackTransform",
-			Handler:    _ResourceMonitor_RegisterStackTransform_Handler,
+			MethodName:	"RegisterStackTransform",
+			Handler:	_ResourceMonitor_RegisterStackTransform_Handler,
 		},
 		{
-			MethodName: "RegisterStackInvokeTransform",
-			Handler:    _ResourceMonitor_RegisterStackInvokeTransform_Handler,
+			MethodName:	"RegisterStackInvokeTransform",
+			Handler:	_ResourceMonitor_RegisterStackInvokeTransform_Handler,
 		},
 		{
-			MethodName: "RegisterResourceHook",
-			Handler:    _ResourceMonitor_RegisterResourceHook_Handler,
+			MethodName:	"RegisterResourceHook",
+			Handler:	_ResourceMonitor_RegisterResourceHook_Handler,
 		},
 		{
-			MethodName: "RegisterPackage",
-			Handler:    _ResourceMonitor_RegisterPackage_Handler,
+			MethodName:	"RegisterPackage",
+			Handler:	_ResourceMonitor_RegisterPackage_Handler,
 		},
 		{
-			MethodName: "SignalAndWaitForShutdown",
-			Handler:    _ResourceMonitor_SignalAndWaitForShutdown_Handler,
+			MethodName:	"SignalAndWaitForShutdown",
+			Handler:	_ResourceMonitor_SignalAndWaitForShutdown_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "pulumi/resource.proto",
+	Streams:	[]grpc.StreamDesc{},
+	Metadata:	"pulumi/resource.proto",
 }

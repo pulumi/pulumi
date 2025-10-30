@@ -85,47 +85,47 @@ func TestHasSecureValue(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Value    any
-		Expected bool
+		Value		any
+		Expected	bool
 	}{
 		{
-			Value:    []any{"a", "b", "c"},
-			Expected: false,
+			Value:		[]any{"a", "b", "c"},
+			Expected:	false,
 		},
 		{
 			Value: map[string]any{
-				"foo": "bar",
-				"hi":  map[string]any{"secure": "securevalue", "but": "not"},
+				"foo":	"bar",
+				"hi":	map[string]any{"secure": "securevalue", "but": "not"},
 			},
-			Expected: false,
+			Expected:	false,
 		},
 		{
-			Value:    []any{"a", "b", map[string]any{"secure": "securevalue"}},
-			Expected: true,
+			Value:		[]any{"a", "b", map[string]any{"secure": "securevalue"}},
+			Expected:	true,
 		},
 		{
 			Value: map[string]any{
-				"foo": "bar",
-				"hi":  map[string]any{"secure": "securevalue"},
+				"foo":	"bar",
+				"hi":	map[string]any{"secure": "securevalue"},
 			},
-			Expected: true,
+			Expected:	true,
 		},
 		{
 			Value: map[string]any{
-				"foo":   "bar",
-				"array": []any{"a", "b", map[string]any{"secure": "securevalue"}},
+				"foo":		"bar",
+				"array":	[]any{"a", "b", map[string]any{"secure": "securevalue"}},
 			},
-			Expected: true,
+			Expected:	true,
 		},
 		{
 			Value: map[string]any{
-				"foo": "bar",
+				"foo":	"bar",
 				"map": map[string]any{
-					"nest": "blah",
-					"hi":   map[string]any{"secure": "securevalue"},
+					"nest":	"blah",
+					"hi":	map[string]any{"secure": "securevalue"},
 				},
 			},
-			Expected: true,
+			Expected:	true,
 		},
 	}
 
@@ -150,40 +150,40 @@ func TestDecryptingValue(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Value    Value
-		Expected string
+		Value		Value
+		Expected	string
 	}{
 		{
-			Value:    NewValue("value"),
-			Expected: "value",
+			Value:		NewValue("value"),
+			Expected:	"value",
 		},
 		{
-			Value:    NewValue(`{"foo":"bar"}`),
-			Expected: `{"foo":"bar"}`,
+			Value:		NewValue(`{"foo":"bar"}`),
+			Expected:	`{"foo":"bar"}`,
 		},
 		{
-			Value:    NewValue(`["a","b"]`),
-			Expected: `["a","b"]`,
+			Value:		NewValue(`["a","b"]`),
+			Expected:	`["a","b"]`,
 		},
 		{
-			Value:    NewObjectValue(`{"foo":"bar"}`),
-			Expected: `{"foo":"bar"}`,
+			Value:		NewObjectValue(`{"foo":"bar"}`),
+			Expected:	`{"foo":"bar"}`,
 		},
 		{
-			Value:    NewObjectValue(`["a","b"]`),
-			Expected: `["a","b"]`,
+			Value:		NewObjectValue(`["a","b"]`),
+			Expected:	`["a","b"]`,
 		},
 		{
-			Value:    NewSecureValue("securevalue"),
-			Expected: "[secret]",
+			Value:		NewSecureValue("securevalue"),
+			Expected:	"[secret]",
 		},
 		{
-			Value:    NewSecureObjectValue(`{"foo":{"secure":"securevalue"}}`),
-			Expected: `{"foo":"[secret]"}`,
+			Value:		NewSecureObjectValue(`{"foo":{"secure":"securevalue"}}`),
+			Expected:	`{"foo":"[secret]"}`,
 		},
 		{
-			Value:    NewSecureObjectValue(`["a",{"secure":"securevalue"}]`),
-			Expected: `["a","[secret]"]`,
+			Value:		NewSecureObjectValue(`["a",{"secure":"securevalue"}]`),
+			Expected:	`["a","[secret]"]`,
 		},
 	}
 
@@ -224,36 +224,36 @@ func TestSecureValues(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Value    Value
-		Expected []string
+		Value		Value
+		Expected	[]string
 	}{
 		{
-			Value:    NewValue("value"),
-			Expected: nil,
+			Value:		NewValue("value"),
+			Expected:	nil,
 		},
 		{
-			Value:    NewObjectValue(`{"foo":"bar"}`),
-			Expected: nil,
+			Value:		NewObjectValue(`{"foo":"bar"}`),
+			Expected:	nil,
 		},
 		{
-			Value:    NewObjectValue(`["a","b"]`),
-			Expected: nil,
+			Value:		NewObjectValue(`["a","b"]`),
+			Expected:	nil,
 		},
 		{
-			Value:    NewSecureValue("securevalue"),
-			Expected: []string{"securevalue"},
+			Value:		NewSecureValue("securevalue"),
+			Expected:	[]string{"securevalue"},
 		},
 		{
-			Value:    NewSecureObjectValue(`{"foo":{"secure":"securevalue"}}`),
-			Expected: []string{"securevalue"},
+			Value:		NewSecureObjectValue(`{"foo":{"secure":"securevalue"}}`),
+			Expected:	[]string{"securevalue"},
 		},
 		{
-			Value:    NewSecureObjectValue(`["a",{"secure":"securevalue"}]`),
-			Expected: []string{"securevalue"},
+			Value:		NewSecureObjectValue(`["a",{"secure":"securevalue"}]`),
+			Expected:	[]string{"securevalue"},
 		},
 		{
-			Value:    NewSecureObjectValue(`["a",{"secure":"alpha"},{"test":{"secure":"beta"}}]`),
-			Expected: []string{"alpha", "beta"},
+			Value:		NewSecureObjectValue(`["a",{"secure":"alpha"},{"test":{"secure":"beta"}}]`),
+			Expected:	[]string{"alpha", "beta"},
 		},
 	}
 
@@ -275,28 +275,28 @@ func TestCopyValue(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Val      Value
-		Expected Value
+		Val		Value
+		Expected	Value
 	}{
 		{
-			Val:      NewValue("value"),
-			Expected: NewValue("value"),
+			Val:		NewValue("value"),
+			Expected:	NewValue("value"),
 		},
 		{
-			Val:      NewObjectValue(`{"foo":"bar"}`),
-			Expected: NewObjectValue(`{"foo":"bar"}`),
+			Val:		NewObjectValue(`{"foo":"bar"}`),
+			Expected:	NewObjectValue(`{"foo":"bar"}`),
 		},
 		{
-			Val:      NewSecureObjectValue(`{"foo":{"secure":"stackAsecurevalue"}}`),
-			Expected: NewSecureObjectValue(`{"foo":{"secure":"stackBsecurevalue"}}`),
+			Val:		NewSecureObjectValue(`{"foo":{"secure":"stackAsecurevalue"}}`),
+			Expected:	NewSecureObjectValue(`{"foo":{"secure":"stackBsecurevalue"}}`),
 		},
 		{
-			Val:      NewSecureValue("stackAsecurevalue"),
-			Expected: NewSecureValue("stackBsecurevalue"),
+			Val:		NewSecureValue("stackAsecurevalue"),
+			Expected:	NewSecureValue("stackBsecurevalue"),
 		},
 		{
-			Val:      NewSecureObjectValue(`["a",{"secure":"stackAalpha"},{"test":{"secure":"stackAbeta"}}]`),
-			Expected: NewSecureObjectValue(`["a",{"secure":"stackBalpha"},{"test":{"secure":"stackBbeta"}}]`),
+			Val:		NewSecureObjectValue(`["a",{"secure":"stackAalpha"},{"test":{"secure":"stackAbeta"}}]`),
+			Expected:	NewSecureObjectValue(`["a",{"secure":"stackBalpha"},{"test":{"secure":"stackBbeta"}}]`),
 		},
 	}
 

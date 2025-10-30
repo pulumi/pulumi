@@ -19,8 +19,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -44,17 +44,17 @@ func TestShowEvents(t *testing.T) {
 	go func() {
 		events <- engine.NewEvent(engine.ResourcePreEventPayload{
 			Metadata: engine.StepEventMetadata{
-				URN: resource.NewURN(stack.Q(), "proj", "parent", "base", "not-filtered"),
-				Op:  deploy.OpCreate,
+				URN:	resource.NewURN(stack.Q(), "proj", "parent", "base", "not-filtered"),
+				Op:	deploy.OpCreate,
 			},
-			Internal: false,
+			Internal:	false,
 		})
 		events <- engine.NewEvent(engine.ResourcePreEventPayload{
 			Metadata: engine.StepEventMetadata{
-				URN: resource.NewURN(stack.Q(), "proj", "parent", "base", "this-is-filtered-from-display"),
-				Op:  deploy.OpCreate,
+				URN:	resource.NewURN(stack.Q(), "proj", "parent", "base", "this-is-filtered-from-display"),
+				Op:	deploy.OpCreate,
 			},
-			Internal: true,
+			Internal:	true,
 		})
 		events <- engine.NewCancelEvent()
 		close(events)
@@ -62,9 +62,9 @@ func TestShowEvents(t *testing.T) {
 
 	var stdout bytes.Buffer
 	ShowEvents("op", apitype.UpdateUpdate, stack, "proj", "permalink", events, done, Options{
-		EventLogPath: eventLog.Name(),
-		Stdout:       &stdout,
-		Color:        colors.Never,
+		EventLogPath:	eventLog.Name(),
+		Stdout:		&stdout,
+		Color:		colors.Never,
 	}, false)
 	<-done
 

@@ -88,17 +88,17 @@ func TestErrorMessage(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		desc string
-		give error
-		want string
+		desc	string
+		give	error
+		want	string
 	}{
 		{
-			desc: "simple error",
-			give: errors.New("great sadness"),
-			want: "great sadness",
+			desc:	"simple error",
+			give:	errors.New("great sadness"),
+			want:	"great sadness",
 		},
 		{
-			desc: "hashi multi error",
+			desc:	"hashi multi error",
 			give: multierror.Append(
 				errors.New("foo"),
 				errors.New("bar"),
@@ -110,7 +110,7 @@ func TestErrorMessage(t *testing.T) {
 				"\n    3) baz",
 		},
 		{
-			desc: "std errors.Join",
+			desc:	"std errors.Join",
 			give: errors.Join(
 				errors.New("foo"),
 				errors.New("bar"),
@@ -122,24 +122,24 @@ func TestErrorMessage(t *testing.T) {
 				"\n    3) baz",
 		},
 		{
-			desc: "empty multi error",
+			desc:	"empty multi error",
 			// This is technically invalid,
 			// but we guard against it,
 			// so let's test it too.
-			give: &invalidEmptyMultiError{},
-			want: "invalid empty multi error",
+			give:	&invalidEmptyMultiError{},
+			want:	"invalid empty multi error",
 		},
 		{
-			desc: "single wrapped error",
+			desc:	"single wrapped error",
 			give: &multierror.Error{
 				Errors: []error{
 					errors.New("great sadness"),
 				},
 			},
-			want: "great sadness",
+			want:	"great sadness",
 		},
 		{
-			desc: "error trees (left-nested)",
+			desc:	"error trees (left-nested)",
 			give: errors.Join(
 				errors.Join(
 					errors.New("foo"),
@@ -153,7 +153,7 @@ func TestErrorMessage(t *testing.T) {
 				"\n    3) baz",
 		},
 		{
-			desc: "error trees (right-nested)",
+			desc:	"error trees (right-nested)",
 			give: errors.Join(
 				errors.New("foo"),
 				errors.Join(
@@ -167,7 +167,7 @@ func TestErrorMessage(t *testing.T) {
 				"\n    3) baz",
 		},
 		{
-			desc: "error trees (mixed)",
+			desc:	"error trees (mixed)",
 			give: errors.Join(
 				errors.Join(
 					errors.New("foo"),
@@ -195,7 +195,7 @@ func TestErrorMessage(t *testing.T) {
 				"\n    7) blog",
 		},
 		{
-			desc: "multi error inside single wrapped error",
+			desc:	"multi error inside single wrapped error",
 			give: &multierror.Error{
 				Errors: []error{
 					errors.Join(
@@ -232,5 +232,5 @@ func (*invalidEmptyMultiError) Error() string {
 }
 
 func (*invalidEmptyMultiError) Unwrap() []error {
-	return []error{} // invalid
+	return []error{}	// invalid
 }

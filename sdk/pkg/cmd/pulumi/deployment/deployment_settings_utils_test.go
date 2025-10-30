@@ -83,8 +83,8 @@ func TestRepoLookup(t *testing.T) {
 }
 
 type relativeDirectoryValidationCase struct {
-	Valid bool
-	Path  string
+	Valid	bool
+	Path	string
 }
 
 func TestValidateRelativeDirectory(t *testing.T) {
@@ -221,11 +221,11 @@ func setUpGitWorkspace(ctx context.Context, t *testing.T) string {
 	workDir := t.TempDir()
 
 	cloneOptions := &git.CloneOptions{
-		RemoteName:    "origin",
-		URL:           "https://github.com/pulumi/test-repo.git",
-		Depth:         1,
-		SingleBranch:  true,
-		ReferenceName: plumbing.ReferenceName("master"),
+		RemoteName:	"origin",
+		URL:		"https://github.com/pulumi/test-repo.git",
+		Depth:		1,
+		SingleBranch:	true,
+		ReferenceName:	plumbing.ReferenceName("master"),
 	}
 
 	_, err := git.PlainCloneContext(ctx, workDir, false, cloneOptions)

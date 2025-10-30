@@ -24,21 +24,21 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
-	pkgPlan "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/autonaming"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/deployment"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/metadata"
+	pkgPlan "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/plan"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -225,16 +225,16 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 
 			takenNames[name] = len(imports.Resources)
 			imports.Resources = append(imports.Resources, importSpec{
-				Type:              new.Type,
-				Name:              name,
-				ID:                id,
-				Parent:            parent,
-				Provider:          provider,
-				Component:         !new.Custom,
-				Remote:            !new.Custom && new.Provider != "",
-				Version:           version,
-				PluginDownloadURL: pluginDownloadURL,
-				LogicalName:       logicalName,
+				Type:			new.Type,
+				Name:			name,
+				ID:			id,
+				Parent:			parent,
+				Provider:		provider,
+				Component:		!new.Custom,
+				Remote:			!new.Custom && new.Provider != "",
+				Version:		version,
+				PluginDownloadURL:	pluginDownloadURL,
+				LogicalName:		logicalName,
 			})
 		}
 
@@ -294,10 +294,10 @@ func NewPreviewCmd() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:        use,
-		Aliases:    []string{"pre"},
-		SuggestFor: []string{"build", "plan"},
-		Short:      "Show a preview of updates to a stack's resources",
+		Use:		use,
+		Aliases:	[]string{"pre"},
+		SuggestFor:	[]string{"build", "plan"},
+		Short:		"Show a preview of updates to a stack's resources",
 		Long: "Show a preview of updates to a stack's resources.\n" +
 			"\n" +
 			"This command displays a preview of the updates to an existing stack whose state is\n" +
@@ -309,7 +309,7 @@ func NewPreviewCmd() *cobra.Command {
 			"\n" +
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
-		Args: cmdArgs,
+		Args:	cmdArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
@@ -326,21 +326,21 @@ func NewPreviewCmd() *cobra.Command {
 			}
 
 			displayOpts := display.Options{
-				Color:                  cmdutil.GetGlobalColorization(),
-				ShowConfig:             showConfig,
-				ShowPolicyRemediations: showPolicyRemediations,
-				ShowReplacementSteps:   showReplacementSteps,
-				ShowSameResources:      showSames,
-				ShowReads:              showReads,
-				ShowSecrets:            showSecrets,
-				SuppressOutputs:        suppressOutputs,
-				SuppressProgress:       suppressProgress,
-				TruncateOutput:         !showFullOutput,
-				IsInteractive:          cmdutil.Interactive(),
-				Type:                   displayType,
-				JSONDisplay:            jsonDisplay,
-				EventLogPath:           eventLogPath,
-				Debug:                  debug,
+				Color:			cmdutil.GetGlobalColorization(),
+				ShowConfig:		showConfig,
+				ShowPolicyRemediations:	showPolicyRemediations,
+				ShowReplacementSteps:	showReplacementSteps,
+				ShowSameResources:	showSames,
+				ShowReads:		showReads,
+				ShowSecrets:		showSecrets,
+				SuppressOutputs:	suppressOutputs,
+				SuppressProgress:	suppressProgress,
+				TruncateOutput:		!showFullOutput,
+				IsInteractive:		cmdutil.Interactive(),
+				Type:			displayType,
+				JSONDisplay:		jsonDisplay,
+				EventLogPath:		eventLogPath,
+				Debug:			debug,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -464,31 +464,31 @@ func NewPreviewCmd() *cobra.Command {
 
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
-					ParallelDiff:              env.ParallelDiff.Value(),
-					LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
-					Parallel:                  parallel,
-					Debug:                     debug,
-					ShowSecrets:               showSecrets,
-					Refresh:                   refreshOption,
-					RefreshProgram:            runProgram,
-					ReplaceTargets:            deploy.NewUrnTargets(replaceURNs),
-					UseLegacyDiff:             env.EnableLegacyDiff.Value(),
-					UseLegacyRefreshDiff:      env.EnableLegacyRefreshDiff.Value(),
-					DisableProviderPreview:    env.DisableProviderPreview.Value(),
-					DisableResourceReferences: env.DisableResourceReferences.Value(),
-					DisableOutputValues:       env.DisableOutputValues.Value(),
-					Targets:                   deploy.NewUrnTargets(targetURNs),
-					TargetDependents:          targetDependents,
-					Excludes:                  deploy.NewUrnTargets(excludeURNs),
-					ExcludeDependents:         excludeDependents,
+					ParallelDiff:			env.ParallelDiff.Value(),
+					LocalPolicyPacks:		engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
+					Parallel:			parallel,
+					Debug:				debug,
+					ShowSecrets:			showSecrets,
+					Refresh:			refreshOption,
+					RefreshProgram:			runProgram,
+					ReplaceTargets:			deploy.NewUrnTargets(replaceURNs),
+					UseLegacyDiff:			env.EnableLegacyDiff.Value(),
+					UseLegacyRefreshDiff:		env.EnableLegacyRefreshDiff.Value(),
+					DisableProviderPreview:		env.DisableProviderPreview.Value(),
+					DisableResourceReferences:	env.DisableResourceReferences.Value(),
+					DisableOutputValues:		env.DisableOutputValues.Value(),
+					Targets:			deploy.NewUrnTargets(targetURNs),
+					TargetDependents:		targetDependents,
+					Excludes:			deploy.NewUrnTargets(excludeURNs),
+					ExcludeDependents:		excludeDependents,
 					// If we're trying to save a plan then we _need_ to generate it. We also turn this on in
 					// experimental mode to just get more testing of it.
-					GeneratePlan:   env.Experimental.Value() || planFilePath != "",
-					Experimental:   env.Experimental.Value(),
-					AttachDebugger: attachDebugger,
-					Autonamer:      autonamer,
+					GeneratePlan:	env.Experimental.Value() || planFilePath != "",
+					Experimental:	env.Experimental.Value(),
+					AttachDebugger:	attachDebugger,
+					Autonamer:	autonamer,
 				},
-				Display: displayOpts,
+				Display:	displayOpts,
 			}
 
 			// If we're building an import file we want to hook the event stream from the engine to transform
@@ -501,14 +501,14 @@ func NewPreviewCmd() *cobra.Command {
 			}
 
 			plan, changes, res := backend.PreviewStack(ctx, s, backend.UpdateOperation{
-				Proj:               proj,
-				Root:               root,
-				M:                  m,
-				Opts:               opts,
-				StackConfiguration: cfg,
-				SecretsManager:     sm,
-				SecretsProvider:    secrets.DefaultProvider,
-				Scopes:             backend.CancellationScopes,
+				Proj:			proj,
+				Root:			root,
+				M:			m,
+				Opts:			opts,
+				StackConfiguration:	cfg,
+				SecretsManager:		sm,
+				SecretsProvider:	secrets.DefaultProvider,
+				Scopes:			backend.CancellationScopes,
 			}, events)
 			// If we made an events channel then we need to close it to trigger the exit of the import goroutine above.
 			// The engine doesn't close the channel for us, but once its returned here we know it won't append any more

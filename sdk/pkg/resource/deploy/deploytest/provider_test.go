@@ -59,8 +59,8 @@ func TestProvider(t *testing.T) {
 	t.Run("GetPluginInfo", func(t *testing.T) {
 		t.Parallel()
 		prov := &Provider{
-			Name:    "expected-name",
-			Version: semver.MustParse("1.0.0"),
+			Name:		"expected-name",
+			Version:	semver.MustParse("1.0.0"),
 		}
 		info, err := prov.GetPluginInfo(context.Background())
 		require.NoError(t, err)
@@ -85,9 +85,9 @@ func TestProvider(t *testing.T) {
 				},
 			}
 			_, err := prov.GetSchema(context.Background(), plugin.GetSchemaRequest{
-				Version:           1,
-				SubpackageName:    "expected-subpackage",
-				SubpackageVersion: &expectedVersion,
+				Version:		1,
+				SubpackageName:		"expected-subpackage",
+				SubpackageVersion:	&expectedVersion,
 			})
 			assert.ErrorIs(t, err, expectedErr)
 			assert.True(t, called)
@@ -119,14 +119,14 @@ func TestProvider(t *testing.T) {
 				},
 			}
 			_, err := prov.CheckConfig(context.Background(), plugin.CheckConfigRequest{
-				URN: resource.URN("expected-urn"),
+				URN:	resource.URN("expected-urn"),
 				Olds: resource.PropertyMap{
 					"old": resource.NewProperty("old-value"),
 				},
 				News: resource.PropertyMap{
 					"new": resource.NewProperty("new-value"),
 				},
-				AllowUnknowns: true,
+				AllowUnknowns:	true,
 			})
 			assert.ErrorIs(t, err, expectedErr)
 			assert.True(t, called)
@@ -138,7 +138,7 @@ func TestProvider(t *testing.T) {
 				News: resource.PropertyMap{
 					"expected": resource.NewProperty("expected-value"),
 				},
-				AllowUnknowns: true,
+				AllowUnknowns:	true,
 			})
 			require.NoError(t, err)
 			assert.Empty(t, resp.Failures)
@@ -174,12 +174,12 @@ func TestProvider(t *testing.T) {
 					},
 				}
 				_, err := prov.Construct(context.Background(), plugin.ConstructRequest{
-					Type: tokens.Type("some-type"),
-					Name: "name",
+					Type:	tokens.Type("some-type"),
+					Name:	"name",
 					Info: plugin.ConstructInfo{
 						MonitorAddress: "expected-endpoint",
 					},
-					Parent: resource.URN("<parent-urn>"),
+					Parent:	resource.URN("<parent-urn>"),
 				})
 				assert.ErrorIs(t, err, expectedErr)
 				assert.True(t, dialCalled)
@@ -200,9 +200,9 @@ func TestProvider(t *testing.T) {
 						},
 					}
 					_, err := prov.Construct(context.Background(), plugin.ConstructRequest{
-						Type:   tokens.Type("some-type"),
-						Name:   "name",
-						Parent: resource.URN("<parent-urn>"),
+						Type:	tokens.Type("some-type"),
+						Name:	"name",
+						Parent:	resource.URN("<parent-urn>"),
 					})
 					assert.ErrorContains(t, err, "could not determine whether secrets are supported")
 				})
@@ -227,9 +227,9 @@ func TestProvider(t *testing.T) {
 						},
 					}
 					_, err := prov.Construct(context.Background(), plugin.ConstructRequest{
-						Type:   tokens.Type("some-type"),
-						Name:   "name",
-						Parent: resource.URN("<parent-urn>"),
+						Type:	tokens.Type("some-type"),
+						Name:	"name",
+						Parent:	resource.URN("<parent-urn>"),
 					})
 					assert.ErrorIs(t, err, expectedErr)
 					assert.True(t, dialCalled)
@@ -245,9 +245,9 @@ func TestProvider(t *testing.T) {
 				},
 			}
 			_, err := prov.Construct(context.Background(), plugin.ConstructRequest{
-				Type:   tokens.Type("some-type"),
-				Name:   "name",
-				Parent: resource.URN("<parent-urn>"),
+				Type:	tokens.Type("some-type"),
+				Name:	"name",
+				Parent:	resource.URN("<parent-urn>"),
 			})
 			require.NoError(t, err)
 		})
@@ -375,8 +375,8 @@ func TestProvider(t *testing.T) {
 				},
 			}
 			_, err := prov.GetMapping(context.Background(), plugin.GetMappingRequest{
-				Key:      "expected-key",
-				Provider: "expected-provider",
+				Key:		"expected-key",
+				Provider:	"expected-provider",
 			})
 			assert.ErrorIs(t, err, expectedErr)
 		})

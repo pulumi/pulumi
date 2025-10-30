@@ -23,14 +23,14 @@ import (
 	"time"
 
 	"github.com/pulumi/esc"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/operations"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
@@ -107,18 +107,18 @@ type StackSummary interface {
 
 // ListStacksFilter describes optional filters when listing stacks.
 type ListStacksFilter struct {
-	Organization *string
-	Project      *string
-	TagName      *string
-	TagValue     *string
+	Organization	*string
+	Project		*string
+	TagName		*string
+	TagValue	*string
 }
 
 // ListStackNamesFilter describes optional filters when listing stack names.
 // This filter does not contain tag fields since they cannot be efficiently
 // implemented for the DIY backend.
 type ListStackNamesFilter struct {
-	Organization *string
-	Project      *string
+	Organization	*string
+	Project		*string
 }
 
 // ContinuationToken is an opaque string used for paginated backend requests. If non-nil, means
@@ -328,40 +328,40 @@ type SpecificDeploymentExporter interface {
 
 // UpdateOperation is a complete stack update operation (preview, update, import, refresh, or destroy).
 type UpdateOperation struct {
-	Proj               *workspace.Project
-	Root               string
-	Imports            []deploy.Import
-	M                  *UpdateMetadata
-	Opts               UpdateOptions
-	SecretsManager     secrets.Manager
-	SecretsProvider    secrets.Provider
-	StackConfiguration StackConfiguration
-	Scopes             CancellationScopeSource
+	Proj			*workspace.Project
+	Root			string
+	Imports			[]deploy.Import
+	M			*UpdateMetadata
+	Opts			UpdateOptions
+	SecretsManager		secrets.Manager
+	SecretsProvider		secrets.Provider
+	StackConfiguration	StackConfiguration
+	Scopes			CancellationScopeSource
 }
 
 // StackConfiguration holds the configuration for a stack and it's associated decrypter.
 type StackConfiguration struct {
 	// List of ESC environments imported by the stack being updated.
-	EnvironmentImports []string
+	EnvironmentImports	[]string
 
-	Environment esc.Value
-	Config      config.Map
-	Decrypter   config.Decrypter
+	Environment	esc.Value
+	Config		config.Map
+	Decrypter	config.Decrypter
 }
 
 // UpdateOptions is the full set of update options, including backend and engine options.
 type UpdateOptions struct {
 	// Engine contains all of the engine-specific options.
-	Engine engine.UpdateOptions
+	Engine	engine.UpdateOptions
 	// Display contains all of the backend display options.
-	Display display.Options
+	Display	display.Options
 
 	// AutoApprove, when true, will automatically approve previews.
-	AutoApprove bool
+	AutoApprove	bool
 	// SkipPreview, when true, causes the preview step to be skipped.
-	SkipPreview bool
+	SkipPreview	bool
 	// PreviewOnly, when true, causes only the preview step to be run, without running the Update.
-	PreviewOnly bool
+	PreviewOnly	bool
 }
 
 // CancellationScope provides a scoped source of cancellation and termination requests.
@@ -384,8 +384,8 @@ func NewBackendClient(backend Backend, secretsProvider secrets.Provider) deploy.
 }
 
 type backendClient struct {
-	backend         Backend
-	secretsProvider secrets.Provider
+	backend		Backend
+	secretsProvider	secrets.Provider
 }
 
 // GetStackOutputs returns the outputs of the stack with the given name.
@@ -448,8 +448,8 @@ func (c *backendClient) GetStackResourceOutputs(
 		}
 
 		resc := resource.PropertyMap{
-			resource.PropertyKey("type"):    resource.NewProperty(string(r.Type)),
-			resource.PropertyKey("outputs"): resource.NewProperty(r.Outputs),
+			resource.PropertyKey("type"):		resource.NewProperty(string(r.Type)),
+			resource.PropertyKey("outputs"):	resource.NewProperty(r.Outputs),
 		}
 		pm[resource.PropertyKey(r.URN)] = resource.NewProperty(resc)
 	}
@@ -459,8 +459,8 @@ func (c *backendClient) GetStackResourceOutputs(
 // ErrTeamsNotSupported is returned by backends
 // which do not support the teams feature.
 var (
-	ErrTeamsNotSupported  = errors.New("teams are not supported")
-	ErrConfigNotSupported = errors.New("remote config is not supported")
+	ErrTeamsNotSupported	= errors.New("teams are not supported")
+	ErrConfigNotSupported	= errors.New("remote config is not supported")
 )
 
 // CreateStackOptions provides options for stack creation.
@@ -473,11 +473,11 @@ type CreateStackOptions struct {
 	//
 	// The backend may return ErrTeamsNotSupported
 	// if Teams is specified but not supported.
-	Teams []string
+	Teams	[]string
 
 	// Config is the optional cloud stack config to use instead of reading from a local file on disk.
 	// This is only used by the Service backend.
-	Config *apitype.StackConfig
+	Config	*apitype.StackConfig
 }
 
 // TarReaderCloser is a [tar.Reader] that owns it's backing memory.

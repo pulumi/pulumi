@@ -25,10 +25,10 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/esc"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -40,8 +40,8 @@ func TestPrettyKeyForProject(t *testing.T) {
 	t.Parallel()
 
 	proj := &workspace.Project{
-		Name:    tokens.PackageName("test-package"),
-		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
+		Name:		tokens.PackageName("test-package"),
+		Runtime:	workspace.NewProjectRuntimeInfo("nodejs", nil),
 	}
 
 	assert.Equal(t, "foo", prettyKeyForProject(config.MustMakeKey("test-package", "foo"), proj))
@@ -64,15 +64,15 @@ func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 	// Don't check return values. Just check that GetLatestConfiguration() is not called.
 	_, _, _ = GetStackConfiguration(
 		context.Background(),
-		nil, /*sink*/
+		nil,	/*sink*/
 		stack.SecretsManagerLoader{},
 		&backend.MockStack{
 			RefF: func() backend.StackReference {
 				return &backend.MockStackReference{
-					StringV:             "org/project/name",
-					NameV:               tokens.MustParseStackName("name"),
-					ProjectV:            "project",
-					FullyQualifiedNameV: tokens.QName("org/project/name"),
+					StringV:		"org/project/name",
+					NameV:			tokens.MustParseStackName("name"),
+					ProjectV:		"project",
+					FullyQualifiedNameV:	tokens.QName("org/project/name"),
 				}
 			},
 			LoadRemoteF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
@@ -100,15 +100,15 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 	called := false
 	_, _, _ = GetStackConfigurationOrLatest(
 		context.Background(),
-		nil, /*sink*/
+		nil,	/*sink*/
 		stack.SecretsManagerLoader{},
 		&backend.MockStack{
 			RefF: func() backend.StackReference {
 				return &backend.MockStackReference{
-					StringV:             "org/project/name",
-					NameV:               tokens.MustParseStackName("name"),
-					ProjectV:            "project",
-					FullyQualifiedNameV: tokens.QName("org/project/name"),
+					StringV:		"org/project/name",
+					NameV:			tokens.MustParseStackName("name"),
+					ProjectV:		"project",
+					FullyQualifiedNameV:	tokens.QName("org/project/name"),
 				}
 			},
 			LoadRemoteF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
@@ -225,8 +225,8 @@ func getMockStackWithEnv(t *testing.T, env map[string]esc.Value) *backend.MockSt
 		},
 	}
 	stack := &backend.MockStack{
-		OrgNameF: func() string { return "test-org" },
-		BackendF: func() backend.Backend { return be },
+		OrgNameF:	func() string { return "test-org" },
+		BackendF:	func() backend.Backend { return be },
 	}
 
 	return stack
@@ -291,10 +291,10 @@ func TestStackEnvConfig(t *testing.T) {
 
 	env := map[string]esc.Value{
 		"pulumiConfig": esc.NewValue(map[string]esc.Value{
-			"string":     esc.NewValue("esc"),
-			"aws:region": esc.NewValue("us-west-2"),
-			"api:domain": esc.NewValue("test"),
-			"ui:domain":  esc.NewValue("test"),
+			"string":	esc.NewValue("esc"),
+			"aws:region":	esc.NewValue("us-west-2"),
+			"api:domain":	esc.NewValue("test"),
+			"ui:domain":	esc.NewValue("test"),
 		}),
 		"environmentVariables": esc.NewValue(map[string]esc.Value{
 			"TEST_VAR": esc.NewSecret("hunter2"),
@@ -329,10 +329,10 @@ func TestStackEnvConfig(t *testing.T) {
 		stack := getMockStackWithEnv(t, env)
 		stack.RefF = func() backend.StackReference {
 			return &backend.MockStackReference{
-				StringV:             "org/project/" + name,
-				NameV:               tokens.MustParseStackName(name),
-				ProjectV:            "project",
-				FullyQualifiedNameV: tokens.QName("org/project/" + name),
+				StringV:		"org/project/" + name,
+				NameV:			tokens.MustParseStackName(name),
+				ProjectV:		"project",
+				FullyQualifiedNameV:	tokens.QName("org/project/" + name),
 			}
 		}
 		stack.DefaultSecretManagerF = func(info *workspace.ProjectStack) (secrets.Manager, error) {
@@ -367,10 +367,10 @@ func TestStackEnvConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, config.Map{
-		config.MustMakeKey("project", "string"): config.NewValue("esc"),
-		config.MustMakeKey("aws", "region"):     config.NewValue("us-west-2"),
-		config.MustMakeKey("api", "domain"):     config.NewValue("test"),
-		config.MustMakeKey("ui", "domain"):      config.NewValue("test"),
+		config.MustMakeKey("project", "string"):	config.NewValue("esc"),
+		config.MustMakeKey("aws", "region"):		config.NewValue("us-west-2"),
+		config.MustMakeKey("api", "domain"):		config.NewValue("test"),
+		config.MustMakeKey("ui", "domain"):		config.NewValue("test"),
 	}, cfg.Config)
 }
 
@@ -414,10 +414,10 @@ func TestCopyConfig(t *testing.T) {
 		stack := getMockStackWithEnv(t, env)
 		stack.RefF = func() backend.StackReference {
 			return &backend.MockStackReference{
-				StringV:             "org/project/" + name,
-				NameV:               tokens.MustParseStackName(name),
-				ProjectV:            "project",
-				FullyQualifiedNameV: tokens.QName("org/project/" + name),
+				StringV:		"org/project/" + name,
+				NameV:			tokens.MustParseStackName(name),
+				ProjectV:		"project",
+				FullyQualifiedNameV:	tokens.QName("org/project/" + name),
 			}
 		}
 		stack.DefaultSecretManagerF = func(info *workspace.ProjectStack) (secrets.Manager, error) {
@@ -476,8 +476,8 @@ func TestOpenStackEnvDiags(t *testing.T) {
 		},
 	}
 	stack := &backend.MockStack{
-		OrgNameF: func() string { return "test-org" },
-		BackendF: func() backend.Backend { return be },
+		OrgNameF:	func() string { return "test-org" },
+		BackendF:	func() backend.Backend { return be },
 	}
 
 	var projectStack workspace.ProjectStack
@@ -506,8 +506,8 @@ func TestOpenStackEnvError(t *testing.T) {
 		},
 	}
 	stack := &backend.MockStack{
-		OrgNameF: func() string { return "test-org" },
-		BackendF: func() backend.Backend { return be },
+		OrgNameF:	func() string { return "test-org" },
+		BackendF:	func() backend.Backend { return be },
 	}
 
 	var projectStack workspace.ProjectStack
@@ -522,125 +522,125 @@ func TestParseConfigKey(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		input   string
-		path    bool
-		wantKey config.Key
-		wantErr string
+		name	string
+		input	string
+		path	bool
+		wantKey	config.Key
+		wantErr	string
 	}{
 		{
-			name:    "namespaced key",
-			input:   "mynamespace:mykey",
-			path:    false,
-			wantKey: config.MustMakeKey("mynamespace", "mykey"),
+			name:		"namespaced key",
+			input:		"mynamespace:mykey",
+			path:		false,
+			wantKey:	config.MustMakeKey("mynamespace", "mykey"),
 		},
 		{
-			name:    "namespaced key old-style",
-			input:   "aws:config:region",
-			path:    false,
-			wantKey: config.MustMakeKey("aws", "region"),
+			name:		"namespaced key old-style",
+			input:		"aws:config:region",
+			path:		false,
+			wantKey:	config.MustMakeKey("aws", "region"),
 		},
 		{
-			name:    "path-like key",
-			input:   "mynamespace:mykey.segment1.segment2",
-			path:    false,
-			wantKey: config.MustMakeKey("mynamespace", "mykey.segment1.segment2"),
+			name:		"path-like key",
+			input:		"mynamespace:mykey.segment1.segment2",
+			path:		false,
+			wantKey:	config.MustMakeKey("mynamespace", "mykey.segment1.segment2"),
 		},
 		{
-			name:    "path key",
-			input:   "mynamespace:mykey.segment1.segment2",
-			path:    true,
-			wantKey: config.MustMakeKey("mynamespace", "mykey.segment1.segment2"),
+			name:		"path key",
+			input:		"mynamespace:mykey.segment1.segment2",
+			path:		true,
+			wantKey:	config.MustMakeKey("mynamespace", "mykey.segment1.segment2"),
 		},
 		{
-			name:    "path segments with colons",
-			input:   "mynamespace:mykey.segment1:suffix",
-			path:    true,
-			wantKey: config.MustMakeKey("mynamespace", "mykey.segment1:suffix"),
+			name:		"path segments with colons",
+			input:		"mynamespace:mykey.segment1:suffix",
+			path:		true,
+			wantKey:	config.MustMakeKey("mynamespace", "mykey.segment1:suffix"),
 		},
 		{
-			name:    "non-path segments with colons fail to parse",
-			input:   "mynamespace:mykey.segment1:suffix",
-			path:    false,
-			wantErr: "configuration keys should be of the form `<namespace>:<name>`",
+			name:		"non-path segments with colons fail to parse",
+			input:		"mynamespace:mykey.segment1:suffix",
+			path:		false,
+			wantErr:	"configuration keys should be of the form `<namespace>:<name>`",
 		},
 		{
-			name:    "path with invalid top-level segment",
-			input:   "mynamespace:subnamespace:mykey.segment1.segment2",
-			path:    true,
-			wantErr: "configuration keys should be of the form `<namespace>:<name>`",
+			name:		"path with invalid top-level segment",
+			input:		"mynamespace:subnamespace:mykey.segment1.segment2",
+			path:		true,
+			wantErr:	"configuration keys should be of the form `<namespace>:<name>`",
 		},
 		{
-			name:    "invalid path with colon before bracket",
-			input:   "mynamespace:my:key[\"segment\"]",
-			path:    true,
-			wantErr: "configuration keys should be of the form `<namespace>:<name>`",
+			name:		"invalid path with colon before bracket",
+			input:		"mynamespace:my:key[\"segment\"]",
+			path:		true,
+			wantErr:	"configuration keys should be of the form `<namespace>:<name>`",
 		},
 		{
-			name:    "key paths",
-			input:   "mynamespace:mykey[\"segment1:suffix\"]",
-			path:    true,
-			wantKey: config.MustMakeKey("mynamespace", "mykey[\"segment1:suffix\"]"),
+			name:		"key paths",
+			input:		"mynamespace:mykey[\"segment1:suffix\"]",
+			path:		true,
+			wantKey:	config.MustMakeKey("mynamespace", "mykey[\"segment1:suffix\"]"),
 		},
 		{
-			name:    "bracket as top-level path segment",
-			input:   "mynamespace:[\"foo\"]",
-			path:    true,
-			wantKey: config.MustMakeKey("mynamespace", "[\"foo\"]"),
+			name:		"bracket as top-level path segment",
+			input:		"mynamespace:[\"foo\"]",
+			path:		true,
+			wantKey:	config.MustMakeKey("mynamespace", "[\"foo\"]"),
 		},
 		{
-			name:    "invalid path",
-			input:   "mynamespace:.segment1",
-			path:    true,
-			wantKey: config.MustMakeKey("mynamespace", ".segment1"),
+			name:		"invalid path",
+			input:		"mynamespace:.segment1",
+			path:		true,
+			wantKey:	config.MustMakeKey("mynamespace", ".segment1"),
 		},
 		{
-			name:    "path with multiple brackets",
-			input:   "mynamespace:mykey[\"segment1\"][\"segment2\"]",
-			path:    true,
-			wantKey: config.MustMakeKey("mynamespace", "mykey[\"segment1\"][\"segment2\"]"),
+			name:		"path with multiple brackets",
+			input:		"mynamespace:mykey[\"segment1\"][\"segment2\"]",
+			path:		true,
+			wantKey:	config.MustMakeKey("mynamespace", "mykey[\"segment1\"][\"segment2\"]"),
 		},
 		{
-			name:    "empty segment in path",
-			input:   "mynamespace:mykey..segment",
-			path:    true,
-			wantKey: config.MustMakeKey("mynamespace", "mykey..segment"),
+			name:		"empty segment in path",
+			input:		"mynamespace:mykey..segment",
+			path:		true,
+			wantKey:	config.MustMakeKey("mynamespace", "mykey..segment"),
 		},
 		{
-			name:    "old-style key as non-path",
-			input:   "aws:config:region.value",
-			path:    false,
-			wantKey: config.MustMakeKey("aws", "region.value"),
+			name:		"old-style key as non-path",
+			input:		"aws:config:region.value",
+			path:		false,
+			wantKey:	config.MustMakeKey("aws", "region.value"),
 		},
 		{
-			name:    "no namespace uses project name",
-			input:   "mykey",
-			path:    false,
-			wantKey: config.MustMakeKey("test-project", "mykey"),
+			name:		"no namespace uses project name",
+			input:		"mykey",
+			path:		false,
+			wantKey:	config.MustMakeKey("test-project", "mykey"),
 		},
 		{
-			name:    "no namespace with path segments",
-			input:   "mykey.segment1.segment2",
-			path:    true,
-			wantKey: config.MustMakeKey("test-project", "mykey.segment1.segment2"),
+			name:		"no namespace with path segments",
+			input:		"mykey.segment1.segment2",
+			path:		true,
+			wantKey:	config.MustMakeKey("test-project", "mykey.segment1.segment2"),
 		},
 		{
-			name:    "no namespace with brackets",
-			input:   "mykey[\"segment1\"]",
-			path:    true,
-			wantKey: config.MustMakeKey("test-project", "mykey[\"segment1\"]"),
+			name:		"no namespace with brackets",
+			input:		"mykey[\"segment1\"]",
+			path:		true,
+			wantKey:	config.MustMakeKey("test-project", "mykey[\"segment1\"]"),
 		},
 		{
-			name:    "no namespace with colon in path segment",
-			input:   "mykey.segment:with:colons",
-			path:    true,
-			wantKey: config.MustMakeKey("test-project", "mykey.segment:with:colons"),
+			name:		"no namespace with colon in path segment",
+			input:		"mykey.segment:with:colons",
+			path:		true,
+			wantKey:	config.MustMakeKey("test-project", "mykey.segment:with:colons"),
 		},
 		{
-			name:    "no namespace with colon in non-path fails",
-			input:   "mykey:with:colons",
-			path:    false,
-			wantErr: "configuration keys should be of the form `<namespace>:<name>`",
+			name:		"no namespace with colon in non-path fails",
+			input:		"mykey:with:colons",
+			path:		false,
+			wantErr:	"configuration keys should be of the form `<namespace>:<name>`",
 		},
 	}
 

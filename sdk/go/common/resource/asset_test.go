@@ -388,7 +388,7 @@ func TestArchiveSerialize(t *testing.T) {
 
 func tempArchive(prefix string, fill bool) (string, error) {
 	for {
-		path := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%x.tar", prefix, rand.Uint32())) //nolint:gosec
+		path := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%x.tar", prefix, rand.Uint32()))	//nolint:gosec
 		f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
 		switch {
 		case os.IsExist(err):
@@ -404,9 +404,9 @@ func tempArchive(prefix string, fill bool) (string, error) {
 				defer contract.IgnoreClose(w)
 
 				err = w.WriteHeader(&tar.Header{
-					Name: "file",
-					Mode: 0o600,
-					Size: 0,
+					Name:	"file",
+					Mode:	0o600,
+					Size:	0,
 				})
 			}
 			return path, err
@@ -533,7 +533,7 @@ func TestArchiveTarFiles(t *testing.T) {
 func TestArchiveZipFiles(t *testing.T) {
 	t.Parallel()
 
-	t.Skip() // TODO[pulumi/pulumi#7147]
+	t.Skip()	// TODO[pulumi/pulumi#7147]
 	repoRoot, err := findRepositoryRoot()
 	require.NoError(t, err)
 
@@ -561,8 +561,8 @@ func TestNestedArchive(t *testing.T) {
 	textAsset, err := rasset.FromText("hello world")
 	require.NoError(t, err)
 	arch, err := rarchive.FromAssets(map[string]any{
-		"./foo":    innerArch,
-		"fake.txt": textAsset,
+		"./foo":	innerArch,
+		"fake.txt":	textAsset,
 	})
 	require.NoError(t, err)
 
@@ -601,8 +601,8 @@ func TestFileReferencedThroughMultiplePaths(t *testing.T) {
 	innerArch, err := rarchive.FromPath(filepath.Join(dirName, "./foo/bar"))
 	require.NoError(t, err)
 	arch, err := rarchive.FromAssets(map[string]any{
-		"./foo":     outerArch,
-		"./foo/bar": innerArch,
+		"./foo":	outerArch,
+		"./foo/bar":	innerArch,
 	})
 	require.NoError(t, err)
 

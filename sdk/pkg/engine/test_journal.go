@@ -17,8 +17,8 @@ package engine
 import (
 	"errors"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -29,15 +29,15 @@ var _ = SnapshotManager((*TestJournal)(nil))
 type TestJournalEntryKind int
 
 const (
-	TestJournalEntryBegin   TestJournalEntryKind = 0
-	TestJournalEntrySuccess TestJournalEntryKind = 1
-	TestJournalEntryFailure TestJournalEntryKind = 2
-	TestJournalEntryOutputs TestJournalEntryKind = 4
+	TestJournalEntryBegin	TestJournalEntryKind	= 0
+	TestJournalEntrySuccess	TestJournalEntryKind	= 1
+	TestJournalEntryFailure	TestJournalEntryKind	= 2
+	TestJournalEntryOutputs	TestJournalEntryKind	= 4
 )
 
 type TestJournalEntry struct {
-	Kind TestJournalEntryKind
-	Step deploy.Step
+	Kind	TestJournalEntryKind
+	Step	deploy.Step
 }
 
 type JournalEntries []TestJournalEntry
@@ -190,10 +190,10 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 }
 
 type TestJournal struct {
-	entries JournalEntries
-	events  chan TestJournalEntry
-	cancel  chan bool
-	done    chan bool
+	entries	JournalEntries
+	events	chan TestJournalEntry
+	cancel	chan bool
+	done	chan bool
 }
 
 func (j *TestJournal) Entries() JournalEntries {
@@ -262,9 +262,9 @@ func (j *TestJournal) RebuiltBaseState() error {
 // produce the same snapshot.
 func NewTestJournal() *TestJournal {
 	j := &TestJournal{
-		events: make(chan TestJournalEntry),
-		cancel: make(chan bool),
-		done:   make(chan bool),
+		events:	make(chan TestJournalEntry),
+		cancel:	make(chan bool),
+		done:	make(chan bool),
 	}
 	go func() {
 		for {

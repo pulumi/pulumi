@@ -96,8 +96,8 @@ func (b *wrappedBucket) Exists(ctx context.Context, key string) (bool, error) {
 // listBucket returns a list of all files in the bucket within a given directory. go-cloud sorts the results by key
 func listBucket(ctx context.Context, bucket Bucket, dir string) ([]*blob.ListObject, error) {
 	bucketIter := bucket.List(&blob.ListOptions{
-		Delimiter: "/",
-		Prefix:    dir + "/",
+		Delimiter:	"/",
+		Prefix:		dir + "/",
 	})
 
 	files := []*blob.ListObject{}

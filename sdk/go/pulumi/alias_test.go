@@ -23,9 +23,9 @@ import (
 )
 
 var aliasTestCases = []struct {
-	name        string
-	alias       func(t *testing.T) Alias
-	expectedURN string
+	name		string
+	alias		func(t *testing.T) Alias
+	expectedURN	string
 }{
 	{
 		"plain",
@@ -40,8 +40,8 @@ var aliasTestCases = []struct {
 		"noParent",
 		func(*testing.T) Alias {
 			return Alias{
-				Type:     String("kubernetes:storage.k8s.io/v1beta1:CSIDriver"),
-				NoParent: Bool(true),
+				Type:		String("kubernetes:storage.k8s.io/v1beta1:CSIDriver"),
+				NoParent:	Bool(true),
 			}
 		}, "urn:pulumi:defStack::defProject::kubernetes:storage.k8s.io/v1beta1:CSIDriver::defName",
 	},
@@ -49,8 +49,8 @@ var aliasTestCases = []struct {
 		"parent",
 		func(t *testing.T) Alias {
 			return Alias{
-				Type:   String("kubernetes:storage.k8s.io/v1beta1:CSIDriver"),
-				Parent: newResource(t, URN("AParent::AParent"), ID("theParent")),
+				Type:	String("kubernetes:storage.k8s.io/v1beta1:CSIDriver"),
+				Parent:	newResource(t, URN("AParent::AParent"), ID("theParent")),
 			}
 		}, "AParent$kubernetes:storage.k8s.io/v1beta1:CSIDriver::defName",
 	},
@@ -58,8 +58,8 @@ var aliasTestCases = []struct {
 		"parentURN",
 		func(*testing.T) Alias {
 			return Alias{
-				Type:      String("kubernetes:storage.k8s.io/v1beta1:CSIDriver"),
-				ParentURN: URN("AParent::AParent"),
+				Type:		String("kubernetes:storage.k8s.io/v1beta1:CSIDriver"),
+				ParentURN:	URN("AParent::AParent"),
 			}
 		}, "AParent$kubernetes:storage.k8s.io/v1beta1:CSIDriver::defName",
 	},

@@ -26,72 +26,72 @@ import (
 func TestTruncateWithMiddleOut(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name     string
-		input    string
-		maxChars int
-		want     string
+		name		string
+		input		string
+		maxChars	int
+		want		string
 	}{
 		{
-			name:     "under limit",
-			input:    "short content",
-			maxChars: 100,
-			want:     "short content",
+			name:		"under limit",
+			input:		"short content",
+			maxChars:	100,
+			want:		"short content",
 		},
 		{
-			name:     "exact limit",
-			input:    "12345",
-			maxChars: 5,
-			want:     "12345",
+			name:		"exact limit",
+			input:		"12345",
+			maxChars:	5,
+			want:		"12345",
 		},
 		{
-			name:     "needs truncation",
-			input:    "start middle1 middle2 end",
-			maxChars: 22,
-			want:     "st... (truncated) ...d",
+			name:		"needs truncation",
+			input:		"start middle1 middle2 end",
+			maxChars:	22,
+			want:		"st... (truncated) ...d",
 		},
 		{
-			name:     "single long line",
-			input:    "abcdefghijklmnopqrstuvwxyz",
-			maxChars: 25,
-			want:     "abc... (truncated) ...xyz",
+			name:		"single long line",
+			input:		"abcdefghijklmnopqrstuvwxyz",
+			maxChars:	25,
+			want:		"abc... (truncated) ...xyz",
 		},
 		{
-			name:     "empty input",
-			input:    "",
-			maxChars: 10,
-			want:     "",
+			name:		"empty input",
+			input:		"",
+			maxChars:	10,
+			want:		"",
 		},
 		// make sure we're handling edge cases where maxChars is less
 		// than the truncation notice
 		{
-			name:     "maxChars less than truncation notice",
-			input:    "start middle1 middle2 end",
-			maxChars: 6,
-			want:     "start ",
+			name:		"maxChars less than truncation notice",
+			input:		"start middle1 middle2 end",
+			maxChars:	6,
+			want:		"start ",
 		},
 		{
-			name:     "maxChars is 0",
-			input:    "start middle1 middle2 end",
-			maxChars: 0,
-			want:     "",
+			name:		"maxChars is 0",
+			input:		"start middle1 middle2 end",
+			maxChars:	0,
+			want:		"",
 		},
 		{
-			name:     "maxChars is equal to truncation notice",
-			input:    "start middle1 middle2 end",
-			maxChars: 19,
-			want:     "start middle1 middl",
+			name:		"maxChars is equal to truncation notice",
+			input:		"start middle1 middle2 end",
+			maxChars:	19,
+			want:		"start middle1 middl",
 		},
 		{
-			name:     "maxChars is one longer than truncation notice",
-			input:    "start middle1 middle2 end",
-			maxChars: 20,
-			want:     "s... (truncated) ...",
+			name:		"maxChars is one longer than truncation notice",
+			input:		"start middle1 middle2 end",
+			maxChars:	20,
+			want:		"s... (truncated) ...",
 		},
 		{
-			name:     "maxChars is two longer than truncation notice",
-			input:    "start middle1 middle2 end",
-			maxChars: 21,
-			want:     "s... (truncated) ...d",
+			name:		"maxChars is two longer than truncation notice",
+			input:		"start middle1 middle2 end",
+			maxChars:	21,
+			want:		"s... (truncated) ...d",
 		},
 	}
 
@@ -114,54 +114,54 @@ func TestExtractCopilotResponse(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		response apitype.CopilotResponse
-		want     string
-		wantErr  bool
+		name		string
+		response	apitype.CopilotResponse
+		want		string
+		wantErr		bool
 	}{
 		{
-			name: "new format - direct string response",
+			name:	"new format - direct string response",
 			response: apitype.CopilotResponse{
 				ThreadMessages: []apitype.CopilotThreadMessage{
 					{
-						Role:    "assistant",
-						Kind:    "response",
-						Content: json.RawMessage(`"This is a summary"`),
+						Role:		"assistant",
+						Kind:		"response",
+						Content:	json.RawMessage(`"This is a summary"`),
 					},
 				},
 			},
-			want:    "This is a summary",
-			wantErr: false,
+			want:		"This is a summary",
+			wantErr:	false,
 		},
 		{
-			name: "no assistant message",
+			name:	"no assistant message",
 			response: apitype.CopilotResponse{
 				ThreadMessages: []apitype.CopilotThreadMessage{
 					{
-						Role:    "user",
-						Kind:    "response",
-						Content: json.RawMessage(`"User message"`),
+						Role:		"user",
+						Kind:		"response",
+						Content:	json.RawMessage(`"User message"`),
 					},
 				},
 			},
-			want:    "",
-			wantErr: true,
+			want:		"",
+			wantErr:	true,
 		},
 		{
-			name: "empty summary in old format",
+			name:	"empty summary in old format",
 			response: apitype.CopilotResponse{
 				ThreadMessages: []apitype.CopilotThreadMessage{
 					{
-						Role: "assistant",
-						Kind: "summarizeUpdate",
+						Role:	"assistant",
+						Kind:	"summarizeUpdate",
 						Content: json.RawMessage(`{
 							"summary": ""
 						}`),
 					},
 				},
 			},
-			want:    "",
-			wantErr: true,
+			want:		"",
+			wantErr:	true,
 		},
 	}
 

@@ -89,8 +89,8 @@ func BenchmarkLoadPackageReference(b *testing.B) {
 	b.Run("file-cache", func(b *testing.B) {
 		// Disables in-memory cache and mmaping of files:
 		loader := initLoader(b, pluginLoaderCacheOptions{
-			disableEntryCache: true,
-			disableMmap:       true,
+			disableEntryCache:	true,
+			disableMmap:		true,
 		})
 
 		b.StopTimer()
@@ -107,9 +107,9 @@ func BenchmarkLoadPackageReference(b *testing.B) {
 	b.Run("no-cache", func(b *testing.B) {
 		// Disables in-memory cache, mmaping, and using schema files:
 		loader := initLoader(b, pluginLoaderCacheOptions{
-			disableEntryCache: true,
-			disableMmap:       true,
-			disableFileCache:  true,
+			disableEntryCache:	true,
+			disableMmap:		true,
+			disableFileCache:	true,
 		})
 
 		b.StopTimer()
@@ -130,21 +130,21 @@ func TestLoadParameterized(t *testing.T) {
 	mockProvider := &plugin.MockProvider{
 		ParameterizeF: func(_ context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
 			assert.Equal(t, &plugin.ParameterizeValue{
-				Name:    "aws",
-				Version: semver.MustParse("3.0.0"),
-				Value:   []byte("testdata"),
+				Name:		"aws",
+				Version:	semver.MustParse("3.0.0"),
+				Value:		[]byte("testdata"),
 			}, req.Parameters)
 
 			return plugin.ParameterizeResponse{
-				Name:    "aws",
-				Version: semver.MustParse("3.0.0"),
+				Name:		"aws",
+				Version:	semver.MustParse("3.0.0"),
 			}, nil
 		},
 
 		GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
 			schema := PackageSpec{
-				Name:    "aws",
-				Version: "3.0.0",
+				Name:		"aws",
+				Version:	"3.0.0",
 			}
 
 			data, err := json.Marshal(schema)
@@ -170,27 +170,27 @@ func TestLoadParameterized(t *testing.T) {
 			assert.Equal(t, semver.MustParse("1.0.0"), *spec.Version)
 
 			return &workspace.PluginInfo{
-				Name:    "terraform-provider",
-				Kind:    apitype.ResourcePlugin,
-				Version: spec.Version,
+				Name:		"terraform-provider",
+				Kind:		apitype.ResourcePlugin,
+				Version:	spec.Version,
 			}, nil
 		},
 	}
 
 	loader := newPluginLoaderWithOptions(host, pluginLoaderCacheOptions{
-		disableEntryCache: true,
-		disableMmap:       true,
-		disableFileCache:  true,
+		disableEntryCache:	true,
+		disableMmap:		true,
+		disableFileCache:	true,
 	})
 
 	version := semver.MustParse("1.0.0")
 	ref, err := loader.LoadPackageReferenceV2(context.Background(), &PackageDescriptor{
-		Name:    "terraform-provider",
-		Version: &version,
+		Name:		"terraform-provider",
+		Version:	&version,
 		Parameterization: &ParameterizationDescriptor{
-			Name:    "aws",
-			Version: semver.MustParse("3.0.0"),
-			Value:   []byte("testdata"),
+			Name:		"aws",
+			Version:	semver.MustParse("3.0.0"),
+			Value:		[]byte("testdata"),
 		},
 	})
 	require.NoError(t, err)
@@ -211,8 +211,8 @@ func TestLoadNameMismatch(t *testing.T) {
 	provider := &plugin.MockProvider{
 		GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
 			schema := PackageSpec{
-				Name:    notPkg,
-				Version: version.String(),
+				Name:		notPkg,
+				Version:	version.String(),
 			}
 
 			data, err := json.Marshal(schema)
@@ -232,23 +232,23 @@ func TestLoadNameMismatch(t *testing.T) {
 		},
 		ResolvePluginF: func(workspace.PluginSpec) (*workspace.PluginInfo, error) {
 			return &workspace.PluginInfo{
-				Name:    notPkg,
-				Kind:    apitype.ResourcePlugin,
-				Version: &version,
+				Name:		notPkg,
+				Kind:		apitype.ResourcePlugin,
+				Version:	&version,
 			}, nil
 		},
 	}
 
 	loader := newPluginLoaderWithOptions(host, pluginLoaderCacheOptions{
-		disableEntryCache: true,
-		disableMmap:       true,
-		disableFileCache:  true,
+		disableEntryCache:	true,
+		disableMmap:		true,
+		disableFileCache:	true,
 	})
 
 	// Act.
 	ref, err := LoadPackageReferenceV2(context.Background(), loader, &PackageDescriptor{
-		Name:    pkg,
-		Version: &version,
+		Name:		pkg,
+		Version:	&version,
 	})
 
 	// Assert.
@@ -282,8 +282,8 @@ func TestLoadVersionMismatch(t *testing.T) {
 	provider := &plugin.MockProvider{
 		GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
 			schema := PackageSpec{
-				Name:    pkg,
-				Version: loadVersion.String(),
+				Name:		pkg,
+				Version:	loadVersion.String(),
 			}
 
 			data, err := json.Marshal(schema)
@@ -303,23 +303,23 @@ func TestLoadVersionMismatch(t *testing.T) {
 		},
 		ResolvePluginF: func(workspace.PluginSpec) (*workspace.PluginInfo, error) {
 			return &workspace.PluginInfo{
-				Name:    pkg,
-				Kind:    apitype.ResourcePlugin,
-				Version: &loadVersion,
+				Name:		pkg,
+				Kind:		apitype.ResourcePlugin,
+				Version:	&loadVersion,
 			}, nil
 		},
 	}
 
 	loader := newPluginLoaderWithOptions(host, pluginLoaderCacheOptions{
-		disableEntryCache: true,
-		disableMmap:       true,
-		disableFileCache:  true,
+		disableEntryCache:	true,
+		disableMmap:		true,
+		disableFileCache:	true,
 	})
 
 	// Act.
 	ref, err := LoadPackageReferenceV2(context.Background(), loader, &PackageDescriptor{
-		Name:    pkg,
-		Version: &requestVersion,
+		Name:		pkg,
+		Version:	&requestVersion,
 	})
 
 	// Assert.
@@ -348,8 +348,8 @@ func TestPackageDescriptorString(t *testing.T) {
 	version := semver.MustParse("3.0.0")
 
 	cases := []struct {
-		desc     PackageDescriptor
-		expected string
+		desc		PackageDescriptor
+		expected	string
 	}{
 		{
 			PackageDescriptor{
@@ -358,26 +358,26 @@ func TestPackageDescriptorString(t *testing.T) {
 		},
 		{
 			PackageDescriptor{
-				Name:    "aws",
-				Version: &version,
+				Name:		"aws",
+				Version:	&version,
 			}, "aws@3.0.0",
 		},
 		{
 			PackageDescriptor{
-				Name:    "base",
-				Version: &version,
+				Name:		"base",
+				Version:	&version,
 				Parameterization: &ParameterizationDescriptor{
-					Name:    "gcp",
-					Version: semver.MustParse("6.0.0"),
+					Name:		"gcp",
+					Version:	semver.MustParse("6.0.0"),
 				},
 			}, "gcp@6.0.0 (base@3.0.0)",
 		},
 		{
 			PackageDescriptor{
-				Name: "base",
+				Name:	"base",
 				Parameterization: &ParameterizationDescriptor{
-					Name:    "gcp",
-					Version: semver.MustParse("6.0.0"),
+					Name:		"gcp",
+					Version:	semver.MustParse("6.0.0"),
 				},
 			}, "gcp@6.0.0 (base@nil)",
 		},
@@ -389,17 +389,17 @@ func TestPackageDescriptorString(t *testing.T) {
 }
 
 type testLoader struct {
-	t         testing.TB
-	wasCalled bool
-	expected  json.RawMessage
-	retVal    any
+	t		testing.TB
+	wasCalled	bool
+	expected	json.RawMessage
+	retVal		any
 }
 
-func (testLoader) ImportDefaultSpec(bytes json.RawMessage) (any, error)    { return nil, nil }
-func (testLoader) ImportPropertySpec(bytes json.RawMessage) (any, error)   { return nil, nil }
-func (testLoader) ImportObjectTypeSpec(bytes json.RawMessage) (any, error) { return nil, nil }
-func (testLoader) ImportResourceSpec(bytes json.RawMessage) (any, error)   { return nil, nil }
-func (testLoader) ImportFunctionSpec(bytes json.RawMessage) (any, error)   { return nil, nil }
+func (testLoader) ImportDefaultSpec(bytes json.RawMessage) (any, error)		{ return nil, nil }
+func (testLoader) ImportPropertySpec(bytes json.RawMessage) (any, error)	{ return nil, nil }
+func (testLoader) ImportObjectTypeSpec(bytes json.RawMessage) (any, error)	{ return nil, nil }
+func (testLoader) ImportResourceSpec(bytes json.RawMessage) (any, error)	{ return nil, nil }
+func (testLoader) ImportFunctionSpec(bytes json.RawMessage) (any, error)	{ return nil, nil }
 func (tl *testLoader) ImportPackageSpec(bytes json.RawMessage) (any, error) {
 	tl.wasCalled = true
 	assert.Equal(tl.t, tl.expected, bytes)
@@ -413,7 +413,7 @@ func TestPartialPackageLanguage(t *testing.T) {
 
 	spec := PartialPackageSpec{
 		PackageInfoSpec: PackageInfoSpec{
-			Name: "pkg",
+			Name:	"pkg",
 			Language: map[string]RawMessage{
 				"loader": loaderBytes,
 			},
@@ -421,9 +421,9 @@ func TestPartialPackageLanguage(t *testing.T) {
 	}
 
 	tl := testLoader{
-		t:        t,
-		expected: json.RawMessage(loaderBytes),
-		retVal:   "123",
+		t:		t,
+		expected:	json.RawMessage(loaderBytes),
+		retVal:		"123",
 	}
 	ref, err := ImportPartialSpec(spec, map[string]Language{
 		"loader": &tl,

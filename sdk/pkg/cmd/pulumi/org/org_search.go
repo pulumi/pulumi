@@ -25,11 +25,11 @@ import (
 	"strconv"
 
 	"github.com/pkg/browser"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -67,10 +67,10 @@ func (d *Delimiter) Rune() rune {
 type outputFormat string
 
 const (
-	outputFormatTable outputFormat = "table"
-	outputFormatJSON  outputFormat = "json"
-	outputFormatYAML  outputFormat = "yaml"
-	outputFormatCSV   outputFormat = "csv"
+	outputFormatTable	outputFormat	= "table"
+	outputFormatJSON	outputFormat	= "json"
+	outputFormatYAML	outputFormat	= "yaml"
+	outputFormatCSV		outputFormat	= "csv"
 )
 
 // String is used both by fmt.Print and by Cobra in help text
@@ -95,23 +95,23 @@ func (o *outputFormat) Type() string {
 }
 
 type searchCmd struct {
-	orgName      string
-	csvDelimiter Delimiter
+	orgName		string
+	csvDelimiter	Delimiter
 	outputFormat
-	openWeb bool
+	openWeb	bool
 
-	Stdout io.Writer // defaults to os.Stdout
+	Stdout	io.Writer	// defaults to os.Stdout
 
 	// currentBackend is a reference to the top-level currentBackend function.
 	// This is used to override the default implementation for testing purposes.
-	currentBackend func(
+	currentBackend	func(
 		context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
 	) (backend.Backend, error)
 }
 
 type orgSearchCmd struct {
 	searchCmd
-	queryParams []string
+	queryParams	[]string
 }
 
 func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
@@ -128,11 +128,11 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	if cmd.currentBackend == nil {
 		cmd.currentBackend = cmdBackend.CurrentBackend
 	}
-	currentBackend := cmd.currentBackend // shadow the top-level function
+	currentBackend := cmd.currentBackend	// shadow the top-level function
 
 	displayOpts := display.Options{
-		Color:         cmdutil.GetGlobalColorization(),
-		IsInteractive: interactive,
+		Color:		cmdutil.GetGlobalColorization(),
+		IsInteractive:	interactive,
 	}
 	// Try to read the current project
 	ws := pkgWorkspace.Instance
@@ -189,10 +189,10 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 func newSearchCmd() *cobra.Command {
 	var scmd orgSearchCmd
 	cmd := &cobra.Command{
-		Use:   "search",
-		Short: "Search for resources in Pulumi Cloud",
-		Long:  "Search for resources in Pulumi Cloud.",
-		Args:  cmdutil.NoArgs,
+		Use:	"search",
+		Short:	"Search for resources in Pulumi Cloud",
+		Long:	"Search for resources in Pulumi Cloud.",
+		Args:	cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			if len(scmd.queryParams) == 0 {

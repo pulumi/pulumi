@@ -61,11 +61,11 @@ func Main(policyPack func(*pulumi.Context) (PolicyPack, error)) error {
 type analyzerServer struct {
 	pulumirpc.UnimplementedAnalyzerServer
 
-	policyPackFactory func(*pulumi.Context) (PolicyPack, error)
-	policyPack        PolicyPack
+	policyPackFactory	func(*pulumi.Context) (PolicyPack, error)
+	policyPack		PolicyPack
 
-	config    map[string]PolicyConfig
-	handshake *pulumirpc.AnalyzerHandshakeRequest
+	config		map[string]PolicyConfig
+	handshake	*pulumirpc.AnalyzerHandshakeRequest
 }
 
 func (srv *analyzerServer) Handshake(
@@ -99,24 +99,24 @@ func (srv *analyzerServer) GetAnalyzerInfo(context.Context, *pbempty.Empty) (*pu
 			}
 
 			configSchema = &pulumirpc.PolicyConfigSchema{
-				Properties: proto,
-				Required:   schema.Required,
+				Properties:	proto,
+				Required:	schema.Required,
 			}
 		}
 
 		policies = append(policies, &pulumirpc.PolicyInfo{
-			Name:             p.Name(),
-			Description:      p.Description(),
-			EnforcementLevel: pulumirpc.EnforcementLevel(p.EnforcementLevel()),
-			ConfigSchema:     configSchema,
+			Name:			p.Name(),
+			Description:		p.Description(),
+			EnforcementLevel:	pulumirpc.EnforcementLevel(p.EnforcementLevel()),
+			ConfigSchema:		configSchema,
 		})
 	}
 	return &pulumirpc.AnalyzerInfo{
-		Name:           srv.policyPack.Name(),
-		Version:        srv.policyPack.Version().String(),
-		Policies:       policies,
-		SupportsConfig: true,
-		InitialConfig:  nil, /* TODO */
+		Name:		srv.policyPack.Name(),
+		Version:	srv.policyPack.Version().String(),
+		Policies:	policies,
+		SupportsConfig:	true,
+		InitialConfig:	nil,	/* TODO */
 	}, nil
 }
 
@@ -134,19 +134,19 @@ func (srv *analyzerServer) ConfigureStack(ctx context.Context,
 	}
 
 	info := pulumi.RunInfo{
-		Stack:        req.Stack,
-		Project:      req.Project,
-		Organization: req.Organization,
+		Stack:		req.Stack,
+		Project:	req.Project,
+		Organization:	req.Organization,
 
-		RootDirectory: root,
+		RootDirectory:	root,
 
-		MonitorAddr: "",
-		EngineAddr:  srv.handshake.EngineAddress,
+		MonitorAddr:	"",
+		EngineAddr:	srv.handshake.EngineAddress,
 
-		Config:           req.Config,
-		ConfigSecretKeys: req.ConfigSecretKeys,
-		DryRun:           req.DryRun,
-		Parallel:         1,
+		Config:			req.Config,
+		ConfigSecretKeys:	req.ConfigSecretKeys,
+		DryRun:			req.DryRun,
+		Parallel:		1,
 	}
 	pctx, err := pulumi.NewContext(context.Background(), info)
 	if err != nil {
@@ -176,8 +176,8 @@ func (srv *analyzerServer) Configure(ctx context.Context, req *pulumirpc.Configu
 			return nil, fmt.Errorf("failed to unmarshal properties for policy %q: %w", k, err)
 		}
 		conf[k] = PolicyConfig{
-			EnforcementLevel: EnforcementLevel(v.EnforcementLevel),
-			Properties:       props,
+			EnforcementLevel:	EnforcementLevel(v.EnforcementLevel),
+			Properties:		props,
 		}
 	}
 
@@ -214,40 +214,40 @@ func (srv *analyzerServer) Analyze(
 					}
 
 					ds = append(ds, &pulumirpc.AnalyzeDiagnostic{
-						PolicyName:        p.Name(),
-						PolicyPackName:    srv.policyPack.Name(),
-						PolicyPackVersion: srv.policyPack.Version().String(),
-						Description:       p.Description(),
-						Message:           violationMessage,
-						EnforcementLevel:  pulumirpc.EnforcementLevel(enforcementLevel),
-						Urn:               urn,
+						PolicyName:		p.Name(),
+						PolicyPackName:		srv.policyPack.Name(),
+						PolicyPackVersion:	srv.policyPack.Version().String(),
+						Description:		p.Description(),
+						Message:		violationMessage,
+						EnforcementLevel:	pulumirpc.EnforcementLevel(enforcementLevel),
+						Urn:			urn,
 					})
 				}
 
 				pm, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
-					Label:            fmt.Sprintf("%s.%s.analyze", srv.policyPack.Name(), p.Name()),
-					KeepUnknowns:     true,
-					KeepSecrets:      true,
-					KeepResources:    true,
-					KeepOutputValues: true,
+					Label:			fmt.Sprintf("%s.%s.analyze", srv.policyPack.Name(), p.Name()),
+					KeepUnknowns:		true,
+					KeepSecrets:		true,
+					KeepResources:		true,
+					KeepOutputValues:	true,
 				})
 				if err != nil {
 					return nil, fmt.Errorf("failed to unmarshal properties for policy %q: %w", p.Name(), err)
 				}
 
 				args := ResourceValidationArgs{
-					Manager: policyManager,
-					Config:  config.Properties,
+					Manager:	policyManager,
+					Config:		config.Properties,
 					Resource: AnalyzerResource{
-						Type:                 req.GetType(),
-						Properties:           resource.FromResourcePropertyMap(pm),
-						URN:                  req.GetUrn(),
-						Name:                 req.GetName(),
-						Options:              pulumi.ResourceOptions{},
-						Provider:             AnalyzerProviderResource{},
-						Parent:               "",  /* TODO */
-						Dependencies:         nil, /* TODO */
-						PropertyDependencies: nil, /* TODO */
+						Type:			req.GetType(),
+						Properties:		resource.FromResourcePropertyMap(pm),
+						URN:			req.GetUrn(),
+						Name:			req.GetName(),
+						Options:		pulumi.ResourceOptions{},
+						Provider:		AnalyzerProviderResource{},
+						Parent:			"",	/* TODO */
+						Dependencies:		nil,	/* TODO */
+						PropertyDependencies:	nil,	/* TODO */
 					},
 				}
 
@@ -270,11 +270,11 @@ func (srv *analyzerServer) Remediate(
 	var rs []*pulumirpc.Remediation
 
 	pm, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
-		Label:            srv.policyPack.Name() + ".remediate",
-		KeepUnknowns:     true,
-		KeepSecrets:      true,
-		KeepResources:    true,
-		KeepOutputValues: true,
+		Label:			srv.policyPack.Name() + ".remediate",
+		KeepUnknowns:		true,
+		KeepSecrets:		true,
+		KeepResources:		true,
+		KeepOutputValues:	true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal properties for policy pack %q: %w", srv.policyPack.Name(), err)
@@ -294,17 +294,17 @@ func (srv *analyzerServer) Remediate(
 			if !disabled {
 				args := ResourceRemediationArgs{
 					Resource: AnalyzerResource{
-						Type:                 req.GetType(),
-						Properties:           props,
-						URN:                  req.GetUrn(),
-						Name:                 req.GetName(),
-						Options:              pulumi.ResourceOptions{},
-						Provider:             AnalyzerProviderResource{},
-						Parent:               "",  /* TODO */
-						Dependencies:         nil, /* TODO */
-						PropertyDependencies: nil, /* TODO */
+						Type:			req.GetType(),
+						Properties:		props,
+						URN:			req.GetUrn(),
+						Name:			req.GetName(),
+						Options:		pulumi.ResourceOptions{},
+						Provider:		AnalyzerProviderResource{},
+						Parent:			"",	/* TODO */
+						Dependencies:		nil,	/* TODO */
+						PropertyDependencies:	nil,	/* TODO */
 					},
-					Config: config.Properties,
+					Config:	config.Properties,
 				}
 
 				newProps, err := p.Remediate(ctx, args)
@@ -316,22 +316,22 @@ func (srv *analyzerServer) Remediate(
 					props = *newProps
 					pm = resource.ToResourcePropertyMap(props)
 					rpcProps, err := plugin.MarshalProperties(pm, plugin.MarshalOptions{
-						Label:            srv.policyPack.Name() + ".remediate",
-						KeepUnknowns:     true,
-						KeepSecrets:      true,
-						KeepResources:    true,
-						KeepOutputValues: true,
+						Label:			srv.policyPack.Name() + ".remediate",
+						KeepUnknowns:		true,
+						KeepSecrets:		true,
+						KeepResources:		true,
+						KeepOutputValues:	true,
 					})
 					if err != nil {
 						return nil, fmt.Errorf("failed to marshal properties for policy pack %q: %w", srv.policyPack.Name(), err)
 					}
 
 					rs = append(rs, &pulumirpc.Remediation{
-						PolicyName:        p.Name(),
-						Description:       p.Description(),
-						PolicyPackName:    srv.policyPack.Name(),
-						PolicyPackVersion: srv.policyPack.Version().String(),
-						Properties:        rpcProps,
+						PolicyName:		p.Name(),
+						Description:		p.Description(),
+						PolicyPackName:		srv.policyPack.Name(),
+						PolicyPackVersion:	srv.policyPack.Version().String(),
+						Properties:		rpcProps,
 					})
 				}
 			}

@@ -17,8 +17,8 @@ package fuzzing
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/require"
@@ -29,11 +29,11 @@ import (
 // resources.
 type ProgramSpec struct {
 	// The set of resource registrations made by the program.
-	ResourceRegistrations []*ResourceSpec
+	ResourceRegistrations	[]*ResourceSpec
 
 	// The set of resources present in the snapshot the program will execute against that will *not* be registered (that
 	// is, they will be "dropped").
-	Drops []*ResourceSpec
+	Drops	[]*ResourceSpec
 }
 
 // Returns a new LanguageRuntimeFactory that will register the resources specified in this ProgramSpec when executed.
@@ -94,15 +94,15 @@ func (ps *ProgramSpec) AsLanguageRuntimeF(t require.TestingT) deploytest.Languag
 		for _, r := range ps.ResourceRegistrations {
 			opts := deploytest.ResourceOptions{
 				// TODO(https://github.com/pulumi/pulumi/issues/18934): We should sometimes leave this null
-				Protect:        &r.Protect,
-				RetainOnDelete: &r.RetainOnDelete,
-				Parent:         rewriteURN(r.Parent),
-				Provider:       rewriteProviderRef(r.Provider),
-				DeletedWith:    rewriteURN(r.DeletedWith),
+				Protect:	&r.Protect,
+				RetainOnDelete:	&r.RetainOnDelete,
+				Parent:		rewriteURN(r.Parent),
+				Provider:	rewriteProviderRef(r.Provider),
+				DeletedWith:	rewriteURN(r.DeletedWith),
 
 				// We explicitly *don't* want to rewrite aliases since they are not dependencies and refer to (we expect)
 				// resources in the state, not the program we are running.
-				AliasURNs: r.Aliases,
+				AliasURNs:	r.Aliases,
 			}
 
 			deps := make([]resource.URN, len(r.Dependencies))
@@ -162,37 +162,37 @@ type ProgramResourceTag string
 
 const (
 	// Tags a resource as having been newly prepended to the program.
-	NewlyPrependedProgramResource ProgramResourceTag = "program.newly-prepended"
+	NewlyPrependedProgramResource	ProgramResourceTag	= "program.newly-prepended"
 
 	// Tags a resource as having been dropped from the program.
-	DroppedProgramResource ProgramResourceTag = "program.dropped"
+	DroppedProgramResource	ProgramResourceTag	= "program.dropped"
 
 	// Tags a resource as having been newly inserted into the program (that is, between two resources that already exist
 	// in the snapshot the program will execute against).
-	NewlyInsertedProgramResource ProgramResourceTag = "program.newly-inserted"
+	NewlyInsertedProgramResource	ProgramResourceTag	= "program.newly-inserted"
 
 	// Tags a resource as having been updated in the program (that is, provided a new set of inputs to those held in the
 	// snapshot that the program will execute against).
-	UpdatedProgramResource ProgramResourceTag = "program.updated"
+	UpdatedProgramResource	ProgramResourceTag	= "program.updated"
 
 	// Tags a resource as having been copied from the snapshot the program will execute against.
-	CopiedProgramResource ProgramResourceTag = "program.copied"
+	CopiedProgramResource	ProgramResourceTag	= "program.copied"
 
 	// Tags a resource as having been newly appended to the program.
-	NewlyAppendedProgramResource ProgramResourceTag = "program.newly-appended"
+	NewlyAppendedProgramResource	ProgramResourceTag	= "program.newly-appended"
 )
 
 // A set of options for configuring the generation of a ProgramSpec.
 type ProgramSpecOptions struct {
-	PrependCount         *rapid.Generator[int]
-	PrependResourceOpts  ResourceSpecOptions
-	Action               *rapid.Generator[ProgramSpecAction]
-	InsertResourceOpts   ResourceSpecOptions
-	UpdateProtect        *rapid.Generator[bool]
-	UpdateRetainOnDelete *rapid.Generator[bool]
-	AddAliases           *rapid.Generator[bool]
-	AppendCount          *rapid.Generator[int]
-	AppendResourceOpts   ResourceSpecOptions
+	PrependCount		*rapid.Generator[int]
+	PrependResourceOpts	ResourceSpecOptions
+	Action			*rapid.Generator[ProgramSpecAction]
+	InsertResourceOpts	ResourceSpecOptions
+	UpdateProtect		*rapid.Generator[bool]
+	UpdateRetainOnDelete	*rapid.Generator[bool]
+	AddAliases		*rapid.Generator[bool]
+	AppendCount		*rapid.Generator[int]
+	AppendResourceOpts	ResourceSpecOptions
 }
 
 // The set of actions that may be taken on resources in a ProgramSpec.
@@ -200,13 +200,13 @@ type ProgramSpecAction string
 
 const (
 	// Deletes a resource from the program.
-	ProgramSpecDelete ProgramSpecAction = "delete"
+	ProgramSpecDelete	ProgramSpecAction	= "delete"
 	// Inserts a new resource into the program.
-	ProgramSpecInsert ProgramSpecAction = "insert"
+	ProgramSpecInsert	ProgramSpecAction	= "insert"
 	// Updates a resource in the program.
-	ProgramSpecUpdate ProgramSpecAction = "update"
+	ProgramSpecUpdate	ProgramSpecAction	= "update"
 	// Copies a resource from the snapshot the program will execute against.
-	ProgramSpecCopy ProgramSpecAction = "copy"
+	ProgramSpecCopy	ProgramSpecAction	= "copy"
 )
 
 // Returns a copy of the given ProgramSpecOptions with the given overrides applied.
@@ -239,15 +239,15 @@ func (pso ProgramSpecOptions) With(overrides ProgramSpecOptions) ProgramSpecOpti
 // A default set of ProgramSpecOptions. By default, we'll prepend and append between 0 and 2 resources, and take actions
 // on existing resources with equal probability.
 var defaultProgramSpecOptions = ProgramSpecOptions{
-	PrependCount:         rapid.IntRange(0, 2),
-	PrependResourceOpts:  defaultResourceSpecOptions,
-	Action:               rapid.SampledFrom(programSpecActions),
-	InsertResourceOpts:   defaultResourceSpecOptions,
-	UpdateProtect:        rapid.Bool(),
-	UpdateRetainOnDelete: rapid.Bool(),
-	AddAliases:           rapid.Bool(),
-	AppendCount:          rapid.IntRange(0, 2),
-	AppendResourceOpts:   defaultResourceSpecOptions,
+	PrependCount:		rapid.IntRange(0, 2),
+	PrependResourceOpts:	defaultResourceSpecOptions,
+	Action:			rapid.SampledFrom(programSpecActions),
+	InsertResourceOpts:	defaultResourceSpecOptions,
+	UpdateProtect:		rapid.Bool(),
+	UpdateRetainOnDelete:	rapid.Bool(),
+	AddAliases:		rapid.Bool(),
+	AppendCount:		rapid.IntRange(0, 2),
+	AppendResourceOpts:	defaultResourceSpecOptions,
 }
 
 var programSpecActions = []ProgramSpecAction{
@@ -472,8 +472,8 @@ func GeneratedProgramSpec(
 		}
 
 		ps := &ProgramSpec{
-			ResourceRegistrations: newSS.Resources,
-			Drops:                 drops,
+			ResourceRegistrations:	newSS.Resources,
+			Drops:			drops,
 		}
 
 		return ps

@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/graph/dotconv"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/graph/dotconv"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 )
@@ -35,8 +35,8 @@ func TestStackGraphCmd(t *testing.T) {
 		snap := deploy.Snapshot{
 			Resources: []*resource.State{
 				{
-					URN:  "urn:pulumi",
-					Type: resource.RootStackType,
+					URN:	"urn:pulumi",
+					Type:	resource.RootStackType,
 				},
 			},
 		}
@@ -89,20 +89,20 @@ func TestStackGraphCmd(t *testing.T) {
 		snap := deploy.Snapshot{
 			Resources: []*resource.State{
 				{
-					URN:  provider,
-					ID:   "provider-id",
-					Type: "pulumi:provider:random",
+					URN:	provider,
+					ID:	"provider-id",
+					Type:	"pulumi:provider:random",
 				},
 				{
-					URN:  parent,
-					ID:   "parent-id",
-					Type: "random:index/randomPet:RandomPet",
+					URN:	parent,
+					ID:	"parent-id",
+					Type:	"random:index/randomPet:RandomPet",
 				},
 				{
-					URN:    child,
-					ID:     "child-id",
-					Type:   "random:index/randomPet:RandomPet",
-					Parent: parent,
+					URN:	child,
+					ID:	"child-id",
+					Type:	"random:index/randomPet:RandomPet",
+					Parent:	parent,
 				},
 			},
 		}

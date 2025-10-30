@@ -26,11 +26,11 @@ import (
 )
 
 type complexBag struct {
-	asset   asset.Asset
-	archive archive.Archive
+	asset	asset.Asset
+	archive	archive.Archive
 
-	optionalAsset   *asset.Asset
-	optionalArchive *archive.Archive
+	optionalAsset	*asset.Asset
+	optionalArchive	*archive.Archive
 }
 
 func TestAssetsAndArchives(t *testing.T) {
@@ -49,36 +49,36 @@ func TestAssetsAndArchives(t *testing.T) {
 
 	bigArchive := func() *archive.Archive {
 		return newArchive(map[string]any{
-			"asset1": newAsset("asset1"),
+			"asset1":	newAsset("asset1"),
 			"archive1": newArchive(map[string]any{
-				"asset2": newAsset("asset2"),
-				"asset3": newAsset("asset3"),
+				"asset2":	newAsset("asset2"),
+				"asset3":	newAsset("asset3"),
 			}),
 		})
 	}
 	tree := map[string]any{
-		"asset":           newAsset("simple asset"),
-		"optionalAsset":   newAsset("simple optional asset"),
-		"archive":         bigArchive(),
-		"optionalArchive": bigArchive(),
+		"asset":		newAsset("simple asset"),
+		"optionalAsset":	newAsset("simple optional asset"),
+		"archive":		bigArchive(),
+		"optionalArchive":	bigArchive(),
 	}
 
 	bag := complexBag{}
 	md := mapper.New(nil)
 
-	t.Run("asset", func(t *testing.T) { //nolint:parallelTest
+	t.Run("asset", func(t *testing.T) {	//nolint:parallelTest
 		err := md.DecodeValue(tree, reflect.TypeOf(complexBag{}), "asset", &bag.asset, false)
 		require.NoError(t, err)
 	})
-	t.Run("optionalAsset", func(t *testing.T) { //nolint:parallelTest
+	t.Run("optionalAsset", func(t *testing.T) {	//nolint:parallelTest
 		err := md.DecodeValue(tree, reflect.TypeOf(complexBag{}), "optionalAsset", &bag.optionalAsset, false)
 		require.NoError(t, err)
 	})
-	t.Run("archive", func(t *testing.T) { //nolint:parallelTest
+	t.Run("archive", func(t *testing.T) {	//nolint:parallelTest
 		err := md.DecodeValue(tree, reflect.TypeOf(complexBag{}), "archive", &bag.archive, false)
 		require.NoError(t, err)
 	})
-	t.Run("optionalArchive", func(t *testing.T) { //nolint:parallelTest
+	t.Run("optionalArchive", func(t *testing.T) {	//nolint:parallelTest
 		err := md.DecodeValue(tree, reflect.TypeOf(complexBag{}), "optionalArchive", &bag.optionalArchive, false)
 		require.NoError(t, err)
 	})

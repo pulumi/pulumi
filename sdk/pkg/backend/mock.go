@@ -26,11 +26,11 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/esc"
-	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/operations"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
@@ -45,69 +45,69 @@ import (
 //
 
 type MockBackend struct {
-	NameF                  func() string
-	URLF                   func() string
-	SetCurrentProjectF     func(proj *workspace.Project)
-	GetDefaultOrgF         func(ctx context.Context) (string, error)
-	GetPolicyPackF         func(ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error)
-	SupportsTagsF          func() bool
-	SupportsOrganizationsF func() bool
-	SupportsProgressF      func() bool
-	ParseStackReferenceF   func(s string) (StackReference, error)
-	SupportsDeploymentsF   func() bool
-	ValidateStackNameF     func(s string) error
-	DoesProjectExistF      func(context.Context, string, string) (bool, error)
-	GetStackF              func(context.Context, StackReference) (Stack, error)
-	CreateStackF           func(
+	NameF			func() string
+	URLF			func() string
+	SetCurrentProjectF	func(proj *workspace.Project)
+	GetDefaultOrgF		func(ctx context.Context) (string, error)
+	GetPolicyPackF		func(ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error)
+	SupportsTagsF		func() bool
+	SupportsOrganizationsF	func() bool
+	SupportsProgressF	func() bool
+	ParseStackReferenceF	func(s string) (StackReference, error)
+	SupportsDeploymentsF	func() bool
+	ValidateStackNameF	func(s string) error
+	DoesProjectExistF	func(context.Context, string, string) (bool, error)
+	GetStackF		func(context.Context, StackReference) (Stack, error)
+	CreateStackF		func(
 		context.Context,
 		StackReference,
 		string,
 		*apitype.UntypedDeployment,
 		*CreateStackOptions,
 	) (Stack, error)
-	RemoveStackF func(context.Context, Stack, bool, bool) (bool, error)
-	ListStacksF  func(context.Context, ListStacksFilter, ContinuationToken) (
+	RemoveStackF	func(context.Context, Stack, bool, bool) (bool, error)
+	ListStacksF	func(context.Context, ListStacksFilter, ContinuationToken) (
 		[]StackSummary, ContinuationToken, error)
-	ListStackNamesF func(context.Context, ListStackNamesFilter, ContinuationToken) (
+	ListStackNamesF	func(context.Context, ListStackNamesFilter, ContinuationToken) (
 		[]StackReference, ContinuationToken, error)
-	RenameStackF                          func(context.Context, Stack, tokens.QName) (StackReference, error)
-	GetStackCrypterF                      func(StackReference) (config.Crypter, error)
-	GetLatestConfigurationF               func(context.Context, Stack) (config.Map, error)
-	GetHistoryF                           func(context.Context, StackReference, int, int) ([]UpdateInfo, error)
-	UpdateStackTagsF                      func(context.Context, Stack, map[apitype.StackTagName]string) error
-	ExportDeploymentF                     func(context.Context, Stack) (*apitype.UntypedDeployment, error)
-	ImportDeploymentF                     func(context.Context, Stack, *apitype.UntypedDeployment) error
-	EncryptStackDeploymentSettingsSecretF func(ctx context.Context,
+	RenameStackF				func(context.Context, Stack, tokens.QName) (StackReference, error)
+	GetStackCrypterF			func(StackReference) (config.Crypter, error)
+	GetLatestConfigurationF			func(context.Context, Stack) (config.Map, error)
+	GetHistoryF				func(context.Context, StackReference, int, int) ([]UpdateInfo, error)
+	UpdateStackTagsF			func(context.Context, Stack, map[apitype.StackTagName]string) error
+	ExportDeploymentF			func(context.Context, Stack) (*apitype.UntypedDeployment, error)
+	ImportDeploymentF			func(context.Context, Stack, *apitype.UntypedDeployment) error
+	EncryptStackDeploymentSettingsSecretF	func(ctx context.Context,
 		stack Stack, secret string) (*apitype.SecretValue, error)
-	UpdateStackDeploymentSettingsF  func(context.Context, Stack, apitype.DeploymentSettings) error
-	DestroyStackDeploymentSettingsF func(ctx context.Context, stack Stack) error
-	GetGHAppIntegrationF            func(ctx context.Context, stack Stack) (*apitype.GitHubAppIntegration, error)
-	GetStackDeploymentSettingsF     func(context.Context, Stack) (*apitype.DeploymentSettings, error)
-	CurrentUserF                    func() (string, []string, *workspace.TokenInformation, error)
-	PreviewF                        func(context.Context, Stack,
+	UpdateStackDeploymentSettingsF	func(context.Context, Stack, apitype.DeploymentSettings) error
+	DestroyStackDeploymentSettingsF	func(ctx context.Context, stack Stack) error
+	GetGHAppIntegrationF		func(ctx context.Context, stack Stack) (*apitype.GitHubAppIntegration, error)
+	GetStackDeploymentSettingsF	func(context.Context, Stack) (*apitype.DeploymentSettings, error)
+	CurrentUserF			func() (string, []string, *workspace.TokenInformation, error)
+	PreviewF			func(context.Context, Stack,
 		UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
-	UpdateF func(context.Context, Stack,
+	UpdateF	func(context.Context, Stack,
 		UpdateOperation) (sdkDisplay.ResourceChanges, error)
-	ImportF func(context.Context, Stack,
+	ImportF	func(context.Context, Stack,
 		UpdateOperation, []deploy.Import) (sdkDisplay.ResourceChanges, error)
-	RefreshF func(context.Context, Stack,
+	RefreshF	func(context.Context, Stack,
 		UpdateOperation) (sdkDisplay.ResourceChanges, error)
-	DestroyF func(context.Context, Stack,
+	DestroyF	func(context.Context, Stack,
 		UpdateOperation) (sdkDisplay.ResourceChanges, error)
-	WatchF func(context.Context, Stack,
+	WatchF	func(context.Context, Stack,
 		UpdateOperation, []string) error
-	GetLogsF func(context.Context, secrets.Provider, Stack, StackConfiguration,
+	GetLogsF	func(context.Context, secrets.Provider, Stack, StackConfiguration,
 		operations.LogQuery) ([]operations.LogEntry, error)
 
-	CancelCurrentUpdateF func(ctx context.Context, stackRef StackReference) error
+	CancelCurrentUpdateF	func(ctx context.Context, stackRef StackReference) error
 
-	DefaultSecretManagerF func(ps *workspace.ProjectStack) (secrets.Manager, error)
+	DefaultSecretManagerF	func(ps *workspace.ProjectStack) (secrets.Manager, error)
 
-	SupportsTemplatesF        func() bool
-	ListTemplatesF            func(_ context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error)
-	DownloadTemplateF         func(_ context.Context, orgName, templateSource string) (TarReaderCloser, error)
-	GetCloudRegistryF         func() (CloudRegistry, error)
-	GetReadOnlyCloudRegistryF func() registry.Registry
+	SupportsTemplatesF		func() bool
+	ListTemplatesF			func(_ context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error)
+	DownloadTemplateF		func(_ context.Context, orgName, templateSource string) (TarReaderCloser, error)
+	GetCloudRegistryF		func() (CloudRegistry, error)
+	GetReadOnlyCloudRegistryF	func() registry.Registry
 }
 
 var _ Backend = (*MockBackend)(nil)
@@ -216,11 +216,11 @@ func (be *MockBackend) ParseStackReference(s string) (StackReference, error) {
 	}
 
 	return &MockStackReference{
-		StringV:             s,
-		NameV:               parsedName,
-		ProjectV:            tokens.Name(project),
-		OrganizationV:       orgName,
-		FullyQualifiedNameV: tokens.QName(s),
+		StringV:		s,
+		NameV:			parsedName,
+		ProjectV:		tokens.Name(project),
+		OrganizationV:		orgName,
+		FullyQualifiedNameV:	tokens.QName(s),
 	}, nil
 }
 
@@ -513,7 +513,7 @@ var _ = EnvironmentsBackend((*MockEnvironmentsBackend)(nil))
 type MockEnvironmentsBackend struct {
 	MockBackend
 
-	CreateEnvironmentF func(
+	CreateEnvironmentF	func(
 		ctx context.Context,
 		org string,
 		projectName string,
@@ -521,13 +521,13 @@ type MockEnvironmentsBackend struct {
 		yaml []byte,
 	) (apitype.EnvironmentDiagnostics, error)
 
-	CheckYAMLEnvironmentF func(
+	CheckYAMLEnvironmentF	func(
 		ctx context.Context,
 		org string,
 		yaml []byte,
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
 
-	OpenYAMLEnvironmentF func(
+	OpenYAMLEnvironmentF	func(
 		ctx context.Context,
 		org string,
 		yaml []byte,
@@ -576,16 +576,16 @@ func (be *MockEnvironmentsBackend) OpenYAMLEnvironment(
 //
 
 type MockStack struct {
-	RefF                  func() StackReference
-	ConfigLocationF       func() StackConfigLocation
-	LoadRemoteF           func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
-	SaveRemoteF           func(ctx context.Context, project *workspace.ProjectStack) error
-	OrgNameF              func() string
-	ConfigF               func() config.Map
-	SnapshotF             func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
-	TagsF                 func() map[apitype.StackTagName]string
-	BackendF              func() Backend
-	DefaultSecretManagerF func(info *workspace.ProjectStack) (secrets.Manager, error)
+	RefF			func() StackReference
+	ConfigLocationF		func() StackConfigLocation
+	LoadRemoteF		func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
+	SaveRemoteF		func(ctx context.Context, project *workspace.ProjectStack) error
+	OrgNameF		func() string
+	ConfigF			func() config.Map
+	SnapshotF		func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
+	TagsF			func() map[apitype.StackTagName]string
+	BackendF		func() Backend
+	DefaultSecretManagerF	func(info *workspace.ProjectStack) (secrets.Manager, error)
 }
 
 var _ Stack = (*MockStack)(nil)
@@ -668,11 +668,11 @@ func (ms *MockStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets
 // MockStackReference is a mock implementation of [StackReference].
 // Set the fields on this struct to control the behavior of the mock.
 type MockStackReference struct {
-	StringV             string
-	NameV               tokens.StackName
-	ProjectV            tokens.Name
-	OrganizationV       string
-	FullyQualifiedNameV tokens.QName
+	StringV			string
+	NameV			tokens.StackName
+	ProjectV		tokens.Name
+	OrganizationV		string
+	FullyQualifiedNameV	tokens.QName
 }
 
 var _ StackReference = (*MockStackReference)(nil)
@@ -713,13 +713,13 @@ func (r *MockStackReference) FullyQualifiedName() tokens.QName {
 }
 
 type MockPolicyPack struct {
-	RefF      func() PolicyPackReference
-	BackendF  func() Backend
-	PublishF  func(context.Context, PublishOperation) error
-	EnableF   func(context.Context, string, PolicyPackOperation) error
-	DisableF  func(context.Context, string, PolicyPackOperation) error
-	ValidateF func(context.Context, PolicyPackOperation) error
-	RemoveF   func(context.Context, PolicyPackOperation) error
+	RefF		func() PolicyPackReference
+	BackendF	func() Backend
+	PublishF	func(context.Context, PublishOperation) error
+	EnableF		func(context.Context, string, PolicyPackOperation) error
+	DisableF	func(context.Context, string, PolicyPackOperation) error
+	ValidateF	func(context.Context, PolicyPackOperation) error
+	RemoveF		func(context.Context, PolicyPackOperation) error
 }
 
 var _ PolicyPack = (*MockPolicyPack)(nil)
@@ -777,7 +777,7 @@ type MockTarReader map[string]MockTarFile
 
 type MockTarFile struct{ Content string }
 
-func (m MockTarReader) Close() error { return nil }
+func (m MockTarReader) Close() error	{ return nil }
 
 func (m MockTarReader) Tar() *tar.Reader {
 	paths := make([]string, 0, len(m))
@@ -792,10 +792,10 @@ func (m MockTarReader) Tar() *tar.Reader {
 	for _, p := range paths {
 		f := m[p]
 		err := w.WriteHeader(&tar.Header{
-			Name:     p,
-			Size:     int64(len(f.Content)),
-			Typeflag: tar.TypeReg,
-			Mode:     0o600,
+			Name:		p,
+			Size:		int64(len(f.Content)),
+			Typeflag:	tar.TypeReg,
+			Mode:		0o600,
 		})
 		contract.AssertNoErrorf(err, "impossible")
 
@@ -808,17 +808,17 @@ func (m MockTarReader) Tar() *tar.Reader {
 }
 
 type MockCloudRegistry struct {
-	PublishPackageF  func(context.Context, apitype.PackagePublishOp) error
-	PublishTemplateF func(context.Context, apitype.TemplatePublishOp) error
-	GetPackageF      func(
+	PublishPackageF		func(context.Context, apitype.PackagePublishOp) error
+	PublishTemplateF	func(context.Context, apitype.TemplatePublishOp) error
+	GetPackageF		func(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.PackageMetadata, error)
-	ListPackagesF func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
-	GetTemplateF  func(
+	ListPackagesF	func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
+	GetTemplateF	func(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.TemplateMetadata, error)
-	ListTemplatesF    func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error]
-	DownloadTemplateF func(ctx context.Context, downloadURL string) (io.ReadCloser, error)
+	ListTemplatesF		func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error]
+	DownloadTemplateF	func(ctx context.Context, downloadURL string) (io.ReadCloser, error)
 }
 
 var _ CloudRegistry = (*MockCloudRegistry)(nil)

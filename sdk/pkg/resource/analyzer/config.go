@@ -67,8 +67,8 @@ func ParsePolicyPackConfigFromAPI(config map[string]*json.RawMessage) (map[strin
 		}
 
 		result[k] = plugin.AnalyzerPolicyConfig{
-			EnforcementLevel: enforcementLevel,
-			Properties:       properties,
+			EnforcementLevel:	enforcementLevel,
+			Properties:		properties,
 		}
 	}
 	return result, nil
@@ -115,8 +115,8 @@ func parsePolicyPackConfig(b []byte) (map[string]plugin.AnalyzerPolicyConfig, er
 		}
 
 		result[k] = plugin.AnalyzerPolicyConfig{
-			EnforcementLevel: enforcementLevel,
-			Properties:       properties,
+			EnforcementLevel:	enforcementLevel,
+			Properties:		properties,
 		}
 	}
 	return result, nil
@@ -258,8 +258,8 @@ func createConfigWithDefaults(policies []plugin.AnalyzerPolicyInfo) map[string]p
 		}
 
 		result[policy.Name] = plugin.AnalyzerPolicyConfig{
-			EnforcementLevel: policy.EnforcementLevel,
-			Properties:       props,
+			EnforcementLevel:	policy.EnforcementLevel,
+			Properties:		props,
 		}
 	}
 
@@ -306,8 +306,8 @@ func applyConfig(result map[string]plugin.AnalyzerPolicyConfig,
 	if all, hasAll := configToApply["all"]; hasAll && all.EnforcementLevel.IsValid() {
 		for k, v := range result {
 			result[k] = plugin.AnalyzerPolicyConfig{
-				EnforcementLevel: all.EnforcementLevel,
-				Properties:       v.Properties,
+				EnforcementLevel:	all.EnforcementLevel,
+				Properties:		v.Properties,
 			}
 		}
 	}
@@ -331,8 +331,8 @@ func applyConfig(result map[string]plugin.AnalyzerPolicyConfig,
 			properties[k] = v
 		}
 		result[policy] = plugin.AnalyzerPolicyConfig{
-			EnforcementLevel: enforcementLevel,
-			Properties:       properties,
+			EnforcementLevel:	enforcementLevel,
+			Properties:		properties,
 		}
 	}
 	return result

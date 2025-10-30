@@ -23,16 +23,16 @@ import (
 func TestPythonInstall(t *testing.T) {
 	t.Parallel()
 	testPluginInstall(t, "venv", map[string][]byte{
-		"PulumiPlugin.yaml": []byte("runtime: python\n"),
-		"package.json":      []byte("pulumi==2.0.0\n"),
-		"__main__.py":       []byte("print('hello')\n"),
+		"PulumiPlugin.yaml":	[]byte("runtime: python\n"),
+		"package.json":		[]byte("pulumi==2.0.0\n"),
+		"__main__.py":		[]byte("print('hello')\n"),
 	})
 }
 
 func TestPythonInstallPackage(t *testing.T) {
 	t.Parallel()
 	testPluginInstall(t, "venv", map[string][]byte{
-		"PulumiPlugin.yaml": []byte("runtime: python\n"),
+		"PulumiPlugin.yaml":	[]byte("runtime: python\n"),
 		"pyproject.toml": []byte(`[project]
 								name = "plugin-package"
 								version = "0.1.0"
@@ -40,6 +40,6 @@ func TestPythonInstallPackage(t *testing.T) {
 								[build-system]
 								requires = ["setuptools"]
 								build-backend = "setuptools.build_meta"`),
-		"src/plugin_package/__main__.py": []byte("print('hello')\n"),
+		"src/plugin_package/__main__.py":	[]byte("print('hello')\n"),
 	})
 }

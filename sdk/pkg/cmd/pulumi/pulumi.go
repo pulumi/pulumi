@@ -42,40 +42,40 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ai"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cancel"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/completion"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/console"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
-	cmdEnv "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/env"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/events"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/install"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/markdown"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/org"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plugin"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schema"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templatecmd"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/trace"
-	cmdVersion "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/version"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/whoami"
-	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate/client"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/about"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ai"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/auth"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/cancel"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/completion"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/console"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/convert"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/deployment"
+	cmdEnv "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/env"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/events"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/install"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/logs"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/markdown"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/newcmd"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/operations"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/org"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/packagecmd"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/policy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/project"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/schema"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/state"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/templatecmd"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/trace"
+	cmdVersion "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/version"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/whoami"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/tracing"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -88,8 +88,8 @@ import (
 )
 
 type commandGroup struct {
-	Name     string
-	Commands []*cobra.Command
+	Name		string
+	Commands	[]*cobra.Command
 }
 
 func (c *commandGroup) commandWidth() int {
@@ -214,10 +214,10 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	_, _, _ = term.StdStreams()
 
 	cmd := &cobra.Command{
-		Use:           "pulumi",
-		Short:         "Pulumi command line",
-		SilenceErrors: true,
-		SilenceUsage:  true,
+		Use:		"pulumi",
+		Short:		"Pulumi command line",
+		SilenceErrors:	true,
+		SilenceUsage:	true,
 		Long: "Pulumi - Modern Infrastructure as Code\n" +
 			"\n" +
 			"To begin working with Pulumi, run the `pulumi new` command:\n" +
@@ -277,8 +277,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				}
 
 				tracingOptions := tracing.Options{
-					PropagateSpans: true,
-					TracingHeader:  tracingHeader,
+					PropagateSpans:	true,
+					TracingHeader:	tracingHeader,
 				}
 				ctx = tracing.ContextWithOptions(ctx, tracingOptions)
 			}
@@ -364,7 +364,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	setCommandGroups(cmd, []commandGroup{
 		// Common commands:
 		{
-			Name: "Stack Management Commands",
+			Name:	"Stack Management Commands",
 			Commands: []*cobra.Command{
 				newcmd.NewNewCmd(),
 				config.NewConfigCmd(pkgWorkspace.Instance),
@@ -377,7 +377,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			},
 		},
 		{
-			Name: "Deployment Commands",
+			Name:	"Deployment Commands",
 			Commands: []*cobra.Command{
 				operations.NewUpCmd(),
 				operations.NewDestroyCmd(),
@@ -386,13 +386,13 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			},
 		},
 		{
-			Name: "Environment Commands",
+			Name:	"Environment Commands",
 			Commands: []*cobra.Command{
 				cmdEnv.NewEnvCmd(),
 			},
 		},
 		{
-			Name: "Pulumi Cloud Commands",
+			Name:	"Pulumi Cloud Commands",
 			Commands: []*cobra.Command{
 				auth.NewLoginCmd(pkgWorkspace.Instance),
 				auth.NewLogoutCmd(pkgWorkspace.Instance),
@@ -403,13 +403,13 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			},
 		},
 		{
-			Name: "Policy Management Commands",
+			Name:	"Policy Management Commands",
 			Commands: []*cobra.Command{
 				policy.NewPolicyCmd(),
 			},
 		},
 		{
-			Name: "Plugin Commands",
+			Name:	"Plugin Commands",
 			Commands: []*cobra.Command{
 				plugin.NewPluginCmd(),
 				schema.NewSchemaCmd(),
@@ -418,7 +418,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			},
 		},
 		{
-			Name: "Other Commands",
+			Name:	"Other Commands",
 			Commands: []*cobra.Command{
 				cmdVersion.NewVersionCmd(),
 				about.NewAboutCmd(pkgWorkspace.Instance),
@@ -428,7 +428,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 		// Less common, and thus hidden, commands:
 		{
-			Name: "Hidden Commands",
+			Name:	"Hidden Commands",
 			Commands: []*cobra.Command{
 				markdown.NewGenMarkdownCmd(cmd),
 			},
@@ -437,7 +437,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		// We have a set of commands that are still experimental
 		//     hidden unless PULUMI_EXPERIMENTAL is set to true.
 		{
-			Name: "Experimental Commands",
+			Name:	"Experimental Commands",
 			Commands: []*cobra.Command{
 				convert.NewConvertCmd(pkgWorkspace.Instance),
 				operations.NewWatchCmd(),
@@ -447,7 +447,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		// We have a set of options that are useful for developers of pulumi
 		//    hidden unless PULUMI_DEBUG_COMMANDS is set to true.
 		{
-			Name: "Developer Commands",
+			Name:	"Developer Commands",
 			Commands: []*cobra.Command{
 				trace.NewViewTraceCmd(),
 				trace.NewConvertTraceCmd(),
@@ -457,7 +457,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		// AI Commands relating to specifically the Pulumi AI service
 		//     and its related features
 		{
-			Name: "AI Commands",
+			Name:	"AI Commands",
 			Commands: []*cobra.Command{
 				ai.NewAICommand(),
 			},
@@ -545,14 +545,14 @@ func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]st
 			(!isCurVerDev && oldestAllowedVer.GT(curVer)))
 
 	if willPrompt {
-		lastPromptTimestampMS = time.Now().UnixMilli() // We're prompting, update the timestamp
+		lastPromptTimestampMS = time.Now().UnixMilli()	// We're prompting, update the timestamp
 	}
 
 	err = cacheVersionInfo(cachedVersionInfo{
-		LatestVersion:         latestVer.String(),
-		OldestWithoutWarning:  oldestAllowedVer.String(),
-		LatestDevVersion:      devVer.String(),
-		LastPromptTimeStampMS: lastPromptTimestampMS,
+		LatestVersion:		latestVer.String(),
+		OldestWithoutWarning:	oldestAllowedVer.String(),
+		LatestDevVersion:	devVer.String(),
+		LastPromptTimeStampMS:	lastPromptTimestampMS,
 	})
 	if err != nil {
 		logging.V(3).Infof("failed to cache version info: %s", err)
@@ -600,9 +600,9 @@ func getCLIMetadata(cmd *cobra.Command, environ []string) map[string]string {
 	envString := strings.Join(env, " ")
 
 	metadata := map[string]string{
-		"Command":     command,
-		"Flags":       flags.String(),
-		"Environment": envString,
+		"Command":	command,
+		"Flags":	flags.String(),
+		"Environment":	envString,
 	}
 
 	return metadata
@@ -723,10 +723,10 @@ func checkVersionPrompt(devVersion bool) (bool, int64) {
 
 // cachedVersionInfo is the on disk format of the version information the CLI caches between runs.
 type cachedVersionInfo struct {
-	LatestVersion         string `json:"latestVersion"`
-	OldestWithoutWarning  string `json:"oldestWithoutWarning"`
-	LatestDevVersion      string `json:"latestDevVersion"`
-	LastPromptTimeStampMS int64  `json:"LastPromptMS,omitempty"`
+	LatestVersion		string	`json:"latestVersion"`
+	OldestWithoutWarning	string	`json:"oldestWithoutWarning"`
+	LatestDevVersion	string	`json:"latestDevVersion"`
+	LastPromptTimeStampMS	int64	`json:"LastPromptMS,omitempty"`
 }
 
 // getUpgradeMessage gets a message to display to a user instructing them they are out of date and how to move from
@@ -765,7 +765,7 @@ func diffMinorVersions(v1 semver.Version, v2 semver.Version) int64 {
 		return 0
 	}
 
-	return (int64)(v2.Minor - v1.Minor) //nolint:gosec
+	return (int64)(v2.Minor - v1.Minor)	//nolint:gosec
 }
 
 // getUpgradeCommand returns a command that will upgrade the CLI to the newest version. If we can not determine how
@@ -876,8 +876,8 @@ func getLatestBrewFormulaVersion() (semver.Version, bool, error) {
 	contract.AssertNoErrorf(err, "Could not parse URL %q", formulaJSON)
 
 	resp, err := httputil.DoWithRetry(&http.Request{
-		Method: http.MethodGet,
-		URL:    url,
+		Method:	http.MethodGet,
+		URL:	url,
 	}, http.DefaultClient)
 	if err != nil {
 		return semver.Version{}, false, err

@@ -21,10 +21,10 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	. "github.com/pulumi/pulumi/sdk/v3/pkg/engine"	//nolint:revive
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
@@ -77,13 +77,13 @@ func TestDestroyContinueOnError(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T: t,
+			T:	t,
 			// Skip display tests because different ordering makes the colouring different.
-			SkipDisplayTests: true,
+			SkipDisplayTests:	true,
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
 			},
-			HostF: hostF,
+			HostF:	hostF,
 		},
 	}
 
@@ -93,13 +93,13 @@ func TestDestroyContinueOnError(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	require.Len(t, snap.Resources, 7) // We expect 5 resources + 2 providers
+	require.Len(t, snap.Resources, 7)	// We expect 5 resources + 2 providers
 
 	createResource = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "intentionally failed delete")
 	require.NotNil(t, snap)
-	require.Len(t, snap.Resources, 4) // We expect 2 resources + 2 providers
+	require.Len(t, snap.Resources, 4)	// We expect 2 resources + 2 providers
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[0].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::dependency"), snap.Resources[1].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgB::default"), snap.Resources[2].URN)
@@ -127,8 +127,8 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 			default:
 				// Return a StatusPartialFailure status with a non-empty ID.
 				return plugin.CreateResponse{
-					ID:     "fakeid",
-					Status: resource.StatusPartialFailure,
+					ID:	"fakeid",
+					Status:	resource.StatusPartialFailure,
 				}, errors.New("intentionally failed create")
 			}
 		}
@@ -172,23 +172,23 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 
 		respIndependent2, err := monitor.RegisterResource(
 			"pkgA:m:typA", "independent2", true, deploytest.ResourceOptions{
-				SupportsResultReporting: true,
-				Dependencies:            []resource.URN{respIndependent1.URN},
+				SupportsResultReporting:	true,
+				Dependencies:			[]resource.URN{respIndependent1.URN},
 			})
 		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent2.Result)
 
 		respIndependent3, err := monitor.RegisterResource("pkgA:m:typA", "independent3", true, deploytest.ResourceOptions{
-			SupportsResultReporting: true,
-			Dependencies:            []resource.URN{respIndependent2.URN},
+			SupportsResultReporting:	true,
+			Dependencies:			[]resource.URN{respIndependent2.URN},
 		})
 		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent3.Result)
 
 		respDepOnFailing, err := monitor.RegisterResource(
 			"pkgA:m:typA", "dependentOnFailing", true, deploytest.ResourceOptions{
-				SupportsResultReporting: true,
-				Dependencies:            []resource.URN{failingResp.URN},
+				SupportsResultReporting:	true,
+				Dependencies:			[]resource.URN{failingResp.URN},
 			})
 		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SKIP, respDepOnFailing.Result)
@@ -199,11 +199,11 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T: t,
+			T:	t,
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
 			},
-			HostF: hostF,
+			HostF:	hostF,
 		},
 	}
 
@@ -277,8 +277,8 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
-			SupportsResultReporting: true,
-			Inputs:                  ins,
+			SupportsResultReporting:	true,
+			Inputs:				ins,
 		})
 		require.NoError(t, err)
 		if update {
@@ -289,8 +289,8 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 		}
 
 		resp2, err := monitor.RegisterResource("pkgB:m:typB", "failing2", true, deploytest.ResourceOptions{
-			SupportsResultReporting: true,
-			Inputs:                  ins,
+			SupportsResultReporting:	true,
+			Inputs:				ins,
 		})
 		require.NoError(t, err)
 		if update {
@@ -310,15 +310,15 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 
 			respIndependent2, err := monitor.RegisterResource(
 				"pkgA:m:typA", "independent2", true, deploytest.ResourceOptions{
-					SupportsResultReporting: true,
-					Dependencies:            []resource.URN{respIndependent1.URN},
+					SupportsResultReporting:	true,
+					Dependencies:			[]resource.URN{respIndependent1.URN},
 				})
 			require.NoError(t, err)
 			assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent2.Result)
 
 			respIndependent3, err := monitor.RegisterResource("pkgA:m:typA", "independent3", true, deploytest.ResourceOptions{
-				SupportsResultReporting: true,
-				Dependencies:            []resource.URN{respIndependent2.URN},
+				SupportsResultReporting:	true,
+				Dependencies:			[]resource.URN{respIndependent2.URN},
 			})
 			require.NoError(t, err)
 			assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent3.Result)
@@ -331,11 +331,11 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T: t,
+			T:	t,
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
 			},
-			HostF: hostF,
+			HostF:	hostF,
 		},
 	}
 
@@ -345,7 +345,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	require.Len(t, snap.Resources, 3) // 2 resources + 1 provider
+	require.Len(t, snap.Resources, 3)	// 2 resources + 1 provider
 
 	update = true
 	ins = resource.NewPropertyMapFromMap(map[string]any{
@@ -364,7 +364,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 		"urn:pulumi:test::test::pkgB:m:typB::failing",
 		"urn:pulumi:test::test::pkgB:m:typB::failing2",
 	}
-	assert.Equal(t, len(expectedURNs), len(snap.Resources)) // 4 resources + 2 providers
+	assert.Equal(t, len(expectedURNs), len(snap.Resources))	// 4 resources + 2 providers
 
 	for _, urn := range expectedURNs {
 		// Ensure that the expected URN is present in the snapshot.
@@ -395,11 +395,11 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							ID:		req.ID,
+							Inputs:		resource.PropertyMap{},
+							Outputs:	resource.PropertyMap{},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -415,8 +415,8 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
-			SupportsResultReporting: true,
-			Inputs:                  ins,
+			SupportsResultReporting:	true,
+			Inputs:				ins,
 		})
 		require.NoError(t, err)
 		if update {
@@ -436,15 +436,15 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 
 			respIndependent2, err := monitor.RegisterResource(
 				"pkgA:m:typA", "independent2", true, deploytest.ResourceOptions{
-					SupportsResultReporting: true,
-					Dependencies:            []resource.URN{respIndependent1.URN},
+					SupportsResultReporting:	true,
+					Dependencies:			[]resource.URN{respIndependent1.URN},
 				})
 			require.NoError(t, err)
 			assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent2.Result)
 
 			respIndependent3, err := monitor.RegisterResource("pkgA:m:typA", "independent3", true, deploytest.ResourceOptions{
-				SupportsResultReporting: true,
-				Dependencies:            []resource.URN{respIndependent2.URN},
+				SupportsResultReporting:	true,
+				Dependencies:			[]resource.URN{respIndependent2.URN},
 			})
 			require.NoError(t, err)
 			assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent3.Result)
@@ -457,12 +457,12 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T: t,
+			T:	t,
 			UpdateOptions: UpdateOptions{
-				ContinueOnError: true,
-				Refresh:         true,
+				ContinueOnError:	true,
+				Refresh:		true,
 			},
-			HostF: hostF,
+			HostF:	hostF,
 		},
 	}
 
@@ -472,7 +472,7 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	require.Len(t, snap.Resources, 2) // 1 resource + 1 provider
+	require.Len(t, snap.Resources, 2)	// 1 resource + 1 provider
 
 	update = true
 	ins = resource.NewPropertyMapFromMap(map[string]any{
@@ -482,7 +482,7 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.ErrorContains(t, err, "intentionally failed update")
 	require.NotNil(t, snap)
-	require.Len(t, snap.Resources, 6) // 4 resources + 2 providers
+	require.Len(t, snap.Resources, 6)	// 4 resources + 2 providers
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgB::default"), snap.Resources[0].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[1].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent1"), snap.Resources[2].URN)
@@ -523,15 +523,15 @@ func TestUpContinueOnErrorNoSDKSupport(t *testing.T) {
 
 		respIndependent2, err := monitor.RegisterResource(
 			"pkgA:m:typA", "independent2", true, deploytest.ResourceOptions{
-				SupportsResultReporting: false,
-				Dependencies:            []resource.URN{respIndependent1.URN},
+				SupportsResultReporting:	false,
+				Dependencies:			[]resource.URN{respIndependent1.URN},
 			})
 		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent2.Result)
 
 		respIndependent3, err := monitor.RegisterResource("pkgA:m:typA", "independent3", true, deploytest.ResourceOptions{
-			SupportsResultReporting: false,
-			Dependencies:            []resource.URN{respIndependent2.URN},
+			SupportsResultReporting:	false,
+			Dependencies:			[]resource.URN{respIndependent2.URN},
 		})
 		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent3.Result)
@@ -542,11 +542,11 @@ func TestUpContinueOnErrorNoSDKSupport(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T: t,
+			T:	t,
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
 			},
-			HostF: hostF,
+			HostF:	hostF,
 		},
 	}
 
@@ -556,7 +556,7 @@ func TestUpContinueOnErrorNoSDKSupport(t *testing.T) {
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.ErrorContains(t, err, "intentionally failed create")
 	require.NotNil(t, snap)
-	require.Len(t, snap.Resources, 5) // 3 resources + 2 providers
+	require.Len(t, snap.Resources, 5)	// 3 resources + 2 providers
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgB::default"), snap.Resources[0].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[1].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent1"), snap.Resources[2].URN)
@@ -589,8 +589,8 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
-			SupportsResultReporting: false,
-			Inputs:                  ins,
+			SupportsResultReporting:	false,
+			Inputs:				ins,
 		})
 		if update {
 			assert.ErrorContains(t, err, "resource registration failed")
@@ -608,14 +608,14 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 
 			respIndependent2, err := monitor.RegisterResource(
 				"pkgA:m:typA", "independent2", true, deploytest.ResourceOptions{
-					SupportsResultReporting: false,
-					Dependencies:            []resource.URN{respIndependent1.URN},
+					SupportsResultReporting:	false,
+					Dependencies:			[]resource.URN{respIndependent1.URN},
 				})
 			require.NoError(t, err)
 
 			_, err = monitor.RegisterResource("pkgA:m:typA", "independent3", true, deploytest.ResourceOptions{
-				SupportsResultReporting: false,
-				Dependencies:            []resource.URN{respIndependent2.URN},
+				SupportsResultReporting:	false,
+				Dependencies:			[]resource.URN{respIndependent2.URN},
 			})
 			require.NoError(t, err)
 		}
@@ -627,11 +627,11 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T: t,
+			T:	t,
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
 			},
-			HostF: hostF,
+			HostF:	hostF,
 		},
 	}
 
@@ -641,7 +641,7 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	require.Len(t, snap.Resources, 2) // 1 resource + 1 provider
+	require.Len(t, snap.Resources, 2)	// 1 resource + 1 provider
 
 	update = true
 	ins = resource.NewPropertyMapFromMap(map[string]any{
@@ -651,7 +651,7 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.ErrorContains(t, err, "intentionally failed update")
 	require.NotNil(t, snap)
-	require.Len(t, snap.Resources, 6) // 4 resources + 2 providers
+	require.Len(t, snap.Resources, 6)	// 4 resources + 2 providers
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgB::default"), snap.Resources[0].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[1].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent1"), snap.Resources[2].URN)
@@ -696,13 +696,13 @@ func TestDestroyContinueOnErrorDeleteAfterFailedUp(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T: t,
+			T:	t,
 			// Skip display tests because different ordering makes the colouring different.
-			SkipDisplayTests: true,
+			SkipDisplayTests:	true,
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
 			},
-			HostF: hostF,
+			HostF:	hostF,
 		},
 	}
 
@@ -712,7 +712,7 @@ func TestDestroyContinueOnErrorDeleteAfterFailedUp(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	require.Len(t, snap.Resources, 2) // We expect 1 resource + 1 provider
+	require.Len(t, snap.Resources, 2)	// We expect 1 resource + 1 provider
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[0].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::willBeDeleted"), snap.Resources[1].URN)
 
@@ -720,7 +720,7 @@ func TestDestroyContinueOnErrorDeleteAfterFailedUp(t *testing.T) {
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "intentionally failed create")
 	require.NotNil(t, snap)
-	require.Len(t, snap.Resources, 1) // We expect 1 provider
+	require.Len(t, snap.Resources, 1)	// We expect 1 provider
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgB::default"), snap.Resources[0].URN)
 }
 
@@ -734,9 +734,9 @@ func TestContinueOnErrorImport(t *testing.T) {
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -745,8 +745,8 @@ func TestContinueOnErrorImport(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs:   resource.PropertyMap{},
-			ImportID: resource.ID("id"),
+			Inputs:		resource.PropertyMap{},
+			ImportID:	resource.ID("id"),
 		})
 		assert.ErrorContains(t, err, "resource registration failed")
 
@@ -756,11 +756,11 @@ func TestContinueOnErrorImport(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T: t,
+			T:	t,
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
 			},
-			HostF: hostF,
+			HostF:	hostF,
 		},
 	}
 
@@ -770,7 +770,7 @@ func TestContinueOnErrorImport(t *testing.T) {
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.ErrorContains(t, err, "intentionally failed read")
 	require.NotNil(t, snap)
-	require.Len(t, snap.Resources, 1) // 1 provider
+	require.Len(t, snap.Resources, 1)	// 1 provider
 }
 
 func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
@@ -797,8 +797,8 @@ func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
 		assert.Equal(t, pulumirpc.Result_FAIL, parent.Result)
 
 		child, err := monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
-			SupportsResultReporting: true,
-			Parent:                  parent.URN,
+			SupportsResultReporting:	true,
+			Parent:				parent.URN,
 		})
 		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SKIP, child.Result)
@@ -810,8 +810,8 @@ func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
 		assert.Equal(t, pulumirpc.Result_FAIL, deletedWith.Result)
 
 		deletedWithDep, err := monitor.RegisterResource("pkgA:m:typA", "deletedWithDep", true, deploytest.ResourceOptions{
-			SupportsResultReporting: true,
-			DeletedWith:             deletedWith.URN,
+			SupportsResultReporting:	true,
+			DeletedWith:			deletedWith.URN,
 		})
 		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SKIP, deletedWithDep.Result)
@@ -823,8 +823,8 @@ func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
 		assert.Equal(t, pulumirpc.Result_FAIL, propDep.Result)
 
 		propDepChild, err := monitor.RegisterResource("pkgA:m:typA", "propDepChild", true, deploytest.ResourceOptions{
-			SupportsResultReporting: true,
-			PropertyDeps:            map[resource.PropertyKey][]urn.URN{resource.PropertyKey("foo"): {propDep.URN}},
+			SupportsResultReporting:	true,
+			PropertyDeps:			map[resource.PropertyKey][]urn.URN{resource.PropertyKey("foo"): {propDep.URN}},
 		})
 		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SKIP, propDepChild.Result)
@@ -841,11 +841,11 @@ func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T: t,
+			T:	t,
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
 			},
-			HostF: hostF,
+			HostF:	hostF,
 		},
 	}
 
@@ -902,7 +902,7 @@ func TestContinueOnErrorWithChangingProviderOnCreate(t *testing.T) {
 
 	upHostF := deploytest.NewPluginHostF(nil, nil, programF, upLoaders...)
 	upOptions := lt.TestUpdateOptions{
-		T: t, HostF: upHostF, UpdateOptions: UpdateOptions{
+		T:	t, HostF: upHostF, UpdateOptions: UpdateOptions{
 			ContinueOnError: true,
 		},
 	}
@@ -940,8 +940,8 @@ func TestContinueOnErrorWithChangingProviderOnCreate(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Provider: provRef.String(),
-			Version:  "2.0.0",
+			Provider:	provRef.String(),
+			Version:	"2.0.0",
 		})
 		assert.ErrorContains(t, err, "resource registration failed")
 
@@ -949,7 +949,7 @@ func TestContinueOnErrorWithChangingProviderOnCreate(t *testing.T) {
 	})
 	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, replaceLoaders...)
 	replaceOptions := lt.TestUpdateOptions{
-		T: t, HostF: replaceHostF,
+		T:	t, HostF: replaceHostF,
 		UpdateOptions: UpdateOptions{
 			ContinueOnError: true,
 		},

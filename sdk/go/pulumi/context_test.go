@@ -110,7 +110,7 @@ func TestLoggingFromResourceApplyCausesNoPanics(t *testing.T) {
 
 type LoggingTestResource struct {
 	ResourceState
-	TestOutput StringOutput
+	TestOutput	StringOutput
 }
 
 func NewLoggingTestResource(
@@ -176,33 +176,33 @@ func TestCollapseAliases(t *testing.T) {
 	}
 
 	testCases := []struct {
-		parentAliases  []Alias
-		childAliases   []Alias
-		totalAliasUrns int
-		results        []URN
+		parentAliases	[]Alias
+		childAliases	[]Alias
+		totalAliasUrns	int
+		results		[]URN
 	}{
 		{
-			parentAliases:  []Alias{},
-			childAliases:   []Alias{},
-			totalAliasUrns: 0,
-			results:        []URN{},
+			parentAliases:	[]Alias{},
+			childAliases:	[]Alias{},
+			totalAliasUrns:	0,
+			results:	[]URN{},
 		},
 		{
-			parentAliases:  []Alias{},
-			childAliases:   []Alias{{Type: String("test:resource:child2")}},
-			totalAliasUrns: 1,
-			results:        []URN{"urn:pulumi:stack::project::test:resource:type$test:resource:child2::myres-child"},
+			parentAliases:	[]Alias{},
+			childAliases:	[]Alias{{Type: String("test:resource:child2")}},
+			totalAliasUrns:	1,
+			results:	[]URN{"urn:pulumi:stack::project::test:resource:type$test:resource:child2::myres-child"},
 		},
 		{
-			parentAliases:  []Alias{},
-			childAliases:   []Alias{{Name: String("child2")}},
-			totalAliasUrns: 1,
-			results:        []URN{"urn:pulumi:stack::project::test:resource:type$test:resource:child::child2"},
+			parentAliases:	[]Alias{},
+			childAliases:	[]Alias{{Name: String("child2")}},
+			totalAliasUrns:	1,
+			results:	[]URN{"urn:pulumi:stack::project::test:resource:type$test:resource:child::child2"},
 		},
 		{
-			parentAliases:  []Alias{{Type: String("test:resource:type3")}},
-			childAliases:   []Alias{{Name: String("myres-child2")}},
-			totalAliasUrns: 3,
+			parentAliases:	[]Alias{{Type: String("test:resource:type3")}},
+			childAliases:	[]Alias{{Name: String("myres-child2")}},
+			totalAliasUrns:	3,
 			results: []URN{
 				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2",
 				"urn:pulumi:stack::project::test:resource:type3$test:resource:child::myres-child",
@@ -210,9 +210,9 @@ func TestCollapseAliases(t *testing.T) {
 			},
 		},
 		{
-			parentAliases:  []Alias{{Name: String("myres2")}},
-			childAliases:   []Alias{{Name: String("myres-child2")}},
-			totalAliasUrns: 3,
+			parentAliases:	[]Alias{{Name: String("myres2")}},
+			childAliases:	[]Alias{{Name: String("myres-child2")}},
+			totalAliasUrns:	3,
 			results: []URN{
 				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2",
 				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child",
@@ -220,9 +220,9 @@ func TestCollapseAliases(t *testing.T) {
 			},
 		},
 		{
-			parentAliases:  []Alias{{Name: String("myres2")}, {Type: String("test:resource:type3")}, {Name: String("myres3")}},
-			childAliases:   []Alias{{Name: String("myres-child2")}, {Type: String("test:resource:child2")}},
-			totalAliasUrns: 11,
+			parentAliases:	[]Alias{{Name: String("myres2")}, {Type: String("test:resource:type3")}, {Name: String("myres3")}},
+			childAliases:	[]Alias{{Name: String("myres-child2")}, {Type: String("test:resource:child2")}},
+			totalAliasUrns:	11,
 			results: []URN{
 				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2",
 				"urn:pulumi:stack::project::test:resource:type$test:resource:child2::myres-child",
@@ -265,8 +265,8 @@ func TestCollapseAliases(t *testing.T) {
 
 // Context with which to create a ProviderResource.
 type Prov struct {
-	name string
-	t    string
+	name	string
+	t	string
 }
 
 // Invoke the creation
@@ -282,10 +282,10 @@ func (pr *Prov) i(ctx *Context, t *testing.T) ProviderResource {
 
 // Context with which to create a Resource.
 type Res struct {
-	name string
-	t    string
+	name	string
+	t	string
 	// Providers to register with
-	parent *Prov
+	parent	*Prov
 }
 
 // Invoke the creation
@@ -312,49 +312,49 @@ func TestMergeProviders(t *testing.T) {
 	}
 
 	tests := []struct {
-		t         string
-		parent    *Res
-		provider  *Prov
-		providers []Prov
+		t		string
+		parent		*Res
+		provider	*Prov
+		providers	[]Prov
 
 		// We expect that the names in expected match up with the providers in
 		// the resulting map.
-		expected []string
+		expected	[]string
 	}{
 		{
-			t:         provType("t"),
-			providers: []Prov{{"t1", "t"}, {"r0", "r"}},
-			expected:  []string{"t1", "r0"},
+			t:		provType("t"),
+			providers:	[]Prov{{"t1", "t"}, {"r0", "r"}},
+			expected:	[]string{"t1", "r0"},
 		},
 		{
-			t:         provType("t"),
-			provider:  &Prov{"t0", "t"},
-			providers: []Prov{{"t1", "t"}, {"r0", "r"}},
+			t:		provType("t"),
+			provider:	&Prov{"t0", "t"},
+			providers:	[]Prov{{"t1", "t"}, {"r0", "r"}},
 			// We expect that providers overrides provider
-			expected: []string{"t1", "r0"},
+			expected:	[]string{"t1", "r0"},
 		},
 		{
-			t:         provType("t"),
-			provider:  &Prov{"t0", "t"},
-			providers: []Prov{{"r0", "r"}},
-			expected:  []string{"t0", "r0"},
+			t:		provType("t"),
+			provider:	&Prov{"t0", "t"},
+			providers:	[]Prov{{"r0", "r"}},
+			expected:	[]string{"t0", "r0"},
 		},
 		{
-			t:        provType("t"),
-			parent:   &Res{"t0", "t", &Prov{"t1", "t"}},
-			expected: []string{"t1"},
+			t:		provType("t"),
+			parent:		&Res{"t0", "t", &Prov{"t1", "t"}},
+			expected:	[]string{"t1"},
 		},
 		{
-			t:        provType("t"),
-			parent:   &Res{"t0", "t", nil},
-			expected: []string{},
+			t:		provType("t"),
+			parent:		&Res{"t0", "t", nil},
+			expected:	[]string{},
 		},
 		{
-			t:         provType("t"),
-			parent:    &Res{"t0", "t", &Prov{"t1", "t"}},
-			provider:  &Prov{"t3", "t"},
-			providers: []Prov{{"t2", "t"}},
-			expected:  []string{"t2"},
+			t:		provType("t"),
+			parent:		&Res{"t0", "t", &Prov{"t1", "t"}},
+			provider:	&Prov{"t3", "t"},
+			providers:	[]Prov{{"t2", "t"}},
+			expected:	[]string{"t2"},
 		},
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
@@ -399,20 +399,20 @@ func TestRegisterResource_aliasesSpecs(t *testing.T) {
 	)
 
 	tests := []struct {
-		desc string
-		give []Alias
+		desc	string
+		give	[]Alias
 
 		// Whether the monitor supports aliasSpecs.
-		supportsAliasSpecs bool
+		supportsAliasSpecs	bool
 
 		// Specifies what we expect on the RegisterResourceRequest.
 		// Typically, if a server supports AliasSpecs,
 		// we won't send AliasURNs.
-		wantAliases   []*pulumirpc.Alias
-		wantAliasURNs []string
+		wantAliases	[]*pulumirpc.Alias
+		wantAliasURNs	[]string
 	}{
 		{
-			desc: "no parent/before alias specs",
+			desc:	"no parent/before alias specs",
 			give: []Alias{
 				{Name: String("resA"), NoParent: Bool(true)},
 				{Name: String("resB"), NoParent: Bool(true)},
@@ -423,8 +423,8 @@ func TestRegisterResource_aliasesSpecs(t *testing.T) {
 			},
 		},
 		{
-			desc:               "no parent/with alias specs",
-			supportsAliasSpecs: true,
+			desc:			"no parent/with alias specs",
+			supportsAliasSpecs:	true,
 			give: []Alias{
 				{Name: String("resA"), NoParent: Bool(true)},
 				{Name: String("resB"), NoParent: Bool(true)},
@@ -433,23 +433,23 @@ func TestRegisterResource_aliasesSpecs(t *testing.T) {
 				{
 					Alias: &pulumirpc.Alias_Spec_{
 						Spec: &pulumirpc.Alias_Spec{
-							Name:   "resA",
-							Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: true},
+							Name:	"resA",
+							Parent:	&pulumirpc.Alias_Spec_NoParent{NoParent: true},
 						},
 					},
 				},
 				{
 					Alias: &pulumirpc.Alias_Spec_{
 						Spec: &pulumirpc.Alias_Spec{
-							Name:   "resB",
-							Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: true},
+							Name:	"resB",
+							Parent:	&pulumirpc.Alias_Spec_NoParent{NoParent: true},
 						},
 					},
 				},
 			},
 		},
 		{
-			desc: "parent urn/no alias specs",
+			desc:	"parent urn/no alias specs",
 			give: []Alias{
 				{Name: String("child"), ParentURN: parentURN},
 			},
@@ -458,16 +458,16 @@ func TestRegisterResource_aliasesSpecs(t *testing.T) {
 			},
 		},
 		{
-			desc: "parent urn/alias specs",
+			desc:	"parent urn/alias specs",
 			give: []Alias{
 				{Name: String("child"), ParentURN: parentURN},
 			},
-			supportsAliasSpecs: true,
+			supportsAliasSpecs:	true,
 			wantAliases: []*pulumirpc.Alias{
 				{
 					Alias: &pulumirpc.Alias_Spec_{
 						Spec: &pulumirpc.Alias_Spec{
-							Name: "child",
+							Name:	"child",
 							Parent: &pulumirpc.Alias_Spec_ParentUrn{
 								ParentUrn: "urn:pulumi:stack::project::test:resource:parentType::parent",
 							},
@@ -483,8 +483,8 @@ func TestRegisterResource_aliasesSpecs(t *testing.T) {
 			t.Parallel()
 
 			var (
-				gotAliases   []*pulumirpc.Alias
-				gotAliasURNS []string
+				gotAliases	[]*pulumirpc.Alias
+				gotAliasURNS	[]string
 			)
 			monitor := &testMonitor{
 				NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
@@ -537,7 +537,7 @@ func TestRegisterResource_aliasesSpecs(t *testing.T) {
 type resmonClientWithFeatures struct {
 	pulumirpc.ResourceMonitorClient
 
-	notFeatures map[string]struct{}
+	notFeatures	map[string]struct{}
 }
 
 // resourceMonitorClientWithOutFeatures builds a ResourceMonitorClient
@@ -552,8 +552,8 @@ func resourceMonitorClientWithoutFeatures(
 		notFeatureSet[f] = struct{}{}
 	}
 	return &resmonClientWithFeatures{
-		ResourceMonitorClient: cl,
-		notFeatures:           notFeatureSet,
+		ResourceMonitorClient:	cl,
+		notFeatures:		notFeatureSet,
 	}
 }
 
@@ -628,8 +628,8 @@ func TestWithValue(t *testing.T) {
 	key := "key"
 	val := "val"
 	testCtx := &Context{
-		state: &contextState{},
-		ctx:   context.Background(),
+		state:	&contextState{},
+		ctx:	context.Background(),
 	}
 	newCtx := testCtx.WithValue(key, val)
 
@@ -652,8 +652,8 @@ func TestExportMap(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := map[string]Input{
-		"first":  String("hello"),
-		"second": String("world"),
+		"first":	String("hello"),
+		"second":	String("world"),
 	}
 	assert.Equal(t, expected, output)
 }
@@ -693,7 +693,7 @@ func TestInvokeOutput(t *testing.T) {
 
 type callOutput struct {
 	//nolint
-	outputResult string
+	outputResult	string
 	*OutputState
 }
 
@@ -809,8 +809,8 @@ func TestCallSingleFailsIfMultiField(t *testing.T) {
 				return nil, errors.New("invoke error")
 			}
 			return resource.PropertyMap{
-				"result":    resource.NewProperty("success!"),
-				"resultTwo": resource.NewProperty("but failure"),
+				"result":	resource.NewProperty("success!"),
+				"resultTwo":	resource.NewProperty("but failure"),
 			}, nil
 		},
 	}
@@ -887,7 +887,7 @@ func TestRegisterResourceOutputs(t *testing.T) {
 		},
 	}
 
-	var _ mockResourceMonitorWithRegisterResourceOutput = mocks // Surface compile-time error if the interface changes.
+	var _ mockResourceMonitorWithRegisterResourceOutput = mocks	// Surface compile-time error if the interface changes.
 
 	err := RunErr(func(ctx *Context) error {
 		resource, err := NewLoggingTestResource(t, ctx, "res", String("A"))

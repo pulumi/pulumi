@@ -26,8 +26,8 @@ import (
 )
 
 const (
-	state       = `{"salt":"v1:fozI5u6B030=:v1:F+6ZduKKd8G0/V7L:PGMFeIzwobWRKmEAzUdaQHqC5mMRIQ=="}`
-	brokenState = `{"salt":"fozI5u6B030=:v1:F+6ZduL:PGMFeIzwobWRKmEAzUdaQHqC5mMRIQ=="}`
+	state		= `{"salt":"v1:fozI5u6B030=:v1:F+6ZduKKd8G0/V7L:PGMFeIzwobWRKmEAzUdaQHqC5mMRIQ=="}`
+	brokenState	= `{"salt":"fozI5u6B030=:v1:F+6ZduL:PGMFeIzwobWRKmEAzUdaQHqC5mMRIQ=="}`
 )
 
 func TestMain(m *testing.M) {
@@ -54,7 +54,7 @@ func TestPassphraseManagerIncorrectPassphraseReturnsErrorCrypter(t *testing.T) {
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
 	manager, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
-	require.NoError(t, err) // even if we pass the wrong provider, we should get a lockedPassphraseProvider
+	require.NoError(t, err)	// even if we pass the wrong provider, we should get a lockedPassphraseProvider
 
 	state, err := json.Marshal(localSecretsManagerState{
 		Salt: "v1:fozI5u6B030=:v1:F+6ZduKKd8G0/V7L:PGMFeIzwobWRKmEAzUdaQHqC5mMRIQ==",
@@ -62,8 +62,8 @@ func TestPassphraseManagerIncorrectPassphraseReturnsErrorCrypter(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, manager, &localSecretsManager{
-		state:   state,
-		crypter: &errorCrypter{},
+		state:		state,
+		crypter:	&errorCrypter{},
 	})
 }
 

@@ -17,7 +17,7 @@ package nodejs
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
 )
 
 // Provides code for a method which will be placed in the program preamble if deemed

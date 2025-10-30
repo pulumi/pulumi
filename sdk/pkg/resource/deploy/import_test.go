@@ -20,9 +20,9 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -44,12 +44,12 @@ func TestImportDeployment(t *testing.T) {
 				Snapshot: &Snapshot{
 					Resources: []*resource.State{
 						{
-							URN:    "urn:pulumi:stack::project::type::oldName",
-							Custom: true,
+							URN:	"urn:pulumi:stack::project::type::oldName",
+							Custom:	true,
 						},
 					},
 				},
-				Name: tokens.MustParseStackName("target-name"),
+				Name:	tokens.MustParseStackName("target-name"),
 				Config: config.Map{
 					config.MustMakeKey("", "secret"): config.NewSecureValue("secret"),
 				},
@@ -96,12 +96,12 @@ func TestImporter(t *testing.T) {
 			expectedErr := errors.New("expected error")
 			i := &importer{
 				deployment: &Deployment{
-					goals: &gsync.Map[urn.URN, *resource.Goal]{},
-					ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
+					goals:	&gsync.Map[urn.URN, *resource.Goal]{},
+					ctx:	&plugin.Context{Diag: &deploytest.NoopSink{}},
 					target: &Target{
 						Name: tokens.MustParseStackName("stack-name"),
 					},
-					source: &nullSource{},
+					source:	&nullSource{},
 					providers: providers.NewRegistry(&plugin.MockHost{
 						ProviderF: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
 							assert.Equal(t, "foo", descriptor.Name)
@@ -111,14 +111,14 @@ func TestImporter(t *testing.T) {
 					}, true, nil),
 					imports: []Import{
 						{
-							Version:           &version,
-							PluginDownloadURL: "download-url",
+							Version:		&version,
+							PluginDownloadURL:	"download-url",
 							PluginChecksums: map[string][]byte{
-								"a": {},
-								"b": {},
-								"c": {},
+								"a":	{},
+								"b":	{},
+								"c":	{},
 							},
-							Type: "foo:bar:Bar",
+							Type:	"foo:bar:Bar",
 						},
 					},
 				},
@@ -147,9 +147,9 @@ func TestImporter(t *testing.T) {
 								},
 							},
 						},
-						goals:  &gsync.Map[urn.URN, *resource.Goal]{},
-						source: &nullSource{},
-						target: &Target{},
+						goals:	&gsync.Map[urn.URN, *resource.Goal]{},
+						source:	&nullSource{},
+						target:	&Target{},
 						imports: []Import{
 							{},
 						},
@@ -169,7 +169,7 @@ func TestImporter(t *testing.T) {
 						ctx: ctx,
 					},
 					deployment: &Deployment{
-						source: &nullSource{},
+						source:	&nullSource{},
 						target: &Target{
 							Name: tokens.MustParseStackName("stack-name"),
 						},
@@ -197,8 +197,8 @@ func TestImporter(t *testing.T) {
 							},
 						},
 						// goals is left nil as nothing should be added to it.
-						goals:  nil,
-						source: &nullSource{},
+						goals:	nil,
+						source:	&nullSource{},
 						target: &Target{
 							Name: tokens.MustParseStackName("stack-name"),
 						},
@@ -223,13 +223,13 @@ func TestImporterParameterizedProvider(t *testing.T) {
 			pValue, ok := paramReq.Parameters.(*plugin.ParameterizeValue)
 			assert.True(t, ok)
 			assert.Equal(t, pValue, &plugin.ParameterizeValue{
-				Name:    "ParameterizationName",
-				Version: semver.MustParse("1.2.3"),
-				Value:   []byte("parameterization-value"),
+				Name:		"ParameterizationName",
+				Version:	semver.MustParse("1.2.3"),
+				Value:		[]byte("parameterization-value"),
 			})
 			return plugin.ParameterizeResponse{
-				Name:    "ParameterizationName",
-				Version: semver.MustParse("1.2.3"),
+				Name:		"ParameterizationName",
+				Version:	semver.MustParse("1.2.3"),
 			}, nil
 		},
 		CloseF: func() error {
@@ -244,12 +244,12 @@ func TestImporterParameterizedProvider(t *testing.T) {
 			ctx: ctx,
 		},
 		deployment: &Deployment{
-			goals: &gsync.Map[urn.URN, *resource.Goal]{},
-			ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
+			goals:	&gsync.Map[urn.URN, *resource.Goal]{},
+			ctx:	&plugin.Context{Diag: &deploytest.NoopSink{}},
 			target: &Target{
 				Name: tokens.MustParseStackName("stack-name"),
 			},
-			source: &nullSource{},
+			source:	&nullSource{},
 			providers: providers.NewRegistry(&plugin.MockHost{
 				ProviderF: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
 					assert.Equal(t, "foo", descriptor.Name)
@@ -262,18 +262,18 @@ func TestImporterParameterizedProvider(t *testing.T) {
 			}, true, nil),
 			imports: []Import{
 				{
-					Version:           &version,
-					PluginDownloadURL: "download-url",
+					Version:		&version,
+					PluginDownloadURL:	"download-url",
 					PluginChecksums: map[string][]byte{
-						"a": {},
-						"b": {},
-						"c": {},
+						"a":	{},
+						"b":	{},
+						"c":	{},
 					},
-					Type: "ParameterizationName:bar:Bar",
+					Type:	"ParameterizationName:bar:Bar",
 					Parameterization: &Parameterization{
-						PluginName:    "foo",
-						PluginVersion: semver.MustParse("1.0.0"),
-						Value:         []byte("parameterization-value"),
+						PluginName:	"foo",
+						PluginVersion:	semver.MustParse("1.0.0"),
+						Value:		[]byte("parameterization-value"),
 					},
 				},
 			},

@@ -23,12 +23,12 @@ import (
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model/format"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/testing/test"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/testing/utils"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -52,7 +52,7 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 func TestEnumReferencesCorrectIdentifier(t *testing.T) {
 	t.Parallel()
 	s := &schema.Package{
-		Name: "pulumiservice",
+		Name:	"pulumiservice",
 		Language: map[string]any{
 			"nodejs": NodePackageInfo{
 				PackageName: "@pulumi/bar",
@@ -78,7 +78,7 @@ resource "app" "scaleway:iam/application:Application" {}
 `
 
 	scalewaySchema := schema.PackageSpec{
-		Name: "scaleway",
+		Name:	"scaleway",
 		Resources: map[string]schema.ResourceSpec{
 			"scaleway:iam/application:Application": {},
 		},

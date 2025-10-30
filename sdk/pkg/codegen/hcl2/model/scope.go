@@ -17,7 +17,7 @@ package model
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -44,12 +44,12 @@ func (kw Keyword) SyntaxNode() hclsyntax.Node {
 // A Variable is a traversable, typed definition that represents a named value.
 type Variable struct {
 	// The syntax node associated with the variable definition, if any.
-	Syntax hclsyntax.Node
+	Syntax	hclsyntax.Node
 
 	// The name of the variable.
-	Name string
+	Name	string
 	// The type of the variable.
-	VariableType Type
+	VariableType	Type
 }
 
 // Traverse attempts to traverse the variable's type.
@@ -77,14 +77,14 @@ func (v *Variable) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) 
 // A Constant is a traversable, typed definition that represents a named constant.
 type Constant struct {
 	// The syntax node associated with the constant definition, if any.
-	Syntax hclsyntax.Node
+	Syntax	hclsyntax.Node
 
 	// The name of the constant.
-	Name string
+	Name	string
 	// The value of the constant.
-	ConstantValue cty.Value
+	ConstantValue	cty.Value
 
-	typ Type
+	typ	Type
 }
 
 // Traverse attempts to traverse the constant's value.
@@ -125,20 +125,20 @@ func (c *Constant) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) 
 // Definitions within a namespace such as `defs`, `outputs` or `functions` are expected to have a unique identifier
 // and cannot be redeclared.
 type Scope struct {
-	parent    *Scope
-	syntax    hclsyntax.Node
-	defs      map[string]Definition
-	outputs   map[string]Definition
-	functions map[string]*Function
+	parent		*Scope
+	syntax		hclsyntax.Node
+	defs		map[string]Definition
+	outputs		map[string]Definition
+	functions	map[string]*Function
 }
 
 // NewRootScope returns a new unparented scope associated with the given syntax node.
 func NewRootScope(syntax hclsyntax.Node) *Scope {
 	return &Scope{
-		syntax:    syntax,
-		defs:      map[string]Definition{},
-		outputs:   map[string]Definition{},
-		functions: map[string]*Function{},
+		syntax:		syntax,
+		defs:		map[string]Definition{},
+		outputs:	map[string]Definition{},
+		functions:	map[string]*Function{},
 	}
 }
 
@@ -256,11 +256,11 @@ func (s *Scope) DefineScope(name string, syntax hclsyntax.Node) (*Scope, bool) {
 	if s != nil {
 		if _, exists := s.defs[name]; !exists {
 			child := &Scope{
-				parent:    s,
-				syntax:    syntax,
-				defs:      map[string]Definition{},
-				outputs:   map[string]Definition{},
-				functions: map[string]*Function{},
+				parent:		s,
+				syntax:		syntax,
+				defs:		map[string]Definition{},
+				outputs:	map[string]Definition{},
+				functions:	map[string]*Function{},
 			}
 			s.defs[name] = child
 			return child, true
@@ -272,11 +272,11 @@ func (s *Scope) DefineScope(name string, syntax hclsyntax.Node) (*Scope, bool) {
 // Push defines an anonymous child scope associated with the given syntax node.
 func (s *Scope) Push(syntax hclsyntax.Node) *Scope {
 	return &Scope{
-		parent:    s,
-		syntax:    syntax,
-		defs:      map[string]Definition{},
-		outputs:   map[string]Definition{},
-		functions: map[string]*Function{},
+		parent:		s,
+		syntax:		syntax,
+		defs:		map[string]Definition{},
+		outputs:	map[string]Definition{},
+		functions:	map[string]*Function{},
 	}
 }
 

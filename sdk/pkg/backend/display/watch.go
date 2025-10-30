@@ -24,7 +24,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -92,13 +92,13 @@ func ShowWatchEvents(op string, permalink string, events <-chan engine.Event, do
 			if isRootURN(p.Metadata.URN) {
 				props := getResourceOutputsPropertiesString(
 					p.Metadata,
-					1,     /* indent */
-					false, /* planning */
-					false, /* debug */
-					false, /* refresh */
-					false, /* showSames */
-					false, /* showSecrest*/
-					false, /* truncateOutput*/
+					1,	/* indent */
+					false,	/* planning */
+					false,	/* debug */
+					false,	/* refresh */
+					false,	/* showSames */
+					false,	/* showSecrest*/
+					false,	/* truncateOutput*/
 				)
 				if props != "" {
 					WatchPrefixPrintf(time.Now(), opts.Color, "",
@@ -126,17 +126,17 @@ func ShowWatchEvents(op string, permalink string, events <-chan engine.Event, do
 var watchPrintfMutex sync.Mutex
 
 var colorMap = map[int]string{
-	0:  colors.Red,
-	1:  colors.Green,
-	2:  colors.Yellow,
-	3:  colors.Blue,
-	4:  colors.Magenta,
-	5:  colors.Cyan,
-	6:  colors.BrightRed,
-	7:  colors.BrightGreen,
-	8:  colors.BrightBlue,
-	9:  colors.BrightMagenta,
-	10: colors.BrightCyan,
+	0:	colors.Red,
+	1:	colors.Green,
+	2:	colors.Yellow,
+	3:	colors.Blue,
+	4:	colors.Magenta,
+	5:	colors.Cyan,
+	6:	colors.BrightRed,
+	7:	colors.BrightGreen,
+	8:	colors.BrightBlue,
+	9:	colors.BrightMagenta,
+	10:	colors.BrightCyan,
 }
 
 // WatchPrefixPrintf wraps fmt.Printf with a watch mode prefixer that adds a timestamp and
@@ -183,8 +183,8 @@ func WatchPrefixPrintf(t time.Time, colorization colors.Colorization, resourceNa
 }
 
 type prefixer struct {
-	writer io.Writer
-	prefix []byte
+	writer	io.Writer
+	prefix	[]byte
 }
 
 var _ io.Writer = (*prefixer)(nil)

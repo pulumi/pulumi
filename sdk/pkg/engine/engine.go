@@ -17,8 +17,8 @@ package engine
 import (
 	"github.com/opentracing/opentracing-go"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -26,25 +26,25 @@ import (
 type UpdateInfo struct {
 	// Root is the root directory for this update. This defines the scope for any filesystem resources accessed by this
 	// update.
-	Root string
+	Root	string
 	// Project is the project associated with this update. This includes information such as the runtime that will be used
 	// to execute the Pulumi program and the program's relative working directory.
-	Project *workspace.Project
+	Project	*workspace.Project
 	// Target is the target of this update. This includes the name of the stack being updated, the configuration values
 	// associated with the target and the target's latest snapshot.
-	Target *deploy.Target
+	Target	*deploy.Target
 }
 
 // Context provides cancellation, termination, and eventing options for an engine operation. It also provides
 // a way for the engine to persist snapshots, using the `SnapshotManager`.
 type Context struct {
-	Cancel          *cancel.Context
-	Events          chan<- Event
-	SnapshotManager SnapshotManager
-	BackendClient   deploy.BackendClient
-	ParentSpan      opentracing.SpanContext
-	PluginManager   PluginManager
+	Cancel		*cancel.Context
+	Events		chan<- Event
+	SnapshotManager	SnapshotManager
+	BackendClient	deploy.BackendClient
+	ParentSpan	opentracing.SpanContext
+	PluginManager	PluginManager
 	// FinalizeUpdateFunc is an optional function that is called at the end of an update. It can be used to
 	// perform any finalization steps, including sending engine events.
-	FinalizeUpdateFunc func()
+	FinalizeUpdateFunc	func()
 }

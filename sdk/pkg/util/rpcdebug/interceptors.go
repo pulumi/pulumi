@@ -30,17 +30,17 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 )
 
 type DebugInterceptor struct {
-	logFile string
-	mutex   *sync.Mutex
+	logFile	string
+	mutex	*sync.Mutex
 }
 
 type DebugInterceptorOptions struct {
-	LogFile string
-	Mutex   *sync.Mutex
+	LogFile	string
+	Mutex	*sync.Mutex
 }
 
 type LogOptions struct {
@@ -96,8 +96,8 @@ func (i *DebugInterceptor) DebugServerInterceptor(opts LogOptions) grpc.UnarySer
 		info *grpc.UnaryServerInfo, handler grpc.UnaryHandler,
 	) (any, error) {
 		log := debugInterceptorLogEntry{
-			Method:   info.FullMethod,
-			Metadata: opts.Metadata,
+			Method:		info.FullMethod,
+			Metadata:	opts.Metadata,
 		}
 		i.trackRequest(&log, req)
 		resp, err := handler(ctx, req)
@@ -113,10 +113,10 @@ func (i *DebugInterceptor) DebugServerInterceptor(opts LogOptions) grpc.UnarySer
 func (i *DebugInterceptor) DebugStreamServerInterceptor(opts LogOptions) grpc.StreamServerInterceptor {
 	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		ssWrapped := &debugServerStream{
-			interceptor:       i,
-			method:            info.FullMethod,
-			innerServerStream: ss,
-			metadata:          opts.Metadata,
+			interceptor:		i,
+			method:			info.FullMethod,
+			innerServerStream:	ss,
+			metadata:		opts.Metadata,
 		}
 		err := handler(srv, ssWrapped)
 		return err
@@ -134,8 +134,8 @@ func (i *DebugInterceptor) DebugClientInterceptor(opts LogOptions) grpc.UnaryCli
 		}
 
 		log := debugInterceptorLogEntry{
-			Method:   method,
-			Metadata: opts.Metadata,
+			Method:		method,
+			Metadata:	opts.Metadata,
 		}
 		i.trackRequest(&log, req)
 		err := invoker(ctx, method, req, reply, cc, gopts...)
@@ -159,10 +159,10 @@ func (i *DebugInterceptor) DebugStreamClientInterceptor(opts LogOptions) grpc.St
 		stream, err := streamer(ctx, desc, cc, method, gopts...)
 
 		wrappedStream := &debugClientStream{
-			innerClientStream: stream,
-			interceptor:       i,
-			method:            method,
-			metadata:          opts.Metadata,
+			innerClientStream:	stream,
+			interceptor:		i,
+			method:			method,
+			metadata:		opts.Metadata,
 		}
 
 		return wrappedStream, err
@@ -228,17 +228,17 @@ func (*DebugInterceptor) transcode(obj any) (json.RawMessage, error) {
 
 // Wraps grpc.ServerStream with interceptor hooks for SendMsg, RecvMsg.
 type debugServerStream struct {
-	innerServerStream grpc.ServerStream
-	interceptor       *DebugInterceptor
-	method            string
-	metadata          any
+	innerServerStream	grpc.ServerStream
+	interceptor		*DebugInterceptor
+	method			string
+	metadata		any
 }
 
 func (dss *debugServerStream) errorEntry(err error) debugInterceptorLogEntry {
 	return debugInterceptorLogEntry{
-		Metadata: dss.metadata,
-		Method:   dss.method,
-		Errors:   []string{err.Error()},
+		Metadata:	dss.metadata,
+		Method:		dss.method,
+		Errors:		[]string{err.Error()},
 	}
 }
 
@@ -272,9 +272,9 @@ func (dss *debugServerStream) SendMsg(m any) error {
 			}
 		} else {
 			if e := dss.interceptor.record(debugInterceptorLogEntry{
-				Metadata: dss.metadata,
-				Method:   dss.method,
-				Request:  req,
+				Metadata:	dss.metadata,
+				Method:		dss.method,
+				Request:	req,
 			}); e != nil {
 				return e
 			}
@@ -299,9 +299,9 @@ func (dss *debugServerStream) RecvMsg(m any) error {
 			}
 		} else {
 			if e := dss.interceptor.record(debugInterceptorLogEntry{
-				Method:   dss.method,
-				Metadata: dss.metadata,
-				Response: resp,
+				Method:		dss.method,
+				Metadata:	dss.metadata,
+				Response:	resp,
 			}); e != nil {
 				return e
 			}
@@ -314,17 +314,17 @@ var _ grpc.ServerStream = &debugServerStream{}
 
 // Wraps grpc.ClientStream with interceptor hooks for SendMsg, RecvMsg.
 type debugClientStream struct {
-	innerClientStream grpc.ClientStream
-	interceptor       *DebugInterceptor
-	method            string
-	metadata          any
+	innerClientStream	grpc.ClientStream
+	interceptor		*DebugInterceptor
+	method			string
+	metadata		any
 }
 
 func (d *debugClientStream) errorEntry(err error) debugInterceptorLogEntry {
 	return debugInterceptorLogEntry{
-		Method:   d.method,
-		Metadata: d.metadata,
-		Errors:   []string{err.Error()},
+		Method:		d.method,
+		Metadata:	d.metadata,
+		Errors:		[]string{err.Error()},
 	}
 }
 
@@ -358,9 +358,9 @@ func (d *debugClientStream) SendMsg(m any) error {
 			}
 		} else {
 			if e := d.interceptor.record(debugInterceptorLogEntry{
-				Method:   d.method,
-				Metadata: d.metadata,
-				Request:  req,
+				Method:		d.method,
+				Metadata:	d.metadata,
+				Request:	req,
 			}); e != nil {
 				return e
 			}
@@ -385,9 +385,9 @@ func (d *debugClientStream) RecvMsg(m any) error {
 			}
 		} else {
 			if e := d.interceptor.record(debugInterceptorLogEntry{
-				Method:   d.method,
-				Metadata: d.metadata,
-				Response: resp,
+				Method:		d.method,
+				Metadata:	d.metadata,
+				Response:	resp,
 			}); e != nil {
 				return e
 			}

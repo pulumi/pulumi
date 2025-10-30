@@ -19,10 +19,10 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -33,8 +33,8 @@ import (
 func TestNewStackSecretsManagerLoaderFromEnv(t *testing.T) {
 	// Arrange.
 	cases := []struct {
-		envValue string
-		expected bool
+		envValue	string
+		expected	bool
 	}{
 		{"true", true},
 		{"1", true},
@@ -61,7 +61,7 @@ func TestStackSecretsManagerLoaderDecrypterFallsBack(t *testing.T) {
 
 	// Arrange.
 	sm := &secrets.MockSecretsManager{
-		TypeF: func() string { return "mock" },
+		TypeF:	func() string { return "mock" },
 		DecrypterF: func() config.Decrypter {
 			return &secrets.MockDecrypter{DecryptValueF: func(_ string) string { return "defaulted plaintext" }}
 		},
@@ -100,9 +100,9 @@ func TestStackSecretsManagerLoaderDecrypterUpdatesConfig(t *testing.T) {
 
 	// Arrange.
 	sm := &secrets.MockSecretsManager{
-		TypeF:      func() string { return passphrase.Type },
-		DecrypterF: func() config.Decrypter { return config.NopDecrypter },
-		StateF:     func() json.RawMessage { return []byte(`{"salt":"test-salt"}`) },
+		TypeF:		func() string { return passphrase.Type },
+		DecrypterF:	func() config.Decrypter { return config.NopDecrypter },
+		StateF:		func() json.RawMessage { return []byte(`{"salt":"test-salt"}`) },
 	}
 	snap := &deploy.Snapshot{SecretsManager: sm}
 
@@ -132,7 +132,7 @@ func TestStackSecretsManagerLoaderDecrypterUsesDefaultSecretsManager(t *testing.
 
 	// Arrange.
 	sm := &secrets.MockSecretsManager{
-		TypeF: func() string { return "mock" },
+		TypeF:	func() string { return "mock" },
 		DecrypterF: func() config.Decrypter {
 			return &secrets.MockDecrypter{DecryptValueF: func(_ string) string { return "defaulted plaintext" }}
 		},
@@ -169,7 +169,7 @@ func TestStackSecretsManagerLoaderEncrypterFallsBack(t *testing.T) {
 
 	// Arrange.
 	sm := &secrets.MockSecretsManager{
-		TypeF: func() string { return "mock" },
+		TypeF:	func() string { return "mock" },
 		EncrypterF: func() config.Encrypter {
 			return &secrets.MockEncrypter{EncryptValueF: func(_ string) string { return "defaulted ciphertext" }}
 		},
@@ -208,9 +208,9 @@ func TestStackSecretsManagerLoaderEncrypterUpdatesConfig(t *testing.T) {
 
 	// Arrange.
 	sm := &secrets.MockSecretsManager{
-		TypeF:      func() string { return passphrase.Type },
-		EncrypterF: func() config.Encrypter { return config.NopEncrypter },
-		StateF:     func() json.RawMessage { return []byte(`{"salt":"test-salt"}`) },
+		TypeF:		func() string { return passphrase.Type },
+		EncrypterF:	func() config.Encrypter { return config.NopEncrypter },
+		StateF:		func() json.RawMessage { return []byte(`{"salt":"test-salt"}`) },
 	}
 	snap := &deploy.Snapshot{SecretsManager: sm}
 
@@ -240,7 +240,7 @@ func TestStackSecretsManagerLoaderEncrypterUsesDefaultSecretsManager(t *testing.
 
 	// Arrange.
 	sm := &secrets.MockSecretsManager{
-		TypeF: func() string { return "mock" },
+		TypeF:	func() string { return "mock" },
 		EncrypterF: func() config.Encrypter {
 			return &secrets.MockEncrypter{EncryptValueF: func(_ string) string { return "defaulted ciphertext" }}
 		},

@@ -36,14 +36,14 @@ import (
 )
 
 var (
-	ErrPackageNotFound = errors.New("package not found")
-	ErrRegistryQuery   = errors.New("registry query error")
+	ErrPackageNotFound	= errors.New("package not found")
+	ErrRegistryQuery	= errors.New("registry query error")
 )
 
 type PackageNotFoundError struct {
-	Package     string
-	Version     *semver.Version
-	OriginalErr error
+	Package		string
+	Version		*semver.Version
+	OriginalErr	error
 }
 
 func (e PackageNotFoundError) Error() string {
@@ -66,9 +66,9 @@ func (e PackageNotFoundError) Suggestions() []apitype.PackageMetadata {
 }
 
 type Options struct {
-	DisableRegistryResolve      bool
-	Experimental                bool
-	IncludeInstalledInWorkspace bool
+	DisableRegistryResolve		bool
+	Experimental			bool
+	IncludeInstalledInWorkspace	bool
 }
 
 type Result interface {
@@ -79,21 +79,21 @@ type RegistryResult struct {
 	Metadata apitype.PackageMetadata
 }
 
-func (RegistryResult) isResult() {}
+func (RegistryResult) isResult()	{}
 
 type LocalPathResult struct {
 	LocalPluginPathAbs string
 }
 
-func (LocalPathResult) isResult() {}
+func (LocalPathResult) isResult()	{}
 
 type ExternalSourceResult struct{}
 
-func (ExternalSourceResult) isResult() {}
+func (ExternalSourceResult) isResult()	{}
 
 type InstalledInWorkspaceResult struct{}
 
-func (InstalledInWorkspaceResult) isResult() {}
+func (InstalledInWorkspaceResult) isResult()	{}
 
 func Resolve(
 	ctx context.Context,
@@ -101,7 +101,7 @@ func Resolve(
 	ws PluginWorkspace,
 	pluginSpec workspace.PluginSpec,
 	options Options,
-	projectRoot string, // Pass "" for 'not in a project context'
+	projectRoot string,	// Pass "" for 'not in a project context'
 ) (Result, error) {
 	sourceToCheck := pluginSpec.Name
 
@@ -155,9 +155,9 @@ func Resolve(
 	}
 
 	return ExternalSourceResult{}, &PackageNotFoundError{
-		Package:     pluginSpec.Name,
-		Version:     pluginSpec.Version,
-		OriginalErr: registryNotFoundErr,
+		Package:	pluginSpec.Name,
+		Version:	pluginSpec.Version,
+		OriginalErr:	registryNotFoundErr,
 	}
 }
 

@@ -25,12 +25,12 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
@@ -51,18 +51,18 @@ const (
 )
 
 type publishPackageArgs struct {
-	source          string
-	publisher       string
-	readmePath      string
-	installDocsPath string
+	source		string
+	publisher	string
+	readmePath	string
+	installDocsPath	string
 }
 
 type packagePublishCmd struct {
-	defaultOrg    func(context.Context, backend.Backend, *workspace.Project) (string, error)
-	extractSchema func(
+	defaultOrg	func(context.Context, backend.Backend, *workspace.Project) (string, error)
+	extractSchema	func(
 		pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
 	) (*schema.Package, *workspace.PackageSpec, error)
-	pluginDir string
+	pluginDir	string
 }
 
 func newPackagePublishCmd() *cobra.Command {
@@ -70,9 +70,9 @@ func newPackagePublishCmd() *cobra.Command {
 	var pkgPublishCmd packagePublishCmd
 
 	cmd := &cobra.Command{
-		Use:   "publish <provider|schema> --readme <path> [--] [provider-parameter...]",
-		Args:  cmdutil.MinimumNArgs(1),
-		Short: "Publish a package to the Private Registry",
+		Use:	"publish <provider|schema> --readme <path> [--] [provider-parameter...]",
+		Args:	cmdutil.MinimumNArgs(1),
+		Short:	"Publish a package to the Private Registry",
 		Long: "Publish a package to the Private Registry.\n\n" +
 			"This command publishes a package to the Private Registry. The package can be a provider " +
 			"or a schema.\n\n" +
@@ -173,9 +173,9 @@ func (cmd *packagePublishCmd) Run(
 	// If the publisher is set on the command line, use it.
 	if args.publisher != "" {
 		publisher = args.publisher
-	} else if pkg.Publisher != "" { // Otherwise, fall back to the publisher set in the package schema.
+	} else if pkg.Publisher != "" {	// Otherwise, fall back to the publisher set in the package schema.
 		publisher = pkg.Publisher
-	} else { // As a last resort, try to determine the publisher from the default organization or fail if none is found.
+	} else {	// As a last resort, try to determine the publisher from the default organization or fail if none is found.
 		publisher, err = cmd.defaultOrg(ctx, b, project)
 		if err != nil {
 			return fmt.Errorf("failed to determine default organization: %w", err)
@@ -229,12 +229,12 @@ func (cmd *packagePublishCmd) Run(
 	}
 
 	publishInput := apitype.PackagePublishOp{
-		Source:    args.source,
-		Publisher: publisher,
-		Name:      name,
-		Version:   version,
-		Schema:    bytes.NewReader(json),
-		Readme:    readmeBytes,
+		Source:		args.source,
+		Publisher:	publisher,
+		Name:		name,
+		Version:	version,
+		Schema:		bytes.NewReader(json),
+		Readme:		readmeBytes,
 	}
 
 	if args.installDocsPath != "" {

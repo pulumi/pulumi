@@ -25,10 +25,10 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
-	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	resourceanalyzer "github.com/pulumi/pulumi/sdk/v3/pkg/resource/analyzer"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/autonaming"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -53,13 +53,13 @@ type RequiredPolicy interface {
 // LocalPolicyPack represents a set of local Policy Packs to apply during an update.
 type LocalPolicyPack struct {
 	// Name provides the user-specified name of the Policy Pack.
-	Name string
+	Name	string
 	// Version of the local Policy Pack.
-	Version string
+	Version	string
 	// Path of the local Policy Pack.
-	Path string
+	Path	string
 	// Path of the local Policy Pack's JSON config file.
-	Config string
+	Config	string
 }
 
 // NameForEvents encodes a local policy pack's information in a single string which can
@@ -94,8 +94,8 @@ func MakeLocalPolicyPacks(localPaths []string, configPaths []string) []LocalPoli
 			config = configPaths[i]
 		}
 		r[i] = LocalPolicyPack{
-			Path:   p,
-			Config: config,
+			Path:	p,
+			Config:	config,
 		}
 	}
 	return r
@@ -119,87 +119,87 @@ func ConvertLocalPolicyPacksToPaths(localPolicyPack []LocalPolicyPack) []string 
 //nolint:structcheck
 type UpdateOptions struct {
 	// true if the step generator should calculate diffs in parallel via DiffSteps.
-	ParallelDiff bool
+	ParallelDiff	bool
 
 	// LocalPolicyPacks contains an optional set of policy packs to run as part of this deployment.
-	LocalPolicyPacks []LocalPolicyPack
+	LocalPolicyPacks	[]LocalPolicyPack
 
 	// RequiredPolicies is the set of policies that are required to run as part of the update.
-	RequiredPolicies []RequiredPolicy
+	RequiredPolicies	[]RequiredPolicy
 
 	// the degree of parallelism for resource operations (<=1 for serial).
-	Parallel int32
+	Parallel	int32
 
 	// true if debugging output it enabled
-	Debug bool
+	Debug	bool
 
 	// true if the plan should refresh before executing.
-	Refresh bool
+	Refresh	bool
 
 	// true if the plan should run the program as part of refresh.
-	RefreshProgram bool
+	RefreshProgram	bool
 
 	// true if the plan should run the program as part of destroy.
-	DestroyProgram bool
+	DestroyProgram	bool
 
 	// Specific resources to replace during an update operation.
-	ReplaceTargets deploy.UrnTargets
+	ReplaceTargets	deploy.UrnTargets
 
 	// Specific resources to update during a deployment.
-	Targets deploy.UrnTargets
+	Targets	deploy.UrnTargets
 
 	// true if we're allowing dependent targets to change, even if not specified in one of the above
 	// XXXTargets lists.
-	TargetDependents bool
+	TargetDependents	bool
 
 	// Specific resources to skip updating during a deployment.
-	Excludes deploy.UrnTargets
+	Excludes	deploy.UrnTargets
 
 	// true if we're ignoring dependent targets, even if not specified in the Excludes lists.
-	ExcludeDependents bool
+	ExcludeDependents	bool
 
 	// true if the engine should use legacy diffing behavior during an update.
-	UseLegacyDiff bool
+	UseLegacyDiff	bool
 
 	// true if the engine should use legacy refresh diffing behavior and report
 	// only output changes, as opposed to computing diffs against desired state.
-	UseLegacyRefreshDiff bool
+	UseLegacyRefreshDiff	bool
 
 	// true if the engine should disable provider previews.
-	DisableProviderPreview bool
+	DisableProviderPreview	bool
 
 	// true if the engine should disable resource reference support.
-	DisableResourceReferences bool
+	DisableResourceReferences	bool
 
 	// true if the engine should disable output value support.
-	DisableOutputValues bool
+	DisableOutputValues	bool
 
 	// the plugin host to use for this update
-	Host plugin.Host
+	Host	plugin.Host
 
 	// The plan to use for the update, if any.
-	Plan *deploy.Plan
+	Plan	*deploy.Plan
 
 	// GeneratePlan when true cause plans to be generated, we skip this if we know their not needed (e.g. during up)
-	GeneratePlan bool
+	GeneratePlan	bool
 
 	// Experimental is true if the engine is in experimental mode (i.e. PULUMI_EXPERIMENTAL was set)
-	Experimental bool
+	Experimental	bool
 
 	// ContinueOnError is true if the engine should continue processing resources after an error is encountered.
-	ContinueOnError bool
+	ContinueOnError	bool
 
 	// AttachDebugger is the list of things to debug.  This can be "program", "all", "plugins", or "plugin:<plugin-name>".
-	AttachDebugger []string
+	AttachDebugger	[]string
 
 	// Autonamer can resolve user's preference for custom autonaming options for a given resource.
-	Autonamer autonaming.Autonamer
+	Autonamer	autonaming.Autonamer
 
 	// The execution kind of the operation.
-	ExecKind string
+	ExecKind	string
 
 	// ShowSecrets is true if the engine should display secrets in the CLI.
-	ShowSecrets bool
+	ShowSecrets	bool
 }
 
 // HasChanges returns true if there are any non-same changes in the resulting summary.
@@ -240,13 +240,13 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 	// We skip the target check here because the targeted resource may not exist yet.
 
 	return update(ctx, info, &deploymentOptions{
-		UpdateOptions: opts,
-		SourceFunc:    newUpdateSource,
-		Events:        emitter,
-		Diag:          newEventSink(emitter, false),
-		StatusDiag:    newEventSink(emitter, true),
-		DryRun:        dryRun,
-		pluginManager: ctx.PluginManager,
+		UpdateOptions:	opts,
+		SourceFunc:	newUpdateSource,
+		Events:		emitter,
+		Diag:		newEventSink(emitter, false),
+		StatusDiag:	newEventSink(emitter, true),
+		DryRun:		dryRun,
+		pluginManager:	ctx.PluginManager,
 	})
 }
 
@@ -471,7 +471,7 @@ func newUpdateSource(ctx context.Context,
 		target,
 		opts,
 		plugctx,
-		false, /*returnInstallErrors*/
+		false,	/*returnInstallErrors*/
 	)
 	if err != nil {
 		return nil, err
@@ -495,13 +495,13 @@ func newUpdateSource(ctx context.Context,
 		return nil, err
 	}
 	analyzerOpts := &plugin.PolicyAnalyzerOptions{
-		Organization:     target.Organization.String(),
-		Project:          proj.Name.String(),
-		Stack:            target.Name.String(),
-		Config:           config,
-		ConfigSecretKeys: target.Config.SecureKeys(),
-		DryRun:           opts.DryRun,
-		Tags:             target.Tags,
+		Organization:		target.Organization.String(),
+		Project:		proj.Name.String(),
+		Stack:			target.Name.String(),
+		Config:			config,
+		ConfigSecretKeys:	target.Config.SecureKeys(),
+		DryRun:			opts.DryRun,
+		Tags:			target.Tags,
 	}
 	if err := installAndLoadPolicyPlugins(plugctx, opts, analyzerOpts); err != nil {
 		return nil, err
@@ -515,18 +515,18 @@ func newUpdateSource(ctx context.Context,
 
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
 	return deploy.NewEvalSource(plugctx, &deploy.EvalRunInfo{
-		Proj:        proj,
-		Pwd:         pwd,
-		Program:     main,
-		ProjectRoot: projectRoot,
-		Args:        args,
-		Target:      target,
+		Proj:		proj,
+		Pwd:		pwd,
+		Program:	main,
+		ProjectRoot:	projectRoot,
+		Args:		args,
+		Target:		target,
 	}, defaultProviderVersions, resourceHooks, deploy.EvalSourceOptions{
-		DryRun:                    opts.DryRun,
-		Parallel:                  opts.Parallel,
-		DisableResourceReferences: opts.DisableResourceReferences,
-		DisableOutputValues:       opts.DisableOutputValues,
-		AttachDebugger:            opts.AttachDebugger,
+		DryRun:				opts.DryRun,
+		Parallel:			opts.Parallel,
+		DisableResourceReferences:	opts.DisableResourceReferences,
+		DisableOutputValues:		opts.DisableOutputValues,
+		AttachDebugger:			opts.AttachDebugger,
 	}), nil
 }
 
@@ -588,24 +588,24 @@ func abbreviateFilePath(path string) string {
 
 // updateActions pretty-prints the plan application process as it goes.
 type updateActions struct {
-	Context *Context
-	Steps   int32
-	Ops     map[display.StepOp]int
-	Seen    map[resource.URN]deploy.Step
-	MapLock sync.Mutex
-	Update  UpdateInfo
-	Opts    *deploymentOptions
+	Context	*Context
+	Steps	int32
+	Ops	map[display.StepOp]int
+	Seen	map[resource.URN]deploy.Step
+	MapLock	sync.Mutex
+	Update	UpdateInfo
+	Opts	*deploymentOptions
 
-	maybeCorrupt bool
+	maybeCorrupt	bool
 }
 
 func newUpdateActions(context *Context, u UpdateInfo, opts *deploymentOptions) *updateActions {
 	return &updateActions{
-		Context: context,
-		Ops:     make(map[display.StepOp]int),
-		Seen:    make(map[resource.URN]deploy.Step),
-		Update:  u,
-		Opts:    opts,
+		Context:	context,
+		Ops:		make(map[display.StepOp]int),
+		Seen:		make(map[resource.URN]deploy.Step),
+		Update:		u,
+		Opts:		opts,
 	}
 }
 
@@ -623,7 +623,7 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (any, error) {
 	acts.Seen[step.URN()] = step
 	acts.MapLock.Unlock()
 	acts.Opts.Events.resourcePreEvent(step,
-		false, /*planning*/
+		false,	/*planning*/
 		acts.Opts.Debug,
 		isInternalStep(step),
 		acts.Opts.ShowSecrets,
@@ -702,7 +702,7 @@ func (acts *updateActions) OnResourceStepPost(
 			acts.Opts.Events.resourceOutputsEvent(
 				op,
 				step,
-				false, /*planning*/
+				false,	/*planning*/
 				acts.Opts.Debug,
 				isInternalStep,
 				acts.Opts.ShowSecrets,
@@ -750,7 +750,7 @@ func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 	acts.Opts.Events.resourceOutputsEvent(
 		step.Op(),
 		step,
-		false, /*planning*/
+		false,	/*planning*/
 		acts.Opts.Debug,
 		isInternalStep(step),
 		acts.Opts.ShowSecrets,
@@ -792,11 +792,11 @@ func (acts *updateActions) Changes() display.ResourceChanges {
 }
 
 type previewActions struct {
-	Context *Context
-	Ops     map[display.StepOp]int
-	Opts    *deploymentOptions
-	Seen    map[resource.URN]deploy.Step
-	MapLock sync.Mutex
+	Context	*Context
+	Ops	map[display.StepOp]int
+	Opts	*deploymentOptions
+	Seen	map[resource.URN]deploy.Step
+	MapLock	sync.Mutex
 }
 
 func isInternalStep(step deploy.Step) bool {
@@ -818,10 +818,10 @@ func shouldRecordReadStep(step deploy.Step) bool {
 
 func newPreviewActions(ctx *Context, opts *deploymentOptions) *previewActions {
 	return &previewActions{
-		Context: ctx,
-		Ops:     make(map[display.StepOp]int),
-		Opts:    opts,
-		Seen:    make(map[resource.URN]deploy.Step),
+		Context:	ctx,
+		Ops:		make(map[display.StepOp]int),
+		Opts:		opts,
+		Seen:		make(map[resource.URN]deploy.Step),
 	}
 }
 
@@ -839,7 +839,7 @@ func (acts *previewActions) OnResourceStepPre(step deploy.Step) (any, error) {
 	acts.MapLock.Unlock()
 
 	acts.Opts.Events.resourcePreEvent(
-		step, true, /*planning*/
+		step, true,	/*planning*/
 		acts.Opts.Debug,
 		isInternalStep(step),
 		acts.Opts.ShowSecrets,
@@ -894,7 +894,7 @@ func (acts *previewActions) OnResourceStepPost(ctx any,
 		acts.Opts.Events.resourceOutputsEvent(
 			op,
 			step,
-			true, /*planning*/
+			true,	/*planning*/
 			acts.Opts.Debug,
 			isInternalStep,
 			acts.Opts.ShowSecrets,
@@ -913,7 +913,7 @@ func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
 	acts.Opts.Events.resourceOutputsEvent(
 		step.Op(),
 		step,
-		true, /*planning*/
+		true,	/*planning*/
 		acts.Opts.Debug,
 		isInternalStep(step),
 		acts.Opts.ShowSecrets,

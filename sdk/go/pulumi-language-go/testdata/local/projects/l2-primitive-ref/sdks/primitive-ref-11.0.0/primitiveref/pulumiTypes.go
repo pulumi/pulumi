@@ -14,12 +14,12 @@ import (
 var _ = internal.GetEnvOrDefault
 
 type Data struct {
-	BoolArray []bool            `pulumi:"boolArray"`
-	Boolean   bool              `pulumi:"boolean"`
-	Float     float64           `pulumi:"float"`
-	Integer   int               `pulumi:"integer"`
-	String    string            `pulumi:"string"`
-	StringMap map[string]string `pulumi:"stringMap"`
+	BoolArray	[]bool			`pulumi:"boolArray"`
+	Boolean		bool			`pulumi:"boolean"`
+	Float		float64			`pulumi:"float"`
+	Integer		int			`pulumi:"integer"`
+	String		string			`pulumi:"string"`
+	StringMap	map[string]string	`pulumi:"stringMap"`
 }
 
 // DataInput is an input type that accepts DataArgs and DataOutput values.
@@ -34,12 +34,12 @@ type DataInput interface {
 }
 
 type DataArgs struct {
-	BoolArray pulumi.BoolArrayInput `pulumi:"boolArray"`
-	Boolean   pulumi.BoolInput      `pulumi:"boolean"`
-	Float     pulumi.Float64Input   `pulumi:"float"`
-	Integer   pulumi.IntInput       `pulumi:"integer"`
-	String    pulumi.StringInput    `pulumi:"string"`
-	StringMap pulumi.StringMapInput `pulumi:"stringMap"`
+	BoolArray	pulumi.BoolArrayInput	`pulumi:"boolArray"`
+	Boolean		pulumi.BoolInput	`pulumi:"boolean"`
+	Float		pulumi.Float64Input	`pulumi:"float"`
+	Integer		pulumi.IntInput		`pulumi:"integer"`
+	String		pulumi.StringInput	`pulumi:"string"`
+	StringMap	pulumi.StringMapInput	`pulumi:"stringMap"`
 }
 
 func (DataArgs) ElementType() reflect.Type {

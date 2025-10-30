@@ -30,11 +30,11 @@ import (
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -64,9 +64,9 @@ func (b *diyBackend) newUpdate(
 
 	// Construct and return a new update.
 	return engine.UpdateInfo{
-		Root:    op.Root,
-		Project: op.Proj,
-		Target:  target,
+		Root:		op.Root,
+		Project:	op.Proj,
+		Target:		target,
 	}, nil
 }
 
@@ -87,12 +87,12 @@ func (b *diyBackend) getTarget(
 		return nil, err
 	}
 	return &deploy.Target{
-		Name:         ref.Name(),
-		Organization: "organization", // diy has no organizations really, but we just always say it's "organization"
-		Config:       cfg,
-		Decrypter:    dec,
-		Snapshot:     snapshot,
-		Tags:         nil, // TODO: diy backend does not support tags yet, so we just return nil here.
+		Name:		ref.Name(),
+		Organization:	"organization",	// diy has no organizations really, but we just always say it's "organization"
+		Config:		cfg,
+		Decrypter:	dec,
+		Snapshot:	snapshot,
+		Tags:		nil,	// TODO: diy backend does not support tags yet, so we just return nil here.
 	}, nil
 }
 
@@ -222,9 +222,9 @@ func (b *diyBackend) saveCheckpoint(
 
 		// Retry the write 10 times in case of upstream bucket errors
 		_, _, err = retry.Until(ctx, retry.Acceptor{
-			Delay:    &delay,
-			MaxDelay: &maxDelay,
-			Backoff:  &backoff,
+			Delay:		&delay,
+			MaxDelay:	&maxDelay,
+			Backoff:	&backoff,
 			Accept: func(try int, nextRetryTime time.Duration) (bool, any, error) {
 				// And now write out the new snapshot file, overwriting that location.
 				err := b.bucket.WriteAll(ctx, file, byts, nil)
@@ -405,8 +405,8 @@ func (b *diyBackend) stackPath(ctx context.Context, ref *diyBackendReference) st
 	gzipedPath := plainPath + ".gz"
 
 	bucketIter := b.bucket.List(&blob.ListOptions{
-		Delimiter: "/",
-		Prefix:    plainPath,
+		Delimiter:	"/",
+		Prefix:		plainPath,
 	})
 
 	var plainObj *blob.ListObject

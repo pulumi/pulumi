@@ -20,8 +20,8 @@ import (
 	"strings"
 	"time"
 
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/maps"
@@ -83,14 +83,14 @@ import (
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
 )
 `)
 }
@@ -98,9 +98,9 @@ import (
 // generator encapsulates writing indented Go code to a strings.Builder.
 type generator struct {
 	// The underlying strings.Builder to write to.
-	b *strings.Builder
+	b	*strings.Builder
 	// The current indentation string (which will typically be a possibly empty series of tabs).
-	prefix string
+	prefix	string
 }
 
 // indent increases the indentation level of the generator.

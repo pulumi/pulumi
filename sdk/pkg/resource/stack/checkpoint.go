@@ -19,8 +19,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype/migrate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
@@ -101,11 +101,11 @@ func MarshalUntypedDeploymentToVersionedCheckpoint(
 	stack tokens.QName, deployment *apitype.UntypedDeployment,
 ) (*apitype.VersionedCheckpoint, error) {
 	chk := struct {
-		Stack  tokens.QName    `json:"stack,omitempty"`
-		Latest json.RawMessage `json:"latest,omitempty"`
+		Stack	tokens.QName	`json:"stack,omitempty"`
+		Latest	json.RawMessage	`json:"latest,omitempty"`
 	}{
-		Stack:  stack,
-		Latest: deployment.Deployment,
+		Stack:	stack,
+		Latest:	deployment.Deployment,
 	}
 
 	bytes, err := encoding.JSON.Marshal(chk)
@@ -114,9 +114,9 @@ func MarshalUntypedDeploymentToVersionedCheckpoint(
 	}
 
 	return &apitype.VersionedCheckpoint{
-		Version:    deployment.Version,
-		Features:   deployment.Features,
-		Checkpoint: bytes,
+		Version:	deployment.Version,
+		Features:	deployment.Features,
+		Checkpoint:	bytes,
 	}, nil
 }
 
@@ -138,17 +138,17 @@ func SerializeCheckpoint(stack tokens.QName, snap *deploy.Snapshot,
 	}
 
 	b, err := encoding.JSON.Marshal(apitype.CheckpointV3{
-		Stack:  stack,
-		Latest: latest,
+		Stack:	stack,
+		Latest:	latest,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("marshalling checkpoint: %w", err)
 	}
 
 	return &apitype.VersionedCheckpoint{
-		Version:    version,
-		Features:   features,
-		Checkpoint: json.RawMessage(b),
+		Version:	version,
+		Features:	features,
+		Checkpoint:	json.RawMessage(b),
 	}, nil
 }
 
@@ -184,37 +184,37 @@ func CreateRootStackResource(stackName tokens.QName, projectName tokens.PackageN
 	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
 	urn := resource.NewURN(stackName, projectName, "", typ, name)
 	return resource.NewState{
-		Type:                    typ,
-		URN:                     urn,
-		Custom:                  false,
-		Delete:                  false,
-		ID:                      "",
-		Inputs:                  resource.PropertyMap{},
-		Outputs:                 nil,
-		Parent:                  "",
-		Protect:                 false,
-		Taint:                   false,
-		External:                false,
-		Dependencies:            nil,
-		InitErrors:              nil,
-		Provider:                "",
-		PropertyDependencies:    nil,
-		PendingReplacement:      false,
-		AdditionalSecretOutputs: nil,
-		Aliases:                 nil,
-		CustomTimeouts:          nil,
-		ImportID:                "",
-		RetainOnDelete:          false,
-		DeletedWith:             "",
-		Created:                 nil,
-		Modified:                nil,
-		SourcePosition:          "",
-		StackTrace:              nil,
-		IgnoreChanges:           nil,
-		HideDiff:                nil,
-		ReplaceOnChanges:        nil,
-		RefreshBeforeUpdate:     false,
-		ViewOf:                  "",
-		ResourceHooks:           nil,
+		Type:				typ,
+		URN:				urn,
+		Custom:				false,
+		Delete:				false,
+		ID:				"",
+		Inputs:				resource.PropertyMap{},
+		Outputs:			nil,
+		Parent:				"",
+		Protect:			false,
+		Taint:				false,
+		External:			false,
+		Dependencies:			nil,
+		InitErrors:			nil,
+		Provider:			"",
+		PropertyDependencies:		nil,
+		PendingReplacement:		false,
+		AdditionalSecretOutputs:	nil,
+		Aliases:			nil,
+		CustomTimeouts:			nil,
+		ImportID:			"",
+		RetainOnDelete:			false,
+		DeletedWith:			"",
+		Created:			nil,
+		Modified:			nil,
+		SourcePosition:			"",
+		StackTrace:			nil,
+		IgnoreChanges:			nil,
+		HideDiff:			nil,
+		ReplaceOnChanges:		nil,
+		RefreshBeforeUpdate:		false,
+		ViewOf:				"",
+		ResourceHooks:			nil,
 	}.Make()
 }

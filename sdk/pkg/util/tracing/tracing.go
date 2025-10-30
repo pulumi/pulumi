@@ -27,9 +27,9 @@ const tracingOptionsKey key = 0
 type Options struct {
 	// PropagateSpans indicates that spans should be propagated from the client to the Pulumi service when making API
 	// calls.
-	PropagateSpans bool
+	PropagateSpans	bool
 	// IncludeTracingHeader indicates that API calls should include the indicated tracing header contents.
-	TracingHeader string
+	TracingHeader	string
 }
 
 // ContextWithOptions returns a new context.Context with the indicated tracing options.

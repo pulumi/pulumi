@@ -26,12 +26,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/maps"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	. "github.com/pulumi/pulumi/sdk/v3/pkg/engine"	//nolint:revive
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -111,8 +111,8 @@ func generateComplexTestDependencyGraph(
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		register := func(urn resource.URN, provider string, inputs resource.PropertyMap) resource.ID {
 			resp, err := monitor.RegisterResource(urn.Type(), urn.Name(), true, deploytest.ResourceOptions{
-				Provider: provider,
-				Inputs:   inputs,
+				Provider:	provider,
+				Inputs:		inputs,
 			})
 			require.NoError(t, err)
 			return resp.ID
@@ -172,8 +172,8 @@ func TestDeleteBeforeReplace(t *testing.T) {
 				) (plugin.DiffResult, error) {
 					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
 						return plugin.DiffResult{
-							ReplaceKeys:         []resource.PropertyKey{"A"},
-							DeleteBeforeReplace: true,
+							ReplaceKeys:		[]resource.PropertyKey{"A"},
+							DeleteBeforeReplace:	true,
 						}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -191,9 +191,9 @@ func TestDeleteBeforeReplace(t *testing.T) {
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p.Options.T = t
 	p.Steps = []lt.TestStep{{
-		Op:            Update,
-		ExpectFailure: false,
-		SkipPreview:   true,
+		Op:		Update,
+		ExpectFailure:	false,
+		SkipPreview:	true,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
@@ -207,12 +207,12 @@ func TestDeleteBeforeReplace(t *testing.T) {
 			}
 
 			assert.Equal(t, map[resource.URN]bool{
-				pickURN(t, urns, names, "A"): true,
-				pickURN(t, urns, names, "B"): true,
-				pickURN(t, urns, names, "C"): true,
-				pickURN(t, urns, names, "E"): true,
-				pickURN(t, urns, names, "F"): true,
-				pickURN(t, urns, names, "K"): true,
+				pickURN(t, urns, names, "A"):	true,
+				pickURN(t, urns, names, "B"):	true,
+				pickURN(t, urns, names, "C"):	true,
+				pickURN(t, urns, names, "E"):	true,
+				pickURN(t, urns, names, "F"):	true,
+				pickURN(t, urns, names, "K"):	true,
 			}, replaced)
 
 			return err
@@ -242,9 +242,9 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 			dependencies []resource.URN,
 		) resource.URN {
 			resp, err := monitor.RegisterResource(resType, name, true, deploytest.ResourceOptions{
-				Inputs:       inputs,
-				Dependencies: dependencies,
-				PropertyDeps: inputDeps,
+				Inputs:		inputs,
+				Dependencies:	dependencies,
+				PropertyDeps:	inputDeps,
 			})
 			require.NoError(t, err)
 
@@ -254,15 +254,15 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 		urnA = register("A", nil, nil, nil)
 		urnB = register("B", nil, nil, nil)
 		urnC = register("C", resource.PropertyMap{
-			"A": resource.NewProperty("foo"),
-			"B": resource.NewProperty("bar"),
+			"A":	resource.NewProperty("foo"),
+			"B":	resource.NewProperty("bar"),
 		}, nil, []resource.URN{urnA, urnB})
 		urnD = register("D", resource.PropertyMap{
-			"A": resource.NewProperty("foo"),
-			"B": resource.NewProperty("bar"),
+			"A":	resource.NewProperty("foo"),
+			"B":	resource.NewProperty("bar"),
 		}, propertyDependencies{
-			"A": []resource.URN{urnB},
-			"B": []resource.URN{urnA, urnC},
+			"A":	[]resource.URN{urnB},
+			"B":	[]resource.URN{urnA, urnC},
 		}, []resource.URN{urnA, urnB, urnC})
 
 		return nil
@@ -270,8 +270,8 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
-		Steps:   []lt.TestStep{{Op: Update}},
+		Options:	lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:		[]lt.TestStep{{Op: Update}},
 	}
 	snap := p.Run(t, nil)
 	for _, res := range snap.Resources {
@@ -305,8 +305,8 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
 						return plugin.DiffResult{
-							ReplaceKeys:         []resource.PropertyKey{"A"},
-							DeleteBeforeReplace: dbrDiff,
+							ReplaceKeys:		[]resource.PropertyKey{"A"},
+							DeleteBeforeReplace:	dbrDiff,
 						}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -332,19 +332,19 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		provA := provRef.String()
 
 		respA, err := monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
-			Provider:            provA,
-			Inputs:              inputsA,
-			DeleteBeforeReplace: dbrA,
+			Provider:		provA,
+			Inputs:			inputsA,
+			DeleteBeforeReplace:	dbrA,
 		})
 		require.NoError(t, err)
 		urnA = respA.URN
 
 		inputDepsB := map[resource.PropertyKey][]resource.URN{"A": {urnA}}
 		respB, err := monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
-			Provider:     provA,
-			Inputs:       inputsB,
-			Dependencies: []resource.URN{urnA},
-			PropertyDeps: inputDepsB,
+			Provider:	provA,
+			Inputs:		inputsB,
+			Dependencies:	[]resource.URN{urnA},
+			PropertyDeps:	inputDepsB,
 		})
 		require.NoError(t, err)
 		urnB = respB.URN
@@ -360,7 +360,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	// Change the value of resA.A. Only resA should be replaced, and the replacement should be create-before-delete.
 	inputsA["A"] = resource.NewProperty("bar")
 	p.Steps = []lt.TestStep{{
-		Op: Update,
+		Op:	Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
@@ -384,7 +384,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	// resA and resB should be replaced, and the replacements should be delete-before-replace.
 	dbrA, inputsA["A"] = &dbrValue, resource.NewProperty("baz")
 	p.Steps = []lt.TestStep{{
-		Op: Update,
+		Op:	Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
@@ -409,7 +409,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	// Change the value of resB.A. Only resB should be replaced, and the replacement should be create-before-delete.
 	inputsB["A"] = resource.NewProperty("qux")
 	p.Steps = []lt.TestStep{{
-		Op: Update,
+		Op:	Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
@@ -433,7 +433,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	// resA.A. Only resA should be replaced, and the replacement should be create-before-delete.
 	dbrA, inputsA["A"] = nil, resource.NewProperty("zam")
 	p.Steps = []lt.TestStep{{
-		Op: Update,
+		Op:	Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
@@ -457,7 +457,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	// resA and resB should be replaced, and the replacements should be delete-before-replace.
 	dbrDiff, inputsA["A"] = true, resource.NewProperty("foo")
 	p.Steps = []lt.TestStep{{
-		Op: Update,
+		Op:	Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
@@ -483,7 +483,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	// resA.A. Only resA should be replaced, and the replacement should be create-before-delete.
 	dbrA, dbrValue, inputsA["A"] = &dbrValue, false, resource.NewProperty("bar")
 	p.Steps = []lt.TestStep{{
-		Op: Update,
+		Op:	Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
@@ -515,8 +515,8 @@ func TestDependencyChangeDBR(t *testing.T) {
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
 						return plugin.DiffResult{
-							ReplaceKeys:         []resource.PropertyKey{"A"},
-							DeleteBeforeReplace: true,
+							ReplaceKeys:		[]resource.PropertyKey{"A"},
+							DeleteBeforeReplace:	true,
 						}, nil
 					}
 					if !req.OldOutputs["B"].DeepEquals(req.NewInputs["B"]) {
@@ -528,9 +528,9 @@ func TestDependencyChangeDBR(t *testing.T) {
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -552,9 +552,9 @@ func TestDependencyChangeDBR(t *testing.T) {
 
 		inputDepsB := map[resource.PropertyKey][]resource.URN{"A": {urnA}}
 		resp, err = monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
-			Inputs:       inputsB,
-			Dependencies: []resource.URN{urnA},
-			PropertyDeps: inputDepsB,
+			Inputs:		inputsB,
+			Dependencies:	[]resource.URN{urnA},
+			PropertyDeps:	inputDepsB,
 		})
 		require.NoError(t, err)
 		urnB = resp.URN
@@ -587,7 +587,7 @@ func TestDependencyChangeDBR(t *testing.T) {
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p.Steps = []lt.TestStep{
 		{
-			Op: Update,
+			Op:	Update,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 				evts []Event, err error,
 			) error {
@@ -626,8 +626,8 @@ func TestDBRProtect(t *testing.T) {
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
 						return plugin.DiffResult{
-							ReplaceKeys:         []resource.PropertyKey{"A"},
-							DeleteBeforeReplace: true,
+							ReplaceKeys:		[]resource.PropertyKey{"A"},
+							DeleteBeforeReplace:	true,
 						}, nil
 					}
 					if !req.OldOutputs["B"].DeepEquals(req.NewInputs["B"]) {
@@ -639,9 +639,9 @@ func TestDBRProtect(t *testing.T) {
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -662,10 +662,10 @@ func TestDBRProtect(t *testing.T) {
 			inputDepsB := map[resource.PropertyKey][]resource.URN{"A": {respA.URN}}
 			protect := true
 			_, err := monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
-				Inputs:       inputsB,
-				Dependencies: []resource.URN{respA.URN},
-				PropertyDeps: inputDepsB,
-				Protect:      &protect,
+				Inputs:		inputsB,
+				Dependencies:	[]resource.URN{respA.URN},
+				PropertyDeps:	inputDepsB,
+				Protect:	&protect,
 			})
 			require.NoError(t, err)
 		} else {
@@ -711,8 +711,8 @@ func TestDBRReplaceOnChanges(t *testing.T) {
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					if req.Name == "resA" {
 						return plugin.DiffResult{
-							ReplaceKeys:         []resource.PropertyKey{"value"},
-							DeleteBeforeReplace: true,
+							ReplaceKeys:		[]resource.PropertyKey{"value"},
+							DeleteBeforeReplace:	true,
 						}, nil
 					}
 
@@ -720,9 +720,9 @@ func TestDBRReplaceOnChanges(t *testing.T) {
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -743,9 +743,9 @@ func TestDBRReplaceOnChanges(t *testing.T) {
 			Inputs: resource.PropertyMap{
 				"value": respA.Outputs["value"],
 			},
-			Dependencies:     []resource.URN{respA.URN},
-			PropertyDeps:     inputDepsB,
-			ReplaceOnChanges: []string{"value"},
+			Dependencies:		[]resource.URN{respA.URN},
+			PropertyDeps:		inputDepsB,
+			ReplaceOnChanges:	[]string{"value"},
 		})
 		require.NoError(t, err)
 
@@ -838,9 +838,9 @@ func TestDBRParallel(t *testing.T) {
 								waitForDelete.Wait()
 							}
 							return plugin.CreateResponse{
-								ID:         "created-id",
-								Properties: req.Properties,
-								Status:     resource.StatusOK,
+								ID:		"created-id",
+								Properties:	req.Properties,
+								Status:		resource.StatusOK,
 							}, nil
 						},
 						DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
@@ -859,8 +859,8 @@ func TestDBRParallel(t *testing.T) {
 
 							if !req.OldInputs["A"].DeepEquals(req.NewInputs["A"]) {
 								return plugin.DiffResult{
-									ReplaceKeys:         []resource.PropertyKey{"A"},
-									DeleteBeforeReplace: true,
+									ReplaceKeys:		[]resource.PropertyKey{"A"},
+									DeleteBeforeReplace:	true,
 								}, nil
 							}
 							return plugin.DiffResult{}, nil
@@ -877,12 +877,12 @@ func TestDBRParallel(t *testing.T) {
 			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 			options := lt.TestUpdateOptions{
 				UpdateOptions: UpdateOptions{
-					ParallelDiff: true,
-					Parallel:     2,
+					ParallelDiff:	true,
+					Parallel:	2,
 				},
-				T:                t,
-				HostF:            hostF,
-				SkipDisplayTests: true,
+				T:			t,
+				HostF:			hostF,
+				SkipDisplayTests:	true,
 			}
 			p := &lt.TestPlan{}
 
@@ -896,9 +896,9 @@ func TestDBRParallel(t *testing.T) {
 				require.NoError(t, err)
 
 				_, err = monitor.RegisterResource("pkgA:index:typ", "resB", true, deploytest.ResourceOptions{
-					Inputs:       resource.NewPropertyMapFromMap(map[string]any{"A": "foo"}),
-					Dependencies: []resource.URN{respA.URN},
-					PropertyDeps: map[resource.PropertyKey][]resource.URN{"A": {respA.URN}},
+					Inputs:		resource.NewPropertyMapFromMap(map[string]any{"A": "foo"}),
+					Dependencies:	[]resource.URN{respA.URN},
+					PropertyDeps:	map[resource.PropertyKey][]resource.URN{"A": {respA.URN}},
 				})
 				require.NoError(t, err)
 

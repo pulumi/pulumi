@@ -30,9 +30,9 @@ func TestMap(t *testing.T) {
 
 	ctx := context.Background()
 	arr := pulumix.Map[string]{
-		"1": pulumix.Val("foo"),
-		"2": pulumi.String("bar"),
-		"3": pulumix.Ptr("baz").Elem(),
+		"1":	pulumix.Val("foo"),
+		"2":	pulumi.String("bar"),
+		"3":	pulumix.Ptr("baz").Elem(),
 	}.ToOutput(ctx)
 
 	val, known, secret, deps, err := internal.AwaitOutput(ctx, arr)
@@ -42,9 +42,9 @@ func TestMap(t *testing.T) {
 	assert.Empty(t, deps)
 
 	assert.Equal(t, map[string]string{
-		"1": "foo",
-		"2": "bar",
-		"3": "baz",
+		"1":	"foo",
+		"2":	"bar",
+		"3":	"baz",
 	}, val)
 }
 
@@ -54,9 +54,9 @@ func TestGMapOutput(t *testing.T) {
 	ctx := context.Background()
 	o := pulumix.Cast[pulumix.GMapOutput[int, pulumi.IntOutput], map[string]int](
 		pulumix.Map[int]{
-			"foo": pulumi.Int(1),
-			"bar": pulumix.Val(2),
-			"baz": pulumix.Ptr(3).Elem(),
+			"foo":	pulumi.Int(1),
+			"bar":	pulumix.Val(2),
+			"baz":	pulumix.Ptr(3).Elem(),
 		},
 	)
 
@@ -89,9 +89,9 @@ func TestGMapOutput(t *testing.T) {
 		assert.False(t, secret)
 		assert.Empty(t, deps)
 		assert.Equal(t, map[string]int{
-			"foo": 1,
-			"bar": 2,
-			"baz": 3,
+			"foo":	1,
+			"bar":	2,
+			"baz":	3,
 		}, v)
 	})
 }

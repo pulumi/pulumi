@@ -22,10 +22,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/newcmd"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -89,9 +89,9 @@ func updateFlagsToOptions(interactive, skipPreview, yes, previewOnly bool) (back
 			errors.New("--yes and --preview-only cannot be used together")
 	default:
 		return backend.UpdateOptions{
-			AutoApprove: yes,
-			SkipPreview: skipPreview,
-			PreviewOnly: previewOnly,
+			AutoApprove:	yes,
+			SkipPreview:	skipPreview,
+			PreviewOnly:	previewOnly,
 		}, nil
 	}
 }

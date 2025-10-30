@@ -28,14 +28,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/backend/state"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/state"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -49,8 +49,8 @@ func newStackLsCmd() *cobra.Command {
 	var tagFilter string
 
 	cmd := &cobra.Command{
-		Use:   "ls",
-		Short: "List stacks",
+		Use:	"ls",
+		Short:	"List stacks",
 		Long: "List stacks\n" +
 			"\n" +
 			"This command lists stacks. By default only stacks with the same project name as the\n" +
@@ -60,15 +60,15 @@ func newStackLsCmd() *cobra.Command {
 			"Results may be further filtered by passing additional flags. Tag filters may include\n" +
 			"the tag name as well as the tag value, separated by an equals sign. For example\n" +
 			"'environment=production' or just 'gcp:project'.",
-		Args: cmdutil.NoArgs,
+		Args:	cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 			cmdArgs := stackLSArgs{
-				jsonOut:    jsonOut,
-				allStacks:  allStacks,
-				orgFilter:  orgFilter,
-				projFilter: projFilter,
-				tagFilter:  tagFilter,
+				jsonOut:	jsonOut,
+				allStacks:	allStacks,
+				orgFilter:	orgFilter,
+				projFilter:	projFilter,
+				tagFilter:	tagFilter,
 			}
 			return runStackLS(ctx, cmdArgs)
 		},
@@ -90,12 +90,12 @@ func newStackLsCmd() *cobra.Command {
 }
 
 type stackLSArgs struct {
-	jsonOut    bool
-	allStacks  bool
-	orgFilter  string
-	projFilter string
-	tagFilter  string
-	stdout     io.Writer
+	jsonOut		bool
+	allStacks	bool
+	orgFilter	string
+	projFilter	string
+	tagFilter	string
+	stdout		io.Writer
 }
 
 func runStackLS(ctx context.Context, args stackLSArgs) error {
@@ -111,8 +111,8 @@ func runStackLS(ctx context.Context, args stackLSArgs) error {
 		return nil
 	}
 	filter := backend.ListStacksFilter{
-		Organization: strPtrIfSet(args.orgFilter),
-		Project:      strPtrIfSet(args.projFilter),
+		Organization:	strPtrIfSet(args.orgFilter),
+		Project:	strPtrIfSet(args.projFilter),
 	}
 	if args.tagFilter != "" {
 		tagName, tagValue := parseTagFilter(args.tagFilter)
@@ -168,8 +168,8 @@ func runStackLS(ctx context.Context, args stackLSArgs) error {
 	//
 	// See display/jsonmessage.go for how we do this when rendering progressive updates.
 	var (
-		allStackSummaries []backend.StackSummary
-		inContToken       backend.ContinuationToken
+		allStackSummaries	[]backend.StackSummary
+		inContToken		backend.ContinuationToken
 	)
 	for {
 		summaries, outContToken, err := b.ListStacks(ctx, filter, inContToken)
@@ -212,12 +212,12 @@ func parseTagFilter(t string) (string, *string) {
 // of stackSummaryJSON objects.  While we can add fields to this structure in the future, we should not change
 // existing fields.
 type stackSummaryJSON struct {
-	Name             string `json:"name"`
-	Current          bool   `json:"current"`
-	LastUpdate       string `json:"lastUpdate,omitempty"`
-	UpdateInProgress *bool  `json:"updateInProgress,omitempty"`
-	ResourceCount    *int   `json:"resourceCount,omitempty"`
-	URL              string `json:"url,omitempty"`
+	Name			string	`json:"name"`
+	Current			bool	`json:"current"`
+	LastUpdate		string	`json:"lastUpdate,omitempty"`
+	UpdateInProgress	*bool	`json:"updateInProgress,omitempty"`
+	ResourceCount		*int	`json:"resourceCount,omitempty"`
+	URL			string	`json:"url,omitempty"`
 }
 
 func formatStackSummariesJSON(
@@ -226,9 +226,9 @@ func formatStackSummariesJSON(
 	output := make([]stackSummaryJSON, len(stackSummaries))
 	for idx, summary := range stackSummaries {
 		summaryJSON := stackSummaryJSON{
-			Name:          summary.Name().String(),
-			ResourceCount: summary.ResourceCount(),
-			Current:       summary.Name().String() == currentStack,
+			Name:		summary.Name().String(),
+			ResourceCount:	summary.ResourceCount(),
+			Current:	summary.Name().String() == currentStack,
 		}
 
 		if summary.LastUpdate() != nil {
@@ -310,8 +310,8 @@ func formatStackSummariesConsole(b backend.Backend, currentStack string, stackSu
 	}
 
 	ui.PrintTable(cmdutil.Table{
-		Headers: headers,
-		Rows:    rows,
+		Headers:	headers,
+		Rows:		rows,
 	}, nil)
 
 	return nil

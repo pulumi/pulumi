@@ -87,8 +87,8 @@ type UnimplementedLoaderServer struct{}
 func (UnimplementedLoaderServer) GetSchema(context.Context, *GetSchemaRequest) (*GetSchemaResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSchema not implemented")
 }
-func (UnimplementedLoaderServer) mustEmbedUnimplementedLoaderServer() {}
-func (UnimplementedLoaderServer) testEmbeddedByValue()                {}
+func (UnimplementedLoaderServer) mustEmbedUnimplementedLoaderServer()	{}
+func (UnimplementedLoaderServer) testEmbeddedByValue()			{}
 
 // UnsafeLoaderServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to LoaderServer will
@@ -117,8 +117,8 @@ func _Loader_GetSchema_Handler(srv interface{}, ctx context.Context, dec func(in
 		return srv.(LoaderServer).GetSchema(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Loader_GetSchema_FullMethodName,
+		Server:		srv,
+		FullMethod:	Loader_GetSchema_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LoaderServer).GetSchema(ctx, req.(*GetSchemaRequest))
@@ -130,14 +130,14 @@ func _Loader_GetSchema_Handler(srv interface{}, ctx context.Context, dec func(in
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Loader_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "codegen.Loader",
-	HandlerType: (*LoaderServer)(nil),
+	ServiceName:	"codegen.Loader",
+	HandlerType:	(*LoaderServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GetSchema",
-			Handler:    _Loader_GetSchema_Handler,
+			MethodName:	"GetSchema",
+			Handler:	_Loader_GetSchema_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "pulumi/codegen/loader.proto",
+	Streams:	[]grpc.StreamDesc{},
+	Metadata:	"pulumi/codegen/loader.proto",
 }

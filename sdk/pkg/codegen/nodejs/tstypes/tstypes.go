@@ -129,9 +129,9 @@ func (t *arrayType) depth() int {
 var _ TypeAst = &arrayType{}
 
 type unionType struct {
-	t1    TypeAst
-	t2    TypeAst
-	tRest []TypeAst
+	t1	TypeAst
+	t2	TypeAst
+	tRest	[]TypeAst
 }
 
 func (t *unionType) all() []TypeAst {
@@ -154,18 +154,18 @@ var _ TypeAst = &unionType{}
 type typeTokenKind string
 
 const (
-	openParen  typeTokenKind = "("
-	closeParen typeTokenKind = ")"
-	openMap    typeTokenKind = "{[key: string]: "
-	closeMap   typeTokenKind = "}"
-	identifier typeTokenKind = "x"
-	array      typeTokenKind = "[]"
-	union      typeTokenKind = " | "
+	openParen	typeTokenKind	= "("
+	closeParen	typeTokenKind	= ")"
+	openMap		typeTokenKind	= "{[key: string]: "
+	closeMap	typeTokenKind	= "}"
+	identifier	typeTokenKind	= "x"
+	array		typeTokenKind	= "[]"
+	union		typeTokenKind	= " | "
 )
 
 type typeToken struct {
-	kind  typeTokenKind
-	value string
+	kind	typeTokenKind
+	value	string
 }
 
 type typeScriptTypeUnparser struct{}

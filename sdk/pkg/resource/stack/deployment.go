@@ -25,8 +25,8 @@ import (
 	"strings"
 
 	fxs "github.com/pgavlin/fx/v2/slices"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype/migrate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
@@ -45,33 +45,33 @@ const (
 	// still support, i.e. we can produce a `deploy.Snapshot` from. This will generally
 	// need to be at least one less than the current schema version so that old deployments can
 	// be migrated to the current schema.
-	DeploymentSchemaVersionOldestSupported = 1
+	DeploymentSchemaVersionOldestSupported	= 1
 
 	// DeploymentSchemaVersionLatest is the latest version of the `Deployment` schema.
 	// Any deployments newer than this version will be rejected.
-	DeploymentSchemaVersionLatest = 4
+	DeploymentSchemaVersionLatest	= 4
 
 	// computedValue is a magic number we emit for a value of a resource.Property value
 	// whenever we need to serialize a resource.Computed. (Since the real/actual value
 	// is not known.) This allows us to persist engine events and resource states that
 	// indicate a value will changed... but is unknown what it will change to.
-	computedValuePlaceholder = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+	computedValuePlaceholder	= "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 
 	// Feature names for deployment features.
-	refreshBeforeUpdateFeature = "refreshBeforeUpdate"
-	viewsFeature               = "views"
-	hooksFeature               = "hooks"
-	taintFeature               = "taint"
+	refreshBeforeUpdateFeature	= "refreshBeforeUpdate"
+	viewsFeature			= "views"
+	hooksFeature			= "hooks"
+	taintFeature			= "taint"
 )
 
 var (
 	// ErrDeploymentSchemaVersionTooOld is returned from `DeserializeDeployment` if the
 	// untyped deployment being deserialized is too old to understand.
-	ErrDeploymentSchemaVersionTooOld = errors.New("this stack's deployment is too old")
+	ErrDeploymentSchemaVersionTooOld	= errors.New("this stack's deployment is too old")
 
 	// ErrDeploymentSchemaVersionTooNew is returned from `DeserializeDeployment` if the
 	// untyped deployment being deserialized is too new to understand.
-	ErrDeploymentSchemaVersionTooNew = errors.New("this stack's deployment version is too new")
+	ErrDeploymentSchemaVersionTooNew	= errors.New("this stack's deployment version is too new")
 )
 
 // ErrDeploymentUnsupportedFeatures is returned from `DeserializeDeployment` if the
@@ -86,8 +86,8 @@ func (e *ErrDeploymentUnsupportedFeatures) Error() string {
 }
 
 var (
-	deploymentSchema    *jsonschema.Schema
-	propertyValueSchema *jsonschema.Schema
+	deploymentSchema	*jsonschema.Schema
+	propertyValueSchema	*jsonschema.Schema
 )
 
 func init() {
@@ -113,10 +113,10 @@ func init() {
 // supportedFeatures is a map of features that are currently supported.
 // Any features not in this map will be rejected.
 var supportedFeatures = map[string]bool{
-	refreshBeforeUpdateFeature: true,
-	viewsFeature:               true,
-	hooksFeature:               true,
-	taintFeature:               true,
+	refreshBeforeUpdateFeature:	true,
+	viewsFeature:			true,
+	hooksFeature:			true,
+	taintFeature:			true,
 }
 
 // validateSupportedFeatures validates that the features used in a deployment are supported.
@@ -221,21 +221,21 @@ func SerializeDeploymentWithMetadata(
 	var secretsProvider *apitype.SecretsProvidersV1
 	if sm != nil {
 		secretsProvider = &apitype.SecretsProvidersV1{
-			Type:  sm.Type(),
-			State: sm.State(),
+			Type:	sm.Type(),
+			State:	sm.State(),
 		}
 	}
 
 	metadata := apitype.SnapshotMetadataV1{}
 	if snap.Metadata.IntegrityErrorMetadata != nil {
 		metadata.IntegrityErrorMetadata = &apitype.SnapshotIntegrityErrorMetadataV1{
-			Version: snap.Metadata.IntegrityErrorMetadata.Version,
-			Command: snap.Metadata.IntegrityErrorMetadata.Command,
-			Error:   snap.Metadata.IntegrityErrorMetadata.Error,
+			Version:	snap.Metadata.IntegrityErrorMetadata.Version,
+			Command:	snap.Metadata.IntegrityErrorMetadata.Command,
+			Error:		snap.Metadata.IntegrityErrorMetadata.Error,
 		}
 	}
 
-	if completeBatch != nil { // If we started a batch operation, complete it.
+	if completeBatch != nil {	// If we started a batch operation, complete it.
 		if err := completeBatch(ctx); err != nil {
 			return nil, 0, nil, err
 		}
@@ -252,20 +252,20 @@ func SerializeDeploymentWithMetadata(
 	}
 
 	return &apitype.DeploymentV3{
-		Manifest:          manifest,
-		Resources:         resources,
-		SecretsProviders:  secretsProvider,
-		PendingOperations: operations,
-		Metadata:          metadata,
+		Manifest:		manifest,
+		Resources:		resources,
+		SecretsProviders:	secretsProvider,
+		PendingOperations:	operations,
+		Metadata:		metadata,
 	}, version, features, nil
 }
 
 // SerializeOptions controls how a deployment is serialized to JSON.
 type SerializeOptions struct {
 	// ShowSecrets indicates that secrets should be shown in the serialized deployment.
-	ShowSecrets bool
+	ShowSecrets	bool
 	// Pretty indicates that the serialized deployment should be indented and formatted for display to users.
-	Pretty bool
+	Pretty	bool
 }
 
 // SerializeUntypedDeployment serializes a snapshot into an untyped deployment.
@@ -291,9 +291,9 @@ func SerializeUntypedDeployment(
 	}
 
 	return &apitype.UntypedDeployment{
-		Version:    version,
-		Features:   features,
-		Deployment: jsonDeployment,
+		Version:	version,
+		Features:	features,
+		Deployment:	jsonDeployment,
 	}, nil
 }
 
@@ -427,9 +427,9 @@ func DeserializeDeploymentV3(
 	metadata := deploy.SnapshotMetadata{}
 	if deployment.Metadata.IntegrityErrorMetadata != nil {
 		metadata.IntegrityErrorMetadata = &deploy.SnapshotIntegrityErrorMetadata{
-			Version: deployment.Metadata.IntegrityErrorMetadata.Version,
-			Command: deployment.Metadata.IntegrityErrorMetadata.Command,
-			Error:   deployment.Metadata.IntegrityErrorMetadata.Error,
+			Version:	deployment.Metadata.IntegrityErrorMetadata.Version,
+			Command:	deployment.Metadata.IntegrityErrorMetadata.Command,
+			Error:		deployment.Metadata.IntegrityErrorMetadata.Error,
 		}
 	}
 
@@ -469,37 +469,37 @@ func SerializeResource(
 	}))
 
 	v3Resource := apitype.ResourceV3{
-		URN:                     res.URN,
-		Custom:                  res.Custom,
-		Delete:                  res.Delete,
-		ID:                      res.ID,
-		Type:                    res.Type,
-		Parent:                  res.Parent,
-		Inputs:                  inputs,
-		Outputs:                 outputs,
-		Protect:                 res.Protect,
-		Taint:                   res.Taint,
-		External:                res.External,
-		Dependencies:            res.Dependencies,
-		InitErrors:              res.InitErrors,
-		Provider:                res.Provider,
-		PropertyDependencies:    res.PropertyDependencies,
-		PendingReplacement:      res.PendingReplacement,
-		AdditionalSecretOutputs: res.AdditionalSecretOutputs,
-		Aliases:                 res.Aliases,
-		ImportID:                res.ImportID,
-		RetainOnDelete:          res.RetainOnDelete,
-		DeletedWith:             res.DeletedWith,
-		Created:                 res.Created,
-		Modified:                res.Modified,
-		SourcePosition:          res.SourcePosition,
-		StackTrace:              stackTrace,
-		HideDiff:                res.HideDiff,
-		IgnoreChanges:           res.IgnoreChanges,
-		ReplaceOnChanges:        res.ReplaceOnChanges,
-		RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
-		ViewOf:                  res.ViewOf,
-		ResourceHooks:           res.ResourceHooks,
+		URN:				res.URN,
+		Custom:				res.Custom,
+		Delete:				res.Delete,
+		ID:				res.ID,
+		Type:				res.Type,
+		Parent:				res.Parent,
+		Inputs:				inputs,
+		Outputs:			outputs,
+		Protect:			res.Protect,
+		Taint:				res.Taint,
+		External:			res.External,
+		Dependencies:			res.Dependencies,
+		InitErrors:			res.InitErrors,
+		Provider:			res.Provider,
+		PropertyDependencies:		res.PropertyDependencies,
+		PendingReplacement:		res.PendingReplacement,
+		AdditionalSecretOutputs:	res.AdditionalSecretOutputs,
+		Aliases:			res.Aliases,
+		ImportID:			res.ImportID,
+		RetainOnDelete:			res.RetainOnDelete,
+		DeletedWith:			res.DeletedWith,
+		Created:			res.Created,
+		Modified:			res.Modified,
+		SourcePosition:			res.SourcePosition,
+		StackTrace:			stackTrace,
+		HideDiff:			res.HideDiff,
+		IgnoreChanges:			res.IgnoreChanges,
+		ReplaceOnChanges:		res.ReplaceOnChanges,
+		RefreshBeforeUpdate:		res.RefreshBeforeUpdate,
+		ViewOf:				res.ViewOf,
+		ResourceHooks:			res.ResourceHooks,
 	}
 
 	if res.CustomTimeouts.IsNotEmpty() {
@@ -518,8 +518,8 @@ func SerializeOperation(
 		return apitype.OperationV2{}, fmt.Errorf("serializing resource: %w", err)
 	}
 	return apitype.OperationV2{
-		Resource: res,
-		Type:     apitype.OperationType(op.Type),
+		Resource:	res,
+		Type:		apitype.OperationType(op.Type),
 	}, nil
 }
 
@@ -584,9 +584,9 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 	if prop.IsResourceReference() {
 		ref := prop.ResourceReferenceValue()
 		serialized := map[string]any{
-			resource.SigKey:  resource.ResourceReferenceSig,
-			"urn":            string(ref.URN),
-			"packageVersion": ref.PackageVersion,
+			resource.SigKey:	resource.ResourceReferenceSig,
+			"urn":			string(ref.URN),
+			"packageVersion":	ref.PackageVersion,
 		}
 		if id, hasID := ref.IDString(); hasID {
 			serialized["id"] = id
@@ -666,38 +666,38 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 	}))
 
 	return resource.NewState{
-			Type:                    res.Type,
-			URN:                     res.URN,
-			Custom:                  res.Custom,
-			Delete:                  res.Delete,
-			ID:                      res.ID,
-			Inputs:                  inputs,
-			Outputs:                 outputs,
-			Parent:                  res.Parent,
-			Protect:                 res.Protect,
-			Taint:                   res.Taint,
-			External:                res.External,
-			Dependencies:            res.Dependencies,
-			InitErrors:              res.InitErrors,
-			Provider:                res.Provider,
-			PropertyDependencies:    res.PropertyDependencies,
-			PendingReplacement:      res.PendingReplacement,
-			AdditionalSecretOutputs: res.AdditionalSecretOutputs,
-			Aliases:                 res.Aliases,
-			CustomTimeouts:          res.CustomTimeouts,
-			ImportID:                res.ImportID,
-			RetainOnDelete:          res.RetainOnDelete,
-			DeletedWith:             res.DeletedWith,
-			Created:                 res.Created,
-			Modified:                res.Modified,
-			SourcePosition:          res.SourcePosition,
-			StackTrace:              stackTrace,
-			IgnoreChanges:           res.IgnoreChanges,
-			HideDiff:                res.HideDiff,
-			ReplaceOnChanges:        res.ReplaceOnChanges,
-			RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
-			ViewOf:                  res.ViewOf,
-			ResourceHooks:           res.ResourceHooks,
+			Type:				res.Type,
+			URN:				res.URN,
+			Custom:				res.Custom,
+			Delete:				res.Delete,
+			ID:				res.ID,
+			Inputs:				inputs,
+			Outputs:			outputs,
+			Parent:				res.Parent,
+			Protect:			res.Protect,
+			Taint:				res.Taint,
+			External:			res.External,
+			Dependencies:			res.Dependencies,
+			InitErrors:			res.InitErrors,
+			Provider:			res.Provider,
+			PropertyDependencies:		res.PropertyDependencies,
+			PendingReplacement:		res.PendingReplacement,
+			AdditionalSecretOutputs:	res.AdditionalSecretOutputs,
+			Aliases:			res.Aliases,
+			CustomTimeouts:			res.CustomTimeouts,
+			ImportID:			res.ImportID,
+			RetainOnDelete:			res.RetainOnDelete,
+			DeletedWith:			res.DeletedWith,
+			Created:			res.Created,
+			Modified:			res.Modified,
+			SourcePosition:			res.SourcePosition,
+			StackTrace:			stackTrace,
+			IgnoreChanges:			res.IgnoreChanges,
+			HideDiff:			res.HideDiff,
+			ReplaceOnChanges:		res.ReplaceOnChanges,
+			RefreshBeforeUpdate:		res.RefreshBeforeUpdate,
+			ViewOf:				res.ViewOf,
+			ResourceHooks:			res.ResourceHooks,
 		}.Make(),
 		nil
 }
@@ -825,9 +825,9 @@ func DeserializePropertyValue(v any, dec config.Decrypter,
 							"malformed secret value: exactly one of `ciphertext` or `plaintext` must be supplied")
 					}
 					secret := &apitype.SecretV1{
-						Sig:        resource.SecretSig,
-						Plaintext:  plaintext,
-						Ciphertext: ciphertext,
+						Sig:		resource.SecretSig,
+						Plaintext:	plaintext,
+						Ciphertext:	ciphertext,
 					}
 					return deserializeSecret(ctx, secret, dec)
 				case resource.ResourceReferenceSig:

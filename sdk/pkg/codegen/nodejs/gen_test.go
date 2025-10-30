@@ -28,8 +28,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/testing/test"
 )
 
 // For better CI test to job distribution, we split the test cases into three tests.
@@ -56,7 +56,7 @@ func TestGeneratePackageThree(t *testing.T) {
 
 func testGeneratePackageBatch(t *testing.T, testCases []*test.SDKTest) {
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
-		Language: "nodejs",
+		Language:	"nodejs",
 		GenPackage: func(s string, p *schema.Package, m map[string][]byte, l schema.ReferenceLoader) (map[string][]byte, error) {
 			return GeneratePackage(s, p, m, nil, false, l)
 		},
@@ -64,9 +64,9 @@ func testGeneratePackageBatch(t *testing.T, testCases []*test.SDKTest) {
 			"nodejs/compile": func(t *testing.T, pwd string) {
 				test.TypeCheckNodeJSPackage(t, pwd, true)
 			},
-			"nodejs/test": testGeneratedPackage,
+			"nodejs/test":	testGeneratedPackage,
 		},
-		TestCases: testCases,
+		TestCases:	testCases,
 	})
 }
 
@@ -198,20 +198,20 @@ func TestPascalCases(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		input    string
-		expected string
+		input		string
+		expected	string
 	}{
 		{
-			input:    "hi",
-			expected: "Hi",
+			input:		"hi",
+			expected:	"Hi",
 		},
 		{
-			input:    "NothingChanges",
-			expected: "NothingChanges",
+			input:		"NothingChanges",
+			expected:	"NothingChanges",
 		},
 		{
-			input:    "everything-changed",
-			expected: "EverythingChanged",
+			input:		"everything-changed",
+			expected:	"EverythingChanged",
 		},
 	}
 	for _, tt := range tests {
@@ -224,9 +224,9 @@ func Test_isStringType(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		input    schema.Type
-		expected bool
+		name		string
+		input		schema.Type
+		expected	bool
 	}{
 		{"string", schema.StringType, true},
 		{"int", schema.IntType, false},

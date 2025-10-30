@@ -49,11 +49,11 @@ type Output interface {
 }
 
 var (
-	outputType = reflect.TypeOf((*Output)(nil)).Elem()
-	inputType  = reflect.TypeOf((*Input)(nil)).Elem()
+	outputType	= reflect.TypeOf((*Output)(nil)).Elem()
+	inputType	= reflect.TypeOf((*Input)(nil)).Elem()
 )
 
-var concreteTypeToOutputType sync.Map // map[reflect.Type]reflect.Type
+var concreteTypeToOutputType sync.Map	// map[reflect.Type]reflect.Type
 
 // RegisterOutputType registers an Output type with the Pulumi runtime. If a value of this type's concrete type is
 // returned by an Apply, the Apply will return the specific Output type.
@@ -65,7 +65,7 @@ func RegisterOutputType(output Output) {
 	}
 }
 
-var inputInterfaceTypeToConcreteType sync.Map // map[reflect.Type]reflect.Type
+var inputInterfaceTypeToConcreteType sync.Map	// map[reflect.Type]reflect.Type
 
 // RegisterInputType registers an Input type with the Pulumi runtime. This allows the input type to be instantiated
 // for a given input interface.
@@ -106,30 +106,30 @@ type OutputStatus uint32
 
 // States that an Output can be in.
 const (
-	OutputPending OutputStatus = iota
+	OutputPending	OutputStatus	= iota
 	OutputResolved
 	OutputRejected
 )
 
 // OutputState holds the internal details of an Output.
 type OutputState struct {
-	cond *sync.Cond
+	cond	*sync.Cond
 
-	join *WorkGroup // the wait group associated with this output, if any.
+	join	*WorkGroup	// the wait group associated with this output, if any.
 
-	state OutputStatus // one of Output{Pending,Resolved,Rejected}
+	state	OutputStatus	// one of Output{Pending,Resolved,Rejected}
 
-	value  any   // the value of this output if it is resolved.
-	err    error // the error associated with this output if it is rejected.
-	known  bool  // true if this output's value is known.
-	secret bool  // true if this output's value is secret
+	value	any	// the value of this output if it is resolved.
+	err	error	// the error associated with this output if it is rejected.
+	known	bool	// true if this output's value is known.
+	secret	bool	// true if this output's value is secret
 
-	element reflect.Type // the element type of this output.
+	element	reflect.Type	// the element type of this output.
 
 	// The dependencies associated with this output property.
 	// This is a []pulumi.Resource, but we can't use that type here because
 	// it would create a circular dependency.
-	deps []Resource
+	deps	[]Resource
 }
 
 func getOutputState(v reflect.Value) (*OutputState, bool) {
@@ -329,24 +329,24 @@ func NewOutputState(join *WorkGroup, elementType reflect.Type, deps ...Resource)
 
 	var m sync.Mutex
 	out := &OutputState{
-		join:    join,
-		element: elementType,
-		deps:    deps,
+		join:		join,
+		element:	elementType,
+		deps:		deps,
 		// Note: Calling registerResource or readResource with the same resource state can report a
 		// spurious data race here. See note in https://github.com/pulumi/pulumi/pull/10081.
 		//
 		// To reproduce, revert changes in PR to file pkg/engine/lifecycletest/golang_sdk_test.go.
-		cond: sync.NewCond(&m),
+		cond:	sync.NewCond(&m),
 	}
 	return out
 }
 
 var (
-	outputStateType = reflect.TypeOf((*OutputState)(nil))
+	outputStateType	= reflect.TypeOf((*OutputState)(nil))
 
 	// outputTypeToOutputState is a map from a type
 	// to the index of the field that embeds *OutputState.
-	outputTypeToOutputState sync.Map // map[reflect.Type]int
+	outputTypeToOutputState	sync.Map	// map[reflect.Type]int
 )
 
 // SetOutputState sets the OutputState field of the given output to the given state.
@@ -387,8 +387,8 @@ func NewOutput(wg *WorkGroup, typ reflect.Type, deps ...Resource) Output {
 }
 
 var (
-	contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
-	errorType   = reflect.TypeOf((*error)(nil)).Elem()
+	contextType	= reflect.TypeOf((*context.Context)(nil)).Elem()
+	errorType	= reflect.TypeOf((*error)(nil)).Elem()
 )
 
 // applier is a normalized version of a function
@@ -397,15 +397,15 @@ var (
 // Use its Call method instead of calling the fn directly.
 type applier struct {
 	// Out is the type of output produced by this applier.
-	Out reflect.Type
+	Out	reflect.Type
 
-	fn  reflect.Value
-	ctx bool // whether fn accepts a context as its first input
-	err bool // whether fn return an err as its last result
+	fn	reflect.Value
+	ctx	bool	// whether fn accepts a context as its first input
+	err	bool	// whether fn return an err as its last result
 
 	// This is non-nil if the input value should be converted
 	// with Value.Convert first.
-	convertTo reflect.Type
+	convertTo	reflect.Type
 }
 
 func newApplier(fn any, elemType reflect.Type) (_ *applier, err error) {
@@ -450,7 +450,7 @@ func newApplier(fn any, elemType reflect.Type) (_ *applier, err error) {
 		ap.ctx = true
 		elemIdx = 1
 		elemName = "second"
-		fallthrough // validate element type
+		fallthrough	// validate element type
 	case 1:
 		switch t := ft.In(elemIdx); {
 		case elemType.AssignableTo(t):
@@ -482,7 +482,7 @@ func newApplier(fn any, elemType reflect.Type) (_ *applier, err error) {
 			return nil, fmt.Errorf("applier's second return type must be assignable to error, got %v", t)
 		}
 		ap.err = true
-		fallthrough // extract output type
+		fallthrough	// extract output type
 	case 1:
 		ap.Out = ft.Out(0)
 	default:
@@ -494,7 +494,7 @@ func newApplier(fn any, elemType reflect.Type) (_ *applier, err error) {
 
 // Call executes the applier on the provided value and returns the result.
 func (ap *applier) Call(ctx context.Context, in reflect.Value) (reflect.Value, error) {
-	args := slice.Prealloc[reflect.Value](2) // ([ctx], in)
+	args := slice.Prealloc[reflect.Value](2)	// ([ctx], in)
 	if ap.ctx {
 		args = append(args, reflect.ValueOf(ctx))
 	}
@@ -504,8 +504,8 @@ func (ap *applier) Call(ctx context.Context, in reflect.Value) (reflect.Value, e
 	args = append(args, in)
 
 	var (
-		out reflect.Value
-		err error
+		out	reflect.Value
+		err	error
 	)
 	results := ap.fn.Call(args)
 	out = results[0]

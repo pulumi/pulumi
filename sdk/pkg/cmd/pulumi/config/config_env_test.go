@@ -24,13 +24,13 @@ import (
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/eval"
 	"github.com/pulumi/esc/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/b64"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
@@ -85,9 +85,9 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 ) *configEnvCmd {
 	stackRef := "stack"
 	return &configEnvCmd{
-		stdin:       stdin,
-		stdout:      stdout,
-		interactive: true,
+		stdin:		stdin,
+		stdout:		stdout,
+		interactive:	true,
 
 		ws: &pkgWorkspace.MockContext{
 			ReadProjectF: func() (*workspace.Project, string, error) {
@@ -110,10 +110,10 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 			return &backend.MockStack{
 				RefF: func() backend.StackReference {
 					return &backend.MockStackReference{
-						StringV:             "org/stack",
-						NameV:               tokens.MustParseStackName("stack"),
-						ProjectV:            "project",
-						FullyQualifiedNameV: "org/stack",
+						StringV:		"org/stack",
+						NameV:			tokens.MustParseStackName("stack"),
+						ProjectV:		"project",
+						FullyQualifiedNameV:	"org/stack",
 					}
 				},
 				OrgNameF: func() string {
@@ -121,14 +121,14 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 				},
 				BackendF: func() backend.Backend {
 					return &backend.MockEnvironmentsBackend{
-						CreateEnvironmentF:    createEnvironment,
-						CheckYAMLEnvironmentF: checkYAMLEnvironment,
+						CreateEnvironmentF:	createEnvironment,
+						CheckYAMLEnvironmentF:	checkYAMLEnvironment,
 					}
 				},
 				DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
 					return b64.NewBase64SecretsManager(), nil
 				},
-				ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
+				ConfigLocationF:	func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
 			}, nil
 		},
 
@@ -145,7 +145,7 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 			*newStackYAML = string(b)
 			return nil
 		},
-		stackRef: &stackRef,
+		stackRef:	&stackRef,
 	}
 }
 
@@ -159,24 +159,24 @@ func mapEvalDiags(diags syntax.Diagnostics) apitype.EnvironmentDiagnostics {
 		var rng *esc.Range
 		if d.Subject != nil {
 			begin := esc.Pos{
-				Line:   d.Subject.Start.Line,
-				Column: d.Subject.Start.Column,
-				Byte:   d.Subject.Start.Byte,
+				Line:	d.Subject.Start.Line,
+				Column:	d.Subject.Start.Column,
+				Byte:	d.Subject.Start.Byte,
 			}
 			end := esc.Pos{
-				Line:   d.Subject.End.Line,
-				Column: d.Subject.End.Column,
-				Byte:   d.Subject.End.Byte,
+				Line:	d.Subject.End.Line,
+				Column:	d.Subject.End.Column,
+				Byte:	d.Subject.End.Byte,
 			}
 			rng = &esc.Range{
-				Environment: d.Subject.Filename,
-				Begin:       begin,
-				End:         end,
+				Environment:	d.Subject.Filename,
+				Begin:		begin,
+				End:		end,
 			}
 		}
 		api[i] = apitype.EnvironmentDiagnostic{
-			Range:   rng,
-			Summary: d.Summary,
+			Range:		rng,
+			Summary:	d.Summary,
 		}
 	}
 

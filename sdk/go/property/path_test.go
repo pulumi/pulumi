@@ -26,31 +26,31 @@ func TestGet(t *testing.T) {
 	t.Parallel()
 
 	type pathFailure struct {
-		found property.Value
-		msg   string
+		found	property.Value
+		msg	string
 	}
 
 	tests := []struct {
-		name string
-		path property.Path
+		name	string
+		path	property.Path
 
-		from     property.Value
-		expected property.Value
+		from		property.Value
+		expected	property.Value
 
-		failure *pathFailure
+		failure	*pathFailure
 	}{
 		{
-			name: "map-key",
+			name:	"map-key",
 			path: property.Path{
 				property.NewSegment("k"),
 			},
 			from: property.New(map[string]property.Value{
 				"k": property.New("v"),
 			}),
-			expected: property.New("v"),
+			expected:	property.New("v"),
 		},
 		{
-			name: "missing-key",
+			name:	"missing-key",
 			path: property.Path{
 				property.NewSegment("missing"),
 			},
@@ -61,11 +61,11 @@ func TestGet(t *testing.T) {
 				found: property.New(map[string]property.Value{
 					"k": property.New("v"),
 				}),
-				msg: `missing key "missing" in map`,
+				msg:	`missing key "missing" in map`,
 			},
 		},
 		{
-			name: "expected-map",
+			name:	"expected-map",
 			path: property.Path{
 				property.NewSegment("missing"),
 			},
@@ -76,11 +76,11 @@ func TestGet(t *testing.T) {
 				found: property.New([]property.Value{
 					property.New("v"),
 				}),
-				msg: `expected a map, found a array`,
+				msg:	`expected a map, found a array`,
 			},
 		},
 		{
-			name: "array-idx",
+			name:	"array-idx",
 			path: property.Path{
 				property.NewSegment(1),
 			},
@@ -88,21 +88,21 @@ func TestGet(t *testing.T) {
 				property.New("0"),
 				property.New("1"),
 			}),
-			expected: property.New("1"),
+			expected:	property.New("1"),
 		},
 		{
-			name: "expected-array",
+			name:	"expected-array",
 			path: property.Path{
 				property.NewSegment(0),
 			},
-			from: property.New("foo"),
+			from:	property.New("foo"),
 			failure: &pathFailure{
-				found: property.New("foo"),
-				msg:   `expected an array, found a string`,
+				found:	property.New("foo"),
+				msg:	`expected an array, found a string`,
 			},
 		},
 		{
-			name: "array-out-of-bounds",
+			name:	"array-out-of-bounds",
 			path: property.Path{
 				property.NewSegment(1),
 			},
@@ -113,11 +113,11 @@ func TestGet(t *testing.T) {
 				found: property.New([]property.Value{
 					property.New("0"),
 				}),
-				msg: "index 1 out of bounds of an array of length 1",
+				msg:	"index 1 out of bounds of an array of length 1",
 			},
 		},
 		{
-			name: "negative-array-index",
+			name:	"negative-array-index",
 			path: property.Path{
 				property.NewSegment(-1),
 			},
@@ -128,43 +128,43 @@ func TestGet(t *testing.T) {
 				found: property.New([]property.Value{
 					property.New("0"),
 				}),
-				msg: "index -1 out of bounds of an array of length 1",
+				msg:	"index -1 out of bounds of an array of length 1",
 			},
 		},
 		{
-			name:     "empty-path-map",
-			path:     property.Path{},
-			from:     property.New(map[string]property.Value{"k": property.New(true)}),
-			expected: property.New(map[string]property.Value{"k": property.New(true)}),
+			name:		"empty-path-map",
+			path:		property.Path{},
+			from:		property.New(map[string]property.Value{"k": property.New(true)}),
+			expected:	property.New(map[string]property.Value{"k": property.New(true)}),
 		},
 		{
-			name:     "empty-path-array",
-			path:     property.Path{},
-			from:     property.New([]property.Value{property.New(true)}),
-			expected: property.New([]property.Value{property.New(true)}),
+			name:		"empty-path-array",
+			path:		property.Path{},
+			from:		property.New([]property.Value{property.New(true)}),
+			expected:	property.New([]property.Value{property.New(true)}),
 		},
 		{
-			name:     "empty-path-primitive",
-			path:     property.Path{},
-			from:     property.New(true),
-			expected: property.New(true),
+			name:		"empty-path-primitive",
+			path:		property.Path{},
+			from:		property.New(true),
+			expected:	property.New(true),
 		},
 		{
-			name: "nested-access",
+			name:	"nested-access",
 			path: property.Path{
 				property.NewSegment("l1"),
 				property.NewSegment(0),
 				property.NewSegment("n1"),
 			},
 			from: property.New(map[string]property.Value{
-				"l0": property.New("l0-value"),
+				"l0":	property.New("l0-value"),
 				"l1": property.New([]property.Value{
 					property.New(map[string]property.Value{
 						"n1": property.New("found"),
 					}),
 				}),
 			}),
-			expected: property.New("found"),
+			expected:	property.New("found"),
 		},
 	}
 
@@ -188,63 +188,63 @@ func TestSet(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name string
-		path property.Path
-		src  property.Value
-		to   property.Value
+		name	string
+		path	property.Path
+		src	property.Value
+		to	property.Value
 
-		expected property.Value
+		expected	property.Value
 	}{
 		{
-			name: "inside map",
-			path: property.Path{property.NewSegment("k2")},
+			name:	"inside map",
+			path:	property.Path{property.NewSegment("k2")},
 			src: property.New(map[string]property.Value{
 				"k1": property.New("v1"),
 			}),
-			to: property.New("v2"),
+			to:	property.New("v2"),
 			expected: property.New(map[string]property.Value{
-				"k1": property.New("v1"),
-				"k2": property.New("v2"),
+				"k1":	property.New("v1"),
+				"k2":	property.New("v2"),
 			}),
 		},
 		{
-			name: "inside array",
-			path: property.Path{property.NewSegment(1)},
+			name:	"inside array",
+			path:	property.Path{property.NewSegment(1)},
 			src: property.New([]property.Value{
 				property.New("o1"),
 				property.New("o2"),
 			}),
-			to: property.New("v2"),
+			to:	property.New("v2"),
 			expected: property.New([]property.Value{
 				property.New("o1"),
 				property.New("v2"),
 			}),
 		},
 		{
-			name:     "empty path",
-			path:     property.Path{},
-			src:      property.New("v1"),
-			to:       property.New("v2"),
-			expected: property.New("v2"),
+			name:		"empty path",
+			path:		property.Path{},
+			src:		property.New("v1"),
+			to:		property.New("v2"),
+			expected:	property.New("v2"),
 		},
 		{
-			name: "nested",
+			name:	"nested",
 			path: property.Path{
 				property.NewSegment("l1"),
 				property.NewSegment(0),
 				property.NewSegment("n1"),
 			},
 			src: property.New(map[string]property.Value{
-				"l0": property.New("l0-value"),
+				"l0":	property.New("l0-value"),
 				"l1": property.New([]property.Value{
 					property.New(map[string]property.Value{
 						"n1": property.New("old-value"),
 					}),
 				}),
 			}),
-			to: property.New(property.Null),
+			to:	property.New(property.Null),
 			expected: property.New(map[string]property.Value{
-				"l0": property.New("l0-value"),
+				"l0":	property.New("l0-value"),
 				"l1": property.New([]property.Value{
 					property.New(map[string]property.Value{
 						"n1": property.New(property.Null),
@@ -270,16 +270,16 @@ func TestAlter(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		f        func(property.Value) property.Value
-		v        property.Value
-		expected property.Value
-		path     property.Path
+		name		string
+		f		func(property.Value) property.Value
+		v		property.Value
+		expected	property.Value
+		path		property.Path
 
-		expectErr bool
+		expectErr	bool
 	}{
 		{
-			name: "mutate-in-map",
+			name:	"mutate-in-map",
 			f: func(v property.Value) property.Value {
 				b := v.AsBool()
 				if !b {
@@ -290,21 +290,21 @@ func TestAlter(t *testing.T) {
 			v: property.New(map[string]property.Value{
 				"k": property.New(true),
 			}),
-			path: property.Path{property.NewSegment("k")},
+			path:	property.Path{property.NewSegment("k")},
 			expected: property.New(map[string]property.Value{
 				"k": property.New("yes"),
 			}),
 		},
 		{
-			name: "invalid-path",
+			name:	"invalid-path",
 			f: func(v property.Value) property.Value {
 				panic("v")
 			},
 			v: property.New(map[string]property.Value{
 				"k": property.New(true),
 			}),
-			path:      property.Path{property.NewSegment("invalid")},
-			expectErr: true,
+			path:		property.Path{property.NewSegment("invalid")},
+			expectErr:	true,
 		},
 	}
 

@@ -19,20 +19,20 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate/client"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // cloudSnapshotPersister persists snapshots to the Pulumi service.
 type cloudSnapshotPersister struct {
-	context             context.Context         // The context to use for client requests.
-	update              client.UpdateIdentifier // The UpdateIdentifier for this update sequence.
-	tokenSource         tokenSourceCapability   // A token source for interacting with the service.
-	backend             *cloudBackend           // A backend for communicating with the service
-	deploymentDiffState *deploymentDiffState
+	context			context.Context		// The context to use for client requests.
+	update			client.UpdateIdentifier	// The UpdateIdentifier for this update sequence.
+	tokenSource		tokenSourceCapability	// A token source for interacting with the service.
+	backend			*cloudBackend		// A backend for communicating with the service
+	deploymentDiffState	*deploymentDiffState
 }
 
 func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
@@ -71,7 +71,7 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 		if err := persister.saveFullVerbatim(ctx, differ, deployment.raw, version, persister.tokenSource); err != nil {
 			return err
 		}
-	} else { // Otherwise can use saveDiff.
+	} else {	// Otherwise can use saveDiff.
 		diff, err := differ.Diff(ctx, deployment)
 		if err != nil {
 			return err
@@ -114,10 +114,10 @@ func (b *cloudBackend) newSnapshotPersister(ctx context.Context, update client.U
 	tokenSource tokenSourceCapability,
 ) *cloudSnapshotPersister {
 	p := &cloudSnapshotPersister{
-		context:     ctx,
-		update:      update,
-		tokenSource: tokenSource,
-		backend:     b,
+		context:	ctx,
+		update:		update,
+		tokenSource:	tokenSource,
+		backend:	b,
 	}
 
 	caps := b.Capabilities(ctx)

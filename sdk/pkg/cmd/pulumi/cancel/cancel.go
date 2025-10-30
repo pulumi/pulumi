@@ -21,11 +21,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -35,9 +35,9 @@ func NewCancelCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var yes bool
 	var stack string
 	cmd := &cobra.Command{
-		Use:   "cancel [<stack-name>]",
-		Args:  cmdutil.MaximumNArgs(1),
-		Short: "Cancel a stack's currently running update, if any",
+		Use:	"cancel [<stack-name>]",
+		Args:	cmdutil.MaximumNArgs(1),
+		Short:	"Cancel a stack's currently running update, if any",
 		Long: "Cancel a stack's currently running update, if any.\n" +
 			"\n" +
 			"This command cancels the update currently being applied to a stack if any exists.\n" +

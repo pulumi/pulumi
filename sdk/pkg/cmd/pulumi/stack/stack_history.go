@@ -25,12 +25,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -47,10 +47,10 @@ func newStackHistoryCmd() *cobra.Command {
 	var showFullDates bool
 
 	cmd := &cobra.Command{
-		Use:        "history",
-		Aliases:    []string{"hist"},
-		SuggestFor: []string{"updates"},
-		Short:      "Display history for a stack",
+		Use:		"history",
+		Aliases:	[]string{"hist"},
+		SuggestFor:	[]string{"updates"},
+		Short:		"Display history for a stack",
 		Long: `Display history for a stack
 
 This command displays data about previous updates for a stack.`,
@@ -132,25 +132,25 @@ This command displays data about previous updates for a stack.`,
 // updateInfoJSON is the shape of the --json output for updates in a stack history. While we can add fields to this
 // structure in the future, we should not change existing fields.
 type updateInfoJSON struct {
-	Version     int                        `json:"version"`
-	Kind        string                     `json:"kind"`
-	StartTime   string                     `json:"startTime"`
-	Message     string                     `json:"message"`
-	Environment map[string]string          `json:"environment"`
-	Config      map[string]configValueJSON `json:"config"`
-	Result      string                     `json:"result,omitempty"`
+	Version		int				`json:"version"`
+	Kind		string				`json:"kind"`
+	StartTime	string				`json:"startTime"`
+	Message		string				`json:"message"`
+	Environment	map[string]string		`json:"environment"`
+	Config		map[string]configValueJSON	`json:"config"`
+	Result		string				`json:"result,omitempty"`
 
 	// These values are only present once the update finishes
-	EndTime         *string         `json:"endTime,omitempty"`
-	ResourceChanges *map[string]int `json:"resourceChanges,omitempty"`
+	EndTime		*string		`json:"endTime,omitempty"`
+	ResourceChanges	*map[string]int	`json:"resourceChanges,omitempty"`
 }
 
 // configValueJSON is the shape of the --json output for a configuration value in an update in a stack history. While we
 // can add fields to this structure in the future, we should not change existing fields.
 type configValueJSON struct {
-	Value       *string `json:"value,omitempty"`
-	ObjectValue any     `json:"objectValue,omitempty"`
-	Secret      bool    `json:"secret"`
+	Value		*string	`json:"value,omitempty"`
+	ObjectValue	any	`json:"objectValue,omitempty"`
+	Secret		bool	`json:"secret"`
 }
 
 func buildUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter) ([]updateInfoJSON, error) {
@@ -161,11 +161,11 @@ func buildUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter) 
 	updatesJSON := make([]updateInfoJSON, len(updates))
 	for idx, update := range updates {
 		info := updateInfoJSON{
-			Version:     update.Version,
-			Kind:        string(update.Kind),
-			StartTime:   cmd.FormatTime(time.Unix(update.StartTime, 0).UTC()),
-			Message:     update.Message,
-			Environment: update.Environment,
+			Version:	update.Version,
+			Kind:		string(update.Kind),
+			StartTime:	cmd.FormatTime(time.Unix(update.StartTime, 0).UTC()),
+			Message:	update.Message,
+			Environment:	update.Environment,
 		}
 
 		info.Config = make(map[string]configValueJSON)

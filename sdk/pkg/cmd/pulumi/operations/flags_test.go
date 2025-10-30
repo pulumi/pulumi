@@ -29,28 +29,28 @@ func TestContinueOnErrorEnvVar(t *testing.T) {
 		NewDestroyCmd,
 	}
 	testCases := []struct {
-		EnvVarValue string
-		Expected    bool
+		EnvVarValue	string
+		Expected	bool
 	}{
 		{
-			EnvVarValue: "true",
-			Expected:    true,
+			EnvVarValue:	"true",
+			Expected:	true,
 		},
 		{
-			EnvVarValue: "1",
-			Expected:    true,
+			EnvVarValue:	"1",
+			Expected:	true,
 		},
 		{
-			EnvVarValue: "false",
-			Expected:    false,
+			EnvVarValue:	"false",
+			Expected:	false,
 		},
 		{
-			EnvVarValue: "0",
-			Expected:    false,
+			EnvVarValue:	"0",
+			Expected:	false,
 		},
 		{
-			EnvVarValue: "",
-			Expected:    false,
+			EnvVarValue:	"",
+			Expected:	false,
 		},
 	}
 
@@ -67,7 +67,7 @@ func TestContinueOnErrorEnvVar(t *testing.T) {
 
 //nolint:paralleltest // Changes environment variables
 func TestParallelEnvVar(t *testing.T) {
-	osDefaultParallel := int32(runtime.GOMAXPROCS(0)) * 4 //nolint:gosec
+	osDefaultParallel := int32(runtime.GOMAXPROCS(0)) * 4	//nolint:gosec
 	commands := []func() *cobra.Command{
 		NewUpCmd,
 		NewPreviewCmd,
@@ -77,28 +77,28 @@ func TestParallelEnvVar(t *testing.T) {
 		NewWatchCmd,
 	}
 	testCases := []struct {
-		EnvVarValue string
-		Expected    int32
+		EnvVarValue	string
+		Expected	int32
 	}{
 		{
-			EnvVarValue: "4",
-			Expected:    4,
+			EnvVarValue:	"4",
+			Expected:	4,
 		},
 		{
-			EnvVarValue: "1",
-			Expected:    1,
+			EnvVarValue:	"1",
+			Expected:	1,
 		},
 		{
-			EnvVarValue: "0",
-			Expected:    osDefaultParallel,
+			EnvVarValue:	"0",
+			Expected:	osDefaultParallel,
 		},
 		{
-			EnvVarValue: "",
-			Expected:    osDefaultParallel,
+			EnvVarValue:	"",
+			Expected:	osDefaultParallel,
 		},
 		{
-			EnvVarValue: "16",
-			Expected:    16,
+			EnvVarValue:	"16",
+			Expected:	16,
 		},
 	}
 

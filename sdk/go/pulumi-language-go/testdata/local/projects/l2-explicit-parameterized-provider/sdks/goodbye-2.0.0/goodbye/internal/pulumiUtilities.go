@@ -80,7 +80,7 @@ func PkgVersion() (semver.Version, error) {
 	re := regexp.MustCompile("^.*/pulumi-goodbye/sdk(/v\\d+)?")
 	if match := re.FindStringSubmatch(pkgPath); match != nil {
 		vStr := match[1]
-		if len(vStr) == 0 { // If the version capture group was empty, default to v1.
+		if len(vStr) == 0 {	// If the version capture group was empty, default to v1.
 			return semver.Version{Major: 1}, nil
 		}
 		return semver.MustParse(fmt.Sprintf("%s.0.0", vStr[2:])), nil
@@ -175,13 +175,13 @@ func PkgGetPackageRef(ctx *pulumi.Context) (string, error) {
 		}
 
 		resp, err := ctx.RegisterPackage(&pulumirpc.RegisterPackageRequest{
-			Name:        "parameterized",
-			Version:     "1.2.3",
-			DownloadUrl: "",
+			Name:		"parameterized",
+			Version:	"1.2.3",
+			DownloadUrl:	"",
 			Parameterization: &pulumirpc.Parameterization{
-				Name:    "goodbye",
-				Version: "2.0.0",
-				Value:   parameter,
+				Name:		"goodbye",
+				Version:	"2.0.0",
+				Value:		parameter,
 			},
 		})
 		if err != nil {

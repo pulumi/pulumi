@@ -39,10 +39,10 @@ func (a *analyzer) StackConfigure(ctx context.Context, req *pulumirpc.AnalyzerSt
 	}
 
 	expectedConfig := map[string]string{
-		"test-project:bool":   "true",
-		"test-project:float":  "1.5",
-		"test-project:string": "hello",
-		"test-project:obj":    "{\"key\":\"value\"}",
+		"test-project:bool":	"true",
+		"test-project:float":	"1.5",
+		"test-project:string":	"hello",
+		"test-project:obj":	"{\"key\":\"value\"}",
 	}
 
 	if !reflect.DeepEqual(req.Config, expectedConfig) {
@@ -66,10 +66,10 @@ func main() {
 		os.Exit(1)
 	}
 	expect := map[string]any{
-		"test-project:bool":   "true",
-		"test-project:float":  "1.5",
-		"test-project:string": "hello",
-		"test-project:obj":    "{\"key\": \"value\"}",
+		"test-project:bool":	"true",
+		"test-project:float":	"1.5",
+		"test-project:string":	"hello",
+		"test-project:obj":	"{\"key\": \"value\"}",
 	}
 	if !reflect.DeepEqual(actual, expect) {
 		fmt.Printf("fatal: expected config to be %v, got %v\n", expect, actual)
@@ -78,12 +78,12 @@ func main() {
 
 	var cancelChannel chan bool
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: cancelChannel,
+		Cancel:	cancelChannel,
 		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterAnalyzerServer(srv, &analyzer{})
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options:	rpcutil.OpenTracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		fmt.Printf("fatal: %v\n", err)

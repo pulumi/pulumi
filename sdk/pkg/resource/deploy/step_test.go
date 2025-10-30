@@ -19,9 +19,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -34,9 +34,9 @@ import (
 func TestRawPrefix(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name string
-		op   display.StepOp
-		want string
+		name	string
+		op	display.StepOp
+		want	string
 	}{
 		{name: "Same", op: OpSame, want: "  "},
 		{name: "Create", op: OpCreate, want: "+ "},
@@ -71,9 +71,9 @@ func TestRawPrefix(t *testing.T) {
 func TestPastTense(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name string
-		op   display.StepOp
-		want string
+		name	string
+		op	display.StepOp
+		want	string
 	}{
 		{"Same", OpSame, "samed"},
 		{"Create", OpCreate, "created"},
@@ -124,8 +124,8 @@ func TestSameStep(t *testing.T) {
 					URN: "urn:pulumi:stack::project::type::foo",
 				},
 				new: &resource.State{
-					URN:  "urn:pulumi:stack::project::type::foo",
-					Type: "pulumi:providers:some-provider",
+					URN:	"urn:pulumi:stack::project::type::foo",
+					Type:	"pulumi:providers:some-provider",
 				},
 			}
 			_, _, err := s.Apply()
@@ -149,10 +149,10 @@ func TestCreateStep(t *testing.T) {
 						},
 					},
 					new: &resource.State{
-						URN:    "urn:pulumi:stack::project::some-type::some-urn",
-						Custom: true,
+						URN:	"urn:pulumi:stack::project::some-type::some-urn",
+						Custom:	true,
 						// Use denydefaultprovider ID to ensure failure.
-						Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
+						Provider:	"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
 					},
 				}
 				status, _, err := s.Apply()
@@ -165,8 +165,8 @@ func TestCreateStep(t *testing.T) {
 				var createCalled bool
 				s := &CreateStep{
 					new: &resource.State{
-						URN:    "urn:pulumi:stack::project::some-type::some-urn",
-						Custom: true,
+						URN:	"urn:pulumi:stack::project::some-type::some-urn",
+						Custom:	true,
 					},
 					deployment: &Deployment{
 						opts: &Options{
@@ -189,8 +189,8 @@ func TestCreateStep(t *testing.T) {
 				t.Parallel()
 				s := &CreateStep{
 					new: &resource.State{
-						URN:    "urn:pulumi:stack::project::some-type::some-urn",
-						Custom: true,
+						URN:	"urn:pulumi:stack::project::some-type::some-urn",
+						Custom:	true,
 					},
 					deployment: &Deployment{
 						opts: &Options{
@@ -218,8 +218,8 @@ func TestCreateStep(t *testing.T) {
 				t.Parallel()
 				s := &CreateStep{
 					new: &resource.State{
-						URN:    "urn:pulumi:stack::project::some-type::some-urn",
-						Custom: true,
+						URN:	"urn:pulumi:stack::project::some-type::some-urn",
+						Custom:	true,
 					},
 					deployment: &Deployment{
 						opts: &Options{},
@@ -243,8 +243,8 @@ func TestDeleteStep(t *testing.T) {
 	t.Run("isDeletedWith", func(t *testing.T) {
 		t.Parallel()
 		otherDeletions := map[resource.URN]bool{
-			"false-key": false,
-			"true-key":  true,
+			"false-key":	false,
+			"true-key":	true,
 		}
 		assert.False(t, isDeletedWith("", otherDeletions))
 		assert.False(t, isDeletedWith("does-not-exist", otherDeletions))
@@ -264,10 +264,10 @@ func TestDeleteStep(t *testing.T) {
 						},
 					},
 					old: &resource.State{
-						URN:    "urn:pulumi:stack::project::some-type::some-urn",
-						Custom: true,
+						URN:	"urn:pulumi:stack::project::some-type::some-urn",
+						Custom:	true,
 						// Use denydefaultprovider ID to ensure failure.
-						Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
+						Provider:	"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
 					},
 				}
 				status, _, err := s.Apply()
@@ -308,40 +308,40 @@ func TestRemovePendingReplaceStep(t *testing.T) {
 		t.Parallel()
 		d := &Deployment{}
 		s := NewRemovePendingReplaceStep(d, &resource.State{
-			Type:               "expected-value",
-			PendingReplacement: true,
+			Type:			"expected-value",
+			PendingReplacement:	true,
 		})
 		assert.Equal(t, d, s.Deployment())
 	})
 	t.Run("Type", func(t *testing.T) {
 		t.Parallel()
 		s := NewRemovePendingReplaceStep(nil, &resource.State{
-			Type:               "expected-value",
-			PendingReplacement: true,
+			Type:			"expected-value",
+			PendingReplacement:	true,
 		})
 		assert.Equal(t, tokens.Type("expected-value"), s.Type())
 	})
 	t.Run("Provider", func(t *testing.T) {
 		t.Parallel()
 		s := NewRemovePendingReplaceStep(nil, &resource.State{
-			Provider:           "expected-value",
-			PendingReplacement: true,
+			Provider:		"expected-value",
+			PendingReplacement:	true,
 		})
 		assert.Equal(t, "expected-value", s.Provider())
 	})
 	t.Run("URN", func(t *testing.T) {
 		t.Parallel()
 		s := NewRemovePendingReplaceStep(nil, &resource.State{
-			URN:                "expected-value",
-			PendingReplacement: true,
+			URN:			"expected-value",
+			PendingReplacement:	true,
 		})
 		assert.Equal(t, resource.URN("expected-value"), s.URN())
 	})
 	t.Run("Old", func(t *testing.T) {
 		t.Parallel()
 		old := &resource.State{
-			URN:                "expected-value",
-			PendingReplacement: true,
+			URN:			"expected-value",
+			PendingReplacement:	true,
 		}
 		s := NewRemovePendingReplaceStep(nil, old)
 		assert.Equal(t, old, s.Old())
@@ -397,12 +397,12 @@ func TestUpdateStep(t *testing.T) {
 						DryRun: true,
 					},
 				},
-				old: &resource.State{},
+				old:	&resource.State{},
 				new: &resource.State{
-					URN:    "urn:pulumi:stack::project::some-type::some-urn",
-					Custom: true,
+					URN:	"urn:pulumi:stack::project::some-type::some-urn",
+					Custom:	true,
 					// Use denydefaultprovider ID to ensure failure.
-					Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
+					Provider:	"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
 				},
 			}
 			status, _, err := s.Apply()
@@ -413,12 +413,12 @@ func TestUpdateStep(t *testing.T) {
 			t.Parallel()
 			expectedErr := errors.New("expected error")
 			s := &UpdateStep{
-				old: &resource.State{},
+				old:	&resource.State{},
 				new: &resource.State{
-					URN:    "urn:pulumi:stack::project::some-type::some-urn",
-					Custom: true,
+					URN:	"urn:pulumi:stack::project::some-type::some-urn",
+					Custom:	true,
 					// Use denydefaultprovider ID to ensure failure.
-					Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
+					Provider:	"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
 				},
 				deployment: &Deployment{
 					opts: &Options{
@@ -438,12 +438,12 @@ func TestUpdateStep(t *testing.T) {
 		t.Run("partial failure in provider", func(t *testing.T) {
 			t.Parallel()
 			s := &UpdateStep{
-				old: &resource.State{},
+				old:	&resource.State{},
 				new: &resource.State{
-					URN:    "urn:pulumi:stack::project::some-type::some-urn",
-					Custom: true,
+					URN:	"urn:pulumi:stack::project::some-type::some-urn",
+					Custom:	true,
 					// Use denydefaultprovider ID to ensure failure.
-					Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
+					Provider:	"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
 				},
 				deployment: &Deployment{
 					opts: &Options{
@@ -456,7 +456,7 @@ func TestUpdateStep(t *testing.T) {
 								Properties: resource.PropertyMap{
 									"key": resource.NewProperty("expected-value"),
 								},
-								Status: resource.StatusPartialFailure,
+								Status:	resource.StatusPartialFailure,
 							}, &plugin.InitError{
 								Reasons: []string{
 									"intentional error",
@@ -500,11 +500,11 @@ func TestReadStep(t *testing.T) {
 						DryRun: true,
 					},
 				},
-				old: &resource.State{},
+				old:	&resource.State{},
 				new: &resource.State{
-					Custom: true,
+					Custom:	true,
 					// Use denydefaultprovider ID to ensure failure.
-					Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
+					Provider:	"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
 				},
 			}
 			status, _, err := s.Apply()
@@ -515,13 +515,13 @@ func TestReadStep(t *testing.T) {
 			t.Parallel()
 			expectedErr := errors.New("expected error")
 			s := &ReadStep{
-				old: &resource.State{},
+				old:	&resource.State{},
 				new: &resource.State{
-					URN:    "urn:pulumi:stack::project::some-type::some-urn",
-					ID:     "some-id",
-					Custom: true,
+					URN:	"urn:pulumi:stack::project::some-type::some-urn",
+					ID:	"some-id",
+					Custom:	true,
 					// Use denydefaultprovider ID to ensure failure.
-					Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
+					Provider:	"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
 				},
 				deployment: &Deployment{
 					opts: &Options{
@@ -541,13 +541,13 @@ func TestReadStep(t *testing.T) {
 		t.Run("partial failure in provider", func(t *testing.T) {
 			t.Parallel()
 			s := &ReadStep{
-				old: &resource.State{},
+				old:	&resource.State{},
 				new: &resource.State{
-					URN:    "urn:pulumi:stack::project::some-type::some-urn",
-					ID:     "some-id",
-					Custom: true,
+					URN:	"urn:pulumi:stack::project::some-type::some-urn",
+					ID:	"some-id",
+					Custom:	true,
 					// Use denydefaultprovider ID to ensure failure.
-					Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
+					Provider:	"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
 				},
 				deployment: &Deployment{
 					opts: &Options{
@@ -558,7 +558,7 @@ func TestReadStep(t *testing.T) {
 					ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 						return plugin.ReadResponse{
 								ReadResult: plugin.ReadResult{
-									ID: "new-id",
+									ID:	"new-id",
 									Inputs: resource.PropertyMap{
 										"inputs-key": resource.NewProperty("expected-value"),
 									},
@@ -566,7 +566,7 @@ func TestReadStep(t *testing.T) {
 										"outputs-key": resource.NewProperty("expected-value"),
 									},
 								},
-								Status: resource.StatusPartialFailure,
+								Status:	resource.StatusPartialFailure,
 							}, &plugin.InitError{
 								Reasons: []string{
 									"intentional error",
@@ -617,36 +617,36 @@ func TestRefreshStepPatterns(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name                 string
-		inputs               resource.PropertyMap
-		outputs              resource.PropertyMap
-		readInputs           resource.PropertyMap
-		readOutputs          resource.PropertyMap
-		diffResult           plugin.DiffResult
-		expectedDetailedDiff map[string]plugin.PropertyDiff
-		ignoreChanges        []string
+		name			string
+		inputs			resource.PropertyMap
+		outputs			resource.PropertyMap
+		readInputs		resource.PropertyMap
+		readOutputs		resource.PropertyMap
+		diffResult		plugin.DiffResult
+		expectedDetailedDiff	map[string]plugin.PropertyDiff
+		ignoreChanges		[]string
 	}{
 		{
-			name:   "tfbridge 'computed' property changed",
-			inputs: resource.PropertyMap{},
+			name:	"tfbridge 'computed' property changed",
+			inputs:	resource.PropertyMap{},
 			outputs: resource.PropertyMap{
 				"etag": resource.NewProperty("abc"),
 			},
-			readInputs: resource.PropertyMap{},
+			readInputs:	resource.PropertyMap{},
 			readOutputs: resource.PropertyMap{
 				"etag": resource.NewProperty("def"),
 			},
 			diffResult: plugin.DiffResult{
 				// Diff newInputs, newOutputs, oldInputs
-				Changes:      plugin.DiffNone,
-				DetailedDiff: map[string]plugin.PropertyDiff{},
+				Changes:	plugin.DiffNone,
+				DetailedDiff:	map[string]plugin.PropertyDiff{},
 			},
-			expectedDetailedDiff: map[string]plugin.PropertyDiff{},
+			expectedDetailedDiff:	map[string]plugin.PropertyDiff{},
 		},
 		{
 			// Note: this is probably a case where the TF provider has a bug, a pure in property
 			// really shouldn't change, but this is common in TF providers.
-			name: "tfbridge 'required' property changed",
+			name:	"tfbridge 'required' property changed",
 			inputs: resource.PropertyMap{
 				"title": resource.NewProperty("test"),
 			},
@@ -661,7 +661,7 @@ func TestRefreshStepPatterns(t *testing.T) {
 			},
 			diffResult: plugin.DiffResult{
 				// Diff newInputs, newOutputs, oldInputs
-				Changes: plugin.DiffSome,
+				Changes:	plugin.DiffSome,
 				DetailedDiff: map[string]plugin.PropertyDiff{
 					"title": {Kind: plugin.DiffUpdate},
 				},
@@ -673,8 +673,8 @@ func TestRefreshStepPatterns(t *testing.T) {
 		{
 			// Note: this is probably a case where the TF provider has a bug, a pure in property
 			// really shouldn't change, but this is common in TF providers.
-			name:          "tfbridge 'required' property changed w/ ignoreChanges",
-			ignoreChanges: []string{"title"},
+			name:		"tfbridge 'required' property changed w/ ignoreChanges",
+			ignoreChanges:	[]string{"title"},
 			inputs: resource.PropertyMap{
 				"title": resource.NewProperty("test"),
 			},
@@ -689,20 +689,20 @@ func TestRefreshStepPatterns(t *testing.T) {
 			},
 			diffResult: plugin.DiffResult{
 				// Diff newInputs, newOutputs, oldInputs
-				Changes:      plugin.DiffNone,
-				DetailedDiff: map[string]plugin.PropertyDiff{},
+				Changes:	plugin.DiffNone,
+				DetailedDiff:	map[string]plugin.PropertyDiff{},
 			},
-			expectedDetailedDiff: map[string]plugin.PropertyDiff{},
+			expectedDetailedDiff:	map[string]plugin.PropertyDiff{},
 		},
 		{
 			// Note: this is probably a case where the TF provider has a bug, a pure in property
 			// really shouldn't change, but this is common in TF providers.
-			name:   "tfbridge 'optional' property changed",
-			inputs: resource.PropertyMap{},
+			name:	"tfbridge 'optional' property changed",
+			inputs:	resource.PropertyMap{},
 			outputs: resource.PropertyMap{
 				"body": resource.NewProperty(""),
 			},
-			readInputs: resource.PropertyMap{
+			readInputs:	resource.PropertyMap{
 				// Pretty sure its a bug in tfbridge that it doesn't populate the new value
 				// into inputs for an `optional` property.  But that's what it does so
 				// testing against the current behaviour.
@@ -712,7 +712,7 @@ func TestRefreshStepPatterns(t *testing.T) {
 			},
 			diffResult: plugin.DiffResult{
 				// Diff newInputs, newOutputs, oldInputs
-				Changes: plugin.DiffSome,
+				Changes:	plugin.DiffSome,
 				DetailedDiff: map[string]plugin.PropertyDiff{
 					"body": {Kind: plugin.DiffDelete},
 				},
@@ -724,13 +724,13 @@ func TestRefreshStepPatterns(t *testing.T) {
 		{
 			// Note: this is probably a case where the TF provider has a bug, a pure in property
 			// really shouldn't change, but this is common in TF providers.
-			name:          "tfbridge 'optional' property changed w/ ignoreChanges",
-			ignoreChanges: []string{"body"},
-			inputs:        resource.PropertyMap{},
+			name:		"tfbridge 'optional' property changed w/ ignoreChanges",
+			ignoreChanges:	[]string{"body"},
+			inputs:		resource.PropertyMap{},
 			outputs: resource.PropertyMap{
 				"body": resource.NewProperty(""),
 			},
-			readInputs: resource.PropertyMap{
+			readInputs:	resource.PropertyMap{
 				// Pretty sure its a bug in tfbridge that it doesn't populate the new value
 				// into inputs for an `optional` property.  But that's what it does so
 				// testing against the current behaviour.
@@ -740,18 +740,18 @@ func TestRefreshStepPatterns(t *testing.T) {
 			},
 			diffResult: plugin.DiffResult{
 				// Diff newInputs, newOutputs, oldInputs
-				Changes:      plugin.DiffNone,
-				DetailedDiff: map[string]plugin.PropertyDiff{},
+				Changes:	plugin.DiffNone,
+				DetailedDiff:	map[string]plugin.PropertyDiff{},
 			},
-			expectedDetailedDiff: map[string]plugin.PropertyDiff{},
+			expectedDetailedDiff:	map[string]plugin.PropertyDiff{},
 		},
 		{
-			name:   "tfbridge 'optional+computed' property element added",
-			inputs: resource.PropertyMap{},
+			name:	"tfbridge 'optional+computed' property element added",
+			inputs:	resource.PropertyMap{},
 			outputs: resource.PropertyMap{
 				"tags": resource.NewProperty(resource.PropertyMap{}),
 			},
-			readInputs: resource.PropertyMap{},
+			readInputs:	resource.PropertyMap{},
 			readOutputs: resource.PropertyMap{
 				"tags": resource.NewProperty((resource.PropertyMap{
 					"foo": resource.NewProperty("bar"),
@@ -759,19 +759,19 @@ func TestRefreshStepPatterns(t *testing.T) {
 			},
 			diffResult: plugin.DiffResult{
 				// Diff newInputs, newOutputs, oldInputs
-				Changes: plugin.DiffSome,
+				Changes:	plugin.DiffSome,
 				DetailedDiff: map[string]plugin.PropertyDiff{
-					"tags":     {Kind: plugin.DiffUpdate},
-					"tags.foo": {Kind: plugin.DiffDelete},
+					"tags":		{Kind: plugin.DiffUpdate},
+					"tags.foo":	{Kind: plugin.DiffDelete},
 				},
 			},
 			expectedDetailedDiff: map[string]plugin.PropertyDiff{
-				"tags":     {Kind: plugin.DiffUpdate},
-				"tags.foo": {Kind: plugin.DiffAdd},
+				"tags":		{Kind: plugin.DiffUpdate},
+				"tags.foo":	{Kind: plugin.DiffAdd},
 			},
 		},
 		{
-			name: "tfbridge 'optional+computed' property element changed",
+			name:	"tfbridge 'optional+computed' property element changed",
 			inputs: resource.PropertyMap{
 				"tags": resource.NewProperty(resource.PropertyMap{
 					"foo": resource.NewProperty("bar"),
@@ -794,7 +794,7 @@ func TestRefreshStepPatterns(t *testing.T) {
 			},
 			diffResult: plugin.DiffResult{
 				// Diff newInputs, newOutputs, oldInputs
-				Changes: plugin.DiffSome,
+				Changes:	plugin.DiffSome,
 				DetailedDiff: map[string]plugin.PropertyDiff{
 					"tags.foo": {Kind: plugin.DiffUpdate},
 				},
@@ -807,19 +807,19 @@ func TestRefreshStepPatterns(t *testing.T) {
 
 	for _, tc := range tests {
 		state := &resource.State{
-			URN:      "urn:pulumi:stack::project::some-type::some-urn",
-			ID:       "some-id",
-			Type:     "some-type",
-			Custom:   true,
-			Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
-			Inputs:   tc.inputs,
-			Outputs:  tc.outputs,
+			URN:		"urn:pulumi:stack::project::some-type::some-urn",
+			ID:		"some-id",
+			Type:		"some-type",
+			Custom:		true,
+			Provider:	"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
+			Inputs:		tc.inputs,
+			Outputs:	tc.outputs,
 		}
 		s := &RefreshStep{
-			old: state,
-			new: state.Copy(),
+			old:	state,
+			new:	state.Copy(),
 			deployment: &Deployment{
-				ctx: &plugin.Context{Diag: &deploytest.NoopSink{}},
+				ctx:	&plugin.Context{Diag: &deploytest.NoopSink{}},
 				opts: &Options{
 					DryRun: true,
 				},
@@ -828,11 +828,11 @@ func TestRefreshStepPatterns(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Inputs:  tc.readInputs,
-							Outputs: tc.readOutputs,
+							ID:		req.ID,
+							Inputs:		tc.readInputs,
+							Outputs:	tc.readOutputs,
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResponse, error) {
@@ -854,9 +854,9 @@ func TestRefreshStep(t *testing.T) {
 		t.Run("error getting provider", func(t *testing.T) {
 			t.Parallel()
 			state := &resource.State{
-				Custom: true,
+				Custom:	true,
 				// Use denydefaultprovider ID to ensure failure.
-				Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
+				Provider:	"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
 			}
 			s := NewRefreshStep(&Deployment{
 				opts: &Options{
@@ -871,11 +871,11 @@ func TestRefreshStep(t *testing.T) {
 			t.Parallel()
 			expectedErr := errors.New("expected error")
 			state := &resource.State{
-				URN:    "urn:pulumi:stack::project::some-type::some-urn",
-				ID:     "some-id",
-				Custom: true,
+				URN:	"urn:pulumi:stack::project::some-type::some-urn",
+				ID:	"some-id",
+				Custom:	true,
 				// Use denydefaultprovider ID to ensure failure.
-				Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
+				Provider:	"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
 			}
 			s := NewRefreshStep(
 				&Deployment{
@@ -896,15 +896,15 @@ func TestRefreshStep(t *testing.T) {
 		t.Run("partial failure in provider", func(t *testing.T) {
 			t.Parallel()
 			state := &resource.State{
-				URN:    "urn:pulumi:stack::project::some-type::some-urn",
-				ID:     "some-id",
-				Type:   "some-type",
-				Custom: true,
+				URN:	"urn:pulumi:stack::project::some-type::some-urn",
+				ID:	"some-id",
+				Type:	"some-type",
+				Custom:	true,
 				// Use denydefaultprovider ID to ensure failure.
-				Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
+				Provider:	"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
 			}
 			s := NewRefreshStep(&Deployment{
-				ctx: &plugin.Context{Diag: &deploytest.NoopSink{}},
+				ctx:	&plugin.Context{Diag: &deploytest.NoopSink{}},
 				opts: &Options{
 					DryRun: true,
 				},
@@ -913,7 +913,7 @@ func TestRefreshStep(t *testing.T) {
 				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								ID: "new-id",
+								ID:	"new-id",
 								Inputs: resource.PropertyMap{
 									"inputs-key": resource.NewProperty("expected-value"),
 								},
@@ -921,7 +921,7 @@ func TestRefreshStep(t *testing.T) {
 									"outputs-key": resource.NewProperty("expected-value"),
 								},
 							},
-							Status: resource.StatusPartialFailure,
+							Status:	resource.StatusPartialFailure,
 						}, &plugin.InitError{
 							Reasons: []string{
 								"intentional error",
@@ -950,7 +950,7 @@ func TestImportStep(t *testing.T) {
 		t.Run("missing parent", func(t *testing.T) {
 			t.Parallel()
 			s := &ImportStep{
-				planned: true,
+				planned:	true,
 				new: &resource.State{
 					Parent: "urn:pulumi:stack::project::foo:bar:Bar::name",
 				},
@@ -958,8 +958,8 @@ func TestImportStep(t *testing.T) {
 					opts: &Options{
 						DryRun: true,
 					},
-					olds: map[resource.URN]*resource.State{},
-					news: &gsync.Map[urn.URN, *resource.State]{},
+					olds:	map[resource.URN]*resource.State{},
+					news:	&gsync.Map[urn.URN, *resource.State]{},
 				},
 			}
 			status, _, err := s.Apply()
@@ -973,13 +973,13 @@ func TestImportStep(t *testing.T) {
 					opts: &Options{
 						DryRun: true,
 					},
-					olds: map[resource.URN]*resource.State{},
-					news: &gsync.Map[urn.URN, *resource.State]{},
+					olds:	map[resource.URN]*resource.State{},
+					news:	&gsync.Map[urn.URN, *resource.State]{},
 				},
 				new: &resource.State{
-					URN:    "urn:pulumi:stack::project::foo:bar:Bar::name",
-					ID:     "some-id",
-					Custom: true,
+					URN:	"urn:pulumi:stack::project::foo:bar:Bar::name",
+					ID:	"some-id",
+					Custom:	true,
 				},
 			}
 			status, _, err := s.Apply()
@@ -996,13 +996,13 @@ func TestImportStep(t *testing.T) {
 						opts: &Options{
 							DryRun: true,
 						},
-						olds: map[resource.URN]*resource.State{},
-						news: &gsync.Map[urn.URN, *resource.State]{},
+						olds:	map[resource.URN]*resource.State{},
+						news:	&gsync.Map[urn.URN, *resource.State]{},
 					},
 					new: &resource.State{
-						URN:      "urn:pulumi:stack::project::foo:bar:Bar::name",
-						ImportID: "some-id",
-						Custom:   true,
+						URN:		"urn:pulumi:stack::project::foo:bar:Bar::name",
+						ImportID:	"some-id",
+						Custom:		true,
 					},
 					provider: &deploytest.Provider{
 						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
@@ -1021,13 +1021,13 @@ func TestImportStep(t *testing.T) {
 						opts: &Options{
 							DryRun: true,
 						},
-						olds: map[resource.URN]*resource.State{},
-						news: &gsync.Map[urn.URN, *resource.State]{},
+						olds:	map[resource.URN]*resource.State{},
+						news:	&gsync.Map[urn.URN, *resource.State]{},
 					},
 					new: &resource.State{
-						URN:      "urn:pulumi:stack::project::foo:bar:Bar::name",
-						ImportID: "some-id",
-						Custom:   true,
+						URN:		"urn:pulumi:stack::project::foo:bar:Bar::name",
+						ImportID:	"some-id",
+						Custom:		true,
 					},
 					provider: &deploytest.Provider{
 						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
@@ -1051,13 +1051,13 @@ func TestImportStep(t *testing.T) {
 						opts: &Options{
 							DryRun: true,
 						},
-						olds: map[resource.URN]*resource.State{},
-						news: &gsync.Map[urn.URN, *resource.State]{},
+						olds:	map[resource.URN]*resource.State{},
+						news:	&gsync.Map[urn.URN, *resource.State]{},
 					},
 					new: &resource.State{
-						URN:      "urn:pulumi:stack::project::foo:bar:Bar::name",
-						ImportID: "some-id",
-						Custom:   true,
+						URN:		"urn:pulumi:stack::project::foo:bar:Bar::name",
+						ImportID:	"some-id",
+						Custom:		true,
 					},
 					provider: &deploytest.Provider{
 						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
@@ -1076,13 +1076,13 @@ func TestImportStep(t *testing.T) {
 						opts: &Options{
 							DryRun: true,
 						},
-						olds: map[resource.URN]*resource.State{},
-						news: &gsync.Map[urn.URN, *resource.State]{},
+						olds:	map[resource.URN]*resource.State{},
+						news:	&gsync.Map[urn.URN, *resource.State]{},
 					},
 					new: &resource.State{
-						URN:      "urn:pulumi:stack::project::foo:bar:Bar::name",
-						ImportID: "some-id",
-						Custom:   true,
+						URN:		"urn:pulumi:stack::project::foo:bar:Bar::name",
+						ImportID:	"some-id",
+						Custom:		true,
 					},
 					provider: &deploytest.Provider{
 						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
@@ -1090,7 +1090,7 @@ func TestImportStep(t *testing.T) {
 								ReadResult: plugin.ReadResult{
 									Outputs: resource.PropertyMap{},
 								},
-								Status: resource.StatusOK,
+								Status:	resource.StatusOK,
 							}, nil
 						},
 					},
@@ -1120,7 +1120,7 @@ func TestGetProvider(t *testing.T) {
 		t.Parallel()
 		expectedProvider := &deploytest.Provider{}
 		s := &CreateStep{
-			provider: expectedProvider,
+			provider:	expectedProvider,
 			new: &resource.State{
 				Provider: "invalid-provider",
 			},
@@ -1134,23 +1134,23 @@ func TestGetProvider(t *testing.T) {
 func TestSuffix(t *testing.T) {
 	t.Parallel()
 	for op, expectation := range map[display.StepOp]string{
-		OpSame:                 "",
-		OpCreate:               "",
-		OpDelete:               "",
-		OpDeleteReplaced:       "",
-		OpRead:                 "",
-		OpReadDiscard:          "",
-		OpDiscardReplaced:      "",
-		OpRemovePendingReplace: "",
-		OpImport:               "",
-		"not-a-real-step-op":   "",
+		OpSame:			"",
+		OpCreate:		"",
+		OpDelete:		"",
+		OpDeleteReplaced:	"",
+		OpRead:			"",
+		OpReadDiscard:		"",
+		OpDiscardReplaced:	"",
+		OpRemovePendingReplace:	"",
+		OpImport:		"",
+		"not-a-real-step-op":	"",
 
-		OpCreateReplacement: colors.Reset,
-		OpUpdate:            colors.Reset,
-		OpReplace:           colors.Reset,
-		OpReadReplacement:   colors.Reset,
-		OpRefresh:           colors.Reset,
-		OpImportReplacement: colors.Reset,
+		OpCreateReplacement:	colors.Reset,
+		OpUpdate:		colors.Reset,
+		OpReplace:		colors.Reset,
+		OpReadReplacement:	colors.Reset,
+		OpRefresh:		colors.Reset,
+		OpImportReplacement:	colors.Reset,
 	} {
 		assert.Equal(t, expectation, Suffix(op))
 	}

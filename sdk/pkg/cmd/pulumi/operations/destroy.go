@@ -24,18 +24,18 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/secrets"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/deployment"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/metadata"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/graph"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -91,10 +91,10 @@ func NewDestroyCmd() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:        use,
-		Aliases:    []string{"down", "dn"},
-		SuggestFor: []string{"delete", "kill", "remove", "rm", "stop"},
-		Short:      "Destroy all existing resources in the stack",
+		Use:		use,
+		Aliases:	[]string{"down", "dn"},
+		SuggestFor:	[]string{"delete", "kill", "remove", "rm", "stop"},
+		Short:		"Destroy all existing resources in the stack",
 		Long: "Destroy all existing resources in the stack, but not the stack itself\n" +
 			"\n" +
 			"Deletes all the resources in the selected stack.  The current state is\n" +
@@ -105,7 +105,7 @@ func NewDestroyCmd() *cobra.Command {
 			"`--remove` flag to delete the stack and its config file.\n" +
 			"\n" +
 			"Warning: this command is generally irreversible and should be used with great care.",
-		Args: cmdArgs,
+		Args:	cmdArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
@@ -138,18 +138,18 @@ func NewDestroyCmd() *cobra.Command {
 			}
 
 			opts.Display = display.Options{
-				Color:                cmdutil.GetGlobalColorization(),
-				ShowConfig:           showConfig,
-				ShowReplacementSteps: showReplacementSteps,
-				ShowSameResources:    showSames,
-				SuppressOutputs:      suppressOutputs,
-				SuppressProgress:     suppressProgress,
-				TruncateOutput:       !showFullOutput,
-				IsInteractive:        interactive,
-				Type:                 displayType,
-				EventLogPath:         eventLogPath,
-				Debug:                debug,
-				JSONDisplay:          jsonDisplay,
+				Color:			cmdutil.GetGlobalColorization(),
+				ShowConfig:		showConfig,
+				ShowReplacementSteps:	showReplacementSteps,
+				ShowSameResources:	showSames,
+				SuppressOutputs:	suppressOutputs,
+				SuppressProgress:	suppressProgress,
+				TruncateOutput:		!showFullOutput,
+				IsInteractive:		interactive,
+				Type:			displayType,
+				EventLogPath:		eventLogPath,
+				Debug:			debug,
+				JSONDisplay:		jsonDisplay,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -298,33 +298,33 @@ func NewDestroyCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				ParallelDiff:              env.ParallelDiff.Value(),
-				Parallel:                  parallel,
-				Debug:                     debug,
-				Refresh:                   refreshOption,
-				Targets:                   deploy.NewUrnTargets(targetUrns),
-				Excludes:                  deploy.NewUrnTargets(excludeUrns),
-				TargetDependents:          targetDependents,
-				ExcludeDependents:         excludeDependents,
-				UseLegacyDiff:             env.EnableLegacyDiff.Value(),
-				UseLegacyRefreshDiff:      env.EnableLegacyRefreshDiff.Value(),
-				DisableProviderPreview:    env.DisableProviderPreview.Value(),
-				DisableResourceReferences: env.DisableResourceReferences.Value(),
-				DisableOutputValues:       env.DisableOutputValues.Value(),
-				Experimental:              env.Experimental.Value(),
-				ContinueOnError:           continueOnError,
-				DestroyProgram:            runProgram,
+				ParallelDiff:			env.ParallelDiff.Value(),
+				Parallel:			parallel,
+				Debug:				debug,
+				Refresh:			refreshOption,
+				Targets:			deploy.NewUrnTargets(targetUrns),
+				Excludes:			deploy.NewUrnTargets(excludeUrns),
+				TargetDependents:		targetDependents,
+				ExcludeDependents:		excludeDependents,
+				UseLegacyDiff:			env.EnableLegacyDiff.Value(),
+				UseLegacyRefreshDiff:		env.EnableLegacyRefreshDiff.Value(),
+				DisableProviderPreview:		env.DisableProviderPreview.Value(),
+				DisableResourceReferences:	env.DisableResourceReferences.Value(),
+				DisableOutputValues:		env.DisableOutputValues.Value(),
+				Experimental:			env.Experimental.Value(),
+				ContinueOnError:		continueOnError,
+				DestroyProgram:			runProgram,
 			}
 
 			_, destroyErr := backend.DestroyStack(ctx, s, backend.UpdateOperation{
-				Proj:               proj,
-				Root:               root,
-				M:                  m,
-				Opts:               opts,
-				StackConfiguration: cfg,
-				SecretsManager:     sm,
-				SecretsProvider:    secrets.DefaultProvider,
-				Scopes:             backend.CancellationScopes,
+				Proj:			proj,
+				Root:			root,
+				M:			m,
+				Opts:			opts,
+				StackConfiguration:	cfg,
+				SecretsManager:		sm,
+				SecretsProvider:	secrets.DefaultProvider,
+				Scopes:			backend.CancellationScopes,
 			})
 
 			if destroyErr == nil && protectedCount > 0 && !jsonDisplay {

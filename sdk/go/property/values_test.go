@@ -119,61 +119,61 @@ func TestAny(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		input       any
-		expected    Value
-		expectedErr string
+		input		any
+		expected	Value
+		expectedErr	string
 	}{
 		{
-			input:    true,
-			expected: New(true),
+			input:		true,
+			expected:	New(true),
 		},
 		{
-			input:    3.14,
-			expected: New(3.14),
+			input:		3.14,
+			expected:	New(3.14),
 		},
 		{
-			input:    "example",
-			expected: New("example"),
+			input:		"example",
+			expected:	New("example"),
 		},
 		{
-			input:    []Value{New(1.0), New("two")},
-			expected: New([]Value{New(1.0), New("two")}),
+			input:		[]Value{New(1.0), New("two")},
+			expected:	New([]Value{New(1.0), New("two")}),
 		},
 		{
-			input:    NewArray([]Value{New(1.0), New("two")}),
-			expected: New([]Value{New(1.0), New("two")}),
+			input:		NewArray([]Value{New(1.0), New("two")}),
+			expected:	New([]Value{New(1.0), New("two")}),
 		},
 		{
-			input:    map[string]Value{"key": New("value")},
-			expected: New(map[string]Value{"key": New("value")}),
+			input:		map[string]Value{"key": New("value")},
+			expected:	New(map[string]Value{"key": New("value")}),
 		},
 		{
-			input:    NewMap(map[string]Value{"key": New("value")}),
-			expected: New(map[string]Value{"key": New("value")}),
+			input:		NewMap(map[string]Value{"key": New("value")}),
+			expected:	New(map[string]Value{"key": New("value")}),
 		},
 		{
-			input:    &asset.Asset{Text: "example"},
-			expected: New(&asset.Asset{Text: "example"}),
+			input:		&asset.Asset{Text: "example"},
+			expected:	New(&asset.Asset{Text: "example"}),
 		},
 		{
-			input:    &archive.Archive{},
-			expected: New(&archive.Archive{}),
+			input:		&archive.Archive{},
+			expected:	New(&archive.Archive{}),
 		},
 		{
-			input:    Computed,
-			expected: New(Computed),
+			input:		Computed,
+			expected:	New(Computed),
 		},
 		{
-			input:    Null,
-			expected: Value{}, // or New(Null)
+			input:		Null,
+			expected:	Value{},	// or New(Null)
 		},
 		{
-			input:    ResourceReference{ID: New("123")},
-			expected: New(ResourceReference{ID: New("123")}),
+			input:		ResourceReference{ID: New("123")},
+			expected:	New(ResourceReference{ID: New("123")}),
 		},
 		{
-			input:       struct{ A string }{"A"},
-			expectedErr: "invalid type: {A} of type struct { A string }",
+			input:		struct{ A string }{"A"},
+			expectedErr:	"invalid type: {A} of type struct { A string }",
 		},
 	}
 
@@ -217,8 +217,8 @@ func TestArchive(t *testing.T) {
 
 	mkArchive := func(t *testing.T) Archive {
 		archive, err := archive.FromAssets(map[string]any{
-			"f1": must(asset.FromText("some text")),
-			"f2": must(asset.FromText("more text")),
+			"f1":	must(asset.FromText("some text")),
+			"f2":	must(asset.FromText("more text")),
 			"d1": must(archive.FromAssets(map[string]any{
 				"f3": must(asset.FromText("nested text")),
 			})),
@@ -296,8 +296,8 @@ func TestResourceReference(t *testing.T) {
 
 	mkRef := func() ResourceReference {
 		return ResourceReference{
-			URN: "some-urn",
-			ID:  New(Computed),
+			URN:	"some-urn",
+			ID:	New(Computed),
 		}
 	}
 
@@ -311,44 +311,44 @@ func TestHasSecrets(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name      string
-		v         Value
-		hasSecret bool
+		name		string
+		v		Value
+		hasSecret	bool
 	}{
 		{
-			name:      "plain value is not secret",
-			v:         New("noSecret"),
-			hasSecret: false,
+			name:		"plain value is not secret",
+			v:		New("noSecret"),
+			hasSecret:	false,
 		},
 		{
-			name:      "plain value is secret",
-			v:         New("secret").WithSecret(true),
-			hasSecret: true,
+			name:		"plain value is secret",
+			v:		New("secret").WithSecret(true),
+			hasSecret:	true,
 		},
 		{
-			name:      "array contains secret",
-			v:         New([]Value{New("secret").WithSecret(true)}),
-			hasSecret: true,
+			name:		"array contains secret",
+			v:		New([]Value{New("secret").WithSecret(true)}),
+			hasSecret:	true,
 		},
 		{
-			name:      "array is secret",
-			v:         New([]Value{New("secret")}).WithSecret(true),
-			hasSecret: true,
+			name:		"array is secret",
+			v:		New([]Value{New("secret")}).WithSecret(true),
+			hasSecret:	true,
 		},
 		{
-			name:      "map contains a secret",
-			v:         New(map[string]Value{"key": New("secret").WithSecret(true)}),
-			hasSecret: true,
+			name:		"map contains a secret",
+			v:		New(map[string]Value{"key": New("secret").WithSecret(true)}),
+			hasSecret:	true,
 		},
 		{
-			name:      "map is a secret",
-			v:         New(map[string]Value{"key": New("secret")}).WithSecret(true),
-			hasSecret: true,
+			name:		"map is a secret",
+			v:		New(map[string]Value{"key": New("secret")}).WithSecret(true),
+			hasSecret:	true,
 		},
 		{
-			name:      "ComputedNoSecret",
-			v:         New(Computed),
-			hasSecret: false,
+			name:		"ComputedNoSecret",
+			v:		New(Computed),
+			hasSecret:	false,
 		},
 	}
 
@@ -364,29 +364,29 @@ func TestHasComputed(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name        string
-		v           Value
-		hasComputed bool
+		name		string
+		v		Value
+		hasComputed	bool
 	}{
 		{
-			name:        "plain value is not computed",
-			v:           New("noComputed"),
-			hasComputed: false,
+			name:		"plain value is not computed",
+			v:		New("noComputed"),
+			hasComputed:	false,
 		},
 		{
-			name:        "is computed",
-			v:           New(Computed),
-			hasComputed: true,
+			name:		"is computed",
+			v:		New(Computed),
+			hasComputed:	true,
 		},
 		{
-			name:        "array contains computed",
-			v:           New([]Value{New(Computed)}),
-			hasComputed: true,
+			name:		"array contains computed",
+			v:		New([]Value{New(Computed)}),
+			hasComputed:	true,
 		},
 		{
-			name:        "map contains a computed",
-			v:           New(map[string]Value{"key": New(Computed)}),
-			hasComputed: true,
+			name:		"map contains a computed",
+			v:		New(map[string]Value{"key": New(Computed)}),
+			hasComputed:	true,
 		},
 	}
 
@@ -418,7 +418,7 @@ func TestWithDependencies(t *testing.T) {
 		deps := []urn.URN{"1", "2"}
 		v := New("1").WithDependencies(deps)
 		assert.Equal(t, []urn.URN{"1", "2"}, v.Dependencies())
-		deps[0] = "0" // Mutate the slice we passed in
+		deps[0] = "0"	// Mutate the slice we passed in
 		assert.Equal(t, []urn.URN{"1", "2"}, v.Dependencies())
 	})
 

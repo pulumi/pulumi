@@ -27,11 +27,11 @@ type promptToInputArrayHelper struct {
 }
 
 var primitives = map[string]string{
-	"String":  "string",
-	"Bool":    "bool",
-	"Int":     "int",
-	"Int64":   "int64",
-	"Float64": "float64",
+	"String":	"string",
+	"Bool":		"bool",
+	"Int":		"int",
+	"Int64":	"int64",
+	"Float64":	"float64",
 }
 
 func (p *promptToInputArrayHelper) generateHelperMethod(w io.Writer) {

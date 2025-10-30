@@ -19,9 +19,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -130,8 +130,8 @@ func TestWhoAmICmd_verbose_teamToken(t *testing.T) {
 	be := &backend.MockBackend{
 		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 			return "user2", []string{"org1", "org2"}, &workspace.TokenInformation{
-				Name: "team-token",
-				Team: "myTeam",
+				Name:	"team-token",
+				Team:	"myTeam",
 			}, nil
 		},
 		URLF: func() string {
@@ -168,8 +168,8 @@ func TestWhoAmICmd_json_teamToken(t *testing.T) {
 	be := &backend.MockBackend{
 		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 			return "user3", []string{"org1", "org2"}, &workspace.TokenInformation{
-				Name: "team-token",
-				Team: "myTeam",
+				Name:	"team-token",
+				Team:	"myTeam",
 			}, nil
 		},
 		URLF: func() string {

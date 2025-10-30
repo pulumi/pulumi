@@ -28,7 +28,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -95,8 +95,8 @@ type localSecretsManagerState struct {
 var _ secrets.Manager = &localSecretsManager{}
 
 type localSecretsManager struct {
-	state   json.RawMessage
-	crypter config.Crypter
+	state	json.RawMessage
+	crypter	config.Crypter
 }
 
 func (sm *localSecretsManager) Type() string {
@@ -131,8 +131,8 @@ func EditProjectStack(info *workspace.ProjectStack, state json.RawMessage) error
 }
 
 var (
-	lock  sync.Mutex
-	cache map[string]secrets.Manager
+	lock	sync.Mutex
+	cache	map[string]secrets.Manager
 )
 
 // clearCachedSecretsManagers is used to clear the cache, for tests.
@@ -185,8 +185,8 @@ func NewPassphraseSecretsManager(phrase string) (string, secrets.Manager, error)
 
 	cachedCrypter := config.NewCiphertextToPlaintextCachedCrypter(crypter, crypter)
 	sm := &localSecretsManager{
-		crypter: cachedCrypter,
-		state:   jsonState,
+		crypter:	cachedCrypter,
+		state:		jsonState,
 	}
 	return state, sm, nil
 }
@@ -212,8 +212,8 @@ func GetPassphraseSecretsManager(phrase string, state string) (secrets.Manager, 
 
 	cachedCrypter := config.NewCiphertextToPlaintextCachedCrypter(crypter, crypter)
 	sm := &localSecretsManager{
-		crypter: cachedCrypter,
-		state:   jsonState,
+		crypter:	cachedCrypter,
+		state:		jsonState,
 	}
 	setCachedSecretsManager(state, sm)
 	return sm, nil
@@ -412,8 +412,8 @@ func isInteractive() bool {
 // state, we ensure that when we roundtrip, we don't lose the state stored in the deployment.
 func newLockedPasspharseSecretsManager(state json.RawMessage) secrets.Manager {
 	return &localSecretsManager{
-		state:   state,
-		crypter: &errorCrypter{},
+		state:		state,
+		crypter:	&errorCrypter{},
 	}
 }
 

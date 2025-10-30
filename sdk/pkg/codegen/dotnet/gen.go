@@ -34,8 +34,8 @@ import (
 	"unicode"
 
 	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -46,11 +46,11 @@ import (
 )
 
 type typeDetails struct {
-	outputType                        bool
-	inputType                         bool
-	stateType                         bool
-	plainType                         bool
-	usedInFunctionOutputVersionInputs bool
+	outputType				bool
+	inputType				bool
+	stateType				bool
+	plainType				bool
+	usedInFunctionOutputVersionInputs	bool
 }
 
 // Title converts the input string to a title case
@@ -134,30 +134,30 @@ func namespaceName(namespaces map[string]string, name string) string {
 }
 
 type modContext struct {
-	pkg                    schema.PackageReference
-	mod                    string
-	propertyNames          map[*schema.Property]string
-	types                  []*schema.ObjectType
-	enums                  []*schema.EnumType
-	resources              []*schema.Resource
-	functions              []*schema.Function
-	typeDetails            map[*schema.ObjectType]*typeDetails
-	children               []*modContext
-	tool                   string
-	namespaceName          string
-	namespaces             map[string]string
-	compatibility          string
-	dictionaryConstructors bool
+	pkg			schema.PackageReference
+	mod			string
+	propertyNames		map[*schema.Property]string
+	types			[]*schema.ObjectType
+	enums			[]*schema.EnumType
+	resources		[]*schema.Resource
+	functions		[]*schema.Function
+	typeDetails		map[*schema.ObjectType]*typeDetails
+	children		[]*modContext
+	tool			string
+	namespaceName		string
+	namespaces		map[string]string
+	compatibility		string
+	dictionaryConstructors	bool
 
 	// If types in the Input namespace are used.
-	fullyQualifiedInputs bool
+	fullyQualifiedInputs	bool
 
 	// Determine whether to lift single-value method return values
-	liftSingleValueMethodReturns bool
+	liftSingleValueMethodReturns	bool
 
 	// The root namespace to use, if any.
-	rootNamespace    string
-	parameterization *schema.Parameterization
+	rootNamespace		string
+	parameterization	*schema.Parameterization
 }
 
 func (mod *modContext) RootNamespace() string {
@@ -302,10 +302,10 @@ func simplifyInputUnion(union *schema.UnionType) *schema.UnionType {
 		}
 	}
 	return &schema.UnionType{
-		ElementTypes:  elements,
-		DefaultType:   union.DefaultType,
-		Discriminator: union.Discriminator,
-		Mapping:       union.Mapping,
+		ElementTypes:	elements,
+		DefaultType:	union.DefaultType,
+		Discriminator:	union.Discriminator,
+		Mapping:	union.Mapping,
 	}
 }
 
@@ -402,10 +402,10 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 				info = v
 			}
 			namingCtx = &modContext{
-				pkg:           extPkg,
-				namespaces:    info.Namespaces,
-				rootNamespace: info.GetRootNamespace(),
-				compatibility: info.Compatibility,
+				pkg:		extPkg,
+				namespaces:	info.Namespaces,
+				rootNamespace:	info.GetRootNamespace(),
+				compatibility:	info.Compatibility,
 			}
 		}
 		typ := namingCtx.tokenToNamespace(t.Token, qualifier)
@@ -439,10 +439,10 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 				info = v
 			}
 			namingCtx = &modContext{
-				pkg:           extPkg,
-				namespaces:    info.Namespaces,
-				rootNamespace: info.GetRootNamespace(),
-				compatibility: info.Compatibility,
+				pkg:		extPkg,
+				namespaces:	info.Namespaces,
+				rootNamespace:	info.GetRootNamespace(),
+				compatibility:	info.Compatibility,
 			}
 		}
 		typ := namingCtx.tokenToNamespace(t.Token, "")
@@ -517,17 +517,17 @@ func printCommentWithOptions(w io.Writer, comment, indent string, escape bool) {
 }
 
 type plainType struct {
-	mod                   *modContext
-	res                   *schema.Resource
-	name                  string
-	comment               string
-	unescapeComment       bool
-	baseClass             string
-	propertyTypeQualifier string
-	properties            []*schema.Property
-	args                  bool
-	state                 bool
-	internal              bool
+	mod			*modContext
+	res			*schema.Resource
+	name			string
+	comment			string
+	unescapeComment		bool
+	baseClass		string
+	propertyTypeQualifier	string
+	properties		[]*schema.Property
+	args			bool
+	state			bool
+	internal		bool
 }
 
 func (pt *plainType) genInputPropertyAttribute(w io.Writer, indent string, prop *schema.Property) {
@@ -1231,13 +1231,13 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 	// Generate the resource args type.
 	args := &plainType{
-		mod:                   mod,
-		res:                   r,
-		name:                  name + "Args",
-		baseClass:             "ResourceArgs",
-		propertyTypeQualifier: "Inputs",
-		properties:            r.InputProperties,
-		args:                  true,
+		mod:			mod,
+		res:			r,
+		name:			name + "Args",
+		baseClass:		"ResourceArgs",
+		propertyTypeQualifier:	"Inputs",
+		properties:		r.InputProperties,
+		args:			true,
 	}
 	if err := args.genInputType(w, 1); err != nil {
 		return err
@@ -1246,14 +1246,14 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	// Generate the `Get` args type, if any.
 	if r.StateInputs != nil {
 		state := &plainType{
-			mod:                   mod,
-			res:                   r,
-			name:                  name + "State",
-			baseClass:             "ResourceArgs",
-			propertyTypeQualifier: "Inputs",
-			properties:            r.StateInputs.Properties,
-			args:                  true,
-			state:                 true,
+			mod:			mod,
+			res:			r,
+			name:			name + "State",
+			baseClass:		"ResourceArgs",
+			propertyTypeQualifier:	"Inputs",
+			properties:		r.StateInputs.Properties,
+			args:			true,
+			state:			true,
 		}
 		if err := state.genInputType(w, 1); err != nil {
 			return err
@@ -1284,14 +1284,14 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 					"The set of arguments for the <see cref=\"%s.%s\"/> method.", className, methodName), false
 			}
 			argsType := &plainType{
-				mod:                   mod,
-				comment:               comment,
-				unescapeComment:       !escape,
-				name:                  fmt.Sprintf("%s%sArgs", className, methodName),
-				baseClass:             "CallArgs",
-				propertyTypeQualifier: "Inputs",
-				properties:            args,
-				args:                  true,
+				mod:			mod,
+				comment:		comment,
+				unescapeComment:	!escape,
+				name:			fmt.Sprintf("%s%sArgs", className, methodName),
+				baseClass:		"CallArgs",
+				propertyTypeQualifier:	"Inputs",
+				properties:		args,
+				args:			true,
 			}
 			if err := argsType.genInputType(w, 1); err != nil {
 				return err
@@ -1315,13 +1315,13 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 					"The results of the <see cref=\"%s.%s\"/> method.", className, methodName), false
 			}
 			resultType := &plainType{
-				mod:                   mod,
-				comment:               comment,
-				unescapeComment:       !escape,
-				name:                  fmt.Sprintf("%s%sResult", className, methodName),
-				propertyTypeQualifier: "Outputs",
-				properties:            objectReturnType.Properties,
-				internal:              shouldLiftReturn,
+				mod:			mod,
+				comment:		comment,
+				unescapeComment:	!escape,
+				name:			fmt.Sprintf("%s%sResult", className, methodName),
+				propertyTypeQualifier:	"Outputs",
+				properties:		objectReturnType.Properties,
+				internal:		shouldLiftReturn,
 			}
 			resultType.genOutputType(w, 1)
 		}
@@ -1552,11 +1552,11 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		fmt.Fprintf(w, "\n")
 
 		args := &plainType{
-			mod:                   mod,
-			name:                  className + "Args",
-			baseClass:             "InvokeArgs",
-			propertyTypeQualifier: "Inputs",
-			properties:            fun.Inputs.Properties,
+			mod:			mod,
+			name:			className + "Args",
+			baseClass:		"InvokeArgs",
+			propertyTypeQualifier:	"Inputs",
+			properties:		fun.Inputs.Properties,
 		}
 		if err := args.genInputType(w, 1); err != nil {
 			return err
@@ -1573,10 +1573,10 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 			fmt.Fprintf(w, "\n")
 
 			res := &plainType{
-				mod:                   mod,
-				name:                  className + "Result",
-				propertyTypeQualifier: "Outputs",
-				properties:            objectType.Properties,
+				mod:			mod,
+				name:			className + "Result",
+				propertyTypeQualifier:	"Outputs",
+				properties:		objectType.Properties,
 			}
 			res.genOutputType(w, 1)
 		}
@@ -1685,12 +1685,12 @@ func (mod *modContext) genFunctionOutputVersionTypes(w io.Writer, fun *schema.Fu
 
 	if !fun.MultiArgumentInputs {
 		applyArgs := &plainType{
-			mod:                   mod,
-			name:                  functionOutputVersionArgsTypeName(fun),
-			propertyTypeQualifier: "Inputs",
-			baseClass:             "InvokeArgs",
-			properties:            fun.Inputs.InputShape.Properties,
-			args:                  true,
+			mod:			mod,
+			name:			functionOutputVersionArgsTypeName(fun),
+			propertyTypeQualifier:	"Inputs",
+			baseClass:		"InvokeArgs",
+			properties:		fun.Inputs.InputShape.Properties,
+			args:			true,
 		}
 
 		if err := applyArgs.genInputTypeWithFlags(w, 1, true /* generateInputAttributes */); err != nil {
@@ -1860,13 +1860,13 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, propertyType
 	args := obj.IsInputShape()
 
 	pt := &plainType{
-		mod:                   mod,
-		name:                  mod.typeName(obj, state, input, args),
-		comment:               obj.Comment,
-		propertyTypeQualifier: propertyTypeQualifier,
-		properties:            obj.Properties,
-		state:                 state,
-		args:                  args,
+		mod:			mod,
+		name:			mod.typeName(obj, state, input, args),
+		comment:		obj.Comment,
+		propertyTypeQualifier:	propertyTypeQualifier,
+		properties:		obj.Properties,
+		state:			state,
+		args:			args,
 	}
 
 	if input {
@@ -2069,14 +2069,14 @@ func (mod *modContext) genUtilities() (string, error) {
 		version = def.Version.String()
 	}
 	templateData := csharpUtilitiesTemplateContext{
-		Name:                namespaceName(mod.namespaces, mod.pkg.Name()),
-		Namespace:           mod.namespaceName,
-		ClassName:           "Utilities",
-		Tool:                mod.tool,
-		PluginDownloadURL:   def.PluginDownloadURL,
-		HasParameterization: def.Parameterization != nil,
-		PackageName:         def.Name,
-		PackageVersion:      version,
+		Name:			namespaceName(mod.namespaces, mod.pkg.Name()),
+		Namespace:		mod.namespaceName,
+		ClassName:		"Utilities",
+		Tool:			mod.tool,
+		PluginDownloadURL:	def.PluginDownloadURL,
+		HasParameterization:	def.Parameterization != nil,
+		PackageName:		def.Name,
+		PackageVersion:		version,
 	}
 
 	if def.Parameterization != nil {
@@ -2305,18 +2305,18 @@ func genPackageMetadata(pkg *schema.Package,
 	}
 
 	pulumiPlugin := &plugin.PulumiPluginJSON{
-		Resource: true,
-		Name:     pkg.Name,
-		Server:   pkg.PluginDownloadURL,
-		Version:  version,
+		Resource:	true,
+		Name:		pkg.Name,
+		Server:		pkg.PluginDownloadURL,
+		Version:	version,
 	}
 	if pkg.Parameterization != nil {
 		// For a parameterized package the plugin name/version is from the base provider information, not the
 		// top-level package name/version.
 		pulumiPlugin.Parameterization = &plugin.PulumiParameterizationJSON{
-			Name:    pulumiPlugin.Name,
-			Version: pulumiPlugin.Version,
-			Value:   pkg.Parameterization.Parameter,
+			Name:		pulumiPlugin.Name,
+			Version:	pulumiPlugin.Version,
+			Value:		pkg.Parameterization.Parameter,
 		}
 		pulumiPlugin.Name = pkg.Parameterization.BaseProvider.Name
 		pulumiPlugin.Version = pkg.Parameterization.BaseProvider.Version.String()
@@ -2384,12 +2384,12 @@ func genProjectFile(pkg *schema.Package,
 
 	w := &bytes.Buffer{}
 	err := csharpProjectFileTemplate.Execute(w, csharpProjectFileTemplateContext{
-		XMLDoc:            fmt.Sprintf(`.\%s.xml`, assemblyName),
-		Package:           pkg,
-		PackageReferences: packageReferences,
-		ProjectReferences: projectReferences,
-		Version:           version,
-		RestoreSources:    strings.Join(restoreSources, ";"),
+		XMLDoc:			fmt.Sprintf(`.\%s.xml`, assemblyName),
+		Package:		pkg,
+		PackageReferences:	packageReferences,
+		ProjectReferences:	projectReferences,
+		Version:		version,
+		RestoreSources:		strings.Join(restoreSources, ";"),
 	})
 	if err != nil {
 		return nil, err
@@ -2428,8 +2428,8 @@ func computePropertyNames(props []*schema.Property, names map[*schema.Property]s
 type LanguageResource struct {
 	*schema.Resource
 
-	Name    string // The resource name (e.g. Deployment)
-	Package string // The package name (e.g. Apps.V1)
+	Name	string	// The resource name (e.g. Deployment)
+	Package	string	// The package name (e.g. Apps.V1)
 }
 
 func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*modContext, *CSharpPackageInfo, error) {
@@ -2504,18 +2504,18 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 				ns += "." + namespaceName(info.Namespaces, modName)
 			}
 			mod = &modContext{
-				pkg:                          p,
-				mod:                          modName,
-				tool:                         tool,
-				namespaceName:                ns,
-				namespaces:                   info.Namespaces,
-				rootNamespace:                info.GetRootNamespace(),
-				typeDetails:                  details,
-				propertyNames:                propertyNames,
-				compatibility:                info.Compatibility,
-				dictionaryConstructors:       info.DictionaryConstructors,
-				liftSingleValueMethodReturns: info.LiftSingleValueMethodReturns,
-				parameterization:             pkg.Parameterization,
+				pkg:				p,
+				mod:				modName,
+				tool:				tool,
+				namespaceName:			ns,
+				namespaces:			info.Namespaces,
+				rootNamespace:			info.GetRootNamespace(),
+				typeDetails:			details,
+				propertyNames:			propertyNames,
+				compatibility:			info.Compatibility,
+				dictionaryConstructors:		info.DictionaryConstructors,
+				liftSingleValueMethodReturns:	info.LiftSingleValueMethodReturns,
+				parameterization:		pkg.Parameterization,
 			}
 
 			if modName != "" {
@@ -2654,9 +2654,9 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 			}
 
 			lr := LanguageResource{
-				Resource: r,
-				Package:  namespaceName(info.Namespaces, modName),
-				Name:     resourceName(r),
+				Resource:	r,
+				Package:	namespaceName(info.Namespaces, modName),
+				Name:		resourceName(r),
 			}
 			resources[r.Token] = lr
 		}

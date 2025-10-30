@@ -37,17 +37,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	bdisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
-	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	bdisplay "github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/b64"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/cancel"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -131,9 +131,9 @@ func (NopPluginManager) InstallPlugin(
 func NewUpdateInfo(project workspace.Project, target deploy.Target) engine.UpdateInfo {
 	return engine.UpdateInfo{
 		// The tests run in-memory, so we don't have a real root. Just pretend we're at the filesystem root.
-		Root:    "/",
-		Project: &project,
-		Target:  &target,
+		Root:		"/",
+		Project:	&project,
+		Target:		&target,
 	}
 }
 
@@ -220,11 +220,11 @@ func (op TestOp) runWithContext(
 	var originalBase *deploy.Snapshot
 	if target.Snapshot != nil {
 		originalBase = &deploy.Snapshot{
-			Manifest:          target.Snapshot.Manifest,
-			SecretsManager:    target.Snapshot.SecretsManager,
-			Resources:         slice.Map(target.Snapshot.Resources, (*resource.State).Copy),
-			PendingOperations: target.Snapshot.PendingOperations,
-			Metadata:          target.Snapshot.Metadata,
+			Manifest:		target.Snapshot.Manifest,
+			SecretsManager:		target.Snapshot.SecretsManager,
+			Resources:		slice.Map(target.Snapshot.Resources, (*resource.State).Copy),
+			PendingOperations:	target.Snapshot.PendingOperations,
+			Metadata:		target.Snapshot.Metadata,
 		}
 	}
 
@@ -269,11 +269,11 @@ func (op TestOp) runWithContext(
 	}
 
 	ctx := &engine.Context{
-		Cancel:          cancelCtx,
-		Events:          events,
-		SnapshotManager: combined,
-		BackendClient:   backendClient,
-		PluginManager:   NopPluginManager{},
+		Cancel:			cancelCtx,
+		Events:			events,
+		SnapshotManager:	combined,
+		BackendClient:		backendClient,
+		PluginManager:		NopPluginManager{},
 	}
 
 	updateOpts := opts.Options()
@@ -608,14 +608,14 @@ func AssertDisplay(t TB, events []engine.Event, path string) {
 	// ShowProgressEvents
 
 	go bdisplay.ShowDiffEvents("test", eventChannel, doneChannel, bdisplay.Options{
-		Color:                colors.Raw,
-		ShowSameResources:    true,
-		ShowReplacementSteps: true,
-		ShowReads:            true,
-		Stdout:               &stdout,
-		Stderr:               &stderr,
-		DeterministicOutput:  true,
-		ShowLinkToCopilot:    false,
+		Color:			colors.Raw,
+		ShowSameResources:	true,
+		ShowReplacementSteps:	true,
+		ShowReads:		true,
+		Stdout:			&stdout,
+		Stderr:			&stderr,
+		DeterministicOutput:	true,
+		ShowLinkToCopilot:	false,
 	})
 
 	for _, e := range expectedEvents {
@@ -656,15 +656,15 @@ func AssertDisplay(t TB, events []engine.Event, path string) {
 		"test", apitype.UpdateUpdate,
 		tokens.MustParseStackName("stack"), "project", "http://example.com",
 		eventChannel, doneChannel, bdisplay.Options{
-			Color:                colors.Raw,
-			ShowSameResources:    true,
-			ShowReplacementSteps: true,
-			ShowReads:            true,
-			SuppressProgress:     true,
-			Stdout:               &stdout,
-			Stderr:               &stderr,
-			DeterministicOutput:  true,
-			ShowLinkToCopilot:    false,
+			Color:			colors.Raw,
+			ShowSameResources:	true,
+			ShowReplacementSteps:	true,
+			ShowReads:		true,
+			SuppressProgress:	true,
+			Stdout:			&stdout,
+			Stderr:			&stderr,
+			DeterministicOutput:	true,
+			ShowLinkToCopilot:	false,
 		}, false)
 
 	for _, e := range expectedEvents {
@@ -685,10 +685,10 @@ func AssertDisplay(t TB, events []engine.Event, path string) {
 }
 
 type TestStep struct {
-	Op            TestOp
-	ExpectFailure bool
-	SkipPreview   bool
-	Validate      ValidateFunc
+	Op		TestOp
+	ExpectFailure	bool
+	SkipPreview	bool
+	Validate	ValidateFunc
 }
 
 func (t *TestStep) ValidateAnd(f ValidateFunc) {
@@ -708,9 +708,9 @@ func (t *TestStep) ValidateAnd(f ValidateFunc) {
 type TestUpdateOptions struct {
 	engine.UpdateOptions
 	// a factory to produce a plugin host for an update operation.
-	HostF            deploytest.PluginHostFactory
-	T                TB
-	SkipDisplayTests bool
+	HostF			deploytest.PluginHostFactory
+	T			TB
+	SkipDisplayTests	bool
 }
 
 // Options produces UpdateOptions for an update operation.
@@ -721,24 +721,24 @@ func (o TestUpdateOptions) Options() engine.UpdateOptions {
 	}
 	// Set a sensible parallel count because most tests leave this zero.
 	if opts.Parallel == 0 {
-		opts.Parallel = int32(runtime.NumCPU()) //nolint:gosec // NumCPU isn't going to overflow int32
+		opts.Parallel = int32(runtime.NumCPU())	//nolint:gosec // NumCPU isn't going to overflow int32
 	}
 
 	return opts
 }
 
 type TestPlan struct {
-	Project        string
-	Stack          string
-	Runtime        string
-	RuntimeOptions map[string]any
-	Config         config.Map
-	Decrypter      config.Decrypter
-	BackendClient  deploy.BackendClient
-	Options        TestUpdateOptions
-	Steps          []TestStep
+	Project		string
+	Stack		string
+	Runtime		string
+	RuntimeOptions	map[string]any
+	Config		config.Map
+	Decrypter	config.Decrypter
+	BackendClient	deploy.BackendClient
+	Options		TestUpdateOptions
+	Steps		[]TestStep
 	// Count the number of times Run is called on this plan.  Used to generate unique names for display snapshot tests.
-	run int
+	run	int
 }
 
 func (p *TestPlan) getNames() (stack tokens.StackName, project tokens.PackageName, runtime string) {
@@ -774,8 +774,8 @@ func (p *TestPlan) GetProject() workspace.Project {
 	_, projectName, runtime := p.getNames()
 
 	return workspace.Project{
-		Name:    projectName,
-		Runtime: workspace.NewProjectRuntimeInfo(runtime, p.RuntimeOptions),
+		Name:		projectName,
+		Runtime:	workspace.NewProjectRuntimeInfo(runtime, p.RuntimeOptions),
 	}
 }
 
@@ -788,13 +788,13 @@ func (p *TestPlan) GetTarget(t TB, snapshot *deploy.Snapshot) deploy.Target {
 	}
 
 	return deploy.Target{
-		Name:      stack,
-		Config:    cfg,
-		Decrypter: p.Decrypter,
+		Name:		stack,
+		Config:		cfg,
+		Decrypter:	p.Decrypter,
 		// note: it's really important that the preview and update operate on different snapshots.  the engine can and
 		// does mutate the snapshot in-place, even in previews, and sharing a snapshot between preview and update can
 		// cause state changes from the preview to persist even when doing an update.
-		Snapshot: CloneSnapshot(t, snapshot),
+		Snapshot:	CloneSnapshot(t, snapshot),
 	}
 }
 
@@ -862,7 +862,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 	return []TestStep{
 		// Initial update
 		{
-			Op: engine.Update,
+			Op:	engine.Update,
 			Validate: func(project workspace.Project, target deploy.Target, entries engine.JournalEntries,
 				_ []engine.Event, err error,
 			) error {
@@ -881,7 +881,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		},
 		// No-op refresh
 		{
-			Op: engine.Refresh,
+			Op:	engine.Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, entries engine.JournalEntries,
 				_ []engine.Event, err error,
 			) error {
@@ -900,7 +900,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		},
 		// No-op update
 		{
-			Op: engine.Update,
+			Op:	engine.Update,
 			Validate: func(project workspace.Project, target deploy.Target, entries engine.JournalEntries,
 				_ []engine.Event, err error,
 			) error {
@@ -919,7 +919,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		},
 		// No-op refresh
 		{
-			Op: engine.Refresh,
+			Op:	engine.Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, entries engine.JournalEntries,
 				_ []engine.Event, err error,
 			) error {
@@ -938,7 +938,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		},
 		// Destroy
 		{
-			Op: engine.Destroy,
+			Op:	engine.Destroy,
 			Validate: func(project workspace.Project, target deploy.Target, entries engine.JournalEntries,
 				_ []engine.Event, err error,
 			) error {
@@ -961,7 +961,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		},
 		// No-op refresh
 		{
-			Op: engine.Refresh,
+			Op:	engine.Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, entries engine.JournalEntries,
 				_ []engine.Event, err error,
 			) error {
@@ -978,16 +978,16 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 }
 
 type TestBuilder struct {
-	t       *testing.T
-	loaders []*deploytest.ProviderLoader
-	snap    *deploy.Snapshot
+	t	*testing.T
+	loaders	[]*deploytest.ProviderLoader
+	snap	*deploy.Snapshot
 }
 
 func NewTestBuilder(t *testing.T, snap *deploy.Snapshot) *TestBuilder {
 	return &TestBuilder{
-		t:       t,
-		snap:    snap,
-		loaders: slice.Prealloc[*deploytest.ProviderLoader](1),
+		t:		t,
+		snap:		snap,
+		loaders:	slice.Prealloc[*deploytest.ProviderLoader](1),
 	}
 }
 
@@ -1001,8 +1001,8 @@ func (b *TestBuilder) WithProvider(name string, version string, prov *deploytest
 }
 
 type Result struct {
-	snap *deploy.Snapshot
-	err  error
+	snap	*deploy.Snapshot
+	err	error
 }
 
 func (b *TestBuilder) RunUpdate(
@@ -1020,8 +1020,8 @@ func (b *TestBuilder) RunUpdate(
 	snap, err := TestOp(engine.Update).Run(
 		p.GetProject(), p.GetTarget(b.t, b.snap), p.Options, false, p.BackendClient, nil)
 	return &Result{
-		snap: snap,
-		err:  err,
+		snap:	snap,
+		err:	err,
 	}
 }
 

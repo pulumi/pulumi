@@ -29,8 +29,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/testing/test"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
@@ -39,8 +39,8 @@ import (
 const venvRelDir = "venv"
 
 var pathTests = []struct {
-	input    string
-	expected string
+	input		string
+	expected	string
 }{
 	{".", "."},
 	{"", "."},
@@ -98,13 +98,13 @@ func TestGeneratePackage(t *testing.T) {
 	}
 
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
-		Language:   "python",
-		GenPackage: GeneratePackage,
+		Language:	"python",
+		GenPackage:	GeneratePackage,
 		Checks: map[string]test.CodegenCheck{
-			"python/py_compile": needsEnv(test.CompilePython),
-			"python/test":       needsEnv(pyTestCheck),
+			"python/py_compile":	needsEnv(test.CompilePython),
+			"python/test":		needsEnv(pyTestCheck),
 		},
-		TestCases: test.PulumiPulumiSDKTests,
+		TestCases:	test.PulumiPulumiSDKTests,
 	})
 }
 
@@ -151,15 +151,15 @@ func buildVirtualEnv(ctx context.Context) error {
 	}
 
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-		Toolchain:  toolchain.Pip,
-		Root:       hereDir,
-		Virtualenv: venvRelDir,
+		Toolchain:	toolchain.Pip,
+		Root:		hereDir,
+		Virtualenv:	venvRelDir,
 	})
 	if err != nil {
 		return err
 	}
 
-	err = tc.InstallDependencies(ctx, hereDir, false, /*useLanguageVersionTools */
+	err = tc.InstallDependencies(ctx, hereDir, false,	/*useLanguageVersionTools */
 		false /*showOutput*/, os.Stdout, os.Stderr)
 	if err != nil {
 		return err
@@ -209,9 +209,9 @@ func pyTestCheck(t *testing.T, codeDir string) {
 	moduleCmd := func(module string, args ...string) error {
 		t.Logf("cd %s && %s", codeDir, strings.Join(append([]string{module}, args...), " "))
 		tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-			Toolchain:  toolchain.Pip,
-			Root:       hereDir,
-			Virtualenv: venvRelDir,
+			Toolchain:	toolchain.Pip,
+			Root:		hereDir,
+			Virtualenv:	venvRelDir,
 		})
 		if err != nil {
 			return err
@@ -304,16 +304,16 @@ func TestCalculateDeps(t *testing.T) {
 	type TestCase struct {
 		// This is the input to the calculate deps function, a list of
 		// deps provided in the schema.
-		inputDeps map[string]string
+		inputDeps	map[string]string
 		// This is the set of ordered pairs.
-		expected [][2]string
+		expected	[][2]string
 		// calculateDeps can error if the Pulumi version provided is
 		// invalid. This field is used to check that condition.
-		expectedErr error
+		expectedErr	error
 	}
 	cases := []TestCase{{
 		// Test 1: Give no explicit deps.
-		inputDeps: map[string]string{},
+		inputDeps:	map[string]string{},
 		expected: [][2]string{
 			// We expect three alphabetized deps,
 			// with semver and parver formatted differently from Pulumi.
@@ -352,7 +352,7 @@ func TestCalculateDeps(t *testing.T) {
 		inputDeps: map[string]string{
 			"pulumi": ">=0.16.0,<4.0.0",
 		},
-		expectedErr: fmt.Errorf("lower version bound must be at least %v", oldestAllowedPulumi),
+		expectedErr:	fmt.Errorf("lower version bound must be at least %v", oldestAllowedPulumi),
 	}}
 
 	for i, tc := range cases {

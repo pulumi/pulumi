@@ -85,10 +85,10 @@ var Global Store = envStore{}
 
 // An environmental variable.
 type Var struct {
-	name        string
-	Value       Value
-	Description string
-	options     options
+	name		string
+	Value		Value
+	Description	string
+	options		options
 }
 
 // The default prefix for a environmental variable.
@@ -110,7 +110,7 @@ func (v Var) Alternative() string {
 }
 
 // The list of variables that a must be truthy for `v` to be set.
-func (v Var) Requires() []BoolValue { return v.options.prerequs }
+func (v Var) Requires() []BoolValue	{ return v.options.prerequs }
 
 var envVars []Var
 
@@ -127,10 +127,10 @@ func Variables() []Var {
 type Option func(*options)
 
 type options struct {
-	prerequs    []BoolValue
-	noPrefix    bool
-	secret      bool
-	alternative string
+	prerequs	[]BoolValue
+	noPrefix	bool
+	secret		bool
+	alternative	string
 }
 
 func (o options) name(underlying string) string {
@@ -192,18 +192,18 @@ type Value interface {
 }
 
 type ValidateError struct {
-	Warning error
-	Error   error
+	Warning	error
+	Error	error
 }
 
 // An implementation helper for Value. New Values should be a typed wrapper around *value.
 type value struct {
-	variable Var
-	store    Store
+	variable	Var
+	store		Store
 }
 
 func (v value) withStore(store Store) *value {
-	v.store = store // This is non-mutating since `v` is taken by value.
+	v.store = store	// This is non-mutating since `v` is taken by value.
 	return &v
 }
 
@@ -256,7 +256,7 @@ func (v value) missingPrerequs() string {
 // A string retrieved from the environment.
 type StringValue struct{ *value }
 
-func (StringValue) Type() string { return "string" }
+func (StringValue) Type() string	{ return "string" }
 
 func (s StringValue) formattedValue() string {
 	if s.variable.options.secret {
@@ -265,7 +265,7 @@ func (s StringValue) formattedValue() string {
 	return fmt.Sprintf("%#v", s.Value())
 }
 
-func (StringValue) Validate() ValidateError { return ValidateError{} }
+func (StringValue) Validate() ValidateError	{ return ValidateError{} }
 
 // The string value of the variable.
 //
@@ -284,7 +284,7 @@ func (s StringValue) Value() string {
 // A boolean retrieved from the environment.
 type BoolValue struct{ *value }
 
-func (BoolValue) Type() string { return "bool" }
+func (BoolValue) Type() string	{ return "bool" }
 
 func (b BoolValue) formattedValue() string {
 	return fmt.Sprintf("%#v", b.Value())
@@ -317,7 +317,7 @@ func (b BoolValue) Value() bool {
 // An integer retrieved from the environment.
 type IntValue struct{ *value }
 
-func (IntValue) Type() string { return "int" }
+func (IntValue) Type() string	{ return "int" }
 
 func (i IntValue) Validate() ValidateError {
 	v, ok := i.Underlying()
@@ -373,9 +373,9 @@ func String(name, description string, opts ...Option) StringValue {
 	}
 	val := StringValue{&value{}}
 	variable := Var{
-		name:        name,
-		Description: description,
-		options:     options,
+		name:		name,
+		Description:	description,
+		options:	options,
 	}
 	return setVar(val, variable).(StringValue)
 }
@@ -394,9 +394,9 @@ func Bool(name, description string, opts ...Option) BoolValue {
 	}
 	val := BoolValue{&value{}}
 	variable := Var{
-		name:        name,
-		Description: description,
-		options:     options,
+		name:		name,
+		Description:	description,
+		options:	options,
 	}
 	return setVar(val, variable).(BoolValue)
 }
@@ -415,9 +415,9 @@ func Int(name, description string, opts ...Option) IntValue {
 	}
 	val := IntValue{&value{}}
 	variable := Var{
-		name:        name,
-		Description: description,
-		options:     options,
+		name:		name,
+		Description:	description,
+		options:	options,
 	}
 	return setVar(val, variable).(IntValue)
 }

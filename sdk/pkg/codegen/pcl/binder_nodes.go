@@ -19,8 +19,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -70,9 +70,9 @@ func (b *binder) bindNode(ctx context.Context, node Node) hcl.Diagnostics {
 			// TODO(pdg): print better trace
 			rng := node.SyntaxNode().Range()
 			return hcl.Diagnostics{{
-				Severity: hcl.DiagError,
-				Summary:  "circular reference",
-				Subject:  &rng,
+				Severity:	hcl.DiagError,
+				Summary:	"circular reference",
+				Subject:	&rng,
 			}}
 		}
 	}

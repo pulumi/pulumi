@@ -47,22 +47,22 @@ func TestDeepCopy(t *testing.T) {
 		[]byte{0, 1, 2, 3},
 		[]string{"foo", "bar"},
 		map[string]int{
-			"a": 42,
-			"b": 24,
+			"a":	42,
+			"b":	24,
 		},
 		struct {
-			Foo int
-			Bar map[int]int
+			Foo	int
+			Bar	map[int]int
 		}{
-			Foo: 42,
+			Foo:	42,
 			Bar: map[int]int{
 				19: 77,
 			},
 		},
 		[]map[string]string{
 			{
-				"foo": "bar",
-				"baz": "qux",
+				"foo":	"bar",
+				"baz":	"qux",
 			},
 			{
 				"alpha": "beta",
@@ -72,7 +72,7 @@ func TestDeepCopy(t *testing.T) {
 			"foo": map[string]any{
 				"bar": "baz",
 			},
-			"bar": []int{42},
+			"bar":	[]int{42},
 		},
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg

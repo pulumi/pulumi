@@ -26,16 +26,16 @@ import (
 const RegistryURLScheme = "registry"
 
 type URLInfo struct {
-	resourceType string
-	source       string
-	publisher    string
-	name         string
-	version      *semver.Version // optional
+	resourceType	string
+	source		string
+	publisher	string
+	name		string
+	version		*semver.Version	// optional
 }
 
 type WrongResourceTypeError struct {
-	Got      string
-	Expected string
+	Got		string
+	Expected	string
 }
 
 func (e *WrongResourceTypeError) Error() string {
@@ -43,8 +43,8 @@ func (e *WrongResourceTypeError) Error() string {
 }
 
 type MalformedRegistryURLError struct {
-	URL    string
-	Reason string
+	URL	string
+	Reason	string
 }
 
 func (e *MalformedRegistryURLError) Error() string {
@@ -76,8 +76,8 @@ func (e *StructuralError) Error() string {
 }
 
 type InvalidRegistryURLError struct {
-	URL    string
-	Reason string
+	URL	string
+	Reason	string
 }
 
 func (e *InvalidRegistryURLError) Error() string {
@@ -123,24 +123,24 @@ func ParseRegistryURL(registryURL string) (*URLInfo, error) {
 	parts := strings.Split(urlPath, "/")
 	if len(parts) != 3 {
 		return nil, &InvalidRegistryURLError{
-			URL:    registryURL,
-			Reason: fmt.Sprintf("expected format: registry://%s/source/publisher/name[@version]", resourceType),
+			URL:	registryURL,
+			Reason:	fmt.Sprintf("expected format: registry://%s/source/publisher/name[@version]", resourceType),
 		}
 	}
 
 	source := parts[0]
 	if source == "" {
 		return nil, &InvalidRegistryURLError{
-			URL:    registryURL,
-			Reason: "missing source",
+			URL:	registryURL,
+			Reason:	"missing source",
 		}
 	}
 
 	publisher := parts[1]
 	if publisher == "" {
 		return nil, &InvalidRegistryURLError{
-			URL:    registryURL,
-			Reason: "missing publisher",
+			URL:	registryURL,
+			Reason:	"missing publisher",
 		}
 	}
 
@@ -148,24 +148,24 @@ func ParseRegistryURL(registryURL string) (*URLInfo, error) {
 	nameVersionParts := strings.Split(nameAndVersion, "@")
 	if len(nameVersionParts) > 2 {
 		return nil, &InvalidRegistryURLError{
-			URL:    registryURL,
-			Reason: fmt.Sprintf("expected format: registry://%s/source/publisher/name[@version]", resourceType),
+			URL:	registryURL,
+			Reason:	fmt.Sprintf("expected format: registry://%s/source/publisher/name[@version]", resourceType),
 		}
 	}
 
 	encodedName := nameVersionParts[0]
 	if encodedName == "" {
 		return nil, &InvalidRegistryURLError{
-			URL:    registryURL,
-			Reason: "missing name",
+			URL:	registryURL,
+			Reason:	"missing name",
 		}
 	}
 
 	name, err := decodeArtifactNamePart(encodedName)
 	if err != nil {
 		return nil, &InvalidRegistryURLError{
-			URL:    registryURL,
-			Reason: fmt.Sprintf("failed to decode name: %v", err),
+			URL:	registryURL,
+			Reason:	fmt.Sprintf("failed to decode name: %v", err),
 		}
 	}
 
@@ -174,8 +174,8 @@ func ParseRegistryURL(registryURL string) (*URLInfo, error) {
 		versionStr := nameVersionParts[1]
 		if versionStr == "" {
 			return nil, &InvalidRegistryURLError{
-				URL:    registryURL,
-				Reason: "missing version",
+				URL:	registryURL,
+				Reason:	"missing version",
 			}
 		}
 
@@ -183,19 +183,19 @@ func ParseRegistryURL(registryURL string) (*URLInfo, error) {
 			version, err = parseVersion(versionStr)
 			if err != nil {
 				return nil, &InvalidRegistryURLError{
-					URL:    registryURL,
-					Reason: fmt.Sprintf("invalid version %q: %v", versionStr, err),
+					URL:	registryURL,
+					Reason:	fmt.Sprintf("invalid version %q: %v", versionStr, err),
 				}
 			}
 		}
 	}
 
 	return &URLInfo{
-		resourceType: resourceType,
-		source:       source,
-		publisher:    publisher,
-		name:         name,
-		version:      version,
+		resourceType:	resourceType,
+		source:		source,
+		publisher:	publisher,
+		name:		name,
+		version:	version,
 	}, nil
 }
 
@@ -254,11 +254,11 @@ func ParsePartialRegistryURL(registryURL string, assumedResourceType string) (*U
 	}
 
 	return &URLInfo{
-		resourceType: assumedResourceType,
-		source:       source,
-		publisher:    publisher,
-		name:         decodedName,
-		version:      version,
+		resourceType:	assumedResourceType,
+		source:		source,
+		publisher:	publisher,
+		name:		decodedName,
+		version:	version,
 	}, nil
 }
 

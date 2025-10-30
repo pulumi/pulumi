@@ -20,21 +20,21 @@ type EnforcementLevel int32
 
 const (
 	// Displayed to users, but does not block deployment.
-	EnforcementLevelAdvisory EnforcementLevel = EnforcementLevel(pulumirpc.EnforcementLevel_ADVISORY)
+	EnforcementLevelAdvisory	EnforcementLevel	= EnforcementLevel(pulumirpc.EnforcementLevel_ADVISORY)
 	// Stops deployment, cannot be overridden.
-	EnforcementLevelMandatory EnforcementLevel = EnforcementLevel(pulumirpc.EnforcementLevel_MANDATORY)
+	EnforcementLevelMandatory	EnforcementLevel	= EnforcementLevel(pulumirpc.EnforcementLevel_MANDATORY)
 	// Disabled policies do not run during a deployment.
-	EnforcementLevelDisabled EnforcementLevel = EnforcementLevel(pulumirpc.EnforcementLevel_DISABLED)
+	EnforcementLevelDisabled	EnforcementLevel	= EnforcementLevel(pulumirpc.EnforcementLevel_DISABLED)
 	// Remediated policies actually fixes problems instead of issuing diagnostics
-	EnforcementLevelRemediate EnforcementLevel = EnforcementLevel(pulumirpc.EnforcementLevel_REMEDIATE)
+	EnforcementLevelRemediate	EnforcementLevel	= EnforcementLevel(pulumirpc.EnforcementLevel_REMEDIATE)
 )
 
 // ConfigSchema represents the configuration schema for a policy.
 type ConfigSchema struct {
 	// The policy's configuration properties, this should be a map of property names to json schema
 	// definitions.
-	Properties map[string]map[string]any `json:"properties"`
+	Properties	map[string]map[string]any	`json:"properties"`
 
 	// The configuration properties that are required.
-	Required []string `json:"required"`
+	Required	[]string	`json:"required"`
 }

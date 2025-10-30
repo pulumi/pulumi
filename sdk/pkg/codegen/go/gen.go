@@ -37,9 +37,9 @@ import (
 
 	"golang.org/x/mod/modfile"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/cgstrings"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -53,25 +53,25 @@ import (
 const ExternalModuleSig = ":always-external:"
 
 const (
-	GenericsSettingNone         = "none"
-	GenericsSettingSideBySide   = "side-by-side"
-	GenericsSettingGenericsOnly = "generics-only"
+	GenericsSettingNone		= "none"
+	GenericsSettingSideBySide	= "side-by-side"
+	GenericsSettingGenericsOnly	= "generics-only"
 )
 
 type typeDetails struct {
 	// Note: if any of {ptr,array,map}Input are set, input and the corresponding output field must also be set. The
 	// mark* functions ensure that these invariants hold.
-	input      bool
-	ptrInput   bool
-	arrayInput bool
-	mapInput   bool
+	input		bool
+	ptrInput	bool
+	arrayInput	bool
+	mapInput	bool
 
 	// Note: if any of {ptr,array,map}Output are set, output must also be set. The mark* functions ensure that these
 	// invariants hold.
-	output      bool
-	ptrOutput   bool
-	arrayOutput bool
-	mapOutput   bool
+	output		bool
+	ptrOutput	bool
+	arrayOutput	bool
+	mapOutput	bool
 }
 
 func (d *typeDetails) hasOutputs() bool {
@@ -137,16 +137,16 @@ func moduleToPackage(overrides map[string]string, mod string) string {
 
 // A threadsafe cache for sharing between invocations of GenerateProgram.
 type Cache struct {
-	externalPackages map[*schema.Package]map[string]*pkgContext
-	m                *sync.Mutex
+	externalPackages	map[*schema.Package]map[string]*pkgContext
+	m			*sync.Mutex
 }
 
 var globalCache = NewCache()
 
 func NewCache() *Cache {
 	return &Cache{
-		externalPackages: map[*schema.Package]map[string]*pkgContext{},
-		m:                new(sync.Mutex),
+		externalPackages:	map[*schema.Package]map[string]*pkgContext{},
+		m:			new(sync.Mutex),
 	}
 }
 
@@ -164,44 +164,44 @@ func (c *Cache) setContextMap(pkg *schema.Package, m map[string]*pkgContext) {
 }
 
 type pkgContext struct {
-	pkg             schema.PackageReference
-	mod             string
-	importBasePath  string
-	rootPackageName string
-	typeDetails     map[schema.Type]*typeDetails
-	enums           []*schema.EnumType
-	types           []*schema.ObjectType
-	resources       []*schema.Resource
-	functions       []*schema.Function
+	pkg		schema.PackageReference
+	mod		string
+	importBasePath	string
+	rootPackageName	string
+	typeDetails	map[schema.Type]*typeDetails
+	enums		[]*schema.EnumType
+	types		[]*schema.ObjectType
+	resources	[]*schema.Resource
+	functions	[]*schema.Function
 
 	// schemaNames tracks the names of types/resources as specified in the schema
-	schemaNames codegen.StringSet
-	names       codegen.StringSet
-	renamed     map[string]string
+	schemaNames	codegen.StringSet
+	names		codegen.StringSet
+	renamed		map[string]string
 
 	// A mapping between external packages and their bound contents.
-	externalPackages *Cache
+	externalPackages	*Cache
 
 	// duplicateTokens tracks tokens that exist for both types and resources
-	duplicateTokens map[string]bool
-	functionNames   map[*schema.Function]string
-	tool            string
-	packages        map[string]*pkgContext
+	duplicateTokens	map[string]bool
+	functionNames	map[*schema.Function]string
+	tool		string
+	packages	map[string]*pkgContext
 
 	// Name overrides set in GoPackageInfo
-	modToPkg         map[string]string // Module name -> package name
-	pkgImportAliases map[string]string // Package name -> import alias
+	modToPkg		map[string]string	// Module name -> package name
+	pkgImportAliases	map[string]string	// Package name -> import alias
 	// the name used for the internal module, defaults to "internal" if not set by the schema
-	internalModuleName string
+	internalModuleName	string
 
 	// Determines whether to make single-return-value methods return an output struct or the value
-	liftSingleValueMethodReturns bool
+	liftSingleValueMethodReturns	bool
 
 	// Determines if we should emit type registration code
-	disableInputTypeRegistrations bool
+	disableInputTypeRegistrations	bool
 
 	// Determines if we should emit object defaults code
-	disableObjectDefaults bool
+	disableObjectDefaults	bool
 }
 
 func (pkg *pkgContext) detailsForType(t schema.Type) *typeDetails {
@@ -1266,13 +1266,13 @@ func (pkg *pkgContext) getInputUsage(name string) string {
 }
 
 type genInputImplementationArgs struct {
-	name              string
-	receiverType      string
-	elementType       string
-	ptrMethods        bool
-	toOutputMethods   bool
-	usingGenericTypes bool
-	goPackageinfo     GoPackageInfo
+	name			string
+	receiverType		string
+	elementType		string
+	ptrMethods		bool
+	toOutputMethods		bool
+	usingGenericTypes	bool
+	goPackageinfo		GoPackageInfo
 }
 
 func (pkg *pkgContext) genInputImplementation(
@@ -1284,13 +1284,13 @@ func (pkg *pkgContext) genInputImplementation(
 	usingGenericTypes bool,
 ) {
 	genInputImplementationWithArgs(w, genInputImplementationArgs{
-		name:              name,
-		receiverType:      receiverType,
-		elementType:       elementType,
-		ptrMethods:        ptrMethods,
-		toOutputMethods:   true,
-		usingGenericTypes: usingGenericTypes,
-		goPackageinfo:     goPackageInfo(pkg.pkg),
+		name:			name,
+		receiverType:		receiverType,
+		elementType:		elementType,
+		ptrMethods:		ptrMethods,
+		toOutputMethods:	true,
+		usingGenericTypes:	usingGenericTypes,
+		goPackageinfo:		goPackageInfo(pkg.pkg),
 	})
 }
 
@@ -1882,12 +1882,12 @@ func (pkg *pkgContext) genInputArgsStruct(
 }
 
 type genOutputTypesArgs struct {
-	t                 *schema.ObjectType
-	usingGenericTypes bool
+	t			*schema.ObjectType
+	usingGenericTypes	bool
 
 	// optional type name override
-	name   string
-	output bool
+	name	string
+	output	bool
 }
 
 func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
@@ -1904,10 +1904,10 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
 	if details.output || genArgs.output {
 		printComment(w, t.Comment, false)
 		pkg.genOutputType(w,
-			name,                      /* baseName */
-			name,                      /* elementType */
-			details.ptrInput,          /* ptrMethods */
-			genArgs.usingGenericTypes, /* usingGenericTypes */
+			name,				/* baseName */
+			name,				/* elementType */
+			details.ptrInput,		/* ptrMethods */
+			genArgs.usingGenericTypes,	/* usingGenericTypes */
 		)
 
 		for _, p := range t.Properties {
@@ -2645,9 +2645,9 @@ func (pkg *pkgContext) genResource(
 			if f.ReturnTypePlain && objectReturnType == nil {
 				properties = []*schema.Property{
 					{
-						Name:  "res",
-						Type:  f.ReturnType,
-						Plain: true,
+						Name:	"res",
+						Type:	f.ReturnType,
+						Plain:	true,
 					},
 				}
 			} else {
@@ -3263,18 +3263,18 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 		pkg.genInputArgsStruct(w, name+"Args", f.Inputs.InputShape, false /*emitGenericVariant*/)
 
 		genInputImplementationWithArgs(w, genInputImplementationArgs{
-			name:              name + "Args",
-			receiverType:      name + "Args",
-			elementType:       pkg.functionArgsTypeName(f),
-			usingGenericTypes: useGenericTypes,
+			name:			name + "Args",
+			receiverType:		name + "Args",
+			elementType:		pkg.functionArgsTypeName(f),
+			usingGenericTypes:	useGenericTypes,
 		})
 	}
 	if f.ReturnType != nil {
 		if objectType, ok := f.ReturnType.(*schema.ObjectType); ok && objectType != nil {
 			pkg.genOutputTypes(w, genOutputTypesArgs{
-				t:      objectType,
-				name:   pkg.functionResultTypeName(f),
-				output: true,
+				t:	objectType,
+				name:	pkg.functionResultTypeName(f),
+				output:	true,
 			})
 		}
 	}
@@ -3296,8 +3296,8 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 }
 
 type objectProperty struct {
-	object   *schema.ObjectType
-	property *schema.Property
+	object		*schema.ObjectType
+	property	*schema.Property
 }
 
 // When computing the type name for a field of an object type, we must ensure that we do not generate invalid recursive
@@ -3426,8 +3426,8 @@ func (pkg *pkgContext) genType(w io.Writer, obj *schema.ObjectType, usingGeneric
 		return err
 	}
 	pkg.genOutputTypes(w, genOutputTypesArgs{
-		t:                 obj,
-		usingGenericTypes: usingGenericTypes,
+		t:			obj,
+		usingGenericTypes:	usingGenericTypes,
 	})
 	return nil
 }
@@ -3451,8 +3451,8 @@ func (pkg *pkgContext) addSuffixesToName(typ schema.Type, name string) []string 
 }
 
 type nestedTypeInfo struct {
-	resolvedElementType string
-	names               map[string]bool
+	resolvedElementType	string
+	names			map[string]bool
 }
 
 func innerMostType(t schema.Type) schema.Type {
@@ -3520,8 +3520,8 @@ func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]*nestedType
 	nti, ok := types[elementTypeName]
 	if !ok {
 		nti = &nestedTypeInfo{
-			names:               map[string]bool{},
-			resolvedElementType: pkg.typeString(codegen.ResolvedType(typ)),
+			names:			map[string]bool{},
+			resolvedElementType:	pkg.typeString(codegen.ResolvedType(typ)),
 		}
 		types[elementTypeName] = nti
 	}
@@ -3991,7 +3991,7 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importsAndAlia
 			if i == "" {
 				fmt.Fprintf(w, "\n")
 			} else {
-				if strings.Contains(i, `"`) { // Imports with aliases already include quotes.
+				if strings.Contains(i, `"`) {	// Imports with aliases already include quotes.
 					fmt.Fprintf(w, "\t%s\n", i)
 				} else {
 					fmt.Fprintf(w, "\t%q\n", i)
@@ -4004,8 +4004,8 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importsAndAlia
 
 func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) error {
 	importsAndAliases := map[string]string{
-		"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config": "",
-		"github.com/pulumi/pulumi/sdk/v3/go/pulumi":        "",
+		"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config":	"",
+		"github.com/pulumi/pulumi/sdk/v3/go/pulumi":		"",
 	}
 	importsAndAliases[path.Join(pkg.importBasePath, pkg.internalModuleName)] = ""
 	pkg.genHeader(w, nil, importsAndAliases, false /* isUtil */)
@@ -4077,8 +4077,8 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) error {
 	}
 
 	imports := map[string]string{
-		"github.com/blang/semver":                   "",
-		"github.com/pulumi/pulumi/sdk/v3/go/pulumi": "",
+		"github.com/blang/semver":			"",
+		"github.com/pulumi/pulumi/sdk/v3/go/pulumi":	"",
 	}
 	imports[path.Join(pkg.importBasePath, pkg.internalModuleName)] = ""
 
@@ -4203,25 +4203,25 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 			}
 
 			pack = &pkgContext{
-				pkg:                           pkg,
-				mod:                           mod,
-				importBasePath:                importBasePath,
-				rootPackageName:               goInfo.RootPackageName,
-				typeDetails:                   map[schema.Type]*typeDetails{},
-				names:                         codegen.NewStringSet(),
-				schemaNames:                   codegen.NewStringSet(),
-				renamed:                       map[string]string{},
-				duplicateTokens:               map[string]bool{},
-				functionNames:                 map[*schema.Function]string{},
-				tool:                          tool,
-				modToPkg:                      goInfo.ModuleToPackage,
-				pkgImportAliases:              goInfo.PackageImportAliases,
-				packages:                      packages,
-				liftSingleValueMethodReturns:  goInfo.LiftSingleValueMethodReturns,
-				disableInputTypeRegistrations: goInfo.DisableInputTypeRegistrations,
-				disableObjectDefaults:         goInfo.DisableObjectDefaults,
-				internalModuleName:            internalModuleName,
-				externalPackages:              externalPkgs,
+				pkg:				pkg,
+				mod:				mod,
+				importBasePath:			importBasePath,
+				rootPackageName:		goInfo.RootPackageName,
+				typeDetails:			map[schema.Type]*typeDetails{},
+				names:				codegen.NewStringSet(),
+				schemaNames:			codegen.NewStringSet(),
+				renamed:			map[string]string{},
+				duplicateTokens:		map[string]bool{},
+				functionNames:			map[*schema.Function]string{},
+				tool:				tool,
+				modToPkg:			goInfo.ModuleToPackage,
+				pkgImportAliases:		goInfo.PackageImportAliases,
+				packages:			packages,
+				liftSingleValueMethodReturns:	goInfo.LiftSingleValueMethodReturns,
+				disableInputTypeRegistrations:	goInfo.DisableInputTypeRegistrations,
+				disableObjectDefaults:		goInfo.DisableObjectDefaults,
+				internalModuleName:		internalModuleName,
+				externalPackages:		externalPkgs,
 			}
 			packages[mod] = pack
 		}
@@ -4641,9 +4641,9 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 type LanguageResource struct {
 	*schema.Resource
 
-	Alias   string // The package alias (e.g. appsv1)
-	Name    string // The resource name (e.g. Deployment)
-	Package string // The package name (e.g. github.com/pulumi/pulumi-kubernetes/sdk/v2/go/kubernetes/apps/v1)
+	Alias	string	// The package alias (e.g. appsv1)
+	Name	string	// The resource name (e.g. Deployment)
+	Package	string	// The package name (e.g. github.com/pulumi/pulumi-kubernetes/sdk/v2/go/kubernetes/apps/v1)
 }
 
 // LanguageResources returns a map of resources that can be used by downstream codegen. The map
@@ -4685,10 +4685,10 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 
 			packagePath := path.Join(goPkgInfo.ImportBasePath, pkg.mod)
 			resources[r.Token] = LanguageResource{
-				Resource: r,
-				Alias:    goPkgInfo.PackageImportAliases[packagePath],
-				Name:     tokenToName(r.Token),
-				Package:  packagePath,
+				Resource:	r,
+				Alias:		goPkgInfo.PackageImportAliases[packagePath],
+				Name:		tokenToName(r.Token),
+				Package:	packagePath,
 			}
 		}
 	}
@@ -4774,9 +4774,9 @@ func GeneratePackage(tool string,
 
 	// Generate pulumi-plugin.json
 	pulumiPlugin := &plugin.PulumiPluginJSON{
-		Resource: true,
-		Name:     pkg.Name,
-		Server:   pkg.PluginDownloadURL,
+		Resource:	true,
+		Name:		pkg.Name,
+		Server:		pkg.PluginDownloadURL,
 	}
 	if goPkgInfo.RespectSchemaVersion && pkg.Version != nil {
 		pulumiPlugin.Version = pkg.Version.String()
@@ -4791,9 +4791,9 @@ func GeneratePackage(tool string,
 		// For a parameterized package the plugin name/version is from the base provider information, not the
 		// top-level package name/version.
 		pulumiPlugin.Parameterization = &plugin.PulumiParameterizationJSON{
-			Name:    pulumiPlugin.Name,
-			Version: pulumiPlugin.Version,
-			Value:   pkg.Parameterization.Parameter,
+			Name:		pulumiPlugin.Name,
+			Version:	pulumiPlugin.Version,
+			Value:		pkg.Parameterization.Parameter,
 		}
 		pulumiPlugin.Name = pkg.Parameterization.BaseProvider.Name
 		pulumiPlugin.Version = pkg.Parameterization.BaseProvider.Version.String()
@@ -5091,8 +5091,8 @@ func GeneratePackage(tool string,
 		if len(mod) == 0 {
 			buffer := &bytes.Buffer{}
 			importsAndAliases := map[string]string{
-				"github.com/blang/semver":                   "",
-				"github.com/pulumi/pulumi/sdk/v3/go/pulumi": "",
+				"github.com/blang/semver":			"",
+				"github.com/pulumi/pulumi/sdk/v3/go/pulumi":	"",
 			}
 
 			imports := []string{"fmt", "os", "reflect", "regexp", "strconv", "strings"}

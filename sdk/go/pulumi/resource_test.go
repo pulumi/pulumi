@@ -39,7 +39,7 @@ import (
 type testRes struct {
 	CustomResourceState
 	// equality identifier used for testing
-	foo string
+	foo	string
 }
 
 type testComp struct {
@@ -49,7 +49,7 @@ type testComp struct {
 type testProv struct {
 	ProviderResourceState
 	// equality identifier used for testing
-	foo string
+	foo	string
 }
 
 func TestResourceOptionMergingParent(t *testing.T) {
@@ -259,17 +259,17 @@ func TestResourceOptionComposite(t *testing.T) {
 	}
 
 	tests := []struct {
-		name  string
-		input []ResourceOption
-		want  *resourceOptions
+		name	string
+		input	[]ResourceOption
+		want	*resourceOptions
 	}{
 		{
-			name:  "no options",
-			input: []ResourceOption{},
-			want:  &resourceOptions{},
+			name:	"no options",
+			input:	[]ResourceOption{},
+			want:	&resourceOptions{},
 		},
 		{
-			name: "single option",
+			name:	"single option",
 			input: []ResourceOption{
 				DeleteBeforeReplace(true),
 			},
@@ -278,7 +278,7 @@ func TestResourceOptionComposite(t *testing.T) {
 			},
 		},
 		{
-			name: "multiple conflicting options",
+			name:	"multiple conflicting options",
 			input: []ResourceOption{
 				DeleteBeforeReplace(true),
 				DeleteBeforeReplace(false),
@@ -288,7 +288,7 @@ func TestResourceOptionComposite(t *testing.T) {
 			},
 		},
 		{
-			name: "bouncing options",
+			name:	"bouncing options",
 			input: []ResourceOption{
 				DeleteBeforeReplace(true),
 				DeleteBeforeReplace(false),
@@ -299,14 +299,14 @@ func TestResourceOptionComposite(t *testing.T) {
 			},
 		},
 		{
-			name: "different options",
+			name:	"different options",
 			input: []ResourceOption{
 				DeleteBeforeReplace(true),
 				Protect(true),
 			},
 			want: &resourceOptions{
-				DeleteBeforeReplace: ptr(true),
-				Protect:             ptr(true),
+				DeleteBeforeReplace:	ptr(true),
+				Protect:		ptr(true),
 			},
 		},
 	}
@@ -326,17 +326,17 @@ func TestInvokeOptionComposite(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name  string
-		input []InvokeOption
-		want  *invokeOptions
+		name	string
+		input	[]InvokeOption
+		want	*invokeOptions
 	}{
 		{
-			name:  "no options",
-			input: []InvokeOption{},
-			want:  &invokeOptions{},
+			name:	"no options",
+			input:	[]InvokeOption{},
+			want:	&invokeOptions{},
 		},
 		{
-			name: "single option",
+			name:	"single option",
 			input: []InvokeOption{
 				Version("test"),
 			},
@@ -345,7 +345,7 @@ func TestInvokeOptionComposite(t *testing.T) {
 			},
 		},
 		{
-			name: "multiple conflicting options",
+			name:	"multiple conflicting options",
 			input: []InvokeOption{
 				Version("test1"),
 				Version("test2"),
@@ -355,7 +355,7 @@ func TestInvokeOptionComposite(t *testing.T) {
 			},
 		},
 		{
-			name: "bouncing options",
+			name:	"bouncing options",
 			input: []InvokeOption{
 				Version("test1"),
 				Version("test2"),
@@ -366,14 +366,14 @@ func TestInvokeOptionComposite(t *testing.T) {
 			},
 		},
 		{
-			name: "different options",
+			name:	"different options",
 			input: []InvokeOption{
 				Version("test"),
 				PluginDownloadURL("url"),
 			},
 			want: &invokeOptions{
-				Version:           "test",
-				PluginDownloadURL: "url",
+				Version:		"test",
+				PluginDownloadURL:	"url",
 			},
 		},
 	}
@@ -602,27 +602,27 @@ func TestUninitializedParentResource(t *testing.T) {
 	}
 
 	tests := []struct {
-		desc   string
-		parent Resource
+		desc	string
+		parent	Resource
 
 		// additional options to pass to RegisterResource
 		// besides the Parent.
 		// The original report of the panic was with an Alias option.
-		opts []ResourceOption
+		opts	[]ResourceOption
 
 		// Message that should be part of the error message.
-		wantErr string
+		wantErr	string
 	}{
 		{
-			desc:   "component resource",
-			parent: &myComponent{},
+			desc:	"component resource",
+			parent:	&myComponent{},
 			wantErr: "WARNING: Ignoring component resource *pulumi.myComponent " +
 				"(parent of my-resource :: test:index:MyResource) " +
 				"because it was not registered with RegisterComponentResource",
 		},
 		{
-			desc:   "component resource/alias",
-			parent: &myComponent{},
+			desc:	"component resource/alias",
+			parent:	&myComponent{},
 			opts: []ResourceOption{
 				Aliases([]Alias{
 					{Name: String("alias1")},
@@ -633,15 +633,15 @@ func TestUninitializedParentResource(t *testing.T) {
 				"because it was not registered with RegisterComponentResource",
 		},
 		{
-			desc:   "custom resource",
-			parent: &myCustomResource{},
+			desc:	"custom resource",
+			parent:	&myCustomResource{},
 			wantErr: "WARNING: Ignoring resource *pulumi.myCustomResource " +
 				"(parent of my-resource :: test:index:MyResource) " +
 				"because it was not registered with RegisterResource",
 		},
 		{
-			desc:   "custom resource/alias",
-			parent: &myCustomResource{},
+			desc:	"custom resource/alias",
+			parent:	&myCustomResource{},
 			opts: []ResourceOption{
 				Aliases([]Alias{
 					{Name: String("alias1")},
@@ -866,13 +866,13 @@ func TestResourceProviderVersusProviders(t *testing.T) {
 	}
 
 	p1 := &testProv{
-		ProviderResourceState: ProviderResourceState{pkg: "test"},
-		foo:                   "1",
+		ProviderResourceState:	ProviderResourceState{pkg: "test"},
+		foo:			"1",
 	}
 
 	p2 := &testProv{
-		ProviderResourceState: ProviderResourceState{pkg: "test"},
-		foo:                   "2",
+		ProviderResourceState:	ProviderResourceState{pkg: "test"},
+		foo:			"2",
 	}
 
 	t.Run("singular, plural", func(t *testing.T) {
@@ -951,19 +951,19 @@ func TestNewResourceOptions(t *testing.T) {
 	sampleResourceInput := NewResourceInput(&testRes{foo: "foo"})
 
 	tests := []struct {
-		desc string
-		give ResourceOption
-		want ResourceOptions
+		desc	string
+		give	ResourceOption
+		want	ResourceOptions
 	}{
 		{
-			desc: "AdditionalSecretOutputs",
-			give: AdditionalSecretOutputs([]string{"foo"}),
+			desc:	"AdditionalSecretOutputs",
+			give:	AdditionalSecretOutputs([]string{"foo"}),
 			want: ResourceOptions{
 				AdditionalSecretOutputs: []string{"foo"},
 			},
 		},
 		{
-			desc: "Aliases",
+			desc:	"Aliases",
 			give: Aliases([]Alias{
 				{Name: String("foo")},
 			}),
@@ -974,7 +974,7 @@ func TestNewResourceOptions(t *testing.T) {
 			},
 		},
 		{
-			desc: "Aliases/multiple options",
+			desc:	"Aliases/multiple options",
 			give: Composite(
 				Aliases([]Alias{{Name: String("foo")}}),
 				Aliases([]Alias{{Name: String("bar")}}),
@@ -987,12 +987,12 @@ func TestNewResourceOptions(t *testing.T) {
 			},
 		},
 		{
-			desc: "DeleteBeforeReplace",
-			give: DeleteBeforeReplace(true),
-			want: ResourceOptions{DeleteBeforeReplace: true},
+			desc:	"DeleteBeforeReplace",
+			give:	DeleteBeforeReplace(true),
+			want:	ResourceOptions{DeleteBeforeReplace: true},
 		},
 		{
-			desc: "DependsOn",
+			desc:	"DependsOn",
 			give: DependsOn([]Resource{
 				&testRes{foo: "foo"},
 				&testRes{foo: "bar"},
@@ -1005,7 +1005,7 @@ func TestNewResourceOptions(t *testing.T) {
 			},
 		},
 		{
-			desc: "DependsOnInputs",
+			desc:	"DependsOnInputs",
 			give: DependsOnInputs(
 				ResourceArray{sampleResourceInput},
 			),
@@ -1016,127 +1016,127 @@ func TestNewResourceOptions(t *testing.T) {
 			},
 		},
 		{
-			desc: "IgnoreChanges",
-			give: IgnoreChanges([]string{"foo"}),
+			desc:	"IgnoreChanges",
+			give:	IgnoreChanges([]string{"foo"}),
 			want: ResourceOptions{
 				IgnoreChanges: []string{"foo"},
 			},
 		},
 		{
-			desc: "Import",
-			give: Import(ID("bar")),
-			want: ResourceOptions{Import: ID("bar")},
+			desc:	"Import",
+			give:	Import(ID("bar")),
+			want:	ResourceOptions{Import: ID("bar")},
 		},
 		{
-			desc: "Parent",
-			give: Parent(&testRes{foo: "foo"}),
+			desc:	"Parent",
+			give:	Parent(&testRes{foo: "foo"}),
 			want: ResourceOptions{
 				Parent: &testRes{foo: "foo"},
 			},
 		},
 		{
-			desc: "Protect",
-			give: Protect(true),
-			want: ResourceOptions{Protect: true},
+			desc:	"Protect",
+			give:	Protect(true),
+			want:	ResourceOptions{Protect: true},
 		},
 		{
-			desc: "Provider",
-			give: Provider(&testProv{foo: "bar"}),
+			desc:	"Provider",
+			give:	Provider(&testProv{foo: "bar"}),
 			want: ResourceOptions{
-				Provider: &testProv{foo: "bar"},
+				Provider:	&testProv{foo: "bar"},
 				Providers: []ProviderResource{
 					&testProv{foo: "bar"},
 				},
 			},
 		},
 		{
-			desc: "ProviderMap",
+			desc:	"ProviderMap",
 			give: ProviderMap(map[string]ProviderResource{
 				"foo": &testProv{
-					ProviderResourceState: ProviderResourceState{pkg: "foo"},
-					foo:                   "a",
+					ProviderResourceState:	ProviderResourceState{pkg: "foo"},
+					foo:			"a",
 				},
 				"bar": &testProv{
-					ProviderResourceState: ProviderResourceState{pkg: "bar"},
-					foo:                   "b",
+					ProviderResourceState:	ProviderResourceState{pkg: "bar"},
+					foo:			"b",
 				},
 			}),
 			want: ResourceOptions{
 				Providers: []ProviderResource{
 					&testProv{
-						ProviderResourceState: ProviderResourceState{pkg: "bar"},
-						foo:                   "b",
+						ProviderResourceState:	ProviderResourceState{pkg: "bar"},
+						foo:			"b",
 					},
 					&testProv{
-						ProviderResourceState: ProviderResourceState{pkg: "foo"},
-						foo:                   "a",
+						ProviderResourceState:	ProviderResourceState{pkg: "foo"},
+						foo:			"a",
 					},
 				},
 			},
 		},
 		{
-			desc: "Providers",
+			desc:	"Providers",
 			give: Providers(
 				&testProv{
-					ProviderResourceState: ProviderResourceState{pkg: "foo"},
-					foo:                   "a",
+					ProviderResourceState:	ProviderResourceState{pkg: "foo"},
+					foo:			"a",
 				},
 				&testProv{
-					ProviderResourceState: ProviderResourceState{pkg: "bar"},
-					foo:                   "b",
+					ProviderResourceState:	ProviderResourceState{pkg: "bar"},
+					foo:			"b",
 				},
 			),
 			want: ResourceOptions{
 				Providers: []ProviderResource{
 					&testProv{
-						ProviderResourceState: ProviderResourceState{pkg: "bar"},
-						foo:                   "b",
+						ProviderResourceState:	ProviderResourceState{pkg: "bar"},
+						foo:			"b",
 					},
 					&testProv{
-						ProviderResourceState: ProviderResourceState{pkg: "foo"},
-						foo:                   "a",
+						ProviderResourceState:	ProviderResourceState{pkg: "foo"},
+						foo:			"a",
 					},
 				},
 			},
 		},
 		{
-			desc: "ReplaceOnChanges",
-			give: ReplaceOnChanges([]string{"foo", "bar"}),
+			desc:	"ReplaceOnChanges",
+			give:	ReplaceOnChanges([]string{"foo", "bar"}),
 			want: ResourceOptions{
 				ReplaceOnChanges: []string{"foo", "bar"},
 			},
 		},
 		{
-			desc: "Timeouts",
-			give: Timeouts(&CustomTimeouts{Create: "10s"}),
+			desc:	"Timeouts",
+			give:	Timeouts(&CustomTimeouts{Create: "10s"}),
 			want: ResourceOptions{
 				CustomTimeouts: &CustomTimeouts{Create: "10s"},
 			},
 		},
 		{
-			desc: "URN",
-			give: URN_("foo::bar"),
-			want: ResourceOptions{URN: "foo::bar"},
+			desc:	"URN",
+			give:	URN_("foo::bar"),
+			want:	ResourceOptions{URN: "foo::bar"},
 		},
 		{
-			desc: "Version",
-			give: Version("1.2.3"),
-			want: ResourceOptions{Version: "1.2.3"},
+			desc:	"Version",
+			give:	Version("1.2.3"),
+			want:	ResourceOptions{Version: "1.2.3"},
 		},
 		{
-			desc: "PluginDownloadURL",
-			give: PluginDownloadURL("https://example.com/whatever"),
-			want: ResourceOptions{PluginDownloadURL: "https://example.com/whatever"},
+			desc:	"PluginDownloadURL",
+			give:	PluginDownloadURL("https://example.com/whatever"),
+			want:	ResourceOptions{PluginDownloadURL: "https://example.com/whatever"},
 		},
 		{
-			desc: "RetainOnDelete",
-			give: RetainOnDelete(true),
-			want: ResourceOptions{RetainOnDelete: true},
+			desc:	"RetainOnDelete",
+			give:	RetainOnDelete(true),
+			want:	ResourceOptions{RetainOnDelete: true},
 		},
 		{
-			desc: "DeletedWith",
-			give: DeletedWith(&testRes{foo: "a"}),
-			want: ResourceOptions{DeletedWith: &testRes{foo: "a"}},
+			desc:	"DeletedWith",
+			give:	DeletedWith(&testRes{foo: "a"}),
+			want:	ResourceOptions{DeletedWith: &testRes{foo: "a"}},
 		},
 	}
 
@@ -1173,33 +1173,33 @@ func TestNewInvokeOptions(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		desc string
-		give InvokeOption
-		want InvokeOptions
+		desc	string
+		give	InvokeOption
+		want	InvokeOptions
 	}{
 		{
-			desc: "Parent",
-			give: Parent(&testRes{foo: "foo"}),
+			desc:	"Parent",
+			give:	Parent(&testRes{foo: "foo"}),
 			want: InvokeOptions{
 				Parent: &testRes{foo: "foo"},
 			},
 		},
 		{
-			desc: "Provider",
-			give: Provider(&testProv{foo: "bar"}),
+			desc:	"Provider",
+			give:	Provider(&testProv{foo: "bar"}),
 			want: InvokeOptions{
 				Provider: &testProv{foo: "bar"},
 			},
 		},
 		{
-			desc: "Version",
-			give: Version("1.2.3"),
-			want: InvokeOptions{Version: "1.2.3"},
+			desc:	"Version",
+			give:	Version("1.2.3"),
+			want:	InvokeOptions{Version: "1.2.3"},
 		},
 		{
-			desc: "PluginDownloadURL",
-			give: PluginDownloadURL("https://example.com/whatever"),
-			want: InvokeOptions{PluginDownloadURL: "https://example.com/whatever"},
+			desc:	"PluginDownloadURL",
+			give:	PluginDownloadURL("https://example.com/whatever"),
+			want:	InvokeOptions{PluginDownloadURL: "https://example.com/whatever"},
 		},
 	}
 
@@ -1240,7 +1240,7 @@ func assertHasDeps(
 
 func outputDependingOnResource(res Resource, isKnown bool) IntOutput {
 	out := newIntOutput()
-	internal.ResolveOutput(out, 0, isKnown, false, resourcesToInternal([]Resource{res})) /* secret */
+	internal.ResolveOutput(out, 0, isKnown, false, resourcesToInternal([]Resource{res}))	/* secret */
 	return out
 }
 
@@ -1253,7 +1253,7 @@ func newTestRes(t *testing.T, ctx *Context, name string, opts ...ResourceOption)
 
 func newUnknownRes() *testRes {
 	r := testRes{}
-	r.id = IDOutput{} // Make the id unknown
+	r.id = IDOutput{}	// Make the id unknown
 	return &r
 }
 
@@ -1309,7 +1309,7 @@ func (dt *dependenciesTracker) dependencies(resource URN) []URN {
 type interceptingResourceMonitor struct {
 	pulumirpc.ResourceMonitorClient
 
-	afterRegisterResource func(req *pulumirpc.RegisterResourceRequest, resp *pulumirpc.RegisterResourceResponse, err error)
+	afterRegisterResource	func(req *pulumirpc.RegisterResourceRequest, resp *pulumirpc.RegisterResourceResponse, err error)
 }
 
 func newInterceptingResourceMonitor(inner pulumirpc.ResourceMonitorClient) *interceptingResourceMonitor {
@@ -1532,7 +1532,7 @@ func TestInvokeDependsOnUnknownChild(t *testing.T) {
 		require.False(t, known)
 		require.False(t, secret)
 		require.Len(t, deps, 1)
-		require.True(t, deps[0] == comp) // The component, not the child
+		require.True(t, deps[0] == comp)	// The component, not the child
 
 		return nil
 	}, WithMocks("project", "stack", monitor))

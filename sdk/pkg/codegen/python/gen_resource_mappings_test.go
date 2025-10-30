@@ -15,14 +15,14 @@
 package python
 
 import (
-	"crypto/md5" //nolint:gosec
+	"crypto/md5"	//nolint:gosec
 	"encoding/json"
 	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 )
 
 // Regress a problem of non-deterministic codegen (due to reordering).
@@ -77,7 +77,7 @@ func TestGenResourceMappingsIsDeterministic(t *testing.T) {
 			return ""
 		}
 
-		return fmt.Sprintf("%x", md5.Sum(file)) //nolint:gosec
+		return fmt.Sprintf("%x", md5.Sum(file))	//nolint:gosec
 	}
 
 	h1 := generateInitHash()

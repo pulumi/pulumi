@@ -24,10 +24,10 @@ import (
 )
 
 type MockSecretsManager struct {
-	TypeF      func() string
-	StateF     func() json.RawMessage
-	EncrypterF func() config.Encrypter
-	DecrypterF func() config.Decrypter
+	TypeF		func() string
+	StateF		func() json.RawMessage
+	EncrypterF	func() config.Encrypter
+	DecrypterF	func() config.Decrypter
 }
 
 var _ Manager = &MockSecretsManager{}
@@ -65,8 +65,8 @@ func (msm *MockSecretsManager) Decrypter() config.Decrypter {
 }
 
 type MockEncrypter struct {
-	EncryptValueF func(plaintext string) string
-	BatchEncryptF func(secrets []string) []string
+	EncryptValueF	func(plaintext string) string
+	BatchEncryptF	func(secrets []string) []string
 }
 
 func (me *MockEncrypter) EncryptValue(ctx context.Context, plaintext string) (string, error) {
@@ -85,8 +85,8 @@ func (me *MockEncrypter) BatchEncrypt(ctx context.Context, secrets []string) ([]
 }
 
 type MockDecrypter struct {
-	DecryptValueF func(ciphertext string) string
-	BatchDecryptF func(ciphertexts []string) []string
+	DecryptValueF	func(ciphertext string) string
+	BatchDecryptF	func(ciphertexts []string) []string
 }
 
 func (md *MockDecrypter) DecryptValue(ctx context.Context, ciphertext string) (string, error) {

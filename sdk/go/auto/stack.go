@@ -139,8 +139,8 @@ import (
 // Multiple Stacks are commonly used to denote different phases of development
 // (such as development, staging and production) or feature branches (such as feature-x-dev, jane-feature-x-dev).
 type Stack struct {
-	workspace Workspace
-	stackName string
+	workspace	Workspace
+	stackName	string
 }
 
 // FullyQualifiedStackName returns a stack name formatted with the greatest possible specificity:
@@ -158,8 +158,8 @@ func FullyQualifiedStackName(org, project, stack string) string {
 // It fails if a stack with that name already exists
 func NewStack(ctx context.Context, stackName string, ws Workspace) (Stack, error) {
 	s := Stack{
-		workspace: ws,
-		stackName: stackName,
+		workspace:	ws,
+		stackName:	stackName,
 	}
 
 	err := ws.CreateStack(ctx, stackName)
@@ -174,8 +174,8 @@ func NewStack(ctx context.Context, stackName string, ws Workspace) (Stack, error
 // It returns an error if the given Stack does not exist.
 func SelectStack(ctx context.Context, stackName string, ws Workspace) (Stack, error) {
 	s := Stack{
-		workspace: ws,
-		stackName: stackName,
+		workspace:	ws,
+		stackName:	stackName,
 	}
 
 	err := ws.SelectStack(ctx, stackName)
@@ -345,8 +345,8 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(
 		ctx,
-		preOpts.ProgressStreams,      /* additionalOutput */
-		preOpts.ErrorProgressStreams, /* additionalErrorOutput */
+		preOpts.ProgressStreams,	/* additionalOutput */
+		preOpts.ErrorProgressStreams,	/* additionalErrorOutput */
 		args...,
 	)
 	if err != nil {
@@ -505,9 +505,9 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	}
 
 	res = UpResult{
-		Outputs: outs,
-		StdOut:  stdout,
-		StdErr:  stderr,
+		Outputs:	outs,
+		StdOut:		stdout,
+		StdErr:		stderr,
 	}
 
 	if len(history) > 0 {
@@ -594,15 +594,15 @@ func (s *Stack) ImportResources(ctx context.Context, opts ...optimport.Option) (
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(
 		ctx,
-		importOpts.ProgressStreams,      /* additionalOutputs */
-		importOpts.ErrorProgressStreams, /* additionalErrorOutputs */
+		importOpts.ProgressStreams,		/* additionalOutputs */
+		importOpts.ErrorProgressStreams,	/* additionalErrorOutputs */
 		args...,
 	)
 	if err != nil {
 		return res, newAutoError(fmt.Errorf("failed to import resources: %w", err), stdout, stderr, code)
 	}
 
-	history, err := s.History(ctx, 1 /*pageSize*/, 1, /*page*/
+	history, err := s.History(ctx, 1 /*pageSize*/, 1,	/*page*/
 		opthistory.ShowSecrets(importOpts.ShowSecrets && !s.isRemote()))
 	if err != nil {
 		return res, fmt.Errorf("failed to import resources: %w", err)
@@ -619,10 +619,10 @@ func (s *Stack) ImportResources(ctx context.Context, opts ...optimport.Option) (
 	}
 
 	res = ImportResult{
-		Summary:       summary,
-		StdOut:        stdout,
-		StdErr:        stderr,
-		GeneratedCode: string(generatedCode),
+		Summary:	summary,
+		StdOut:		stdout,
+		StdErr:		stderr,
+		GeneratedCode:	string(generatedCode),
 	}
 
 	return res, nil
@@ -677,8 +677,8 @@ func (s *Stack) PreviewRefresh(ctx context.Context, opts ...optrefresh.Option) (
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(
 		ctx,
-		refreshOpts.ProgressStreams,      /* additionalOutputs */
-		refreshOpts.ErrorProgressStreams, /* additionalErrorOutputs */
+		refreshOpts.ProgressStreams,		/* additionalOutputs */
+		refreshOpts.ErrorProgressStreams,	/* additionalErrorOutputs */
 		args...,
 	)
 	if err != nil {
@@ -697,9 +697,9 @@ func (s *Stack) PreviewRefresh(ctx context.Context, opts ...optrefresh.Option) (
 	}
 
 	res = PreviewResult{
-		ChangeSummary: summaryEvents[0].ResourceChanges,
-		StdOut:        stdout,
-		StdErr:        stderr,
+		ChangeSummary:	summaryEvents[0].ResourceChanges,
+		StdOut:		stdout,
+		StdErr:		stderr,
 	}
 
 	return res, nil
@@ -735,8 +735,8 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(
 		ctx,
-		refreshOpts.ProgressStreams,      /* additionalOutputs */
-		refreshOpts.ErrorProgressStreams, /* additionalErrorOutputs */
+		refreshOpts.ProgressStreams,		/* additionalOutputs */
+		refreshOpts.ErrorProgressStreams,	/* additionalErrorOutputs */
 		args...,
 	)
 	if err != nil {
@@ -763,9 +763,9 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	}
 
 	res = RefreshResult{
-		Summary: summary,
-		StdOut:  stdout,
-		StdErr:  stderr,
+		Summary:	summary,
+		StdOut:		stdout,
+		StdErr:		stderr,
 	}
 
 	return res, nil
@@ -903,8 +903,8 @@ func (s *Stack) PreviewDestroy(ctx context.Context, opts ...optdestroy.Option) (
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(
 		ctx,
-		destroyOpts.ProgressStreams,      /* additionalOutputs */
-		destroyOpts.ErrorProgressStreams, /* additionalErrorOutputs */
+		destroyOpts.ProgressStreams,		/* additionalOutputs */
+		destroyOpts.ErrorProgressStreams,	/* additionalErrorOutputs */
 		args...,
 	)
 	if err != nil {
@@ -923,9 +923,9 @@ func (s *Stack) PreviewDestroy(ctx context.Context, opts ...optdestroy.Option) (
 	}
 
 	res = PreviewResult{
-		ChangeSummary: summaryEvents[0].ResourceChanges,
-		StdOut:        stdout,
-		StdErr:        stderr,
+		ChangeSummary:	summaryEvents[0].ResourceChanges,
+		StdOut:		stdout,
+		StdErr:		stderr,
 	}
 
 	return res, nil
@@ -944,8 +944,8 @@ func (s *Stack) Rename(ctx context.Context, opts ...optrename.Option) (RenameRes
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(
 		ctx,
-		renameOpts.ProgressStreams,      /* additionalOutputs */
-		renameOpts.ErrorProgressStreams, /* additionalErrorOutputs */
+		renameOpts.ProgressStreams,		/* additionalOutputs */
+		renameOpts.ErrorProgressStreams,	/* additionalErrorOutputs */
 		args...,
 	)
 	if err != nil {
@@ -972,9 +972,9 @@ func (s *Stack) Rename(ctx context.Context, opts ...optrename.Option) (RenameRes
 	}
 
 	res = RenameResult{
-		Summary: summary,
-		StdOut:  stdout,
-		StdErr:  stderr,
+		Summary:	summary,
+		StdOut:		stdout,
+		StdErr:		stderr,
 	}
 
 	return res, nil
@@ -1015,8 +1015,8 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(
 		ctx,
-		destroyOpts.ProgressStreams,      /* additionalOutputs */
-		destroyOpts.ErrorProgressStreams, /* additionalErrorOutputs */
+		destroyOpts.ProgressStreams,		/* additionalOutputs */
+		destroyOpts.ErrorProgressStreams,	/* additionalErrorOutputs */
 		args...,
 	)
 	if err != nil {
@@ -1053,9 +1053,9 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	}
 
 	res = DestroyResult{
-		Summary: summary,
-		StdOut:  stdout,
-		StdErr:  stderr,
+		Summary:	summary,
+		StdOut:		stdout,
+		StdErr:		stderr,
 	}
 
 	return res, nil
@@ -1168,8 +1168,8 @@ func (s *Stack) History(ctx context.Context,
 
 	stdout, stderr, errCode, err := s.runPulumiCmdSync(
 		ctx,
-		nil, /* additionalOutputs */
-		nil, /* additionalErrorOutputs */
+		nil,	/* additionalOutputs */
+		nil,	/* additionalErrorOutputs */
 		args...,
 	)
 	if err != nil {
@@ -1320,8 +1320,8 @@ func (s *Stack) Info(ctx context.Context) (StackSummary, error) {
 func (s *Stack) Cancel(ctx context.Context) error {
 	stdout, stderr, errCode, err := s.runPulumiCmdSync(
 		ctx,
-		nil, /* additionalOutput */
-		nil, /* additionalErrorOutput */
+		nil,	/* additionalOutput */
+		nil,	/* additionalErrorOutput */
 		"cancel", "--yes")
 	if err != nil {
 		return newAutoError(fmt.Errorf("failed to cancel update: %w", err), stdout, stderr, errCode)
@@ -1344,40 +1344,40 @@ func (s *Stack) Import(ctx context.Context, state apitype.UntypedDeployment) err
 
 // UpdateSummary provides a summary of a Stack lifecycle operation (up/preview/refresh/destroy).
 type UpdateSummary struct {
-	Version     int               `json:"version"`
-	Kind        string            `json:"kind"`
-	StartTime   string            `json:"startTime"`
-	Message     string            `json:"message"`
-	Environment map[string]string `json:"environment"`
-	Config      ConfigMap         `json:"config"`
-	Result      string            `json:"result,omitempty"`
+	Version		int			`json:"version"`
+	Kind		string			`json:"kind"`
+	StartTime	string			`json:"startTime"`
+	Message		string			`json:"message"`
+	Environment	map[string]string	`json:"environment"`
+	Config		ConfigMap		`json:"config"`
+	Result		string			`json:"result,omitempty"`
 
 	// These values are only present once the update finishes
-	EndTime         *string         `json:"endTime,omitempty"`
-	ResourceChanges *map[string]int `json:"resourceChanges,omitempty"`
+	EndTime		*string		`json:"endTime,omitempty"`
+	ResourceChanges	*map[string]int	`json:"resourceChanges,omitempty"`
 }
 
 // OutputValue models a Pulumi Stack output, providing the plaintext value and a boolean indicating secretness.
 type OutputValue struct {
-	Value  any
-	Secret bool
+	Value	any
+	Secret	bool
 }
 
 // UpResult contains information about a Stack.Up operation,
 // including Outputs, and a summary of the deployed changes.
 type UpResult struct {
-	StdOut  string
-	StdErr  string
-	Outputs OutputMap
-	Summary UpdateSummary
+	StdOut	string
+	StdErr	string
+	Outputs	OutputMap
+	Summary	UpdateSummary
 }
 
 // ImportResult contains information about a Stack.Import operation,
 type ImportResult struct {
-	StdOut        string
-	StdErr        string
-	GeneratedCode string
-	Summary       UpdateSummary
+	StdOut		string
+	StdErr		string
+	GeneratedCode	string
+	Summary		UpdateSummary
 }
 
 // GetPermalink returns the permalink URL in the Pulumi Console for the update operation.
@@ -1417,36 +1417,36 @@ type OutputMap map[string]OutputValue
 // PreviewStep is a summary of the expected state transition of a given resource based on running the current program.
 type PreviewStep struct {
 	// Op is the kind of operation being performed.
-	Op string `json:"op"`
+	Op	string	`json:"op"`
 	// URN is the resource being affected by this operation.
-	URN resource.URN `json:"urn"`
+	URN	resource.URN	`json:"urn"`
 	// Provider is the provider that will perform this step.
-	Provider string `json:"provider,omitempty"`
+	Provider	string	`json:"provider,omitempty"`
 	// OldState is the old state for this resource, if appropriate given the operation type.
-	OldState *apitype.ResourceV3 `json:"oldState,omitempty"`
+	OldState	*apitype.ResourceV3	`json:"oldState,omitempty"`
 	// NewState is the new state for this resource, if appropriate given the operation type.
-	NewState *apitype.ResourceV3 `json:"newState,omitempty"`
+	NewState	*apitype.ResourceV3	`json:"newState,omitempty"`
 	// DiffReasons is a list of keys that are causing a diff (for updating steps only).
-	DiffReasons []resource.PropertyKey `json:"diffReasons,omitempty"`
+	DiffReasons	[]resource.PropertyKey	`json:"diffReasons,omitempty"`
 	// ReplaceReasons is a list of keys that are causing replacement (for replacement steps only).
-	ReplaceReasons []resource.PropertyKey `json:"replaceReasons,omitempty"`
+	ReplaceReasons	[]resource.PropertyKey	`json:"replaceReasons,omitempty"`
 	// DetailedDiff is a structured diff that indicates precise per-property differences.
-	DetailedDiff map[string]PropertyDiff `json:"detailedDiff"`
+	DetailedDiff	map[string]PropertyDiff	`json:"detailedDiff"`
 }
 
 // PropertyDiff contains information about the difference in a single property value.
 type PropertyDiff struct {
 	// Kind is the kind of difference.
-	Kind string `json:"kind"`
+	Kind	string	`json:"kind"`
 	// InputDiff is true if this is a difference between old and new inputs instead of old state and new inputs.
-	InputDiff bool `json:"inputDiff"`
+	InputDiff	bool	`json:"inputDiff"`
 }
 
 // PreviewResult is the output of Stack.Preview() describing the expected set of changes from the next Stack.Up()
 type PreviewResult struct {
-	StdOut        string
-	StdErr        string
-	ChangeSummary map[apitype.OpType]int
+	StdOut		string
+	StdErr		string
+	ChangeSummary	map[apitype.OpType]int
 }
 
 // GetPermalink returns the permalink URL in the Pulumi Console for the preview operation.
@@ -1456,9 +1456,9 @@ func (pr *PreviewResult) GetPermalink() (string, error) {
 
 // RefreshResult is the output of a successful Stack.Refresh operation
 type RefreshResult struct {
-	StdOut  string
-	StdErr  string
-	Summary UpdateSummary
+	StdOut	string
+	StdErr	string
+	Summary	UpdateSummary
 }
 
 // GetPermalink returns the permalink URL in the Pulumi Console for the refresh operation.
@@ -1468,16 +1468,16 @@ func (rr *RefreshResult) GetPermalink() (string, error) {
 
 // RenameResult is the output of a successful Stack.Rename operation
 type RenameResult struct {
-	StdOut  string
-	StdErr  string
-	Summary UpdateSummary
+	StdOut	string
+	StdErr	string
+	Summary	UpdateSummary
 }
 
 // DestroyResult is the output of a successful Stack.Destroy operation
 type DestroyResult struct {
-	StdOut  string
-	StdErr  string
-	Summary UpdateSummary
+	StdOut	string
+	StdErr	string
+	Summary	UpdateSummary
 }
 
 // GetPermalink returns the permalink URL in the Pulumi Console for the destroy operation.
@@ -1649,7 +1649,7 @@ func (s *Stack) remoteArgs() []string {
 }
 
 const (
-	stateWaiting = iota
+	stateWaiting	= iota
 	stateRunning
 	stateCanceled
 	stateFinished
@@ -1658,15 +1658,15 @@ const (
 type languageRuntimeServer struct {
 	pulumirpc.UnimplementedLanguageRuntimeServer
 
-	m sync.Mutex
-	c *sync.Cond
+	m	sync.Mutex
+	c	*sync.Cond
 
-	fn      pulumi.RunFunc
-	address string
+	fn	pulumi.RunFunc
+	address	string
 
-	state  int
-	cancel chan bool
-	done   <-chan error
+	state	int
+	cancel	chan bool
+	done	<-chan error
 }
 
 // isNestedInvocation returns true if pulumi.RunWithContext is on the stack.
@@ -1694,18 +1694,18 @@ func startLanguageRuntimeServer(fn pulumi.RunFunc) (*languageRuntimeServer, erro
 	}
 
 	s := &languageRuntimeServer{
-		fn:     fn,
-		cancel: make(chan bool),
+		fn:	fn,
+		cancel:	make(chan bool),
 	}
 	s.c = sync.NewCond(&s.m)
 
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: s.cancel,
+		Cancel:	s.cancel,
 		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterLanguageRuntimeServer(srv, s)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options:	rpcutil.OpenTracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		return nil, err
@@ -1762,15 +1762,15 @@ func (s *languageRuntimeServer) Run(ctx context.Context, req *pulumirpc.RunReque
 		engineAddress = req.Args[0]
 	}
 	runInfo := pulumi.RunInfo{
-		EngineAddr:       engineAddress,
-		MonitorAddr:      req.GetMonitorAddress(),
-		Config:           req.GetConfig(),
-		ConfigSecretKeys: req.GetConfigSecretKeys(),
-		Project:          req.GetProject(),
-		Stack:            req.GetStack(),
-		Parallel:         req.GetParallel(),
-		DryRun:           req.GetDryRun(),
-		Organization:     req.GetOrganization(),
+		EngineAddr:		engineAddress,
+		MonitorAddr:		req.GetMonitorAddress(),
+		Config:			req.GetConfig(),
+		ConfigSecretKeys:	req.GetConfigSecretKeys(),
+		Project:		req.GetProject(),
+		Stack:			req.GetStack(),
+		Parallel:		req.GetParallel(),
+		DryRun:			req.GetDryRun(),
+		Organization:		req.GetOrganization(),
 	}
 
 	pulumiCtx, err := pulumi.NewContext(ctx, runInfo)
@@ -1812,18 +1812,18 @@ func (s *languageRuntimeServer) InstallDependencies(
 }
 
 type fileWatcher struct {
-	Filename  string
-	tail      *tail.Tail
-	receivers []chan<- events.EngineEvent
-	done      chan bool
+	Filename	string
+	tail		*tail.Tail
+	receivers	[]chan<- events.EngineEvent
+	done		chan bool
 }
 
 func watchFile(path string, receivers []chan<- events.EngineEvent) (*fileWatcher, error) {
 	t, err := tail.File(path, tail.Config{
-		Follow:        true,
-		Poll:          runtime.GOOS == "windows", // on Windows poll for file changes instead of using the default inotify
-		Logger:        tail.DiscardingLogger,
-		CompleteLines: true,
+		Follow:		true,
+		Poll:		runtime.GOOS == "windows",	// on Windows poll for file changes instead of using the default inotify
+		Logger:		tail.DiscardingLogger,
+		CompleteLines:	true,
 	})
 	if err != nil {
 		return nil, err
@@ -1855,10 +1855,10 @@ func watchFile(path string, receivers []chan<- events.EngineEvent) (*fileWatcher
 		close(done)
 	}(t)
 	return &fileWatcher{
-		Filename:  t.Filename,
-		tail:      t,
-		receivers: receivers,
-		done:      done,
+		Filename:	t.Filename,
+		tail:		t,
+		receivers:	receivers,
+		done:		done,
 	}, nil
 }
 

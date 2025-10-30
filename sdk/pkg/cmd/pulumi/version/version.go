@@ -24,9 +24,9 @@ import (
 
 func NewVersionCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "version",
-		Short: "Print Pulumi's version number",
-		Args:  cmdutil.NoArgs,
+		Use:	"version",
+		Short:	"Print Pulumi's version number",
+		Args:	cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fmt.Printf("%v\n", version.Version)
 			return nil

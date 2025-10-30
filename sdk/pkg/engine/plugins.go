@@ -26,9 +26,9 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -42,8 +42,8 @@ import (
 )
 
 const (
-	preparePluginLog        = 7
-	preparePluginVerboseLog = 8
+	preparePluginLog	= 7
+	preparePluginVerboseLog	= 8
 )
 
 // A PluginManager handles plugin installation.
@@ -250,9 +250,9 @@ func (p PackageSet) Values() []workspace.PackageDescriptor {
 // A PackageUpdate represents an update from one version of a package to another.
 type PackageUpdate struct {
 	// The old package version.
-	Old workspace.PackageDescriptor
+	Old	workspace.PackageDescriptor
 	// The new package version.
-	New workspace.PackageDescriptor
+	New	workspace.PackageDescriptor
 }
 
 // UpdatesTo returns a list of PackageUpdates that represent the updates to the argument PackageSet present in this
@@ -311,14 +311,14 @@ func GetRequiredPlugins(
 		// Don't error if this fails, just warn and return the version as unknown.
 		host.Log(diag.Warning, "", fmt.Sprintf("failed to get plugin info for language plugin %s: %v", runtime, err), 0)
 		plugins = append(plugins, workspace.PluginSpec{
-			Name: runtime,
-			Kind: apitype.LanguagePlugin,
+			Name:	runtime,
+			Kind:	apitype.LanguagePlugin,
 		})
 	} else {
 		plugins = append(plugins, workspace.PluginSpec{
-			Name:    langInfo.Name,
-			Kind:    langInfo.Kind,
-			Version: langInfo.Version,
+			Name:		langInfo.Name,
+			Kind:		langInfo.Kind,
+			Version:	langInfo.Version,
 		})
 	}
 
@@ -404,9 +404,9 @@ func gatherPackagesFromSnapshot(plugctx *plugin.Context, target *deploy.Target) 
 		var packageParameterization *workspace.Parameterization
 		if parameterization != nil {
 			packageParameterization = &workspace.Parameterization{
-				Name:    parameterization.Name,
-				Version: parameterization.Version,
-				Value:   parameterization.Value,
+				Name:		parameterization.Name,
+				Version:	parameterization.Version,
+				Value:		parameterization.Value,
 			}
 		}
 
@@ -414,13 +414,13 @@ func gatherPackagesFromSnapshot(plugctx *plugin.Context, target *deploy.Target) 
 			"gatherPackagesFromSnapshot(): package %s %s is required by first-class provider %q", name, version, urn)
 		set.Add(workspace.PackageDescriptor{
 			PluginSpec: workspace.PluginSpec{
-				Name:              name.String(),
-				Kind:              apitype.ResourcePlugin,
-				Version:           version,
-				PluginDownloadURL: downloadURL,
-				Checksums:         checksums,
+				Name:			name.String(),
+				Kind:			apitype.ResourcePlugin,
+				Version:		version,
+				PluginDownloadURL:	downloadURL,
+				Checksums:		checksums,
 			},
-			Parameterization: packageParameterization,
+			Parameterization:	packageParameterization,
 		})
 	}
 	return set, nil
@@ -483,7 +483,7 @@ func EnsurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d d
 			)
 		}
 
-		info := plug // don't close over the loop induction variable
+		info := plug	// don't close over the loop induction variable
 
 		// If DISABLE_AUTOMATIC_PLUGIN_ACQUISITION is set just add an error to the error group and continue.
 		if !explicitInstall && env.DisableAutomaticPluginAcquisition.Value() {
@@ -563,7 +563,7 @@ func installPlugin(
 				string(PluginDownload)+":"+pluginID,
 				downloadMessage,
 				size,
-				100*time.Millisecond, /*reportingInterval */
+				100*time.Millisecond,	/*reportingInterval */
 				stream,
 			)
 		}
@@ -601,7 +601,7 @@ func installPlugin(
 				string(PluginInstall)+":"+pluginID,
 				"Installing plugin "+pluginID,
 				size,
-				100*time.Millisecond, /*reportingInterval */
+				100*time.Millisecond,	/*reportingInterval */
 				tarball,
 			)
 		}

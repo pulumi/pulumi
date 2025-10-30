@@ -23,16 +23,16 @@ import (
 	"runtime/pprof"
 	"syscall"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 type cancellationScope struct {
-	context *cancel.Context
-	sigint  chan os.Signal
-	done    chan bool
+	context	*cancel.Context
+	sigint	chan os.Signal
+	done	chan bool
 }
 
 func (s *cancellationScope) Context() *cancel.Context {
@@ -55,10 +55,10 @@ func (cancellationScopeSource) NewScope(
 	cancelContext, cancelSource := cancel.NewContext(ctx)
 
 	c := &cancellationScope{
-		context: cancelContext,
+		context:	cancelContext,
 		// The channel for signal.Notify should be buffered https://pkg.go.dev/os/signal#Notify
-		sigint: make(chan os.Signal, 1),
-		done:   make(chan bool),
+		sigint:	make(chan os.Signal, 1),
+		done:	make(chan bool),
 	}
 
 	go func() {
@@ -94,8 +94,8 @@ func (cancellationScopeSource) NewScope(
 						"and other inconsistencies.\n" + colors.Reset
 				}
 				events <- engine.NewEvent(engine.StdoutEventPayload{
-					Message: message,
-					Color:   colors.Always,
+					Message:	message,
+					Color:		colors.Always,
 				})
 
 				cancelSource.Cancel()
@@ -106,8 +106,8 @@ func (cancellationScopeSource) NewScope(
 				}
 				message := colors.BrightRed + sigdisplay + " received; terminating" + colors.Reset
 				events <- engine.NewEvent(engine.StdoutEventPayload{
-					Message: message,
-					Color:   colors.Always,
+					Message:	message,
+					Color:		colors.Always,
 				})
 
 				cancelSource.Terminate()

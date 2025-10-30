@@ -22,9 +22,9 @@ import (
 
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -126,16 +126,16 @@ func newRepoLookup(wd string) (repoLookup, error) {
 	}
 
 	return &repoLookupImpl{
-		RepoRoot: worktree.Filesystem.Root(),
-		Repo:     repo,
-		Head:     h,
+		RepoRoot:	worktree.Filesystem.Root(),
+		Repo:		repo,
+		Head:		h,
 	}, nil
 }
 
 type repoLookupImpl struct {
-	RepoRoot string
-	Repo     *git.Repository
-	Head     *plumbing.Reference
+	RepoRoot	string
+	Repo		*git.Repository
+	Head		*plumbing.Reference
 }
 
 func (r *repoLookupImpl) GetRootDirectory(wd string) (string, error) {

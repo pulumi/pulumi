@@ -26,12 +26,12 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/diy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -46,8 +46,8 @@ func NewLoginCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var interactive bool
 
 	cmd := &cobra.Command{
-		Use:   "login [<url>]",
-		Short: "Log in to the Pulumi Cloud",
+		Use:	"login [<url>]",
+		Short:	"Log in to the Pulumi Cloud",
 		Long: "Log in to the Pulumi Cloud.\n" +
 			"\n" +
 			"The Pulumi Cloud manages your stack's state reliably. Simply run\n" +
@@ -98,7 +98,7 @@ func NewLoginCmd(ws pkgWorkspace.Context) *cobra.Command {
 			"PostgreSQL:\n" +
 			"\n" +
 			"    $ pulumi login postgres://username:password@hostname:5432/database\n",
-		Args: cmdutil.MaximumNArgs(1),
+		Args:	cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			displayOptions := display.Options{
@@ -240,9 +240,9 @@ func chooseAccount(accounts map[string]workspace.Account, opts display.Options) 
 
 	var option string
 	if err := survey.AskOne(&survey.Select{
-		Message:  message,
-		Options:  acts,
-		PageSize: pageSize,
+		Message:	message,
+		Options:	acts,
+		PageSize:	pageSize,
 	}, &option, ui.SurveyIcons(opts.Color)); err != nil {
 		return "", errors.New("no account selected; please use `pulumi login --interactive` to choose one")
 	}

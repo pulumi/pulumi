@@ -23,8 +23,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	codegen "github.com/pulumi/pulumi/sdk/v3/pkg/codegen/nodejs"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/testing/test"
 )
 
 func TestGenerateProgram(t *testing.T) {

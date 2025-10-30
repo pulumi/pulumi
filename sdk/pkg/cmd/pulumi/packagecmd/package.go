@@ -21,12 +21,12 @@ import (
 
 func NewPackageCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "package",
-		Short: "Work with Pulumi packages",
+		Use:	"package",
+		Short:	"Work with Pulumi packages",
 		Long: `Work with Pulumi packages
 
 Install and configure Pulumi packages and their plugins and SDKs.`,
-		Args: cmdutil.NoArgs,
+		Args:	cmdutil.NoArgs,
 	}
 	cmd.AddCommand(
 		newExtractSchemaCommand(),

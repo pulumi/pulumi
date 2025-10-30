@@ -155,8 +155,8 @@ aws:region  us-west-2
 		env := &esc.Environment{
 			Properties: map[string]esc.Value{
 				"pulumiConfig": esc.NewValue(map[string]esc.Value{
-					"aws:region":   esc.NewValue("us-west-2"),
-					"app:password": esc.NewSecret("hunter2"),
+					"aws:region":	esc.NewValue("us-west-2"),
+					"app:password":	esc.NewSecret("hunter2"),
 				}),
 			},
 		}
@@ -197,8 +197,8 @@ Save? Yes
 		env := &esc.Environment{
 			Properties: map[string]esc.Value{
 				"pulumiConfig": esc.NewValue(map[string]esc.Value{
-					"aws:region":   esc.NewValue("us-west-2"),
-					"app:password": esc.NewSecret("hunter2"),
+					"aws:region":	esc.NewValue("us-west-2"),
+					"app:password":	esc.NewSecret("hunter2"),
 				}),
 			},
 		}

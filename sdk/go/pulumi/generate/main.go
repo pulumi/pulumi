@@ -29,26 +29,26 @@ import (
 )
 
 type builtin struct {
-	Name           string
-	Type           string
-	inputType      string
-	implements     []string
-	Implements     []*builtin
-	elementType    string
-	item           *builtin
-	ItemType       string
-	Example        string
-	elemExample    string
-	GenerateConfig bool
-	DefaultConfig  string
-	RegisterInput  bool
-	defaultValue   string
+	Name		string
+	Type		string
+	inputType	string
+	implements	[]string
+	Implements	[]*builtin
+	elementType	string
+	item		*builtin
+	ItemType	string
+	Example		string
+	elemExample	string
+	GenerateConfig	bool
+	DefaultConfig	string
+	RegisterInput	bool
+	defaultValue	string
 
 	// Used with the "array-contravariance" strategy to attempt to convert []any slices to
 	// []T.
-	InnerElementType string
+	InnerElementType	string
 
-	Strategy string
+	Strategy	string
 }
 
 const AssetOrArchiveType = "AssetOrArchive"
@@ -225,98 +225,98 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			// do nothing
 		default:
 			builtins = append(builtins, &builtin{
-				Name:          name + "Ptr",
-				Type:          "*" + p.Type,
-				inputType:     "*" + unexported(p.Type) + "Ptr",
-				Example:       fmt.Sprintf("%sPtr(%s(%s))", name, p.Type, p.Example),
-				RegisterInput: p.RegisterInput,
-				defaultValue:  p.defaultValue,
+				Name:		name + "Ptr",
+				Type:		"*" + p.Type,
+				inputType:	"*" + unexported(p.Type) + "Ptr",
+				Example:	fmt.Sprintf("%sPtr(%s(%s))", name, p.Type, p.Example),
+				RegisterInput:	p.RegisterInput,
+				defaultValue:	p.defaultValue,
 			})
 		}
 		arrType := &builtin{
-			Name:          name + "Array",
-			Type:          "[]" + name + "Input",
-			ItemType:      name + "Input",
-			elementType:   "[]" + p.Type,
-			item:          p,
-			Example:       fmt.Sprintf("%sArray{%s}", name, p.Example),
-			RegisterInput: true,
+			Name:		name + "Array",
+			Type:		"[]" + name + "Input",
+			ItemType:	name + "Input",
+			elementType:	"[]" + p.Type,
+			item:		p,
+			Example:	fmt.Sprintf("%sArray{%s}", name, p.Example),
+			RegisterInput:	true,
 
-			InnerElementType: p.Type,
+			InnerElementType:	p.Type,
 		}
 		builtins = append(builtins, arrType)
 		mapType := &builtin{
-			Name:          name + "Map",
-			Type:          "map[string]" + name + "Input",
-			ItemType:      name + "Input",
-			elementType:   "map[string]" + p.Type,
-			item:          p,
-			Example:       fmt.Sprintf("%sMap{\"baz\": %s}", name, p.Example),
-			RegisterInput: true,
+			Name:		name + "Map",
+			Type:		"map[string]" + name + "Input",
+			ItemType:	name + "Input",
+			elementType:	"map[string]" + p.Type,
+			item:		p,
+			Example:	fmt.Sprintf("%sMap{\"baz\": %s}", name, p.Example),
+			RegisterInput:	true,
 		}
 		builtins = append(builtins, mapType)
 		builtins = append(builtins, &builtin{
-			Name:          name + "ArrayMap",
-			Type:          "map[string]" + name + "ArrayInput",
-			ItemType:      name + "ArrayInput",
-			elementType:   "map[string][]" + p.Type,
-			item:          arrType,
-			Example:       fmt.Sprintf("%sArrayMap{\"baz\": %sArray{%s}}", name, name, p.Example),
-			RegisterInput: true,
+			Name:		name + "ArrayMap",
+			Type:		"map[string]" + name + "ArrayInput",
+			ItemType:	name + "ArrayInput",
+			elementType:	"map[string][]" + p.Type,
+			item:		arrType,
+			Example:	fmt.Sprintf("%sArrayMap{\"baz\": %sArray{%s}}", name, name, p.Example),
+			RegisterInput:	true,
 		})
 		builtins = append(builtins, &builtin{
-			Name:          name + "MapArray",
-			Type:          "[]" + name + "MapInput",
-			ItemType:      name + "MapInput",
-			elementType:   "[]map[string]" + p.Type,
-			item:          mapType,
-			Example:       fmt.Sprintf("%sMapArray{%sMap{\"baz\": %s}}", name, name, p.Example),
-			RegisterInput: true,
+			Name:		name + "MapArray",
+			Type:		"[]" + name + "MapInput",
+			ItemType:	name + "MapInput",
+			elementType:	"[]map[string]" + p.Type,
+			item:		mapType,
+			Example:	fmt.Sprintf("%sMapArray{%sMap{\"baz\": %s}}", name, name, p.Example),
+			RegisterInput:	true,
 		})
 		mapMapType := &builtin{
-			Name:          name + "MapMap",
-			Type:          "map[string]" + name + "MapInput",
-			ItemType:      name + "MapInput",
-			elementType:   "map[string]map[string]" + p.Type,
-			item:          mapType,
-			Example:       fmt.Sprintf("%sMapMap{\"baz\": %sMap{\"baz\": %s}}", name, name, p.Example),
-			RegisterInput: true,
+			Name:		name + "MapMap",
+			Type:		"map[string]" + name + "MapInput",
+			ItemType:	name + "MapInput",
+			elementType:	"map[string]map[string]" + p.Type,
+			item:		mapType,
+			Example:	fmt.Sprintf("%sMapMap{\"baz\": %sMap{\"baz\": %s}}", name, name, p.Example),
+			RegisterInput:	true,
 		}
 		builtins = append(builtins, mapMapType)
 		arrayArrayType := &builtin{
-			Name:          name + "ArrayArray",
-			Type:          "[]" + name + "ArrayInput",
-			ItemType:      name + "ArrayInput",
-			elementType:   "[][]" + p.Type,
-			item:          arrType,
-			Example:       fmt.Sprintf("%sArrayArray{%sArray{%s}}", name, name, p.Example),
-			RegisterInput: true,
+			Name:		name + "ArrayArray",
+			Type:		"[]" + name + "ArrayInput",
+			ItemType:	name + "ArrayInput",
+			elementType:	"[][]" + p.Type,
+			item:		arrType,
+			Example:	fmt.Sprintf("%sArrayArray{%sArray{%s}}", name, name, p.Example),
+			RegisterInput:	true,
 		}
 		builtins = append(builtins, arrayArrayType)
 
 		// TODO - consider expanding to all primitives?
 		if name == "" {
 			builtins = append(builtins, &builtin{
-				Name:          "ArrayArrayMap",
-				Type:          "map[string]ArrayArrayInput",
-				ItemType:      "ArrayArrayInput",
-				elementType:   "map[string][][]" + p.Type,
-				item:          arrayArrayType,
-				Example:       fmt.Sprintf("%sArrayArrayMap{\"baz\": %sArrayArray{Array{%s}}}", name, name, p.Example),
-				RegisterInput: true,
+				Name:		"ArrayArrayMap",
+				Type:		"map[string]ArrayArrayInput",
+				ItemType:	"ArrayArrayInput",
+				elementType:	"map[string][][]" + p.Type,
+				item:		arrayArrayType,
+				Example:	fmt.Sprintf("%sArrayArrayMap{\"baz\": %sArrayArray{Array{%s}}}", name, name, p.Example),
+				RegisterInput:	true,
 			})
 		}
 
 		// Unblock https://github.com/pulumi/pulumi/issues/17415
 		if name == "String" {
 			builtins = append(builtins, &builtin{
-				Name:          name + "MapMapMap",
-				Type:          "map[string]" + name + "MapMapInput",
-				ItemType:      name + "MapMapInput",
-				elementType:   "map[string]map[string]map[string]" + p.Type,
-				item:          mapMapType,
-				Example:       fmt.Sprintf("%sMapMapMap{\"baz\": %sMapMap{\"baz\": %sMap{\"baz\": %s}}}", name, name, name, p.Example),
-				RegisterInput: true,
+				Name:		name + "MapMapMap",
+				Type:		"map[string]" + name + "MapMapInput",
+				ItemType:	name + "MapMapInput",
+				elementType:	"map[string]map[string]map[string]" + p.Type,
+				item:		mapMapType,
+				Example:	fmt.Sprintf("%sMapMapMap{\"baz\": %sMapMap{\"baz\": %sMap{\"baz\": %s}}}", name, name, name, p.Example),
+				RegisterInput:	true,
 			})
 		}
 	}

@@ -19,11 +19,11 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -152,7 +152,7 @@ func TestStateDeleteDependency(t *testing.T) {
 						URN: "urn:pulumi:proj::stk::pkg:index:typ::dependency",
 					},
 					{
-						URN: "urn:pulumi:proj::stk::pkg:index:typ::dependee",
+						URN:	"urn:pulumi:proj::stk::pkg:index:typ::dependee",
 						Dependencies: []resource.URN{
 							"urn:pulumi:proj::stk::pkg:index:typ::dependency",
 						},
@@ -219,8 +219,8 @@ func TestStateDeleteProtected(t *testing.T) {
 			return &deploy.Snapshot{
 				Resources: []*resource.State{
 					{
-						URN:     "urn:pulumi:proj::stk::pkg:index:typ::res",
-						Protect: true,
+						URN:		"urn:pulumi:proj::stk::pkg:index:typ::res",
+						Protect:	true,
 					},
 				},
 			}, nil
@@ -269,7 +269,7 @@ func TestStateDeleteAll(t *testing.T) {
 				URN: "urn:pulumi:proj::stk::pkg:index:typ::dependency",
 			},
 			{
-				URN: "urn:pulumi:proj::stk::pkg:index:typ::dependee",
+				URN:	"urn:pulumi:proj::stk::pkg:index:typ::dependee",
 				Dependencies: []resource.URN{
 					"urn:pulumi:proj::stk::pkg:index:typ::dependency",
 				},

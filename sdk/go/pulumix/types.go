@@ -53,10 +53,10 @@ type OutputOf[T any] interface {
 type Output[T any] struct{ *internal.OutputState }
 
 var (
-	_ internal.Output = Output[any]{}
-	_ internal.Input  = Output[any]{}
-	_ OutputOf[any]   = Output[any]{}
-	_ Input[int]      = Output[int]{}
+	_	internal.Output	= Output[any]{}
+	_	internal.Input	= Output[any]{}
+	_	OutputOf[any]	= Output[any]{}
+	_	Input[int]	= Output[int]{}
 )
 
 // isOutput is a special method implemented only by Output.
@@ -64,14 +64,14 @@ var (
 // since we can't match uninstantiated generic types directly.
 //
 // See InputElementType for more details.
-func (o Output[T]) isOutput() {}
+func (o Output[T]) isOutput()	{}
 
 var (
 	// isOutputType is a reflected interfaced type
 	// that will match the isOutput method defined above.
-	isOutputType = typeOf[interface{ isOutput() }]()
+	isOutputType	= typeOf[interface{ isOutput() }]()
 
-	contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
+	contextType	= reflect.TypeOf((*context.Context)(nil)).Elem()
 )
 
 // InputElementType returns the element type of an Input[T]
@@ -104,9 +104,9 @@ func InputElementType(t reflect.Type) (e reflect.Type, ok bool) {
 	}
 
 	mt := m.Type
-	ok = mt.NumIn() == 2 && // receiver + context
+	ok = mt.NumIn() == 2 &&	// receiver + context
 		mt.In(1) == contextType &&
-		mt.NumOut() == 1 && // Output[T]
+		mt.NumOut() == 1 &&	// Output[T]
 		mt.Out(0).Implements(isOutputType)
 	if ok {
 		return input.ElementType(), true

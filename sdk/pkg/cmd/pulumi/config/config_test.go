@@ -25,13 +25,13 @@ import (
 	"time"
 
 	"github.com/pulumi/esc"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -49,12 +49,12 @@ func TestListConfig(t *testing.T) {
 	openEnv := &esc.Environment{
 		Properties: map[string]esc.Value{
 			"pulumiConfig": esc.NewValue(map[string]esc.Value{
-				"env:value":  esc.NewValue("envVal1"),
-				"env:secret": esc.NewSecret("envSecret1"),
+				"env:value":	esc.NewValue("envVal1"),
+				"env:secret":	esc.NewSecret("envSecret1"),
 				"common:obj": esc.NewValue(map[string]esc.Value{
-					"envValue":    esc.NewValue("envVal2"),
-					"commonValue": esc.NewValue("envVal3"),
-					"commonArray": esc.NewValue([]esc.Value{esc.NewValue("envVal4"), esc.NewValue("envVal5")}),
+					"envValue":	esc.NewValue("envVal2"),
+					"commonValue":	esc.NewValue("envVal3"),
+					"commonArray":	esc.NewValue([]esc.Value{esc.NewValue("envVal4"), esc.NewValue("envVal5")}),
 				}),
 				"env:obj": esc.NewValue(map[string]esc.Value{
 					"secret": esc.NewValue([]esc.Value{esc.NewSecret("envSecret2")}),
@@ -66,12 +66,12 @@ func TestListConfig(t *testing.T) {
 	checkEnv := &esc.Environment{
 		Properties: map[string]esc.Value{
 			"pulumiConfig": esc.NewValue(map[string]esc.Value{
-				"env:value":  esc.NewValue("envVal1"),
-				"env:secret": {Secret: true, Unknown: true},
+				"env:value":	esc.NewValue("envVal1"),
+				"env:secret":	{Secret: true, Unknown: true},
 				"common:obj": esc.NewValue(map[string]esc.Value{
-					"envValue":    esc.NewValue("envVal2"),
-					"commonValue": esc.NewValue("envVal3"),
-					"commonArray": esc.NewValue([]esc.Value{esc.NewValue("envVal4"), esc.NewValue("envVal5")}),
+					"envValue":	esc.NewValue("envVal2"),
+					"commonValue":	esc.NewValue("envVal3"),
+					"commonArray":	esc.NewValue([]esc.Value{esc.NewValue("envVal4"), esc.NewValue("envVal5")}),
 				}),
 				"env:obj": esc.NewValue(map[string]esc.Value{
 					"secret": esc.NewValue([]esc.Value{{Secret: true, Unknown: true}}),
@@ -83,11 +83,11 @@ func TestListConfig(t *testing.T) {
 	plainEnv := &esc.Environment{
 		Properties: map[string]esc.Value{
 			"pulumiConfig": esc.NewValue(map[string]esc.Value{
-				"env:value": esc.NewValue("envVal1"),
+				"env:value":	esc.NewValue("envVal1"),
 				"common:obj": esc.NewValue(map[string]esc.Value{
-					"envValue":    esc.NewValue("envVal2"),
-					"commonValue": esc.NewValue("envVal3"),
-					"commonArray": esc.NewValue([]esc.Value{esc.NewValue("envVal4"), esc.NewValue("envVal5")}),
+					"envValue":	esc.NewValue("envVal2"),
+					"commonValue":	esc.NewValue("envVal3"),
+					"commonArray":	esc.NewValue([]esc.Value{esc.NewValue("envVal4"), esc.NewValue("envVal5")}),
 				}),
 				"env:obj": esc.NewValue(map[string]esc.Value{
 					"value": esc.NewValue([]esc.Value{esc.NewValue("envVal6")}),
@@ -99,14 +99,14 @@ func TestListConfig(t *testing.T) {
 	commonObjValue := `{"commonValue":"cfgVal2","commonArray":["cfgVal3","cfgVal4"]}`
 
 	cfg := map[config.Key]config.Value{
-		config.MustMakeKey("cfg", "value"):  config.NewValue("cfgVal1"),
-		config.MustMakeKey("cfg", "secret"): config.NewSecureValue("Y2ZnU2VjcmV0MQ==" /*base64 of cfgSecret1*/),
-		config.MustMakeKey("common", "obj"): config.NewObjectValue(commonObjValue),
+		config.MustMakeKey("cfg", "value"):	config.NewValue("cfgVal1"),
+		config.MustMakeKey("cfg", "secret"):	config.NewSecureValue("Y2ZnU2VjcmV0MQ==" /*base64 of cfgSecret1*/),
+		config.MustMakeKey("common", "obj"):	config.NewObjectValue(commonObjValue),
 	}
 
 	plainCfg := map[config.Key]config.Value{
-		config.MustMakeKey("cfg", "value"):  config.NewValue("cfgVal1"),
-		config.MustMakeKey("common", "obj"): config.NewObjectValue(commonObjValue),
+		config.MustMakeKey("cfg", "value"):	config.NewValue("cfgVal1"),
+		config.MustMakeKey("common", "obj"):	config.NewObjectValue(commonObjValue),
 	}
 
 	t.Run("with no env and with cfg and showSecrets=true openEnv=true", func(t *testing.T) {
@@ -392,7 +392,7 @@ func getCountingBase64SecretsManager(
 	}
 	cachedCrypter := config.NewCiphertextToPlaintextCachedCrypter(encrypter, decrypter)
 	secretsManager := &secrets.MockSecretsManager{
-		TypeF: func() string { return "mock" },
+		TypeF:	func() string { return "mock" },
 		EncrypterF: func() config.Encrypter {
 			if withCachedCrypter {
 				return cachedCrypter
@@ -455,8 +455,8 @@ func prepareConfig(
 
 	project := workspace.Project{Name: "testProject"}
 	stackYAML, err := encoding.YAML.Marshal(workspace.ProjectStack{
-		Environment: workspace.NewEnvironment([]string{"env"}),
-		Config:      cfg,
+		Environment:	workspace.NewEnvironment([]string{"env"}),
+		Config:		cfg,
 	})
 	require.NoError(t, err)
 
@@ -475,43 +475,43 @@ func TestConfigSet(t *testing.T) {
 	ctx := context.Background()
 
 	cases := []struct {
-		name     string
-		args     []string
-		expected string
-		path     bool
+		name		string
+		args		[]string
+		expected	string
+		path		bool
 	}{
 		{
-			name:     "toplevel bool",
-			args:     []string{"testProject:test", "true"},
-			expected: "config:\n  testProject:test: \"true\"\n",
+			name:		"toplevel bool",
+			args:		[]string{"testProject:test", "true"},
+			expected:	"config:\n  testProject:test: \"true\"\n",
 		},
 		{
-			name:     "toplevel int",
-			args:     []string{"testProject:test", "123"},
-			expected: "config:\n  testProject:test: \"123\"\n",
+			name:		"toplevel int",
+			args:		[]string{"testProject:test", "123"},
+			expected:	"config:\n  testProject:test: \"123\"\n",
 		},
 		{
-			name:     "toplevel float",
-			args:     []string{"testProject:test", "123.456"},
-			expected: "config:\n  testProject:test: \"123.456\"\n",
+			name:		"toplevel float",
+			args:		[]string{"testProject:test", "123.456"},
+			expected:	"config:\n  testProject:test: \"123.456\"\n",
 		},
 		{
-			name:     "path'd bool",
-			args:     []string{"testProject:test[0]", "true"},
-			expected: "config:\n  testProject:test:\n    - true\n",
-			path:     true,
+			name:		"path'd bool",
+			args:		[]string{"testProject:test[0]", "true"},
+			expected:	"config:\n  testProject:test:\n    - true\n",
+			path:		true,
 		},
 		{
-			name:     "path'd int",
-			args:     []string{"testProject:test[0]", "123"},
-			expected: "config:\n  testProject:test:\n    - 123\n",
-			path:     true,
+			name:		"path'd int",
+			args:		[]string{"testProject:test[0]", "123"},
+			expected:	"config:\n  testProject:test:\n    - 123\n",
+			path:		true,
 		},
 		{
-			name:     "path'd float",
-			args:     []string{"testProject:test[0]", "123.456"},
-			expected: "config:\n  testProject:test:\n    - \"123.456\"\n",
-			path:     true,
+			name:		"path'd float",
+			args:		[]string{"testProject:test[0]", "123.456"},
+			expected:	"config:\n  testProject:test:\n    - \"123.456\"\n",
+			path:		true,
 		},
 	}
 
@@ -533,7 +533,7 @@ func TestConfigSet(t *testing.T) {
 			}
 
 			configSetCmd := &configSetCmd{
-				Path: c.path,
+				Path:	c.path,
 				LoadProjectStack: func(
 					_ context.Context,
 					diags diag.Sink,
@@ -569,63 +569,63 @@ func TestConfigSetTypes(t *testing.T) {
 	ctx := context.Background()
 
 	cases := []struct {
-		name     string
-		args     []string
-		expected string
-		typ      string
-		path     bool
+		name		string
+		args		[]string
+		expected	string
+		typ		string
+		path		bool
 	}{
 		{
-			name:     "toplevel bool",
-			args:     []string{"testProject:test", "true"},
-			typ:      "bool",
-			expected: "config:\n  testProject:test: true\n",
+			name:		"toplevel bool",
+			args:		[]string{"testProject:test", "true"},
+			typ:		"bool",
+			expected:	"config:\n  testProject:test: true\n",
 		},
 		{
-			name:     "toplevel int",
-			args:     []string{"testProject:test", "123"},
-			typ:      "int",
-			expected: "config:\n  testProject:test: 123\n",
+			name:		"toplevel int",
+			args:		[]string{"testProject:test", "123"},
+			typ:		"int",
+			expected:	"config:\n  testProject:test: 123\n",
 		},
 		{
-			name:     "toplevel float",
-			args:     []string{"testProject:test", "123.456"},
-			typ:      "float",
-			expected: "config:\n  testProject:test: 123.456\n",
+			name:		"toplevel float",
+			args:		[]string{"testProject:test", "123.456"},
+			typ:		"float",
+			expected:	"config:\n  testProject:test: 123.456\n",
 		},
 		{
-			name:     "toplevel string",
-			args:     []string{"testProject:test", "123"},
-			typ:      "string",
-			expected: "config:\n  testProject:test: \"123\"\n",
+			name:		"toplevel string",
+			args:		[]string{"testProject:test", "123"},
+			typ:		"string",
+			expected:	"config:\n  testProject:test: \"123\"\n",
 		},
 		{
-			name:     "path'd bool",
-			args:     []string{"testProject:test[0]", "true"},
-			typ:      "bool",
-			expected: "config:\n  testProject:test:\n    - true\n",
-			path:     true,
+			name:		"path'd bool",
+			args:		[]string{"testProject:test[0]", "true"},
+			typ:		"bool",
+			expected:	"config:\n  testProject:test:\n    - true\n",
+			path:		true,
 		},
 		{
-			name:     "path'd int",
-			args:     []string{"testProject:test[0]", "123"},
-			typ:      "int",
-			expected: "config:\n  testProject:test:\n    - 123\n",
-			path:     true,
+			name:		"path'd int",
+			args:		[]string{"testProject:test[0]", "123"},
+			typ:		"int",
+			expected:	"config:\n  testProject:test:\n    - 123\n",
+			path:		true,
 		},
 		{
-			name:     "path'd float",
-			args:     []string{"testProject:test[0]", "123.456"},
-			typ:      "float",
-			expected: "config:\n  testProject:test:\n    - 123.456\n",
-			path:     true,
+			name:		"path'd float",
+			args:		[]string{"testProject:test[0]", "123.456"},
+			typ:		"float",
+			expected:	"config:\n  testProject:test:\n    - 123.456\n",
+			path:		true,
 		},
 		{
-			name:     "path'd string",
-			args:     []string{"testProject:test[0]", "123"},
-			typ:      "string",
-			expected: "config:\n  testProject:test:\n    - \"123\"\n",
-			path:     true,
+			name:		"path'd string",
+			args:		[]string{"testProject:test[0]", "123"},
+			typ:		"string",
+			expected:	"config:\n  testProject:test:\n    - \"123\"\n",
+			path:		true,
 		},
 	}
 
@@ -647,8 +647,8 @@ func TestConfigSetTypes(t *testing.T) {
 			}
 
 			configSetCmd := &configSetCmd{
-				Path: c.path,
-				Type: c.typ,
+				Path:	c.path,
+				Type:	c.typ,
 				LoadProjectStack: func(_ context.Context, d diag.Sink, project *workspace.Project, _ backend.Stack,
 				) (*workspace.ProjectStack, error) {
 					return workspace.LoadProjectStackBytes(d, project, []byte{}, "Pulumi.stack.yaml", encoding.YAML)
@@ -680,103 +680,103 @@ func TestConfigSetAll(t *testing.T) {
 	ctx := context.Background()
 
 	cases := []struct {
-		name          string
-		plaintextArgs []string
-		secretArgs    []string
-		jsonArg       string
-		path          bool
-		expected      string
-		expectError   string
+		name		string
+		plaintextArgs	[]string
+		secretArgs	[]string
+		jsonArg		string
+		path		bool
+		expected	string
+		expectError	string
 	}{
 		{
-			name:          "plaintext values",
-			plaintextArgs: []string{"testProject:key1=value1", "testProject:key2=value2"},
-			expected:      "config:\n  testProject:key1: value1\n  testProject:key2: value2\n",
+			name:		"plaintext values",
+			plaintextArgs:	[]string{"testProject:key1=value1", "testProject:key2=value2"},
+			expected:	"config:\n  testProject:key1: value1\n  testProject:key2: value2\n",
 		},
 		{
-			name:          "plaintext with path",
-			plaintextArgs: []string{"testProject:nested.key1=value1", "testProject:nested.key2=value2"},
-			path:          true,
-			expected:      "config:\n  testProject:nested:\n    key1: value1\n    key2: value2\n",
+			name:		"plaintext with path",
+			plaintextArgs:	[]string{"testProject:nested.key1=value1", "testProject:nested.key2=value2"},
+			path:		true,
+			expected:	"config:\n  testProject:nested:\n    key1: value1\n    key2: value2\n",
 		},
 		{
-			name:       "secret values",
-			secretArgs: []string{"testProject:secretKey1=secret1", "testProject:secretKey2=secret2"},
+			name:		"secret values",
+			secretArgs:	[]string{"testProject:secretKey1=secret1", "testProject:secretKey2=secret2"},
 			expected: "config:\n  testProject:secretKey1:\n    secure: c2VjcmV0MQ==\n" +
 				"  testProject:secretKey2:\n    secure: c2VjcmV0Mg==\n",
 		},
 		{
-			name:       "secret with path",
-			secretArgs: []string{"testProject:nested.secret1=secret1"},
-			path:       true,
-			expected:   "config:\n  testProject:nested:\n    secret1:\n      secure: c2VjcmV0MQ==\n",
+			name:		"secret with path",
+			secretArgs:	[]string{"testProject:nested.secret1=secret1"},
+			path:		true,
+			expected:	"config:\n  testProject:nested:\n    secret1:\n      secure: c2VjcmV0MQ==\n",
 		},
 		{
-			name:          "mixed plaintext and secret",
-			plaintextArgs: []string{"testProject:plainKey=plainValue"},
-			secretArgs:    []string{"testProject:secretKey=secretValue"},
+			name:		"mixed plaintext and secret",
+			plaintextArgs:	[]string{"testProject:plainKey=plainValue"},
+			secretArgs:	[]string{"testProject:secretKey=secretValue"},
 			expected: "config:\n  testProject:plainKey: plainValue\n" +
 				"  testProject:secretKey:\n    secure: c2VjcmV0VmFsdWU=\n",
 		},
 		{
-			name:     "json plaintext values",
-			jsonArg:  `{"testProject:key1": {"value": "value1"}, "testProject:key2": {"value": "value2"}}`,
-			expected: "config:\n  testProject:key1: value1\n  testProject:key2: value2\n",
+			name:		"json plaintext values",
+			jsonArg:	`{"testProject:key1": {"value": "value1"}, "testProject:key2": {"value": "value2"}}`,
+			expected:	"config:\n  testProject:key1: value1\n  testProject:key2: value2\n",
 		},
 		{
-			name: "json secret values",
+			name:	"json secret values",
 			jsonArg: `{"testProject:secretKey1": {"value": "secret1", "secret": true}, ` +
 				`"testProject:secretKey2": {"value": "secret2", "secret": true}}`,
 			expected: "config:\n  testProject:secretKey1:\n    secure: c2VjcmV0MQ==\n" +
 				"  testProject:secretKey2:\n    secure: c2VjcmV0Mg==\n",
 		},
 		{
-			name: "json mixed plaintext and secret",
+			name:	"json mixed plaintext and secret",
 			jsonArg: `{"testProject:plainKey": {"value": "plainValue"}, ` +
 				`"testProject:secretKey": {"value": "secretValue", "secret": true}}`,
 			expected: "config:\n  testProject:plainKey: plainValue\n" +
 				"  testProject:secretKey:\n    secure: c2VjcmV0VmFsdWU=\n",
 		},
 		{
-			name:          "json with plaintext flag should error",
-			jsonArg:       `{"testProject:key": {"value": "val"}}`,
-			plaintextArgs: []string{"testProject:otherkey=value"},
-			expectError:   "the --json option cannot be used with the --plaintext, --secret or --path options",
+			name:		"json with plaintext flag should error",
+			jsonArg:	`{"testProject:key": {"value": "val"}}`,
+			plaintextArgs:	[]string{"testProject:otherkey=value"},
+			expectError:	"the --json option cannot be used with the --plaintext, --secret or --path options",
 		},
 		{
-			name:        "json with secret flag should error",
-			jsonArg:     `{"testProject:key": {"value": "val"}}`,
-			secretArgs:  []string{"testProject:secretkey=secretvalue"},
-			expectError: "the --json option cannot be used with the --plaintext, --secret or --path options",
+			name:		"json with secret flag should error",
+			jsonArg:	`{"testProject:key": {"value": "val"}}`,
+			secretArgs:	[]string{"testProject:secretkey=secretvalue"},
+			expectError:	"the --json option cannot be used with the --plaintext, --secret or --path options",
 		},
 		{
-			name:        "json with path flag should error",
-			jsonArg:     `{"testProject:key": {"value": "val"}}`,
-			path:        true,
-			expectError: "the --json option cannot be used with the --plaintext, --secret or --path options",
+			name:		"json with path flag should error",
+			jsonArg:	`{"testProject:key": {"value": "val"}}`,
+			path:		true,
+			expectError:	"the --json option cannot be used with the --plaintext, --secret or --path options",
 		},
 		{
-			name:    "json with invalid key",
-			jsonArg: `{"testProject:key1:invalid": {"value": "value"}}`,
+			name:		"json with invalid key",
+			jsonArg:	`{"testProject:key1:invalid": {"value": "value"}}`,
 			expectError: "invalid --json object key \"testProject:key1:invalid\": " +
 				"could not parse testProject:key1:invalid as a configuration key " +
 				"(configuration keys should be of the form `<namespace>:<name>`)",
 		},
 		{
-			name:        "json with nil value",
-			jsonArg:     `{"testProject:key1": {"value": null}}`,
-			expected:    "config:\n  testProject:key1: null\n",
-			expectError: `value for --json object key "testProject:key1" is nil`,
+			name:		"json with nil value",
+			jsonArg:	`{"testProject:key1": {"value": null}}`,
+			expected:	"config:\n  testProject:key1: null\n",
+			expectError:	`value for --json object key "testProject:key1" is nil`,
 		},
 		{
-			name:        "json with malformed input",
-			jsonArg:     `{`, // missing closing braces
-			expectError: "could not parse --json argument: unexpected end of JSON input",
+			name:		"json with malformed input",
+			jsonArg:	`{`,	// missing closing braces
+			expectError:	"could not parse --json argument: unexpected end of JSON input",
 		},
 		{
-			name:     "json with object value",
-			jsonArg:  `{"testProject:key1": {"value": "{\"inner\":\"value2\"}", "objectValue": {"inner": "value2"}}}`,
-			expected: "config:\n  testProject:key1:\n    inner: value2\n",
+			name:		"json with object value",
+			jsonArg:	`{"testProject:key1": {"value": "{\"inner\":\"value2\"}", "objectValue": {"inner": "value2"}}}`,
+			expected:	"config:\n  testProject:key1:\n    inner: value2\n",
 		},
 	}
 

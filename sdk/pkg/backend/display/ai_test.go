@@ -30,9 +30,9 @@ func TestRenderCopilotErrorSummary(t *testing.T) {
 	summary := "This is a test summary"
 	buf := new(bytes.Buffer)
 	opts := Options{
-		Stdout:            buf,
-		Color:             colors.Never,
-		ShowLinkToCopilot: true,
+		Stdout:			buf,
+		Color:			colors.Never,
+		ShowLinkToCopilot:	true,
 	}
 
 	// Render to buffer
@@ -55,8 +55,8 @@ func TestRenderCopilotErrorSummaryError(t *testing.T) {
 
 	buf := new(bytes.Buffer)
 	opts := Options{
-		Stdout: buf,
-		Color:  colors.Never,
+		Stdout:	buf,
+		Color:	colors.Never,
 	}
 
 	RenderCopilotErrorSummary(nil, errors.New("test error"), opts, "http://foo.bar/baz")
@@ -73,8 +73,8 @@ func TestRenderCopilotErrorSummaryNoSummaryOrError(t *testing.T) {
 
 	buf := new(bytes.Buffer)
 	opts := Options{
-		Stdout: buf,
-		Color:  colors.Never,
+		Stdout:	buf,
+		Color:	colors.Never,
 	}
 
 	RenderCopilotErrorSummary(nil, nil, opts, "http://foo.bar/baz")
@@ -89,8 +89,8 @@ func TestRenderCopilotErrorSummaryWithError(t *testing.T) {
 	summary := "This is a test summary"
 	buf := new(bytes.Buffer)
 	opts := Options{
-		Stdout: buf,
-		Color:  colors.Never,
+		Stdout:	buf,
+		Color:	colors.Never,
 	}
 
 	RenderCopilotErrorSummary(&CopilotErrorSummaryMetadata{

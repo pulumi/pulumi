@@ -21,11 +21,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/state"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/state"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -34,9 +34,9 @@ import (
 func newStackRenameCmd() *cobra.Command {
 	var stack string
 	cmd := &cobra.Command{
-		Use:   "rename <new-stack-name>",
-		Args:  cmdutil.ExactArgs(1),
-		Short: "Rename an existing stack",
+		Use:	"rename <new-stack-name>",
+		Args:	cmdutil.ExactArgs(1),
+		Short:	"Rename an existing stack",
 		Long: "Rename an existing stack.\n" +
 			"\n" +
 			"Note: Because renaming a stack will change the value of `getStack()` inside a Pulumi program, if this\n" +

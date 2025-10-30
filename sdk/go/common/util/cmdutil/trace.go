@@ -48,8 +48,8 @@ var TracingRootSpan opentracing.Span
 var traceCloser io.Closer
 
 type localStore struct {
-	path  string
-	store *appdash.MemoryStore
+	path	string
+	store	*appdash.MemoryStore
 }
 
 func (s *localStore) Close() error {
@@ -92,8 +92,8 @@ func InitTracing(name, rootSpanName, tracingEndpoint string) {
 		}
 
 		store := &localStore{
-			path:  path,
-			store: appdash.NewMemoryStore(),
+			path:	path,
+			store:	appdash.NewMemoryStore(),
 		}
 		traceCloser = store
 
@@ -140,7 +140,7 @@ func InitTracing(name, rootSpanName, tracingEndpoint string) {
 		// create Jaeger tracer
 		t, closer := jaeger.NewTracer(
 			name,
-			jaeger.NewConstSampler(true), // sample all traces
+			jaeger.NewConstSampler(true),	// sample all traces
 			jaeger.NewRemoteReporter(transport))
 
 		tracer, traceCloser = t, closer
@@ -203,24 +203,24 @@ func startProxyAppDashServer(collector appdash.Collector) (string, error) {
 func rootSpanTags() []opentracing.Tag {
 	tags := []opentracing.Tag{
 		{
-			Key:   "os.Args",
-			Value: os.Args,
+			Key:	"os.Args",
+			Value:	os.Args,
 		},
 		{
-			Key:   "runtime.GOOS",
-			Value: runtime.GOOS,
+			Key:	"runtime.GOOS",
+			Value:	runtime.GOOS,
 		},
 		{
-			Key:   "runtime.GOARCH",
-			Value: runtime.GOARCH,
+			Key:	"runtime.GOARCH",
+			Value:	runtime.GOARCH,
 		},
 		{
-			Key:   "runtime.GOMAXPROCS",
-			Value: runtime.GOMAXPROCS(0),
+			Key:	"runtime.GOMAXPROCS",
+			Value:	runtime.GOMAXPROCS(0),
 		},
 		{
-			Key:   "runtime.NumCPU",
-			Value: runtime.NumCPU(),
+			Key:	"runtime.NumCPU",
+			Value:	runtime.NumCPU(),
 		},
 	}
 
@@ -233,8 +233,8 @@ func rootSpanTags() []opentracing.Tag {
 
 		if strings.HasPrefix(envVarName, envPrefix) {
 			tags = append(tags, opentracing.Tag{
-				Key:   strings.TrimPrefix(envVarName, envPrefix),
-				Value: envVarValue,
+				Key:	strings.TrimPrefix(envVarName, envPrefix),
+				Value:	envVarValue,
 			})
 		}
 	}

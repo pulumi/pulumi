@@ -81,39 +81,39 @@ func WithMocksWithOrganization(organization, project, stack string, mocks MockRe
 // MockCallArgs is used to construct a call Mock
 type MockCallArgs struct {
 	// Token indicates which function is being called. This token is of the form "package:module:function".
-	Token string
+	Token	string
 	// Args are the arguments provided to the function call.
-	Args resource.PropertyMap
+	Args	resource.PropertyMap
 	// Provider is the identifier of the provider instance being used to make the call.
-	Provider string
+	Provider	string
 }
 
 // MockResourceArgs is a used to construct a newResource Mock
 type MockResourceArgs struct {
 	// TypeToken is the token that indicates which resource type is being constructed. This token
 	// is of the form "package:module:type".
-	TypeToken string
+	TypeToken	string
 	// Name is the logical name of the resource instance.
-	Name string
+	Name	string
 	// Inputs are the inputs for the resource.
-	Inputs resource.PropertyMap
+	Inputs	resource.PropertyMap
 	// Provider is the identifier of the provider instance being used to manage this resource.
-	Provider string
+	Provider	string
 	// ID is the physical identifier of an existing resource to read or import.
-	ID string
+	ID	string
 	// Custom specifies whether or not the resource is Custom (i.e. managed by a resource provider).
-	Custom bool
+	Custom	bool
 	// Full register RPC call, if available.
-	RegisterRPC *pulumirpc.RegisterResourceRequest
+	RegisterRPC	*pulumirpc.RegisterResourceRequest
 	// Full read RPC call, if available
-	ReadRPC *pulumirpc.ReadResourceRequest
+	ReadRPC	*pulumirpc.ReadResourceRequest
 }
 
 type mockMonitor struct {
-	project   string
-	stack     string
-	mocks     MockResourceMonitor
-	resources sync.Map // map[string]resource.PropertyMap
+	project		string
+	stack		string
+	mocks		MockResourceMonitor
+	resources	sync.Map	// map[string]resource.PropertyMap
 }
 
 func (m *mockMonitor) newURN(parent, typ, name string) string {
@@ -144,8 +144,8 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRe
 	opts ...grpc.CallOption,
 ) (*pulumirpc.InvokeResponse, error) {
 	args, err := plugin.UnmarshalProperties(in.GetArgs(), plugin.MarshalOptions{
-		KeepSecrets:   true,
-		KeepResources: true,
+		KeepSecrets:	true,
+		KeepResources:	true,
 	})
 	if err != nil {
 		return nil, err
@@ -159,8 +159,8 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRe
 		}
 		registeredResource := registeredResourceV.(resource.PropertyMap)
 		result, err := plugin.MarshalProperties(registeredResource, plugin.MarshalOptions{
-			KeepSecrets:   true,
-			KeepResources: true,
+			KeepSecrets:	true,
+			KeepResources:	true,
 		})
 		if err != nil {
 			return nil, err
@@ -170,17 +170,17 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRe
 		}, nil
 	}
 	resultV, err := m.mocks.Call(MockCallArgs{
-		Token:    in.GetTok(),
-		Args:     args,
-		Provider: in.GetProvider(),
+		Token:		in.GetTok(),
+		Args:		args,
+		Provider:	in.GetProvider(),
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	result, err := plugin.MarshalProperties(resultV, plugin.MarshalOptions{
-		KeepSecrets:   true,
-		KeepResources: in.GetAcceptResources(),
+		KeepSecrets:	true,
+		KeepResources:	in.GetAcceptResources(),
 	})
 	if err != nil {
 		return nil, err
@@ -200,25 +200,25 @@ func (m *mockMonitor) Call(ctx context.Context, in *pulumirpc.ResourceCallReques
 	}
 
 	args, err := plugin.UnmarshalProperties(in.GetArgs(), plugin.MarshalOptions{
-		KeepSecrets:   true,
-		KeepResources: true,
+		KeepSecrets:	true,
+		KeepResources:	true,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	resultV, err := methodCallMock.MethodCall(MockCallArgs{
-		Token:    in.GetTok(),
-		Args:     args,
-		Provider: in.GetProvider(),
+		Token:		in.GetTok(),
+		Args:		args,
+		Provider:	in.GetProvider(),
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	result, err := plugin.MarshalProperties(resultV, plugin.MarshalOptions{
-		KeepSecrets:   true,
-		KeepResources: true,
+		KeepSecrets:	true,
+		KeepResources:	true,
 	})
 	if err != nil {
 		return nil, err
@@ -233,21 +233,21 @@ func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResour
 	opts ...grpc.CallOption,
 ) (*pulumirpc.ReadResourceResponse, error) {
 	stateIn, err := plugin.UnmarshalProperties(in.GetProperties(), plugin.MarshalOptions{
-		KeepSecrets:   true,
-		KeepResources: true,
+		KeepSecrets:	true,
+		KeepResources:	true,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	id, state, err := m.mocks.NewResource(MockResourceArgs{
-		TypeToken: in.GetType(),
-		Name:      in.GetName(),
-		Inputs:    stateIn,
-		Provider:  in.GetProvider(),
-		ID:        in.GetId(),
-		Custom:    false,
-		ReadRPC:   in,
+		TypeToken:	in.GetType(),
+		Name:		in.GetName(),
+		Inputs:		stateIn,
+		Provider:	in.GetProvider(),
+		ID:		in.GetId(),
+		Custom:		false,
+		ReadRPC:	in,
 	})
 	if err != nil {
 		return nil, err
@@ -256,22 +256,22 @@ func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResour
 	urn := m.newURN(in.GetParent(), in.GetType(), in.GetName())
 
 	m.resources.Store(urn, resource.PropertyMap{
-		resource.PropertyKey("urn"):   resource.NewProperty(urn),
-		resource.PropertyKey("id"):    resource.NewProperty(id),
-		resource.PropertyKey("state"): resource.NewProperty(state),
+		resource.PropertyKey("urn"):	resource.NewProperty(urn),
+		resource.PropertyKey("id"):	resource.NewProperty(id),
+		resource.PropertyKey("state"):	resource.NewProperty(state),
 	})
 
 	stateOut, err := plugin.MarshalProperties(state, plugin.MarshalOptions{
-		KeepSecrets:   true,
-		KeepResources: true,
+		KeepSecrets:	true,
+		KeepResources:	true,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	return &pulumirpc.ReadResourceResponse{
-		Urn:        urn,
-		Properties: stateOut,
+		Urn:		urn,
+		Properties:	stateOut,
 	}, nil
 }
 
@@ -285,21 +285,21 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 	}
 
 	inputs, err := plugin.UnmarshalProperties(in.GetObject(), plugin.MarshalOptions{
-		KeepSecrets:   true,
-		KeepResources: true,
+		KeepSecrets:	true,
+		KeepResources:	true,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	id, state, err := m.mocks.NewResource(MockResourceArgs{
-		TypeToken:   in.GetType(),
-		Name:        in.GetName(),
-		Inputs:      inputs,
-		Provider:    in.GetProvider(),
-		ID:          in.GetImportId(),
-		Custom:      in.GetCustom(),
-		RegisterRPC: in,
+		TypeToken:	in.GetType(),
+		Name:		in.GetName(),
+		Inputs:		inputs,
+		Provider:	in.GetProvider(),
+		ID:		in.GetImportId(),
+		Custom:		in.GetCustom(),
+		RegisterRPC:	in,
 	})
 	if err != nil {
 		return nil, err
@@ -308,23 +308,23 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 	urn := m.newURN(in.GetParent(), in.GetType(), in.GetName())
 
 	m.resources.Store(urn, resource.PropertyMap{
-		resource.PropertyKey("urn"):   resource.NewProperty(urn),
-		resource.PropertyKey("id"):    resource.NewProperty(id),
-		resource.PropertyKey("state"): resource.NewProperty(state),
+		resource.PropertyKey("urn"):	resource.NewProperty(urn),
+		resource.PropertyKey("id"):	resource.NewProperty(id),
+		resource.PropertyKey("state"):	resource.NewProperty(state),
 	})
 
 	stateOut, err := plugin.MarshalProperties(state, plugin.MarshalOptions{
-		KeepSecrets:   true,
-		KeepResources: true,
+		KeepSecrets:	true,
+		KeepResources:	true,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	return &pulumirpc.RegisterResourceResponse{
-		Urn:    urn,
-		Id:     id,
-		Object: stateOut,
+		Urn:	urn,
+		Id:	id,
+		Object:	stateOut,
 	}, nil
 }
 
@@ -393,8 +393,8 @@ func (m *mockMonitor) SignalAndWaitForShutdown(ctx context.Context, req *emptypb
 }
 
 type mockEngine struct {
-	logger       *log.Logger
-	rootResource string
+	logger		*log.Logger
+	rootResource	string
 }
 
 // Log logs a global message in the engine, including errors and warnings.

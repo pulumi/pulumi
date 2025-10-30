@@ -23,8 +23,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -65,10 +65,10 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var kind string
 
 	cmd := &cobra.Command{
-		Use:    "run PATH|NAME[@VERSION] [ARGS]",
-		Args:   cmdutil.MinimumNArgs(1),
-		Hidden: !env.Dev.Value(),
-		Short:  "Run a command on a plugin binary",
+		Use:	"run PATH|NAME[@VERSION] [ARGS]",
+		Args:	cmdutil.MinimumNArgs(1),
+		Hidden:	!env.Dev.Value(),
+		Short:	"Run a command on a plugin binary",
 		Long: "[EXPERIMENTAL] Run a command on a plugin binary.\n" +
 			"\n" +
 			"Directly executes a plugin binary, if VERSION is not specified " +
@@ -155,7 +155,7 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 			// indefinitely if there's no stdin input.
 
 			var wg sync.WaitGroup
-			wg.Add(2) // Only wait for stdout and stderr, not stdin
+			wg.Add(2)	// Only wait for stdout and stderr, not stdin
 			go func() {
 				defer wg.Done()
 				_, err := io.Copy(os.Stdout, plugin.Stdout)

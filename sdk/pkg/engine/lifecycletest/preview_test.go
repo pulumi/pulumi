@@ -20,11 +20,11 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/gofrs/uuid"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	. "github.com/pulumi/pulumi/sdk/v3/pkg/engine"	//nolint:revive
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -51,21 +51,21 @@ func TestPreviewRefreshWithProgram(t *testing.T) {
 
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								ID:      req.ID,
-								Inputs:  req.Inputs,
-								Outputs: readOutputs,
+								ID:		req.ID,
+								Inputs:		req.Inputs,
+								Outputs:	readOutputs,
 							},
-							Status: resource.StatusOK,
+							Status:	resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							ID:		req.ID,
+							Inputs:		resource.PropertyMap{},
+							Outputs:	resource.PropertyMap{},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
@@ -78,16 +78,16 @@ func TestPreviewRefreshWithProgram(t *testing.T) {
 						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
-							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
-							Status:     resource.StatusOK,
+							ID:		resource.ID(uuid.String()),
+							Properties:	createOutputs,
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
-						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
-						Status:     resource.StatusOK,
+						ID:		resource.ID(uuid.String()),
+						Properties:	resource.PropertyMap{},
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
@@ -100,14 +100,14 @@ func TestPreviewRefreshWithProgram(t *testing.T) {
 						assert.Equal(t, readOutputs, req.OldOutputs)
 
 						return plugin.UpdateResponse{
-							Properties: updateOutputs,
-							Status:     resource.StatusOK,
+							Properties:	updateOutputs,
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.UpdateResponse{
-						Properties: resource.PropertyMap{},
-						Status:     resource.StatusOK,
+						Properties:	resource.PropertyMap{},
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -136,8 +136,8 @@ func TestPreviewRefreshWithProgram(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 		},
 	}
 
@@ -187,21 +187,21 @@ func TestPreviewStackOutputs(t *testing.T) {
 		switch step {
 		case 0:
 			outputs = resource.PropertyMap{
-				"first":  resource.NewProperty("abc"),
-				"second": resource.NewProperty("def"),
+				"first":	resource.NewProperty("abc"),
+				"second":	resource.NewProperty("def"),
 			}
 		case 1:
 			// Changes to "first" should be shown in the preview.
 			// Changes to "second" should not be shown in the preview, as it is not changed.
 			outputs = resource.PropertyMap{
-				"first":  resource.NewProperty("step 1"),
-				"second": resource.NewProperty("def"),
+				"first":	resource.NewProperty("step 1"),
+				"second":	resource.NewProperty("def"),
 			}
 		case 2:
 			// We're changing "first" to an unknown, so it should not be shown in the preview.
 			outputs = resource.PropertyMap{
-				"first":  resource.NewProperty(resource.Computed{}),
-				"second": resource.NewProperty("def"),
+				"first":	resource.NewProperty(resource.Computed{}),
+				"second":	resource.NewProperty("def"),
 			}
 		}
 

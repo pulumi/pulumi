@@ -29,17 +29,17 @@ import (
 )
 
 type mockRegistry struct {
-	getPackage func(
+	getPackage	func(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.PackageMetadata, error)
-	listPackages func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
+	listPackages	func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
 
-	getTemplate func(
+	getTemplate	func(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.TemplateMetadata, error)
-	listTemplates func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error]
+	listTemplates	func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error]
 
-	downloadTemplate func(ctx context.Context, downloadURL string) (io.ReadCloser, error)
+	downloadTemplate	func(ctx context.Context, downloadURL string) (io.ReadCloser, error)
 }
 
 func (r mockRegistry) GetPackage(
@@ -121,9 +121,9 @@ func TestOnDemandRegistry(t *testing.T) {
 					ctx context.Context, source, publisher, name string, version *semver.Version,
 				) (apitype.PackageMetadata, error) {
 					return apitype.PackageMetadata{
-						Name:      name,
-						Publisher: publisher,
-						Source:    source,
+						Name:		name,
+						Publisher:	publisher,
+						Source:		source,
 					}, nil
 				},
 			}, nil

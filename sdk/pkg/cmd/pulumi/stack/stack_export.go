@@ -19,14 +19,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
@@ -38,9 +38,9 @@ func newStackExportCmd() *cobra.Command {
 	var showSecrets bool
 
 	cmd := &cobra.Command{
-		Use:   "export",
-		Args:  cmdutil.MaximumNArgs(0),
-		Short: "Export a stack's deployment to standard out",
+		Use:	"export",
+		Args:	cmdutil.MaximumNArgs(0),
+		Short:	"Export a stack's deployment to standard out",
 		Long: "Export a stack's deployment to standard out.\n" +
 			"\n" +
 			"The deployment can then be hand-edited and used to update the stack via\n" +
@@ -112,8 +112,8 @@ func newStackExportCmd() *cobra.Command {
 				// of exporting from the backend, those escaped characters will remain escaped, this just
 				// avoids introducing additional escaping.
 				deployment, err = stack.SerializeUntypedDeployment(ctx, snap, &stack.SerializeOptions{
-					ShowSecrets: true,
-					Pretty:      true,
+					ShowSecrets:	true,
+					Pretty:		true,
 				})
 				if err != nil {
 					return err

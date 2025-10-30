@@ -22,8 +22,8 @@ import (
 	"unicode"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/cgstrings"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
@@ -107,8 +107,8 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 }
 
 var pypiReleaseTranslations = []struct {
-	prefix     string
-	replacment string
+	prefix		string
+	replacment	string
 }{
 	{"alpha", "a"},
 	{"beta", "b"},
@@ -176,8 +176,8 @@ func PypiVersion(v semver.Version) string {
 	// We allow the first pre-release in `v` to indicate the release for the
 	// pypi version.
 	for _, special := range []struct {
-		getFunc  func(string) string
-		maybeSet *string
+		getFunc		func(string) string
+		maybeSet	*string
 	}{
 		{getRelease, &release},
 		{getDev, &dev},

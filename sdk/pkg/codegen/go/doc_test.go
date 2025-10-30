@@ -22,26 +22,26 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 var testPackageSpec = schema.PackageSpec{
-	Name:        "aws",
-	Version:     "0.0.1",
-	Description: "A fake provider package used for testing.",
+	Name:		"aws",
+	Version:	"0.0.1",
+	Description:	"A fake provider package used for testing.",
 	Meta: &schema.MetadataSpec{
 		ModuleFormat: "(.*)(?:/[^/]*)",
 	},
 	Types: map[string]schema.ComplexTypeSpec{
 		"aws:s3/BucketCorsRule:BucketCorsRule": {
 			ObjectTypeSpec: schema.ObjectTypeSpec{
-				Description: "The resource options object.",
-				Type:        "object",
+				Description:	"The resource options object.",
+				Type:		"object",
 				Properties: map[string]schema.PropertySpec{
 					"stringProp": {
-						Description: "A string prop.",
+						Description:	"A string prop.",
 						TypeSpec: schema.TypeSpec{
 							Type: "string",
 						},
@@ -120,8 +120,8 @@ func TestGetDocLinkForResourceType(t *testing.T) {
 func TestGetFunctionName(t *testing.T) {
 	t.Parallel()
 	pkg, err := schema.ImportSpec(schema.PackageSpec{
-		Name:    "pkg",
-		Version: "0.0.1",
+		Name:		"pkg",
+		Version:	"0.0.1",
 		Meta: &schema.MetadataSpec{
 			ModuleFormat: "(.*)(?:/[^/]*)",
 		},
@@ -129,8 +129,8 @@ func TestGetFunctionName(t *testing.T) {
 			"pkg:conflict:Resource": {},
 		},
 		Functions: map[string]schema.FunctionSpec{
-			"pkg:index:getSomeFunction": {},
-			"pkg:conflict:newResource":  {},
+			"pkg:index:getSomeFunction":	{},
+			"pkg:conflict:newResource":	{},
 		},
 	}, nil, schema.ValidationOptions{
 		AllowDanglingReferences: true,
@@ -145,11 +145,11 @@ func TestGetFunctionName(t *testing.T) {
 	}
 
 	assert.Equal(t, map[string]string{
-		"pkg:index:getSomeFunction": "GetSomeFunction",
+		"pkg:index:getSomeFunction":	"GetSomeFunction",
 		// "pkg:conflict:newResource" is renamed to "CreateResource" to avoid
 		// conflicting with the resource constructor for "pkg:conflict:Resource"
 		// (NewResource).
-		"pkg:conflict:newResource": "CreateResource",
+		"pkg:conflict:newResource":	"CreateResource",
 	}, names)
 }
 
@@ -159,8 +159,8 @@ func TestGetFunctionNameWithoutPackageMapDoesNotPanic(t *testing.T) {
 	t.Parallel()
 
 	pkg, err := schema.ImportSpec(schema.PackageSpec{
-		Name:    "pkg",
-		Version: "0.0.1",
+		Name:		"pkg",
+		Version:	"0.0.1",
 		Meta: &schema.MetadataSpec{
 			ModuleFormat: "(.*)(?:/[^/]*)",
 		},

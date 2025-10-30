@@ -20,10 +20,10 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	. "github.com/pulumi/pulumi/sdk/v3/pkg/engine"	//nolint:revive
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -44,18 +44,18 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 				) {
 					assert.True(t, req.SupportsRefreshBeforeUpdate)
 					return &plugin.ProviderHandshakeResponse{
-						AcceptSecrets:   true,
-						AcceptResources: true,
-						AcceptOutputs:   true,
+						AcceptSecrets:		true,
+						AcceptResources:	true,
+						AcceptOutputs:		true,
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					props := req.Properties.Copy()
 					props["result"] = props["input"]
 					return plugin.CreateResponse{
-						Properties:          props,
-						ID:                  "new-id",
-						RefreshBeforeUpdate: true,
+						Properties:		props,
+						ID:			"new-id",
+						RefreshBeforeUpdate:	true,
 					}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
@@ -71,8 +71,8 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 					props := req.NewInputs.Copy()
 					props["result"] = props["input"]
 					return plugin.UpdateResponse{
-						Properties:          props,
-						RefreshBeforeUpdate: true,
+						Properties:		props,
+						RefreshBeforeUpdate:	true,
 					}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
@@ -82,12 +82,12 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 					props["input"] = inputs["input"]
 					props["result"] = resource.NewProperty(fmt.Sprintf("<FRESH-RESULT-%d>", readToken))
 					return plugin.ReadResponse{
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 						ReadResult: plugin.ReadResult{
-							ID:                  "new-id",
-							Inputs:              inputs,
-							Outputs:             props,
-							RefreshBeforeUpdate: true,
+							ID:			"new-id",
+							Inputs:			inputs,
+							Outputs:		props,
+							RefreshBeforeUpdate:	true,
 						},
 					}, nil
 				},
@@ -114,8 +114,8 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 		},
 	}
 
@@ -130,8 +130,8 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 		"input": resource.NewProperty("value-1"),
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"input":  resource.NewProperty("value-1"),
-		"result": resource.NewProperty("value-1"),
+		"input":	resource.NewProperty("value-1"),
+		"result":	resource.NewProperty("value-1"),
 	}, snap.Resources[2].Outputs)
 	assert.True(t, snap.Resources[2].RefreshBeforeUpdate)
 
@@ -149,8 +149,8 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 		"input": resource.NewProperty("value-2"),
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"input":  resource.NewProperty("value-2"),
-		"result": resource.NewProperty("value-2"),
+		"input":	resource.NewProperty("value-2"),
+		"result":	resource.NewProperty("value-2"),
 	}, snap.Resources[2].Outputs)
 	assert.True(t, snap.Resources[2].RefreshBeforeUpdate)
 
@@ -166,8 +166,8 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 		"input": resource.NewProperty("value-2"),
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"input":  resource.NewProperty("value-2"),
-		"result": resource.NewProperty("value-2"),
+		"input":	resource.NewProperty("value-2"),
+		"result":	resource.NewProperty("value-2"),
 	}, snap.Resources[2].Outputs)
 	assert.True(t, snap.Resources[2].RefreshBeforeUpdate)
 
@@ -184,8 +184,8 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 		"input": resource.NewProperty("value-2"),
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"input":  resource.NewProperty("value-2"),
-		"result": resource.NewProperty("value-2"),
+		"input":	resource.NewProperty("value-2"),
+		"result":	resource.NewProperty("value-2"),
 	}, snap.Resources[2].Outputs)
 	assert.True(t, snap.Resources[2].RefreshBeforeUpdate)
 
@@ -202,17 +202,17 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 		"input": resource.NewProperty("<FRESH-INPUT-3>"),
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"input":  resource.NewProperty("<FRESH-INPUT-3>"),
-		"result": resource.NewProperty("<FRESH-RESULT-3>"),
+		"input":	resource.NewProperty("<FRESH-INPUT-3>"),
+		"result":	resource.NewProperty("<FRESH-RESULT-3>"),
 	}, snap.Resources[2].Outputs)
 	assert.True(t, snap.Resources[2].RefreshBeforeUpdate)
 
 	// Import.
 	readToken = 42
 	p.Steps = []lt.TestStep{{Op: lt.ImportOp([]deploy.Import{{
-		Type: "pkgA:m:typA",
-		Name: "resB",
-		ID:   "imported-id",
+		Type:	"pkgA:m:typA",
+		Name:	"resB",
+		ID:	"imported-id",
 	}})}}
 	snap = p.Run(t, snap)
 	require.Len(t, snap.Resources, 4)
@@ -223,8 +223,8 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 		"input": resource.NewProperty("<FRESH-INPUT-3>"),
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"input":  resource.NewProperty("<FRESH-INPUT-3>"),
-		"result": resource.NewProperty("<FRESH-RESULT-3>"),
+		"input":	resource.NewProperty("<FRESH-INPUT-3>"),
+		"result":	resource.NewProperty("<FRESH-RESULT-3>"),
 	}, snap.Resources[2].Outputs)
 	assert.True(t, snap.Resources[2].RefreshBeforeUpdate)
 	assert.Equal(t, "resB", snap.Resources[3].URN.Name())
@@ -232,8 +232,8 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 		"input": resource.NewProperty("<FRESH-INPUT-42>"),
 	}, snap.Resources[3].Inputs)
 	assert.Equal(t, resource.PropertyMap{
-		"input":  resource.NewProperty("<FRESH-INPUT-42>"),
-		"result": resource.NewProperty("<FRESH-RESULT-42>"),
+		"input":	resource.NewProperty("<FRESH-INPUT-42>"),
+		"result":	resource.NewProperty("<FRESH-RESULT-42>"),
 	}, snap.Resources[3].Outputs)
 	assert.True(t, snap.Resources[3].RefreshBeforeUpdate)
 }
@@ -248,15 +248,15 @@ func TestRefreshBeforeUpdateDeletedResource(t *testing.T) {
 					props := req.Properties.Copy()
 					props["result"] = props["input"]
 					return plugin.CreateResponse{
-						Properties:          props,
-						ID:                  "new-id",
-						RefreshBeforeUpdate: true,
+						Properties:		props,
+						ID:			"new-id",
+						RefreshBeforeUpdate:	true,
 					}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					if req.Name == "res0" {
 						return plugin.ReadResponse{
-							Status: resource.StatusOK,
+							Status:	resource.StatusOK,
 							ReadResult: plugin.ReadResult{
 								ID: "",
 							},
@@ -264,12 +264,12 @@ func TestRefreshBeforeUpdateDeletedResource(t *testing.T) {
 					}
 
 					return plugin.ReadResponse{
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 						ReadResult: plugin.ReadResult{
-							ID:                  "new-id",
-							Inputs:              req.Inputs,
-							Outputs:             req.State,
-							RefreshBeforeUpdate: true,
+							ID:			"new-id",
+							Inputs:			req.Inputs,
+							Outputs:		req.State,
+							RefreshBeforeUpdate:	true,
 						},
 					}, nil
 				},
@@ -297,8 +297,8 @@ func TestRefreshBeforeUpdateDeletedResource(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 		},
 	}
 

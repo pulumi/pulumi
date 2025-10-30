@@ -28,9 +28,9 @@ import (
 )
 
 type analyzerServer struct {
-	pulumirpc.UnsafeAnalyzerServer // opt out of forward compat
+	pulumirpc.UnsafeAnalyzerServer	// opt out of forward compat
 
-	analyzer Analyzer
+	analyzer	Analyzer
 }
 
 func NewAnalyzerServer(analyzer Analyzer) pulumirpc.AnalyzerServer {
@@ -41,9 +41,9 @@ func (a *analyzerServer) Analyze(
 	ctx context.Context, req *pulumirpc.AnalyzeRequest,
 ) (*pulumirpc.AnalyzeResponse, error) {
 	props, err := UnmarshalProperties(req.GetProperties(), MarshalOptions{
-		KeepUnknowns:     true,
-		KeepSecrets:      true,
-		SkipInternalKeys: true,
+		KeepUnknowns:		true,
+		KeepSecrets:		true,
+		SkipInternalKeys:	true,
 	})
 	if err != nil {
 		return nil, err
@@ -55,20 +55,20 @@ func (a *analyzerServer) Analyze(
 	}
 
 	res, err := a.analyzer.Analyze(AnalyzerResource{
-		URN:        resource.URN(req.GetUrn()),
-		Type:       tokens.Type(req.GetType()),
-		Name:       req.GetName(),
-		Properties: props,
-		Options:    convertResourceOptions(req.GetOptions()),
-		Provider:   provider,
+		URN:		resource.URN(req.GetUrn()),
+		Type:		tokens.Type(req.GetType()),
+		Name:		req.GetName(),
+		Properties:	props,
+		Options:	convertResourceOptions(req.GetOptions()),
+		Provider:	provider,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	return &pulumirpc.AnalyzeResponse{
-		Diagnostics:   marshalAnalyzeDiagnostics(res.Diagnostics),
-		NotApplicable: marshalPolicyNotApplicables(res.NotApplicable),
+		Diagnostics:	marshalAnalyzeDiagnostics(res.Diagnostics),
+		NotApplicable:	marshalPolicyNotApplicables(res.NotApplicable),
 	}, nil
 }
 
@@ -78,9 +78,9 @@ func (a *analyzerServer) AnalyzeStack(
 	resources, err := slice.MapError(req.GetResources(),
 		func(r *pulumirpc.AnalyzerResource) (AnalyzerStackResource, error) {
 			props, err := UnmarshalProperties(r.GetProperties(), MarshalOptions{
-				KeepUnknowns:     true,
-				KeepSecrets:      true,
-				SkipInternalKeys: true,
+				KeepUnknowns:		true,
+				KeepSecrets:		true,
+				SkipInternalKeys:	true,
 			})
 			if err != nil {
 				return AnalyzerStackResource{}, err
@@ -103,18 +103,18 @@ func (a *analyzerServer) AnalyzeStack(
 
 			return AnalyzerStackResource{
 				AnalyzerResource: AnalyzerResource{
-					URN:        resource.URN(r.GetUrn()),
-					Type:       tokens.Type(r.GetType()),
-					Name:       r.GetName(),
-					Properties: props,
-					Options:    convertResourceOptions(r.GetOptions()),
-					Provider:   provider,
+					URN:		resource.URN(r.GetUrn()),
+					Type:		tokens.Type(r.GetType()),
+					Name:		r.GetName(),
+					Properties:	props,
+					Options:	convertResourceOptions(r.GetOptions()),
+					Provider:	provider,
 				},
-				Parent: resource.URN(r.GetParent()),
+				Parent:	resource.URN(r.GetParent()),
 				Dependencies: slice.Map(r.GetDependencies(), func(d string) resource.URN {
 					return resource.URN(d)
 				}),
-				PropertyDependencies: propertyDeps,
+				PropertyDependencies:	propertyDeps,
 			}, nil
 		})
 	if err != nil {
@@ -127,8 +127,8 @@ func (a *analyzerServer) AnalyzeStack(
 	}
 
 	return &pulumirpc.AnalyzeResponse{
-		Diagnostics:   marshalAnalyzeDiagnostics(res.Diagnostics),
-		NotApplicable: marshalPolicyNotApplicables(res.NotApplicable),
+		Diagnostics:	marshalAnalyzeDiagnostics(res.Diagnostics),
+		NotApplicable:	marshalPolicyNotApplicables(res.NotApplicable),
 	}, nil
 }
 
@@ -136,9 +136,9 @@ func (a *analyzerServer) Remediate(
 	ctx context.Context, req *pulumirpc.AnalyzeRequest,
 ) (*pulumirpc.RemediateResponse, error) {
 	props, err := UnmarshalProperties(req.GetProperties(), MarshalOptions{
-		KeepUnknowns:     true,
-		KeepSecrets:      true,
-		SkipInternalKeys: false,
+		KeepUnknowns:		true,
+		KeepSecrets:		true,
+		SkipInternalKeys:	false,
 	})
 	if err != nil {
 		return nil, err
@@ -150,12 +150,12 @@ func (a *analyzerServer) Remediate(
 	}
 
 	res, err := a.analyzer.Remediate(AnalyzerResource{
-		URN:        resource.URN(req.GetUrn()),
-		Type:       tokens.Type(req.GetType()),
-		Name:       req.GetName(),
-		Properties: props,
-		Options:    convertResourceOptions(req.GetOptions()),
-		Provider:   provider,
+		URN:		resource.URN(req.GetUrn()),
+		Type:		tokens.Type(req.GetType()),
+		Name:		req.GetName(),
+		Properties:	props,
+		Options:	convertResourceOptions(req.GetOptions()),
+		Provider:	provider,
 	})
 	if err != nil {
 		return nil, err
@@ -163,21 +163,21 @@ func (a *analyzerServer) Remediate(
 
 	remediations, err := slice.MapError(res.Remediations, func(r Remediation) (*pulumirpc.Remediation, error) {
 		mprops, err := MarshalProperties(r.Properties, MarshalOptions{
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			SkipInternalKeys: false,
+			KeepUnknowns:		true,
+			KeepSecrets:		true,
+			SkipInternalKeys:	false,
 		})
 		if err != nil {
 			return nil, err
 		}
 
 		return &pulumirpc.Remediation{
-			PolicyName:        r.PolicyName,
-			PolicyPackName:    r.PolicyPackName,
-			PolicyPackVersion: r.PolicyPackVersion,
-			Description:       r.Description,
-			Properties:        mprops,
-			Diagnostic:        r.Diagnostic,
+			PolicyName:		r.PolicyName,
+			PolicyPackName:		r.PolicyPackName,
+			PolicyPackVersion:	r.PolicyPackVersion,
+			Description:		r.Description,
+			Properties:		mprops,
+			Diagnostic:		r.Diagnostic,
 		}, nil
 	})
 	if err != nil {
@@ -185,8 +185,8 @@ func (a *analyzerServer) Remediate(
 	}
 
 	return &pulumirpc.RemediateResponse{
-		Remediations:  remediations,
-		NotApplicable: marshalPolicyNotApplicables(res.NotApplicable),
+		Remediations:	remediations,
+		NotApplicable:	marshalPolicyNotApplicables(res.NotApplicable),
 	}, nil
 }
 
@@ -198,18 +198,18 @@ func (a *analyzerServer) GetAnalyzerInfo(context.Context, *emptypb.Empty) (*pulu
 
 	policies := slice.Map(info.Policies, func(p AnalyzerPolicyInfo) *pulumirpc.PolicyInfo {
 		return &pulumirpc.PolicyInfo{
-			Name:             p.Name,
-			DisplayName:      p.DisplayName,
-			Description:      p.Description,
-			Message:          p.Message,
-			EnforcementLevel: marshalEnforcementLevel(p.EnforcementLevel),
-			ConfigSchema:     marshalConfigSchema(p.ConfigSchema),
-			PolicyType:       marshalPolicyType(p.Type),
-			Severity:         marshalPolicySeverity(p.Severity),
-			Framework:        marshalComplianceFramework(p.Framework),
-			Tags:             p.Tags,
-			RemediationSteps: p.RemediationSteps,
-			Url:              p.URL,
+			Name:			p.Name,
+			DisplayName:		p.DisplayName,
+			Description:		p.Description,
+			Message:		p.Message,
+			EnforcementLevel:	marshalEnforcementLevel(p.EnforcementLevel),
+			ConfigSchema:		marshalConfigSchema(p.ConfigSchema),
+			PolicyType:		marshalPolicyType(p.Type),
+			Severity:		marshalPolicySeverity(p.Severity),
+			Framework:		marshalComplianceFramework(p.Framework),
+			Tags:			p.Tags,
+			RemediationSteps:	p.RemediationSteps,
+			Url:			p.URL,
 		}
 	})
 
@@ -218,23 +218,23 @@ func (a *analyzerServer) GetAnalyzerInfo(context.Context, *emptypb.Empty) (*pulu
 		properties, err := structpb.NewStruct(v.Properties)
 		contract.AssertNoErrorf(err, "marshaling initial config properties for policy %s", k)
 		initialConfig[k] = &pulumirpc.PolicyConfig{
-			EnforcementLevel: marshalEnforcementLevel(v.EnforcementLevel),
-			Properties:       properties,
+			EnforcementLevel:	marshalEnforcementLevel(v.EnforcementLevel),
+			Properties:		properties,
 		}
 	}
 
 	return &pulumirpc.AnalyzerInfo{
-		Name:           info.Name,
-		DisplayName:    info.DisplayName,
-		Version:        info.Version,
-		SupportsConfig: info.SupportsConfig,
-		Policies:       policies,
-		InitialConfig:  initialConfig,
-		Description:    info.Description,
-		Readme:         info.Readme,
-		Provider:       info.Provider,
-		Tags:           info.Tags,
-		Repository:     info.Repository,
+		Name:		info.Name,
+		DisplayName:	info.DisplayName,
+		Version:	info.Version,
+		SupportsConfig:	info.SupportsConfig,
+		Policies:	policies,
+		InitialConfig:	initialConfig,
+		Description:	info.Description,
+		Readme:		info.Readme,
+		Provider:	info.Provider,
+		Tags:		info.Tags,
+		Repository:	info.Repository,
 	}, nil
 }
 
@@ -325,8 +325,8 @@ func marshalConfigSchema(schema *AnalyzerPolicyConfigSchema) *pulumirpc.PolicyCo
 	contract.AssertNoErrorf(err, "")
 
 	return &pulumirpc.PolicyConfigSchema{
-		Properties: properties,
-		Required:   schema.Required,
+		Properties:	properties,
+		Required:	schema.Required,
 	}
 }
 
@@ -337,10 +337,10 @@ func marshalComplianceFramework(f *AnalyzerPolicyComplianceFramework) *pulumirpc
 	}
 
 	return &pulumirpc.PolicyComplianceFramework{
-		Name:          f.Name,
-		Version:       f.Version,
-		Reference:     f.Reference,
-		Specification: f.Specification,
+		Name:		f.Name,
+		Version:	f.Version,
+		Reference:	f.Reference,
+		Specification:	f.Specification,
 	}
 }
 
@@ -348,14 +348,14 @@ func marshalComplianceFramework(f *AnalyzerPolicyComplianceFramework) *pulumirpc
 func marshalAnalyzeDiagnostics(diags []AnalyzeDiagnostic) []*pulumirpc.AnalyzeDiagnostic {
 	return slice.Map(diags, func(d AnalyzeDiagnostic) *pulumirpc.AnalyzeDiagnostic {
 		return &pulumirpc.AnalyzeDiagnostic{
-			PolicyName:        d.PolicyName,
-			PolicyPackName:    d.PolicyPackName,
-			PolicyPackVersion: d.PolicyPackVersion,
-			Description:       d.Description,
-			Message:           d.Message,
-			EnforcementLevel:  marshalEnforcementLevel(d.EnforcementLevel),
-			Urn:               string(d.URN),
-			Severity:          marshalPolicySeverity(d.Severity),
+			PolicyName:		d.PolicyName,
+			PolicyPackName:		d.PolicyPackName,
+			PolicyPackVersion:	d.PolicyPackVersion,
+			Description:		d.Description,
+			Message:		d.Message,
+			EnforcementLevel:	marshalEnforcementLevel(d.EnforcementLevel),
+			Urn:			string(d.URN),
+			Severity:		marshalPolicySeverity(d.Severity),
 		}
 	})
 }
@@ -364,8 +364,8 @@ func marshalAnalyzeDiagnostics(diags []AnalyzeDiagnostic) []*pulumirpc.AnalyzeDi
 func marshalPolicyNotApplicables(nas []PolicyNotApplicable) []*pulumirpc.PolicyNotApplicable {
 	return slice.Map(nas, func(na PolicyNotApplicable) *pulumirpc.PolicyNotApplicable {
 		return &pulumirpc.PolicyNotApplicable{
-			PolicyName: na.PolicyName,
-			Reason:     na.Reason,
+			PolicyName:	na.PolicyName,
+			Reason:		na.Reason,
 		}
 	})
 }
@@ -377,19 +377,19 @@ func convertProvider(p *pulumirpc.AnalyzerProviderResource) (*AnalyzerProviderRe
 	}
 
 	props, err := UnmarshalProperties(p.Properties, MarshalOptions{
-		KeepUnknowns:     true,
-		KeepSecrets:      true,
-		SkipInternalKeys: true,
+		KeepUnknowns:		true,
+		KeepSecrets:		true,
+		SkipInternalKeys:	true,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	return &AnalyzerProviderResource{
-		URN:        resource.URN(p.Urn),
-		Type:       tokens.Type(p.Type),
-		Name:       p.Name,
-		Properties: props,
+		URN:		resource.URN(p.Urn),
+		Type:		tokens.Type(p.Type),
+		Name:		p.Name,
+		Properties:	props,
 	}, nil
 }
 
@@ -408,23 +408,23 @@ func convertResourceOptions(opts *pulumirpc.AnalyzerResourceOptions) AnalyzerRes
 	var customTimeouts resource.CustomTimeouts
 	if t := opts.GetCustomTimeouts(); t != nil {
 		customTimeouts = resource.CustomTimeouts{
-			Create: t.GetCreate(),
-			Update: t.GetUpdate(),
-			Delete: t.GetDelete(),
+			Create:	t.GetCreate(),
+			Update:	t.GetUpdate(),
+			Delete:	t.GetDelete(),
 		}
 	}
 
 	return AnalyzerResourceOptions{
-		Protect:             opts.GetProtect(),
-		IgnoreChanges:       opts.GetIgnoreChanges(),
-		DeleteBeforeReplace: deleteBeforeReplace,
+		Protect:		opts.GetProtect(),
+		IgnoreChanges:		opts.GetIgnoreChanges(),
+		DeleteBeforeReplace:	deleteBeforeReplace,
 		AdditionalSecretOutputs: slice.Map(opts.GetAdditionalSecretOutputs(), func(urn string) resource.PropertyKey {
 			return resource.PropertyKey(urn)
 		}),
 		AliasURNs: slice.Map(opts.GetAliases(), func(urn string) resource.URN {
 			return resource.URN(urn)
 		}),
-		CustomTimeouts: customTimeouts,
-		Parent:         resource.URN(opts.GetParent()),
+		CustomTimeouts:	customTimeouts,
+		Parent:		resource.URN(opts.GetParent()),
 	}
 }

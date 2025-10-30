@@ -18,13 +18,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/edit"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -161,8 +161,8 @@ func newStateRenameCommand() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "rename [resource URN] [new name]",
-		Short: "Renames a resource from a stack's state",
+		Use:	"rename [resource URN] [new name]",
+		Short:	"Renames a resource from a stack's state",
 		Long: `Renames a resource from a stack's state
 
 This command renames a resource from a stack's state. The resource is specified
@@ -172,8 +172,8 @@ Make sure that URNs are single-quoted to avoid having characters unexpectedly in
 
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 `,
-		Example: "pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider' new-name-here",
-		Args:    cmdutil.MaximumNArgs(2),
+		Example:	"pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider' new-name-here",
+		Args:		cmdutil.MaximumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()
@@ -187,7 +187,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			var urn resource.URN
 			var newResourceName string
 			switch len(args) {
-			case 0: // We got neither the URN nor the name.
+			case 0:	// We got neither the URN nor the name.
 				var snap *deploy.Snapshot
 				err := ui.SurveyStack(
 					func() (err error) {
@@ -205,7 +205,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 				if err != nil {
 					return err
 				}
-			case 1: // We got the urn but not the name
+			case 1:	// We got the urn but not the name
 				urn = resource.URN(args[0])
 				if !urn.IsValid() {
 					return errors.New("The provided input URN is not valid")
@@ -215,7 +215,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 				if err != nil {
 					return err
 				}
-			case 2: // We got the URN and the name.
+			case 2:	// We got the URN and the name.
 				urn = resource.URN(args[0])
 				if !urn.IsValid() {
 					return errors.New("The provided input URN is not valid")

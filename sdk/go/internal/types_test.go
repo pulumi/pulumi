@@ -98,51 +98,51 @@ func TestNewApplier_errors(t *testing.T) {
 
 	stringType := reflect.TypeOf("")
 	tests := []struct {
-		desc string
-		give any
+		desc	string
+		give	any
 
 		// Part of the error message expected in return.
-		wantErr string
+		wantErr	string
 	}{
 		{
-			desc:    "not a function",
-			give:    42,
-			wantErr: "applier must be a function, got int",
+			desc:		"not a function",
+			give:		42,
+			wantErr:	"applier must be a function, got int",
 		},
 		{
-			desc:    "no params",
-			give:    func() int { return 0 },
-			wantErr: "applier must accept exactly one or two parameters, got 0",
+			desc:		"no params",
+			give:		func() int { return 0 },
+			wantErr:	"applier must accept exactly one or two parameters, got 0",
 		},
 		{
-			desc:    "single param bad input",
-			give:    func(int) int { return 0 },
-			wantErr: "applier's first input parameter must be assignable from string, got int",
+			desc:		"single param bad input",
+			give:		func(int) int { return 0 },
+			wantErr:	"applier's first input parameter must be assignable from string, got int",
 		},
 		{
-			desc:    "two params bad context",
-			give:    func(int, string) int { return 0 },
-			wantErr: "applier's first input parameter must be assignable from context.Context, got int",
+			desc:		"two params bad context",
+			give:		func(int, string) int { return 0 },
+			wantErr:	"applier's first input parameter must be assignable from context.Context, got int",
 		},
 		{
-			desc:    "two params bad input",
-			give:    func(context.Context, int) int { return 0 },
-			wantErr: "applier's second input parameter must be assignable from string, got int",
+			desc:		"two params bad input",
+			give:		func(context.Context, int) int { return 0 },
+			wantErr:	"applier's second input parameter must be assignable from string, got int",
 		},
 		{
-			desc:    "three params",
-			give:    func(context.Context, string, int) int { return 0 },
-			wantErr: "applier must accept exactly one or two parameters, got 3",
+			desc:		"three params",
+			give:		func(context.Context, string, int) int { return 0 },
+			wantErr:	"applier must accept exactly one or two parameters, got 3",
 		},
 		{
-			desc:    "no returns",
-			give:    func(string) {},
-			wantErr: "applier must return exactly one or two values, got 0",
+			desc:		"no returns",
+			give:		func(string) {},
+			wantErr:	"applier must return exactly one or two values, got 0",
 		},
 		{
-			desc:    "two returns bad error",
-			give:    func(string) (int, int) { return 0, 0 },
-			wantErr: "applier's second return type must be assignable to error, got int",
+			desc:		"two returns bad error",
+			give:		func(string) (int, int) { return 0, 0 },
+			wantErr:	"applier's second return type must be assignable to error, got int",
 		},
 	}
 

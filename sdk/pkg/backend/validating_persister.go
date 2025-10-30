@@ -15,23 +15,23 @@
 package backend
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 var _ = SnapshotPersister((*ValidatingPersister)(nil))
 
 type ValidatingPersister struct {
-	Snap      *deploy.Snapshot
-	ErrorFunc func(error)
+	Snap		*deploy.Snapshot
+	ErrorFunc	func(error)
 }
 
 func (p *ValidatingPersister) Save(snap *deploy.Snapshot) error {
 	result := &deploy.Snapshot{
-		Manifest:          snap.Manifest,
-		SecretsManager:    snap.SecretsManager,
-		Resources:         make([]*resource.State, len(snap.Resources)),
-		PendingOperations: make([]resource.Operation, len(snap.PendingOperations)),
+		Manifest:		snap.Manifest,
+		SecretsManager:		snap.SecretsManager,
+		Resources:		make([]*resource.State, len(snap.Resources)),
+		PendingOperations:	make([]resource.Operation, len(snap.PendingOperations)),
 	}
 
 	for i, res := range snap.Resources {
@@ -43,8 +43,8 @@ func (p *ValidatingPersister) Save(snap *deploy.Snapshot) error {
 	for i, op := range snap.PendingOperations {
 		op.Resource.Lock.Lock()
 		result.PendingOperations[i] = resource.Operation{
-			Type:     op.Type,
-			Resource: op.Resource.Copy(),
+			Type:		op.Type,
+			Resource:	op.Resource.Copy(),
 		}
 		op.Resource.Lock.Unlock()
 	}

@@ -21,13 +21,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/diy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/b64"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
@@ -104,10 +104,10 @@ func runMoveWithOptionsAndDestResources(
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Yes:            true,
-		Stdout:         &stdout,
-		Colorizer:      colors.Never,
-		IncludeParents: options.IncludeParents,
+		Yes:		true,
+		Stdout:		&stdout,
+		Colorizer:	colors.Never,
+		IncludeParents:	options.IncludeParents,
 	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, args, mp, mp)
 	require.NoError(t, err)
@@ -127,15 +127,15 @@ func TestMoveLeafResource(t *testing.T) {
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
 		{
-			URN:    providerURN,
-			Type:   "pulumi:providers:a::default_1_0_0",
-			ID:     "provider_id",
-			Custom: true,
+			URN:	providerURN,
+			Type:	"pulumi:providers:a::default_1_0_0",
+			ID:	"provider_id",
+			Custom:	true,
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
 		},
 	}
 
@@ -150,9 +150,9 @@ Successfully moved resources from organization/test/sourceStack to organization/
 `
 	assert.Equal(t, expectedStdout, stdout.String())
 
-	require.Len(t, sourceSnapshot.Resources, 1) // Only the provider should remain in the source stack
+	require.Len(t, sourceSnapshot.Resources, 1)	// Only the provider should remain in the source stack
 
-	require.Len(t, destSnapshot.Resources, 3) // We expect the root stack, the provider, and the moved resource
+	require.Len(t, destSnapshot.Resources, 3)	// We expect the root stack, the provider, and the moved resource
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[0].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
@@ -171,21 +171,21 @@ func TestChildrenAreBeingMoved(t *testing.T) {
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
 		{
-			URN:    providerURN,
-			Type:   "pulumi:providers:a::default_1_0_0",
-			ID:     "provider_id",
-			Custom: true,
+			URN:	providerURN,
+			Type:	"pulumi:providers:a::default_1_0_0",
+			ID:	"provider_id",
+			Custom:	true,
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name2"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
-			Parent:   resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name2"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
+			Parent:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
 		},
 	}
 
@@ -196,9 +196,9 @@ func TestChildrenAreBeingMoved(t *testing.T) {
 			"  - urn:pulumi:sourceStack::test::d:e:f$a:b:c::name\n"+
 			"  - urn:pulumi:sourceStack::test::d:e:f$a:b:c::name2")
 
-	require.Len(t, sourceSnapshot.Resources, 1) // Only the provider should remain in the source stack
+	require.Len(t, sourceSnapshot.Resources, 1)	// Only the provider should remain in the source stack
 
-	require.Len(t, destSnapshot.Resources, 4) // We expect the root stack, the provider, and the moved resources
+	require.Len(t, destSnapshot.Resources, 4)	// We expect the root stack, the provider, and the moved resources
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[0].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
@@ -228,51 +228,51 @@ func TestMoveResourceWithDependencies(t *testing.T) {
 	dependsOnMovedChildURN := resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "dependsOnMovedChildURN")
 	sourceResources := []*resource.State{
 		{
-			URN:    providerURN,
-			Type:   "pulumi:providers:a::default_1_0_0",
-			ID:     "provider_id",
-			Custom: true,
+			URN:	providerURN,
+			Type:	"pulumi:providers:a::default_1_0_0",
+			ID:	"provider_id",
+			Custom:	true,
 		},
 		{
-			URN:      remainingDepURN,
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
+			URN:		remainingDepURN,
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
 		},
 		{
-			URN:          resToMoveURN,
-			Type:         "a:b:c",
-			Provider:     string(providerURN) + "::provider_id",
-			Dependencies: []resource.URN{remainingDepURN},
+			URN:		resToMoveURN,
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
+			Dependencies:	[]resource.URN{remainingDepURN},
 		},
 		{
-			URN:      movedChildURN,
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
-			Parent:   resToMoveURN,
+			URN:		movedChildURN,
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
+			Parent:		resToMoveURN,
 		},
 		{
-			URN:          dependsOnMovedChildURN,
-			Type:         "a:b:c",
-			Provider:     string(providerURN) + "::provider_id",
-			Parent:       resToMoveURN,
-			Dependencies: []resource.URN{movedChildURN},
+			URN:		dependsOnMovedChildURN,
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
+			Parent:		resToMoveURN,
+			Dependencies:	[]resource.URN{movedChildURN},
 		},
 		{
-			URN:          depsURN,
-			Type:         "a:b:c",
-			Provider:     string(providerURN) + "::provider_id",
-			Dependencies: []resource.URN{resToMoveURN, remainingDepURN},
+			URN:		depsURN,
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
+			Dependencies:	[]resource.URN{resToMoveURN, remainingDepURN},
 		},
 		{
-			URN:         deletedWithURN,
-			Type:        "a:b:c",
-			Provider:    string(providerURN) + "::provider_id",
-			DeletedWith: resToMoveURN,
+			URN:		deletedWithURN,
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
+			DeletedWith:	resToMoveURN,
 		},
 		{
-			URN:      propDepsURN,
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
+			URN:		propDepsURN,
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
 			PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 				"key": {resToMoveURN, remainingDepURN},
 			},
@@ -325,7 +325,7 @@ Successfully moved resources from organization/test/sourceStack to organization/
 	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::d:e:f$a:b:c::remainingDep"),
 		sourceSnapshot.Resources[4].PropertyDependencies["key"][0])
 
-	require.Len(t, destSnapshot.Resources, 5) // We expect the root stack, the provider, and the moved resources
+	require.Len(t, destSnapshot.Resources, 5)	// We expect the root stack, the provider, and the moved resources
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[0].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
@@ -347,27 +347,27 @@ func TestMoveWithExistingProvider(t *testing.T) {
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
 		{
-			URN:    providerURN,
-			Type:   "pulumi:providers:a::default_1_0_0",
-			ID:     "provider_id",
-			Custom: true,
+			URN:	providerURN,
+			Type:	"pulumi:providers:a::default_1_0_0",
+			ID:	"provider_id",
+			Custom:	true,
 			Inputs: resource.PropertyMap{
 				"key": resource.NewProperty("value"),
 			},
 		},
 		{
-			URN:      resource.NewURN("destStack", "test", "d:e:f", "a:b:c", "name"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
+			URN:		resource.NewURN("destStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
 		},
 	}
 
 	destResources := []*resource.State{
 		{
-			URN:    resource.NewURN("destStack", "test", "", "pulumi:providers:a", "default_1_0_0"),
-			Type:   "pulumi:providers:a::default_1_0_0",
-			ID:     "other_provider_id",
-			Custom: true,
+			URN:	resource.NewURN("destStack", "test", "", "pulumi:providers:a", "default_1_0_0"),
+			Type:	"pulumi:providers:a::default_1_0_0",
+			ID:	"other_provider_id",
+			Custom:	true,
 			Inputs: resource.PropertyMap{
 				"key": resource.NewProperty("different value"),
 			},
@@ -394,9 +394,9 @@ func TestMoveWithExistingProvider(t *testing.T) {
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Yes:       true,
-		Stdout:    &stdout,
-		Colorizer: colors.Never,
+		Yes:		true,
+		Stdout:		&stdout,
+		Colorizer:	colors.Never,
 	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[1].URN)}, mp, mp)
 	assert.ErrorContains(t, err, "provider urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0 "+
@@ -409,30 +409,30 @@ func TestMoveWithExistingResource(t *testing.T) {
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
 		{
-			URN:    providerURN,
-			Type:   "pulumi:providers:a::default_1_0_0",
-			ID:     "provider_id",
-			Custom: true,
+			URN:	providerURN,
+			Type:	"pulumi:providers:a::default_1_0_0",
+			ID:	"provider_id",
+			Custom:	true,
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
 		},
 	}
 
 	otherProviderURN := resource.NewURN("destStack", "test", "", "pulumi:providers:a", "default_1_0_1")
 	destResources := []*resource.State{
 		{
-			URN:    otherProviderURN,
-			Type:   "pulumi:providers:a::default_1_0_1",
-			ID:     "other_provider_id",
-			Custom: true,
+			URN:	otherProviderURN,
+			Type:	"pulumi:providers:a::default_1_0_1",
+			ID:	"other_provider_id",
+			Custom:	true,
 		},
 		{
-			URN:      resource.NewURN("destStack", "test", "d:e:f", "a:b:c", "name"),
-			Type:     "a:b:c",
-			Provider: string(otherProviderURN) + "::other_provider_id",
+			URN:		resource.NewURN("destStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:		"a:b:c",
+			Provider:	string(otherProviderURN) + "::other_provider_id",
 		},
 	}
 
@@ -456,9 +456,9 @@ func TestMoveWithExistingResource(t *testing.T) {
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Yes:       true,
-		Stdout:    &stdout,
-		Colorizer: colors.Never,
+		Yes:		true,
+		Stdout:		&stdout,
+		Colorizer:	colors.Never,
 	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[1].URN)}, mp, mp)
 	assert.ErrorContains(t, err, "resource urn:pulumi:destStack::test::d:e:f$a:b:c::name "+
@@ -471,30 +471,30 @@ func TestParentsAreBeingMoved(t *testing.T) {
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
 		{
-			URN:    providerURN,
-			Type:   "pulumi:providers:a::default_1_0_0",
-			ID:     "provider_id",
-			Custom: true,
+			URN:	providerURN,
+			Type:	"pulumi:providers:a::default_1_0_0",
+			ID:	"provider_id",
+			Custom:	true,
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name2"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
-			Parent:   resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name2"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
+			Parent:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
 		},
 	}
 
 	sourceSnapshot, destSnapshot, _ := runMoveWithOptions(t, sourceResources, []string{string(sourceResources[2].URN)},
 		&MoveOptions{IncludeParents: true})
 
-	require.Len(t, sourceSnapshot.Resources, 1) // Only the provider should remain in the source stack
+	require.Len(t, sourceSnapshot.Resources, 1)	// Only the provider should remain in the source stack
 
-	require.Len(t, destSnapshot.Resources, 4) // We expect the root stack, the provider, and the moved resources
+	require.Len(t, destSnapshot.Resources, 4)	// We expect the root stack, the provider, and the moved resources
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[0].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
@@ -539,8 +539,8 @@ func TestEmptySourceStack(t *testing.T) {
 	})
 
 	stateMoveCmd := stateMoveCmd{
-		Yes:       true,
-		Colorizer: colors.Never,
+		Yes:		true,
+		Colorizer:	colors.Never,
 	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{"not-there"}, mp, mp)
 	assert.ErrorContains(t, err, "source stack has no resources")
@@ -556,15 +556,15 @@ func TestEmptyDestStack(t *testing.T) {
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
 		{
-			URN:    providerURN,
-			Type:   "pulumi:providers:a::default_1_0_0",
-			ID:     "provider_id",
-			Custom: true,
+			URN:	providerURN,
+			Type:	"pulumi:providers:a::default_1_0_0",
+			ID:	"provider_id",
+			Custom:	true,
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
 		},
 	}
 
@@ -596,8 +596,8 @@ runtime: mock
 `), 0o600)
 	require.NoError(t, err)
 	stateMoveCmd := stateMoveCmd{
-		Yes:       true,
-		Colorizer: colors.Never,
+		Yes:		true,
+		Colorizer:	colors.Never,
 	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[1].URN)}, mp, mp)
 	require.NoError(t, err)
@@ -611,9 +611,9 @@ runtime: mock
 	destSnapshot, err := destStack.Snapshot(ctx, mp)
 	require.NoError(t, err)
 
-	require.Len(t, sourceSnapshot.Resources, 1) // Only the provider should remain in the source stack
+	require.Len(t, sourceSnapshot.Resources, 1)	// Only the provider should remain in the source stack
 
-	require.Len(t, destSnapshot.Resources, 3) // We expect the root stack, the provider, and the moved resource
+	require.Len(t, destSnapshot.Resources, 3)	// We expect the root stack, the provider, and the moved resource
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[0].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
@@ -632,27 +632,27 @@ func TestMovingProvidersWithSameID(t *testing.T) {
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
 		{
-			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
-			Type: "pulumi:pulumi:Stack",
+			URN:	resource.DefaultRootStackURN("sourceStack", "test"),
+			Type:	"pulumi:pulumi:Stack",
 		},
 		{
-			URN:    providerURN,
-			Type:   "pulumi:providers:a::default_1_0_0",
-			ID:     "provider_id",
-			Custom: true,
-			Parent: resource.DefaultRootStackURN("sourceStack", "test"),
+			URN:	providerURN,
+			Type:	"pulumi:providers:a::default_1_0_0",
+			ID:	"provider_id",
+			Custom:	true,
+			Parent:	resource.DefaultRootStackURN("sourceStack", "test"),
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
-			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
+			Parent:		resource.DefaultRootStackURN("sourceStack", "test"),
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name2"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
-			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name2"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
+			Parent:		resource.DefaultRootStackURN("sourceStack", "test"),
 		},
 	}
 
@@ -677,9 +677,9 @@ func TestMovingProvidersWithSameID(t *testing.T) {
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Yes:       true,
-		Stdout:    &stdout,
-		Colorizer: colors.Never,
+		Yes:		true,
+		Stdout:		&stdout,
+		Colorizer:	colors.Never,
 	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp)
 	require.NoError(t, err)
@@ -707,7 +707,7 @@ func TestMovingProvidersWithSameID(t *testing.T) {
 	// Only the provider and root stack remain
 	require.Len(t, sourceSnapshot.Resources, 2)
 
-	require.Len(t, destSnapshot.Resources, 4) // We expect the root stack, the provider, and the moved resources
+	require.Len(t, destSnapshot.Resources, 4)	// We expect the root stack, the provider, and the moved resources
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[0].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
@@ -734,21 +734,21 @@ func TestMoveUnknownResource(t *testing.T) {
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
 		{
-			URN:    providerURN,
-			Type:   "pulumi:providers:a::default_1_0_0",
-			ID:     "provider_id",
-			Custom: true,
+			URN:	providerURN,
+			Type:	"pulumi:providers:a::default_1_0_0",
+			ID:	"provider_id",
+			Custom:	true,
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name2"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
-			Parent:   resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name2"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
+			Parent:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
 		},
 	}
 
@@ -773,9 +773,9 @@ func TestMoveUnknownResource(t *testing.T) {
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Yes:       true,
-		Stdout:    &stdout,
-		Colorizer: colors.Never,
+		Yes:		true,
+		Stdout:		&stdout,
+		Colorizer:	colors.Never,
 	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{"not-a-urn"}, mp, mp)
 	assert.ErrorContains(t, err, "no resources found to move")
@@ -784,7 +784,7 @@ func TestMoveUnknownResource(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Contains(t, stdout.String(), "warning: Resource not-a-urn not found in source stack")
-	require.Len(t, sourceSnapshot.Resources, 3) // No resources should be moved
+	require.Len(t, sourceSnapshot.Resources, 3)	// No resources should be moved
 }
 
 func TestProviderIsReparented(t *testing.T) {
@@ -793,21 +793,21 @@ func TestProviderIsReparented(t *testing.T) {
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
 		{
-			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
-			Type: "pulumi:pulumi:Stack",
+			URN:	resource.DefaultRootStackURN("sourceStack", "test"),
+			Type:	"pulumi:pulumi:Stack",
 		},
 		{
-			URN:    providerURN,
-			Type:   "pulumi:providers:a::default_1_0_0",
-			ID:     "provider_id",
-			Custom: true,
-			Parent: resource.DefaultRootStackURN("sourceStack", "test"),
+			URN:	providerURN,
+			Type:	"pulumi:providers:a::default_1_0_0",
+			ID:	"provider_id",
+			Custom:	true,
+			Parent:	resource.DefaultRootStackURN("sourceStack", "test"),
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
-			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
+			Parent:		resource.DefaultRootStackURN("sourceStack", "test"),
 		},
 	}
 
@@ -820,7 +820,7 @@ func TestProviderIsReparented(t *testing.T) {
 	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::pulumi:providers:a::default_1_0_0"),
 		sourceSnapshot.Resources[1].URN)
 
-	require.Len(t, destSnapshot.Resources, 3) // We expect the root stack, the provider, and the moved resource
+	require.Len(t, destSnapshot.Resources, 3)	// We expect the root stack, the provider, and the moved resource
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[0].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
@@ -841,21 +841,21 @@ func TestMoveProvider(t *testing.T) {
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
 		{
-			URN:    providerURN,
-			Type:   "pulumi:providers:a::default_1_0_0",
-			ID:     "provider_id",
-			Custom: true,
+			URN:	providerURN,
+			Type:	"pulumi:providers:a::default_1_0_0",
+			ID:	"provider_id",
+			Custom:	true,
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name2"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
-			Parent:   resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name2"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
+			Parent:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
 		},
 	}
 
@@ -880,9 +880,9 @@ func TestMoveProvider(t *testing.T) {
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Yes:       true,
-		Stdout:    &stdout,
-		Colorizer: colors.Never,
+		Yes:		true,
+		Stdout:		&stdout,
+		Colorizer:	colors.Never,
 	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(providerURN)}, mp, mp)
 	assert.ErrorContains(t, err, "cannot move provider")
@@ -890,7 +890,7 @@ func TestMoveProvider(t *testing.T) {
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
 	require.NoError(t, err)
 
-	require.Len(t, sourceSnapshot.Resources, 3) // No resources should be moved
+	require.Len(t, sourceSnapshot.Resources, 3)	// No resources should be moved
 }
 
 func TestMoveRootStack(t *testing.T) {
@@ -899,21 +899,21 @@ func TestMoveRootStack(t *testing.T) {
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
 		{
-			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
-			Type: "pulumi:pulumi:Stack",
+			URN:	resource.DefaultRootStackURN("sourceStack", "test"),
+			Type:	"pulumi:pulumi:Stack",
 		},
 		{
-			URN:    providerURN,
-			Type:   "pulumi:providers:a::default_1_0_0",
-			ID:     "provider_id",
-			Custom: true,
-			Parent: resource.DefaultRootStackURN("sourceStack", "test"),
+			URN:	providerURN,
+			Type:	"pulumi:providers:a::default_1_0_0",
+			ID:	"provider_id",
+			Custom:	true,
+			Parent:	resource.DefaultRootStackURN("sourceStack", "test"),
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
-			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
+			Parent:		resource.DefaultRootStackURN("sourceStack", "test"),
 		},
 	}
 
@@ -943,22 +943,22 @@ func TestMoveSecret(t *testing.T) {
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
 		{
-			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
-			Type: "pulumi:pulumi:Stack",
+			URN:	resource.DefaultRootStackURN("sourceStack", "test"),
+			Type:	"pulumi:pulumi:Stack",
 		},
 		{
-			URN:    providerURN,
-			Type:   "pulumi:providers:a::default_1_0_0",
-			ID:     "provider_id",
-			Custom: true,
-			Parent: resource.DefaultRootStackURN("sourceStack", "test"),
+			URN:	providerURN,
+			Type:	"pulumi:providers:a::default_1_0_0",
+			ID:	"provider_id",
+			Custom:	true,
+			Parent:	resource.DefaultRootStackURN("sourceStack", "test"),
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
-			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
-			Outputs:  resource.PropertyMap{"secret": resource.MakeSecret(resource.NewProperty("secret"))},
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
+			Parent:		resource.DefaultRootStackURN("sourceStack", "test"),
+			Outputs:	resource.PropertyMap{"secret": resource.MakeSecret(resource.NewProperty("secret"))},
 		},
 	}
 
@@ -999,9 +999,9 @@ runtime: mock
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Yes:       true,
-		Stdout:    &stdout,
-		Colorizer: colors.Never,
+		Yes:		true,
+		Stdout:		&stdout,
+		Colorizer:	colors.Never,
 	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp)
 	require.NoError(t, err)
@@ -1042,22 +1042,22 @@ func TestMoveSecretOutsideOfProjectDir(t *testing.T) {
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
 		{
-			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
-			Type: "pulumi:pulumi:Stack",
+			URN:	resource.DefaultRootStackURN("sourceStack", "test"),
+			Type:	"pulumi:pulumi:Stack",
 		},
 		{
-			URN:    providerURN,
-			Type:   "pulumi:providers:a::default_1_0_0",
-			ID:     "provider_id",
-			Custom: true,
-			Parent: resource.DefaultRootStackURN("sourceStack", "test"),
+			URN:	providerURN,
+			Type:	"pulumi:providers:a::default_1_0_0",
+			ID:	"provider_id",
+			Custom:	true,
+			Parent:	resource.DefaultRootStackURN("sourceStack", "test"),
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
-			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
-			Outputs:  resource.PropertyMap{"secret": resource.MakeSecret(resource.NewProperty("secret"))},
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
+			Parent:		resource.DefaultRootStackURN("sourceStack", "test"),
+			Outputs:	resource.PropertyMap{"secret": resource.MakeSecret(resource.NewProperty("secret"))},
 		},
 	}
 
@@ -1088,9 +1088,9 @@ func TestMoveSecretOutsideOfProjectDir(t *testing.T) {
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Yes:       true,
-		Stdout:    &stdout,
-		Colorizer: colors.Never,
+		Yes:		true,
+		Stdout:		&stdout,
+		Colorizer:	colors.Never,
 	}
 
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp)
@@ -1115,22 +1115,22 @@ func TestMoveSecretNotInDestProjectDir(t *testing.T) {
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
 		{
-			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
-			Type: "pulumi:pulumi:Stack",
+			URN:	resource.DefaultRootStackURN("sourceStack", "test"),
+			Type:	"pulumi:pulumi:Stack",
 		},
 		{
-			URN:    providerURN,
-			Type:   "pulumi:providers:a::default_1_0_0",
-			ID:     "provider_id",
-			Custom: true,
-			Parent: resource.DefaultRootStackURN("sourceStack", "test"),
+			URN:	providerURN,
+			Type:	"pulumi:providers:a::default_1_0_0",
+			ID:	"provider_id",
+			Custom:	true,
+			Parent:	resource.DefaultRootStackURN("sourceStack", "test"),
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
-			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
-			Outputs:  resource.PropertyMap{"secret": resource.MakeSecret(resource.NewProperty("secret"))},
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
+			Parent:		resource.DefaultRootStackURN("sourceStack", "test"),
+			Outputs:	resource.PropertyMap{"secret": resource.MakeSecret(resource.NewProperty("secret"))},
 		},
 	}
 
@@ -1171,9 +1171,9 @@ runtime: mock
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Yes:       true,
-		Stdout:    &stdout,
-		Colorizer: colors.Never,
+		Yes:		true,
+		Stdout:		&stdout,
+		Colorizer:	colors.Never,
 	}
 
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp)
@@ -1200,28 +1200,28 @@ func TestMoveProviderWithSameInputs(t *testing.T) {
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
 		{
-			URN:    providerURN,
-			Type:   "pulumi:providers:a::default_1_0_0",
-			ID:     "provider_id",
-			Custom: true,
+			URN:	providerURN,
+			Type:	"pulumi:providers:a::default_1_0_0",
+			ID:	"provider_id",
+			Custom:	true,
 			Inputs: resource.PropertyMap{
 				"key": resource.NewProperty("value"),
 			},
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
 		},
 	}
 
 	destProviderURN := resource.NewURN("destStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	destResources := []*resource.State{
 		{
-			URN:    destProviderURN,
-			Type:   "pulumi:providers:a::default_1_0_0",
-			ID:     "another_provider_id",
-			Custom: true,
+			URN:	destProviderURN,
+			Type:	"pulumi:providers:a::default_1_0_0",
+			ID:	"another_provider_id",
+			Custom:	true,
 			Inputs: resource.PropertyMap{
 				"key": resource.NewProperty("value"),
 			},
@@ -1240,9 +1240,9 @@ Successfully moved resources from organization/test/sourceStack to organization/
 `
 	assert.Equal(t, expectedStdout, stdout.String())
 
-	require.Len(t, sourceSnapshot.Resources, 1) // Only the provider should remain in the source stack
+	require.Len(t, sourceSnapshot.Resources, 1)	// Only the provider should remain in the source stack
 
-	require.Len(t, destSnapshot.Resources, 3) // We expect the root stack, the provider, and the moved resource
+	require.Len(t, destSnapshot.Resources, 3)	// We expect the root stack, the provider, and the moved resource
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[0].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
@@ -1265,26 +1265,26 @@ func TestMoveLockedBackendRevertsDestination(t *testing.T) {
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
 		{
-			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
-			Type: "pulumi:pulumi:Stack",
+			URN:	resource.DefaultRootStackURN("sourceStack", "test"),
+			Type:	"pulumi:pulumi:Stack",
 		},
 		{
-			URN:    providerURN,
-			Type:   "pulumi:providers:a::default_1_0_0",
-			ID:     "provider_id",
-			Custom: true,
-			Parent: resource.DefaultRootStackURN("sourceStack", "test"),
+			URN:	providerURN,
+			Type:	"pulumi:providers:a::default_1_0_0",
+			ID:	"provider_id",
+			Custom:	true,
+			Parent:	resource.DefaultRootStackURN("sourceStack", "test"),
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name2"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
-			Parent:   resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name2"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
+			Parent:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
 		},
 	}
 
@@ -1308,9 +1308,9 @@ func TestMoveLockedBackendRevertsDestination(t *testing.T) {
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Yes:       true,
-		Stdout:    &stdout,
-		Colorizer: colors.Never,
+		Yes:		true,
+		Stdout:		&stdout,
+		Colorizer:	colors.Never,
 	}
 
 	lockingB, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -1353,27 +1353,27 @@ func TestProviderParentsAreTreatedAsProviders(t *testing.T) {
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
 		{
-			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
-			Type: "pulumi:pulumi:Stack",
+			URN:	resource.DefaultRootStackURN("sourceStack", "test"),
+			Type:	"pulumi:pulumi:Stack",
 		},
 		{
-			URN:    providerURN,
-			Type:   "pulumi:providers:a::default_1_0_0",
-			ID:     "provider_id",
-			Parent: resource.DefaultRootStackURN("sourceStack", "test"),
-			Custom: true,
+			URN:	providerURN,
+			Type:	"pulumi:providers:a::default_1_0_0",
+			ID:	"provider_id",
+			Parent:	resource.DefaultRootStackURN("sourceStack", "test"),
+			Custom:	true,
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
-			Parent:   resource.URN(string(providerURN)),
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
+			Parent:		resource.URN(string(providerURN)),
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name2"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
-			Parent:   resource.URN(string(providerURN)),
+			URN:		resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name2"),
+			Type:		"a:b:c",
+			Provider:	string(providerURN) + "::provider_id",
+			Parent:		resource.URN(string(providerURN)),
 		},
 	}
 
@@ -1388,7 +1388,7 @@ func TestProviderParentsAreTreatedAsProviders(t *testing.T) {
 	// The root stack, provider and "name2" should remain in the source stack
 	require.Len(t, sourceSnapshot.Resources, 3)
 
-	require.Len(t, destSnapshot.Resources, 3) // We expect the root stack, the provider, and the moved resources
+	require.Len(t, destSnapshot.Resources, 3)	// We expect the root stack, the provider, and the moved resources
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[0].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),

@@ -27,10 +27,10 @@ func newConfigEnvLsCmd(parent *configEnvCmd) *cobra.Command {
 	impl := configEnvLsCmd{parent: parent, jsonOut: &jsonOut}
 
 	cmd := &cobra.Command{
-		Use:   "ls",
-		Short: "Lists imported environments.",
-		Long:  "Lists the environments imported into a stack's configuration.",
-		Args:  cmdutil.NoArgs,
+		Use:	"ls",
+		Short:	"Lists imported environments.",
+		Long:	"Lists the environments imported into a stack's configuration.",
+		Args:	cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			parent.initArgs()
 			return impl.run(cmd.Context(), args)
@@ -45,9 +45,9 @@ func newConfigEnvLsCmd(parent *configEnvCmd) *cobra.Command {
 }
 
 type configEnvLsCmd struct {
-	parent *configEnvCmd
+	parent	*configEnvCmd
 
-	jsonOut *bool
+	jsonOut	*bool
 }
 
 func (cmd *configEnvLsCmd) run(ctx context.Context, _ []string) error {

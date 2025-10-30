@@ -21,11 +21,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	. "github.com/pulumi/pulumi/sdk/v3/pkg/engine"	//nolint:revive
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -56,27 +56,27 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 	old := &deploy.Snapshot{
 		Resources: []*resource.State{
 			{
-				Type:    resURN.Type(),
-				URN:     resURN,
-				Custom:  true,
-				ID:      "1",
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+				Type:		resURN.Type(),
+				URN:		resURN,
+				Custom:		true,
+				ID:		"1",
+				Inputs:		resource.PropertyMap{},
+				Outputs:	resource.PropertyMap{},
 			},
 			{
-				Type:    resURN.Type(),
-				URN:     resURN,
-				Custom:  true,
-				ID:      "0",
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
-				Delete:  true,
+				Type:		resURN.Type(),
+				URN:		resURN,
+				Custom:		true,
+				ID:		"0",
+				Inputs:		resource.PropertyMap{},
+				Outputs:	resource.PropertyMap{},
+				Delete:		true,
 			},
 		},
 	}
 
 	p.Steps = []lt.TestStep{{
-		Op: Update,
+		Op:	Update,
 		Validate: func(_ workspace.Project, _ deploy.Target, entries JournalEntries,
 			_ []Event, err error,
 		) error {
@@ -133,27 +133,27 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 	old := &deploy.Snapshot{
 		Resources: []*resource.State{
 			{
-				Type:    resURN.Type(),
-				URN:     resURN,
-				Custom:  true,
-				ID:      "1",
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+				Type:		resURN.Type(),
+				URN:		resURN,
+				Custom:		true,
+				ID:		"1",
+				Inputs:		resource.PropertyMap{},
+				Outputs:	resource.PropertyMap{},
 			},
 			{
-				Type:    resURN.Type(),
-				URN:     resURN,
-				Custom:  true,
-				ID:      "0",
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
-				Delete:  true,
+				Type:		resURN.Type(),
+				URN:		resURN,
+				Custom:		true,
+				ID:		"0",
+				Inputs:		resource.PropertyMap{},
+				Outputs:	resource.PropertyMap{},
+				Delete:		true,
 			},
 		},
 	}
 
 	p.Steps = []lt.TestStep{{
-		Op: Destroy,
+		Op:	Destroy,
 		Validate: func(_ workspace.Project, _ deploy.Target, entries JournalEntries,
 			_ []Event, err error,
 		) error {
@@ -200,10 +200,10 @@ func TestDestroyWithUntargetedPendingDelete(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 			// Skip display tests because different ordering makes the colouring different.
-			SkipDisplayTests: true,
+			SkipDisplayTests:	true,
 			UpdateOptions: engine.UpdateOptions{
 				Targets: deploy.NewUrnTargetsFromUrns(
 					[]resource.URN{"urn:pulumi:test::test::pkgA:m:typA::resA"}),
@@ -217,17 +217,17 @@ func TestDestroyWithUntargetedPendingDelete(t *testing.T) {
 	old := &deploy.Snapshot{
 		Resources: []*resource.State{
 			{
-				Type:    resAURN.Type(),
-				URN:     resAURN,
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+				Type:		resAURN.Type(),
+				URN:		resAURN,
+				Inputs:		resource.PropertyMap{},
+				Outputs:	resource.PropertyMap{},
 			},
 			{
-				Type:    resBURN.Type(),
-				URN:     resBURN,
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
-				Delete:  true,
+				Type:		resBURN.Type(),
+				URN:		resBURN,
+				Inputs:		resource.PropertyMap{},
+				Outputs:	resource.PropertyMap{},
+				Delete:		true,
 			},
 		},
 	}

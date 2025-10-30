@@ -33,8 +33,8 @@ func TestWorkerPool_reusable(t *testing.T) {
 	defer pool.Close()
 
 	const (
-		numPhases = 10
-		numTasks  = 100
+		numPhases	= 10
+		numTasks	= 100
 	)
 
 	// Verifies that a worker pool is re-usable
@@ -115,36 +115,36 @@ func TestWorkerPool_workerCount(t *testing.T) {
 	gomaxprocs := runtime.GOMAXPROCS(0)
 
 	tests := []struct {
-		desc         string
-		numWorkers   int
-		numTasksHint int
-		wantWorkers  int
+		desc		string
+		numWorkers	int
+		numTasksHint	int
+		wantWorkers	int
 	}{
 		{
-			desc:        "default",
-			wantWorkers: gomaxprocs,
+			desc:		"default",
+			wantWorkers:	gomaxprocs,
 		},
 		{
-			desc:        "negative",
-			numWorkers:  -1,
-			wantWorkers: gomaxprocs,
+			desc:		"negative",
+			numWorkers:	-1,
+			wantWorkers:	gomaxprocs,
 		},
 		{
-			desc:        "explicit",
-			numWorkers:  2,
-			wantWorkers: 2,
+			desc:		"explicit",
+			numWorkers:	2,
+			wantWorkers:	2,
 		},
 		{
-			desc:         "hint/too small",
-			numWorkers:   4,
-			numTasksHint: 2,
-			wantWorkers:  2,
+			desc:		"hint/too small",
+			numWorkers:	4,
+			numTasksHint:	2,
+			wantWorkers:	2,
 		},
 		{
-			desc:         "hint/large",
-			numWorkers:   1,
-			numTasksHint: 42,
-			wantWorkers:  1,
+			desc:		"hint/large",
+			numWorkers:	1,
+			numTasksHint:	42,
+			wantWorkers:	1,
 		},
 	}
 

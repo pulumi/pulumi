@@ -42,9 +42,9 @@ func WithReferenceRenderer(refRenderer ReferenceRenderer) RendererOption {
 
 // A Renderer provides the ability to render parsed documentation back to Markdown source.
 type Renderer struct {
-	md *markdown.Renderer
+	md	*markdown.Renderer
 
-	refRenderer ReferenceRenderer
+	refRenderer	ReferenceRenderer
 }
 
 // MarkdownRenderer returns the underlying Markdown renderer used by the Renderer.

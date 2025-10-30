@@ -26,12 +26,12 @@ import (
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model/format"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -53,37 +53,37 @@ type GenerateProgramOptions struct {
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
-	program *pcl.Program
+	program	*pcl.Program
 	// C# namespace map per package.
-	namespaces map[string]map[string]string
+	namespaces	map[string]map[string]string
 	// C# codegen compatibility mode per package.
-	compatibilities map[string]string
+	compatibilities	map[string]string
 	// A function to convert tokens to module names per package (utilizes the `moduleFormat` setting internally).
-	tokenToModules map[string]func(x string) string
+	tokenToModules	map[string]func(x string) string
 	// Type names per invoke function token.
-	functionArgs map[string]string
+	functionArgs	map[string]string
 	// keep track of variable identifiers which are the result of an invoke
 	// for example "var resourceGroup = GetResourceGroup.Invoke(...)"
 	// we will keep track of the reference "resourceGroup"
 	//
 	// later on when apply a traversal such as resourceGroup.name,
 	// we should rewrite it as resourceGroup.Apply(resourceGroupResult => resourceGroupResult.name)
-	functionInvokes map[string]*schema.Function
+	functionInvokes	map[string]*schema.Function
 	// Whether awaits are needed, and therefore an async Initialize method should be declared.
-	asyncInit            bool
-	configCreated        bool
-	diagnostics          hcl.Diagnostics
-	insideFunctionInvoke bool
-	insideAwait          bool
+	asyncInit		bool
+	configCreated		bool
+	diagnostics		hcl.Diagnostics
+	insideFunctionInvoke	bool
+	insideAwait		bool
 	// Program generation options
-	generateOptions GenerateProgramOptions
-	isComponent     bool
+	generateOptions	GenerateProgramOptions
+	isComponent	bool
 	// when creating a list of items, we need to know the type of the list
 	// if is it a plain list, then `new()` should be used because we are creating List<T>
 	// however if we have InputList<T> or anything else, we use `new[]` because InputList<T> can be implicitly casted
 	// from an array
-	listInitializer         string
-	deferredOutputVariables []*pcl.DeferredOutputVariable
+	listInitializer		string
+	deferredOutputVariables	[]*pcl.DeferredOutputVariable
 }
 
 func (g *generator) resetListInitializer() {
@@ -95,8 +95,8 @@ func (g *generator) usingDefaultListInitializer() bool {
 }
 
 const (
-	pulumiPackage = "pulumi"
-	dynamicType   = "dynamic"
+	pulumiPackage	= "pulumi"
+	dynamicType	= "dynamic"
 )
 
 func GenerateProgramWithOptions(
@@ -138,14 +138,14 @@ func GenerateProgramWithOptions(
 	}
 
 	g := &generator{
-		program:         program,
-		namespaces:      namespaces,
-		compatibilities: compatibilities,
-		tokenToModules:  tokenToModules,
-		functionArgs:    functionArgs,
-		functionInvokes: map[string]*schema.Function{},
-		generateOptions: options,
-		listInitializer: "new[]",
+		program:		program,
+		namespaces:		namespaces,
+		compatibilities:	compatibilities,
+		tokenToModules:		tokenToModules,
+		functionArgs:		functionArgs,
+		functionInvokes:	map[string]*schema.Function{},
+		generateOptions:	options,
+		listInitializer:	"new[]",
 	}
 
 	g.Formatter = format.NewFormatter(g)
@@ -176,15 +176,15 @@ func GenerateProgramWithOptions(
 		componentNodes := pcl.Linearize(component.Program)
 
 		componentGenerator := &generator{
-			program:         component.Program,
-			namespaces:      namespaces,
-			compatibilities: compatibilities,
-			tokenToModules:  tokenToModules,
-			functionArgs:    functionArgs,
-			functionInvokes: map[string]*schema.Function{},
-			generateOptions: options,
-			isComponent:     true,
-			listInitializer: "new[]",
+			program:		component.Program,
+			namespaces:		namespaces,
+			compatibilities:	compatibilities,
+			tokenToModules:		tokenToModules,
+			functionArgs:		functionArgs,
+			functionInvokes:	map[string]*schema.Function{},
+			generateOptions:	options,
+			isComponent:		true,
+			listInitializer:	"new[]",
 		}
 
 		componentGenerator.Formatter = format.NewFormatter(componentGenerator)
@@ -447,10 +447,10 @@ func (g *generator) findFunctionSchema(token string, location *hcl.Range) (*sche
 		}
 		if err != nil {
 			g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
-				Severity: hcl.DiagWarning,
-				Summary:  fmt.Sprintf("Could not find function schema for '%s'", token),
-				Detail:   err.Error(),
-				Subject:  location,
+				Severity:	hcl.DiagWarning,
+				Summary:	fmt.Sprintf("Could not find function schema for '%s'", token),
+				Detail:		err.Error(),
+				Subject:	location,
 			})
 			return nil, false
 		}
@@ -482,9 +482,9 @@ func (g *generator) genComment(w io.Writer, comment syntax.Comment) {
 }
 
 type programUsings struct {
-	systemUsings        codegen.StringSet
-	pulumiUsings        codegen.StringSet
-	pulumiHelperMethods codegen.StringSet
+	systemUsings		codegen.StringSet
+	pulumiUsings		codegen.StringSet
+	pulumiHelperMethods	codegen.StringSet
 }
 
 func (g *generator) usingStatements(program *pcl.Program) programUsings {
@@ -535,9 +535,9 @@ func (g *generator) usingStatements(program *pcl.Program) programUsings {
 	}
 
 	return programUsings{
-		systemUsings:        systemUsings,
-		pulumiUsings:        pulumiUsings,
-		pulumiHelperMethods: preambleHelperMethods,
+		systemUsings:		systemUsings,
+		pulumiUsings:		pulumiUsings,
+		pulumiHelperMethods:	preambleHelperMethods,
 	}
 }
 
@@ -647,14 +647,14 @@ func componentOutputType(pclType model.Type) string {
 }
 
 type ObjectTypeFromConfigMetadata = struct {
-	TypeName      string
-	ComponentName string
+	TypeName	string
+	ComponentName	string
 }
 
 func annotateObjectTypedConfig(componentName string, typeName string, objectType *model.ObjectType) *model.ObjectType {
 	objectType.Annotate(&ObjectTypeFromConfigMetadata{
-		TypeName:      typeName,
-		ComponentName: componentName,
+		TypeName:	typeName,
+		ComponentName:	componentName,
 	})
 
 	return objectType
@@ -1484,8 +1484,8 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 			resKey = "Value"
 		} else {
 			rangeExpr := &model.FunctionCallExpression{
-				Name: "entries",
-				Args: []model.Expression{rangeExpr},
+				Name:	"entries",
+				Args:	[]model.Expression{rangeExpr},
 			}
 			g.Fgenf(w, "%sforeach (var range in %.v)\n", g.Indent, rangeExpr)
 			g.Fgenf(w, "%s{\n", g.Indent)
@@ -1527,8 +1527,8 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	for _, attr := range r.Inputs {
 		expr, deferredOutputs := pcl.ExtractDeferredOutputVariables(g.program, r, attr.Value)
 		componentInputs = append(componentInputs, &model.Attribute{
-			Name:  attr.Name,
-			Value: expr,
+			Name:	attr.Name,
+			Value:	expr,
 		})
 
 		// add the deferred outputs local to this component
@@ -1596,8 +1596,8 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 			resKey = "Value"
 		} else {
 			rangeExpr := &model.FunctionCallExpression{
-				Name: "entries",
-				Args: []model.Expression{rangeExpr},
+				Name:	"entries",
+				Args:	[]model.Expression{rangeExpr},
 			}
 			g.Fgenf(w, "%sforeach (var range in %.v)\n", g.Indent, rangeExpr)
 			g.Fgenf(w, "%s{\n", g.Indent)
@@ -1737,9 +1737,9 @@ func (g *generator) genLocalVariable(w io.Writer, localVariable *pcl.LocalVariab
 func (g *generator) genNYI(w io.Writer, reason string, vs ...any) {
 	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
-		Severity: hcl.DiagWarning,
-		Summary:  message,
-		Detail:   message,
+		Severity:	hcl.DiagWarning,
+		Summary:	message,
+		Detail:		message,
 	})
 	g.Fgenf(w, "\"TODO: %s\"", fmt.Sprintf(reason, vs...))
 }

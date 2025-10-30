@@ -74,9 +74,9 @@ func RetrieveZIPTemplates(templateURL string, opts ...RequestOption) (TemplateRe
 	}
 
 	return TemplateRepository{
-		Root:         temp,
-		SubDirectory: fullPath,
-		ShouldDelete: true,
+		Root:		temp,
+		SubDirectory:	fullPath,
+		ShouldDelete:	true,
 	}, nil
 }
 
@@ -219,7 +219,7 @@ func RetrieveZIPTemplateFolder(templateURL *url.URL, tempDir string, opts ...Req
 				return "", err
 			}
 			defer destinationFile.Close()
-			_, err = io.Copy(destinationFile, fileReader) // #nosec G110
+			_, err = io.Copy(destinationFile, fileReader)	// #nosec G110
 			if err != nil {
 				return "", err
 			}

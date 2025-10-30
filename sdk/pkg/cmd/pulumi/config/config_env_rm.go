@@ -26,10 +26,10 @@ func newConfigEnvRmCmd(parent *configEnvCmd) *cobra.Command {
 	impl := configEnvRmCmd{parent: parent}
 
 	cmd := &cobra.Command{
-		Use:   "rm <environment-name>",
-		Short: "Remove environment from a stack",
-		Long:  "Removes an environment from a stack's import list.",
-		Args:  cmdutil.ExactArgs(1),
+		Use:	"rm <environment-name>",
+		Short:	"Remove environment from a stack",
+		Long:	"Removes an environment from a stack's import list.",
+		Args:	cmdutil.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			parent.initArgs()
 			return impl.run(cmd.Context(), args)
@@ -47,10 +47,10 @@ func newConfigEnvRmCmd(parent *configEnvCmd) *cobra.Command {
 }
 
 type configEnvRmCmd struct {
-	parent *configEnvCmd
+	parent	*configEnvCmd
 
-	showSecrets bool
-	yes         bool
+	showSecrets	bool
+	yes		bool
 }
 
 func (cmd *configEnvRmCmd) run(ctx context.Context, args []string) error {

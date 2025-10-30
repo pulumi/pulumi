@@ -17,7 +17,7 @@ package pcl
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
 )
 
 // ConfigVariable represents a program- or component-scoped input variable. The value for a config variable may come
@@ -25,20 +25,20 @@ import (
 type ConfigVariable struct {
 	node
 
-	syntax *hclsyntax.Block
-	typ    model.Type
+	syntax	*hclsyntax.Block
+	typ	model.Type
 
 	// The variable definition.
-	Definition *model.Block
+	Definition	*model.Block
 	// The default value for the config variable, if any.
-	DefaultValue model.Expression
-	Description  string
+	DefaultValue	model.Expression
+	Description	string
 	// Whether the config variable is nullable
-	Nullable bool
+	Nullable	bool
 	// The name visible to API calls related to the config. Used as the argument when
 	// fetching config variables. Must not be modified during code generation to ensure
 	// that valid config calls don't become invalid.
-	logicalName string
+	logicalName	string
 }
 
 // SyntaxNode returns the syntax node associated with the config variable.

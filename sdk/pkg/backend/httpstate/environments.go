@@ -20,7 +20,7 @@ import (
 
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/cmd/esc/cli/client"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
@@ -33,9 +33,9 @@ func convertESCDiags(diags []client.EnvironmentDiagnostic) apitype.EnvironmentDi
 	apiDiags := make(apitype.EnvironmentDiagnostics, len(diags))
 	for i, d := range diags {
 		apiDiags[i] = apitype.EnvironmentDiagnostic{
-			Range:   d.Range,
-			Summary: d.Summary,
-			Detail:  d.Detail,
+			Range:		d.Range,
+			Summary:	d.Summary,
+			Detail:		d.Detail,
 		}
 	}
 	return apiDiags

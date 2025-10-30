@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
@@ -92,19 +92,19 @@ func (e environment) scope() *Scope {
 }
 
 type exprTestCase struct {
-	x  string
-	t  Type
-	xt Expression
+	x	string
+	t	Type
+	xt	Expression
 }
 
 func TestBindBinaryOp(t *testing.T) {
 	t.Parallel()
 
 	env := environment(map[string]any{
-		"a": NewOutputType(BoolType),
-		"b": NewPromiseType(BoolType),
-		"c": NewOutputType(NumberType),
-		"d": NewPromiseType(NumberType),
+		"a":	NewOutputType(BoolType),
+		"b":	NewPromiseType(BoolType),
+		"c":	NewOutputType(NumberType),
+		"d":	NewPromiseType(NumberType),
 	})
 	scope := env.scope()
 
@@ -153,8 +153,8 @@ func TestBindConditional(t *testing.T) {
 	t.Parallel()
 
 	env := environment(map[string]any{
-		"a": NewOutputType(BoolType),
-		"b": NewPromiseType(BoolType),
+		"a":	NewOutputType(BoolType),
+		"b":	NewPromiseType(BoolType),
 	})
 	scope := env.scope()
 
@@ -190,20 +190,20 @@ func TestBindFor(t *testing.T) {
 	// TODO: union collection types
 
 	env := environment(map[string]any{
-		"a":  NewMapType(StringType),
-		"aa": NewMapType(NewOutputType(StringType)),
-		"b":  NewOutputType(NewMapType(StringType)),
-		"c":  NewPromiseType(NewMapType(StringType)),
-		"d":  NewListType(StringType),
-		"dd": NewListType(NewOutputType(StringType)),
-		"e":  NewOutputType(NewListType(StringType)),
-		"f":  NewPromiseType(NewListType(StringType)),
-		"g":  BoolType,
-		"h":  NewOutputType(BoolType),
-		"i":  NewPromiseType(BoolType),
-		"j":  StringType,
-		"k":  NewOutputType(StringType),
-		"l":  NewPromiseType(StringType),
+		"a":	NewMapType(StringType),
+		"aa":	NewMapType(NewOutputType(StringType)),
+		"b":	NewOutputType(NewMapType(StringType)),
+		"c":	NewPromiseType(NewMapType(StringType)),
+		"d":	NewListType(StringType),
+		"dd":	NewListType(NewOutputType(StringType)),
+		"e":	NewOutputType(NewListType(StringType)),
+		"f":	NewPromiseType(NewListType(StringType)),
+		"g":	BoolType,
+		"h":	NewOutputType(BoolType),
+		"i":	NewPromiseType(BoolType),
+		"j":	StringType,
+		"k":	NewOutputType(StringType),
+		"l":	NewPromiseType(StringType),
 	})
 	scope := env.scope()
 
@@ -257,21 +257,21 @@ func TestBindFunctionCall(t *testing.T) {
 				{Name: "foo", Type: StringType},
 				{Name: "bar", Type: IntType},
 			},
-			ReturnType: BoolType,
+			ReturnType:	BoolType,
 		}),
 		"f1": NewFunction(StaticFunctionSignature{
 			Parameters: []Parameter{
 				{Name: "foo", Type: StringType},
 			},
 			VarargsParameter: &Parameter{
-				Name: "bar", Type: IntType,
+				Name:	"bar", Type: IntType,
 			},
-			ReturnType: BoolType,
+			ReturnType:	BoolType,
 		}),
-		"a": NewOutputType(StringType),
-		"b": NewPromiseType(StringType),
-		"c": NewOutputType(IntType),
-		"d": NewPromiseType(IntType),
+		"a":	NewOutputType(StringType),
+		"b":	NewPromiseType(StringType),
+		"c":	NewOutputType(IntType),
+		"d":	NewPromiseType(IntType),
 	})
 	scope := env.scope()
 
@@ -311,21 +311,21 @@ func TestBindIndex(t *testing.T) {
 	t.Parallel()
 
 	env := environment(map[string]any{
-		"a": StringType,
-		"b": IntType,
-		"c": NewOutputType(StringType),
-		"d": NewOutputType(IntType),
-		"e": NewPromiseType(StringType),
-		"f": NewPromiseType(IntType),
-		"g": NewListType(BoolType),
-		"h": NewMapType(BoolType),
-		"i": NewObjectType(map[string]Type{"foo": BoolType}),
-		"j": NewOutputType(NewListType(BoolType)),
-		"k": NewOutputType(NewMapType(BoolType)),
-		"l": NewOutputType(NewObjectType(map[string]Type{"foo": BoolType})),
-		"m": NewPromiseType(NewListType(BoolType)),
-		"n": NewPromiseType(NewMapType(BoolType)),
-		"o": NewPromiseType(NewObjectType(map[string]Type{"foo": BoolType})),
+		"a":	StringType,
+		"b":	IntType,
+		"c":	NewOutputType(StringType),
+		"d":	NewOutputType(IntType),
+		"e":	NewPromiseType(StringType),
+		"f":	NewPromiseType(IntType),
+		"g":	NewListType(BoolType),
+		"h":	NewMapType(BoolType),
+		"i":	NewObjectType(map[string]Type{"foo": BoolType}),
+		"j":	NewOutputType(NewListType(BoolType)),
+		"k":	NewOutputType(NewMapType(BoolType)),
+		"l":	NewOutputType(NewObjectType(map[string]Type{"foo": BoolType})),
+		"m":	NewPromiseType(NewListType(BoolType)),
+		"n":	NewPromiseType(NewMapType(BoolType)),
+		"o":	NewPromiseType(NewObjectType(map[string]Type{"foo": BoolType})),
 	})
 	scope := env.scope()
 
@@ -382,15 +382,15 @@ func TestBindObjectCons(t *testing.T) {
 	t.Parallel()
 
 	env := environment(map[string]any{
-		"a": StringType,
-		"b": NumberType,
-		"c": BoolType,
-		"d": NewOutputType(StringType),
-		"e": NewOutputType(NumberType),
-		"f": NewOutputType(BoolType),
-		"g": NewPromiseType(StringType),
-		"h": NewPromiseType(NumberType),
-		"i": NewPromiseType(BoolType),
+		"a":	StringType,
+		"b":	NumberType,
+		"c":	BoolType,
+		"d":	NewOutputType(StringType),
+		"e":	NewOutputType(NumberType),
+		"f":	NewOutputType(BoolType),
+		"g":	NewPromiseType(StringType),
+		"h":	NewPromiseType(NumberType),
+		"i":	NewPromiseType(BoolType),
 	})
 	scope := env.scope()
 
@@ -427,20 +427,20 @@ func TestBindRelativeTraversal(t *testing.T) {
 	t.Parallel()
 
 	env := environment(map[string]any{
-		"a":  NewMapType(StringType),
-		"aa": NewMapType(NewOutputType(StringType)),
-		"b":  NewOutputType(NewMapType(StringType)),
-		"c":  NewPromiseType(NewMapType(StringType)),
-		"d":  NewListType(StringType),
-		"dd": NewListType(NewOutputType(StringType)),
-		"e":  NewOutputType(NewListType(StringType)),
-		"f":  NewPromiseType(NewListType(StringType)),
-		"g":  BoolType,
-		"h":  NewOutputType(BoolType),
-		"i":  NewPromiseType(BoolType),
-		"j":  StringType,
-		"k":  NewOutputType(StringType),
-		"l":  NewPromiseType(StringType),
+		"a":	NewMapType(StringType),
+		"aa":	NewMapType(NewOutputType(StringType)),
+		"b":	NewOutputType(NewMapType(StringType)),
+		"c":	NewPromiseType(NewMapType(StringType)),
+		"d":	NewListType(StringType),
+		"dd":	NewListType(NewOutputType(StringType)),
+		"e":	NewOutputType(NewListType(StringType)),
+		"f":	NewPromiseType(NewListType(StringType)),
+		"g":	BoolType,
+		"h":	NewOutputType(BoolType),
+		"i":	NewPromiseType(BoolType),
+		"j":	StringType,
+		"k":	NewOutputType(StringType),
+		"l":	NewPromiseType(StringType),
 	})
 	scope := env.scope()
 
@@ -484,27 +484,27 @@ func TestBindScopeTraversal(t *testing.T) {
 	t.Parallel()
 
 	ot := NewObjectType(map[string]Type{
-		"foo": NewListType(StringType),
+		"foo":	NewListType(StringType),
 		"bar": NewObjectType(map[string]Type{
 			"baz": StringType,
 		}),
 	})
 	env := environment(map[string]any{
-		"a": StringType,
-		"b": IntType,
-		"c": NewListType(BoolType),
-		"d": NewMapType(BoolType),
-		"e": ot,
-		"f": NewOutputType(StringType),
-		"g": NewOutputType(IntType),
-		"h": NewOutputType(NewListType(BoolType)),
-		"i": NewOutputType(NewMapType(BoolType)),
-		"j": NewOutputType(ot),
-		"k": NewPromiseType(StringType),
-		"l": NewPromiseType(IntType),
-		"m": NewPromiseType(NewListType(BoolType)),
-		"n": NewPromiseType(NewMapType(BoolType)),
-		"o": NewPromiseType(ot),
+		"a":	StringType,
+		"b":	IntType,
+		"c":	NewListType(BoolType),
+		"d":	NewMapType(BoolType),
+		"e":	ot,
+		"f":	NewOutputType(StringType),
+		"g":	NewOutputType(IntType),
+		"h":	NewOutputType(NewListType(BoolType)),
+		"i":	NewOutputType(NewMapType(BoolType)),
+		"j":	NewOutputType(ot),
+		"k":	NewPromiseType(StringType),
+		"l":	NewPromiseType(IntType),
+		"m":	NewPromiseType(NewListType(BoolType)),
+		"n":	NewPromiseType(NewMapType(BoolType)),
+		"o":	NewPromiseType(ot),
 	})
 	scope := env.scope()
 
@@ -558,26 +558,26 @@ func TestBindSplat(t *testing.T) {
 	t.Parallel()
 
 	ot := NewObjectType(map[string]Type{
-		"foo": NewListType(StringType),
+		"foo":	NewListType(StringType),
 		"bar": NewObjectType(map[string]Type{
 			"baz": StringType,
 		}),
 	})
 	env := environment(map[string]any{
-		"a": NewListType(NewListType(StringType)),
-		"b": NewListType(ot),
-		"c": NewSetType(NewListType(StringType)),
-		"d": NewSetType(ot),
+		"a":	NewListType(NewListType(StringType)),
+		"b":	NewListType(ot),
+		"c":	NewSetType(NewListType(StringType)),
+		"d":	NewSetType(ot),
 		//		"e": NewTupleType(NewListType(StringType)),
 		//		"f": NewTupleType(ot),
-		"g": NewListType(NewListType(NewOutputType(StringType))),
-		"h": NewListType(NewListType(NewPromiseType(StringType))),
+		"g":	NewListType(NewListType(NewOutputType(StringType))),
+		"h":	NewListType(NewListType(NewPromiseType(StringType))),
 		//		"i": NewSetType(NewListType(NewOutputType(StringType))),
 		//		"j": NewSetType(NewListType(NewPromiseType(StringType))),
 		//		"k": NewTupleType(NewListType(NewOutputType(StringType))),
 		//		"l": NewTupleType(NewListType(NewPromiseType(StringType))),
-		"m": NewOutputType(NewListType(ot)),
-		"n": NewPromiseType(NewListType(ot)),
+		"m":	NewOutputType(NewListType(ot)),
+		"n":	NewPromiseType(NewListType(ot)),
 		//		"o": NewOutputType(NewSetType(ot)),
 		//		"p": NewPromiseType(NewSetType(ot)),
 		//		"q": NewOutputType(NewTupleType(ot)),
@@ -629,18 +629,18 @@ func TestBindTemplate(t *testing.T) {
 	t.Parallel()
 
 	env := environment(map[string]any{
-		"a": StringType,
-		"b": NumberType,
-		"c": BoolType,
-		"d": NewListType(StringType),
-		"e": NewOutputType(StringType),
-		"f": NewOutputType(NumberType),
-		"g": NewOutputType(BoolType),
-		"h": NewOutputType(NewListType(StringType)),
-		"i": NewPromiseType(StringType),
-		"j": NewPromiseType(NumberType),
-		"k": NewPromiseType(BoolType),
-		"l": NewPromiseType(NewListType(StringType)),
+		"a":	StringType,
+		"b":	NumberType,
+		"c":	BoolType,
+		"d":	NewListType(StringType),
+		"e":	NewOutputType(StringType),
+		"f":	NewOutputType(NumberType),
+		"g":	NewOutputType(BoolType),
+		"h":	NewOutputType(NewListType(StringType)),
+		"i":	NewPromiseType(StringType),
+		"j":	NewPromiseType(NumberType),
+		"k":	NewPromiseType(BoolType),
+		"l":	NewPromiseType(NewListType(StringType)),
 	})
 	scope := env.scope()
 
@@ -703,9 +703,9 @@ func TestBindTupleCons(t *testing.T) {
 	t.Parallel()
 
 	env := environment(map[string]any{
-		"a": NewOutputType(StringType),
-		"b": NewPromiseType(StringType),
-		"c": NewUnionType(StringType, BoolType),
+		"a":	NewOutputType(StringType),
+		"b":	NewPromiseType(StringType),
+		"c":	NewUnionType(StringType, BoolType),
 	})
 	scope := env.scope()
 
@@ -733,12 +733,12 @@ func TestBindUnaryOp(t *testing.T) {
 	t.Parallel()
 
 	env := environment(map[string]any{
-		"a": NumberType,
-		"b": BoolType,
-		"c": NewOutputType(NumberType),
-		"d": NewOutputType(BoolType),
-		"e": NewPromiseType(NumberType),
-		"f": NewPromiseType(BoolType),
+		"a":	NumberType,
+		"b":	BoolType,
+		"c":	NewOutputType(NumberType),
+		"d":	NewOutputType(BoolType),
+		"e":	NewPromiseType(NumberType),
+		"f":	NewPromiseType(BoolType),
 	})
 	scope := env.scope()
 

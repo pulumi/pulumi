@@ -30,20 +30,20 @@ import (
 
 const (
 	// Verify that this generated code is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
+	_	= protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
+	_	= protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
 type Alias struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// Types that are valid to be assigned to Alias:
 	//
 	//	*Alias_Urn
 	//	*Alias_Spec_
-	Alias         isAlias_Alias `protobuf_oneof:"alias"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Alias		isAlias_Alias	`protobuf_oneof:"alias"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *Alias) Reset() {
@@ -57,7 +57,7 @@ func (x *Alias) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Alias) ProtoMessage() {}
+func (*Alias) ProtoMessage()	{}
 
 func (x *Alias) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_alias_proto_msgTypes[0]
@@ -106,32 +106,32 @@ type isAlias_Alias interface {
 }
 
 type Alias_Urn struct {
-	Urn string `protobuf:"bytes,1,opt,name=urn,proto3,oneof"` // The previous urn to alias to.
+	Urn string `protobuf:"bytes,1,opt,name=urn,proto3,oneof"`	// The previous urn to alias to.
 }
 
 type Alias_Spec_ struct {
-	Spec *Alias_Spec `protobuf:"bytes,2,opt,name=spec,proto3,oneof"` // An alias specification.
+	Spec *Alias_Spec `protobuf:"bytes,2,opt,name=spec,proto3,oneof"`	// An alias specification.
 }
 
-func (*Alias_Urn) isAlias_Alias() {}
+func (*Alias_Urn) isAlias_Alias()	{}
 
-func (*Alias_Spec_) isAlias_Alias() {}
+func (*Alias_Spec_) isAlias_Alias()	{}
 
 type Alias_Spec struct {
-	state   protoimpl.MessageState `protogen:"open.v1"`
-	Name    string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`       // The previous name of the resource.  If none is provided, we will use the current name.
-	Type    string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`       // The previous type of the resource. If none is provided, we will use the current resoource type.
-	Stack   string                 `protobuf:"bytes,3,opt,name=stack,proto3" json:"stack,omitempty"`     // The previous stack of the resource. If not set, the current stack of the resource is used.
-	Project string                 `protobuf:"bytes,4,opt,name=project,proto3" json:"project,omitempty"` // The previous project of the resource. If not set, the current project of the resource is used.
+	state	protoimpl.MessageState	`protogen:"open.v1"`
+	Name	string			`protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`		// The previous name of the resource.  If none is provided, we will use the current name.
+	Type	string			`protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`		// The previous type of the resource. If none is provided, we will use the current resoource type.
+	Stack	string			`protobuf:"bytes,3,opt,name=stack,proto3" json:"stack,omitempty"`	// The previous stack of the resource. If not set, the current stack of the resource is used.
+	Project	string			`protobuf:"bytes,4,opt,name=project,proto3" json:"project,omitempty"`	// The previous project of the resource. If not set, the current project of the resource is used.
 	// The previous parent of the resource. If not set, the current parent of the resource is used.
 	//
 	// Types that are valid to be assigned to Parent:
 	//
 	//	*Alias_Spec_ParentUrn
 	//	*Alias_Spec_NoParent
-	Parent        isAlias_Spec_Parent `protobuf_oneof:"parent"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Parent		isAlias_Spec_Parent	`protobuf_oneof:"parent"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *Alias_Spec) Reset() {
@@ -145,7 +145,7 @@ func (x *Alias_Spec) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Alias_Spec) ProtoMessage() {}
+func (*Alias_Spec) ProtoMessage()	{}
 
 func (x *Alias_Spec) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_alias_proto_msgTypes[1]
@@ -222,16 +222,16 @@ type isAlias_Spec_Parent interface {
 }
 
 type Alias_Spec_ParentUrn struct {
-	ParentUrn string `protobuf:"bytes,5,opt,name=parentUrn,proto3,oneof"` // The urn of the previous parent.
+	ParentUrn string `protobuf:"bytes,5,opt,name=parentUrn,proto3,oneof"`	// The urn of the previous parent.
 }
 
 type Alias_Spec_NoParent struct {
-	NoParent bool `protobuf:"varint,6,opt,name=noParent,proto3,oneof"` // Used to indicate the resource previously had no parent. If false this property is ignored.
+	NoParent bool `protobuf:"varint,6,opt,name=noParent,proto3,oneof"`	// Used to indicate the resource previously had no parent. If false this property is ignored.
 }
 
-func (*Alias_Spec_ParentUrn) isAlias_Spec_Parent() {}
+func (*Alias_Spec_ParentUrn) isAlias_Spec_Parent()	{}
 
-func (*Alias_Spec_NoParent) isAlias_Spec_Parent() {}
+func (*Alias_Spec_NoParent) isAlias_Spec_Parent()	{}
 
 var File_pulumi_alias_proto protoreflect.FileDescriptor
 
@@ -252,8 +252,8 @@ const file_pulumi_alias_proto_rawDesc = "" +
 	"\x05aliasB4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3"
 
 var (
-	file_pulumi_alias_proto_rawDescOnce sync.Once
-	file_pulumi_alias_proto_rawDescData []byte
+	file_pulumi_alias_proto_rawDescOnce	sync.Once
+	file_pulumi_alias_proto_rawDescData	[]byte
 )
 
 func file_pulumi_alias_proto_rawDescGZIP() []byte {
@@ -265,19 +265,19 @@ func file_pulumi_alias_proto_rawDescGZIP() []byte {
 
 var file_pulumi_alias_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_pulumi_alias_proto_goTypes = []any{
-	(*Alias)(nil),      // 0: pulumirpc.Alias
-	(*Alias_Spec)(nil), // 1: pulumirpc.Alias.Spec
+	(*Alias)(nil),		// 0: pulumirpc.Alias
+	(*Alias_Spec)(nil),	// 1: pulumirpc.Alias.Spec
 }
 var file_pulumi_alias_proto_depIdxs = []int32{
-	1, // 0: pulumirpc.Alias.spec:type_name -> pulumirpc.Alias.Spec
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	1,	// 0: pulumirpc.Alias.spec:type_name -> pulumirpc.Alias.Spec
+	1,	// [1:1] is the sub-list for method output_type
+	1,	// [1:1] is the sub-list for method input_type
+	1,	// [1:1] is the sub-list for extension type_name
+	1,	// [1:1] is the sub-list for extension extendee
+	0,	// [0:1] is the sub-list for field type_name
 }
 
-func init() { file_pulumi_alias_proto_init() }
+func init()	{ file_pulumi_alias_proto_init() }
 func file_pulumi_alias_proto_init() {
 	if File_pulumi_alias_proto != nil {
 		return
@@ -293,16 +293,16 @@ func file_pulumi_alias_proto_init() {
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
-			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_alias_proto_rawDesc), len(file_pulumi_alias_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   2,
-			NumExtensions: 0,
-			NumServices:   0,
+			GoPackagePath:	reflect.TypeOf(x{}).PkgPath(),
+			RawDescriptor:	unsafe.Slice(unsafe.StringData(file_pulumi_alias_proto_rawDesc), len(file_pulumi_alias_proto_rawDesc)),
+			NumEnums:	0,
+			NumMessages:	2,
+			NumExtensions:	0,
+			NumServices:	0,
 		},
-		GoTypes:           file_pulumi_alias_proto_goTypes,
-		DependencyIndexes: file_pulumi_alias_proto_depIdxs,
-		MessageInfos:      file_pulumi_alias_proto_msgTypes,
+		GoTypes:		file_pulumi_alias_proto_goTypes,
+		DependencyIndexes:	file_pulumi_alias_proto_depIdxs,
+		MessageInfos:		file_pulumi_alias_proto_msgTypes,
 	}.Build()
 	File_pulumi_alias_proto = out.File
 	file_pulumi_alias_proto_goTypes = nil

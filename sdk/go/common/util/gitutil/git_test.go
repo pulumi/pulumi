@@ -318,8 +318,8 @@ func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
 	t.Parallel()
 
 	gitTests := []struct {
-		Remote      string
-		WantVCSInfo *VCSInfo
+		Remote		string
+		WantVCSInfo	*VCSInfo
 	}{
 		// SSH remotes
 		{
@@ -422,8 +422,8 @@ func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
 
 // mockSSHConfig allows tests to mock SSH key paths.
 type mockSSHConfig struct {
-	path string
-	err  error
+	path	string
+	err	error
 }
 
 // GetKeyPath returns a canned response for SSH config.
@@ -439,8 +439,8 @@ func TestParseAuthURL(t *testing.T) {
 		require.NoError(t, err)
 
 		block := &pem.Block{
-			Type:  "RSA PRIVATE KEY",
-			Bytes: x509.MarshalPKCS1PrivateKey(key),
+			Type:	"RSA PRIVATE KEY",
+			Bytes:	x509.MarshalPKCS1PrivateKey(key),
 		}
 
 		if passphrase != "" {
@@ -559,7 +559,7 @@ func TestParseAuthURL(t *testing.T) {
 	t.Run("with passphrase-protected key and wrong environment variable (agent unavailable)", func(t *testing.T) {
 		t.Setenv(env.GitSSHPassphrase.Var().Name(), "incorrect passphrase")
 		t.Setenv("SSH_AUTH_SOCK", "")
-		os.Unsetenv("SSH_AUTH_SOCK") // t.Setenv above will restore it after the test
+		os.Unsetenv("SSH_AUTH_SOCK")	// t.Setenv above will restore it after the test
 
 		parser := urlAuthParser{
 			sshConfig: &mockSSHConfig{path: generateSSHKey(t, "correct passphrase")},
@@ -573,7 +573,7 @@ func TestParseAuthURL(t *testing.T) {
 	t.Run("with memoized auth", func(t *testing.T) {
 		t.Parallel()
 		parser := urlAuthParser{
-			sshConfig: &mockSSHConfig{err: errors.New("should not be called")},
+			sshConfig:	&mockSSHConfig{err: errors.New("should not be called")},
 			sshKeys: map[string]transport.AuthMethod{
 				"github.com": &http.BasicAuth{Username: "foo"},
 			},
@@ -589,7 +589,7 @@ func TestParseAuthURL(t *testing.T) {
 		// Regression test for https://github.com/pulumi/pulumi/issues/16637
 		t.Setenv(env.GitSSHPassphrase.Var().Name(), "incorrect passphrase")
 		t.Setenv("SSH_AUTH_SOCK", "")
-		os.Unsetenv("SSH_AUTH_SOCK") // t.Setenv above will restore it after the test
+		os.Unsetenv("SSH_AUTH_SOCK")	// t.Setenv above will restore it after the test
 
 		parser := urlAuthParser{
 			sshConfig: &mockSSHConfig{path: generateSSHKey(t, "correct passphrase")},
@@ -617,30 +617,30 @@ func TestGitCloneAndCheckoutRevision(t *testing.T) {
 	// the repo should result in "HEAD", while checking out the
 	// initial commit should result in "initial".
 	cases := []struct {
-		name            string
-		revision        plumbing.Revision
-		expectedContent string
-		expectedError   string
+		name		string
+		revision	plumbing.Revision
+		expectedContent	string
+		expectedError	string
 	}{
 		{
-			name:            "full-hash",
-			revision:        plumbing.Revision("c9bcda983f3078cf622b02acc625f6a2127f4e0a"),
-			expectedContent: "initial\n",
+			name:			"full-hash",
+			revision:		plumbing.Revision("c9bcda983f3078cf622b02acc625f6a2127f4e0a"),
+			expectedContent:	"initial\n",
 		},
 		{
-			name:            "short-hash",
-			revision:        plumbing.Revision("c9bcda"),
-			expectedContent: "initial\n",
+			name:			"short-hash",
+			revision:		plumbing.Revision("c9bcda"),
+			expectedContent:	"initial\n",
 		},
 		{
-			name:            "full-hash",
-			revision:        plumbing.Revision("HEAD"),
-			expectedContent: "HEAD\n",
+			name:			"full-hash",
+			revision:		plumbing.Revision("HEAD"),
+			expectedContent:	"HEAD\n",
 		},
 		{
-			name:          "unknown-revision",
-			revision:      plumbing.Revision("deadbeef"),
-			expectedError: "reference not found",
+			name:		"unknown-revision",
+			revision:	plumbing.Revision("deadbeef"),
+			expectedError:	"reference not found",
 		},
 	}
 	for _, c := range cases {
@@ -668,24 +668,24 @@ func TestGetLatestTagOrHash(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name     string
-		expected semver.Version
-		dataDir  string
+		name		string
+		expected	semver.Version
+		dataDir		string
 	}{
 		{
-			name:     "no tags",
-			expected: semver.MustParse("0.0.0-x044e5858f018bd6fa666da9adbff645f581fb91b"),
-			dataDir:  "testdata/commit-only.git",
+			name:		"no tags",
+			expected:	semver.MustParse("0.0.0-x044e5858f018bd6fa666da9adbff645f581fb91b"),
+			dataDir:	"testdata/commit-only.git",
 		},
 		{
-			name:     "tags",
-			expected: semver.MustParse("0.1.1"),
-			dataDir:  "testdata/tags.git",
+			name:		"tags",
+			expected:	semver.MustParse("0.1.1"),
+			dataDir:	"testdata/tags.git",
 		},
 		{
-			name:     "alpha version",
-			expected: semver.MustParse("0.1.0-alpha"),
-			dataDir:  "testdata/alpha-tag.git",
+			name:		"alpha version",
+			expected:	semver.MustParse("0.1.0-alpha"),
+			dataDir:	"testdata/alpha-tag.git",
 		},
 	}
 	for _, c := range cases {

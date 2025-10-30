@@ -15,15 +15,15 @@
 package pcl
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 const (
 	// IntrinsicApply is the name of the apply intrinsic.
-	IntrinsicApply = "__apply"
+	IntrinsicApply	= "__apply"
 	// IntrinsicConvert is the name of the conversion intrinsic.
-	IntrinsicConvert = "__convert"
+	IntrinsicConvert	= "__convert"
 )
 
 func isOutput(t model.Type) bool {
@@ -54,14 +54,14 @@ func NewApplyCall(args []model.Expression, then *model.AnonymousFunctionExpressi
 			returnsOutput = true
 		}
 		signature.Parameters[i] = model.Parameter{
-			Name: then.Signature.Parameters[i].Name,
-			Type: a.Type(),
+			Name:	then.Signature.Parameters[i].Name,
+			Type:	a.Type(),
 		}
 	}
 	exprs[len(exprs)-1] = then
 	signature.Parameters[len(signature.Parameters)-1] = model.Parameter{
-		Name: "then",
-		Type: then.Type(),
+		Name:	"then",
+		Type:	then.Type(),
 	}
 
 	if returnsOutput {
@@ -71,9 +71,9 @@ func NewApplyCall(args []model.Expression, then *model.AnonymousFunctionExpressi
 	}
 
 	return &model.FunctionCallExpression{
-		Name:      IntrinsicApply,
-		Signature: signature,
-		Args:      exprs,
+		Name:		IntrinsicApply,
+		Signature:	signature,
+		Args:		exprs,
 	}
 }
 
@@ -88,15 +88,15 @@ func ParseApplyCall(c *model.FunctionCallExpression) (applyArgs []model.Expressi
 // NewConvertCall returns a new expression that represents a call to IntrinsicConvert.
 func NewConvertCall(from model.Expression, to model.Type) *model.FunctionCallExpression {
 	return &model.FunctionCallExpression{
-		Name: IntrinsicConvert,
+		Name:	IntrinsicConvert,
 		Signature: model.StaticFunctionSignature{
 			Parameters: []model.Parameter{{
-				Name: "from",
-				Type: from.Type(),
+				Name:	"from",
+				Type:	from.Type(),
 			}},
-			ReturnType: to,
+			ReturnType:	to,
 		},
-		Args: []model.Expression{from},
+		Args:	[]model.Expression{from},
 	}
 }
 

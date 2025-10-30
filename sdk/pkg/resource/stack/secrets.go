@@ -21,8 +21,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -68,8 +68,8 @@ type BatchingSecretsManager interface {
 }
 
 type batchingCachingSecretsManager struct {
-	manager secrets.Manager
-	cache   SecretCache
+	manager	secrets.Manager
+	cache	SecretCache
 }
 
 // NewBatchingCachingSecretsManager returns a new BatchingSecretsManager that caches the ciphertext for secret property
@@ -78,8 +78,8 @@ type batchingCachingSecretsManager struct {
 // When secrets values are not cached, then operations can be batched when using the batch transaction methods.
 func NewBatchingCachingSecretsManager(manager secrets.Manager) BatchingSecretsManager {
 	sm := &batchingCachingSecretsManager{
-		manager: manager,
-		cache:   NewSecretCache(),
+		manager:	manager,
+		cache:		NewSecretCache(),
 	}
 	return sm
 }
@@ -129,7 +129,7 @@ type SecretCache interface {
 
 type nullSecretCache struct{}
 
-func (nullSecretCache) Write(plaintext, ciphertext string, secret *resource.Secret) {}
+func (nullSecretCache) Write(plaintext, ciphertext string, secret *resource.Secret)	{}
 func (nullSecretCache) LookupCiphertext(secret *resource.Secret, plaintext string) (string, bool) {
 	return "", false
 }
@@ -139,14 +139,14 @@ func (nullSecretCache) LookupPlaintext(ciphertext string) (string, bool) {
 }
 
 type secretCache struct {
-	bySecret     sync.Map
-	byCiphertext sync.Map
+	bySecret	sync.Map
+	byCiphertext	sync.Map
 }
 
 type secretCacheEntry struct {
-	plaintext  string
-	ciphertext string
-	secret     *resource.Secret
+	plaintext	string
+	ciphertext	string
+	secret		*resource.Secret
 }
 
 // NewSecretCache returns a new secretCache which allows the bidirectional cached conversion between:
@@ -220,18 +220,18 @@ type BatchEncrypter interface {
 type CompleteCrypterBatch func(context.Context) error
 
 type cachingBatchEncrypter struct {
-	encrypter     config.Encrypter
-	cache         SecretCache
-	queue         chan queuedEncryption
-	closed        atomic.Bool
-	completeMutex sync.Mutex
-	maxBatchSize  int
+	encrypter	config.Encrypter
+	cache		SecretCache
+	queue		chan queuedEncryption
+	closed		atomic.Bool
+	completeMutex	sync.Mutex
+	maxBatchSize	int
 }
 
 type queuedEncryption struct {
-	source    *resource.Secret
-	target    *apitype.SecretV1
-	plaintext string
+	source		*resource.Secret
+	target		*apitype.SecretV1
+	plaintext	string
 }
 
 // DefaultMaxBatchEncryptCount is the default maximum number of items that can be enqueued for batch encryption.
@@ -265,10 +265,10 @@ func beginBatchEncryption(
 	contract.Assertf(cache != nil, "cache must not be nil")
 	contract.Assertf(maxBatchSize > 0, "maxBatchSize must be greater than 0")
 	batchEncrypter := &cachingBatchEncrypter{
-		encrypter:    encrypter,
-		cache:        cache,
-		queue:        make(chan queuedEncryption, maxBatchSize),
-		maxBatchSize: maxBatchSize,
+		encrypter:	encrypter,
+		cache:		cache,
+		queue:		make(chan queuedEncryption, maxBatchSize),
+		maxBatchSize:	maxBatchSize,
 	}
 	return batchEncrypter, func(ctx context.Context) error {
 		wasClosed := batchEncrypter.closed.Swap(true)
@@ -318,7 +318,7 @@ dequeue:
 		case q := <-be.queue:
 			dequeued = append(dequeued, q)
 			plaintexts = append(plaintexts, q.plaintext)
-		default: // Queue is empty
+		default:	// Queue is empty
 			break dequeue
 		}
 	}
@@ -370,18 +370,18 @@ type BatchDecrypter interface {
 }
 
 type cachingBatchDecrypter struct {
-	decrypter                      config.Decrypter
-	cache                          SecretCache
-	deserializeSecretPropertyValue DeserializeSecretPropertyValue
-	queue                          chan queuedDecryption
-	closed                         atomic.Bool
-	completeMutex                  sync.Mutex
-	maxBatchSize                   int
+	decrypter			config.Decrypter
+	cache				SecretCache
+	deserializeSecretPropertyValue	DeserializeSecretPropertyValue
+	queue				chan queuedDecryption
+	closed				atomic.Bool
+	completeMutex			sync.Mutex
+	maxBatchSize			int
 }
 
 type queuedDecryption struct {
-	target     *resource.Secret
-	ciphertext string
+	target		*resource.Secret
+	ciphertext	string
 }
 
 const DefaultMaxBatchDecryptCount = 1000
@@ -429,11 +429,11 @@ func beginBatchDecryption(decrypter config.Decrypter, cache SecretCache,
 	contract.Assertf(cache != nil, "cache must not be nil")
 	contract.Assertf(maxBatchSize > 0, "maxBatchSize must be greater than 0")
 	batchDecrypter := &cachingBatchDecrypter{
-		decrypter:                      decrypter,
-		cache:                          cache,
-		deserializeSecretPropertyValue: secretPropertyValueFromPlaintext,
-		queue:                          make(chan queuedDecryption, maxBatchSize),
-		maxBatchSize:                   maxBatchSize,
+		decrypter:			decrypter,
+		cache:				cache,
+		deserializeSecretPropertyValue:	secretPropertyValueFromPlaintext,
+		queue:				make(chan queuedDecryption, maxBatchSize),
+		maxBatchSize:			maxBatchSize,
 	}
 	return batchDecrypter, func(ctx context.Context) error {
 		wasClosed := batchDecrypter.closed.Swap(true)
@@ -481,7 +481,7 @@ dequeue:
 		case q := <-bd.queue:
 			dequeued = append(dequeued, q)
 			ciphertexts = append(ciphertexts, q.ciphertext)
-		default: // Queue is empty
+		default:	// Queue is empty
 			break dequeue
 		}
 	}

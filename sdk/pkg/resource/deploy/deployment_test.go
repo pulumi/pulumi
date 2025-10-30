@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -30,18 +30,18 @@ import (
 func newResource(name string) *resource.State {
 	ty := tokens.Type("test")
 	return &resource.State{
-		Type:    ty,
-		URN:     resource.NewURN(tokens.QName("teststack"), tokens.PackageName("pkg"), ty, ty, name),
-		Inputs:  make(resource.PropertyMap),
-		Outputs: make(resource.PropertyMap),
+		Type:		ty,
+		URN:		resource.NewURN(tokens.QName("teststack"), tokens.PackageName("pkg"), ty, ty, name),
+		Inputs:		make(resource.PropertyMap),
+		Outputs:	make(resource.PropertyMap),
 	}
 }
 
 func newSnapshot(resources []*resource.State, ops []resource.Operation) *Snapshot {
 	return NewSnapshot(Manifest{
-		Time:    time.Now(),
-		Version: version.Version,
-		Plugins: nil,
+		Time:		time.Now(),
+		Version:	version.Version,
+		Plugins:	nil,
 	}, b64.NewBase64SecretsManager(), resources, ops, SnapshotMetadata{})
 }
 
@@ -54,8 +54,8 @@ func TestPendingOperationsDeployment(t *testing.T) {
 		resourceA,
 	}, []resource.Operation{
 		{
-			Type:     resource.OperationTypeCreating,
-			Resource: resourceB,
+			Type:		resource.OperationTypeCreating,
+			Resource:	resourceB,
 		},
 	})
 
@@ -67,12 +67,12 @@ func TestGlobUrn(t *testing.T) {
 	t.Parallel()
 
 	globs := []struct {
-		input      string
-		expected   []resource.URN
-		unexpected []resource.URN
+		input		string
+		expected	[]resource.URN
+		unexpected	[]resource.URN
 	}{
 		{
-			input: "**",
+			input:	"**",
 			expected: []resource.URN{
 				"urn:pulumi:stack::test::typ$aws:resource::aname",
 				"urn:pulumi:stack::test::typ$aws:resource::bar",
@@ -80,7 +80,7 @@ func TestGlobUrn(t *testing.T) {
 			},
 		},
 		{
-			input: "urn:pulumi:stack::test::typ*:resource::bar",
+			input:	"urn:pulumi:stack::test::typ*:resource::bar",
 			expected: []resource.URN{
 				"urn:pulumi:stack::test::typ$aws:resource::bar",
 				"urn:pulumi:stack::test::typ$azure:resource::bar",
@@ -91,12 +91,12 @@ func TestGlobUrn(t *testing.T) {
 			},
 		},
 		{
-			input:      "**:aname",
-			expected:   []resource.URN{"urn:pulumi:stack::test::typ$aws:resource::aname"},
-			unexpected: []resource.URN{"urn:pulumi:stack::test::typ$aws:resource::somename"},
+			input:		"**:aname",
+			expected:	[]resource.URN{"urn:pulumi:stack::test::typ$aws:resource::aname"},
+			unexpected:	[]resource.URN{"urn:pulumi:stack::test::typ$aws:resource::somename"},
 		},
 		{
-			input: "*:*:stack::test::typ$aws:resource::*",
+			input:	"*:*:stack::test::typ$aws:resource::*",
 			expected: []resource.URN{
 				"urn:pulumi:stack::test::typ$aws:resource::aname",
 				"urn:pulumi:stack::test::typ$aws:resource::bar",
@@ -106,8 +106,8 @@ func TestGlobUrn(t *testing.T) {
 			},
 		},
 		{
-			input:    "stack::test::typ$aws:resource::none",
-			expected: []resource.URN{"stack::test::typ$aws:resource::none"},
+			input:		"stack::test::typ$aws:resource::none",
+			expected:	[]resource.URN{"stack::test::typ$aws:resource::none"},
 			unexpected: []resource.URN{
 				"stack::test::typ$aws:resource::nonee",
 			},

@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/backenderr"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
@@ -68,21 +68,21 @@ func TestGetPackageSpecifiedVersion(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, apitype.PackageMetadata{
-		Name:          "random",
-		Publisher:     "pulumi",
-		Source:        "pulumi",
-		Version:       semver.Version{Major: 4, Minor: 18},
-		Description:   "A Pulumi package to safely use randomness in Pulumi programs.",
-		LogoURL:       "",
-		RepoURL:       "https://github.com/pulumi/pulumi-random",
-		Category:      "cloud",
-		IsFeatured:    false,
-		PackageTypes:  []apitype.PackageType{"bridged"},
-		PackageStatus: apitype.PackageStatusGA,
-		ReadmeURL:     "https://artifacts.pulumi.com/providers/4f280fdc-47eb-43d4-9fd2-bf54eccbbc48/docs/index.md",
-		SchemaURL:     "https://artifacts.pulumi.com/providers/4f280fdc-47eb-43d4-9fd2-bf54eccbbc48/schema.json",
-		CreatedAt:     time.Date(2025, time.April, 17, 16, 2, 41, 759000000, time.UTC),
-		Visibility:    apitype.VisibilityPublic,
+		Name:		"random",
+		Publisher:	"pulumi",
+		Source:		"pulumi",
+		Version:	semver.Version{Major: 4, Minor: 18},
+		Description:	"A Pulumi package to safely use randomness in Pulumi programs.",
+		LogoURL:	"",
+		RepoURL:	"https://github.com/pulumi/pulumi-random",
+		Category:	"cloud",
+		IsFeatured:	false,
+		PackageTypes:	[]apitype.PackageType{"bridged"},
+		PackageStatus:	apitype.PackageStatusGA,
+		ReadmeURL:	"https://artifacts.pulumi.com/providers/4f280fdc-47eb-43d4-9fd2-bf54eccbbc48/docs/index.md",
+		SchemaURL:	"https://artifacts.pulumi.com/providers/4f280fdc-47eb-43d4-9fd2-bf54eccbbc48/schema.json",
+		CreatedAt:	time.Date(2025, time.April, 17, 16, 2, 41, 759000000, time.UTC),
+		Visibility:	apitype.VisibilityPublic,
 	}, pkg)
 }
 
@@ -123,23 +123,23 @@ func TestGetPackageUnspecifiedVersion(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, apitype.PackageMetadata{
-		Name:      "random",
-		Publisher: "pulumi",
-		Source:    "pulumi",
+		Name:		"random",
+		Publisher:	"pulumi",
+		Source:		"pulumi",
 		Version: semver.Version{
-			Major: 4,
-			Minor: 18,
-			Patch: 2,
+			Major:	4,
+			Minor:	18,
+			Patch:	2,
 		},
-		Description:   "A Pulumi package to safely use randomness in Pulumi programs.",
-		RepoURL:       "https://github.com/pulumi/pulumi-random",
-		Category:      "cloud",
-		PackageTypes:  []apitype.PackageType{"bridged"},
-		PackageStatus: apitype.PackageStatusGA,
-		ReadmeURL:     "https://artifacts.pulumi.com/providers/a7592522-ec15-49cf-89f2-3365191ea23b/docs/index.md",
-		SchemaURL:     "https://artifacts.pulumi.com/providers/a7592522-ec15-49cf-89f2-3365191ea23b/schema.json",
-		CreatedAt:     time.Date(2025, time.April, 30, 22, 44, 41, 542000000, time.UTC),
-		Visibility:    apitype.VisibilityPublic,
+		Description:	"A Pulumi package to safely use randomness in Pulumi programs.",
+		RepoURL:	"https://github.com/pulumi/pulumi-random",
+		Category:	"cloud",
+		PackageTypes:	[]apitype.PackageType{"bridged"},
+		PackageStatus:	apitype.PackageStatusGA,
+		ReadmeURL:	"https://artifacts.pulumi.com/providers/a7592522-ec15-49cf-89f2-3365191ea23b/docs/index.md",
+		SchemaURL:	"https://artifacts.pulumi.com/providers/a7592522-ec15-49cf-89f2-3365191ea23b/schema.json",
+		CreatedAt:	time.Date(2025, time.April, 30, 22, 44, 41, 542000000, time.UTC),
+		Visibility:	apitype.VisibilityPublic,
 	}, pkg)
 }
 
@@ -258,37 +258,37 @@ func TestListPackages(t *testing.T) {
 
 	assert.Equal(t, []apitype.PackageMetadata{
 		{
-			Name:              "castai",
-			Publisher:         "castai",
-			Source:            "pulumi",
-			Version:           semver.Version{Major: 0, Minor: 1, Patch: 78},
-			Title:             "CAST AI",
-			Description:       "A Pulumi package for creating and managing CAST AI cloud resources.",
-			LogoURL:           "https://raw.githubusercontent.com/castai/pulumi-castai/main/docs/images/castai-logo.png",
-			RepoURL:           "https://github.com/castai/pulumi-castai",
-			Category:          "cloud",
-			PackageTypes:      []apitype.PackageType{"bridged"},
-			PackageStatus:     apitype.PackageStatusPublicPreview,
-			ReadmeURL:         "https://artifacts.pulumi.com/providers/8b761e09-343e-4660-ba13-bd24c257fe0e/docs/index.md",
-			SchemaURL:         "https://artifacts.pulumi.com/providers/8b761e09-343e-4660-ba13-bd24c257fe0e/schema.json",
-			PluginDownloadURL: "github://api.github.com/castai",
-			CreatedAt:         time.Date(2025, time.May, 22, 17, 41, 8, 19000000, time.UTC),
-			Visibility:        apitype.VisibilityPublic,
+			Name:			"castai",
+			Publisher:		"castai",
+			Source:			"pulumi",
+			Version:		semver.Version{Major: 0, Minor: 1, Patch: 78},
+			Title:			"CAST AI",
+			Description:		"A Pulumi package for creating and managing CAST AI cloud resources.",
+			LogoURL:		"https://raw.githubusercontent.com/castai/pulumi-castai/main/docs/images/castai-logo.png",
+			RepoURL:		"https://github.com/castai/pulumi-castai",
+			Category:		"cloud",
+			PackageTypes:		[]apitype.PackageType{"bridged"},
+			PackageStatus:		apitype.PackageStatusPublicPreview,
+			ReadmeURL:		"https://artifacts.pulumi.com/providers/8b761e09-343e-4660-ba13-bd24c257fe0e/docs/index.md",
+			SchemaURL:		"https://artifacts.pulumi.com/providers/8b761e09-343e-4660-ba13-bd24c257fe0e/schema.json",
+			PluginDownloadURL:	"github://api.github.com/castai",
+			CreatedAt:		time.Date(2025, time.May, 22, 17, 41, 8, 19000000, time.UTC),
+			Visibility:		apitype.VisibilityPublic,
 		},
 		{
-			Name:          "castai",
-			Publisher:     "castai",
-			Source:        "opentofu",
-			Version:       semver.Version{Major: 7, Minor: 52, Patch: 0},
-			Description:   "A Pulumi provider dynamically bridged from castai.",
-			RepoURL:       "https://github.com/castai/terraform-provider-castai",
-			Category:      "cloud",
-			PackageTypes:  []apitype.PackageType{"bridged"},
-			PackageStatus: apitype.PackageStatusGA,
-			ReadmeURL:     "https://artifacts.pulumi.com/providers/c56b8d91-3733-4303-b026-7f4d7c66dcc2/docs/index.md",
-			SchemaURL:     "https://artifacts.pulumi.com/providers/c56b8d91-3733-4303-b026-7f4d7c66dcc2/schema.json",
-			CreatedAt:     time.Date(2025, time.May, 10, 0, 17, 43, 669000000, time.UTC),
-			Visibility:    apitype.VisibilityPublic,
+			Name:		"castai",
+			Publisher:	"castai",
+			Source:		"opentofu",
+			Version:	semver.Version{Major: 7, Minor: 52, Patch: 0},
+			Description:	"A Pulumi provider dynamically bridged from castai.",
+			RepoURL:	"https://github.com/castai/terraform-provider-castai",
+			Category:	"cloud",
+			PackageTypes:	[]apitype.PackageType{"bridged"},
+			PackageStatus:	apitype.PackageStatusGA,
+			ReadmeURL:	"https://artifacts.pulumi.com/providers/c56b8d91-3733-4303-b026-7f4d7c66dcc2/docs/index.md",
+			SchemaURL:	"https://artifacts.pulumi.com/providers/c56b8d91-3733-4303-b026-7f4d7c66dcc2/schema.json",
+			CreatedAt:	time.Date(2025, time.May, 10, 0, 17, 43, 669000000, time.UTC),
+			Visibility:	apitype.VisibilityPublic,
 		},
 	}, results)
 }
@@ -317,4 +317,4 @@ func TestListPackagesNoMatches(t *testing.T) {
 	assert.Equal(t, []apitype.PackageMetadata{}, results)
 }
 
-func ref[T any](v T) *T { return &v }
+func ref[T any](v T) *T	{ return &v }

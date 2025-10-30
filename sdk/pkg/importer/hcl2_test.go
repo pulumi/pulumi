@@ -26,14 +26,14 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/testing/utils"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -49,21 +49,21 @@ import (
 var testdataPath = filepath.Join("..", "codegen", "testing", "test", "testdata")
 
 const (
-	parentName   = "parent"
-	providerName = "provider"
-	logicalName  = "logical"
+	parentName	= "parent"
+	providerName	= "provider"
+	logicalName	= "logical"
 )
 
 var (
-	parentURN   = resource.NewURN("stack", "project", "", "my::parent", "parent")
-	providerURN = resource.NewURN("stack", "project", "", providers.MakeProviderType("pkg"), "provider")
-	logicalURN  = resource.NewURN("stack", "project", "", "random:index/randomId:RandomId", "strange logical name")
+	parentURN	= resource.NewURN("stack", "project", "", "my::parent", "parent")
+	providerURN	= resource.NewURN("stack", "project", "", providers.MakeProviderType("pkg"), "provider")
+	logicalURN	= resource.NewURN("stack", "project", "", "random:index/randomId:RandomId", "strange logical name")
 )
 
 var names = NameTable{
-	parentURN:   parentName,
-	providerURN: providerName,
-	logicalURN:  logicalName,
+	parentURN:	parentName,
+	providerURN:	providerName,
+	logicalURN:	logicalName,
 }
 
 func renderExpr(t *testing.T, x model.Expression) resource.PropertyValue {
@@ -227,15 +227,15 @@ func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
 		parentType = parent.QualifiedType()
 	}
 	return &resource.State{
-		Type:          token,
-		URN:           resource.NewURN("stack", "project", parentType, token, r.LogicalName()),
-		Custom:        true,
-		Inputs:        inputs,
-		Parent:        parent,
-		Provider:      providerRef,
-		Protect:       protect,
-		ImportID:      importID,
-		IgnoreChanges: ignoreChanges,
+		Type:		token,
+		URN:		resource.NewURN("stack", "project", parentType, token, r.LogicalName()),
+		Custom:		true,
+		Inputs:		inputs,
+		Parent:		parent,
+		Provider:	providerRef,
+		Protect:	protect,
+		ImportID:	importID,
+		IgnoreChanges:	ignoreChanges,
 	}
 }
 
@@ -272,47 +272,47 @@ func TestGenerateHCL2Definition(t *testing.T) {
 
 			snapshot := []*resource.State{
 				{
-					ID:             "123",
-					ImportID:       "abc",
-					Custom:         true,
-					Type:           "pulumi:providers:aws",
-					RetainOnDelete: true,
-					IgnoreChanges:  []string{"fooIgnore"},
-					DeletedWith:    "123",
-					URN:            "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+					ID:		"123",
+					ImportID:	"abc",
+					Custom:		true,
+					Type:		"pulumi:providers:aws",
+					RetainOnDelete:	true,
+					IgnoreChanges:	[]string{"fooIgnore"},
+					DeletedWith:	"123",
+					URN:		"urn:pulumi:stack::project::pulumi:providers:aws::default_123",
 				},
 				{
-					ID:             "123",
-					ImportID:       "abc",
-					Custom:         true,
-					Type:           "pulumi:providers:random",
-					RetainOnDelete: true,
-					IgnoreChanges:  []string{"fooIgnore"},
-					DeletedWith:    "123",
-					URN:            "urn:pulumi:stack::project::pulumi:providers:random::default_123",
+					ID:		"123",
+					ImportID:	"abc",
+					Custom:		true,
+					Type:		"pulumi:providers:random",
+					RetainOnDelete:	true,
+					IgnoreChanges:	[]string{"fooIgnore"},
+					DeletedWith:	"123",
+					URN:		"urn:pulumi:stack::project::pulumi:providers:random::default_123",
 				},
 				{
-					ID:             "id",
-					ImportID:       "abc",
-					Custom:         true,
-					Type:           "pulumi:providers:pkg",
-					RetainOnDelete: true,
-					IgnoreChanges:  []string{"fooIgnore"},
-					DeletedWith:    "123",
-					URN:            "urn:pulumi:stack::project::pulumi:providers:pkg::provider",
+					ID:		"id",
+					ImportID:	"abc",
+					Custom:		true,
+					Type:		"pulumi:providers:pkg",
+					RetainOnDelete:	true,
+					IgnoreChanges:	[]string{"fooIgnore"},
+					DeletedWith:	"123",
+					URN:		"urn:pulumi:stack::project::pulumi:providers:pkg::provider",
 				},
 				// One test that ensures unset values still pass.
 				{
-					ID:     "id",
-					Custom: true,
-					Type:   "pulumi:providers:pkg",
-					URN:    "urn:pulumi:stack::project::pulumi:providers:pkg::provider",
+					ID:	"id",
+					Custom:	true,
+					Type:	"pulumi:providers:pkg",
+					URN:	"urn:pulumi:stack::project::pulumi:providers:pkg::provider",
 				},
 			}
 
 			importState := ImportState{
-				Names:    names,
-				Snapshot: snapshot,
+				Names:		names,
+				Snapshot:	snapshot,
 			}
 
 			block, _, err := GenerateHCL2Definition(loader, state, importState)
@@ -376,23 +376,23 @@ func TestGenerateHCL2DefinitionWithProviderDeclaration(t *testing.T) {
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 
 	state := &resource.State{
-		ID:       "someProvider",
-		Type:     "pulumi:providers:aws",
-		Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-		URN:      "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+		ID:		"someProvider",
+		Type:		"pulumi:providers:aws",
+		Provider:	"urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
+		URN:		"urn:pulumi:stack::project::pulumi:providers:aws::default_123",
 		Inputs: resource.PropertyMap{
 			"region": resource.NewProperty("us-west-2"),
 		},
 	}
 
 	importState := ImportState{
-		Names: nil,
+		Names:	nil,
 		Snapshot: []*resource.State{
 			{
-				ID:       "123",
-				ImportID: "abc",
-				Type:     "pulumi:providers:aws",
-				URN:      "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+				ID:		"123",
+				ImportID:	"abc",
+				Type:		"pulumi:providers:aws",
+				URN:		"urn:pulumi:stack::project::pulumi:providers:aws::default_123",
 				Inputs: resource.PropertyMap{
 					"region": resource.NewProperty("some-default-value"),
 				},
@@ -406,7 +406,7 @@ func TestGenerateHCL2DefinitionWithProviderDeclaration(t *testing.T) {
 	// Assert.
 	require.NoError(t, err)
 	assert.Equal(t, []model.BodyItem{&model.Attribute{
-		Name: "region",
+		Name:	"region",
 		Value: &model.TemplateExpression{
 			Parts: []model.Expression{
 				&model.LiteralValueExpression{
@@ -446,24 +446,24 @@ func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {
 	schemaLoader := schema.NewPluginLoader(host)
 
 	state := &resource.State{
-		Type:     "aws:cloudformation/stack:Stack",
-		URN:      "urn:pulumi:stack::project::aws:cloudformation/stack:Stack::Stack",
-		Custom:   true,
-		Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
+		Type:		"aws:cloudformation/stack:Stack",
+		URN:		"urn:pulumi:stack::project::aws:cloudformation/stack:Stack::Stack",
+		Custom:		true,
+		Provider:	"urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
 		Inputs: resource.PropertyMap{
-			"name":         resource.NewProperty("foobar"),
-			"templateBody": resource.NewProperty("foobar"),
+			"name":		resource.NewProperty("foobar"),
+			"templateBody":	resource.NewProperty("foobar"),
 		},
 	}
 
 	importState := ImportState{
-		Names: nil,
+		Names:	nil,
 		Snapshot: []*resource.State{
 			{
-				Type:   "pulumi:providers:aws",
-				ID:     "123",
-				URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
-				Custom: true,
+				Type:	"pulumi:providers:aws",
+				ID:	"123",
+				URN:	"urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+				Custom:	true,
 				Inputs: resource.PropertyMap{
 					"version": resource.NewProperty("4.37.0"),
 				},
@@ -484,32 +484,32 @@ func TestGenerateHCL2DefinitionsWithDependantResources(t *testing.T) {
 
 	snapshot := []*resource.State{
 		{
-			ID:     "123",
-			Custom: true,
-			Type:   "pulumi:providers:aws",
-			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+			ID:	"123",
+			Custom:	true,
+			Type:	"pulumi:providers:aws",
+			URN:	"urn:pulumi:stack::project::pulumi:providers:aws::default_123",
 		},
 	}
 
 	resources := []apitype.ResourceV3{
 		{
-			URN:      "urn:pulumi:stack::project::aws:s3/bucket:Bucket::exampleBucket",
-			ID:       "provider-generated-bucket-id-abc123",
-			Custom:   true,
-			Type:     "aws:s3/bucket:Bucket",
-			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			URN:		"urn:pulumi:stack::project::aws:s3/bucket:Bucket::exampleBucket",
+			ID:		"provider-generated-bucket-id-abc123",
+			Custom:		true,
+			Type:		"aws:s3/bucket:Bucket",
+			Provider:	fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
 		},
 		{
-			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
-			ID:     "provider-generated-bucket-object-id-abc123",
-			Custom: true,
-			Type:   "aws:s3/bucketObject:BucketObject",
+			URN:	"urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
+			ID:	"provider-generated-bucket-object-id-abc123",
+			Custom:	true,
+			Type:	"aws:s3/bucketObject:BucketObject",
 			Inputs: map[string]any{
 				// this will be replaced with a reference to exampleBucket.id in the generated code
-				"bucket":       "provider-generated-bucket-id-abc123",
-				"storageClass": "STANDARD",
+				"bucket":	"provider-generated-bucket-id-abc123",
+				"storageClass":	"STANDARD",
 			},
-			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			Provider:	fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
 		},
 	}
 
@@ -560,10 +560,10 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsesLexicalNameInGenerated
 
 	snapshot := []*resource.State{
 		{
-			ID:     "123",
-			Custom: true,
-			Type:   "pulumi:providers:aws",
-			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+			ID:	"123",
+			Custom:	true,
+			Type:	"pulumi:providers:aws",
+			URN:	"urn:pulumi:stack::project::pulumi:providers:aws::default_123",
 		},
 	}
 
@@ -575,23 +575,23 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsesLexicalNameInGenerated
 
 	resources := []apitype.ResourceV3{
 		{
-			URN:      urn.URN(bucketUrn),
-			ID:       "provider-generated-bucket-id-abc123",
-			Custom:   true,
-			Type:     "aws:s3/bucket:Bucket",
-			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			URN:		urn.URN(bucketUrn),
+			ID:		"provider-generated-bucket-id-abc123",
+			Custom:		true,
+			Type:		"aws:s3/bucket:Bucket",
+			Provider:	fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
 		},
 		{
-			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
-			ID:     "provider-generated-bucket-object-id-abc123",
-			Custom: true,
-			Type:   "aws:s3/bucketObject:BucketObject",
+			URN:	"urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
+			ID:	"provider-generated-bucket-object-id-abc123",
+			Custom:	true,
+			Type:	"aws:s3/bucketObject:BucketObject",
 			Inputs: map[string]any{
 				// this will be replaced with a reference to exampleBucket.id in the generated code
-				"bucket":       "provider-generated-bucket-id-abc123",
-				"storageClass": "STANDARD",
+				"bucket":	"provider-generated-bucket-id-abc123",
+				"storageClass":	"STANDARD",
 			},
-			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			Provider:	fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
 		},
 	}
 
@@ -640,47 +640,47 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *
 
 	snapshot := []*resource.State{
 		{
-			ID:     "123",
-			Custom: true,
-			Type:   "pulumi:providers:aws",
-			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+			ID:	"123",
+			Custom:	true,
+			Type:	"pulumi:providers:aws",
+			URN:	"urn:pulumi:stack::project::pulumi:providers:aws::default_123",
 		},
 	}
 
 	resources := []apitype.ResourceV3{
 		{
-			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
-			URN:      "urn:pulumi:stack::project::aws:s3/bucket:Bucket::exampleBucket",
-			ID:       "provider-generated-bucket-id-abc123",
-			Custom:   true,
-			Type:     "aws:s3/bucket:Bucket",
+			Provider:	fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			URN:		"urn:pulumi:stack::project::aws:s3/bucket:Bucket::exampleBucket",
+			ID:		"provider-generated-bucket-id-abc123",
+			Custom:		true,
+			Type:		"aws:s3/bucket:Bucket",
 			Outputs: map[string]any{
-				"name": "bucketName-12345",
-				"arn":  "arn:aws:s3:bucket-12345",
+				"name":	"bucketName-12345",
+				"arn":	"arn:aws:s3:bucket-12345",
 			},
 		},
 		{
-			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
-			URN:      "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
-			ID:       "provider-generated-bucket-object-id-abc123",
-			Custom:   true,
-			Type:     "aws:s3/bucketObject:BucketObject",
+			Provider:	fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			URN:		"urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
+			ID:		"provider-generated-bucket-object-id-abc123",
+			Custom:		true,
+			Type:		"aws:s3/bucketObject:BucketObject",
 			Inputs: map[string]any{
 				// this will be replaced with a reference to exampleBucket.name in the generated code
-				"bucket":       "bucketName-12345",
-				"storageClass": "STANDARD",
+				"bucket":	"bucketName-12345",
+				"storageClass":	"STANDARD",
 			},
 		},
 		{
-			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
-			URN:      "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObjectUsingArn",
-			ID:       "provider-generated-bucket-object-id-abc123",
-			Custom:   true,
-			Type:     "aws:s3/bucketObject:BucketObject",
+			Provider:	fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			URN:		"urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObjectUsingArn",
+			ID:		"provider-generated-bucket-object-id-abc123",
+			Custom:		true,
+			Type:		"aws:s3/bucketObject:BucketObject",
 			Inputs: map[string]any{
 				// this will be replaced with a reference to exampleBucket.arn in the generated code
-				"bucket":       "arn:aws:s3:bucket-12345",
-				"storageClass": "STANDARD",
+				"bucket":	"arn:aws:s3:bucket-12345",
+				"storageClass":	"STANDARD",
 			},
 		},
 	}
@@ -735,39 +735,39 @@ func TestGenerateHCL2DefinitionsWithAmbiguousReferencesMaintainsLiteralValue(t *
 
 	snapshot := []*resource.State{
 		{
-			ID:     "123",
-			Custom: true,
-			Type:   "pulumi:providers:aws",
-			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+			ID:	"123",
+			Custom:	true,
+			Type:	"pulumi:providers:aws",
+			URN:	"urn:pulumi:stack::project::pulumi:providers:aws::default_123",
 		},
 	}
 
 	resources := []apitype.ResourceV3{
 		{
-			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
-			URN:      "urn:pulumi:stack::project::aws:s3/bucket:Bucket::firstBucket",
-			ID:       "provider-generated-bucket-id-abc123",
-			Custom:   true,
-			Type:     "aws:s3/bucket:Bucket",
+			Provider:	fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			URN:		"urn:pulumi:stack::project::aws:s3/bucket:Bucket::firstBucket",
+			ID:		"provider-generated-bucket-id-abc123",
+			Custom:		true,
+			Type:		"aws:s3/bucket:Bucket",
 		},
 		{
-			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
-			URN:      "urn:pulumi:stack::project::aws:s3/bucket:Bucket::secondBucket",
-			ID:       "provider-generated-bucket-id-abc123",
-			Custom:   true,
-			Type:     "aws:s3/bucket:Bucket",
+			Provider:	fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			URN:		"urn:pulumi:stack::project::aws:s3/bucket:Bucket::secondBucket",
+			ID:		"provider-generated-bucket-id-abc123",
+			Custom:		true,
+			Type:		"aws:s3/bucket:Bucket",
 		},
 		{
-			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
-			URN:      "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
-			ID:       "provider-generated-bucket-object-id-abc123",
-			Custom:   true,
-			Type:     "aws:s3/bucketObject:BucketObject",
+			Provider:	fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			URN:		"urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
+			ID:		"provider-generated-bucket-object-id-abc123",
+			Custom:		true,
+			Type:		"aws:s3/bucketObject:BucketObject",
 			Inputs: map[string]any{
 				// this will *NOT* be replaced with a reference to either firstBucket.id or secondBucket.id
 				// because both have the same ID and it would be ambiguous
-				"bucket":       "provider-generated-bucket-id-abc123",
-				"storageClass": "STANDARD",
+				"bucket":	"provider-generated-bucket-id-abc123",
+				"storageClass":	"STANDARD",
 			},
 		},
 	}
@@ -820,24 +820,24 @@ func TestGenerateHCL2DefinitionsDoesNotMakeSelfReferences(t *testing.T) {
 
 	snapshot := []*resource.State{
 		{
-			ID:     "123",
-			Custom: true,
-			Type:   "pulumi:providers:aws",
-			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+			ID:	"123",
+			Custom:	true,
+			Type:	"pulumi:providers:aws",
+			URN:	"urn:pulumi:stack::project::pulumi:providers:aws::default_123",
 		},
 	}
 
 	resources := []apitype.ResourceV3{
 		{
-			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
-			URN:      "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
-			ID:       "provider-generated-bucket-object-id-abc123",
-			Custom:   true,
-			Type:     "aws:s3/bucketObject:BucketObject",
+			Provider:	fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			URN:		"urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
+			ID:		"provider-generated-bucket-object-id-abc123",
+			Custom:		true,
+			Type:		"aws:s3/bucketObject:BucketObject",
 			Inputs: map[string]any{
 				// this literal value will stay as is since it shouldn't self-reference the bucket object itself
-				"bucket":       "provider-generated-bucket-object-id-abc123",
-				"storageClass": "STANDARD",
+				"bucket":	"provider-generated-bucket-object-id-abc123",
+				"storageClass":	"STANDARD",
 			},
 		},
 	}
@@ -895,28 +895,28 @@ func TestSimplerType(t *testing.T) {
 		&schema.ObjectType{
 			Properties: []*schema.Property{
 				{
-					Name: "foo",
-					Type: schema.BoolType,
+					Name:	"foo",
+					Type:	schema.BoolType,
 				},
 			},
 		},
 		&schema.ObjectType{
 			Properties: []*schema.Property{
 				{
-					Name: "foo",
-					Type: schema.IntType,
+					Name:	"foo",
+					Type:	schema.IntType,
 				},
 			},
 		},
 		&schema.ObjectType{
 			Properties: []*schema.Property{
 				{
-					Name: "foo",
-					Type: schema.IntType,
+					Name:	"foo",
+					Type:	schema.IntType,
 				},
 				{
-					Name: "bar",
-					Type: schema.IntType,
+					Name:	"bar",
+					Type:	schema.IntType,
 				},
 			},
 		},
@@ -1046,8 +1046,8 @@ func TestStructuralTypeChecks(t *testing.T) {
 		t.Parallel()
 
 		value := makeObject(map[string]resource.PropertyValue{
-			"foo": resource.NewProperty("foo"),
-			"bar": resource.NewProperty(42.0),
+			"foo":	resource.NewProperty("foo"),
+			"bar":	resource.NewProperty(42.0),
 		})
 
 		assert.True(t, valueStructurallyTypedAs(value, makeObjectType(

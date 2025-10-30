@@ -28,7 +28,7 @@ import (
 
 	"github.com/blang/semver"
 
-	"github.com/pulumi/pulumi/pkg/v3/util"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
@@ -41,9 +41,9 @@ import (
 // InstallPluginError is returned by InstallPlugin if we couldn't install the plugin
 type InstallPluginError struct {
 	// The specification of the plugin to install
-	Spec workspace.PluginSpec
+	Spec	workspace.PluginSpec
 	// The underlying error that occurred during the download or install.
-	Err error
+	Err	error
 }
 
 func (err *InstallPluginError) Error() string {
@@ -96,8 +96,8 @@ func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginSpec,
 	downloadedFile, err := workspace.DownloadToFile(ctx, pluginSpec, wrapper, retry)
 	if err != nil {
 		return nil, &InstallPluginError{
-			Spec: pluginSpec,
-			Err:  fmt.Errorf("error downloading provider %s to file: %w", pluginSpec.Name, err),
+			Spec:	pluginSpec,
+			Err:	fmt.Errorf("error downloading provider %s to file: %w", pluginSpec.Name, err),
 		}
 	}
 
@@ -105,8 +105,8 @@ func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginSpec,
 	err = InstallPluginContent(context.Background(), pluginSpec, tarPlugin{downloadedFile}, false)
 	if err != nil {
 		return nil, &InstallPluginError{
-			Spec: pluginSpec,
-			Err:  fmt.Errorf("error installing provider %s: %w", pluginSpec.Name, err),
+			Spec:	pluginSpec,
+			Err:	fmt.Errorf("error installing provider %s: %w", pluginSpec.Name, err),
 		}
 	}
 
@@ -124,9 +124,9 @@ func SingleFilePlugin(f *os.File, spec workspace.PluginSpec) PluginContent {
 }
 
 type singleFilePlugin struct {
-	F    *os.File
-	Kind apitype.PluginKind
-	Name string
+	F	*os.File
+	Kind	apitype.PluginKind
+	Name	string
 }
 
 func (p singleFilePlugin) writeToDir(finalDir string) error {
@@ -140,7 +140,7 @@ func (p singleFilePlugin) writeToDir(finalDir string) error {
 		finalPath += ".exe"
 	}
 	// We are writing an executable.
-	return os.WriteFile(finalPath, bytes, 0o700) //nolint:gosec
+	return os.WriteFile(finalPath, bytes, 0o700)	//nolint:gosec
 }
 
 func (p singleFilePlugin) Close() error {

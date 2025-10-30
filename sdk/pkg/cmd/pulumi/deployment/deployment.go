@@ -15,7 +15,7 @@
 package deployment
 
 import (
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
@@ -24,13 +24,13 @@ func NewDeploymentCmd(ws pkgWorkspace.Context) *cobra.Command {
 	cmd := &cobra.Command{
 		// This is temporarily hidden while we iterate over the new set of commands,
 		// we will remove before releasing these new set of features.
-		Hidden: true,
-		Use:    "deployment",
-		Short:  "Manage stack deployments on Pulumi Cloud",
+		Hidden:	true,
+		Use:	"deployment",
+		Short:	"Manage stack deployments on Pulumi Cloud",
 		Long: "Manage stack deployments on Pulumi Cloud.\n" +
 			"\n" +
 			"Use this command to trigger deployment jobs and manage deployment settings.",
-		Args: cmdutil.NoArgs,
+		Args:	cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},

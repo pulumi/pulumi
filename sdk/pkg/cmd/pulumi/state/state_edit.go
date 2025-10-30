@@ -24,14 +24,14 @@ import (
 	"reflect"
 
 	"github.com/google/shlex"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/secrets"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -46,17 +46,17 @@ func newStateEditCommand() *cobra.Command {
 		Colorizer: cmdutil.GetGlobalColorization(),
 	}
 	cmd := &cobra.Command{
-		Use: "edit",
+		Use:	"edit",
 		// TODO(dixler) Add test for unicode round-tripping before unhiding.
 		// TODO(fraser) This needs tests _in general_ it is currently basically untested.
-		Hidden: !env.Experimental.Value(),
-		Short:  "Edit the current stack's state in your EDITOR",
+		Hidden:	!env.Experimental.Value(),
+		Short:	"Edit the current stack's state in your EDITOR",
 		Long: `[EXPERIMENTAL] Edit the current stack's state in your EDITOR
 
 This command can be used to surgically edit a stack's state in the editor
 specified by the EDITOR environment variable and will provide the user with
 a preview showing a diff of the altered state.`,
-		Args: cmdutil.NoArgs,
+		Args:	cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !cmdutil.Interactive() {
 				return errors.New("pulumi state edit must be run in interactive mode")
@@ -72,8 +72,8 @@ a preview showing a diff of the altered state.`,
 				stackName,
 				cmdStack.LoadOnly,
 				display.Options{
-					Color:         cmdutil.GetGlobalColorization(),
-					IsInteractive: true,
+					Color:		cmdutil.GetGlobalColorization(),
+					IsInteractive:	true,
 				},
 			)
 			if err != nil {
@@ -92,18 +92,18 @@ a preview showing a diff of the altered state.`,
 }
 
 type stateEditCmd struct {
-	Stdin     io.Reader
-	Stdout    io.Writer
-	Colorizer colors.Colorization
+	Stdin		io.Reader
+	Stdout		io.Writer
+	Colorizer	colors.Colorization
 }
 
 type snapshotBuffer struct {
-	Name     func() string
-	Snapshot func(ctx context.Context) (*deploy.Snapshot, error)
-	Reset    func() error
-	Cleanup  func()
+	Name		func() string
+	Snapshot	func(ctx context.Context) (*deploy.Snapshot, error)
+	Reset		func() error
+	Cleanup		func()
 
-	originalText snapshotText
+	originalText	snapshotText
 }
 
 func newSnapshotBuffer(fileExt string, sf snapshotEncoder, snap *deploy.Snapshot) (*snapshotBuffer, error) {
@@ -119,7 +119,7 @@ func newSnapshotBuffer(fileExt string, sf snapshotEncoder, snap *deploy.Snapshot
 		cmdutil.Diag().Errorf(diag.RawMessage("", fmt.Sprintf("initial state unable to be serialized: %v", err)))
 	}
 	t := &snapshotBuffer{
-		Name: func() string { return tempFile.Name() },
+		Name:	func() string { return tempFile.Name() },
 		Snapshot: func(ctx context.Context) (*deploy.Snapshot, error) {
 			b, err := os.ReadFile(tempFile.Name())
 			if err != nil {
@@ -133,7 +133,7 @@ func newSnapshotBuffer(fileExt string, sf snapshotEncoder, snap *deploy.Snapshot
 		Cleanup: func() {
 			os.Remove(tempFile.Name())
 		},
-		originalText: originalText,
+		originalText:	originalText,
 	}
 	if err := t.Reset(); err != nil {
 		t.Cleanup()
@@ -275,7 +275,7 @@ func openInEditorInternal(editor, filename string) error {
 	}
 	args = append(args, filename)
 
-	cmd := exec.Command(args[0], args[1:]...) //nolint:gosec
+	cmd := exec.Command(args[0], args[1:]...)	//nolint:gosec
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

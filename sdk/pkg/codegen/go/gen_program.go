@@ -34,12 +34,12 @@ import (
 	"github.com/iancoleman/strcase"
 	"golang.org/x/mod/modfile"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model/format"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -48,48 +48,48 @@ import (
 )
 
 const (
-	IndexToken   = "index"
-	fromBase64Fn = "fromBase64"
+	IndexToken	= "index"
+	fromBase64Fn	= "fromBase64"
 )
 
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
-	program             *pcl.Program
-	packages            map[string]*schema.Package
-	contexts            map[string]map[string]*pkgContext
-	diagnostics         hcl.Diagnostics
-	spills              *spills
-	jsonTempSpiller     *jsonSpiller
-	ternaryTempSpiller  *tempSpiller
-	readDirTempSpiller  *readDirSpiller
-	splatSpiller        *splatSpiller
-	optionalSpiller     *optionalSpiller
-	inlineInvokeSpiller *inlineInvokeSpiller
-	scopeTraversalRoots codegen.StringSet
-	arrayHelpers        map[string]*promptToInputArrayHelper
-	isErrAssigned       bool
-	tmpVarCount         int
-	configCreated       bool
-	externalCache       *Cache
+	program			*pcl.Program
+	packages		map[string]*schema.Package
+	contexts		map[string]map[string]*pkgContext
+	diagnostics		hcl.Diagnostics
+	spills			*spills
+	jsonTempSpiller		*jsonSpiller
+	ternaryTempSpiller	*tempSpiller
+	readDirTempSpiller	*readDirSpiller
+	splatSpiller		*splatSpiller
+	optionalSpiller		*optionalSpiller
+	inlineInvokeSpiller	*inlineInvokeSpiller
+	scopeTraversalRoots	codegen.StringSet
+	arrayHelpers		map[string]*promptToInputArrayHelper
+	isErrAssigned		bool
+	tmpVarCount		int
+	configCreated		bool
+	externalCache		*Cache
 
 	// Tracks imports for a file as we generate code.
-	importer *fileImporter
+	importer	*fileImporter
 
 	// inGenTupleConExprListArgs indicates that a the generator is processing an args list within a TupleConExpression.
-	inGenTupleConExprListArgs bool
-	isPtrArg                  bool
-	isComponent               bool
+	inGenTupleConExprListArgs	bool
+	isPtrArg			bool
+	isComponent			bool
 
 	// User-configurable options
-	assignResourcesToVariables bool // Assign resource to a new variable instead of _.
-	deferredOutputVariables    []*pcl.DeferredOutputVariable
+	assignResourcesToVariables	bool	// Assign resource to a new variable instead of _.
+	deferredOutputVariables		[]*pcl.DeferredOutputVariable
 }
 
 // GenerateProgramOptions are used to configure optional generator behavior.
 type GenerateProgramOptions struct {
-	AssignResourcesToVariables bool // Assign resource to a new variable instead of _.
-	ExternalCache              *Cache
+	AssignResourcesToVariables	bool	// Assign resource to a new variable instead of _.
+	ExternalCache			*Cache
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -113,20 +113,20 @@ func newGenerator(program *pcl.Program, opts GenerateProgramOptions) (*generator
 	}
 
 	g := &generator{
-		program:             program,
-		packages:            packages,
-		contexts:            contexts,
-		spills:              &spills{counts: map[string]int{}},
-		jsonTempSpiller:     &jsonSpiller{},
-		ternaryTempSpiller:  &tempSpiller{},
-		readDirTempSpiller:  &readDirSpiller{},
-		splatSpiller:        &splatSpiller{},
-		optionalSpiller:     &optionalSpiller{},
-		inlineInvokeSpiller: &inlineInvokeSpiller{},
-		scopeTraversalRoots: codegen.NewStringSet(),
-		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
-		externalCache:       opts.ExternalCache,
-		importer:            newFileImporter(),
+		program:		program,
+		packages:		packages,
+		contexts:		contexts,
+		spills:			&spills{counts: map[string]int{}},
+		jsonTempSpiller:	&jsonSpiller{},
+		ternaryTempSpiller:	&tempSpiller{},
+		readDirTempSpiller:	&readDirSpiller{},
+		splatSpiller:		&splatSpiller{},
+		optionalSpiller:	&optionalSpiller{},
+		inlineInvokeSpiller:	&inlineInvokeSpiller{},
+		scopeTraversalRoots:	codegen.NewStringSet(),
+		arrayHelpers:		make(map[string]*promptToInputArrayHelper),
+		externalCache:		opts.ExternalCache,
+		importer:		newFileImporter(),
 	}
 
 	// Apply any generate options.
@@ -137,14 +137,14 @@ func newGenerator(program *pcl.Program, opts GenerateProgramOptions) (*generator
 }
 
 type ObjectTypeFromConfigMetadata = struct {
-	TypeName      string
-	ComponentName string
+	TypeName	string
+	ComponentName	string
 }
 
 func annotateObjectTypedConfig(componentName string, typeName string, objectType *model.ObjectType) *model.ObjectType {
 	objectType.Annotate(&ObjectTypeFromConfigMetadata{
-		TypeName:      typeName,
-		ComponentName: componentName,
+		TypeName:	typeName,
+		ComponentName:	componentName,
 	})
 
 	return objectType
@@ -323,7 +323,7 @@ func (g *generator) genComponentType(w io.Writer, componentName string, componen
 		for _, output := range outputs {
 			g.Fgen(w, g.Indent)
 			fieldName := Title(output.LogicalName())
-			fieldType := "pulumi.AnyOutput" // TODO: update this
+			fieldType := "pulumi.AnyOutput"	// TODO: update this
 			g.Fgenf(w, "%s %s\n", fieldName, fieldType)
 			g.Fgen(w, "")
 		}
@@ -463,10 +463,10 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 	} else {
 		// add a warning diagnostic when there is a formatting error
 		g.diagnostics = g.diagnostics.Append(&hcl.Diagnostic{
-			Severity: hcl.DiagWarning,
-			Subject:  &hcl.Range{Filename: "main.go"},
-			Summary:  "could not format go code",
-			Detail:   err.Error(),
+			Severity:	hcl.DiagWarning,
+			Subject:	&hcl.Range{Filename: "main.go"},
+			Summary:	"could not format go code",
+			Detail:		err.Error(),
 		})
 	}
 
@@ -502,10 +502,10 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 		} else {
 			// add a warning diagnostic when there is a formatting error
 			componentGenerator.diagnostics = componentGenerator.diagnostics.Append(&hcl.Diagnostic{
-				Severity: hcl.DiagWarning,
-				Subject:  &hcl.Range{Filename: componentFilename + ".go"},
-				Summary:  "could not format go code",
-				Detail:   err.Error(),
+				Severity:	hcl.DiagWarning,
+				Subject:	&hcl.Range{Filename: componentFilename + ".go"},
+				Summary:	"could not format go code",
+				Detail:		err.Error(),
 			})
 		}
 		files[componentFilename+".go"] = componentContent
@@ -976,7 +976,7 @@ func (g *generator) getGoPackageInfo(pkg string) (GoPackageInfo, bool) {
 func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
 	// We do this before we let the user set overrides. That way the user can still have a
 	// module named IndexToken.
-	info, hasInfo := g.getGoPackageInfo(pkg) // We're allowing `info` to be zero-initialized
+	info, hasInfo := g.getGoPackageInfo(pkg)	// We're allowing `info` to be zero-initialized
 	mod = strings.ToLower(mod)
 	importPath := func(mod string) string {
 		importBasePath := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, versionPath, pkg)
@@ -1090,8 +1090,8 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	appendOption := func(name string, value model.Expression, destType model.Type) {
 		if block == nil {
 			block = &model.Block{
-				Type: "options",
-				Body: &model.Body{},
+				Type:	"options",
+				Body:	&model.Body{},
 			}
 		}
 
@@ -1099,9 +1099,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 		temps = append(temps, valueTemps...)
 
 		block.Body.Items = append(block.Body.Items, &model.Attribute{
-			Tokens: syntax.NewAttributeTokens(name),
-			Name:   name,
-			Value:  value,
+			Tokens:	syntax.NewAttributeTokens(name),
+			Name:	name,
+			Value:	value,
 		})
 	}
 
@@ -1482,16 +1482,16 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 		if len(deferredOutputs) > 0 {
 			lowered, _ := g.lowerExpression(expr, expr.Type())
 			expr = &model.FunctionCallExpression{
-				Name: "castDeferredOutput",
-				Args: []model.Expression{lowered},
+				Name:	"castDeferredOutput",
+				Args:	[]model.Expression{lowered},
 				Signature: model.StaticFunctionSignature{
 					Parameters: []model.Parameter{
 						{
-							Name: "output",
-							Type: model.NewOutputType(expr.Type()),
+							Name:	"output",
+							Type:	model.NewOutputType(expr.Type()),
 						},
 					},
-					ReturnType: model.NewOutputType(expr.Type()),
+					ReturnType:	model.NewOutputType(expr.Type()),
 				},
 			}
 
@@ -1500,8 +1500,8 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 		}
 
 		componentInputs = append(componentInputs, &model.Attribute{
-			Name:  attr.Name,
-			Value: expr,
+			Name:	attr.Name,
+			Value:	expr,
 		})
 
 		// add the deferred outputs local to this component
@@ -1655,8 +1655,8 @@ func liftValueToOutput(value model.Expression) (model.Expression, model.Type) {
 		for i, item := range expr.Items {
 			lifted, _ := liftValueToOutput(item.Value)
 			expr.Items[i] = model.ObjectConsItem{
-				Key:   item.Key,
-				Value: lifted,
+				Key:	item.Key,
+				Value:	lifted,
 			}
 		}
 	}
@@ -1835,7 +1835,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 
 	getType := ""
 	switch v.Type() {
-	case model.StringType: // Already default
+	case model.StringType:	// Already default
 	case model.NumberType:
 		getType = "Float64"
 	case model.IntType:
@@ -2007,17 +2007,17 @@ func programPackageDefs(program *pcl.Program) ([]*schema.Package, error) {
 type fileImporter struct {
 	// used holds all identifier names that have been used
 	// for imports in this file, and the imports that they refer to.
-	used map[string]string // identifier name -> import path
+	used	map[string]string	// identifier name -> import path
 
 	// For import paths where the package name is not unique,
 	// this map holds the name that was used for the import.
-	aliases map[string]string // import path -> alias
+	aliases	map[string]string	// import path -> alias
 }
 
 func newFileImporter() *fileImporter {
 	return &fileImporter{
-		used:    make(map[string]string),
-		aliases: make(map[string]string),
+		used:		make(map[string]string),
+		aliases:	make(map[string]string),
 	}
 }
 
@@ -2063,7 +2063,7 @@ func (fi *fileImporter) Import(importPath string, name string) (actualName strin
 
 	// Already imported using the same name.
 	if imported, ok := fi.used[name]; ok && imported == importPath {
-		return name // no alias
+		return name	// no alias
 	}
 
 	// Preferred name has not yet been used.
@@ -2100,7 +2100,7 @@ func (fi *fileImporter) Import(importPath string, name string) (actualName strin
 	for i := 2; ; i++ {
 		candidate := name + strconv.Itoa(i)
 		if _, ok := fi.used[candidate]; ok {
-			continue // already used
+			continue	// already used
 		}
 
 		fi.used[candidate] = importPath
@@ -2145,8 +2145,8 @@ func (fi *fileImporter) ImportGroups() [][]string {
 	// > Import paths without dots are reserved for the standard library
 	// > and toolchain
 	var (
-		stdlib []string
-		other  []string
+		stdlib	[]string
+		other	[]string
 	)
 	for _, importPath := range importPaths {
 		var spec string

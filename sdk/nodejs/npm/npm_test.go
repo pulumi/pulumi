@@ -28,20 +28,20 @@ import (
 func TestNPMInstallCmd(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		production   bool
-		expectedArgs []string
+		production	bool
+		expectedArgs	[]string
 	}{
 		{
-			production:   true,
-			expectedArgs: []string{"false", "install", "--loglevel=error", "--production"},
+			production:	true,
+			expectedArgs:	[]string{"false", "install", "--loglevel=error", "--production"},
 		}, {
-			production:   false,
-			expectedArgs: []string{"false", "install", "--loglevel=error"},
+			production:	false,
+			expectedArgs:	[]string{"false", "install", "--loglevel=error"},
 		},
 	}
 
 	pkgManager := &npmManager{
-		executable: "false", // a fake path for testing.
+		executable: "false",	// a fake path for testing.
 	}
 	ctx := context.Background()
 

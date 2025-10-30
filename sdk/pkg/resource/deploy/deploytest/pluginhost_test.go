@@ -66,47 +66,47 @@ func TestHostEngine(t *testing.T) {
 		t.Run("Log", func(t *testing.T) {
 			t.Parallel()
 			tests := []struct {
-				name           string
-				req            *pulumirpc.LogRequest
-				expectedError  error
-				expectedOutput *emptypb.Empty
+				name		string
+				req		*pulumirpc.LogRequest
+				expectedError	error
+				expectedOutput	*emptypb.Empty
 			}{
 				{
-					name:           "DebugSeverity",
-					req:            &pulumirpc.LogRequest{Severity: pulumirpc.LogSeverity_DEBUG},
-					expectedOutput: &emptypb.Empty{},
+					name:		"DebugSeverity",
+					req:		&pulumirpc.LogRequest{Severity: pulumirpc.LogSeverity_DEBUG},
+					expectedOutput:	&emptypb.Empty{},
 				},
 				{
-					name:           "InfoSeverity",
-					req:            &pulumirpc.LogRequest{Severity: pulumirpc.LogSeverity_INFO},
-					expectedOutput: &emptypb.Empty{},
+					name:		"InfoSeverity",
+					req:		&pulumirpc.LogRequest{Severity: pulumirpc.LogSeverity_INFO},
+					expectedOutput:	&emptypb.Empty{},
 				},
 				{
-					name:           "WarningSeverity",
-					req:            &pulumirpc.LogRequest{Severity: pulumirpc.LogSeverity_INFO},
-					expectedOutput: &emptypb.Empty{},
+					name:		"WarningSeverity",
+					req:		&pulumirpc.LogRequest{Severity: pulumirpc.LogSeverity_INFO},
+					expectedOutput:	&emptypb.Empty{},
 				},
 				{
-					name:           "ErrorSeverity",
-					req:            &pulumirpc.LogRequest{Severity: pulumirpc.LogSeverity_INFO},
-					expectedOutput: &emptypb.Empty{},
+					name:		"ErrorSeverity",
+					req:		&pulumirpc.LogRequest{Severity: pulumirpc.LogSeverity_INFO},
+					expectedOutput:	&emptypb.Empty{},
 				},
 				{
-					name:          "InvalidSeverity",
-					req:           &pulumirpc.LogRequest{Severity: 99999},
-					expectedError: fmt.Errorf("Unrecognized logging severity: %v", 99999),
+					name:		"InvalidSeverity",
+					req:		&pulumirpc.LogRequest{Severity: 99999},
+					expectedError:	fmt.Errorf("Unrecognized logging severity: %v", 99999),
 				},
 			}
 
 			hostEngine := &hostEngine{
-				sink:       &NoopSink{},
-				statusSink: &NoopSink{},
+				sink:		&NoopSink{},
+				statusSink:	&NoopSink{},
 			}
 
 			for _, ephemeral := range []bool{true, false} {
 				for _, tt := range tests {
 					tt.req.Ephemeral = ephemeral
-					t.Run(tt.name, func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
+					t.Run(tt.name, func(t *testing.T) {	//nolint:paralleltest // golangci-lint v2 upgrade
 						output, err := hostEngine.Log(context.Background(), tt.req)
 						assert.Equal(t, tt.expectedError, err)
 						assert.Equal(t, tt.expectedOutput, output)
@@ -125,8 +125,8 @@ func TestPluginHostProvider(t *testing.T) {
 		host := &pluginHost{}
 		_, err := host.Provider(workspace.PackageDescriptor{
 			PluginSpec: workspace.PluginSpec{
-				Name:    "pkgA",
-				Version: &expectedVersion,
+				Name:		"pkgA",
+				Version:	&expectedVersion,
 			},
 		})
 		assert.ErrorContains(t, err, "Could not find plugin for (pkgA, 1.0.0)")
@@ -138,8 +138,8 @@ func TestPluginHostProvider(t *testing.T) {
 			host := &pluginHost{closed: true}
 			_, err := host.Provider(workspace.PackageDescriptor{
 				PluginSpec: workspace.PluginSpec{
-					Name:    "pkgA",
-					Version: &semver.Version{},
+					Name:		"pkgA",
+					Version:	&semver.Version{},
 				},
 			})
 			assert.ErrorIs(t, err, ErrHostIsClosed)
@@ -184,7 +184,7 @@ func TestPluginHostProvider(t *testing.T) {
 	t.Run("GetRequiredPackages (language runtime is shutting down)", func(t *testing.T) {
 		t.Parallel()
 		host := &pluginHost{
-			closed: true,
+			closed:	true,
 			languageRuntime: &languageRuntime{
 				closed: true,
 			},
@@ -208,7 +208,7 @@ func TestPluginHostProvider(t *testing.T) {
 				t.Parallel()
 				var called bool
 				host := &pluginHost{
-					closed: true,
+					closed:	true,
 					sink: &NoopSink{
 						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...any) {
 							called = true
@@ -222,7 +222,7 @@ func TestPluginHostProvider(t *testing.T) {
 				t.Parallel()
 				var called bool
 				host := &pluginHost{
-					closed: true,
+					closed:	true,
 					statusSink: &NoopSink{
 						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...any) {
 							called = true

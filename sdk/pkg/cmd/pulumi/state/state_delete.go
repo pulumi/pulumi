@@ -18,11 +18,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/edit"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -32,15 +32,15 @@ import (
 )
 
 func newStateDeleteCommand(ws pkgWorkspace.Context, lm backend.LoginManager) *cobra.Command {
-	var force bool // Force deletion of protected resources
+	var force bool	// Force deletion of protected resources
 	var stack string
 	var yes bool
 	var targetDependents bool
 	var all bool
 
 	cmd := &cobra.Command{
-		Use:   "delete [resource URN]",
-		Short: "Deletes a resource from a stack's state",
+		Use:	"delete [resource URN]",
+		Short:	"Deletes a resource from a stack's state",
 		Long: `Deletes a resource from a stack's state
 
 This command deletes a resource from a stack's state, as long as it is safe to do so. The resource is specified
@@ -53,8 +53,8 @@ Make sure that URNs are single-quoted to avoid having characters unexpectedly in
 
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 `,
-		Example: "pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider'",
-		Args:    cobra.MaximumNArgs(1),
+		Example:	"pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider'",
+		Args:		cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()

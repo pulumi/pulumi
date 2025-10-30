@@ -17,7 +17,7 @@ package autonaming
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/autonaming"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,63 +28,63 @@ func TestParseAutonamingConfigs(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name       string
-		org        string
-		configYAML string
-		wantConfig *autonaming.Global
-		wantErr    string
+		name		string
+		org		string
+		configYAML	string
+		wantConfig	*autonaming.Global
+		wantErr		string
 	}{
 		{
-			name:       "empty config returns nil",
-			configYAML: "",
-			wantConfig: nil,
+			name:		"empty config returns nil",
+			configYAML:	"",
+			wantConfig:	nil,
 		},
 		{
-			name: "default config",
+			name:	"default config",
 			configYAML: `
 pulumi:autonaming:
   mode: default`,
 			wantConfig: &autonaming.Global{
-				Default:   autonaming.Default(),
-				Providers: map[string]autonaming.Provider{},
+				Default:	autonaming.Default(),
+				Providers:	map[string]autonaming.Provider{},
 			},
 		},
 		{
-			name: "basic pattern config",
+			name:	"basic pattern config",
 			configYAML: `
 pulumi:autonaming:
   pattern: ${name}-${random(8)}
   enforce: true`,
 			wantConfig: &autonaming.Global{
 				Default: &autonaming.Pattern{
-					Pattern: "${name}-${random(8)}",
-					Enforce: true,
+					Pattern:	"${name}-${random(8)}",
+					Enforce:	true,
 				},
-				Providers: map[string]autonaming.Provider{},
+				Providers:	map[string]autonaming.Provider{},
 			},
 		},
 		{
-			name: "basic verbatim config",
+			name:	"basic verbatim config",
 			configYAML: `
 pulumi:autonaming:
   mode: verbatim`,
 			wantConfig: &autonaming.Global{
-				Default:   autonaming.Verbatim(),
-				Providers: map[string]autonaming.Provider{},
+				Default:	autonaming.Verbatim(),
+				Providers:	map[string]autonaming.Provider{},
 			},
 		},
 		{
-			name: "basic disabled config",
+			name:	"basic disabled config",
 			configYAML: `
 pulumi:autonaming:
   mode: disabled`,
 			wantConfig: &autonaming.Global{
-				Default:   autonaming.Disabled(),
-				Providers: map[string]autonaming.Provider{},
+				Default:	autonaming.Disabled(),
+				Providers:	map[string]autonaming.Provider{},
 			},
 		},
 		{
-			name: "provider pattern config",
+			name:	"provider pattern config",
 			configYAML: `
 pulumi:autonaming:
   providers:
@@ -92,20 +92,20 @@ pulumi:autonaming:
       pattern: aws-${name}
       enforce: false`,
 			wantConfig: &autonaming.Global{
-				Default: autonaming.Default(),
+				Default:	autonaming.Default(),
 				Providers: map[string]autonaming.Provider{
 					"aws": {
 						Default: &autonaming.Pattern{
-							Pattern: "aws-${name}",
-							Enforce: false,
+							Pattern:	"aws-${name}",
+							Enforce:	false,
 						},
-						Resources: map[string]autonaming.Autonamer{},
+						Resources:	map[string]autonaming.Autonamer{},
 					},
 				},
 			},
 		},
 		{
-			name: "resource pattern config",
+			name:	"resource pattern config",
 			configYAML: `
 pulumi:autonaming:
   providers:
@@ -115,14 +115,14 @@ pulumi:autonaming:
           pattern: bucket-${name}
           enforce: true`,
 			wantConfig: &autonaming.Global{
-				Default: autonaming.Default(),
+				Default:	autonaming.Default(),
 				Providers: map[string]autonaming.Provider{
 					"aws": {
-						Default: autonaming.Default(),
+						Default:	autonaming.Default(),
 						Resources: map[string]autonaming.Autonamer{
 							"aws:s3/bucket:Bucket": &autonaming.Pattern{
-								Pattern: "bucket-${name}",
-								Enforce: true,
+								Pattern:	"bucket-${name}",
+								Enforce:	true,
 							},
 						},
 					},
@@ -130,8 +130,8 @@ pulumi:autonaming:
 			},
 		},
 		{
-			name: "basic pattern config with org, project, and stack",
-			org:  "myorg",
+			name:	"basic pattern config with org, project, and stack",
+			org:	"myorg",
 			configYAML: `
 pulumi:autonaming:
   pattern: ${organization}-${project}-${stack}-${name}-${random(8)}`,
@@ -139,11 +139,11 @@ pulumi:autonaming:
 				Default: &autonaming.Pattern{
 					Pattern: "myorg-myproj-mystack-${name}-${random(8)}",
 				},
-				Providers: map[string]autonaming.Provider{},
+				Providers:	map[string]autonaming.Provider{},
 			},
 		},
 		{
-			name: "config values are available",
+			name:	"config values are available",
 			configYAML: `
 pulumi:autonaming:
   pattern: ${name}-${config.foo}
@@ -152,41 +152,41 @@ myproj:foo: bar`,
 				Default: &autonaming.Pattern{
 					Pattern: "${name}-bar",
 				},
-				Providers: map[string]autonaming.Provider{},
+				Providers:	map[string]autonaming.Provider{},
 			},
 		},
 		{
-			name: "invalid config section returns error",
+			name:	"invalid config section returns error",
 			configYAML: `
 pulumi:autonaming: 123`,
-			wantErr: "invalid autonaming config structure",
+			wantErr:	"invalid autonaming config structure",
 		},
 		{
-			name: "invalid mode returns error",
+			name:	"invalid mode returns error",
 			configYAML: `
 pulumi:autonaming:
   mode: invalid`,
-			wantErr: "invalid naming mode: invalid",
+			wantErr:	"invalid naming mode: invalid",
 		},
 		{
-			name: "enforce without pattern returns error",
+			name:	"enforce without pattern returns error",
 			configYAML: `
 pulumi:autonaming:
   enforce: true`,
-			wantErr: "pattern must be specified",
+			wantErr:	"pattern must be specified",
 		},
 		{
-			name: "enforce on provider without pattern returns error",
+			name:	"enforce on provider without pattern returns error",
 			configYAML: `
 pulumi:autonaming:
   pattern: ${name}
   providers:
     aws:
       enforce: true`,
-			wantErr: "pattern must be specified",
+			wantErr:	"pattern must be specified",
 		},
 		{
-			name: "enforce on resource without pattern returns error",
+			name:	"enforce on resource without pattern returns error",
 			configYAML: `
 pulumi:autonaming:
   pattern: ${name}
@@ -196,20 +196,20 @@ pulumi:autonaming:
       resources:
         aws:s3/bucket:Bucket:
           enforce: true`,
-			wantErr: "pattern must be specified",
+			wantErr:	"pattern must be specified",
 		},
 		{
-			name: "invalid provider mode returns error",
+			name:	"invalid provider mode returns error",
 			configYAML: `
 pulumi:autonaming:
   mode: verbatim
   providers:
     aws:
       mode: magic`,
-			wantErr: "invalid naming mode: magic",
+			wantErr:	"invalid naming mode: magic",
 		},
 		{
-			name: "invalid resource mode returns error",
+			name:	"invalid resource mode returns error",
 			configYAML: `
 pulumi:autonaming:
   mode: verbatim
@@ -218,41 +218,41 @@ pulumi:autonaming:
       resources:
         aws:s3/bucket:Bucket:
           mode: custom`,
-			wantErr: "invalid naming mode: custom",
+			wantErr:	"invalid naming mode: custom",
 		},
 		{
-			name: "cannot specify both mode and pattern",
+			name:	"cannot specify both mode and pattern",
 			configYAML: `
 pulumi:autonaming:
   mode: verbatim
   pattern: test-${name}`,
-			wantErr: "cannot specify both mode and pattern/enforce",
+			wantErr:	"cannot specify both mode and pattern/enforce",
 		},
 		{
-			name: "cannot specify both mode and enforce",
+			name:	"cannot specify both mode and enforce",
 			configYAML: `
 pulumi:autonaming:
   mode: verbatim
   enforce: true`,
-			wantErr: "cannot specify both mode and pattern/enforce",
+			wantErr:	"cannot specify both mode and pattern/enforce",
 		},
 		{
-			name: "invalid config structure returns error",
+			name:	"invalid config structure returns error",
 			configYAML: `
 pulumi:autonaming:
   mode: verbatim
   invalid_field: value`,
-			wantErr: "invalid autonaming config structure",
+			wantErr:	"invalid autonaming config structure",
 		},
 		{
-			name: "error in config",
+			name:	"error in config",
 			configYAML: `
 pulumi:autonaming:
   pattern: ${name}-${config.unknown}`,
-			wantErr: "no value found for key \"unknown\"",
+			wantErr:	"no value found for key \"unknown\"",
 		},
 		{
-			name: "complex config with all features",
+			name:	"complex config with all features",
 			configYAML: `
 pulumi:autonaming:
   pattern: global-${name}
@@ -273,24 +273,24 @@ pulumi:autonaming:
 myproj:foo: bar`,
 			wantConfig: &autonaming.Global{
 				Default: &autonaming.Pattern{
-					Pattern: "global-${name}",
-					Enforce: false,
+					Pattern:	"global-${name}",
+					Enforce:	false,
 				},
 				Providers: map[string]autonaming.Provider{
 					"aws": {
 						Default: &autonaming.Pattern{
-							Pattern: "mystack-aws-${name}",
-							Enforce: true,
+							Pattern:	"mystack-aws-${name}",
+							Enforce:	true,
 						},
 						Resources: map[string]autonaming.Autonamer{
 							"aws:s3/bucket:Bucket": &autonaming.Pattern{
-								Pattern: "bar-bucket-${name}-${uuid}",
-								Enforce: true,
+								Pattern:	"bar-bucket-${name}-${uuid}",
+								Enforce:	true,
 							},
 						},
 					},
 					"azure": {
-						Default: autonaming.Verbatim(),
+						Default:	autonaming.Verbatim(),
 						Resources: map[string]autonaming.Autonamer{
 							"azure:storage/account:Account": autonaming.Disabled(),
 						},
@@ -299,7 +299,7 @@ myproj:foo: bar`,
 			},
 		},
 		{
-			name: "provider uses global when it has no config on its own and solely resources are configured",
+			name:	"provider uses global when it has no config on its own and solely resources are configured",
 			configYAML: `
 pulumi:autonaming:
   mode: verbatim
@@ -309,10 +309,10 @@ pulumi:autonaming:
         aws:ec2/instance:Instance:
           pattern: instance-${name}`,
 			wantConfig: &autonaming.Global{
-				Default: autonaming.Verbatim(),
+				Default:	autonaming.Verbatim(),
 				Providers: map[string]autonaming.Provider{
 					"aws": {
-						Default: autonaming.Verbatim(),
+						Default:	autonaming.Verbatim(),
 						Resources: map[string]autonaming.Autonamer{
 							"aws:ec2/instance:Instance": &autonaming.Pattern{
 								Pattern: "instance-${name}",
@@ -323,7 +323,7 @@ pulumi:autonaming:
 			},
 		},
 		{
-			name: "resource definition without mode or pattern produces an error",
+			name:	"resource definition without mode or pattern produces an error",
 			configYAML: `
 pulumi:autonaming:
   mode: verbatim
@@ -332,10 +332,10 @@ pulumi:autonaming:
       mode: disabled
       resources:
         aws:s3/bucket:Bucket: {}`,
-			wantErr: "mode or pattern must be specified",
+			wantErr:	"mode or pattern must be specified",
 		},
 		{
-			name: "provider can opt back into default autonaming",
+			name:	"provider can opt back into default autonaming",
 			configYAML: `
 pulumi:autonaming:
   mode: verbatim
@@ -343,17 +343,17 @@ pulumi:autonaming:
     aws:
       mode: default`,
 			wantConfig: &autonaming.Global{
-				Default: autonaming.Verbatim(),
+				Default:	autonaming.Verbatim(),
 				Providers: map[string]autonaming.Provider{
 					"aws": {
-						Default:   autonaming.Default(),
-						Resources: map[string]autonaming.Autonamer{},
+						Default:	autonaming.Default(),
+						Resources:	map[string]autonaming.Autonamer{},
 					},
 				},
 			},
 		},
 		{
-			name: "resource can opt back into default autonaming",
+			name:	"resource can opt back into default autonaming",
 			configYAML: `
 pulumi:autonaming:
   mode: verbatim
@@ -364,10 +364,10 @@ pulumi:autonaming:
         aws:s3/bucket:Bucket:
           mode: default`,
 			wantConfig: &autonaming.Global{
-				Default: autonaming.Verbatim(),
+				Default:	autonaming.Verbatim(),
 				Providers: map[string]autonaming.Provider{
 					"aws": {
-						Default: autonaming.Disabled(),
+						Default:	autonaming.Disabled(),
 						Resources: map[string]autonaming.Autonamer{
 							"aws:s3/bucket:Bucket": autonaming.Default(),
 						},
@@ -400,9 +400,9 @@ pulumi:autonaming:
 				org = "default"
 			}
 			stack := StackContext{
-				Organization: org,
-				Project:      "myproj",
-				Stack:        "mystack",
+				Organization:	org,
+				Project:	"myproj",
+				Stack:		"mystack",
 			}
 			autonamer, err := ParseAutonamingConfig(stack, cfg, decrypter)
 

@@ -25,12 +25,12 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model/format"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -44,13 +44,13 @@ type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
 
-	program     *pcl.Program
-	diagnostics hcl.Diagnostics
+	program		*pcl.Program
+	diagnostics	hcl.Diagnostics
 
-	asyncMain               bool
-	configCreated           bool
-	isComponent             bool
-	deferredOutputVariables []*pcl.DeferredOutputVariable
+	asyncMain		bool
+	configCreated		bool
+	isComponent		bool
+	deferredOutputVariables	[]*pcl.DeferredOutputVariable
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -130,8 +130,8 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 					}
 					name := o.LogicalName()
 					result.Items = append(result.Items, model.ObjectConsItem{
-						Key:   &model.LiteralValueExpression{Value: cty.StringVal(name)},
-						Value: g.lowerExpression(o.Value, o.Type()),
+						Key:	&model.LiteralValueExpression{Value: cty.StringVal(name)},
+						Value:	g.lowerExpression(o.Value, o.Type()),
 					})
 				}
 			}
@@ -153,8 +153,8 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 		componentFilename := filepath.Base(componentDir)
 		componentName := component.DeclarationName()
 		componentGenerator := &generator{
-			program:     component.Program,
-			isComponent: true,
+			program:	component.Program,
+			isComponent:	true,
 		}
 
 		componentGenerator.Formatter = format.NewFormatter(componentGenerator)
@@ -395,8 +395,8 @@ func (g *generator) genComment(w io.Writer, comment syntax.Comment) {
 }
 
 type programImports struct {
-	importStatements      []string
-	preambleHelperMethods codegen.StringSet
+	importStatements	[]string
+	preambleHelperMethods	codegen.StringSet
 }
 
 func (g *generator) collectProgramImports(program *pcl.Program) programImports {
@@ -508,8 +508,8 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 	sort.Strings(imports)
 
 	return programImports{
-		importStatements:      imports,
-		preambleHelperMethods: preambleHelperMethods,
+		importStatements:	imports,
+		preambleHelperMethods:	preambleHelperMethods,
 	}
 }
 
@@ -791,10 +791,10 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 				// add the outputs to abject for registration
 				registeredOutputs.Items = append(registeredOutputs.Items, model.ObjectConsItem{
 					Key: &model.LiteralValueExpression{
-						Tokens: syntax.NewLiteralValueTokens(cty.StringVal(outputProperty)),
-						Value:  cty.StringVal(outputProperty),
+						Tokens:	syntax.NewLiteralValueTokens(cty.StringVal(outputProperty)),
+						Value:	cty.StringVal(outputProperty),
 					},
-					Value: output.Value,
+					Value:	output.Value,
 				})
 			}
 
@@ -893,10 +893,10 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 		}
 		object.Items = append(object.Items, model.ObjectConsItem{
 			Key: &model.LiteralValueExpression{
-				Tokens: syntax.NewLiteralValueTokens(cty.StringVal(name)),
-				Value:  cty.StringVal(name),
+				Tokens:	syntax.NewLiteralValueTokens(cty.StringVal(name)),
+				Value:	cty.StringVal(name),
 			},
-			Value: value,
+			Value:	value,
 		})
 	}
 
@@ -1070,8 +1070,8 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 				g.Fgenf(w, "%.20v.apply(rangeBody => {\n", rangeExpr)
 				g.Indented(func() {
 					r.Options.Range = model.VariableReference(&model.Variable{
-						Name:         "rangeBody",
-						VariableType: model.ResolveOutputs(rangeExpr.Type()),
+						Name:		"rangeBody",
+						VariableType:	model.ResolveOutputs(rangeExpr.Type()),
 					})
 					g.genResourceDeclaration(w, r, false)
 				})
@@ -1084,8 +1084,8 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 				g.Fgenf(w, "pulumi.all(%.20v).apply(rangeBody => {\n", rangeExpr)
 				g.Indented(func() {
 					r.Options.Range = model.VariableReference(&model.Variable{
-						Name:         "rangeBody",
-						VariableType: model.ResolveOutputs(rangeExpr.Type()),
+						Name:		"rangeBody",
+						VariableType:	model.ResolveOutputs(rangeExpr.Type()),
 					})
 					g.genResourceDeclaration(w, r, false)
 				})
@@ -1097,8 +1097,8 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 				g.Fgenf(w, "%.20v.apply(rangeBody => {\n", rangeExpr)
 				g.Indented(func() {
 					r.Options.Range = model.VariableReference(&model.Variable{
-						Name:         "rangeBody",
-						VariableType: model.ResolveOutputs(rangeExpr.Type()),
+						Name:		"rangeBody",
+						VariableType:	model.ResolveOutputs(rangeExpr.Type()),
 					})
 					g.genResourceDeclaration(w, r, false)
 				})
@@ -1128,8 +1128,8 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 				resKey = "value"
 			} else {
 				rangeExpr := &model.FunctionCallExpression{
-					Name: "entries",
-					Args: []model.Expression{rangeExpr},
+					Name:	"entries",
+					Args:	[]model.Expression{rangeExpr},
 				}
 				g.Fgenf(w, "%sfor (const range of %.v) {\n", g.Indent, rangeExpr)
 			}
@@ -1177,8 +1177,8 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 	for _, attr := range component.Inputs {
 		expr, deferredOutputs := pcl.ExtractDeferredOutputVariables(g.program, component, attr.Value)
 		componentInputs = append(componentInputs, &model.Attribute{
-			Name:  attr.Name,
-			Value: expr,
+			Name:	attr.Name,
+			Value:	expr,
 		})
 
 		// add the deferred outputs local to this component
@@ -1256,8 +1256,8 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 				resKey = "value"
 			} else {
 				rangeExpr := &model.FunctionCallExpression{
-					Name: "entries",
-					Args: []model.Expression{rangeExpr},
+					Name:	"entries",
+					Args:	[]model.Expression{rangeExpr},
 				}
 				g.Fgenf(w, "%sfor (const range of %.v) {\n", g.Indent, rangeExpr)
 			}
@@ -1403,9 +1403,9 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 func (g *generator) genNYI(w io.Writer, reason string, vs ...any) {
 	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
-		Severity: hcl.DiagError,
-		Summary:  message,
-		Detail:   message,
+		Severity:	hcl.DiagError,
+		Summary:	message,
+		Detail:		message,
 	})
 	g.Fgenf(w, "(() => throw new Error(%q))()", fmt.Sprintf(reason, vs...))
 }

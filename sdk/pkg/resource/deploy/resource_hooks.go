@@ -19,7 +19,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
@@ -39,9 +39,9 @@ type ResourceHookFunction func(
 
 // ResourceHook represents a resource hook with its (wrapped) callback and options.
 type ResourceHook struct {
-	Name     string               // The unqiue name of the hook.
-	Callback ResourceHookFunction // The callback of the hook.
-	OnDryRun bool                 // Whether to run this hook for previews or not.
+	Name		string			// The unqiue name of the hook.
+	Callback	ResourceHookFunction	// The callback of the hook.
+	OnDryRun	bool			// Whether to run this hook for previews or not.
 }
 
 // ResourceHooks is a registry of all resource hooks provided by a program.

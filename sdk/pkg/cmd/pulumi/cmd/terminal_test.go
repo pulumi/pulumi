@@ -25,8 +25,8 @@ func TestOptimalPageSize(t *testing.T) {
 	t.Parallel()
 	opt := func(nopts, termHeight int) int {
 		return OptimalPageSize(OptimalPageSizeOpts{
-			Nopts:          nopts,
-			TerminalHeight: termHeight,
+			Nopts:		nopts,
+			TerminalHeight:	termHeight,
 		})
 	}
 

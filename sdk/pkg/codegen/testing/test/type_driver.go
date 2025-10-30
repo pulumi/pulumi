@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -64,7 +64,7 @@ type NewTypeNameGeneratorFunc func(pkg *schema.Package) TypeNameGeneratorFunc
 
 type TypeNameGeneratorFunc func(t schema.Type) string
 
-func TestTypeNameCodegen(t *testing.T, language string, newTypeNameGenerator NewTypeNameGeneratorFunc) { //nolint:revive
+func TestTypeNameCodegen(t *testing.T, language string, newTypeNameGenerator NewTypeNameGeneratorFunc) {	//nolint:revive
 	// Read in, decode, and import the schema.
 	schemaBytes, err := os.ReadFile(filepath.FromSlash("../testing/test/testdata/types.json"))
 	require.NoError(t, err)
@@ -189,8 +189,8 @@ func TestTypeNameCodegen(t *testing.T, language string, newTypeNameGenerator New
 				plain := testCase.Expected[language].(string)
 				input := o.InputShape.Properties[i].Language["test"].(*typeTestCase).Expected[language].(string)
 				testCase.Expected[language] = map[string]any{
-					"plain": plain,
-					"input": input,
+					"plain":	plain,
+					"input":	input,
 				}
 				o.InputShape.Properties[i].Language["test"] = testCase
 			}

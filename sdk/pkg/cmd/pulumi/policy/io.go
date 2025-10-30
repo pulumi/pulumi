@@ -20,8 +20,8 @@ import (
 	"path/filepath"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	pkgCmdUtil "github.com/pulumi/pulumi/sdk/v3/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -53,9 +53,9 @@ func InstallPluginDependencies(ctx context.Context, root string, projRuntime wor
 	// policy project. Ideally we should be able to make a plugin context without any related project. But
 	// fow now this works.
 	projinfo := &engine.Projinfo{Proj: &workspace.Project{
-		Main:    ".",
-		Runtime: projRuntime,
-	}, Root: root}
+		Main:		".",
+		Runtime:	projRuntime,
+	}, Root:	root}
 	_, main, pluginCtx, err := engine.ProjectInfoContext(
 		projinfo,
 		nil,
@@ -78,8 +78,8 @@ func InstallPluginDependencies(ctx context.Context, root string, projRuntime wor
 	}
 
 	err = pkgCmdUtil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
-		Info:     programInfo,
-		IsPlugin: true,
+		Info:		programInfo,
+		IsPlugin:	true,
 	})
 	if err != nil {
 		return fmt.Errorf("installing dependencies failed: %w", err)

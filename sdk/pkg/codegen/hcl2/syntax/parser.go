@@ -23,17 +23,17 @@ import (
 
 // File represents a single parsed HCL2 source file.
 type File struct {
-	Name   string          // The name of the file.
-	Body   *hclsyntax.Body // The body of the parsed file.
-	Bytes  []byte          // The raw bytes of the source file.
-	Tokens TokenMap        // A map from syntax nodes to token information.
+	Name	string		// The name of the file.
+	Body	*hclsyntax.Body	// The body of the parsed file.
+	Bytes	[]byte		// The raw bytes of the source file.
+	Tokens	TokenMap	// A map from syntax nodes to token information.
 }
 
 // Parser is a parser for HCL2 source files.
 type Parser struct {
-	Files       []*File         // The parsed files.
-	Diagnostics hcl.Diagnostics // The diagnostics, if any, produced during parsing.
-	tokens      tokenMap        // A map from syntax nodes to token information.
+	Files		[]*File		// The parsed files.
+	Diagnostics	hcl.Diagnostics	// The diagnostics, if any, produced during parsing.
+	tokens		tokenMap	// A map from syntax nodes to token information.
 }
 
 // NewParser creates a new HCL2 parser.
@@ -56,10 +56,10 @@ func (p *Parser) ParseFile(r io.Reader, filename string) error {
 	}
 
 	p.Files = append(p.Files, &File{
-		Name:   filename,
-		Body:   hclFile.Body.(*hclsyntax.Body),
-		Bytes:  hclFile.Bytes,
-		Tokens: p.tokens,
+		Name:	filename,
+		Body:	hclFile.Body.(*hclsyntax.Body),
+		Bytes:	hclFile.Bytes,
+		Tokens:	p.tokens,
 	})
 	p.Diagnostics = append(p.Diagnostics, diags...)
 	return nil

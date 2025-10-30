@@ -106,13 +106,13 @@ func expandDependencies(ctx context.Context, deps []Resource) (map[URN]Resource,
 // marshalOptions controls the options for marshaling inputs.
 type marshalOptions struct {
 	// Set to true to error if any Outputs are present; otherwise Outputs will be awaited.
-	ErrorOnOutput bool
+	ErrorOnOutput	bool
 
 	// Set to true to exclude resource references from the set of dependencies identified
 	// during marshaling. This is useful for remote components (i.e. MLCs) where we want
 	// propertyDependencies to be empty for a property that only contains resource
 	// references.
-	ExcludeResourceRefsFromDeps bool
+	ExcludeResourceRefsFromDeps	bool
 }
 
 // marshalInputs turns resource property inputs into a map suitable for marshaling.
@@ -185,7 +185,7 @@ func marshalInputsOptions(props Input, opts *marshalOptions) (resource.PropertyM
 		for i := 0; i < numFields; i++ {
 			destField, _ := getMappedField(reflect.Value{}, i)
 			tag := destField.Tag.Get("pulumi")
-			tag = strings.Split(tag, ",")[0] // tagName,flag => tagName
+			tag = strings.Split(tag, ",")[0]	// tagName,flag => tagName
 			if tag == "" {
 				continue
 			}
@@ -317,10 +317,10 @@ func marshalInputOptionsImpl(v any,
 				}
 
 				return resource.NewProperty(resource.Output{
-					Element:      element,
-					Known:        known,
-					Secret:       secret,
-					Dependencies: dependencies,
+					Element:	element,
+					Known:		known,
+					Secret:		secret,
+					Dependencies:	dependencies,
 				}), outputDeps, nil
 			}
 		}
@@ -349,9 +349,9 @@ func marshalInputOptionsImpl(v any,
 				return resource.PropertyValue{}, nil, errors.New("invalid asset")
 			}
 			return resource.NewProperty(&rasset.Asset{
-				Path: v.Path(),
-				Text: v.Text(),
-				URI:  v.URI(),
+				Path:	v.Path(),
+				Text:	v.Text(),
+				URI:	v.URI(),
 			}), deps, nil
 		case *archive:
 			if v.invalid {
@@ -370,9 +370,9 @@ func marshalInputOptionsImpl(v any,
 				}
 			}
 			return resource.NewProperty(&rarchive.Archive{
-				Assets: assets,
-				Path:   v.Path(),
-				URI:    v.URI(),
+				Assets:	assets,
+				Path:	v.Path(),
+				URI:	v.URI(),
 			}), deps, nil
 		case Resource:
 			if opts == nil || !opts.ExcludeResourceRefsFromDeps {
@@ -492,7 +492,7 @@ func marshalInputOptionsImpl(v any,
 			for i := 0; i < typ.NumField(); i++ {
 				destField, _ := getMappedField(reflect.Value{}, i)
 				tag := destField.Tag.Get("pulumi")
-				tag = strings.Split(tag, ",")[0] // tagName,flag => tagName
+				tag = strings.Split(tag, ",")[0]	// tagName,flag => tagName
 				if tag == "" {
 					continue
 				}
@@ -994,7 +994,7 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 			}
 
 			tag := typ.Field(i).Tag.Get("pulumi")
-			tag = strings.Split(tag, ",")[0] // tagName,flag => tagName
+			tag = strings.Split(tag, ",")[0]	// tagName,flag => tagName
 			if tag == "" {
 				continue
 			}
@@ -1022,7 +1022,7 @@ type Versioned interface {
 
 type versionedMap struct {
 	sync.RWMutex
-	versions map[string][]Versioned
+	versions	map[string][]Versioned
 }
 
 // nullVersion represents the wildcard version (match any version).
@@ -1091,8 +1091,8 @@ type ResourceModule interface {
 }
 
 var (
-	resourcePackages versionedMap
-	resourceModules  versionedMap
+	resourcePackages	versionedMap
+	resourceModules		versionedMap
 )
 
 // RegisterResourcePackage register a resource package with the Pulumi runtime.

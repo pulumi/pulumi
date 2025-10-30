@@ -39,16 +39,16 @@ func TestResourceMonitor_Call_deps(t *testing.T) {
 			assert.ElementsMatch(t, req.ArgDependencies["k1"].Urns, []string{"urn1", "urn2"})
 
 			res, err := structpb.NewStruct(map[string]any{
-				"k3": "value3",
-				"k4": "value4",
+				"k3":	"value3",
+				"k4":	"value4",
 			})
 			require.NoError(t, err)
 
 			return &pulumirpc.CallResponse{
-				Return: res,
+				Return:	res,
 				ReturnDependencies: map[string]*pulumirpc.CallResponse_ReturnDependencies{
-					"foo": {Urns: []string{"urn1", "urn2"}},
-					"bar": {Urns: []string{"urn3", "urn4"}},
+					"foo":	{Urns: []string{"urn1", "urn2"}},
+					"bar":	{Urns: []string{"urn3", "urn4"}},
 				},
 			}, nil
 		},
@@ -57,8 +57,8 @@ func TestResourceMonitor_Call_deps(t *testing.T) {
 	_, deps, _, err := NewResourceMonitor(&client).Call(
 		"org/proj/stack:module:member",
 		resource.NewPropertyMapFromMap(map[string]any{
-			"k1": "value1",
-			"k2": "value2",
+			"k1":	"value1",
+			"k2":	"value2",
 		}),
 		map[resource.PropertyKey][]resource.URN{
 			"k1": {"urn1", "urn2"},
@@ -69,8 +69,8 @@ func TestResourceMonitor_Call_deps(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, map[resource.PropertyKey][]resource.URN{
-		"foo": {"urn1", "urn2"},
-		"bar": {"urn3", "urn4"},
+		"foo":	{"urn1", "urn2"},
+		"bar":	{"urn3", "urn4"},
 	}, deps)
 }
 
@@ -78,33 +78,33 @@ func TestResourceMonitor_RegisterResource_customTimeouts(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		desc string
-		give *resource.CustomTimeouts
-		want *pulumirpc.RegisterResourceRequest_CustomTimeouts
+		desc	string
+		give	*resource.CustomTimeouts
+		want	*pulumirpc.RegisterResourceRequest_CustomTimeouts
 	}{
 		{desc: "nil", give: nil, want: nil},
 		{
-			desc: "create",
-			give: &resource.CustomTimeouts{Create: 1},
-			want: &pulumirpc.RegisterResourceRequest_CustomTimeouts{Create: "1s"},
+			desc:	"create",
+			give:	&resource.CustomTimeouts{Create: 1},
+			want:	&pulumirpc.RegisterResourceRequest_CustomTimeouts{Create: "1s"},
 		},
 		{
-			desc: "update",
-			give: &resource.CustomTimeouts{Update: 1},
-			want: &pulumirpc.RegisterResourceRequest_CustomTimeouts{Update: "1s"},
+			desc:	"update",
+			give:	&resource.CustomTimeouts{Update: 1},
+			want:	&pulumirpc.RegisterResourceRequest_CustomTimeouts{Update: "1s"},
 		},
 		{
-			desc: "delete",
-			give: &resource.CustomTimeouts{Delete: 1},
-			want: &pulumirpc.RegisterResourceRequest_CustomTimeouts{Delete: "1s"},
+			desc:	"delete",
+			give:	&resource.CustomTimeouts{Delete: 1},
+			want:	&pulumirpc.RegisterResourceRequest_CustomTimeouts{Delete: "1s"},
 		},
 		{
-			desc: "all",
-			give: &resource.CustomTimeouts{Create: 1, Update: 2, Delete: 3},
+			desc:	"all",
+			give:	&resource.CustomTimeouts{Create: 1, Update: 2, Delete: 3},
 			want: &pulumirpc.RegisterResourceRequest_CustomTimeouts{
-				Create: "1s",
-				Update: "2s",
-				Delete: "3s",
+				Create:	"1s",
+				Update:	"2s",
+				Delete:	"3s",
 			},
 		},
 	}
@@ -135,8 +135,8 @@ func TestResourceMonitor_RegisterResource_customTimeouts(t *testing.T) {
 type stubResourceMonitorClient struct {
 	pulumirpc.ResourceMonitorClient
 
-	CallFunc             func(req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
-	RegisterResourceFunc func(req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error)
+	CallFunc		func(req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
+	RegisterResourceFunc	func(req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error)
 }
 
 func (cl *stubResourceMonitorClient) Call(
@@ -165,8 +165,8 @@ func TestPrepareTestTimeout(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		give float64
-		want string
+		give	float64
+		want	string
 	}{
 		{0, ""},
 		{1, "1s"},

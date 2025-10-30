@@ -22,9 +22,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -34,22 +34,22 @@ import (
 
 func makeUpdateInfo() UpdateInfo {
 	return UpdateInfo{
-		Root: "",
+		Root:	"",
 		Project: &workspace.Project{
-			Name:    "test",
-			Runtime: workspace.NewProjectRuntimeInfo("test", nil),
+			Name:		"test",
+			Runtime:	workspace.NewProjectRuntimeInfo("test", nil),
 		},
-		Target: &deploy.Target{Name: tokens.MustParseStackName("test")},
+		Target:	&deploy.Target{Name: tokens.MustParseStackName("test")},
 	}
 }
 
 type testContext struct {
 	Context
-	wg      sync.WaitGroup
-	events  chan Event
-	journal *TestJournal
+	wg	sync.WaitGroup
+	events	chan Event
+	journal	*TestJournal
 
-	firedEvents []Event
+	firedEvents	[]Event
 }
 
 func makeTestContext(t testing.TB, cancelCtx *cancel.Context) *testContext {
@@ -58,13 +58,13 @@ func makeTestContext(t testing.TB, cancelCtx *cancel.Context) *testContext {
 
 	ctx := &testContext{
 		Context: Context{
-			Cancel:          cancelCtx,
-			Events:          events,
-			SnapshotManager: journal,
-			BackendClient:   nil,
+			Cancel:			cancelCtx,
+			Events:			events,
+			SnapshotManager:	journal,
+			BackendClient:		nil,
 		},
-		events:  events,
-		journal: journal,
+		events:		events,
+		journal:	journal,
 	}
 
 	// Begin draining events.
@@ -140,11 +140,11 @@ func TestSourceFuncCancellation(t *testing.T) {
 		UpdateOptions: UpdateOptions{
 			Host: host,
 		},
-		SourceFunc: sourceF,
-		Events:     ctx.makeEventEmitter(t),
-		Diag:       diagtest.LogSink(t),
-		StatusDiag: diagtest.LogSink(t),
-		DryRun:     false,
+		SourceFunc:	sourceF,
+		Events:		ctx.makeEventEmitter(t),
+		Diag:		diagtest.LogSink(t),
+		StatusDiag:	diagtest.LogSink(t),
+		DryRun:		false,
 	}
 
 	_, err = newDeployment(&ctx.Context, info, nil, opts)

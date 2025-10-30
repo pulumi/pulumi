@@ -19,8 +19,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -95,7 +95,7 @@ func annotateObjectProperties(modelType model.Type, schemaType schema.Type) {
 			annotateObjectProperties(arg.ElementTypes[1], schemaType)
 		} else if len(arg.ElementTypes) == 2 && arg.ElementTypes[1] == model.NoneType {
 			annotateObjectProperties(arg.ElementTypes[0], schemaType)
-		} else { //nolint:staticcheck // TODO https://github.com/pulumi/pulumi/issues/10993
+		} else {	//nolint:staticcheck // TODO https://github.com/pulumi/pulumi/issues/10993
 			// We need to handle the case where the schema type is a union type.
 		}
 	}
@@ -173,11 +173,11 @@ func invokeOptionsType() model.Type {
 	return model.NewObjectType(map[string]model.Type{
 		// using dynamic (any) types for expressions expecting a Resource type because
 		// we don't have a way to represent a Resource type in the PCL.
-		"provider":          model.NewOptionalType(model.DynamicType),
-		"parent":            model.NewOptionalType(model.DynamicType),
-		"version":           model.NewOptionalType(model.StringType),
-		"pluginDownloadUrl": model.NewOptionalType(model.StringType),
-		"dependsOn":         model.NewOptionalType(model.NewListType(model.DynamicType)),
+		"provider":		model.NewOptionalType(model.DynamicType),
+		"parent":		model.NewOptionalType(model.DynamicType),
+		"version":		model.NewOptionalType(model.StringType),
+		"pluginDownloadUrl":	model.NewOptionalType(model.StringType),
+		"dependsOn":		model.NewOptionalType(model.NewListType(model.DynamicType)),
 	})
 }
 
@@ -185,19 +185,19 @@ func (b *binder) makeSignature(argsType, returnType model.Type) model.StaticFunc
 	return model.StaticFunctionSignature{
 		Parameters: []model.Parameter{
 			{
-				Name: "token",
-				Type: model.StringType,
+				Name:	"token",
+				Type:	model.StringType,
 			},
 			{
-				Name: "args",
-				Type: argsType,
+				Name:	"args",
+				Type:	argsType,
 			},
 			{
-				Name: "invokeOptions",
-				Type: model.NewOptionalType(invokeOptionsType()),
+				Name:	"invokeOptions",
+				Type:	model.NewOptionalType(invokeOptionsType()),
 			},
 		},
-		ReturnType: returnType,
+		ReturnType:	returnType,
 	}
 }
 

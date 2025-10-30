@@ -17,16 +17,16 @@ package graph
 import (
 	mapset "github.com/deckarep/golang-set/v2"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // DependencyGraph represents a dependency graph encoded within a resource snapshot.
 type DependencyGraph struct {
-	index      map[*resource.State]int // A mapping of resource pointers to indexes within the snapshot
-	resources  []*resource.State       // The list of resources, obtained from the snapshot
-	childrenOf map[resource.URN][]int  // Pre-computed map of transitive children for each resource
+	index		map[*resource.State]int	// A mapping of resource pointers to indexes within the snapshot
+	resources	[]*resource.State	// The list of resources, obtained from the snapshot
+	childrenOf	map[resource.URN][]int	// Pre-computed map of transitive children for each resource
 }
 
 // Alias maps a new *resource.State to an existing resource in the dependency graph.
@@ -413,6 +413,6 @@ func NewDependencyGraph(resources []*resource.State) *DependencyGraph {
 
 // A node in a graph.
 type node struct {
-	marked   bool
-	resource *resource.State
+	marked		bool
+	resource	*resource.State
 }

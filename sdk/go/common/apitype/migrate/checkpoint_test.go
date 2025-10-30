@@ -28,13 +28,13 @@ func TestCheckpointV1ToV2(t *testing.T) {
 	t.Parallel()
 
 	v1 := apitype.CheckpointV1{
-		Stack: tokens.QName("mystack"),
+		Stack:	tokens.QName("mystack"),
 		Config: config.Map{
 			config.MustMakeKey("foo", "number"): config.NewValue("42"),
 		},
 		Latest: &apitype.DeploymentV1{
-			Manifest:  apitype.ManifestV1{},
-			Resources: []apitype.ResourceV1{},
+			Manifest:	apitype.ManifestV1{},
+			Resources:	[]apitype.ResourceV1{},
 		},
 	}
 
@@ -50,7 +50,7 @@ func TestCheckpointV1ToV2NilLatest(t *testing.T) {
 	t.Parallel()
 
 	v1 := apitype.CheckpointV1{
-		Stack: tokens.QName("mystack"),
+		Stack:	tokens.QName("mystack"),
 		Config: config.Map{
 			config.MustMakeKey("foo", "number"): config.NewValue("42"),
 		},

@@ -122,18 +122,18 @@ func TestRepr(t *testing.T) {
 	t.Parallel()
 
 	type expectedValue struct {
-		Value        Value     `yaml:"value"`                  // The raw Value
-		String       string    `yaml:"string"`                 // The result of Value.Value(NopDecrypter)
-		Redacted     string    `yaml:"redacted"`               // The result of Value.Value(NewBlindingDecrypter)
-		Object       gobObject `yaml:"object"`                 // The result of Value.ToObject()
-		Secure       bool      `yaml:"secure"`                 // The result of Value.Secure()
-		IsObject     bool      `yaml:"isObject"`               // The result of Value.Object()
-		SecureValues []string  `yaml:"secureValues,omitempty"` // The result of Value.SecureValues()
+		Value		Value		`yaml:"value"`			// The raw Value
+		String		string		`yaml:"string"`			// The result of Value.Value(NopDecrypter)
+		Redacted	string		`yaml:"redacted"`		// The result of Value.Value(NewBlindingDecrypter)
+		Object		gobObject	`yaml:"object"`			// The result of Value.ToObject()
+		Secure		bool		`yaml:"secure"`			// The result of Value.Secure()
+		IsObject	bool		`yaml:"isObject"`		// The result of Value.Object()
+		SecureValues	[]string	`yaml:"secureValues,omitempty"`	// The result of Value.SecureValues()
 	}
 
 	type expectedRepr struct {
-		Decrypt map[string]string        `yaml:"decrypt"` // The result of Map.Decrypt
-		Paths   map[string]expectedValue `yaml:"paths"`   // Each path in the map and information about its value
+		Decrypt	map[string]string		`yaml:"decrypt"`	// The result of Map.Decrypt
+		Paths	map[string]expectedValue	`yaml:"paths"`		// Each path in the map and information about its value
 	}
 
 	isAccept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
@@ -193,19 +193,19 @@ func TestRepr(t *testing.T) {
 				require.NoError(t, err)
 
 				paths[p.String()] = expectedValue{
-					Value:        v,
-					String:       value,
-					Redacted:     redacted,
-					Object:       gobObject{value: vo},
-					Secure:       v.Secure(),
-					IsObject:     v.Object(),
-					SecureValues: secureValues,
+					Value:		v,
+					String:		value,
+					Redacted:	redacted,
+					Object:		gobObject{value: vo},
+					Secure:		v.Secure(),
+					IsObject:	v.Object(),
+					SecureValues:	secureValues,
 				}
 			}
 
 			actual := expectedRepr{
-				Decrypt: decryptedMap,
-				Paths:   paths,
+				Decrypt:	decryptedMap,
+				Paths:		paths,
 			}
 
 			if isAccept {

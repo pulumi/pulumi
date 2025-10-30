@@ -25,11 +25,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
-	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate/client"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	resourceanalyzer "github.com/pulumi/pulumi/sdk/v3/pkg/resource/analyzer"
+	pkgCmdUtil "github.com/pulumi/pulumi/sdk/v3/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -42,8 +42,8 @@ import (
 
 type cloudRequiredPolicy struct {
 	apitype.RequiredPolicy
-	client  *client.Client
-	orgName string
+	client	*client.Client
+	orgName	string
 }
 
 var _ engine.RequiredPolicy = (*cloudRequiredPolicy)(nil)
@@ -52,15 +52,15 @@ func newCloudRequiredPolicy(client *client.Client,
 	policy apitype.RequiredPolicy, orgName string,
 ) *cloudRequiredPolicy {
 	return &cloudRequiredPolicy{
-		client:         client,
-		RequiredPolicy: policy,
-		orgName:        orgName,
+		client:		client,
+		RequiredPolicy:	policy,
+		orgName:	orgName,
 	}
 }
 
-func (rp *cloudRequiredPolicy) Name() string    { return rp.RequiredPolicy.Name }
-func (rp *cloudRequiredPolicy) Version() string { return rp.VersionTag }
-func (rp *cloudRequiredPolicy) OrgName() string { return rp.orgName }
+func (rp *cloudRequiredPolicy) Name() string	{ return rp.RequiredPolicy.Name }
+func (rp *cloudRequiredPolicy) Version() string	{ return rp.VersionTag }
+func (rp *cloudRequiredPolicy) OrgName() string	{ return rp.orgName }
 
 func (rp *cloudRequiredPolicy) Install(ctx *plugin.Context) (string, error) {
 	policy := rp.RequiredPolicy
@@ -94,32 +94,32 @@ func (rp *cloudRequiredPolicy) Install(ctx *plugin.Context) (string, error) {
 	return policyPackPath, installRequiredPolicy(ctx, policyPackPath, policyPackTarball)
 }
 
-func (rp *cloudRequiredPolicy) Config() map[string]*json.RawMessage { return rp.RequiredPolicy.Config }
+func (rp *cloudRequiredPolicy) Config() map[string]*json.RawMessage	{ return rp.RequiredPolicy.Config }
 
 func newCloudBackendPolicyPackReference(
 	cloudConsoleURL, orgName string, name tokens.QName,
 ) *cloudBackendPolicyPackReference {
 	return &cloudBackendPolicyPackReference{
-		orgName:         orgName,
-		name:            name,
-		cloudConsoleURL: cloudConsoleURL,
+		orgName:		orgName,
+		name:			name,
+		cloudConsoleURL:	cloudConsoleURL,
 	}
 }
 
 // cloudBackendPolicyPackReference is a reference to a PolicyPack implemented by the Pulumi service.
 type cloudBackendPolicyPackReference struct {
 	// name of the PolicyPack.
-	name tokens.QName
+	name	tokens.QName
 	// orgName that administrates the PolicyPack.
-	orgName string
+	orgName	string
 
 	// versionTag of the Policy Pack. This is typically the version specified in
 	// a package.json, setup.py, or similar file.
-	versionTag string
+	versionTag	string
 
 	// cloudConsoleURL is the root URL of where the Policy Pack can be found in the console. The
 	// version must be appended to the returned URL.
-	cloudConsoleURL string
+	cloudConsoleURL	string
 }
 
 var _ backend.PolicyPackReference = (*cloudBackendPolicyPackReference)(nil)
@@ -143,11 +143,11 @@ func (pr *cloudBackendPolicyPackReference) CloudConsoleURL() string {
 // cloudPolicyPack is a the Pulumi service implementation of the PolicyPack interface.
 type cloudPolicyPack struct {
 	// ref uniquely identifies the PolicyPack in the Pulumi service.
-	ref *cloudBackendPolicyPackReference
+	ref	*cloudBackendPolicyPackReference
 	// b is a pointer to the backend that this PolicyPack belongs to.
-	b *cloudBackend
+	b	*cloudBackend
 	// cl is the client used to interact with the backend.
-	cl *client.Client
+	cl	*client.Client
 }
 
 var _ backend.PolicyPack = (*cloudPolicyPack)(nil)
@@ -325,9 +325,9 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 	}
 
 	err = pkgCmdUtil.InstallDependencies(language, plugin.InstallDependenciesRequest{
-		Info:                    info,
-		UseLanguageVersionTools: false,
-		IsPlugin:                true,
+		Info:				info,
+		UseLanguageVersionTools:	false,
+		IsPlugin:			true,
 	})
 	if err != nil {
 		return fmt.Errorf("installing dependencies: %w", err)

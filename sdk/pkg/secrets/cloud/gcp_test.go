@@ -35,10 +35,10 @@ func createGCPKey(ctx context.Context, t *testing.T) string {
 
 	// Build the request.
 	req := &kmspb.CreateCryptoKeyRequest{
-		Parent:      parent,
-		CryptoKeyId: keyName,
+		Parent:		parent,
+		CryptoKeyId:	keyName,
 		CryptoKey: &kmspb.CryptoKey{
-			Purpose: kmspb.CryptoKey_ENCRYPT_DECRYPT,
+			Purpose:	kmspb.CryptoKey_ENCRYPT_DECRYPT,
 			VersionTemplate: &kmspb.CryptoKeyVersionTemplate{
 				Algorithm: kmspb.CryptoKeyVersion_GOOGLE_SYMMETRIC_ENCRYPTION,
 			},

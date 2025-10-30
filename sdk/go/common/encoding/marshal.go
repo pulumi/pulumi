@@ -27,9 +27,9 @@ import (
 )
 
 var (
-	JSONExt = ".json"
-	YAMLExt = ".yaml"
-	GZIPExt = ".gz"
+	JSONExt	= ".json"
+	YAMLExt	= ".yaml"
+	GZIPExt	= ".gz"
 )
 
 // Exts contains a list of all the valid marshalable extension types.
@@ -44,7 +44,7 @@ var Exts = []string{
 func Detect(path string) (Marshaler, string) {
 	ext := filepath.Ext(path)
 	if ext == "" {
-		ext = DefaultExt() // default to the first (preferred) marshaler.
+		ext = DefaultExt()	// default to the first (preferred) marshaler.
 	}
 	return Marshalers[ext], ext
 }

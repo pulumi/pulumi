@@ -23,7 +23,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
 
@@ -34,37 +34,37 @@ func GeneratePythonProgramTest(
 ) {
 	expectedVersion := map[string]PkgVersionInfo{
 		"aws-resource-options-4.3.8": {
-			Pkg:          "pulumi-aws",
-			OpAndVersion: "==4.26.0",
+			Pkg:		"pulumi-aws",
+			OpAndVersion:	"==4.26.0",
 		},
 		"aws-resource-options-5.16.2": {
-			Pkg:          "pulumi-aws",
-			OpAndVersion: "==5.16.2",
+			Pkg:		"pulumi-aws",
+			OpAndVersion:	"==5.16.2",
 		},
 	}
 
 	TestProgramCodegen(t,
 		ProgramCodegenOptions{
-			Language:   "python",
-			Extension:  "py",
-			OutputFile: "__main__.py",
-			Check:      checkPython,
-			GenProgram: genProgram,
+			Language:	"python",
+			Extension:	"py",
+			OutputFile:	"__main__.py",
+			Check:		checkPython,
+			GenProgram:	genProgram,
 			TestCases: []ProgramTest{
 				{
-					Directory:   "aws-resource-options-4.26",
-					Description: "Resource Options",
+					Directory:	"aws-resource-options-4.26",
+					Description:	"Resource Options",
 				},
 				{
-					Directory:   "aws-resource-options-5.16.2",
-					Description: "Resource Options",
+					Directory:	"aws-resource-options-5.16.2",
+					Description:	"Resource Options",
 				},
 			},
 
-			IsGenProject:    true,
-			GenProject:      genProject,
-			ExpectedVersion: expectedVersion,
-			DependencyFile:  "requirements.txt",
+			IsGenProject:		true,
+			GenProject:		genProject,
+			ExpectedVersion:	expectedVersion,
+			DependencyFile:		"requirements.txt",
 		},
 	)
 }
@@ -72,12 +72,12 @@ func GeneratePythonProgramTest(
 func GeneratePythonBatchTest(t *testing.T, rootDir string, genProgram GenProgram, testCases []ProgramTest) {
 	TestProgramCodegen(t,
 		ProgramCodegenOptions{
-			Language:   "python",
-			Extension:  "py",
-			OutputFile: "__main__.py",
-			Check:      checkPython,
-			GenProgram: genProgram,
-			TestCases:  testCases,
+			Language:	"python",
+			Extension:	"py",
+			OutputFile:	"__main__.py",
+			Check:		checkPython,
+			GenProgram:	genProgram,
+			TestCases:	testCases,
 		})
 }
 
@@ -86,12 +86,12 @@ func GeneratePythonYAMLBatchTest(t *testing.T, rootDir string, genProgram GenPro
 
 	TestProgramCodegen(t,
 		ProgramCodegenOptions{
-			Language:   "python",
-			Extension:  "py",
-			OutputFile: "__main__.py",
-			Check:      checkPython,
-			GenProgram: genProgram,
-			TestCases:  PulumiPulumiYAMLProgramTests,
+			Language:	"python",
+			Extension:	"py",
+			OutputFile:	"__main__.py",
+			Check:		checkPython,
+			GenProgram:	genProgram,
+			TestCases:	PulumiPulumiYAMLProgramTests,
 		})
 }
 
@@ -103,7 +103,7 @@ func checkPython(t *testing.T, path string, _ codegen.StringSet) {
 func CompilePython(t *testing.T, codeDir string) {
 	pythonFiles := []string{}
 	err := filepath.Walk(codeDir, func(path string, info filesystem.FileInfo, err error) error {
-		require.NoError(t, err) // an error in the walk
+		require.NoError(t, err)	// an error in the walk
 
 		if info.Mode().IsDir() && info.Name() == "venv" {
 			return filepath.SkipDir

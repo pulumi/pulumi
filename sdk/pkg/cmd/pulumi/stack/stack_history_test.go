@@ -20,8 +20,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/require"
@@ -34,18 +34,18 @@ func TestBuildUpdatesJSONWithFailedDecryptedSecureObject(t *testing.T) {
 
 	update := []backend.UpdateInfo{
 		{
-			Version:   1,
-			Kind:      apitype.UpdateUpdate,
-			StartTime: time.Now().Unix(),
-			Message:   "Update with config that can't be decrypted",
+			Version:	1,
+			Kind:		apitype.UpdateUpdate,
+			StartTime:	time.Now().Unix(),
+			Message:	"Update with config that can't be decrypted",
 			Environment: map[string]string{
 				"PULUMI_ENV": "test",
 			},
 			Config: config.Map{
 				config.MustMakeKey("test", "key2"): config.NewSecureObjectValue("object"),
 			},
-			Result:  backend.SucceededResult,
-			EndTime: time.Now().Add(time.Minute).Unix(),
+			Result:		backend.SucceededResult,
+			EndTime:	time.Now().Add(time.Minute).Unix(),
 			ResourceChanges: display.ResourceChanges{
 				display.StepOp(apitype.OpCreate): 1,
 			},

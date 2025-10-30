@@ -30,15 +30,15 @@ import (
 )
 
 type testSecretsManager struct {
-	encryptCalls      int
-	decryptCalls      int
-	batchEncryptCalls int
-	batchDecryptCalls int
+	encryptCalls		int
+	decryptCalls		int
+	batchEncryptCalls	int
+	batchDecryptCalls	int
 }
 
-func (t *testSecretsManager) Type() string { return "test" }
+func (t *testSecretsManager) Type() string	{ return "test" }
 
-func (t *testSecretsManager) State() json.RawMessage { return nil }
+func (t *testSecretsManager) State() json.RawMessage	{ return nil }
 
 func (t *testSecretsManager) Encrypter() config.Encrypter {
 	return t
@@ -430,7 +430,7 @@ func TestBatchEncrypter(t *testing.T) {
 		target1 := &apitype.SecretV1{}
 		target2 := &apitype.SecretV1{}
 
-		cache.Write("0-1:plaintext", "ciphertext 1", secret1) // Add one value to the cache
+		cache.Write("0-1:plaintext", "ciphertext 1", secret1)	// Add one value to the cache
 		enc, complete := beginBatchEncryption(sm.Encrypter(), cache, 999)
 		require.NoError(t, enc.Enqueue(ctx, secret1, "plaintext", target1), "enqueue 1")
 		require.NoError(t, enc.Enqueue(ctx, secret2, "plaintext", target2), "enqueue 2")
@@ -450,7 +450,7 @@ func TestBatchEncrypter(t *testing.T) {
 
 		assert.Panics(t, func() {
 			err := enc.Enqueue(ctx, &resource.Secret{}, "plaintext", &apitype.SecretV1{})
-			assert.Error(t, err) // Make lint happy
+			assert.Error(t, err)	// Make lint happy
 		}, "can't write to completed batch")
 	})
 }
@@ -508,7 +508,7 @@ func TestBatchDecrypter(t *testing.T) {
 		secret := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
 
 		const ciphertext = "1-1:\"ciphertext\""
-		cache.Write("\"plaintext\"", ciphertext, &resource.Secret{}) // Pointer doesn't have to match for decryption
+		cache.Write("\"plaintext\"", ciphertext, &resource.Secret{})	// Pointer doesn't have to match for decryption
 		dec, complete := beginBatchDecryption(sm.Decrypter(), cache, secretPropertyValueFromPlaintext, 999)
 		require.NoError(t, dec.Enqueue(ctx, ciphertext, secret), "enqueue")
 
@@ -547,7 +547,7 @@ func TestBatchDecrypter(t *testing.T) {
 
 		assert.Panics(t, func() {
 			err := dec.Enqueue(ctx, "1-1:\"plaintext\"", resource.MakeSecret(resource.NewNullProperty()).SecretValue())
-			assert.Error(t, err) // Make lint happy
+			assert.Error(t, err)	// Make lint happy
 		}, "can't write to completed batch")
 	})
 }

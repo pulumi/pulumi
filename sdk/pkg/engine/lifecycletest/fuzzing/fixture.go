@@ -20,9 +20,9 @@ import (
 	"regexp"
 	"time"
 
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,11 +33,11 @@ import (
 // initial snapshot, a program to execute against that snapshot, a set of providers to use when executing the program,
 // and a plan to execute and observe the results of.
 type FixtureOptions struct {
-	StackSpecOptions    StackSpecOptions
-	SnapshotSpecOptions SnapshotSpecOptions
-	ProgramSpecOptions  ProgramSpecOptions
-	ProviderSpecOptions ProviderSpecOptions
-	PlanSpecOptions     PlanSpecOptions
+	StackSpecOptions	StackSpecOptions
+	SnapshotSpecOptions	SnapshotSpecOptions
+	ProgramSpecOptions	ProgramSpecOptions
+	ProviderSpecOptions	ProviderSpecOptions
+	PlanSpecOptions		PlanSpecOptions
 }
 
 // Returns a copy of the FixtureOptions with the given overrides applied.
@@ -53,11 +53,11 @@ func (fo FixtureOptions) With(overrides FixtureOptions) FixtureOptions {
 
 // A default set of FixtureOptions.
 var defaultFixtureOptions = FixtureOptions{
-	StackSpecOptions:    defaultStackSpecOptions,
-	SnapshotSpecOptions: defaultSnapshotSpecOptions,
-	ProgramSpecOptions:  defaultProgramSpecOptions,
-	ProviderSpecOptions: defaultProviderSpecOptions,
-	PlanSpecOptions:     defaultPlanSpecOptions,
+	StackSpecOptions:	defaultStackSpecOptions,
+	SnapshotSpecOptions:	defaultSnapshotSpecOptions,
+	ProgramSpecOptions:	defaultProgramSpecOptions,
+	ProviderSpecOptions:	defaultProviderSpecOptions,
+	PlanSpecOptions:	defaultPlanSpecOptions,
 }
 
 // Given a set of options, returns a Rapid property test function that generates and tests fixtures according to that
@@ -80,8 +80,8 @@ func GeneratedFixture(fo FixtureOptions) func(t *rapid.T) {
 		opOpts.SkipDisplayTests = true
 
 		p := &lt.TestPlan{
-			Project: fo.StackSpecOptions.Project,
-			Stack:   fo.StackSpecOptions.Stack,
+			Project:	fo.StackSpecOptions.Project,
+			Stack:		fo.StackSpecOptions.Stack,
 		}
 		project := p.GetProject()
 

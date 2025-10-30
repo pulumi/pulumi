@@ -33,25 +33,25 @@ type callbackFunction = func(ctx context.Context, req []byte) (proto.Message, er
 type callbackServer struct {
 	pulumirpc.UnsafeCallbacksServer
 
-	stop          chan bool
-	handle        rpcutil.ServeHandle
-	functions     map[string]callbackFunction
-	functionsLock sync.RWMutex
+	stop		chan bool
+	handle		rpcutil.ServeHandle
+	functions	map[string]callbackFunction
+	functionsLock	sync.RWMutex
 }
 
 func newCallbackServer() (*callbackServer, error) {
 	callbackServer := &callbackServer{
-		functions: map[string]callbackFunction{},
-		stop:      make(chan bool),
+		functions:	map[string]callbackFunction{},
+		stop:		make(chan bool),
 	}
 
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: callbackServer.stop,
+		Cancel:	callbackServer.stop,
 		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterCallbacksServer(srv, callbackServer)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options:	rpcutil.OpenTracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("could not start resource provider service: %w", err)
@@ -71,8 +71,8 @@ func (s *callbackServer) RegisterCallback(function callbackFunction) (*pulumirpc
 	defer s.functionsLock.Unlock()
 	s.functions[uuidString] = function
 	return &pulumirpc.Callback{
-		Token:  uuidString,
-		Target: "127.0.0.1:" + strconv.Itoa(s.handle.Port),
+		Token:	uuidString,
+		Target:	"127.0.0.1:" + strconv.Itoa(s.handle.Port),
 	}, nil
 }
 

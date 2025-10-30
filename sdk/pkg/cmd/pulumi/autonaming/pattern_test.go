@@ -24,63 +24,63 @@ import (
 func TestResolveStackExpressions(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name        string
-		pattern     string
-		org         string
-		proj        string
-		stack       string
-		configVals  map[string]string
-		configErrs  map[string]error
-		expected    string
-		expectError bool
+		name		string
+		pattern		string
+		org		string
+		proj		string
+		stack		string
+		configVals	map[string]string
+		configErrs	map[string]error
+		expected	string
+		expectError	bool
 	}{
 		{
-			name:     "basic variable replacement",
-			pattern:  "${organization}-${project}-${stack}",
-			org:      "myorg",
-			proj:     "myproj",
-			stack:    "dev",
-			expected: "myorg-myproj-dev",
+			name:		"basic variable replacement",
+			pattern:	"${organization}-${project}-${stack}",
+			org:		"myorg",
+			proj:		"myproj",
+			stack:		"dev",
+			expected:	"myorg-myproj-dev",
 		},
 		{
-			name:    "config value replacement",
-			pattern: "prefix-${config.environment}-suffix",
+			name:		"config value replacement",
+			pattern:	"prefix-${config.environment}-suffix",
 			configVals: map[string]string{
 				"environment": "production",
 			},
-			expected: "prefix-production-suffix",
+			expected:	"prefix-production-suffix",
 		},
 		{
-			name:    "multiple replacements",
-			pattern: "${organization}/${project}/${stack}/${config.region}",
-			org:     "myorg",
-			proj:    "myproj",
-			stack:   "dev",
+			name:		"multiple replacements",
+			pattern:	"${organization}/${project}/${stack}/${config.region}",
+			org:		"myorg",
+			proj:		"myproj",
+			stack:		"dev",
 			configVals: map[string]string{
 				"region": "us-west-2",
 			},
-			expected: "myorg/myproj/dev/us-west-2",
+			expected:	"myorg/myproj/dev/us-west-2",
 		},
 		{
-			name:    "missing config value",
-			pattern: "${config.missing}",
+			name:		"missing config value",
+			pattern:	"${config.missing}",
 			configErrs: map[string]error{
 				"missing": fmt.Errorf("no value found for key %q", "missing"),
 			},
-			expectError: true,
+			expectError:	true,
 		},
 		{
-			name:    "config error",
-			pattern: "${config.secret}",
+			name:		"config error",
+			pattern:	"${config.secret}",
 			configErrs: map[string]error{
 				"secret": fmt.Errorf("failed to decrypt value for key %q: unauthorized", "secret"),
 			},
-			expectError: true,
+			expectError:	true,
 		},
 		{
-			name:     "no replacements needed",
-			pattern:  "static-name",
-			expected: "static-name",
+			name:		"no replacements needed",
+			pattern:	"static-name",
+			expected:	"static-name",
 		},
 	}
 
@@ -88,12 +88,12 @@ func TestResolveStackExpressions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			stack := StackContext{
-				Organization: tt.org,
-				Project:      tt.proj,
-				Stack:        tt.stack,
+				Organization:	tt.org,
+				Project:	tt.proj,
+				Stack:		tt.stack,
 			}
 			eval := &stackPatternEval{
-				ctx: stack,
+				ctx:	stack,
 				getConfigValue: func(key string) (string, error) {
 					if err, hasErr := tt.configErrs[key]; hasErr {
 						return "", err

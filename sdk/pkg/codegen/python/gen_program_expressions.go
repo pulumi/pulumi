@@ -27,9 +27,9 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -212,25 +212,25 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 }
 
 var functionImports = map[string][]string{
-	"fileArchive":      {"pulumi"},
-	"remoteArchive":    {"pulumi"},
-	"assetArchive":     {"pulumi"},
-	"fileAsset":        {"pulumi"},
-	"stringAsset":      {"pulumi"},
-	"remoteAsset":      {"pulumi"},
-	"rootDirectory":    {"pulumi"},
-	"filebase64":       {"base64"},
-	"filebase64sha256": {"base64", "hashlib"},
-	"readDir":          {"os"},
-	"toBase64":         {"base64"},
-	"fromBase64":       {"base64"},
-	"toJSON":           {"json"},
-	"sha1":             {"hashlib"},
-	"stack":            {"pulumi"},
-	"project":          {"pulumi"},
-	"organization":     {"pulumi"},
-	"cwd":              {"os"},
-	"mimeType":         {"mimetypes"},
+	"fileArchive":		{"pulumi"},
+	"remoteArchive":	{"pulumi"},
+	"assetArchive":		{"pulumi"},
+	"fileAsset":		{"pulumi"},
+	"stringAsset":		{"pulumi"},
+	"remoteAsset":		{"pulumi"},
+	"rootDirectory":	{"pulumi"},
+	"filebase64":		{"base64"},
+	"filebase64sha256":	{"base64", "hashlib"},
+	"readDir":		{"os"},
+	"toBase64":		{"base64"},
+	"fromBase64":		{"base64"},
+	"toJSON":		{"json"},
+	"sha1":			{"hashlib"},
+	"stack":		{"pulumi"},
+	"project":		{"pulumi"},
+	"organization":		{"pulumi"},
+	"cwd":			{"os"},
+	"mimeType":		{"mimetypes"},
 }
 
 func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string {
@@ -686,7 +686,7 @@ func objectKey(item model.ObjectConsItem) string {
 
 func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression, destType model.Type) {
 	targetType := pcl.LowerConversion(expr, destType)
-	typeName := g.argumentTypeName(expr, targetType) // Example: aws.s3.BucketLoggingArgs
+	typeName := g.argumentTypeName(expr, targetType)	// Example: aws.s3.BucketLoggingArgs
 	td := g.typedDictEnabled(expr, targetType)
 	if typeName != "" && !td {
 		// If a typeName exists, and it's not for a typedDict, treat this as an Input Class

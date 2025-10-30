@@ -17,7 +17,7 @@ package engine
 import (
 	"io"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
 )
 
 // SnapshotManager manages an in-memory resource graph.

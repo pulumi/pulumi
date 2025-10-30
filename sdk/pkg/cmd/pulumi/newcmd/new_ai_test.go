@@ -19,10 +19,10 @@ import (
 	"iter"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/testutil"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +37,7 @@ func TestErrorsOnNonHTTPBackend(t *testing.T) {
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
-		NameF: func() string { return "mock" },
+		NameF:	func() string { return "mock" },
 		GetReadOnlyCloudRegistryF: func() registry.Registry {
 			return &backend.MockCloudRegistry{
 				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
@@ -48,11 +48,11 @@ func TestErrorsOnNonHTTPBackend(t *testing.T) {
 	})
 
 	testNewArgs := newArgs{
-		aiPrompt:              "prompt",
-		aiLanguage:            "typescript",
-		interactive:           true,
-		secretsProvider:       "default",
-		promptForAIProjectURL: promptForAIProjectURL,
+		aiPrompt:		"prompt",
+		aiLanguage:		"typescript",
+		interactive:		true,
+		secretsProvider:	"default",
+		promptForAIProjectURL:	promptForAIProjectURL,
 	}
 
 	assert.ErrorContains(t,
@@ -71,9 +71,9 @@ func TestGeneratingProjectWithAIPromptSucceeds(t *testing.T) {
 		assert.Nil(t, name)
 		return func(yield func(apitype.TemplateMetadata, error) bool) {
 			if !yield(apitype.TemplateMetadata{
-				Name:      "name1",
-				Publisher: "publisher1",
-				Source:    "source1",
+				Name:		"name1",
+				Publisher:	"publisher1",
+				Source:		"source1",
 			}, nil) {
 				return
 			}
@@ -84,7 +84,7 @@ func TestGeneratingProjectWithAIPromptSucceeds(t *testing.T) {
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
-		NameF: func() string { return "mock" },
+		NameF:	func() string { return "mock" },
 		GetReadOnlyCloudRegistryF: func() registry.Registry {
 			return &backend.MockCloudRegistry{
 				ListTemplatesF: listTemplates,
@@ -94,9 +94,9 @@ func TestGeneratingProjectWithAIPromptSucceeds(t *testing.T) {
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
 	args := newArgs{
-		generateOnly: true,
-		interactive:  true,
-		prompt:       promptMock(projectName, ""),
+		generateOnly:	true,
+		interactive:	true,
+		prompt:		promptMock(projectName, ""),
 		promptForAIProjectURL: func(ctx context.Context, ws pkgWorkspace.Context,
 			args newArgs, opts display.Options,
 		) (string, error) {
@@ -104,8 +104,8 @@ func TestGeneratingProjectWithAIPromptSucceeds(t *testing.T) {
 			// This has the same effect and is good enough for the mock-based testing.
 			return "typescript", nil
 		},
-		secretsProvider:   "default",
-		templateNameOrURL: "", // <-- must be empty to trigger the AI flow
+		secretsProvider:	"default",
+		templateNameOrURL:	"",	// <-- must be empty to trigger the AI flow
 	}
 
 	err := runNew(context.Background(), args)

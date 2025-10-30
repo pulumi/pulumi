@@ -46,17 +46,17 @@ func (c *testConverterClient) ConvertState(
 	return &pulumirpc.ConvertStateResponse{
 		Resources: []*pulumirpc.ResourceImport{
 			{
-				Type:              "test:type",
-				Name:              "test:name",
-				Id:                "test:id",
-				Version:           "test:version",
-				PluginDownloadURL: "test:pluginDownloadURL",
-				LogicalName:       "test:logicalName",
-				IsRemote:          true,
-				IsComponent:       true,
+				Type:			"test:type",
+				Name:			"test:name",
+				Id:			"test:id",
+				Version:		"test:version",
+				PluginDownloadURL:	"test:pluginDownloadURL",
+				LogicalName:		"test:logicalName",
+				IsRemote:		true,
+				IsComponent:		true,
 			},
 		},
-		Diagnostics: c.diagnostics,
+		Diagnostics:	c.diagnostics,
 	}, nil
 }
 
@@ -88,17 +88,17 @@ func TestConverterPlugin_State(t *testing.T) {
 		clientRaw: &testConverterClient{
 			diagnostics: []*codegenrpc.Diagnostic{
 				{
-					Severity: codegenrpc.DiagnosticSeverity_DIAG_ERROR,
-					Summary:  "test:summary",
-					Detail:   "test:detail",
+					Severity:	codegenrpc.DiagnosticSeverity_DIAG_ERROR,
+					Summary:	"test:summary",
+					Detail:		"test:detail",
 				},
 			},
 		},
 	}
 
 	resp, err := plugin.ConvertState(context.Background(), &ConvertStateRequest{
-		Args:         []string{"arg1", "arg2"},
-		MapperTarget: "localhost:1234",
+		Args:		[]string{"arg1", "arg2"},
+		MapperTarget:	"localhost:1234",
 	})
 
 	require.NoError(t, err)
@@ -127,20 +127,20 @@ func TestConverterPlugin_Program(t *testing.T) {
 		clientRaw: &testConverterClient{
 			diagnostics: []*codegenrpc.Diagnostic{
 				{
-					Severity: codegenrpc.DiagnosticSeverity_DIAG_ERROR,
-					Summary:  "test:summary",
-					Detail:   "test:detail",
+					Severity:	codegenrpc.DiagnosticSeverity_DIAG_ERROR,
+					Summary:	"test:summary",
+					Detail:		"test:detail",
 				},
 			},
 		},
 	}
 
 	resp, err := plugin.ConvertProgram(context.Background(), &ConvertProgramRequest{
-		MapperTarget:    "localhost:1234",
-		LoaderTarget:    "localhost:4321",
-		SourceDirectory: "src",
-		TargetDirectory: "dst",
-		Args:            []string{"arg1", "arg2"},
+		MapperTarget:		"localhost:1234",
+		LoaderTarget:		"localhost:4321",
+		SourceDirectory:	"src",
+		TargetDirectory:	"dst",
+		Args:			[]string{"arg1", "arg2"},
 	})
 
 	require.NoError(t, err)
@@ -166,11 +166,11 @@ func TestConverterPlugin_Program_EmptyDiagnosticsIsNil(t *testing.T) {
 	}
 
 	resp, err := plugin.ConvertProgram(context.Background(), &ConvertProgramRequest{
-		MapperTarget:    "localhost:1234",
-		LoaderTarget:    "localhost:4321",
-		SourceDirectory: "src",
-		TargetDirectory: "dst",
-		Args:            []string{"arg1", "arg2"},
+		MapperTarget:		"localhost:1234",
+		LoaderTarget:		"localhost:4321",
+		SourceDirectory:	"src",
+		TargetDirectory:	"dst",
+		Args:			[]string{"arg1", "arg2"},
 	})
 
 	require.NoError(t, err)

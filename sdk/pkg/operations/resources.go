@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -29,12 +29,12 @@ import (
 
 // Resource is a tree representation of a resource/component hierarchy
 type Resource struct {
-	Stack    tokens.QName
-	Project  tokens.PackageName
-	State    *resource.State
-	Parent   *Resource
-	Provider *Resource
-	Children map[resource.URN]*Resource
+	Stack		tokens.QName
+	Project		tokens.PackageName
+	State		*resource.State
+	Parent		*Resource
+	Provider	*Resource
+	Children	map[resource.URN]*Resource
 }
 
 // NewResourceMap constructs a map of resources with parent/child relations, indexed by URN.
@@ -64,10 +64,10 @@ func makeResourceTreeMap(source []*resource.State) (*Resource, map[resource.URN]
 			// Only include resources which are not marked as pending-deletion.
 			contract.Assertf(resources[state.URN] == nil, "Unexpected duplicate resource %s", state.URN)
 			resources[state.URN] = &Resource{
-				Stack:    stack,
-				Project:  proj,
-				State:    state,
-				Children: make(map[resource.URN]*Resource),
+				Stack:		stack,
+				Project:	proj,
+				State:		state,
+				Children:	make(map[resource.URN]*Resource),
 			}
 		}
 	}
@@ -92,11 +92,11 @@ func makeResourceTreeMap(source []*resource.State) (*Resource, map[resource.URN]
 
 	// Create a single root node which is the parent of all unparented nodes
 	root := &Resource{
-		Stack:    stack,
-		Project:  proj,
-		State:    nil,
-		Parent:   nil,
-		Children: make(map[resource.URN]*Resource),
+		Stack:		stack,
+		Project:	proj,
+		State:		nil,
+		Parent:		nil,
+		Children:	make(map[resource.URN]*Resource),
 	}
 	for _, node := range resources {
 		if node.Parent == nil {
@@ -126,15 +126,15 @@ func (r *Resource) GetChild(typ string, name string) (*Resource, bool) {
 // OperationsProvider gets an OperationsProvider for this resource.
 func (r *Resource) OperationsProvider(config map[config.Key]string) Provider {
 	return &resourceOperations{
-		resource: r,
-		config:   config,
+		resource:	r,
+		config:		config,
 	}
 }
 
 // ResourceOperations is an OperationsProvider for Resources
 type resourceOperations struct {
-	resource *Resource
-	config   map[config.Key]string
+	resource	*Resource
+	config		map[config.Key]string
 }
 
 var _ Provider = (*resourceOperations)(nil)
@@ -150,9 +150,9 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		// Set query to be a new query with `ResourceFilter` nil so that we don't filter out logs from any children of
 		// this resource since this resource did match the resource filter.
 		query = LogQuery{
-			StartTime:      query.StartTime,
-			EndTime:        query.EndTime,
-			ResourceFilter: nil,
+			StartTime:	query.StartTime,
+			EndTime:	query.EndTime,
+			ResourceFilter:	nil,
 		}
 		// Try to get an operations provider for this resource, it may be `nil`
 		opsProvider, err := ops.getOperationsProvider()
@@ -179,8 +179,8 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	errch := make(chan error)
 	for _, child := range ops.resource.Children {
 		childOps := &resourceOperations{
-			resource: child,
-			config:   ops.config,
+			resource:	child,
+			config:		ops.config,
 		}
 		go func() {
 			childLogs, err := childOps.GetLogs(query)

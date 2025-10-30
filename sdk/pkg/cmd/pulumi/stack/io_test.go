@@ -23,10 +23,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/passphrase"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -36,9 +36,9 @@ func TestStackLoadOption(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		give       LoadOption
-		offerNew   bool
-		setCurrent bool
+		give		LoadOption
+		offerNew	bool
+		setCurrent	bool
 	}{
 		{LoadOnly, false, false},
 		{OfferNew, true, false},
@@ -105,11 +105,11 @@ func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {
 		pkgWorkspace.Instance,
 		mockBackend,
 		stackRef,
-		"",    /*root*/
-		nil,   /*opts*/
-		false, /*setCurrent*/
-		"",    /*secretsProvider*/
-		false, /* useRemoteConfig */
+		"",	/*root*/
+		nil,	/*opts*/
+		false,	/*setCurrent*/
+		"",	/*secretsProvider*/
+		false,	/* useRemoteConfig */
 	)
 
 	// Assert.

@@ -24,10 +24,10 @@ import (
 	"strings"
 
 	"github.com/pkg/browser"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -37,12 +37,12 @@ import (
 type PulumiAILanguage string
 
 const (
-	TypeScript PulumiAILanguage = "TypeScript"
-	Python     PulumiAILanguage = "Python"
-	Go         PulumiAILanguage = "Go"
-	CSharp     PulumiAILanguage = "C#"
-	Java       PulumiAILanguage = "Java"
-	YAML       PulumiAILanguage = "YAML"
+	TypeScript	PulumiAILanguage	= "TypeScript"
+	Python		PulumiAILanguage	= "Python"
+	Go		PulumiAILanguage	= "Go"
+	CSharp		PulumiAILanguage	= "C#"
+	Java		PulumiAILanguage	= "Java"
+	YAML		PulumiAILanguage	= "YAML"
 )
 
 func (l *PulumiAILanguage) String() string {
@@ -74,15 +74,15 @@ func (l *PulumiAILanguage) Type() string {
 }
 
 type aiWebCmd struct {
-	appURL            string
-	disableAutoSubmit bool
-	language          PulumiAILanguage
+	appURL			string
+	disableAutoSubmit	bool
+	language		PulumiAILanguage
 
-	Stdout io.Writer // defaults to os.Stdout
+	Stdout	io.Writer	// defaults to os.Stdout
 
 	// currentBackend is a reference to the top-level currentBackend function.
 	// This is used to override the default implementation for testing purposes.
-	currentBackend func(
+	currentBackend	func(
 		context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
 	) (backend.Backend, error)
 }
@@ -114,7 +114,7 @@ func (cmd *aiWebCmd) Run(ctx context.Context, args []string) error {
 		query.Set("autoSubmit", "true")
 	}
 	if cmd.language == "" {
-		cmd.language = TypeScript // TODO: default to the language of the current project if one is present
+		cmd.language = TypeScript	// TODO: default to the language of the current project if one is present
 	}
 	query.Set("language", cmd.language.String())
 
@@ -135,8 +135,8 @@ func newAIWebCommand() *cobra.Command {
 		aiwebcmd.appURL = "https://www.pulumi.com/ai"
 	}
 	cmd := &cobra.Command{
-		Use:   "web <prompt|--no-auto-submit>",
-		Short: "Opens Pulumi AI in your local browser",
+		Use:	"web <prompt|--no-auto-submit>",
+		Short:	"Opens Pulumi AI in your local browser",
 		Long: `Opens Pulumi AI in your local browser
 
 This command opens the Pulumi AI web app in your local default browser.
@@ -149,7 +149,7 @@ by passing the --no-auto-submit flag.
 Example:
   pulumi ai web "Create an S3 bucket in Python"
 `,
-		Args: cmdutil.MaximumNArgs(1),
+		Args:	cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			return aiwebcmd.Run(ctx, args)

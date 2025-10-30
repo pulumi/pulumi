@@ -21,9 +21,9 @@ import (
 )
 
 var pyNameTests = []struct {
-	input    string
-	expected string
-	legacy   string
+	input		string
+	expected	string
+	legacy		string
 }{
 	{"kubeletConfigKey", "kubelet_config_key", "kubelet_config_key"},
 	{"podCIDR", "pod_cidr", "pod_cidr"},

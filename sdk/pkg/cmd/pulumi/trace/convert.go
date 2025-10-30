@@ -39,7 +39,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -65,8 +65,8 @@ func traceRoots(querier appdash.Queryer) ([]*appdash.Trace, error) {
 }
 
 type traceSample struct {
-	when  time.Duration
-	where []string
+	when	time.Duration
+	where	[]string
 }
 
 func (s *traceSample) key() string {
@@ -93,11 +93,11 @@ func findGRPCPayloads(t *appdash.Trace) []string {
 }
 
 var (
-	urnFieldRe      = regexp.MustCompile(`urn:"([^"]+)"`)
-	tokFieldRe      = regexp.MustCompile(`tok:"([^"]+)"`)
-	depFieldRe      = regexp.MustCompile(`dependencies:"([^"]+)"`)
-	parentFieldRe   = regexp.MustCompile(`parent:"([^"]+)"`)
-	providerFieldRe = regexp.MustCompile(`provider:"([^"]+)"`)
+	urnFieldRe	= regexp.MustCompile(`urn:"([^"]+)"`)
+	tokFieldRe	= regexp.MustCompile(`tok:"([^"]+)"`)
+	depFieldRe	= regexp.MustCompile(`dependencies:"([^"]+)"`)
+	parentFieldRe	= regexp.MustCompile(`parent:"([^"]+)"`)
+	providerFieldRe	= regexp.MustCompile(`provider:"([^"]+)"`)
 )
 
 func extractURN(t *appdash.Trace) resource.URN {
@@ -325,8 +325,8 @@ func convertTraceToPprof(quantum time.Duration, querier appdash.Queryer) error {
 			}
 
 			sample := &profile.Sample{
-				Location: sampleLocations,
-				Value:    []int64{1, int64(quantum)},
+				Location:	sampleLocations,
+				Value:		[]int64{1, int64(quantum)},
 			}
 
 			samples, sampleTable[k] = append(samples, sample), sample
@@ -336,17 +336,17 @@ func convertTraceToPprof(quantum time.Duration, querier appdash.Queryer) error {
 	p := profile.Profile{
 		SampleType: []*profile.ValueType{
 			{
-				Type: "samples",
-				Unit: "count",
+				Type:	"samples",
+				Unit:	"count",
 			},
 			{
-				Type: "time",
-				Unit: "nanoseconds",
+				Type:	"time",
+				Unit:	"nanoseconds",
 			},
 		},
-		Sample:   samples,
-		Location: locations,
-		Function: functions,
+		Sample:		samples,
+		Location:	locations,
+		Function:	functions,
 	}
 
 	return p.Write(os.Stdout)
@@ -355,21 +355,21 @@ func convertTraceToPprof(quantum time.Duration, querier appdash.Queryer) error {
 type otelSpan struct {
 	sdktrace.ReadOnlySpan
 
-	urn string
+	urn	string
 
-	criticalDependency string
-	criticalPathLength *time.Duration
+	criticalDependency	string
+	criticalPathLength	*time.Duration
 
-	name       string
-	context    trace.SpanContext
-	parent     trace.SpanContext
-	start      time.Time
-	end        time.Time
-	links      []sdktrace.Link
-	attributes []attribute.KeyValue
-	resource   *sdkresource.Resource
+	name		string
+	context		trace.SpanContext
+	parent		trace.SpanContext
+	start		time.Time
+	end		time.Time
+	links		[]sdktrace.Link
+	attributes	[]attribute.KeyValue
+	resource	*sdkresource.Resource
 
-	children []*otelSpan
+	children	[]*otelSpan
 }
 
 // Name returns the name of the span.
@@ -469,13 +469,13 @@ func (s *otelSpan) ChildSpanCount() int {
 }
 
 type otelTrace struct {
-	id       trace.TraceID
-	resource *sdkresource.Resource
-	spans    []sdktrace.ReadOnlySpan
+	id		trace.TraceID
+	resource	*sdkresource.Resource
+	spans		[]sdktrace.ReadOnlySpan
 
-	registerResourceSpans map[string]sdktrace.ReadOnlySpan
+	registerResourceSpans	map[string]sdktrace.ReadOnlySpan
 
-	ignoreLogSpans bool
+	ignoreLogSpans	bool
 }
 
 func (t *otelTrace) criticalPath(span *otelSpan) (string, time.Duration) {
@@ -484,8 +484,8 @@ func (t *otelTrace) criticalPath(span *otelSpan) (string, time.Duration) {
 	}
 
 	type edge struct {
-		urn    string
-		length time.Duration
+		urn	string
+		length	time.Duration
 	}
 	edges := fx.ToSlice(fx.Map(fx.IterSlice(span.Links()), func(l sdktrace.Link) edge {
 		spanID := l.SpanContext.SpanID()
@@ -586,38 +586,38 @@ func (t *otelTrace) newSpan(root *appdash.Trace, parent *otelSpan) error {
 			return sdktrace.Link{}, false
 		}
 		return sdktrace.Link{
-			SpanContext: reg.SpanContext(),
-			Attributes:  []attribute.KeyValue{attribute.String("pulumi", "dependency")},
+			SpanContext:	reg.SpanContext(),
+			Attributes:	[]attribute.KeyValue{attribute.String("pulumi", "dependency")},
 		}, true
 	}))
 	if reg, ok := t.registerResourceSpans[parentURN]; ok {
 		links = append(links, sdktrace.Link{
-			SpanContext: reg.SpanContext(),
-			Attributes:  []attribute.KeyValue{attribute.String("pulumi", "parent")},
+			SpanContext:	reg.SpanContext(),
+			Attributes:	[]attribute.KeyValue{attribute.String("pulumi", "parent")},
 		})
 	}
 	if ref, err := providers.ParseReference(provider); err == nil {
 		if reg, ok := t.registerResourceSpans[string(ref.URN())]; ok {
 			links = append(links, sdktrace.Link{
-				SpanContext: reg.SpanContext(),
-				Attributes:  []attribute.KeyValue{attribute.String("pulumi", "provider")},
+				SpanContext:	reg.SpanContext(),
+				Attributes:	[]attribute.KeyValue{attribute.String("pulumi", "provider")},
 			})
 		}
 	}
 
 	// create the parent span
 	this := &otelSpan{
-		urn:  string(urn),
-		name: name,
+		urn:	string(urn),
+		name:	name,
 		context: trace.NewSpanContext(trace.SpanContextConfig{
-			TraceID: t.id,
-			SpanID:  t.getNextSpanID(),
+			TraceID:	t.id,
+			SpanID:		t.getNextSpanID(),
 		}),
-		start:      start,
-		end:        end,
-		resource:   t.resource,
-		attributes: attributes,
-		links:      links,
+		start:		start,
+		end:		end,
+		resource:	t.resource,
+		attributes:	attributes,
+		links:		links,
 	}
 	if parent != nil {
 		this.parent = parent.context
@@ -661,9 +661,9 @@ func exportTraceToOtel(querier appdash.Queryer, ignoreLogSpans bool) error {
 
 	// Generate a random ID for the trace.
 	t := otelTrace{
-		resource:              sdkresource.Default(),
-		registerResourceSpans: map[string]sdktrace.ReadOnlySpan{},
-		ignoreLogSpans:        ignoreLogSpans,
+		resource:		sdkresource.Default(),
+		registerResourceSpans:	map[string]sdktrace.ReadOnlySpan{},
+		ignoreLogSpans:		ignoreLogSpans,
 	}
 	if _, err = rand.Read(t.id[:]); err != nil {
 		return err
@@ -705,16 +705,16 @@ func NewConvertTraceCmd() *cobra.Command {
 	var ignoreLogSpans bool
 	var quantum time.Duration
 	cmd := &cobra.Command{
-		Use:   "convert-trace <trace-file>",
-		Short: "Convert a trace from the Pulumi CLI to Google's pprof format",
+		Use:	"convert-trace <trace-file>",
+		Short:	"Convert a trace from the Pulumi CLI to Google's pprof format",
 		Long: "Convert a trace from the Pulumi CLI to Google's pprof format.\n" +
 			"\n" +
 			"This command is used to convert execution traces collected by a prior\n" +
 			"invocation of the Pulumi CLI from their native format to Google's\n" +
 			"pprof format. The converted trace is written to stdout, and can be\n" +
 			"inspected using `go tool pprof`.",
-		Args:   cmdutil.ExactArgs(1),
-		Hidden: !env.DebugCommands.Value(),
+		Args:	cmdutil.ExactArgs(1),
+		Hidden:	!env.DebugCommands.Value(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			store := appdash.NewMemoryStore()
 			if err := readTrace(args[0], store); err != nil {

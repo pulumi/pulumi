@@ -27,211 +27,211 @@ func TestNewAnalyzePolicySummary(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		urn      resource.URN
-		response plugin.AnalyzeResponse
-		info     plugin.AnalyzerInfo
-		expected plugin.PolicySummary
+		name		string
+		urn		resource.URN
+		response	plugin.AnalyzeResponse
+		info		plugin.AnalyzerInfo
+		expected	plugin.PolicySummary
 	}{
 		{
-			name: "empty response with no policies",
-			urn:  "urn:pulumi:test::project::Type::resource",
+			name:	"empty response with no policies",
+			urn:	"urn:pulumi:test::project::Type::resource",
 			response: plugin.AnalyzeResponse{
-				Diagnostics:   []plugin.AnalyzeDiagnostic{},
-				NotApplicable: []plugin.PolicyNotApplicable{},
+				Diagnostics:	[]plugin.AnalyzeDiagnostic{},
+				NotApplicable:	[]plugin.PolicyNotApplicable{},
 			},
 			info: plugin.AnalyzerInfo{
-				Name:     "test-pack",
-				Version:  "1.0.0",
-				Policies: []plugin.AnalyzerPolicyInfo{},
+				Name:		"test-pack",
+				Version:	"1.0.0",
+				Policies:	[]plugin.AnalyzerPolicyInfo{},
 			},
 			expected: plugin.PolicySummary{
-				URN:               "urn:pulumi:test::project::Type::resource",
-				PolicyPackName:    "test-pack",
-				PolicyPackVersion: "1.0.0",
-				Passed:            []string{},
-				Failed:            []string{},
+				URN:			"urn:pulumi:test::project::Type::resource",
+				PolicyPackName:		"test-pack",
+				PolicyPackVersion:	"1.0.0",
+				Passed:			[]string{},
+				Failed:			[]string{},
 			},
 		},
 		{
-			name: "single passing resource policy",
-			urn:  "urn:pulumi:test::project::Type::resource",
+			name:	"single passing resource policy",
+			urn:	"urn:pulumi:test::project::Type::resource",
 			response: plugin.AnalyzeResponse{
-				Diagnostics:   []plugin.AnalyzeDiagnostic{},
-				NotApplicable: []plugin.PolicyNotApplicable{},
+				Diagnostics:	[]plugin.AnalyzeDiagnostic{},
+				NotApplicable:	[]plugin.PolicyNotApplicable{},
 			},
 			info: plugin.AnalyzerInfo{
-				Name:    "test-pack",
-				Version: "1.0.0",
+				Name:		"test-pack",
+				Version:	"1.0.0",
 				Policies: []plugin.AnalyzerPolicyInfo{
 					{
-						Name:             "resource-policy",
-						Type:             plugin.AnalyzerPolicyTypeResource,
-						EnforcementLevel: apitype.Advisory,
+						Name:			"resource-policy",
+						Type:			plugin.AnalyzerPolicyTypeResource,
+						EnforcementLevel:	apitype.Advisory,
 					},
 				},
 			},
 			expected: plugin.PolicySummary{
-				URN:               "urn:pulumi:test::project::Type::resource",
-				PolicyPackName:    "test-pack",
-				PolicyPackVersion: "1.0.0",
-				Passed:            []string{"resource-policy"},
-				Failed:            []string{},
+				URN:			"urn:pulumi:test::project::Type::resource",
+				PolicyPackName:		"test-pack",
+				PolicyPackVersion:	"1.0.0",
+				Passed:			[]string{"resource-policy"},
+				Failed:			[]string{},
 			},
 		},
 		{
-			name: "single failing resource policy",
-			urn:  "urn:pulumi:test::project::Type::resource",
+			name:	"single failing resource policy",
+			urn:	"urn:pulumi:test::project::Type::resource",
 			response: plugin.AnalyzeResponse{
 				Diagnostics: []plugin.AnalyzeDiagnostic{
 					{
-						PolicyName: "resource-policy",
-						URN:        "urn:pulumi:test::project::Type::resource",
+						PolicyName:	"resource-policy",
+						URN:		"urn:pulumi:test::project::Type::resource",
 					},
 				},
-				NotApplicable: []plugin.PolicyNotApplicable{},
+				NotApplicable:	[]plugin.PolicyNotApplicable{},
 			},
 			info: plugin.AnalyzerInfo{
-				Name:    "test-pack",
-				Version: "1.0.0",
+				Name:		"test-pack",
+				Version:	"1.0.0",
 				Policies: []plugin.AnalyzerPolicyInfo{
 					{
-						Name:             "resource-policy",
-						Type:             plugin.AnalyzerPolicyTypeResource,
-						EnforcementLevel: apitype.Mandatory,
+						Name:			"resource-policy",
+						Type:			plugin.AnalyzerPolicyTypeResource,
+						EnforcementLevel:	apitype.Mandatory,
 					},
 				},
 			},
 			expected: plugin.PolicySummary{
-				URN:               "urn:pulumi:test::project::Type::resource",
-				PolicyPackName:    "test-pack",
-				PolicyPackVersion: "1.0.0",
-				Passed:            []string{},
-				Failed:            []string{"resource-policy"},
+				URN:			"urn:pulumi:test::project::Type::resource",
+				PolicyPackName:		"test-pack",
+				PolicyPackVersion:	"1.0.0",
+				Passed:			[]string{},
+				Failed:			[]string{"resource-policy"},
 			},
 		},
 		{
-			name: "disabled resource policy",
-			urn:  "urn:pulumi:test::project::Type::resource",
+			name:	"disabled resource policy",
+			urn:	"urn:pulumi:test::project::Type::resource",
 			response: plugin.AnalyzeResponse{
-				Diagnostics:   []plugin.AnalyzeDiagnostic{},
-				NotApplicable: []plugin.PolicyNotApplicable{},
+				Diagnostics:	[]plugin.AnalyzeDiagnostic{},
+				NotApplicable:	[]plugin.PolicyNotApplicable{},
 			},
 			info: plugin.AnalyzerInfo{
-				Name:    "test-pack",
-				Version: "1.0.0",
+				Name:		"test-pack",
+				Version:	"1.0.0",
 				Policies: []plugin.AnalyzerPolicyInfo{
 					{
-						Name:             "resource-policy",
-						Type:             plugin.AnalyzerPolicyTypeResource,
-						EnforcementLevel: apitype.Disabled,
+						Name:			"resource-policy",
+						Type:			plugin.AnalyzerPolicyTypeResource,
+						EnforcementLevel:	apitype.Disabled,
 					},
 				},
 			},
 			expected: plugin.PolicySummary{
-				URN:               "urn:pulumi:test::project::Type::resource",
-				PolicyPackName:    "test-pack",
-				PolicyPackVersion: "1.0.0",
-				Passed:            []string{},
-				Failed:            []string{},
+				URN:			"urn:pulumi:test::project::Type::resource",
+				PolicyPackName:		"test-pack",
+				PolicyPackVersion:	"1.0.0",
+				Passed:			[]string{},
+				Failed:			[]string{},
 			},
 		},
 		{
-			name: "not applicable resource policy",
-			urn:  "urn:pulumi:test::project::Type::resource",
+			name:	"not applicable resource policy",
+			urn:	"urn:pulumi:test::project::Type::resource",
 			response: plugin.AnalyzeResponse{
-				Diagnostics: []plugin.AnalyzeDiagnostic{},
+				Diagnostics:	[]plugin.AnalyzeDiagnostic{},
 				NotApplicable: []plugin.PolicyNotApplicable{
 					{
-						PolicyName: "resource-policy",
-						Reason:     "policy not applicable to this resource type",
+						PolicyName:	"resource-policy",
+						Reason:		"policy not applicable to this resource type",
 					},
 				},
 			},
 			info: plugin.AnalyzerInfo{
-				Name:    "test-pack",
-				Version: "1.0.0",
+				Name:		"test-pack",
+				Version:	"1.0.0",
 				Policies: []plugin.AnalyzerPolicyInfo{
 					{
-						Name:             "resource-policy",
-						Type:             plugin.AnalyzerPolicyTypeResource,
-						EnforcementLevel: apitype.Advisory,
+						Name:			"resource-policy",
+						Type:			plugin.AnalyzerPolicyTypeResource,
+						EnforcementLevel:	apitype.Advisory,
 					},
 				},
 			},
 			expected: plugin.PolicySummary{
-				URN:               "urn:pulumi:test::project::Type::resource",
-				PolicyPackName:    "test-pack",
-				PolicyPackVersion: "1.0.0",
-				Passed:            []string{},
-				Failed:            []string{},
+				URN:			"urn:pulumi:test::project::Type::resource",
+				PolicyPackName:		"test-pack",
+				PolicyPackVersion:	"1.0.0",
+				Passed:			[]string{},
+				Failed:			[]string{},
 			},
 		},
 		{
-			name: "mixed resource and stack policies - only resource policies included",
-			urn:  "urn:pulumi:test::project::Type::resource",
+			name:	"mixed resource and stack policies - only resource policies included",
+			urn:	"urn:pulumi:test::project::Type::resource",
 			response: plugin.AnalyzeResponse{
 				Diagnostics: []plugin.AnalyzeDiagnostic{
 					{
-						PolicyName: "failing-resource-policy",
-						URN:        "urn:pulumi:test::project::Type::resource",
+						PolicyName:	"failing-resource-policy",
+						URN:		"urn:pulumi:test::project::Type::resource",
 					},
 				},
-				NotApplicable: []plugin.PolicyNotApplicable{},
+				NotApplicable:	[]plugin.PolicyNotApplicable{},
 			},
 			info: plugin.AnalyzerInfo{
-				Name:    "test-pack",
-				Version: "1.0.0",
+				Name:		"test-pack",
+				Version:	"1.0.0",
 				Policies: []plugin.AnalyzerPolicyInfo{
 					{
-						Name:             "failing-resource-policy",
-						Type:             plugin.AnalyzerPolicyTypeResource,
-						EnforcementLevel: apitype.Mandatory,
+						Name:			"failing-resource-policy",
+						Type:			plugin.AnalyzerPolicyTypeResource,
+						EnforcementLevel:	apitype.Mandatory,
 					},
 					{
-						Name:             "passing-resource-policy",
-						Type:             plugin.AnalyzerPolicyTypeResource,
-						EnforcementLevel: apitype.Advisory,
+						Name:			"passing-resource-policy",
+						Type:			plugin.AnalyzerPolicyTypeResource,
+						EnforcementLevel:	apitype.Advisory,
 					},
 					{
-						Name:             "stack-policy",
-						Type:             plugin.AnalyzerPolicyTypeStack,
-						EnforcementLevel: apitype.Advisory,
+						Name:			"stack-policy",
+						Type:			plugin.AnalyzerPolicyTypeStack,
+						EnforcementLevel:	apitype.Advisory,
 					},
 				},
 			},
 			expected: plugin.PolicySummary{
-				URN:               "urn:pulumi:test::project::Type::resource",
-				PolicyPackName:    "test-pack",
-				PolicyPackVersion: "1.0.0",
-				Passed:            []string{"passing-resource-policy"},
-				Failed:            []string{"failing-resource-policy"},
+				URN:			"urn:pulumi:test::project::Type::resource",
+				PolicyPackName:		"test-pack",
+				PolicyPackVersion:	"1.0.0",
+				Passed:			[]string{"passing-resource-policy"},
+				Failed:			[]string{"failing-resource-policy"},
 			},
 		},
 		{
-			name: "unknown type policies treated as applicable",
-			urn:  "urn:pulumi:test::project::Type::resource",
+			name:	"unknown type policies treated as applicable",
+			urn:	"urn:pulumi:test::project::Type::resource",
 			response: plugin.AnalyzeResponse{
-				Diagnostics:   []plugin.AnalyzeDiagnostic{},
-				NotApplicable: []plugin.PolicyNotApplicable{},
+				Diagnostics:	[]plugin.AnalyzeDiagnostic{},
+				NotApplicable:	[]plugin.PolicyNotApplicable{},
 			},
 			info: plugin.AnalyzerInfo{
-				Name:    "test-pack",
-				Version: "1.0.0",
+				Name:		"test-pack",
+				Version:	"1.0.0",
 				Policies: []plugin.AnalyzerPolicyInfo{
 					{
-						Name:             "unknown-type-policy",
-						Type:             plugin.AnalyzerPolicyTypeUnknown,
-						EnforcementLevel: apitype.Advisory,
+						Name:			"unknown-type-policy",
+						Type:			plugin.AnalyzerPolicyTypeUnknown,
+						EnforcementLevel:	apitype.Advisory,
 					},
 				},
 			},
 			expected: plugin.PolicySummary{
-				URN:               "urn:pulumi:test::project::Type::resource",
-				PolicyPackName:    "test-pack",
-				PolicyPackVersion: "1.0.0",
-				Passed:            []string{"unknown-type-policy"},
-				Failed:            []string{},
+				URN:			"urn:pulumi:test::project::Type::resource",
+				PolicyPackName:		"test-pack",
+				PolicyPackVersion:	"1.0.0",
+				Passed:			[]string{"unknown-type-policy"},
+				Failed:			[]string{},
 			},
 		},
 	}
@@ -250,152 +250,152 @@ func TestNewRemediatePolicySummary(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		urn      resource.URN
-		response plugin.RemediateResponse
-		info     plugin.AnalyzerInfo
-		expected plugin.PolicySummary
+		name		string
+		urn		resource.URN
+		response	plugin.RemediateResponse
+		info		plugin.AnalyzerInfo
+		expected	plugin.PolicySummary
 	}{
 		{
-			name: "empty response with no policies",
-			urn:  "urn:pulumi:test::project::Type::resource",
+			name:	"empty response with no policies",
+			urn:	"urn:pulumi:test::project::Type::resource",
 			response: plugin.RemediateResponse{
-				Remediations:  []plugin.Remediation{},
-				NotApplicable: []plugin.PolicyNotApplicable{},
+				Remediations:	[]plugin.Remediation{},
+				NotApplicable:	[]plugin.PolicyNotApplicable{},
 			},
 			info: plugin.AnalyzerInfo{
-				Name:     "test-pack",
-				Version:  "1.0.0",
-				Policies: []plugin.AnalyzerPolicyInfo{},
+				Name:		"test-pack",
+				Version:	"1.0.0",
+				Policies:	[]plugin.AnalyzerPolicyInfo{},
 			},
 			expected: plugin.PolicySummary{
-				URN:               "urn:pulumi:test::project::Type::resource",
-				PolicyPackName:    "test-pack",
-				PolicyPackVersion: "1.0.0",
-				Passed:            []string{},
-				Failed:            []string{},
+				URN:			"urn:pulumi:test::project::Type::resource",
+				PolicyPackName:		"test-pack",
+				PolicyPackVersion:	"1.0.0",
+				Passed:			[]string{},
+				Failed:			[]string{},
 			},
 		},
 		{
-			name: "single remediation treated as failure",
-			urn:  "urn:pulumi:test::project::Type::resource",
+			name:	"single remediation treated as failure",
+			urn:	"urn:pulumi:test::project::Type::resource",
 			response: plugin.RemediateResponse{
 				Remediations: []plugin.Remediation{
 					{
-						PolicyName: "resource-policy",
-						URN:        "urn:pulumi:test::project::Type::resource",
+						PolicyName:	"resource-policy",
+						URN:		"urn:pulumi:test::project::Type::resource",
 					},
 				},
-				NotApplicable: []plugin.PolicyNotApplicable{},
+				NotApplicable:	[]plugin.PolicyNotApplicable{},
 			},
 			info: plugin.AnalyzerInfo{
-				Name:    "test-pack",
-				Version: "1.0.0",
+				Name:		"test-pack",
+				Version:	"1.0.0",
 				Policies: []plugin.AnalyzerPolicyInfo{
 					{
-						Name:             "resource-policy",
-						Type:             plugin.AnalyzerPolicyTypeResource,
-						EnforcementLevel: apitype.Advisory,
+						Name:			"resource-policy",
+						Type:			plugin.AnalyzerPolicyTypeResource,
+						EnforcementLevel:	apitype.Advisory,
 					},
 				},
 			},
 			expected: plugin.PolicySummary{
-				URN:               "urn:pulumi:test::project::Type::resource",
-				PolicyPackName:    "test-pack",
-				PolicyPackVersion: "1.0.0",
-				Passed:            []string{},
-				Failed:            []string{"resource-policy"},
+				URN:			"urn:pulumi:test::project::Type::resource",
+				PolicyPackName:		"test-pack",
+				PolicyPackVersion:	"1.0.0",
+				Passed:			[]string{},
+				Failed:			[]string{"resource-policy"},
 			},
 		},
 		{
-			name: "multiple remediations with not applicable",
-			urn:  "urn:pulumi:test::project::Type::resource",
+			name:	"multiple remediations with not applicable",
+			urn:	"urn:pulumi:test::project::Type::resource",
 			response: plugin.RemediateResponse{
 				Remediations: []plugin.Remediation{
 					{
-						PolicyName: "policy-a",
-						URN:        "urn:pulumi:test::project::Type::resource",
+						PolicyName:	"policy-a",
+						URN:		"urn:pulumi:test::project::Type::resource",
 					},
 					{
-						PolicyName: "policy-b",
-						URN:        "urn:pulumi:test::project::Type::resource",
+						PolicyName:	"policy-b",
+						URN:		"urn:pulumi:test::project::Type::resource",
 					},
 				},
 				NotApplicable: []plugin.PolicyNotApplicable{
 					{
-						PolicyName: "policy-c",
-						Reason:     "not applicable",
+						PolicyName:	"policy-c",
+						Reason:		"not applicable",
 					},
 				},
 			},
 			info: plugin.AnalyzerInfo{
-				Name:    "test-pack",
-				Version: "2.0.0",
+				Name:		"test-pack",
+				Version:	"2.0.0",
 				Policies: []plugin.AnalyzerPolicyInfo{
 					{
-						Name:             "policy-a",
-						Type:             plugin.AnalyzerPolicyTypeResource,
-						EnforcementLevel: apitype.Mandatory,
+						Name:			"policy-a",
+						Type:			plugin.AnalyzerPolicyTypeResource,
+						EnforcementLevel:	apitype.Mandatory,
 					},
 					{
-						Name:             "policy-b",
-						Type:             plugin.AnalyzerPolicyTypeResource,
-						EnforcementLevel: apitype.Advisory,
+						Name:			"policy-b",
+						Type:			plugin.AnalyzerPolicyTypeResource,
+						EnforcementLevel:	apitype.Advisory,
 					},
 					{
-						Name:             "policy-c",
-						Type:             plugin.AnalyzerPolicyTypeResource,
-						EnforcementLevel: apitype.Advisory,
+						Name:			"policy-c",
+						Type:			plugin.AnalyzerPolicyTypeResource,
+						EnforcementLevel:	apitype.Advisory,
 					},
 					{
-						Name:             "policy-d",
-						Type:             plugin.AnalyzerPolicyTypeResource,
-						EnforcementLevel: apitype.Advisory,
+						Name:			"policy-d",
+						Type:			plugin.AnalyzerPolicyTypeResource,
+						EnforcementLevel:	apitype.Advisory,
 					},
 				},
 			},
 			expected: plugin.PolicySummary{
-				URN:               "urn:pulumi:test::project::Type::resource",
-				PolicyPackName:    "test-pack",
-				PolicyPackVersion: "2.0.0",
-				Passed:            []string{"policy-d"},
-				Failed:            []string{"policy-a", "policy-b"},
+				URN:			"urn:pulumi:test::project::Type::resource",
+				PolicyPackName:		"test-pack",
+				PolicyPackVersion:	"2.0.0",
+				Passed:			[]string{"policy-d"},
+				Failed:			[]string{"policy-a", "policy-b"},
 			},
 		},
 		{
-			name: "disabled policies excluded from remediation summary",
-			urn:  "urn:pulumi:test::project::Type::resource",
+			name:	"disabled policies excluded from remediation summary",
+			urn:	"urn:pulumi:test::project::Type::resource",
 			response: plugin.RemediateResponse{
 				Remediations: []plugin.Remediation{
 					{
-						PolicyName: "active-policy",
-						URN:        "urn:pulumi:test::project::Type::resource",
+						PolicyName:	"active-policy",
+						URN:		"urn:pulumi:test::project::Type::resource",
 					},
 				},
-				NotApplicable: []plugin.PolicyNotApplicable{},
+				NotApplicable:	[]plugin.PolicyNotApplicable{},
 			},
 			info: plugin.AnalyzerInfo{
-				Name:    "test-pack",
-				Version: "1.0.0",
+				Name:		"test-pack",
+				Version:	"1.0.0",
 				Policies: []plugin.AnalyzerPolicyInfo{
 					{
-						Name:             "active-policy",
-						Type:             plugin.AnalyzerPolicyTypeResource,
-						EnforcementLevel: apitype.Advisory,
+						Name:			"active-policy",
+						Type:			plugin.AnalyzerPolicyTypeResource,
+						EnforcementLevel:	apitype.Advisory,
 					},
 					{
-						Name:             "disabled-policy",
-						Type:             plugin.AnalyzerPolicyTypeResource,
-						EnforcementLevel: apitype.Disabled,
+						Name:			"disabled-policy",
+						Type:			plugin.AnalyzerPolicyTypeResource,
+						EnforcementLevel:	apitype.Disabled,
 					},
 				},
 			},
 			expected: plugin.PolicySummary{
-				URN:               "urn:pulumi:test::project::Type::resource",
-				PolicyPackName:    "test-pack",
-				PolicyPackVersion: "1.0.0",
-				Passed:            []string{},
-				Failed:            []string{"active-policy"},
+				URN:			"urn:pulumi:test::project::Type::resource",
+				PolicyPackName:		"test-pack",
+				PolicyPackVersion:	"1.0.0",
+				Passed:			[]string{},
+				Failed:			[]string{"active-policy"},
 			},
 		},
 	}
@@ -414,86 +414,86 @@ func TestNewAnalyzeStackPolicySummary(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		response plugin.AnalyzeResponse
-		info     plugin.AnalyzerInfo
-		expected plugin.PolicySummary
+		name		string
+		response	plugin.AnalyzeResponse
+		info		plugin.AnalyzerInfo
+		expected	plugin.PolicySummary
 	}{
 		{
-			name: "empty response with no policies",
+			name:	"empty response with no policies",
 			response: plugin.AnalyzeResponse{
-				Diagnostics:   []plugin.AnalyzeDiagnostic{},
-				NotApplicable: []plugin.PolicyNotApplicable{},
+				Diagnostics:	[]plugin.AnalyzeDiagnostic{},
+				NotApplicable:	[]plugin.PolicyNotApplicable{},
 			},
 			info: plugin.AnalyzerInfo{
-				Name:     "test-pack",
-				Version:  "1.0.0",
-				Policies: []plugin.AnalyzerPolicyInfo{},
+				Name:		"test-pack",
+				Version:	"1.0.0",
+				Policies:	[]plugin.AnalyzerPolicyInfo{},
 			},
 			expected: plugin.PolicySummary{
-				URN:               "",
-				PolicyPackName:    "test-pack",
-				PolicyPackVersion: "1.0.0",
-				Passed:            []string{},
-				Failed:            []string{},
+				URN:			"",
+				PolicyPackName:		"test-pack",
+				PolicyPackVersion:	"1.0.0",
+				Passed:			[]string{},
+				Failed:			[]string{},
 			},
 		},
 		{
-			name: "single passing stack policy",
+			name:	"single passing stack policy",
 			response: plugin.AnalyzeResponse{
-				Diagnostics:   []plugin.AnalyzeDiagnostic{},
-				NotApplicable: []plugin.PolicyNotApplicable{},
+				Diagnostics:	[]plugin.AnalyzeDiagnostic{},
+				NotApplicable:	[]plugin.PolicyNotApplicable{},
 			},
 			info: plugin.AnalyzerInfo{
-				Name:    "test-pack",
-				Version: "1.0.0",
+				Name:		"test-pack",
+				Version:	"1.0.0",
 				Policies: []plugin.AnalyzerPolicyInfo{
 					{
-						Name:             "stack-policy",
-						Type:             plugin.AnalyzerPolicyTypeStack,
-						EnforcementLevel: apitype.Advisory,
+						Name:			"stack-policy",
+						Type:			plugin.AnalyzerPolicyTypeStack,
+						EnforcementLevel:	apitype.Advisory,
 					},
 				},
 			},
 			expected: plugin.PolicySummary{
-				URN:               "",
-				PolicyPackName:    "test-pack",
-				PolicyPackVersion: "1.0.0",
-				Passed:            []string{"stack-policy"},
-				Failed:            []string{},
+				URN:			"",
+				PolicyPackName:		"test-pack",
+				PolicyPackVersion:	"1.0.0",
+				Passed:			[]string{"stack-policy"},
+				Failed:			[]string{},
 			},
 		},
 		{
-			name: "single failing stack policy",
+			name:	"single failing stack policy",
 			response: plugin.AnalyzeResponse{
 				Diagnostics: []plugin.AnalyzeDiagnostic{
 					{
 						PolicyName: "stack-policy",
 					},
 				},
-				NotApplicable: []plugin.PolicyNotApplicable{},
+				NotApplicable:	[]plugin.PolicyNotApplicable{},
 			},
 			info: plugin.AnalyzerInfo{
-				Name:    "test-pack",
-				Version: "1.0.0",
+				Name:		"test-pack",
+				Version:	"1.0.0",
 				Policies: []plugin.AnalyzerPolicyInfo{
 					{
-						Name:             "stack-policy",
-						Type:             plugin.AnalyzerPolicyTypeStack,
-						EnforcementLevel: apitype.Mandatory,
+						Name:			"stack-policy",
+						Type:			plugin.AnalyzerPolicyTypeStack,
+						EnforcementLevel:	apitype.Mandatory,
 					},
 				},
 			},
 			expected: plugin.PolicySummary{
-				URN:               "",
-				PolicyPackName:    "test-pack",
-				PolicyPackVersion: "1.0.0",
-				Passed:            []string{},
-				Failed:            []string{"stack-policy"},
+				URN:			"",
+				PolicyPackName:		"test-pack",
+				PolicyPackVersion:	"1.0.0",
+				Passed:			[]string{},
+				Failed:			[]string{"stack-policy"},
 			},
 		},
 		{
-			name: "mixed resource and stack policies - only stack policies included",
+			name:	"mixed resource and stack policies - only stack policies included",
 			response: plugin.AnalyzeResponse{
 				Diagnostics: []plugin.AnalyzeDiagnostic{
 					{
@@ -502,98 +502,98 @@ func TestNewAnalyzeStackPolicySummary(t *testing.T) {
 				},
 				NotApplicable: []plugin.PolicyNotApplicable{
 					{
-						PolicyName: "not-applicable-stack-policy",
-						Reason:     "stack condition not met",
+						PolicyName:	"not-applicable-stack-policy",
+						Reason:		"stack condition not met",
 					},
 				},
 			},
 			info: plugin.AnalyzerInfo{
-				Name:    "test-pack",
-				Version: "1.0.0",
+				Name:		"test-pack",
+				Version:	"1.0.0",
 				Policies: []plugin.AnalyzerPolicyInfo{
 					{
-						Name:             "failing-stack-policy",
-						Type:             plugin.AnalyzerPolicyTypeStack,
-						EnforcementLevel: apitype.Mandatory,
+						Name:			"failing-stack-policy",
+						Type:			plugin.AnalyzerPolicyTypeStack,
+						EnforcementLevel:	apitype.Mandatory,
 					},
 					{
-						Name:             "passing-stack-policy",
-						Type:             plugin.AnalyzerPolicyTypeStack,
-						EnforcementLevel: apitype.Advisory,
+						Name:			"passing-stack-policy",
+						Type:			plugin.AnalyzerPolicyTypeStack,
+						EnforcementLevel:	apitype.Advisory,
 					},
 					{
-						Name:             "not-applicable-stack-policy",
-						Type:             plugin.AnalyzerPolicyTypeStack,
-						EnforcementLevel: apitype.Advisory,
+						Name:			"not-applicable-stack-policy",
+						Type:			plugin.AnalyzerPolicyTypeStack,
+						EnforcementLevel:	apitype.Advisory,
 					},
 					{
-						Name:             "resource-policy",
-						Type:             plugin.AnalyzerPolicyTypeResource,
-						EnforcementLevel: apitype.Advisory,
+						Name:			"resource-policy",
+						Type:			plugin.AnalyzerPolicyTypeResource,
+						EnforcementLevel:	apitype.Advisory,
 					},
 				},
 			},
 			expected: plugin.PolicySummary{
-				URN:               "",
-				PolicyPackName:    "test-pack",
-				PolicyPackVersion: "1.0.0",
-				Passed:            []string{"passing-stack-policy"},
-				Failed:            []string{"failing-stack-policy"},
+				URN:			"",
+				PolicyPackName:		"test-pack",
+				PolicyPackVersion:	"1.0.0",
+				Passed:			[]string{"passing-stack-policy"},
+				Failed:			[]string{"failing-stack-policy"},
 			},
 		},
 		{
-			name: "disabled stack policy",
+			name:	"disabled stack policy",
 			response: plugin.AnalyzeResponse{
-				Diagnostics:   []plugin.AnalyzeDiagnostic{},
-				NotApplicable: []plugin.PolicyNotApplicable{},
+				Diagnostics:	[]plugin.AnalyzeDiagnostic{},
+				NotApplicable:	[]plugin.PolicyNotApplicable{},
 			},
 			info: plugin.AnalyzerInfo{
-				Name:    "test-pack",
-				Version: "1.0.0",
+				Name:		"test-pack",
+				Version:	"1.0.0",
 				Policies: []plugin.AnalyzerPolicyInfo{
 					{
-						Name:             "disabled-stack-policy",
-						Type:             plugin.AnalyzerPolicyTypeStack,
-						EnforcementLevel: apitype.Disabled,
+						Name:			"disabled-stack-policy",
+						Type:			plugin.AnalyzerPolicyTypeStack,
+						EnforcementLevel:	apitype.Disabled,
 					},
 					{
-						Name:             "active-stack-policy",
-						Type:             plugin.AnalyzerPolicyTypeStack,
-						EnforcementLevel: apitype.Advisory,
+						Name:			"active-stack-policy",
+						Type:			plugin.AnalyzerPolicyTypeStack,
+						EnforcementLevel:	apitype.Advisory,
 					},
 				},
 			},
 			expected: plugin.PolicySummary{
-				URN:               "",
-				PolicyPackName:    "test-pack",
-				PolicyPackVersion: "1.0.0",
-				Passed:            []string{"active-stack-policy"},
-				Failed:            []string{},
+				URN:			"",
+				PolicyPackName:		"test-pack",
+				PolicyPackVersion:	"1.0.0",
+				Passed:			[]string{"active-stack-policy"},
+				Failed:			[]string{},
 			},
 		},
 		{
-			name: "unknown type policies treated as applicable for stack",
+			name:	"unknown type policies treated as applicable for stack",
 			response: plugin.AnalyzeResponse{
-				Diagnostics:   []plugin.AnalyzeDiagnostic{},
-				NotApplicable: []plugin.PolicyNotApplicable{},
+				Diagnostics:	[]plugin.AnalyzeDiagnostic{},
+				NotApplicable:	[]plugin.PolicyNotApplicable{},
 			},
 			info: plugin.AnalyzerInfo{
-				Name:    "test-pack",
-				Version: "1.0.0",
+				Name:		"test-pack",
+				Version:	"1.0.0",
 				Policies: []plugin.AnalyzerPolicyInfo{
 					{
-						Name:             "unknown-type-policy",
-						Type:             plugin.AnalyzerPolicyTypeUnknown,
-						EnforcementLevel: apitype.Advisory,
+						Name:			"unknown-type-policy",
+						Type:			plugin.AnalyzerPolicyTypeUnknown,
+						EnforcementLevel:	apitype.Advisory,
 					},
 				},
 			},
 			expected: plugin.PolicySummary{
-				URN:               "",
-				PolicyPackName:    "test-pack",
-				PolicyPackVersion: "1.0.0",
-				Passed:            []string{"unknown-type-policy"},
-				Failed:            []string{},
+				URN:			"",
+				PolicyPackName:		"test-pack",
+				PolicyPackVersion:	"1.0.0",
+				Passed:			[]string{"unknown-type-policy"},
+				Failed:			[]string{},
 			},
 		},
 	}

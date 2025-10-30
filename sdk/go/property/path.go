@@ -184,8 +184,8 @@ func (err pathApplyKeyExpectedMapError) Found() Value {
 }
 
 type pathApplyKeyMissingError struct {
-	found  Map
-	needle string
+	found	Map
+	needle	string
 }
 
 func (err pathApplyKeyMissingError) Error() string {
@@ -209,8 +209,8 @@ func (err pathApplyIndexExpectedArrayError) Found() Value {
 }
 
 type pathApplyIndexOutOfBoundsError struct {
-	found Array
-	idx   int
+	found	Array
+	idx	int
 }
 
 func (err pathApplyIndexOutOfBoundsError) Found() Value {
@@ -227,9 +227,9 @@ func pathErrorf(v Value, msg string, a ...any) PathApplyFailure {
 }
 
 type pathApplyError struct {
-	found Value
-	msg   string
+	found	Value
+	msg	string
 }
 
-func (err pathApplyError) Error() string { return err.msg }
-func (err pathApplyError) Found() Value  { return err.found }
+func (err pathApplyError) Error() string	{ return err.msg }
+func (err pathApplyError) Found() Value		{ return err.found }

@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 )
 
 // DocLanguageHelper is the Python-specific implementation of the DocLanguageHelper.
@@ -90,10 +90,10 @@ func (d DocLanguageHelper) GetTypeName(pkg schema.PackageReference, t schema.Typ
 	}
 
 	mod := &modContext{
-		pkg:              pkg,
-		mod:              moduleToPythonModule(relativeToModule, info.ModuleNameOverrides),
-		modNameOverrides: info.ModuleNameOverrides,
-		typeDetails:      map[*schema.ObjectType]*typeDetails{},
+		pkg:			pkg,
+		mod:			moduleToPythonModule(relativeToModule, info.ModuleNameOverrides),
+		modNameOverrides:	info.ModuleNameOverrides,
+		typeDetails:		map[*schema.ObjectType]*typeDetails{},
 	}
 	typeName := mod.typeString(t, typeStringOpts{input: input, forDocs: true})
 
@@ -144,9 +144,9 @@ func (d DocLanguageHelper) GetMethodResultName(pkg schema.PackageReference, modN
 	if info.LiftSingleValueMethodReturns && returnType != nil && len(returnType.Properties) == 1 {
 		typeDetails := map[*schema.ObjectType]*typeDetails{}
 		mod := &modContext{
-			pkg:         pkg,
-			mod:         modName,
-			typeDetails: typeDetails,
+			pkg:		pkg,
+			mod:		modName,
+			typeDetails:	typeDetails,
 		}
 		return mod.typeString(returnType.Properties[0].Type, typeStringOpts{
 			forDocs: true,

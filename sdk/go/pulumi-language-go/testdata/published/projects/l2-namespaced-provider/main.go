@@ -15,8 +15,8 @@ func main() {
 			return err
 		}
 		_, err = namespaced.NewResource(ctx, "res", &namespaced.ResourceArgs{
-			Value:       pulumi.Bool(true),
-			ResourceRef: componentRes.Ref,
+			Value:		pulumi.Bool(true),
+			ResourceRef:	componentRes.Ref,
 		})
 		if err != nil {
 			return err

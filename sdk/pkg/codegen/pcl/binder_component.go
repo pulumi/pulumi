@@ -20,8 +20,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	syntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	syntax "github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -51,9 +51,9 @@ func componentVariableType(program *Program) model.Type {
 }
 
 type componentScopes struct {
-	root      *model.Scope
-	withRange *model.Scope
-	component *Component
+	root		*model.Scope
+	withRange	*model.Scope
+	component	*Component
 }
 
 func newComponentScopes(
@@ -63,9 +63,9 @@ func newComponentScopes(
 	rangeValueType model.Type,
 ) model.Scopes {
 	scopes := &componentScopes{
-		root:      root,
-		withRange: root,
-		component: component,
+		root:		root,
+		withRange:	root,
+		component:	component,
 	}
 
 	if rangeValueType != nil {
@@ -78,8 +78,8 @@ func newComponentScopes(
 
 		scopes.withRange = root.Push(syntax.None)
 		scopes.withRange.Define("range", &model.Variable{
-			Name:         "range",
-			VariableType: model.NewObjectType(properties),
+			Name:		"range",
+			VariableType:	model.NewObjectType(properties),
 		})
 	}
 	return scopes
@@ -94,8 +94,8 @@ func (s *componentScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*mode
 }
 
 type componentInput struct {
-	key      string
-	required bool
+	key		string
+	required	bool
 }
 
 func componentInputs(program *Program) map[string]componentInput {
@@ -104,8 +104,8 @@ func componentInputs(program *Program) map[string]componentInput {
 		switch node := node.(type) {
 		case *ConfigVariable:
 			inputs[node.LogicalName()] = componentInput{
-				required: node.DefaultValue == nil && !node.Nullable,
-				key:      node.LogicalName(),
+				required:	node.DefaultValue == nil && !node.Nullable,
+				key:		node.LogicalName(),
 			}
 		}
 	}
@@ -224,9 +224,9 @@ func includeSourceDirectoryInDiagnostics(diags hcl.Diagnostics, componentSourceD
 		}
 
 		diag.Subject = &hcl.Range{
-			Filename: componentSourceDir,
-			Start:    start,
-			End:      end,
+			Filename:	componentSourceDir,
+			Start:		start,
+			End:		end,
 		}
 	}
 }
@@ -317,17 +317,17 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 	}
 
 	componentProgram, programDiags, err := b.options.componentProgramBinder(ComponentProgramBinderArgs{
-		AllowMissingVariables:        b.options.allowMissingVariables,
-		AllowMissingProperties:       b.options.allowMissingProperties,
-		SkipResourceTypecheck:        b.options.skipResourceTypecheck,
-		SkipInvokeTypecheck:          b.options.skipInvokeTypecheck,
-		SkipRangeTypecheck:           b.options.skipRangeTypecheck,
-		PreferOutputVersionedInvokes: b.options.preferOutputVersionedInvokes,
-		BinderLoader:                 b.options.loader,
-		BinderDirPath:                b.options.dirPath,
-		PackageCache:                 b.options.packageCache,
-		ComponentSource:              node.source,
-		ComponentNodeRange:           node.SyntaxNode().Range(),
+		AllowMissingVariables:		b.options.allowMissingVariables,
+		AllowMissingProperties:		b.options.allowMissingProperties,
+		SkipResourceTypecheck:		b.options.skipResourceTypecheck,
+		SkipInvokeTypecheck:		b.options.skipInvokeTypecheck,
+		SkipRangeTypecheck:		b.options.skipRangeTypecheck,
+		PreferOutputVersionedInvokes:	b.options.preferOutputVersionedInvokes,
+		BinderLoader:			b.options.loader,
+		BinderDirPath:			b.options.dirPath,
+		PackageCache:			b.options.packageCache,
+		ComponentSource:		node.source,
+		ComponentNodeRange:		node.SyntaxNode().Range(),
 	})
 	if err != nil {
 		diagnostics = diagnostics.Append(errorf(node.SyntaxNode().Range(), "%s", err.Error()))

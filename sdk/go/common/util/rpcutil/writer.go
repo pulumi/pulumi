@@ -28,8 +28,8 @@ import (
 )
 
 type ptyCloser struct {
-	done     chan (error)
-	pty, tty *os.File
+	done		chan (error)
+	pty, tty	*os.File
 }
 
 func (w *ptyCloser) Close() error {
@@ -65,7 +65,7 @@ func (w *ptyCloser) Close() error {
 
 type nullCloser struct{}
 
-func (c *nullCloser) Close() error { return nil }
+func (c *nullCloser) Close() error	{ return nil }
 
 type pipeWriter struct {
 	send func([]byte) error
@@ -100,9 +100,9 @@ func makeStreams(
 		} else {
 			ptyDone := make(chan error, 1)
 			closer := &ptyCloser{
-				pty:  pt,
-				tty:  tt,
-				done: ptyDone,
+				pty:	pt,
+				tty:	tt,
+				done:	ptyDone,
 			}
 
 			go func() {

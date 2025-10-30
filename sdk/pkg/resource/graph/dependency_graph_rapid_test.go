@@ -258,8 +258,8 @@ func resourceStateSliceGenerator() *rapid.Generator[[]*resource.State] {
 	stateGen := rapid.Custom(func(t *rapid.T) *resource.State {
 		urn := urnGen.Draw(t, "URN")
 		return &resource.State{
-			Custom: true,
-			URN:    resource.URN(urn),
+			Custom:	true,
+			URN:	resource.URN(urn),
 		}
 	})
 

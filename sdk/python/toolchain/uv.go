@@ -38,9 +38,9 @@ import (
 
 type uv struct {
 	// The absolute path to the virtual env.
-	virtualenvPath string
+	virtualenvPath	string
 	// The root directory of the project.
-	root string
+	root	string
 }
 
 var minUvVersion = semver.MustParse("0.4.26")
@@ -86,8 +86,8 @@ func newUv(root, virtualenv string) (*uv, error) {
 	}
 
 	u := &uv{
-		virtualenvPath: virtualenv,
-		root:           root,
+		virtualenvPath:	virtualenv,
+		root:		root,
 	}
 
 	// Validate the version
@@ -204,7 +204,7 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 
 func (u *uv) LinkPackages(ctx context.Context, packages map[string]string) error {
 	logging.V(9).Infof("uv linking %s", packages)
-	args := []string{"add", "--no-sync"} // Don't update the venv
+	args := []string{"add", "--no-sync"}	// Don't update the venv
 
 	needs, err := u.needsNoWorkspacesFlag(ctx)
 	if err != nil {
@@ -354,8 +354,8 @@ func (u *uv) About(ctx context.Context) (Info, error) {
 	executable := strings.TrimSpace(string(out))
 
 	return Info{
-		Executable: executable,
-		Version:    version,
+		Executable:	executable,
+		Version:	version,
 	}, nil
 }
 

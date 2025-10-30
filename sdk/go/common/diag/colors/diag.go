@@ -20,11 +20,11 @@ type Colorization string
 
 const (
 	// Always colorizes text.
-	Always Colorization = "always"
+	Always	Colorization	= "always"
 	// Never colorizes text.
-	Never Colorization = "never"
+	Never	Colorization	= "never"
 	// Raw returns text with the raw control sequences, rather than colorizing them.
-	Raw Colorization = "raw"
+	Raw	Colorization	= "raw"
 )
 
 // Colorize conditionally colorizes the given string based on the kind of colorization selected.

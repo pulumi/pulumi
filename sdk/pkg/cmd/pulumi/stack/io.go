@@ -27,15 +27,15 @@ import (
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 	"github.com/hashicorp/go-multierror"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/state"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/backenderr"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/state"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -92,7 +92,7 @@ type LoadOption int
 
 const (
 	// LoadOnly specifies that we should stop after loading the stack.
-	LoadOnly LoadOption = 1 << iota
+	LoadOnly	LoadOption	= 1 << iota
 
 	// OfferNew is set if we want to allow the user
 	// to create a stack if one was not found.
@@ -215,8 +215,8 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	project := string(proj.Name)
 
 	var (
-		allStackRefs []backend.StackReference
-		inContToken  backend.ContinuationToken
+		allStackRefs	[]backend.StackReference
+		inContToken	backend.ContinuationToken
 	)
 	for {
 		stackRefs, outContToken, err := b.ListStackNames(ctx, backend.ListStackNamesFilter{Project: &project}, inContToken)
@@ -277,9 +277,9 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 
 	var option string
 	if err = survey.AskOne(&survey.Select{
-		Message: message,
-		Options: options,
-		Default: defaultOption,
+		Message:	message,
+		Options:	options,
+		Default:	defaultOption,
 	}, &option, ui.SurveyIcons(opts.Color)); err != nil {
 		return nil, errors.New(chooseStackErr)
 	}
@@ -355,17 +355,17 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	var initialState *apitype.UntypedDeployment
 	if sm != nil {
 		m := deploy.Manifest{
-			Time:    time.Now(),
-			Version: version.Version,
-			Plugins: nil,
+			Time:		time.Now(),
+			Version:	version.Version,
+			Plugins:	nil,
 		}
 		m.Magic = m.NewMagic()
 
 		d := &apitype.DeploymentV3{
-			Manifest: m.Serialize(),
+			Manifest:	m.Serialize(),
 			SecretsProviders: &apitype.SecretsProvidersV1{
-				Type:  sm.Type(),
-				State: sm.State(),
+				Type:	sm.Type(),
+				State:	sm.State(),
 			},
 		}
 		dJSON, err := json.Marshal(d)
@@ -374,8 +374,8 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 		}
 
 		initialState = &apitype.UntypedDeployment{
-			Version:    3,
-			Deployment: dJSON,
+			Version:	3,
+			Deployment:	dJSON,
 		}
 	}
 

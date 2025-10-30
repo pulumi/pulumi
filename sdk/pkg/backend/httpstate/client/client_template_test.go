@@ -33,39 +33,39 @@ import (
 var testTemplateArchiveData = []byte("fake-tar-gz-data")
 
 type templateTestCase struct {
-	name             string
-	setupServer      func(blobStorage *httptest.Server) *httptest.Server
-	setupBlobStorage func() *httptest.Server
-	source           string
-	publisher        string
-	templateName     string
-	version          semver.Version
-	archiveData      []byte
-	errorMessage     string
-	httpClient       *http.Client
+	name			string
+	setupServer		func(blobStorage *httptest.Server) *httptest.Server
+	setupBlobStorage	func() *httptest.Server
+	source			string
+	publisher		string
+	templateName		string
+	version			semver.Version
+	archiveData		[]byte
+	errorMessage		string
+	httpClient		*http.Client
 }
 
 func TestStartTemplatePublish(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name           string
-		setupServer    func() *httptest.Server
-		source         string
-		publisher      string
-		templateName   string
-		version        semver.Version
-		expectedError  string
-		validateResult func(t *testing.T, resp *StartTemplatePublishResponse)
+		name		string
+		setupServer	func() *httptest.Server
+		source		string
+		publisher	string
+		templateName	string
+		version		semver.Version
+		expectedError	string
+		validateResult	func(t *testing.T, resp *StartTemplatePublishResponse)
 	}{
 		{
-			name: "SuccessfulStartPublish",
+			name:	"SuccessfulStartPublish",
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					if r.URL.Path == "/api/registry/templates/private/test-publisher/test-template/versions" {
 						w.WriteHeader(http.StatusAccepted)
 						response := StartTemplatePublishResponse{
-							OperationID: "test-operation-id",
+							OperationID:	"test-operation-id",
 							UploadURLs: TemplateUploadURLs{
 								Archive: "https://example.com/upload/archive",
 							},
@@ -76,17 +76,17 @@ func TestStartTemplatePublish(t *testing.T) {
 					}
 				}))
 			},
-			source:       "private",
-			publisher:    "test-publisher",
-			templateName: "test-template",
-			version:      semver.MustParse("1.0.0"),
+			source:		"private",
+			publisher:	"test-publisher",
+			templateName:	"test-template",
+			version:	semver.MustParse("1.0.0"),
 			validateResult: func(t *testing.T, resp *StartTemplatePublishResponse) {
 				assert.Equal(t, TemplatePublishOperationID("test-operation-id"), resp.OperationID)
 				assert.Equal(t, "https://example.com/upload/archive", resp.UploadURLs.Archive)
 			},
 		},
 		{
-			name: "FailedStartPublish",
+			name:	"FailedStartPublish",
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusInternalServerError)
@@ -94,11 +94,11 @@ func TestStartTemplatePublish(t *testing.T) {
 					require.NoError(t, err)
 				}))
 			},
-			source:        "private",
-			publisher:     "test-publisher",
-			templateName:  "test-template",
-			version:       semver.MustParse("1.0.0"),
-			expectedError: "start template publish failed",
+			source:		"private",
+			publisher:	"test-publisher",
+			templateName:	"test-template",
+			version:	semver.MustParse("1.0.0"),
+			expectedError:	"start template publish failed",
 		},
 	}
 
@@ -110,8 +110,8 @@ func TestStartTemplatePublish(t *testing.T) {
 			defer server.Close()
 
 			client := &Client{
-				apiURL:   server.URL,
-				apiToken: "fake-token",
+				apiURL:		server.URL,
+				apiToken:	"fake-token",
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
 						client: http.DefaultClient,
@@ -140,17 +140,17 @@ func TestCompleteTemplatePublish(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name          string
-		setupServer   func() *httptest.Server
-		source        string
-		publisher     string
-		templateName  string
-		version       semver.Version
-		operationID   TemplatePublishOperationID
-		expectedError string
+		name		string
+		setupServer	func() *httptest.Server
+		source		string
+		publisher	string
+		templateName	string
+		version		semver.Version
+		operationID	TemplatePublishOperationID
+		expectedError	string
 	}{
 		{
-			name: "SuccessfulCompletePublish",
+			name:	"SuccessfulCompletePublish",
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					if r.URL.Path == "/api/registry/templates/private/test-publisher/test-template/versions/1.0.0/complete" {
@@ -162,14 +162,14 @@ func TestCompleteTemplatePublish(t *testing.T) {
 					}
 				}))
 			},
-			source:       "private",
-			publisher:    "test-publisher",
-			templateName: "test-template",
-			version:      semver.MustParse("1.0.0"),
-			operationID:  "test-operation-id",
+			source:		"private",
+			publisher:	"test-publisher",
+			templateName:	"test-template",
+			version:	semver.MustParse("1.0.0"),
+			operationID:	"test-operation-id",
 		},
 		{
-			name: "FailedCompletePublish",
+			name:	"FailedCompletePublish",
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusInternalServerError)
@@ -177,12 +177,12 @@ func TestCompleteTemplatePublish(t *testing.T) {
 					require.NoError(t, err)
 				}))
 			},
-			source:        "private",
-			publisher:     "test-publisher",
-			templateName:  "test-template",
-			version:       semver.MustParse("1.0.0"),
-			operationID:   "test-operation-id",
-			expectedError: "failed to complete template publishing operation",
+			source:		"private",
+			publisher:	"test-publisher",
+			templateName:	"test-template",
+			version:	semver.MustParse("1.0.0"),
+			operationID:	"test-operation-id",
+			expectedError:	"failed to complete template publishing operation",
 		},
 	}
 
@@ -194,8 +194,8 @@ func TestCompleteTemplatePublish(t *testing.T) {
 			defer server.Close()
 
 			client := &Client{
-				apiURL:   server.URL,
-				apiToken: "fake-token",
+				apiURL:		server.URL,
+				apiToken:	"fake-token",
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
 						client: http.DefaultClient,
@@ -227,7 +227,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 
 	tests := []templateTestCase{
 		{
-			name: "SuccessfulPublish",
+			name:	"SuccessfulPublish",
 			setupBlobStorage: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
@@ -239,7 +239,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 					case "/api/registry/templates/private/test-publisher/test-template/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := StartTemplatePublishResponse{
-							OperationID: "test-operation-id",
+							OperationID:	"test-operation-id",
 							UploadURLs: TemplateUploadURLs{
 								Archive: blobStorage.URL + "/upload/archive",
 							},
@@ -251,14 +251,14 @@ func TestPublishTemplate_Integration(t *testing.T) {
 					}
 				}))
 			},
-			source:       "private",
-			publisher:    "test-publisher",
-			templateName: "test-template",
-			version:      semver.MustParse("1.0.0"),
-			archiveData:  testTemplateArchiveData,
+			source:		"private",
+			publisher:	"test-publisher",
+			templateName:	"test-template",
+			version:	semver.MustParse("1.0.0"),
+			archiveData:	testTemplateArchiveData,
 		},
 		{
-			name: "FailedStartPublish",
+			name:	"FailedStartPublish",
 			setupBlobStorage: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
@@ -273,15 +273,15 @@ func TestPublishTemplate_Integration(t *testing.T) {
 					}
 				}))
 			},
-			source:       "private",
-			publisher:    "test-publisher",
-			templateName: "test-template",
-			version:      semver.MustParse("1.0.0"),
-			archiveData:  testTemplateArchiveData,
-			errorMessage: "start template publish failed",
+			source:		"private",
+			publisher:	"test-publisher",
+			templateName:	"test-template",
+			version:	semver.MustParse("1.0.0"),
+			archiveData:	testTemplateArchiveData,
+			errorMessage:	"start template publish failed",
 		},
 		{
-			name: "FailedArchiveUpload",
+			name:	"FailedArchiveUpload",
 			setupBlobStorage: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					if r.URL.Path == "/upload/archive" {
@@ -297,7 +297,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 					case "/api/registry/templates/private/test-publisher/test-template/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := StartTemplatePublishResponse{
-							OperationID: "test-operation-id",
+							OperationID:	"test-operation-id",
 							UploadURLs: TemplateUploadURLs{
 								Archive: blobStorage.URL + "/upload/archive",
 							},
@@ -306,15 +306,15 @@ func TestPublishTemplate_Integration(t *testing.T) {
 					}
 				}))
 			},
-			source:       "private",
-			publisher:    "test-publisher",
-			templateName: "test-template",
-			version:      semver.MustParse("1.0.0"),
-			archiveData:  testTemplateArchiveData,
-			errorMessage: "upload failed with status 403",
+			source:		"private",
+			publisher:	"test-publisher",
+			templateName:	"test-template",
+			version:	semver.MustParse("1.0.0"),
+			archiveData:	testTemplateArchiveData,
+			errorMessage:	"upload failed with status 403",
 		},
 		{
-			name: "FailedCompletePublish",
+			name:	"FailedCompletePublish",
 			setupBlobStorage: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
@@ -326,7 +326,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 					case "/api/registry/templates/private/test-publisher/test-template/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := StartTemplatePublishResponse{
-							OperationID: "test-operation-id",
+							OperationID:	"test-operation-id",
 							UploadURLs: TemplateUploadURLs{
 								Archive: blobStorage.URL + "/upload/archive",
 							},
@@ -339,15 +339,15 @@ func TestPublishTemplate_Integration(t *testing.T) {
 					}
 				}))
 			},
-			source:       "private",
-			publisher:    "test-publisher",
-			templateName: "test-template",
-			version:      semver.MustParse("1.0.0"),
-			archiveData:  testTemplateArchiveData,
-			errorMessage: "failed to complete template publish",
+			source:		"private",
+			publisher:	"test-publisher",
+			templateName:	"test-template",
+			version:	semver.MustParse("1.0.0"),
+			archiveData:	testTemplateArchiveData,
+			errorMessage:	"failed to complete template publish",
 		},
 		{
-			name: "NetworkFailure",
+			name:	"NetworkFailure",
 			httpClient: &http.Client{
 				Transport: &errorTransport{
 					roundTripFunc: func(req *http.Request) (*http.Response, error) {
@@ -366,7 +366,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 					case "/api/registry/templates/private/test-publisher/test-template/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := StartTemplatePublishResponse{
-							OperationID: "test-operation-id",
+							OperationID:	"test-operation-id",
 							UploadURLs: TemplateUploadURLs{
 								Archive: blobStorage.URL + "/upload/archive",
 							},
@@ -375,12 +375,12 @@ func TestPublishTemplate_Integration(t *testing.T) {
 					}
 				}))
 			},
-			source:       "private",
-			publisher:    "test-publisher",
-			templateName: "test-template",
-			version:      semver.MustParse("1.0.0"),
-			archiveData:  testTemplateArchiveData,
-			errorMessage: "simulated network error",
+			source:		"private",
+			publisher:	"test-publisher",
+			templateName:	"test-template",
+			version:	semver.MustParse("1.0.0"),
+			archiveData:	testTemplateArchiveData,
+			errorMessage:	"simulated network error",
 		},
 	}
 
@@ -402,9 +402,9 @@ func TestPublishTemplate_Integration(t *testing.T) {
 
 			// Create a mock cloud registry that uses the HTTP client methods
 			client := &Client{
-				apiURL:     server.URL,
-				apiToken:   "fake-token",
-				httpClient: httpClient,
+				apiURL:		server.URL,
+				apiToken:	"fake-token",
+				httpClient:	httpClient,
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
 						client: httpClient,
@@ -416,11 +416,11 @@ func TestPublishTemplate_Integration(t *testing.T) {
 			registry := newCloudRegistry(client)
 
 			op := templatePublishOp{
-				Source:    tt.source,
-				Publisher: tt.publisher,
-				Name:      tt.templateName,
-				Version:   tt.version,
-				Archive:   bytes.NewReader(tt.archiveData),
+				Source:		tt.source,
+				Publisher:	tt.publisher,
+				Name:		tt.templateName,
+				Version:	tt.version,
+				Archive:	bytes.NewReader(tt.archiveData),
 			}
 
 			err := registry.PublishTemplate(context.Background(), op)
@@ -437,11 +437,11 @@ func TestPublishTemplate_Integration(t *testing.T) {
 
 // Helper type to match the backend.TemplatePublishOp interface for testing
 type templatePublishOp struct {
-	Source    string
-	Publisher string
-	Name      string
-	Version   semver.Version
-	Archive   *bytes.Reader
+	Source		string
+	Publisher	string
+	Name		string
+	Version		semver.Version
+	Archive		*bytes.Reader
 }
 
 // Mock implementation of newCloudRegistry for testing
@@ -656,20 +656,20 @@ func TestListTemplates(t *testing.T) {
 		desc2 := "Second template"
 		expectedTemplates := []apitype.TemplateMetadata{
 			{
-				Name:        "my-template-1",
-				Publisher:   "my-publisher",
-				Source:      "my-source",
-				Description: &desc1,
-				Language:    "go",
-				Visibility:  apitype.VisibilityPrivate,
+				Name:		"my-template-1",
+				Publisher:	"my-publisher",
+				Source:		"my-source",
+				Description:	&desc1,
+				Language:	"go",
+				Visibility:	apitype.VisibilityPrivate,
 			},
 			{
-				Name:        "my-template-2",
-				Publisher:   "my-publisher",
-				Source:      "my-source",
-				Description: &desc2,
-				Language:    "typescript",
-				Visibility:  apitype.VisibilityPrivate,
+				Name:		"my-template-2",
+				Publisher:	"my-publisher",
+				Source:		"my-source",
+				Description:	&desc2,
+				Language:	"typescript",
+				Visibility:	apitype.VisibilityPrivate,
 			},
 		}
 
@@ -709,34 +709,34 @@ func TestListTemplates(t *testing.T) {
 		desc3 := "Third template"
 		firstPageTemplates := []apitype.TemplateMetadata{
 			{
-				Name:        "my-template-1",
-				Publisher:   "my-publisher",
-				Source:      "my-source",
-				Description: &desc1,
-				Language:    "go",
-				Visibility:  apitype.VisibilityPrivate,
+				Name:		"my-template-1",
+				Publisher:	"my-publisher",
+				Source:		"my-source",
+				Description:	&desc1,
+				Language:	"go",
+				Visibility:	apitype.VisibilityPrivate,
 			},
 		}
 
 		secondPageTemplates := []apitype.TemplateMetadata{
 			{
-				Name:        "my-template-2",
-				Publisher:   "my-publisher",
-				Source:      "my-source",
-				Description: &desc2,
-				Language:    "typescript",
-				Visibility:  apitype.VisibilityPrivate,
+				Name:		"my-template-2",
+				Publisher:	"my-publisher",
+				Source:		"my-source",
+				Description:	&desc2,
+				Language:	"typescript",
+				Visibility:	apitype.VisibilityPrivate,
 			},
 		}
 
 		thirdPageTemplates := []apitype.TemplateMetadata{
 			{
-				Name:        "my-template-3",
-				Publisher:   "my-publisher",
-				Source:      "my-source",
-				Description: &desc3,
-				Language:    "python",
-				Visibility:  apitype.VisibilityPrivate,
+				Name:		"my-template-3",
+				Publisher:	"my-publisher",
+				Source:		"my-source",
+				Description:	&desc3,
+				Language:	"python",
+				Visibility:	apitype.VisibilityPrivate,
 			},
 		}
 
@@ -756,8 +756,8 @@ func TestListTemplates(t *testing.T) {
 				assert.NotContains(t, "continuationToken", req.URL.String())
 
 				responseData, err = json.Marshal(apitype.ListTemplatesResponse{
-					Templates:         firstPageTemplates,
-					ContinuationToken: ptr("next-page-token-1"),
+					Templates:		firstPageTemplates,
+					ContinuationToken:	ptr("next-page-token-1"),
 				})
 				require.NoError(t, err)
 			case 1:
@@ -766,8 +766,8 @@ func TestListTemplates(t *testing.T) {
 					req.URL.String())
 
 				responseData, err = json.Marshal(apitype.ListTemplatesResponse{
-					Templates:         secondPageTemplates,
-					ContinuationToken: ptr("next-page-token-2"),
+					Templates:		secondPageTemplates,
+					ContinuationToken:	ptr("next-page-token-2"),
 				})
 				require.NoError(t, err)
 			case 2:
@@ -797,6 +797,6 @@ func TestListTemplates(t *testing.T) {
 
 		expectedTemplates := append(append(firstPageTemplates, secondPageTemplates...), thirdPageTemplates...)
 		assert.Equal(t, expectedTemplates, searchResults)
-		assert.Equal(t, 3, requestCount) // Ensure all three requests were made
+		assert.Equal(t, 3, requestCount)	// Ensure all three requests were made
 	})
 }

@@ -31,10 +31,10 @@ import (
 func newPackagePublishSdkCmd() *cobra.Command {
 	var path string
 	cmd := &cobra.Command{
-		Use:    "publish-sdk <language>",
-		Args:   cobra.RangeArgs(0, 1),
-		Short:  "Publish a package SDK to supported package registries.",
-		Hidden: !env.Dev.Value(),
+		Use:	"publish-sdk <language>",
+		Args:	cobra.RangeArgs(0, 1),
+		Short:	"Publish a package SDK to supported package registries.",
+		Hidden:	!env.Dev.Value(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			lang := "all"
 			if len(args) > 0 {
@@ -93,8 +93,8 @@ func publishToNPM(path string) error {
 	// TODO: possibly check package dependencies
 
 	var pkgInfo struct {
-		Name    string `json:"name"`
-		Version string `json:"version"`
+		Name	string	`json:"name"`
+		Version	string	`json:"version"`
 	}
 
 	file, err := os.ReadFile(filepath.Join(path, "package.json"))

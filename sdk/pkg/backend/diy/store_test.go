@@ -67,38 +67,38 @@ func TestProjectReferenceStore_ParseReference(t *testing.T) {
 	})
 
 	tests := []struct {
-		desc string
-		give string
+		desc	string
+		give	string
 
-		fqname  tokens.QName
-		name    string
-		project tokens.Name
-		str     string
+		fqname	tokens.QName
+		name	string
+		project	tokens.Name
+		str	string
 	}{
 		{
-			desc:    "simple",
-			give:    "foo",
-			fqname:  "organization/currentProject/foo",
-			name:    "foo",
-			project: "currentProject",
-			str:     "foo",
+			desc:		"simple",
+			give:		"foo",
+			fqname:		"organization/currentProject/foo",
+			name:		"foo",
+			project:	"currentProject",
+			str:		"foo",
 			// truncated because project name is the same as current project
 		},
 		{
-			desc:    "organization",
-			give:    "organization/foo",
-			fqname:  "organization/currentProject/foo",
-			name:    "foo",
-			project: "currentProject",
-			str:     "foo",
+			desc:		"organization",
+			give:		"organization/foo",
+			fqname:		"organization/currentProject/foo",
+			name:		"foo",
+			project:	"currentProject",
+			str:		"foo",
 		},
 		{
-			desc:    "fully qualified",
-			give:    "organization/project/foo",
-			fqname:  "organization/project/foo",
-			name:    "foo",
-			project: "project",
-			str:     "organization/project/foo", // doesn't match current project
+			desc:		"fully qualified",
+			give:		"organization/project/foo",
+			fqname:		"organization/project/foo",
+			name:		"foo",
+			project:	"project",
+			str:		"organization/project/foo",	// doesn't match current project
 		},
 	}
 
@@ -126,15 +126,15 @@ func TestLegacyReferenceStore_ParseReference_errors(t *testing.T) {
 	store := newLegacyReferenceStore(bucket)
 
 	tests := []struct {
-		desc string
-		give string
+		desc	string
+		give	string
 	}{
 		{desc: "empty", give: ""},
 		{desc: "invalid name", give: "foo/bar"},
 		{desc: "too many parts", give: "foo/bar/baz"},
 		{
-			desc: "over 100 characters",
-			give: strings.Repeat("a", 101),
+			desc:	"over 100 characters",
+			give:	strings.Repeat("a", 101),
 		},
 	}
 
@@ -155,47 +155,47 @@ func TestProjectReferenceStore_ParseReference_errors(t *testing.T) {
 
 	bucket := memblob.OpenBucket(nil)
 	store := newProjectReferenceStore(bucket, func() *workspace.Project {
-		return nil // current project is not set
+		return nil	// current project is not set
 	})
 
 	tests := []struct {
-		desc    string
-		give    string
-		wantErr string
+		desc	string
+		give	string
+		wantErr	string
 	}{
 		{
-			desc:    "empty",
-			wantErr: "must not be empty",
+			desc:		"empty",
+			wantErr:	"must not be empty",
 		},
 		{
-			desc:    "bad organization",
-			give:    "foo/bar/baz",
-			wantErr: "organization name must be 'organization'",
+			desc:		"bad organization",
+			give:		"foo/bar/baz",
+			wantErr:	"organization name must be 'organization'",
 		},
 		{
-			desc:    "long project name",
-			give:    "organization/" + strings.Repeat("a", 101) + "/foo",
-			wantErr: "project names are limited to 100 characters",
+			desc:		"long project name",
+			give:		"organization/" + strings.Repeat("a", 101) + "/foo",
+			wantErr:	"project names are limited to 100 characters",
 		},
 		{
-			desc:    "long project stack name",
-			give:    "organization/foo/" + strings.Repeat("a", 101),
-			wantErr: "a stack name cannot exceed 100 characters",
+			desc:		"long project stack name",
+			give:		"organization/foo/" + strings.Repeat("a", 101),
+			wantErr:	"a stack name cannot exceed 100 characters",
 		},
 		{
-			desc:    "no current project",
-			give:    "organization/foo",
-			wantErr: "pass the fully qualified name",
+			desc:		"no current project",
+			give:		"organization/foo",
+			wantErr:	"pass the fully qualified name",
 		},
 		{
-			desc:    "invalid project name",
-			give:    "organization/foo:bar/baz",
-			wantErr: "may only contain alphanumeric",
+			desc:		"invalid project name",
+			give:		"organization/foo:bar/baz",
+			wantErr:	"may only contain alphanumeric",
 		},
 		{
-			desc:    "invalid stack name",
-			give:    "organization/foo/baz:qux",
-			wantErr: "may only contain alphanumeric",
+			desc:		"invalid stack name",
+			give:		"organization/foo/baz:qux",
+			wantErr:	"may only contain alphanumeric",
 		},
 	}
 
@@ -216,50 +216,50 @@ func TestLegacyReferenceStore_ListReferences(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		desc string
+		desc	string
 
 		// List of file paths relative to the storage root
 		// that should exist before ListReferences is called.
-		files []string
+		files	[]string
 
 		// List of fully-qualified stack names that should be returned
 		// by ListReferences.
-		want []tokens.QName
+		want	[]tokens.QName
 	}{
 		{
-			desc: "empty",
-			want: []tokens.QName{},
+			desc:	"empty",
+			want:	[]tokens.QName{},
 		},
 		{
-			desc: "json",
+			desc:	"json",
 			files: []string{
 				".pulumi/stacks/foo.json",
 			},
-			want: []tokens.QName{"foo"},
+			want:	[]tokens.QName{"foo"},
 		},
 		{
-			desc: "gzipped",
+			desc:	"gzipped",
 			files: []string{
 				".pulumi/stacks/foo.json.gz",
 			},
-			want: []tokens.QName{"foo"},
+			want:	[]tokens.QName{"foo"},
 		},
 		{
-			desc: "multiple",
+			desc:	"multiple",
 			files: []string{
 				".pulumi/stacks/foo.json",
 				".pulumi/stacks/bar.json.gz",
 				".pulumi/stacks/baz.json",
 			},
-			want: []tokens.QName{"bar", "baz", "foo"},
+			want:	[]tokens.QName{"bar", "baz", "foo"},
 		},
 		{
-			desc: "extraneous directories",
+			desc:	"extraneous directories",
 			files: []string{
 				".pulumi/stacks/foo.json",
-				".pulumi/stacks/bar.json/baz.json", // not a file
+				".pulumi/stacks/bar.json/baz.json",	// not a file
 			},
-			want: []tokens.QName{"foo"},
+			want:	[]tokens.QName{"foo"},
 		},
 	}
 
@@ -292,42 +292,42 @@ func TestProjectReferenceStore_List(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		desc string
+		desc	string
 
 		// List of file paths relative to the storage root
 		// that should exist before ListReferences is called.
-		files []string
+		files	[]string
 
 		// List of fully-qualified stack names that should be returned
 		// by ListReferences.
-		stacks []tokens.QName
+		stacks	[]tokens.QName
 
 		// List of project names that should be returned by ListProjects.
-		projects []tokens.Name
+		projects	[]tokens.Name
 	}{
 		{
-			desc:     "empty",
-			stacks:   []tokens.QName{},
-			projects: nil,
+			desc:		"empty",
+			stacks:		[]tokens.QName{},
+			projects:	nil,
 		},
 		{
-			desc: "json",
+			desc:	"json",
 			files: []string{
 				".pulumi/stacks/proj/foo.json",
 			},
-			stacks:   []tokens.QName{"organization/proj/foo"},
-			projects: []tokens.Name{"proj"},
+			stacks:		[]tokens.QName{"organization/proj/foo"},
+			projects:	[]tokens.Name{"proj"},
 		},
 		{
-			desc: "gzipped",
+			desc:	"gzipped",
 			files: []string{
 				".pulumi/stacks/foo/bar.json.gz",
 			},
-			stacks:   []tokens.QName{"organization/foo/bar"},
-			projects: []tokens.Name{"foo"},
+			stacks:		[]tokens.QName{"organization/foo/bar"},
+			projects:	[]tokens.Name{"foo"},
 		},
 		{
-			desc: "multiple",
+			desc:	"multiple",
 			files: []string{
 				".pulumi/stacks/a/foo.json",
 				".pulumi/stacks/b/bar.json.gz",
@@ -338,18 +338,18 @@ func TestProjectReferenceStore_List(t *testing.T) {
 				"organization/b/bar",
 				"organization/c/baz",
 			},
-			projects: []tokens.Name{"a", "b", "c"},
+			projects:	[]tokens.Name{"a", "b", "c"},
 		},
 		{
-			desc: "extraneous files and directories",
+			desc:	"extraneous files and directories",
 			files: []string{
 				".pulumi/stacks/a/foo.json",
 				".pulumi/stacks/foo.json",
-				".pulumi/stacks/bar/baz/qux.json", // nested too deep
-				".pulumi/stacks/a b/c.json",       // bad project name
+				".pulumi/stacks/bar/baz/qux.json",	// nested too deep
+				".pulumi/stacks/a b/c.json",		// bad project name
 			},
-			stacks:   []tokens.QName{"organization/a/foo"},
-			projects: []tokens.Name{"a", "bar"},
+			stacks:		[]tokens.QName{"organization/a/foo"},
+			projects:	[]tokens.Name{"a", "bar"},
 		},
 	}
 
@@ -397,49 +397,49 @@ func TestProjectReferenceStore_ProjectExists(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		desc string
+		desc	string
 
 		// List of file paths relative to the storage root
 		// that should exist before ListReferences is called.
-		files []string
+		files	[]string
 
 		// Project name that should exist before ProjectExists is called.
-		projectName string
+		projectName	string
 
 		// Result that should be returned by ProjectExists.
-		exist bool
+		exist	bool
 	}{
 		{
-			desc: "project exists",
+			desc:	"project exists",
 			files: []string{
 				".pulumi/stacks/a/foo.json",
 			},
-			projectName: "a",
-			exist:       true,
+			projectName:	"a",
+			exist:		true,
 		},
 		{
-			desc: "project exists as empty directory",
+			desc:	"project exists as empty directory",
 			files: []string{
 				".pulumi/stacks/a",
 			},
-			projectName: "a",
-			exist:       false,
+			projectName:	"a",
+			exist:		false,
 		},
 		{
-			desc: "project does not exist",
+			desc:	"project does not exist",
 			files: []string{
 				".pulumi/stacks/a",
 			},
-			projectName: "b",
-			exist:       false,
+			projectName:	"b",
+			exist:		false,
 		},
 		{
-			desc: "subproject exist",
+			desc:	"subproject exist",
 			files: []string{
-				".pulumi/stacks/b/a", // Project name exist, but as a subproject
+				".pulumi/stacks/b/a",	// Project name exist, but as a subproject
 			},
-			projectName: "a",
-			exist:       false,
+			projectName:	"a",
+			exist:		false,
 		},
 	}
 

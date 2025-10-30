@@ -21,22 +21,22 @@ func main() {
 			"config-schema", version, policyx.EnforcementLevelAdvisory,
 			[]policyx.Policy{
 				policyx.NewResourceValidationPolicy("validator", policyx.ResourceValidationPolicyArgs{
-					Description:      "Verifies property matches config",
-					EnforcementLevel: policyx.EnforcementLevelAdvisory,
+					Description:		"Verifies property matches config",
+					EnforcementLevel:	policyx.EnforcementLevelAdvisory,
 					ConfigSchema: &policyx.ConfigSchema{
 						Properties: map[string]map[string]any{
 							"value": {
 								"type": "boolean",
 							},
 							"names": {
-								"type": "array",
+								"type":	"array",
 								"items": map[string]any{
 									"type": "string",
 								},
-								"minItems": 1,
+								"minItems":	1,
 							},
 						},
-						Required: []string{"value", "names"},
+						Required:	[]string{"value", "names"},
 					},
 					ValidateResource: func(ctx context.Context, args policyx.ResourceValidationArgs) error {
 						if args.Resource.Type != "simple:index:Resource" {

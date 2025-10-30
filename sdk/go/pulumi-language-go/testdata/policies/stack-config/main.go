@@ -23,8 +23,8 @@ func main() {
 			"stack-config", version, policyx.EnforcementLevelMandatory,
 			[]policyx.Policy{
 				policyx.NewResourceValidationPolicy(fmt.Sprintf("validate-%t", value), policyx.ResourceValidationPolicyArgs{
-					Description:      fmt.Sprintf("Verifies property is %t", value),
-					EnforcementLevel: policyx.EnforcementLevelMandatory,
+					Description:		fmt.Sprintf("Verifies property is %t", value),
+					EnforcementLevel:	policyx.EnforcementLevelMandatory,
 					ValidateResource: func(ctx context.Context, args policyx.ResourceValidationArgs) error {
 						if args.Resource.Type != "simple:index:Resource" {
 							return nil

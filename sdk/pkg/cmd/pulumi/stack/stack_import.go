@@ -21,11 +21,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/secrets"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
@@ -35,9 +35,9 @@ func newStackImportCmd() *cobra.Command {
 	var file string
 	var stackName string
 	cmd := &cobra.Command{
-		Use:   "import",
-		Args:  cmdutil.MaximumNArgs(0),
-		Short: "Import a deployment from standard in into an existing stack",
+		Use:	"import",
+		Args:	cmdutil.MaximumNArgs(0),
+		Short:	"Import a deployment from standard in into an existing stack",
 		Long: "Import a deployment from standard in into an existing stack.\n" +
 			"\n" +
 			"A deployment that was exported from a stack using `pulumi stack export` and\n" +

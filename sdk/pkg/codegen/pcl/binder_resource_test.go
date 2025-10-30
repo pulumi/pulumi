@@ -23,9 +23,9 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -34,9 +34,9 @@ func TestBindResourceOptions(t *testing.T) {
 	t.Parallel()
 
 	fooPkg := schema.Package{
-		Name: "foo",
+		Name:	"foo",
 		Provider: &schema.Resource{
-			Token: "foo:index:Foo",
+			Token:	"foo:index:Foo",
 			InputProperties: []*schema.Property{
 				{Name: "property", Type: schema.StringType},
 			},
@@ -46,7 +46,7 @@ func TestBindResourceOptions(t *testing.T) {
 		},
 		Resources: []*schema.Resource{
 			{
-				Token: "foo:index:Foo",
+				Token:	"foo:index:Foo",
 				InputProperties: []*schema.Property{
 					{Name: "property", Type: schema.StringType},
 				},
@@ -58,54 +58,54 @@ func TestBindResourceOptions(t *testing.T) {
 	}
 
 	tests := []struct {
-		name string // ResourceOptions field name
-		src  string // line in options block
-		want cty.Value
+		name	string	// ResourceOptions field name
+		src	string	// line in options block
+		want	cty.Value
 	}{
 		{
-			name: "Range",
-			src:  "range = 42",
-			want: cty.NumberIntVal(42),
+			name:	"Range",
+			src:	"range = 42",
+			want:	cty.NumberIntVal(42),
 		},
 		{
-			name: "Protect",
-			src:  "protect = true",
-			want: cty.True,
+			name:	"Protect",
+			src:	"protect = true",
+			want:	cty.True,
 		},
 		{
-			name: "RetainOnDelete",
-			src:  "retainOnDelete = true",
-			want: cty.True,
+			name:	"RetainOnDelete",
+			src:	"retainOnDelete = true",
+			want:	cty.True,
 		},
 		{
-			name: "Version",
-			src:  `version = "1.2.3"`,
-			want: cty.StringVal("1.2.3"),
+			name:	"Version",
+			src:	`version = "1.2.3"`,
+			want:	cty.StringVal("1.2.3"),
 		},
 		{
-			name: "PluginDownloadURL",
-			src:  `pluginDownloadURL = "https://example.com/whatever"`,
-			want: cty.StringVal("https://example.com/whatever"),
+			name:	"PluginDownloadURL",
+			src:	`pluginDownloadURL = "https://example.com/whatever"`,
+			want:	cty.StringVal("https://example.com/whatever"),
 		},
 		{
-			name: "ImportID",
-			src:  `import = "abc123"`,
-			want: cty.StringVal("abc123"),
+			name:	"ImportID",
+			src:	`import = "abc123"`,
+			want:	cty.StringVal("abc123"),
 		},
 		{
-			name: "IgnoreChanges",
-			src:  `ignoreChanges = [property]`,
-			want: cty.TupleVal([]cty.Value{cty.DynamicVal}),
+			name:	"IgnoreChanges",
+			src:	`ignoreChanges = [property]`,
+			want:	cty.TupleVal([]cty.Value{cty.DynamicVal}),
 		},
 		{
-			name: "HideDiffs",
-			src:  `hideDiffs = [property]`,
-			want: cty.TupleVal([]cty.Value{cty.DynamicVal}),
+			name:	"HideDiffs",
+			src:	`hideDiffs = [property]`,
+			want:	cty.TupleVal([]cty.Value{cty.DynamicVal}),
 		},
 		{
-			name: "DeletedWith",
-			src:  `deletedWith = "abc123"`,
-			want: cty.StringVal("abc123"),
+			name:	"DeletedWith",
+			src:	`deletedWith = "abc123"`,
+			want:	cty.StringVal("abc123"),
 		},
 	}
 

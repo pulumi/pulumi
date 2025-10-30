@@ -24,10 +24,10 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/newcmd"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -36,20 +36,20 @@ import (
 )
 
 type newPolicyArgs struct {
-	dir               string
-	force             bool
-	generateOnly      bool
-	offline           bool
-	templateNameOrURL string
+	dir			string
+	force			bool
+	generateOnly		bool
+	offline			bool
+	templateNameOrURL	string
 }
 
 func newPolicyNewCmd() *cobra.Command {
 	args := newPolicyArgs{}
 
 	cmd := &cobra.Command{
-		Use:        "new [template|url]",
-		SuggestFor: []string{"init", "create"},
-		Short:      "Create a new Pulumi Policy Pack",
+		Use:		"new [template|url]",
+		SuggestFor:	[]string{"init", "create"},
+		Short:		"Create a new Pulumi Policy Pack",
 		Long: "Create a new Pulumi Policy Pack from a template.\n" +
 			"\n" +
 			"To create a Policy Pack from a specific template, pass the template name (such as `aws-typescript`\n" +
@@ -58,7 +58,7 @@ func newPolicyNewCmd() *cobra.Command {
 			"\n" +
 			"Once you're done authoring the Policy Pack, you will need to publish the pack to your organization.\n" +
 			"Only organization administrators can publish a Policy Pack.",
-		Args: cmdutil.MaximumNArgs(1),
+		Args:	cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			if len(cliArgs) > 0 {
@@ -87,8 +87,8 @@ func newPolicyNewCmd() *cobra.Command {
 func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 	// Prepare options.
 	opts := display.Options{
-		Color:         cmdutil.GetGlobalColorization(),
-		IsInteractive: cmdutil.Interactive(),
+		Color:		cmdutil.GetGlobalColorization(),
+		IsInteractive:	cmdutil.Interactive(),
 	}
 
 	// Get the current working directory.
@@ -272,9 +272,9 @@ func choosePolicyPackTemplate(templates []workspace.PolicyPackTemplate,
 
 	var option string
 	if err := survey.AskOne(&survey.Select{
-		Message:  message,
-		Options:  options,
-		PageSize: cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: len(options)}),
+		Message:	message,
+		Options:	options,
+		PageSize:	cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: len(options)}),
 	}, &option, ui.SurveyIcons(opts.Color)); err != nil {
 		return workspace.PolicyPackTemplate{}, errors.New(chooseTemplateErr)
 	}

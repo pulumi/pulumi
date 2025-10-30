@@ -15,25 +15,25 @@
 package policy
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
 
 type policyDisableArgs struct {
-	policyGroup string
-	version     string
+	policyGroup	string
+	version		string
 }
 
 func newPolicyDisableCmd() *cobra.Command {
 	args := policyDisableArgs{}
 
 	cmd := &cobra.Command{
-		Use:   "disable <org-name>/<policy-pack-name>",
-		Args:  cmdutil.ExactArgs(1),
-		Short: "Disable a Policy Pack for a Pulumi organization",
-		Long:  "Disable a Policy Pack for a Pulumi organization",
+		Use:	"disable <org-name>/<policy-pack-name>",
+		Args:	cmdutil.ExactArgs(1),
+		Short:	"Disable a Policy Pack for a Pulumi organization",
+		Long:	"Disable a Policy Pack for a Pulumi organization",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
@@ -45,7 +45,7 @@ func newPolicyDisableCmd() *cobra.Command {
 
 			// Attempt to disable the Policy Pack.
 			return policyPack.Disable(ctx, args.policyGroup, backend.PolicyPackOperation{
-				VersionTag: &args.version, Scopes: backend.CancellationScopes,
+				VersionTag:	&args.version, Scopes: backend.CancellationScopes,
 			})
 		},
 	}

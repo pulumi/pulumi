@@ -30,9 +30,9 @@ import (
 
 const (
 	// Verify that this generated code is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
+	_	= protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
+	_	= protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
 // DiagnosticSeverity is the severity level of a diagnostic message.
@@ -40,27 +40,27 @@ type DiagnosticSeverity int32
 
 const (
 	// DIAG_INVALID is the invalid zero value of DiagnosticSeverity
-	DiagnosticSeverity_DIAG_INVALID DiagnosticSeverity = 0
+	DiagnosticSeverity_DIAG_INVALID	DiagnosticSeverity	= 0
 	// DIAG_ERROR indicates that the problem reported by a diagnostic prevents
 	// further progress in parsing and/or evaluating the subject.
-	DiagnosticSeverity_DIAG_ERROR DiagnosticSeverity = 1
+	DiagnosticSeverity_DIAG_ERROR	DiagnosticSeverity	= 1
 	// DIAG_WARNING indicates that the problem reported by a diagnostic warrants
 	// user attention but does not prevent further progress. It is most
 	// commonly used for showing deprecation notices.
-	DiagnosticSeverity_DIAG_WARNING DiagnosticSeverity = 2
+	DiagnosticSeverity_DIAG_WARNING	DiagnosticSeverity	= 2
 )
 
 // Enum value maps for DiagnosticSeverity.
 var (
-	DiagnosticSeverity_name = map[int32]string{
-		0: "DIAG_INVALID",
-		1: "DIAG_ERROR",
-		2: "DIAG_WARNING",
+	DiagnosticSeverity_name	= map[int32]string{
+		0:	"DIAG_INVALID",
+		1:	"DIAG_ERROR",
+		2:	"DIAG_WARNING",
 	}
-	DiagnosticSeverity_value = map[string]int32{
-		"DIAG_INVALID": 0,
-		"DIAG_ERROR":   1,
-		"DIAG_WARNING": 2,
+	DiagnosticSeverity_value	= map[string]int32{
+		"DIAG_INVALID":	0,
+		"DIAG_ERROR":	1,
+		"DIAG_WARNING":	2,
 	}
 )
 
@@ -94,10 +94,10 @@ func (DiagnosticSeverity) EnumDescriptor() ([]byte, []int) {
 // Pos represents a single position in a source file, by addressing the start byte of a unicode character
 // encoded in UTF-8.
 type Pos struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// Line is the source code line where this position points. Lines are counted starting at 1 and
 	// incremented for each newline character encountered.
-	Line int64 `protobuf:"varint,1,opt,name=line,proto3" json:"line,omitempty"`
+	Line	int64	`protobuf:"varint,1,opt,name=line,proto3" json:"line,omitempty"`
 	// Column is the source code column where this position points, in unicode characters, with counting
 	// starting at 1.
 	//
@@ -105,13 +105,13 @@ type Pos struct {
 	// diacritic mark counts as one character. This is intended for rendering visual markers against source
 	// code in contexts where these diacritics would be rendered in a single character cell. Technically
 	// speaking, Column is counting grapheme clusters as used in unicode normalization.
-	Column int64 `protobuf:"varint,2,opt,name=column,proto3" json:"column,omitempty"`
+	Column	int64	`protobuf:"varint,2,opt,name=column,proto3" json:"column,omitempty"`
 	// Byte is the byte offset into the file where the indicated character begins. This is a zero-based offset
 	// to the first byte of the first UTF-8 codepoint sequence in the character, and thus gives a position
 	// that can be resolved _without_ awareness of Unicode characters.
-	Byte          int64 `protobuf:"varint,3,opt,name=byte,proto3" json:"byte,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Byte		int64	`protobuf:"varint,3,opt,name=byte,proto3" json:"byte,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *Pos) Reset() {
@@ -125,7 +125,7 @@ func (x *Pos) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Pos) ProtoMessage() {}
+func (*Pos) ProtoMessage()	{}
 
 func (x *Pos) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_codegen_hcl_proto_msgTypes[0]
@@ -167,14 +167,14 @@ func (x *Pos) GetByte() int64 {
 
 // Range represents a span of characters between two positions in a source file.
 type Range struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// Filename is the name of the file into which this range's positions point.
-	Filename string `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
+	Filename	string	`protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
 	// Start and End represent the bounds of this range. Start is inclusive and End is exclusive.
-	Start         *Pos `protobuf:"bytes,2,opt,name=start,proto3" json:"start,omitempty"`
-	End           *Pos `protobuf:"bytes,3,opt,name=end,proto3" json:"end,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Start		*Pos	`protobuf:"bytes,2,opt,name=start,proto3" json:"start,omitempty"`
+	End		*Pos	`protobuf:"bytes,3,opt,name=end,proto3" json:"end,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *Range) Reset() {
@@ -188,7 +188,7 @@ func (x *Range) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Range) ProtoMessage() {}
+func (*Range) ProtoMessage()	{}
 
 func (x *Range) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_codegen_hcl_proto_msgTypes[1]
@@ -230,14 +230,14 @@ func (x *Range) GetEnd() *Pos {
 
 // Diagnostic represents information to be presented to a user about an error or anomaly in parsing or evaluating configuration.
 type Diagnostic struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Severity DiagnosticSeverity     `protobuf:"varint,1,opt,name=severity,proto3,enum=pulumirpc.codegen.DiagnosticSeverity" json:"severity,omitempty"`
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Severity	DiagnosticSeverity	`protobuf:"varint,1,opt,name=severity,proto3,enum=pulumirpc.codegen.DiagnosticSeverity" json:"severity,omitempty"`
 	// Summary and Detail contain the English-language description of the
 	// problem. Summary is a terse description of the general problem and
 	// detail is a more elaborate, often-multi-sentence description of
 	// the problem and what might be done to solve it.
-	Summary string `protobuf:"bytes,2,opt,name=summary,proto3" json:"summary,omitempty"`
-	Detail  string `protobuf:"bytes,3,opt,name=detail,proto3" json:"detail,omitempty"`
+	Summary	string	`protobuf:"bytes,2,opt,name=summary,proto3" json:"summary,omitempty"`
+	Detail	string	`protobuf:"bytes,3,opt,name=detail,proto3" json:"detail,omitempty"`
 	// Subject and Context are both source ranges relating to the diagnostic.
 	//
 	// Subject is a tight range referring to exactly the construct that
@@ -248,10 +248,10 @@ type Diagnostic struct {
 	//
 	// Some diagnostics have no source ranges at all. If Context is set then
 	// Subject should always also be set.
-	Subject       *Range `protobuf:"bytes,4,opt,name=subject,proto3" json:"subject,omitempty"`
-	Context       *Range `protobuf:"bytes,5,opt,name=context,proto3" json:"context,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Subject		*Range	`protobuf:"bytes,4,opt,name=subject,proto3" json:"subject,omitempty"`
+	Context		*Range	`protobuf:"bytes,5,opt,name=context,proto3" json:"context,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *Diagnostic) Reset() {
@@ -265,7 +265,7 @@ func (x *Diagnostic) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Diagnostic) ProtoMessage() {}
+func (*Diagnostic) ProtoMessage()	{}
 
 func (x *Diagnostic) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_codegen_hcl_proto_msgTypes[2]
@@ -346,8 +346,8 @@ const file_pulumi_codegen_hcl_proto_rawDesc = "" +
 	"\fDIAG_WARNING\x10\x02B2Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3"
 
 var (
-	file_pulumi_codegen_hcl_proto_rawDescOnce sync.Once
-	file_pulumi_codegen_hcl_proto_rawDescData []byte
+	file_pulumi_codegen_hcl_proto_rawDescOnce	sync.Once
+	file_pulumi_codegen_hcl_proto_rawDescData	[]byte
 )
 
 func file_pulumi_codegen_hcl_proto_rawDescGZIP() []byte {
@@ -360,25 +360,25 @@ func file_pulumi_codegen_hcl_proto_rawDescGZIP() []byte {
 var file_pulumi_codegen_hcl_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_pulumi_codegen_hcl_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_pulumi_codegen_hcl_proto_goTypes = []any{
-	(DiagnosticSeverity)(0), // 0: pulumirpc.codegen.DiagnosticSeverity
-	(*Pos)(nil),             // 1: pulumirpc.codegen.Pos
-	(*Range)(nil),           // 2: pulumirpc.codegen.Range
-	(*Diagnostic)(nil),      // 3: pulumirpc.codegen.Diagnostic
+	(DiagnosticSeverity)(0),	// 0: pulumirpc.codegen.DiagnosticSeverity
+	(*Pos)(nil),			// 1: pulumirpc.codegen.Pos
+	(*Range)(nil),			// 2: pulumirpc.codegen.Range
+	(*Diagnostic)(nil),		// 3: pulumirpc.codegen.Diagnostic
 }
 var file_pulumi_codegen_hcl_proto_depIdxs = []int32{
-	1, // 0: pulumirpc.codegen.Range.start:type_name -> pulumirpc.codegen.Pos
-	1, // 1: pulumirpc.codegen.Range.end:type_name -> pulumirpc.codegen.Pos
-	0, // 2: pulumirpc.codegen.Diagnostic.severity:type_name -> pulumirpc.codegen.DiagnosticSeverity
-	2, // 3: pulumirpc.codegen.Diagnostic.subject:type_name -> pulumirpc.codegen.Range
-	2, // 4: pulumirpc.codegen.Diagnostic.context:type_name -> pulumirpc.codegen.Range
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	1,	// 0: pulumirpc.codegen.Range.start:type_name -> pulumirpc.codegen.Pos
+	1,	// 1: pulumirpc.codegen.Range.end:type_name -> pulumirpc.codegen.Pos
+	0,	// 2: pulumirpc.codegen.Diagnostic.severity:type_name -> pulumirpc.codegen.DiagnosticSeverity
+	2,	// 3: pulumirpc.codegen.Diagnostic.subject:type_name -> pulumirpc.codegen.Range
+	2,	// 4: pulumirpc.codegen.Diagnostic.context:type_name -> pulumirpc.codegen.Range
+	5,	// [5:5] is the sub-list for method output_type
+	5,	// [5:5] is the sub-list for method input_type
+	5,	// [5:5] is the sub-list for extension type_name
+	5,	// [5:5] is the sub-list for extension extendee
+	0,	// [0:5] is the sub-list for field type_name
 }
 
-func init() { file_pulumi_codegen_hcl_proto_init() }
+func init()	{ file_pulumi_codegen_hcl_proto_init() }
 func file_pulumi_codegen_hcl_proto_init() {
 	if File_pulumi_codegen_hcl_proto != nil {
 		return
@@ -386,17 +386,17 @@ func file_pulumi_codegen_hcl_proto_init() {
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
-			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_codegen_hcl_proto_rawDesc), len(file_pulumi_codegen_hcl_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   3,
-			NumExtensions: 0,
-			NumServices:   0,
+			GoPackagePath:	reflect.TypeOf(x{}).PkgPath(),
+			RawDescriptor:	unsafe.Slice(unsafe.StringData(file_pulumi_codegen_hcl_proto_rawDesc), len(file_pulumi_codegen_hcl_proto_rawDesc)),
+			NumEnums:	1,
+			NumMessages:	3,
+			NumExtensions:	0,
+			NumServices:	0,
 		},
-		GoTypes:           file_pulumi_codegen_hcl_proto_goTypes,
-		DependencyIndexes: file_pulumi_codegen_hcl_proto_depIdxs,
-		EnumInfos:         file_pulumi_codegen_hcl_proto_enumTypes,
-		MessageInfos:      file_pulumi_codegen_hcl_proto_msgTypes,
+		GoTypes:		file_pulumi_codegen_hcl_proto_goTypes,
+		DependencyIndexes:	file_pulumi_codegen_hcl_proto_depIdxs,
+		EnumInfos:		file_pulumi_codegen_hcl_proto_enumTypes,
+		MessageInfos:		file_pulumi_codegen_hcl_proto_msgTypes,
 	}.Build()
 	File_pulumi_codegen_hcl_proto = out.File
 	file_pulumi_codegen_hcl_proto_goTypes = nil

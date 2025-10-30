@@ -26,14 +26,14 @@ import (
 	"strings"
 
 	gosecrets "gocloud.dev/secrets"
-	_ "gocloud.dev/secrets/awskms"        // support for awskms://
-	_ "gocloud.dev/secrets/azurekeyvault" // support for azurekeyvault://
-	"gocloud.dev/secrets/gcpkms"          // support for gcpkms://
-	_ "gocloud.dev/secrets/hashivault"    // support for hashivault://
+	_ "gocloud.dev/secrets/awskms"		// support for awskms://
+	_ "gocloud.dev/secrets/azurekeyvault"	// support for azurekeyvault://
+	"gocloud.dev/secrets/gcpkms"		// support for gcpkms://
+	_ "gocloud.dev/secrets/hashivault"	// support for hashivault://
 	"google.golang.org/api/cloudkms/v1"
 
-	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/authhelpers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -42,8 +42,8 @@ import (
 const Type = "cloud"
 
 type cloudSecretsManagerState struct {
-	URL          string `json:"url"`
-	EncryptedKey []byte `json:"encryptedkey"`
+	URL		string	`json:"url"`
+	EncryptedKey	[]byte	`json:"encryptedkey"`
 }
 
 // openKeeper opens the keeper, handling pulumi-specifc cases in the URL.
@@ -111,8 +111,8 @@ func newCloudSecretsManager(url string, encryptedDataKey []byte) (*Manager, erro
 		return nil, err
 	}
 	state, err := json.Marshal(cloudSecretsManagerState{
-		URL:          url,
-		EncryptedKey: encryptedDataKey,
+		URL:		url,
+		EncryptedKey:	encryptedDataKey,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("marshalling state: %w", err)
@@ -120,21 +120,21 @@ func newCloudSecretsManager(url string, encryptedDataKey []byte) (*Manager, erro
 	crypter := config.NewSymmetricCrypter(plaintextDataKey)
 	cachedCrypter := config.NewCiphertextToPlaintextCachedCrypter(crypter, crypter)
 	return &Manager{
-		crypter: cachedCrypter,
-		state:   state,
+		crypter:	cachedCrypter,
+		state:		state,
 	}, nil
 }
 
 // Manager is the secrets.Manager implementation for cloud key management services
 type Manager struct {
-	state   json.RawMessage
-	crypter config.Crypter
+	state	json.RawMessage
+	crypter	config.Crypter
 }
 
-func (m *Manager) Type() string                { return Type }
-func (m *Manager) State() json.RawMessage      { return m.state }
-func (m *Manager) Encrypter() config.Encrypter { return m.crypter }
-func (m *Manager) Decrypter() config.Decrypter { return m.crypter }
+func (m *Manager) Type() string			{ return Type }
+func (m *Manager) State() json.RawMessage	{ return m.state }
+func (m *Manager) Encrypter() config.Encrypter	{ return m.crypter }
+func (m *Manager) Decrypter() config.Decrypter	{ return m.crypter }
 
 func EditProjectStack(info *workspace.ProjectStack, state json.RawMessage) error {
 	info.EncryptionSalt = ""

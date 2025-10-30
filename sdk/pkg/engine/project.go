@@ -23,8 +23,8 @@ import (
 )
 
 type Projinfo struct {
-	Proj *workspace.Project
-	Root string
+	Proj	*workspace.Project
+	Root	string
 }
 
 // GetPwdMain returns the working directory and main entrypoint to use for this package.
@@ -33,8 +33,8 @@ func (projinfo *Projinfo) GetPwdMain() (string, string, error) {
 }
 
 type PolicyPackInfo struct {
-	Proj *workspace.PolicyPackProject
-	Root string
+	Proj	*workspace.PolicyPackProject
+	Root	string
 }
 
 // GetPwdMain returns the working directory and main entrypoint to use for this package.

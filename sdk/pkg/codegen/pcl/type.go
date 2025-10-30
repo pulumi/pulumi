@@ -15,16 +15,16 @@
 package pcl
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
 )
 
 var (
 	// ArchiveType represents the set of Pulumi Archive values.
-	ArchiveType model.Type = model.NewOpaqueType("Archive")
+	ArchiveType	model.Type	= model.NewOpaqueType("Archive")
 	// AssetType represents the set of Pulumi Asset values.
-	AssetType model.Type = model.NewOpaqueType("Asset")
+	AssetType	model.Type	= model.NewOpaqueType("Asset")
 	// ResourcePropertyType represents a resource property reference.
-	ResourcePropertyType model.Type = model.NewOpaqueType("Property")
+	ResourcePropertyType	model.Type	= model.NewOpaqueType("Property")
 	// AssetOrArchiveType represents the set of Pulumi Archive values.
-	AssetOrArchiveType model.Type = model.NewUnionType(ArchiveType, AssetType)
+	AssetOrArchiveType	model.Type	= model.NewUnionType(ArchiveType, AssetType)
 )

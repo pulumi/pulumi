@@ -26,40 +26,40 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name                    string
-		options                 Global
-		wantOptions             *plugin.AutonamingOptions
-		wantDeleteBeforeReplace bool
-		wantErrMsg              string
+		name			string
+		options			Global
+		wantOptions		*plugin.AutonamingOptions
+		wantDeleteBeforeReplace	bool
+		wantErrMsg		string
 	}{
 		{
-			name:        "no config returns no options",
-			options:     Global{},
-			wantOptions: nil,
+			name:		"no config returns no options",
+			options:	Global{},
+			wantOptions:	nil,
 		},
 		{
-			name: "default config returns no options",
+			name:	"default config returns no options",
 			options: Global{
 				Default: defaultAutonamingConfig,
 			},
-			wantOptions: nil,
+			wantOptions:	nil,
 		},
 		{
-			name: "verbatim config enforces logical name",
+			name:	"verbatim config enforces logical name",
 			options: Global{
 				Default: &verbatimAutonaming{},
 			},
 			wantOptions: &plugin.AutonamingOptions{
-				ProposedName:    "myresource",
-				Mode:            plugin.AutonamingModeEnforce,
-				WarnIfNoSupport: false,
+				ProposedName:		"myresource",
+				Mode:			plugin.AutonamingModeEnforce,
+				WarnIfNoSupport:	false,
 			},
-			wantDeleteBeforeReplace: true,
+			wantDeleteBeforeReplace:	true,
 		},
 		{
-			name: "verbatim config on provider enforces logical name",
+			name:	"verbatim config on provider enforces logical name",
 			options: Global{
-				Default: defaultAutonamingConfig,
+				Default:	defaultAutonamingConfig,
 				Providers: map[string]Provider{
 					"aws": {
 						Default: &verbatimAutonaming{},
@@ -67,19 +67,19 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 				},
 			},
 			wantOptions: &plugin.AutonamingOptions{
-				ProposedName:    "myresource",
-				Mode:            plugin.AutonamingModeEnforce,
-				WarnIfNoSupport: true,
+				ProposedName:		"myresource",
+				Mode:			plugin.AutonamingModeEnforce,
+				WarnIfNoSupport:	true,
 			},
-			wantDeleteBeforeReplace: true,
+			wantDeleteBeforeReplace:	true,
 		},
 		{
-			name: "verbatim config on resource enforces logical name",
+			name:	"verbatim config on resource enforces logical name",
 			options: Global{
-				Default: defaultAutonamingConfig,
+				Default:	defaultAutonamingConfig,
 				Providers: map[string]Provider{
 					"aws": {
-						Default: defaultAutonamingConfig,
+						Default:	defaultAutonamingConfig,
 						Resources: map[string]Autonamer{
 							"aws:s3/bucket:Bucket": &verbatimAutonaming{},
 						},
@@ -87,27 +87,27 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 				},
 			},
 			wantOptions: &plugin.AutonamingOptions{
-				ProposedName:    "myresource",
-				Mode:            plugin.AutonamingModeEnforce,
-				WarnIfNoSupport: true,
+				ProposedName:		"myresource",
+				Mode:			plugin.AutonamingModeEnforce,
+				WarnIfNoSupport:	true,
 			},
-			wantDeleteBeforeReplace: true,
+			wantDeleteBeforeReplace:	true,
 		},
 		{
-			name: "disabled config",
+			name:	"disabled config",
 			options: Global{
 				Default: &disabledAutonaming{},
 			},
 			wantOptions: &plugin.AutonamingOptions{
-				Mode:            plugin.AutonamingModeDisabled,
-				WarnIfNoSupport: false,
+				Mode:			plugin.AutonamingModeDisabled,
+				WarnIfNoSupport:	false,
 			},
-			wantDeleteBeforeReplace: true,
+			wantDeleteBeforeReplace:	true,
 		},
 		{
-			name: "disabled config on provider",
+			name:	"disabled config on provider",
 			options: Global{
-				Default: defaultAutonamingConfig,
+				Default:	defaultAutonamingConfig,
 				Providers: map[string]Provider{
 					"aws": {
 						Default: &disabledAutonaming{},
@@ -115,18 +115,18 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 				},
 			},
 			wantOptions: &plugin.AutonamingOptions{
-				Mode:            plugin.AutonamingModeDisabled,
-				WarnIfNoSupport: true,
+				Mode:			plugin.AutonamingModeDisabled,
+				WarnIfNoSupport:	true,
 			},
-			wantDeleteBeforeReplace: true,
+			wantDeleteBeforeReplace:	true,
 		},
 		{
-			name: "disabled config on resource",
+			name:	"disabled config on resource",
 			options: Global{
-				Default: &verbatimAutonaming{},
+				Default:	&verbatimAutonaming{},
 				Providers: map[string]Provider{
 					"aws": {
-						Default: &verbatimAutonaming{},
+						Default:	&verbatimAutonaming{},
 						Resources: map[string]Autonamer{
 							"aws:s3/bucket:Bucket": &disabledAutonaming{},
 						},
@@ -134,87 +134,87 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 				},
 			},
 			wantOptions: &plugin.AutonamingOptions{
-				Mode:            plugin.AutonamingModeDisabled,
-				WarnIfNoSupport: true,
+				Mode:			plugin.AutonamingModeDisabled,
+				WarnIfNoSupport:	true,
 			},
-			wantDeleteBeforeReplace: true,
+			wantDeleteBeforeReplace:	true,
 		},
 		{
-			name: "provider-specific config overrides default",
+			name:	"provider-specific config overrides default",
 			options: Global{
-				Default: defaultAutonamingConfig,
+				Default:	defaultAutonamingConfig,
 				Providers: map[string]Provider{
 					"aws": {
 						Default: &Pattern{
-							Pattern: "aws-${name}",
-							Enforce: false,
+							Pattern:	"aws-${name}",
+							Enforce:	false,
 						},
 					},
 				},
 			},
 			wantOptions: &plugin.AutonamingOptions{
-				ProposedName:    "aws-myresource",
-				Mode:            plugin.AutonamingModePropose,
-				WarnIfNoSupport: true,
+				ProposedName:		"aws-myresource",
+				Mode:			plugin.AutonamingModePropose,
+				WarnIfNoSupport:	true,
 			},
-			wantDeleteBeforeReplace: true,
+			wantDeleteBeforeReplace:	true,
 		},
 		{
-			name: "resource-specific config overrides provider default",
+			name:	"resource-specific config overrides provider default",
 			options: Global{
-				Default: defaultAutonamingConfig,
+				Default:	defaultAutonamingConfig,
 				Providers: map[string]Provider{
 					"aws": {
 						Default: &Pattern{
-							Pattern: "aws-${name}",
-							Enforce: false,
+							Pattern:	"aws-${name}",
+							Enforce:	false,
 						},
 						Resources: map[string]Autonamer{
 							"aws:s3/bucket:Bucket": &Pattern{
-								Pattern: "bucket-${name}",
-								Enforce: true,
+								Pattern:	"bucket-${name}",
+								Enforce:	true,
 							},
 						},
 					},
 				},
 			},
 			wantOptions: &plugin.AutonamingOptions{
-				ProposedName:    "bucket-myresource",
-				Mode:            plugin.AutonamingModeEnforce,
-				WarnIfNoSupport: true,
+				ProposedName:		"bucket-myresource",
+				Mode:			plugin.AutonamingModeEnforce,
+				WarnIfNoSupport:	true,
 			},
-			wantDeleteBeforeReplace: true,
+			wantDeleteBeforeReplace:	true,
 		},
 		{
-			name: "invalid resource type returns error",
+			name:	"invalid resource type returns error",
 			options: Global{
 				Default: defaultAutonamingConfig,
 			},
-			wantErrMsg: "invalid resource type format: invalid:type",
+			wantErrMsg:	"invalid resource type format: invalid:type",
 		},
 		{
-			name: "unrelated provider and resource configs are ignored",
+			name:	"unrelated provider and resource configs are ignored",
 			options: Global{
-				Default: defaultAutonamingConfig,
+				Default:	defaultAutonamingConfig,
 				Providers: map[string]Provider{
 					"azure": {
 						Default: &disabledAutonaming{},
 					},
 					"aws": {
-						Default: defaultAutonamingConfig,
+						Default:	defaultAutonamingConfig,
 						Resources: map[string]Autonamer{
 							"aws:s3/object:Object": &disabledAutonaming{},
 						},
 					},
 				},
 			},
-			wantOptions:             nil,
-			wantDeleteBeforeReplace: false,
+			wantOptions:			nil,
+			wantDeleteBeforeReplace:	false,
 		},
 		{
-			name: "global config is used if provider does not define a config other than specific resource",
+			name:	"global config is used if provider does not define a config other than specific resource",
 			options: Global{
-				Default: &verbatimAutonaming{},
+				Default:	&verbatimAutonaming{},
 				Providers: map[string]Provider{
 					"aws": {
 						Resources: map[string]Autonamer{
@@ -224,11 +224,11 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 				},
 			},
 			wantOptions: &plugin.AutonamingOptions{
-				ProposedName:    "myresource",
-				Mode:            plugin.AutonamingModeEnforce,
-				WarnIfNoSupport: false,
+				ProposedName:		"myresource",
+				Mode:			plugin.AutonamingModeEnforce,
+				WarnIfNoSupport:	false,
 			},
-			wantDeleteBeforeReplace: true,
+			wantDeleteBeforeReplace:	true,
 		},
 	}
 
@@ -250,40 +250,40 @@ func TestGenerateName(t *testing.T) {
 	randomSeed := []byte("test seed")
 
 	tests := []struct {
-		name          string
-		pattern       string
-		want          string
-		wantHasRandom bool
+		name		string
+		pattern		string
+		want		string
+		wantHasRandom	bool
 	}{
 		{
-			name:          "hex generation",
-			pattern:       "${name}-${hex(4)}",
-			want:          "myresource-ccf3",
-			wantHasRandom: true,
+			name:		"hex generation",
+			pattern:	"${name}-${hex(4)}",
+			want:		"myresource-ccf3",
+			wantHasRandom:	true,
 		},
 		{
-			name:          "alphanum generation",
-			pattern:       "${name}-${alphanum(5)}",
-			want:          "myresource-uqk8s",
-			wantHasRandom: true,
+			name:		"alphanum generation",
+			pattern:	"${name}-${alphanum(5)}",
+			want:		"myresource-uqk8s",
+			wantHasRandom:	true,
 		},
 		{
-			name:          "string generation",
-			pattern:       "${name}-${string(6)}",
-			want:          "myresource-qekgoj",
-			wantHasRandom: true,
+			name:		"string generation",
+			pattern:	"${name}-${string(6)}",
+			want:		"myresource-qekgoj",
+			wantHasRandom:	true,
 		},
 		{
-			name:          "num generation",
-			pattern:       "${num(7)}_${name}",
-			want:          "4080051_myresource",
-			wantHasRandom: true,
+			name:		"num generation",
+			pattern:	"${num(7)}_${name}",
+			want:		"4080051_myresource",
+			wantHasRandom:	true,
 		},
 		{
-			name:          "uuid generation",
-			pattern:       "${uuid}",
-			want:          "ccf35be6-7106-5ccd-784a-fa394fcdb57c",
-			wantHasRandom: true,
+			name:		"uuid generation",
+			pattern:	"${uuid}",
+			want:		"ccf35be6-7106-5ccd-784a-fa394fcdb57c",
+			wantHasRandom:	true,
 		},
 	}
 

@@ -22,11 +22,11 @@ import (
 	"strings"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
-	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/diy/unauthenticatedregistry"
+	cmdCmd "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/cmd"
+	cmdDiag "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/diag"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/policy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -34,9 +34,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	pkgCmdUtil "github.com/pulumi/pulumi/sdk/v3/pkg/util/cmdutil"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -46,9 +46,9 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var useLanguageVersionTools bool
 
 	cmd := &cobra.Command{
-		Use:   "install",
-		Args:  cmdutil.NoArgs,
-		Short: "Install packages and plugins for the current program or policy pack.",
+		Use:	"install",
+		Args:	cmdutil.NoArgs,
+		Short:	"Install packages and plugins for the current program or policy pack.",
 		Long: "Install packages and plugins for the current program or policy pack.\n" +
 			"\n" +
 			"This command is used to manually install packages and plugins required by your program or policy pack.\n" +
@@ -102,16 +102,16 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 					pctx, err := plugin.NewContextWithRoot(ctx,
 						cmdutil.Diag(),
 						cmdutil.Diag(),
-						nil, // host
-						cwd, // pwd
-						cwd, // rot
+						nil,	// host
+						cwd,	// pwd
+						cwd,	// rot
 						proj.Runtime.Options(),
-						false, // disableProviderPreview
-						nil,   // tracingSpan
-						nil,   // Plugins
+						false,	// disableProviderPreview
+						nil,	// tracingSpan
+						nil,	// Plugins
 						proj.GetPackageSpecs(),
-						nil, // config
-						nil, // debugging
+						nil,	// config
+						nil,	// debugging
 					)
 					if err != nil {
 						return err
@@ -173,9 +173,9 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			if !noDependencies {
 				err = pkgCmdUtil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
-					Info:                    programInfo,
-					UseLanguageVersionTools: useLanguageVersionTools,
-					IsPlugin:                false,
+					Info:				programInfo,
+					UseLanguageVersionTools:	useLanguageVersionTools,
+					IsPlugin:			false,
 				})
 				if err != nil {
 					return fmt.Errorf("installing dependencies: %w", err)

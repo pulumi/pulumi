@@ -24,8 +24,8 @@ import (
 )
 
 type BuildSystem struct {
-	Requires     []string `toml:"requires,omitempty" json:"requires,omitempty"`
-	BuildBackend string   `toml:"build-backend,omitempty" json:"build-backend,omitempty"`
+	Requires	[]string	`toml:"requires,omitempty" json:"requires,omitempty"`
+	BuildBackend	string		`toml:"build-backend,omitempty" json:"build-backend,omitempty"`
 }
 
 type Project struct {
@@ -33,9 +33,9 @@ type Project struct {
 }
 
 type Pyproject struct {
-	Project     *Project       `toml:"project" json:"project"`
-	BuildSystem *BuildSystem   `toml:"build-system,omitempty" json:"build-system,omitempty"`
-	Tool        map[string]any `toml:"tool,omitempty" json:"tool,omitempty"`
+	Project		*Project	`toml:"project" json:"project"`
+	BuildSystem	*BuildSystem	`toml:"build-system,omitempty" json:"build-system,omitempty"`
+	Tool		map[string]any	`toml:"tool,omitempty" json:"tool,omitempty"`
 }
 
 // IsBuildablePackage checks if a directory is a buildable Python package. A
@@ -45,7 +45,7 @@ func IsBuildablePackage(dir string) (bool, error) {
 	pyproject, err := LoadPyproject(dir)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return false, nil // No pyproject.toml present
+			return false, nil	// No pyproject.toml present
 		}
 		return false, fmt.Errorf("parsing pyproject.toml: %w", err)
 	}

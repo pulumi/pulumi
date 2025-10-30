@@ -23,8 +23,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display/internal/terminal"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,9 +36,9 @@ func TestTreeFrameSize(t *testing.T) {
 
 	// Table Test using different terminal widths and heights
 	tests := []struct {
-		name   string
-		width  int
-		height int
+		name	string
+		width	int
+		height	int
 	}{
 		{"narrow", 1, 100},
 		{"short", 100, 1},
@@ -71,9 +71,9 @@ func createRendererAndDisplay(term terminal.Terminal, initializeDisplay bool) (*
 		Color: colors.Always,
 	}).(*treeRenderer)
 	display := &ProgressDisplay{
-		stack:                 tokens.MustParseStackName("stack"),
-		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		renderer:              treeRenderer,
+		stack:			tokens.MustParseStackName("stack"),
+		eventUrnToResourceRow:	make(map[resource.URN]ResourceRow),
+		renderer:		treeRenderer,
 	}
 	treeRenderer.ticker.Stop()
 
@@ -87,8 +87,8 @@ func createRendererAndDisplay(term terminal.Terminal, initializeDisplay bool) (*
 func addManySystemEvents(display *ProgressDisplay, count int, message string) {
 	for i := 0; i < count; i++ {
 		display.handleSystemEvent(engine.StdoutEventPayload{
-			Message: message,
-			Color:   colors.Always,
+			Message:	message,
+			Color:		colors.Always,
 		})
 	}
 }
@@ -97,8 +97,8 @@ func addManyNormalEvents(display *ProgressDisplay, count int, message string) {
 	for i := 0; i < count; i++ {
 		display.processNormalEvent(engine.NewEvent(
 			engine.DiagEventPayload{
-				URN:     resource.NewURN("stack", "project", "qualifier", "typ", fmt.Sprintf("row-%d", i)),
-				Message: message,
+				URN:		resource.NewURN("stack", "project", "qualifier", "typ", fmt.Sprintf("row-%d", i)),
+				Message:	message,
 			}))
 	}
 }
@@ -126,10 +126,10 @@ func TestTreeKeyboardHandling(t *testing.T) {
 	treeRenderer.frame(false /* locked */, false /* done */)
 
 	tests := []struct {
-		name             string
-		key              string
-		expectedChange   int
-		expectedAbsolute int
+		name			string
+		key			string
+		expectedChange		int
+		expectedAbsolute	int
 	}{
 		{"up arrow", terminal.KeyUp, -1, 0},
 		{"VIM up", "k", -1, 0},

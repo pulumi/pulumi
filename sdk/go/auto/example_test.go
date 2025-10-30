@@ -148,8 +148,8 @@ func ExampleIsUnexpectedEngineError() {
 
 func ExampleConfigMap() {
 	cfg := ConfigMap{
-		"plaintext": {Value: "unencrypted"},
-		"secret":    {Value: "encrypted", Secret: true},
+		"plaintext":	{Value: "unencrypted"},
+		"secret":	{Value: "encrypted", Secret: true},
 	}
 	ctx := context.Background()
 	s, _ := NewStackLocalSource(ctx, "o/p/s", filepath.Join(".", "project"))
@@ -158,8 +158,8 @@ func ExampleConfigMap() {
 
 func ExampleConfigValue() {
 	cfgVal := ConfigValue{
-		Value:  "an secret that will be marked as and stored encrypted",
-		Secret: true,
+		Value:	"an secret that will be marked as and stored encrypted",
+		Secret:	true,
 	}
 	ctx := context.Background()
 	s, _ := NewStackLocalSource(ctx, "o/p/s", filepath.Join(".", "project"))
@@ -183,8 +183,8 @@ func ExampleGitRepo() {
 	// we'll compile a the program into an executable with the name "examplesBinary"
 	binName := "examplesBinary"
 	repo := GitRepo{
-		URL:         "https://github.com/pulumi/test-repo.git",
-		ProjectPath: "goproj",
+		URL:		"https://github.com/pulumi/test-repo.git",
+		ProjectPath:	"goproj",
 		// this call back will get executed post-clone to allow for additional program setup
 		Setup: func(ctx context.Context, workspace Workspace) error {
 			cmd := exec.Command("go", "build", "-o", binName, "main.go")
@@ -194,7 +194,7 @@ func ExampleGitRepo() {
 	}
 	// an override to the project file in the git repo, specifying our pre-built executable
 	project := workspace.Project{
-		Name: tokens.PackageName(pName),
+		Name:	tokens.PackageName(pName),
 		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]any{
 			"binary": binName,
 		}),
@@ -213,8 +213,8 @@ func ExampleGitRepo_personalAccessToken() {
 	token, _ := os.LookupEnv("PERSONAL_ACCESS_TOKEN")
 
 	repo := GitRepo{
-		URL:         "https://github.com/pulumi/test-repo.git",
-		ProjectPath: "goproj",
+		URL:		"https://github.com/pulumi/test-repo.git",
+		ProjectPath:	"goproj",
 		Auth: &GitAuth{
 			PersonalAccessToken: token,
 		},
@@ -230,11 +230,11 @@ func ExampleGitRepo_privateKeyPath() {
 	stackName := FullyQualifiedStackName("myOrg", pName, "myStack")
 
 	repo := GitRepo{
-		URL:         "git@github.com:pulumi/test-repo.git",
-		ProjectPath: "goproj",
+		URL:		"git@github.com:pulumi/test-repo.git",
+		ProjectPath:	"goproj",
 		Auth: &GitAuth{
-			SSHPrivateKeyPath: "/Users/myuser/.ssh/id_rsa",
-			Password:          "PrivateKeyPassword",
+			SSHPrivateKeyPath:	"/Users/myuser/.ssh/id_rsa",
+			Password:		"PrivateKeyPassword",
 		},
 	}
 
@@ -248,11 +248,11 @@ func ExampleGitRepo_privateKey() {
 	stackName := FullyQualifiedStackName("myOrg", pName, "myStack")
 
 	repo := GitRepo{
-		URL:         "git@github.com:pulumi/test-repo.git",
-		ProjectPath: "goproj",
+		URL:		"git@github.com:pulumi/test-repo.git",
+		ProjectPath:	"goproj",
 		Auth: &GitAuth{
-			SSHPrivateKey: "<PRIVATE KEY FILE CONTENTS HERE>",
-			Password:      "PrivateKeyPassword",
+			SSHPrivateKey:	"<PRIVATE KEY FILE CONTENTS HERE>",
+			Password:	"PrivateKeyPassword",
 		},
 	}
 
@@ -266,12 +266,12 @@ func ExampleGitRepo_usernameAndPassword() {
 	stackName := FullyQualifiedStackName("myOrg", pName, "myStack")
 
 	repo := GitRepo{
-		URL:         "https://github.com/pulumi/test-repo.git",
-		ProjectPath: "goproj",
+		URL:		"https://github.com/pulumi/test-repo.git",
+		ProjectPath:	"goproj",
 		Auth: &GitAuth{
 			// This will use a username and password combination for the private repo
-			Username: "myuser",
-			Password: "myPassword1234!",
+			Username:	"myuser",
+			Password:	"myPassword1234!",
 		},
 	}
 
@@ -384,8 +384,8 @@ func ExampleNewLocalWorkspace() {
 	ph := PulumiHome(filepath.Join("~", ".pulumi"))
 	// Project provides ProjectSettings to set once the workspace is created.
 	proj := Project(workspace.Project{
-		Name:    tokens.PackageName("myproject"),
-		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+		Name:		tokens.PackageName("myproject"),
+		Runtime:	workspace.NewProjectRuntimeInfo("go", nil),
 		Backend: &workspace.ProjectBackend{
 			URL: "https://url.to.custom.saas.backend.com",
 		},
@@ -402,8 +402,8 @@ func ExampleLocalWorkspace_secretsProvider() {
 	ph := PulumiHome(filepath.Join("~", ".pulumi"))
 	// Project provides ProjectSettings to set once the workspace is created.
 	proj := Project(workspace.Project{
-		Name:    tokens.PackageName("myproject"),
-		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+		Name:		tokens.PackageName("myproject"),
+		Runtime:	workspace.NewProjectRuntimeInfo("go", nil),
 		Backend: &workspace.ProjectBackend{
 			URL: "https://url.to.custom.saas.backend.com",
 		},
@@ -445,8 +445,8 @@ func ExampleLocalWorkspace_ProjectSettings() {
 	if err != nil {
 		// no Pulumi.yaml was found, so create a default
 		ps = &workspace.Project{
-			Name:    tokens.PackageName("myproject"),
-			Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+			Name:		tokens.PackageName("myproject"),
+			Runtime:	workspace.NewProjectRuntimeInfo("go", nil),
 		}
 	}
 	// make some changes
@@ -465,8 +465,8 @@ func ExampleLocalWorkspace_SaveProjectSettings() {
 	if err != nil {
 		// no Pulumi.yaml was found, so create a default
 		ps = &workspace.Project{
-			Name:    tokens.PackageName("myproject"),
-			Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+			Name:		tokens.PackageName("myproject"),
+			Runtime:	workspace.NewProjectRuntimeInfo("go", nil),
 		}
 	}
 	// make some changes
@@ -621,8 +621,8 @@ func ExampleSetupFn() {
 	stackName := FullyQualifiedStackName("myOrg", "nodejs_project", "myStack")
 
 	repo := GitRepo{
-		URL:         "https://some.example.repo.git",
-		ProjectPath: "goproj",
+		URL:		"https://some.example.repo.git",
+		ProjectPath:	"goproj",
 		// this call back will get executed post-clone to allow for additional program setup
 		Setup: func(ctx context.Context, workspace Workspace) error {
 			// restore node dependencies required to run the program
@@ -644,8 +644,8 @@ func ExampleStack() {
 			Value: "abc",
 		},
 		"buzz": ConfigValue{
-			Value:  "secret",
-			Secret: true,
+			Value:	"secret",
+			Secret:	true,
 		},
 	}
 
@@ -859,9 +859,9 @@ func ExampleNewStackRemoteSource() {
 	binName := "examplesBinary"
 	// a description of the git repo to clone
 	repo := GitRepo{
-		URL: "https://github.com/pulumi/test-repo.git",
+		URL:	"https://github.com/pulumi/test-repo.git",
 		// the subdirectory relative to the root of the repo
-		ProjectPath: "goproj",
+		ProjectPath:	"goproj",
 		// this call back will get executed post-clone to allow for additional program setup
 		Setup: func(ctx context.Context, workspace Workspace) error {
 			cmd := exec.Command("go", "build", "-o", binName, "main.go")
@@ -871,7 +871,7 @@ func ExampleNewStackRemoteSource() {
 	}
 	// an override to the project file in the git repo, specifying our pre-built executable
 	project := workspace.Project{
-		Name: tokens.PackageName(pName),
+		Name:	tokens.PackageName(pName),
 		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]any{
 			"binary": binName,
 		}),
@@ -890,9 +890,9 @@ func ExampleUpsertStackRemoteSource() {
 	binName := "examplesBinary"
 	// a description of the git repo to clone
 	repo := GitRepo{
-		URL: "https://github.com/pulumi/test-repo.git",
+		URL:	"https://github.com/pulumi/test-repo.git",
 		// the subdirectory relative to the root of the repo
-		ProjectPath: "goproj",
+		ProjectPath:	"goproj",
 		// this call back will get executed post-clone to allow for additional program setup
 		Setup: func(ctx context.Context, workspace Workspace) error {
 			cmd := exec.Command("go", "build", "-o", binName, "main.go")
@@ -902,7 +902,7 @@ func ExampleUpsertStackRemoteSource() {
 	}
 	// an override to the project file in the git repo, specifying our pre-built executable
 	project := workspace.Project{
-		Name: tokens.PackageName(pName),
+		Name:	tokens.PackageName(pName),
 		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]any{
 			"binary": binName,
 		}),
@@ -921,9 +921,9 @@ func ExampleSelectStackRemoteSource() {
 	binName := "examplesBinary"
 	// a description of the git repo to clone
 	repo := GitRepo{
-		URL: "https://github.com/pulumi/test-repo.git",
+		URL:	"https://github.com/pulumi/test-repo.git",
 		// the subdirectory relative to the root of the repo
-		ProjectPath: "goproj",
+		ProjectPath:	"goproj",
 		// this call back will get executed post-clone to allow for additional program setup
 		Setup: func(ctx context.Context, workspace Workspace) error {
 			cmd := exec.Command("go", "build", "-o", binName, "main.go")
@@ -933,7 +933,7 @@ func ExampleSelectStackRemoteSource() {
 	}
 	// an override to the project file in the git repo, specifying our pre-built executable
 	project := workspace.Project{
-		Name: tokens.PackageName(pName),
+		Name:	tokens.PackageName(pName),
 		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]any{
 			"binary": binName,
 		}),
@@ -1041,8 +1041,8 @@ func ExampleStack_History() {
 	ctx := context.Background()
 	stackName := FullyQualifiedStackName("org", "project", "stack")
 	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
-	pageSize := 0 // fetch all history entries, don't paginate
-	page := 0     // fetch all history entries, don't paginate
+	pageSize := 0	// fetch all history entries, don't paginate
+	page := 0	// fetch all history entries, don't paginate
 	hist, _ := stack.History(ctx, pageSize, page)
 	// last operation start time
 	fmt.Println(hist[0].StartTime)
@@ -1103,8 +1103,8 @@ func ExampleStack_SetAllConfig() {
 	stackName := FullyQualifiedStackName("org", "project", "stack")
 	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	cfg := ConfigMap{
-		"key0": ConfigValue{Value: "abc", Secret: true},
-		"key1": ConfigValue{Value: "def"},
+		"key0":	ConfigValue{Value: "abc", Secret: true},
+		"key1":	ConfigValue{Value: "def"},
 	}
 	// set all config in map
 	_ = stack.SetAllConfig(ctx, cfg)

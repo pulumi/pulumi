@@ -24,10 +24,10 @@ func TestGetRefreshOption(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name                 string
-		refresh              string
-		project              workspace.Project
-		expectedRefreshState bool
+		name			string
+		refresh			string
+		project			workspace.Project
+		expectedRefreshState	bool
 	}{
 		{
 			"No options specified means no refresh",
@@ -51,8 +51,8 @@ func TestGetRefreshOption(t *testing.T) {
 			"Setting Refresh at a project level via Pulumi.yaml and no CLI args",
 			"",
 			workspace.Project{
-				Name:    "auto-refresh",
-				Runtime: workspace.ProjectRuntimeInfo{},
+				Name:		"auto-refresh",
+				Runtime:	workspace.ProjectRuntimeInfo{},
 				Options: &workspace.ProjectOptions{
 					Refresh: "always",
 				},
@@ -63,8 +63,8 @@ func TestGetRefreshOption(t *testing.T) {
 			"Setting Refresh at a project level via Pulumi.yaml and --refresh=false",
 			"false",
 			workspace.Project{
-				Name:    "auto-refresh",
-				Runtime: workspace.ProjectRuntimeInfo{},
+				Name:		"auto-refresh",
+				Runtime:	workspace.ProjectRuntimeInfo{},
 				Options: &workspace.ProjectOptions{
 					Refresh: "always",
 				},

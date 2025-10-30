@@ -28,8 +28,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	rasset "github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
@@ -43,7 +43,7 @@ import (
 func TestDeploymentSerialization(t *testing.T) {
 	t.Parallel()
 	res := resource.NewState{
-		Type: tokens.Type("Test"),
+		Type:	tokens.Type("Test"),
 		URN: resource.NewURN(
 			tokens.QName("test"),
 			tokens.PackageName("resource/test"),
@@ -51,71 +51,71 @@ func TestDeploymentSerialization(t *testing.T) {
 			tokens.Type("Test"),
 			"resource-x",
 		),
-		Custom: true,
-		Delete: false,
-		ID:     resource.ID("test-resource-x"),
+		Custom:	true,
+		Delete:	false,
+		ID:	resource.ID("test-resource-x"),
 		Inputs: resource.NewPropertyMapFromMap(map[string]any{
-			"in-nil":         nil,
-			"in-bool":        true,
-			"in-float64":     float64(1.5),
-			"in-string":      "lumilumilo",
-			"in-array":       []any{"a", true, float64(32)},
-			"in-empty-array": []any{},
+			"in-nil":		nil,
+			"in-bool":		true,
+			"in-float64":		float64(1.5),
+			"in-string":		"lumilumilo",
+			"in-array":		[]any{"a", true, float64(32)},
+			"in-empty-array":	[]any{},
 			"in-map": map[string]any{
-				"a": true,
-				"b": float64(88),
-				"c": "c-see-saw",
-				"d": "d-dee-daw",
+				"a":	true,
+				"b":	float64(88),
+				"c":	"c-see-saw",
+				"d":	"d-dee-daw",
 			},
-			"in-empty-map":                            map[string]any{},
-			"in-component-resource-reference":         resource.MakeComponentResourceReference("urn", "1.2.3").V,
-			"in-custom-resource-reference":            resource.MakeCustomResourceReference("urn2", "id", "2.3.4").V,
-			"in-custom-resource-reference-unknown-id": resource.MakeCustomResourceReference("urn3", "", "3.4.5").V,
+			"in-empty-map":					map[string]any{},
+			"in-component-resource-reference":		resource.MakeComponentResourceReference("urn", "1.2.3").V,
+			"in-custom-resource-reference":			resource.MakeCustomResourceReference("urn2", "id", "2.3.4").V,
+			"in-custom-resource-reference-unknown-id":	resource.MakeCustomResourceReference("urn3", "", "3.4.5").V,
 		}),
 		Outputs: resource.NewPropertyMapFromMap(map[string]any{
-			"out-nil":         nil,
-			"out-bool":        false,
-			"out-float64":     float64(76),
-			"out-string":      "loyolumiloom",
-			"out-array":       []any{false, "zzxx"},
-			"out-empty-array": []any{},
+			"out-nil":		nil,
+			"out-bool":		false,
+			"out-float64":		float64(76),
+			"out-string":		"loyolumiloom",
+			"out-array":		[]any{false, "zzxx"},
+			"out-empty-array":	[]any{},
 			"out-map": map[string]any{
-				"x": false,
-				"y": "z-zee-zaw",
-				"z": float64(999.9),
+				"x":	false,
+				"y":	"z-zee-zaw",
+				"z":	float64(999.9),
 			},
-			"out-empty-map": map[string]any{},
+			"out-empty-map":	map[string]any{},
 		}),
-		Parent:   "",
-		Protect:  false,
-		Taint:    false,
-		External: false,
+		Parent:		"",
+		Protect:	false,
+		Taint:		false,
+		External:	false,
 		Dependencies: []resource.URN{
 			resource.URN("foo:bar:baz"),
 			resource.URN("foo:bar:boo"),
 		},
-		InitErrors:              []string{},
-		Provider:                "",
-		PropertyDependencies:    nil,
-		PendingReplacement:      false,
-		AdditionalSecretOutputs: nil,
-		Aliases:                 nil,
-		CustomTimeouts:          nil,
-		ImportID:                "",
-		RetainOnDelete:          false,
-		DeletedWith:             "",
-		Created:                 nil,
-		Modified:                nil,
-		SourcePosition:          "",
-		HideDiff:                nil,
-		StackTrace:              nil,
-		IgnoreChanges:           nil,
-		ReplaceOnChanges:        nil,
-		RefreshBeforeUpdate:     false,
-		ViewOf:                  "",
+		InitErrors:			[]string{},
+		Provider:			"",
+		PropertyDependencies:		nil,
+		PendingReplacement:		false,
+		AdditionalSecretOutputs:	nil,
+		Aliases:			nil,
+		CustomTimeouts:			nil,
+		ImportID:			"",
+		RetainOnDelete:			false,
+		DeletedWith:			"",
+		Created:			nil,
+		Modified:			nil,
+		SourcePosition:			"",
+		HideDiff:			nil,
+		StackTrace:			nil,
+		IgnoreChanges:			nil,
+		ReplaceOnChanges:		nil,
+		RefreshBeforeUpdate:		false,
+		ViewOf:				"",
 		ResourceHooks: map[resource.HookType][]string{
-			resource.BeforeCreate: {"hook1"},
-			resource.AfterDelete:  {"hook2"},
+			resource.BeforeCreate:	{"hook1"},
+			resource.AfterDelete:	{"hook2"},
 		},
 	}.Make()
 	dep, err := SerializeResource(context.Background(), res, config.NopEncrypter, false /* showSecrets */)
@@ -130,8 +130,8 @@ func TestDeploymentSerialization(t *testing.T) {
 	assert.Equal(t, resource.URN("foo:bar:baz"), dep.Dependencies[0])
 	assert.Equal(t, resource.URN("foo:bar:boo"), dep.Dependencies[1])
 	assert.Equal(t, map[resource.HookType][]string{
-		"BeforeCreate": {"hook1"},
-		"AfterDelete":  {"hook2"},
+		"BeforeCreate":	{"hook1"},
+		"AfterDelete":	{"hook2"},
 	}, dep.ResourceHooks)
 
 	// assert some things about the inputs:
@@ -164,21 +164,21 @@ func TestDeploymentSerialization(t *testing.T) {
 	require.NotNil(t, dep.Inputs["in-empty-map"])
 	assert.Empty(t, dep.Inputs["in-empty-map"].(map[string]any))
 	assert.Equal(t, map[string]any{
-		resource.SigKey:  resource.ResourceReferenceSig,
-		"urn":            "urn",
-		"packageVersion": "1.2.3",
+		resource.SigKey:	resource.ResourceReferenceSig,
+		"urn":			"urn",
+		"packageVersion":	"1.2.3",
 	}, dep.Inputs["in-component-resource-reference"])
 	assert.Equal(t, map[string]any{
-		resource.SigKey:  resource.ResourceReferenceSig,
-		"urn":            "urn2",
-		"id":             "id",
-		"packageVersion": "2.3.4",
+		resource.SigKey:	resource.ResourceReferenceSig,
+		"urn":			"urn2",
+		"id":			"id",
+		"packageVersion":	"2.3.4",
 	}, dep.Inputs["in-custom-resource-reference"])
 	assert.Equal(t, map[string]any{
-		resource.SigKey:  resource.ResourceReferenceSig,
-		"urn":            "urn3",
-		"id":             "",
-		"packageVersion": "3.4.5",
+		resource.SigKey:	resource.ResourceReferenceSig,
+		"urn":			"urn3",
+		"id":			"",
+		"packageVersion":	"3.4.5",
 	}, dep.Inputs["in-custom-resource-reference-unknown-id"])
 
 	// assert some things about the outputs:
@@ -217,70 +217,70 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
-		name             string
-		resources        []*resource.State
-		expectedVersion  int
-		expectedFeatures []string
+		name			string
+		resources		[]*resource.State
+		expectedVersion		int
+		expectedFeatures	[]string
 	}{
 		{
-			name: "v3 deployment with no features",
+			name:	"v3 deployment with no features",
 			resources: []*resource.State{
 				{
 					URN: "urn1",
 				},
 			},
-			expectedVersion:  3,
-			expectedFeatures: nil,
+			expectedVersion:	3,
+			expectedFeatures:	nil,
 		},
 		{
-			name: "v4 deployment with refreshBeforeUpdate",
+			name:	"v4 deployment with refreshBeforeUpdate",
 			resources: []*resource.State{
 				{
-					URN:                 "urn1",
-					RefreshBeforeUpdate: true,
+					URN:			"urn1",
+					RefreshBeforeUpdate:	true,
 				},
 			},
-			expectedVersion:  4,
-			expectedFeatures: []string{"refreshBeforeUpdate"},
+			expectedVersion:	4,
+			expectedFeatures:	[]string{"refreshBeforeUpdate"},
 		},
 		{
-			name: "v4 deployment with views",
+			name:	"v4 deployment with views",
 			resources: []*resource.State{
 				{
 					URN: "urn1",
 				},
 				{
-					URN:    "urn2",
-					Parent: "urn1",
-					ViewOf: "urn1",
+					URN:	"urn2",
+					Parent:	"urn1",
+					ViewOf:	"urn1",
 				},
 			},
-			expectedVersion:  4,
-			expectedFeatures: []string{"views"},
+			expectedVersion:	4,
+			expectedFeatures:	[]string{"views"},
 		},
 		{
-			name: "v4 deployment with hooks",
+			name:	"v4 deployment with hooks",
 			resources: []*resource.State{
 				{
-					URN: "urn1",
+					URN:	"urn1",
 					ResourceHooks: map[resource.HookType][]string{
 						resource.AfterCreate: {"hook1"},
 					},
 				},
 			},
-			expectedVersion:  4,
-			expectedFeatures: []string{"hooks"},
+			expectedVersion:	4,
+			expectedFeatures:	[]string{"hooks"},
 		},
 		{
-			name: "v4 deployment with taint",
+			name:	"v4 deployment with taint",
 			resources: []*resource.State{
 				{
-					URN:   "urn1",
-					Taint: true,
+					URN:	"urn1",
+					Taint:	true,
 				},
 			},
-			expectedVersion:  4,
-			expectedFeatures: []string{"taint"},
+			expectedVersion:	4,
+			expectedFeatures:	[]string{"taint"},
 		},
 	}
 	for _, tt := range tests {
@@ -349,7 +349,7 @@ func TestUnsupportedFeature(t *testing.T) {
 	ctx := context.Background()
 
 	untypedDeployment := &apitype.UntypedDeployment{
-		Version: DeploymentSchemaVersionLatest,
+		Version:	DeploymentSchemaVersionLatest,
 		Features: []string{
 			"unsupported-feature",
 		},
@@ -377,9 +377,9 @@ func TestDeserializeUntypedDeploymentFeatures(t *testing.T) {
 			t.Parallel()
 
 			untypedDeployment := &apitype.UntypedDeployment{
-				Version:    DeploymentSchemaVersionLatest,
-				Features:   features,
-				Deployment: json.RawMessage("{}"),
+				Version:	DeploymentSchemaVersionLatest,
+				Features:	features,
+				Deployment:	json.RawMessage("{}"),
 			}
 			deployment, err := DeserializeUntypedDeployment(ctx, untypedDeployment, b64.Base64SecretsProvider)
 			require.NoError(t, err)
@@ -419,10 +419,10 @@ func TestDeserializeResourceReferencePropertyValueID(t *testing.T) {
 	serialize := func(v resource.PropertyValue) any {
 		ref := v.ResourceReferenceValue()
 		bytes, err := json.Marshal(map[string]any{
-			resource.SigKey:  resource.ResourceReferenceSig,
-			"urn":            ref.URN,
-			"id":             ref.ID,
-			"packageVersion": ref.PackageVersion,
+			resource.SigKey:	resource.ResourceReferenceSig,
+			"urn":			ref.URN,
+			"id":			ref.ID,
+			"packageVersion":	ref.PackageVersion,
 		})
 		contract.IgnoreError(err)
 		var sv any
@@ -432,18 +432,18 @@ func TestDeserializeResourceReferencePropertyValueID(t *testing.T) {
 	}
 
 	serialized := map[string]any{
-		"component-resource":         serialize(resource.MakeComponentResourceReference("urn", "1.2.3")),
-		"custom-resource":            serialize(resource.MakeCustomResourceReference("urn2", "id", "2.3.4")),
-		"custom-resource-unknown-id": serialize(resource.MakeCustomResourceReference("urn3", "", "3.4.5")),
+		"component-resource":		serialize(resource.MakeComponentResourceReference("urn", "1.2.3")),
+		"custom-resource":		serialize(resource.MakeCustomResourceReference("urn2", "id", "2.3.4")),
+		"custom-resource-unknown-id":	serialize(resource.MakeCustomResourceReference("urn3", "", "3.4.5")),
 	}
 
 	deserialized, err := DeserializePropertyValue(serialized, config.NewPanicCrypter())
 	require.NoError(t, err)
 
 	assert.Equal(t, resource.NewPropertyValue(map[string]any{
-		"component-resource":         resource.MakeComponentResourceReference("urn", "1.2.3").V,
-		"custom-resource":            resource.MakeCustomResourceReference("urn2", "id", "2.3.4").V,
-		"custom-resource-unknown-id": resource.MakeCustomResourceReference("urn3", "", "3.4.5").V,
+		"component-resource":		resource.MakeComponentResourceReference("urn", "1.2.3").V,
+		"custom-resource":		resource.MakeCustomResourceReference("urn2", "id", "2.3.4").V,
+		"custom-resource-unknown-id":	resource.MakeCustomResourceReference("urn3", "", "3.4.5").V,
 	}), deserialized)
 }
 
@@ -461,32 +461,32 @@ func TestCustomSerialization(t *testing.T) {
 
 	propMap := resource.NewPropertyMapFromMap(map[string]any{
 		// Primitive types
-		"nil":     nil,
-		"bool":    true,
-		"int32":   int64(41),
-		"int64":   int64(42),
-		"float32": float32(2.5),
-		"float64": float64(1.5),
-		"string":  "string literal",
+		"nil":		nil,
+		"bool":		true,
+		"int32":	int64(41),
+		"int64":	int64(42),
+		"float32":	float32(2.5),
+		"float64":	float64(1.5),
+		"string":	"string literal",
 
 		// Data structures
-		"array":       []any{"a", true, float64(32)},
-		"array-empty": []any{},
+		"array":	[]any{"a", true, float64(32)},
+		"array-empty":	[]any{},
 
 		"map": map[string]any{
-			"a": true,
-			"b": float64(88),
-			"c": "c-see-saw",
-			"d": "d-dee-daw",
+			"a":	true,
+			"b":	float64(88),
+			"c":	"c-see-saw",
+			"d":	"d-dee-daw",
 		},
-		"map-empty": map[string]any{},
+		"map-empty":	map[string]any{},
 
 		// Specialized resource types
-		"asset-text": textAsset,
+		"asset-text":	textAsset,
 
-		"computed": computed,
-		"output":   output,
-		"secret":   secret,
+		"computed":	computed,
+		"output":	output,
+		"secret":	secret,
 	})
 
 	assert.True(t, propMap.ContainsSecrets())
@@ -604,13 +604,13 @@ func TestDeserializeDeploymentSecretCache(t *testing.T) {
 	urn := "urn:pulumi:prod::acme::acme:erp:Backend$aws:ebs/volume:Volume::PlatformBackendDb"
 	ctx := context.Background()
 	_, err := DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
-		SecretsProviders: &apitype.SecretsProvidersV1{Type: b64.Type},
+		SecretsProviders:	&apitype.SecretsProvidersV1{Type: b64.Type},
 		Resources: []apitype.ResourceV3{
 			{
-				URN:    resource.URN(urn),
-				Type:   "aws:ebs/volume:Volume",
-				Custom: true,
-				ID:     "vol-044ba5ad2bd959bc1",
+				URN:	resource.URN(urn),
+				Type:	"aws:ebs/volume:Volume",
+				Custom:	true,
+				ID:	"vol-044ba5ad2bd959bc1",
 			},
 		},
 	}, b64.Base64SecretsProvider)
@@ -644,10 +644,10 @@ func TestDeserializeInvalidResourceErrors(t *testing.T) {
 	deployment, err = DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
 		Resources: []apitype.ResourceV3{
 			{
-				URN:    resource.URN(urn),
-				Type:   "aws:ebs/volume:Volume",
-				Custom: false,
-				ID:     "vol-044ba5ad2bd959bc1",
+				URN:	resource.URN(urn),
+				Type:	"aws:ebs/volume:Volume",
+				Custom:	false,
+				ID:	"vol-044ba5ad2bd959bc1",
 			},
 		},
 	}, b64.Base64SecretsProvider)
@@ -663,12 +663,12 @@ func TestDeserializeMissingSecretsManager(t *testing.T) {
 	deployment, err := DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
 		Resources: []apitype.ResourceV3{
 			{
-				URN:  resource.URN(urn),
-				Type: "pkg:index:type",
+				URN:	resource.URN(urn),
+				Type:	"pkg:index:type",
 				Outputs: map[string]any{
 					"secret": map[string]any{
-						"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-						"ciphertext":                       "v1:xRi3+sQJSJHR8sha:RM8BfzSAJI84QMl+zLGjzPvwSqV6zOSdd/I/V34h",
+						"4dabf18193072939515e22adb298388d":	"1b47061264138c4ac30d75fd1eb44270",
+						"ciphertext":				"v1:xRi3+sQJSJHR8sha:RM8BfzSAJI84QMl+zLGjzPvwSqV6zOSdd/I/V34h",
 					},
 				},
 			},
@@ -680,34 +680,34 @@ func TestDeserializeMissingSecretsManager(t *testing.T) {
 	deployment, err = DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
 		Resources: []apitype.ResourceV3{
 			{
-				URN:  resource.URN(urn),
-				Type: "pkg:index:type",
+				URN:	resource.URN(urn),
+				Type:	"pkg:index:type",
 			},
 		},
 	}, b64.Base64SecretsProvider)
 	require.NoError(t, err)
 	assert.Equal(t, deployment, &deploy.Snapshot{
 		Manifest: deploy.Manifest{
-			Time:    time.Time{},
-			Version: "",
-			Plugins: nil,
+			Time:		time.Time{},
+			Version:	"",
+			Plugins:	nil,
 		},
-		SecretsManager: nil,
+		SecretsManager:	nil,
 		Resources: []*resource.State{
 			{
-				Type:         "pkg:index:type",
-				URN:          resource.URN(urn),
-				Custom:       false,
-				Delete:       false,
-				ID:           "",
-				Inputs:       resource.PropertyMap{},
-				Outputs:      resource.PropertyMap{},
-				Parent:       "",
-				Protect:      false,
-				Dependencies: nil,
+				Type:		"pkg:index:type",
+				URN:		resource.URN(urn),
+				Custom:		false,
+				Delete:		false,
+				ID:		"",
+				Inputs:		resource.PropertyMap{},
+				Outputs:	resource.PropertyMap{},
+				Parent:		"",
+				Protect:	false,
+				Dependencies:	nil,
 			},
 		},
-		PendingOperations: nil,
+		PendingOperations:	nil,
 	})
 }
 
@@ -856,8 +856,8 @@ func StringObjectGenerator() *rapid.Generator[string] {
 func TextAssetObjectGenerator() *rapid.Generator[map[string]any] {
 	return rapid.Custom(func(t *rapid.T) map[string]any {
 		return map[string]any{
-			resource.SigKey:            resource.AssetSig,
-			resource.AssetTextProperty: rapid.String().Draw(t, "text asset contents"),
+			resource.SigKey:		resource.AssetSig,
+			resource.AssetTextProperty:	rapid.String().Draw(t, "text asset contents"),
 		}
 	})
 }
@@ -883,8 +883,8 @@ func LiteralArchiveObjectGenerator(maxDepth int) *rapid.Generator[map[string]any
 		}
 
 		return map[string]any{
-			resource.SigKey:                resource.ArchiveSig,
-			resource.ArchiveAssetsProperty: contentsGenerator.Draw(t, "literal archive contents"),
+			resource.SigKey:		resource.ArchiveSig,
+			resource.ArchiveAssetsProperty:	contentsGenerator.Draw(t, "literal archive contents"),
 		}
 	})
 }
@@ -898,9 +898,9 @@ func ArchiveObjectGenerator(maxDepth int) *rapid.Generator[map[string]any] {
 func ResourceReferenceObjectGenerator() *rapid.Generator[any] {
 	return rapid.Custom(func(t *rapid.T) any {
 		fields := map[string]any{
-			resource.SigKey:  resource.ResourceReferenceSig,
-			"urn":            string(resource_testing.URNGenerator().Draw(t, "referenced URN")),
-			"packageVersion": resource_testing.SemverStringGenerator().Draw(t, "package version"),
+			resource.SigKey:	resource.ResourceReferenceSig,
+			"urn":			string(resource_testing.URNGenerator().Draw(t, "referenced URN")),
+			"packageVersion":	resource_testing.SemverStringGenerator().Draw(t, "package version"),
 		}
 
 		id := rapid.OneOf(
@@ -940,8 +940,8 @@ func SecretObjectGenerator(maxDepth int) *rapid.Generator[map[string]any] {
 		require.NoError(t, err)
 
 		return map[string]any{
-			resource.SigKey: resource.SecretSig,
-			"plaintext":     string(bytes),
+			resource.SigKey:	resource.SecretSig,
+			"plaintext":		string(bytes),
 		}
 	})
 }
@@ -973,11 +973,11 @@ func TestSecretInputRoundTrip(t *testing.T) {
 	ctx := context.Background()
 
 	res := &resource.State{
-		URN:  "urn:pulumi:stack::project::pkg:index:type::name",
-		Type: "pkg:index:type",
+		URN:	"urn:pulumi:stack::project::pkg:index:type::name",
+		Type:	"pkg:index:type",
 		Inputs: resource.NewPropertyMapFromMap(map[string]any{
-			"normal": "hello",
-			"secret": resource.MakeSecret(resource.NewProperty("there")),
+			"normal":	"hello",
+			"secret":	resource.MakeSecret(resource.NewProperty("there")),
 		}),
 	}
 
@@ -989,7 +989,7 @@ func TestSecretInputRoundTrip(t *testing.T) {
 	deserialized, err := DeserializeResource(serialized, sm.Decrypter())
 	require.NoError(t, err)
 	require.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
-		"normal": "hello",
-		"secret": resource.MakeSecret(resource.NewProperty("there")),
+		"normal":	"hello",
+		"secret":	resource.MakeSecret(resource.NewProperty("there")),
 	}), deserialized.Inputs)
 }

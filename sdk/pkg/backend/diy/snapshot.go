@@ -17,7 +17,7 @@ package diy
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
 )
 
 // diySnapshotPersister is a simple SnapshotManager implementation that persists snapshots
@@ -25,10 +25,10 @@ import (
 type diySnapshotPersister struct {
 	// TODO[pulumi/pulumi#12593]:
 	// Remove this once SnapshotPersister is updated to take a context.
-	ctx context.Context
+	ctx	context.Context
 
-	ref     *diyBackendReference
-	backend *diyBackend
+	ref	*diyBackendReference
+	backend	*diyBackend
 }
 
 func (sp *diySnapshotPersister) Save(snapshot *deploy.Snapshot) error {

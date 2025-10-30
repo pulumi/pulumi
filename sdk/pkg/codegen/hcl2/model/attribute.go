@@ -20,20 +20,20 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
 )
 
 // Attribute represents an HCL2 attribute.
 type Attribute struct {
 	// The syntax node for the attribute, if any.
-	Syntax *hclsyntax.Attribute
+	Syntax	*hclsyntax.Attribute
 	// The tokens for the attribute.
-	Tokens *syntax.AttributeTokens
+	Tokens	*syntax.AttributeTokens
 
 	// The attribute's name.
-	Name string
+	Name	string
 	// The attribute's value.
-	Value Expression
+	Value	Expression
 }
 
 // SyntaxNode returns the syntax node of the attribute, and will either return an *hclsyntax.Attribute or syntax.None.
@@ -73,7 +73,7 @@ func (a *Attribute) Type() Type {
 	return a.Value.Type()
 }
 
-func (*Attribute) isBodyItem() {}
+func (*Attribute) isBodyItem()	{}
 
 // BindAttribute binds an HCL2 attribute using the given scope and token map.
 func BindAttribute(attribute *hclsyntax.Attribute, scope *Scope, tokens syntax.TokenMap,
@@ -82,9 +82,9 @@ func BindAttribute(attribute *hclsyntax.Attribute, scope *Scope, tokens syntax.T
 	value, diagnostics := BindExpression(attribute.Expr, scope, tokens, opts...)
 	attributeTokens, _ := tokens.ForNode(attribute).(*syntax.AttributeTokens)
 	return &Attribute{
-		Syntax: attribute,
-		Tokens: attributeTokens,
-		Name:   attribute.Name,
-		Value:  value,
+		Syntax:	attribute,
+		Tokens:	attributeTokens,
+		Name:	attribute.Name,
+		Value:	value,
 	}, diagnostics
 }

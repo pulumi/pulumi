@@ -23,10 +23,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
-	"github.com/pulumi/pulumi/pkg/v3/channel"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display/internal/terminal"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/channel"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -260,9 +260,9 @@ func fprintIgnoreError(w io.Writer, a ...any) {
 // to escape these so they can be safely displayed.
 func escapeURN(urn string) string {
 	name := strconv.QuoteToGraphic(urn)
-	name = name[1 : len(name)-1] // Trim the outer quotes from `QuoteToGraphic`
+	name = name[1 : len(name)-1]	// Trim the outer quotes from `QuoteToGraphic`
 	// QuoteToGraphic escapes double quotes, but we don't want that, unescape them.
-	name = strings.ReplaceAll(name, "\\\\", "\\") // Unescape backslashes ...
-	name = strings.ReplaceAll(name, "\\\"", "\"") // ... then unescape quotes
+	name = strings.ReplaceAll(name, "\\\\", "\\")	// Unescape backslashes ...
+	name = strings.ReplaceAll(name, "\\\"", "\"")	// ... then unescape quotes
 	return name
 }

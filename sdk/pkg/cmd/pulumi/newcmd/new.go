@@ -31,15 +31,15 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/backend/state"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/state"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
+	cmdTemplates "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/templates"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -50,7 +50,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 )
 
 type promptForValueFunc func(yes bool, valueType string, defaultValue string, secret bool,
@@ -65,29 +65,29 @@ type promptForAIProjectURLFunc func(ctx context.Context,
 	ws pkgWorkspace.Context, args newArgs, opts display.Options) (string, error)
 
 type newArgs struct {
-	configArray           []string
-	configPath            bool
-	description           string
-	dir                   string
-	force                 bool
-	generateOnly          bool
-	interactive           bool
-	name                  string
-	offline               bool
-	prompt                promptForValueFunc
-	promptRuntimeOptions  runtimeOptionsFunc
-	promptForAIProjectURL promptForAIProjectURLFunc
-	chooseTemplate        chooseTemplateFunc
-	secretsProvider       string
-	stack                 string
-	templateNameOrURL     string
-	yes                   bool
-	listTemplates         bool
-	aiPrompt              string
-	aiLanguage            httpstate.PulumiAILanguage
-	templateMode          bool
-	runtimeOptions        []string
-	remoteStackConfig     bool
+	configArray		[]string
+	configPath		bool
+	description		string
+	dir			string
+	force			bool
+	generateOnly		bool
+	interactive		bool
+	name			string
+	offline			bool
+	prompt			promptForValueFunc
+	promptRuntimeOptions	runtimeOptionsFunc
+	promptForAIProjectURL	promptForAIProjectURLFunc
+	chooseTemplate		chooseTemplateFunc
+	secretsProvider		string
+	stack			string
+	templateNameOrURL	string
+	yes			bool
+	listTemplates		bool
+	aiPrompt		string
+	aiLanguage		httpstate.PulumiAILanguage
+	templateMode		bool
+	runtimeOptions		[]string
+	remoteStackConfig	bool
 }
 
 func runNew(ctx context.Context, args newArgs) error {
@@ -97,8 +97,8 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Prepare options.
 	opts := display.Options{
-		Color:         cmdutil.GetGlobalColorization(),
-		IsInteractive: args.interactive,
+		Color:		cmdutil.GetGlobalColorization(),
+		IsInteractive:	args.interactive,
 	}
 
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
@@ -467,10 +467,10 @@ func isInteractive() bool {
 // NewNewCmd creates a New command with default dependencies.
 func NewNewCmd() *cobra.Command {
 	args := newArgs{
-		prompt:                ui.PromptForValue,
-		chooseTemplate:        ChooseTemplate,
-		promptRuntimeOptions:  promptRuntimeOptions,
-		promptForAIProjectURL: promptForAIProjectURL,
+		prompt:			ui.PromptForValue,
+		chooseTemplate:		ChooseTemplate,
+		promptRuntimeOptions:	promptRuntimeOptions,
+		promptForAIProjectURL:	promptForAIProjectURL,
 	}
 
 	getTemplates := func(ctx context.Context) ([]cmdTemplates.Template, io.Closer, error) {
@@ -485,9 +485,9 @@ func NewNewCmd() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:        "new [template|url]",
-		SuggestFor: []string{"init", "create"},
-		Short:      "Create a new Pulumi project",
+		Use:		"new [template|url]",
+		SuggestFor:	[]string{"init", "create"},
+		Short:		"Create a new Pulumi project",
 		Long: "Create a new Pulumi project and stack from a template.\n" +
 			"\n" +
 			"To create a project from a specific template, pass the template name (such as `aws-typescript`\n" +
@@ -536,7 +536,7 @@ func NewNewCmd() *cobra.Command {
 			"* `pulumi new --language <language>`\n" +
 			"* `pulumi new --ai \"<prompt>\" --language <language>`\n" +
 			"Any missing but required information will be prompted for.\n",
-		Args: cmdutil.MaximumNArgs(1),
+		Args:	cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			if len(cliArgs) > 0 {
@@ -755,8 +755,8 @@ func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInf
 				var response string
 				message := opts.Color.Colorize(colors.SpecPrompt + "\r" + optionPrompt.Description + colors.Reset)
 				if err := survey.AskOne(&survey.Select{
-					Message: message,
-					Options: choices,
+					Message:	message,
+					Options:	choices,
 				}, &response, ui.SurveyIcons(opts.Color), nil); err != nil {
 					return nil, err
 				}
@@ -873,7 +873,7 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 		commands = append(commands, "pulumi stack init")
 	}
 
-	if len(commands) == 0 { // No additional commands need to be run.
+	if len(commands) == 0 {	// No additional commands need to be run.
 		deployMsg := "To perform an initial deployment, run `pulumi up`"
 		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Bold)
 		fmt.Println(opts.Color.Colorize(deployMsg))
@@ -881,7 +881,7 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 		return
 	}
 
-	if len(commands) == 1 { // Only one additional command need to be run.
+	if len(commands) == 1 {	// Only one additional command need to be run.
 		deployMsg := fmt.Sprintf("To perform an initial deployment, run '%s', then, run `pulumi up`", commands[0])
 		deployMsg = colors.Highlight(deployMsg, commands[0], colors.BrightBlue+colors.Bold)
 		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Bold)

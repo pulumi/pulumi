@@ -20,8 +20,8 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/pkg/v3/importer"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/importer"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
@@ -32,13 +32,13 @@ func TestParseImportFile_errors(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		desc     string
-		give     importFile
-		wantErrs []string
+		desc		string
+		give		importFile
+		wantErrs	[]string
 	}{
 		{
-			desc: "missing everything",
-			give: importFile{Resources: []importSpec{{}}},
+			desc:	"missing everything",
+			give:	importFile{Resources: []importSpec{{}}},
 			wantErrs: []string{
 				"3 errors occurred",
 				"resource 0 has no type",
@@ -47,7 +47,7 @@ func TestParseImportFile_errors(t *testing.T) {
 			},
 		},
 		{
-			desc: "missing name and type",
+			desc:	"missing name and type",
 			give: importFile{
 				Resources: []importSpec{
 					{ID: "thing"},
@@ -60,7 +60,7 @@ func TestParseImportFile_errors(t *testing.T) {
 			},
 		},
 		{
-			desc: "missing ID and type",
+			desc:	"missing ID and type",
 			give: importFile{
 				Resources: []importSpec{
 					{Name: "foo"},
@@ -73,12 +73,12 @@ func TestParseImportFile_errors(t *testing.T) {
 			},
 		},
 		{
-			desc: "missing type",
+			desc:	"missing type",
 			give: importFile{
 				Resources: []importSpec{
 					{
-						Name: "foo",
-						ID:   "bar",
+						Name:	"foo",
+						ID:	"bar",
 					},
 				},
 			},
@@ -88,12 +88,12 @@ func TestParseImportFile_errors(t *testing.T) {
 			},
 		},
 		{
-			desc: "missing name",
+			desc:	"missing name",
 			give: importFile{
 				Resources: []importSpec{
 					{
-						ID:   "bar",
-						Type: "foo:bar:baz",
+						ID:	"bar",
+						Type:	"foo:bar:baz",
 					},
 				},
 			},
@@ -103,12 +103,12 @@ func TestParseImportFile_errors(t *testing.T) {
 			},
 		},
 		{
-			desc: "missing id",
+			desc:	"missing id",
 			give: importFile{
 				Resources: []importSpec{
 					{
-						Name: "foo",
-						Type: "foo:bar:baz",
+						Name:	"foo",
+						Type:	"foo:bar:baz",
 					},
 				},
 			},
@@ -118,14 +118,14 @@ func TestParseImportFile_errors(t *testing.T) {
 			},
 		},
 		{
-			desc: "missing parent",
+			desc:	"missing parent",
 			give: importFile{
 				Resources: []importSpec{
 					{
-						Name:   "thing",
-						ID:     "thing",
-						Parent: "unknown",
-						Type:   "foo:bar:baz",
+						Name:	"thing",
+						ID:	"thing",
+						Parent:	"unknown",
+						Type:	"foo:bar:baz",
 					},
 				},
 			},
@@ -135,14 +135,14 @@ func TestParseImportFile_errors(t *testing.T) {
 			},
 		},
 		{
-			desc: "missing provider",
+			desc:	"missing provider",
 			give: importFile{
 				Resources: []importSpec{
 					{
-						Name:     "thing",
-						ID:       "thing",
-						Provider: "unknown",
-						Type:     "foo:bar:baz",
+						Name:		"thing",
+						ID:		"thing",
+						Provider:	"unknown",
+						Type:		"foo:bar:baz",
 					},
 				},
 			},
@@ -152,14 +152,14 @@ func TestParseImportFile_errors(t *testing.T) {
 			},
 		},
 		{
-			desc: "bad version",
+			desc:	"bad version",
 			give: importFile{
 				Resources: []importSpec{
 					{
-						Name:    "thing",
-						ID:      "thing",
-						Type:    "foo:bar:baz",
-						Version: "not-a-semver",
+						Name:		"thing",
+						ID:		"thing",
+						Type:		"foo:bar:baz",
+						Version:	"not-a-semver",
 					},
 				},
 			},
@@ -169,27 +169,27 @@ func TestParseImportFile_errors(t *testing.T) {
 			},
 		},
 		{
-			desc: "ambiguous parent",
+			desc:	"ambiguous parent",
 			give: importFile{
 				Resources: []importSpec{
 					{
-						Name:    "res",
-						ID:      "res",
-						Type:    "foo:bar:bar",
-						Version: "0.0.0",
+						Name:		"res",
+						ID:		"res",
+						Type:		"foo:bar:bar",
+						Version:	"0.0.0",
 					},
 					{
-						Name:    "res",
-						ID:      "res",
-						Type:    "foo:bar:baz",
-						Version: "0.0.0",
+						Name:		"res",
+						ID:		"res",
+						Type:		"foo:bar:baz",
+						Version:	"0.0.0",
 					},
 					{
-						Name:    "res-2",
-						ID:      "res-2",
-						Type:    "foo:bar:a",
-						Parent:  "res",
-						Version: "0.0.0",
+						Name:		"res-2",
+						ID:		"res-2",
+						Type:		"foo:bar:a",
+						Parent:		"res",
+						Version:	"0.0.0",
 					},
 				},
 			},
@@ -198,30 +198,30 @@ func TestParseImportFile_errors(t *testing.T) {
 			},
 		},
 		{
-			desc: "ambiguous provider",
+			desc:	"ambiguous provider",
 			give: importFile{
 				NameTable: map[string]resource.URN{
 					"res": "whatever",
 				},
 				Resources: []importSpec{
 					{
-						Name:    "res",
-						ID:      "res",
-						Type:    "foo:bar:bar",
-						Version: "0.0.0",
+						Name:		"res",
+						ID:		"res",
+						Type:		"foo:bar:bar",
+						Version:	"0.0.0",
 					},
 					{
-						Name:    "res",
-						ID:      "res",
-						Type:    "foo:bar:baz",
-						Version: "0.0.0",
+						Name:		"res",
+						ID:		"res",
+						Type:		"foo:bar:baz",
+						Version:	"0.0.0",
 					},
 					{
-						Name:     "res-2",
-						ID:       "res-2",
-						Type:     "foo:bar:a",
-						Provider: "res",
-						Version:  "0.0.0",
+						Name:		"res-2",
+						ID:		"res-2",
+						Type:		"foo:bar:a",
+						Provider:	"res",
+						Version:	"0.0.0",
 					},
 				},
 			},
@@ -230,12 +230,12 @@ func TestParseImportFile_errors(t *testing.T) {
 			},
 		},
 		{
-			desc: "component with ID",
+			desc:	"component with ID",
 			give: importFile{Resources: []importSpec{{
-				Name:      "comp",
-				ID:        "some-id",
-				Type:      "foo:bar:baz",
-				Component: true,
+				Name:		"comp",
+				ID:		"some-id",
+				Type:		"foo:bar:baz",
+				Component:	true,
 			}}},
 			wantErrs: []string{
 				"1 error occurred",
@@ -264,9 +264,9 @@ func TestParseImportFileJustLogicalName(t *testing.T) {
 	f := importFile{
 		Resources: []importSpec{
 			{
-				LogicalName: "thing",
-				ID:          "thing",
-				Type:        "foo:bar:bar",
+				LogicalName:	"thing",
+				ID:		"thing",
+				Type:		"foo:bar:bar",
 			},
 		},
 	}
@@ -274,9 +274,9 @@ func TestParseImportFileJustLogicalName(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []deploy.Import{
 		{
-			Type: "foo:bar:bar",
-			Name: "thing",
-			ID:   "thing",
+			Type:	"foo:bar:bar",
+			Name:	"thing",
+			ID:	"thing",
 		},
 	}, imports)
 	assert.Equal(t, importer.NameTable{
@@ -289,11 +289,11 @@ func TestParseImportFileLogicalName(t *testing.T) {
 	f := importFile{
 		Resources: []importSpec{
 			{
-				Name:        "thing",
-				LogicalName: "different logical name",
-				ID:          "thing",
-				Type:        "foo:bar:bar",
-				Version:     "0.0.0",
+				Name:		"thing",
+				LogicalName:	"different logical name",
+				ID:		"thing",
+				Type:		"foo:bar:bar",
+				Version:	"0.0.0",
 			},
 		},
 	}
@@ -302,10 +302,10 @@ func TestParseImportFileLogicalName(t *testing.T) {
 	v := semver.MustParse("0.0.0")
 	assert.Equal(t, []deploy.Import{
 		{
-			Type:    "foo:bar:bar",
-			Name:    "different logical name",
-			ID:      "thing",
-			Version: &v,
+			Type:		"foo:bar:bar",
+			Name:		"different logical name",
+			ID:		"thing",
+			Version:	&v,
 		},
 	}, imports)
 	assert.Equal(t, importer.NameTable{
@@ -318,16 +318,16 @@ func TestParseImportFileSameName(t *testing.T) {
 	f := importFile{
 		Resources: []importSpec{
 			{
-				Name:    "thing",
-				ID:      "thing",
-				Type:    "foo:bar:bar",
-				Version: "0.0.0",
+				Name:		"thing",
+				ID:		"thing",
+				Type:		"foo:bar:bar",
+				Version:	"0.0.0",
 			},
 			{
-				Name:    "thing",
-				ID:      "thing",
-				Type:    "foo:bar:bar",
-				Version: "0.0.0",
+				Name:		"thing",
+				ID:		"thing",
+				Type:		"foo:bar:bar",
+				Version:	"0.0.0",
 			},
 		},
 	}
@@ -342,19 +342,19 @@ func TestParseImportFileSameNameDifferentType(t *testing.T) {
 	f := importFile{
 		Resources: []importSpec{
 			{
-				Name: "thing",
-				ID:   "thing",
-				Type: "foo:bar:bar",
+				Name:	"thing",
+				ID:	"thing",
+				Type:	"foo:bar:bar",
 			},
 			{
-				Name: "thing",
-				ID:   "thing",
-				Type: "foo:bar:baz",
+				Name:	"thing",
+				ID:	"thing",
+				Type:	"foo:bar:baz",
 			},
 			{
-				Name: "thing",
-				ID:   "thing",
-				Type: "foo:moo:baz",
+				Name:	"thing",
+				ID:	"thing",
+				Type:	"foo:moo:baz",
 			},
 		},
 	}
@@ -362,25 +362,25 @@ func TestParseImportFileSameNameDifferentType(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []deploy.Import{
 		{
-			Type: "foo:bar:bar",
-			Name: "thing",
-			ID:   "thing",
+			Type:	"foo:bar:bar",
+			Name:	"thing",
+			ID:	"thing",
 		},
 		{
-			Type: "foo:bar:baz",
-			Name: "thing",
-			ID:   "thing",
+			Type:	"foo:bar:baz",
+			Name:	"thing",
+			ID:	"thing",
 		},
 		{
-			Type: "foo:moo:baz",
-			Name: "thing",
-			ID:   "thing",
+			Type:	"foo:moo:baz",
+			Name:	"thing",
+			ID:	"thing",
 		},
 	}, imports)
 	assert.Equal(t, importer.NameTable{
-		"urn:pulumi:stack::proj::foo:bar:bar::thing": "thing",
-		"urn:pulumi:stack::proj::foo:bar:baz::thing": "thingBaz",
-		"urn:pulumi:stack::proj::foo:moo:baz::thing": "thingBaz2",
+		"urn:pulumi:stack::proj::foo:bar:bar::thing":	"thing",
+		"urn:pulumi:stack::proj::foo:bar:baz::thing":	"thingBaz",
+		"urn:pulumi:stack::proj::foo:moo:baz::thing":	"thingBaz2",
 	}, names)
 }
 
@@ -392,21 +392,21 @@ func TestParseImportFileAutoURN(t *testing.T) {
 		Resources: []importSpec{
 			// Out of order to test that parseImportFile doesn't require the parent to be defined first.
 			{
-				Name:   "lastThing",
-				ID:     "lastThing",
-				Type:   "foo:bar:a",
-				Parent: "otherThing",
+				Name:	"lastThing",
+				ID:	"lastThing",
+				Type:	"foo:bar:a",
+				Parent:	"otherThing",
 			},
 			{
-				Name:      "thing",
-				Component: true,
-				Type:      "foo:bar:a",
+				Name:		"thing",
+				Component:	true,
+				Type:		"foo:bar:a",
 			},
 			{
-				Name:   "otherThing",
-				ID:     "otherThing",
-				Type:   "foo:bar:a",
-				Parent: "thing",
+				Name:	"otherThing",
+				ID:	"otherThing",
+				Type:	"foo:bar:a",
+				Parent:	"thing",
 			},
 		},
 	}
@@ -437,22 +437,22 @@ func TestImportFileMarshal(t *testing.T) {
 			},
 			Resources: []importSpec{
 				{
-					Name: "bar",
-					Type: "foo:bar:b",
-					ID:   "123",
+					Name:	"bar",
+					Type:	"foo:bar:b",
+					ID:	"123",
 				},
 				{
-					Name:      "comp",
-					Type:      "some/comp",
-					Component: true,
+					Name:		"comp",
+					Type:		"some/comp",
+					Component:	true,
 				},
 				{
-					Name:              "thirdParty",
-					Type:              "some:third:party",
-					ID:                "abc123",
-					Parent:            "bar",
-					Version:           "1.2.3",
-					PluginDownloadURL: "https://example.com",
+					Name:			"thirdParty",
+					Type:			"some:third:party",
+					ID:			"abc123",
+					Parent:			"bar",
+					Version:		"1.2.3",
+					PluginDownloadURL:	"https://example.com",
 				},
 			},
 		}

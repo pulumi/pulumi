@@ -22,9 +22,9 @@ func TestMakeSafeEnumName(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		input    string
-		expected string
-		wantErr  bool
+		input		string
+		expected	string
+		wantErr		bool
 	}{
 		{"+", "", true},
 		{"*", "TypeNameAsterisk", false},
@@ -58,8 +58,8 @@ func TestMakeSafeEnumName(t *testing.T) {
 func Test_makeValidIdentifier(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		input    string
-		expected string
+		input		string
+		expected	string
 	}{
 		{"&opts0", "&opts0"},
 		{"8", "_8"},

@@ -48,10 +48,10 @@ import (
 
 // langhost reflects a language host plugin, loaded dynamically for a single language/runtime pair.
 type langhost struct {
-	ctx     *Context
-	runtime string
-	plug    *Plugin
-	client  pulumirpc.LanguageRuntimeClient
+	ctx	*Context
+	runtime	string
+	plug	*Plugin
+	client	pulumirpc.LanguageRuntimeClient
 }
 
 // NewLanguageRuntime binds to a language's runtime plugin and then creates a gRPC connection to it.  If the
@@ -72,10 +72,10 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 			ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
 		) (*pulumirpc.LanguageHandshakeResponse, error) {
 			req := &pulumirpc.LanguageHandshakeRequest{
-				EngineAddress: host.ServerAddr(),
+				EngineAddress:	host.ServerAddr(),
 				// If we're attaching then we don't know the root or program directory.
-				RootDirectory:    nil,
-				ProgramDirectory: nil,
+				RootDirectory:		nil,
+				ProgramDirectory:	nil,
 			}
 			return languageHandshake(ctx, bin, prefix, conn, req)
 		}
@@ -97,7 +97,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 		}
 
 		plug = &Plugin{
-			Conn: conn,
+			Conn:	conn,
 			// Nothing to kill.
 			Kill: func() error {
 				return nil
@@ -109,8 +109,8 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 		path, err := workspace.GetPluginPath(
 			ctx.baseContext, ctx.Diag,
 			workspace.PluginSpec{
-				Name: strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"),
-				Kind: apitype.LanguagePlugin,
+				Name:	strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"),
+				Kind:	apitype.LanguagePlugin,
 			},
 			host.GetProjectPlugins(),
 		)
@@ -132,7 +132,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 			runtime,
 			apitype.LanguagePlugin,
 			args,
-			nil, /*env*/
+			nil,	/*env*/
 			testConnection,
 			langRuntimePluginDialOptions(ctx, runtime),
 			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: runtime}),
@@ -147,10 +147,10 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 	contract.Assertf(plug != nil, "unexpected nil language plugin for %s", runtime)
 
 	return &langhost{
-		ctx:     ctx,
-		runtime: runtime,
-		plug:    plug,
-		client:  client,
+		ctx:		ctx,
+		runtime:	runtime,
+		plug:		plug,
+		client:		client,
 	}, nil
 }
 
@@ -194,8 +194,8 @@ func langRuntimePluginDialOptions(ctx *Context, runtime string) []grpc.DialOptio
 
 	if ctx.DialOptions != nil {
 		metadata := map[string]any{
-			"mode": "client",
-			"kind": "language",
+			"mode":	"client",
+			"kind":	"language",
 		}
 		if runtime != "" {
 			metadata["runtime"] = runtime
@@ -227,9 +227,9 @@ func buildArgsForNewPlugin(host Host, root string, options map[string]any) ([]st
 
 func NewLanguageRuntimeClient(ctx *Context, runtime string, client pulumirpc.LanguageRuntimeClient) LanguageRuntime {
 	return &langhost{
-		ctx:     ctx,
-		runtime: runtime,
-		client:  client,
+		ctx:		ctx,
+		runtime:	runtime,
+		client:		client,
 	}
 }
 
@@ -293,21 +293,21 @@ func (h *langhost) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDes
 			}
 
 			parameterization = &workspace.Parameterization{
-				Name:    info.Parameterization.Name,
-				Version: sv,
-				Value:   info.Parameterization.Value,
+				Name:		info.Parameterization.Name,
+				Version:	sv,
+				Value:		info.Parameterization.Value,
 			}
 		}
 
 		results = append(results, workspace.PackageDescriptor{
 			PluginSpec: workspace.PluginSpec{
-				Name:              info.Name,
-				Kind:              apitype.PluginKind(info.Kind),
-				Version:           version,
-				PluginDownloadURL: info.Server,
-				Checksums:         info.Checksums,
+				Name:			info.Name,
+				Kind:			apitype.PluginKind(info.Kind),
+				Version:		version,
+				PluginDownloadURL:	info.Server,
+				Checksums:		info.Checksums,
 			},
-			Parameterization: parameterization,
+			Parameterization:	parameterization,
 		})
 	}
 
@@ -328,11 +328,11 @@ func (h *langhost) getRequiredPlugins(info ProgramInfo) ([]workspace.PluginSpec,
 
 	// this is deprecated and will be removed in a future release, but we use it for backcompat for now until
 	// all language hosts are update to GetRequiredPackages.
-	resp, err := h.client.GetRequiredPlugins(h.ctx.Request(), &pulumirpc.GetRequiredPluginsRequest{ //nolint:staticcheck
-		Project: "deprecated",
-		Pwd:     info.ProgramDirectory(),
-		Program: info.EntryPoint(),
-		Info:    minfo,
+	resp, err := h.client.GetRequiredPlugins(h.ctx.Request(), &pulumirpc.GetRequiredPluginsRequest{	//nolint:staticcheck
+		Project:	"deprecated",
+		Pwd:		info.ProgramDirectory(),
+		Program:	info.EntryPoint(),
+		Info:		minfo,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -362,11 +362,11 @@ func (h *langhost) getRequiredPlugins(info ProgramInfo) ([]workspace.PluginSpec,
 			return nil, fmt.Errorf("unrecognized plugin kind: %s", info.Kind)
 		}
 		results = append(results, workspace.PluginSpec{
-			Name:              info.Name,
-			Kind:              apitype.PluginKind(info.Kind),
-			Version:           version,
-			PluginDownloadURL: info.Server,
-			Checksums:         info.Checksums,
+			Name:			info.Name,
+			Kind:			apitype.PluginKind(info.Kind),
+			Version:		version,
+			PluginDownloadURL:	info.Server,
+			Checksums:		info.Checksums,
 		})
 	}
 
@@ -402,22 +402,22 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 	}
 
 	resp, err := h.client.Run(h.ctx.Request(), &pulumirpc.RunRequest{
-		MonitorAddress:    info.MonitorAddress,
-		Pwd:               info.Pwd,
-		Program:           info.Info.EntryPoint(),
-		Args:              info.Args,
-		Project:           info.Project,
-		Stack:             info.Stack,
-		Config:            config,
-		ConfigSecretKeys:  configSecretKeys,
-		ConfigPropertyMap: configPropertyMap,
-		DryRun:            info.DryRun,
-		QueryMode:         info.QueryMode,
-		Parallel:          info.Parallel,
-		Organization:      info.Organization,
-		Info:              minfo,
-		LoaderTarget:      info.LoaderAddress,
-		AttachDebugger:    info.AttachDebugger,
+		MonitorAddress:		info.MonitorAddress,
+		Pwd:			info.Pwd,
+		Program:		info.Info.EntryPoint(),
+		Args:			info.Args,
+		Project:		info.Project,
+		Stack:			info.Stack,
+		Config:			config,
+		ConfigSecretKeys:	configSecretKeys,
+		ConfigPropertyMap:	configPropertyMap,
+		DryRun:			info.DryRun,
+		QueryMode:		info.QueryMode,
+		Parallel:		info.Parallel,
+		Organization:		info.Organization,
+		Info:			minfo,
+		LoaderTarget:		info.LoaderAddress,
+		AttachDebugger:		info.AttachDebugger,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -438,8 +438,8 @@ func (h *langhost) GetPluginInfo() (workspace.PluginInfo, error) {
 	logging.V(7).Infof("langhost[%v].GetPluginInfo() executing", h.runtime)
 
 	plugInfo := workspace.PluginInfo{
-		Name: h.runtime,
-		Kind: apitype.LanguagePlugin,
+		Name:	h.runtime,
+		Kind:	apitype.LanguagePlugin,
 	}
 
 	if h.plug != nil {
@@ -488,11 +488,11 @@ func (h *langhost) InstallDependencies(request InstallDependenciesRequest) (
 	}
 
 	resp, err := h.client.InstallDependencies(h.ctx.Request(), &pulumirpc.InstallDependenciesRequest{
-		Directory:               request.Info.ProgramDirectory(),
-		IsTerminal:              cmdutil.GetGlobalColorization() != colors.Never,
-		Info:                    minfo,
-		UseLanguageVersionTools: request.UseLanguageVersionTools,
-		IsPlugin:                request.IsPlugin,
+		Directory:			request.Info.ProgramDirectory(),
+		IsTerminal:			cmdutil.GetGlobalColorization() != colors.Never,
+		Info:				minfo,
+		UseLanguageVersionTools:	request.UseLanguageVersionTools,
+		IsPlugin:			request.IsPlugin,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -619,9 +619,9 @@ func (h *langhost) About(info ProgramInfo) (AboutInfo, error) {
 	}
 
 	result := AboutInfo{
-		Executable: resp.Executable,
-		Version:    resp.Version,
-		Metadata:   resp.Metadata,
+		Executable:	resp.Executable,
+		Version:	resp.Version,
+		Metadata:	resp.Metadata,
 	}
 
 	logging.V(7).Infof("langhost[%v].About() success", h.runtime)
@@ -637,8 +637,8 @@ func (h *langhost) GetProgramDependencies(info ProgramInfo, transitiveDependenci
 
 	logging.V(7).Infof("%s executing", prefix)
 	resp, err := h.client.GetProgramDependencies(h.ctx.Request(), &pulumirpc.GetProgramDependenciesRequest{
-		TransitiveDependencies: transitiveDependencies,
-		Info:                   minfo,
+		TransitiveDependencies:	transitiveDependencies,
+		Info:			minfo,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -650,8 +650,8 @@ func (h *langhost) GetProgramDependencies(info ProgramInfo, transitiveDependenci
 	results := slice.Prealloc[DependencyInfo](len(resp.GetDependencies()))
 	for _, dep := range resp.GetDependencies() {
 		results = append(results, DependencyInfo{
-			Name:    dep.Name,
-			Version: dep.Version,
+			Name:		dep.Name,
+			Version:	dep.Version,
 		})
 	}
 
@@ -673,12 +673,12 @@ func (h *langhost) RunPlugin(ctx context.Context, info RunPluginInfo) (
 	rctx, kill := context.WithCancel(ctx)
 
 	resp, err := h.client.RunPlugin(rctx, &pulumirpc.RunPluginRequest{
-		Pwd:            info.WorkingDirectory,
-		Args:           info.Args,
-		Env:            info.Env,
-		Info:           minfo,
-		Kind:           info.Kind,
-		AttachDebugger: info.AttachDebugger,
+		Pwd:		info.WorkingDirectory,
+		Args:		info.Args,
+		Env:		info.Env,
+		Info:		minfo,
+		Kind:		info.Kind,
+		AttachDebugger:	info.AttachDebugger,
 	})
 	if err != nil {
 		// If there was an error starting the plugin kill the context for this request to ensure any lingering
@@ -752,12 +752,12 @@ func (h *langhost) GenerateProject(
 ) (hcl.Diagnostics, error) {
 	logging.V(7).Infof("langhost[%v].GenerateProject() executing", h.runtime)
 	resp, err := h.client.GenerateProject(h.ctx.Request(), &pulumirpc.GenerateProjectRequest{
-		SourceDirectory:   sourceDirectory,
-		TargetDirectory:   targetDirectory,
-		Project:           project,
-		Strict:            strict,
-		LoaderTarget:      loaderTarget,
-		LocalDependencies: localDependencies,
+		SourceDirectory:	sourceDirectory,
+		TargetDirectory:	targetDirectory,
+		Project:		project,
+		Strict:			strict,
+		LoaderTarget:		loaderTarget,
+		LocalDependencies:	localDependencies,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -782,12 +782,12 @@ func (h *langhost) GeneratePackage(
 ) (hcl.Diagnostics, error) {
 	logging.V(7).Infof("langhost[%v].GeneratePackage() executing", h.runtime)
 	resp, err := h.client.GeneratePackage(h.ctx.Request(), &pulumirpc.GeneratePackageRequest{
-		Directory:         directory,
-		Schema:            schema,
-		ExtraFiles:        extraFiles,
-		LoaderTarget:      loaderTarget,
-		LocalDependencies: localDependencies,
-		Local:             local,
+		Directory:		directory,
+		Schema:			schema,
+		ExtraFiles:		extraFiles,
+		LoaderTarget:		loaderTarget,
+		LocalDependencies:	localDependencies,
+		Local:			local,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -810,9 +810,9 @@ func (h *langhost) GenerateProgram(program map[string]string, loaderTarget strin
 ) (map[string][]byte, hcl.Diagnostics, error) {
 	logging.V(7).Infof("langhost[%v].GenerateProgram() executing", h.runtime)
 	resp, err := h.client.GenerateProgram(h.ctx.Request(), &pulumirpc.GenerateProgramRequest{
-		Source:       program,
-		LoaderTarget: loaderTarget,
-		Strict:       strict,
+		Source:		program,
+		LoaderTarget:	loaderTarget,
+		Strict:		strict,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -847,8 +847,8 @@ func (h *langhost) Pack(
 	}
 
 	req, err := h.client.Pack(h.ctx.Request(), &pulumirpc.PackRequest{
-		PackageDirectory:     packageDirectory,
-		DestinationDirectory: destinationDirectory,
+		PackageDirectory:	packageDirectory,
+		DestinationDirectory:	destinationDirectory,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -869,9 +869,9 @@ func languageHandshake(
 ) (*pulumirpc.LanguageHandshakeResponse, error) {
 	client := pulumirpc.NewLanguageRuntimeClient(conn)
 	_, err := client.Handshake(ctx, &pulumirpc.LanguageHandshakeRequest{
-		EngineAddress:    req.EngineAddress,
-		RootDirectory:    req.RootDirectory,
-		ProgramDirectory: req.ProgramDirectory,
+		EngineAddress:		req.EngineAddress,
+		RootDirectory:		req.RootDirectory,
+		ProgramDirectory:	req.ProgramDirectory,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -909,28 +909,28 @@ func (h *langhost) Link(
 		var parameterization *pulumirpc.PackageParameterization
 		if dep.Descriptor.Parameterization != nil {
 			parameterization = &pulumirpc.PackageParameterization{
-				Name:    dep.Descriptor.Parameterization.Name,
-				Version: dep.Descriptor.Parameterization.Version.String(),
-				Value:   dep.Descriptor.Parameterization.Value,
+				Name:		dep.Descriptor.Parameterization.Name,
+				Version:	dep.Descriptor.Parameterization.Version.String(),
+				Value:		dep.Descriptor.Parameterization.Value,
 			}
 		}
 
 		packages = append(packages, &pulumirpc.LinkRequest_LinkDependency{
-			Path: dep.Path,
+			Path:	dep.Path,
 			Package: &pulumirpc.PackageDependency{
-				Name:             dep.Descriptor.Name,
-				Version:          version,
-				Server:           dep.Descriptor.PluginDownloadURL,
-				Kind:             string(dep.Descriptor.Kind),
-				Parameterization: parameterization,
+				Name:			dep.Descriptor.Name,
+				Version:		version,
+				Server:			dep.Descriptor.PluginDownloadURL,
+				Kind:			string(dep.Descriptor.Kind),
+				Parameterization:	parameterization,
 			},
 		})
 	}
 
 	res, err := h.client.Link(h.ctx.Request(), &pulumirpc.LinkRequest{
-		Info:         minfo,
-		Packages:     packages,
-		LoaderTarget: loaderTarget,
+		Info:		minfo,
+		Packages:	packages,
+		LoaderTarget:	loaderTarget,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

@@ -20,8 +20,8 @@ func main() {
 			"enforcement-config", version, policyx.EnforcementLevelAdvisory,
 			[]policyx.Policy{
 				policyx.NewResourceValidationPolicy("false", policyx.ResourceValidationPolicyArgs{
-					Description:      "Verifies property is false",
-					EnforcementLevel: policyx.EnforcementLevelAdvisory,
+					Description:		"Verifies property is false",
+					EnforcementLevel:	policyx.EnforcementLevelAdvisory,
 					ValidateResource: func(ctx context.Context, args policyx.ResourceValidationArgs) error {
 						if args.Resource.Type != "simple:index:Resource" {
 							return nil

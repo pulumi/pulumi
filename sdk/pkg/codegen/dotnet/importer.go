@@ -17,7 +17,7 @@ package dotnet
 import (
 	"encoding/json"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 )
 
 // CSharpPropertyInfo represents the C# language-specific info for a property.
@@ -32,19 +32,19 @@ type CSharpResourceInfo struct {
 
 // CSharpPackageInfo represents the C# language-specific info for a package.
 type CSharpPackageInfo struct {
-	PackageReferences      map[string]string `json:"packageReferences,omitempty"`
-	Namespaces             map[string]string `json:"namespaces,omitempty"`
-	Compatibility          string            `json:"compatibility,omitempty"`
-	DictionaryConstructors bool              `json:"dictionaryConstructors,omitempty"`
-	ProjectReferences      []string          `json:"projectReferences,omitempty"`
+	PackageReferences	map[string]string	`json:"packageReferences,omitempty"`
+	Namespaces		map[string]string	`json:"namespaces,omitempty"`
+	Compatibility		string			`json:"compatibility,omitempty"`
+	DictionaryConstructors	bool			`json:"dictionaryConstructors,omitempty"`
+	ProjectReferences	[]string		`json:"projectReferences,omitempty"`
 	// Determines whether to make single-return-value methods return an output object or the single value.
-	LiftSingleValueMethodReturns bool `json:"liftSingleValueMethodReturns,omitempty"`
+	LiftSingleValueMethodReturns	bool	`json:"liftSingleValueMethodReturns,omitempty"`
 
 	// The root namespace used for the package. This defaults to `Pulumi`.
-	RootNamespace string `json:"rootNamespace,omitempty"`
+	RootNamespace	string	`json:"rootNamespace,omitempty"`
 
 	// Allow the Pkg.Version field to filter down to emitted code.
-	RespectSchemaVersion bool `json:"respectSchemaVersion,omitempty"`
+	RespectSchemaVersion	bool	`json:"respectSchemaVersion,omitempty"`
 }
 
 // Returns the root namespace, or "Pulumi" if not provided.

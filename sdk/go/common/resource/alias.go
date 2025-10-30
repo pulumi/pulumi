@@ -20,13 +20,13 @@ import (
 )
 
 type Alias struct {
-	URN      URN
-	Name     string
-	Type     string
-	Project  string
-	Stack    string
-	Parent   URN
-	NoParent bool
+	URN		URN
+	Name		string
+	Type		string
+	Project		string
+	Stack		string
+	Parent		URN
+	NoParent	bool
 }
 
 func (a *Alias) GetURN() URN {

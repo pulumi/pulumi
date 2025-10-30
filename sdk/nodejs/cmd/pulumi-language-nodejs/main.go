@@ -73,37 +73,37 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
-	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
-	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/cgstrings"
+	hclsyntax "github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/nodejs"
+	codegen "github.com/pulumi/pulumi/sdk/v3/pkg/codegen/nodejs"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 )
 
 const (
 	// The path to the "run" program which will spawn the rest of the language host. This may be overridden with
 	// PULUMI_LANGUAGE_NODEJS_RUN_PATH, which we do in some testing cases.
-	defaultRunPath = "@pulumi/pulumi/cmd/run"
+	defaultRunPath	= "@pulumi/pulumi/cmd/run"
 
 	// The path to the NodeJS plugin launcher.
-	defaultRunPluginPath = "@pulumi/pulumi/cmd/run-plugin"
+	defaultRunPluginPath	= "@pulumi/pulumi/cmd/run-plugin"
 
 	// The runtime expects the config object to be saved to this environment variable.
-	pulumiConfigVar = "PULUMI_CONFIG"
+	pulumiConfigVar	= "PULUMI_CONFIG"
 
 	// The runtime expects the array of secret config keys to be saved to this environment variable.
 	//nolint:gosec
-	pulumiConfigSecretKeysVar = "PULUMI_CONFIG_SECRET_KEYS"
+	pulumiConfigSecretKeysVar	= "PULUMI_CONFIG_SECRET_KEYS"
 
 	// A exit-code we recognize when the nodejs process exits.  If we see this error, there's no
 	// need for us to print any additional error messages since the user already got a a good
 	// one they can handle.
-	nodeJSProcessExitedAfterShowingUserActionableMessage = 32
+	nodeJSProcessExitedAfterShowingUserActionableMessage	= 32
 
 	// The preferred port for debugging the language host.  Defaults to 9229, which is the default
 	// port when using the --inspect-brk flag without additional arguments.
-	preferredPort = 9229
+	preferredPort	= 9229
 )
 
 // Launches the language host RPC endpoint, which in turn fires
@@ -143,7 +143,7 @@ func main() {
 	cancelChannel := make(chan bool)
 	go func() {
 		<-ctx.Done()
-		cancel() // deregister the interrupt handler
+		cancel()	// deregister the interrupt handler
 		close(cancelChannel)
 	}()
 
@@ -156,13 +156,13 @@ func main() {
 
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: cancelChannel,
+		Cancel:	cancelChannel,
 		Init: func(srv *grpc.Server) error {
 			host := newLanguageHost(engineAddress, tracing, false /* forceTsc */)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options:	rpcutil.OpenTracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		cmdutil.Exit(fmt.Errorf("could not start language host RPC server: %w", err))
@@ -226,23 +226,23 @@ func locateModule(ctx context.Context, mod, programDir, nodeBin string, isPlugin
 type nodeLanguageHost struct {
 	pulumirpc.UnsafeLanguageRuntimeServer
 
-	engineAddress string
-	tracing       string
+	engineAddress	string
+	tracing		string
 
 	// used by language conformance tests to force TSC usage
-	forceTsc bool
+	forceTsc	bool
 }
 
 type nodeOptions struct {
 	// Use ts-node at runtime to support typescript source natively
-	typescript bool
+	typescript	bool
 	// Path to tsconfig.json to use
-	tsconfigpath string
+	tsconfigpath	string
 	// Arguments for the Node process
-	nodeargs string
+	nodeargs	string
 	// The packagemanger to use to install dependencies.
 	// One of auto, npm, yarn, pnpm or bun, defaults to auto.
-	packagemanager npm.PackageManagerType
+	packagemanager	npm.PackageManagerType
 }
 
 func parseOptions(options map[string]any) (nodeOptions, error) {
@@ -305,9 +305,9 @@ func newLanguageHost(
 	engineAddress, tracing string, forceTsc bool,
 ) pulumirpc.LanguageRuntimeServer {
 	return &nodeLanguageHost{
-		engineAddress: engineAddress,
-		tracing:       tracing,
-		forceTsc:      forceTsc,
+		engineAddress:	engineAddress,
+		tracing:	tracing,
+		forceTsc:	forceTsc,
 	}
 }
 
@@ -373,7 +373,7 @@ func (host *nodeLanguageHost) GetRequiredPackages(ctx context.Context,
 	packages, err := getPackagesFromDir(
 		req.Info.ProgramDirectory,
 		pulumiPackagePathToVersionMap,
-		false, /*inNodeModules*/
+		false,	/*inNodeModules*/
 		make(map[string]struct{}))
 
 	if err == nil {
@@ -521,11 +521,11 @@ func getPackagesFromDir(
 				allErrors = multierror.Append(allErrors, fmt.Errorf("unmarshaling package.json %s: %w", curr, err))
 			} else if ok {
 				packages = append(packages, &pulumirpc.PackageDependency{
-					Name:             name,
-					Kind:             "resource",
-					Version:          version,
-					Server:           server,
-					Parameterization: parameterization,
+					Name:			name,
+					Kind:			"resource",
+					Version:		version,
+					Server:			server,
+					Parameterization:	parameterization,
 				})
 			}
 		}
@@ -535,12 +535,12 @@ func getPackagesFromDir(
 
 // packageJSON is the minimal amount of package.json information we care about.
 type packageJSON struct {
-	Name            string                  `json:"name"`
-	Version         string                  `json:"version"`
-	Pulumi          plugin.PulumiPluginJSON `json:"pulumi"`
-	Main            string                  `json:"main"`
-	Dependencies    map[string]string       `json:"dependencies"`
-	DevDependencies map[string]string       `json:"devDependencies"`
+	Name		string			`json:"name"`
+	Version		string			`json:"version"`
+	Pulumi		plugin.PulumiPluginJSON	`json:"pulumi"`
+	Main		string			`json:"main"`
+	Dependencies	map[string]string	`json:"dependencies"`
+	DevDependencies	map[string]string	`json:"devDependencies"`
 }
 
 // getPackageInfo returns a bool indicating whether the given package.json package has an associated Pulumi
@@ -560,9 +560,9 @@ func getPackageInfo(info packageJSON) (bool, string, string, string, *pulumirpc.
 		var parameterization *pulumirpc.PackageParameterization
 		if info.Pulumi.Parameterization != nil {
 			parameterization = &pulumirpc.PackageParameterization{
-				Name:    info.Pulumi.Parameterization.Name,
-				Version: info.Pulumi.Parameterization.Version,
-				Value:   info.Pulumi.Parameterization.Value,
+				Name:		info.Pulumi.Parameterization.Name,
+				Version:	info.Pulumi.Parameterization.Version,
+				Value:		info.Pulumi.Parameterization.Value,
 			}
 		}
 
@@ -680,12 +680,12 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 
 	// Launch the rpc server giving it the real monitor to forward messages to.
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: serverCancel,
+		Cancel:	serverCancel,
 		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterResourceMonitorServer(srv, &monitorProxy{target: target})
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(tracingSpan),
+		Options:	rpcutil.OpenTracingServerInterceptorOptions(tracingSpan),
 	})
 	if err != nil {
 		return nil, err
@@ -1043,8 +1043,8 @@ func (host *nodeLanguageHost) InstallDependencies(
 }
 
 var (
-	errVersionFileNotFound = errors.New("version file not found")
-	errFnmNotFound         = errors.New("fnm not found")
+	errVersionFileNotFound	= errors.New("version file not found")
+	errFnmNotFound		= errors.New("fnm not found")
 )
 
 // useFnm checks if the current directory or any of its parents contains a `.nvmrc` or
@@ -1114,7 +1114,7 @@ func installNodeVersion(cwd string, stdout io.Writer) error {
 	// version of nodejs below.
 	if os.Getenv("FNM_MULTISHELL_PATH") == "" {
 		installCmd = exec.Command("bash", "-c", fmt.Sprintf("eval \"$(fnm env --shell bash)\";"+
-			"fnm use '%s' --install-if-missing", version)) // #nosec G204
+			"fnm use '%s' --install-if-missing", version))	// #nosec G204
 	}
 	out, err := installCmd.CombinedOutput()
 	if err != nil {
@@ -1139,13 +1139,13 @@ func (host *nodeLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 
 	if _, hasPackagemanager := rawOpts["packagemanager"]; !hasPackagemanager {
 		prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
-			Key:         "packagemanager",
-			Description: "The package manager to use for installing dependencies",
-			PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
-			Choices:     plugin.MakeExecutablePromptChoices("npm", "pnpm", "yarn", "bun"),
+			Key:		"packagemanager",
+			Description:	"The package manager to use for installing dependencies",
+			PromptType:	pulumirpc.RuntimeOptionPrompt_STRING,
+			Choices:	plugin.MakeExecutablePromptChoices("npm", "pnpm", "yarn", "bun"),
 			Default: &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
-				PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
-				StringValue: "npm",
+				PromptType:	pulumirpc.RuntimeOptionPrompt_STRING,
+				StringValue:	"npm",
 			},
 		})
 	}
@@ -1181,8 +1181,8 @@ func (host *nodeLanguageHost) About(ctx context.Context,
 	}
 
 	return &pulumirpc.AboutResponse{
-		Executable: node,
-		Version:    version,
+		Executable:	node,
+		Version:	version,
 	}, nil
 }
 
@@ -1196,7 +1196,7 @@ func (host *nodeLanguageHost) Handshake(ctx context.Context,
 	cancelChannel := make(chan bool)
 	go func() {
 		<-ctx.Done()
-		cancel() // deregister the interrupt handler
+		cancel()	// deregister the interrupt handler
 		close(cancelChannel)
 	}()
 	err := rpcutil.Healthcheck(ctx, host.engineAddress, 5*time.Minute, cancel)
@@ -1209,18 +1209,18 @@ func (host *nodeLanguageHost) Handshake(ctx context.Context,
 
 // The shape of a `yarn list --json`'s output.
 type yarnLock struct {
-	Type string       `json:"type"`
-	Data yarnLockData `json:"data"`
+	Type	string		`json:"type"`
+	Data	yarnLockData	`json:"data"`
 }
 
 type yarnLockData struct {
-	Type  string         `json:"type"`
-	Trees []yarnLockTree `json:"trees"`
+	Type	string		`json:"type"`
+	Trees	[]yarnLockTree	`json:"trees"`
 }
 
 type yarnLockTree struct {
-	Name     string         `json:"name"`
-	Children []yarnLockTree `json:"children"`
+	Name		string		`json:"name"`
+	Children	[]yarnLockTree	`json:"children"`
 }
 
 func parseYarnLockFile(programDirectory, path string) ([]*pulumirpc.DependencyInfo, error) {
@@ -1263,8 +1263,8 @@ func parseYarnLockFile(programDirectory, path string) ([]*pulumirpc.DependencyIn
 		}
 
 		result[i] = &pulumirpc.DependencyInfo{
-			Name:    name,
-			Version: version,
+			Name:		name,
+			Version:	version,
 		}
 	}
 	return result, nil
@@ -1272,16 +1272,16 @@ func parseYarnLockFile(programDirectory, path string) ([]*pulumirpc.DependencyIn
 
 // Describes the shape of `npm ls --json --depth=0`'s output.
 type npmFile struct {
-	Name            string                `json:"name"`
-	LockFileVersion int                   `json:"lockfileVersion"`
-	Requires        bool                  `json:"requires"`
-	Dependencies    map[string]npmPackage `json:"dependencies"`
+	Name		string			`json:"name"`
+	LockFileVersion	int			`json:"lockfileVersion"`
+	Requires	bool			`json:"requires"`
+	Dependencies	map[string]npmPackage	`json:"dependencies"`
 }
 
 // A package in npmFile.
 type npmPackage struct {
-	Version  string `json:"version"`
-	Resolved string `json:"resolved"`
+	Version		string	`json:"version"`
+	Resolved	string	`json:"resolved"`
 }
 
 func parseNpmLockFile(programDirectory, path string) ([]*pulumirpc.DependencyInfo, error) {
@@ -1304,8 +1304,8 @@ func parseNpmLockFile(programDirectory, path string) ([]*pulumirpc.DependencyInf
 	var i int
 	for k, v := range file.Dependencies {
 		result[i] = &pulumirpc.DependencyInfo{
-			Name:    k,
-			Version: v.Version,
+			Name:		k,
+			Version:	v.Version,
 		}
 		i++
 	}
@@ -1449,12 +1449,12 @@ func startDebugging(
 	name string,
 ) error {
 	cfg := map[string]any{
-		"name":             name,
-		"type":             "node",
-		"request":          "attach",
-		"processId":        cmd.Process.Pid,
-		"continueOnAttach": true,
-		"skipFiles":        []any{"<node_internals>/**"},
+		"name":			name,
+		"type":			"node",
+		"request":		"attach",
+		"processId":		cmd.Process.Pid,
+		"continueOnAttach":	true,
+		"skipFiles":		[]any{"<node_internals>/**"},
 	}
 	if port != preferredPort {
 		cfg["port"] = port
@@ -1468,8 +1468,8 @@ func startDebugging(
 		message += fmt.Sprintf(" and port %d", port)
 	}
 	_, err = engineClient.StartDebugging(ctx, &pulumirpc.StartDebuggingRequest{
-		Config:  debugConfig,
-		Message: message,
+		Config:		debugConfig,
+		Message:	message,
 	})
 	if err != nil {
 		return fmt.Errorf("unable to start debugging: %w", err)
@@ -1688,8 +1688,8 @@ func (host *nodeLanguageHost) GenerateProgram(
 	rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticsToRPCDiagnostics(diags)...)
 
 	return &pulumirpc.GenerateProgramResponse{
-		Source:      files,
-		Diagnostics: rpcDiagnostics,
+		Source:		files,
+		Diagnostics:	rpcDiagnostics,
 	}, nil
 }
 
@@ -1916,15 +1916,15 @@ func runWithOutput(cmd *exec.Cmd, stdout, stderr io.Writer) error {
 
 // oomSniffer is a scanner that detects OOM errors in the output of a nodejs process.
 type oomSniffer struct {
-	detected bool
-	timeout  time.Duration
-	waitChan chan struct{}
+	detected	bool
+	timeout		time.Duration
+	waitChan	chan struct{}
 }
 
 func newOOMSniffer() *oomSniffer {
 	return &oomSniffer{
-		timeout:  15 * time.Second,
-		waitChan: make(chan struct{}),
+		timeout:	15 * time.Second,
+		waitChan:	make(chan struct{}),
 	}
 }
 
@@ -2033,8 +2033,8 @@ func (host *nodeLanguageHost) Link(
 		var param *schema.ParameterizationDescriptor
 		if dep.Package.Parameterization != nil {
 			param = &schema.ParameterizationDescriptor{
-				Name:  dep.Package.Parameterization.Name,
-				Value: dep.Package.Parameterization.Value,
+				Name:	dep.Package.Parameterization.Name,
+				Value:	dep.Package.Parameterization.Value,
 			}
 			if dep.Package.Parameterization.Version != "" {
 				v, err := semver.New(dep.Package.Parameterization.Version)
@@ -2046,10 +2046,10 @@ func (host *nodeLanguageHost) Link(
 			}
 		}
 		packageDesc := &schema.PackageDescriptor{
-			Name:             dep.Package.Name,
-			Version:          version,
-			DownloadURL:      dep.Package.Server,
-			Parameterization: param,
+			Name:			dep.Package.Name,
+			Version:		version,
+			DownloadURL:		dep.Package.Server,
+			Parameterization:	param,
 		}
 		pkgRef, err := schema.LoadPackageReferenceV2(ctx, cachedLoader, packageDesc)
 		if err != nil {

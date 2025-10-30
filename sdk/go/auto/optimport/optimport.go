@@ -119,43 +119,43 @@ func Diff(diff bool) Option {
 
 type ImportResource struct {
 	// The ID of the resource to import. The format of the ID is determined by the resource's provider.
-	ID string `json:"id,omitempty"`
+	ID	string	`json:"id,omitempty"`
 	// The type token of the Pulumi resource
-	Type string `json:"type,omitempty"`
+	Type	string	`json:"type,omitempty"`
 	// The name of the resource
-	Name string `json:"name,omitempty"`
+	Name	string	`json:"name,omitempty"`
 	// The name of the resource used in the generated Pulumi program from the import
-	LogicalName string `json:"logicalName,omitempty"`
+	LogicalName	string	`json:"logicalName,omitempty"`
 	// The parent of the resource
-	Parent string `json:"parent,omitempty"`
+	Parent	string	`json:"parent,omitempty"`
 	// The provider to use for importing the resource
-	Provider string `json:"provider,omitempty"`
+	Provider	string	`json:"provider,omitempty"`
 	// The version of the provider of the resource
-	Version string `json:"version,omitempty"`
+	Version	string	`json:"version,omitempty"`
 	// The URL to download the provider plugin from
-	PluginDownloadURL string `json:"pluginDownloadUrl,omitempty"`
+	PluginDownloadURL	string	`json:"pluginDownloadUrl,omitempty"`
 	// The input properties to use when importing the resource
-	Properties []string `json:"properties,omitempty"`
+	Properties	[]string	`json:"properties,omitempty"`
 	// Whether the resource is a component placeholder. When specifying this option, you don't need to provide an ID.
-	Component bool `json:"component,omitempty"`
+	Component	bool	`json:"component,omitempty"`
 	// When the resource is a component, this specifies it as a remote component.
-	Remote bool `json:"remote,omitempty"`
+	Remote	bool	`json:"remote,omitempty"`
 }
 
 type Options struct {
-	Protect              *bool
-	GenerateCode         *bool
-	NameTable            map[string]string
-	Resources            []*ImportResource
-	Converter            *string
-	ConverterArgs        []string
-	ShowSecrets          bool
-	Message              string
-	ProgressStreams      []io.Writer
-	ErrorProgressStreams []io.Writer
-	PreviewOnly          *bool
-	ImportFile           *string
-	Diff                 *bool
+	Protect			*bool
+	GenerateCode		*bool
+	NameTable		map[string]string
+	Resources		[]*ImportResource
+	Converter		*string
+	ConverterArgs		[]string
+	ShowSecrets		bool
+	Message			string
+	ProgressStreams		[]io.Writer
+	ErrorProgressStreams	[]io.Writer
+	PreviewOnly		*bool
+	ImportFile		*string
+	Diff			*bool
 }
 
 type optionFunc func(*Options)

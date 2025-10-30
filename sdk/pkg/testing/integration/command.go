@@ -60,10 +60,10 @@ func RunCommandPulumiHome(
 	}
 
 	cmd := exec.Cmd{
-		Path: path,
-		Dir:  wd,
-		Args: args,
-		Env:  env,
+		Path:	path,
+		Dir:	wd,
+		Args:	args,
+		Env:	env,
 	}
 
 	startTime := time.Now()
@@ -84,16 +84,16 @@ func RunCommandPulumiHome(
 		// Note: This data is archived and used by external analytics tools.  Take care if changing the schema or format
 		// of this data.
 		opts.ReportStats.ReportCommand(TestCommandStats{
-			StartTime:      startTime.Format("2006/01/02 15:04:05"),
-			EndTime:        endTime.Format("2006/01/02 15:04:05"),
-			ElapsedSeconds: float64((endTime.Sub(startTime)).Nanoseconds()) / 1000000000,
-			StepName:       name,
-			CommandLine:    command,
-			StackName:      string(opts.GetStackName()),
-			TestID:         wd,
-			TestName:       filepath.Base(opts.Dir),
-			IsError:        runerr != nil,
-			CloudURL:       opts.CloudURL,
+			StartTime:	startTime.Format("2006/01/02 15:04:05"),
+			EndTime:	endTime.Format("2006/01/02 15:04:05"),
+			ElapsedSeconds:	float64((endTime.Sub(startTime)).Nanoseconds()) / 1000000000,
+			StepName:	name,
+			CommandLine:	command,
+			StackName:	string(opts.GetStackName()),
+			TestID:		wd,
+			TestName:	filepath.Base(opts.Dir),
+			IsError:	runerr != nil,
+			CloudURL:	opts.CloudURL,
 		})
 	}
 

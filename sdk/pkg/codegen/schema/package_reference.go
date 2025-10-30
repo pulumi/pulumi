@@ -240,8 +240,8 @@ func (p packageDefTypes) Get(token string) (Type, bool, error) {
 }
 
 type packageDefTypesIter struct {
-	types []Type
-	t     Type
+	types	[]Type
+	t	Type
 }
 
 func (i *packageDefTypesIter) Token() string {
@@ -286,8 +286,8 @@ func (p packageDefResources) GetType(token string) (*ResourceType, bool, error) 
 }
 
 type packageDefResourcesIter struct {
-	resources []*Resource
-	r         *Resource
+	resources	[]*Resource
+	r		*Resource
 }
 
 func (i *packageDefResourcesIter) Token() string {
@@ -320,8 +320,8 @@ func (p packageDefFunctions) Get(token string) (*Function, bool, error) {
 }
 
 type packageDefFunctionsIter struct {
-	functions []*Function
-	f         *Function
+	functions	[]*Function
+	f		*Function
 }
 
 func (i *packageDefFunctionsIter) Token() string {
@@ -347,15 +347,15 @@ type PartialPackage struct {
 	// This mutex guards two operations:
 	// - access to PartialPackage.def
 	// - package binding operations
-	m sync.Mutex
+	m	sync.Mutex
 
-	spec      *PartialPackageSpec
-	languages map[string]Language
-	types     *types
+	spec		*PartialPackageSpec
+	languages	map[string]Language
+	types		*types
 
-	config []*Property
+	config	[]*Property
 
-	def *Package
+	def	*Package
 }
 
 func (p *PartialPackage) Name() string {
@@ -611,10 +611,10 @@ func (p *PartialPackage) Definition() (*Package, error) {
 	if p.spec.Parameterization != nil {
 		pkg.Parameterization = &Parameterization{
 			BaseProvider: BaseProvider{
-				Name:    p.spec.Parameterization.BaseProvider.Name,
-				Version: semver.MustParse(p.spec.Parameterization.BaseProvider.Version),
+				Name:		p.spec.Parameterization.BaseProvider.Name,
+				Version:	semver.MustParse(p.spec.Parameterization.BaseProvider.Version),
 			},
-			Parameter: p.spec.Parameterization.Parameter,
+			Parameter:	p.spec.Parameterization.Parameter,
 		}
 	}
 	if err := pkg.ImportLanguages(p.languages); err != nil {
@@ -712,8 +712,8 @@ type partialPackageTypes struct {
 
 func (p partialPackageTypes) Range() TypesIter {
 	return &partialPackageTypesIter{
-		types: p,
-		iter:  reflect.ValueOf(p.spec.Types).MapRange(),
+		types:	p,
+		iter:	reflect.ValueOf(p.spec.Types).MapRange(),
 	}
 }
 
@@ -734,8 +734,8 @@ func (p partialPackageTypes) Get(token string) (Type, bool, error) {
 }
 
 type partialPackageTypesIter struct {
-	types partialPackageTypes
-	iter  *reflect.MapIter
+	types	partialPackageTypes
+	iter	*reflect.MapIter
 }
 
 func (i *partialPackageTypesIter) Token() string {
@@ -757,8 +757,8 @@ type partialPackageResources struct {
 
 func (p partialPackageResources) Range() ResourcesIter {
 	return &partialPackageResourcesIter{
-		resources: p,
-		iter:      reflect.ValueOf(p.spec.Resources).MapRange(),
+		resources:	p,
+		iter:		reflect.ValueOf(p.spec.Resources).MapRange(),
 	}
 }
 
@@ -795,8 +795,8 @@ func (p partialPackageResources) GetType(token string) (*ResourceType, bool, err
 }
 
 type partialPackageResourcesIter struct {
-	resources partialPackageResources
-	iter      *reflect.MapIter
+	resources	partialPackageResources
+	iter		*reflect.MapIter
 }
 
 func (i *partialPackageResourcesIter) Token() string {
@@ -818,8 +818,8 @@ type partialPackageFunctions struct {
 
 func (p partialPackageFunctions) Range() FunctionsIter {
 	return &partialPackageFunctionsIter{
-		functions: p,
-		iter:      reflect.ValueOf(p.spec.Functions).MapRange(),
+		functions:	p,
+		iter:		reflect.ValueOf(p.spec.Functions).MapRange(),
 	}
 }
 
@@ -840,8 +840,8 @@ func (p partialPackageFunctions) Get(token string) (*Function, bool, error) {
 }
 
 type partialPackageFunctionsIter struct {
-	functions partialPackageFunctions
-	iter      *reflect.MapIter
+	functions	partialPackageFunctions
+	iter		*reflect.MapIter
 }
 
 func (i *partialPackageFunctionsIter) Token() string {

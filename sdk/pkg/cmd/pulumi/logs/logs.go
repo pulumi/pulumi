@@ -23,16 +23,16 @@ import (
 
 	mobytime "github.com/moby/moby/api/types/time"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/secrets"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/config"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/operations"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -47,14 +47,14 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var jsonOut bool
 
 	logsCmd := &cobra.Command{
-		Use:   "logs",
-		Short: "Show aggregated resource logs for a stack",
+		Use:	"logs",
+		Short:	"Show aggregated resource logs for a stack",
 		Long: "[EXPERIMENTAL] Show aggregated resource logs for a stack\n" +
 			"\n" +
 			"This command aggregates log entries associated with the resources in a stack from the corresponding\n" +
 			"provider. For example, for AWS resources, the `pulumi logs` command will query\n" +
 			"CloudWatch Logs for log data relevant to resources in a stack.\n",
-		Args: cmdutil.NoArgs,
+		Args:	cmdutil.NoArgs,
 		RunE: func(cobraCmd *cobra.Command, args []string) error {
 			ctx := cobraCmd.Context()
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
@@ -129,8 +129,8 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 			shown := map[operations.LogEntry]bool{}
 			for {
 				logs, err := backend.GetStackLogs(ctx, secrets.DefaultProvider, s, cfg, operations.LogQuery{
-					StartTime:      startTime,
-					ResourceFilter: resourceFilter,
+					StartTime:	startTime,
+					ResourceFilter:	resourceFilter,
 				})
 				if err != nil {
 					return fmt.Errorf("failed to get logs: %w", err)
@@ -145,9 +145,9 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 							eventTime := time.Unix(0, logEntry.Timestamp*1000000)
 
 							entries = append(entries, logEntryJSON{
-								ID:        logEntry.ID,
-								Timestamp: cmd.FormatTime(eventTime.UTC()),
-								Message:   logEntry.Message,
+								ID:		logEntry.ID,
+								Timestamp:	cmd.FormatTime(eventTime.UTC()),
+								Message:	logEntry.Message,
 							})
 
 							shown[logEntry] = true
@@ -170,9 +170,9 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 							)
 						} else {
 							err = ui.PrintJSON(logEntryJSON{
-								ID:        logEntry.ID,
-								Timestamp: cmd.FormatTime(eventTime.UTC()),
-								Message:   logEntry.Message,
+								ID:		logEntry.ID,
+								Timestamp:	cmd.FormatTime(eventTime.UTC()),
+								Message:	logEntry.Message,
 							})
 							if err != nil {
 								return err
@@ -234,7 +234,7 @@ func parseSince(since string, reference time.Time) (*time.Time, error) {
 // log stream, we print an array of logEntry objects. If we are following the log stream, we instead print each object
 // at top level.
 type logEntryJSON struct {
-	ID        string
-	Timestamp string
-	Message   string
+	ID		string
+	Timestamp	string
+	Message		string
 }

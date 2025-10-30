@@ -35,19 +35,19 @@ import (
 	"github.com/pkg/browser"
 
 	esc_client "github.com/pulumi/esc/cmd/esc/cli/client"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/journal"
-	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/util/nosleep"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/backenderr"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/diy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate/client"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate/journal"
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/operations"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/nosleep"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -69,23 +69,23 @@ import (
 type PulumiAILanguage string
 
 const (
-	PulumiAILanguageTypeScript PulumiAILanguage = "TypeScript"
-	PulumiAILanguageJavaScript PulumiAILanguage = "JavaScript"
-	PulumiAILanguagePython     PulumiAILanguage = "Python"
-	PulumiAILanguageGo         PulumiAILanguage = "Go"
-	PulumiAILanguageCSharp     PulumiAILanguage = "C#"
-	PulumiAILanguageJava       PulumiAILanguage = "Java"
-	PulumiAILanguageYAML       PulumiAILanguage = "YAML"
+	PulumiAILanguageTypeScript	PulumiAILanguage	= "TypeScript"
+	PulumiAILanguageJavaScript	PulumiAILanguage	= "JavaScript"
+	PulumiAILanguagePython		PulumiAILanguage	= "Python"
+	PulumiAILanguageGo		PulumiAILanguage	= "Go"
+	PulumiAILanguageCSharp		PulumiAILanguage	= "C#"
+	PulumiAILanguageJava		PulumiAILanguage	= "Java"
+	PulumiAILanguageYAML		PulumiAILanguage	= "YAML"
 )
 
 var pulumiAILanguageMap = map[string]PulumiAILanguage{
-	"typescript": PulumiAILanguageTypeScript,
-	"javascript": PulumiAILanguageJavaScript,
-	"python":     PulumiAILanguagePython,
-	"go":         PulumiAILanguageGo,
-	"c#":         PulumiAILanguageCSharp,
-	"java":       PulumiAILanguageJava,
-	"yaml":       PulumiAILanguageYAML,
+	"typescript":	PulumiAILanguageTypeScript,
+	"javascript":	PulumiAILanguageJavaScript,
+	"python":	PulumiAILanguagePython,
+	"go":		PulumiAILanguageGo,
+	"c#":		PulumiAILanguageCSharp,
+	"java":		PulumiAILanguageJava,
+	"yaml":		PulumiAILanguageYAML,
 }
 
 // All of the languages supported by Pulumi AI.
@@ -120,11 +120,11 @@ func (e *PulumiAILanguage) Type() string {
 }
 
 type AIPromptRequestBody struct {
-	Language       PulumiAILanguage `json:"language"`
-	Instructions   string           `json:"instructions"`
-	ResponseMode   string           `json:"responseMode"`
-	ConversationID string           `json:"conversationId"`
-	ConnectionID   string           `json:"connectionId"`
+	Language	PulumiAILanguage	`json:"language"`
+	Instructions	string			`json:"instructions"`
+	ResponseMode	string			`json:"responseMode"`
+	ConversationID	string			`json:"conversationId"`
+	ConnectionID	string			`json:"connectionId"`
 }
 
 // Name validation rules enforced by the Pulumi Service.
@@ -187,15 +187,15 @@ type Backend interface {
 }
 
 type cloudBackend struct {
-	d            diag.Sink
-	url          string
-	client       *client.Client
-	escClient    esc_client.Client
-	capabilities *promise.Promise[apitype.Capabilities]
+	d		diag.Sink
+	url		string
+	client		*client.Client
+	escClient	esc_client.Client
+	capabilities	*promise.Promise[apitype.Capabilities]
 
 	// The current project, if any.
-	currentProject                  *workspace.Project
-	copilotEnabledForCurrentProject *bool
+	currentProject			*workspace.Project
+	copilotEnabledForCurrentProject	*bool
 }
 
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
@@ -216,12 +216,12 @@ func New(ctx context.Context, d diag.Sink,
 	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
 
 	return &cloudBackend{
-		d:              d,
-		url:            cloudURL,
-		client:         apiClient,
-		escClient:      escClient,
-		capabilities:   detectCapabilities(d, apiClient),
-		currentProject: project,
+		d:		d,
+		url:		cloudURL,
+		client:		apiClient,
+		escClient:	escClient,
+		capabilities:	detectCapabilities(d, apiClient),
+		currentProject:	project,
 	}, nil
 }
 
@@ -312,12 +312,12 @@ func loginWithBrowser(
 
 	// Save the token and return the backend
 	account := workspace.Account{
-		AccessToken:      accessToken,
-		Username:         username,
-		Organizations:    organizations,
-		LastValidatedAt:  time.Now(),
-		Insecure:         insecure,
-		TokenInformation: tokenInfo,
+		AccessToken:		accessToken,
+		Username:		username,
+		Organizations:		organizations,
+		LastValidatedAt:	time.Now(),
+		Insecure:		insecure,
+		TokenInformation:	tokenInfo,
 	}
 	if err = workspace.StoreAccount(cloudURL, account, current); err != nil {
 		return nil, err
@@ -432,12 +432,12 @@ func (m defaultLoginManager) Current(
 
 	// Save them.
 	account := workspace.Account{
-		AccessToken:      accessToken,
-		Username:         username,
-		Organizations:    organizations,
-		TokenInformation: tokenInfo,
-		LastValidatedAt:  time.Now(),
-		Insecure:         insecure,
+		AccessToken:		accessToken,
+		Username:		username,
+		Organizations:		organizations,
+		TokenInformation:	tokenInfo,
+		LastValidatedAt:	time.Now(),
+		Insecure:		insecure,
 	}
 	if err = workspace.StoreAccount(cloudURL, account, setCurrent); err != nil {
 		return nil, err
@@ -542,12 +542,12 @@ func (m defaultLoginManager) Login(
 
 	// Save them.
 	account := workspace.Account{
-		AccessToken:      accessToken,
-		Username:         username,
-		Organizations:    organizations,
-		TokenInformation: tokenInfo,
-		LastValidatedAt:  time.Now(),
-		Insecure:         insecure,
+		AccessToken:		accessToken,
+		Username:		username,
+		Organizations:		organizations,
+		TokenInformation:	tokenInfo,
+		LastValidatedAt:	time.Now(),
+		Insecure:		insecure,
 	}
 	if err = workspace.StoreAccount(cloudURL, account, setCurrent); err != nil {
 		return nil, err
@@ -630,7 +630,7 @@ func (b *cloudBackend) currentUser(ctx context.Context) (string, []string, *work
 	return b.client.GetPulumiAccountDetails(ctx)
 }
 
-func (b *cloudBackend) CloudURL() string { return b.url }
+func (b *cloudBackend) CloudURL() string	{ return b.url }
 
 func (b *cloudBackend) parsePolicyPackReference(s string) (backend.PolicyPackReference, error) {
 	split := strings.Split(s, "/")
@@ -668,8 +668,8 @@ func (b *cloudBackend) GetPolicyPack(ctx context.Context, policyPack string,
 	return &cloudPolicyPack{
 		ref: newCloudBackendPolicyPackReference(b.CloudConsoleURL(),
 			policyPackRef.OrgName(), policyPackRef.Name()),
-		b:  b,
-		cl: b.client,
+		b:	b,
+		cl:	b.client,
 	}, nil
 }
 
@@ -731,9 +731,9 @@ func (b *cloudBackend) Capabilities(ctx context.Context) apitype.Capabilities {
 // may be "" if unspecified, e.g. "pulumi/production" specifies the Owner and Name, but not the
 // Project. We infer the missing data and try to make things work as best we can in ParseStackReference.
 type qualifiedStackReference struct {
-	Owner   string
-	Project string
-	Name    string
+	Owner	string
+	Project	string
+	Name	string
 }
 
 // parseStackName parses the stack name into a potentially qualifiedStackReference. Any omitted
@@ -805,11 +805,11 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 	}
 
 	return cloudBackendReference{
-		owner:      qualifiedName.Owner,
-		defaultOrg: defaultOrg,
-		project:    tokens.Name(qualifiedName.Project),
-		name:       parsedName,
-		b:          b,
+		owner:		qualifiedName.Owner,
+		defaultOrg:	defaultOrg,
+		project:	tokens.Name(qualifiedName.Project),
+		name:		parsedName,
+		b:		b,
 	}, nil
 }
 
@@ -885,7 +885,7 @@ func serveBrowserLoginServer(l net.Listener, expectedNonce string, destinationUR
 
 	mux := &http.ServeMux{}
 	mux.HandleFunc("/", handler)
-	contract.IgnoreError(http.Serve(l, mux)) //nolint:gosec
+	contract.IgnoreError(http.Serve(l, mux))	//nolint:gosec
 }
 
 // CloudConsoleStackPath returns the stack path components for getting to a stack in the cloud console.  This path
@@ -1017,10 +1017,10 @@ func (b *cloudBackend) ListStacks(
 
 	// Duplicate type to avoid circular dependency.
 	clientFilter := client.ListStacksFilter{
-		Organization: filter.Organization,
-		Project:      filter.Project,
-		TagName:      filter.TagName,
-		TagValue:     filter.TagValue,
+		Organization:	filter.Organization,
+		Project:	filter.Project,
+		TagName:	filter.TagName,
+		TagValue:	filter.TagValue,
 	}
 
 	apiSummaries, outContToken, err := b.client.ListStacks(ctx, clientFilter, inContToken)
@@ -1049,9 +1049,9 @@ func (b *cloudBackend) ListStacks(
 	backendSummaries := slice.Prealloc[backend.StackSummary](len(apiSummaries))
 	for _, apiSummary := range apiSummaries {
 		backendSummary := cloudStackSummary{
-			summary:    apiSummary,
-			b:          b,
-			defaultOrg: defaultOrg,
+			summary:	apiSummary,
+			b:		b,
+			defaultOrg:	defaultOrg,
 		}
 		backendSummaries = append(backendSummaries, backendSummary)
 	}
@@ -1065,8 +1065,8 @@ func (b *cloudBackend) ListStackNames(
 ) {
 	// Convert ListStackNamesFilter to ListStacksFilter (without tag fields)
 	stacksFilter := backend.ListStacksFilter{
-		Organization: filter.Organization,
-		Project:      filter.Project,
+		Organization:	filter.Organization,
+		Project:	filter.Project,
 	}
 
 	// For the cloud backend, we can reuse ListStacks since the API already returns data efficiently.
@@ -1154,8 +1154,8 @@ func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 	opts := backend.ApplierOptions{
-		DryRun:   true,
-		ShowLink: true,
+		DryRun:		true,
+		ShowLink:	true,
 	}
 	return b.apply(
 		ctx, apitype.PreviewUpdate, stack, op, opts, events)
@@ -1214,7 +1214,7 @@ func (b *cloudBackend) Explain(
 		display.Options{
 			ShowResourceChanges: true,
 		},
-		true, /* isPreview */
+		true,	/* isPreview */
 		kind,
 	)
 	renderer.ProcessEventSlice(events)
@@ -1258,8 +1258,8 @@ func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 	if op.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 		opts := backend.ApplierOptions{
-			DryRun:   true,
-			ShowLink: true,
+			DryRun:		true,
+			ShowLink:	true,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
@@ -1277,8 +1277,8 @@ func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 	if op.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 		opts := backend.ApplierOptions{
-			DryRun:   true,
-			ShowLink: true,
+			DryRun:		true,
+			ShowLink:	true,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
@@ -1295,8 +1295,8 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 	if op.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 		opts := backend.ApplierOptions{
-			DryRun:   true,
-			ShowLink: true,
+			DryRun:		true,
+			ShowLink:	true,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
@@ -1409,10 +1409,10 @@ func (b *cloudBackend) summarizeErrorWithCopilot(
 }
 
 type updateMetadata struct {
-	version        int
-	leaseToken     string
-	messages       []apitype.Message
-	journalVersion int64
+	version		int
+	leaseToken	string
+	messages	[]apitype.Message
+	journalVersion	int64
 }
 
 func (b *cloudBackend) createAndStartUpdate(
@@ -1427,8 +1427,8 @@ func (b *cloudBackend) createAndStartUpdate(
 		return client.UpdateIdentifier{}, updateMetadata{}, err
 	}
 	metadata := apitype.UpdateMetadata{
-		Message:     op.M.Message,
-		Environment: op.M.Environment,
+		Message:	op.M.Message,
+		Environment:	op.M.Environment,
 	}
 	update, updateDetails, err := b.client.CreateUpdate(
 		ctx, action, stackID, op.Proj, op.StackConfiguration.Config, metadata, op.Opts.Engine, dryRun)
@@ -1498,10 +1498,10 @@ func (b *cloudBackend) createAndStartUpdate(
 		stackID.Owner, copilotEnabledValueString, userName, continuationString)
 
 	return update, updateMetadata{
-		version:        version,
-		leaseToken:     token,
-		messages:       updateDetails.Messages,
-		journalVersion: journalVersion,
+		version:	version,
+		leaseToken:	token,
+		messages:	updateDetails.Messages,
+		journalVersion:	journalVersion,
 	}, nil
 }
 
@@ -1663,8 +1663,8 @@ func (b *cloudBackend) runEngineAction(
 			persister := b.newSnapshotPersister(ctx, update, tokenSource)
 			snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
 			combinedManager = &engine.CombinedManager{
-				Managers:          []engine.SnapshotManager{snapshotManager},
-				CollectErrorsOnly: []bool{false, true},
+				Managers:		[]engine.SnapshotManager{snapshotManager},
+				CollectErrorsOnly:	[]bool{false, true},
 			}
 		}
 	}
@@ -1674,9 +1674,9 @@ func (b *cloudBackend) runEngineAction(
 	cancellationScope := op.Scopes.NewScope(ctx, engineEvents, dryRun)
 	snapshotManagerClosed := false
 	engineCtx := &engine.Context{
-		Cancel:        cancellationScope.Context(),
-		Events:        engineEvents,
-		BackendClient: httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
+		Cancel:		cancellationScope.Context(),
+		Events:		engineEvents,
+		BackendClient:	httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
 		FinalizeUpdateFunc: func() {
 			if snapshotManager == nil {
 				return
@@ -1729,7 +1729,7 @@ func (b *cloudBackend) runEngineAction(
 
 	// Wait for dependent channels to finish processing engineEvents before closing.
 	<-displayDone
-	cancellationScope.Close() // Don't take any cancellations anymore, we're shutting down.
+	cancellationScope.Close()	// Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
 	if combinedManager != nil && !snapshotManagerClosed {
 		err = combinedManager.Close()
@@ -1780,9 +1780,9 @@ func (b *cloudBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend
 	//
 	// NOTE: the update kind is not relevant; the same endpoint will work for updates of all kinds.
 	updateID := client.UpdateIdentifier{
-		StackIdentifier: stackID,
-		UpdateKind:      apitype.UpdateUpdate,
-		UpdateID:        stack.ActiveUpdate,
+		StackIdentifier:	stackID,
+		UpdateKind:		apitype.UpdateUpdate,
+		UpdateID:		stack.ActiveUpdate,
 	}
 	return b.client.CancelUpdate(ctx, updateID)
 }
@@ -1813,15 +1813,15 @@ func (b *cloudBackend) GetHistory(
 		}
 
 		beUpdates = append(beUpdates, backend.UpdateInfo{
-			Version:         update.Version,
-			Kind:            update.Kind,
-			Message:         update.Message,
-			Environment:     update.Environment,
-			Config:          cfg,
-			Result:          backend.UpdateResult(update.Result),
-			StartTime:       update.StartTime,
-			EndTime:         update.EndTime,
-			ResourceChanges: convertResourceChanges(update.ResourceChanges),
+			Version:		update.Version,
+			Kind:			update.Kind,
+			Message:		update.Message,
+			Environment:		update.Environment,
+			Config:			cfg,
+			Result:			backend.UpdateResult(update.Result),
+			StartTime:		update.StartTime,
+			EndTime:		update.EndTime,
+			ResourceChanges:	convertResourceChanges(update.ResourceChanges),
 		})
 	}
 
@@ -1980,9 +1980,9 @@ func (b *cloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) 
 	}
 
 	return client.StackIdentifier{
-		Owner:   cloudBackendStackRef.owner,
-		Project: cleanProjectName(string(cloudBackendStackRef.project)),
-		Stack:   cloudBackendStackRef.name,
+		Owner:		cloudBackendStackRef.owner,
+		Project:	cleanProjectName(string(cloudBackendStackRef.project)),
+		Stack:		cloudBackendStackRef.name,
 	}, nil
 }
 
@@ -1994,13 +1994,13 @@ func (b *cloudBackend) Client() *client.Client {
 type DisplayEventType string
 
 const (
-	UpdateEvent   DisplayEventType = "UpdateEvent"
-	ShutdownEvent DisplayEventType = "Shutdown"
+	UpdateEvent	DisplayEventType	= "UpdateEvent"
+	ShutdownEvent	DisplayEventType	= "Shutdown"
 )
 
 type displayEvent struct {
-	Kind    DisplayEventType
-	Payload any
+	Kind	DisplayEventType
+	Payload	any
 }
 
 // waitForUpdate waits for the current update of a Pulumi program to reach a terminal state. Returns the
@@ -2310,12 +2310,12 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 
 	dryRun := kind == apitype.PreviewUpdate
 	update := client.UpdateIdentifier{
-		StackIdentifier: stackID,
-		UpdateKind:      kind,
-		UpdateID:        updateID,
+		StackIdentifier:	stackID,
+		UpdateKind:		kind,
+		UpdateID:		updateID,
 	}
 
-	events := make(chan engine.Event) // Note: unbuffered, but we assume it won't matter in practice.
+	events := make(chan engine.Event)	// Note: unbuffered, but we assume it won't matter in practice.
 	done := make(chan bool)
 
 	// Timings do not display correctly when rendering remote events, so suppress showing them.

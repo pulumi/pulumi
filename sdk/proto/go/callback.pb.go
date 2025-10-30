@@ -30,19 +30,19 @@ import (
 
 const (
 	// Verify that this generated code is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
+	_	= protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
+	_	= protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
 type Callback struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// the gRPC target of the callback service.
-	Target string `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
+	Target	string	`protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
 	// the service specific unique token for this callback.
-	Token         string `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Token		string	`protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *Callback) Reset() {
@@ -56,7 +56,7 @@ func (x *Callback) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Callback) ProtoMessage() {}
+func (*Callback) ProtoMessage()	{}
 
 func (x *Callback) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_callback_proto_msgTypes[0]
@@ -90,13 +90,13 @@ func (x *Callback) GetToken() string {
 }
 
 type CallbackInvokeRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// the token for the callback.
-	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	Token	string	`protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 	// the serialized protobuf message of the arguments for this callback.
-	Request       []byte `protobuf:"bytes,2,opt,name=request,proto3" json:"request,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Request		[]byte	`protobuf:"bytes,2,opt,name=request,proto3" json:"request,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *CallbackInvokeRequest) Reset() {
@@ -110,7 +110,7 @@ func (x *CallbackInvokeRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CallbackInvokeRequest) ProtoMessage() {}
+func (*CallbackInvokeRequest) ProtoMessage()	{}
 
 func (x *CallbackInvokeRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_callback_proto_msgTypes[1]
@@ -144,11 +144,11 @@ func (x *CallbackInvokeRequest) GetRequest() []byte {
 }
 
 type CallbackInvokeResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// the serialized protobuf message of the response for this callback.
-	Response      []byte `protobuf:"bytes,1,opt,name=response,proto3" json:"response,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Response	[]byte	`protobuf:"bytes,1,opt,name=response,proto3" json:"response,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *CallbackInvokeResponse) Reset() {
@@ -162,7 +162,7 @@ func (x *CallbackInvokeResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CallbackInvokeResponse) ProtoMessage() {}
+func (*CallbackInvokeResponse) ProtoMessage()	{}
 
 func (x *CallbackInvokeResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_callback_proto_msgTypes[2]
@@ -205,8 +205,8 @@ const file_pulumi_callback_proto_rawDesc = "" +
 	"\x06Invoke\x12 .pulumirpc.CallbackInvokeRequest\x1a!.pulumirpc.CallbackInvokeResponse\"\x00B4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3"
 
 var (
-	file_pulumi_callback_proto_rawDescOnce sync.Once
-	file_pulumi_callback_proto_rawDescData []byte
+	file_pulumi_callback_proto_rawDescOnce	sync.Once
+	file_pulumi_callback_proto_rawDescData	[]byte
 )
 
 func file_pulumi_callback_proto_rawDescGZIP() []byte {
@@ -218,21 +218,21 @@ func file_pulumi_callback_proto_rawDescGZIP() []byte {
 
 var file_pulumi_callback_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_pulumi_callback_proto_goTypes = []any{
-	(*Callback)(nil),               // 0: pulumirpc.Callback
-	(*CallbackInvokeRequest)(nil),  // 1: pulumirpc.CallbackInvokeRequest
-	(*CallbackInvokeResponse)(nil), // 2: pulumirpc.CallbackInvokeResponse
+	(*Callback)(nil),		// 0: pulumirpc.Callback
+	(*CallbackInvokeRequest)(nil),	// 1: pulumirpc.CallbackInvokeRequest
+	(*CallbackInvokeResponse)(nil),	// 2: pulumirpc.CallbackInvokeResponse
 }
 var file_pulumi_callback_proto_depIdxs = []int32{
-	1, // 0: pulumirpc.Callbacks.Invoke:input_type -> pulumirpc.CallbackInvokeRequest
-	2, // 1: pulumirpc.Callbacks.Invoke:output_type -> pulumirpc.CallbackInvokeResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1,	// 0: pulumirpc.Callbacks.Invoke:input_type -> pulumirpc.CallbackInvokeRequest
+	2,	// 1: pulumirpc.Callbacks.Invoke:output_type -> pulumirpc.CallbackInvokeResponse
+	1,	// [1:2] is the sub-list for method output_type
+	0,	// [0:1] is the sub-list for method input_type
+	0,	// [0:0] is the sub-list for extension type_name
+	0,	// [0:0] is the sub-list for extension extendee
+	0,	// [0:0] is the sub-list for field type_name
 }
 
-func init() { file_pulumi_callback_proto_init() }
+func init()	{ file_pulumi_callback_proto_init() }
 func file_pulumi_callback_proto_init() {
 	if File_pulumi_callback_proto != nil {
 		return
@@ -240,16 +240,16 @@ func file_pulumi_callback_proto_init() {
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
-			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_callback_proto_rawDesc), len(file_pulumi_callback_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   3,
-			NumExtensions: 0,
-			NumServices:   1,
+			GoPackagePath:	reflect.TypeOf(x{}).PkgPath(),
+			RawDescriptor:	unsafe.Slice(unsafe.StringData(file_pulumi_callback_proto_rawDesc), len(file_pulumi_callback_proto_rawDesc)),
+			NumEnums:	0,
+			NumMessages:	3,
+			NumExtensions:	0,
+			NumServices:	1,
 		},
-		GoTypes:           file_pulumi_callback_proto_goTypes,
-		DependencyIndexes: file_pulumi_callback_proto_depIdxs,
-		MessageInfos:      file_pulumi_callback_proto_msgTypes,
+		GoTypes:		file_pulumi_callback_proto_goTypes,
+		DependencyIndexes:	file_pulumi_callback_proto_depIdxs,
+		MessageInfos:		file_pulumi_callback_proto_msgTypes,
 	}.Build()
 	File_pulumi_callback_proto = out.File
 	file_pulumi_callback_proto_goTypes = nil

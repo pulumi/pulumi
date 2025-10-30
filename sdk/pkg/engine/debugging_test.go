@@ -25,70 +25,70 @@ func TestAttachDebugger(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name           string
-		attachDebugger []string
-		spec           plugin.DebugSpec
-		expected       bool
+		name		string
+		attachDebugger	[]string
+		spec		plugin.DebugSpec
+		expected	bool
 	}{
 		{
-			name:           "all",
-			attachDebugger: []string{"all"},
+			name:		"all",
+			attachDebugger:	[]string{"all"},
 			spec: plugin.DebugSpec{
 				Type: plugin.DebugTypeProgram,
 			},
-			expected: true,
+			expected:	true,
 		},
 		{
-			name:           "program",
-			attachDebugger: []string{"program"},
+			name:		"program",
+			attachDebugger:	[]string{"program"},
 			spec: plugin.DebugSpec{
 				Type: plugin.DebugTypeProgram,
 			},
-			expected: true,
+			expected:	true,
 		},
 		{
-			name:           "plugins",
-			attachDebugger: []string{"plugins"},
+			name:		"plugins",
+			attachDebugger:	[]string{"plugins"},
 			spec: plugin.DebugSpec{
-				Type: plugin.DebugTypePlugin,
-				Name: "test-plugin",
+				Type:	plugin.DebugTypePlugin,
+				Name:	"test-plugin",
 			},
-			expected: true,
+			expected:	true,
 		},
 		{
-			name:           "plugin:plugin-name",
-			attachDebugger: []string{"plugin:plugin-name"},
+			name:		"plugin:plugin-name",
+			attachDebugger:	[]string{"plugin:plugin-name"},
 			spec: plugin.DebugSpec{
-				Type: plugin.DebugTypePlugin,
-				Name: "plugin-name",
+				Type:	plugin.DebugTypePlugin,
+				Name:	"plugin-name",
 			},
-			expected: true,
+			expected:	true,
 		},
 		{
-			name:           "plugin:other-plugin-name",
-			attachDebugger: []string{"plugin:plugin-name"},
+			name:		"plugin:other-plugin-name",
+			attachDebugger:	[]string{"plugin:plugin-name"},
 			spec: plugin.DebugSpec{
-				Type: plugin.DebugTypePlugin,
-				Name: "other-plugin-name",
+				Type:	plugin.DebugTypePlugin,
+				Name:	"other-plugin-name",
 			},
-			expected: false,
+			expected:	false,
 		},
 		{
-			name:           "program with plugin spec",
-			attachDebugger: []string{"program"},
+			name:		"program with plugin spec",
+			attachDebugger:	[]string{"program"},
 			spec: plugin.DebugSpec{
-				Type: plugin.DebugTypePlugin,
-				Name: "test-plugin",
+				Type:	plugin.DebugTypePlugin,
+				Name:	"test-plugin",
 			},
-			expected: false,
+			expected:	false,
 		},
 		{
-			name:           "plugin with program spec",
-			attachDebugger: []string{"plugin:plugin-name"},
+			name:		"plugin with program spec",
+			attachDebugger:	[]string{"plugin:plugin-name"},
 			spec: plugin.DebugSpec{
 				Type: plugin.DebugTypeProgram,
 			},
-			expected: false,
+			expected:	false,
 		},
 	}
 	for _, test := range tests {

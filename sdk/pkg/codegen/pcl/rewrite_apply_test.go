@@ -19,8 +19,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -36,64 +36,64 @@ func TestApplyRewriter(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		input, output string
-		skipPromises  bool
+		input, output	string
+		skipPromises	bool
 	}{
 		{
-			input:  `"v: ${resource.objectOutput.stringPlain}"`,
-			output: `__apply(resource.objectOutput,eval(objectOutput, "v: ${objectOutput.stringPlain}"))`,
+			input:	`"v: ${resource.objectOutput.stringPlain}"`,
+			output:	`__apply(resource.objectOutput,eval(objectOutput, "v: ${objectOutput.stringPlain}"))`,
 		},
 		{
-			input:  `"v: ${resource.listOutput[0]}"`,
-			output: `__apply(resource.listOutput,eval(listOutput, "v: ${listOutput[0]}"))`,
+			input:	`"v: ${resource.listOutput[0]}"`,
+			output:	`__apply(resource.listOutput,eval(listOutput, "v: ${listOutput[0]}"))`,
 		},
 		{
-			input:  `"v: ${resources[0].objectOutput.stringPlain}"`,
-			output: `__apply(resources[0].objectOutput,eval(objectOutput, "v: ${objectOutput.stringPlain}"))`,
+			input:	`"v: ${resources[0].objectOutput.stringPlain}"`,
+			output:	`__apply(resources[0].objectOutput,eval(objectOutput, "v: ${objectOutput.stringPlain}"))`,
 		},
 		{
-			input:  `"v: ${resources.*.stringOutput[0]}"`,
-			output: `__apply(resources.*.stringOutput[0],eval(stringOutput, "v: ${stringOutput}"))`,
+			input:	`"v: ${resources.*.stringOutput[0]}"`,
+			output:	`__apply(resources.*.stringOutput[0],eval(stringOutput, "v: ${stringOutput}"))`,
 		},
 		{
-			input:  `"v: ${element(resources.*.stringOutput, 0)}"`,
-			output: `__apply(element(resources.*.stringOutput, 0),eval(stringOutputs, "v: ${stringOutputs}"))`,
+			input:	`"v: ${element(resources.*.stringOutput, 0)}"`,
+			output:	`__apply(element(resources.*.stringOutput, 0),eval(stringOutputs, "v: ${stringOutputs}"))`,
 		},
 		{
-			input:  `"v: ${[for r in resources: r.stringOutput][0]}"`,
-			output: `__apply([for r in resources: r.stringOutput][0],eval(stringOutput, "v: ${stringOutput}"))`,
+			input:	`"v: ${[for r in resources: r.stringOutput][0]}"`,
+			output:	`__apply([for r in resources: r.stringOutput][0],eval(stringOutput, "v: ${stringOutput}"))`,
 		},
 		{
-			input:  `"v: ${element([for r in resources: r.stringOutput], 0)}"`,
-			output: `__apply(element([for r in resources: r.stringOutput], 0),eval(stringOutputs, "v: ${stringOutputs}"))`,
+			input:	`"v: ${element([for r in resources: r.stringOutput], 0)}"`,
+			output:	`__apply(element([for r in resources: r.stringOutput], 0),eval(stringOutputs, "v: ${stringOutputs}"))`,
 		},
 		{
-			input:  `"v: ${resource[key]}"`,
-			output: `__apply(resource[key],eval(key, "v: ${key}"))`,
+			input:	`"v: ${resource[key]}"`,
+			output:	`__apply(resource[key],eval(key, "v: ${key}"))`,
 		},
 		{
-			input:  `"v: ${resource[resource.stringOutput]}"`,
-			output: `__apply(__apply(resource.stringOutput,eval(stringOutput, resource[stringOutput])),eval(stringOutput, "v: ${stringOutput}"))`,
+			input:	`"v: ${resource[resource.stringOutput]}"`,
+			output:	`__apply(__apply(resource.stringOutput,eval(stringOutput, resource[stringOutput])),eval(stringOutput, "v: ${stringOutput}"))`,
 		},
 		{
-			input:  `resourcesPromise.*.stringOutput`,
-			output: `__apply(resourcesPromise, eval(resourcesPromise, resourcesPromise.*.stringOutput))`,
+			input:	`resourcesPromise.*.stringOutput`,
+			output:	`__apply(resourcesPromise, eval(resourcesPromise, resourcesPromise.*.stringOutput))`,
 		},
 		{
-			input:  `[for r in resourcesPromise: r.stringOutput]`,
-			output: `__apply(resourcesPromise,eval(resourcesPromise, [for r in resourcesPromise: r.stringOutput]))`,
+			input:	`[for r in resourcesPromise: r.stringOutput]`,
+			output:	`__apply(resourcesPromise,eval(resourcesPromise, [for r in resourcesPromise: r.stringOutput]))`,
 		},
 		{
-			input:  `resourcesOutput.*.stringOutput`,
-			output: `__apply(resourcesOutput, eval(resourcesOutput, resourcesOutput.*.stringOutput))`,
+			input:	`resourcesOutput.*.stringOutput`,
+			output:	`__apply(resourcesOutput, eval(resourcesOutput, resourcesOutput.*.stringOutput))`,
 		},
 		{
-			input:  `[for r in resourcesOutput: r.stringOutput]`,
-			output: `__apply(resourcesOutput,eval(resourcesOutput, [for r in resourcesOutput: r.stringOutput]))`,
+			input:	`[for r in resourcesOutput: r.stringOutput]`,
+			output:	`__apply(resourcesOutput,eval(resourcesOutput, [for r in resourcesOutput: r.stringOutput]))`,
 		},
 		{
-			input:  `"v: ${[for r in resourcesPromise: r.stringOutput]}"`,
-			output: `__apply(__apply(resourcesPromise,eval(resourcesPromise, [for r in resourcesPromise: r.stringOutput])),eval(stringOutputs, "v: ${stringOutputs}"))`,
+			input:	`"v: ${[for r in resourcesPromise: r.stringOutput]}"`,
+			output:	`__apply(__apply(resourcesPromise,eval(resourcesPromise, [for r in resourcesPromise: r.stringOutput])),eval(stringOutputs, "v: ${stringOutputs}"))`,
 		},
 		{
 			input: `toJSON({
@@ -116,73 +116,73 @@ func TestApplyRewriter(t *testing.T) {
 									})))`,
 		},
 		{
-			input:  `getPromise().property`,
-			output: `__apply(getPromise(), eval(getPromise, getPromise.property))`,
+			input:	`getPromise().property`,
+			output:	`__apply(getPromise(), eval(getPromise, getPromise.property))`,
 		},
 		{
-			input:  `getPromise().object.foo`,
-			output: `__apply(getPromise(), eval(getPromise, getPromise.object.foo))`,
+			input:	`getPromise().object.foo`,
+			output:	`__apply(getPromise(), eval(getPromise, getPromise.object.foo))`,
 		},
 		{
-			input:        `getPromise().property`,
-			output:       `getPromise().property`,
-			skipPromises: true,
+			input:		`getPromise().property`,
+			output:		`getPromise().property`,
+			skipPromises:	true,
 		},
 		{
-			input:        `getPromise().object.foo`,
-			output:       `getPromise().object.foo`,
-			skipPromises: true,
+			input:		`getPromise().object.foo`,
+			output:		`getPromise().object.foo`,
+			skipPromises:	true,
 		},
 		{
-			input:  `getPromise(resource.stringOutput).property`,
-			output: `__apply(__apply(resource.stringOutput,eval(stringOutput, getPromise(stringOutput))), eval(getPromise, getPromise.property))`,
+			input:	`getPromise(resource.stringOutput).property`,
+			output:	`__apply(__apply(resource.stringOutput,eval(stringOutput, getPromise(stringOutput))), eval(getPromise, getPromise.property))`,
 		},
 		{
-			input:  `resource.boolOutput ? "yes" : "no"`,
-			output: `__apply(resource.boolOutput, eval(boolOutput, boolOutput ? "yes" : "no"))`,
+			input:	`resource.boolOutput ? "yes" : "no"`,
+			output:	`__apply(resource.boolOutput, eval(boolOutput, boolOutput ? "yes" : "no"))`,
 		},
 	}
 
 	resourceType := model.NewObjectType(map[string]model.Type{
-		"stringOutput": model.NewOutputType(model.StringType),
+		"stringOutput":	model.NewOutputType(model.StringType),
 		"objectOutput": model.NewOutputType(model.NewObjectType(map[string]model.Type{
 			"stringPlain": model.StringType,
 		})),
-		"listOutput": model.NewOutputType(model.NewListType(model.StringType)),
-		"boolOutput": model.NewOutputType(model.BoolType),
+		"listOutput":	model.NewOutputType(model.NewListType(model.StringType)),
+		"boolOutput":	model.NewOutputType(model.BoolType),
 	})
 
 	scope := model.NewRootScope(syntax.None)
 	scope.Define("key", &model.Variable{
-		Name:         "key",
-		VariableType: model.StringType,
+		Name:		"key",
+		VariableType:	model.StringType,
 	})
 	scope.Define("resource", &model.Variable{
-		Name:         "resource",
-		VariableType: resourceType,
+		Name:		"resource",
+		VariableType:	resourceType,
 	})
 	scope.Define("resources", &model.Variable{
-		Name:         "resources",
-		VariableType: model.NewListType(resourceType),
+		Name:		"resources",
+		VariableType:	model.NewListType(resourceType),
 	})
 	scope.Define("resourcesPromise", &model.Variable{
-		Name:         "resourcesPromise",
-		VariableType: model.NewPromiseType(model.NewListType(resourceType)),
+		Name:		"resourcesPromise",
+		VariableType:	model.NewPromiseType(model.NewListType(resourceType)),
 	})
 	scope.Define("resourcesOutput", &model.Variable{
-		Name:         "resourcesOutput",
-		VariableType: model.NewOutputType(model.NewListType(resourceType)),
+		Name:		"resourcesOutput",
+		VariableType:	model.NewOutputType(model.NewListType(resourceType)),
 	})
 	functions := pulumiBuiltins(bindOptions{})
 	scope.DefineFunction("element", functions["element"])
 	scope.DefineFunction("toJSON", functions["toJSON"])
 	scope.DefineFunction("getPromise", model.NewFunction(model.StaticFunctionSignature{
 		Parameters: []model.Parameter{{
-			Name: "p",
-			Type: model.NewOptionalType(model.StringType),
+			Name:	"p",
+			Type:	model.NewOptionalType(model.StringType),
 		}},
 		ReturnType: model.NewPromiseType(model.NewObjectType(map[string]model.Type{
-			"property": model.StringType,
+			"property":	model.StringType,
 			"object": model.NewObjectType(map[string]model.Type{
 				"foo": model.StringType,
 			}),

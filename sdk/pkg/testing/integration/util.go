@@ -246,8 +246,8 @@ func CheckRuntimeOptions(t *testing.T, root string, expected map[string]any) {
 
 	var config struct {
 		Runtime struct {
-			Name    string         `yaml:"name"`
-			Options map[string]any `yaml:"options"`
+			Name	string		`yaml:"name"`
+			Options	map[string]any	`yaml:"options"`
 		} `yaml:"runtime"`
 	}
 	yamlFile, err := os.ReadFile(filepath.Join(root, "Pulumi.yaml"))
@@ -273,7 +273,7 @@ func createTemporaryGoFolder(prefix string) (string, error) {
 		gopath = filepath.Join(usr.HomeDir, "go")
 	}
 
-	folder := fmt.Sprintf("%s-%d-%d", prefix, time.Now().UnixNano(), rand.Intn(1000000)) //nolint:gosec
+	folder := fmt.Sprintf("%s-%d-%d", prefix, time.Now().UnixNano(), rand.Intn(1000000))	//nolint:gosec
 
 	testRoot := filepath.Join(gopath, "src", folder)
 	err := os.MkdirAll(testRoot, 0o700)

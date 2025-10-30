@@ -29,12 +29,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	. "github.com/pulumi/pulumi/sdk/v3/pkg/engine"	//nolint:revive
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -79,11 +79,11 @@ func TestParallelRefresh(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:             t,
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{Parallel: 4},
+			T:		t,
+			HostF:		hostF,
+			UpdateOptions:	UpdateOptions{Parallel: 4},
 			// Skip display tests because different ordering makes the colouring different.
-			SkipDisplayTests: true,
+			SkipDisplayTests:	true,
 		},
 	}
 
@@ -91,7 +91,7 @@ func TestParallelRefresh(t *testing.T) {
 	snap := p.Run(t, nil)
 
 	require.Len(t, snap.Resources, 5)
-	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default")	// provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
 	assert.Equal(t, snap.Resources[3].URN.Name(), "resC")
@@ -101,7 +101,7 @@ func TestParallelRefresh(t *testing.T) {
 	snap = p.Run(t, snap)
 
 	require.Len(t, snap.Resources, 5)
-	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default")	// provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
 	assert.Equal(t, snap.Resources[3].URN.Name(), "resC")
@@ -138,26 +138,26 @@ func TestExternalRefresh(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
-		Steps:   []lt.TestStep{{Op: Update}},
+		Options:	lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:		[]lt.TestStep{{Op: Update}},
 	}
 
 	// The read should place "resA" in the snapshot with the "External" bit set.
 	snap := p.RunWithName(t, nil, "0")
 	require.Len(t, snap.Resources, 2)
-	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default")	// provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.True(t, snap.Resources[1].External)
 
 	p = &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
-		Steps:   []lt.TestStep{{Op: Refresh}},
+		Options:	lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:		[]lt.TestStep{{Op: Refresh}},
 	}
 
 	snap = p.RunWithName(t, snap, "1")
 	// A refresh should leave "resA" as it is in the snapshot. The External bit should still be set.
 	require.Len(t, snap.Resources, 2)
-	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default")	// provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.True(t, snap.Resources[1].External)
 }
@@ -182,7 +182,7 @@ func TestExternalRefreshDoesNotCallDiff(t *testing.T) {
 								"o1": resource.NewProperty(float64(readCall)),
 							},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 
@@ -216,15 +216,15 @@ func TestExternalRefreshDoesNotCallDiff(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
-		Steps:   []lt.TestStep{{Op: Update}},
+		Options:	lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:		[]lt.TestStep{{Op: Update}},
 	}
 
 	snap := p.RunWithName(t, nil, "0")
 
 	p = &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
-		Steps:   []lt.TestStep{{Op: Refresh}},
+		Options:	lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:		[]lt.TestStep{{Op: Refresh}},
 	}
 
 	p.RunWithName(t, snap, "1")
@@ -262,26 +262,26 @@ func TestRefreshInitFailure(t *testing.T) {
 						}
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								ID:      req.ID,
-								Outputs: resource.PropertyMap{},
+								ID:		req.ID,
+								Outputs:	resource.PropertyMap{},
 							},
-							Status: resource.StatusPartialFailure,
+							Status:	resource.StatusPartialFailure,
 						}, err
 					} else if req.URN == res2URN {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								ID:      req.ID,
-								Outputs: res2Outputs,
+								ID:		req.ID,
+								Outputs:	res2Outputs,
 							},
-							Status: resource.StatusOK,
+							Status:	resource.StatusOK,
 						}, nil
 					}
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Outputs: resource.PropertyMap{},
+							ID:		req.ID,
+							Outputs:	resource.PropertyMap{},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -303,21 +303,21 @@ func TestRefreshInitFailure(t *testing.T) {
 	old := &deploy.Snapshot{
 		Resources: []*resource.State{
 			{
-				Type:       resURN.Type(),
-				URN:        resURN,
-				Custom:     true,
-				ID:         "0",
-				Inputs:     resource.PropertyMap{},
-				Outputs:    resource.PropertyMap{},
-				InitErrors: []string{"Resource failed to initialize"},
+				Type:		resURN.Type(),
+				URN:		resURN,
+				Custom:		true,
+				ID:		"0",
+				Inputs:		resource.PropertyMap{},
+				Outputs:	resource.PropertyMap{},
+				InitErrors:	[]string{"Resource failed to initialize"},
 			},
 			{
-				Type:    res2URN.Type(),
-				URN:     res2URN,
-				Custom:  true,
-				ID:      "1",
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+				Type:		res2URN.Type(),
+				URN:		res2URN,
+				Custom:		true,
+				ID:		"1",
+				Inputs:		resource.PropertyMap{},
+				Outputs:	resource.PropertyMap{},
 			},
 		},
 	}
@@ -404,11 +404,11 @@ func TestRefreshWithDelete(t *testing.T) {
 			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 			p := &lt.TestPlan{
 				Options: lt.TestUpdateOptions{
-					T: t,
+					T:	t,
 					// Skip display tests because different ordering makes the colouring different.
-					SkipDisplayTests: true,
-					HostF:            hostF,
-					UpdateOptions:    UpdateOptions{Parallel: parallelFactor},
+					SkipDisplayTests:	true,
+					HostF:			hostF,
+					UpdateOptions:		UpdateOptions{Parallel: parallelFactor},
 				},
 			}
 
@@ -458,8 +458,8 @@ func TestRefreshDeletePropertyDependencies(t *testing.T) {
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Outputs: resource.PropertyMap{},
+							ID:		req.ID,
+							Outputs:	resource.PropertyMap{},
 						},
 					}, nil
 				},
@@ -489,7 +489,7 @@ func TestRefreshDeletePropertyDependencies(t *testing.T) {
 	snap := p.Run(t, nil)
 
 	require.Len(t, snap.Resources, 3)
-	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default")	// provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
 	assert.Equal(t, snap.Resources[2].PropertyDependencies["propB1"][0].Name(), "resA")
@@ -501,7 +501,7 @@ func TestRefreshDeletePropertyDependencies(t *testing.T) {
 	snap = p.Run(t, snap)
 
 	require.Len(t, snap.Resources, 2)
-	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default")	// provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resB")
 	assert.Empty(t, snap.Resources[1].PropertyDependencies)
 
@@ -522,10 +522,10 @@ func TestRefreshDeleteDeletedWith(t *testing.T) {
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Outputs: resource.PropertyMap{},
+							ID:		req.ID,
+							Outputs:	resource.PropertyMap{},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -552,7 +552,7 @@ func TestRefreshDeleteDeletedWith(t *testing.T) {
 	snap := p.Run(t, nil)
 
 	require.Len(t, snap.Resources, 3)
-	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default")	// provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
 	assert.Equal(t, snap.Resources[2].DeletedWith.Name(), "resA")
@@ -564,7 +564,7 @@ func TestRefreshDeleteDeletedWith(t *testing.T) {
 	snap = p.Run(t, snap)
 
 	require.Len(t, snap.Resources, 2)
-	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default")	// provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resB")
 	assert.Empty(t, snap.Resources[1].DeletedWith)
 
@@ -607,14 +607,14 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 
 	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
 		return &resource.State{
-			Type:         urn.Type(),
-			URN:          urn,
-			Custom:       true,
-			Delete:       del,
-			ID:           id,
-			Inputs:       resource.PropertyMap{},
-			Outputs:      resource.PropertyMap{},
-			Dependencies: dependencies,
+			Type:		urn.Type(),
+			URN:		urn,
+			Custom:		true,
+			Delete:		del,
+			ID:		id,
+			Inputs:		resource.PropertyMap{},
+			Outputs:	resource.PropertyMap{},
+			Dependencies:	dependencies,
 		}
 	}
 
@@ -642,11 +642,11 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 					default:
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								ID:      req.ID,
-								Inputs:  req.Inputs,
-								Outputs: req.State,
+								ID:		req.ID,
+								Inputs:		req.Inputs,
+								Outputs:	req.State,
 							},
-							Status: resource.StatusOK,
+							Status:	resource.StatusOK,
 						}, nil
 					}
 				},
@@ -659,7 +659,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 
 	p.Steps = []lt.TestStep{
 		{
-			Op: Refresh,
+			Op:	Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 				_ []Event, err error,
 			) error {
@@ -776,14 +776,14 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 
 	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
 		return &resource.State{
-			Type:         urn.Type(),
-			URN:          urn,
-			Custom:       true,
-			Delete:       del,
-			ID:           id,
-			Inputs:       resource.PropertyMap{},
-			Outputs:      resource.PropertyMap{},
-			Dependencies: dependencies,
+			Type:		urn.Type(),
+			URN:		urn,
+			Custom:		true,
+			Delete:		del,
+			ID:		id,
+			Inputs:		resource.PropertyMap{},
+			Outputs:	resource.PropertyMap{},
+			Dependencies:	dependencies,
 		}
 	}
 
@@ -798,25 +798,25 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 
 	newStates := map[resource.ID]plugin.ReadResult{
 		// A::0 and A::3 will have no changes.
-		"0": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
-		"3": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
+		"0":	{Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
+		"3":	{Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
 
 		// B::1 has output-only changes which will not be reported as a refresh diff.
-		"1": {Outputs: resource.PropertyMap{"foo": resource.NewProperty("bar")}, Inputs: resource.PropertyMap{}},
+		"1":	{Outputs: resource.PropertyMap{"foo": resource.NewProperty("bar")}, Inputs: resource.PropertyMap{}},
 
 		// A::4 will have input and output changes. The changes that impact the inputs will be reported
 		// as a refresh diff.
 		"4": {
 			Outputs: resource.PropertyMap{
-				"baz": resource.NewProperty("qux"),
-				"oof": resource.NewProperty("zab"),
+				"baz":	resource.NewProperty("qux"),
+				"oof":	resource.NewProperty("zab"),
 			},
-			Inputs: resource.PropertyMap{"oof": resource.NewProperty("zab")},
+			Inputs:	resource.PropertyMap{"oof": resource.NewProperty("zab")},
 		},
 
 		// C::2 and C::5 will be deleted.
-		"2": {},
-		"5": {},
+		"2":	{},
+		"5":	{},
 	}
 
 	old := &deploy.Snapshot{
@@ -831,8 +831,8 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 					assert.True(t, hasNewState)
 					new.ID = req.ID
 					return plugin.ReadResponse{
-						ReadResult: new,
-						Status:     resource.StatusOK,
+						ReadResult:	new,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -843,7 +843,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 	p.Options.T = t
 
 	p.Steps = []lt.TestStep{{
-		Op: Refresh,
+		Op:	Refresh,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			_ []Event, err error,
 		) error {
@@ -955,14 +955,14 @@ func TestCanceledRefresh(t *testing.T) {
 
 	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
 		return &resource.State{
-			Type:         urn.Type(),
-			URN:          urn,
-			Custom:       true,
-			Delete:       del,
-			ID:           id,
-			Inputs:       resource.PropertyMap{},
-			Outputs:      resource.PropertyMap{},
-			Dependencies: dependencies,
+			Type:		urn.Type(),
+			URN:		urn,
+			Custom:		true,
+			Delete:		del,
+			ID:		id,
+			Inputs:		resource.PropertyMap{},
+			Outputs:	resource.PropertyMap{},
+			Dependencies:	dependencies,
 		}
 	}
 
@@ -976,15 +976,15 @@ func TestCanceledRefresh(t *testing.T) {
 		// A::0 will have input and output changes. The changes that impact the inputs will be reported
 		// as a refresh diff.
 		"0": {
-			Outputs: resource.PropertyMap{"foo": resource.NewProperty("bar")},
-			Inputs:  resource.PropertyMap{"oof": resource.NewProperty("rab")},
+			Outputs:	resource.PropertyMap{"foo": resource.NewProperty("bar")},
+			Inputs:		resource.PropertyMap{"oof": resource.NewProperty("rab")},
 		},
 		// B::1 will have output changes.
 		"1": {
 			Outputs: resource.PropertyMap{"baz": resource.NewProperty("qux")},
 		},
 		// C::2 will be deleted.
-		"2": {},
+		"2":	{},
 	}
 
 	old := &deploy.Snapshot{
@@ -1012,8 +1012,8 @@ func TestCanceledRefresh(t *testing.T) {
 					new.ID = req.ID
 					assert.True(t, hasNewState)
 					return plugin.ReadResponse{
-						ReadResult: new,
-						Status:     resource.StatusOK,
+						ReadResult:	new,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				CancelF: func() error {
@@ -1027,8 +1027,8 @@ func TestCanceledRefresh(t *testing.T) {
 	refreshed := make(map[resource.ID]bool)
 	op := lt.TestOp(Refresh)
 	options := lt.TestUpdateOptions{
-		T:     t,
-		HostF: deploytest.NewPluginHostF(nil, nil, nil, loaders...),
+		T:	t,
+		HostF:	deploytest.NewPluginHostF(nil, nil, nil, loaders...),
 		UpdateOptions: UpdateOptions{
 			Parallel: 1,
 		},
@@ -1141,11 +1141,11 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      idAfter,
-							Inputs:  resource.PropertyMap{},
-							Outputs: outputs,
+							ID:		idAfter,
+							Inputs:		resource.PropertyMap{},
+							Outputs:	outputs,
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -1165,13 +1165,13 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 	old := &deploy.Snapshot{
 		Resources: []*resource.State{
 			{
-				Type:       resURN.Type(),
-				URN:        resURN,
-				Custom:     true,
-				ID:         idBefore,
-				Inputs:     resource.PropertyMap{},
-				Outputs:    outputs,
-				InitErrors: []string{"Resource failed to initialize"},
+				Type:		resURN.Type(),
+				URN:		resURN,
+				Custom:		true,
+				ID:		idBefore,
+				Inputs:		resource.PropertyMap{},
+				Outputs:	outputs,
+				InitErrors:	[]string{"Resource failed to initialize"},
 			},
 		},
 	}
@@ -1224,12 +1224,12 @@ func TestRefreshUpdateWithDeletedResource(t *testing.T) {
 	old := &deploy.Snapshot{
 		Resources: []*resource.State{
 			{
-				Type:    resURN.Type(),
-				URN:     resURN,
-				Custom:  true,
-				ID:      idBefore,
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+				Type:		resURN.Type(),
+				URN:		resURN,
+				Custom:		true,
+				ID:		idBefore,
+				Inputs:		resource.PropertyMap{},
+				Outputs:	resource.PropertyMap{},
 			},
 		},
 	}
@@ -1257,21 +1257,21 @@ func TestRefreshWithProgram(t *testing.T) {
 
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								ID:      req.ID,
-								Inputs:  req.Inputs,
-								Outputs: readOutputs,
+								ID:		req.ID,
+								Inputs:		req.Inputs,
+								Outputs:	readOutputs,
 							},
-							Status: resource.StatusOK,
+							Status:	resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							ID:		req.ID,
+							Inputs:		resource.PropertyMap{},
+							Outputs:	resource.PropertyMap{},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
@@ -1284,16 +1284,16 @@ func TestRefreshWithProgram(t *testing.T) {
 						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
-							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
-							Status:     resource.StatusOK,
+							ID:		resource.ID(uuid.String()),
+							Properties:	createOutputs,
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
-						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
-						Status:     resource.StatusOK,
+						ID:		resource.ID(uuid.String()),
+						Properties:	resource.PropertyMap{},
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -1322,8 +1322,8 @@ func TestRefreshWithProgram(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 		},
 	}
 
@@ -1361,11 +1361,11 @@ func TestRefreshWithProviderThatHasDependencies(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Inputs:  req.Inputs,
-							Outputs: resource.PropertyMap{},
+							ID:		req.ID,
+							Inputs:		req.Inputs,
+							Outputs:	resource.PropertyMap{},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
@@ -1375,9 +1375,9 @@ func TestRefreshWithProviderThatHasDependencies(t *testing.T) {
 					}
 
 					return plugin.CreateResponse{
-						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
-						Status:     resource.StatusOK,
+						ID:		resource.ID(uuid.String()),
+						Properties:	resource.PropertyMap{},
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -1393,8 +1393,8 @@ func TestRefreshWithProviderThatHasDependencies(t *testing.T) {
 		require.NoError(t, err)
 
 		resp, err = monitor.RegisterResource("pulumi:providers:pkgA", "resX", true, deploytest.ResourceOptions{
-			Inputs:       programInputs,
-			Dependencies: []resource.URN{resp.URN},
+			Inputs:		programInputs,
+			Dependencies:	[]resource.URN{resp.URN},
 		})
 		require.NoError(t, err)
 
@@ -1402,8 +1402,8 @@ func TestRefreshWithProviderThatHasDependencies(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typB", "resB", true, deploytest.ResourceOptions{
-			Inputs:   programInputs,
-			Provider: ref.String(),
+			Inputs:		programInputs,
+			Provider:	ref.String(),
 		})
 		require.NoError(t, err)
 
@@ -1421,8 +1421,8 @@ func TestRefreshWithProviderThatHasDependencies(t *testing.T) {
 		// First run this doesn't depend on anything, on the second refresh it will try to depend on "resB"
 		// which is skipped.
 		_, err = monitor.RegisterResource("pkgA:m:typC", "resD", true, deploytest.ResourceOptions{
-			Inputs:       resource.PropertyMap{"foo": resource.NewProperty("baz")},
-			PropertyDeps: dep,
+			Inputs:		resource.PropertyMap{"foo": resource.NewProperty("baz")},
+			PropertyDeps:	dep,
 		})
 		require.NoError(t, err)
 
@@ -1432,8 +1432,8 @@ func TestRefreshWithProviderThatHasDependencies(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 		},
 	}
 
@@ -1486,21 +1486,21 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								ID:      req.ID,
-								Inputs:  req.Inputs,
-								Outputs: readOutputs,
+								ID:		req.ID,
+								Inputs:		req.Inputs,
+								Outputs:	readOutputs,
 							},
-							Status: resource.StatusOK,
+							Status:	resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							ID:		req.ID,
+							Inputs:		resource.PropertyMap{},
+							Outputs:	resource.PropertyMap{},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
@@ -1517,16 +1517,16 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
-							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
-							Status:     resource.StatusOK,
+							ID:		resource.ID(uuid.String()),
+							Properties:	createOutputs,
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
-						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
-						Status:     resource.StatusOK,
+						ID:		resource.ID(uuid.String()),
+						Properties:	resource.PropertyMap{},
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -1546,8 +1546,8 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 		require.NoError(t, err)
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Provider: provRef.String(),
-			Inputs:   programInputs,
+			Provider:	provRef.String(),
+			Inputs:		programInputs,
 		})
 		require.NoError(t, err)
 
@@ -1564,8 +1564,8 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 		},
 	}
 
@@ -1624,21 +1624,21 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								ID:      req.ID,
-								Inputs:  req.Inputs,
-								Outputs: readOutputs,
+								ID:		req.ID,
+								Inputs:		req.Inputs,
+								Outputs:	readOutputs,
 							},
-							Status: resource.StatusOK,
+							Status:	resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							ID:		req.ID,
+							Inputs:		resource.PropertyMap{},
+							Outputs:	resource.PropertyMap{},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
@@ -1655,16 +1655,16 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
-							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
-							Status:     resource.StatusOK,
+							ID:		resource.ID(uuid.String()),
+							Properties:	createOutputs,
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
-						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
-						Status:     resource.StatusOK,
+						ID:		resource.ID(uuid.String()),
+						Properties:	resource.PropertyMap{},
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -1693,8 +1693,8 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 		},
 		Config: config.Map{
 			config.MustParseKey("pkgA:config:auth"): config.NewValue("upauth"),
@@ -1759,21 +1759,21 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								ID:      req.ID,
-								Inputs:  req.Inputs,
-								Outputs: readOutputs,
+								ID:		req.ID,
+								Inputs:		req.Inputs,
+								Outputs:	readOutputs,
 							},
-							Status: resource.StatusOK,
+							Status:	resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							ID:		req.ID,
+							Inputs:		resource.PropertyMap{},
+							Outputs:	resource.PropertyMap{},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
@@ -1790,16 +1790,16 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
-							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
-							Status:     resource.StatusOK,
+							ID:		resource.ID(uuid.String()),
+							Properties:	createOutputs,
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
-						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
-						Status:     resource.StatusOK,
+						ID:		resource.ID(uuid.String()),
+						Properties:	resource.PropertyMap{},
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -1827,8 +1827,8 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 		},
 		Config: config.Map{
 			config.MustParseKey("pkgA:config:auth"): config.NewValue("upauth"),
@@ -1879,8 +1879,8 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 
 						return plugin.ReadResponse{
 							// Return an empty read result to indicate the resource has been deleted.
-							ReadResult: plugin.ReadResult{},
-							Status:     resource.StatusOK,
+							ReadResult:	plugin.ReadResult{},
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
@@ -1890,21 +1890,21 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								ID:      req.ID,
-								Inputs:  req.Inputs,
-								Outputs: readOutputs,
+								ID:		req.ID,
+								Inputs:		req.Inputs,
+								Outputs:	readOutputs,
 							},
-							Status: resource.StatusOK,
+							Status:	resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							ID:		req.ID,
+							Inputs:		resource.PropertyMap{},
+							Outputs:	resource.PropertyMap{},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
@@ -1917,16 +1917,16 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
-							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
-							Status:     resource.StatusOK,
+							ID:		resource.ID(uuid.String()),
+							Properties:	createOutputs,
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
-						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
-						Status:     resource.StatusOK,
+						ID:		resource.ID(uuid.String()),
+						Properties:	resource.PropertyMap{},
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -1951,8 +1951,8 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 		}
 
 		resp, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Inputs:       programInputs,
-			Dependencies: []resource.URN{resp.URN},
+			Inputs:		programInputs,
+			Dependencies:	[]resource.URN{resp.URN},
 		})
 		require.NoError(t, err)
 
@@ -1969,8 +1969,8 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 		},
 	}
 
@@ -2012,21 +2012,21 @@ func TestRefreshWithBigProgram(t *testing.T) {
 
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								ID:      req.ID,
-								Inputs:  req.Inputs,
-								Outputs: readOutputs,
+								ID:		req.ID,
+								Inputs:		req.Inputs,
+								Outputs:	readOutputs,
 							},
-							Status: resource.StatusOK,
+							Status:	resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							ID:		req.ID,
+							Inputs:		resource.PropertyMap{},
+							Outputs:	resource.PropertyMap{},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
@@ -2039,16 +2039,16 @@ func TestRefreshWithBigProgram(t *testing.T) {
 						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
-							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
-							Status:     resource.StatusOK,
+							ID:		resource.ID(uuid.String()),
+							Properties:	createOutputs,
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
-						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
-						Status:     resource.StatusOK,
+						ID:		resource.ID(uuid.String()),
+						Properties:	resource.PropertyMap{},
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -2082,8 +2082,8 @@ func TestRefreshWithBigProgram(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 			UpdateOptions: engine.UpdateOptions{
 				Parallel: parallel,
 			},
@@ -2132,21 +2132,21 @@ func TestRefreshWithAlias(t *testing.T) {
 
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								ID:      req.ID,
-								Inputs:  req.Inputs,
-								Outputs: readOutputs,
+								ID:		req.ID,
+								Inputs:		req.Inputs,
+								Outputs:	readOutputs,
 							},
-							Status: resource.StatusOK,
+							Status:	resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							ID:		req.ID,
+							Inputs:		resource.PropertyMap{},
+							Outputs:	resource.PropertyMap{},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
@@ -2159,16 +2159,16 @@ func TestRefreshWithAlias(t *testing.T) {
 						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
-							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
-							Status:     resource.StatusOK,
+							ID:		resource.ID(uuid.String()),
+							Properties:	createOutputs,
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
-						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
-						Status:     resource.StatusOK,
+						ID:		resource.ID(uuid.String()),
+						Properties:	resource.PropertyMap{},
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -2189,7 +2189,7 @@ func TestRefreshWithAlias(t *testing.T) {
 		} else {
 			// Register the resource with a different type, but with an alias.
 			resp, err := monitor.RegisterResource("pkgA:m:typB", "resA", true, deploytest.ResourceOptions{
-				Inputs: programInputs,
+				Inputs:	programInputs,
 				Aliases: []*pulumirpc.Alias{{
 					Alias: &pulumirpc.Alias_Spec_{
 						Spec: &pulumirpc.Alias_Spec{
@@ -2208,8 +2208,8 @@ func TestRefreshWithAlias(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 		},
 	}
 
@@ -2251,18 +2251,18 @@ func TestRefreshRunProgramDeletedResource(t *testing.T) {
 
 						return plugin.ReadResponse{
 							// Return an empty read result to indicate the resource has been deleted.
-							ReadResult: plugin.ReadResult{},
-							Status:     resource.StatusOK,
+							ReadResult:	plugin.ReadResult{},
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							ID:		req.ID,
+							Inputs:		resource.PropertyMap{},
+							Outputs:	resource.PropertyMap{},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
@@ -2275,16 +2275,16 @@ func TestRefreshRunProgramDeletedResource(t *testing.T) {
 						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
-							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
-							Status:     resource.StatusOK,
+							ID:		resource.ID(uuid.String()),
+							Properties:	createOutputs,
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
-						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
-						Status:     resource.StatusOK,
+						ID:		resource.ID(uuid.String()),
+						Properties:	resource.PropertyMap{},
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -2307,8 +2307,8 @@ func TestRefreshRunProgramDeletedResource(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 		},
 	}
 
@@ -2353,21 +2353,21 @@ func TestRefreshRunProgramDBRReplacedResource(t *testing.T) {
 
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								ID:      req.ID,
-								Inputs:  req.Inputs,
-								Outputs: req.State,
+								ID:		req.ID,
+								Inputs:		req.Inputs,
+								Outputs:	req.State,
 							},
-							Status: resource.StatusOK,
+							Status:	resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							ID:		req.ID,
+							Inputs:		resource.PropertyMap{},
+							Outputs:	resource.PropertyMap{},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
@@ -2380,24 +2380,24 @@ func TestRefreshRunProgramDBRReplacedResource(t *testing.T) {
 						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
-							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
-							Status:     resource.StatusOK,
+							ID:		resource.ID(uuid.String()),
+							Properties:	createOutputs,
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
-						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
-						Status:     resource.StatusOK,
+						ID:		resource.ID(uuid.String()),
+						Properties:	resource.PropertyMap{},
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
 					if req.Name == "resA" {
 						// Simulate a diff that requires a replacement.
 						return plugin.DiffResponse{
-							ReplaceKeys:         []resource.PropertyKey{"foo"},
-							DeleteBeforeReplace: true,
+							ReplaceKeys:		[]resource.PropertyKey{"foo"},
+							DeleteBeforeReplace:	true,
 						}, nil
 					}
 
@@ -2418,8 +2418,8 @@ func TestRefreshRunProgramDBRReplacedResource(t *testing.T) {
 		assert.Equal(t, createOutputs, resp.Outputs)
 
 		resp, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Inputs:       resp.Outputs,
-			Dependencies: []resource.URN{resp.URN},
+			Inputs:		resp.Outputs,
+			Dependencies:	[]resource.URN{resp.URN},
 		})
 		require.NoError(t, err)
 		assert.Equal(t, createOutputs, resp.Outputs)
@@ -2430,8 +2430,8 @@ func TestRefreshRunProgramDBRReplacedResource(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 		},
 	}
 
@@ -2475,21 +2475,21 @@ func TestRefreshRunProgramReplacedResource(t *testing.T) {
 
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								ID:      req.ID,
-								Inputs:  req.Inputs,
-								Outputs: req.State,
+								ID:		req.ID,
+								Inputs:		req.Inputs,
+								Outputs:	req.State,
 							},
-							Status: resource.StatusOK,
+							Status:	resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							ID:		req.ID,
+							Inputs:		resource.PropertyMap{},
+							Outputs:	resource.PropertyMap{},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
@@ -2502,16 +2502,16 @@ func TestRefreshRunProgramReplacedResource(t *testing.T) {
 						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
-							ID:         resource.ID(uuid.String()),
-							Properties: req.Properties,
-							Status:     resource.StatusOK,
+							ID:		resource.ID(uuid.String()),
+							Properties:	req.Properties,
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
-						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
-						Status:     resource.StatusOK,
+						ID:		resource.ID(uuid.String()),
+						Properties:	resource.PropertyMap{},
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
@@ -2544,8 +2544,8 @@ func TestRefreshRunProgramReplacedResource(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 		},
 	}
 
@@ -2580,18 +2580,18 @@ func TestRefreshDeleteParent(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					if req.Name == "resA" {
 						return plugin.ReadResponse{
-							ReadResult: plugin.ReadResult{},
-							Status:     resource.StatusOK,
+							ReadResult:	plugin.ReadResult{},
+							Status:		resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							ID:		req.ID,
+							Inputs:		resource.PropertyMap{},
+							Outputs:	resource.PropertyMap{},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -2615,8 +2615,8 @@ func TestRefreshDeleteParent(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:	t,
+			HostF:	hostF,
 		},
 	}
 
@@ -2635,8 +2635,8 @@ func TestRefreshV2PendingReplacement(t *testing.T) {
 	t.Parallel()
 
 	p := &lt.TestPlan{
-		Project: "test-project",
-		Stack:   "test-stack",
+		Project:	"test-project",
+		Stack:		"test-stack",
 	}
 	project := p.GetProject()
 
@@ -2645,10 +2645,10 @@ func TestRefreshV2PendingReplacement(t *testing.T) {
 		s := &deploy.Snapshot{}
 
 		prov0 := &resource.State{
-			Type:   "pulumi:providers:pkg-uIE2",
-			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkg-uIE2::res-bBb4",
-			Custom: true,
-			ID:     "id-a7183fY4ConD",
+			Type:	"pulumi:providers:pkg-uIE2",
+			URN:	"urn:pulumi:test-stack::test-project::pulumi:providers:pkg-uIE2::res-bBb4",
+			Custom:	true,
+			ID:	"id-a7183fY4ConD",
 		}
 		s.Resources = append(s.Resources, prov0)
 
@@ -2656,10 +2656,10 @@ func TestRefreshV2PendingReplacement(t *testing.T) {
 		require.NoError(t, err)
 
 		res1 := &resource.State{
-			Type:               "pkg-uIE2:mod-h2P2:type-uMz9",
-			URN:                "urn:pulumi:test-stack::test-project::pkg-uIE2:mod-h2P2:type-uMz9::stuck",
-			PendingReplacement: true,
-			Provider:           provRef0.String(),
+			Type:			"pkg-uIE2:mod-h2P2:type-uMz9",
+			URN:			"urn:pulumi:test-stack::test-project::pkg-uIE2:mod-h2P2:type-uMz9::stuck",
+			PendingReplacement:	true,
+			Provider:		provRef0.String(),
 		}
 		s.Resources = append(s.Resources, res1)
 		return s
@@ -2682,8 +2682,8 @@ func TestRefreshV2PendingReplacement(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkg-uIE2:mod-h2P2:type-uMz9", "stuck", true, deploytest.ResourceOptions{
-			RetainOnDelete: ptr(true),
-			Provider:       provRef0.String(),
+			RetainOnDelete:	ptr(true),
+			Provider:	provRef0.String(),
 		})
 		require.NoError(t, err)
 
@@ -2692,8 +2692,8 @@ func TestRefreshV2PendingReplacement(t *testing.T) {
 
 	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, reproLoaders...)
 	reproOpts := lt.TestUpdateOptions{
-		T:     t,
-		HostF: reproHostF,
+		T:	t,
+		HostF:	reproHostF,
 	}
 
 	_, err := lt.TestOp(RefreshV2).RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, "1")

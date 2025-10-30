@@ -26,10 +26,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -49,13 +49,13 @@ func TestRegress13774(t *testing.T) {
 	t.Chdir(tempdir)
 
 	args := newArgs{
-		interactive:       false,
-		yes:               true,
-		stack:             strings.Join([]string{orgName, projectName, "some-stack"}, "/"),
-		secretsProvider:   "default",
-		description:       "description", // Needs special escaping for YAML
-		templateNameOrURL: "typescript",
-		force:             true,
+		interactive:		false,
+		yes:			true,
+		stack:			strings.Join([]string{orgName, projectName, "some-stack"}, "/"),
+		secretsProvider:	"default",
+		description:		"description",	// Needs special escaping for YAML
+		templateNameOrURL:	"typescript",
+		force:			true,
 	}
 
 	// Create new project.
@@ -81,13 +81,13 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 	orgStackName := fmt.Sprintf("%s/%s", currentUser(t), stackName)
 
 	args := newArgs{
-		interactive:       false,
-		yes:               true,
-		prompt:            ui.PromptForValue,
-		secretsProvider:   "default",
-		description:       "foo: bar", // Needs special escaping for YAML
-		stack:             orgStackName,
-		templateNameOrURL: "typescript",
+		interactive:		false,
+		yes:			true,
+		prompt:			ui.PromptForValue,
+		secretsProvider:	"default",
+		description:		"foo: bar",	// Needs special escaping for YAML
+		stack:			orgStackName,
+		templateNameOrURL:	"typescript",
 	}
 
 	err := runNew(context.Background(), args)
@@ -115,13 +115,13 @@ func TestCreatingStackWithNumericName(t *testing.T) {
 	orgStackName := fmt.Sprintf("%s/%s", currentUser(t), stackName)
 
 	args := newArgs{
-		interactive:       false,
-		yes:               true,
-		name:              numericProjectName, // Should be serialized as a string.
-		prompt:            ui.PromptForValue,
-		secretsProvider:   "default",
-		stack:             orgStackName,
-		templateNameOrURL: "yaml",
+		interactive:		false,
+		yes:			true,
+		name:			numericProjectName,	// Should be serialized as a string.
+		prompt:			ui.PromptForValue,
+		secretsProvider:	"default",
+		stack:			orgStackName,
+		templateNameOrURL:	"yaml",
 	}
 
 	err := runNew(context.Background(), args)
@@ -148,10 +148,10 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 	orgStackName := fmt.Sprintf("%s/%s", currentUser(t), stackName)
 
 	args := newArgs{
-		interactive:       true,
-		prompt:            promptMock(uniqueProjectName, orgStackName),
-		secretsProvider:   "default",
-		templateNameOrURL: "typescript",
+		interactive:		true,
+		prompt:			promptMock(uniqueProjectName, orgStackName),
+		secretsProvider:	"default",
+		templateNameOrURL:	"typescript",
 	}
 
 	err := runNew(context.Background(), args)
@@ -170,12 +170,12 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 	defaultProjectName := filepath.Base(tempdir)
 
 	args := newArgs{
-		interactive:       true,
-		prompt:            ui.PromptForValue,
-		secretsProvider:   "default",
-		stack:             stackName,
-		templateNameOrURL: "typescript",
-		yes:               true,
+		interactive:		true,
+		prompt:			ui.PromptForValue,
+		secretsProvider:	"default",
+		stack:			stackName,
+		templateNameOrURL:	"typescript",
+		yes:			true,
 	}
 
 	err := runNew(context.Background(), args)
@@ -208,12 +208,12 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	defaultProjectName := filepath.Base(tempdir)
 
 	args := newArgs{
-		interactive:       true,
-		prompt:            ui.PromptForValue,
-		secretsProvider:   "default",
-		stack:             stackName,
-		templateNameOrURL: "typescript",
-		yes:               true,
+		interactive:		true,
+		prompt:			ui.PromptForValue,
+		secretsProvider:	"default",
+		stack:			stackName,
+		templateNameOrURL:	"typescript",
+		yes:			true,
 	}
 
 	require.NoError(t, runNew(context.Background(), args))
@@ -235,14 +235,14 @@ func TestRunNewYesNoTemplate(t *testing.T) {
 	t.Chdir(tempdir)
 
 	args := newArgs{
-		yes:               true,
-		interactive:       false,
-		templateNameOrURL: "", // empty
-		prompt:            ui.PromptForValue,
-		chooseTemplate:    ChooseTemplate,
-		secretsProvider:   "default",
-		stack:             stackName,
-		generateOnly:      true,
+		yes:			true,
+		interactive:		false,
+		templateNameOrURL:	"",	// empty
+		prompt:			ui.PromptForValue,
+		chooseTemplate:		ChooseTemplate,
+		secretsProvider:	"default",
+		stack:			stackName,
+		generateOnly:		true,
 	}
 
 	err := runNew(context.Background(), args)
@@ -255,13 +255,13 @@ func TestRunNewYesWithTemplate(t *testing.T) {
 	t.Chdir(tempdir)
 
 	args := newArgs{
-		yes:               true,
-		interactive:       false,
-		templateNameOrURL: "yaml",
-		prompt:            ui.PromptForValue,
-		secretsProvider:   "default",
-		stack:             stackName,
-		generateOnly:      true,
+		yes:			true,
+		interactive:		false,
+		templateNameOrURL:	"yaml",
+		prompt:			ui.PromptForValue,
+		secretsProvider:	"default",
+		stack:			stackName,
+		generateOnly:		true,
 	}
 
 	err := runNew(context.Background(), args)
@@ -278,16 +278,16 @@ func TestRunNewYesWithAILanguage(t *testing.T) {
 	t.Chdir(tempdir)
 
 	args := newArgs{
-		yes:                   true,
-		interactive:           false,
-		aiLanguage:            "yaml",
-		aiPrompt:              "", // empty
-		prompt:                ui.PromptForValue,
-		chooseTemplate:        ChooseTemplate,
-		secretsProvider:       "default",
-		stack:                 stackName,
-		generateOnly:          true,
-		promptForAIProjectURL: promptForAIProjectURL,
+		yes:			true,
+		interactive:		false,
+		aiLanguage:		"yaml",
+		aiPrompt:		"",	// empty
+		prompt:			ui.PromptForValue,
+		chooseTemplate:		ChooseTemplate,
+		secretsProvider:	"default",
+		stack:			stackName,
+		generateOnly:		true,
+		promptForAIProjectURL:	promptForAIProjectURL,
 	}
 
 	err := runNew(context.Background(), args)
@@ -296,8 +296,8 @@ func TestRunNewYesWithAILanguage(t *testing.T) {
 }
 
 const (
-	projectName = "test_project"
-	stackName   = "test_stack"
+	projectName	= "test_project"
+	stackName	= "test_stack"
 )
 
 func promptMock(name string, stackName string) promptForValueFunc {

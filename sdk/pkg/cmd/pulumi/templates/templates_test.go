@@ -26,10 +26,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/testutil"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -46,10 +46,10 @@ const expectedRegistryFormatError = "Expected: registry://templates/source/publi
 //nolint:paralleltest // replaces global backend instance
 func TestFilterOnName(t *testing.T) {
 	template1 := &apitype.PulumiTemplateRemote{
-		ProjectTemplate: apitype.ProjectTemplate{},
-		Name:            "name1",
-		SourceName:      "source1",
-		TemplateURL:     "example.com/source1/name1",
+		ProjectTemplate:	apitype.ProjectTemplate{},
+		Name:			"name1",
+		SourceName:		"source1",
+		TemplateURL:		"example.com/source1/name1",
 	}
 
 	testFilterOnName := func(t *testing.T, mapStore env.MapStore) {
@@ -72,7 +72,7 @@ func TestFilterOnName(t *testing.T) {
 
 	t.Run("org-backed-templates", func(t *testing.T) {
 		mockBackend := &backend.MockBackend{
-			SupportsTemplatesF: func() bool { return true },
+			SupportsTemplatesF:	func() bool { return true },
 			CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 				return "doe", []string{"org1"}, &workspace.TokenInformation{}, nil
 			},
@@ -81,17 +81,17 @@ func TestFilterOnName(t *testing.T) {
 
 				return apitype.ListOrgTemplatesResponse{
 					Templates: map[string][]*apitype.PulumiTemplateRemote{
-						"source1": {template1},
+						"source1":	{template1},
 						"source2": {
 							{
-								ProjectTemplate: apitype.ProjectTemplate{},
-								Name:            "name2",
-								SourceName:      "source2",
-								TemplateURL:     "example.com/source2/name1",
+								ProjectTemplate:	apitype.ProjectTemplate{},
+								Name:			"name2",
+								SourceName:		"source2",
+								TemplateURL:		"example.com/source2/name1",
 							},
 						},
 					},
-					OrgHasTemplates: true,
+					OrgHasTemplates:	true,
 				}, nil
 			},
 		}
@@ -119,16 +119,16 @@ func TestFilterOnName(t *testing.T) {
 			assert.Nil(t, name)
 			return func(yield func(apitype.TemplateMetadata, error) bool) {
 				if !yield(apitype.TemplateMetadata{
-					Name:      "name1",
-					Publisher: "publisher1",
-					Source:    "source1",
+					Name:		"name1",
+					Publisher:	"publisher1",
+					Source:		"source1",
 				}, nil) {
 					return
 				}
 				if !yield(apitype.TemplateMetadata{
-					Name:      "name2",
-					Publisher: "publisher2",
-					Source:    "source2",
+					Name:		"name2",
+					Publisher:	"publisher2",
+					Source:		"source2",
 				}, nil) {
 					return
 				}
@@ -166,21 +166,21 @@ func TestMultipleTemplateSources_OrgTemplates(t *testing.T) {
 	ctx := testContext(t)
 
 	template1 := &apitype.PulumiTemplateRemote{
-		ProjectTemplate: apitype.ProjectTemplate{},
-		Name:            "name1",
-		SourceName:      "source1",
-		TemplateURL:     "example.com/source1/name1",
+		ProjectTemplate:	apitype.ProjectTemplate{},
+		Name:			"name1",
+		SourceName:		"source1",
+		TemplateURL:		"example.com/source1/name1",
 	}
 
 	template2 := &apitype.PulumiTemplateRemote{
-		ProjectTemplate: apitype.ProjectTemplate{},
-		Name:            "name2",
-		SourceName:      "source2",
-		TemplateURL:     "example.com/source2/name1",
+		ProjectTemplate:	apitype.ProjectTemplate{},
+		Name:			"name2",
+		SourceName:		"source2",
+		TemplateURL:		"example.com/source2/name1",
 	}
 
 	mockBackend := &backend.MockBackend{
-		SupportsTemplatesF: func() bool { return true },
+		SupportsTemplatesF:	func() bool { return true },
 		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 			return "doe", []string{"org1"}, &workspace.TokenInformation{}, nil
 		},
@@ -189,10 +189,10 @@ func TestMultipleTemplateSources_OrgTemplates(t *testing.T) {
 
 			return apitype.ListOrgTemplatesResponse{
 				Templates: map[string][]*apitype.PulumiTemplateRemote{
-					"source1": {template1},
-					"source2": {template2},
+					"source1":	{template1},
+					"source2":	{template2},
 				},
-				OrgHasTemplates: true,
+				OrgHasTemplates:	true,
 			}, nil
 		},
 	}
@@ -219,8 +219,8 @@ runtime: dotnet
 description: An ASP.NET application running a simple container in a EKS Cluster
 `), 0o600))
 	repoTemplates := templateRepository(workspace.TemplateRepository{
-		Root:         repoTemplateDir,
-		SubDirectory: subdir,
+		Root:		repoTemplateDir,
+		SubDirectory:	subdir,
 	}, nil)
 
 	source := newImpl(ctx, "",
@@ -235,10 +235,10 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 	assert.ElementsMatch(t,
 		[]Template{
 			workspaceTemplate{t: workspace.Template{
-				Dir:                subdir,
-				Name:               "sub",
-				ProjectName:        "template3",
-				ProjectDescription: "An ASP.NET application running a simple container in a EKS Cluster",
+				Dir:			subdir,
+				Name:			"sub",
+				ProjectName:		"template3",
+				ProjectDescription:	"An ASP.NET application running a simple container in a EKS Cluster",
 			}},
 			orgTemplate{t: template1, org: "org1", source: source, backend: cmdBackend.BackendInstance},
 			orgTemplate{t: template2, org: "org1", source: source, backend: cmdBackend.BackendInstance},
@@ -253,7 +253,7 @@ func TestSurfaceListTemplateErrors_OrgTemplates(t *testing.T) {
 	somethingWentWrong := errors.New("something went wrong")
 
 	mockBackend := &backend.MockBackend{
-		SupportsTemplatesF: func() bool { return true },
+		SupportsTemplatesF:	func() bool { return true },
 		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 			return "doe", []string{"org1"}, &workspace.TokenInformation{}, nil
 		},
@@ -323,8 +323,8 @@ func TestSurfaceListTemplateErrors_RegistryTemplates(t *testing.T) {
 		ScopeAll, workspace.TemplateKindPulumiProject,
 		templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
 		env.NewEnv(env.MapStore{
-			"PULUMI_DISABLE_REGISTRY_RESOLVE": "false",
-			"PULUMI_EXPERIMENTAL":             "true",
+			"PULUMI_DISABLE_REGISTRY_RESOLVE":	"false",
+			"PULUMI_EXPERIMENTAL":			"true",
 		}),
 	)
 
@@ -337,7 +337,7 @@ func TestSurfaceOnEmptyError_OrgTemplates(t *testing.T) {
 	ctx := testContext(t)
 
 	mockBackend := &backend.MockBackend{
-		SupportsTemplatesF: func() bool { return true },
+		SupportsTemplatesF:	func() bool { return true },
 		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 			return "doe", []string{"org1"}, &workspace.TokenInformation{}, nil
 		},
@@ -407,8 +407,8 @@ func TestSurfaceOnEmptyError_RegistryTemplates(t *testing.T) {
 		ScopeAll, workspace.TemplateKindPulumiProject,
 		templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
 		env.NewEnv(env.MapStore{
-			"PULUMI_DISABLE_REGISTRY_RESOLVE": "false",
-			"PULUMI_EXPERIMENTAL":             "true",
+			"PULUMI_DISABLE_REGISTRY_RESOLVE":	"false",
+			"PULUMI_EXPERIMENTAL":			"true",
 		}),
 	)
 
@@ -422,10 +422,10 @@ func TestTemplateDownload_Org(t *testing.T) {
 	ctx := testContext(t)
 
 	template1 := &apitype.PulumiTemplateRemote{
-		ProjectTemplate: apitype.ProjectTemplate{},
-		Name:            "name1",
-		SourceName:      "source1",
-		TemplateURL:     "example.com/source1/name1",
+		ProjectTemplate:	apitype.ProjectTemplate{},
+		Name:			"name1",
+		SourceName:		"source1",
+		TemplateURL:		"example.com/source1/name1",
 	}
 
 	pulumiYAML := `name: template1
@@ -435,7 +435,7 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 	anotherFile := `This is another file`
 
 	mockBackend := &backend.MockBackend{
-		SupportsTemplatesF: func() bool { return true },
+		SupportsTemplatesF:	func() bool { return true },
 		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 			return "doe", []string{"org1"}, &workspace.TokenInformation{}, nil
 		},
@@ -446,7 +446,7 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 				Templates: map[string][]*apitype.PulumiTemplateRemote{
 					"source1": {template1},
 				},
-				OrgHasTemplates: true,
+				OrgHasTemplates:	true,
 			}, nil
 		},
 		DownloadTemplateF: func(_ context.Context, orgName, templateSource string) (backend.TarReaderCloser, error) {
@@ -454,8 +454,8 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 			assert.Equal(t, template1.TemplateURL, templateSource)
 
 			return backend.MockTarReader{
-				"Pulumi.yaml": backend.MockTarFile{Content: pulumiYAML},
-				"other.txt":   backend.MockTarFile{Content: anotherFile},
+				"Pulumi.yaml":	backend.MockTarFile{Content: pulumiYAML},
+				"other.txt":	backend.MockTarFile{Content: anotherFile},
 			}, nil
 		},
 	}
@@ -494,12 +494,12 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 	wTemplate, err := template[0].Download(ctx)
 	require.NoError(t, err)
 
-	{ // Pulumi.yaml
+	{	// Pulumi.yaml
 		file, err := os.ReadFile(filepath.Join(wTemplate.Dir, "Pulumi.yaml"))
 		require.NoError(t, err)
 		assert.Equal(t, pulumiYAML, string(file))
 	}
-	{ // other.txt
+	{	// other.txt
 		file, err := os.ReadFile(filepath.Join(wTemplate.Dir, "other.txt"))
 		require.NoError(t, err)
 		assert.Equal(t, anotherFile, string(file))
@@ -508,11 +508,11 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 
 // Test data for registry template tests
 var (
-	testPulumiYAML = `name: template1
+	testPulumiYAML	= `name: template1
 runtime: dotnet
 description: An ASP.NET application running a simple container in a EKS Cluster
 `
-	testAnotherFile = `This is another file`
+	testAnotherFile	= `This is another file`
 )
 
 // createTestTarData creates tar archive data with test files
@@ -522,18 +522,18 @@ func createTestTarData(t *testing.T) []byte {
 
 	// Write Pulumi.yaml
 	require.NoError(t, w.WriteHeader(&tar.Header{
-		Name: "Pulumi.yaml",
-		Size: int64(len(testPulumiYAML)),
-		Mode: 0o600,
+		Name:	"Pulumi.yaml",
+		Size:	int64(len(testPulumiYAML)),
+		Mode:	0o600,
 	}))
 	_, err := w.Write([]byte(testPulumiYAML))
 	require.NoError(t, err)
 
 	// Write other.txt
 	require.NoError(t, w.WriteHeader(&tar.Header{
-		Name: "other.txt",
-		Size: int64(len(testAnotherFile)),
-		Mode: 0o600,
+		Name:	"other.txt",
+		Size:	int64(len(testAnotherFile)),
+		Mode:	0o600,
 	}))
 	_, err = w.Write([]byte(testAnotherFile))
 	require.NoError(t, err)
@@ -551,12 +551,12 @@ func createMockRegistrySource(
 		ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
 			return func(yield func(apitype.TemplateMetadata, error) bool) {
 				yield(apitype.TemplateMetadata{
-					Name:        "name1",
-					DownloadURL: "example.com/download/name",
+					Name:		"name1",
+					DownloadURL:	"example.com/download/name",
 				}, nil)
 			}
 		},
-		DownloadTemplateF: downloadFunc,
+		DownloadTemplateF:	downloadFunc,
 	}
 	mockBackend := &backend.MockBackend{
 		GetReadOnlyCloudRegistryF: func() registry.Registry { return mockRegistry },
@@ -568,8 +568,8 @@ func createMockRegistrySource(
 		ScopeAll, workspace.TemplateKindPulumiProject,
 		templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
 		env.NewEnv(env.MapStore{
-			"PULUMI_DISABLE_REGISTRY_RESOLVE": "false",
-			"PULUMI_EXPERIMENTAL":             "true",
+			"PULUMI_DISABLE_REGISTRY_RESOLVE":	"false",
+			"PULUMI_EXPERIMENTAL":			"true",
 		}))
 }
 
@@ -587,12 +587,12 @@ func testTemplateDownload(ctx context.Context, t *testing.T, source *Source) {
 	require.NoError(t, err)
 
 	// Verify extracted files
-	{ // Pulumi.yaml
+	{	// Pulumi.yaml
 		file, err := os.ReadFile(filepath.Join(wTemplate.Dir, "Pulumi.yaml"))
 		require.NoError(t, err)
 		assert.Equal(t, testPulumiYAML, string(file))
 	}
-	{ // other.txt
+	{	// other.txt
 		file, err := os.ReadFile(filepath.Join(wTemplate.Dir, "other.txt"))
 		require.NoError(t, err)
 		assert.Equal(t, testAnotherFile, string(file))
@@ -641,23 +641,23 @@ func TestVCSBasedTemplateNames(t *testing.T) {
 			assert.Nil(t, name)
 			return func(yield func(apitype.TemplateMetadata, error) bool) {
 				if !yield(apitype.TemplateMetadata{
-					Name:      "gh-org/repo/name",
-					Source:    "github",
-					Publisher: "pulumi-org",
+					Name:		"gh-org/repo/name",
+					Source:		"github",
+					Publisher:	"pulumi-org",
 				}, nil) {
 					return
 				}
 				if !yield(apitype.TemplateMetadata{
-					Name:      "gl-org/repo/name",
-					Source:    "gitlab",
-					Publisher: "pulumi-org",
+					Name:		"gl-org/repo/name",
+					Source:		"gitlab",
+					Publisher:	"pulumi-org",
 				}, nil) {
 					return
 				}
 				if !yield(apitype.TemplateMetadata{
-					Name:      "just/has/slashes",
-					Source:    "private",
-					Publisher: "pulumi-org",
+					Name:		"just/has/slashes",
+					Source:		"private",
+					Publisher:	"pulumi-org",
 				}, nil) {
 					return
 				}
@@ -673,8 +673,8 @@ func TestVCSBasedTemplateNames(t *testing.T) {
 	source := newImpl(ctx, "", ScopeAll, workspace.TemplateKindPulumiProject,
 		templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
 		env.NewEnv(env.MapStore{
-			"PULUMI_DISABLE_REGISTRY_RESOLVE": "false",
-			"PULUMI_EXPERIMENTAL":             "true",
+			"PULUMI_DISABLE_REGISTRY_RESOLVE":	"false",
+			"PULUMI_EXPERIMENTAL":			"true",
 		}))
 
 	templates, err := source.Templates()
@@ -694,25 +694,25 @@ func TestVCSBasedTemplateNameFilter(t *testing.T) {
 			assert.Nil(t, name)
 			return func(yield func(apitype.TemplateMetadata, error) bool) {
 				if !yield(apitype.TemplateMetadata{
-					Name:        "gh-org/repo/target",
-					Source:      "github",
-					Description: ref("This is from GH"),
-					Publisher:   "pulumi-org",
+					Name:		"gh-org/repo/target",
+					Source:		"github",
+					Description:	ref("This is from GH"),
+					Publisher:	"pulumi-org",
 				}, nil) {
 					return
 				}
 				if !yield(apitype.TemplateMetadata{
-					Name:      "gl-org/repo/name",
-					Source:    "gitlab",
-					Publisher: "pulumi-org",
+					Name:		"gl-org/repo/name",
+					Source:		"gitlab",
+					Publisher:	"pulumi-org",
 				}, nil) {
 					return
 				}
 				if !yield(apitype.TemplateMetadata{
-					Name:        "target",
-					Source:      "private",
-					Description: ref("This is from the registry"),
-					Publisher:   "pulumi-org",
+					Name:		"target",
+					Source:		"private",
+					Description:	ref("This is from the registry"),
+					Publisher:	"pulumi-org",
 				}, nil) {
 					return
 				}
@@ -728,8 +728,8 @@ func TestVCSBasedTemplateNameFilter(t *testing.T) {
 	source := newImpl(ctx, "target", ScopeAll, workspace.TemplateKindPulumiProject,
 		templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
 		env.NewEnv(env.MapStore{
-			"PULUMI_DISABLE_REGISTRY_RESOLVE": "false",
-			"PULUMI_EXPERIMENTAL":             "true",
+			"PULUMI_DISABLE_REGISTRY_RESOLVE":	"false",
+			"PULUMI_EXPERIMENTAL":			"true",
 		}))
 
 	templates, err := source.Templates()
@@ -757,7 +757,7 @@ func testContext(t *testing.T) context.Context {
 	return ctx
 }
 
-func ref[T any](v T) *T { return &v }
+func ref[T any](v T) *T	{ return &v }
 
 //nolint:paralleltest // replaces global backend instance
 func TestRegistryTemplateResolution(t *testing.T) {
@@ -767,26 +767,26 @@ func TestRegistryTemplateResolution(t *testing.T) {
 		ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
 			return func(yield func(apitype.TemplateMetadata, error) bool) {
 				yield(apitype.TemplateMetadata{
-					Name:        "csharp-documented",
-					Source:      "private",
-					Publisher:   "pulumi_local",
-					Description: ref("A C# template"),
+					Name:		"csharp-documented",
+					Source:		"private",
+					Publisher:	"pulumi_local",
+					Description:	ref("A C# template"),
 				}, nil)
 				yield(apitype.TemplateMetadata{
-					Name:      "csharp-documented",
-					Source:    "github",
-					Publisher: "different-org",
+					Name:		"csharp-documented",
+					Source:		"github",
+					Publisher:	"different-org",
 				}, nil)
 				yield(apitype.TemplateMetadata{
-					Name:      "gh-org/repo/target",
-					Source:    "github",
-					Publisher: "pulumi-org",
+					Name:		"gh-org/repo/target",
+					Source:		"github",
+					Publisher:	"pulumi-org",
 				}, nil)
 				yield(apitype.TemplateMetadata{
-					Name:        "whatever-template",
-					Source:      "private",
-					Publisher:   "test-org",
-					Description: ref("A template with special chars"),
+					Name:		"whatever-template",
+					Source:		"private",
+					Publisher:	"test-org",
+					Description:	ref("A template with special chars"),
 				}, nil)
 			}
 		},
@@ -798,109 +798,109 @@ func TestRegistryTemplateResolution(t *testing.T) {
 	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{ /* panic on use */ })
 
 	testCases := []struct {
-		name                string
-		templateURL         string
-		shouldMatch         bool
-		expectedName        string
-		description         string
-		expectSpecificError string
+		name			string
+		templateURL		string
+		shouldMatch		bool
+		expectedName		string
+		description		string
+		expectSpecificError	string
 	}{
 		{
-			name:         "registry URL full format",
-			templateURL:  "registry://templates/private/pulumi_local/csharp-documented",
-			shouldMatch:  true,
-			expectedName: "csharp-documented",
-			description:  "A C# template",
+			name:		"registry URL full format",
+			templateURL:	"registry://templates/private/pulumi_local/csharp-documented",
+			shouldMatch:	true,
+			expectedName:	"csharp-documented",
+			description:	"A C# template",
 		},
 		{
-			name:         "registry URL with version",
-			templateURL:  "registry://templates/private/pulumi_local/csharp-documented@latest",
-			shouldMatch:  true,
-			expectedName: "csharp-documented",
-			description:  "A C# template",
+			name:		"registry URL with version",
+			templateURL:	"registry://templates/private/pulumi_local/csharp-documented@latest",
+			shouldMatch:	true,
+			expectedName:	"csharp-documented",
+			description:	"A C# template",
 		},
 		{
-			name:         "partial URL format",
-			templateURL:  "private/pulumi_local/csharp-documented",
-			shouldMatch:  true,
-			expectedName: "csharp-documented",
-			description:  "A C# template",
+			name:		"partial URL format",
+			templateURL:	"private/pulumi_local/csharp-documented",
+			shouldMatch:	true,
+			expectedName:	"csharp-documented",
+			description:	"A C# template",
 		},
 		{
-			name:         "partial URL with version",
-			templateURL:  "private/pulumi_local/csharp-documented@latest",
-			shouldMatch:  true,
-			expectedName: "csharp-documented",
-			description:  "A C# template",
+			name:		"partial URL with version",
+			templateURL:	"private/pulumi_local/csharp-documented@latest",
+			shouldMatch:	true,
+			expectedName:	"csharp-documented",
+			description:	"A C# template",
 		},
 		{
-			name:         "VCS template display name matching",
-			templateURL:  "target",
-			shouldMatch:  true,
-			expectedName: "target",
+			name:		"VCS template display name matching",
+			templateURL:	"target",
+			shouldMatch:	true,
+			expectedName:	"target",
 		},
 		{
-			name:                "wrong resource type does not match",
-			templateURL:         "registry://packages/private/pulumi_local/csharp-documented",
-			shouldMatch:         false,
-			expectSpecificError: "resource type 'packages' is not valid for templates",
+			name:			"wrong resource type does not match",
+			templateURL:		"registry://packages/private/pulumi_local/csharp-documented",
+			shouldMatch:		false,
+			expectSpecificError:	"resource type 'packages' is not valid for templates",
 		},
 		{
-			name:         "parsing failure falls back to exact name match",
-			templateURL:  "whatever-template",
-			shouldMatch:  true,
-			expectedName: "whatever-template",
-			description:  "A template with special chars",
+			name:		"parsing failure falls back to exact name match",
+			templateURL:	"whatever-template",
+			shouldMatch:	true,
+			expectedName:	"whatever-template",
+			description:	"A template with special chars",
 		},
 		{
-			name:        "nonexistent template returns not found",
-			templateURL: "nonexistent/template/name",
-			shouldMatch: false,
+			name:		"nonexistent template returns not found",
+			templateURL:	"nonexistent/template/name",
+			shouldMatch:	false,
 		},
 		{
-			name:                "malformed URL with no match",
-			templateURL:         "registry://templates/a/b/c/d/e",
-			shouldMatch:         false,
-			expectSpecificError: expectedRegistryFormatError,
+			name:			"malformed URL with no match",
+			templateURL:		"registry://templates/a/b/c/d/e",
+			shouldMatch:		false,
+			expectSpecificError:	expectedRegistryFormatError,
 		},
 		{
-			name:        "git repo URL should not trigger registry errors",
-			templateURL: "https://github.com/user/repo",
-			shouldMatch: false,
+			name:		"git repo URL should not trigger registry errors",
+			templateURL:	"https://github.com/user/repo",
+			shouldMatch:	false,
 		},
 		{
-			name:        "ssh git URL should not trigger registry errors",
-			templateURL: "git@github.com:user/repo.git",
-			shouldMatch: false,
+			name:		"ssh git URL should not trigger registry errors",
+			templateURL:	"git@github.com:user/repo.git",
+			shouldMatch:	false,
 		},
 		{
-			name:        "git repo URL with path should not trigger registry errors",
-			templateURL: "https://github.com/user/repo/tree/main/templates/example",
-			shouldMatch: false,
+			name:		"git repo URL with path should not trigger registry errors",
+			templateURL:	"https://github.com/user/repo/tree/main/templates/example",
+			shouldMatch:	false,
 		},
 		{
-			name:                "wrong resource type - unknown resource type",
-			templateURL:         "registry://unknown/private/publisher/name",
-			shouldMatch:         false,
-			expectSpecificError: "resource type 'unknown' is not valid for templates",
+			name:			"wrong resource type - unknown resource type",
+			templateURL:		"registry://unknown/private/publisher/name",
+			shouldMatch:		false,
+			expectSpecificError:	"resource type 'unknown' is not valid for templates",
 		},
 		{
-			name:                "malformed registry URL - missing parts",
-			templateURL:         "registry://templates/private",
-			shouldMatch:         false,
-			expectSpecificError: expectedRegistryFormatError,
+			name:			"malformed registry URL - missing parts",
+			templateURL:		"registry://templates/private",
+			shouldMatch:		false,
+			expectSpecificError:	expectedRegistryFormatError,
 		},
 		{
-			name:        "malformed partial URL - too many parts",
-			templateURL: "a/b/c/d/e",
-			shouldMatch: false,
+			name:		"malformed partial URL - too many parts",
+			templateURL:	"a/b/c/d/e",
+			shouldMatch:	false,
 			// This should fall back to name matching (structural error), not show specific error
 		},
 		{
-			name:                "malformed registry URL - empty version",
-			templateURL:         "registry://templates/private/publisher/name@",
-			shouldMatch:         false,
-			expectSpecificError: "missing version",
+			name:			"malformed registry URL - empty version",
+			templateURL:		"registry://templates/private/publisher/name@",
+			shouldMatch:		false,
+			expectSpecificError:	"missing version",
 		},
 	}
 
@@ -909,8 +909,8 @@ func TestRegistryTemplateResolution(t *testing.T) {
 			source := newImpl(ctx, tc.templateURL, ScopeAll, workspace.TemplateKindPulumiProject,
 				templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
 				env.NewEnv(env.MapStore{
-					"PULUMI_DISABLE_REGISTRY_RESOLVE": "false",
-					"PULUMI_EXPERIMENTAL":             "true",
+					"PULUMI_DISABLE_REGISTRY_RESOLVE":	"false",
+					"PULUMI_EXPERIMENTAL":			"true",
 				}))
 
 			templates, err := source.Templates()

@@ -50,16 +50,16 @@ type VCSKind = string
 
 // Constants related to detecting the right type of source control provider for git.
 const (
-	defaultGitCloudRepositorySuffix = ".git"
+	defaultGitCloudRepositorySuffix	= ".git"
 
 	// GitLabHostName The host name for GitLab.
-	GitLabHostName VCSKind = "gitlab.com"
+	GitLabHostName	VCSKind	= "gitlab.com"
 	// GitHubHostName The host name for GitHub.
-	GitHubHostName VCSKind = "github.com"
+	GitHubHostName	VCSKind	= "github.com"
 	// AzureDevOpsHostName The host name for Azure DevOps
-	AzureDevOpsHostName VCSKind = "dev.azure.com"
+	AzureDevOpsHostName	VCSKind	= "dev.azure.com"
 	// BitbucketHostName The host name for Bitbucket
-	BitbucketHostName VCSKind = "bitbucket.org"
+	BitbucketHostName	VCSKind	= "bitbucket.org"
 )
 
 // The pre-compiled regex used to extract owner and repo name from an SSH git remote URL.
@@ -67,18 +67,18 @@ const (
 // be sure to update its usage elsewhere in the code as well.
 // The nolint instruction prevents gometalinter from complaining about the length of the line.
 var (
-	cloudSourceControlSSHRegex    = regexp.MustCompile(`git@(?P<host_name>[a-zA-Z.-]*\.[a-zA-Z]+):(?P<owner_and_repo>[^/]+/[^/]+\.git).?$`)                       //nolint
-	azureSourceControlSSHRegex    = regexp.MustCompile(`git@([a-zA-Z]+\.)?(?P<host_name>([a-zA-Z]+\.)*[a-zA-Z]*\.[a-zA-Z]+):(v[0-9]{1}/)?(?P<owner_and_repo>.*)`) //nolint
-	legacyAzureSourceControlRegex = regexp.MustCompile("(?P<owner>[a-zA-Z0-9-]*).visualstudio.com$")
+	cloudSourceControlSSHRegex	= regexp.MustCompile(`git@(?P<host_name>[a-zA-Z.-]*\.[a-zA-Z]+):(?P<owner_and_repo>[^/]+/[^/]+\.git).?$`)			//nolint
+	azureSourceControlSSHRegex	= regexp.MustCompile(`git@([a-zA-Z]+\.)?(?P<host_name>([a-zA-Z]+\.)*[a-zA-Z]*\.[a-zA-Z]+):(v[0-9]{1}/)?(?P<owner_and_repo>.*)`)	//nolint
+	legacyAzureSourceControlRegex	= regexp.MustCompile("(?P<owner>[a-zA-Z0-9-]*).visualstudio.com$")
 )
 
 // VCSInfo describes a cloud-hosted version control system.
 // Cloud hosted VCS' typically have an owner (could be an organization),
 // to whom the repo belongs.
 type VCSInfo struct {
-	Owner string
-	Repo  string
-	Kind  VCSKind
+	Owner	string
+	Repo	string
+	Kind	VCSKind
 }
 
 // GetGitRepository returns the git repository by walking up from the provided directory.
@@ -212,9 +212,9 @@ func TryGetVCSInfo(remoteURL string) (_ *VCSInfo, err error) {
 		}
 
 		return &VCSInfo{
-			Owner: azureSplit[0],
-			Repo:  project,
-			Kind:  vcsKind,
+			Owner:	azureSplit[0],
+			Repo:	project,
+			Kind:	vcsKind,
 		}, nil
 	}
 
@@ -226,9 +226,9 @@ func TryGetVCSInfo(remoteURL string) (_ *VCSInfo, err error) {
 		groups := getMatchedGroupsFromRegex(legacyAzureSourceControlRegex, vcsKind)
 
 		return &VCSInfo{
-			Owner: groups["owner"],
-			Repo:  project,
-			Kind:  AzureDevOpsHostName,
+			Owner:	groups["owner"],
+			Repo:	project,
+			Kind:	AzureDevOpsHostName,
 		}, nil
 	}
 
@@ -241,9 +241,9 @@ func TryGetVCSInfo(remoteURL string) (_ *VCSInfo, err error) {
 	}
 
 	return &VCSInfo{
-		Owner: split[0],
-		Repo:  split[1],
-		Kind:  vcsKind,
+		Owner:	split[0],
+		Repo:	split[1],
+		Kind:	vcsKind,
 	}, nil
 }
 
@@ -262,13 +262,13 @@ func getMatchedGroupsFromRegex(regex *regexp.Regexp, remoteURL string) map[strin
 }
 
 type urlAuthParser struct {
-	mu sync.Mutex // guards sshKeys
+	mu	sync.Mutex	// guards sshKeys
 
 	// sshKeys memoizes keys we've loaded for given host URLs, to avoid needing to
 	// re-fetch public keys.
-	sshKeys map[string]transport.AuthMethod
+	sshKeys	map[string]transport.AuthMethod
 	// sshConfig allows us to inject config for testing.
-	sshConfig sshUserSettings
+	sshConfig	sshUserSettings
 }
 
 // defaultURLAuthParser uses the host's SSH configuration.
@@ -348,18 +348,18 @@ func getAuthForURL(url string) (string, transport.AuthMethod, error) {
 	if auth == nil {
 		if strings.Contains(endpoint, "github") && os.Getenv("GITHUB_TOKEN") != "" {
 			auth = &http.BasicAuth{
-				Username: "x-access-token",
-				Password: os.Getenv("GITHUB_TOKEN"),
+				Username:	"x-access-token",
+				Password:	os.Getenv("GITHUB_TOKEN"),
 			}
 		} else if strings.Contains(endpoint, "gitlab") && os.Getenv("GITLAB_TOKEN") != "" {
 			auth = &http.BasicAuth{
-				Username: "oauth2",
-				Password: os.Getenv("GITLAB_TOKEN"),
+				Username:	"oauth2",
+				Password:	os.Getenv("GITLAB_TOKEN"),
 			}
 		} else if os.Getenv("GIT_USERNAME") != "" || os.Getenv("GIT_PASSWORD") != "" {
 			auth = &http.BasicAuth{
-				Username: os.Getenv("GIT_USERNAME"),
-				Password: os.Getenv("GIT_PASSWORD"),
+				Username:	os.Getenv("GIT_USERNAME"),
+				Password:	os.Getenv("GIT_PASSWORD"),
 			}
 		}
 	}
@@ -463,8 +463,8 @@ func GitCloneAndCheckoutCommit(ctx context.Context, url string, commit plumbing.
 		return err
 	}
 	repo, err := git.PlainCloneContext(ctx, path, false, &git.CloneOptions{
-		URL:  u,
-		Auth: auth,
+		URL:	u,
+		Auth:	auth,
 	})
 	if err != nil {
 		return err
@@ -476,8 +476,8 @@ func GitCloneAndCheckoutCommit(ctx context.Context, url string, commit plumbing.
 	}
 
 	return w.Checkout(&git.CheckoutOptions{
-		Hash:  commit,
-		Force: true,
+		Hash:	commit,
+		Force:	true,
 	})
 }
 
@@ -490,8 +490,8 @@ func GitCloneAndCheckoutRevision(ctx context.Context, url string, revision plumb
 		return err
 	}
 	repo, err := git.PlainCloneContext(ctx, path, false, &git.CloneOptions{
-		URL:  u,
-		Auth: auth,
+		URL:	u,
+		Auth:	auth,
 	})
 	if err != nil {
 		return err
@@ -508,8 +508,8 @@ func GitCloneAndCheckoutRevision(ctx context.Context, url string, revision plumb
 	}
 
 	return w.Checkout(&git.CheckoutOptions{
-		Hash:  *hash,
-		Force: true,
+		Hash:	*hash,
+		Force:	true,
 	})
 }
 
@@ -546,12 +546,12 @@ func gitCloneOrPull(
 	}
 	// Attempt to clone the repo.
 	_, cloneErr := git.PlainCloneContext(ctx, path, false, &git.CloneOptions{
-		URL:           u,
-		Auth:          auth,
-		ReferenceName: referenceName,
-		SingleBranch:  true,
-		Depth:         depth,
-		Tags:          git.NoTags,
+		URL:		u,
+		Auth:		auth,
+		ReferenceName:	referenceName,
+		SingleBranch:	true,
+		Depth:		depth,
+		Tags:		git.NoTags,
 	})
 	if cloneErr != nil {
 		// If the repo already exists, open it and pull.
@@ -577,9 +577,9 @@ func gitCloneOrPull(
 			}
 
 			if cloneErr = w.Pull(&git.PullOptions{
-				ReferenceName: referenceName,
-				SingleBranch:  true,
-				Force:         true,
+				ReferenceName:	referenceName,
+				SingleBranch:	true,
+				Force:		true,
 			}); cloneErr == git.NoErrAlreadyUpToDate {
 				return nil
 			}
@@ -699,11 +699,11 @@ func parseHostAuth(u *url.URL) string {
 
 type gitRepoURLParts struct {
 	// URL is the base URL, without a path.
-	URL string
+	URL	string
 	// Hostname is the actual hostname for the URL.
-	Hostname string
+	Hostname	string
 	// Path is the path part of the URL, if any.
-	Path string
+	Path	string
 }
 
 func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
@@ -736,8 +736,8 @@ func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
 			return gitRepoURLParts{}, err
 		}
 		return gitRepoURLParts{
-			URL:      repo,
-			Hostname: hostname,
+			URL:		repo,
+			Hostname:	hostname,
 		}, nil
 	}
 
@@ -745,8 +745,8 @@ func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
 	if u.Hostname() == AzureDevOpsHostName {
 		// Specifying branch/ref and subpath is currently unsupported.
 		return gitRepoURLParts{
-			URL:      rawurl,
-			Hostname: hostname,
+			URL:		rawurl,
+			Hostname:	hostname,
 		}, nil
 	}
 
@@ -764,9 +764,9 @@ func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
 		gitRepoPath := path[extensionOffset:]
 		resultPath := strings.Trim(gitRepoPath, "/")
 		return gitRepoURLParts{
-			URL:      resultURL,
-			Hostname: hostname,
-			Path:     resultPath,
+			URL:		resultURL,
+			Hostname:	hostname,
+			Path:		resultPath,
 		}, nil
 	}
 
@@ -788,9 +788,9 @@ func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
 	resultPath := strings.TrimSuffix(strings.Join(paths[2:], "/"), "/")
 
 	return gitRepoURLParts{
-		URL:      resultURL,
-		Hostname: hostname,
-		Path:     resultPath,
+		URL:		resultURL,
+		Hostname:	hostname,
+		Path:		resultPath,
 	}, nil
 }
 
@@ -880,8 +880,8 @@ func gitListRefs(ctx context.Context, url string) ([]*plumbing.Reference, error)
 	}
 
 	remote, err := repo.CreateRemote(&config.RemoteConfig{
-		Name: "origin",
-		URLs: []string{url},
+		Name:	"origin",
+		URLs:	[]string{url},
 	})
 	if err != nil {
 		return nil, err
@@ -966,9 +966,9 @@ func GetLatestTagOrHash(ctx context.Context, url string) (*semver.Version, error
 	if version.Equals(semver.Version{}) {
 		if hash, ok := namedHashes[headRef]; ok {
 			return &semver.Version{
-				Major: 0,
-				Minor: 0,
-				Patch: 0,
+				Major:	0,
+				Minor:	0,
+				Patch:	0,
 				Pre: []semver.PRVersion{
 					{VersionStr: "x" + hash.String()},
 				},
@@ -981,8 +981,8 @@ func GetLatestTagOrHash(ctx context.Context, url string) (*semver.Version, error
 
 type byShortNameLengthDesc []plumbing.ReferenceName
 
-func (r byShortNameLengthDesc) Len() int      { return len(r) }
-func (r byShortNameLengthDesc) Swap(i, j int) { r[i], r[j] = r[j], r[i] }
+func (r byShortNameLengthDesc) Len() int	{ return len(r) }
+func (r byShortNameLengthDesc) Swap(i, j int)	{ r[i], r[j] = r[j], r[i] }
 func (r byShortNameLengthDesc) Less(i, j int) bool {
 	return len(r[j].Short()) < len(r[i].Short())
 }

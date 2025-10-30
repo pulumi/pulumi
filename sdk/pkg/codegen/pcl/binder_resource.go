@@ -22,10 +22,10 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/zclconf/go-cty/cty"
@@ -129,10 +129,10 @@ func AnnotateResourceInputs(node *Resource) {
 		attr := node.Inputs[index]
 		if property, ok := resourceProperties[attr.Name]; ok {
 			node.Inputs[index] = &model.Attribute{
-				Tokens: attr.Tokens,
-				Name:   attr.Name,
-				Syntax: attr.Syntax,
-				Value:  AnnotateAttributeValue(attr.Value, property.Type),
+				Tokens:	attr.Tokens,
+				Name:	attr.Name,
+				Syntax:	attr.Syntax,
+				Value:	AnnotateAttributeValue(attr.Value, property.Type),
 			}
 		}
 	}
@@ -223,17 +223,17 @@ func (b *binder) resolveInputUnions(
 		}
 
 		resolvedProperties[i] = &schema.Property{
-			Type:                 resolvedType,
-			Name:                 property.Name,
-			DeprecationMessage:   property.DeprecationMessage,
-			ConstValue:           property.ConstValue,
-			Secret:               property.Secret,
-			Plain:                property.Plain,
-			Language:             property.Language,
-			Comment:              property.Comment,
-			DefaultValue:         property.DefaultValue,
-			ReplaceOnChanges:     property.ReplaceOnChanges,
-			WillReplaceOnChanges: property.WillReplaceOnChanges,
+			Type:			resolvedType,
+			Name:			property.Name,
+			DeprecationMessage:	property.DeprecationMessage,
+			ConstValue:		property.ConstValue,
+			Secret:			property.Secret,
+			Plain:			property.Plain,
+			Language:		property.Language,
+			Comment:		property.Comment,
+			DefaultValue:		property.DefaultValue,
+			ReplaceOnChanges:	property.ReplaceOnChanges,
+			WillReplaceOnChanges:	property.WillReplaceOnChanges,
 		}
 	}
 
@@ -359,8 +359,8 @@ func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diag
 	inputType := b.schemaTypeToType(inputObjectType)
 
 	outputProperties := map[string]model.Type{
-		"id":  model.NewOutputType(model.StringType),
-		"urn": model.NewOutputType(model.StringType),
+		"id":	model.NewOutputType(model.StringType),
+		"urn":	model.NewOutputType(model.StringType),
 	}
 	for _, prop := range properties {
 		outputProperties[prop.Name] = model.NewOutputType(b.schemaTypeToType(prop.Type))
@@ -396,16 +396,16 @@ type ResourceAnnotation struct {
 }
 
 type resourceScopes struct {
-	root      *model.Scope
-	withRange *model.Scope
-	resource  *Resource
+	root		*model.Scope
+	withRange	*model.Scope
+	resource	*Resource
 }
 
 func newResourceScopes(root *model.Scope, resource *Resource, rangeKey, rangeValue model.Type) model.Scopes {
 	scopes := &resourceScopes{
-		root:      root,
-		withRange: root,
-		resource:  resource,
+		root:		root,
+		withRange:	root,
+		resource:	resource,
 	}
 	if rangeValue != nil {
 		properties := map[string]model.Type{
@@ -417,8 +417,8 @@ func newResourceScopes(root *model.Scope, resource *Resource, rangeKey, rangeVal
 
 		scopes.withRange = root.Push(syntax.None)
 		scopes.withRange.Define("range", &model.Variable{
-			Name:         "range",
-			VariableType: model.NewObjectType(properties),
+			Name:		"range",
+			VariableType:	model.NewObjectType(properties),
 		})
 	}
 	return scopes
@@ -436,8 +436,8 @@ func (s *resourceScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model
 }
 
 type optionsScopes struct {
-	root     *model.Scope
-	resource *Resource
+	root		*model.Scope
+	resource	*Resource
 }
 
 func (s *optionsScopes) GetScopesForBlock(block *hclsyntax.Block) (model.Scopes, hcl.Diagnostics) {
@@ -453,8 +453,8 @@ func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.
 		scope := model.NewRootScope(syntax.None)
 		for k, t := range obj.Properties {
 			scope.Define(k, &ResourceProperty{
-				Path:         hcl.Traversal{hcl.TraverseRoot{Name: k}},
-				PropertyType: t,
+				Path:		hcl.Traversal{hcl.TraverseRoot{Name: k}},
+				PropertyType:	t,
 			})
 		}
 		return scope, nil
@@ -496,7 +496,7 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 				t = model.NewListType(ResourcePropertyType)
 				resourceOptions.IgnoreChanges = item.Value
 			case "hideDiffs":
-				t = model.NewListType(ResourcePropertyType) // Property paths
+				t = model.NewListType(ResourcePropertyType)	// Property paths
 				resourceOptions.HideDiffs = item.Value
 			case "version":
 				t = model.StringType
@@ -560,18 +560,18 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 				}
 
 				resourceVar := &model.Variable{
-					Name:         "r",
-					VariableType: node.VariableType,
+					Name:		"r",
+					VariableType:	node.VariableType,
 				}
 
 				switch {
 				case model.InputType(model.BoolType).ConversionFrom(typ) == model.SafeConversion:
 					condExpr := &model.ConditionalExpression{
-						Condition:  expr,
-						TrueResult: model.VariableReference(resourceVar),
+						Condition:	expr,
+						TrueResult:	model.VariableReference(resourceVar),
 						FalseResult: model.ConstantReference(&model.Constant{
-							Name:          "null",
-							ConstantValue: cty.NullVal(cty.DynamicPseudoType),
+							Name:		"null",
+							ConstantValue:	cty.NullVal(cty.DynamicPseudoType),
 						}),
 					}
 					diags := condExpr.Typecheck(false)
@@ -589,15 +589,15 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 
 					rangeExpr := &model.ForExpression{
 						ValueVariable: &model.Variable{
-							Name:         "_",
-							VariableType: model.NumberType,
+							Name:		"_",
+							VariableType:	model.NumberType,
 						},
 						Collection: &model.FunctionCallExpression{
-							Name:      "range",
-							Signature: rangeSig,
-							Args:      rangeArgs,
+							Name:		"range",
+							Signature:	rangeSig,
+							Args:		rangeArgs,
 						},
-						Value: model.VariableReference(resourceVar),
+						Value:	model.VariableReference(resourceVar),
 					}
 					diags := rangeExpr.Typecheck(false)
 					checkDiagnostics := len(diags) == 0
@@ -615,15 +615,15 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 					rangeKey, rangeValue, diagnostics = rk, rv, append(diagnostics, diags...)
 					iterationExpr := &model.ForExpression{
 						ValueVariable: &model.Variable{
-							Name:         "_",
-							VariableType: rangeValue,
+							Name:		"_",
+							VariableType:	rangeValue,
 						},
-						Collection:                   expr,
-						Value:                        model.VariableReference(resourceVar),
-						StrictCollectionTypechecking: strictCollectionType,
+						Collection:			expr,
+						Value:				model.VariableReference(resourceVar),
+						StrictCollectionTypechecking:	strictCollectionType,
 					}
 					diags = iterationExpr.Typecheck(false)
-					contract.Ignore(diags) // Any relevant diagnostics were reported by GetCollectionTypes.
+					contract.Ignore(diags)	// Any relevant diagnostics were reported by GetCollectionTypes.
 
 					node.VariableType = iterationExpr.Type()
 				}
@@ -695,8 +695,8 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 					if propertyType, ok := resourceProperties[attr.Name]; ok {
 						attributeRange := attr.Value.SyntaxNode().Range()
 						diag(&hcl.Diagnostic{
-							Severity: hcl.DiagError,
-							Subject:  &attributeRange,
+							Severity:	hcl.DiagError,
+							Subject:	&attributeRange,
 							Detail: fmt.Sprintf("Cannot assign value %s to attribute of type %q for resource %q",
 								attr.Value.Type().Pretty().String(),
 								propertyType.String(),

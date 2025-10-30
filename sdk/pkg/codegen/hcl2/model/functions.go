@@ -17,7 +17,7 @@ package model
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
 )
 
 // FunctionSignature represents a possibly-type-polymorphic function signature.
@@ -28,21 +28,21 @@ type FunctionSignature interface {
 
 // Parameter represents a single function parameter.
 type Parameter struct {
-	Name string // The name of the parameter.
-	Type Type   // The type of the parameter.
+	Name	string	// The name of the parameter.
+	Type	Type	// The type of the parameter.
 }
 
 // StaticFunctionSignature records the parameters and return type of a function.
 type StaticFunctionSignature struct {
 	// The function's fixed parameters.
-	Parameters []Parameter
+	Parameters	[]Parameter
 	// The function's variadic parameter, if any. Any arguments that follow a function's fixed arguments must be
 	// assignable to this parameter.
-	VarargsParameter *Parameter
+	VarargsParameter	*Parameter
 	// The return type of the function.
-	ReturnType Type
+	ReturnType	Type
 	// Determines whether the input bag should be treated as a single argument or as multiple arguments.
-	MultiArgumentInputs bool
+	MultiArgumentInputs	bool
 }
 
 // GetSignature returns the static signature itself.

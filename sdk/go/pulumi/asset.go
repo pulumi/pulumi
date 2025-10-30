@@ -46,10 +46,10 @@ type Asset interface {
 }
 
 type asset struct {
-	path    string
-	text    string
-	uri     string
-	invalid bool
+	path	string
+	text	string
+	uri	string
+	invalid	bool
 }
 
 // NewFileAsset creates an asset backed by a file and specified by that file's path.
@@ -68,17 +68,17 @@ func NewRemoteAsset(uri string) Asset {
 }
 
 // Path returns the asset's file path, if this is a file asset, or an empty string otherwise.
-func (a *asset) Path() string { return a.path }
+func (a *asset) Path() string	{ return a.path }
 
 // Text returns the asset's textual string, if this is a string asset, or an empty string otherwise.
-func (a *asset) Text() string { return a.text }
+func (a *asset) Text() string	{ return a.text }
 
 // URI returns the asset's URL, if this is a remote asset, or an empty string otherwise.
-func (a *asset) URI() string { return a.uri }
+func (a *asset) URI() string	{ return a.uri }
 
-func (a *asset) isAsset() {}
+func (a *asset) isAsset()	{}
 
-func (a *asset) isAssetOrArchive() {}
+func (a *asset) isAssetOrArchive()	{}
 
 // Archive represents a collection of Assets.
 type Archive interface {
@@ -99,10 +99,10 @@ type Archive interface {
 }
 
 type archive struct {
-	assets  map[string]any
-	path    string
-	uri     string
-	invalid bool
+	assets	map[string]any
+	path	string
+	uri	string
+	invalid	bool
 }
 
 // NewAssetArchive creates a new archive from an in-memory collection of named assets or other archives.
@@ -129,14 +129,14 @@ func NewRemoteArchive(uri string) Archive {
 }
 
 // Assets returns the archive's asset map, if this is a collection of archives/assets, or nil otherwise.
-func (a *archive) Assets() map[string]any { return a.assets }
+func (a *archive) Assets() map[string]any	{ return a.assets }
 
 // Path returns the archive's file path, if this is a file archive, or an empty string otherwise.
-func (a *archive) Path() string { return a.path }
+func (a *archive) Path() string	{ return a.path }
 
 // URI returns the archive's URL, if this is a remote archive, or an empty string otherwise.
-func (a *archive) URI() string { return a.uri }
+func (a *archive) URI() string	{ return a.uri }
 
-func (a *archive) isArchive() {}
+func (a *archive) isArchive()	{}
 
-func (a *archive) isAssetOrArchive() {}
+func (a *archive) isAssetOrArchive()	{}

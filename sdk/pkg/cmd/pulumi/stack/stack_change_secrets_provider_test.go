@@ -21,13 +21,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
-	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/b64"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/passphrase"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/testutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -43,8 +43,8 @@ func TestChangeSecretsProvider_Invalid(t *testing.T) {
 
 	var stdoutBuff bytes.Buffer
 	cmd := stackChangeSecretsProviderCmd{
-		stdout: &stdoutBuff,
-		stack:  "test",
+		stdout:	&stdoutBuff,
+		stack:	"test",
 	}
 	err := cmd.Run(context.Background(), []string{"not_a_secret"})
 	require.Error(t, err)
@@ -76,21 +76,21 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 	})
 
 	cmd := stackChangeSecretsProviderCmd{
-		stdout:          &stdoutBuff,
-		secretsProvider: secretsProvider,
+		stdout:			&stdoutBuff,
+		secretsProvider:	secretsProvider,
 
-		stack: "testStack",
+		stack:	"testStack",
 	}
 
 	// Ideally this would be injected but the cmd functions repeatedly access global state to get the current
 	// backend.
 	snapshot := &deploy.Snapshot{
-		SecretsManager: b64.NewBase64SecretsManager(),
+		SecretsManager:	b64.NewBase64SecretsManager(),
 		Resources: []*resource.State{
 			{
-				URN:     resource.NewURN("testStack", "testProject", "", resource.RootStackType, "testStack"),
-				Type:    resource.RootStackType,
-				Outputs: resource.PropertyMap{},
+				URN:		resource.NewURN("testStack", "testProject", "", resource.RootStackType, "testStack"),
+				Type:		resource.RootStackType,
+				Outputs:	resource.PropertyMap{},
 			},
 		},
 	}
@@ -117,11 +117,11 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 		},
 		RefF: func() backend.StackReference {
 			return &backend.MockStackReference{
-				StringV: "testStack",
-				NameV:   tokens.MustParseStackName("testStack"),
+				StringV:	"testStack",
+				NameV:		tokens.MustParseStackName("testStack"),
 			}
 		},
-		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
+		ConfigLocationF:	func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
 		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
 			return snapshot, nil
 		},
@@ -172,21 +172,21 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 
 	var stdoutBuff bytes.Buffer
 	cmd := stackChangeSecretsProviderCmd{
-		stdout:          &stdoutBuff,
-		secretsProvider: secretsProvider,
+		stdout:			&stdoutBuff,
+		secretsProvider:	secretsProvider,
 
-		stack: "testStack",
+		stack:	"testStack",
 	}
 
 	// Ideally this would be injected but the cmd functions repeatedly access global state to get the current
 	// backend.
 	secretsManager := b64.NewBase64SecretsManager()
 	snapshot := &deploy.Snapshot{
-		SecretsManager: secretsManager,
+		SecretsManager:	secretsManager,
 		Resources: []*resource.State{
 			{
-				URN:  resource.NewURN("testStack", "testProject", "", resource.RootStackType, "testStack"),
-				Type: resource.RootStackType,
+				URN:	resource.NewURN("testStack", "testProject", "", resource.RootStackType, "testStack"),
+				Type:	resource.RootStackType,
 				Outputs: resource.PropertyMap{
 					"foo": resource.MakeSecret(resource.NewProperty("bar")),
 				},
@@ -216,11 +216,11 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 		},
 		RefF: func() backend.StackReference {
 			return &backend.MockStackReference{
-				StringV: "testStack",
-				NameV:   tokens.MustParseStackName("testStack"),
+				StringV:	"testStack",
+				NameV:		tokens.MustParseStackName("testStack"),
 			}
 		},
-		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
+		ConfigLocationF:	func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
 		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
 			return snapshot, nil
 		},

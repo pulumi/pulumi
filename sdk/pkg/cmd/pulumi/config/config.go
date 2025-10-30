@@ -31,16 +31,16 @@ import (
 
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/cmd/esc/cli"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/cloud"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/passphrase"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -63,12 +63,12 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var open bool
 
 	cmd := &cobra.Command{
-		Use:   "config",
-		Short: "Manage configuration",
+		Use:	"config",
+		Short:	"Manage configuration",
 		Long: "Lists all configuration values for a specific stack. To add a new configuration value, run\n" +
 			"`pulumi config set`. To remove an existing value run `pulumi config rm`. To get the value of\n" +
 			"for a specific configuration key, use `pulumi config get <key-name>`.",
-		Args: cmdutil.NoArgs,
+		Args:	cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
@@ -159,11 +159,11 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 	var destinationStackName string
 
 	cpCommand := &cobra.Command{
-		Use:   "cp [key]",
-		Short: "Copy config to another stack",
+		Use:	"cp [key]",
+		Short:	"Copy config to another stack",
 		Long: "Copies the config from the current stack to the destination stack. If `key` is omitted,\n" +
 			"then all of the config from the current stack will be copied to the destination stack.",
-		Args: cmdutil.MaximumNArgs(1),
+		Args:	cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
@@ -281,15 +281,15 @@ func newConfigGetCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 	var path bool
 
 	getCmd := &cobra.Command{
-		Use:   "get <key>",
-		Short: "Get a single configuration value",
+		Use:	"get <key>",
+		Short:	"Get a single configuration value",
 		Long: "Get a single configuration value.\n\n" +
 			"The `--path` flag can be used to get a value inside a map or list:\n\n" +
 			"  - `pulumi config get --path outer.inner` will get the value of the `inner` key, " +
 			"if the value of `outer` is a map `inner: value`.\n" +
 			"  - `pulumi config get --path 'names[0]'` will get the value of the first item, " +
 			"if the value of `names` is a list.",
-		Args: cmdutil.SpecificArgs([]string{"key"}),
+		Args:	cmdutil.SpecificArgs([]string{"key"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
@@ -335,15 +335,15 @@ func newConfigRmCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 	var path bool
 
 	rmCmd := &cobra.Command{
-		Use:   "rm <key>",
-		Short: "Remove configuration value",
+		Use:	"rm <key>",
+		Short:	"Remove configuration value",
 		Long: "Remove configuration value.\n\n" +
 			"The `--path` flag can be used to remove a value inside a map or list:\n\n" +
 			"  - `pulumi config rm --path outer.inner` will remove the `inner` key, " +
 			"if the value of `outer` is a map `inner: value`.\n" +
 			"  - `pulumi config rm --path 'names[0]'` will remove the first item, " +
 			"if the value of `names` is a list.",
-		Args: cmdutil.SpecificArgs([]string{"key"}),
+		Args:	cmdutil.SpecificArgs([]string{"key"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
@@ -406,15 +406,15 @@ func newConfigRmAllCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 	var path bool
 
 	rmAllCmd := &cobra.Command{
-		Use:   "rm-all <key1> <key2> <key3> ...",
-		Short: "Remove multiple configuration values",
+		Use:	"rm-all <key1> <key2> <key3> ...",
+		Short:	"Remove multiple configuration values",
 		Long: "Remove multiple configuration values.\n\n" +
 			"The `--path` flag indicates that keys should be parsed within maps or lists:\n\n" +
 			"  - `pulumi config rm-all --path  outer.inner 'foo[0]' key1` will remove the \n" +
 			"    `inner` key of the `outer` map, the first key of the `foo` list and `key1`.\n" +
 			"  - `pulumi config rm-all outer.inner 'foo[0]' key1` will remove the literal" +
 			"    `outer.inner`, `foo[0]` and `key1` keys",
-		Args: cmdutil.MinimumNArgs(1),
+		Args:	cmdutil.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
@@ -478,9 +478,9 @@ func newConfigRmAllCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 func newConfigRefreshCmd(ws pkgWorkspace.Context, stk *string) *cobra.Command {
 	var force bool
 	refreshCmd := &cobra.Command{
-		Use:   "refresh",
-		Short: "Update the local configuration based on the most recent deployment of the stack",
-		Args:  cmdutil.NoArgs,
+		Use:	"refresh",
+		Short:	"Update the local configuration based on the most recent deployment of the stack",
+		Args:	cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
@@ -601,21 +601,21 @@ func newConfigRefreshCmd(ws pkgWorkspace.Context, stk *string) *cobra.Command {
 }
 
 type configSetCmd struct {
-	Stdin            *os.File
-	LoadProjectStack func(context.Context, diag.Sink, *workspace.Project, backend.Stack) (*workspace.ProjectStack, error)
+	Stdin			*os.File
+	LoadProjectStack	func(context.Context, diag.Sink, *workspace.Project, backend.Stack) (*workspace.ProjectStack, error)
 
-	Plaintext bool
-	Secret    bool
-	Path      bool
-	Type      string
+	Plaintext	bool
+	Secret		bool
+	Path		bool
+	Type		string
 }
 
 func newConfigSetCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 	configSetCmd := &configSetCmd{LoadProjectStack: cmdStack.LoadProjectStack}
 
 	setCmd := &cobra.Command{
-		Use:   "set [flags] <key> [--] [value]",
-		Short: "Set configuration value",
+		Use:	"set [flags] <key> [--] [value]",
+		Short:	"Set configuration value",
 		Long: "Configuration values can be accessed when a stack is being deployed and used to configure behavior. \n" +
 			"If a value is not present on the command line, pulumi will prompt for the value. Multi-line values\n" +
 			"may be set by piping a file to standard in.\n\n" +
@@ -629,7 +629,7 @@ func newConfigSetCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 			"When setting the config for a path, \"true\" and \"false\" are treated as boolean values, and\n" +
 			"integers are treated as numbers. All other values are treated as strings.  Top level entries\n" +
 			"are always treated as strings.",
-		Args: cmdutil.RangeArgs(1, 2),
+		Args:	cmdutil.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
@@ -790,8 +790,8 @@ func newConfigSetAllCmd(
 	var jsonArg string
 
 	setCmd := &cobra.Command{
-		Use:   "set-all --plaintext key1=value1 --plaintext key2=value2 --secret key3=value3",
-		Short: "Set multiple configuration values",
+		Use:	"set-all --plaintext key1=value1 --plaintext key2=value2 --secret key3=value3",
+		Short:	"Set multiple configuration values",
 		Long: "pulumi set-all allows you to set multiple configuration values in one command.\n\n" +
 			"Each key-value pair must be preceded by either the `--secret` or the `--plaintext` flag to denote whether \n" +
 			"it should be encrypted:\n\n" +
@@ -806,7 +806,7 @@ func newConfigSetAllCmd(
 			"The `--json` flag can be used to pass a JSON string from which values should be read.\n" +
 			"The JSON string should follow the same format as that produced by `pulumi config --json`. If the\n" +
 			"`--json` option is passed, the `--plaintext`, `--secret` and `--path` flags must not be used.",
-		Args: cmdutil.NoArgs,
+		Args:	cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
@@ -977,9 +977,9 @@ func newConfigSetAllCmd(
 type configValueJSON struct {
 	// When the value is encrypted and --show-secrets was not passed, the value will not be set.
 	// If the value is an object, ObjectValue will be set.
-	Value       *string `json:"value,omitempty"`
-	ObjectValue any     `json:"objectValue,omitempty"`
-	Secret      bool    `json:"secret"`
+	Value		*string	`json:"value,omitempty"`
+	ObjectValue	any	`json:"objectValue,omitempty"`
+	Secret		bool	`json:"secret"`
 }
 
 func listConfig(
@@ -1112,14 +1112,14 @@ func listConfig(
 		}
 
 		ui.FprintTable(stdout, cmdutil.Table{
-			Headers: []string{"KEY", "VALUE"},
-			Rows:    rows,
+			Headers:	[]string{"KEY", "VALUE"},
+			Rows:		rows,
 		}, nil)
 
 		if env != nil {
 			_, environ, _, err := cli.PrepareEnvironment(env, &cli.PrepareOptions{
-				Pretend: !openEnvironment,
-				Redact:  !showSecrets,
+				Pretend:	!openEnvironment,
+				Redact:		!showSecrets,
 			})
 			if err != nil {
 				return err
@@ -1134,8 +1134,8 @@ func listConfig(
 
 				fmt.Fprintln(stdout)
 				ui.FprintTable(stdout, cmdutil.Table{
-					Headers: []string{"ENVIRONMENT VARIABLE", "VALUE"},
-					Rows:    environRows,
+					Headers:	[]string{"ENVIRONMENT VARIABLE", "VALUE"},
+					Rows:		environRows,
 				}, nil)
 			}
 
@@ -1250,8 +1250,8 @@ func getConfig(
 
 		if jsonOut {
 			value := configValueJSON{
-				Value:  &raw,
-				Secret: v.Secure(),
+				Value:	&raw,
+				Secret:	v.Secure(),
 			}
 
 			if v.Object() {
@@ -1291,11 +1291,11 @@ var keyPattern = regexp.MustCompile("(?i)passwd|pass|password|pwd|secret|token")
 
 const (
 	// maxEntropyCheckLength is the maximum length of a possible secret for entropy checking.
-	maxEntropyCheckLength = 16
+	maxEntropyCheckLength	= 16
 	// entropyThreshold is the total entropy threshold a potential secret needs to pass before being flagged.
-	entropyThreshold = 80.0
+	entropyThreshold	= 80.0
 	// entropyCharThreshold is the per-char entropy threshold a potential secret needs to pass before being flagged.
-	entropyPerCharThreshold = 3.0
+	entropyPerCharThreshold	= 3.0
 )
 
 // looksLikeSecret returns true if a configuration value "looks" like a secret. This is always going to be a heuristic

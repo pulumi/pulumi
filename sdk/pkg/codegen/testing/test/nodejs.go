@@ -22,8 +22,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/testing/integration"
 )
 
 func GenerateNodeJSProgramTest(
@@ -33,53 +33,53 @@ func GenerateNodeJSProgramTest(
 ) {
 	expectedVersion := map[string]PkgVersionInfo{
 		"aws-resource-options-4.26": {
-			Pkg:          "\"@pulumi/aws\"",
-			OpAndVersion: "\"4.26.0\"",
+			Pkg:		"\"@pulumi/aws\"",
+			OpAndVersion:	"\"4.26.0\"",
 		},
 		"aws-resource-options-5.16.2": {
-			Pkg:          "\"@pulumi/aws\"",
-			OpAndVersion: "\"5.16.2\"",
+			Pkg:		"\"@pulumi/aws\"",
+			OpAndVersion:	"\"5.16.2\"",
 		},
 	}
 
 	TestProgramCodegen(t,
 		ProgramCodegenOptions{
-			Language:   "nodejs",
-			Extension:  "ts",
-			OutputFile: "index.ts",
+			Language:	"nodejs",
+			Extension:	"ts",
+			OutputFile:	"index.ts",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
 				checkNodeJS(t, path, dependencies, true)
 			},
-			GenProgram: genProgram,
+			GenProgram:	genProgram,
 			TestCases: []ProgramTest{
 				{
-					Directory:   "aws-resource-options-4.26",
-					Description: "Resource Options",
+					Directory:	"aws-resource-options-4.26",
+					Description:	"Resource Options",
 				},
 				{
-					Directory:   "aws-resource-options-5.16.2",
-					Description: "Resource Options",
+					Directory:	"aws-resource-options-5.16.2",
+					Description:	"Resource Options",
 				},
 			},
 
-			IsGenProject:    true,
-			GenProject:      genProject,
-			ExpectedVersion: expectedVersion,
-			DependencyFile:  "package.json",
+			IsGenProject:		true,
+			GenProject:		genProject,
+			ExpectedVersion:	expectedVersion,
+			DependencyFile:		"package.json",
 		})
 }
 
 func GenerateNodeJSBatchTest(t *testing.T, rootDir string, genProgram GenProgram, testCases []ProgramTest) {
 	TestProgramCodegen(t,
 		ProgramCodegenOptions{
-			Language:   "nodejs",
-			Extension:  "ts",
-			OutputFile: "index.ts",
+			Language:	"nodejs",
+			Extension:	"ts",
+			OutputFile:	"index.ts",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
 				checkNodeJS(t, path, dependencies, true)
 			},
-			GenProgram: genProgram,
-			TestCases:  testCases,
+			GenProgram:	genProgram,
+			TestCases:	testCases,
 		})
 }
 
@@ -88,14 +88,14 @@ func GenerateNodeJSYAMLBatchTest(t *testing.T, rootDir string, genProgram GenPro
 
 	TestProgramCodegen(t,
 		ProgramCodegenOptions{
-			Language:   "nodejs",
-			Extension:  "ts",
-			OutputFile: "index.ts",
+			Language:	"nodejs",
+			Extension:	"ts",
+			OutputFile:	"index.ts",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
 				checkNodeJS(t, path, dependencies, true)
 			},
-			GenProgram: genProgram,
-			TestCases:  PulumiPulumiYAMLProgramTests,
+			GenProgram:	genProgram,
+			TestCases:	PulumiPulumiYAMLProgramTests,
 		})
 }
 
@@ -121,8 +121,8 @@ func checkNodeJS(t *testing.T, path string, dependencies codegen.StringSet, link
 			"@pulumi/pulumi": "latest",
 		},
 		DevDependencies: map[string]string{
-			"@types/node": "^17.0.14",
-			"typescript":  "^4.5.5",
+			"@types/node":	"^17.0.14",
+			"typescript":	"^4.5.5",
 		},
 	}
 	for pkg, v := range pkgs {
@@ -194,6 +194,6 @@ func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 }
 
 type npmPackage struct {
-	Dependencies    map[string]string `json:"dependencies,omitempty"`
-	DevDependencies map[string]string `json:"devDependencies,omitempty"`
+	Dependencies	map[string]string	`json:"dependencies,omitempty"`
+	DevDependencies	map[string]string	`json:"devDependencies,omitempty"`
 }

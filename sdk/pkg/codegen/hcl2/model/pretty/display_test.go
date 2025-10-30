@@ -21,8 +21,8 @@ import (
 )
 
 type test struct {
-	expected  string
-	formatter Formatter
+	expected	string
+	formatter	Formatter
 }
 
 func testFormatter(t *testing.T, tests []test) {
@@ -40,15 +40,15 @@ func TestIndentFormatter(t *testing.T) {
 		{
 			">>123",
 			&indent{
-				prefix: ">>",
-				inner:  FromString("123"),
+				prefix:	">>",
+				inner:	FromString("123"),
 			},
 		},
 		{
 			">>123\n>>456",
 			&indent{
-				prefix: ">>",
-				inner:  FromString("123\n456"),
+				prefix:	">>",
+				inner:	FromString("123\n456"),
 			},
 		},
 	})
@@ -62,8 +62,8 @@ func TestObjectFormatter(t *testing.T) {
 			"{ fizz: abc, hello: world }",
 			&Object{
 				Properties: map[string]Formatter{
-					"fizz":  FromString("abc"),
-					"hello": FromString("world"),
+					"fizz":		FromString("abc"),
+					"hello":	FromString("world"),
 				},
 			},
 		},
@@ -71,8 +71,8 @@ func TestObjectFormatter(t *testing.T) {
 			"{\n  fizz: abc,\n  hello: world,\n}",
 			(&Object{
 				Properties: map[string]Formatter{
-					"fizz":  FromString("abc"),
-					"hello": FromString("world"),
+					"fizz":		FromString("abc"),
+					"hello":	FromString("world"),
 				},
 			}).Columns(18),
 		},
@@ -81,11 +81,11 @@ func TestObjectFormatter(t *testing.T) {
 			(&Object{
 				Properties: map[string]Formatter{
 					"aFoo": &Wrap{
-						Postfix:         "?",
-						PostfixSameline: true,
-						Value:           FromString("bar"),
+						Postfix:		"?",
+						PostfixSameline:	true,
+						Value:			FromString("bar"),
 					},
-					"bFizz": FromString("buzz"),
+					"bFizz":	FromString("buzz"),
 				},
 			}).Columns(14),
 		},
@@ -99,34 +99,34 @@ func TestWrapFormatter(t *testing.T) {
 		{
 			"A(123456)",
 			Wrap{
-				Prefix:  "A(",
-				Postfix: ")",
-				Value:   FromString("123456"),
+				Prefix:		"A(",
+				Postfix:	")",
+				Value:		FromString("123456"),
 			}.Columns(10),
 		},
 		{
 			"B(\n  123456\n)",
 			Wrap{
-				Prefix:  "B(",
-				Postfix: ")",
-				Value:   FromString("123456"),
+				Prefix:		"B(",
+				Postfix:	")",
+				Value:		FromString("123456"),
 			}.Columns(9),
 		},
 		{
 			"C({\n  123456\n  123456\n})",
 			Wrap{
-				Prefix:  "C(",
-				Postfix: ")",
-				Value:   FromString("{\n  123456\n  123456\n}"),
+				Prefix:		"C(",
+				Postfix:	")",
+				Value:		FromString("{\n  123456\n  123456\n}"),
 			}.Columns(6),
 		},
 		{
 			"foo-bar:\n  fizz-buzz,",
 			Wrap{
-				Prefix:          "foo-bar:",
-				Postfix:         ",",
-				PostfixSameline: true,
-				Value:           FromString("fizz-buzz"),
+				Prefix:			"foo-bar:",
+				Postfix:		",",
+				PostfixSameline:	true,
+				Value:			FromString("fizz-buzz"),
 			}.Columns(8),
 		},
 	})
@@ -136,8 +136,8 @@ func TestListFormatter(t *testing.T) {
 	t.Parallel()
 
 	commaList := &List{
-		AdjoinSeparator: true,
-		Separator:       ", ",
+		AdjoinSeparator:	true,
+		Separator:		", ",
 		Elements: []Formatter{
 			FromString("a"),
 			FromString("b"),
@@ -147,7 +147,7 @@ func TestListFormatter(t *testing.T) {
 	}
 
 	barList := &List{
-		Separator: " | ",
+		Separator:	" | ",
 		Elements: []Formatter{
 			FromString("a"),
 			FromString("b"),
@@ -172,16 +172,16 @@ func TestListFormatter(t *testing.T) {
   ]
 | c`,
 			(&List{
-				Separator: " | ",
+				Separator:	" | ",
 				Elements: []Formatter{
 					FromString("a"),
 					FromString("b"),
 					&Wrap{
-						Prefix:  "[",
-						Postfix: "]",
+						Prefix:		"[",
+						Postfix:	"]",
 						Value: &List{
-							AdjoinSeparator: true,
-							Separator:       ", ",
+							AdjoinSeparator:	true,
+							Separator:		", ",
 							Elements: []Formatter{
 								FromString("1"),
 								FromString("2"),
@@ -249,8 +249,8 @@ func TestObjectTagging(t *testing.T) {
 			}
 			return &Object{
 				Properties: map[string]Formatter{
-					"one": inner,
-					"two": inner,
+					"one":	inner,
+					"two":	inner,
 				},
 			}
 		}()},

@@ -25,10 +25,10 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model/format"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
@@ -89,8 +89,8 @@ func linearizeNode(n Node, done codegen.Set, list *[]Node) {
 // order as much as possible.
 func Linearize(p *Program) []Node {
 	type file struct {
-		name  string // The name of the HCL source file.
-		nodes []Node // The list of nodes defined by the source file.
+		name	string	// The name of the HCL source file.
+		nodes	[]Node	// The list of nodes defined by the source file.
 	}
 
 	// First, collect nodes into files. Ignore config and outputs, as these are sources and sinks, respectively.
@@ -345,9 +345,9 @@ func isComponentReference(program *Program, root string) (*Component, bool) {
 }
 
 type DeferredOutputVariable struct {
-	Name            string
-	Expr            model.Expression
-	SourceComponent *Component
+	Name		string
+	Expr		model.Expression
+	SourceComponent	*Component
 }
 
 func ExtractDeferredOutputVariables(
@@ -380,14 +380,14 @@ func ExtractDeferredOutputVariables(
 			// we found a reference to component that appears later in the program
 			variableName := InferVariableName(traversal)
 			deferredOutputs = append(deferredOutputs, &DeferredOutputVariable{
-				Name:            variableName,
-				Expr:            subExpr,
-				SourceComponent: componentRef,
+				Name:			variableName,
+				Expr:			subExpr,
+				SourceComponent:	componentRef,
 			})
 
 			return model.VariableReference(&model.Variable{
-				Name:         variableName,
-				VariableType: model.NewOutputType(subExpr.Type()),
+				Name:		variableName,
+				VariableType:	model.NewOutputType(subExpr.Type()),
 			}), nil
 		}
 
@@ -398,14 +398,14 @@ func ExtractDeferredOutputVariables(
 			if traversal, componentRef, ok := componentTraversalExpr(forExpr.Collection); ok {
 				variableName := "loopingOver" + titleCase(InferVariableName(traversal))
 				deferredOutputs = append(deferredOutputs, &DeferredOutputVariable{
-					Name:            variableName,
-					Expr:            forExpr,
-					SourceComponent: componentRef,
+					Name:			variableName,
+					Expr:			forExpr,
+					SourceComponent:	componentRef,
 				})
 
 				return model.VariableReference(&model.Variable{
-					Name:         variableName,
-					VariableType: model.NewOutputType(forExpr.Type()),
+					Name:		variableName,
+					VariableType:	model.NewOutputType(forExpr.Type()),
 				}), nil
 			}
 		}

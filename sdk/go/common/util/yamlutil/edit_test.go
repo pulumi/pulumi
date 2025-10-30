@@ -32,12 +32,12 @@ func assertYamlEdit(t *testing.T, original string, edited any, expected string) 
 }
 
 type Foo struct {
-	Foo     int      `yaml:"foo,omitempty"`
-	Bar     string   `yaml:"bar,omitempty"`
-	Baz     string   `yaml:"baz,omitempty"`
-	Quux    int      `yaml:"quux,omitempty"`
-	List    []string `yaml:"list,omitempty"`
-	ListFoo []*Foo   `yaml:"listFoo,omitempty"`
+	Foo	int		`yaml:"foo,omitempty"`
+	Bar	string		`yaml:"bar,omitempty"`
+	Baz	string		`yaml:"baz,omitempty"`
+	Quux	int		`yaml:"quux,omitempty"`
+	List	[]string	`yaml:"list,omitempty"`
+	ListFoo	[]*Foo		`yaml:"listFoo,omitempty"`
 }
 
 func TestEdit(t *testing.T) {
@@ -61,9 +61,9 @@ listFoo:
 
 # footer
 `, Foo{
-		Foo:  1,
-		Baz:  "quux",
-		List: []string{"1", "two", "pi", "e*2"},
+		Foo:	1,
+		Baz:	"quux",
+		List:	[]string{"1", "two", "pi", "e*2"},
 		ListFoo: []*Foo{
 			{Bar: "barOne"},
 			{Bar: "barTwo", List: []string{"a", "bee", "cee"}},
@@ -90,9 +90,9 @@ func TestEditEmpty(t *testing.T) {
 	t.Parallel()
 
 	assertYamlEdit(t, ``, Foo{
-		Foo:  1,
-		Baz:  "quux",
-		List: []string{"1", "two", "pi", "e*2"},
+		Foo:	1,
+		Baz:	"quux",
+		List:	[]string{"1", "two", "pi", "e*2"},
 		ListFoo: []*Foo{
 			{Bar: "barOne"},
 			{Bar: "barTwo", List: []string{"a", "bee", "cee"}},

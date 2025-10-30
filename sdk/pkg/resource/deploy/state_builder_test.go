@@ -29,8 +29,8 @@ func TestStateBuilder(t *testing.T) {
 		t.Parallel()
 
 		s0 := &resource.State{
-			URN:      "urn:pulumi:stack::project::type:name",
-			Provider: "urn:pulumi:providers::pkgA::prov::v1",
+			URN:		"urn:pulumi:stack::project::type:name",
+			Provider:	"urn:pulumi:providers::pkgA::prov::v1",
 			Dependencies: []resource.URN{
 				"urn:pulumi:stack::project::type:name::depA",
 				"urn:pulumi:stack::project::type:name::depB",
@@ -41,15 +41,15 @@ func TestStateBuilder(t *testing.T) {
 					"urn:pulumi:stack::project::type:name::propDepB",
 				},
 			},
-			DeletedWith: "urn:pulumi:stack::project::type:name::deletedWith",
+			DeletedWith:	"urn:pulumi:stack::project::type:name::deletedWith",
 		}
 
 		sBefore := s0.Copy()
 
 		// Parent is missing and we don't target other dependency types, so this should be a no-op.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
-			identity,  /*updateProviderRef*/
-			panicWith, /*updateURN*/
+			identity,	/*updateProviderRef*/
+			panicWith,	/*updateURN*/
 			justParent,
 		).build()
 
@@ -61,9 +61,9 @@ func TestStateBuilder(t *testing.T) {
 		t.Parallel()
 
 		s0 := &resource.State{
-			URN:      "urn:pulumi:stack::project::type:name",
-			Provider: "urn:pulumi:providers::pkgA::prov::v1",
-			Parent:   "urn:pulumi:stack::project::type:name::parent",
+			URN:		"urn:pulumi:stack::project::type:name",
+			Provider:	"urn:pulumi:providers::pkgA::prov::v1",
+			Parent:		"urn:pulumi:stack::project::type:name::parent",
 			Dependencies: []resource.URN{
 				"urn:pulumi:stack::project::type:name::depA",
 				"urn:pulumi:stack::project::type:name::depB",
@@ -74,7 +74,7 @@ func TestStateBuilder(t *testing.T) {
 					"urn:pulumi:stack::project::type:name::propDepB",
 				},
 			},
-			DeletedWith: "urn:pulumi:stack::project::type:name::deletedWith",
+			DeletedWith:	"urn:pulumi:stack::project::type:name::deletedWith",
 		}
 
 		sBefore := s0.Copy()
@@ -82,8 +82,8 @@ func TestStateBuilder(t *testing.T) {
 		// Parent will not change since we are passing identity, and we don't target other dependency types, so this should
 		// be a no-op.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
-			identity, /*updateProviderRef*/
-			identity, /*updateURN*/
+			identity,	/*updateProviderRef*/
+			identity,	/*updateURN*/
 			justParent,
 		).build()
 
@@ -95,9 +95,9 @@ func TestStateBuilder(t *testing.T) {
 		t.Parallel()
 
 		s0 := &resource.State{
-			URN:      "urn:pulumi:stack::project::type:name",
-			Provider: "urn:pulumi:providers::pkgA::prov::v1",
-			Parent:   "urn:pulumi:stack::project::type:name::parent",
+			URN:		"urn:pulumi:stack::project::type:name",
+			Provider:	"urn:pulumi:providers::pkgA::prov::v1",
+			Parent:		"urn:pulumi:stack::project::type:name::parent",
 			Dependencies: []resource.URN{
 				"urn:pulumi:stack::project::type:name::depA",
 				"urn:pulumi:stack::project::type:name::depB",
@@ -108,15 +108,15 @@ func TestStateBuilder(t *testing.T) {
 					"urn:pulumi:stack::project::type:name::propDepB",
 				},
 			},
-			DeletedWith: "urn:pulumi:stack::project::type:name::deletedWith",
+			DeletedWith:	"urn:pulumi:stack::project::type:name::deletedWith",
 		}
 
 		sBefore := s0.Copy()
 
 		// Parent will change, so we'll get a new pointer. Everything else should stay the same.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
-			identity,  /*updateProviderRef*/
-			emphasize, /*updateURN*/
+			identity,	/*updateProviderRef*/
+			emphasize,	/*updateURN*/
 			justParent,
 		).build()
 
@@ -132,8 +132,8 @@ func TestStateBuilder(t *testing.T) {
 		t.Parallel()
 
 		s0 := &resource.State{
-			URN:    "urn:pulumi:stack::project::type:name",
-			Parent: "urn:pulumi:stack::project::type:name::parent",
+			URN:	"urn:pulumi:stack::project::type:name",
+			Parent:	"urn:pulumi:stack::project::type:name::parent",
 			Dependencies: []resource.URN{
 				"urn:pulumi:stack::project::type:name::depA",
 				"urn:pulumi:stack::project::type:name::depB",
@@ -144,15 +144,15 @@ func TestStateBuilder(t *testing.T) {
 					"urn:pulumi:stack::project::type:name::propDepB",
 				},
 			},
-			DeletedWith: "urn:pulumi:stack::project::type:name::deletedWith",
+			DeletedWith:	"urn:pulumi:stack::project::type:name::deletedWith",
 		}
 
 		sBefore := s0.Copy()
 
 		// Provider is missing and we don't target other dependency types, so this should be a no-op.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
-			panicWith, /*updateProviderRef*/
-			panicWith, /*updateURN*/
+			panicWith,	/*updateProviderRef*/
+			panicWith,	/*updateURN*/
 			justProvider,
 		).build()
 
@@ -167,9 +167,9 @@ func TestStateBuilder(t *testing.T) {
 		t.Parallel()
 
 		s0 := &resource.State{
-			URN:      "urn:pulumi:stack::project::type:name",
-			Provider: "urn:pulumi:providers::pkgA::prov::v1",
-			Parent:   "urn:pulumi:stack::project::type:name::parent",
+			URN:		"urn:pulumi:stack::project::type:name",
+			Provider:	"urn:pulumi:providers::pkgA::prov::v1",
+			Parent:		"urn:pulumi:stack::project::type:name::parent",
 			Dependencies: []resource.URN{
 				"urn:pulumi:stack::project::type:name::depA",
 				"urn:pulumi:stack::project::type:name::depB",
@@ -180,7 +180,7 @@ func TestStateBuilder(t *testing.T) {
 					"urn:pulumi:stack::project::type:name::propDepB",
 				},
 			},
-			DeletedWith: "urn:pulumi:stack::project::type:name::deletedWith",
+			DeletedWith:	"urn:pulumi:stack::project::type:name::deletedWith",
 		}
 
 		sBefore := s0.Copy()
@@ -188,8 +188,8 @@ func TestStateBuilder(t *testing.T) {
 		// Provider will not change since we are passing identity, and we don't target other dependency types, so this
 		// should be a no-op.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
-			identity,  /*updateProviderRef*/
-			panicWith, /*updateURN*/
+			identity,	/*updateProviderRef*/
+			panicWith,	/*updateURN*/
 			justProvider,
 		).build()
 
@@ -202,9 +202,9 @@ func TestStateBuilder(t *testing.T) {
 		t.Parallel()
 
 		s0 := &resource.State{
-			URN:      "urn:pulumi:stack::project::type:name",
-			Provider: "urn:pulumi:providers::pkgA::prov::v1",
-			Parent:   "urn:pulumi:stack::project::type:name::parent",
+			URN:		"urn:pulumi:stack::project::type:name",
+			Provider:	"urn:pulumi:providers::pkgA::prov::v1",
+			Parent:		"urn:pulumi:stack::project::type:name::parent",
 			Dependencies: []resource.URN{
 				"urn:pulumi:stack::project::type:name::depA",
 				"urn:pulumi:stack::project::type:name::depB",
@@ -215,15 +215,15 @@ func TestStateBuilder(t *testing.T) {
 					"urn:pulumi:stack::project::type:name::propDepB",
 				},
 			},
-			DeletedWith: "urn:pulumi:stack::project::type:name::deletedWith",
+			DeletedWith:	"urn:pulumi:stack::project::type:name::deletedWith",
 		}
 
 		sBefore := s0.Copy()
 
 		// Provider will change, so we'll get a new pointer. Everything else should stay the same.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
-			emphasize, /*updateProviderRef*/
-			panicWith, /*updateURN*/
+			emphasize,	/*updateProviderRef*/
+			panicWith,	/*updateURN*/
 			justProvider,
 		).build()
 
@@ -239,24 +239,24 @@ func TestStateBuilder(t *testing.T) {
 		t.Parallel()
 
 		s0 := &resource.State{
-			URN:      "urn:pulumi:stack::project::type:name",
-			Provider: "urn:pulumi:providers::pkgA::prov::v1",
-			Parent:   "urn:pulumi:stack::project::type:name::parent",
+			URN:		"urn:pulumi:stack::project::type:name",
+			Provider:	"urn:pulumi:providers::pkgA::prov::v1",
+			Parent:		"urn:pulumi:stack::project::type:name::parent",
 			PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 				"propA": {
 					"urn:pulumi:stack::project::type:name::propDepA",
 					"urn:pulumi:stack::project::type:name::propDepB",
 				},
 			},
-			DeletedWith: "urn:pulumi:stack::project::type:name::deletedWith",
+			DeletedWith:	"urn:pulumi:stack::project::type:name::deletedWith",
 		}
 
 		sBefore := s0.Copy()
 
 		// Dependencies are missing and we don't target other dependency types, so this should be a no-op.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
-			identity,  /*updateProviderRef*/
-			panicWith, /*updateURN*/
+			identity,	/*updateProviderRef*/
+			panicWith,	/*updateURN*/
 			justDependencies,
 		).build()
 
@@ -270,9 +270,9 @@ func TestStateBuilder(t *testing.T) {
 		t.Parallel()
 
 		s0 := &resource.State{
-			URN:      "urn:pulumi:stack::project::type:name",
-			Provider: "urn:pulumi:providers::pkgA::prov::v1",
-			Parent:   "urn:pulumi:stack::project::type:name::parent",
+			URN:		"urn:pulumi:stack::project::type:name",
+			Provider:	"urn:pulumi:providers::pkgA::prov::v1",
+			Parent:		"urn:pulumi:stack::project::type:name::parent",
 			Dependencies: []resource.URN{
 				"urn:pulumi:stack::project::type:name::depA",
 				"urn:pulumi:stack::project::type:name::depB",
@@ -283,7 +283,7 @@ func TestStateBuilder(t *testing.T) {
 					"urn:pulumi:stack::project::type:name::propDepB",
 				},
 			},
-			DeletedWith: "urn:pulumi:stack::project::type:name::deletedWith",
+			DeletedWith:	"urn:pulumi:stack::project::type:name::deletedWith",
 		}
 
 		sBefore := s0.Copy()
@@ -291,8 +291,8 @@ func TestStateBuilder(t *testing.T) {
 		// Dependencies will not change since we are passing identity, and we don't target other dependency types, so this
 		// should be a no-op.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
-			identity, /*updateProviderRef*/
-			identity, /*updateURN*/
+			identity,	/*updateProviderRef*/
+			identity,	/*updateURN*/
 			justDependencies,
 		).build()
 
@@ -306,9 +306,9 @@ func TestStateBuilder(t *testing.T) {
 		t.Parallel()
 
 		s0 := &resource.State{
-			URN:      "urn:pulumi:stack::project::type:name",
-			Provider: "urn:pulumi:providers::pkgA::prov::v1",
-			Parent:   "urn:pulumi:stack::project::type:name::parent",
+			URN:		"urn:pulumi:stack::project::type:name",
+			Provider:	"urn:pulumi:providers::pkgA::prov::v1",
+			Parent:		"urn:pulumi:stack::project::type:name::parent",
 			Dependencies: []resource.URN{
 				"urn:pulumi:stack::project::type:name::depA",
 				"urn:pulumi:stack::project::type:name::depB",
@@ -319,15 +319,15 @@ func TestStateBuilder(t *testing.T) {
 					"urn:pulumi:stack::project::type:name::propDepB",
 				},
 			},
-			DeletedWith: "urn:pulumi:stack::project::type:name::deletedWith",
+			DeletedWith:	"urn:pulumi:stack::project::type:name::deletedWith",
 		}
 
 		sBefore := s0.Copy()
 
 		// Dependencies will change, so we'll get a new pointer. Everything else should stay the same.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
-			identity,  /*updateProviderRef*/
-			emphasize, /*updateURN*/
+			identity,	/*updateProviderRef*/
+			emphasize,	/*updateURN*/
 			justDependencies,
 		).build()
 
@@ -343,22 +343,22 @@ func TestStateBuilder(t *testing.T) {
 		t.Parallel()
 
 		s0 := &resource.State{
-			URN:      "urn:pulumi:stack::project::type:name",
-			Provider: "urn:pulumi:providers::pkgA::prov::v1",
-			Parent:   "urn:pulumi:stack::project::type:name::parent",
+			URN:		"urn:pulumi:stack::project::type:name",
+			Provider:	"urn:pulumi:providers::pkgA::prov::v1",
+			Parent:		"urn:pulumi:stack::project::type:name::parent",
 			Dependencies: []resource.URN{
 				"urn:pulumi:stack::project::type:name::depA",
 				"urn:pulumi:stack::project::type:name::depB",
 			},
-			DeletedWith: "urn:pulumi:stack::project::type:name::deletedWith",
+			DeletedWith:	"urn:pulumi:stack::project::type:name::deletedWith",
 		}
 
 		sBefore := s0.Copy()
 
 		// Property dependencies are missing and we don't target other dependency types, so this should be a no-op.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
-			identity,  /*updateProviderRef*/
-			panicWith, /*updateURN*/
+			identity,	/*updateProviderRef*/
+			panicWith,	/*updateURN*/
 			justPropertyDependencies,
 		).build()
 
@@ -372,9 +372,9 @@ func TestStateBuilder(t *testing.T) {
 		t.Parallel()
 
 		s0 := &resource.State{
-			URN:      "urn:pulumi:stack::project::type:name",
-			Provider: "urn:pulumi:providers::pkgA::prov::v1",
-			Parent:   "urn:pulumi:stack::project::type:name::parent",
+			URN:		"urn:pulumi:stack::project::type:name",
+			Provider:	"urn:pulumi:providers::pkgA::prov::v1",
+			Parent:		"urn:pulumi:stack::project::type:name::parent",
 			Dependencies: []resource.URN{
 				"urn:pulumi:stack::project::type:name::depA",
 				"urn:pulumi:stack::project::type:name::depB",
@@ -385,7 +385,7 @@ func TestStateBuilder(t *testing.T) {
 					"urn:pulumi:stack::project::type:name::propDepB",
 				},
 			},
-			DeletedWith: "urn:pulumi:stack::project::type:name::deletedWith",
+			DeletedWith:	"urn:pulumi:stack::project::type:name::deletedWith",
 		}
 
 		sBefore := s0.Copy()
@@ -393,8 +393,8 @@ func TestStateBuilder(t *testing.T) {
 		// Property dependencies will not change since we are passing identity, and we don't target other dependency types,
 		// so this should be a no-op.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
-			identity, /*updateProviderRef*/
-			identity, /*updateURN*/
+			identity,	/*updateProviderRef*/
+			identity,	/*updateURN*/
 			justPropertyDependencies,
 		).build()
 
@@ -408,9 +408,9 @@ func TestStateBuilder(t *testing.T) {
 		t.Parallel()
 
 		s0 := &resource.State{
-			URN:      "urn:pulumi:stack::project::type:name",
-			Provider: "urn:pulumi:providers::pkgA::prov::v1",
-			Parent:   "urn:pulumi:stack::project::type:name::parent",
+			URN:		"urn:pulumi:stack::project::type:name",
+			Provider:	"urn:pulumi:providers::pkgA::prov::v1",
+			Parent:		"urn:pulumi:stack::project::type:name::parent",
 			Dependencies: []resource.URN{
 				"urn:pulumi:stack::project::type:name::depA",
 				"urn:pulumi:stack::project::type:name::depB",
@@ -421,15 +421,15 @@ func TestStateBuilder(t *testing.T) {
 					"urn:pulumi:stack::project::type:name::propDepB",
 				},
 			},
-			DeletedWith: "urn:pulumi:stack::project::type:name::deletedWith",
+			DeletedWith:	"urn:pulumi:stack::project::type:name::deletedWith",
 		}
 
 		sBefore := s0.Copy()
 
 		// Property dependencies will change, so we'll get a new pointer. Everything else should stay the same.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
-			identity,  /*updateProviderRef*/
-			emphasize, /*updateURN*/
+			identity,	/*updateProviderRef*/
+			emphasize,	/*updateURN*/
 			justPropertyDependencies,
 		).build()
 
@@ -445,9 +445,9 @@ func TestStateBuilder(t *testing.T) {
 		t.Parallel()
 
 		s0 := &resource.State{
-			URN:      "urn:pulumi:stack::project::type:name",
-			Provider: "urn:pulumi:providers::pkgA::prov::v1",
-			Parent:   "urn:pulumi:stack::project::type:name::parent",
+			URN:		"urn:pulumi:stack::project::type:name",
+			Provider:	"urn:pulumi:providers::pkgA::prov::v1",
+			Parent:		"urn:pulumi:stack::project::type:name::parent",
 			Dependencies: []resource.URN{
 				"urn:pulumi:stack::project::type:name::depA",
 				"urn:pulumi:stack::project::type:name::depB",
@@ -464,8 +464,8 @@ func TestStateBuilder(t *testing.T) {
 
 		// Deleted with is missing and we don't target other dependency types, so this should be a no-op.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
-			identity,  /*updateProviderRef*/
-			panicWith, /*updateURN*/
+			identity,	/*updateProviderRef*/
+			panicWith,	/*updateURN*/
 			justDeletedWith,
 		).build()
 
@@ -479,9 +479,9 @@ func TestStateBuilder(t *testing.T) {
 		t.Parallel()
 
 		s0 := &resource.State{
-			URN:      "urn:pulumi:stack::project::type:name",
-			Provider: "urn:pulumi:providers::pkgA::prov::v1",
-			Parent:   "urn:pulumi:stack::project::type:name::parent",
+			URN:		"urn:pulumi:stack::project::type:name",
+			Provider:	"urn:pulumi:providers::pkgA::prov::v1",
+			Parent:		"urn:pulumi:stack::project::type:name::parent",
 			Dependencies: []resource.URN{
 				"urn:pulumi:stack::project::type:name::depA",
 				"urn:pulumi:stack::project::type:name::depB",
@@ -492,7 +492,7 @@ func TestStateBuilder(t *testing.T) {
 					"urn:pulumi:stack::project::type:name::propDepB",
 				},
 			},
-			DeletedWith: "urn:pulumi:stack::project::type:name::deletedWith",
+			DeletedWith:	"urn:pulumi:stack::project::type:name::deletedWith",
 		}
 
 		sBefore := s0.Copy()
@@ -500,8 +500,8 @@ func TestStateBuilder(t *testing.T) {
 		// Deleted with will not change since we are passing identity, and we don't target other dependency types, so this
 		// should be a no-op.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
-			identity, /*updateProviderRef*/
-			identity, /*updateURN*/
+			identity,	/*updateProviderRef*/
+			identity,	/*updateURN*/
 			justDeletedWith,
 		).build()
 
@@ -515,9 +515,9 @@ func TestStateBuilder(t *testing.T) {
 		t.Parallel()
 
 		s0 := &resource.State{
-			URN:      "urn:pulumi:stack::project::type:name",
-			Provider: "urn:pulumi:providers::pkgA::prov::v1",
-			Parent:   "urn:pulumi:stack::project::type:name::parent",
+			URN:		"urn:pulumi:stack::project::type:name",
+			Provider:	"urn:pulumi:providers::pkgA::prov::v1",
+			Parent:		"urn:pulumi:stack::project::type:name::parent",
 			Dependencies: []resource.URN{
 				"urn:pulumi:stack::project::type:name::depA",
 				"urn:pulumi:stack::project::type:name::depB",
@@ -528,15 +528,15 @@ func TestStateBuilder(t *testing.T) {
 					"urn:pulumi:stack::project::type:name::propDepB",
 				},
 			},
-			DeletedWith: "urn:pulumi:stack::project::type:name::deletedWith",
+			DeletedWith:	"urn:pulumi:stack::project::type:name::deletedWith",
 		}
 
 		sBefore := s0.Copy()
 
 		// Deleted with will change, so we'll get a new pointer. Everything else should stay the same.
 		sAfter := newStateBuilder(sBefore).withAllUpdatedDependencies(
-			identity,  /*updateProviderRef*/
-			emphasize, /*updateURN*/
+			identity,	/*updateProviderRef*/
+			emphasize,	/*updateURN*/
 			justDeletedWith,
 		).build()
 

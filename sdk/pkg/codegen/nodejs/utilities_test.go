@@ -23,9 +23,9 @@ func TestMakeSafeEnumName(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		input    string
-		expected string
-		wantErr  bool
+		input		string
+		expected	string
+		wantErr		bool
 	}{
 		{"red", "Red", false},
 		{"snake_cased_name", "Snake_cased_name", false},
@@ -60,8 +60,8 @@ func TestMakeSafeEnumName(t *testing.T) {
 func TestEscape(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		input    string
-		expected string
+		input		string
+		expected	string
 	}{
 		{"test", "test"},
 		{"sub\"string\"", "sub\\\"string\\\""},

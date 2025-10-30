@@ -17,83 +17,83 @@ package pcl
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 )
 
 // ResourceOptions represents a resource instantiation's options.
 type ResourceOptions struct {
 	// The definition of the resource options.
-	Definition *model.Block
+	Definition	*model.Block
 
 	// An expression to range over when instantiating the resource.
-	Range model.Expression
+	Range	model.Expression
 	// The resource's parent, if any.
-	Parent model.Expression
+	Parent	model.Expression
 	// The provider to use.
-	Provider model.Expression
+	Provider	model.Expression
 	// The providers (plural) to use in the case of a component resource.
-	Providers model.Expression
+	Providers	model.Expression
 	// The explicit dependencies of the resource.
-	DependsOn model.Expression
+	DependsOn	model.Expression
 	// Whether or not the resource is protected.
-	Protect model.Expression
+	Protect	model.Expression
 	// Whether the resource should be left in the cloud provider
 	// when it's deleted from the Pulumi state.
-	RetainOnDelete model.Expression
+	RetainOnDelete	model.Expression
 	// A list of properties that are not considered when diffing the resource.
-	IgnoreChanges model.Expression
+	IgnoreChanges	model.Expression
 	// A list of properties where the diff is not displayed.
-	HideDiffs model.Expression
+	HideDiffs	model.Expression
 	// The version of the provider for this resource.
-	Version model.Expression
+	Version	model.Expression
 	// The plugin download URL for this resource.
-	PluginDownloadURL model.Expression
+	PluginDownloadURL	model.Expression
 	// If set, the provider's Delete method will not be called for this resource if the specified resource is being
 	// deleted as well.
-	DeletedWith model.Expression
+	DeletedWith	model.Expression
 	// If the resource was imported, the id that was imported.
-	ImportID model.Expression
+	ImportID	model.Expression
 }
 
 // Resource represents a resource instantiation inside of a program or component.
 type Resource struct {
 	node
 
-	syntax *hclsyntax.Block
+	syntax	*hclsyntax.Block
 
 	// The name visible to API calls related to the resource. Used as the Name argument in resource
 	// constructors, and through those calls to RegisterResource. Must not be modified during code
 	// generation to ensure that resources are not renamed (deleted and recreated).
-	logicalName string
+	logicalName	string
 
 	// The definition of the resource.
-	Definition *model.Block
+	Definition	*model.Block
 
 	// When set to true, allows traversing unknown properties through a resource. i.e. `resource.unknownProperty`
 	// will be valid and the type of the traversal is dynamic. This property is set to false by default
-	LenientTraversal bool
+	LenientTraversal	bool
 
 	// Token is the type token for this resource.
-	Token string
+	Token	string
 
 	// Schema is the schema definition for this resource, if any.
-	Schema *schema.Resource
+	Schema	*schema.Resource
 
 	// The type of the resource's inputs. This will always be either Any or an object type.
-	InputType model.Type
+	InputType	model.Type
 	// The type of the resource's outputs. This will always be either Any or an object type.
-	OutputType model.Type
+	OutputType	model.Type
 
 	// The type of the resource variable.
-	VariableType model.Type
+	VariableType	model.Type
 
 	// The resource's input attributes, in source order.
-	Inputs []*model.Attribute
+	Inputs	[]*model.Attribute
 
 	// The resource's options, if any.
-	Options *ResourceOptions
+	Options	*ResourceOptions
 }
 
 // SyntaxNode returns the syntax node associated with the resource.
@@ -148,8 +148,8 @@ func (r *Resource) DecomposeToken() (string, string, string, hcl.Diagnostics) {
 
 // ResourceProperty represents a resource property.
 type ResourceProperty struct {
-	Path         hcl.Traversal
-	PropertyType model.Type
+	Path		hcl.Traversal
+	PropertyType	model.Type
 }
 
 func (*ResourceProperty) SyntaxNode() hclsyntax.Node {
@@ -159,8 +159,8 @@ func (*ResourceProperty) SyntaxNode() hclsyntax.Node {
 func (p *ResourceProperty) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
 	propertyType, diagnostics := p.PropertyType.Traverse(traverser)
 	return &ResourceProperty{
-		Path:         append(p.Path, traverser),
-		PropertyType: propertyType.(model.Type),
+		Path:		append(p.Path, traverser),
+		PropertyType:	propertyType.(model.Type),
 	}, diagnostics
 }
 

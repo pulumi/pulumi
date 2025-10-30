@@ -20,23 +20,23 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
 )
 
 // Block represents an HCL2 block.
 type Block struct {
 	// The syntax node for the block, if any.
-	Syntax *hclsyntax.Block
+	Syntax	*hclsyntax.Block
 	// The tokens for the block.
-	Tokens *syntax.BlockTokens
+	Tokens	*syntax.BlockTokens
 
 	// The block's type.
-	Type string
+	Type	string
 	// The block's labels.
-	Labels []string
+	Labels	[]string
 
 	// The block's body.
-	Body *Body
+	Body	*Body
 }
 
 // SyntaxNode returns the syntax node of the block, and will either return an *hclsyntax.Block or syntax.None.
@@ -89,8 +89,8 @@ func (b *Block) print(w io.Writer, p *printer) {
 	if len(b.Labels) < len(labelTokens) {
 		for _, l := range labelTokens[len(b.Labels):] {
 			p.fprintf(w, "%v", syntax.Token{
-				LeadingTrivia:  l.LeadingTrivia,
-				TrailingTrivia: l.TrailingTrivia,
+				LeadingTrivia:	l.LeadingTrivia,
+				TrailingTrivia:	l.TrailingTrivia,
 			})
 		}
 	}
@@ -110,7 +110,7 @@ func (b *Block) print(w io.Writer, p *printer) {
 	}
 }
 
-func (*Block) isBodyItem() {}
+func (*Block) isBodyItem()	{}
 
 // BindBlock binds an HCL2 block using the given scopes and token map.
 func BindBlock(block *hclsyntax.Block, scopes Scopes, tokens syntax.TokenMap,
@@ -119,10 +119,10 @@ func BindBlock(block *hclsyntax.Block, scopes Scopes, tokens syntax.TokenMap,
 	body, diagnostics := BindBody(block.Body, scopes, tokens, opts...)
 	blockTokens, _ := tokens.ForNode(block).(*syntax.BlockTokens)
 	return &Block{
-		Syntax: block,
-		Tokens: blockTokens,
-		Type:   block.Type,
-		Labels: block.Labels,
-		Body:   body,
+		Syntax:	block,
+		Tokens:	blockTokens,
+		Type:	block.Type,
+		Labels:	block.Labels,
+		Body:	body,
 	}, diagnostics
 }

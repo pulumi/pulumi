@@ -27,28 +27,28 @@ func TestMeasureText(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		text     string
-		expected int
+		text		string
+		expected	int
 	}{
 		{
-			text:     "",
-			expected: 0,
+			text:		"",
+			expected:	0,
 		},
 		{
-			text:     "a",
-			expected: 1,
+			text:		"a",
+			expected:	1,
 		},
 		{
-			text:     "├",
-			expected: 1,
+			text:		"├",
+			expected:	1,
 		},
 		{
-			text:     "├─  ",
-			expected: 4,
+			text:		"├─  ",
+			expected:	4,
 		},
 		{
-			text:     "\x1b[4m\x1b[38;5;12mType\x1b[0m",
-			expected: 4,
+			text:		"\x1b[4m\x1b[38;5;12mType\x1b[0m",
+			expected:	4,
 		},
 	}
 
@@ -71,9 +71,9 @@ func TestTablePrinting(t *testing.T) {
 	}
 
 	table := &Table{
-		Headers: []string{"ColumnA", "Long column B", "C"},
-		Rows:    rows,
-		Prefix:  "  ",
+		Headers:	[]string{"ColumnA", "Long column B", "C"},
+		Rows:		rows,
+		Prefix:		"  ",
 	}
 
 	expected := "" +
@@ -103,9 +103,9 @@ func TestColorTablePrinting(t *testing.T) {
 	}
 
 	table := &Table{
-		Headers: []string{"", columnHeader("Type"), columnHeader("Name"), columnHeader("Plan")},
-		Rows:    rows,
-		Prefix:  "  ",
+		Headers:	[]string{"", columnHeader("Type"), columnHeader("Name"), columnHeader("Plan")},
+		Rows:		rows,
+		Prefix:		"  ",
 	}
 
 	expected := "" +
@@ -127,8 +127,8 @@ func TestIsTruthy(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		give string
-		want bool
+		give	string
+		want	bool
 	}{
 		{"1", true},
 		{"true", true},
@@ -154,85 +154,85 @@ func TestReadConsoleFancy(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		desc  string
-		model readConsoleModel
+		desc	string
+		model	readConsoleModel
 
 		// Prompt expected on the command line, if any
 		// after which we begin typing.
-		expectPrompt string
+		expectPrompt	string
 
 		// Messages to send to the model in order.
 		// Does not include Enter or Ctrl+C.
-		giveMsgs []tea.Msg
+		giveMsgs	[]tea.Msg
 
 		// Output visible before we hit Enter.
-		wantEcho string
+		wantEcho	string
 
 		// Output visible after we hit Enter.
-		wantAccepted string
+		wantAccepted	string
 
 		// Value returned by the model.
-		wantValue string
+		wantValue	string
 	}{
 		{
-			desc:         "plain",
-			model:        newReadConsoleModel("Enter a value", false /* secret */),
-			expectPrompt: "Enter a value: ",
+			desc:		"plain",
+			model:		newReadConsoleModel("Enter a value", false /* secret */),
+			expectPrompt:	"Enter a value: ",
 			giveMsgs: []tea.Msg{
 				tea.KeyMsg{
-					Type:  tea.KeyRunes,
-					Runes: []rune("hello"),
+					Type:	tea.KeyRunes,
+					Runes:	[]rune("hello"),
 				},
 			},
-			wantEcho:     "Enter a value: hello",
-			wantAccepted: "Enter a value: hello ",
-			wantValue:    "hello",
+			wantEcho:	"Enter a value: hello",
+			wantAccepted:	"Enter a value: hello ",
+			wantValue:	"hello",
 		},
 		{
-			desc:         "secret",
-			model:        newReadConsoleModel("Password", true /* secret */),
-			expectPrompt: "Password: ",
+			desc:		"secret",
+			model:		newReadConsoleModel("Password", true /* secret */),
+			expectPrompt:	"Password: ",
 			giveMsgs: []tea.Msg{
 				tea.KeyMsg{
-					Type:  tea.KeyRunes,
-					Runes: []rune("hunter2"),
+					Type:	tea.KeyRunes,
+					Runes:	[]rune("hunter2"),
 				},
 			},
-			wantEcho:     "Password: *******",
-			wantAccepted: "Password: ",
-			wantValue:    "hunter2",
+			wantEcho:	"Password: *******",
+			wantAccepted:	"Password: ",
+			wantValue:	"hunter2",
 		},
 		{
-			desc:  "no prompt",
-			model: newReadConsoleModel("" /* prompt */, false /* secret */),
+			desc:	"no prompt",
+			model:	newReadConsoleModel("" /* prompt */, false /* secret */),
 			giveMsgs: []tea.Msg{
 				tea.KeyMsg{
-					Type:  tea.KeyRunes,
-					Runes: []rune("hello"),
+					Type:	tea.KeyRunes,
+					Runes:	[]rune("hello"),
 				},
 			},
-			wantEcho:     "> hello",
-			wantAccepted: "> hello ",
-			wantValue:    "hello",
+			wantEcho:	"> hello",
+			wantAccepted:	"> hello ",
+			wantValue:	"hello",
 		},
 		{
-			desc:  "backspace",
-			model: newReadConsoleModel("" /* prompt */, false /* secret */),
+			desc:	"backspace",
+			model:	newReadConsoleModel("" /* prompt */, false /* secret */),
 			giveMsgs: []tea.Msg{
 				tea.KeyMsg{
-					Type:  tea.KeyRunes,
-					Runes: []rune("foobar"),
+					Type:	tea.KeyRunes,
+					Runes:	[]rune("foobar"),
 				},
 				tea.KeyMsg{Type: tea.KeyBackspace},
 				tea.KeyMsg{Type: tea.KeyBackspace},
 				tea.KeyMsg{
-					Type:  tea.KeyRunes,
-					Runes: []rune("az"),
+					Type:	tea.KeyRunes,
+					Runes:	[]rune("az"),
 				},
 			},
-			wantEcho:     "> foobaz",
-			wantAccepted: "> foobaz ",
-			wantValue:    "foobaz",
+			wantEcho:	"> foobaz",
+			wantAccepted:	"> foobaz ",
+			wantValue:	"foobaz",
 		},
 	}
 
@@ -276,8 +276,8 @@ func TestReadConsoleFancy_cancel(t *testing.T) {
 	m.Init()
 
 	m, _ = m.Update(tea.KeyMsg{
-		Type:  tea.KeyRunes,
-		Runes: []rune("hello"),
+		Type:	tea.KeyRunes,
+		Runes:	[]rune("hello"),
 	})
 	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
 

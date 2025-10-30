@@ -20,7 +20,7 @@ import (
 	"io"
 	"sort"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
@@ -77,10 +77,10 @@ func jsonPythonLiteral(thing any) (string, error) {
 //	  }
 //	}
 type resourceModuleInfo struct {
-	Pkg     string            `json:"pkg"`
-	Mod     string            `json:"mod"`
-	Fqn     string            `json:"fqn"`
-	Classes map[string]string `json:"classes"`
+	Pkg	string			`json:"pkg"`
+	Mod	string			`json:"mod"`
+	Fqn	string			`json:"fqn"`
+	Classes	map[string]string	`json:"classes"`
 }
 
 func (rmi *resourceModuleInfo) Token() string {
@@ -146,10 +146,10 @@ func collectResourceModuleInfos(mctx *modContext) []resourceModuleInfo {
 // }
 
 type resourcePackageInfo struct {
-	Pkg   string `json:"pkg"`
-	Token string `json:"token"`
-	Fqn   string `json:"fqn"`
-	Class string `json:"class"`
+	Pkg	string	`json:"pkg"`
+	Token	string	`json:"token"`
+	Fqn	string	`json:"fqn"`
+	Class	string	`json:"class"`
 }
 
 func allResourcePackageInfos(root *modContext) []resourcePackageInfo {

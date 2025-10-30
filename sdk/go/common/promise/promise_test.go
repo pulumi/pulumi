@@ -29,11 +29,11 @@ func TestZeroPanic(t *testing.T) {
 
 	var p Promise[int]
 	assert.PanicsWithValue(t, "Promise must be initialized", func() {
-		p.Result(context.Background()) //nolint:errcheck // Result is expected to panic
+		p.Result(context.Background())	//nolint:errcheck // Result is expected to panic
 	})
 
 	assert.PanicsWithValue(t, "Promise must be initialized", func() {
-		p.TryResult() //nolint:errcheck // TryResult is expected to panic
+		p.TryResult()	//nolint:errcheck // TryResult is expected to panic
 	})
 }
 

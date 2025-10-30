@@ -23,8 +23,8 @@
 //	    "context"
 //	    "os"
 //
-//	    "github.com/pulumi/pulumi/pkg/v3/backend/diy"
-//	    "github.com/pulumi/pulumi/pkg/v3/diag"
+//	    "github.com/pulumi/pulumi/sdk/v3/pkg/backend/diy"
+//	    "github.com/pulumi/pulumi/sdk/v3/pkg/diag"
 //	)
 //
 //	func main() {

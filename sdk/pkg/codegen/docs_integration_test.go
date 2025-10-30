@@ -23,12 +23,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	dotnet_codegen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
-	golang_codegen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
-	nodejs_codegen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
-	python_codegen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	dotnet_codegen "github.com/pulumi/pulumi/sdk/v3/pkg/codegen/dotnet"
+	golang_codegen "github.com/pulumi/pulumi/sdk/v3/pkg/codegen/go"
+	nodejs_codegen "github.com/pulumi/pulumi/sdk/v3/pkg/codegen/nodejs"
+	python_codegen "github.com/pulumi/pulumi/sdk/v3/pkg/codegen/python"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -36,10 +36,10 @@ import (
 type language int
 
 const (
-	nodejs language = iota
-	python language = iota
-	golang language = iota
-	dotnet language = iota
+	nodejs	language	= iota
+	python	language	= iota
+	golang	language	= iota
+	dotnet	language	= iota
 )
 
 func TestGetResourceName(t *testing.T) {
@@ -47,7 +47,7 @@ func TestGetResourceName(t *testing.T) {
 
 	resource := func(t *testing.T, token string) *schema.Resource {
 		schemaSpec := schema.PackageSpec{
-			Name: "example",
+			Name:	"example",
 			Resources: map[string]schema.ResourceSpec{
 				"example:index:ComponentResource": {
 					IsComponent: true,
@@ -72,54 +72,54 @@ func TestGetResourceName(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		resource       *schema.Resource
-		schemaOverride schema.PackageReference
-		expected       map[language]string
+		name		string
+		resource	*schema.Resource
+		schemaOverride	schema.PackageReference
+		expected	map[language]string
 	}{
 		{
-			name:     "resource",
-			resource: resource(t, "example:index:ComponentResource"),
+			name:		"resource",
+			resource:	resource(t, "example:index:ComponentResource"),
 			expected: map[language]string{
-				golang: "ComponentResource",
-				nodejs: "ComponentResource",
-				python: "ComponentResource",
-				dotnet: "ComponentResource",
+				golang:	"ComponentResource",
+				nodejs:	"ComponentResource",
+				python:	"ComponentResource",
+				dotnet:	"ComponentResource",
 			},
 		},
 		{
-			name:     "nested",
-			resource: resource(t, "example:nested:Resource"),
+			name:		"nested",
+			resource:	resource(t, "example:nested:Resource"),
 			expected: map[language]string{
-				golang: "Resource",
-				nodejs: "Resource",
-				python: "Resource",
-				dotnet: "Resource",
+				golang:	"Resource",
+				nodejs:	"Resource",
+				python:	"Resource",
+				dotnet:	"Resource",
 			},
 		},
 		{
-			name:     "language override",
-			resource: resource(t, "example:override:Resource"),
+			name:		"language override",
+			resource:	resource(t, "example:override:Resource"),
 			expected: map[language]string{
 				// Only C# allows resource name overrides
 				dotnet: "Overridden",
 			},
 		},
 		{
-			name:     "provider",
-			resource: must(resource(t, "example:override:Resource").PackageReference.Provider()),
+			name:		"provider",
+			resource:	must(resource(t, "example:override:Resource").PackageReference.Provider()),
 			expected: map[language]string{
-				golang: "Provider",
-				nodejs: "Provider",
-				python: "Provider",
-				dotnet: "Provider",
+				golang:	"Provider",
+				nodejs:	"Provider",
+				python:	"Provider",
+				dotnet:	"Provider",
 			},
 		},
 		{
-			name:     "other-schema",
-			resource: resource(t, "example:index:ComponentResource"),
+			name:		"other-schema",
+			resource:	resource(t, "example:index:ComponentResource"),
 			schemaOverride: bind(t, schema.PackageSpec{
-				Name: "example2",
+				Name:	"example2",
 				Resources: map[string]schema.ResourceSpec{
 					"example2:other:ComponentResource": {
 						IsComponent: true,
@@ -127,10 +127,10 @@ func TestGetResourceName(t *testing.T) {
 				},
 			}),
 			expected: map[language]string{
-				golang: "ComponentResource",
-				nodejs: "ComponentResource",
-				python: "ComponentResource",
-				dotnet: "ComponentResource",
+				golang:	"ComponentResource",
+				nodejs:	"ComponentResource",
+				python:	"ComponentResource",
+				dotnet:	"ComponentResource",
 			},
 		},
 	}
@@ -157,7 +157,7 @@ func TestGetTypeName(t *testing.T) {
 	t.Parallel()
 
 	schema1 := bind(t, schema.PackageSpec{
-		Name: "pkg",
+		Name:	"pkg",
 		Types: map[string]schema.ComplexTypeSpec{
 			"pkg:index:simpleType": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
@@ -174,15 +174,15 @@ func TestGetTypeName(t *testing.T) {
 					Type: "string",
 				},
 				Enum: []schema.EnumValueSpec{{
-					Name:  "Value1",
-					Value: "value1",
+					Name:	"Value1",
+					Value:	"value1",
 				}},
 			},
 		},
 	})
 
 	schemaWithOverrides := bind(t, schema.PackageSpec{
-		Name: "pkg",
+		Name:	"pkg",
 		Types: map[string]schema.ComplexTypeSpec{
 			"pkg:shouldoverride:simpleType": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
@@ -215,165 +215,165 @@ func TestGetTypeName(t *testing.T) {
 	})
 
 	tests := []struct {
-		name   string
-		schema schema.PackageReference
+		name	string
+		schema	schema.PackageReference
 
 		// Arguments
 
-		module string
-		typ    schema.Type
-		input  *bool // if nil, assert on both inputs and outputs
+		module	string
+		typ	schema.Type
+		input	*bool	// if nil, assert on both inputs and outputs
 
-		expected map[language]string
+		expected	map[language]string
 	}{
 		{
-			name:   "primitive-string",
-			schema: schema.DefaultPulumiPackage.Reference(),
-			typ:    schema.StringType,
+			name:	"primitive-string",
+			schema:	schema.DefaultPulumiPackage.Reference(),
+			typ:	schema.StringType,
 
 			expected: map[language]string{
-				golang: "string",
-				nodejs: "string",
-				python: "str",
-				dotnet: "string",
+				golang:	"string",
+				nodejs:	"string",
+				python:	"str",
+				dotnet:	"string",
 			},
 		},
 		{
-			name:   "map-of-primitive",
-			schema: schema.DefaultPulumiPackage.Reference(),
-			typ:    &schema.MapType{ElementType: schema.NumberType},
+			name:	"map-of-primitive",
+			schema:	schema.DefaultPulumiPackage.Reference(),
+			typ:	&schema.MapType{ElementType: schema.NumberType},
 
 			expected: map[language]string{
-				golang: "map[string]float64",
-				nodejs: "{[key: string]: number}",
-				python: "Mapping[str, float]",
-				dotnet: "Dictionary<string, double>",
+				golang:	"map[string]float64",
+				nodejs:	"{[key: string]: number}",
+				python:	"Mapping[str, float]",
+				dotnet:	"Dictionary<string, double>",
 			},
 		},
 		{
-			name:   "array-of-primitive",
-			schema: schema.DefaultPulumiPackage.Reference(),
-			typ:    &schema.ArrayType{ElementType: schema.BoolType},
+			name:	"array-of-primitive",
+			schema:	schema.DefaultPulumiPackage.Reference(),
+			typ:	&schema.ArrayType{ElementType: schema.BoolType},
 
 			expected: map[language]string{
-				golang: "[]bool",
-				nodejs: "boolean[]",
-				python: "Sequence[bool]",
-				dotnet: "List<bool>",
+				golang:	"[]bool",
+				nodejs:	"boolean[]",
+				python:	"Sequence[bool]",
+				dotnet:	"List<bool>",
 			},
 		},
 		{
-			name:   "object",
-			schema: schema1,
-			typ:    mustToken(t, schema1.Types().Get, "pkg:index:simpleType"),
-			input:  ptr(true),
+			name:	"object",
+			schema:	schema1,
+			typ:	mustToken(t, schema1.Types().Get, "pkg:index:simpleType"),
+			input:	ptr(true),
 
 			expected: map[language]string{
-				golang: "SimpleType",
-				nodejs: "SimpleType",
-				python: "SimpleType",
-				dotnet: "Pulumi.Pkg.Inputs.SimpleType",
+				golang:	"SimpleType",
+				nodejs:	"SimpleType",
+				python:	"SimpleType",
+				dotnet:	"Pulumi.Pkg.Inputs.SimpleType",
 			},
 		},
 		{
-			name:   "object",
-			schema: schema1,
-			typ:    mustToken(t, schema1.Types().Get, "pkg:index:simpleType"),
-			input:  ptr(false),
+			name:	"object",
+			schema:	schema1,
+			typ:	mustToken(t, schema1.Types().Get, "pkg:index:simpleType"),
+			input:	ptr(false),
 
 			expected: map[language]string{
-				golang: "SimpleType",
-				nodejs: "SimpleType",
-				python: "SimpleType",
-				dotnet: "Pulumi.Pkg.Outputs.SimpleType",
+				golang:	"SimpleType",
+				nodejs:	"SimpleType",
+				python:	"SimpleType",
+				dotnet:	"Pulumi.Pkg.Outputs.SimpleType",
 			},
 		},
 		{
-			name:   "map-of-object",
-			schema: schema1,
-			typ:    &schema.MapType{ElementType: mustToken(t, schema1.Types().Get, "pkg:index:simpleType")},
-			input:  ptr(false),
+			name:	"map-of-object",
+			schema:	schema1,
+			typ:	&schema.MapType{ElementType: mustToken(t, schema1.Types().Get, "pkg:index:simpleType")},
+			input:	ptr(false),
 
 			expected: map[language]string{
-				golang: "map[string]SimpleType",
-				nodejs: "{[key: string]: SimpleType}",
-				python: "Mapping[str, SimpleType]",
-				dotnet: "Dictionary<string, Pulumi.Pkg.Outputs.SimpleType>",
+				golang:	"map[string]SimpleType",
+				nodejs:	"{[key: string]: SimpleType}",
+				python:	"Mapping[str, SimpleType]",
+				dotnet:	"Dictionary<string, Pulumi.Pkg.Outputs.SimpleType>",
 			},
 		},
 		{
-			name:   "module-object",
-			schema: schema1,
-			typ:    mustToken(t, schema1.Types().Get, "pkg:module:anotherType"),
-			input:  ptr(true),
+			name:	"module-object",
+			schema:	schema1,
+			typ:	mustToken(t, schema1.Types().Get, "pkg:module:anotherType"),
+			input:	ptr(true),
 
 			expected: map[language]string{
-				golang: "module.AnotherType",
-				nodejs: "module.AnotherType",
-				python: "_module.AnotherType",
-				dotnet: "Pulumi.Pkg.Module.Inputs.AnotherType",
+				golang:	"module.AnotherType",
+				nodejs:	"module.AnotherType",
+				python:	"_module.AnotherType",
+				dotnet:	"Pulumi.Pkg.Module.Inputs.AnotherType",
 			},
 		},
 		{
-			name:   "module-object-from-module",
-			schema: schema1,
-			typ:    mustToken(t, schema1.Types().Get, "pkg:module:anotherType"),
-			input:  ptr(true),
-			module: "module",
+			name:	"module-object-from-module",
+			schema:	schema1,
+			typ:	mustToken(t, schema1.Types().Get, "pkg:module:anotherType"),
+			input:	ptr(true),
+			module:	"module",
 
 			expected: map[language]string{
-				golang: "AnotherType",
-				nodejs: "module.AnotherType",
-				python: "AnotherType",
-				dotnet: "Pulumi.Pkg.Module.Inputs.AnotherType",
+				golang:	"AnotherType",
+				nodejs:	"module.AnotherType",
+				python:	"AnotherType",
+				dotnet:	"Pulumi.Pkg.Module.Inputs.AnotherType",
 			},
 		},
 		{
-			name:   "enum-in-module",
-			schema: schema1,
-			typ:    mustToken(t, schema1.Types().Get, "pkg:module:anEnum"),
-			module: "module",
+			name:	"enum-in-module",
+			schema:	schema1,
+			typ:	mustToken(t, schema1.Types().Get, "pkg:module:anEnum"),
+			module:	"module",
 			expected: map[language]string{
-				golang: "AnEnum",
-				nodejs: "module.AnEnum",
-				python: "AnEnum",
-				dotnet: "Pulumi.Pkg.Module.AnEnum",
+				golang:	"AnEnum",
+				nodejs:	"module.AnEnum",
+				python:	"AnEnum",
+				dotnet:	"Pulumi.Pkg.Module.AnEnum",
 			},
 		},
 		{
-			name:   "overridden-names-in-module",
-			schema: schemaWithOverrides,
-			typ:    mustToken(t, schemaWithOverrides.Types().Get, "pkg:shouldoverride:simpleType"),
-			module: schemaWithOverrides.TokenToModule("pkg:shouldoverride:simpleType"),
-			input:  ptr(true),
+			name:	"overridden-names-in-module",
+			schema:	schemaWithOverrides,
+			typ:	mustToken(t, schemaWithOverrides.Types().Get, "pkg:shouldoverride:simpleType"),
+			module:	schemaWithOverrides.TokenToModule("pkg:shouldoverride:simpleType"),
+			input:	ptr(true),
 			expected: map[language]string{
-				golang: "SimpleType",
-				nodejs: "overridden.SimpleType",
-				python: "SimpleType",
-				dotnet: "Pulumi.Pkg.Overridden.Inputs.SimpleType",
+				golang:	"SimpleType",
+				nodejs:	"overridden.SimpleType",
+				python:	"SimpleType",
+				dotnet:	"Pulumi.Pkg.Overridden.Inputs.SimpleType",
 			},
 		},
 		{
-			name:   "overridden-names",
-			schema: schemaWithOverrides,
-			typ:    mustToken(t, schemaWithOverrides.Types().Get, "pkg:shouldoverride:simpleType"),
-			input:  ptr(false),
+			name:	"overridden-names",
+			schema:	schemaWithOverrides,
+			typ:	mustToken(t, schemaWithOverrides.Types().Get, "pkg:shouldoverride:simpleType"),
+			input:	ptr(false),
 			expected: map[language]string{
-				golang: "overridden.SimpleType",
-				nodejs: "overridden.SimpleType",
-				python: "_overridden.SimpleType",
-				dotnet: "Pulumi.Pkg.Overridden.Outputs.SimpleType",
+				golang:	"overridden.SimpleType",
+				nodejs:	"overridden.SimpleType",
+				python:	"_overridden.SimpleType",
+				dotnet:	"Pulumi.Pkg.Overridden.Outputs.SimpleType",
 			},
 		},
 		{
-			name:   "optionals",
-			schema: schema.DefaultPulumiPackage.Reference(),
-			typ:    &schema.OptionalType{ElementType: schema.StringType},
+			name:	"optionals",
+			schema:	schema.DefaultPulumiPackage.Reference(),
+			typ:	&schema.OptionalType{ElementType: schema.StringType},
 			expected: map[language]string{
-				golang: "*string",
-				nodejs: "string",
-				python: "Optional[str]",
-				dotnet: "string?",
+				golang:	"*string",
+				nodejs:	"string",
+				python:	"Optional[str]",
+				dotnet:	"string?",
 			},
 		},
 	}
@@ -408,10 +408,10 @@ func TestGetMethodResultName(t *testing.T) {
 	t.Parallel()
 
 	schema1 := bind(t, schema.PackageSpec{
-		Name: "example",
+		Name:	"example",
 		Resources: map[string]schema.ResourceSpec{
 			"example:index:Foo": {
-				IsComponent: true,
+				IsComponent:	true,
 				Methods: map[string]string{
 					"getKubeconfig": "example:index:Foo/getKubeconfig",
 				},
@@ -437,7 +437,7 @@ func TestGetMethodResultName(t *testing.T) {
 							},
 						},
 					},
-					Required: []string{"__self__"},
+					Required:	[]string{"__self__"},
 				},
 				Outputs: &schema.ObjectTypeSpec{
 					Properties: map[string]schema.PropertySpec{
@@ -447,12 +447,12 @@ func TestGetMethodResultName(t *testing.T) {
 							},
 						},
 					},
-					Required: []string{"kubeconfig"},
+					Required:	[]string{"kubeconfig"},
 				},
 			},
 		},
 		Language: map[string]schema.RawMessage{
-			"csharp": schema.RawMessage(`{"liftSingleValueMethodReturns": true}`),
+			"csharp":	schema.RawMessage(`{"liftSingleValueMethodReturns": true}`),
 			"go": schema.RawMessage(`{
 			"importBasePath": "simple-methods-schema-single-value-returns/example",
 			"liftSingleValueMethodReturns": true,
@@ -464,15 +464,15 @@ func TestGetMethodResultName(t *testing.T) {
 			},
 			"liftSingleValueMethodReturns": true
 		}`),
-			"python": schema.RawMessage(`{"liftSingleValueMethodReturns": true}`),
+			"python":	schema.RawMessage(`{"liftSingleValueMethodReturns": true}`),
 		},
 	})
 
 	schema2 := bind(t, schema.PackageSpec{
-		Name: "example",
+		Name:	"example",
 		Resources: map[string]schema.ResourceSpec{
 			"example:index:Foo": {
-				IsComponent: true,
+				IsComponent:	true,
 				Methods: map[string]string{
 					"getKubeconfig": "example:index:Foo/getKubeconfig",
 				},
@@ -498,7 +498,7 @@ func TestGetMethodResultName(t *testing.T) {
 							},
 						},
 					},
-					Required: []string{"__self__"},
+					Required:	[]string{"__self__"},
 				},
 				Outputs: &schema.ObjectTypeSpec{
 					Properties: map[string]schema.PropertySpec{
@@ -508,46 +508,46 @@ func TestGetMethodResultName(t *testing.T) {
 							},
 						},
 					},
-					Required: []string{"kubeconfig"},
+					Required:	[]string{"kubeconfig"},
 				},
 			},
 		},
 	})
 
 	tests := []struct {
-		name   string
-		schema schema.PackageReference
+		name	string
+		schema	schema.PackageReference
 
 		// Arguments
 
-		module   string
-		resource *schema.Resource
-		method   *schema.Method
+		module		string
+		resource	*schema.Resource
+		method		*schema.Method
 
-		expected map[language]string
+		expected	map[language]string
 	}{
 		{
-			name:     "single-return-value",
-			schema:   schema1,
-			resource: mustToken(t, schema1.Resources().Get, "example:index:Foo"),
-			method:   mustToken(t, schema1.Resources().Get, "example:index:Foo").Methods[0],
+			name:		"single-return-value",
+			schema:		schema1,
+			resource:	mustToken(t, schema1.Resources().Get, "example:index:Foo"),
+			method:		mustToken(t, schema1.Resources().Get, "example:index:Foo").Methods[0],
 			expected: map[language]string{
-				golang: "pulumi.StringOutput",
-				nodejs: "string",
-				python: "str",
-				dotnet: "string",
+				golang:	"pulumi.StringOutput",
+				nodejs:	"string",
+				python:	"str",
+				dotnet:	"string",
 			},
 		},
 		{
-			name:     "object-return-value",
-			schema:   schema2,
-			resource: mustToken(t, schema2.Resources().Get, "example:index:Foo"),
-			method:   mustToken(t, schema2.Resources().Get, "example:index:Foo").Methods[0],
+			name:		"object-return-value",
+			schema:		schema2,
+			resource:	mustToken(t, schema2.Resources().Get, "example:index:Foo"),
+			method:		mustToken(t, schema2.Resources().Get, "example:index:Foo").Methods[0],
 			expected: map[language]string{
-				golang: "FooGetKubeconfigResultOutput",
-				nodejs: "Foo.GetKubeconfigResult",
-				python: "Foo.Get_kubeconfigResult",
-				dotnet: "Foo.GetKubeconfigResult",
+				golang:	"FooGetKubeconfigResultOutput",
+				nodejs:	"Foo.GetKubeconfigResult",
+				python:	"Foo.Get_kubeconfigResult",
+				dotnet:	"Foo.GetKubeconfigResult",
 			},
 		},
 	}
@@ -570,10 +570,10 @@ func TestGetMethodResultName_NoImporter(t *testing.T) {
 	t.Parallel()
 
 	schemaSpec := schema.PackageSpec{
-		Name: "example",
+		Name:	"example",
 		Resources: map[string]schema.ResourceSpec{
 			"example:index:Foo": {
-				IsComponent: true,
+				IsComponent:	true,
 				Methods: map[string]string{
 					"getKubeconfig": "example:index:Foo/getKubeconfig",
 				},
@@ -599,7 +599,7 @@ func TestGetMethodResultName_NoImporter(t *testing.T) {
 							},
 						},
 					},
-					Required: []string{"__self__"},
+					Required:	[]string{"__self__"},
 				},
 				Outputs: &schema.ObjectTypeSpec{
 					Properties: map[string]schema.PropertySpec{
@@ -609,7 +609,7 @@ func TestGetMethodResultName_NoImporter(t *testing.T) {
 							},
 						},
 					},
-					Required: []string{"kubeconfig"},
+					Required:	[]string{"kubeconfig"},
 				},
 			},
 		},
@@ -621,10 +621,10 @@ func TestGetMethodResultName_NoImporter(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := map[language]string{
-		golang: "FooGetKubeconfigResultOutput",
-		nodejs: "Foo.GetKubeconfigResult",
-		python: "Foo.Get_kubeconfigResult",
-		dotnet: "Foo.GetKubeconfigResult",
+		golang:	"FooGetKubeconfigResultOutput",
+		nodejs:	"Foo.GetKubeconfigResult",
+		python:	"Foo.Get_kubeconfigResult",
+		dotnet:	"Foo.GetKubeconfigResult",
 	}
 
 	for lang, expected := range expected {
@@ -643,10 +643,10 @@ func TestGetModuleName(t *testing.T) {
 
 	pkg := func(t *testing.T, language map[string]schema.RawMessage) schema.PackageReference {
 		schemaSpec := schema.PackageSpec{
-			Name: "example",
+			Name:	"example",
 			Resources: map[string]schema.ResourceSpec{
 				"example:index:Foo": {
-					IsComponent: true,
+					IsComponent:	true,
 					Methods: map[string]string{
 						"getKubeconfig": "example:index:Foo/getKubeconfig",
 					},
@@ -662,7 +662,7 @@ func TestGetModuleName(t *testing.T) {
 								},
 							},
 						},
-						Required: []string{"__self__"},
+						Required:	[]string{"__self__"},
 					},
 					Outputs: &schema.ObjectTypeSpec{
 						Properties: map[string]schema.PropertySpec{
@@ -672,57 +672,57 @@ func TestGetModuleName(t *testing.T) {
 								},
 							},
 						},
-						Required: []string{"kubeconfig"},
+						Required:	[]string{"kubeconfig"},
 					},
 				},
 			},
-			Language: language,
+			Language:	language,
 		}
 
 		return bind(t, schemaSpec)
 	}
 
 	tests := []struct {
-		name     string
-		schema   schema.PackageReference
-		token    string
-		expected map[language]string
+		name		string
+		schema		schema.PackageReference
+		token		string
+		expected	map[language]string
 	}{
 		{
-			name:   "index",
-			schema: pkg(t, nil),
-			token:  "example:index:Foo",
+			name:	"index",
+			schema:	pkg(t, nil),
+			token:	"example:index:Foo",
 			expected: map[language]string{
-				golang: "",
-				nodejs: "",
-				python: "",
-				dotnet: "",
+				golang:	"",
+				nodejs:	"",
+				python:	"",
+				dotnet:	"",
 			},
 		},
 		{
-			name:   "simple",
-			schema: pkg(t, nil),
-			token:  "example:mymodule:Foo",
+			name:	"simple",
+			schema:	pkg(t, nil),
+			token:	"example:mymodule:Foo",
 			expected: map[language]string{
-				golang: "mymodule",
-				nodejs: "mymodule",
-				python: "mymodule",
-				dotnet: "Mymodule",
+				golang:	"mymodule",
+				nodejs:	"mymodule",
+				python:	"mymodule",
+				dotnet:	"Mymodule",
 			},
 		},
 		{
-			name:   "nested",
-			schema: pkg(t, nil),
-			token:  "example:my/module:Foo",
+			name:	"nested",
+			schema:	pkg(t, nil),
+			token:	"example:my/module:Foo",
 			expected: map[language]string{
-				golang: "my/module",
-				nodejs: "my.module",
-				python: "my/module",
-				dotnet: "My.Module",
+				golang:	"my/module",
+				nodejs:	"my.module",
+				python:	"my/module",
+				dotnet:	"My.Module",
 			},
 		},
 		{
-			name: "overwritten",
+			name:	"overwritten",
 			schema: pkg(t, map[string]schema.RawMessage{
 				"go": marshalIntoRaw(t, golang_codegen.GoPackageInfo{
 					ModuleToPackage: map[string]string{
@@ -745,12 +745,12 @@ func TestGetModuleName(t *testing.T) {
 					},
 				}),
 			}),
-			token: "example:shouldoverride:Foo",
+			token:	"example:shouldoverride:Foo",
 			expected: map[language]string{
-				golang: "gopkg",
-				nodejs: "nodepkg",
-				python: "pythonpkg",
-				dotnet: "DotNetPkg",
+				golang:	"gopkg",
+				nodejs:	"nodepkg",
+				python:	"pythonpkg",
+				dotnet:	"DotNetPkg",
 			},
 		},
 	}
@@ -851,10 +851,10 @@ func BenchmarkGetPropertyNames(b *testing.B) {
 
 func bind(t *testing.T, spec schema.PackageSpec) schema.PackageReference {
 	pkg, err := schema.ImportSpec(spec, map[string]schema.Language{
-		"go":     golang_codegen.Importer,
-		"nodejs": nodejs_codegen.Importer,
-		"python": python_codegen.Importer,
-		"csharp": dotnet_codegen.Importer,
+		"go":		golang_codegen.Importer,
+		"nodejs":	nodejs_codegen.Importer,
+		"python":	python_codegen.Importer,
+		"csharp":	dotnet_codegen.Importer,
 	}, schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -870,7 +870,7 @@ func mustToken[T any](t *testing.T, get func(string) (T, bool, error), token str
 	return v
 }
 
-func ptr[T any](v T) *T { return &v }
+func ptr[T any](v T) *T	{ return &v }
 
 func marshalIntoRaw(t *testing.T, v any) schema.RawMessage {
 	b, err := json.Marshal(v)
@@ -878,7 +878,7 @@ func marshalIntoRaw(t *testing.T, v any) schema.RawMessage {
 	return schema.RawMessage(b)
 }
 
-func mkHelper[T codegen.DocLanguageHelper]() codegen.DocLanguageHelper { var v T; return v }
+func mkHelper[T codegen.DocLanguageHelper]() codegen.DocLanguageHelper	{ var v T; return v }
 
 func must[T any](v T, err error) T {
 	if err != nil {

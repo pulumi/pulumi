@@ -19,21 +19,21 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate/client"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
 )
 
 var _ engine.Journal = (*cloudJournaler)(nil)
 
 type cloudJournaler struct {
-	context     context.Context         // The context to use for client requests.
-	tokenSource tokenSourceCapability   // A token source for interacting with the service.
-	client      *client.Client          // A backend for communicating with the service
-	update      client.UpdateIdentifier // The UpdateIdentifier for this update sequence.
-	sm          secrets.Manager         // Secrets manager for encrypting values when serializing the journal entries.
-	wg          sync.WaitGroup          // Wait group to ensure all operations are completed before closing.
+	context		context.Context		// The context to use for client requests.
+	tokenSource	tokenSourceCapability	// A token source for interacting with the service.
+	client		*client.Client		// A backend for communicating with the service
+	update		client.UpdateIdentifier	// The UpdateIdentifier for this update sequence.
+	sm		secrets.Manager		// Secrets manager for encrypting values when serializing the journal entries.
+	wg		sync.WaitGroup		// Wait group to ensure all operations are completed before closing.
 }
 
 func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
@@ -47,7 +47,7 @@ func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 }
 
 func (j *cloudJournaler) Close() error {
-	j.wg.Wait() // Wait for all operations to complete before closing.
+	j.wg.Wait()	// Wait for all operations to complete before closing.
 	return nil
 }
 
@@ -63,11 +63,11 @@ func NewJournaler(
 	sm secrets.Manager,
 ) engine.Journal {
 	journal := &cloudJournaler{
-		context:     ctx,
-		tokenSource: tokenSource,
-		client:      client,
-		update:      update,
-		sm:          sm,
+		context:	ctx,
+		tokenSource:	tokenSource,
+		client:		client,
+		update:		update,
+		sm:		sm,
 	}
 	return journal
 }

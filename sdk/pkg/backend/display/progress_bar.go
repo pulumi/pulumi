@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
@@ -146,7 +146,7 @@ func formatBytes(n int64) string {
 }
 
 const (
-	KiB = 1024
-	MiB = 1024 * KiB
-	GiB = 1024 * MiB
+	KiB	= 1024
+	MiB	= 1024 * KiB
+	GiB	= 1024 * MiB
 )

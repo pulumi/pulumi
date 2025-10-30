@@ -48,21 +48,21 @@ func String() *rapid.Generator[property.Value] {
 	return rapid.Map(rapid.String(), property.New[string])
 }
 
-func Bool() *rapid.Generator[property.Value] { return rapid.Map(rapid.Bool(), property.New[bool]) }
+func Bool() *rapid.Generator[property.Value]	{ return rapid.Map(rapid.Bool(), property.New[bool]) }
 
 func Number() *rapid.Generator[property.Value] {
 	return rapid.Map(rapid.Float64(), property.New[float64])
 }
 
-func Null() *rapid.Generator[property.Value] { return rapid.Just(property.Value{}) }
+func Null() *rapid.Generator[property.Value]	{ return rapid.Just(property.Value{}) }
 
-func Computed() *rapid.Generator[property.Value] { return rapid.Just(property.New(property.Computed)) }
+func Computed() *rapid.Generator[property.Value]	{ return rapid.Just(property.New(property.Computed)) }
 
-func Array(maxDepth int) *rapid.Generator[property.Value] { return ArrayOf(Value(maxDepth - 1)) }
+func Array(maxDepth int) *rapid.Generator[property.Value]	{ return ArrayOf(Value(maxDepth - 1)) }
 
-func Map(maxDepth int) *rapid.Generator[property.Value] { return MapOf(Value(maxDepth - 1)) }
+func Map(maxDepth int) *rapid.Generator[property.Value]	{ return MapOf(Value(maxDepth - 1)) }
 
-func Secret(maxDepth int) *rapid.Generator[property.Value] { return SecretOf(Value(maxDepth - 1)) }
+func Secret(maxDepth int) *rapid.Generator[property.Value]	{ return SecretOf(Value(maxDepth - 1)) }
 
 func Dependencies(maxDepth int) *rapid.Generator[property.Value] {
 	return DependenciesOf(Value(maxDepth - 1))

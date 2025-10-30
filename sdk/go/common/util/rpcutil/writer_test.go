@@ -39,9 +39,9 @@ func makeStreamMock() *streamMock {
 
 type streamMock struct {
 	grpc.ServerStream
-	ctx    context.Context
-	stdout bytes.Buffer
-	stderr bytes.Buffer
+	ctx	context.Context
+	stdout	bytes.Buffer
+	stderr	bytes.Buffer
 }
 
 func (m *streamMock) Context() context.Context {

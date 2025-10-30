@@ -118,7 +118,7 @@ func (m Map) Delete(keys ...string) Map {
 }
 
 // NewMap creates a new map from m.
-func NewMap(m map[string]Value) Map { return Map{copyMapMaybeNil(m)} }
+func NewMap(m map[string]Value) Map	{ return Map{copyMapMaybeNil(m)} }
 
 func copyMapMaybeNil(m map[string]Value) map[string]Value {
 	if len(m) == 0 {

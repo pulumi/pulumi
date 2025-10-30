@@ -19,8 +19,8 @@ import (
 )
 
 type MockContext struct {
-	ReadProjectF          func() (*workspace.Project, string, error)
-	GetStoredCredentialsF func() (workspace.Credentials, error)
+	ReadProjectF		func() (*workspace.Project, string, error)
+	GetStoredCredentialsF	func() (workspace.Credentials, error)
 }
 
 func (c *MockContext) ReadProject() (*workspace.Project, string, error) {

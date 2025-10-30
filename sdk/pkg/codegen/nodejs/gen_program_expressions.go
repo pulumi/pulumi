@@ -28,9 +28,9 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -310,19 +310,19 @@ func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, en
 }
 
 var functionImports = map[string][]string{
-	intrinsicInterpolate: {"@pulumi/pulumi"},
-	"fileArchive":        {"@pulumi/pulumi"},
-	"remoteArchive":      {"@pulumi/pulumi"},
-	"assetArchive":       {"@pulumi/pulumi"},
-	"fileAsset":          {"@pulumi/pulumi"},
-	"stringAsset":        {"@pulumi/pulumi"},
-	"remoteAsset":        {"@pulumi/pulumi"},
-	"rootDirectory":      {"@pulumi/pulumi"},
-	"filebase64":         {"fs"},
-	"filebase64sha256":   {"fs", "crypto"},
-	"readFile":           {"fs"},
-	"readDir":            {"fs"},
-	"sha1":               {"crypto"},
+	intrinsicInterpolate:	{"@pulumi/pulumi"},
+	"fileArchive":		{"@pulumi/pulumi"},
+	"remoteArchive":	{"@pulumi/pulumi"},
+	"assetArchive":		{"@pulumi/pulumi"},
+	"fileAsset":		{"@pulumi/pulumi"},
+	"stringAsset":		{"@pulumi/pulumi"},
+	"remoteAsset":		{"@pulumi/pulumi"},
+	"rootDirectory":	{"@pulumi/pulumi"},
+	"filebase64":		{"fs"},
+	"filebase64sha256":	{"fs", "crypto"},
+	"readFile":		{"fs"},
+	"readDir":		{"fs"},
+	"sha1":			{"crypto"},
 }
 
 func (g *generator) visitFunctionImports(
