@@ -7,7 +7,7 @@ set -euo pipefail
 mkdir -p ../../junit
 JUNIT_DIR=$(realpath ../../junit)
 
-coverage run --append -m pytest --junitxml "$JUNIT_DIR/python-test-fast.xml" lib/test \
+coverage run --append -m pytest -n auto --junitxml "$JUNIT_DIR/python-test-fast.xml" lib/test \
              --ignore lib/test/automation
 
 # Using python -m also adds lib/test_with_mocks to sys.path which
