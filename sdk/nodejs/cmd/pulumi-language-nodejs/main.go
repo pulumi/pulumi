@@ -120,7 +120,13 @@ func main() {
 		"[obsolete] Path to tsconfig.json to use")
 	flag.String("nodeargs", "", "[obsolete] Arguments for the Node process")
 	flag.String("packagemanager", "", "[obsolete] Packagemanager to use (auto, npm, yarn, pnpm or bun)")
+	showVersion := flag.Bool("version", false, "Print the current plugin version and exit")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(version.Version)
+		os.Exit(0)
+	}
 
 	args := flag.Args()
 	logging.InitLogging(false, 0, false)
@@ -802,6 +808,9 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 	var errResult string
 	// #nosec G204
 	cmd := exec.CommandContext(ctx, nodeBin, nodeargs...)
+
+	logging.V(5).Infof("Constructed NodeJS command to run: %s", cmd)
+
 	// Copy cmd.Stdout to os.Stdout. Nodejs sometimes changes the blocking mode of its stdout/stderr,
 	// so it's unsafe to assign cmd.Stdout directly to os.Stdout. See the description of
 	// `runWithOutput` for more details.
@@ -1492,11 +1501,6 @@ func (host *nodeLanguageHost) RunPlugin(
 		return err
 	}
 
-	if logging.V(5) {
-		commandStr := strings.Join(req.Args, " ")
-		logging.V(5).Infoln("Language host launching process: ", nodeBin, commandStr)
-	}
-
 	opts, err := parseOptions(req.Info.Options.AsMap())
 	if err != nil {
 		return err
@@ -1548,6 +1552,8 @@ func (host *nodeLanguageHost) RunPlugin(
 	cmd.Dir = req.Pwd
 	cmd.Env = env
 	cmd.Stdout, cmd.Stderr = stdout, stderr
+
+	logging.V(5).Infof("Constructed NodeJS command to run: %s", cmd)
 
 	run := func() error {
 		if err := cmd.Start(); err != nil {

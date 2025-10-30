@@ -40,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/journal"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
@@ -947,22 +948,6 @@ func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	return newStack(ctx, stack, b)
 }
 
-// Confirm the specified stack's project doesn't contradict the Pulumi.yaml of the current project.
-// if the CWD is not in a Pulumi project,
-//
-//	does not contradict
-//
-// if the project name in Pulumi.yaml is "foo".
-//
-//	a stack with a name of foo/bar/foo should not work.
-func currentProjectContradictsWorkspace(project *workspace.Project, stack client.StackIdentifier) bool {
-	if project == nil {
-		return false
-	}
-
-	return project.Name.String() != stack.Project
-}
-
 func (b *cloudBackend) CreateStack(
 	ctx context.Context,
 	stackRef backend.StackReference,
@@ -976,13 +961,14 @@ func (b *cloudBackend) CreateStack(
 		opts = &backend.CreateStackOptions{}
 	}
 
-	stackID, err := b.getCloudStackIdentifier(stackRef)
+	err := backend.CurrentProjectContradictsWorkspace(b.currentProject, stackRef)
 	if err != nil {
 		return nil, err
 	}
 
-	if currentProjectContradictsWorkspace(b.currentProject, stackID) {
-		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", stackID.Project)
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return nil, err
 	}
 
 	// TODO: This should load project config and pass it as the last parameter to GetEnvironmentTagsForCurrentStack.
@@ -1182,10 +1168,10 @@ func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 }
 
 // IsExplainPreviewEnabled implements the "explainer" interface.
-// Checks that the backend supports the CopilotExplainPreview capability and that the user has enabled
-// the Copilot features.
+// Checks that the backend supports the CopilotExplainPreview capability and that Copilot is enabled
+// for the organization.
 func (b *cloudBackend) IsExplainPreviewEnabled(ctx context.Context, opts display.Options) bool {
-	if !b.isCopilotFeaturesEnabled(opts) {
+	if b.copilotEnabledForCurrentProject == nil || !*b.copilotEnabledForCurrentProject {
 		return false
 	}
 
@@ -1423,9 +1409,10 @@ func (b *cloudBackend) summarizeErrorWithCopilot(
 }
 
 type updateMetadata struct {
-	version    int
-	leaseToken string
-	messages   []apitype.Message
+	version        int
+	leaseToken     string
+	messages       []apitype.Message
+	journalVersion int64
 }
 
 func (b *cloudBackend) createAndStartUpdate(
@@ -1438,10 +1425,6 @@ func (b *cloudBackend) createAndStartUpdate(
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return client.UpdateIdentifier{}, updateMetadata{}, err
-	}
-	if currentProjectContradictsWorkspace(op.Proj, stackID) {
-		return client.UpdateIdentifier{}, updateMetadata{}, fmt.Errorf(
-			"provided project name %q doesn't match Pulumi.yaml", stackID.Project)
 	}
 	metadata := apitype.UpdateMetadata{
 		Message:     op.M.Message,
@@ -1477,7 +1460,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		return client.UpdateIdentifier{}, updateMetadata{}, fmt.Errorf("getting stack tags: %w", err)
 	}
 
-	version, token, err := b.client.StartUpdate(ctx, update, tags)
+	version, token, journalVersion, err := b.client.StartUpdate(ctx, update, tags)
 	if err != nil {
 		if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
 			conflict := backenderr.ConflictingUpdateError{Err: err}
@@ -1515,9 +1498,10 @@ func (b *cloudBackend) createAndStartUpdate(
 		stackID.Owner, copilotEnabledValueString, userName, continuationString)
 
 	return update, updateMetadata{
-		version:    version,
-		leaseToken: token,
-		messages:   updateDetails.Messages,
+		version:        version,
+		leaseToken:     token,
+		messages:       updateDetails.Messages,
+		journalVersion: journalVersion,
 	}, nil
 }
 
@@ -1529,6 +1513,11 @@ func (b *cloudBackend) apply(
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	resetKeepRunning := nosleep.KeepRunning()
 	defer resetKeepRunning()
+
+	err := backend.CurrentProjectContradictsWorkspace(b.currentProject, stack.Ref())
+	if err != nil {
+		return nil, nil, err
+	}
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
@@ -1600,7 +1589,9 @@ func (b *cloudBackend) apply(
 	}
 
 	permalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
-	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken, permalink, events, opts.DryRun)
+	return b.runEngineAction(
+		ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken,
+		permalink, events, opts.DryRun, updateMeta.journalVersion)
 }
 
 // getPermalink returns a link to the update in the Pulumi Console.
@@ -1615,7 +1606,7 @@ func (b *cloudBackend) getPermalink(update client.UpdateIdentifier, version int,
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token, permalink string,
-	callerEventsOpt chan<- engine.Event, dryRun bool,
+	callerEventsOpt chan<- engine.Event, dryRun bool, journalVersion int64,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	contract.Assertf(token != "", "persisted actions require a token")
 	u, tokenSource, err := b.newUpdate(ctx, stackRef, op, update, token)
@@ -1653,11 +1644,28 @@ func (b *cloudBackend) runEngineAction(
 	var snapshotManager *backend.SnapshotManager
 	var validationErrs []error
 	if kind != apitype.PreviewUpdate && !dryRun {
-		persister := b.newSnapshotPersister(ctx, update, tokenSource)
-		snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
-		combinedManager = &engine.CombinedManager{
-			Managers:          []engine.SnapshotManager{snapshotManager},
-			CollectErrorsOnly: []bool{false, true},
+		// Note that we intentionally only accept version 1 of the journal here.  If we ever want to evolve the API,
+		// we can send a newer version than 1, and switch out the API completely on the server side, while the client
+		// will continue working with the non-journaling snapshotter. This will be slower but won't be a breaking change
+		// for older clients.
+		if journalVersion == 1 && env.EnableJournaling.Value() {
+			journal := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
+			journalManager, err := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot, op.SecretsManager)
+			if err != nil {
+				validationErrs = append(validationErrs, err)
+			}
+			noopPersister := backend.ValidatingPersister{}
+			snapshotManager = backend.NewSnapshotManager(&noopPersister, op.SecretsManager, u.Target.Snapshot)
+			combinedManager = &engine.CombinedManager{
+				Managers: []engine.SnapshotManager{journalManager, snapshotManager},
+			}
+		} else {
+			persister := b.newSnapshotPersister(ctx, update, tokenSource)
+			snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
+			combinedManager = &engine.CombinedManager{
+				Managers:          []engine.SnapshotManager{snapshotManager},
+				CollectErrorsOnly: []bool{false, true},
+			}
 		}
 	}
 

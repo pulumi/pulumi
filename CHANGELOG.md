@@ -1,5 +1,57 @@
 # Changelog
 
+## 3.205.0 (2025-10-28)
+
+
+### Bug Fixes
+
+- [cli/display] Improve how the severity is displayed for policy violations
+  [#20805](https://github.com/pulumi/pulumi/pull/20805)
+
+- [engine] Fix an issue where `refresh --run-program` could potentially run forever
+  [#20781](https://github.com/pulumi/pulumi/pull/20781)
+
+## 3.204.0 (2025-10-23)
+
+
+### Features
+
+- [cli] Print replace diffs when a resource tries to replace but is blocked by still having an import id set
+  [#20762](https://github.com/pulumi/pulumi/pull/20762)
+
+- [engine] Support overriding policy severity on violations
+  [#20767](https://github.com/pulumi/pulumi/pull/20767)
+
+- [backend/service] Send journal entries to the backend if it's supported
+  [#20343](https://github.com/pulumi/pulumi/pull/20343)
+
+
+### Bug Fixes
+
+- [engine] Fix a potential snapshot integrity error when a resources dependency fails to be destroyed using `destroy --run-program`
+  [#20692](https://github.com/pulumi/pulumi/pull/20692)
+
+- [engine] Fix import error to contain the import ID of non-existent resources
+  [#20753](https://github.com/pulumi/pulumi/pull/20753)
+
+- [sdk/nodejs] Pass secret values as Output objects to resource hooks to properly maintain their secretness. Previously hooks received an internal representation for secret values.
+  [#20774](https://github.com/pulumi/pulumi/pull/20774)
+
+- [sdk/python] Pass secret values as Output objects to resource hooks to properly maintain their secretness. Previously hooks received an internal representation for secret values.
+  [#20769](https://github.com/pulumi/pulumi/pull/20769)
+
+- [sdkgen/go] Fix codegen of scalar return SDK functions
+  [#20754](https://github.com/pulumi/pulumi/pull/20754)
+
+- [sdkgen/{nodejs,python}] Fix scalar return protocol to allow returning secret maps
+  [#20747](https://github.com/pulumi/pulumi/pull/20747)
+
+
+### Miscellaneous
+
+- [sdk/nodejs] Use Language.Link to link Node.js packages
+  [#20715](https://github.com/pulumi/pulumi/pull/20715)
+
 ## 3.203.0 (2025-10-15)
 
 

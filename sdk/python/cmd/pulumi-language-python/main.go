@@ -111,6 +111,7 @@ func main() {
 	flag.String("root", "", "[obsolete] Project root path to use")
 	flag.String("typechecker", "", "[obsolete] Use a typechecker to type check")
 	flag.String("toolchain", "pip", "[obsolete] Select the package manager to use for dependency management.")
+	showVersion := flag.Bool("version", false, "Print the current plugin version and exit")
 
 	// You can use the below flag to request that the language host load a specific executor instead of probing the
 	// PATH.  This can be used during testing to override the default location.
@@ -119,6 +120,12 @@ func main() {
 		"Use the given program as the executor instead of looking for one on PATH")
 
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(version.Version)
+		os.Exit(0)
+	}
+
 	args := flag.Args()
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-python", "pulumi-language-python", tracing)

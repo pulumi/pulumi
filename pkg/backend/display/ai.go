@@ -58,7 +58,7 @@ func RenderCopilotErrorSummary(summary *CopilotErrorSummaryMetadata, err error, 
 
 	// Generate the header
 	header := opts.Color.Colorize(
-		colors.SpecHeadline + "Copilot Diagnostics" + copilotDelimiterEmoji() + colors.Reset)
+		colors.SpecHeadline + "Neo Diagnostics" + copilotDelimiterEmoji() + colors.Reset)
 	fmt.Fprintln(out, header)
 
 	// Print the error if there was one and return.

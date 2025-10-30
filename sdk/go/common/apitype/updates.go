@@ -116,6 +116,10 @@ type StartUpdateRequest struct {
 	// Tags contains an updated set of Tags for the stack. If non-nil, will replace the current
 	// set of tags associated with the stack.
 	Tags map[StackTagName]string `json:"tags,omitempty"`
+
+	// JournalVersion indicates the maximum journal version the client supports.  If 0, journaling
+	// is not supported.
+	JournalVersion int64 `json:"journalVersion,omitempty"`
 }
 
 // StartUpdateResponse is the result of the command to start an update.
@@ -129,6 +133,11 @@ type StartUpdateResponse struct {
 
 	// TokenExpiration is a UNIX timestamp by which the token will expire.
 	TokenExpiration int64 `json:"tokenExpiration,omitempty"`
+
+	// JournalVersion indicates the maximum version of journal entries that should be
+	// sent to the server. Is expected to be less or equal than the JournalVersion we
+	// sent in the update request.  If 0, journaling is disabled.
+	JournalVersion int64 `json:"journalVersion,omitempty"`
 }
 
 // UpdateEventKind is an enum for the type of update events.

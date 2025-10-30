@@ -4768,7 +4768,7 @@ func TestUntargetedResourceAnalyzer(t *testing.T) {
 					return plugin.AnalyzeResponse{}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	skipB := false
@@ -4863,7 +4863,7 @@ func TestUntargetedRefreshedProviderUpdate(t *testing.T) {
 					return plugin.AnalyzeResponse{}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	skipB := false

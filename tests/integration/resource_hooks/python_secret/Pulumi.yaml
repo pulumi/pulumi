@@ -1,0 +1,3 @@
+name: resource_hooks_python_secret
+description: A program with a resource hook that receives a secret
+runtime: python

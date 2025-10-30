@@ -416,6 +416,8 @@ export class AnalyzeDiagnostic extends jspb.Message {
     setEnforcementlevel(value: EnforcementLevel): AnalyzeDiagnostic;
     getUrn(): string;
     setUrn(value: string): AnalyzeDiagnostic;
+    getSeverity(): PolicySeverity;
+    setSeverity(value: PolicySeverity): AnalyzeDiagnostic;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): AnalyzeDiagnostic.AsObject;
@@ -436,6 +438,7 @@ export namespace AnalyzeDiagnostic {
         message: string,
         enforcementlevel: EnforcementLevel,
         urn: string,
+        severity: PolicySeverity,
     }
 }
 

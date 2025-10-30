@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"time"
 
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -120,23 +121,41 @@ func GeneratedFixture(fo FixtureOptions) func(t *rapid.T) {
 				reproMessage,
 			)
 		}
+		done := make(chan struct{})
+		go func() {
+			// Operations may fail for legitimate reasons -- e.g. we have configured a provider operation to fail, aborting
+			// execution. We thus only fail if we encounter an actual snapshot integrity error.
+			outSnap, err := op.RunStep(project, p.GetTarget(t, inSnap), opOpts, false, p.BackendClient, nil, "0")
+			if _, isSIE := deploy.AsSnapshotIntegrityError(err); isSIE {
+				failWithSIE(err)
+			}
 
-		// Operations may fail for legitimate reasons -- e.g. we have configured a provider operation to fail, aborting
-		// execution. We thus only fail if we encounter an actual snapshot integrity error.
-		outSnap, err := op.RunStep(project, p.GetTarget(t, inSnap), opOpts, false, p.BackendClient, nil, "0")
-		if _, isSIE := deploy.AsSnapshotIntegrityError(err); isSIE {
-			failWithSIE(err)
+			// If for some reason the operation does not return an error, but the resulting snapshot is invalid, we'll fail in
+			// the same manner.
+			outSnapErr := outSnap.VerifyIntegrity()
+			if _, isSIE := deploy.AsSnapshotIntegrityError(outSnapErr); isSIE {
+				failWithSIE(outSnapErr)
+			}
+
+			// In all other cases, we expect errors to be "expected", or "bails" in our terminology.
+			assert.True(t, err == nil || result.IsBail(err), "unexpected error: %v", err)
+			close(done)
+		}()
+		select {
+		case <-time.After(20 * time.Second):
+			reproTest := GenerateReproTest(t, fo.StackSpecOptions, snapSpec, progSpec, provSpec, planSpec)
+			reproFile, reproErr := writeReproTest(reproTest)
+
+			var reproMessage string
+			if reproErr != nil {
+				reproMessage = fmt.Sprintf("Error writing reproduction test case:\n\n%v", reproErr)
+			} else {
+				reproMessage = "Reproduction test case was written to " + reproFile
+			}
+			assert.Failf(t, "test timed out after 20 seconds\n%s", reproMessage)
+		case <-done:
+			// Test completed within the timeout.
 		}
-
-		// If for some reason the operation does not return an error, but the resulting snapshot is invalid, we'll fail in
-		// the same manner.
-		outSnapErr := outSnap.VerifyIntegrity()
-		if _, isSIE := deploy.AsSnapshotIntegrityError(outSnapErr); isSIE {
-			failWithSIE(outSnapErr)
-		}
-
-		// In all other cases, we expect errors to be "expected", or "bails" in our terminology.
-		assert.True(t, err == nil || result.IsBail(err), "unexpected error: %v", err)
 	}
 }
 

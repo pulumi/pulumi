@@ -222,3 +222,6 @@ var (
 	// If set, it overrides the compile-time default pulumiPolicyTemplateBranch.
 	PolicyTemplateBranch = env.String("POLICY_TEMPLATE_BRANCH", "Branch name for Pulumi Policy Pack templates repository.")
 )
+
+var EnableJournaling = env.Bool("ENABLE_JOURNALING",
+	"Enable journaling of engine operations to the backend (if the backend supports it)")
