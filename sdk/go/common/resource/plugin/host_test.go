@@ -63,79 +63,79 @@ func TestIsLocalPluginPath(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
-		name     string
-		path     string
-		expected bool
+		name		string
+		path		string
+		expected	bool
 	}{
 		{
-			name:     "explicit relative path with ./",
-			path:     "./my-plugin",
-			expected: true,
+			name:		"explicit relative path with ./",
+			path:		"./my-plugin",
+			expected:	true,
 		},
 		{
-			name:     "explicit relative path with ../",
-			path:     "../my-plugin",
-			expected: true,
+			name:		"explicit relative path with ../",
+			path:		"../my-plugin",
+			expected:	true,
 		},
 		{
-			name:     "absolute path",
-			path:     "/path/to/my-plugin",
-			expected: true,
+			name:		"absolute path",
+			path:		"/path/to/my-plugin",
+			expected:	true,
 		},
 		{
-			name:     "windows absolute path",
-			path:     "C:\\path\\to\\my-plugin",
-			expected: true, // This will be true because it doesn't match plugin name regexp
+			name:		"windows absolute path",
+			path:		"C:\\path\\to\\my-plugin",
+			expected:	true,	// This will be true because it doesn't match plugin name regexp
 		},
 		{
-			name:     "standard plugin name",
-			path:     "aws",
-			expected: false, // Standard plugin names match the regexp
+			name:		"standard plugin name",
+			path:		"aws",
+			expected:	false,	// Standard plugin names match the regexp
 		},
 		{
-			name:     "standard plugin name with version",
-			path:     "aws@v4.0.0",
-			expected: false,
+			name:		"standard plugin name with version",
+			path:		"aws@v4.0.0",
+			expected:	false,
 		},
 		{
-			name:     "git URL",
-			path:     "git://github.com/pulumi/pulumi-aws",
-			expected: false,
+			name:		"git URL",
+			path:		"git://github.com/pulumi/pulumi-aws",
+			expected:	false,
 		},
 		{
-			name:     "github URL",
-			path:     "github.com/pulumi/pulumi-aws",
-			expected: false,
+			name:		"github URL",
+			path:		"github.com/pulumi/pulumi-aws",
+			expected:	false,
 		},
 		{
-			name:     "github HTTPS URL",
-			path:     "https://github.com/pulumi/pulumi-aws",
-			expected: false,
+			name:		"github HTTPS URL",
+			path:		"https://github.com/pulumi/pulumi-aws",
+			expected:	false,
 		},
 		{
-			name:     "plugin name",
-			path:     "my-provider",
-			expected: false,
+			name:		"plugin name",
+			path:		"my-provider",
+			expected:	false,
 		},
 		{
-			name:     "local path that looks like a plugin name",
-			path:     "_my_local_path", // Doesn't match plugin name regexp
-			expected: true,
+			name:		"local path that looks like a plugin name",
+			path:		"_my_local_path",	// Doesn't match plugin name regexp
+			expected:	true,
 		},
 		{
-			name:     "empty string",
-			path:     "", // Can't be a valid plugin name
-			expected: true,
+			name:		"empty string",
+			path:		"",	// Can't be a valid plugin name
+			expected:	true,
 		},
 		{
-			name:     "private github URL",
-			path:     "github.com/pulumi/home",
-			expected: false,
+			name:		"private github URL",
+			path:		"github.com/pulumi/home",
+			expected:	false,
 		},
 		{
-			name:     "non-existent repo URL",
-			path:     "example.com/no-repo-exists/here",
-			expected: false,
+			name:		"non-existent repo URL",
+			path:		"example.com/no-repo-exists/here",
+			expected:	false,
 		},
 	}
 
@@ -167,7 +167,7 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 
 	// Create a context for testing
 	ctx := &Context{
-		Root: tempDir,
+		Root:	tempDir,
 		Diag: diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 			Color: colors.Never,
 		}),
@@ -175,11 +175,11 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 
 	// Create packages map with various types of sources
 	packages := map[string]workspace.PackageSpec{
-		"local-plugin":    {Source: localPluginDir},
-		"relative-plugin": {Source: "./relative-path"},
-		"aws":             {Source: "aws"},                                // This should be skipped as it's not a local path
-		"azure":           {Source: "azure@v4.0.0"},                       // This should be skipped as it's not a local path
-		"git-plugin":      {Source: "git://github.com/pulumi/pulumi-aws"}, // This should be skipped
+		"local-plugin":		{Source: localPluginDir},
+		"relative-plugin":	{Source: "./relative-path"},
+		"aws":			{Source: "aws"},				// This should be skipped as it's not a local path
+		"azure":		{Source: "azure@v4.0.0"},			// This should be skipped as it's not a local path
+		"git-plugin":		{Source: "git://github.com/pulumi/pulumi-aws"},	// This should be skipped
 	}
 
 	// Create the host with our packages
@@ -229,7 +229,7 @@ func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 
 	// Create a context for testing
 	ctx := &Context{
-		Root: tempDir,
+		Root:	tempDir,
 		Diag: diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 			Color: colors.Never,
 		}),
@@ -244,8 +244,8 @@ func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 
 	// Create test packages
 	packages := map[string]workspace.PackageSpec{
-		"local-plugin": {Source: localPluginDir},
-		"azure":        {Source: "azure"}, // This should be skipped as it's not a local path
+		"local-plugin":	{Source: localPluginDir},
+		"azure":	{Source: "azure"},	// This should be skipped as it's not a local path
 	}
 
 	host, err := NewDefaultHost(ctx, nil, false, plugins, packages, nil, nil, "")

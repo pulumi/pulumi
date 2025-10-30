@@ -17,16 +17,16 @@ package engine
 import (
 	"errors"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
 )
 
 var _ = SnapshotManager((*CombinedManager)(nil))
 
 // CombinedManager combines multiple SnapshotManagers into one, it simply forwards on each call to every manager.
 type CombinedManager struct {
-	Managers          []SnapshotManager
-	CollectErrorsOnly []bool
-	errors            []error
+	Managers		[]SnapshotManager
+	CollectErrorsOnly	[]bool
+	errors			[]error
 }
 
 func (c *CombinedManager) Write(base *deploy.Snapshot) error {
@@ -116,9 +116,9 @@ func (c *CombinedManager) Errors() []error {
 }
 
 type CombinedMutation struct {
-	Mutations         []SnapshotMutation
-	CollectErrorsOnly []bool
-	manager           *CombinedManager
+	Mutations		[]SnapshotMutation
+	CollectErrorsOnly	[]bool
+	manager			*CombinedManager
 }
 
 func (c *CombinedMutation) End(step deploy.Step, success bool) error {

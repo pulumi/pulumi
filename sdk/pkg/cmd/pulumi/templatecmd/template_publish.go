@@ -23,10 +23,10 @@ import (
 	"path/filepath"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
@@ -37,9 +37,9 @@ import (
 )
 
 type publishTemplateArgs struct {
-	publisher string
-	version   string
-	name      string
+	publisher	string
+	version		string
+	name		string
 }
 
 type templatePublishCmd struct {
@@ -50,9 +50,9 @@ func newTemplatePublishCmd() *cobra.Command {
 	var args publishTemplateArgs
 
 	cmd := &cobra.Command{
-		Use:   "publish <directory>",
-		Args:  cmdutil.ExactArgs(1),
-		Short: "Publish a template to the Private Registry",
+		Use:	"publish <directory>",
+		Args:	cmdutil.ExactArgs(1),
+		Short:	"Publish a template to the Private Registry",
 		Long: "Publish a template to the Private Registry.\n\n" +
 			"This command publishes a template directory to the Private Registry.",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
@@ -164,11 +164,11 @@ func (tplCmd *templatePublishCmd) publishTemplate(
 	}
 
 	publishInput := apitype.TemplatePublishOp{
-		Source:    "private",
-		Publisher: publisher,
-		Name:      name,
-		Version:   version,
-		Archive:   archiveData,
+		Source:		"private",
+		Publisher:	publisher,
+		Name:		name,
+		Version:	version,
+		Archive:	archiveData,
 	}
 
 	err = registry.PublishTemplate(ctx, publishInput)

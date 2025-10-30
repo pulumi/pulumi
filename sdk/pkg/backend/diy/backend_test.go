@@ -36,12 +36,12 @@ import (
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/fileblob"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/operations"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/b64"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -183,7 +183,7 @@ func TestMassageBlobPath(t *testing.T) {
 
 		expected = filepath.ToSlash(abs)
 		if expected[0] != '/' {
-			expected = "/" + expected // A leading slash is added on Windows.
+			expected = "/" + expected	// A leading slash is added on Windows.
 		}
 
 		testMassagePath(t, FilePathPrefix+"/1/2/3/../4/..", FilePathPrefix+expected+noTmpDirSuffix)
@@ -213,10 +213,10 @@ func TestGetLogsForTargetWithNoSnapshot(t *testing.T) {
 	t.Parallel()
 
 	target := &deploy.Target{
-		Name:      tokens.MustParseStackName("test"),
-		Config:    config.Map{},
-		Decrypter: config.NopDecrypter,
-		Snapshot:  nil,
+		Name:		tokens.MustParseStackName("test"),
+		Config:		config.Map{},
+		Decrypter:	config.NopDecrypter,
+		Snapshot:	nil,
 	}
 	query := operations.LogQuery{}
 	res, err := GetLogsForTarget(target, query)
@@ -240,13 +240,13 @@ func makeUntypedDeploymentTimestamp(
 
 	resources := []*resource.State{
 		{
-			URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", name),
-			Type: "a:b:c",
+			URN:	resource.NewURN("a", "proj", "d:e:f", "a:b:c", name),
+			Type:	"a:b:c",
 			Inputs: resource.PropertyMap{
 				resource.PropertyKey("secret"): resource.MakeSecret(resource.NewProperty("s3cr3t")),
 			},
-			Created:  created,
-			Modified: modified,
+			Created:	created,
+			Modified:	modified,
 		},
 	}
 
@@ -448,8 +448,8 @@ func TestRemoveBackups(t *testing.T) {
 
 	requireDirNotEmpty := func(lb *diyBackend, dir string) {
 		iter := lb.bucket.List(&blob.ListOptions{
-			Delimiter: "/",
-			Prefix:    dir + "/",
+			Delimiter:	"/",
+			Prefix:		dir + "/",
 		})
 		next, err := iter.Next(ctx)
 		require.NotNil(t, next, "Expected directory %q to not be empty", dir)
@@ -458,8 +458,8 @@ func TestRemoveBackups(t *testing.T) {
 
 	requireDirEmpty := func(lb *diyBackend, dir string) {
 		iter := lb.bucket.List(&blob.ListOptions{
-			Delimiter: "/",
-			Prefix:    dir + "/",
+			Delimiter:	"/",
+			Prefix:		dir + "/",
 		})
 		next, err := iter.Next(ctx)
 		require.Nil(t, next, "Expected directory %q to be empty", dir)
@@ -612,25 +612,25 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 	require.NotNil(t, stk)
 
 	rBase := &resource.State{
-		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "base"),
-		Type: "a:b:c",
+		URN:	resource.NewURN("a", "proj", "d:e:f", "a:b:c", "base"),
+		Type:	"a:b:c",
 		Inputs: resource.PropertyMap{
 			resource.PropertyKey("p"): resource.NewProperty("v"),
 		},
 	}
 
 	rDependency := &resource.State{
-		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "dependency"),
-		Type: "a:b:c",
+		URN:	resource.NewURN("a", "proj", "d:e:f", "a:b:c", "dependency"),
+		Type:	"a:b:c",
 		Inputs: resource.PropertyMap{
 			resource.PropertyKey("p"): resource.NewProperty("v"),
 		},
-		Dependencies: []resource.URN{rBase.URN},
+		Dependencies:	[]resource.URN{rBase.URN},
 	}
 
 	rPropertyDependency := &resource.State{
-		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "property-dependency"),
-		Type: "a:b:c",
+		URN:	resource.NewURN("a", "proj", "d:e:f", "a:b:c", "property-dependency"),
+		Type:	"a:b:c",
 		Inputs: resource.PropertyMap{
 			resource.PropertyKey("p"): resource.NewProperty("v"),
 		},
@@ -640,21 +640,21 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 	}
 
 	rDeletedWith := &resource.State{
-		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "deleted-with"),
-		Type: "a:b:c",
+		URN:	resource.NewURN("a", "proj", "d:e:f", "a:b:c", "deleted-with"),
+		Type:	"a:b:c",
 		Inputs: resource.PropertyMap{
 			resource.PropertyKey("p"): resource.NewProperty("v"),
 		},
-		DeletedWith: rBase.URN,
+		DeletedWith:	rBase.URN,
 	}
 
 	rParent := &resource.State{
-		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "parent"),
-		Type: "a:b:c",
+		URN:	resource.NewURN("a", "proj", "d:e:f", "a:b:c", "parent"),
+		Type:	"a:b:c",
 		Inputs: resource.PropertyMap{
 			resource.PropertyKey("p"): resource.NewProperty("v"),
 		},
-		Parent: rBase.URN,
+		Parent:	rBase.URN,
 	}
 
 	resources := []*resource.State{
@@ -777,8 +777,8 @@ func TestHtmlEscaping(t *testing.T) {
 	sm := b64.NewBase64SecretsManager()
 	resources := []*resource.State{
 		{
-			URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "name"),
-			Type: "a:b:c",
+			URN:	resource.NewURN("a", "proj", "d:e:f", "a:b:c", "name"),
+			Type:	"a:b:c",
 			Inputs: resource.PropertyMap{
 				resource.PropertyKey("html"): resource.NewProperty("<html@tags>"),
 			},
@@ -993,7 +993,7 @@ func TestStackReferenceString_currentProjectChange_race(t *testing.T) {
 	// with all the projects.
 
 	var wg sync.WaitGroup
-	ready := make(chan struct{}) // both goroutines wait on this
+	ready := make(chan struct{})	// both goroutines wait on this
 
 	wg.Add(1)
 	go func() {
@@ -1013,7 +1013,7 @@ func TestStackReferenceString_currentProjectChange_race(t *testing.T) {
 		}
 	}()
 
-	close(ready) // start racing
+	close(ready)	// start racing
 	wg.Wait()
 }
 
@@ -1122,24 +1122,24 @@ func TestNew_legacyFileWarning(t *testing.T) {
 	// when legacy files are found while running in project mode.
 
 	tests := []struct {
-		desc    string
-		files   map[string]string
-		env     env.MapStore
-		wantOut string
+		desc	string
+		files	map[string]string
+		env	env.MapStore
+		wantOut	string
 	}{
 		{
-			desc: "no legacy stacks",
+			desc:	"no legacy stacks",
 			files: map[string]string{
 				// Should ignore non-stack files.
 				".pulumi/foo/extraneous_file": "",
 			},
 		},
 		{
-			desc: "legacy stacks",
+			desc:	"legacy stacks",
 			files: map[string]string{
-				".pulumi/stacks/a.json":     "{}",
-				".pulumi/stacks/b.json":     "{}",
-				".pulumi/stacks/c.json.bak": "{}", // should ignore backup files
+				".pulumi/stacks/a.json":	"{}",
+				".pulumi/stacks/b.json":	"{}",
+				".pulumi/stacks/c.json.bak":	"{}",	// should ignore backup files
 			},
 			wantOut: "warning: Found legacy stack files in state store:\n" +
 				"  - a\n" +
@@ -1148,10 +1148,10 @@ func TestNew_legacyFileWarning(t *testing.T) {
 				"Set PULUMI_DIY_BACKEND_NO_LEGACY_WARNING=1 to disable this warning.\n",
 		},
 		{
-			desc: "warning opt-out",
+			desc:	"warning opt-out",
 			files: map[string]string{
-				".pulumi/stacks/a.json": "{}",
-				".pulumi/stacks/b.json": "{}",
+				".pulumi/stacks/a.json":	"{}",
+				".pulumi/stacks/b.json":	"{}",
 			},
 			env: map[string]string{
 				"PULUMI_DIY_BACKEND_NO_LEGACY_WARNING": "true",
@@ -1509,8 +1509,8 @@ func TestUpgrade_manyFailures(t *testing.T) {
 	t.Parallel()
 
 	const (
-		numStacks    = 100
-		badStackBody = `{"latest": {"resources": []}}`
+		numStacks	= 100
+		badStackBody	= `{"latest": {"resources": []}}`
 	)
 
 	tmpDir := t.TempDir()
@@ -1622,30 +1622,30 @@ func TestCreateStack_WritesInitialState(t *testing.T) {
 	magic := "6826601b489b8b121f77668d401fe7cfc7d1488148e57ed6987b7303ab066919"
 
 	cases := []struct {
-		name     string
-		state    *apitype.UntypedDeployment
-		contains string
+		name		string
+		state		*apitype.UntypedDeployment
+		contains	string
 	}{
 		{
-			name: "invalid",
+			name:	"invalid",
 			state: &apitype.UntypedDeployment{
-				Version:    3,
-				Deployment: json.RawMessage(`{"manifest":1337331}`),
+				Version:	3,
+				Deployment:	json.RawMessage(`{"manifest":1337331}`),
 			},
-			contains: `1337331`,
+			contains:	`1337331`,
 		},
 		{
-			name: "invalid snapshot (magic number)",
+			name:	"invalid snapshot (magic number)",
 			state: &apitype.UntypedDeployment{
-				Version:    3,
-				Deployment: []byte(`{"manifest":{"magic":"incorrect", "version": "3.134.1-dev.1337"}}`),
+				Version:	3,
+				Deployment:	[]byte(`{"manifest":{"magic":"incorrect", "version": "3.134.1-dev.1337"}}`),
 			},
-			contains: `"3.134.1-dev.1337"`,
+			contains:	`"3.134.1-dev.1337"`,
 		},
 		{
-			name: "invalid snapshot (bad dependencies)",
+			name:	"invalid snapshot (bad dependencies)",
 			state: &apitype.UntypedDeployment{
-				Version: 3,
+				Version:	3,
 				Deployment: []byte(`{
 					"resources": [
 						{
@@ -1660,12 +1660,12 @@ func TestCreateStack_WritesInitialState(t *testing.T) {
 					]
 				}`),
 			},
-			contains: "urn:pulumi:stack::proj::type::name2",
+			contains:	"urn:pulumi:stack::proj::type::name2",
 		},
 		{
-			name: "valid",
+			name:	"valid",
 			state: &apitype.UntypedDeployment{
-				Version: 3,
+				Version:	3,
 				Deployment: []byte(`{
 					"manifest":{
 						"time": "2024-09-24T17:40:37.722248188+01:00",
@@ -1674,7 +1674,7 @@ func TestCreateStack_WritesInitialState(t *testing.T) {
 					}
 				}`),
 			},
-			contains: magic,
+			contains:	magic,
 		},
 	}
 
@@ -1729,7 +1729,7 @@ func TestDisableIntegrityChecking(t *testing.T) {
 
 	// make up a bad stack
 	deployment := apitype.UntypedDeployment{
-		Version: 3,
+		Version:	3,
 		Deployment: json.RawMessage(`{
 			"resources": [
 				{
@@ -1770,7 +1770,7 @@ func TestParallelStackFetch(t *testing.T) {
 
 	// Create a custom environment with DIYBackendParallel set
 	s := make(env.MapStore)
-	s[env.DIYBackendParallel.Var().Name()] = "5" // Set parallel to 5
+	s[env.DIYBackendParallel.Var().Name()] = "5"	// Set parallel to 5
 
 	b, err := newDIYBackend(
 		ctx,
@@ -1795,7 +1795,7 @@ func TestParallelStackFetch(t *testing.T) {
 	}
 
 	// List stacks to trigger parallel fetching
-	filter := backend.ListStacksFilter{} // No filter
+	filter := backend.ListStacksFilter{}	// No filter
 	stacks, token, err := b.ListStacks(ctx, filter, nil)
 	require.NoError(t, err)
 	assert.Nil(t, token)
@@ -1844,7 +1844,7 @@ func TestParallelStackFetchDefaultValue(t *testing.T) {
 	}
 
 	// List stacks to trigger parallel fetching with default value
-	filter := backend.ListStacksFilter{} // No filter
+	filter := backend.ListStacksFilter{}	// No filter
 	stacks, token, err := b.ListStacks(ctx, filter, nil)
 	require.NoError(t, err)
 	assert.Nil(t, token)
@@ -1892,7 +1892,7 @@ func TestListStackNames(t *testing.T) {
 	}
 
 	// Test ListStackNames (should only return references, no metadata fetching)
-	filter := backend.ListStackNamesFilter{} // No filter
+	filter := backend.ListStackNamesFilter{}	// No filter
 	stackRefs, token, err := b.ListStackNames(ctx, filter, nil)
 	require.NoError(t, err)
 	assert.Nil(t, token)
@@ -1930,7 +1930,7 @@ func TestJSONCasing(t *testing.T) {
 
 	// make up a stack
 	deployment := apitype.UntypedDeployment{
-		Version: 3,
+		Version:	3,
 		Deployment: json.RawMessage(`{
 			"resources": [
 				{

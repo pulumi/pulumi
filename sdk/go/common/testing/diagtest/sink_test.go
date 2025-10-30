@@ -27,38 +27,38 @@ func TestLogSink(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		desc string
+		desc	string
 
 		// Reference to the diag.Sink method to call.
 		// This is an unbound method reference.
 		// Use the syntax "($T).$method" to get an unbound method reference.
-		fn   func(diag.Sink, *diag.Diag, ...any)
-		want string
+		fn	func(diag.Sink, *diag.Diag, ...any)
+		want	string
 	}{
 		{
-			desc: "debug",
-			fn:   (diag.Sink).Debugf,
-			want: "[stdout] debug: msg",
+			desc:	"debug",
+			fn:	(diag.Sink).Debugf,
+			want:	"[stdout] debug: msg",
 		},
 		{
-			desc: "info",
-			fn:   (diag.Sink).Infof,
-			want: "[stdout] msg",
+			desc:	"info",
+			fn:	(diag.Sink).Infof,
+			want:	"[stdout] msg",
 		},
 		{
-			desc: "infoerr",
-			fn:   (diag.Sink).Infoerrf,
-			want: "[stderr] msg",
+			desc:	"infoerr",
+			fn:	(diag.Sink).Infoerrf,
+			want:	"[stderr] msg",
 		},
 		{
-			desc: "warning",
-			fn:   (diag.Sink).Warningf,
-			want: "[stderr] warning: msg",
+			desc:	"warning",
+			fn:	(diag.Sink).Warningf,
+			want:	"[stderr] warning: msg",
 		},
 		{
-			desc: "error",
-			fn:   (diag.Sink).Errorf,
-			want: "[stderr] error: msg",
+			desc:	"error",
+			fn:	(diag.Sink).Errorf,
+			want:	"[stderr] error: msg",
 		},
 	}
 
@@ -82,8 +82,8 @@ func TestLogSink(t *testing.T) {
 type fakeT struct {
 	testing.TB
 
-	msgs     []string
-	cleanups []func()
+	msgs		[]string
+	cleanups	[]func()
 }
 
 func (t *fakeT) Logf(msg string, args ...any) {

@@ -33,27 +33,27 @@ import (
 	"github.com/gofrs/uuid"
 
 	"gocloud.dev/blob"
-	_ "gocloud.dev/blob/azureblob" // driver for azblob://
-	_ "gocloud.dev/blob/fileblob"  // driver for file://
-	"gocloud.dev/blob/gcsblob"     // driver for gs://
-	_ "gocloud.dev/blob/s3blob"    // driver for s3://
+	_ "gocloud.dev/blob/azureblob"	// driver for azblob://
+	_ "gocloud.dev/blob/fileblob"	// driver for file://
+	"gocloud.dev/blob/gcsblob"	// driver for gs://
+	_ "gocloud.dev/blob/s3blob"	// driver for s3://
 	"gocloud.dev/gcerrors"
 
-	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	_ "github.com/pulumi/pulumi/pkg/v3/backend/diy/postgres" // driver for postgres://
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
-	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
-	"github.com/pulumi/pulumi/pkg/v3/util/nosleep"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/authhelpers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/backenderr"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	_ "github.com/pulumi/pulumi/sdk/v3/pkg/backend/diy/postgres"	// driver for postgres://
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/diy/unauthenticatedregistry"
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/operations"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/edit"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/passphrase"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/nosleep"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -90,7 +90,7 @@ type UpgradeOptions struct {
 // Backend extends the base backend interface with specific information about diy backends.
 type Backend interface {
 	backend.Backend
-	diy() // at the moment, no diy specific info, so just use a marker function.
+	diy()	// at the moment, no diy specific info, so just use a marker function.
 
 	// Upgrade to the latest state store version.
 	Upgrade(ctx context.Context, opts *UpgradeOptions) error
@@ -100,47 +100,47 @@ type Backend interface {
 }
 
 type diyBackend struct {
-	d diag.Sink
+	d	diag.Sink
 
 	// originalURL is the URL provided when the diyBackend was initialized, for example
 	// "file://~". url is a canonicalized version that should be used when persisting data.
 	// (For example, replacing ~ with the home directory, making an absolute path, etc.)
-	originalURL string
-	url         string
+	originalURL	string
+	url		string
 
-	bucket Bucket
-	mutex  sync.Mutex
+	bucket	Bucket
+	mutex	sync.Mutex
 
-	lockID string
+	lockID	string
 
-	gzip bool
+	gzip	bool
 
-	Env env.Env
+	Env	env.Env
 
 	// The current project, if any.
-	currentProject atomic.Pointer[workspace.Project]
+	currentProject	atomic.Pointer[workspace.Project]
 
 	// The store controls the layout of stacks in the backend.
 	// We use different layouts based on the version of the backend
 	// specified in the metadata file.
 	// If the metadata file is missing, we use the legacy layout.
-	store referenceStore
+	store	referenceStore
 }
 
 type diyBackendReference struct {
-	name    tokens.StackName
-	project tokens.Name
+	name	tokens.StackName
+	project	tokens.Name
 
 	// A thread-safe way to get the current project.
 	// The function reference or the pointer returned by the function may be nil.
-	currentProject func() *workspace.Project
+	currentProject	func() *workspace.Project
 
 	// referenceStore that created this reference.
 	//
 	// This is necessary because
 	// the referenceStore for a backend may change over time,
 	// but the store for this reference should not.
-	store referenceStore
+	store	referenceStore
 }
 
 func (r *diyBackendReference) String() string {
@@ -190,10 +190,10 @@ func (r *diyBackendReference) FullyQualifiedName() tokens.QName {
 }
 
 // Helper methods that delegate to the underlying referenceStore.
-func (r *diyBackendReference) Validate() error       { return r.store.ValidateReference(r) }
-func (r *diyBackendReference) StackBasePath() string { return r.store.StackBasePath(r) }
-func (r *diyBackendReference) HistoryDir() string    { return r.store.HistoryDir(r) }
-func (r *diyBackendReference) BackupDir() string     { return r.store.BackupDir(r) }
+func (r *diyBackendReference) Validate() error		{ return r.store.ValidateReference(r) }
+func (r *diyBackendReference) StackBasePath() string	{ return r.store.StackBasePath(r) }
+func (r *diyBackendReference) HistoryDir() string	{ return r.store.HistoryDir(r) }
+func (r *diyBackendReference) BackupDir() string	{ return r.store.BackupDir(r) }
 
 func IsDIYBackendURL(urlstr string) bool {
 	u, err := url.Parse(urlstr)
@@ -292,13 +292,13 @@ func newDIYBackend(
 	bucket = nil
 
 	backend := &diyBackend{
-		d:           d,
-		originalURL: originalURL,
-		url:         u,
-		bucket:      wbucket,
-		lockID:      lockID.String(),
-		gzip:        gzipCompression,
-		Env:         opts.Env,
+		d:		d,
+		originalURL:	originalURL,
+		url:		u,
+		bucket:		wbucket,
+		lockID:		lockID.String(),
+		gzip:		gzipCompression,
+		Env:		opts.Env,
 	}
 	backend.currentProject.Store(project)
 
@@ -415,7 +415,7 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 	if opts.ProjectsForDetachedStacks != nil {
 		var (
 			// Names of stacks in 'olds' that don't have a project
-			detached []tokens.StackName
+			detached	[]tokens.StackName
 
 			// reverseIdx[i] is the index of detached[i]
 			// in olds and projects.
@@ -424,7 +424,7 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 			//
 			//   detached[i] == olds[reverseIdx[i]].Name()
 			//   projects[reverseIdx[i]] == ""
-			reverseIdx []int
+			reverseIdx	[]int
 		)
 		for i, ref := range olds {
 			if projects[i] == "" {
@@ -464,7 +464,7 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 
 	newStore := newProjectReferenceStore(b.bucket, b.currentProject.Load)
 
-	var upgraded atomic.Int64 // number of stacks successfully upgraded
+	var upgraded atomic.Int64	// number of stacks successfully upgraded
 	for idx, old := range olds {
 		pool.Enqueue(func() error {
 			project := projects[idx]
@@ -611,7 +611,7 @@ func (b *diyBackend) getReference(ref backend.StackReference) (*diyBackendRefere
 	return stackRef, stackRef.Validate()
 }
 
-func (b *diyBackend) diy() {}
+func (b *diyBackend) diy()	{}
 
 func (b *diyBackend) Name() string {
 	name, err := os.Hostname()
@@ -805,8 +805,8 @@ func (b *diyBackend) ListStacks(
 
 	// Create a slice to store results in the same order as filteredStacks
 	type checkpointResult struct {
-		ref *diyBackendReference
-		chk *apitype.CheckpointV3
+		ref	*diyBackendReference
+		chk	*apitype.CheckpointV3
 	}
 	results := make([]checkpointResult, len(filteredStacks))
 
@@ -840,7 +840,7 @@ func (b *diyBackend) ListStacks(
 	// Collect valid results
 	summaries := []backend.StackSummary{}
 	for _, result := range results {
-		if result.ref != nil { // Skip entries where processing failed or stack disappeared
+		if result.ref != nil {	// Skip entries where processing failed or stack disappeared
 			summaries = append(summaries, newDIYStackSummary(result.ref, result.chk))
 		}
 	}
@@ -959,9 +959,9 @@ func (b *diyBackend) renameStack(ctx context.Context, oldRef *diyBackendReferenc
 	}
 
 	versionedCheckpoint := &apitype.VersionedCheckpoint{
-		Version:    version,
-		Features:   features,
-		Checkpoint: json.RawMessage(chkJSON),
+		Version:	version,
+		Features:	features,
+		Checkpoint:	json.RawMessage(chkJSON),
 	}
 
 	// Now save the snapshot with a new name (we pass nil to re-use the existing secrets manager from the snapshot).
@@ -1007,8 +1007,8 @@ func (b *diyBackend) Preview(ctx context.Context, stack backend.Stack,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
 	opts := backend.ApplierOptions{
-		DryRun:   true,
-		ShowLink: true,
+		DryRun:		true,
+		ShowLink:	true,
 	}
 	return b.apply(ctx, apitype.PreviewUpdate, stack, op, opts, events)
 }
@@ -1039,8 +1039,8 @@ func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
 	if op.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 		opts := backend.ApplierOptions{
-			DryRun:   true,
-			ShowLink: true,
+			DryRun:		true,
+			ShowLink:	true,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
@@ -1064,8 +1064,8 @@ func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
 	if op.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 		opts := backend.ApplierOptions{
-			DryRun:   true,
-			ShowLink: true,
+			DryRun:		true,
+			ShowLink:	true,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
@@ -1089,8 +1089,8 @@ func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
 	if op.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 		opts := backend.ApplierOptions{
-			DryRun:   true,
-			ShowLink: true,
+			DryRun:		true,
+			ShowLink:	true,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
@@ -1167,9 +1167,9 @@ func (b *diyBackend) apply(
 	}()
 
 	engineCtx := &engine.Context{
-		Cancel:        scope.Context(),
-		Events:        engineEvents,
-		BackendClient: backend.NewBackendClient(b, op.SecretsProvider),
+		Cancel:		scope.Context(),
+		Events:		engineEvents,
+		BackendClient:	backend.NewBackendClient(b, op.SecretsProvider),
 	}
 	// Create the management machinery.
 	// We only need a snapshot manager if we're doing an update.
@@ -1213,7 +1213,7 @@ func (b *diyBackend) apply(
 
 	// Wait for the display to finish showing all the events.
 	<-displayDone
-	scope.Close() // Don't take any cancellations anymore, we're shutting down.
+	scope.Close()	// Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
 	if manager != nil {
 		err = manager.Close()
@@ -1238,17 +1238,17 @@ func (b *diyBackend) apply(
 		backendUpdateResult = backend.FailedResult
 	}
 	info := backend.UpdateInfo{
-		Kind:        kind,
-		StartTime:   start,
-		Message:     op.M.Message,
-		Environment: op.M.Environment,
-		Config:      update.Target.Config,
-		Result:      backendUpdateResult,
-		EndTime:     end,
+		Kind:		kind,
+		StartTime:	start,
+		Message:	op.M.Message,
+		Environment:	op.M.Environment,
+		Config:		update.Target.Config,
+		Result:		backendUpdateResult,
+		EndTime:	end,
 		// IDEA: it would be nice to populate the *Deployment, so that addToHistory below doesn't need to
 		//     rudely assume it knows where the checkpoint file is on disk as it makes a copy of it.  This isn't
 		//     trivial to achieve today given the event driven nature of plan-walking, however.
-		ResourceChanges: changes,
+		ResourceChanges:	changes,
 	}
 
 	var saveErr error
@@ -1384,9 +1384,9 @@ func (b *diyBackend) ExportDeployment(ctx context.Context,
 	}
 
 	return &apitype.UntypedDeployment{
-		Version:    version,
-		Features:   features,
-		Deployment: json.RawMessage(data),
+		Version:	version,
+		Features:	features,
+		Deployment:	json.RawMessage(data),
 	}, nil
 }
 

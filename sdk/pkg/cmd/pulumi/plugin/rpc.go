@@ -19,9 +19,9 @@ import (
 	"fmt"
 
 	"github.com/blang/semver"
-	pconvert "github.com/pulumi/pulumi/pkg/v3/codegen/convert"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	pconvert "github.com/pulumi/pulumi/sdk/v3/pkg/codegen/convert"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -43,8 +43,8 @@ func newInstallPluginFunc(pctx *plugin.Context) func(string) *semver.Version {
 		}
 
 		pluginSpec := workspace.PluginSpec{
-			Name: pluginName,
-			Kind: apitype.ResourcePlugin,
+			Name:	pluginName,
+			Kind:	apitype.ResourcePlugin,
 		}
 		version, err := pkgWorkspace.InstallPlugin(pctx.Base(), pluginSpec, log)
 		if err != nil {

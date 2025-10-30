@@ -23,8 +23,8 @@ import (
 )
 
 const (
-	EsSystemRequired = 0x00000001
-	EsContinuous     = 0x80000000
+	EsSystemRequired	= 0x00000001
+	EsContinuous		= 0x80000000
 )
 
 func keepRunning() DoneFunc {

@@ -27,9 +27,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	. "github.com/pulumi/pulumi/sdk/v3/pkg/engine"	//nolint:revive
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
@@ -53,10 +53,10 @@ func TransformFunction(
 		}
 
 		mprops, err := plugin.UnmarshalProperties(transformationRequest.Properties, plugin.MarshalOptions{
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepOutputValues: true,
+			KeepUnknowns:		true,
+			KeepSecrets:		true,
+			KeepResources:		true,
+			KeepOutputValues:	true,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("unmarshaling properties: %w", err)
@@ -69,18 +69,18 @@ func TransformFunction(
 			return nil, err
 		}
 		mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepOutputValues: true,
+			KeepUnknowns:		true,
+			KeepSecrets:		true,
+			KeepResources:		true,
+			KeepOutputValues:	true,
 		})
 		if err != nil {
 			return nil, err
 		}
 
 		return &pulumirpc.TransformResponse{
-			Properties: mret,
-			Options:    opts,
+			Properties:	mret,
+			Options:	opts,
 		}, nil
 	}
 }
@@ -98,10 +98,10 @@ func TransformInvokeFunction(
 		}
 
 		margs, err := plugin.UnmarshalProperties(transformationRequest.Args, plugin.MarshalOptions{
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepOutputValues: true,
+			KeepUnknowns:		true,
+			KeepSecrets:		true,
+			KeepResources:		true,
+			KeepOutputValues:	true,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("unmarshaling properties: %w", err)
@@ -113,18 +113,18 @@ func TransformInvokeFunction(
 			return nil, err
 		}
 		mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepOutputValues: true,
+			KeepUnknowns:		true,
+			KeepSecrets:		true,
+			KeepResources:		true,
+			KeepOutputValues:	true,
 		})
 		if err != nil {
 			return nil, err
 		}
 
 		return &pulumirpc.TransformInvokeResponse{
-			Args:    mret,
-			Options: opts,
+			Args:		mret,
+			Options:	opts,
 		}, nil
 	}
 }
@@ -136,10 +136,10 @@ func pvApply(pv resource.PropertyValue, f func(resource.PropertyValue) resource.
 			return pv
 		}
 		return resource.NewProperty(resource.Output{
-			Element:      f(o.Element),
-			Known:        true,
-			Secret:       o.Secret,
-			Dependencies: o.Dependencies,
+			Element:	f(o.Element),
+			Known:		true,
+			Secret:		o.Secret,
+			Dependencies:	o.Dependencies,
 		})
 	}
 	return f(pv)
@@ -225,7 +225,7 @@ func TestRemoteTransforms(t *testing.T) {
 			Transforms: []*pulumirpc.Callback{
 				callback3,
 			},
-			Parent: respA.URN,
+			Parent:	respA.URN,
 		})
 		require.NoError(t, err)
 		return nil
@@ -247,9 +247,9 @@ func TestRemoteTransforms(t *testing.T) {
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), res.URN)
 	// Check it's final input properties match what we expected from the transformations
 	assert.Equal(t, resource.PropertyMap{
-		"foo":  resource.NewProperty(3.0),
-		"bar":  resource.NewProperty("barbaz"),
-		"frob": resource.NewProperty("nofrob"),
+		"foo":	resource.NewProperty(3.0),
+		"bar":	resource.NewProperty("barbaz"),
+		"frob":	resource.NewProperty("nofrob"),
 	}, res.Inputs)
 
 	// Check Resources[2] is the resB resource
@@ -257,9 +257,9 @@ func TestRemoteTransforms(t *testing.T) {
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB"), res.URN)
 	// Check it's final input properties match what we expected from the transformations
 	assert.Equal(t, resource.PropertyMap{
-		"foo":  resource.NewProperty(13.0),
-		"bar":  resource.NewProperty("barbaz"),
-		"frob": resource.MakeSecret(resource.NewProperty("frob")),
+		"foo":	resource.NewProperty(13.0),
+		"bar":	resource.NewProperty("barbaz"),
+		"frob":	resource.MakeSecret(resource.NewProperty("frob")),
 	}, res.Inputs)
 }
 
@@ -372,7 +372,7 @@ func TestRemoteTransformationsConstruct(t *testing.T) {
 					require.NoError(t, err)
 
 					_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-						Parent: resp.URN,
+						Parent:	resp.URN,
 						Inputs: resource.PropertyMap{
 							"foo": resource.NewProperty(1.0),
 						},
@@ -485,23 +485,23 @@ func TestRemoteTransformsOptions(t *testing.T) {
 				// Modify all the options
 				protect := true
 				opts = &pulumirpc.TransformResourceOptions{
-					AdditionalSecretOutputs: []string{"bar"},
+					AdditionalSecretOutputs:	[]string{"bar"},
 					Aliases: []*pulumirpc.Alias{
 						{Alias: &pulumirpc.Alias_Urn{Urn: urnB}},
 					},
 					CustomTimeouts: &pulumirpc.RegisterResourceRequest_CustomTimeouts{
-						Create: "1s",
-						Update: "2s",
-						Delete: "3s",
+						Create:	"1s",
+						Update:	"2s",
+						Delete:	"3s",
 					},
-					DeleteBeforeReplace: nil,
-					DeletedWith:         string(respC.URN),
-					DependsOn:           []string{string(respC.URN)},
-					IgnoreChanges:       []string{"bar"},
-					PluginDownloadUrl:   "",
-					Protect:             &protect,
-					ReplaceOnChanges:    []string{"bar"},
-					Version:             "1.0.0",
+					DeleteBeforeReplace:	nil,
+					DeletedWith:		string(respC.URN),
+					DependsOn:		[]string{string(respC.URN)},
+					IgnoreChanges:		[]string{"bar"},
+					PluginDownloadUrl:	"",
+					Protect:		&protect,
+					ReplaceOnChanges:	[]string{"bar"},
+					Version:		"1.0.0",
 				}
 
 				return props, opts, nil
@@ -513,22 +513,22 @@ func TestRemoteTransformsOptions(t *testing.T) {
 
 		dbr := true
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{
-			AdditionalSecretOutputs: []resource.PropertyKey{"foo"},
+			AdditionalSecretOutputs:	[]resource.PropertyKey{"foo"},
 			Aliases: []*pulumirpc.Alias{
 				{Alias: &pulumirpc.Alias_Urn{Urn: urnB}},
 			},
 			CustomTimeouts: &resource.CustomTimeouts{
-				Create: 1000,
-				Update: 2000,
-				Delete: 3000,
+				Create:	1000,
+				Update:	2000,
+				Delete:	3000,
 			},
-			DeleteBeforeReplace: &dbr,
-			DeletedWith:         respA.URN,
-			Dependencies:        []resource.URN{respA.URN},
-			IgnoreChanges:       []string{"foo"},
-			PluginDownloadURL:   "http://server",
-			ReplaceOnChanges:    []string{"foo"},
-			Version:             "2.0.0",
+			DeleteBeforeReplace:	&dbr,
+			DeletedWith:		respA.URN,
+			Dependencies:		[]resource.URN{respA.URN},
+			IgnoreChanges:		[]string{"foo"},
+			PluginDownloadURL:	"http://server",
+			ReplaceOnChanges:	[]string{"foo"},
+			Version:		"2.0.0",
 		})
 		require.NoError(t, err)
 
@@ -549,9 +549,9 @@ func TestRemoteTransformsOptions(t *testing.T) {
 	require.Equal(t, resource.URN(urnD), res.URN)
 	assert.Equal(t, []resource.PropertyKey{"bar"}, res.AdditionalSecretOutputs)
 	assert.Equal(t, resource.CustomTimeouts{
-		Create: 1,
-		Update: 2,
-		Delete: 3,
+		Create:	1,
+		Update:	2,
+		Delete:	3,
 	}, res.CustomTimeouts)
 	assert.Equal(t, resource.URN(urnC), res.DeletedWith)
 	assert.Equal(t, true, res.Protect)
@@ -566,9 +566,9 @@ func TestRemoteTransformsDependencies(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "some-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"some-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -606,9 +606,9 @@ func TestRemoteTransformsDependencies(t *testing.T) {
 
 				// Add a dependency on resA
 				props["foo"] = resource.NewProperty(resource.Output{
-					Element:      respA.Outputs["foo"],
-					Known:        true,
-					Dependencies: []resource.URN{respA.URN},
+					Element:	respA.Outputs["foo"],
+					Known:		true,
+					Dependencies:	[]resource.URN{respA.URN},
 				})
 
 				return props, opts, nil
@@ -680,7 +680,7 @@ func TestRemoteComponentTransforms(t *testing.T) {
 					require.NoError(t, err)
 
 					_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-						Parent: resp.URN,
+						Parent:	resp.URN,
 						Inputs: resource.PropertyMap{
 							"foo": resource.NewProperty(1.0),
 						},
@@ -714,7 +714,7 @@ func TestRemoteComponentTransforms(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typC", "resC", false, deploytest.ResourceOptions{
-			Remote: true,
+			Remote:	true,
 			Transforms: []*pulumirpc.Callback{
 				callback1,
 			},
@@ -749,12 +749,12 @@ func TestTransformsProviderOpt(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				Package: "pkgA",
+				Package:	"pkgA",
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "some-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"some-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -824,7 +824,7 @@ func TestTransformsProviderOpt(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Options:	lt.TestUpdateOptions{T: t, HostF: hostF},
 		Steps: []lt.TestStep{
 			{
 				Op: Update,
@@ -833,7 +833,7 @@ func TestTransformsProviderOpt(t *testing.T) {
 	}
 	snap := p.Run(t, nil)
 	require.NotNil(t, snap)
-	require.Len(t, snap.Resources, 9) // 2 providers + 7 resources
+	require.Len(t, snap.Resources, 9)	// 2 providers + 7 resources
 	sort.Slice(snap.Resources, func(i, j int) bool {
 		return snap.Resources[i].URN < snap.Resources[j].URN
 	})
@@ -859,7 +859,7 @@ func TestTransformInvoke(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				Package: "pkgA",
+				Package:	"pkgA",
 				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					return plugin.InvokeResponse{Properties: req.Args}, nil
 				},
@@ -889,8 +889,8 @@ func TestTransformInvoke(t *testing.T) {
 		require.NoError(t, err)
 
 		input := resource.PropertyMap{
-			"foo": resource.NewProperty("baz"),
-			"bar": resource.NewProperty("qux"),
+			"foo":	resource.NewProperty("baz"),
+			"bar":	resource.NewProperty("qux"),
 		}
 
 		result, _, err := monitor.Invoke("pkgA:m:typA", input, implicitProvider, "0.0.0", "")
@@ -903,7 +903,7 @@ func TestTransformInvoke(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Options:	lt.TestUpdateOptions{T: t, HostF: hostF},
 		Steps: []lt.TestStep{
 			{
 				Op: Update,
@@ -919,7 +919,7 @@ func TestTransformInvokeTransformProvider(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				Package: "pkgA",
+				Package:	"pkgA",
 				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					return plugin.InvokeResponse{Properties: req.Args}, nil
 				},
@@ -960,7 +960,7 @@ func TestTransformInvokeTransformProvider(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Options:	lt.TestUpdateOptions{T: t, HostF: hostF},
 		Steps: []lt.TestStep{
 			{
 				Op: Update,
@@ -969,7 +969,7 @@ func TestTransformInvokeTransformProvider(t *testing.T) {
 	}
 	snap := p.Run(t, nil)
 	require.NotNil(t, snap)
-	require.Len(t, snap.Resources, 1) // expect no default provider to be created for the invoke
+	require.Len(t, snap.Resources, 1)	// expect no default provider to be created for the invoke
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/19904. Registering a transform that depends on a resource
@@ -1030,7 +1030,7 @@ func TestTransformOrdering(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Options:	lt.TestUpdateOptions{T: t, HostF: hostF},
 		Steps: []lt.TestStep{
 			{
 				Op: Update,
@@ -1062,9 +1062,9 @@ func TestAssetArchiveRoundtrip(t *testing.T) {
 						req.Properties["archive"].ArchiveValue().Hash)
 
 					return plugin.CreateResponse{
-						ID:         "some-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"some-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -1095,8 +1095,8 @@ func TestAssetArchiveRoundtrip(t *testing.T) {
 
 		respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"asset":   resource.NewProperty(assetValue),
-				"archive": resource.NewProperty(archiveValue),
+				"asset":	resource.NewProperty(assetValue),
+				"archive":	resource.NewProperty(archiveValue),
 			},
 		})
 		require.NoError(t, err)
@@ -1110,8 +1110,8 @@ func TestAssetArchiveRoundtrip(t *testing.T) {
 
 		respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"asset":   resource.NewProperty(assetValue),
-				"archive": resource.NewProperty(archiveValue),
+				"asset":	resource.NewProperty(assetValue),
+				"archive":	resource.NewProperty(archiveValue),
 			},
 			Transforms: []*pulumirpc.Callback{
 				callback1,

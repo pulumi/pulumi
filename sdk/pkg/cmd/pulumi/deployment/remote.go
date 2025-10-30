@@ -23,10 +23,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -162,25 +162,25 @@ func ValidateUnsupportedRemoteFlags(
 
 // Flags for remote operations.
 type RemoteArgs struct {
-	Remote                   bool
-	InheritSettings          bool
-	SuppressStreamLogs       bool
-	EnvVars                  []string
-	SecretEnvVars            []string
-	PreRunCommands           []string
-	SkipInstallDependencies  bool
-	GitBranch                string
-	GitCommit                string
-	GitRepoDir               string
-	GitAuthAccessToken       string
-	GitAuthSSHPrivateKey     string
-	GitAuthSSHPrivateKeyPath string
-	GitAuthPassword          string
-	GitAuthUsername          string
-	ExecutorImage            string
-	ExecutorImageUsername    string
-	ExecutorImagePassword    string
-	AgentPoolID              string
+	Remote				bool
+	InheritSettings			bool
+	SuppressStreamLogs		bool
+	EnvVars				[]string
+	SecretEnvVars			[]string
+	PreRunCommands			[]string
+	SkipInstallDependencies		bool
+	GitBranch			string
+	GitCommit			string
+	GitRepoDir			string
+	GitAuthAccessToken		string
+	GitAuthSSHPrivateKey		string
+	GitAuthSSHPrivateKeyPath	string
+	GitAuthPassword			string
+	GitAuthUsername			string
+	ExecutorImage			string
+	ExecutorImageUsername		string
+	ExecutorImagePassword		string
+	AgentPoolID			string
 }
 
 func (r *RemoteArgs) ApplyFlagsForDeploymentCommand(cmd *cobra.Command) {
@@ -385,8 +385,8 @@ func RunDeployment(ctx context.Context, ws pkgWorkspace.Context, cmd *cobra.Comm
 			return err
 		}
 		env[name] = apitype.SecretValue{
-			Value:  value,
-			Secret: i >= len(args.EnvVars),
+			Value:	value,
+			Secret:	i >= len(args.EnvVars),
 		}
 	}
 
@@ -498,18 +498,18 @@ func RunDeployment(ctx context.Context, ws pkgWorkspace.Context, cmd *cobra.Comm
 	agentPoolID := apitype.AgentPoolIDMarshaller(args.AgentPoolID)
 
 	req := apitype.CreateDeploymentRequest{
-		Op:              operation,
-		InheritSettings: args.InheritSettings,
+		Op:			operation,
+		InheritSettings:	args.InheritSettings,
 		Executor: &apitype.ExecutorContext{
 			ExecutorImage: executorImage,
 		},
-		Source: sourceContext,
+		Source:	sourceContext,
 		Operation: &apitype.OperationContext{
-			PreRunCommands:       args.PreRunCommands,
-			EnvironmentVariables: env,
-			Options:              operationOptions,
+			PreRunCommands:		args.PreRunCommands,
+			EnvironmentVariables:	env,
+			Options:		operationOptions,
 		},
-		AgentPoolID: &agentPoolID,
+		AgentPoolID:	&agentPoolID,
 	}
 
 	// For now, these commands are only used by automation API, so we can unilaterally set the initiator

@@ -116,8 +116,8 @@ func (bun *bunManager) Link(ctx context.Context, dir, packageName, path string) 
 }
 
 type packageDotJSON struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
+	Name	string	`json:"name"`
+	Version	string	`json:"version"`
 }
 
 func (bun *bunManager) Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {
@@ -171,7 +171,7 @@ func (bun *bunManager) Pack(ctx context.Context, dir string, stderr io.Writer) (
 func checkBunLock(pwd string) bool {
 	bunLockFile := filepath.Join(pwd, "bun.lock")
 	bunLockBinaryFile := filepath.Join(pwd, "bun.lockb")
-	_, err := os.Stat(bunLockFile) // check this first as since 1.2 this is the default lockfile
+	_, err := os.Stat(bunLockFile)	// check this first as since 1.2 this is the default lockfile
 	if err == nil {
 		return true
 	}

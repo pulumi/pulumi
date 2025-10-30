@@ -50,10 +50,10 @@ func TestCachingPluginMapper_OnlyInstallsOnce(t *testing.T) {
 
 	baseMapper, err := NewBasePluginMapper(
 		ws,
-		"key", /*conversionKey*/
+		"key",	/*conversionKey*/
 		providerFactory,
 		installPlugin,
-		nil, /*mappings*/
+		nil,	/*mappings*/
 	)
 	mapper := NewCachingMapper(baseMapper)
 	require.NoError(t, err)
@@ -99,10 +99,10 @@ func TestCachingPluginMapper_ConcurrentAccess(t *testing.T) {
 
 	baseMapper, err := NewBasePluginMapper(
 		ws,
-		"key", /*conversionKey*/
+		"key",	/*conversionKey*/
 		providerFactory,
 		installPlugin,
-		nil, /*mappings*/
+		nil,	/*mappings*/
 	)
 	mapper := NewCachingMapper(baseMapper)
 	require.NoError(t, err)

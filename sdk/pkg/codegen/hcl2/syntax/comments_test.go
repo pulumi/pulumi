@@ -133,9 +133,9 @@ func validateTemplateStringTrivia(t *testing.T, template *hclsyntax.TemplateExpr
 }
 
 type validator struct {
-	t      *testing.T
-	tokens TokenMap
-	stack  []hclsyntax.Node
+	t	*testing.T
+	tokens	TokenMap
+	stack	[]hclsyntax.Node
 }
 
 func (v *validator) Enter(n hclsyntax.Node) hcl.Diagnostics {

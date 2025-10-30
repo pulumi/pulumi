@@ -22,14 +22,14 @@ import (
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
 	"github.com/stretchr/testify/assert"
 )
 
 type exprTestCase struct {
-	hcl2Expr string
-	goCode   string
+	hcl2Expr	string
+	goCode		string
 }
 
 type environment map[string]any
@@ -88,10 +88,10 @@ func TestBinaryOpExpression(t *testing.T) {
 	t.Parallel()
 
 	env := environment(map[string]any{
-		"a": model.BoolType,
-		"b": model.BoolType,
-		"c": model.NumberType,
-		"d": model.NumberType,
+		"a":	model.BoolType,
+		"b":	model.BoolType,
+		"c":	model.NumberType,
+		"d":	model.NumberType,
 	})
 	scope := env.scope()
 
@@ -125,8 +125,8 @@ func TestUnaryOpExrepssion(t *testing.T) {
 	t.Parallel()
 
 	env := environment(map[string]any{
-		"a": model.NumberType,
-		"b": model.BoolType,
+		"a":	model.NumberType,
+		"b":	model.BoolType,
 	})
 	scope := env.scope()
 
@@ -175,8 +175,8 @@ func TestArgumentTypeName(t *testing.T) {
 	assert.Equal(t, "pulumi.Any", inputDynamicType)
 
 	objectType := model.NewObjectType(map[string]model.Type{
-		"foo": model.StringType,
-		"bar": model.IntType,
+		"foo":	model.StringType,
+		"bar":	model.IntType,
 	})
 
 	plainObjectType := g.argumentTypeName(objectType, false /*isInput*/)
@@ -185,8 +185,8 @@ func TestArgumentTypeName(t *testing.T) {
 	assert.Equal(t, "pulumi.Map", inputObjectType)
 
 	uniformObjectType := model.NewObjectType(map[string]model.Type{
-		"x": model.IntType,
-		"y": model.IntType,
+		"x":	model.IntType,
+		"y":	model.IntType,
 	})
 
 	plainUniformObjectType := g.argumentTypeName(uniformObjectType, false /*isInput*/)
@@ -245,44 +245,44 @@ func TestGeneratingGoOptionalFunctions(t *testing.T) {
 	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
 
 	testCases := []struct {
-		expr      *model.FunctionCallExpression
-		generated string
+		expr		*model.FunctionCallExpression
+		generated	string
 	}{
 		{
 			expr: &model.FunctionCallExpression{
-				Name: "goOptionalString",
+				Name:	"goOptionalString",
 				Args: []model.Expression{
 					model.VariableReference(&model.Variable{Name: "foo"}),
 				},
 			},
-			generated: "pulumi.StringRef(foo)",
+			generated:	"pulumi.StringRef(foo)",
 		},
 		{
 			expr: &model.FunctionCallExpression{
-				Name: "goOptionalInt",
+				Name:	"goOptionalInt",
 				Args: []model.Expression{
 					model.VariableReference(&model.Variable{Name: "foo"}),
 				},
 			},
-			generated: "pulumi.IntRef(foo)",
+			generated:	"pulumi.IntRef(foo)",
 		},
 		{
 			expr: &model.FunctionCallExpression{
-				Name: "goOptionalBool",
+				Name:	"goOptionalBool",
 				Args: []model.Expression{
 					model.VariableReference(&model.Variable{Name: "foo"}),
 				},
 			},
-			generated: "pulumi.BoolRef(foo)",
+			generated:	"pulumi.BoolRef(foo)",
 		},
 		{
 			expr: &model.FunctionCallExpression{
-				Name: "goOptionalFloat64",
+				Name:	"goOptionalFloat64",
 				Args: []model.Expression{
 					model.VariableReference(&model.Variable{Name: "foo"}),
 				},
 			},
-			generated: "pulumi.Float64Ref(foo)",
+			generated:	"pulumi.Float64Ref(foo)",
 		},
 	}
 
@@ -299,20 +299,20 @@ func TestConditionalExpression(t *testing.T) {
 
 	cases := []exprTestCase{
 		{
-			hcl2Expr: "true ? 1 : 0",
-			goCode:   "var tmp0 float64\nif true {\ntmp0 = 1\n} else {\ntmp0 = 0\n}\ntmp0",
+			hcl2Expr:	"true ? 1 : 0",
+			goCode:		"var tmp0 float64\nif true {\ntmp0 = 1\n} else {\ntmp0 = 0\n}\ntmp0",
 		},
 		{
-			hcl2Expr: "true ? 1 : true ? 0 : -1",
-			goCode:   "var tmp0 float64\nif true {\ntmp0 = 0\n} else {\ntmp0 = -1\n}\nvar tmp1 float64\nif true {\ntmp1 = 1\n} else {\ntmp1 = tmp0\n}\ntmp1",
+			hcl2Expr:	"true ? 1 : true ? 0 : -1",
+			goCode:		"var tmp0 float64\nif true {\ntmp0 = 0\n} else {\ntmp0 = -1\n}\nvar tmp1 float64\nif true {\ntmp1 = 1\n} else {\ntmp1 = tmp0\n}\ntmp1",
 		},
 		{
-			hcl2Expr: "true ? true ? 0 : -1 : 0",
-			goCode:   "var tmp0 float64\nif true {\ntmp0 = 0\n} else {\ntmp0 = -1\n}\nvar tmp1 float64\nif true {\ntmp1 = tmp0\n} else {\ntmp1 = 0\n}\ntmp1",
+			hcl2Expr:	"true ? true ? 0 : -1 : 0",
+			goCode:		"var tmp0 float64\nif true {\ntmp0 = 0\n} else {\ntmp0 = -1\n}\nvar tmp1 float64\nif true {\ntmp1 = tmp0\n} else {\ntmp1 = 0\n}\ntmp1",
 		},
 		{
-			hcl2Expr: "{foo = true ? 2 : 0}",
-			goCode:   "var tmp0 float64\nif true {\ntmp0 = 2\n} else {\ntmp0 = 0\n}\nmap[string]interface{}{\n\"foo\": tmp0,\n}",
+			hcl2Expr:	"{foo = true ? 2 : 0}",
+			goCode:		"var tmp0 float64\nif true {\ntmp0 = 2\n} else {\ntmp0 = 0\n}\nmap[string]interface{}{\n\"foo\": tmp0,\n}",
 		},
 	}
 	genFunc := func(w io.Writer, g *generator, e model.Expression) {
@@ -335,24 +335,24 @@ func TestObjectConsExpression(t *testing.T) {
 	cases := []exprTestCase{
 		{
 			// TODO probably a bug in the binder. Single value objects should just be maps
-			hcl2Expr: "{foo = 1}",
-			goCode:   "map[string]interface{}{\n\"foo\": 1,\n}",
+			hcl2Expr:	"{foo = 1}",
+			goCode:		"map[string]interface{}{\n\"foo\": 1,\n}",
 		},
 		{
-			hcl2Expr: "{\"foo\" = 1}",
-			goCode:   "map[string]interface{}{\n\"foo\": 1,\n}",
+			hcl2Expr:	"{\"foo\" = 1}",
+			goCode:		"map[string]interface{}{\n\"foo\": 1,\n}",
 		},
 		{
-			hcl2Expr: "{1 = 1}",
-			goCode:   "map[string]interface{}{\n\"1\": 1,\n}",
+			hcl2Expr:	"{1 = 1}",
+			goCode:		"map[string]interface{}{\n\"1\": 1,\n}",
 		},
 		{
-			hcl2Expr: "{(a) = 1}",
-			goCode:   "map[string]float64{\na: 1,\n}",
+			hcl2Expr:	"{(a) = 1}",
+			goCode:		"map[string]float64{\na: 1,\n}",
 		},
 		{
-			hcl2Expr: "{(a+a) = 1}",
-			goCode:   "map[string]float64{\na + a: 1,\n}",
+			hcl2Expr:	"{(a+a) = 1}",
+			goCode:		"map[string]float64{\na + a: 1,\n}",
 		},
 	}
 	for _, c := range cases {
@@ -369,24 +369,24 @@ func TestTupleConsExpression(t *testing.T) {
 	scope := env.scope()
 	cases := []exprTestCase{
 		{
-			hcl2Expr: "[\"foo\"]",
-			goCode:   "[]string{\n\"foo\",\n}",
+			hcl2Expr:	"[\"foo\"]",
+			goCode:		"[]string{\n\"foo\",\n}",
 		},
 		{
-			hcl2Expr: "[\"foo\", \"bar\", \"baz\"]",
-			goCode:   "[]string{\n\"foo\",\n\"bar\",\n\"baz\",\n}",
+			hcl2Expr:	"[\"foo\", \"bar\", \"baz\"]",
+			goCode:		"[]string{\n\"foo\",\n\"bar\",\n\"baz\",\n}",
 		},
 		{
-			hcl2Expr: "[1]",
-			goCode:   "[]float64{\n1,\n}",
+			hcl2Expr:	"[1]",
+			goCode:		"[]float64{\n1,\n}",
 		},
 		{
-			hcl2Expr: "[1,2,3]",
-			goCode:   "[]float64{\n1,\n2,\n3,\n}",
+			hcl2Expr:	"[1,2,3]",
+			goCode:		"[]float64{\n1,\n2,\n3,\n}",
 		},
 		{
-			hcl2Expr: "[1,\"foo\"]",
-			goCode:   "[]interface{}{\n1,\n\"foo\",\n}",
+			hcl2Expr:	"[1,\"foo\"]",
+			goCode:		"[]interface{}{\n1,\n\"foo\",\n}",
 		},
 	}
 	for _, c := range cases {

@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -78,7 +78,7 @@ func mockWorkspaceWithProject(cloudURL, token string) *pkgWorkspace.MockContext 
 		},
 		GetStoredCredentialsF: func() (workspace.Credentials, error) {
 			return workspace.Credentials{
-				Current: cloudURL,
+				Current:	cloudURL,
 				AccessTokens: map[string]string{
 					cloudURL: token,
 				},
@@ -95,7 +95,7 @@ func mockWorkspaceWithCredentialsOnly(cloudURL, token string) *pkgWorkspace.Mock
 		},
 		GetStoredCredentialsF: func() (workspace.Credentials, error) {
 			return workspace.Credentials{
-				Current: cloudURL,
+				Current:	cloudURL,
 				AccessTokens: map[string]string{
 					cloudURL: token,
 				},

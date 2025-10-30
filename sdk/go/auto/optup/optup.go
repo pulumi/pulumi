@@ -217,57 +217,57 @@ type Option interface {
 type Options struct {
 	// Parallel is the number of resource operations to run in parallel at once
 	// (1 for no parallelism). Defaults to unbounded. (default 2147483647)
-	Parallel int
+	Parallel	int
 	// Message (optional) to associate with the update operation
-	Message string
+	Message	string
 	// Return an error if any changes occur during this update
-	ExpectNoChanges bool
+	ExpectNoChanges	bool
 	// Diff displays operation as a rich diff showing the overall change
-	Diff bool
+	Diff	bool
 	// Specify resources to replace
-	Replace []string
+	Replace	[]string
 	// Specify an exclusive list of resource URNs to update
-	Target []string
+	Target	[]string
 	// Allows updating of dependent targets discovered but not specified in the Target list
-	TargetDependents bool
+	TargetDependents	bool
 	// Specify an exclusive of resource URNs to ignore
-	Exclude []string
+	Exclude	[]string
 	// Allows ignoring of dependent targets discovered but not specified in the Exclude list
-	ExcludeDependents bool
+	ExcludeDependents	bool
 	// DebugLogOpts specifies additional settings for debug logging
-	DebugLogOpts debug.LoggingOptions
+	DebugLogOpts	debug.LoggingOptions
 	// ProgressStreams allows specifying one or more io.Writers to redirect incremental update stdout
-	ProgressStreams []io.Writer
+	ProgressStreams	[]io.Writer
 	// ErrorProgressStreams allows specifying one or more io.Writers to redirect incremental update stderr
-	ErrorProgressStreams []io.Writer
+	ErrorProgressStreams	[]io.Writer
 	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
-	EventStreams []chan<- events.EngineEvent
+	EventStreams	[]chan<- events.EngineEvent
 	// UserAgent specifies the agent responsible for the update, stored in backends as "environment.exec.agent"
-	UserAgent string
+	UserAgent	string
 	// Colorize output. Choices are: always, never, raw, auto (default "auto")
-	Color string
+	Color	string
 	// Use the update plan at the given path.
-	Plan string
+	Plan	string
 	// Run one or more policy packs as part of this update
-	PolicyPacks []string
+	PolicyPacks	[]string
 	// Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag
-	PolicyPackConfigs []string
+	PolicyPackConfigs	[]string
 	// Show config secrets when they appear.
-	ShowSecrets *bool
+	ShowSecrets	*bool
 	// Refresh will refresh the stack's state before the update.
-	Refresh bool
+	Refresh	bool
 	// Suppress display of periodic progress dots
-	SuppressProgress bool
+	SuppressProgress	bool
 	// Suppress display of stack outputs (in case they contain sensitive values)
-	SuppressOutputs bool
+	SuppressOutputs	bool
 	// ContinueOnError will continue to perform the update operation despite the occurrence of errors.
-	ContinueOnError bool
+	ContinueOnError	bool
 	// AttachDebugger will run the process under a debugger, and pause until a debugger is attached
-	AttachDebugger bool
+	AttachDebugger	bool
 	// Run using the configuration values in the specified file rather than detecting the file name
-	ConfigFile string
+	ConfigFile	string
 	// When set to true, run the program in the workspace to perform the refresh.
-	RunProgram *bool
+	RunProgram	*bool
 }
 
 type optionFunc func(*Options)

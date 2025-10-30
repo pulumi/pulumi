@@ -17,8 +17,8 @@ package cmd
 import "golang.org/x/term"
 
 type OptimalPageSizeOpts struct {
-	Nopts          int
-	TerminalHeight int
+	Nopts		int
+	TerminalHeight	int
 }
 
 // Computes how many options to display in a Terminal UI multi-select.

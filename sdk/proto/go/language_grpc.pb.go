@@ -34,22 +34,22 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	LanguageRuntime_Handshake_FullMethodName              = "/pulumirpc.LanguageRuntime/Handshake"
-	LanguageRuntime_GetRequiredPlugins_FullMethodName     = "/pulumirpc.LanguageRuntime/GetRequiredPlugins"
-	LanguageRuntime_GetRequiredPackages_FullMethodName    = "/pulumirpc.LanguageRuntime/GetRequiredPackages"
-	LanguageRuntime_Run_FullMethodName                    = "/pulumirpc.LanguageRuntime/Run"
-	LanguageRuntime_GetPluginInfo_FullMethodName          = "/pulumirpc.LanguageRuntime/GetPluginInfo"
-	LanguageRuntime_InstallDependencies_FullMethodName    = "/pulumirpc.LanguageRuntime/InstallDependencies"
-	LanguageRuntime_RuntimeOptionsPrompts_FullMethodName  = "/pulumirpc.LanguageRuntime/RuntimeOptionsPrompts"
-	LanguageRuntime_About_FullMethodName                  = "/pulumirpc.LanguageRuntime/About"
-	LanguageRuntime_GetProgramDependencies_FullMethodName = "/pulumirpc.LanguageRuntime/GetProgramDependencies"
-	LanguageRuntime_RunPlugin_FullMethodName              = "/pulumirpc.LanguageRuntime/RunPlugin"
-	LanguageRuntime_GenerateProgram_FullMethodName        = "/pulumirpc.LanguageRuntime/GenerateProgram"
-	LanguageRuntime_GenerateProject_FullMethodName        = "/pulumirpc.LanguageRuntime/GenerateProject"
-	LanguageRuntime_GeneratePackage_FullMethodName        = "/pulumirpc.LanguageRuntime/GeneratePackage"
-	LanguageRuntime_Pack_FullMethodName                   = "/pulumirpc.LanguageRuntime/Pack"
-	LanguageRuntime_Link_FullMethodName                   = "/pulumirpc.LanguageRuntime/Link"
-	LanguageRuntime_Cancel_FullMethodName                 = "/pulumirpc.LanguageRuntime/Cancel"
+	LanguageRuntime_Handshake_FullMethodName		= "/pulumirpc.LanguageRuntime/Handshake"
+	LanguageRuntime_GetRequiredPlugins_FullMethodName	= "/pulumirpc.LanguageRuntime/GetRequiredPlugins"
+	LanguageRuntime_GetRequiredPackages_FullMethodName	= "/pulumirpc.LanguageRuntime/GetRequiredPackages"
+	LanguageRuntime_Run_FullMethodName			= "/pulumirpc.LanguageRuntime/Run"
+	LanguageRuntime_GetPluginInfo_FullMethodName		= "/pulumirpc.LanguageRuntime/GetPluginInfo"
+	LanguageRuntime_InstallDependencies_FullMethodName	= "/pulumirpc.LanguageRuntime/InstallDependencies"
+	LanguageRuntime_RuntimeOptionsPrompts_FullMethodName	= "/pulumirpc.LanguageRuntime/RuntimeOptionsPrompts"
+	LanguageRuntime_About_FullMethodName			= "/pulumirpc.LanguageRuntime/About"
+	LanguageRuntime_GetProgramDependencies_FullMethodName	= "/pulumirpc.LanguageRuntime/GetProgramDependencies"
+	LanguageRuntime_RunPlugin_FullMethodName		= "/pulumirpc.LanguageRuntime/RunPlugin"
+	LanguageRuntime_GenerateProgram_FullMethodName		= "/pulumirpc.LanguageRuntime/GenerateProgram"
+	LanguageRuntime_GenerateProject_FullMethodName		= "/pulumirpc.LanguageRuntime/GenerateProject"
+	LanguageRuntime_GeneratePackage_FullMethodName		= "/pulumirpc.LanguageRuntime/GeneratePackage"
+	LanguageRuntime_Pack_FullMethodName			= "/pulumirpc.LanguageRuntime/Pack"
+	LanguageRuntime_Link_FullMethodName			= "/pulumirpc.LanguageRuntime/Link"
+	LanguageRuntime_Cancel_FullMethodName			= "/pulumirpc.LanguageRuntime/Cancel"
 )
 
 // LanguageRuntimeClient is the client API for LanguageRuntime service.
@@ -473,8 +473,8 @@ func (UnimplementedLanguageRuntimeServer) Link(context.Context, *LinkRequest) (*
 func (UnimplementedLanguageRuntimeServer) Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Cancel not implemented")
 }
-func (UnimplementedLanguageRuntimeServer) mustEmbedUnimplementedLanguageRuntimeServer() {}
-func (UnimplementedLanguageRuntimeServer) testEmbeddedByValue()                         {}
+func (UnimplementedLanguageRuntimeServer) mustEmbedUnimplementedLanguageRuntimeServer()	{}
+func (UnimplementedLanguageRuntimeServer) testEmbeddedByValue()				{}
 
 // UnsafeLanguageRuntimeServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to LanguageRuntimeServer will
@@ -503,8 +503,8 @@ func _LanguageRuntime_Handshake_Handler(srv interface{}, ctx context.Context, de
 		return srv.(LanguageRuntimeServer).Handshake(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LanguageRuntime_Handshake_FullMethodName,
+		Server:		srv,
+		FullMethod:	LanguageRuntime_Handshake_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LanguageRuntimeServer).Handshake(ctx, req.(*LanguageHandshakeRequest))
@@ -521,8 +521,8 @@ func _LanguageRuntime_GetRequiredPlugins_Handler(srv interface{}, ctx context.Co
 		return srv.(LanguageRuntimeServer).GetRequiredPlugins(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LanguageRuntime_GetRequiredPlugins_FullMethodName,
+		Server:		srv,
+		FullMethod:	LanguageRuntime_GetRequiredPlugins_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LanguageRuntimeServer).GetRequiredPlugins(ctx, req.(*GetRequiredPluginsRequest))
@@ -539,8 +539,8 @@ func _LanguageRuntime_GetRequiredPackages_Handler(srv interface{}, ctx context.C
 		return srv.(LanguageRuntimeServer).GetRequiredPackages(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LanguageRuntime_GetRequiredPackages_FullMethodName,
+		Server:		srv,
+		FullMethod:	LanguageRuntime_GetRequiredPackages_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LanguageRuntimeServer).GetRequiredPackages(ctx, req.(*GetRequiredPackagesRequest))
@@ -557,8 +557,8 @@ func _LanguageRuntime_Run_Handler(srv interface{}, ctx context.Context, dec func
 		return srv.(LanguageRuntimeServer).Run(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LanguageRuntime_Run_FullMethodName,
+		Server:		srv,
+		FullMethod:	LanguageRuntime_Run_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LanguageRuntimeServer).Run(ctx, req.(*RunRequest))
@@ -575,8 +575,8 @@ func _LanguageRuntime_GetPluginInfo_Handler(srv interface{}, ctx context.Context
 		return srv.(LanguageRuntimeServer).GetPluginInfo(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LanguageRuntime_GetPluginInfo_FullMethodName,
+		Server:		srv,
+		FullMethod:	LanguageRuntime_GetPluginInfo_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LanguageRuntimeServer).GetPluginInfo(ctx, req.(*emptypb.Empty))
@@ -604,8 +604,8 @@ func _LanguageRuntime_RuntimeOptionsPrompts_Handler(srv interface{}, ctx context
 		return srv.(LanguageRuntimeServer).RuntimeOptionsPrompts(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LanguageRuntime_RuntimeOptionsPrompts_FullMethodName,
+		Server:		srv,
+		FullMethod:	LanguageRuntime_RuntimeOptionsPrompts_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LanguageRuntimeServer).RuntimeOptionsPrompts(ctx, req.(*RuntimeOptionsRequest))
@@ -622,8 +622,8 @@ func _LanguageRuntime_About_Handler(srv interface{}, ctx context.Context, dec fu
 		return srv.(LanguageRuntimeServer).About(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LanguageRuntime_About_FullMethodName,
+		Server:		srv,
+		FullMethod:	LanguageRuntime_About_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LanguageRuntimeServer).About(ctx, req.(*AboutRequest))
@@ -640,8 +640,8 @@ func _LanguageRuntime_GetProgramDependencies_Handler(srv interface{}, ctx contex
 		return srv.(LanguageRuntimeServer).GetProgramDependencies(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LanguageRuntime_GetProgramDependencies_FullMethodName,
+		Server:		srv,
+		FullMethod:	LanguageRuntime_GetProgramDependencies_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LanguageRuntimeServer).GetProgramDependencies(ctx, req.(*GetProgramDependenciesRequest))
@@ -669,8 +669,8 @@ func _LanguageRuntime_GenerateProgram_Handler(srv interface{}, ctx context.Conte
 		return srv.(LanguageRuntimeServer).GenerateProgram(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LanguageRuntime_GenerateProgram_FullMethodName,
+		Server:		srv,
+		FullMethod:	LanguageRuntime_GenerateProgram_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LanguageRuntimeServer).GenerateProgram(ctx, req.(*GenerateProgramRequest))
@@ -687,8 +687,8 @@ func _LanguageRuntime_GenerateProject_Handler(srv interface{}, ctx context.Conte
 		return srv.(LanguageRuntimeServer).GenerateProject(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LanguageRuntime_GenerateProject_FullMethodName,
+		Server:		srv,
+		FullMethod:	LanguageRuntime_GenerateProject_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LanguageRuntimeServer).GenerateProject(ctx, req.(*GenerateProjectRequest))
@@ -705,8 +705,8 @@ func _LanguageRuntime_GeneratePackage_Handler(srv interface{}, ctx context.Conte
 		return srv.(LanguageRuntimeServer).GeneratePackage(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LanguageRuntime_GeneratePackage_FullMethodName,
+		Server:		srv,
+		FullMethod:	LanguageRuntime_GeneratePackage_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LanguageRuntimeServer).GeneratePackage(ctx, req.(*GeneratePackageRequest))
@@ -723,8 +723,8 @@ func _LanguageRuntime_Pack_Handler(srv interface{}, ctx context.Context, dec fun
 		return srv.(LanguageRuntimeServer).Pack(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LanguageRuntime_Pack_FullMethodName,
+		Server:		srv,
+		FullMethod:	LanguageRuntime_Pack_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LanguageRuntimeServer).Pack(ctx, req.(*PackRequest))
@@ -741,8 +741,8 @@ func _LanguageRuntime_Link_Handler(srv interface{}, ctx context.Context, dec fun
 		return srv.(LanguageRuntimeServer).Link(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LanguageRuntime_Link_FullMethodName,
+		Server:		srv,
+		FullMethod:	LanguageRuntime_Link_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LanguageRuntimeServer).Link(ctx, req.(*LinkRequest))
@@ -759,8 +759,8 @@ func _LanguageRuntime_Cancel_Handler(srv interface{}, ctx context.Context, dec f
 		return srv.(LanguageRuntimeServer).Cancel(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LanguageRuntime_Cancel_FullMethodName,
+		Server:		srv,
+		FullMethod:	LanguageRuntime_Cancel_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LanguageRuntimeServer).Cancel(ctx, req.(*emptypb.Empty))
@@ -772,77 +772,77 @@ func _LanguageRuntime_Cancel_Handler(srv interface{}, ctx context.Context, dec f
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var LanguageRuntime_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "pulumirpc.LanguageRuntime",
-	HandlerType: (*LanguageRuntimeServer)(nil),
+	ServiceName:	"pulumirpc.LanguageRuntime",
+	HandlerType:	(*LanguageRuntimeServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Handshake",
-			Handler:    _LanguageRuntime_Handshake_Handler,
+			MethodName:	"Handshake",
+			Handler:	_LanguageRuntime_Handshake_Handler,
 		},
 		{
-			MethodName: "GetRequiredPlugins",
-			Handler:    _LanguageRuntime_GetRequiredPlugins_Handler,
+			MethodName:	"GetRequiredPlugins",
+			Handler:	_LanguageRuntime_GetRequiredPlugins_Handler,
 		},
 		{
-			MethodName: "GetRequiredPackages",
-			Handler:    _LanguageRuntime_GetRequiredPackages_Handler,
+			MethodName:	"GetRequiredPackages",
+			Handler:	_LanguageRuntime_GetRequiredPackages_Handler,
 		},
 		{
-			MethodName: "Run",
-			Handler:    _LanguageRuntime_Run_Handler,
+			MethodName:	"Run",
+			Handler:	_LanguageRuntime_Run_Handler,
 		},
 		{
-			MethodName: "GetPluginInfo",
-			Handler:    _LanguageRuntime_GetPluginInfo_Handler,
+			MethodName:	"GetPluginInfo",
+			Handler:	_LanguageRuntime_GetPluginInfo_Handler,
 		},
 		{
-			MethodName: "RuntimeOptionsPrompts",
-			Handler:    _LanguageRuntime_RuntimeOptionsPrompts_Handler,
+			MethodName:	"RuntimeOptionsPrompts",
+			Handler:	_LanguageRuntime_RuntimeOptionsPrompts_Handler,
 		},
 		{
-			MethodName: "About",
-			Handler:    _LanguageRuntime_About_Handler,
+			MethodName:	"About",
+			Handler:	_LanguageRuntime_About_Handler,
 		},
 		{
-			MethodName: "GetProgramDependencies",
-			Handler:    _LanguageRuntime_GetProgramDependencies_Handler,
+			MethodName:	"GetProgramDependencies",
+			Handler:	_LanguageRuntime_GetProgramDependencies_Handler,
 		},
 		{
-			MethodName: "GenerateProgram",
-			Handler:    _LanguageRuntime_GenerateProgram_Handler,
+			MethodName:	"GenerateProgram",
+			Handler:	_LanguageRuntime_GenerateProgram_Handler,
 		},
 		{
-			MethodName: "GenerateProject",
-			Handler:    _LanguageRuntime_GenerateProject_Handler,
+			MethodName:	"GenerateProject",
+			Handler:	_LanguageRuntime_GenerateProject_Handler,
 		},
 		{
-			MethodName: "GeneratePackage",
-			Handler:    _LanguageRuntime_GeneratePackage_Handler,
+			MethodName:	"GeneratePackage",
+			Handler:	_LanguageRuntime_GeneratePackage_Handler,
 		},
 		{
-			MethodName: "Pack",
-			Handler:    _LanguageRuntime_Pack_Handler,
+			MethodName:	"Pack",
+			Handler:	_LanguageRuntime_Pack_Handler,
 		},
 		{
-			MethodName: "Link",
-			Handler:    _LanguageRuntime_Link_Handler,
+			MethodName:	"Link",
+			Handler:	_LanguageRuntime_Link_Handler,
 		},
 		{
-			MethodName: "Cancel",
-			Handler:    _LanguageRuntime_Cancel_Handler,
+			MethodName:	"Cancel",
+			Handler:	_LanguageRuntime_Cancel_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "InstallDependencies",
-			Handler:       _LanguageRuntime_InstallDependencies_Handler,
-			ServerStreams: true,
+			StreamName:	"InstallDependencies",
+			Handler:	_LanguageRuntime_InstallDependencies_Handler,
+			ServerStreams:	true,
 		},
 		{
-			StreamName:    "RunPlugin",
-			Handler:       _LanguageRuntime_RunPlugin_Handler,
-			ServerStreams: true,
+			StreamName:	"RunPlugin",
+			Handler:	_LanguageRuntime_RunPlugin_Handler,
+			ServerStreams:	true,
 		},
 	},
-	Metadata: "pulumi/language.proto",
+	Metadata:	"pulumi/language.proto",
 }

@@ -14,8 +14,8 @@ import (
 type Example struct {
 	pulumi.CustomResourceState
 
-	MapMapUnionProperty     pulumi.MapMapOutput `pulumi:"mapMapUnionProperty"`
-	StringOrIntegerProperty pulumi.AnyOutput    `pulumi:"stringOrIntegerProperty"`
+	MapMapUnionProperty	pulumi.MapMapOutput	`pulumi:"mapMapUnionProperty"`
+	StringOrIntegerProperty	pulumi.AnyOutput	`pulumi:"stringOrIntegerProperty"`
 }
 
 // NewExample registers a new resource with the given unique name, arguments, and options.
@@ -58,14 +58,14 @@ func (ExampleState) ElementType() reflect.Type {
 }
 
 type exampleArgs struct {
-	MapMapUnionProperty     map[string]map[string]interface{} `pulumi:"mapMapUnionProperty"`
-	StringOrIntegerProperty interface{}                       `pulumi:"stringOrIntegerProperty"`
+	MapMapUnionProperty	map[string]map[string]interface{}	`pulumi:"mapMapUnionProperty"`
+	StringOrIntegerProperty	interface{}				`pulumi:"stringOrIntegerProperty"`
 }
 
 // The set of arguments for constructing a Example resource.
 type ExampleArgs struct {
-	MapMapUnionProperty     pulumi.MapMapInput
-	StringOrIntegerProperty pulumi.Input
+	MapMapUnionProperty	pulumi.MapMapInput
+	StringOrIntegerProperty	pulumi.Input
 }
 
 func (ExampleArgs) ElementType() reflect.Type {

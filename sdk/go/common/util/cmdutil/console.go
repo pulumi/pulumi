@@ -144,16 +144,16 @@ func EndKeypadTransmitMode() {
 }
 
 type Table struct {
-	Headers []string
-	Rows    []TableRow // Rows of the table.
-	Prefix  string     // Optional prefix to print before each row
+	Headers	[]string
+	Rows	[]TableRow	// Rows of the table.
+	Prefix	string		// Optional prefix to print before each row
 }
 
 // TableRow is a row in a table we want to print.  It can be a series of a columns, followed
 // by an additional line of information.
 type TableRow struct {
-	Columns        []string // Columns of the row
-	AdditionalInfo string   // an optional line of information to print after the row
+	Columns		[]string	// Columns of the row
+	AdditionalInfo	string		// an optional line of information to print after the row
 }
 
 // FprintTable prints a grid of rows and columns.  Width of columns is automatically determined by
@@ -229,10 +229,10 @@ func (table Table) ToStringWithGap(columnGap string) string {
 }
 
 type TableRenderOptions struct {
-	ColumnGap   string
-	HeaderStyle []colors.Color
-	ColumnStyle []colors.Color
-	Color       colors.Colorization
+	ColumnGap	string
+	HeaderStyle	[]colors.Color
+	ColumnStyle	[]colors.Color
+	Color		colors.Colorization
 }
 
 func (table Table) Render(opts *TableRenderOptions) string {

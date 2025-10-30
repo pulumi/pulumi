@@ -21,17 +21,17 @@ import (
 // stateBuilder offers a fluent API for making edits to a resource.State object in a way that avoids mutation and
 // allocation where possible.
 type stateBuilder struct {
-	state    resource.State
-	original *resource.State
-	edited   bool
+	state		resource.State
+	original	*resource.State
+	edited		bool
 }
 
 // newStateBuilder creates a new builder atop the given state.
 func newStateBuilder(state *resource.State) *stateBuilder {
 	return &stateBuilder{
-		state:    *(state.Copy()),
-		original: state,
-		edited:   false,
+		state:		*(state.Copy()),
+		original:	state,
+		edited:		false,
 	}
 }
 

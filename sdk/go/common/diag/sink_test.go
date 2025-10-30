@@ -31,11 +31,11 @@ import (
 func discardSink() Sink {
 	// Create a new default sink with /dev/null writers to avoid spamming the test log.
 	return newDefaultSink(FormatOptions{Color: colors.Never}, map[Severity]io.Writer{
-		Debug:   io.Discard,
-		Info:    io.Discard,
-		Infoerr: io.Discard,
-		Error:   io.Discard,
-		Warning: io.Discard,
+		Debug:		io.Discard,
+		Info:		io.Discard,
+		Infoerr:	io.Discard,
+		Error:		io.Discard,
+		Warning:	io.Discard,
 	})
 }
 
@@ -76,15 +76,15 @@ func TestDefaultSink_concurrency(t *testing.T) {
 	// Verifies that we can safely log to the sink concurrently.
 
 	const (
-		NumWorkers = 10  // number of concurrent loggers
-		NumLogs    = 100 // number of logs per worker
+		NumWorkers	= 10	// number of concurrent loggers
+		NumLogs		= 100	// number of logs per worker
 	)
 
 	levels := []Severity{Debug, Info, Infoerr, Warning, Error}
 	var out bytes.Buffer
 	sink := DefaultSink(&out, &out, FormatOptions{
-		Debug: true,
-		Color: colors.Never,
+		Debug:	true,
+		Color:	colors.Never,
 	})
 
 	var wg sync.WaitGroup
@@ -128,7 +128,7 @@ func TestDefaultSink_uncomparableWriters(t *testing.T) {
 	out := struct {
 		io.Writer
 		// Slices are not comparable with ==.
-		Foo []string
+		Foo	[]string
 	}{Writer: io.Discard}
 
 	assert.NotPanics(t, func() {

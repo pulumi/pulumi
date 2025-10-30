@@ -20,43 +20,43 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
 )
 
 // Component represents a component reference in a program.
 type Component struct {
 	node
 
-	syntax *hclsyntax.Block
+	syntax	*hclsyntax.Block
 
 	// The name visible to API calls related to the component. Used as the Name argument in component
 	// constructors, and through those calls to RegisterResource. Must not be modified during code
 	// generation to ensure that components are not renamed (deleted and recreated).
-	logicalName string
+	logicalName	string
 
 	// the name of block declaration
-	name string
+	name	string
 
 	// The location of the source for the component.
-	source string
+	source	string
 
 	// the full (absolute) path of the component directory
-	dirPath string
+	dirPath	string
 
 	// The inner Program that makes up this Component.
-	Program *Program
+	Program	*Program
 
 	// The type of the resource variable.
-	VariableType model.Type
+	VariableType	model.Type
 
 	// The definition of the component.
-	Definition *model.Block
+	Definition	*model.Block
 
 	// The component's input attributes, in source order.
-	Inputs []*model.Attribute
+	Inputs	[]*model.Attribute
 
 	// The component resource's options, if any.
-	Options *ResourceOptions
+	Options	*ResourceOptions
 }
 
 // SyntaxNode returns the syntax node associated with the component.

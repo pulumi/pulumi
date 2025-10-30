@@ -66,9 +66,9 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 		t.Chdir(tempdir)
 
 		args := newPolicyArgs{
-			generateOnly:      true,
-			offline:           true,
-			templateNameOrURL: nonExistantTemplate,
+			generateOnly:		true,
+			offline:		true,
+			templateNameOrURL:	nonExistantTemplate,
 		}
 
 		err := runNewPolicyPack(context.Background(), args)

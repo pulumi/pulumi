@@ -27,9 +27,9 @@ import (
 )
 
 type loaderServer struct {
-	codegenrpc.UnsafeLoaderServer // opt out of forward compat
+	codegenrpc.UnsafeLoaderServer	// opt out of forward compat
 
-	loader ReferenceLoader
+	loader	ReferenceLoader
 }
 
 func NewLoaderServer(loader ReferenceLoader) codegenrpc.LoaderServer {
@@ -53,14 +53,14 @@ func (m *loaderServer) GetSchema(ctx context.Context,
 	}
 
 	descriptor := &PackageDescriptor{
-		Name:        req.Package,
-		Version:     version,
-		DownloadURL: req.DownloadUrl,
+		Name:		req.Package,
+		Version:	version,
+		DownloadURL:	req.DownloadUrl,
 	}
 	if req.Parameterization != nil {
 		descriptor.Parameterization = &ParameterizationDescriptor{
-			Name:  req.Parameterization.Name,
-			Value: req.Parameterization.Value,
+			Name:	req.Parameterization.Name,
+			Value:	req.Parameterization.Value,
 		}
 
 		v, err := semver.ParseTolerant(req.Parameterization.Version)

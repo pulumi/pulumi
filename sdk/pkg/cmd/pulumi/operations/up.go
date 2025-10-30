@@ -25,23 +25,23 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
-	newcmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/autonaming"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	cmdConfig "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/deployment"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/metadata"
+	newcmd "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/newcmd"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/plan"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
+	cmdTemplates "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/templates"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -56,7 +56,7 @@ import (
 
 func defaultParallel() int32 {
 	// Initialize parallel from environment if available, otherwise use defaultParallel
-	osDefaultParallel := int32(runtime.GOMAXPROCS(0)) * 4 //nolint:gosec
+	osDefaultParallel := int32(runtime.GOMAXPROCS(0)) * 4	//nolint:gosec
 	// GOMAXPROCS is an int32 internally, but the GOMAXPROCS function returns an int.
 	var defaultParallel int32
 	if p := env.Parallel.Value(); p > 0 {
@@ -65,7 +65,7 @@ func defaultParallel() int32 {
 			logging.Warningf("Parallel value %d exceeds maximum allowed value, capping at %d", p, math.MaxInt32)
 			defaultParallel = math.MaxInt32
 		} else {
-			defaultParallel = int32(p) //nolint:gosec
+			defaultParallel = int32(p)	//nolint:gosec
 		}
 	} else {
 		defaultParallel = osDefaultParallel
@@ -202,30 +202,30 @@ func NewUpCmd() *cobra.Command {
 		}
 
 		opts.Engine = engine.UpdateOptions{
-			ParallelDiff:              env.ParallelDiff.Value(),
-			LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
-			Parallel:                  parallel,
-			Debug:                     debug,
-			Refresh:                   refreshOption,
-			RefreshProgram:            runProgram,
-			ReplaceTargets:            deploy.NewUrnTargets(replaceURNs),
-			UseLegacyDiff:             env.EnableLegacyDiff.Value(),
-			UseLegacyRefreshDiff:      env.EnableLegacyRefreshDiff.Value(),
-			DisableProviderPreview:    env.DisableProviderPreview.Value(),
-			DisableResourceReferences: env.DisableResourceReferences.Value(),
-			DisableOutputValues:       env.DisableOutputValues.Value(),
-			ShowSecrets:               showSecrets,
-			Targets:                   deploy.NewUrnTargets(targetURNs),
-			Excludes:                  deploy.NewUrnTargets(excludeURNs),
-			TargetDependents:          targetDependents,
-			ExcludeDependents:         excludeDependents,
+			ParallelDiff:			env.ParallelDiff.Value(),
+			LocalPolicyPacks:		engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
+			Parallel:			parallel,
+			Debug:				debug,
+			Refresh:			refreshOption,
+			RefreshProgram:			runProgram,
+			ReplaceTargets:			deploy.NewUrnTargets(replaceURNs),
+			UseLegacyDiff:			env.EnableLegacyDiff.Value(),
+			UseLegacyRefreshDiff:		env.EnableLegacyRefreshDiff.Value(),
+			DisableProviderPreview:		env.DisableProviderPreview.Value(),
+			DisableResourceReferences:	env.DisableResourceReferences.Value(),
+			DisableOutputValues:		env.DisableOutputValues.Value(),
+			ShowSecrets:			showSecrets,
+			Targets:			deploy.NewUrnTargets(targetURNs),
+			Excludes:			deploy.NewUrnTargets(excludeURNs),
+			TargetDependents:		targetDependents,
+			ExcludeDependents:		excludeDependents,
 			// Trigger a plan to be generated during the preview phase which can be constrained to during the
 			// update phase.
-			GeneratePlan:    true,
-			Experimental:    env.Experimental.Value(),
-			ContinueOnError: continueOnError,
-			AttachDebugger:  attachDebugger,
-			Autonamer:       autonamer,
+			GeneratePlan:		true,
+			Experimental:		env.Experimental.Value(),
+			ContinueOnError:	continueOnError,
+			AttachDebugger:		attachDebugger,
+			Autonamer:		autonamer,
 		}
 
 		if planFilePath != "" {
@@ -238,14 +238,14 @@ func NewUpCmd() *cobra.Command {
 		}
 
 		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
-			Proj:               proj,
-			Root:               root,
-			M:                  m,
-			Opts:               opts,
-			StackConfiguration: cfg,
-			SecretsManager:     sm,
-			SecretsProvider:    secrets.DefaultProvider,
-			Scopes:             backend.CancellationScopes,
+			Proj:			proj,
+			Root:			root,
+			M:			m,
+			Opts:			opts,
+			StackConfiguration:	cfg,
+			SecretsManager:		sm,
+			SecretsProvider:	secrets.DefaultProvider,
+			Scopes:			backend.CancellationScopes,
 		}, nil /* events */)
 		switch {
 		case err == context.Canceled:
@@ -448,22 +448,22 @@ func NewUpCmd() *cobra.Command {
 			return err
 		}
 		opts.Engine = engine.UpdateOptions{
-			ParallelDiff:     env.ParallelDiff.Value(),
-			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
-			Parallel:         parallel,
-			Debug:            debug,
-			Refresh:          refreshOption,
-			RefreshProgram:   runProgram,
-			ShowSecrets:      showSecrets,
+			ParallelDiff:		env.ParallelDiff.Value(),
+			LocalPolicyPacks:	engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
+			Parallel:		parallel,
+			Debug:			debug,
+			Refresh:		refreshOption,
+			RefreshProgram:		runProgram,
+			ShowSecrets:		showSecrets,
 			// If we're in experimental mode then we trigger a plan to be generated during the preview phase
 			// which will be constrained to during the update phase.
-			GeneratePlan: env.Experimental.Value(),
-			Experimental: env.Experimental.Value(),
+			GeneratePlan:	env.Experimental.Value(),
+			Experimental:	env.Experimental.Value(),
 
-			UseLegacyRefreshDiff: env.EnableLegacyRefreshDiff.Value(),
-			ContinueOnError:      continueOnError,
+			UseLegacyRefreshDiff:	env.EnableLegacyRefreshDiff.Value(),
+			ContinueOnError:	continueOnError,
 
-			AttachDebugger: attachDebugger,
+			AttachDebugger:	attachDebugger,
 		}
 
 		// TODO for the URL case:
@@ -472,14 +472,14 @@ func NewUpCmd() *cobra.Command {
 		// - show template.Quickstart?
 
 		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
-			Proj:               proj,
-			Root:               root,
-			M:                  m,
-			Opts:               opts,
-			StackConfiguration: cfg,
-			SecretsManager:     sm,
-			SecretsProvider:    secrets.DefaultProvider,
-			Scopes:             backend.CancellationScopes,
+			Proj:			proj,
+			Root:			root,
+			M:			m,
+			Opts:			opts,
+			StackConfiguration:	cfg,
+			SecretsManager:		sm,
+			SecretsProvider:	secrets.DefaultProvider,
+			Scopes:			backend.CancellationScopes,
 		}, nil /* events */)
 		switch {
 		case err == context.Canceled:
@@ -494,10 +494,10 @@ func NewUpCmd() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:        "up [template|url]",
-		Aliases:    []string{"update"},
-		SuggestFor: []string{"apply", "deploy", "push"},
-		Short:      "Create or update the resources in a stack",
+		Use:		"up [template|url]",
+		Aliases:	[]string{"update"},
+		SuggestFor:	[]string{"apply", "deploy", "push"},
+		Short:		"Create or update the resources in a stack",
 		Long: "Create or update the resources in a stack.\n" +
 			"\n" +
 			"This command creates or updates resources in a stack. The new desired goal state for the target stack\n" +
@@ -509,7 +509,7 @@ func NewUpCmd() *cobra.Command {
 			"\n" +
 			"The program to run is loaded from the project in the current directory by default. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
-		Args: cmdutil.MaximumNArgs(1),
+		Args:	cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
@@ -549,21 +549,21 @@ func NewUpCmd() *cobra.Command {
 			}
 
 			opts.Display = display.Options{
-				Color:                  cmdutil.GetGlobalColorization(),
-				ShowConfig:             showConfig,
-				ShowPolicyRemediations: showPolicyRemediations,
-				ShowReplacementSteps:   showReplacementSteps,
-				ShowSameResources:      showSames,
-				ShowReads:              showReads,
-				SuppressOutputs:        suppressOutputs,
-				SuppressProgress:       suppressProgress,
-				TruncateOutput:         !showFullOutput,
-				IsInteractive:          interactive,
-				Type:                   displayType,
-				EventLogPath:           eventLogPath,
-				Debug:                  debug,
-				JSONDisplay:            jsonDisplay,
-				ShowSecrets:            showSecrets,
+				Color:			cmdutil.GetGlobalColorization(),
+				ShowConfig:		showConfig,
+				ShowPolicyRemediations:	showPolicyRemediations,
+				ShowReplacementSteps:	showReplacementSteps,
+				ShowSameResources:	showSames,
+				ShowReads:		showReads,
+				SuppressOutputs:	suppressOutputs,
+				SuppressProgress:	suppressProgress,
+				TruncateOutput:		!showFullOutput,
+				IsInteractive:		interactive,
+				Type:			displayType,
+				EventLogPath:		eventLogPath,
+				Debug:			debug,
+				JSONDisplay:		jsonDisplay,
+				ShowSecrets:		showSecrets,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -840,8 +840,8 @@ func autonamingStackContext(proj *workspace.Project, s backend.Stack) autonaming
 	project := proj.Name.String()
 	stack := s.Ref().Name().String()
 	return autonaming.StackContext{
-		Organization: organization,
-		Project:      project,
-		Stack:        stack,
+		Organization:	organization,
+		Project:	project,
+		Stack:		stack,
 	}
 }

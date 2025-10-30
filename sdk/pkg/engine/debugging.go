@@ -23,14 +23,14 @@ import (
 
 func newDebugContext(events eventEmitter, attachDebugger []string) plugin.DebugContext {
 	return &debugContext{
-		attachDebugger: attachDebugger,
-		events:         events,
+		attachDebugger:	attachDebugger,
+		events:		events,
 	}
 }
 
 type debugContext struct {
-	attachDebugger []string     // the debugger types to attach to.
-	events         eventEmitter // the channel to emit events into.
+	attachDebugger	[]string	// the debugger types to attach to.
+	events		eventEmitter	// the channel to emit events into.
 }
 
 var _ plugin.DebugContext = (*debugContext)(nil)

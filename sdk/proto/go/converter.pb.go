@@ -31,20 +31,20 @@ import (
 
 const (
 	// Verify that this generated code is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
+	_	= protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
+	_	= protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
 type ConvertStateRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// the gRPC target of the mapper service.
-	MapperTarget string `protobuf:"bytes,1,opt,name=mapper_target,json=mapperTarget,proto3" json:"mapper_target,omitempty"`
+	MapperTarget	string	`protobuf:"bytes,1,opt,name=mapper_target,json=mapperTarget,proto3" json:"mapper_target,omitempty"`
 	// the args passed to `pulumi import` for this conversion. Normally used to specifiy a state file to
 	// import from.
-	Args          []string `protobuf:"bytes,2,rep,name=args,proto3" json:"args,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Args		[]string	`protobuf:"bytes,2,rep,name=args,proto3" json:"args,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *ConvertStateRequest) Reset() {
@@ -58,7 +58,7 @@ func (x *ConvertStateRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ConvertStateRequest) ProtoMessage() {}
+func (*ConvertStateRequest) ProtoMessage()	{}
 
 func (x *ConvertStateRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_converter_proto_msgTypes[0]
@@ -93,25 +93,25 @@ func (x *ConvertStateRequest) GetArgs() []string {
 
 // A ResourceImport specifies a resource to import.
 type ResourceImport struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// the type token for the resource.
-	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Type	string	`protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
 	// the name of the resource.
-	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Name	string	`protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// the ID of the resource.
-	Id string `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
+	Id	string	`protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
 	// the provider version to use for the resource, if any.
-	Version string `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
+	Version	string	`protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
 	// the provider PluginDownloadURL to use for the resource, if any.
-	PluginDownloadURL string `protobuf:"bytes,5,opt,name=pluginDownloadURL,proto3" json:"pluginDownloadURL,omitempty"`
+	PluginDownloadURL	string	`protobuf:"bytes,5,opt,name=pluginDownloadURL,proto3" json:"pluginDownloadURL,omitempty"`
 	// the logical name of the resource.
-	LogicalName string `protobuf:"bytes,6,opt,name=logical_name,json=logicalName,proto3" json:"logical_name,omitempty"`
+	LogicalName	string	`protobuf:"bytes,6,opt,name=logical_name,json=logicalName,proto3" json:"logical_name,omitempty"`
 	// true if this is a component resource.
-	IsComponent bool `protobuf:"varint,7,opt,name=is_component,json=isComponent,proto3" json:"is_component,omitempty"`
+	IsComponent	bool	`protobuf:"varint,7,opt,name=is_component,json=isComponent,proto3" json:"is_component,omitempty"`
 	// true if this is a remote resource. Ignored if is_component is false.
-	IsRemote      bool `protobuf:"varint,8,opt,name=is_remote,json=isRemote,proto3" json:"is_remote,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	IsRemote	bool	`protobuf:"varint,8,opt,name=is_remote,json=isRemote,proto3" json:"is_remote,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *ResourceImport) Reset() {
@@ -125,7 +125,7 @@ func (x *ResourceImport) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ResourceImport) ProtoMessage() {}
+func (*ResourceImport) ProtoMessage()	{}
 
 func (x *ResourceImport) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_converter_proto_msgTypes[1]
@@ -201,13 +201,13 @@ func (x *ResourceImport) GetIsRemote() bool {
 }
 
 type ConvertStateResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// a list of resources to import.
-	Resources []*ResourceImport `protobuf:"bytes,1,rep,name=resources,proto3" json:"resources,omitempty"`
+	Resources	[]*ResourceImport	`protobuf:"bytes,1,rep,name=resources,proto3" json:"resources,omitempty"`
 	// any diagnostics from state conversion.
-	Diagnostics   []*codegen.Diagnostic `protobuf:"bytes,2,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Diagnostics	[]*codegen.Diagnostic	`protobuf:"bytes,2,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *ConvertStateResponse) Reset() {
@@ -221,7 +221,7 @@ func (x *ConvertStateResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ConvertStateResponse) ProtoMessage() {}
+func (*ConvertStateResponse) ProtoMessage()	{}
 
 func (x *ConvertStateResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_converter_proto_msgTypes[2]
@@ -255,24 +255,24 @@ func (x *ConvertStateResponse) GetDiagnostics() []*codegen.Diagnostic {
 }
 
 type ConvertProgramRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// the source directory containing the program to convert from.
-	SourceDirectory string `protobuf:"bytes,1,opt,name=source_directory,json=sourceDirectory,proto3" json:"source_directory,omitempty"`
+	SourceDirectory	string	`protobuf:"bytes,1,opt,name=source_directory,json=sourceDirectory,proto3" json:"source_directory,omitempty"`
 	// a target directory to write the resulting PCL code and project file to.
-	TargetDirectory string `protobuf:"bytes,2,opt,name=target_directory,json=targetDirectory,proto3" json:"target_directory,omitempty"`
+	TargetDirectory	string	`protobuf:"bytes,2,opt,name=target_directory,json=targetDirectory,proto3" json:"target_directory,omitempty"`
 	// the gRPC target of the mapper service.
-	MapperTarget string `protobuf:"bytes,3,opt,name=mapper_target,json=mapperTarget,proto3" json:"mapper_target,omitempty"`
+	MapperTarget	string	`protobuf:"bytes,3,opt,name=mapper_target,json=mapperTarget,proto3" json:"mapper_target,omitempty"`
 	// The target of a codegen.LoaderServer to use for loading schemas.
-	LoaderTarget string `protobuf:"bytes,4,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
+	LoaderTarget	string	`protobuf:"bytes,4,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
 	// the args passed to `pulumi convert` for this conversion. Normally used to specifiy a root file, or conversion options.
-	Args []string `protobuf:"bytes,5,rep,name=args,proto3" json:"args,omitempty"`
+	Args	[]string	`protobuf:"bytes,5,rep,name=args,proto3" json:"args,omitempty"`
 	// the directory where the final generated project for the eventual destination language will be written.
 	// use to determine relative paths of any asset that will be copied over.
 	// Do not write files to this directory as these files might be overwritten in
 	// the project generation process.
-	GeneratedProjectDirectory string `protobuf:"bytes,6,opt,name=generated_project_directory,json=generatedProjectDirectory,proto3" json:"generated_project_directory,omitempty"`
-	unknownFields             protoimpl.UnknownFields
-	sizeCache                 protoimpl.SizeCache
+	GeneratedProjectDirectory	string	`protobuf:"bytes,6,opt,name=generated_project_directory,json=generatedProjectDirectory,proto3" json:"generated_project_directory,omitempty"`
+	unknownFields			protoimpl.UnknownFields
+	sizeCache			protoimpl.SizeCache
 }
 
 func (x *ConvertProgramRequest) Reset() {
@@ -286,7 +286,7 @@ func (x *ConvertProgramRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ConvertProgramRequest) ProtoMessage() {}
+func (*ConvertProgramRequest) ProtoMessage()	{}
 
 func (x *ConvertProgramRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_converter_proto_msgTypes[3]
@@ -348,11 +348,11 @@ func (x *ConvertProgramRequest) GetGeneratedProjectDirectory() string {
 }
 
 type ConvertProgramResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// any diagnostics from code generation.
-	Diagnostics   []*codegen.Diagnostic `protobuf:"bytes,1,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Diagnostics	[]*codegen.Diagnostic	`protobuf:"bytes,1,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *ConvertProgramResponse) Reset() {
@@ -366,7 +366,7 @@ func (x *ConvertProgramResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ConvertProgramResponse) ProtoMessage() {}
+func (*ConvertProgramResponse) ProtoMessage()	{}
 
 func (x *ConvertProgramResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_converter_proto_msgTypes[4]
@@ -426,8 +426,8 @@ const file_pulumi_converter_proto_rawDesc = "" +
 	"\x0eConvertProgram\x12 .pulumirpc.ConvertProgramRequest\x1a!.pulumirpc.ConvertProgramResponse\"\x00B4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3"
 
 var (
-	file_pulumi_converter_proto_rawDescOnce sync.Once
-	file_pulumi_converter_proto_rawDescData []byte
+	file_pulumi_converter_proto_rawDescOnce	sync.Once
+	file_pulumi_converter_proto_rawDescData	[]byte
 )
 
 func file_pulumi_converter_proto_rawDescGZIP() []byte {
@@ -439,29 +439,29 @@ func file_pulumi_converter_proto_rawDescGZIP() []byte {
 
 var file_pulumi_converter_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_pulumi_converter_proto_goTypes = []any{
-	(*ConvertStateRequest)(nil),    // 0: pulumirpc.ConvertStateRequest
-	(*ResourceImport)(nil),         // 1: pulumirpc.ResourceImport
-	(*ConvertStateResponse)(nil),   // 2: pulumirpc.ConvertStateResponse
-	(*ConvertProgramRequest)(nil),  // 3: pulumirpc.ConvertProgramRequest
-	(*ConvertProgramResponse)(nil), // 4: pulumirpc.ConvertProgramResponse
-	(*codegen.Diagnostic)(nil),     // 5: pulumirpc.codegen.Diagnostic
+	(*ConvertStateRequest)(nil),	// 0: pulumirpc.ConvertStateRequest
+	(*ResourceImport)(nil),		// 1: pulumirpc.ResourceImport
+	(*ConvertStateResponse)(nil),	// 2: pulumirpc.ConvertStateResponse
+	(*ConvertProgramRequest)(nil),	// 3: pulumirpc.ConvertProgramRequest
+	(*ConvertProgramResponse)(nil),	// 4: pulumirpc.ConvertProgramResponse
+	(*codegen.Diagnostic)(nil),	// 5: pulumirpc.codegen.Diagnostic
 }
 var file_pulumi_converter_proto_depIdxs = []int32{
-	1, // 0: pulumirpc.ConvertStateResponse.resources:type_name -> pulumirpc.ResourceImport
-	5, // 1: pulumirpc.ConvertStateResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
-	5, // 2: pulumirpc.ConvertProgramResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
-	0, // 3: pulumirpc.Converter.ConvertState:input_type -> pulumirpc.ConvertStateRequest
-	3, // 4: pulumirpc.Converter.ConvertProgram:input_type -> pulumirpc.ConvertProgramRequest
-	2, // 5: pulumirpc.Converter.ConvertState:output_type -> pulumirpc.ConvertStateResponse
-	4, // 6: pulumirpc.Converter.ConvertProgram:output_type -> pulumirpc.ConvertProgramResponse
-	5, // [5:7] is the sub-list for method output_type
-	3, // [3:5] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	1,	// 0: pulumirpc.ConvertStateResponse.resources:type_name -> pulumirpc.ResourceImport
+	5,	// 1: pulumirpc.ConvertStateResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
+	5,	// 2: pulumirpc.ConvertProgramResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
+	0,	// 3: pulumirpc.Converter.ConvertState:input_type -> pulumirpc.ConvertStateRequest
+	3,	// 4: pulumirpc.Converter.ConvertProgram:input_type -> pulumirpc.ConvertProgramRequest
+	2,	// 5: pulumirpc.Converter.ConvertState:output_type -> pulumirpc.ConvertStateResponse
+	4,	// 6: pulumirpc.Converter.ConvertProgram:output_type -> pulumirpc.ConvertProgramResponse
+	5,	// [5:7] is the sub-list for method output_type
+	3,	// [3:5] is the sub-list for method input_type
+	3,	// [3:3] is the sub-list for extension type_name
+	3,	// [3:3] is the sub-list for extension extendee
+	0,	// [0:3] is the sub-list for field type_name
 }
 
-func init() { file_pulumi_converter_proto_init() }
+func init()	{ file_pulumi_converter_proto_init() }
 func file_pulumi_converter_proto_init() {
 	if File_pulumi_converter_proto != nil {
 		return
@@ -469,16 +469,16 @@ func file_pulumi_converter_proto_init() {
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
-			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_converter_proto_rawDesc), len(file_pulumi_converter_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   5,
-			NumExtensions: 0,
-			NumServices:   1,
+			GoPackagePath:	reflect.TypeOf(x{}).PkgPath(),
+			RawDescriptor:	unsafe.Slice(unsafe.StringData(file_pulumi_converter_proto_rawDesc), len(file_pulumi_converter_proto_rawDesc)),
+			NumEnums:	0,
+			NumMessages:	5,
+			NumExtensions:	0,
+			NumServices:	1,
 		},
-		GoTypes:           file_pulumi_converter_proto_goTypes,
-		DependencyIndexes: file_pulumi_converter_proto_depIdxs,
-		MessageInfos:      file_pulumi_converter_proto_msgTypes,
+		GoTypes:		file_pulumi_converter_proto_goTypes,
+		DependencyIndexes:	file_pulumi_converter_proto_depIdxs,
+		MessageInfos:		file_pulumi_converter_proto_msgTypes,
 	}.Build()
 	File_pulumi_converter_proto = out.File
 	file_pulumi_converter_proto_goTypes = nil

@@ -37,13 +37,13 @@ func NewRemediatePolicySummary(
 	// Any remediations are treated as failures.
 	diagnostics := slice.Map(response.Remediations, func(r plugin.Remediation) plugin.AnalyzeDiagnostic {
 		return plugin.AnalyzeDiagnostic{
-			URN:        r.URN,
-			PolicyName: r.PolicyName,
+			URN:		r.URN,
+			PolicyName:	r.PolicyName,
 		}
 	})
 	analyzerResponse := plugin.AnalyzeResponse{
-		Diagnostics:   diagnostics,
-		NotApplicable: response.NotApplicable,
+		Diagnostics:	diagnostics,
+		NotApplicable:	response.NotApplicable,
 	}
 	return newPolicySummary(plugin.AnalyzerPolicyTypeResource, urn, analyzerResponse, info)
 }
@@ -94,10 +94,10 @@ func newPolicySummary(
 	}
 
 	return plugin.PolicySummary{
-		URN:               urn,
-		PolicyPackName:    info.Name,
-		PolicyPackVersion: info.Version,
-		Passed:            maputil.SortedKeys(passed),
-		Failed:            maputil.SortedKeys(failed),
+		URN:			urn,
+		PolicyPackName:		info.Name,
+		PolicyPackVersion:	info.Version,
+		Passed:			maputil.SortedKeys(passed),
+		Failed:			maputil.SortedKeys(failed),
 	}
 }

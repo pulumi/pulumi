@@ -84,14 +84,14 @@ func TestResourcePlan(t *testing.T) {
 	t.Run("diffPropertyKeys", func(t *testing.T) {
 		t.Parallel()
 		tests := []struct {
-			name          string
-			keysOld       []resource.PropertyKey
-			keysNew       []resource.PropertyKey
-			expectResult  string
-			expectChanged bool
+			name		string
+			keysOld		[]resource.PropertyKey
+			keysNew		[]resource.PropertyKey
+			expectResult	string
+			expectChanged	bool
 		}{
 			{
-				name: "mutually exclusive keys",
+				name:	"mutually exclusive keys",
 				keysOld: []resource.PropertyKey{
 					resource.PropertyKey("foo"),
 					resource.PropertyKey("bar"),
@@ -102,11 +102,11 @@ func TestResourcePlan(t *testing.T) {
 					resource.PropertyKey("b"),
 					resource.PropertyKey("c"),
 				},
-				expectResult:  "added a, b, c; deleted bar, baz, foo",
-				expectChanged: true,
+				expectResult:	"added a, b, c; deleted bar, baz, foo",
+				expectChanged:	true,
 			},
 			{
-				name: "intersecting keys",
+				name:	"intersecting keys",
 				keysOld: []resource.PropertyKey{
 					resource.PropertyKey("both"),
 					resource.PropertyKey("old"),
@@ -115,11 +115,11 @@ func TestResourcePlan(t *testing.T) {
 					resource.PropertyKey("both"),
 					resource.PropertyKey("new"),
 				},
-				expectResult:  "added new; deleted old",
-				expectChanged: true,
+				expectResult:	"added new; deleted old",
+				expectChanged:	true,
 			},
 			{
-				name: "same keys - same order",
+				name:	"same keys - same order",
 				keysOld: []resource.PropertyKey{
 					resource.PropertyKey("foo"),
 					resource.PropertyKey("bar"),
@@ -132,7 +132,7 @@ func TestResourcePlan(t *testing.T) {
 				},
 			},
 			{
-				name: "same keys - different order",
+				name:	"same keys - different order",
 				keysOld: []resource.PropertyKey{
 					resource.PropertyKey("foo"),
 					resource.PropertyKey("bar"),
@@ -159,14 +159,14 @@ func TestResourcePlan(t *testing.T) {
 	t.Run("diffAliases", func(t *testing.T) {
 		t.Parallel()
 		tests := []struct {
-			name          string
-			keysOld       []resource.Alias
-			keysNew       []resource.Alias
-			expectResult  string
-			expectChanged bool
+			name		string
+			keysOld		[]resource.Alias
+			keysNew		[]resource.Alias
+			expectResult	string
+			expectChanged	bool
 		}{
 			{
-				name: "mutually exclusive keys",
+				name:	"mutually exclusive keys",
 				keysOld: []resource.Alias{
 					{Name: "foo"},
 					{Name: "bar"},
@@ -179,10 +179,10 @@ func TestResourcePlan(t *testing.T) {
 				},
 				expectResult: "added { a     false}, { b     false}, { c     false}; " +
 					"deleted { bar     false}, { baz     false}, { foo     false}",
-				expectChanged: true,
+				expectChanged:	true,
 			},
 			{
-				name: "intersecting keys",
+				name:	"intersecting keys",
 				keysOld: []resource.Alias{
 					{Name: "both"},
 					{Name: "old"},
@@ -191,11 +191,11 @@ func TestResourcePlan(t *testing.T) {
 					{Name: "both"},
 					{Name: "new"},
 				},
-				expectResult:  "added { new     false}; deleted { old     false}",
-				expectChanged: true,
+				expectResult:	"added { new     false}; deleted { old     false}",
+				expectChanged:	true,
 			},
 			{
-				name: "same keys - same order",
+				name:	"same keys - same order",
 				keysOld: []resource.Alias{
 					{Name: "foo"},
 					{Name: "bar"},
@@ -208,7 +208,7 @@ func TestResourcePlan(t *testing.T) {
 				},
 			},
 			{
-				name: "same keys - different order",
+				name:	"same keys - different order",
 				keysOld: []resource.Alias{
 					{Name: "foo"},
 					{Name: "bar"},

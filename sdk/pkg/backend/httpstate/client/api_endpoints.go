@@ -53,8 +53,8 @@ func getEndpointName(method, path string) string {
 	}
 
 	req := http.Request{
-		Method: method,
-		URL:    u,
+		Method:	method,
+		URL:	u,
 	}
 	var match mux.RouteMatch
 	if !routes.Match(&req, &match) {

@@ -18,10 +18,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/b64"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -43,32 +43,32 @@ func NewResource(name string, provider *resource.State, deps ...resource.URN) *r
 
 	t := tokens.Type("a:b:c")
 	return &resource.State{
-		Type:         t,
-		URN:          resource.NewURN("test", "test", "", t, name),
-		Inputs:       resource.PropertyMap{},
-		Outputs:      resource.PropertyMap{},
-		Dependencies: deps,
-		Provider:     prov,
+		Type:		t,
+		URN:		resource.NewURN("test", "test", "", t, name),
+		Inputs:		resource.PropertyMap{},
+		Outputs:	resource.PropertyMap{},
+		Dependencies:	deps,
+		Provider:	prov,
 	}
 }
 
 func NewProviderResource(pkg, name, id string, deps ...resource.URN) *resource.State {
 	t := providers.MakeProviderType(tokens.Package(pkg))
 	return &resource.State{
-		Type:         t,
-		URN:          resource.NewURN("test", "test", "", t, name),
-		ID:           resource.ID(id),
-		Inputs:       resource.PropertyMap{},
-		Outputs:      resource.PropertyMap{},
-		Dependencies: deps,
+		Type:		t,
+		URN:		resource.NewURN("test", "test", "", t, name),
+		ID:		resource.ID(id),
+		Inputs:		resource.PropertyMap{},
+		Outputs:	resource.PropertyMap{},
+		Dependencies:	deps,
 	}
 }
 
 func NewSnapshot(resources []*resource.State) *deploy.Snapshot {
 	return deploy.NewSnapshot(deploy.Manifest{
-		Time:    time.Now(),
-		Version: version.Version,
-		Plugins: nil,
+		Time:		time.Now(),
+		Version:	version.Version,
+		Plugins:	nil,
 	}, b64.NewBase64SecretsManager(), resources, nil, deploy.SnapshotMetadata{})
 }
 
@@ -358,8 +358,8 @@ func TestDeleteProtected(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name string
-		test func(t *testing.T, pA, a, b, c *resource.State, snap *deploy.Snapshot)
+		name	string
+		test	func(t *testing.T, pA, a, b, c *resource.State, snap *deploy.Snapshot)
 	}{
 		{
 			"root-protected",
@@ -574,35 +574,35 @@ func TestRenameStack(t *testing.T) {
 
 		t := tokens.Type("a:b:c")
 		return apitype.ResourceV3{
-			Type:         t,
-			URN:          resource.NewURN("test", "test", "", t, name),
-			Inputs:       map[string]any{},
-			Outputs:      map[string]any{},
-			Dependencies: deps,
-			Provider:     prov,
+			Type:		t,
+			URN:		resource.NewURN("test", "test", "", t, name),
+			Inputs:		map[string]any{},
+			Outputs:	map[string]any{},
+			Dependencies:	deps,
+			Provider:	prov,
 		}
 	}
 
 	newProviderResource := func(pkg, name, id string, deps ...resource.URN) apitype.ResourceV3 {
 		t := providers.MakeProviderType(tokens.Package(pkg))
 		return apitype.ResourceV3{
-			Type:         t,
-			URN:          resource.NewURN("test", "test", "", t, name),
-			ID:           resource.ID(id),
-			Inputs:       map[string]any{},
-			Outputs:      map[string]any{},
-			Dependencies: deps,
+			Type:		t,
+			URN:		resource.NewURN("test", "test", "", t, name),
+			ID:		resource.ID(id),
+			Inputs:		map[string]any{},
+			Outputs:	map[string]any{},
+			Dependencies:	deps,
 		}
 	}
 
 	newDeployment := func(resources []apitype.ResourceV3) *apitype.DeploymentV3 {
 		return &apitype.DeploymentV3{
 			Manifest: apitype.ManifestV1{
-				Time:    time.Now(),
-				Version: version.Version,
-				Plugins: nil,
+				Time:		time.Now(),
+				Version:	version.Version,
+				Plugins:	nil,
 			},
-			Resources: resources,
+			Resources:	resources,
 		}
 	}
 
@@ -644,7 +644,7 @@ func TestRenameStack(t *testing.T) {
 		// Confirm the resource has been renamed.
 		updatedResourceURN := resource.NewURN(
 			tokens.QName("new-stack"),
-			"test", // project name stayed the same
+			"test",	// project name stayed the same
 			"" /*parent type*/, baselineResourceURN.Type(),
 			baselineResourceURN.Name())
 		require.Len(t, locateResource(deployment, updatedResourceURN), 1)

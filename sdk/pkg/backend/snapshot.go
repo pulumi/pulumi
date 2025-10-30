@@ -24,9 +24,9 @@ import (
 
 	"golang.org/x/exp/slices"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -63,29 +63,29 @@ type SnapshotPersister interface {
 // This is subtle and a little confusing. The reason for this is that the engine directly mutates resource objects
 // that it creates and expects those mutations to be persisted directly to the snapshot.
 type SnapshotManager struct {
-	persister      SnapshotPersister    // The persister responsible for invalidating and persisting the snapshot
-	baseSnapshot   *deploy.Snapshot     // The base snapshot for this plan
-	secretsManager secrets.Manager      // The default secrets manager to use
-	resources      []*resource.State    // The list of resources operated upon by this plan
-	operations     []resource.Operation // The set of operations known to be outstanding in this plan
+	persister	SnapshotPersister	// The persister responsible for invalidating and persisting the snapshot
+	baseSnapshot	*deploy.Snapshot	// The base snapshot for this plan
+	secretsManager	secrets.Manager		// The default secrets manager to use
+	resources	[]*resource.State	// The list of resources operated upon by this plan
+	operations	[]resource.Operation	// The set of operations known to be outstanding in this plan
 
 	// The set of resources that have been operated upon already by this plan. These resources could also have
 	// been added to `resources` by other operations but need to be filtered out before writing the snapshot.
-	dones map[*resource.State]bool
+	dones	map[*resource.State]bool
 
-	completeOps      map[*resource.State]bool // The set of resources that have completed their operation
-	mutationRequests chan<- mutationRequest   // The queue of mutation requests, to be retired serially by the manager
-	cancel           chan bool                // A channel used to request cancellation of any new mutation requests.
-	done             <-chan error             // A channel that sends a single result when the manager has shut down.
+	completeOps		map[*resource.State]bool	// The set of resources that have completed their operation
+	mutationRequests	chan<- mutationRequest		// The queue of mutation requests, to be retired serially by the manager
+	cancel			chan bool			// A channel used to request cancellation of any new mutation requests.
+	done			<-chan error			// A channel that sends a single result when the manager has shut down.
 
-	isRefresh bool // Whether or not the snapshot is part of a refresh
+	isRefresh	bool	// Whether or not the snapshot is part of a refresh
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
 
 type mutationRequest struct {
-	mutator func() bool
-	result  chan<- error
+	mutator	func() bool
+	result	chan<- error
 }
 
 func (sm *SnapshotManager) Close() error {
@@ -702,8 +702,8 @@ func (sm *SnapshotManager) Snap() *deploy.Snapshot {
 	}
 
 	manifest := deploy.Manifest{
-		Time:    time.Now(),
-		Version: version.Version,
+		Time:		time.Now(),
+		Version:	version.Version,
 		// Plugins: sm.plugins, - Explicitly dropped, since we don't use the plugin list in the manifest anymore.
 	}
 
@@ -753,9 +753,9 @@ func (sm *SnapshotManager) saveSnapshot() error {
 		snap.Metadata.IntegrityErrorMetadata = nil
 	} else {
 		snap.Metadata.IntegrityErrorMetadata = &deploy.SnapshotIntegrityErrorMetadata{
-			Version: version.Version,
-			Command: strings.Join(os.Args, " "),
-			Error:   integrityError.Error(),
+			Version:	version.Version,
+			Command:	strings.Join(os.Args, " "),
+			Error:		integrityError.Error(),
 		}
 	}
 
@@ -830,14 +830,14 @@ func NewSnapshotManager(
 	mutationRequests, cancel, done := make(chan mutationRequest), make(chan bool), make(chan error)
 
 	manager := &SnapshotManager{
-		persister:        persister,
-		secretsManager:   secretsManager,
-		baseSnapshot:     baseSnap,
-		dones:            make(map[*resource.State]bool),
-		completeOps:      make(map[*resource.State]bool),
-		mutationRequests: mutationRequests,
-		cancel:           cancel,
-		done:             done,
+		persister:		persister,
+		secretsManager:		secretsManager,
+		baseSnapshot:		baseSnap,
+		dones:			make(map[*resource.State]bool),
+		completeOps:		make(map[*resource.State]bool),
+		mutationRequests:	mutationRequests,
+		cancel:			cancel,
+		done:			done,
 	}
 
 	serviceLoop := manager.defaultServiceLoop

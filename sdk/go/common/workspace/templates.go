@@ -45,13 +45,13 @@ const (
 // `ldflag` at build time, if necessary.
 var (
 	// The Git URL for Pulumi program templates
-	pulumiTemplateGitRepository = "https://github.com/pulumi/templates.git"
+	pulumiTemplateGitRepository	= "https://github.com/pulumi/templates.git"
 	// The branch name for the template repository
-	pulumiTemplateBranch = "master"
+	pulumiTemplateBranch	= "master"
 	// The Git URL for Pulumi Policy Pack templates
-	pulumiPolicyTemplateGitRepository = "https://github.com/pulumi/templates-policy.git"
+	pulumiPolicyTemplateGitRepository	= "https://github.com/pulumi/templates-policy.git"
 	// The branch name for the policy pack template repository
-	pulumiPolicyTemplateBranch = "master"
+	pulumiPolicyTemplateBranch	= "master"
 )
 
 // getTemplateGitRepository returns the Git URL for the template repository.
@@ -97,17 +97,17 @@ type TemplateKind int
 
 const (
 	// TemplateKindPulumiProject is a template for a Pulumi stack.
-	TemplateKindPulumiProject TemplateKind = 0
+	TemplateKindPulumiProject	TemplateKind	= 0
 
 	// TemplateKindPolicyPack is a template for a Policy Pack.
-	TemplateKindPolicyPack TemplateKind = 1
+	TemplateKindPolicyPack	TemplateKind	= 1
 )
 
 // TemplateRepository represents a repository of templates.
 type TemplateRepository struct {
-	Root         string // The full path to the root directory of the repository.
-	SubDirectory string // The full path to the sub directory within the repository.
-	ShouldDelete bool   // Whether the root directory should be deleted.
+	Root		string	// The full path to the root directory of the repository.
+	SubDirectory	string	// The full path to the sub directory within the repository.
+	ShouldDelete	bool	// Whether the root directory should be deleted.
 }
 
 // Delete deletes the template repository.
@@ -228,15 +228,15 @@ func (repo TemplateRepository) PolicyTemplates() ([]PolicyPackTemplate, error) {
 
 // Template represents a project template.
 type Template struct {
-	Dir         string                                // The directory containing Pulumi.yaml.
-	Name        string                                // The name of the template.
-	Description string                                // Description of the template.
-	Quickstart  string                                // Optional text to be displayed after template creation.
-	Config      map[string]ProjectTemplateConfigValue // Optional template config.
-	Error       error                                 // Non-nil if the template is broken.
+	Dir		string					// The directory containing Pulumi.yaml.
+	Name		string					// The name of the template.
+	Description	string					// Description of the template.
+	Quickstart	string					// Optional text to be displayed after template creation.
+	Config		map[string]ProjectTemplateConfigValue	// Optional template config.
+	Error		error					// Non-nil if the template is broken.
 
-	ProjectName        string // Name of the project.
-	ProjectDescription string // Optional description of the project.
+	ProjectName		string	// Name of the project.
+	ProjectDescription	string	// Optional description of the project.
 }
 
 // Errored returns if the template has an error
@@ -246,10 +246,10 @@ func (t Template) Errored() bool {
 
 // PolicyPackTemplate represents a Policy Pack template.
 type PolicyPackTemplate struct {
-	Dir         string // The directory containing PulumiPolicy.yaml.
-	Name        string // The name of the template.
-	Description string // Description of the template.
-	Error       error  // Non-nil if the template is broken.
+	Dir		string	// The directory containing PulumiPolicy.yaml.
+	Name		string	// The name of the template.
+	Description	string	// Description of the template.
+	Error		error	// Non-nil if the template is broken.
 }
 
 // Errored returns if the template has an error
@@ -354,18 +354,18 @@ func retrieveURLTemplates(
 	}
 
 	return TemplateRepository{
-		Root:         temp,
-		SubDirectory: fullPath,
-		ShouldDelete: true,
+		Root:		temp,
+		SubDirectory:	fullPath,
+		ShouldDelete:	true,
 	}, nil
 }
 
 // retrieveFileTemplates points to the "template repository" at the specified location in the file system.
 func retrieveFileTemplates(path string) (TemplateRepository, error) {
 	return TemplateRepository{
-		Root:         path,
-		SubDirectory: path,
-		ShouldDelete: false,
+		Root:		path,
+		SubDirectory:	path,
+		ShouldDelete:	false,
 	}, nil
 }
 
@@ -402,9 +402,9 @@ func retrievePulumiTemplates(
 	}
 
 	return TemplateRepository{
-		Root:         templateDir,
-		SubDirectory: templateDir,
-		ShouldDelete: false,
+		Root:		templateDir,
+		SubDirectory:	templateDir,
+		ShouldDelete:	false,
 	}, nil
 }
 
@@ -503,10 +503,10 @@ func LoadTemplate(path string) (Template, error) {
 	}
 
 	template := Template{
-		Dir:  path,
-		Name: filepath.Base(path),
+		Dir:	path,
+		Name:	filepath.Base(path),
 
-		ProjectName: proj.Name.String(),
+		ProjectName:	proj.Name.String(),
 	}
 	if proj.Template != nil {
 		template.Description = proj.Template.Description
@@ -637,8 +637,8 @@ func LoadPolicyPackTemplate(path string) (PolicyPackTemplate, error) {
 		return PolicyPackTemplate{}, err
 	}
 	policyPackTemplate := PolicyPackTemplate{
-		Dir:  path,
-		Name: filepath.Base(path),
+		Dir:	path,
+		Name:	filepath.Base(path),
 	}
 	if pack.Description != nil {
 		policyPackTemplate.Description = *pack.Description
@@ -730,8 +730,8 @@ func newExistingFilesError(existing []string) error {
 }
 
 type TemplateNotFoundError struct {
-	templateName string
-	suggestions  []string
+	templateName	string
+	suggestions	[]string
 }
 
 func (err TemplateNotFoundError) Error() string {

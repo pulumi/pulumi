@@ -49,8 +49,8 @@ func createAzureKey(ctx context.Context, t *testing.T, credentials *azidentity.D
 	keySize := int32(2048)
 	kty := azkeys.JSONWebKeyTypeRSA
 	params := azkeys.CreateKeyParameters{
-		KeySize: &keySize,
-		Kty:     &kty,
+		KeySize:	&keySize,
+		Kty:		&kty,
 	}
 	key, err := keysClient.CreateKey(ctx, keyName, params, nil)
 	require.NoError(t, err)

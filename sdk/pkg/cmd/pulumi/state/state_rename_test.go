@@ -17,8 +17,8 @@ package state
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,18 +31,18 @@ func TestRenameProvider(t *testing.T) {
 	// Define a state with a single provider and a single resource dependent on that provider.
 	provURN := resource.URN("urn:pulumi:dev::prog-aws-typescript::pulumi:providers:random::my-provider")
 	prov := resource.State{
-		URN:    provURN,
-		ID:     "81cd12dd-2a90-4f21-a521-f4c71c1f11eb",
-		Type:   "pulumi:providers:random",
-		Custom: true,
+		URN:	provURN,
+		ID:	"81cd12dd-2a90-4f21-a521-f4c71c1f11eb",
+		Type:	"pulumi:providers:random",
+		Custom:	true,
 	}
 
 	providerRefString := string(prov.URN) + "::" + string(prov.ID)
 
 	res1 := resource.State{
-		URN:      resource.URN("urn:pulumi:dev::prog-aws-typescript::random:index/randomPet:RandomPet::pet-0"),
-		Type:     "random:index/randomPet:RandomPet",
-		Provider: providerRefString,
+		URN:		resource.URN("urn:pulumi:dev::prog-aws-typescript::random:index/randomPet:RandomPet::pet-0"),
+		Type:		"random:index/randomPet:RandomPet",
+		Provider:	providerRefString,
 	}
 	snap := &deploy.Snapshot{
 		Resources: []*resource.State{
@@ -84,23 +84,23 @@ func TestStateRename_updatesChildren(t *testing.T) {
 	snap := deploy.Snapshot{
 		Resources: []*resource.State{
 			{
-				URN:    provider,
-				ID:     "provider-id",
-				Type:   "pulumi:provider:random",
-				Custom: true,
+				URN:	provider,
+				ID:	"provider-id",
+				Type:	"pulumi:provider:random",
+				Custom:	true,
 			},
 			{
-				URN:    parent,
-				ID:     "parent-id",
-				Type:   "random:index/randomPet:RandomPet",
-				Custom: true,
+				URN:	parent,
+				ID:	"parent-id",
+				Type:	"random:index/randomPet:RandomPet",
+				Custom:	true,
 			},
 			{
-				URN:    child,
-				ID:     "child-id",
-				Type:   "random:index/randomPet:RandomPet",
-				Parent: parent,
-				Custom: true,
+				URN:	child,
+				ID:	"child-id",
+				Type:	"random:index/randomPet:RandomPet",
+				Parent:	parent,
+				Custom:	true,
 			},
 		},
 	}

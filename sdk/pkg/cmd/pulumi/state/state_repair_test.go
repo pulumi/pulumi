@@ -21,12 +21,12 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/b64"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -40,15 +40,15 @@ import (
 func TestStateRepair_ExitsIfTheStateIsAlreadyValid(t *testing.T) {
 	// Arrange.
 	cases := []struct {
-		name      string
-		resources []*resource.State
+		name		string
+		resources	[]*resource.State
 	}{
 		{
-			name:      "empty",
-			resources: []*resource.State{},
+			name:		"empty",
+			resources:	[]*resource.State{},
 		},
 		{
-			name: "no dependencies",
+			name:	"no dependencies",
 			resources: []*resource.State{
 				{URN: "a"},
 				{URN: "b"},
@@ -56,7 +56,7 @@ func TestStateRepair_ExitsIfTheStateIsAlreadyValid(t *testing.T) {
 			},
 		},
 		{
-			name: "valid dependencies",
+			name:	"valid dependencies",
 			resources: []*resource.State{
 				{URN: "a"},
 				{URN: "b", Dependencies: []resource.URN{"a"}},
@@ -230,9 +230,9 @@ func TestStateRepair_DoesNotWriteIfRepairFails(t *testing.T) {
 	// Dangling provider references can't be fixed, so this snapshot should fail to repair.
 	fx := newStateRepairCmdFixture(t, []*resource.State{
 		{
-			URN:      "a",
-			Type:     "simple:index:Resource",
-			Provider: "urn:pulumi:stack::project::pulumi:providers:p::x::id",
+			URN:		"a",
+			Type:		"simple:index:Resource",
+			Provider:	"urn:pulumi:stack::project::pulumi:providers:p::x::id",
 		},
 	})
 	fx.cmd.Args.Yes = true
@@ -266,13 +266,13 @@ func TestStateRepair_RepairsSnapshots(t *testing.T) {
 }
 
 type stateRepairCmdFixture struct {
-	cmd *stateRepairCmd
+	cmd	*stateRepairCmd
 
-	stdin  *mockFileReader
-	stdout *mockFileWriter
-	stderr *bytes.Buffer
+	stdin	*mockFileReader
+	stdout	*mockFileWriter
+	stderr	*bytes.Buffer
 
-	imported *apitype.DeploymentV3
+	imported	*apitype.DeploymentV3
 }
 
 func newStateRepairCmdFixture(
@@ -280,9 +280,9 @@ func newStateRepairCmdFixture(
 	resources []*resource.State,
 ) *stateRepairCmdFixture {
 	fx := &stateRepairCmdFixture{
-		stdin:  &mockFileReader{fd: 0},
-		stdout: &mockFileWriter{fd: 1},
-		stderr: &bytes.Buffer{},
+		stdin:	&mockFileReader{fd: 0},
+		stdout:	&mockFileWriter{fd: 1},
+		stderr:	&bytes.Buffer{},
 	}
 
 	var s backend.Stack
@@ -341,24 +341,24 @@ func newStateRepairCmdFixture(
 
 	fx.cmd = &stateRepairCmd{
 		Args: &stateRepairArgs{
-			Stack:     "organization/project/stack",
-			Colorizer: colors.Never,
+			Stack:		"organization/project/stack",
+			Colorizer:	colors.Never,
 		},
 
-		Stdin:  fx.stdin,
-		Stdout: fx.stdout,
-		Stderr: fx.stderr,
+		Stdin:	fx.stdin,
+		Stdout:	fx.stdout,
+		Stderr:	fx.stderr,
 
-		Workspace:    ws,
-		LoginManager: lm,
+		Workspace:	ws,
+		LoginManager:	lm,
 	}
 
 	return fx
 }
 
 type mockFileReader struct {
-	buf bytes.Buffer
-	fd  uintptr
+	buf	bytes.Buffer
+	fd	uintptr
 }
 
 func (m *mockFileReader) Read(p []byte) (n int, err error) {
@@ -370,8 +370,8 @@ func (m *mockFileReader) Fd() uintptr {
 }
 
 type mockFileWriter struct {
-	buf bytes.Buffer
-	fd  uintptr
+	buf	bytes.Buffer
+	fd	uintptr
 }
 
 func (m *mockFileWriter) Write(p []byte) (n int, err error) {

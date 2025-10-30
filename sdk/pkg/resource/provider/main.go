@@ -83,7 +83,7 @@ func MainContext(
 
 	// Fire up a gRPC server, letting the kernel choose a free port for us.
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: cancelChannel,
+		Cancel:	cancelChannel,
 		Init: func(srv *grpc.Server) error {
 			prov, proverr := provMaker(host)
 			if proverr != nil {
@@ -92,7 +92,7 @@ func MainContext(
 			pulumirpc.RegisterResourceProviderServer(srv, prov)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options:	rpcutil.OpenTracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		return fmt.Errorf("fatal: %w", err)

@@ -17,7 +17,7 @@ package packages
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 )
@@ -26,32 +26,32 @@ func TestSetSpecNamespace(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		pluginDownloadURL string
-		wantNamespace     string
+		pluginDownloadURL	string
+		wantNamespace		string
 	}{
 		{
-			pluginDownloadURL: "https://pulumi.com/terraform/v1.0.0",
-			wantNamespace:     "",
+			pluginDownloadURL:	"https://pulumi.com/terraform/v1.0.0",
+			wantNamespace:		"",
 		},
 		{
-			pluginDownloadURL: "git://github.com/pulumi/pulumi-terraform",
-			wantNamespace:     "pulumi",
+			pluginDownloadURL:	"git://github.com/pulumi/pulumi-terraform",
+			wantNamespace:		"pulumi",
 		},
 		{
-			pluginDownloadURL: "git://",
-			wantNamespace:     "",
+			pluginDownloadURL:	"git://",
+			wantNamespace:		"",
 		},
 		{
-			pluginDownloadURL: "git://example.com",
-			wantNamespace:     "",
+			pluginDownloadURL:	"git://example.com",
+			wantNamespace:		"",
 		},
 		{
-			pluginDownloadURL: "git://example.com/pulumi",
-			wantNamespace:     "",
+			pluginDownloadURL:	"git://example.com/pulumi",
+			wantNamespace:		"",
 		},
 		{
-			pluginDownloadURL: "git://example.com/pulumi/a/long/path",
-			wantNamespace:     "pulumi",
+			pluginDownloadURL:	"git://example.com/pulumi/a/long/path",
+			wantNamespace:		"pulumi",
 		},
 	}
 

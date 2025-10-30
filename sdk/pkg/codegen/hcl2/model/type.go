@@ -18,8 +18,8 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model/pretty"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -28,9 +28,9 @@ type lazyDiagnostics func() hcl.Diagnostics
 type ConversionKind int
 
 const (
-	NoConversion     ConversionKind = 0
-	UnsafeConversion ConversionKind = 1
-	SafeConversion   ConversionKind = 2
+	NoConversion		ConversionKind	= 0
+	UnsafeConversion	ConversionKind	= 1
+	SafeConversion		ConversionKind	= 2
 )
 
 func (k ConversionKind) Exists() bool {
@@ -78,17 +78,17 @@ type Type interface {
 
 var (
 	// NoneType represents the undefined/null value.
-	NoneType Type = noneType(0)
+	NoneType	Type	= noneType(0)
 	// BoolType represents the set of boolean values.
-	BoolType = NewOpaqueType("boolean")
+	BoolType	= NewOpaqueType("boolean")
 	// IntType represents the set of 32-bit integer values.
-	IntType = NewOpaqueType("int")
+	IntType	= NewOpaqueType("int")
 	// NumberType represents the set of arbitrary-precision values.
-	NumberType = NewOpaqueType("number")
+	NumberType	= NewOpaqueType("number")
 	// StringType represents the set of UTF-8 string values.
-	StringType = NewOpaqueType("string")
+	StringType	= NewOpaqueType("string")
 	// DynamicType represents the set of all values.
-	DynamicType = NewOpaqueType("dynamic")
+	DynamicType	= NewOpaqueType("dynamic")
 )
 
 func assignableFrom(dest, src Type, assignableFromImpl func() bool) bool {
@@ -102,8 +102,8 @@ func assignableFrom(dest, src Type, assignableFromImpl func() bool) bool {
 }
 
 type cacheEntry struct {
-	kind  ConversionKind
-	diags lazyDiagnostics
+	kind	ConversionKind
+	diags	lazyDiagnostics
 }
 
 func conversionFrom(dest, src Type, unifying bool, seen map[Type]struct{},

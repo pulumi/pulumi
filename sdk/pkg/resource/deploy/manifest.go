@@ -26,18 +26,18 @@ import (
 
 // Manifest captures versions for all binaries used to construct this snapshot.
 type Manifest struct {
-	Time    time.Time              // the time this snapshot was taken.
-	Magic   string                 // a magic cookie.
-	Version string                 // the pulumi command version.
-	Plugins []workspace.PluginInfo // the plugin versions also loaded.
+	Time	time.Time		// the time this snapshot was taken.
+	Magic	string			// a magic cookie.
+	Version	string			// the pulumi command version.
+	Plugins	[]workspace.PluginInfo	// the plugin versions also loaded.
 }
 
 // Serialize turns a manifest into a data structure suitable for serialization.
 func (m Manifest) Serialize() apitype.ManifestV1 {
 	manifest := apitype.ManifestV1{
-		Time:    m.Time,
-		Magic:   m.Magic,
-		Version: m.Version,
+		Time:		m.Time,
+		Magic:		m.Magic,
+		Version:	m.Version,
 	}
 	for _, plug := range m.Plugins {
 		var version string
@@ -45,10 +45,10 @@ func (m Manifest) Serialize() apitype.ManifestV1 {
 			version = plug.Version.String()
 		}
 		manifest.Plugins = append(manifest.Plugins, apitype.PluginInfoV1{
-			Name:    plug.Name,
-			Path:    plug.Path,
-			Type:    plug.Kind,
-			Version: version,
+			Name:		plug.Name,
+			Path:		plug.Path,
+			Type:		plug.Kind,
+			Version:	version,
 		})
 	}
 	return manifest
@@ -57,9 +57,9 @@ func (m Manifest) Serialize() apitype.ManifestV1 {
 // DeserializeManifest deserializes a typed ManifestV1 into a `deploy.Manifest`.
 func DeserializeManifest(m apitype.ManifestV1) (*Manifest, error) {
 	manifest := Manifest{
-		Time:    m.Time,
-		Magic:   m.Magic,
-		Version: m.Version,
+		Time:		m.Time,
+		Magic:		m.Magic,
+		Version:	m.Version,
 	}
 	for _, plug := range m.Plugins {
 		var version *semver.Version
@@ -71,9 +71,9 @@ func DeserializeManifest(m apitype.ManifestV1) (*Manifest, error) {
 			version = &sv
 		}
 		manifest.Plugins = append(manifest.Plugins, workspace.PluginInfo{
-			Name:    plug.Name,
-			Kind:    plug.Type,
-			Version: version,
+			Name:		plug.Name,
+			Kind:		plug.Type,
+			Version:	version,
 		})
 	}
 	return &manifest, nil

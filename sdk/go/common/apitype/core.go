@@ -29,7 +29,7 @@
 package apitype
 
 import (
-	_ "embed" // for embedded schemas
+	_ "embed"	// for embedded schemas
 	"encoding/json"
 	"time"
 
@@ -75,74 +75,74 @@ func PropertyValueSchema() string {
 const (
 	// DeploymentSchemaVersionCurrent is the current version of the `Deployment` schema
 	// when not using features that require v4.
-	DeploymentSchemaVersionCurrent = 3
+	DeploymentSchemaVersionCurrent	= 3
 
 	// DeploymentSchemaVersionLatest is the latest version of the `Deployment` schema, when
 	// using features that require v4.
-	DeploymentSchemaVersionLatest = 4
+	DeploymentSchemaVersionLatest	= 4
 )
 
 // VersionedCheckpoint is a version number plus a json document. The version number describes what
 // version of the Checkpoint structure the Checkpoint member's json document can decode into.
 type VersionedCheckpoint struct {
-	Version int `json:"version"`
+	Version	int	`json:"version"`
 	// Features contains an optional list of features used by this Checkpoint. The CLI will error when reading a
 	// Checkpoint that uses a feature that is not supported by that version of the CLI. This is only looked at
 	// when `Version` is 4 or greater.
-	Features   []string        `json:"features,omitempty"`
-	Checkpoint json.RawMessage `json:"checkpoint"`
+	Features	[]string	`json:"features,omitempty"`
+	Checkpoint	json.RawMessage	`json:"checkpoint"`
 }
 
 // CheckpointV1 is a serialized deployment target plus a record of the latest deployment.
 type CheckpointV1 struct {
 	// Stack is the stack to update.
-	Stack tokens.QName `json:"stack" yaml:"stack"`
+	Stack	tokens.QName	`json:"stack" yaml:"stack"`
 	// Config contains a bag of optional configuration keys/values.
-	Config config.Map `json:"config,omitempty" yaml:"config,omitempty"`
+	Config	config.Map	`json:"config,omitempty" yaml:"config,omitempty"`
 	// Latest is the latest/current deployment (if an update has occurred).
-	Latest *DeploymentV1 `json:"latest,omitempty" yaml:"latest,omitempty"`
+	Latest	*DeploymentV1	`json:"latest,omitempty" yaml:"latest,omitempty"`
 }
 
 // CheckpointV2 is the second version of the Checkpoint. It contains a newer version of
 // the latest deployment.
 type CheckpointV2 struct {
 	// Stack is the stack to update.
-	Stack tokens.QName `json:"stack" yaml:"stack"`
+	Stack	tokens.QName	`json:"stack" yaml:"stack"`
 	// Config contains a bag of optional configuration keys/values.
-	Config config.Map `json:"config,omitempty" yaml:"config,omitempty"`
+	Config	config.Map	`json:"config,omitempty" yaml:"config,omitempty"`
 	// Latest is the latest/current deployment (if an update has occurred).
-	Latest *DeploymentV2 `json:"latest,omitempty" yaml:"latest,omitempty"`
+	Latest	*DeploymentV2	`json:"latest,omitempty" yaml:"latest,omitempty"`
 }
 
 // CheckpointV3 is the third version of the Checkpoint. It contains a newer version of
 // the latest deployment.
 type CheckpointV3 struct {
 	// Stack is the stack to update.
-	Stack tokens.QName `json:"stack" yaml:"stack"`
+	Stack	tokens.QName	`json:"stack" yaml:"stack"`
 	// Config contains a bag of optional configuration keys/values.
-	Config config.Map `json:"config,omitempty" yaml:"config,omitempty"`
+	Config	config.Map	`json:"config,omitempty" yaml:"config,omitempty"`
 	// Latest is the latest/current deployment (if an update has occurred).
-	Latest *DeploymentV3 `json:"latest,omitempty" yaml:"latest,omitempty"`
+	Latest	*DeploymentV3	`json:"latest,omitempty" yaml:"latest,omitempty"`
 }
 
 // DeploymentV1 represents a deployment that has actually occurred. It is similar to the engine's snapshot structure,
 // except that it flattens and rearranges a few data structures for serializability.
 type DeploymentV1 struct {
 	// Manifest contains metadata about this deployment.
-	Manifest ManifestV1 `json:"manifest" yaml:"manifest"`
+	Manifest	ManifestV1	`json:"manifest" yaml:"manifest"`
 	// Resources contains all resources that are currently part of this stack after this deployment has finished.
-	Resources []ResourceV1 `json:"resources,omitempty" yaml:"resources,omitempty"`
+	Resources	[]ResourceV1	`json:"resources,omitempty" yaml:"resources,omitempty"`
 }
 
 // DeploymentV2 is the second version of the Deployment. It contains newer versions of the
 // Resource API type.
 type DeploymentV2 struct {
 	// Manifest contains metadata about this deployment.
-	Manifest ManifestV1 `json:"manifest" yaml:"manifest"`
+	Manifest	ManifestV1	`json:"manifest" yaml:"manifest"`
 	// Resources contains all resources that are currently part of this stack after this deployment has finished.
-	Resources []ResourceV2 `json:"resources,omitempty" yaml:"resources,omitempty"`
+	Resources	[]ResourceV2	`json:"resources,omitempty" yaml:"resources,omitempty"`
 	// PendingOperations are all operations that were known by the engine to be currently executing.
-	PendingOperations []OperationV1 `json:"pending_operations,omitempty" yaml:"pending_operations,omitempty"`
+	PendingOperations	[]OperationV1	`json:"pending_operations,omitempty" yaml:"pending_operations,omitempty"`
 }
 
 // DeploymentV3 is the third version of the Deployment. It contains newer versions of the
@@ -150,20 +150,20 @@ type DeploymentV2 struct {
 // Note that both deployment schema versions 3 and 4 can be unmarshaled into DeploymentV3.
 type DeploymentV3 struct {
 	// Manifest contains metadata about this deployment.
-	Manifest ManifestV1 `json:"manifest" yaml:"manifest"`
+	Manifest	ManifestV1	`json:"manifest" yaml:"manifest"`
 	// SecretsProviders is a placeholder for secret provider configuration.
-	SecretsProviders *SecretsProvidersV1 `json:"secrets_providers,omitempty" yaml:"secrets_providers,omitempty"`
+	SecretsProviders	*SecretsProvidersV1	`json:"secrets_providers,omitempty" yaml:"secrets_providers,omitempty"`
 	// Resources contains all resources that are currently part of this stack after this deployment has finished.
-	Resources []ResourceV3 `json:"resources,omitempty" yaml:"resources,omitempty"`
+	Resources	[]ResourceV3	`json:"resources,omitempty" yaml:"resources,omitempty"`
 	// PendingOperations are all operations that were known by the engine to be currently executing.
-	PendingOperations []OperationV2 `json:"pending_operations,omitempty" yaml:"pending_operations,omitempty"`
+	PendingOperations	[]OperationV2	`json:"pending_operations,omitempty" yaml:"pending_operations,omitempty"`
 	// Metadata associated with the snapshot.
-	Metadata SnapshotMetadataV1 `json:"metadata,omitempty" yaml:"metadata,omitempty"`
+	Metadata	SnapshotMetadataV1	`json:"metadata,omitempty" yaml:"metadata,omitempty"`
 }
 
 type SecretsProvidersV1 struct {
-	Type  string          `json:"type"`
-	State json.RawMessage `json:"state,omitempty"`
+	Type	string		`json:"type"`
+	State	json.RawMessage	`json:"state,omitempty"`
 }
 
 // SnapshotMetadataV1 contains metadata about a deployment snapshot.
@@ -176,11 +176,11 @@ type SnapshotMetadataV1 struct {
 // and invocation of the Pulumi engine that caused it.
 type SnapshotIntegrityErrorMetadataV1 struct {
 	// The version of the Pulumi engine that caused the integrity error.
-	Version string `json:"version,omitempty" yaml:"version,omitempty"`
+	Version	string	`json:"version,omitempty" yaml:"version,omitempty"`
 	// The command/invocation of the Pulumi engine that caused the integrity error.
-	Command string `json:"command,omitempty" yaml:"command,omitempty"`
+	Command	string	`json:"command,omitempty" yaml:"command,omitempty"`
 	// The error message associated with the integrity error.
-	Error string `json:"error,omitempty" yaml:"error,omitempty"`
+	Error	string	`json:"error,omitempty" yaml:"error,omitempty"`
 }
 
 // OperationType is the type of an operation initiated by the engine. Its value indicates the type of operation
@@ -189,13 +189,13 @@ type OperationType string
 
 const (
 	// OperationTypeCreating is the state of resources that are being created.
-	OperationTypeCreating OperationType = "creating"
+	OperationTypeCreating	OperationType	= "creating"
 	// OperationTypeUpdating is the state of resources that are being updated.
-	OperationTypeUpdating OperationType = "updating"
+	OperationTypeUpdating	OperationType	= "updating"
 	// OperationTypeDeleting is the state of resources that are being deleted.
-	OperationTypeDeleting OperationType = "deleting"
+	OperationTypeDeleting	OperationType	= "deleting"
 	// OperationTypeReading is the state of resources that are being read.
-	OperationTypeReading OperationType = "reading"
+	OperationTypeReading	OperationType	= "reading"
 )
 
 // OperationV1 represents an operation that the engine is performing. It consists of a Resource, which is the state
@@ -203,9 +203,9 @@ const (
 // that the engine initiated.
 type OperationV1 struct {
 	// Resource is the state that the engine used to initiate this operation.
-	Resource ResourceV2 `json:"resource" yaml:"resource"`
+	Resource	ResourceV2	`json:"resource" yaml:"resource"`
 	// Status is a string representation of the operation that the engine is performing.
-	Type OperationType `json:"type" yaml:"type"`
+	Type	OperationType	`json:"type" yaml:"type"`
 }
 
 // OperationV2 represents an operation that the engine is performing. It consists of a Resource, which is the state
@@ -213,52 +213,52 @@ type OperationV1 struct {
 // that the engine initiated.
 type OperationV2 struct {
 	// Resource is the state that the engine used to initiate this operation.
-	Resource ResourceV3 `json:"resource" yaml:"resource"`
+	Resource	ResourceV3	`json:"resource" yaml:"resource"`
 	// Status is a string representation of the operation that the engine is performing.
-	Type OperationType `json:"type" yaml:"type"`
+	Type	OperationType	`json:"type" yaml:"type"`
 }
 
 // UntypedDeployment contains an inner, untyped deployment structure.
 type UntypedDeployment struct {
 	// Version indicates the schema of the encoded deployment.
-	Version int `json:"version,omitempty"`
+	Version	int	`json:"version,omitempty"`
 	// Features contains an optional list of features used by this deployment. The CLI will error when reading a
 	// Deployment that uses a feature that is not supported by that version of the CLI. This is only looked at
 	// when `Version` is 4 or greater.
-	Features []string `json:"features,omitempty"`
+	Features	[]string	`json:"features,omitempty"`
 	// The opaque Pulumi deployment. This is conceptually of type `Deployment`, but we use `json.Message` to
 	// permit round-tripping of stack contents when an older client is talking to a newer server.  If we unmarshaled
 	// the contents, and then remarshaled them, we could end up losing important information.
-	Deployment json.RawMessage `json:"deployment,omitempty"`
+	Deployment	json.RawMessage	`json:"deployment,omitempty"`
 }
 
 // ResourceV1 describes a Cloud resource constructed by Pulumi.
 type ResourceV1 struct {
 	// URN uniquely identifying this resource.
-	URN resource.URN `json:"urn" yaml:"urn"`
+	URN	resource.URN	`json:"urn" yaml:"urn"`
 	// Custom is true when it is managed by a plugin.
-	Custom bool `json:"custom" yaml:"custom"`
+	Custom	bool	`json:"custom" yaml:"custom"`
 	// Delete is true when the resource should be deleted during the next update.
-	Delete bool `json:"delete,omitempty" yaml:"delete,omitempty"`
+	Delete	bool	`json:"delete,omitempty" yaml:"delete,omitempty"`
 	// ID is the provider-assigned resource, if any, for custom resources.
-	ID resource.ID `json:"id,omitempty" yaml:"id,omitempty"`
+	ID	resource.ID	`json:"id,omitempty" yaml:"id,omitempty"`
 	// Type is the resource's full type token.
-	Type tokens.Type `json:"type" yaml:"type"`
+	Type	tokens.Type	`json:"type" yaml:"type"`
 	// Inputs are the input properties supplied to the provider.
-	Inputs map[string]any `json:"inputs,omitempty" yaml:"inputs,omitempty"`
+	Inputs	map[string]any	`json:"inputs,omitempty" yaml:"inputs,omitempty"`
 	// Defaults contains the default values supplied by the provider (DEPRECATED, see #637).
-	Defaults map[string]any `json:"defaults,omitempty" yaml:"defaults,omitempty"`
+	Defaults	map[string]any	`json:"defaults,omitempty" yaml:"defaults,omitempty"`
 	// Outputs are the output properties returned by the provider after provisioning.
-	Outputs map[string]any `json:"outputs,omitempty" yaml:"outputs,omitempty"`
+	Outputs	map[string]any	`json:"outputs,omitempty" yaml:"outputs,omitempty"`
 	// Parent is an optional parent URN if this resource is a child of it.
-	Parent resource.URN `json:"parent,omitempty" yaml:"parent,omitempty"`
+	Parent	resource.URN	`json:"parent,omitempty" yaml:"parent,omitempty"`
 	// Protect is set to true when this resource is "protected" and may not be deleted.
-	Protect bool `json:"protect,omitempty" yaml:"protect,omitempty"`
+	Protect	bool	`json:"protect,omitempty" yaml:"protect,omitempty"`
 	// Dependencies contains the dependency edges to other resources that this depends on.
-	Dependencies []resource.URN `json:"dependencies" yaml:"dependencies,omitempty"`
+	Dependencies	[]resource.URN	`json:"dependencies" yaml:"dependencies,omitempty"`
 	// InitErrors is the set of errors encountered in the process of initializing resource (i.e.,
 	// during create or update).
-	InitErrors []string `json:"initErrors" yaml:"initErrors,omitempty"`
+	InitErrors	[]string	`json:"initErrors" yaml:"initErrors,omitempty"`
 }
 
 // ResourceV2 is the second version of the Resource API type. It absorbs a few breaking changes:
@@ -277,32 +277,32 @@ type ResourceV1 struct {
 //  3. Setting the "Provider" field to the empty string, because V1 deployments don't have first-class providers.
 type ResourceV2 struct {
 	// URN uniquely identifying this resource.
-	URN resource.URN `json:"urn" yaml:"urn"`
+	URN	resource.URN	`json:"urn" yaml:"urn"`
 	// Custom is true when it is managed by a plugin.
-	Custom bool `json:"custom" yaml:"custom"`
+	Custom	bool	`json:"custom" yaml:"custom"`
 	// Delete is true when the resource should be deleted during the next update.
-	Delete bool `json:"delete,omitempty" yaml:"delete,omitempty"`
+	Delete	bool	`json:"delete,omitempty" yaml:"delete,omitempty"`
 	// ID is the provider-assigned resource, if any, for custom resources.
-	ID resource.ID `json:"id,omitempty" yaml:"id,omitempty"`
+	ID	resource.ID	`json:"id,omitempty" yaml:"id,omitempty"`
 	// Type is the resource's full type token.
-	Type tokens.Type `json:"type" yaml:"type"`
+	Type	tokens.Type	`json:"type" yaml:"type"`
 	// Inputs are the input properties supplied to the provider.
-	Inputs map[string]any `json:"inputs,omitempty" yaml:"inputs,omitempty"`
+	Inputs	map[string]any	`json:"inputs,omitempty" yaml:"inputs,omitempty"`
 	// Outputs are the output properties returned by the provider after provisioning.
-	Outputs map[string]any `json:"outputs,omitempty" yaml:"outputs,omitempty"`
+	Outputs	map[string]any	`json:"outputs,omitempty" yaml:"outputs,omitempty"`
 	// Parent is an optional parent URN if this resource is a child of it.
-	Parent resource.URN `json:"parent,omitempty" yaml:"parent,omitempty"`
+	Parent	resource.URN	`json:"parent,omitempty" yaml:"parent,omitempty"`
 	// Protect is set to true when this resource is "protected" and may not be deleted.
-	Protect bool `json:"protect,omitempty" yaml:"protect,omitempty"`
+	Protect	bool	`json:"protect,omitempty" yaml:"protect,omitempty"`
 	// External is set to true when the lifecycle of this resource is not managed by Pulumi.
-	External bool `json:"external,omitempty" yaml:"external,omitempty"`
+	External	bool	`json:"external,omitempty" yaml:"external,omitempty"`
 	// Dependencies contains the dependency edges to other resources that this depends on.
-	Dependencies []resource.URN `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
+	Dependencies	[]resource.URN	`json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
 	// InitErrors is the set of errors encountered in the process of initializing resource (i.e.,
 	// during create or update).
-	InitErrors []string `json:"initErrors,omitempty" yaml:"initErrors,omitempty"`
+	InitErrors	[]string	`json:"initErrors,omitempty" yaml:"initErrors,omitempty"`
 	// Provider is a reference to the provider that is associated with this resource.
-	Provider string `json:"provider,omitempty" yaml:"provider,omitempty"`
+	Provider	string	`json:"provider,omitempty" yaml:"provider,omitempty"`
 }
 
 // ResourceV3 is the third version of the Resource API type. It absorbs a few breaking changes:
@@ -316,72 +316,72 @@ type ResourceV2 struct {
 //     `Dependencies` affects every input property.
 type ResourceV3 struct {
 	// URN uniquely identifying this resource.
-	URN resource.URN `json:"urn" yaml:"urn"`
+	URN	resource.URN	`json:"urn" yaml:"urn"`
 	// Custom is true when it is managed by a plugin.
-	Custom bool `json:"custom" yaml:"custom"`
+	Custom	bool	`json:"custom" yaml:"custom"`
 	// Delete is true when the resource should be deleted during the next update.
-	Delete bool `json:"delete,omitempty" yaml:"delete,omitempty"`
+	Delete	bool	`json:"delete,omitempty" yaml:"delete,omitempty"`
 	// ID is the provider-assigned resource, if any, for custom resources.
-	ID resource.ID `json:"id,omitempty" yaml:"id,omitempty"`
+	ID	resource.ID	`json:"id,omitempty" yaml:"id,omitempty"`
 	// Type is the resource's full type token.
-	Type tokens.Type `json:"type" yaml:"type"`
+	Type	tokens.Type	`json:"type" yaml:"type"`
 	// Inputs are the input properties supplied to the provider.
-	Inputs map[string]any `json:"inputs,omitempty" yaml:"inputs,omitempty"`
+	Inputs	map[string]any	`json:"inputs,omitempty" yaml:"inputs,omitempty"`
 	// Outputs are the output properties returned by the provider after provisioning.
-	Outputs map[string]any `json:"outputs,omitempty" yaml:"outputs,omitempty"`
+	Outputs	map[string]any	`json:"outputs,omitempty" yaml:"outputs,omitempty"`
 	// Parent is an optional parent URN if this resource is a child of it.
-	Parent resource.URN `json:"parent,omitempty" yaml:"parent,omitempty"`
+	Parent	resource.URN	`json:"parent,omitempty" yaml:"parent,omitempty"`
 	// Protect is set to true when this resource is "protected" and may not be deleted.
-	Protect bool `json:"protect,omitempty" yaml:"protect,omitempty"`
+	Protect	bool	`json:"protect,omitempty" yaml:"protect,omitempty"`
 	// Taint is set to true when we wish to force it to be replaced upon the next update.
-	Taint bool `json:"taint,omitempty" yaml:"taint,omitempty"`
+	Taint	bool	`json:"taint,omitempty" yaml:"taint,omitempty"`
 	// External is set to true when the lifecycle of this resource is not managed by Pulumi.
-	External bool `json:"external,omitempty" yaml:"external,omitempty"`
+	External	bool	`json:"external,omitempty" yaml:"external,omitempty"`
 	// Dependencies contains the dependency edges to other resources that this depends on.
-	Dependencies []resource.URN `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
+	Dependencies	[]resource.URN	`json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
 	// InitErrors is the set of errors encountered in the process of initializing resource (i.e.,
 	// during create or update).
-	InitErrors []string `json:"initErrors,omitempty" yaml:"initErrors,omitempty"`
+	InitErrors	[]string	`json:"initErrors,omitempty" yaml:"initErrors,omitempty"`
 	// Provider is a reference to the provider that is associated with this resource.
-	Provider string `json:"provider,omitempty" yaml:"provider,omitempty"`
+	Provider	string	`json:"provider,omitempty" yaml:"provider,omitempty"`
 	// PropertyDependencies maps from an input property name to the set of resources that property depends on.
-	PropertyDependencies map[resource.PropertyKey][]resource.URN `json:"propertyDependencies,omitempty" yaml:"property_dependencies,omitempty"`
+	PropertyDependencies	map[resource.PropertyKey][]resource.URN	`json:"propertyDependencies,omitempty" yaml:"property_dependencies,omitempty"`
 	// PendingReplacement is used to track delete-before-replace resources that have been deleted but not yet
 	// recreated.
-	PendingReplacement bool `json:"pendingReplacement,omitempty" yaml:"pendingReplacement,omitempty"`
+	PendingReplacement	bool	`json:"pendingReplacement,omitempty" yaml:"pendingReplacement,omitempty"`
 	// AdditionalSecretOutputs is a list of outputs that were explicitly marked as secret when the resource was created.
-	AdditionalSecretOutputs []resource.PropertyKey `json:"additionalSecretOutputs,omitempty" yaml:"additionalSecretOutputs,omitempty"`
+	AdditionalSecretOutputs	[]resource.PropertyKey	`json:"additionalSecretOutputs,omitempty" yaml:"additionalSecretOutputs,omitempty"`
 	// Aliases is a list of previous URNs that this resource may have had in previous deployments.
-	Aliases []resource.URN `json:"aliases,omitempty" yaml:"aliases,omitempty"`
+	Aliases	[]resource.URN	`json:"aliases,omitempty" yaml:"aliases,omitempty"`
 	// CustomTimeouts is a configuration block that can be used to control timeouts of CRUD operations.
-	CustomTimeouts *resource.CustomTimeouts `json:"customTimeouts,omitempty" yaml:"customTimeouts,omitempty"`
+	CustomTimeouts	*resource.CustomTimeouts	`json:"customTimeouts,omitempty" yaml:"customTimeouts,omitempty"`
 	// ImportID is the import input used for imported resources.
-	ImportID resource.ID `json:"importID,omitempty" yaml:"importID,omitempty"`
+	ImportID	resource.ID	`json:"importID,omitempty" yaml:"importID,omitempty"`
 	// If set to True, the providers Delete method will not be called for this resource. Pulumi simply stops tracking the deleted resource.
-	RetainOnDelete bool `json:"retainOnDelete,omitempty" yaml:"retainOnDelete,omitempty"`
+	RetainOnDelete	bool	`json:"retainOnDelete,omitempty" yaml:"retainOnDelete,omitempty"`
 	// If set, the providers Delete method will not be called for this resource
 	// if specified resource is being deleted as well.
-	DeletedWith resource.URN `json:"deletedWith,omitempty" yaml:"deletedWith,omitempty"`
+	DeletedWith	resource.URN	`json:"deletedWith,omitempty" yaml:"deletedWith,omitempty"`
 	// Created tracks when the remote resource was first added to state by pulumi. Checkpoints prior to early 2023 do not include this.
-	Created *time.Time `json:"created,omitempty" yaml:"created,omitempty"`
+	Created	*time.Time	`json:"created,omitempty" yaml:"created,omitempty"`
 	// Modified tracks when the resource state was last altered. Checkpoints prior to early 2023 do not include this.
-	Modified *time.Time `json:"modified,omitempty" yaml:"modified,omitempty"`
+	Modified	*time.Time	`json:"modified,omitempty" yaml:"modified,omitempty"`
 	// SourcePosition tracks the source location of this resource's registration
-	SourcePosition string `json:"sourcePosition,omitempty" yaml:"sourcePosition,omitempty"`
+	SourcePosition	string	`json:"sourcePosition,omitempty" yaml:"sourcePosition,omitempty"`
 	// StackTrace records the stack at the time this resource was registered
-	StackTrace []StackFrameV1 `json:"stackTrace,omitempty" yaml:"stackTrace,omitempty"`
+	StackTrace	[]StackFrameV1	`json:"stackTrace,omitempty" yaml:"stackTrace,omitempty"`
 	// IgnoreChanges is a list of properties to ignore changes for.
-	IgnoreChanges []string `json:"ignoreChanges,omitempty" yaml:"ignoreChanges,omitempty"`
+	IgnoreChanges	[]string	`json:"ignoreChanges,omitempty" yaml:"ignoreChanges,omitempty"`
 	// HideDiff is a list of properties to hide the diff for.
-	HideDiff []resource.PropertyPath `json:"hideDiff,omitempty" yaml:"hideDiff,omitempty"`
+	HideDiff	[]resource.PropertyPath	`json:"hideDiff,omitempty" yaml:"hideDiff,omitempty"`
 	// ReplaceOnChanges is a list of properties that if changed trigger a replace.
-	ReplaceOnChanges []string `json:"replaceOnChanges,omitempty" yaml:"replaceOnChanges,omitempty"`
+	ReplaceOnChanges	[]string	`json:"replaceOnChanges,omitempty" yaml:"replaceOnChanges,omitempty"`
 	// RefreshBeforeUpdate indicates that this resource should always be refreshed prior to updates.
-	RefreshBeforeUpdate bool `json:"refreshBeforeUpdate,omitempty" yaml:"refreshBeforeUpdate,omitempty"`
+	RefreshBeforeUpdate	bool	`json:"refreshBeforeUpdate,omitempty" yaml:"refreshBeforeUpdate,omitempty"`
 	// ViewOf is a reference to the resource that this resource is a view of.
-	ViewOf resource.URN `json:"viewOf,omitempty" yaml:"viewOf,omitempty"`
+	ViewOf	resource.URN	`json:"viewOf,omitempty" yaml:"viewOf,omitempty"`
 	// ResourceHooks is a map of hook types to lists of hook names for the given type.
-	ResourceHooks map[resource.HookType][]string `json:"resourceHooks,omitempty" yaml:"resourceHooks,omitempty"`
+	ResourceHooks	map[resource.HookType][]string	`json:"resourceHooks,omitempty" yaml:"resourceHooks,omitempty"`
 }
 
 // StackFrameV1 captures information about a stack frame.
@@ -393,30 +393,30 @@ type StackFrameV1 struct {
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.
 type ManifestV1 struct {
 	// Time of the update.
-	Time time.Time `json:"time" yaml:"time"`
+	Time	time.Time	`json:"time" yaml:"time"`
 	// Magic number, used to identify integrity of the checkpoint.
-	Magic string `json:"magic" yaml:"magic"`
+	Magic	string	`json:"magic" yaml:"magic"`
 	// Version of the Pulumi engine used to render the checkpoint.
-	Version string `json:"version" yaml:"version"`
+	Version	string	`json:"version" yaml:"version"`
 	// Plugins contains the binary version info of plug-ins used.
-	Plugins []PluginInfoV1 `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Plugins	[]PluginInfoV1	`json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
 // PluginInfoV1 captures the version and information about a plugin.
 type PluginInfoV1 struct {
-	Name    string     `json:"name" yaml:"name"`
-	Path    string     `json:"path" yaml:"path"`
-	Type    PluginKind `json:"type" yaml:"type"`
-	Version string     `json:"version" yaml:"version"`
+	Name	string		`json:"name" yaml:"name"`
+	Path	string		`json:"path" yaml:"path"`
+	Type	PluginKind	`json:"type" yaml:"type"`
+	Version	string		`json:"version" yaml:"version"`
 }
 
 // SecretV1 captures the information that a particular value is secret and must be decrypted before use.
 //
 // NOTE: nothing produces these values yet. This type is merely a placeholder for future use.
 type SecretV1 struct {
-	Sig        string `json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"`
-	Ciphertext string `json:"ciphertext,omitempty" yaml:"ciphertext,omitempty"`
-	Plaintext  string `json:"plaintext,omitempty" yaml:"plaintext,omitempty"`
+	Sig		string	`json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"`
+	Ciphertext	string	`json:"ciphertext,omitempty" yaml:"ciphertext,omitempty"`
+	Plaintext	string	`json:"plaintext,omitempty" yaml:"plaintext,omitempty"`
 }
 
 // ConfigValue describes a single (possibly secret) configuration value.
@@ -425,11 +425,11 @@ type ConfigValue struct {
 	// (for secrets). When Object is true: String is a JSON encoded object. If both Object and Secret are true, then the
 	// object contains at least one secure value. Secure values in an object are encoded as `{"secure":"ciphertext"}`
 	// where ciphertext is the base64-encoded ciphertext.
-	String string `json:"string"`
+	String	string	`json:"string"`
 	// Secret is true if this value is a secret and false otherwise.
-	Secret bool `json:"secret"`
+	Secret	bool	`json:"secret"`
 	// Object is true if this value is a JSON encoded object.
-	Object bool `json:"object"`
+	Object	bool	`json:"object"`
 }
 
 // StackTagName is the key for the tags bag in stack. This is just a string, but we use a type alias to provide a richer
@@ -438,25 +438,25 @@ type StackTagName = string
 
 const (
 	// ProjectNameTag is a tag that represents the name of a project (coresponds to the `name` property of Pulumi.yaml).
-	ProjectNameTag StackTagName = "pulumi:project"
+	ProjectNameTag	StackTagName	= "pulumi:project"
 	// ProjectRuntimeTag is a tag that represents the runtime of a project (the `runtime` property of Pulumi.yaml).
-	ProjectRuntimeTag StackTagName = "pulumi:runtime"
+	ProjectRuntimeTag	StackTagName	= "pulumi:runtime"
 	// ProjectDescriptionTag is a tag that represents the description of a project (Pulumi.yaml's `description`).
-	ProjectDescriptionTag StackTagName = "pulumi:description"
+	ProjectDescriptionTag	StackTagName	= "pulumi:description"
 	// ProjectTemplateTag is a tag that represents the template that was used to create a project.
-	ProjectTemplateTag StackTagName = "pulumi:template"
+	ProjectTemplateTag	StackTagName	= "pulumi:template"
 	// VCSOwnerNameTag is a tag that represents the name of the owner on the cloud VCS that this stack
 	// may be associated with (inferred by the CLI based on git remote info).
-	VCSOwnerNameTag StackTagName = "vcs:owner"
+	VCSOwnerNameTag	StackTagName	= "vcs:owner"
 	// VCSRepositoryNameTag is a tag that represents the name of a repository on the cloud VCS that this stack
 	// may be associated with (inferred by the CLI based on git remote info).
-	VCSRepositoryNameTag StackTagName = "vcs:repo"
+	VCSRepositoryNameTag	StackTagName	= "vcs:repo"
 	// VCSRepositoryKindTag is a tag that represents the kind of the cloud VCS that this stack
 	// may be associated with (inferred by the CLI based on the git remote info).
-	VCSRepositoryKindTag StackTagName = "vcs:kind"
+	VCSRepositoryKindTag	StackTagName	= "vcs:kind"
 	// VCSRepositoryRootTag is a tag that represents the root directory of the repository on the cloud VCS that
 	// this stack may be associated with (pulled from git by the CLI)
-	VCSRepositoryRootTag StackTagName = "vcs:root"
+	VCSRepositoryRootTag	StackTagName	= "vcs:root"
 )
 
 const (
@@ -471,39 +471,39 @@ type Stack struct {
 	//
 	// For maintainers of the Pulumi service:
 	// ID corresponds to the Program ID, not the Stack ID inside the Pulumi service.
-	ID          string       `json:"id"`
-	OrgName     string       `json:"orgName"`
-	ProjectName string       `json:"projectName"`
-	StackName   tokens.QName `json:"stackName"`
+	ID		string		`json:"id"`
+	OrgName		string		`json:"orgName"`
+	ProjectName	string		`json:"projectName"`
+	StackName	tokens.QName	`json:"stackName"`
 	// CurrentOperation provides information about a stack operation in-progress, as applicable.
-	CurrentOperation *OperationStatus        `json:"currentOperation,omitempty"`
-	ActiveUpdate     string                  `json:"activeUpdate"`
-	Tags             map[StackTagName]string `json:"tags,omitempty"`
+	CurrentOperation	*OperationStatus	`json:"currentOperation,omitempty"`
+	ActiveUpdate		string			`json:"activeUpdate"`
+	Tags			map[StackTagName]string	`json:"tags,omitempty"`
 
 	// Optional cloud-persisted stack configuration.
 	// If set, then the stack's configuration is loaded from the cloud and not a file on disk.
-	Config *StackConfig `json:"config,omitempty"`
+	Config	*StackConfig	`json:"config,omitempty"`
 
-	Version int `json:"version"`
+	Version	int	`json:"version"`
 }
 
 // StackConfig describes the configuration of a stack from Pulumi Cloud.
 type StackConfig struct {
 	// Reference to ESC environment to use as stack configuration.
-	Environment string `json:"environment"`
+	Environment	string	`json:"environment"`
 	// SecretsProvider is this stack's secrets provider.
-	SecretsProvider string `json:"secretsProvider,omitempty"`
+	SecretsProvider	string	`json:"secretsProvider,omitempty"`
 	// EncryptedKey is the KMS-encrypted ciphertext for the data key used for secrets encryption.
 	// Only used for cloud-based secrets providers.
-	EncryptedKey string `json:"encryptedKey,omitempty"`
+	EncryptedKey	string	`json:"encryptedKey,omitempty"`
 	// EncryptionSalt is this stack's base64 encoded encryption salt. Only used for
 	// passphrase-based secrets providers.
-	EncryptionSalt string `json:"encryptionSalt,omitempty"`
+	EncryptionSalt	string	`json:"encryptionSalt,omitempty"`
 }
 
 // OperationStatus describes the state of an operation being performed on a Pulumi stack.
 type OperationStatus struct {
-	Kind    UpdateKind `json:"kind"`
-	Author  string     `json:"author"`
-	Started int64      `json:"started"`
+	Kind	UpdateKind	`json:"kind"`
+	Author	string		`json:"author"`
+	Started	int64		`json:"started"`
 }

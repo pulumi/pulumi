@@ -19,13 +19,13 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
 )
 
 type splatTemp struct {
-	Name  string
-	Value *model.SplatExpression
+	Name	string
+	Value	*model.SplatExpression
 }
 
 func (st *splatTemp) Type() model.Type {
@@ -41,8 +41,8 @@ func (st *splatTemp) SyntaxNode() hclsyntax.Node {
 }
 
 type splatSpiller struct {
-	temps []*splatTemp
-	count int
+	temps	[]*splatTemp
+	count	int
 }
 
 func (ss *splatSpiller) spillExpression(x model.Expression) (model.Expression, hcl.Diagnostics) {
@@ -50,8 +50,8 @@ func (ss *splatSpiller) spillExpression(x model.Expression) (model.Expression, h
 	switch x := x.(type) {
 	case *model.SplatExpression:
 		temp = &splatTemp{
-			Name:  fmt.Sprintf("splat%d", ss.count),
-			Value: x,
+			Name:	fmt.Sprintf("splat%d", ss.count),
+			Value:	x,
 		}
 		ss.temps = append(ss.temps, temp)
 		ss.count++
@@ -59,9 +59,9 @@ func (ss *splatSpiller) spillExpression(x model.Expression) (model.Expression, h
 		return x, nil
 	}
 	return &model.ScopeTraversalExpression{
-		RootName:  temp.Name,
-		Traversal: hcl.Traversal{hcl.TraverseRoot{Name: ""}},
-		Parts:     []model.Traversable{temp},
+		RootName:	temp.Name,
+		Traversal:	hcl.Traversal{hcl.TraverseRoot{Name: ""}},
+		Parts:		[]model.Traversable{temp},
 	}, nil
 }
 

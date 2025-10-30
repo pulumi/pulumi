@@ -20,10 +20,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	pkgBackend "github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -31,13 +31,13 @@ import (
 
 func NewOrgCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "org",
-		Short: "Manage Organization configuration",
+		Use:	"org",
+		Short:	"Manage Organization configuration",
 		Long: "Manage Organization configuration.\n" +
 			"\n" +
 			"Use this command to manage organization configuration, " +
 			"e.g. setting the default organization for a backend",
-		Args: cmdutil.NoArgs,
+		Args:	cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			displayOpts := display.Options{
@@ -88,9 +88,9 @@ func newOrgSetDefaultCmd() *cobra.Command {
 	var orgName string
 
 	cmd := &cobra.Command{
-		Use:   "set-default [NAME]",
-		Args:  cmdutil.ExactArgs(1),
-		Short: "Set the local default organization for the current backend",
+		Use:	"set-default [NAME]",
+		Args:	cmdutil.ExactArgs(1),
+		Short:	"Set the local default organization for the current backend",
 		Long: "Set the local default organization for the current backend.\n" +
 			"\n" +
 			"This command is used to set your local default organization in which to create \n" +
@@ -137,8 +137,8 @@ func newOrgSetDefaultCmd() *cobra.Command {
 
 func newOrgGetDefaultCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get-default",
-		Short: "Get the default org for the current backend",
+		Use:	"get-default",
+		Short:	"Get the default org for the current backend",
 		Long: "Get the default org for the current backend.\n" +
 			"\n" +
 			"This command is used to get the default organization for which and stacks are created in " +

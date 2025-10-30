@@ -39,8 +39,8 @@ func TestRunCommandLog(t *testing.T) {
 
 	testw := iotest.LogWriter(t)
 	opts := &ProgramTestOptions{
-		Stdout: testw,
-		Stderr: testw,
+		Stdout:	testw,
+		Stderr:	testw,
 	}
 
 	tempdir := t.TempDir()
@@ -134,52 +134,52 @@ func TestGoModEdits(t *testing.T) {
 	}
 
 	tests := []struct {
-		name          string
-		dep           string
-		expectedValue string
-		expectedError string
-		skip          bool
+		name		string
+		dep		string
+		expectedValue	string
+		expectedError	string
+		skip		bool
 	}{
 		{
-			name:          "valid-path",
-			dep:           "../../../sdk",
-			expectedValue: "github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(repoRoot, "sdk"),
+			name:		"valid-path",
+			dep:		"../../../sdk",
+			expectedValue:	"github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(repoRoot, "sdk"),
 		},
 		{
-			name:          "invalid-path-non-existent",
-			dep:           "../../../.tmp.non-existent-dir",
-			expectedError: errNotExists,
+			name:		"invalid-path-non-existent",
+			dep:		"../../../.tmp.non-existent-dir",
+			expectedError:	errNotExists,
 		},
 		{
-			name:          "invalid-path-bad-go-mod",
-			dep:           badModDir,
-			expectedError: "error parsing go.mod",
-			skip:          skipInvalidPathTest,
+			name:		"invalid-path-bad-go-mod",
+			dep:		badModDir,
+			expectedError:	"error parsing go.mod",
+			skip:		skipInvalidPathTest,
 		},
 		{
-			name:          "valid-module-name",
-			dep:           "github.com/pulumi/pulumi/sdk/v3",
-			expectedValue: "github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(pulumiRepo, "sdk"),
+			name:		"valid-module-name",
+			dep:		"github.com/pulumi/pulumi/sdk/v3",
+			expectedValue:	"github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(pulumiRepo, "sdk"),
 		},
 		{
-			name:          "valid-module-name-version-skew",
-			dep:           "github.com/pulumi/pulumi/sdk",
-			expectedValue: "github.com/pulumi/pulumi/sdk=" + filepath.Join(pulumiRepo, "sdk"),
+			name:		"valid-module-name-version-skew",
+			dep:		"github.com/pulumi/pulumi/sdk",
+			expectedValue:	"github.com/pulumi/pulumi/sdk=" + filepath.Join(pulumiRepo, "sdk"),
 		},
 		{
-			name:          "valid-rel-path",
-			dep:           "github.com/pulumi/pulumi/sdk/v3=../../../sdk",
-			expectedValue: "github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(repoRoot, "sdk"),
+			name:		"valid-rel-path",
+			dep:		"github.com/pulumi/pulumi/sdk/v3=../../../sdk",
+			expectedValue:	"github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(repoRoot, "sdk"),
 		},
 		{
-			name:          "valid-rel-path-version-skew",
-			dep:           "github.com/pulumi/pulumi/sdk=../../../sdk",
-			expectedValue: "github.com/pulumi/pulumi/sdk=" + filepath.Join(repoRoot, "sdk"),
+			name:		"valid-rel-path-version-skew",
+			dep:		"github.com/pulumi/pulumi/sdk=../../../sdk",
+			expectedValue:	"github.com/pulumi/pulumi/sdk=" + filepath.Join(repoRoot, "sdk"),
 		},
 		{
-			name:          "invalid-rel-path",
-			dep:           "github.com/pulumi/pulumi/pkg=../../../sdk",
-			expectedError: "found module path with prefix github.com/pulumi/pulumi/sdk, expected github.com/pulumi/pulumi/pkg",
+			name:		"invalid-rel-path",
+			dep:		"github.com/pulumi/pulumi/pkg=../../../sdk",
+			expectedError:	"found module path with prefix github.com/pulumi/pulumi/sdk, expected github.com/pulumi/pulumi/pkg",
 		},
 	}
 

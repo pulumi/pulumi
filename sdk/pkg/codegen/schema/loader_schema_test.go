@@ -28,8 +28,8 @@ func TestEmptySchemaResponse(t *testing.T) {
 
 	assert.True(t, schemaIsEmpty([]byte("{}")))
 	assert.True(t, schemaIsEmpty([]byte("{  }")))
-	assert.True(t, schemaIsEmpty([]byte("{	}")))           // tab character
-	assert.True(t, schemaIsEmpty([]byte("{   	 	 				}"))) // mixed tabs and spaces]
+	assert.True(t, schemaIsEmpty([]byte("{	}")))		// tab character
+	assert.True(t, schemaIsEmpty([]byte("{   	 	 				}")))	// mixed tabs and spaces]
 
 	assert.True(t, schemaIsEmpty([]byte(" {} \n")))
 	assert.True(t, schemaIsEmpty([]byte(" \n{  }	\n")))

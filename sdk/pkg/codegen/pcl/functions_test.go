@@ -19,8 +19,8 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -312,25 +312,25 @@ func TestInvalidBindingPulumiResourceTypeName(t *testing.T) {
 
 	for _, function := range []string{"pulumiResourceType", "pulumiResourceName"} {
 		cases := []struct {
-			name     string
-			source   string
-			expected string
+			name		string
+			source		string
+			expected	string
 		}{
 			{
-				name:     "no arguments",
-				source:   fmt.Sprintf("type = %s()", function),
-				expected: function + " expects exactly one argument",
+				name:		"no arguments",
+				source:		fmt.Sprintf("type = %s()", function),
+				expected:	function + " expects exactly one argument",
 			},
 			{
-				name:     "too many arguments",
-				source:   fmt.Sprintf("type = %s(1, 2)", function),
-				expected: function + " expects exactly one argument",
+				name:		"too many arguments",
+				source:		fmt.Sprintf("type = %s(1, 2)", function),
+				expected:	function + " expects exactly one argument",
 			},
 			{
-				name: "wrong argument",
+				name:	"wrong argument",
 				source: fmt.Sprintf(`res = { id = "foo", urn = "bar" }
 				type = %s(res)`, function),
-				expected: function + " argument must be a single resource",
+				expected:	function + " argument must be a single resource",
 			},
 		}
 

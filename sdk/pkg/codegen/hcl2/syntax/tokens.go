@@ -28,47 +28,47 @@ import (
 )
 
 var tokenStrings = map[hclsyntax.TokenType]string{
-	hclsyntax.TokenOBrace: "{",
-	hclsyntax.TokenCBrace: "}",
-	hclsyntax.TokenOBrack: "[",
-	hclsyntax.TokenCBrack: "]",
-	hclsyntax.TokenOParen: "(",
-	hclsyntax.TokenCParen: ")",
-	hclsyntax.TokenOQuote: `"`,
-	hclsyntax.TokenCQuote: `"`,
+	hclsyntax.TokenOBrace:	"{",
+	hclsyntax.TokenCBrace:	"}",
+	hclsyntax.TokenOBrack:	"[",
+	hclsyntax.TokenCBrack:	"]",
+	hclsyntax.TokenOParen:	"(",
+	hclsyntax.TokenCParen:	")",
+	hclsyntax.TokenOQuote:	`"`,
+	hclsyntax.TokenCQuote:	`"`,
 
-	hclsyntax.TokenStar:    "*",
-	hclsyntax.TokenSlash:   "/",
-	hclsyntax.TokenPlus:    "+",
-	hclsyntax.TokenMinus:   "-",
-	hclsyntax.TokenPercent: "%",
+	hclsyntax.TokenStar:	"*",
+	hclsyntax.TokenSlash:	"/",
+	hclsyntax.TokenPlus:	"+",
+	hclsyntax.TokenMinus:	"-",
+	hclsyntax.TokenPercent:	"%",
 
-	hclsyntax.TokenEqual:         "=",
-	hclsyntax.TokenEqualOp:       "==",
-	hclsyntax.TokenNotEqual:      "!=",
-	hclsyntax.TokenLessThan:      "<",
-	hclsyntax.TokenLessThanEq:    "<=",
-	hclsyntax.TokenGreaterThan:   ">",
-	hclsyntax.TokenGreaterThanEq: ">=",
+	hclsyntax.TokenEqual:		"=",
+	hclsyntax.TokenEqualOp:		"==",
+	hclsyntax.TokenNotEqual:	"!=",
+	hclsyntax.TokenLessThan:	"<",
+	hclsyntax.TokenLessThanEq:	"<=",
+	hclsyntax.TokenGreaterThan:	">",
+	hclsyntax.TokenGreaterThanEq:	">=",
 
-	hclsyntax.TokenAnd:  "&&",
-	hclsyntax.TokenOr:   "||",
-	hclsyntax.TokenBang: "!",
+	hclsyntax.TokenAnd:	"&&",
+	hclsyntax.TokenOr:	"||",
+	hclsyntax.TokenBang:	"!",
 
-	hclsyntax.TokenDot:   ".",
-	hclsyntax.TokenComma: ",",
+	hclsyntax.TokenDot:	".",
+	hclsyntax.TokenComma:	",",
 
-	hclsyntax.TokenEllipsis: "...",
-	hclsyntax.TokenFatArrow: "=>",
+	hclsyntax.TokenEllipsis:	"...",
+	hclsyntax.TokenFatArrow:	"=>",
 
-	hclsyntax.TokenQuestion: "?",
-	hclsyntax.TokenColon:    ":",
+	hclsyntax.TokenQuestion:	"?",
+	hclsyntax.TokenColon:		":",
 
-	hclsyntax.TokenTemplateInterp:  "${",
-	hclsyntax.TokenTemplateControl: "%{",
-	hclsyntax.TokenTemplateSeqEnd:  "}",
+	hclsyntax.TokenTemplateInterp:	"${",
+	hclsyntax.TokenTemplateControl:	"%{",
+	hclsyntax.TokenTemplateSeqEnd:	"}",
 
-	hclsyntax.TokenNewline: "\n",
+	hclsyntax.TokenNewline:	"\n",
 }
 
 // Trivia represents bytes in a source file that are not syntactically meaningful. This includes whitespace and
@@ -167,10 +167,10 @@ func (trivia TriviaList) Format(f fmt.State, c rune) {
 // Comment is a piece of trivia that represents a line or block comment in a source file.
 type Comment struct {
 	// Lines contains the lines of the comment without leading comment characters or trailing newlines.
-	Lines []string
+	Lines	[]string
 
-	rng   hcl.Range
-	bytes []byte
+	rng	hcl.Range
+	bytes	[]byte
 }
 
 // Range returns the range of the comment in the source file.
@@ -183,12 +183,12 @@ func (c Comment) Bytes() []byte {
 	return c.bytes
 }
 
-func (Comment) isTrivia() {}
+func (Comment) isTrivia()	{}
 
 // Whitespace is a piece of trivia that represents a sequence of whitespace characters in a source file.
 type Whitespace struct {
-	rng   hcl.Range
-	bytes []byte
+	rng	hcl.Range
+	bytes	[]byte
 }
 
 // NewWhitespace returns a new piece of whitespace trivia with the given contents.
@@ -206,16 +206,16 @@ func (w Whitespace) Bytes() []byte {
 	return w.bytes
 }
 
-func (Whitespace) isTrivia() {}
+func (Whitespace) isTrivia()	{}
 
 // TemplateDelimiter is a piece of trivia that represents a token that demarcates an interpolation or control sequence
 // inside of a template.
 type TemplateDelimiter struct {
 	// Type is the type of the delimiter (e.g. hclsyntax.TokenTemplateInterp)
-	Type hclsyntax.TokenType
+	Type	hclsyntax.TokenType
 
-	rng   hcl.Range
-	bytes []byte
+	rng	hcl.Range
+	bytes	[]byte
 }
 
 // NewTemplateDelimiter creates a new TemplateDelimiter value with the given delimiter type. If the token type is not a
@@ -234,8 +234,8 @@ func NewTemplateDelimiter(typ hclsyntax.TokenType) TemplateDelimiter {
 		panic(fmt.Errorf("%v is not a template delimiter", typ))
 	}
 	return TemplateDelimiter{
-		Type:  typ,
-		bytes: []byte(s),
+		Type:	typ,
+		bytes:	[]byte(s),
 	}
 }
 
@@ -249,13 +249,13 @@ func (t TemplateDelimiter) Bytes() []byte {
 	return t.bytes
 }
 
-func (TemplateDelimiter) isTrivia() {}
+func (TemplateDelimiter) isTrivia()	{}
 
 // Token represents an HCL2 syntax token with attached leading trivia.
 type Token struct {
-	Raw            hclsyntax.Token
-	LeadingTrivia  TriviaList
-	TrailingTrivia TriviaList
+	Raw		hclsyntax.Token
+	LeadingTrivia	TriviaList
+	TrailingTrivia	TriviaList
 }
 
 func (t Token) Format(f fmt.State, c rune) {
@@ -355,8 +355,8 @@ func newRawToken(typ hclsyntax.TokenType, text ...string) hclsyntax.Token {
 		bytes = []byte(text[0])
 	}
 	return hclsyntax.Token{
-		Type:  typ,
-		Bytes: bytes,
+		Type:	typ,
+		Bytes:	bytes,
 	}
 }
 
@@ -367,8 +367,8 @@ type NodeTokens interface {
 
 // Parentheses records enclosing parenthesis tokens for expressions.
 type Parentheses struct {
-	Open  []Token
-	Close []Token
+	Open	[]Token
+	Close	[]Token
 }
 
 func (parens Parentheses) Any() bool {
@@ -428,23 +428,23 @@ func exprRange(filename string, parens Parentheses, start, end hcl.Pos) hcl.Rang
 		end = parens.Close[len(parens.Close)-1].Range().End
 	}
 	return hcl.Range{
-		Filename: filename,
-		Start:    start,
-		End:      end,
+		Filename:	filename,
+		Start:		start,
+		End:		end,
 	}
 }
 
 // AttributeTokens records the tokens associated with an *hclsyntax.Attribute.
 type AttributeTokens struct {
-	Name   Token
-	Equals Token
+	Name	Token
+	Equals	Token
 }
 
 func NewAttributeTokens(name string) *AttributeTokens {
 	var t *AttributeTokens
 	return &AttributeTokens{
-		Name:   t.GetName(name),
-		Equals: t.GetEquals(),
+		Name:	t.GetName(name),
+		Equals:	t.GetEquals(),
 	}
 }
 
@@ -458,20 +458,20 @@ func (t *AttributeTokens) GetName(name string) Token {
 func (t *AttributeTokens) GetEquals() Token {
 	if t == nil {
 		return Token{
-			Raw:           newRawToken(hclsyntax.TokenEqual),
-			LeadingTrivia: TriviaList{NewWhitespace(' ')},
+			Raw:		newRawToken(hclsyntax.TokenEqual),
+			LeadingTrivia:	TriviaList{NewWhitespace(' ')},
 		}
 	}
 	return t.Equals
 }
 
-func (*AttributeTokens) isNodeTokens() {}
+func (*AttributeTokens) isNodeTokens()	{}
 
 // BinaryOpTokens records the tokens associated with an *hclsyntax.BinaryOpExpr.
 type BinaryOpTokens struct {
-	Parentheses Parentheses
+	Parentheses	Parentheses
 
-	Operator Token
+	Operator	Token
 }
 
 func NewBinaryOpTokens(operation *hclsyntax.Operation) *BinaryOpTokens {
@@ -489,30 +489,30 @@ func (t *BinaryOpTokens) GetParentheses() Parentheses {
 func (t *BinaryOpTokens) GetOperator(operation *hclsyntax.Operation) Token {
 	if t == nil {
 		return Token{
-			Raw:           newRawToken(OperationTokenType(operation)),
-			LeadingTrivia: TriviaList{NewWhitespace(' ')},
+			Raw:		newRawToken(OperationTokenType(operation)),
+			LeadingTrivia:	TriviaList{NewWhitespace(' ')},
 		}
 	}
 	return t.Operator.withOperation(operation)
 }
 
-func (*BinaryOpTokens) isNodeTokens() {}
+func (*BinaryOpTokens) isNodeTokens()	{}
 
 // BlockTokens records the tokens associated with an *hclsyntax.Block.
 type BlockTokens struct {
-	Type       Token
-	Labels     []Token
-	OpenBrace  Token
-	CloseBrace Token
+	Type		Token
+	Labels		[]Token
+	OpenBrace	Token
+	CloseBrace	Token
 }
 
 func NewBlockTokens(typ string, labels ...string) *BlockTokens {
 	var t *BlockTokens
 	return &BlockTokens{
-		Type:       t.GetType(typ),
-		Labels:     t.GetLabels(labels),
-		OpenBrace:  t.GetOpenBrace(),
-		CloseBrace: t.GetCloseBrace(),
+		Type:		t.GetType(typ),
+		Labels:		t.GetLabels(labels),
+		OpenBrace:	t.GetOpenBrace(),
+		CloseBrace:	t.GetCloseBrace(),
 	}
 }
 
@@ -534,8 +534,8 @@ func (t *BlockTokens) GetLabels(labels []string) []Token {
 				raw = newRawToken(hclsyntax.TokenQuotedLit, fmt.Sprintf("%q", l))
 			}
 			labelTokens[i] = Token{
-				Raw:           raw,
-				LeadingTrivia: TriviaList{NewWhitespace(' ')},
+				Raw:		raw,
+				LeadingTrivia:	TriviaList{NewWhitespace(' ')},
 			}
 		}
 		return labelTokens
@@ -546,9 +546,9 @@ func (t *BlockTokens) GetLabels(labels []string) []Token {
 func (t *BlockTokens) GetOpenBrace() Token {
 	if t == nil {
 		return Token{
-			Raw:            newRawToken(hclsyntax.TokenOBrace),
-			LeadingTrivia:  TriviaList{NewWhitespace(' ')},
-			TrailingTrivia: TriviaList{NewWhitespace('\n')},
+			Raw:		newRawToken(hclsyntax.TokenOBrace),
+			LeadingTrivia:	TriviaList{NewWhitespace(' ')},
+			TrailingTrivia:	TriviaList{NewWhitespace('\n')},
 		}
 	}
 	return t.OpenBrace
@@ -557,15 +557,15 @@ func (t *BlockTokens) GetOpenBrace() Token {
 func (t *BlockTokens) GetCloseBrace() Token {
 	if t == nil {
 		return Token{
-			Raw:            newRawToken(hclsyntax.TokenCBrace),
-			LeadingTrivia:  TriviaList{NewWhitespace('\n')},
-			TrailingTrivia: TriviaList{NewWhitespace('\n')},
+			Raw:		newRawToken(hclsyntax.TokenCBrace),
+			LeadingTrivia:	TriviaList{NewWhitespace('\n')},
+			TrailingTrivia:	TriviaList{NewWhitespace('\n')},
 		}
 	}
 	return t.CloseBrace
 }
 
-func (*BlockTokens) isNodeTokens() {}
+func (*BlockTokens) isNodeTokens()	{}
 
 // BodyTokens records the tokens associated with an *hclsyntax.Body.
 type BodyTokens struct {
@@ -579,43 +579,43 @@ func (t *BodyTokens) GetEndOfFile() *Token {
 	return t.EndOfFile
 }
 
-func (*BodyTokens) isNodeTokens() {}
+func (*BodyTokens) isNodeTokens()	{}
 
 // ConditionalTokens records the tokens associated with an *hclsyntax.ConditionalExpr of the form "a ? t : f".
 type ConditionalTokens struct {
-	Parentheses Parentheses
+	Parentheses	Parentheses
 
-	QuestionMark Token
-	Colon        Token
+	QuestionMark	Token
+	Colon		Token
 }
 
 func NewConditionalTokens() *ConditionalTokens {
 	return &ConditionalTokens{
 		QuestionMark: Token{
-			Raw:           newRawToken(hclsyntax.TokenQuestion),
-			LeadingTrivia: TriviaList{NewWhitespace(' ')},
+			Raw:		newRawToken(hclsyntax.TokenQuestion),
+			LeadingTrivia:	TriviaList{NewWhitespace(' ')},
 		},
 		Colon: Token{
-			Raw:           newRawToken(hclsyntax.TokenColon),
-			LeadingTrivia: TriviaList{NewWhitespace(' ')},
+			Raw:		newRawToken(hclsyntax.TokenColon),
+			LeadingTrivia:	TriviaList{NewWhitespace(' ')},
 		},
 	}
 }
 
-func (*ConditionalTokens) isNodeTokens() {}
+func (*ConditionalTokens) isNodeTokens()	{}
 
 // TemplateConditionalTokens records the tokens associated with an *hclsyntax.ConditionalExpr inside a template
 // expression.
 type TemplateConditionalTokens struct {
-	OpenIf     Token
-	If         Token
-	CloseIf    Token
-	OpenElse   *Token
-	Else       *Token
-	CloseElse  *Token
-	OpenEndif  Token
-	Endif      Token
-	CloseEndif Token
+	OpenIf		Token
+	If		Token
+	CloseIf		Token
+	OpenElse	*Token
+	Else		*Token
+	CloseElse	*Token
+	OpenEndif	Token
+	Endif		Token
+	CloseEndif	Token
 }
 
 func NewTemplateConditionalTokens(hasElse bool) *TemplateConditionalTokens {
@@ -626,50 +626,50 @@ func NewTemplateConditionalTokens(hasElse bool) *TemplateConditionalTokens {
 		closeElseT = &Token{Raw: newRawToken(hclsyntax.TokenTemplateSeqEnd)}
 	}
 	return &TemplateConditionalTokens{
-		OpenIf:     Token{Raw: newRawToken(hclsyntax.TokenTemplateControl)},
-		If:         Token{Raw: newRawToken(hclsyntax.TokenIdent, "if")},
-		CloseIf:    Token{Raw: newRawToken(hclsyntax.TokenTemplateSeqEnd)},
-		OpenElse:   openElseT,
-		Else:       elseT,
-		CloseElse:  closeElseT,
-		OpenEndif:  Token{Raw: newRawToken(hclsyntax.TokenTemplateControl)},
-		Endif:      Token{Raw: newRawToken(hclsyntax.TokenIdent, "endif")},
-		CloseEndif: Token{Raw: newRawToken(hclsyntax.TokenTemplateSeqEnd)},
+		OpenIf:		Token{Raw: newRawToken(hclsyntax.TokenTemplateControl)},
+		If:		Token{Raw: newRawToken(hclsyntax.TokenIdent, "if")},
+		CloseIf:	Token{Raw: newRawToken(hclsyntax.TokenTemplateSeqEnd)},
+		OpenElse:	openElseT,
+		Else:		elseT,
+		CloseElse:	closeElseT,
+		OpenEndif:	Token{Raw: newRawToken(hclsyntax.TokenTemplateControl)},
+		Endif:		Token{Raw: newRawToken(hclsyntax.TokenIdent, "endif")},
+		CloseEndif:	Token{Raw: newRawToken(hclsyntax.TokenTemplateSeqEnd)},
 	}
 }
 
-func (*TemplateConditionalTokens) isNodeTokens() {}
+func (*TemplateConditionalTokens) isNodeTokens()	{}
 
 // ForTokens records the tokens associated with an *hclsyntax.ForExpr.
 type ForTokens struct {
-	Parentheses Parentheses
+	Parentheses	Parentheses
 
-	Open  Token
-	For   Token
-	Key   *Token
-	Comma *Token
-	Value Token
-	In    Token
-	Colon Token
-	Arrow *Token
-	Group *Token
-	If    *Token
-	Close Token
+	Open	Token
+	For	Token
+	Key	*Token
+	Comma	*Token
+	Value	Token
+	In	Token
+	Colon	Token
+	Arrow	*Token
+	Group	*Token
+	If	*Token
+	Close	Token
 }
 
 func NewForTokens(keyVariable, valueVariable string, mapFor, group, conditional bool) *ForTokens {
 	var keyT, commaT, arrowT, groupT, ifT *Token
 	if keyVariable != "" {
 		keyT = &Token{
-			Raw:           newRawToken(hclsyntax.TokenIdent, keyVariable),
-			LeadingTrivia: TriviaList{NewWhitespace(' ')},
+			Raw:		newRawToken(hclsyntax.TokenIdent, keyVariable),
+			LeadingTrivia:	TriviaList{NewWhitespace(' ')},
 		}
 		commaT = &Token{Raw: newRawToken(hclsyntax.TokenComma)}
 	}
 	if mapFor {
 		arrowT = &Token{
-			Raw:           newRawToken(hclsyntax.TokenFatArrow),
-			LeadingTrivia: TriviaList{NewWhitespace(' ')},
+			Raw:		newRawToken(hclsyntax.TokenFatArrow),
+			LeadingTrivia:	TriviaList{NewWhitespace(' ')},
 		}
 	}
 	if group {
@@ -677,97 +677,97 @@ func NewForTokens(keyVariable, valueVariable string, mapFor, group, conditional 
 	}
 	if conditional {
 		ifT = &Token{
-			Raw:           newRawToken(hclsyntax.TokenIdent, "if"),
-			LeadingTrivia: TriviaList{NewWhitespace(' ')},
+			Raw:		newRawToken(hclsyntax.TokenIdent, "if"),
+			LeadingTrivia:	TriviaList{NewWhitespace(' ')},
 		}
 	}
 
 	return &ForTokens{
-		Open:  Token{Raw: newRawToken(hclsyntax.TokenOBrack)},
-		For:   Token{Raw: newRawToken(hclsyntax.TokenIdent, "for")},
-		Key:   keyT,
-		Comma: commaT,
+		Open:	Token{Raw: newRawToken(hclsyntax.TokenOBrack)},
+		For:	Token{Raw: newRawToken(hclsyntax.TokenIdent, "for")},
+		Key:	keyT,
+		Comma:	commaT,
 		Value: Token{
-			Raw:           newRawToken(hclsyntax.TokenIdent, valueVariable),
-			LeadingTrivia: TriviaList{NewWhitespace(' ')},
+			Raw:		newRawToken(hclsyntax.TokenIdent, valueVariable),
+			LeadingTrivia:	TriviaList{NewWhitespace(' ')},
 		},
 		In: Token{
-			Raw:           newRawToken(hclsyntax.TokenIdent, "in"),
-			LeadingTrivia: TriviaList{NewWhitespace(' ')},
+			Raw:		newRawToken(hclsyntax.TokenIdent, "in"),
+			LeadingTrivia:	TriviaList{NewWhitespace(' ')},
 		},
-		Colon: Token{Raw: newRawToken(hclsyntax.TokenColon)},
-		Arrow: arrowT,
-		Group: groupT,
-		If:    ifT,
-		Close: Token{Raw: newRawToken(hclsyntax.TokenCBrack)},
+		Colon:	Token{Raw: newRawToken(hclsyntax.TokenColon)},
+		Arrow:	arrowT,
+		Group:	groupT,
+		If:	ifT,
+		Close:	Token{Raw: newRawToken(hclsyntax.TokenCBrack)},
 	}
 }
 
-func (*ForTokens) isNodeTokens() {}
+func (*ForTokens) isNodeTokens()	{}
 
 // TemplateForTokens records the tokens associated with an *hclsyntax.ForExpr inside a template.
 type TemplateForTokens struct {
-	OpenFor     Token
-	For         Token
-	Key         *Token
-	Comma       *Token
-	Value       Token
-	In          Token
-	CloseFor    Token
-	OpenEndfor  Token
-	Endfor      Token
-	CloseEndfor Token
+	OpenFor		Token
+	For		Token
+	Key		*Token
+	Comma		*Token
+	Value		Token
+	In		Token
+	CloseFor	Token
+	OpenEndfor	Token
+	Endfor		Token
+	CloseEndfor	Token
 }
 
 func NewTemplateForTokens(keyVariable, valueVariable string) *TemplateForTokens {
 	var keyT, commaT *Token
 	if keyVariable != "" {
 		keyT = &Token{
-			Raw:           newRawToken(hclsyntax.TokenIdent, keyVariable),
-			LeadingTrivia: TriviaList{NewWhitespace(' ')},
+			Raw:		newRawToken(hclsyntax.TokenIdent, keyVariable),
+			LeadingTrivia:	TriviaList{NewWhitespace(' ')},
 		}
 		commaT = &Token{Raw: newRawToken(hclsyntax.TokenComma)}
 	}
 
 	return &TemplateForTokens{
-		OpenFor: Token{Raw: newRawToken(hclsyntax.TokenTemplateControl)},
-		For:     Token{Raw: newRawToken(hclsyntax.TokenIdent, "for")},
-		Key:     keyT,
-		Comma:   commaT,
+		OpenFor:	Token{Raw: newRawToken(hclsyntax.TokenTemplateControl)},
+		For:		Token{Raw: newRawToken(hclsyntax.TokenIdent, "for")},
+		Key:		keyT,
+		Comma:		commaT,
 		Value: Token{
-			Raw:           newRawToken(hclsyntax.TokenIdent, valueVariable),
-			LeadingTrivia: TriviaList{NewWhitespace(' ')},
+			Raw:		newRawToken(hclsyntax.TokenIdent, valueVariable),
+			LeadingTrivia:	TriviaList{NewWhitespace(' ')},
 		},
 		In: Token{
-			Raw:           newRawToken(hclsyntax.TokenIdent, "in"),
-			LeadingTrivia: TriviaList{NewWhitespace(' ')},
+			Raw:		newRawToken(hclsyntax.TokenIdent, "in"),
+			LeadingTrivia:	TriviaList{NewWhitespace(' ')},
 		},
-		CloseFor:    Token{Raw: newRawToken(hclsyntax.TokenTemplateSeqEnd)},
-		OpenEndfor:  Token{Raw: newRawToken(hclsyntax.TokenTemplateControl)},
-		Endfor:      Token{Raw: newRawToken(hclsyntax.TokenIdent, "endfor")},
-		CloseEndfor: Token{Raw: newRawToken(hclsyntax.TokenTemplateSeqEnd)},
+		CloseFor:	Token{Raw: newRawToken(hclsyntax.TokenTemplateSeqEnd)},
+		OpenEndfor:	Token{Raw: newRawToken(hclsyntax.TokenTemplateControl)},
+		Endfor:		Token{Raw: newRawToken(hclsyntax.TokenIdent, "endfor")},
+		CloseEndfor:	Token{Raw: newRawToken(hclsyntax.TokenTemplateSeqEnd)},
 	}
 }
 
-func (*TemplateForTokens) isNodeTokens() {}
+func (*TemplateForTokens) isNodeTokens()	{}
 
 // FunctionCallTokens records the tokens associated with an *hclsyntax.FunctionCallExpr.
 type FunctionCallTokens struct {
-	Parentheses Parentheses
+	Parentheses	Parentheses
 
-	Name       Token
-	OpenParen  Token
-	Commas     []Token
-	CloseParen Token
+	Name		Token
+	OpenParen	Token
+	Commas		[]Token
+	CloseParen	Token
 }
 
 func NewFunctionCallTokens(name string, argCount int) *FunctionCallTokens {
 	var t *FunctionCallTokens
 	return &FunctionCallTokens{
-		Name:       t.GetName(name),
-		OpenParen:  t.GetOpenParen(),
-		Commas:     t.GetCommas(argCount),
-		CloseParen: t.GetCloseParen(),
+		Name:		t.GetName(name),
+		OpenParen:	t.GetOpenParen(),
+		Commas:		t.GetCommas(argCount),
+		CloseParen:	t.GetCloseParen(),
 	}
 }
 
@@ -814,21 +814,21 @@ func (t *FunctionCallTokens) GetCloseParen() Token {
 	return t.CloseParen
 }
 
-func (*FunctionCallTokens) isNodeTokens() {}
+func (*FunctionCallTokens) isNodeTokens()	{}
 
 // IndexTokens records the tokens associated with an *hclsyntax.IndexExpr.
 type IndexTokens struct {
-	Parentheses Parentheses
+	Parentheses	Parentheses
 
-	OpenBracket  Token
-	CloseBracket Token
+	OpenBracket	Token
+	CloseBracket	Token
 }
 
 func NewIndexTokens() *IndexTokens {
 	var t *IndexTokens
 	return &IndexTokens{
-		OpenBracket:  t.GetOpenBracket(),
-		CloseBracket: t.GetCloseBracket(),
+		OpenBracket:	t.GetOpenBracket(),
+		CloseBracket:	t.GetCloseBracket(),
 	}
 }
 
@@ -853,13 +853,13 @@ func (t *IndexTokens) GetCloseBracket() Token {
 	return t.CloseBracket
 }
 
-func (*IndexTokens) isNodeTokens() {}
+func (*IndexTokens) isNodeTokens()	{}
 
 // LiteralValueTokens records the tokens associated with an *hclsyntax.LiteralValueExpr.
 type LiteralValueTokens struct {
-	Parentheses Parentheses
+	Parentheses	Parentheses
 
-	Value []Token
+	Value	[]Token
 }
 
 func rawLiteralValueToken(value cty.Value) hclsyntax.Token {
@@ -908,46 +908,46 @@ func (t *LiteralValueTokens) GetValue(value cty.Value) []Token {
 	return t.Value
 }
 
-func (*LiteralValueTokens) isNodeTokens() {}
+func (*LiteralValueTokens) isNodeTokens()	{}
 
 // ObjectConsItemTokens records the tokens associated with an hclsyntax.ObjectConsItem.
 type ObjectConsItemTokens struct {
-	Equals Token
-	Comma  *Token
+	Equals	Token
+	Comma	*Token
 }
 
 func NewObjectConsItemTokens(last bool) ObjectConsItemTokens {
 	var comma *Token
 	if !last {
 		comma = &Token{
-			Raw:            newRawToken(hclsyntax.TokenComma),
-			TrailingTrivia: TriviaList{NewWhitespace('\n')},
+			Raw:		newRawToken(hclsyntax.TokenComma),
+			TrailingTrivia:	TriviaList{NewWhitespace('\n')},
 		}
 	}
 	return ObjectConsItemTokens{
 		Equals: Token{
-			Raw:           newRawToken(hclsyntax.TokenEqual),
-			LeadingTrivia: TriviaList{NewWhitespace(' ')},
+			Raw:		newRawToken(hclsyntax.TokenEqual),
+			LeadingTrivia:	TriviaList{NewWhitespace(' ')},
 		},
-		Comma: comma,
+		Comma:	comma,
 	}
 }
 
 // ObjectConsTokens records the tokens associated with an *hclsyntax.ObjectConsExpr.
 type ObjectConsTokens struct {
-	Parentheses Parentheses
+	Parentheses	Parentheses
 
-	OpenBrace  Token
-	Items      []ObjectConsItemTokens
-	CloseBrace Token
+	OpenBrace	Token
+	Items		[]ObjectConsItemTokens
+	CloseBrace	Token
 }
 
 func NewObjectConsTokens(itemCount int) *ObjectConsTokens {
 	var t *ObjectConsTokens
 	return &ObjectConsTokens{
-		OpenBrace:  t.GetOpenBrace(itemCount),
-		Items:      t.GetItems(itemCount),
-		CloseBrace: t.GetCloseBrace(),
+		OpenBrace:	t.GetOpenBrace(itemCount),
+		Items:		t.GetItems(itemCount),
+		CloseBrace:	t.GetCloseBrace(),
 	}
 }
 
@@ -965,8 +965,8 @@ func (t *ObjectConsTokens) GetOpenBrace(itemCount int) Token {
 			openBraceTrailingTrivia = TriviaList{NewWhitespace('\n')}
 		}
 		return Token{
-			Raw:            newRawToken(hclsyntax.TokenOBrace),
-			TrailingTrivia: openBraceTrailingTrivia,
+			Raw:		newRawToken(hclsyntax.TokenOBrace),
+			TrailingTrivia:	openBraceTrailingTrivia,
 		}
 	}
 	return t.OpenBrace
@@ -990,7 +990,7 @@ func (t *ObjectConsTokens) GetCloseBrace() Token {
 	return t.CloseBrace
 }
 
-func (*ObjectConsTokens) isNodeTokens() {}
+func (*ObjectConsTokens) isNodeTokens()	{}
 
 // TraverserTokens is a closed interface implemented by DotTraverserTokens and BracketTraverserTokens
 type TraverserTokens interface {
@@ -1012,10 +1012,10 @@ func NewTraverserTokens(traverser hcl.Traverser) TraverserTokens {
 
 // DotTraverserTokens records the tokens associated with dotted traverser (i.e. '.' <attr>).
 type DotTraverserTokens struct {
-	Parentheses Parentheses
+	Parentheses	Parentheses
 
-	Dot   Token
-	Index Token
+	Dot	Token
+	Index	Token
 }
 
 func NewDotTraverserTokens(index string) *DotTraverserTokens {
@@ -1025,8 +1025,8 @@ func NewDotTraverserTokens(index string) *DotTraverserTokens {
 		indexType = hclsyntax.TokenNumberLit
 	}
 	return &DotTraverserTokens{
-		Dot:   Token{Raw: newRawToken(hclsyntax.TokenDot)},
-		Index: Token{Raw: newRawToken(indexType, index)},
+		Dot:	Token{Raw: newRawToken(hclsyntax.TokenDot)},
+		Index:	Token{Raw: newRawToken(indexType, index)},
 	}
 }
 
@@ -1035,15 +1035,15 @@ func (t *DotTraverserTokens) Range() hcl.Range {
 	return exprRange(filename, t.Parentheses, t.Dot.Range().Start, t.Index.Range().End)
 }
 
-func (*DotTraverserTokens) isTraverserTokens() {}
+func (*DotTraverserTokens) isTraverserTokens()	{}
 
 // BracketTraverserTokens records the tokens associated with a bracketed traverser (i.e. '[' <index> ']').
 type BracketTraverserTokens struct {
-	Parentheses Parentheses
+	Parentheses	Parentheses
 
-	OpenBracket  Token
-	Index        Token
-	CloseBracket Token
+	OpenBracket	Token
+	Index		Token
+	CloseBracket	Token
 }
 
 func NewBracketTraverserTokens(index string) *BracketTraverserTokens {
@@ -1053,9 +1053,9 @@ func NewBracketTraverserTokens(index string) *BracketTraverserTokens {
 		indexType = hclsyntax.TokenNumberLit
 	}
 	return &BracketTraverserTokens{
-		OpenBracket:  Token{Raw: newRawToken(hclsyntax.TokenOBrack)},
-		Index:        Token{Raw: newRawToken(indexType, index)},
-		CloseBracket: Token{Raw: newRawToken(hclsyntax.TokenCBrack)},
+		OpenBracket:	Token{Raw: newRawToken(hclsyntax.TokenOBrack)},
+		Index:		Token{Raw: newRawToken(indexType, index)},
+		CloseBracket:	Token{Raw: newRawToken(hclsyntax.TokenCBrack)},
 	}
 }
 
@@ -1064,7 +1064,7 @@ func (t *BracketTraverserTokens) Range() hcl.Range {
 	return exprRange(filename, t.Parentheses, t.OpenBracket.Range().Start, t.CloseBracket.Range().End)
 }
 
-func (*BracketTraverserTokens) isTraverserTokens() {}
+func (*BracketTraverserTokens) isTraverserTokens()	{}
 
 func newRelativeTraversalTokens(traversal hcl.Traversal) []TraverserTokens {
 	result := make([]TraverserTokens, len(traversal))
@@ -1076,9 +1076,9 @@ func newRelativeTraversalTokens(traversal hcl.Traversal) []TraverserTokens {
 
 // RelativeTraversalTokens records the tokens associated with an *hclsyntax.RelativeTraversalExpr.
 type RelativeTraversalTokens struct {
-	Parentheses Parentheses
+	Parentheses	Parentheses
 
-	Traversal []TraverserTokens
+	Traversal	[]TraverserTokens
 }
 
 func NewRelativeTraversalTokens(traversal hcl.Traversal) *RelativeTraversalTokens {
@@ -1101,21 +1101,21 @@ func (t *RelativeTraversalTokens) GetTraversal(traversal hcl.Traversal) []Traver
 	return t.Traversal
 }
 
-func (*RelativeTraversalTokens) isNodeTokens() {}
+func (*RelativeTraversalTokens) isNodeTokens()	{}
 
 // ScopeTraversalTokens records the tokens associated with an *hclsyntax.ScopeTraversalExpr.
 type ScopeTraversalTokens struct {
-	Parentheses Parentheses
+	Parentheses	Parentheses
 
-	Root      Token
-	Traversal []TraverserTokens
+	Root		Token
+	Traversal	[]TraverserTokens
 }
 
 func NewScopeTraversalTokens(traversal hcl.Traversal) *ScopeTraversalTokens {
 	var t *ScopeTraversalTokens
 	return &ScopeTraversalTokens{
-		Root:      t.GetRoot(traversal),
-		Traversal: t.GetTraversal(traversal),
+		Root:		t.GetRoot(traversal),
+		Traversal:	t.GetTraversal(traversal),
 	}
 }
 
@@ -1141,15 +1141,15 @@ func (t *ScopeTraversalTokens) GetTraversal(traversal hcl.Traversal) []Traverser
 	return t.Traversal
 }
 
-func (*ScopeTraversalTokens) isNodeTokens() {}
+func (*ScopeTraversalTokens) isNodeTokens()	{}
 
 // SplatTokens records the tokens associated with an *hclsyntax.SplatExpr.
 type SplatTokens struct {
-	Parentheses Parentheses
+	Parentheses	Parentheses
 
-	Open  Token
-	Star  Token
-	Close *Token
+	Open	Token
+	Star	Token
+	Close	*Token
 }
 
 func NewSplatTokens(dotted bool) *SplatTokens {
@@ -1160,9 +1160,9 @@ func NewSplatTokens(dotted bool) *SplatTokens {
 		closeT = &Token{Raw: newRawToken(hclsyntax.TokenCBrack)}
 	}
 	return &SplatTokens{
-		Open:  Token{Raw: newRawToken(openType)},
-		Star:  Token{Raw: newRawToken(hclsyntax.TokenStar)},
-		Close: closeT,
+		Open:	Token{Raw: newRawToken(openType)},
+		Star:	Token{Raw: newRawToken(hclsyntax.TokenStar)},
+		Close:	closeT,
 	}
 }
 
@@ -1194,21 +1194,21 @@ func (t *SplatTokens) GetClose() *Token {
 	return t.Close
 }
 
-func (*SplatTokens) isNodeTokens() {}
+func (*SplatTokens) isNodeTokens()	{}
 
 // TemplateTokens records the tokens associated with an *hclsyntax.TemplateExpr.
 type TemplateTokens struct {
-	Parentheses Parentheses
+	Parentheses	Parentheses
 
-	Open  Token
-	Close Token
+	Open	Token
+	Close	Token
 }
 
 func NewTemplateTokens() *TemplateTokens {
 	var t *TemplateTokens
 	return &TemplateTokens{
-		Open:  t.GetOpen(),
-		Close: t.GetClose(),
+		Open:	t.GetOpen(),
+		Close:	t.GetClose(),
 	}
 }
 
@@ -1233,23 +1233,23 @@ func (t *TemplateTokens) GetClose() Token {
 	return t.Close
 }
 
-func (*TemplateTokens) isNodeTokens() {}
+func (*TemplateTokens) isNodeTokens()	{}
 
 // TupleConsTokens records the tokens associated with an *hclsyntax.TupleConsExpr.
 type TupleConsTokens struct {
-	Parentheses Parentheses
+	Parentheses	Parentheses
 
-	OpenBracket  Token
-	Commas       []Token
-	CloseBracket Token
+	OpenBracket	Token
+	Commas		[]Token
+	CloseBracket	Token
 }
 
 func NewTupleConsTokens(elementCount int) *TupleConsTokens {
 	var t *TupleConsTokens
 	return &TupleConsTokens{
-		OpenBracket:  t.GetOpenBracket(),
-		Commas:       t.GetCommas(elementCount),
-		CloseBracket: t.GetCloseBracket(),
+		OpenBracket:	t.GetOpenBracket(),
+		Commas:		t.GetCommas(elementCount),
+		CloseBracket:	t.GetCloseBracket(),
 	}
 }
 
@@ -1289,13 +1289,13 @@ func (t *TupleConsTokens) GetCloseBracket() Token {
 	return t.CloseBracket
 }
 
-func (*TupleConsTokens) isNodeTokens() {}
+func (*TupleConsTokens) isNodeTokens()	{}
 
 // UnaryOpTokens records the tokens associated with an *hclsyntax.UnaryOpExpr.
 type UnaryOpTokens struct {
-	Parentheses Parentheses
+	Parentheses	Parentheses
 
-	Operator Token
+	Operator	Token
 }
 
 func NewUnaryOpTokens(operation *hclsyntax.Operation) *UnaryOpTokens {
@@ -1319,4 +1319,4 @@ func (t *UnaryOpTokens) GetOperator(operation *hclsyntax.Operation) Token {
 	return t.Operator
 }
 
-func (*UnaryOpTokens) isNodeTokens() {}
+func (*UnaryOpTokens) isNodeTokens()	{}

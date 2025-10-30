@@ -23,8 +23,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/testutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
@@ -36,9 +36,9 @@ func TestParseTagFilter(t *testing.T) {
 	}
 
 	tests := []struct {
-		Filter    string
-		WantName  string
-		WantValue *string
+		Filter		string
+		WantName	string
+		WantValue	*string
 	}{
 		// Just tag name
 		{Filter: "", WantName: ""},
@@ -78,16 +78,16 @@ func newContToken(s string) backend.ContinuationToken {
 
 // mockStackSummary implements the backend.StackSummary interface.
 type mockStackSummary struct {
-	name        string
-	LastUpdateF func() *time.Time
+	name		string
+	LastUpdateF	func() *time.Time
 }
 
 func (mss *mockStackSummary) Name() backend.StackReference {
 	name := tokens.MustParseStackName(mss.name)
 	return &backend.MockStackReference{
-		NameV:               name,
-		FullyQualifiedNameV: name.Q(),
-		StringV:             name.String(),
+		NameV:			name,
+		FullyQualifiedNameV:	name.Q(),
+		StringV:		name.String(),
 	}
 }
 
@@ -103,13 +103,13 @@ func (mss *mockStackSummary) ResourceCount() *int {
 }
 
 type stackLSInputs struct {
-	filter      backend.ListStacksFilter
-	inContToken backend.ContinuationToken
+	filter		backend.ListStacksFilter
+	inContToken	backend.ContinuationToken
 }
 
 type stackLSOutputs struct {
-	summaries    []backend.StackSummary
-	outContToken backend.ContinuationToken
+	summaries	[]backend.StackSummary
+	outContToken	backend.ContinuationToken
 }
 
 //nolint:paralleltest // This test uses the global backendInstance variable
@@ -123,7 +123,7 @@ func TestListStacksPagination(t *testing.T) {
 			summaries: []backend.StackSummary{
 				&mockStackSummary{name: "stack-in-page-1"},
 			},
-			outContToken: newContToken("first-cont-token-response"),
+			outContToken:	newContToken("first-cont-token-response"),
 		},
 
 		// Pages 2 and 3. We don't expect a backend to return a nil result of StackSummary objects,
@@ -137,7 +137,7 @@ func TestListStacksPagination(t *testing.T) {
 				&mockStackSummary{name: "stack-in-page-4"},
 				&mockStackSummary{name: "stack-in-page-4"},
 			},
-			outContToken: nil,
+			outContToken:	nil,
 		},
 	}
 
@@ -158,8 +158,8 @@ func TestListStacksPagination(t *testing.T) {
 	// backend calls were made.
 	ctx := context.Background()
 	args := stackLSArgs{
-		orgFilter:  testOrgName,
-		projFilter: testProjName,
+		orgFilter:	testOrgName,
+		projFilter:	testProjName,
 	}
 	if err := runStackLS(ctx, args); err != nil {
 		t.Fatalf("runStackLS returned an error: %v", err)
@@ -201,21 +201,21 @@ func TestListStacksJsonProgress(t *testing.T) {
 		) {
 			return []backend.StackSummary{
 				&mockStackSummary{
-					name: "stack-in-page-1",
+					name:	"stack-in-page-1",
 					LastUpdateF: func() *time.Time {
 						t := mockTime
 						return &t
 					},
 				},
 				&mockStackSummary{
-					name: "stack-in-page-2",
+					name:	"stack-in-page-2",
 					LastUpdateF: func() *time.Time {
 						t := time.Unix(0, 0)
 						return &t
 					},
 				},
 				&mockStackSummary{
-					name: "stack-in-page-3",
+					name:	"stack-in-page-3",
 					LastUpdateF: func() *time.Time {
 						return nil
 					},
@@ -230,9 +230,9 @@ func TestListStacksJsonProgress(t *testing.T) {
 	var buff bytes.Buffer
 	ctx := context.Background()
 	args := stackLSArgs{
-		jsonOut:   true,
-		allStacks: true,
-		stdout:    &buff,
+		jsonOut:	true,
+		allStacks:	true,
+		stdout:		&buff,
 	}
 	err := runStackLS(ctx, args)
 	require.NoError(t, err)
@@ -266,14 +266,14 @@ func TestListStacksJsonNoProgress(t *testing.T) {
 		) {
 			return []backend.StackSummary{
 				&mockStackSummary{
-					name: "stack-in-page-1",
+					name:	"stack-in-page-1",
 					LastUpdateF: func() *time.Time {
 						t := mockTime
 						return &t
 					},
 				},
 				&mockStackSummary{
-					name: "stack-in-page-2",
+					name:	"stack-in-page-2",
 					LastUpdateF: func() *time.Time {
 						return nil
 					},
@@ -288,9 +288,9 @@ func TestListStacksJsonNoProgress(t *testing.T) {
 	var buff bytes.Buffer
 	ctx := context.Background()
 	args := stackLSArgs{
-		jsonOut:   true,
-		allStacks: true,
-		stdout:    &buff,
+		jsonOut:	true,
+		allStacks:	true,
+		stdout:		&buff,
 	}
 	err := runStackLS(ctx, args)
 	require.NoError(t, err)

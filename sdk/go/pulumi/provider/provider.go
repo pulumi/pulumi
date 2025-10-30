@@ -47,8 +47,8 @@ func Construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 
 // ConstructInputs represents the inputs associated with a call to Construct.
 type ConstructInputs struct {
-	ctx    *pulumi.Context
-	inputs map[string]any
+	ctx	*pulumi.Context
+	inputs	map[string]any
 }
 
 // Map returns the inputs as a Map.
@@ -63,8 +63,8 @@ func (inputs ConstructInputs) CopyTo(args any) error {
 
 // ConstructResult is the result of a call to Construct.
 type ConstructResult struct {
-	URN   pulumi.URNInput
-	State pulumi.Input
+	URN	pulumi.URNInput
+	State	pulumi.Input
 }
 
 // NewConstructResult creates a ConstructResult from the resource.
@@ -74,8 +74,8 @@ func NewConstructResult(resource pulumi.ComponentResource) (*ConstructResult, er
 		return nil, err
 	}
 	return &ConstructResult{
-		URN:   urn,
-		State: state,
+		URN:	urn,
+		State:	state,
 	}, nil
 }
 
@@ -106,8 +106,8 @@ func Call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 
 // CallArgs represents the Call's arguments.
 type CallArgs struct {
-	ctx  *pulumi.Context
-	args map[string]any
+	ctx	*pulumi.Context
+	args	map[string]any
 }
 
 // Map returns the args as a Map.
@@ -130,16 +130,16 @@ func (a CallArgs) Self() (pulumi.Resource, error) {
 
 // CallFailure indicates that a call to Call failed; it contains the property and reason for the failure.
 type CallFailure struct {
-	Property string // the property that failed checking.
-	Reason   string // the reason the property failed to check.
+	Property	string	// the property that failed checking.
+	Reason		string	// the reason the property failed to check.
 }
 
 // CallResult is the result of the Call.
 type CallResult struct {
 	// The returned values, if the call was successful.
-	Return pulumi.Input
+	Return	pulumi.Input
 	// The failures if any arguments didn't pass verification.
-	Failures []CallFailure
+	Failures	[]CallFailure
 }
 
 // NewCallResult creates a CallResult from the given result.

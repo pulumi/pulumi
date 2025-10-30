@@ -26,19 +26,19 @@ import (
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
-	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	hclsyntax "github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
-	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	cmdDiag "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/diag"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/newcmd"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/packages"
 
-	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
+	cmdCmd "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/convert"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
@@ -52,8 +52,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
-	aferoUtil "github.com/pulumi/pulumi/pkg/v3/util/afero"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	aferoUtil "github.com/pulumi/pulumi/sdk/v3/pkg/util/afero"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 )
 
 func NewConvertCmd(ws pkgWorkspace.Context) *cobra.Command {
@@ -66,8 +66,8 @@ func NewConvertCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var name string
 
 	cmd := &cobra.Command{
-		Use:   "convert",
-		Short: "Convert Pulumi programs from a supported source program into other supported languages",
+		Use:	"convert",
+		Short:	"Convert Pulumi programs from a supported source program into other supported languages",
 		Long: "Convert Pulumi programs from a supported source program into other supported languages.\n" +
 			"\n" +
 			"The source program to convert will default to the current working directory.\n" +
@@ -349,7 +349,7 @@ func runConvert(
 
 	baseMapper, err := convert.NewBasePluginMapper(
 		convert.DefaultWorkspace(),
-		from, /*conversionKey*/
+		from,	/*conversionKey*/
 		convert.ProviderFactoryFromHost(ctx, pCtx.Host),
 		installPlugin,
 		mappings,
@@ -393,12 +393,12 @@ func runConvert(
 		defer contract.IgnoreClose(grpcServer)
 
 		resp, err := converter.ConvertProgram(pCtx.Request(), &plugin.ConvertProgramRequest{
-			SourceDirectory:           cwd,
-			TargetDirectory:           pclDirectory,
-			MapperTarget:              grpcServer.Addr(),
-			LoaderTarget:              grpcServer.Addr(),
-			Args:                      args,
-			GeneratedProjectDirectory: outDir,
+			SourceDirectory:		cwd,
+			TargetDirectory:		pclDirectory,
+			MapperTarget:			grpcServer.Addr(),
+			LoaderTarget:			grpcServer.Addr(),
+			Args:				args,
+			GeneratedProjectDirectory:	outDir,
 		})
 		if err != nil {
 			return err
@@ -604,17 +604,17 @@ func generateAndLinkSdksForPackages(
 
 		sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
 		err = packages.LinkPackage(&packages.LinkPackageContext{
-			Writer:            os.Stdout,
-			Project:           proj,
-			Language:          language,
-			Root:              "./",
-			Pkg:               pkgSchema,
-			PluginContext:     pctx,
-			PackageDescriptor: packageDescriptor,
-			Out:               sdkRelPath,
+			Writer:			os.Stdout,
+			Project:		proj,
+			Language:		language,
+			Root:			"./",
+			Pkg:			pkgSchema,
+			PluginContext:		pctx,
+			PackageDescriptor:	packageDescriptor,
+			Out:			sdkRelPath,
 
 			// Don't install the SDK if we've been told to `--generate-only`.
-			Install: !generateOnly,
+			Install:	!generateOnly,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to link SDK to project: %w", err)

@@ -22,10 +22,10 @@ import (
 
 // ObjectDiff holds the results of diffing two object property maps.
 type ObjectDiff struct {
-	Adds    PropertyMap               // properties in this map are created in the new.
-	Deletes PropertyMap               // properties in this map are deleted from the new.
-	Sames   PropertyMap               // properties in this map are the same.
-	Updates map[PropertyKey]ValueDiff // properties in this map are changed in the new.
+	Adds	PropertyMap			// properties in this map are created in the new.
+	Deletes	PropertyMap			// properties in this map are deleted from the new.
+	Sames	PropertyMap			// properties in this map are the same.
+	Updates	map[PropertyKey]ValueDiff	// properties in this map are changed in the new.
 }
 
 // Added returns true if the property 'k' has been added in the new property set.
@@ -97,18 +97,18 @@ func (diff *ObjectDiff) ChangedKeys() []PropertyKey {
 
 // ValueDiff holds the results of diffing two property values.
 type ValueDiff struct {
-	Old    PropertyValue // the old value.
-	New    PropertyValue // the new value.
-	Array  *ArrayDiff    // the array's detailed diffs (only for arrays).
-	Object *ObjectDiff   // the object's detailed diffs (only for objects).
+	Old	PropertyValue	// the old value.
+	New	PropertyValue	// the new value.
+	Array	*ArrayDiff	// the array's detailed diffs (only for arrays).
+	Object	*ObjectDiff	// the object's detailed diffs (only for objects).
 }
 
 // ArrayDiff holds the results of diffing two arrays of property values.
 type ArrayDiff struct {
-	Adds    map[int]PropertyValue // elements added in the new.
-	Deletes map[int]PropertyValue // elements deleted in the new.
-	Sames   map[int]PropertyValue // elements the same in both.
-	Updates map[int]ValueDiff     // elements that have changed in the new.
+	Adds	map[int]PropertyValue	// elements added in the new.
+	Deletes	map[int]PropertyValue	// elements deleted in the new.
+	Sames	map[int]PropertyValue	// elements the same in both.
+	Updates	map[int]ValueDiff	// elements that have changed in the new.
 }
 
 // Len computes the length of this array, taking into account adds, deletes, sames, and updates.
@@ -142,9 +142,9 @@ type DiffOption interface {
 }
 
 type diffOptions struct {
-	ignoreKeyFuncs []func(key PropertyKey) bool
-	ignorePathFunc []func(key PropertyPath) bool
-	initialPath    PropertyPath
+	ignoreKeyFuncs	[]func(key PropertyKey) bool
+	ignorePathFunc	[]func(key PropertyPath) bool
+	initialPath	PropertyPath
 }
 
 // IgnoreKeyFunc is the callback type for Diff's ignore option.
@@ -161,9 +161,9 @@ type IgnorePathFunc func(path PropertyPath) bool
 // The passed in property path will be mutated via append.
 type InitialPropertyPath PropertyPath
 
-func (opt IgnoreKeyFunc) apply(o *diffOptions)       { o.ignoreKeyFuncs = append(o.ignoreKeyFuncs, opt) }
-func (opt IgnorePathFunc) apply(o *diffOptions)      { o.ignorePathFunc = append(o.ignorePathFunc, opt) }
-func (opt InitialPropertyPath) apply(o *diffOptions) { o.initialPath = PropertyPath(opt) }
+func (opt IgnoreKeyFunc) apply(o *diffOptions)		{ o.ignoreKeyFuncs = append(o.ignoreKeyFuncs, opt) }
+func (opt IgnorePathFunc) apply(o *diffOptions)		{ o.ignorePathFunc = append(o.ignorePathFunc, opt) }
+func (opt InitialPropertyPath) apply(o *diffOptions)	{ o.initialPath = PropertyPath(opt) }
 
 // Diff returns a diffset by comparing the property map to another; it returns nil if there are no diffs.
 func (props PropertyMap) DiffWithOptions(other PropertyMap, options ...DiffOption) *ObjectDiff {
@@ -247,10 +247,10 @@ func (props PropertyMap) diff(other PropertyMap, opts diffOptions, path Property
 		return nil
 	}
 	return &ObjectDiff{
-		Adds:    adds,
-		Deletes: deletes,
-		Sames:   sames,
-		Updates: updates,
+		Adds:		adds,
+		Deletes:	deletes,
+		Sames:		sames,
+		Updates:	updates,
 	}
 }
 
@@ -301,13 +301,13 @@ func (v PropertyValue) diff(other PropertyValue, opts diffOptions, path Property
 			return nil
 		}
 		return &ValueDiff{
-			Old: v,
-			New: other,
+			Old:	v,
+			New:	other,
 			Array: &ArrayDiff{
-				Adds:    adds,
-				Deletes: deletes,
-				Sames:   sames,
-				Updates: updates,
+				Adds:		adds,
+				Deletes:	deletes,
+				Sames:		sames,
+				Updates:	updates,
 			},
 		}
 	}
@@ -316,9 +316,9 @@ func (v PropertyValue) diff(other PropertyValue, opts diffOptions, path Property
 		new := other.ObjectValue()
 		if diff := old.diff(new, opts, path); diff != nil {
 			return &ValueDiff{
-				Old:    v,
-				New:    other,
-				Object: diff,
+				Old:	v,
+				New:	other,
+				Object:	diff,
 			}
 		}
 		return nil
@@ -533,10 +533,10 @@ func (props PropertyMap) DiffIncludeUnknowns(other PropertyMap, ignoreKeys ...Ig
 		return nil
 	}
 	return &ObjectDiff{
-		Adds:    adds,
-		Deletes: deletes,
-		Sames:   sames,
-		Updates: updates,
+		Adds:		adds,
+		Deletes:	deletes,
+		Sames:		sames,
+		Updates:	updates,
 	}
 }
 
@@ -570,13 +570,13 @@ func (v PropertyValue) DiffIncludeUnknowns(other PropertyValue, ignoreKeys ...Ig
 			return nil
 		}
 		return &ValueDiff{
-			Old: v,
-			New: other,
+			Old:	v,
+			New:	other,
 			Array: &ArrayDiff{
-				Adds:    adds,
-				Deletes: deletes,
-				Sames:   sames,
-				Updates: updates,
+				Adds:		adds,
+				Deletes:	deletes,
+				Sames:		sames,
+				Updates:	updates,
 			},
 		}
 	}
@@ -585,9 +585,9 @@ func (v PropertyValue) DiffIncludeUnknowns(other PropertyValue, ignoreKeys ...Ig
 		new := other.ObjectValue()
 		if diff := old.DiffIncludeUnknowns(new, ignoreKeys...); diff != nil {
 			return &ValueDiff{
-				Old:    v,
-				New:    other,
-				Object: diff,
+				Old:	v,
+				New:	other,
+				Object:	diff,
 			}
 		}
 		return nil

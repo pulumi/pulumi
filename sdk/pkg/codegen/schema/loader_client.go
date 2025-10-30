@@ -31,8 +31,8 @@ import (
 
 // LoaderClient reflects a loader service, loaded dynamically from the engine process over gRPC.
 type LoaderClient struct {
-	conn      *grpc.ClientConn        // the underlying gRPC connection.
-	clientRaw codegenrpc.LoaderClient // the raw loader client; usually unsafe to use directly.
+	conn		*grpc.ClientConn	// the underlying gRPC connection.
+	clientRaw	codegenrpc.LoaderClient	// the raw loader client; usually unsafe to use directly.
 }
 
 var _ ReferenceLoader = (*LoaderClient)(nil)
@@ -50,8 +50,8 @@ func NewLoaderClient(target string) (*LoaderClient, error) {
 	}
 
 	l := &LoaderClient{
-		conn:      conn,
-		clientRaw: codegenrpc.NewLoaderClient(conn),
+		conn:		conn,
+		clientRaw:	codegenrpc.NewLoaderClient(conn),
 	}
 
 	return l, nil
@@ -69,8 +69,8 @@ func (l *LoaderClient) Close() error {
 
 func (l *LoaderClient) LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error) {
 	return l.LoadPackageReferenceV2(context.TODO(), &PackageDescriptor{
-		Name:    pkg,
-		Version: version,
+		Name:		pkg,
+		Version:	version,
 	})
 }
 
@@ -88,17 +88,17 @@ func (l *LoaderClient) LoadPackageReferenceV2(
 	var parameterization *codegenrpc.Parameterization
 	if descriptor.Parameterization != nil {
 		parameterization = &codegenrpc.Parameterization{
-			Name:    descriptor.Parameterization.Name,
-			Version: descriptor.Parameterization.Version.String(),
-			Value:   descriptor.Parameterization.Value,
+			Name:		descriptor.Parameterization.Name,
+			Version:	descriptor.Parameterization.Version.String(),
+			Value:		descriptor.Parameterization.Value,
 		}
 	}
 
 	resp, err := l.clientRaw.GetSchema(ctx, &codegenrpc.GetSchemaRequest{
-		Package:          descriptor.Name,
-		Version:          versionString,
-		DownloadUrl:      descriptor.DownloadURL,
-		Parameterization: parameterization,
+		Package:		descriptor.Name,
+		Version:		versionString,
+		DownloadUrl:		descriptor.DownloadURL,
+		Parameterization:	parameterization,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

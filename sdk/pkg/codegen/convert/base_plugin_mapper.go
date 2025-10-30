@@ -31,30 +31,30 @@ import (
 
 // basePluginMapper is a Mapper implementation that uses a list of installed plugins to source mappings.
 type basePluginMapper struct {
-	lock sync.Mutex
+	lock	sync.Mutex
 
 	// The key to use when querying provider plugins for mappings, to identify the type of the source provider.
 	// "terraform" is an example of a conversion key which identifies mapping requests where the results are expected to
 	// map Terraform resources to Pulumi resources, for instance.
-	conversionKey string
+	conversionKey	string
 
 	// A factory function that the mapper can use to instantiate provider plugins.
-	providerFactory ProviderFactory
+	providerFactory	ProviderFactory
 
 	// A function that the mapper can use to install plugins when it fails to locate them.
-	installPlugin func(pluginName string) *semver.Version
+	installPlugin	func(pluginName string) *semver.Version
 
 	// A list of plugins that the mapper has enumerated as being available to serve mapping requests.
-	pluginSpecs []basePluginMapperSpec
+	pluginSpecs	[]basePluginMapperSpec
 
 	// A list of hardcoded mappings read from files supplied to the mapper at construction time that will take priority
 	// over any mappings returned by plugins.
-	entries map[string][]byte
+	entries	map[string][]byte
 }
 
 type basePluginMapperSpec struct {
-	name    string
-	version semver.Version
+	name	string
+	version	semver.Version
 }
 
 // Workspace encapsulates an environment containing an enumerable set of plugins.
@@ -126,8 +126,8 @@ func NewBasePluginMapper(
 		contract.Assertf(has, "latest version should be in map")
 
 		plugins = append(plugins, basePluginMapperSpec{
-			name:    plugin.Name,
-			version: version,
+			name:		plugin.Name,
+			version:	version,
 		})
 	}
 
@@ -153,11 +153,11 @@ func NewBasePluginMapper(
 	}
 
 	return &basePluginMapper{
-		conversionKey:   conversionKey,
-		providerFactory: providerFactory,
-		installPlugin:   installPlugin,
-		pluginSpecs:     plugins,
-		entries:         entries,
+		conversionKey:		conversionKey,
+		providerFactory:	providerFactory,
+		installPlugin:		installPlugin,
+		pluginSpecs:		plugins,
+		entries:		entries,
 	}, nil
 }
 
@@ -227,8 +227,8 @@ func (m *basePluginMapper) GetMapping(
 		if version != nil {
 			i := len(m.pluginSpecs)
 			m.pluginSpecs = append(m.pluginSpecs, basePluginMapperSpec{
-				name:    pluginName,
-				version: *version,
+				name:		pluginName,
+				version:	*version,
 			})
 			m.pluginSpecs[0], m.pluginSpecs[i] = m.pluginSpecs[i], m.pluginSpecs[0]
 		}
@@ -272,8 +272,8 @@ func (m *basePluginMapper) GetMapping(
 			}
 
 			mapping, err := providerPlugin.GetMapping(ctx, plugin.GetMappingRequest{
-				Key:      m.conversionKey,
-				Provider: provider,
+				Key:		m.conversionKey,
+				Provider:	provider,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("could not get advertized %s mapping for provider %s: %w", m.conversionKey, provider, err)
@@ -293,8 +293,8 @@ func (m *basePluginMapper) GetMapping(
 		// none of them matched. We'll try a blind GetMapping call with an empty provider name to see if the plugin has
 		// a mapping that matches that way.
 		mapping, err := providerPlugin.GetMapping(ctx, plugin.GetMappingRequest{
-			Key:      m.conversionKey,
-			Provider: "",
+			Key:		m.conversionKey,
+			Provider:	"",
 		})
 		if err != nil {
 			return nil, fmt.Errorf("could not get %s mapping for provider %s: %w", m.conversionKey, provider, err)

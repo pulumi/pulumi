@@ -23,8 +23,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 

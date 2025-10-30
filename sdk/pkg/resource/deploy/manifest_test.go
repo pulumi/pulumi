@@ -32,16 +32,16 @@ func TestManifest(t *testing.T) {
 		m := Manifest{
 			Plugins: []workspace.PluginInfo{
 				{
-					Name:    "plug-1",
-					Path:    "/foo",
-					Kind:    apitype.LanguagePlugin,
-					Version: &ver,
+					Name:		"plug-1",
+					Path:		"/foo",
+					Kind:		apitype.LanguagePlugin,
+					Version:	&ver,
 				},
 				{
-					Name:    "plug-2",
-					Path:    "/bar",
-					Kind:    apitype.ResourcePlugin,
-					Version: &ver,
+					Name:		"plug-2",
+					Path:		"/bar",
+					Kind:		apitype.ResourcePlugin,
+					Version:	&ver,
 				},
 			},
 		}
@@ -54,7 +54,7 @@ func TestManifest(t *testing.T) {
 	})
 	t.Run("DeserializeManifest", func(t *testing.T) {
 		t.Parallel()
-		t.Run("bad version", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
+		t.Run("bad version", func(t *testing.T) {	//nolint:paralleltest // golangci-lint v2 upgrade
 			_, err := DeserializeManifest(apitype.ManifestV1{
 				Plugins: []apitype.PluginInfoV1{
 					{
@@ -65,13 +65,13 @@ func TestManifest(t *testing.T) {
 			assert.ErrorContains(t, err, "Invalid character(s) found in major number")
 		})
 
-		t.Run("ok", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
-			t.Run("has plugins", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
+		t.Run("ok", func(t *testing.T) {	//nolint:paralleltest // golangci-lint v2 upgrade
+			t.Run("has plugins", func(t *testing.T) {	//nolint:paralleltest // golangci-lint v2 upgrade
 				m, err := DeserializeManifest(apitype.ManifestV1{
 					Plugins: []apitype.PluginInfoV1{
 						{
-							Name:    "plugin",
-							Version: "1.0.0",
+							Name:		"plugin",
+							Version:	"1.0.0",
 						},
 						{
 							Name: "plugin-no-version",
@@ -86,7 +86,7 @@ func TestManifest(t *testing.T) {
 					},
 				}, m.Serialize())
 			})
-			t.Run("no plugins", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
+			t.Run("no plugins", func(t *testing.T) {	//nolint:paralleltest // golangci-lint v2 upgrade
 				m, err := DeserializeManifest(apitype.ManifestV1{
 					Plugins: []apitype.PluginInfoV1{},
 				})

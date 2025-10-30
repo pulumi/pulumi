@@ -21,8 +21,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -32,18 +32,18 @@ import (
 )
 
 type promptAssertion[T any, I any] struct {
-	ExpectedDefault T
-	Return          I
+	ExpectedDefault	T
+	Return		I
 }
 
 // quick mock, it has a list of values to return for each prompt
 type promptHandlersMock struct {
-	T                        *testing.T
-	ConfirmationResponses    []promptAssertion[bool, bool]
-	PromptUserResponses      []promptAssertion[string, string]
-	PromptValueResponses     []promptAssertion[string, string]
-	PromptUserMultiResponses []promptAssertion[[]string, []string]
-	PrintTexts               []string
+	T				*testing.T
+	ConfirmationResponses		[]promptAssertion[bool, bool]
+	PromptUserResponses		[]promptAssertion[string, string]
+	PromptValueResponses		[]promptAssertion[string, string]
+	PromptUserMultiResponses	[]promptAssertion[[]string, []string]
+	PrintTexts			[]string
 }
 
 func (p *promptHandlersMock) AssertComplete() {
@@ -139,7 +139,7 @@ func TestDSConfigureGit(t *testing.T) {
 		gitSSHPrivateKeyValue := ""
 
 		prompts := &promptHandlersMock{
-			T: t,
+			T:	t,
 			ConfirmationResponses: []promptAssertion[bool, bool]{
 				{true, true},
 			},
@@ -167,13 +167,13 @@ func TestDSConfigureGit(t *testing.T) {
 		}
 
 		d := &deploymentSettingsCommandDependencies{
-			Deployment: &workspace.ProjectStackDeployment{},
-			WorkDir:    workDir,
+			Deployment:	&workspace.ProjectStackDeployment{},
+			WorkDir:	workDir,
 			DisplayOptions: &display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: true,
+				Color:		cmdutil.GetGlobalColorization(),
+				IsInteractive:	true,
 			},
-			Prompts: prompts,
+			Prompts:	prompts,
 			Backend: &backend.MockBackend{
 				GetGHAppIntegrationF: func(ctx context.Context, stack backend.Stack) (*apitype.GitHubAppIntegration, error) {
 					return &apitype.GitHubAppIntegration{
@@ -203,7 +203,7 @@ func TestDSConfigureGit(t *testing.T) {
 		gitSSHPrivateKeyValue := ""
 
 		prompts := &promptHandlersMock{
-			T: t,
+			T:	t,
 			ConfirmationResponses: []promptAssertion[bool, bool]{
 				{true, true},
 			},
@@ -232,24 +232,24 @@ func TestDSConfigureGit(t *testing.T) {
 				DeploymentSettings: apitype.DeploymentSettings{
 					SourceContext: &apitype.SourceContext{
 						Git: &apitype.SourceContextGit{
-							RepoDir: "test",
-							Branch:  "staging",
+							RepoDir:	"test",
+							Branch:		"staging",
 						},
 					},
 					GitHub: &apitype.DeploymentSettingsGitHub{
-						Repository:          "pulumi/test",
-						PreviewPullRequests: true,
-						DeployCommits:       true,
-						PullRequestTemplate: true,
+						Repository:		"pulumi/test",
+						PreviewPullRequests:	true,
+						DeployCommits:		true,
+						PullRequestTemplate:	true,
 					},
 				},
 			},
-			WorkDir: workDir,
+			WorkDir:	workDir,
 			DisplayOptions: &display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: true,
+				Color:		cmdutil.GetGlobalColorization(),
+				IsInteractive:	true,
 			},
-			Prompts: prompts,
+			Prompts:	prompts,
 			Backend: &backend.MockBackend{
 				GetGHAppIntegrationF: func(ctx context.Context, stack backend.Stack) (*apitype.GitHubAppIntegration, error) {
 					return &apitype.GitHubAppIntegration{
@@ -279,7 +279,7 @@ func TestDSConfigureGit(t *testing.T) {
 		gitSSHPrivateKeyValue := ""
 
 		prompts := &promptHandlersMock{
-			T: t,
+			T:	t,
 			ConfirmationResponses: []promptAssertion[bool, bool]{
 				{true, false},
 			},
@@ -303,15 +303,15 @@ func TestDSConfigureGit(t *testing.T) {
 						Git: &apitype.SourceContextGit{
 							GitAuth: &apitype.GitAuthConfig{
 								BasicAuth: &apitype.BasicAuth{
-									UserName: apitype.SecretValue{Value: "user"},
-									Password: apitype.SecretValue{Ciphertext: "ciphered"},
+									UserName:	apitype.SecretValue{Value: "user"},
+									Password:	apitype.SecretValue{Ciphertext: "ciphered"},
 								},
 							},
 						},
 					},
 				},
 			},
-			WorkDir: workDir,
+			WorkDir:	workDir,
 			Backend: &backend.MockBackend{
 				EncryptStackDeploymentSettingsSecretF: func(
 					ctx context.Context, stack backend.Stack, secret string,
@@ -326,10 +326,10 @@ func TestDSConfigureGit(t *testing.T) {
 				},
 			},
 			DisplayOptions: &display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: true,
+				Color:		cmdutil.GetGlobalColorization(),
+				IsInteractive:	true,
 			},
-			Prompts: prompts,
+			Prompts:	prompts,
 		}
 
 		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
@@ -350,7 +350,7 @@ func TestDSConfigureGit(t *testing.T) {
 		gitSSHPrivateKeyValue := ""
 
 		prompts := &promptHandlersMock{
-			T: t,
+			T:	t,
 			ConfirmationResponses: []promptAssertion[bool, bool]{
 				{true, false},
 			},
@@ -370,8 +370,8 @@ func TestDSConfigureGit(t *testing.T) {
 		}
 
 		d := &deploymentSettingsCommandDependencies{
-			Deployment: &workspace.ProjectStackDeployment{},
-			WorkDir:    workDir,
+			Deployment:	&workspace.ProjectStackDeployment{},
+			WorkDir:	workDir,
 			Backend: &backend.MockBackend{
 				EncryptStackDeploymentSettingsSecretF: func(
 					ctx context.Context, stack backend.Stack, secret string,
@@ -386,10 +386,10 @@ func TestDSConfigureGit(t *testing.T) {
 				},
 			},
 			DisplayOptions: &display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: true,
+				Color:		cmdutil.GetGlobalColorization(),
+				IsInteractive:	true,
 			},
-			Prompts: prompts,
+			Prompts:	prompts,
 		}
 
 		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
@@ -412,7 +412,7 @@ func TestDSConfigureGit(t *testing.T) {
 		gitSSHPrivateKeyValue := "private_key"
 
 		prompts := &promptHandlersMock{
-			T: t,
+			T:	t,
 			ConfirmationResponses: []promptAssertion[bool, bool]{
 				{true, false},
 			},
@@ -431,8 +431,8 @@ func TestDSConfigureGit(t *testing.T) {
 		}
 
 		d := &deploymentSettingsCommandDependencies{
-			Deployment: &workspace.ProjectStackDeployment{},
-			WorkDir:    workDir,
+			Deployment:	&workspace.ProjectStackDeployment{},
+			WorkDir:	workDir,
 			Backend: &backend.MockBackend{
 				EncryptStackDeploymentSettingsSecretF: func(
 					ctx context.Context, stack backend.Stack, secret string,
@@ -450,10 +450,10 @@ func TestDSConfigureGit(t *testing.T) {
 				},
 			},
 			DisplayOptions: &display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: true,
+				Color:		cmdutil.GetGlobalColorization(),
+				IsInteractive:	true,
 			},
-			Prompts: prompts,
+			Prompts:	prompts,
 		}
 
 		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
@@ -480,7 +480,7 @@ func TestDSConfigureGit(t *testing.T) {
 		gitSSHPrivateKeyValue := "private_key"
 
 		prompts := &promptHandlersMock{
-			T: t,
+			T:	t,
 			ConfirmationResponses: []promptAssertion[bool, bool]{
 				{true, true},
 			},
@@ -499,8 +499,8 @@ func TestDSConfigureGit(t *testing.T) {
 		}
 
 		d := &deploymentSettingsCommandDependencies{
-			Deployment: &workspace.ProjectStackDeployment{},
-			WorkDir:    workDir,
+			Deployment:	&workspace.ProjectStackDeployment{},
+			WorkDir:	workDir,
 			Backend: &backend.MockBackend{
 				EncryptStackDeploymentSettingsSecretF: func(
 					ctx context.Context, stack backend.Stack, secret string,
@@ -518,10 +518,10 @@ func TestDSConfigureGit(t *testing.T) {
 				},
 			},
 			DisplayOptions: &display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: true,
+				Color:		cmdutil.GetGlobalColorization(),
+				IsInteractive:	true,
 			},
-			Prompts: prompts,
+			Prompts:	prompts,
 		}
 
 		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
@@ -548,11 +548,11 @@ func TestDSConfigureGit(t *testing.T) {
 		gitSSHPrivateKeyValue := "private_key"
 
 		prompts := &promptHandlersMock{
-			T: t,
+			T:	t,
 			ConfirmationResponses: []promptAssertion[bool, bool]{
 				{true, false},
 			},
-			PromptUserResponses: []promptAssertion[string, string]{},
+			PromptUserResponses:	[]promptAssertion[string, string]{},
 			PromptValueResponses: []promptAssertion[string, string]{
 				{"goproj", "goproj"},
 				{"refs/heads/master", "master"},
@@ -564,8 +564,8 @@ func TestDSConfigureGit(t *testing.T) {
 		}
 
 		d := &deploymentSettingsCommandDependencies{
-			Deployment: &workspace.ProjectStackDeployment{},
-			WorkDir:    workDir,
+			Deployment:	&workspace.ProjectStackDeployment{},
+			WorkDir:	workDir,
 			Backend: &backend.MockBackend{
 				EncryptStackDeploymentSettingsSecretF: func(
 					ctx context.Context, stack backend.Stack, secret string,
@@ -583,10 +583,10 @@ func TestDSConfigureGit(t *testing.T) {
 				},
 			},
 			DisplayOptions: &display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: true,
+				Color:		cmdutil.GetGlobalColorization(),
+				IsInteractive:	true,
 			},
-			Prompts: prompts,
+			Prompts:	prompts,
 		}
 
 		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
@@ -603,7 +603,7 @@ func TestDSConfigureGit(t *testing.T) {
 		gitSSHPrivateKeyValue := ""
 
 		prompts := &promptHandlersMock{
-			T: t,
+			T:	t,
 			PromptUserResponses: []promptAssertion[string, string]{
 				{optUserPass, optNoAuthentication},
 			},
@@ -621,15 +621,15 @@ func TestDSConfigureGit(t *testing.T) {
 						Git: &apitype.SourceContextGit{
 							GitAuth: &apitype.GitAuthConfig{
 								BasicAuth: &apitype.BasicAuth{
-									UserName: apitype.SecretValue{Value: "user"},
-									Password: apitype.SecretValue{Ciphertext: "ciphered"},
+									UserName:	apitype.SecretValue{Value: "user"},
+									Password:	apitype.SecretValue{Ciphertext: "ciphered"},
 								},
 							},
 						},
 					},
 				},
 			},
-			WorkDir: workDir,
+			WorkDir:	workDir,
 			Backend: &backend.MockBackend{
 				EncryptStackDeploymentSettingsSecretF: func(
 					ctx context.Context, stack backend.Stack, secret string,
@@ -639,10 +639,10 @@ func TestDSConfigureGit(t *testing.T) {
 				},
 			},
 			DisplayOptions: &display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: true,
+				Color:		cmdutil.GetGlobalColorization(),
+				IsInteractive:	true,
 			},
-			Prompts: prompts,
+			Prompts:	prompts,
 		}
 
 		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
@@ -662,7 +662,7 @@ func TestDSConfigureAdvancedSettings(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		t.Parallel()
 		prompts := &promptHandlersMock{
-			T: t,
+			T:	t,
 			PromptUserMultiResponses: []promptAssertion[[]string, []string]{
 				{
 					[]string{
@@ -676,12 +676,12 @@ func TestDSConfigureAdvancedSettings(t *testing.T) {
 			},
 		}
 		d := &deploymentSettingsCommandDependencies{
-			Deployment: &workspace.ProjectStackDeployment{},
+			Deployment:	&workspace.ProjectStackDeployment{},
 			DisplayOptions: &display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: true,
+				Color:		cmdutil.GetGlobalColorization(),
+				IsInteractive:	true,
 			},
-			Prompts: prompts,
+			Prompts:	prompts,
 		}
 
 		err := configureAdvancedSettings(d)
@@ -696,7 +696,7 @@ func TestDSConfigureAdvancedSettings(t *testing.T) {
 	t.Run("already configured", func(t *testing.T) {
 		t.Parallel()
 		prompts := &promptHandlersMock{
-			T: t,
+			T:	t,
 			PromptUserMultiResponses: []promptAssertion[[]string, []string]{
 				{
 					[]string{
@@ -712,17 +712,17 @@ func TestDSConfigureAdvancedSettings(t *testing.T) {
 				DeploymentSettings: apitype.DeploymentSettings{
 					Operation: &apitype.OperationContext{
 						Options: &apitype.OperationContextOptions{
-							SkipInstallDependencies:     true,
-							SkipIntermediateDeployments: true,
+							SkipInstallDependencies:	true,
+							SkipIntermediateDeployments:	true,
 						},
 					},
 				},
 			},
 			DisplayOptions: &display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: true,
+				Color:		cmdutil.GetGlobalColorization(),
+				IsInteractive:	true,
 			},
-			Prompts: prompts,
+			Prompts:	prompts,
 		}
 
 		err := configureAdvancedSettings(d)
@@ -742,7 +742,7 @@ func TestDSConfigureImageRepository(t *testing.T) {
 		t.Parallel()
 
 		prompts := &promptHandlersMock{
-			T: t,
+			T:	t,
 			ConfirmationResponses: []promptAssertion[bool, bool]{
 				{false, true},
 			},
@@ -754,7 +754,7 @@ func TestDSConfigureImageRepository(t *testing.T) {
 		}
 
 		d := &deploymentSettingsCommandDependencies{
-			Deployment: &workspace.ProjectStackDeployment{},
+			Deployment:	&workspace.ProjectStackDeployment{},
 			Backend: &backend.MockBackend{
 				EncryptStackDeploymentSettingsSecretF: func(
 					ctx context.Context, stack backend.Stack, secret string,
@@ -764,10 +764,10 @@ func TestDSConfigureImageRepository(t *testing.T) {
 				},
 			},
 			DisplayOptions: &display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: true,
+				Color:		cmdutil.GetGlobalColorization(),
+				IsInteractive:	true,
 			},
-			Prompts: prompts,
+			Prompts:	prompts,
 		}
 
 		err := configureImageRepository(d)
@@ -787,7 +787,7 @@ func TestDSConfigureImageRepository(t *testing.T) {
 		t.Parallel()
 
 		prompts := &promptHandlersMock{
-			T: t,
+			T:	t,
 			ConfirmationResponses: []promptAssertion[bool, bool]{
 				{false, true},
 			},
@@ -803,9 +803,9 @@ func TestDSConfigureImageRepository(t *testing.T) {
 				DeploymentSettings: apitype.DeploymentSettings{
 					Executor: &apitype.ExecutorContext{
 						ExecutorImage: &apitype.DockerImage{
-							Reference: "image_name",
+							Reference:	"image_name",
 							Credentials: &apitype.DockerImageCredentials{
-								Username: "user",
+								Username:	"user",
 								Password: apitype.SecretValue{
 									Ciphertext: "something",
 								},
@@ -823,10 +823,10 @@ func TestDSConfigureImageRepository(t *testing.T) {
 				},
 			},
 			DisplayOptions: &display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: true,
+				Color:		cmdutil.GetGlobalColorization(),
+				IsInteractive:	true,
 			},
-			Prompts: prompts,
+			Prompts:	prompts,
 		}
 
 		err := configureImageRepository(d)
@@ -846,7 +846,7 @@ func TestDSConfigureImageRepository(t *testing.T) {
 		t.Parallel()
 
 		prompts := &promptHandlersMock{
-			T: t,
+			T:	t,
 			ConfirmationResponses: []promptAssertion[bool, bool]{
 				{false, true},
 			},
@@ -857,12 +857,12 @@ func TestDSConfigureImageRepository(t *testing.T) {
 		}
 
 		d := &deploymentSettingsCommandDependencies{
-			Deployment: &workspace.ProjectStackDeployment{},
+			Deployment:	&workspace.ProjectStackDeployment{},
 			DisplayOptions: &display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: true,
+				Color:		cmdutil.GetGlobalColorization(),
+				IsInteractive:	true,
 			},
-			Prompts: prompts,
+			Prompts:	prompts,
 		}
 
 		err := configureImageRepository(d)

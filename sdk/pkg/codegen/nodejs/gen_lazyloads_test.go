@@ -26,13 +26,13 @@ func TestLazyLoadsGeneration(t *testing.T) {
 
 	ll := newLazyLoadGen()
 
-	t.Run("resource", func(t *testing.T) { //nolint:paralleltest
+	t.Run("resource", func(t *testing.T) {	//nolint:paralleltest
 		var buf bytes.Buffer
 		ll.genReexport(&buf, fileInfo{
-			fileType: resourceFileType,
+			fileType:	resourceFileType,
 			resourceFileInfo: resourceFileInfo{
-				resourceClassName:         "MyRes",
-				resourceArgsInterfaceName: "MyResArgs",
+				resourceClassName:		"MyRes",
+				resourceArgsInterfaceName:	"MyResArgs",
 			},
 		}, "./myResource")
 
@@ -45,14 +45,14 @@ utilities.lazyLoad(exports, ["MyRes"], () => require("./myResource"));
 			buf.String())
 	})
 
-	t.Run("resource-with-state", func(t *testing.T) { //nolint:paralleltest
+	t.Run("resource-with-state", func(t *testing.T) {	//nolint:paralleltest
 		var buf bytes.Buffer
 		ll.genReexport(&buf, fileInfo{
-			fileType: resourceFileType,
+			fileType:	resourceFileType,
 			resourceFileInfo: resourceFileInfo{
-				resourceClassName:         "MyRes1",
-				resourceArgsInterfaceName: "MyRes1Args",
-				stateInterfaceName:        "MyRes1State",
+				resourceClassName:		"MyRes1",
+				resourceArgsInterfaceName:	"MyRes1Args",
+				stateInterfaceName:		"MyRes1State",
 			},
 		}, "./myResource1")
 
@@ -65,14 +65,14 @@ utilities.lazyLoad(exports, ["MyRes1"], () => require("./myResource1"));
 			buf.String())
 	})
 
-	t.Run("resource-with-methods", func(t *testing.T) { //nolint:paralleltest
+	t.Run("resource-with-methods", func(t *testing.T) {	//nolint:paralleltest
 		var buf bytes.Buffer
 		ll.genReexport(&buf, fileInfo{
-			fileType: resourceFileType,
+			fileType:	resourceFileType,
 			resourceFileInfo: resourceFileInfo{
-				resourceClassName:         "MyRes2",
-				resourceArgsInterfaceName: "MyRes2Args",
-				methodsNamespaceName:      "MyRes2",
+				resourceClassName:		"MyRes2",
+				resourceArgsInterfaceName:	"MyRes2Args",
+				methodsNamespaceName:		"MyRes2",
 			},
 		}, "./myResource2")
 
@@ -82,14 +82,14 @@ import { MyRes2 } from "./myResource2";
 `, buf.String())
 	})
 
-	t.Run("function", func(t *testing.T) { //nolint:paralleltest
+	t.Run("function", func(t *testing.T) {	//nolint:paralleltest
 		var buf bytes.Buffer
 		ll.genReexport(&buf, fileInfo{
-			fileType: functionFileType,
+			fileType:	functionFileType,
 			functionFileInfo: functionFileInfo{
-				functionName:                "myFunc",
-				functionArgsInterfaceName:   "MyFuncArgs",
-				functionResultInterfaceName: "MyFuncResult",
+				functionName:			"myFunc",
+				functionArgsInterfaceName:	"MyFuncArgs",
+				functionResultInterfaceName:	"MyFuncResult",
 			},
 		}, "./myFunc")
 
@@ -100,16 +100,16 @@ utilities.lazyLoad(exports, ["myFunc"], () => require("./myFunc"));
 `, buf.String())
 	})
 
-	t.Run("function-with-output-version", func(t *testing.T) { //nolint:paralleltest
+	t.Run("function-with-output-version", func(t *testing.T) {	//nolint:paralleltest
 		var buf bytes.Buffer
 		ll.genReexport(&buf, fileInfo{
-			fileType: functionFileType,
+			fileType:	functionFileType,
 			functionFileInfo: functionFileInfo{
-				functionName:                           "myFunc1",
-				functionArgsInterfaceName:              "MyFunc1Args",
-				functionResultInterfaceName:            "MyFunc1Result",
-				functionOutputVersionName:              "myFunc1Output",
-				functionOutputVersionArgsInterfaceName: "MyFunc1OutputArgs",
+				functionName:				"myFunc1",
+				functionArgsInterfaceName:		"MyFunc1Args",
+				functionResultInterfaceName:		"MyFunc1Result",
+				functionOutputVersionName:		"myFunc1Output",
+				functionOutputVersionArgsInterfaceName:	"MyFunc1OutputArgs",
 			},
 		}, "./myFunc1")
 
@@ -121,7 +121,7 @@ utilities.lazyLoad(exports, ["myFunc1","myFunc1Output"], () => require("./myFunc
 `, buf.String())
 	})
 
-	t.Run("fallthrough-reexport", func(t *testing.T) { //nolint:paralleltest
+	t.Run("fallthrough-reexport", func(t *testing.T) {	//nolint:paralleltest
 		var buf bytes.Buffer
 		ll.genReexport(&buf, fileInfo{
 			fileType: otherFileType,

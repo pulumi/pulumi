@@ -58,11 +58,11 @@ func newMockClient(server *httptest.Server) *Client {
 	httpClient := http.DefaultClient
 
 	return &Client{
-		apiURL:     server.URL,
-		apiToken:   "",
-		apiUser:    "",
-		diag:       nil,
-		httpClient: httpClient,
+		apiURL:		server.URL,
+		apiToken:	"",
+		apiUser:	"",
+		diag:		nil,
+		httpClient:	httpClient,
 		restClient: &defaultRESTClient{
 			client: &defaultHTTPClient{
 				client: httpClient,
@@ -147,8 +147,8 @@ func TestAPIVersionMetadataHeaders(t *testing.T) {
 
 	// Act.
 	_, _, _, err := client.GetCLIVersionInfo(context.Background(), map[string]string{
-		"First":  "foo",
-		"Second": "bar",
+		"First":	"foo",
+		"Second":	"bar",
 	})
 
 	// Assert.
@@ -180,8 +180,8 @@ func TestGzip(t *testing.T) {
 	err = client.PatchUpdateCheckpoint(context.Background(), UpdateIdentifier{
 		StackIdentifier: identifier,
 	}, &apitype.UntypedDeployment{
-		Version:    3,
-		Deployment: json.RawMessage("{}"),
+		Version:	3,
+		Deployment:	json.RawMessage("{}"),
 	}, tok)
 	require.NoError(t, err)
 
@@ -211,8 +211,8 @@ func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
 	require.NoError(t, err)
 
 	untypedDeployment, err := json.Marshal(apitype.UntypedDeployment{
-		Version:    3,
-		Deployment: serializedDeployment,
+		Version:	3,
+		Deployment:	serializedDeployment,
 	})
 	require.NoError(t, err)
 
@@ -282,9 +282,9 @@ func TestGetCapabilities(t *testing.T) {
 		require.NoError(t, err)
 		actualResp := apitype.CapabilitiesResponse{
 			Capabilities: []apitype.APICapabilityConfig{{
-				Version:       3,
-				Capability:    apitype.DeltaCheckpointUploads,
-				Configuration: json.RawMessage(cfgJSON),
+				Version:	3,
+				Capability:	apitype.DeltaCheckpointUploads,
+				Configuration:	json.RawMessage(cfgJSON),
 			}, {
 				Capability: apitype.BatchEncrypt,
 			}},
@@ -360,9 +360,9 @@ func TestDeploymentSettingsApi(t *testing.T) {
 		c := newMockClient(s)
 		stack, _ := tokens.ParseStackName("stack")
 		resp, err := c.GetStackDeploymentSettings(context.Background(), StackIdentifier{
-			Owner:   "owner",
-			Project: "project",
-			Stack:   stack,
+			Owner:		"owner",
+			Project:	"project",
+			Stack:		stack,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, resp)
@@ -415,7 +415,7 @@ func TestListOrgTemplates(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, apitype.ListOrgTemplatesResponse{
-			OrgHasTemplates: true,
+			OrgHasTemplates:	true,
 			Templates: map[string][]*apitype.PulumiTemplateRemote{
 				"source1": {
 					{SourceName: "source1", Name: "some-name", TemplateURL: "example.com"},
@@ -504,23 +504,23 @@ func TestGetPackage(t *testing.T) {
 
 	metadata := func() apitype.PackageMetadata {
 		return apitype.PackageMetadata{
-			Name:              "my-package",
-			Publisher:         "my-publisher",
-			Source:            "my-source",
-			Version:           semver.Version{Major: 1},
-			Title:             "Example Package",
-			Description:       "This is an example package.",
-			LogoURL:           "https://example.com/logo.png",
-			RepoURL:           "https://github.com/example/package",
-			Category:          "utilities",
-			IsFeatured:        true,
-			PackageTypes:      []apitype.PackageType{"native", "component"},
-			PackageStatus:     apitype.PackageStatusGA,
-			ReadmeURL:         "https://example.com/readme",
-			SchemaURL:         "https://example.com/schema",
-			PluginDownloadURL: "https://example.com/download",
-			CreatedAt:         time.Date(2023, time.October, 1, 12, 0, 0, 0, time.UTC),
-			Visibility:        apitype.VisibilityPublic,
+			Name:			"my-package",
+			Publisher:		"my-publisher",
+			Source:			"my-source",
+			Version:		semver.Version{Major: 1},
+			Title:			"Example Package",
+			Description:		"This is an example package.",
+			LogoURL:		"https://example.com/logo.png",
+			RepoURL:		"https://github.com/example/package",
+			Category:		"utilities",
+			IsFeatured:		true,
+			PackageTypes:		[]apitype.PackageType{"native", "component"},
+			PackageStatus:		apitype.PackageStatusGA,
+			ReadmeURL:		"https://example.com/readme",
+			SchemaURL:		"https://example.com/schema",
+			PluginDownloadURL:	"https://example.com/download",
+			CreatedAt:		time.Date(2023, time.October, 1, 12, 0, 0, 0, time.UTC),
+			Visibility:		apitype.VisibilityPublic,
 		}
 	}
 
@@ -579,20 +579,20 @@ func TestListPackages(t *testing.T) {
 		// Create a mock response with package metadata
 		expectedPackages := []apitype.PackageMetadata{
 			{
-				Name:          "my-package-1",
-				Publisher:     "my-publisher",
-				Source:        "my-source",
-				Version:       semver.Version{Major: 1},
-				PackageStatus: apitype.PackageStatusGA,
-				Visibility:    apitype.VisibilityPrivate,
+				Name:		"my-package-1",
+				Publisher:	"my-publisher",
+				Source:		"my-source",
+				Version:	semver.Version{Major: 1},
+				PackageStatus:	apitype.PackageStatusGA,
+				Visibility:	apitype.VisibilityPrivate,
 			},
 			{
-				Name:          "my-package-2",
-				Publisher:     "my-publisher",
-				Source:        "my-source",
-				Version:       semver.Version{Major: 2},
-				PackageStatus: apitype.PackageStatusGA,
-				Visibility:    apitype.VisibilityPrivate,
+				Name:		"my-package-2",
+				Publisher:	"my-publisher",
+				Source:		"my-source",
+				Version:	semver.Version{Major: 2},
+				PackageStatus:	apitype.PackageStatusGA,
+				Visibility:	apitype.VisibilityPrivate,
 			},
 		}
 
@@ -629,34 +629,34 @@ func TestListPackages(t *testing.T) {
 		// First page response
 		firstPagePackages := []apitype.PackageMetadata{
 			{
-				Name:          "my-package-1",
-				Publisher:     "my-publisher",
-				Source:        "my-source",
-				Version:       semver.Version{Major: 1},
-				PackageStatus: apitype.PackageStatusGA,
-				Visibility:    apitype.VisibilityPrivate,
+				Name:		"my-package-1",
+				Publisher:	"my-publisher",
+				Source:		"my-source",
+				Version:	semver.Version{Major: 1},
+				PackageStatus:	apitype.PackageStatusGA,
+				Visibility:	apitype.VisibilityPrivate,
 			},
 		}
 
 		secondPagePackages := []apitype.PackageMetadata{
 			{
-				Name:          "my-package-2",
-				Publisher:     "my-publisher",
-				Source:        "my-source",
-				Version:       semver.Version{Major: 2},
-				PackageStatus: apitype.PackageStatusGA,
-				Visibility:    apitype.VisibilityPrivate,
+				Name:		"my-package-2",
+				Publisher:	"my-publisher",
+				Source:		"my-source",
+				Version:	semver.Version{Major: 2},
+				PackageStatus:	apitype.PackageStatusGA,
+				Visibility:	apitype.VisibilityPrivate,
 			},
 		}
 
 		thirdPagePackages := []apitype.PackageMetadata{
 			{
-				Name:          "my-package-3",
-				Publisher:     "my-publisher",
-				Source:        "my-source",
-				Version:       semver.Version{Major: 3},
-				PackageStatus: apitype.PackageStatusGA,
-				Visibility:    apitype.VisibilityPrivate,
+				Name:		"my-package-3",
+				Publisher:	"my-publisher",
+				Source:		"my-source",
+				Version:	semver.Version{Major: 3},
+				PackageStatus:	apitype.PackageStatusGA,
+				Visibility:	apitype.VisibilityPrivate,
 			},
 		}
 
@@ -676,8 +676,8 @@ func TestListPackages(t *testing.T) {
 				assert.NotContains(t, "continuationToken", req.URL.String())
 
 				responseData, err = json.Marshal(apitype.ListPackagesResponse{
-					Packages:          firstPagePackages,
-					ContinuationToken: ptr("next-page-token-1"),
+					Packages:		firstPagePackages,
+					ContinuationToken:	ptr("next-page-token-1"),
 				})
 				require.NoError(t, err)
 			case 1:
@@ -686,8 +686,8 @@ func TestListPackages(t *testing.T) {
 					req.URL.String())
 
 				responseData, err = json.Marshal(apitype.ListPackagesResponse{
-					Packages:          secondPagePackages,
-					ContinuationToken: ptr("next-page-token-2"),
+					Packages:		secondPagePackages,
+					ContinuationToken:	ptr("next-page-token-2"),
 				})
 				require.NoError(t, err)
 			case 2:
@@ -717,11 +717,11 @@ func TestListPackages(t *testing.T) {
 
 		expectedPackages := append(append(firstPagePackages, secondPagePackages...), thirdPagePackages...)
 		assert.Equal(t, expectedPackages, searchResults)
-		assert.Equal(t, 3, requestCount) // Ensure both requests were made
+		assert.Equal(t, 3, requestCount)	// Ensure both requests were made
 	})
 }
 
-func ptr[T any](v T) *T { return &v }
+func ptr[T any](v T) *T	{ return &v }
 
 func TestCallCopilot(t *testing.T) {
 	t.Parallel()

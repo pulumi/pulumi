@@ -19,7 +19,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,9 +29,9 @@ func TestShowStackName(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		full     bool
-		desc     string
-		expected string
+		full		bool
+		desc		string
+		expected	string
 	}{
 		{true, "full name", "text-corp/proj1/dev"},
 		{false, "just stack name", "dev"},
@@ -46,8 +46,8 @@ func TestShowStackName(t *testing.T) {
 			s := backend.MockStack{
 				RefF: func() backend.StackReference {
 					return &backend.MockStackReference{
-						StringV: "text-corp/proj1/dev",
-						NameV:   tokens.MustParseStackName("dev"),
+						StringV:	"text-corp/proj1/dev",
+						NameV:		tokens.MustParseStackName("dev"),
 					}
 				},
 			}
@@ -63,51 +63,51 @@ func TestStringifyOutput(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		desc string
-		give any
-		want string
+		desc	string
+		give	any
+		want	string
 	}{
 		{"int", 42, "42"},
 		{"string", "ABC", "ABC"},
 		{
-			desc: "array",
-			give: []string{"hello", "goodbye"},
-			want: `["hello","goodbye"]`,
+			desc:	"array",
+			give:	[]string{"hello", "goodbye"},
+			want:	`["hello","goodbye"]`,
 		},
 		{
-			desc: "object",
+			desc:	"object",
 			give: map[string]any{
-				"foo": 42,
+				"foo":	42,
 				"bar": map[string]any{
 					"baz": true,
 				},
 			},
-			want: `{"bar":{"baz":true},"foo":42}`,
+			want:	`{"bar":{"baz":true},"foo":42}`,
 		},
 		{
-			desc: "special characters",
-			give: "pass&word",
-			want: "pass&word",
-		},
-		{
-			// https://github.com/pulumi/pulumi/issues/10561
-			desc: "html/string",
-			give: "<html>",
-			want: "<html>",
+			desc:	"special characters",
+			give:	"pass&word",
+			want:	"pass&word",
 		},
 		{
 			// https://github.com/pulumi/pulumi/issues/10561
-			desc: "html/list",
-			give: []string{"<html>"},
-			want: `["<html>"]`,
+			desc:	"html/string",
+			give:	"<html>",
+			want:	"<html>",
 		},
 		{
 			// https://github.com/pulumi/pulumi/issues/10561
-			desc: "html/object",
+			desc:	"html/list",
+			give:	[]string{"<html>"},
+			want:	`["<html>"]`,
+		},
+		{
+			// https://github.com/pulumi/pulumi/issues/10561
+			desc:	"html/object",
 			give: map[string]any{
 				"foo": "<html>",
 			},
-			want: `{"foo":"<html>"}`,
+			want:	`{"foo":"<html>"}`,
 		},
 	}
 

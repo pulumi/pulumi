@@ -68,14 +68,14 @@ func (i info) CarriageReturn(out io.Writer) {
 }
 
 func (i info) CursorUp(out io.Writer, count int) {
-	if count == 0 { // Should never be the case, but be tolerant
+	if count == 0 {	// Should never be the case, but be tolerant
 		return
 	}
 	i.ti.Fprintf(out, terminfo.ParmUpCursor, count)
 }
 
 func (i info) CursorDown(out io.Writer, count int) {
-	if count == 0 { // Should never be the case, but be tolerant
+	if count == 0 {	// Should never be the case, but be tolerant
 		return
 	}
 	i.ti.Fprintf(out, terminfo.ParmDownCursor, count)
@@ -113,14 +113,14 @@ func (i defaultInfo) CarriageReturn(out io.Writer) {
 }
 
 func (i defaultInfo) CursorUp(out io.Writer, count int) {
-	if count == 0 { // Should never be the case, but be tolerant
+	if count == 0 {	// Should never be the case, but be tolerant
 		return
 	}
 	fmt.Fprintf(out, "\x1b[%dA", count)
 }
 
 func (i defaultInfo) CursorDown(out io.Writer, count int) {
-	if count == 0 { // Should never be the case, but be tolerant
+	if count == 0 {	// Should never be the case, but be tolerant
 		return
 	}
 	fmt.Fprintf(out, "\x1b[%dB", count)

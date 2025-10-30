@@ -27,13 +27,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/backenderr"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate/client"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/b64"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -91,7 +91,7 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 func TestMissingPulumiAccessToken(t *testing.T) {
 	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 
-	{ // Disable interactive mode
+	{	// Disable interactive mode
 		disableInteractive := cmdutil.DisableInteractive
 		cmdutil.DisableInteractive = true
 		t.Cleanup(func() {
@@ -186,71 +186,71 @@ func TestValueOrDefaultURL(t *testing.T) {
 func TestDefaultOrganizationPriority(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name          string
-		getDefaultOrg func() (string, error)
-		getUserOrg    func() (string, error)
-		wantOrg       string
-		wantErr       bool
+		name		string
+		getDefaultOrg	func() (string, error)
+		getUserOrg	func() (string, error)
+		wantOrg		string
+		wantErr		bool
 	}{
 		{
-			name: "default org set",
+			name:	"default org set",
 			getDefaultOrg: func() (string, error) {
 				return "default-org", nil
 			},
 			getUserOrg: func() (string, error) {
 				return "", nil
 			},
-			wantOrg: "default-org",
+			wantOrg:	"default-org",
 		},
 		{
-			name: "user org set",
+			name:	"user org set",
 			getDefaultOrg: func() (string, error) {
 				return "", nil
 			},
 			getUserOrg: func() (string, error) {
 				return "user-org", nil
 			},
-			wantOrg: "user-org",
+			wantOrg:	"user-org",
 		},
 		{
-			name: "no org set",
+			name:	"no org set",
 			getDefaultOrg: func() (string, error) {
 				return "", nil
 			},
 			getUserOrg: func() (string, error) {
 				return "", nil
 			},
-			wantErr: true,
+			wantErr:	true,
 		},
 		{
-			name: "both orgs set",
+			name:	"both orgs set",
 			getDefaultOrg: func() (string, error) {
 				return "default-org", nil
 			},
 			getUserOrg: func() (string, error) {
 				return "user-org", nil
 			},
-			wantOrg: "default-org",
+			wantOrg:	"default-org",
 		},
 		{
-			name: "default org set, user org error",
+			name:	"default org set, user org error",
 			getDefaultOrg: func() (string, error) {
 				return "default-org", nil
 			},
 			getUserOrg: func() (string, error) {
 				return "", errors.New("user org error")
 			},
-			wantOrg: "default-org",
+			wantOrg:	"default-org",
 		},
 		{
-			name: "user org set, default org error",
+			name:	"user org set, default org error",
 			getDefaultOrg: func() (string, error) {
 				return "", errors.New("default org error")
 			},
 			getUserOrg: func() (string, error) {
 				return "user-org", nil
 			},
-			wantOrg: "user-org",
+			wantOrg:	"user-org",
 		},
 	}
 	for _, tt := range tests {
@@ -294,7 +294,7 @@ func TestDisableIntegrityChecking(t *testing.T) {
 
 	// make up a bad stack
 	deployment := apitype.UntypedDeployment{
-		Version: 3,
+		Version:	3,
 		Deployment: json.RawMessage(`{
 			"resources": [
 				{
@@ -330,8 +330,8 @@ func TestCloudBackend_GetCloudRegistry(t *testing.T) {
 	t.Parallel()
 	mockClient := &client.Client{}
 	b := &cloudBackend{
-		client: mockClient,
-		d:      diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
+		client:	mockClient,
+		d:	diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
 	}
 
 	registry, err := b.GetCloudRegistry()
@@ -350,9 +350,9 @@ func TestCopilotExplainer(t *testing.T) {
 	copilotResponse, err := json.Marshal(apitype.CopilotResponse{
 		ThreadMessages: []apitype.CopilotThreadMessage{
 			{
-				Role:    "assistant",
-				Kind:    "response",
-				Content: json.RawMessage(`"Test summary of changes"`),
+				Role:		"assistant",
+				Kind:		"response",
+				Content:	json.RawMessage(`"Test summary of changes"`),
 			},
 		},
 	})
@@ -370,9 +370,9 @@ func TestCopilotExplainer(t *testing.T) {
 				return nil, err
 			}
 			return &http.Response{
-				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(bytes.NewReader(copilotResponse)),
-				Header:     make(http.Header),
+				StatusCode:	http.StatusOK,
+				Body:		io.NopCloser(bytes.NewReader(copilotResponse)),
+				Header:		make(http.Header),
 			}, nil
 		},
 	}
@@ -381,18 +381,18 @@ func TestCopilotExplainer(t *testing.T) {
 	apiClient := client.NewClient(PulumiCloudURL, "test-token", false, diagtest.LogSink(t))
 	apiClient.WithHTTPClient(&http.Client{Transport: mockTransport})
 	b := &cloudBackend{
-		client: apiClient,
-		d:      diagtest.LogSink(t),
+		client:	apiClient,
+		d:	diagtest.LogSink(t),
 	}
 
 	// Call explainer
 	stackRef := cloudBackendReference{
-		name:    tokens.MustParseStackName("foo"),
-		owner:   "test-owner",
-		project: "test-project",
+		name:		tokens.MustParseStackName("foo"),
+		owner:		"test-owner",
+		project:	"test-project",
 	}
 	op := backend.UpdateOperation{
-		Proj: &workspace.Project{Name: "test-project"},
+		Proj:	&workspace.Project{Name: "test-project"},
 		Opts: backend.UpdateOptions{
 			Display: display.Options{
 				Color: colors.Never,
@@ -401,8 +401,8 @@ func TestCopilotExplainer(t *testing.T) {
 	}
 	events := []engine.Event{
 		engine.NewEvent(engine.StdoutEventPayload{
-			Message: "Hello, world!",
-			Color:   colors.Never,
+			Message:	"Hello, world!",
+			Color:		colors.Never,
 		}),
 	}
 	summary, err := b.Explain(context.Background(), stackRef, apitype.UpdateUpdate, op, events)
@@ -466,11 +466,11 @@ func TestListStackNames(t *testing.T) {
 	// Test ListStackNames with limited pagination to avoid excessive stack accumulation
 	projectName := "testproj-list-stacks"
 	filter := backend.ListStackNamesFilter{
-		Project: &projectName, // Filter to just our test project to reduce scope
+		Project: &projectName,	// Filter to just our test project to reduce scope
 	}
 	var allStackRefs []backend.StackReference
 	var token backend.ContinuationToken
-	maxPages := 10 // Increase from 5 to 10 to give more chances to find stacks
+	maxPages := 10	// Increase from 5 to 10 to give more chances to find stacks
 
 	// Fetch limited pages to test pagination functionality
 	foundAllTestStacks := false
@@ -569,7 +569,7 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 	// Test both methods with limited pagination to avoid excessive stack accumulation
 	projectName := "testproj-list-stacks"
 	filter := backend.ListStacksFilter{
-		Project: &projectName, // Filter to just our test project to reduce scope
+		Project: &projectName,	// Filter to just our test project to reduce scope
 	}
 	maxPages := 10
 
@@ -607,8 +607,8 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 
 	// Convert to ListStackNamesFilter for the ListStackNames call
 	namesFilter := backend.ListStackNamesFilter{
-		Project:      filter.Project,
-		Organization: filter.Organization,
+		Project:	filter.Project,
+		Organization:	filter.Organization,
 	}
 
 	for page := 0; page < maxPages; page++ {
@@ -692,9 +692,9 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	capabilities := func() []apitype.APICapabilityConfig {
 		if v4 {
 			return []apitype.APICapabilityConfig{{
-				Capability:    apitype.DeploymentSchemaVersion,
-				Version:       1,
-				Configuration: json.RawMessage(`{"version":4}`),
+				Capability:	apitype.DeploymentSchemaVersion,
+				Version:	1,
+				Configuration:	json.RawMessage(`{"version":4}`),
 			}}
 		}
 		return nil
@@ -736,8 +736,8 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	// Test 1: v4 not supported: send v3 expect v3.
 
 	_, err = b.CreateStack(ctx, ref, "", &apitype.UntypedDeployment{
-		Version:    3,
-		Deployment: json.RawMessage("{}"),
+		Version:	3,
+		Deployment:	json.RawMessage("{}"),
 	}, nil)
 	require.NoError(t, err)
 
@@ -748,9 +748,9 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	// Test 2: v4 not supported: send v4 expect v3.
 
 	_, err = b.CreateStack(ctx, ref, "", &apitype.UntypedDeployment{
-		Version:    4,
-		Features:   []string{"refreshBeforeUpdate"},
-		Deployment: json.RawMessage("{}"),
+		Version:	4,
+		Features:	[]string{"refreshBeforeUpdate"},
+		Deployment:	json.RawMessage("{}"),
 	}, nil)
 	require.NoError(t, err)
 
@@ -765,8 +765,8 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = b.CreateStack(ctx, ref, "", &apitype.UntypedDeployment{
-		Version:    3,
-		Deployment: json.RawMessage("{}"),
+		Version:	3,
+		Deployment:	json.RawMessage("{}"),
 	}, nil)
 	require.NoError(t, err)
 
@@ -777,9 +777,9 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	// Test 4: v4 supported: send v4 expect v4.
 
 	_, err = b.CreateStack(ctx, ref, "", &apitype.UntypedDeployment{
-		Version:    4,
-		Features:   []string{"refreshBeforeUpdate"},
-		Deployment: json.RawMessage("{}"),
+		Version:	4,
+		Features:	[]string{"refreshBeforeUpdate"},
+		Deployment:	json.RawMessage("{}"),
 	}, nil)
 	require.NoError(t, err)
 
@@ -810,9 +810,9 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 	capabilities := func() []apitype.APICapabilityConfig {
 		if v4 {
 			return []apitype.APICapabilityConfig{{
-				Capability:    apitype.DeploymentSchemaVersion,
-				Version:       1,
-				Configuration: json.RawMessage(`{"version":4}`),
+				Capability:	apitype.DeploymentSchemaVersion,
+				Version:	1,
+				Configuration:	json.RawMessage(`{"version":4}`),
 			}}
 		}
 		return nil
@@ -870,8 +870,8 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 	// Test 1: v4 not supported: send v3 expect v3.
 
 	err = b.ImportDeployment(ctx, s, &apitype.UntypedDeployment{
-		Version:    3,
-		Deployment: json.RawMessage("{}"),
+		Version:	3,
+		Deployment:	json.RawMessage("{}"),
 	})
 	require.NoError(t, err)
 
@@ -882,9 +882,9 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 	// Test 2: v4 not supported: send v4 expect v3.
 
 	err = b.ImportDeployment(ctx, s, &apitype.UntypedDeployment{
-		Version:    4,
-		Features:   []string{"refreshBeforeUpdate"},
-		Deployment: json.RawMessage("{}"),
+		Version:	4,
+		Features:	[]string{"refreshBeforeUpdate"},
+		Deployment:	json.RawMessage("{}"),
 	})
 	require.NoError(t, err)
 
@@ -899,8 +899,8 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 	require.NoError(t, err)
 
 	err = b.ImportDeployment(ctx, s, &apitype.UntypedDeployment{
-		Version:    3,
-		Deployment: json.RawMessage("{}"),
+		Version:	3,
+		Deployment:	json.RawMessage("{}"),
 	})
 	require.NoError(t, err)
 
@@ -911,9 +911,9 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 	// Test 4: v4 supported: send v4 expect v4.
 
 	err = b.ImportDeployment(ctx, s, &apitype.UntypedDeployment{
-		Version:    4,
-		Features:   []string{"refreshBeforeUpdate"},
-		Deployment: json.RawMessage("{}"),
+		Version:	4,
+		Features:	[]string{"refreshBeforeUpdate"},
+		Deployment:	json.RawMessage("{}"),
 	})
 	require.NoError(t, err)
 
@@ -927,11 +927,11 @@ func TestIsExplainPreviewEnabled(t *testing.T) {
 
 	enabled := true
 	b := &cloudBackend{
-		copilotEnabledForCurrentProject: &enabled,
+		copilotEnabledForCurrentProject:	&enabled,
 		capabilities: promise.Run(func() (apitype.Capabilities, error) {
 			return apitype.Capabilities{CopilotExplainPreviewV1: true}, nil
 		}),
-		d: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
+		d:	diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
 	}
 
 	result := b.IsExplainPreviewEnabled(context.Background(), display.Options{})

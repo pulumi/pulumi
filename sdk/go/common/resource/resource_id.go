@@ -117,8 +117,8 @@ func NewUniqueName(randomSeed []byte, prefix string, randlen, maxlen int, charse
 		hash := crypto.SHA256.New()
 		hash.Write(randomSeed)
 		seed := hash.Sum(nil)
-		bufsize := 1024 // Same bufsize as used by frand.New.
-		rounds := 12    // Same rounds as used by frand.New.
+		bufsize := 1024	// Same bufsize as used by frand.New.
+		rounds := 12	// Same rounds as used by frand.New.
 		random = frand.NewCustom(seed, bufsize, rounds)
 	}
 

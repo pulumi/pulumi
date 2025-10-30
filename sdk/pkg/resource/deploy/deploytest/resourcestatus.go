@@ -30,8 +30,8 @@ import (
 )
 
 type ResourceStatus struct {
-	conn   *grpc.ClientConn
-	client pulumirpc.ResourceStatusClient
+	conn	*grpc.ClientConn
+	client	pulumirpc.ResourceStatusClient
 }
 
 func NewResourceStatus(address string) (*ResourceStatus, error) {
@@ -45,8 +45,8 @@ func NewResourceStatus(address string) (*ResourceStatus, error) {
 	}
 	client := pulumirpc.NewResourceStatusClient(conn)
 	return &ResourceStatus{
-		conn:   conn,
-		client: client,
+		conn:	conn,
+		client:	client,
 	}, nil
 }
 
@@ -60,8 +60,8 @@ func (rs *ResourceStatus) PublishViewSteps(token string, steps []ViewStep) error
 		return fmt.Errorf("marshaling steps: %w", err)
 	}
 	req := &pulumirpc.PublishViewStepsRequest{
-		Token: token,
-		Steps: marshaledSteps,
+		Token:	token,
+		Steps:	marshaledSteps,
 	}
 	_, err = rs.client.PublishViewSteps(context.Background(), req)
 	if err != nil {
@@ -84,15 +84,15 @@ func (rs *ResourceStatus) marshalStep(step ViewStep) (*pulumirpc.ViewStep, error
 	detailedDiff := rs.unmarshalDetailedDiff(step.DetailedDiff)
 
 	return &pulumirpc.ViewStep{
-		Op:              rs.marshalOp(step.Op),
-		Status:          rs.marshalStatus(step.Status),
-		Error:           step.Error,
-		Old:             rs.marshalState(step.Old),
-		New:             rs.marshalState(step.New),
-		Keys:            keys,
-		Diffs:           diffs,
-		DetailedDiff:    detailedDiff,
-		HasDetailedDiff: len(detailedDiff) > 0,
+		Op:			rs.marshalOp(step.Op),
+		Status:			rs.marshalStatus(step.Status),
+		Error:			step.Error,
+		Old:			rs.marshalState(step.Old),
+		New:			rs.marshalState(step.New),
+		Keys:			keys,
+		Diffs:			diffs,
+		DetailedDiff:		detailedDiff,
+		HasDetailedDiff:	len(detailedDiff) > 0,
 	}, nil
 }
 
@@ -122,8 +122,8 @@ func (rs *ResourceStatus) unmarshalDetailedDiff(m map[string]plugin.PropertyDiff
 		}
 
 		result[path] = &pulumirpc.PropertyDiff{
-			Kind:      kind,
-			InputDiff: diff.InputDiff,
+			Kind:		kind,
+			InputDiff:	diff.InputDiff,
 		}
 	}
 	return result
@@ -185,49 +185,49 @@ func (rs *ResourceStatus) marshalState(state *ViewStepState) *pulumirpc.ViewStep
 	}
 
 	inputs, err := plugin.MarshalProperties(state.Inputs, plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
+		KeepUnknowns:	true,
+		KeepSecrets:	true,
+		KeepResources:	true,
 	})
 	if err != nil {
 		panic(fmt.Errorf("marshaling inputs: %w", err))
 	}
 
 	outputs, err := plugin.MarshalProperties(state.Outputs, plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
+		KeepUnknowns:	true,
+		KeepSecrets:	true,
+		KeepResources:	true,
 	})
 	if err != nil {
 		panic(fmt.Errorf("marshaling outputs: %w", err))
 	}
 
 	return &pulumirpc.ViewStepState{
-		Type:       string(state.Type),
-		Name:       state.Name,
-		ParentType: string(state.ParentType),
-		ParentName: state.ParentName,
-		Inputs:     inputs,
-		Outputs:    outputs,
+		Type:		string(state.Type),
+		Name:		state.Name,
+		ParentType:	string(state.ParentType),
+		ParentName:	state.ParentName,
+		Inputs:		inputs,
+		Outputs:	outputs,
 	}
 }
 
 type ViewStep struct {
-	Op           apitype.OpType
-	Status       resource.Status
-	Error        string
-	Old          *ViewStepState
-	New          *ViewStepState
-	Keys         []resource.PropertyKey
-	Diffs        []resource.PropertyKey
-	DetailedDiff map[string]plugin.PropertyDiff
+	Op		apitype.OpType
+	Status		resource.Status
+	Error		string
+	Old		*ViewStepState
+	New		*ViewStepState
+	Keys		[]resource.PropertyKey
+	Diffs		[]resource.PropertyKey
+	DetailedDiff	map[string]plugin.PropertyDiff
 }
 
 type ViewStepState struct {
-	Type       tokens.Type
-	Name       string
-	ParentType tokens.Type
-	ParentName string
-	Inputs     resource.PropertyMap
-	Outputs    resource.PropertyMap
+	Type		tokens.Type
+	Name		string
+	ParentType	tokens.Type
+	ParentName	string
+	Inputs		resource.PropertyMap
+	Outputs		resource.PropertyMap
 }

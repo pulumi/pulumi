@@ -25,15 +25,15 @@ const (
 	// ConsoleDomainEnvVar overrides the way we infer the domain we assume the Pulumi Console will
 	// be served from, and instead just use this value. e.g. so links to the stack update go to
 	// https://pulumi.example.com/org/project/stack/updates/2 instead.
-	ConsoleDomainEnvVar = "PULUMI_CONSOLE_DOMAIN"
+	ConsoleDomainEnvVar	= "PULUMI_CONSOLE_DOMAIN"
 
 	// PulumiCloudURL is the Cloud URL used if no environment or explicit cloud is chosen.
-	PulumiCloudURL = "https://" + defaultAPIDomainPrefix + "pulumi.com"
+	PulumiCloudURL	= "https://" + defaultAPIDomainPrefix + "pulumi.com"
 
 	// defaultAPIDomainPrefix is the assumed Cloud URL prefix for typical Pulumi Cloud API endpoints.
-	defaultAPIDomainPrefix = "api."
+	defaultAPIDomainPrefix	= "api."
 	// defaultConsoleDomainPrefix is the assumed Cloud URL prefix typically used for the Pulumi Console.
-	defaultConsoleDomainPrefix = "app."
+	defaultConsoleDomainPrefix	= "app."
 )
 
 // cloudConsoleURL returns a URL to the Pulumi Cloud Console, rooted at cloudURL. If there is

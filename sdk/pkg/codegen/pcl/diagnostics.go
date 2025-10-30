@@ -19,7 +19,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
 )
 
 func errorf(subject hcl.Range, f string, args ...any) *hcl.Diagnostic {
@@ -29,10 +29,10 @@ func errorf(subject hcl.Range, f string, args ...any) *hcl.Diagnostic {
 func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ...any) *hcl.Diagnostic {
 	message := fmt.Sprintf(f, args...)
 	return &hcl.Diagnostic{
-		Severity: severity,
-		Summary:  message,
-		Detail:   message,
-		Subject:  &subject,
+		Severity:	severity,
+		Summary:	message,
+		Detail:		message,
+		Subject:	&subject,
 	}
 }
 
@@ -40,9 +40,9 @@ func labelsErrorf(block *hclsyntax.Block, f string, args ...any) *hcl.Diagnostic
 	startRange := block.LabelRanges[0]
 
 	diagRange := hcl.Range{
-		Filename: startRange.Filename,
-		Start:    startRange.Start,
-		End:      block.LabelRanges[len(block.LabelRanges)-1].End,
+		Filename:	startRange.Filename,
+		Start:		startRange.Start,
+		End:		block.LabelRanges[len(block.LabelRanges)-1].End,
 	}
 	return errorf(diagRange, f, args...)
 }

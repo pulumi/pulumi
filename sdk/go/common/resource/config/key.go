@@ -24,8 +24,8 @@ import (
 )
 
 type Key struct {
-	namespace string
-	name      string
+	namespace	string
+	name		string
 }
 
 // MustMakeKey constructs a config.Key for a given namespace and name. The namespace may not contain a `:`
@@ -58,8 +58,8 @@ func ParseKey(s string) (Key, error) {
 		if mm, err := tokens.ParseModuleMember(s); err == nil {
 			if mm.Module().Name() == "config" {
 				return Key{
-					namespace: mm.Module().Package().String(),
-					name:      mm.Name().String(),
+					namespace:	mm.Module().Package().String(),
+					name:		mm.Name().String(),
 				}, nil
 			}
 		}

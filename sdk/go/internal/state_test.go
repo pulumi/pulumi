@@ -28,7 +28,7 @@ type intOutput struct {
 	*OutputState
 }
 
-func (o intOutput) ElementType() reflect.Type { return reflect.TypeOf(0) }
+func (o intOutput) ElementType() reflect.Type	{ return reflect.TypeOf(0) }
 
 func TestRejectOutput(t *testing.T) {
 	t.Parallel()

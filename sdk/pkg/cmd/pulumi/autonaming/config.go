@@ -20,7 +20,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/autonaming"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
@@ -40,8 +40,8 @@ func resolveNamingConfig(c *namingConfigJSON, eval *stackPatternEval) (autonamin
 		}
 
 		return &autonaming.Pattern{
-			Pattern: pattern,
-			Enforce: hasEnforce && *c.Enforce,
+			Pattern:	pattern,
+			Enforce:	hasEnforce && *c.Enforce,
 		}, true, nil
 	} else if hasEnforce {
 		return nil, false, errors.New("pattern must be specified when enforce is true")
@@ -112,8 +112,8 @@ func ParseAutonamingConfig(s StackContext, cfg config.Map, decrypter config.Decr
 
 	// Initialize the global autonaming config.
 	result := &autonaming.Global{
-		Default:   rootNaming,
-		Providers: make(map[string]autonaming.Provider),
+		Default:	rootNaming,
+		Providers:	make(map[string]autonaming.Provider),
 	}
 
 	// Resolve the provider-level naming configs.
@@ -128,8 +128,8 @@ func ParseAutonamingConfig(s StackContext, cfg config.Map, decrypter config.Decr
 		}
 
 		provider := autonaming.Provider{
-			Default:   naming,
-			Resources: make(map[string]autonaming.Autonamer),
+			Default:	naming,
+			Resources:	make(map[string]autonaming.Autonamer),
 		}
 
 		// Resolve the resource-level naming configs.

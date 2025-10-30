@@ -22,22 +22,22 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model/pretty"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
 // UnionType represents values that may be any one of a specified set of types.
 type UnionType struct {
 	// ElementTypes are the allowable types for the union type.
-	ElementTypes []Type
+	ElementTypes	[]Type
 	// Annotations records any annotations associated with the object type.
-	Annotations []any
+	Annotations	[]any
 
-	s atomic.Value // Value<string>
+	s	atomic.Value	// Value<string>
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache	*gsync.Map[Type, cacheEntry]
 }
 
 // NewUnionTypeAnnotated creates a new union type with the given element types and annotations.
@@ -115,8 +115,8 @@ func (t *UnionType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Form
 	elements := slice.Prealloc[pretty.Formatter](len(t.ElementTypes))
 	isOptional := false
 	unionFormatter := &pretty.List{
-		Separator: " | ",
-		Elements:  elements,
+		Separator:	" | ",
+		Elements:	elements,
 	}
 
 	seenFormatters[t] = unionFormatter
@@ -137,9 +137,9 @@ func (t *UnionType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Form
 
 	if isOptional {
 		return &pretty.Wrap{
-			Value:           seenFormatters[t],
-			Postfix:         "?",
-			PostfixSameline: true,
+			Value:			seenFormatters[t],
+			Postfix:		"?",
+			PostfixSameline:	true,
 		}
 	}
 
@@ -342,4 +342,4 @@ func (t *UnionType) unifyTo(other Type) (Type, ConversionKind) {
 	}
 }
 
-func (*UnionType) isType() {}
+func (*UnionType) isType()	{}

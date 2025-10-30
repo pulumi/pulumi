@@ -23,12 +23,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	. "github.com/pulumi/pulumi/sdk/v3/pkg/engine"	//nolint:revive
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -38,21 +38,21 @@ import (
 type testResource struct {
 	pulumi.CustomResourceState
 
-	Foo pulumi.StringOutput `pulumi:"foo"`
+	Foo	pulumi.StringOutput	`pulumi:"foo"`
 }
 
 type testResourceArgs struct {
-	Foo  string `pulumi:"foo"`
-	Bar  string `pulumi:"bar"`
-	Baz  string `pulumi:"baz"`
-	Bang string `pulumi:"bang"`
+	Foo	string	`pulumi:"foo"`
+	Bar	string	`pulumi:"bar"`
+	Baz	string	`pulumi:"baz"`
+	Bang	string	`pulumi:"bang"`
 }
 
 type testResourceInputs struct {
-	Foo  pulumi.StringInput
-	Bar  pulumi.StringInput
-	Baz  pulumi.StringInput
-	Bang pulumi.StringInput
+	Foo	pulumi.StringInput
+	Bar	pulumi.StringInput
+	Baz	pulumi.StringInput
+	Bang	pulumi.StringInput
 }
 
 func (*testResourceInputs) ElementType() reflect.Type {
@@ -67,19 +67,19 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							ID:		req.ID,
+							Inputs:		req.Inputs,
+							Outputs:	req.State,
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -88,11 +88,11 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
-			Project:     info.Project,
-			Stack:       info.Stack,
-			Parallel:    info.Parallel,
-			DryRun:      info.DryRun,
-			MonitorAddr: info.MonitorAddress,
+			Project:	info.Project,
+			Stack:		info.Stack,
+			Parallel:	info.Parallel,
+			DryRun:		info.DryRun,
+			MonitorAddr:	info.MonitorAddress,
 		})
 		require.NoError(t, err)
 
@@ -118,8 +118,8 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
-		Steps:   lt.MakeBasicLifecycleSteps(t, 4),
+		Options:	lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Steps:		lt.MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
 }
@@ -136,18 +136,18 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							Inputs:		req.Inputs,
+							Outputs:	req.State,
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 				DiffF: func(
@@ -165,11 +165,11 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 	setupAndRunProgram := func(ignoreChanges []string) *deploy.Snapshot {
 		programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
-				Project:     info.Project,
-				Stack:       info.Stack,
-				Parallel:    info.Parallel,
-				DryRun:      info.DryRun,
-				MonitorAddr: info.MonitorAddress,
+				Project:	info.Project,
+				Stack:		info.Stack,
+				Parallel:	info.Parallel,
+				DryRun:		info.DryRun,
+				MonitorAddr:	info.MonitorAddress,
 			})
 			require.NoError(t, err)
 
@@ -184,10 +184,10 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 
 		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 		p := &lt.TestPlan{
-			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+			Options:	lt.TestUpdateOptions{T: t, HostF: hostF},
 			Steps: []lt.TestStep{
 				{
-					Op: Update,
+					Op:	Update,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 						events []Event, err error,
 					) error {
@@ -228,8 +228,8 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 				) (plugin.DiffResult, error) {
 					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
 						return plugin.DiffResult{
-							ReplaceKeys:         []resource.PropertyKey{"foo"},
-							DeleteBeforeReplace: true,
+							ReplaceKeys:		[]resource.PropertyKey{"foo"},
+							DeleteBeforeReplace:	true,
 						}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -261,11 +261,11 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 		"urn:pulumi:test::test::pulumi:providers:pkgA::provA", "urn:pulumi:test::test::pkgA:m:typA::resA"
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
-			Project:     info.Project,
-			Stack:       info.Stack,
-			Parallel:    info.Parallel,
-			DryRun:      info.DryRun,
-			MonitorAddr: info.MonitorAddress,
+			Project:	info.Project,
+			Stack:		info.Stack,
+			Parallel:	info.Parallel,
+			DryRun:		info.DryRun,
+			MonitorAddr:	info.MonitorAddress,
 		})
 		require.NoError(t, err)
 
@@ -291,7 +291,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 	// Change the value of resA.A. Should create before replace
 	inputsA.Foo = pulumi.String("bar")
 	p.Steps = []lt.TestStep{{
-		Op: Update,
+		Op:	Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
@@ -315,7 +315,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 	// replacement should be delete-before-replace.
 	dbrA, inputsA.Foo = &dbrValue, pulumi.String("baz")
 	p.Steps = []lt.TestStep{{
-		Op: Update,
+		Op:	Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
@@ -345,10 +345,10 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 					assert.Equal(t, resource.ID("someId"), req.ID)
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							Inputs:		req.Inputs,
+							Outputs:	req.State,
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -361,11 +361,11 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 	setupAndRunProgram := func() *deploy.Snapshot {
 		programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
-				Project:     info.Project,
-				Stack:       info.Stack,
-				Parallel:    info.Parallel,
-				DryRun:      info.DryRun,
-				MonitorAddr: info.MonitorAddress,
+				Project:	info.Project,
+				Stack:		info.Stack,
+				Parallel:	info.Parallel,
+				DryRun:		info.DryRun,
+				MonitorAddr:	info.MonitorAddress,
 			})
 			require.NoError(t, err)
 
@@ -380,10 +380,10 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 
 		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 		p := &lt.TestPlan{
-			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+			Options:	lt.TestUpdateOptions{T: t, HostF: hostF},
 			Steps: []lt.TestStep{
 				{
-					Op: Update,
+					Op:	Update,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 						evts []Event, err error,
 					) error {
@@ -413,8 +413,8 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 	t.Parallel()
 
 	type invokeArgs struct {
-		Bang string `pulumi:"bang"`
-		Bar  string `pulumi:"bar"`
+		Bang	string	`pulumi:"bang"`
+		Bar	string	`pulumi:"bar"`
 	}
 
 	loaders := []*deploytest.ProviderLoader{
@@ -422,18 +422,18 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 			v := &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							Inputs:		req.Inputs,
+							Outputs:	req.State,
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}
@@ -447,18 +447,18 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 			v := &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							Inputs:		req.Inputs,
+							Outputs:	req.State,
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}
@@ -472,11 +472,11 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
-			Project:     info.Project,
-			Stack:       info.Stack,
-			Parallel:    info.Parallel,
-			DryRun:      info.DryRun,
-			MonitorAddr: info.MonitorAddress,
+			Project:	info.Project,
+			Stack:		info.Stack,
+			Parallel:	info.Parallel,
+			DryRun:		info.DryRun,
+			MonitorAddr:	info.MonitorAddress,
 		})
 		require.NoError(t, err)
 
@@ -491,15 +491,15 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 			var providerB pulumi.ProviderResourceState
 			err = ctx.RegisterResource(string(providers.MakeProviderType("pkgB")), "prov2",
 				&testResourceInputs{
-					Bar:  pulumi.String("2"),
-					Bang: pulumi.String(""),
+					Bar:	pulumi.String("2"),
+					Bang:	pulumi.String(""),
 				}, &providerB)
 			require.NoError(t, err)
 			var providerBOverride pulumi.ProviderResourceState
 			err = ctx.RegisterResource(string(providers.MakeProviderType("pkgB")), "prov3",
 				&testResourceInputs{
-					Bar:  pulumi.String(""),
-					Bang: pulumi.String("3"),
+					Bar:	pulumi.String(""),
+					Bang:	pulumi.String("3"),
 				}, &providerBOverride)
 			require.NoError(t, err)
 			parentProviders := make(map[string]pulumi.ProviderResource)
@@ -587,8 +587,8 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
-		Steps:   []lt.TestStep{{Op: Update}},
+		Options:	lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:		[]lt.TestStep{{Op: Update}},
 	}
 	p.Run(t, nil)
 }
@@ -602,9 +602,9 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -617,11 +617,11 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
-			Project:     info.Project,
-			Stack:       info.Stack,
-			Parallel:    info.Parallel,
-			DryRun:      info.DryRun,
-			MonitorAddr: info.MonitorAddress,
+			Project:	info.Project,
+			Stack:		info.Stack,
+			Parallel:	info.Parallel,
+			DryRun:		info.DryRun,
+			MonitorAddr:	info.MonitorAddress,
 		})
 		require.NoError(t, err)
 
@@ -639,10 +639,10 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Options:	lt.TestUpdateOptions{T: t, HostF: hostF},
 		Steps: []lt.TestStep{
 			{
-				Op: Update,
+				Op:	Update,
 				Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 					events []Event, err error,
 				) error {
@@ -678,13 +678,13 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 }
 
 type remoteComponentArgs struct {
-	Foo pulumi.URN `pulumi:"foo"`
-	Bar *string    `pulumi:"bar"`
+	Foo	pulumi.URN	`pulumi:"foo"`
+	Bar	*string		`pulumi:"bar"`
 }
 
 type remoteComponentInputs struct {
-	Foo pulumi.URNInput       `pulumi:"foo"`
-	Bar pulumi.StringPtrInput `pulumi:"bar"`
+	Foo	pulumi.URNInput		`pulumi:"foo"`
+	Bar	pulumi.StringPtrInput	`pulumi:"bar"`
 }
 
 func (*remoteComponentInputs) ElementType() reflect.Type {
@@ -694,8 +694,8 @@ func (*remoteComponentInputs) ElementType() reflect.Type {
 type remoteComponent struct {
 	pulumi.ResourceState
 
-	Foo pulumi.StringOutput `pulumi:"foo"`
-	Baz pulumi.StringOutput `pulumi:"baz"`
+	Foo	pulumi.StringOutput	`pulumi:"foo"`
+	Baz	pulumi.StringOutput	`pulumi:"baz"`
 }
 
 func TestRemoteComponentGolang(t *testing.T) {
@@ -706,9 +706,9 @@ func TestRemoteComponentGolang(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -732,8 +732,8 @@ func TestRemoteComponentGolang(t *testing.T) {
 					require.NoError(t, err)
 
 					return plugin.ConstructResponse{
-						URN:     resp.URN,
-						Outputs: outs,
+						URN:		resp.URN,
+						Outputs:	outs,
 					}, nil
 				},
 			}, nil
@@ -742,11 +742,11 @@ func TestRemoteComponentGolang(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
-			Project:     info.Project,
-			Stack:       info.Stack,
-			Parallel:    info.Parallel,
-			DryRun:      info.DryRun,
-			MonitorAddr: info.MonitorAddress,
+			Project:	info.Project,
+			Stack:		info.Stack,
+			Parallel:	info.Parallel,
+			DryRun:		info.DryRun,
+			MonitorAddr:	info.MonitorAddress,
 		})
 		require.NoError(t, err)
 
@@ -770,8 +770,8 @@ func TestRemoteComponentGolang(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
-		Steps:   []lt.TestStep{{Op: Update}},
+		Options:	lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:		[]lt.TestStep{{Op: Update}},
 	}
 	p.Run(t, nil)
 }

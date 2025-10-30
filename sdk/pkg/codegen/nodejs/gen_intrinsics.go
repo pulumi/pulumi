@@ -15,14 +15,14 @@
 package nodejs
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
 )
 
 const (
 	// intrinsicAwait is the name of the await intrinsic.
-	intrinsicAwait = "__await"
+	intrinsicAwait	= "__await"
 	// intrinsicInterpolate is the name of the interpolate intrinsic.
-	intrinsicInterpolate = "__interpolate"
+	intrinsicInterpolate	= "__interpolate"
 )
 
 // newAwaitCall creates a new call to the await intrinsic.
@@ -34,15 +34,15 @@ func newAwaitCall(promise model.Expression) model.Expression {
 	}
 
 	return &model.FunctionCallExpression{
-		Name: intrinsicAwait,
+		Name:	intrinsicAwait,
 		Signature: model.StaticFunctionSignature{
 			Parameters: []model.Parameter{{
-				Name: "promise",
-				Type: promiseType,
+				Name:	"promise",
+				Type:	promiseType,
 			}},
-			ReturnType: promiseType.ElementType,
+			ReturnType:	promiseType.ElementType,
 		},
-		Args: []model.Expression{promise},
+		Args:	[]model.Expression{promise},
 	}
 }
 
@@ -50,11 +50,11 @@ func newAwaitCall(promise model.Expression) model.Expression {
 // pulumi.interpolate function.
 func newInterpolateCall(args []model.Expression) *model.FunctionCallExpression {
 	return &model.FunctionCallExpression{
-		Name: intrinsicInterpolate,
+		Name:	intrinsicInterpolate,
 		Signature: model.StaticFunctionSignature{
-			VarargsParameter: &model.Parameter{Name: "args", Type: model.DynamicType},
-			ReturnType:       model.NewOutputType(model.StringType),
+			VarargsParameter:	&model.Parameter{Name: "args", Type: model.DynamicType},
+			ReturnType:		model.NewOutputType(model.StringType),
 		},
-		Args: args,
+		Args:	args,
 	}
 }

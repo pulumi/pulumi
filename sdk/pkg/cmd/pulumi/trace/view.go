@@ -30,8 +30,8 @@ import (
 func NewViewTraceCmd() *cobra.Command {
 	var port int
 	cmd := &cobra.Command{
-		Use:   "view-trace [trace-file]",
-		Short: "Display a trace from the Pulumi CLI",
+		Use:	"view-trace [trace-file]",
+		Short:	"Display a trace from the Pulumi CLI",
 		Long: "Display a trace from the Pulumi CLI.\n" +
 			"\n" +
 			"This command is used to display execution traces collected by a prior\n" +
@@ -40,8 +40,8 @@ func NewViewTraceCmd() *cobra.Command {
 			"This command loads trace data from the indicated file and starts a\n" +
 			"webserver to display the trace. By default, this server will listen\n" +
 			"port 8008; the --port flag can be used to change this if necessary.",
-		Args:   cmdutil.ExactArgs(1),
-		Hidden: !env.DebugCommands.Value(),
+		Args:	cmdutil.ExactArgs(1),
+		Hidden:	!env.DebugCommands.Value(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			url, err := url.Parse(fmt.Sprintf("http://localhost:%d", port))
 			if err != nil {
@@ -60,7 +60,7 @@ func NewViewTraceCmd() *cobra.Command {
 			app.Store, app.Queryer = store, store
 
 			fmt.Printf("Displaying trace at %v\n", url)
-			return http.ListenAndServe(fmt.Sprintf(":%d", port), app) //nolint:gosec
+			return http.ListenAndServe(fmt.Sprintf(":%d", port), app)	//nolint:gosec
 		},
 	}
 

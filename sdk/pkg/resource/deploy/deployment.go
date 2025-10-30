@@ -24,11 +24,11 @@ import (
 
 	uuid "github.com/gofrs/uuid"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/autonaming"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/graph"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -62,48 +62,48 @@ type BackendClient interface {
 // Options controls the deployment process.
 type Options struct {
 	// true if the step generator should calculate diffs in parallel via DiffSteps.
-	ParallelDiff bool
+	ParallelDiff	bool
 	// true if the process is a dry run (that is, won't make any changes), such as
 	// during a preview action or when previewing another action like refresh or
 	// destroy.
-	DryRun bool
+	DryRun	bool
 	// the degree of parallelism for resource operations (<=1 for serial).
-	Parallel int32
+	Parallel	int32
 	// whether or not to refresh before executing the deployment.
-	Refresh bool
+	Refresh	bool
 	// whether or not to exit after refreshing (i.e. this is specifically a
 	// refresh operation).
-	RefreshOnly bool
+	RefreshOnly	bool
 	// true if the plan should run the program as part of refresh.
-	RefreshProgram bool
+	RefreshProgram	bool
 	// true if the plan should run the program as part of destroy.
-	DestroyProgram bool
+	DestroyProgram	bool
 	// if specified, only operate on the specified resources.
-	Targets UrnTargets
+	Targets	UrnTargets
 	// if specified, mark the specified resources for replacement.
-	ReplaceTargets UrnTargets
+	ReplaceTargets	UrnTargets
 	// true if target dependents should be computed automatically.
-	TargetDependents bool
+	TargetDependents	bool
 	// if specified, ignore the specified resources
-	Excludes UrnTargets
+	Excludes	UrnTargets
 	// true if target dependents should be excluded automatically.
-	ExcludeDependents bool
+	ExcludeDependents	bool
 	// whether or not to use legacy diffing behavior.
-	UseLegacyDiff bool
+	UseLegacyDiff	bool
 	// true if the deployment should use legacy refresh diffing behavior and
 	// report only output changes, as opposed to computing diffs against desired
 	// state.
-	UseLegacyRefreshDiff bool
+	UseLegacyRefreshDiff	bool
 	// true to disable resource reference support.
-	DisableResourceReferences bool
+	DisableResourceReferences	bool
 	// true to disable output value support.
-	DisableOutputValues bool
+	DisableOutputValues	bool
 	// true to enable plan generation.
-	GeneratePlan bool
+	GeneratePlan	bool
 	// true if we should continue with the deployment even if a resource operation fails.
-	ContinueOnError bool
+	ContinueOnError	bool
 	// Autonamer can resolve user's preference for custom autonaming options for a given resource.
-	Autonamer autonaming.Autonamer
+	Autonamer	autonaming.Autonamer
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
@@ -127,8 +127,8 @@ type UrnTargets struct {
 	// UrnTargets is internally made up of two components: literals, which are fully
 	// specified URNs and globs, which are partially specified URNs.
 
-	literals []resource.URN
-	globs    map[string]*regexp.Regexp
+	literals	[]resource.URN
+	globs		map[string]*regexp.Regexp
 }
 
 // Create a new set of targets.
@@ -162,8 +162,8 @@ func (t UrnTargets) Clone() UrnTargets {
 		newGlobs[k] = v
 	}
 	return UrnTargets{
-		literals: newLiterals,
-		globs:    newGlobs,
+		literals:	newLiterals,
+		globs:		newGlobs,
 	}
 }
 
@@ -254,8 +254,8 @@ type Events interface {
 }
 
 type resourcePlans struct {
-	m     sync.RWMutex
-	plans Plan
+	m	sync.RWMutex
+	plans	Plan
 }
 
 func newResourcePlan(config config.Map) *resourcePlans {
@@ -292,52 +292,52 @@ func (m *resourcePlans) plan() *Plan {
 // of the deployment target.
 type Deployment struct {
 	// the plugin context (for provider operations).
-	ctx *plugin.Context
+	ctx	*plugin.Context
 	// options for this deployment.
-	opts *Options
+	opts	*Options
 	// event handlers for this deployment.
-	events Events
+	events	Events
 	// writeSnapshot indicates whether or not the deployment should write a new snapshot at the beginning
 	// of the deployment. This is true if the previous snapshot was migrated to add providers
-	writeSnapshot bool
+	writeSnapshot	bool
 	// the deployment target.
-	target *Target
+	target	*Target
 	// the old resource snapshot for comparison.
-	prev *Snapshot
+	prev	*Snapshot
 	// true if prev has resources that require a refresh before update.
-	hasRefreshBeforeUpdateResources bool
+	hasRefreshBeforeUpdateResources	bool
 	// a map of all old resources.
-	olds map[resource.URN]*resource.State
+	olds	map[resource.URN]*resource.State
 	// a map of all old resource views, keyed by the owning resource's URN.
-	oldViews map[resource.URN][]*resource.State
+	oldViews	map[resource.URN][]*resource.State
 	// a map of all planned resource changes, if any.
-	plan *Plan
+	plan	*Plan
 	// resources to import, if this is an import deployment.
-	imports []Import
+	imports	[]Import
 	// true if this is an import deployment.
-	isImport bool
+	isImport	bool
 	// the schema cache for this deployment, if any.
-	schemaLoader schema.Loader
+	schemaLoader	schema.Loader
 	// the source of new resources.
-	source Source
+	source	Source
 	// the policy packs to run during this deployment's generation.
-	localPolicyPackPaths []string
+	localPolicyPackPaths	[]string
 	// the dependency graph of the old snapshot.
-	depGraph *graph.DependencyGraph
+	depGraph	*graph.DependencyGraph
 	// the provider registry for this deployment.
-	providers *providers.Registry
+	providers	*providers.Registry
 	// the set of resource goals generated by the deployment.
-	goals *gsync.Map[resource.URN, *resource.Goal]
+	goals	*gsync.Map[resource.URN, *resource.Goal]
 	// the set of new resources generated by the deployment.
-	news *gsync.Map[resource.URN, *resource.State]
+	news	*gsync.Map[resource.URN, *resource.State]
 	// the set of new resource plans.
-	newPlans *resourcePlans
+	newPlans	*resourcePlans
 	// the set of resources read as part of the deployment
-	reads *gsync.Map[resource.URN, *resource.State]
+	reads	*gsync.Map[resource.URN, *resource.State]
 	// the resource status server.
-	resourceStatus *resourceStatusServer
+	resourceStatus	*resourceStatusServer
 	// the resource hook registry for this deployment
-	resourceHooks *ResourceHooks
+	resourceHooks	*ResourceHooks
 }
 
 // addDefaultProviders adds any necessary default provider definitions and references to the given snapshot. Version
@@ -394,12 +394,12 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) (bool, e
 				"could not create provider reference with URN %v and ID %v", urn, id)
 
 			provider := &resource.State{
-				Type:    urn.Type(),
-				URN:     urn,
-				Custom:  true,
-				ID:      id,
-				Inputs:  inputs,
-				Outputs: inputs,
+				Type:		urn.Type(),
+				URN:		urn,
+				Custom:		true,
+				ID:		id,
+				Inputs:		inputs,
+				Outputs:	inputs,
 			}
 			defaultProviders = append(defaultProviders, provider)
 			defaultProviderRefs[pkg] = ref
@@ -557,25 +557,25 @@ func NewDeployment(
 	reg := providers.NewRegistry(ctx.Host, opts.DryRun, builtins)
 
 	deployment := &Deployment{
-		ctx:                             ctx,
-		opts:                            opts,
-		events:                          events,
-		writeSnapshot:                   needsWrite,
-		target:                          target,
-		prev:                            prev,
-		plan:                            plan,
-		hasRefreshBeforeUpdateResources: hasRefreshBeforeUpdateResources,
-		olds:                            olds,
-		oldViews:                        oldViews,
-		source:                          source,
-		localPolicyPackPaths:            localPolicyPackPaths,
-		depGraph:                        depGraph,
-		providers:                       reg,
-		goals:                           newGoals,
-		news:                            newResources,
-		newPlans:                        newResourcePlan(target.Config),
-		reads:                           reads,
-		resourceHooks:                   resourceHooks,
+		ctx:					ctx,
+		opts:					opts,
+		events:					events,
+		writeSnapshot:				needsWrite,
+		target:					target,
+		prev:					prev,
+		plan:					plan,
+		hasRefreshBeforeUpdateResources:	hasRefreshBeforeUpdateResources,
+		olds:					olds,
+		oldViews:				oldViews,
+		source:					source,
+		localPolicyPackPaths:			localPolicyPackPaths,
+		depGraph:				depGraph,
+		providers:				reg,
+		goals:					newGoals,
+		news:					newResources,
+		newPlans:				newResourcePlan(target.Config),
+		reads:					reads,
+		resourceHooks:				resourceHooks,
 	}
 
 	// Create a new resource status server for this deployment.
@@ -587,12 +587,12 @@ func NewDeployment(
 	return deployment, nil
 }
 
-func (d *Deployment) Ctx() *plugin.Context                   { return d.ctx }
-func (d *Deployment) Target() *Target                        { return d.target }
-func (d *Deployment) Diag() diag.Sink                        { return d.ctx.Diag }
-func (d *Deployment) Prev() *Snapshot                        { return d.prev }
-func (d *Deployment) Olds() map[resource.URN]*resource.State { return d.olds }
-func (d *Deployment) Source() Source                         { return d.source }
+func (d *Deployment) Ctx() *plugin.Context			{ return d.ctx }
+func (d *Deployment) Target() *Target				{ return d.target }
+func (d *Deployment) Diag() diag.Sink				{ return d.ctx.Diag }
+func (d *Deployment) Prev() *Snapshot				{ return d.prev }
+func (d *Deployment) Olds() map[resource.URN]*resource.State	{ return d.olds }
+func (d *Deployment) Source() Source				{ return d.source }
 
 func (d *Deployment) SameProvider(res *resource.State) error {
 	var ctx context.Context
@@ -646,10 +646,10 @@ func (d *Deployment) GetProvider(ref providers.Reference) (plugin.Provider, bool
 func (d *Deployment) GetOldViews(urn resource.URN) []plugin.View {
 	return slice.Map(d.oldViews[urn], func(res *resource.State) plugin.View {
 		view := plugin.View{
-			Type:    res.URN.Type(),
-			Name:    res.URN.Name(),
-			Inputs:  res.Inputs,
-			Outputs: res.Outputs,
+			Type:		res.URN.Type(),
+			Name:		res.URN.Name(),
+			Inputs:		res.Inputs,
+			Outputs:	res.Outputs,
 		}
 		if res.Parent != "" && res.Parent != res.ViewOf {
 			view.ParentType = res.Parent.Type()
@@ -735,8 +735,8 @@ func (d *Deployment) RunHooks(hooks []string, isBeforeHook bool, id resource.ID,
 			}
 			// Errors on after hooks report a diagnostic, but do not fail the step.
 			d.Diag().Warningf(&diag.Diag{
-				URN:     urn,
-				Message: fmt.Sprintf("after hook %q failed: %s", hookName, err),
+				URN:		urn,
+				Message:	fmt.Sprintf("after hook %q failed: %s", hookName, err),
 			})
 		}
 	}

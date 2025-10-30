@@ -82,7 +82,7 @@ func TestArraySlice(t *testing.T) {
 
 		arr := NewArray(s)
 
-		s[1] = New(3.0) // Ensure that the mutation of s does not allow a mutation of arr.
+		s[1] = New(3.0)	// Ensure that the mutation of s does not allow a mutation of arr.
 
 		assert.Equal(t, NewArray([]Value{
 			New(1.0),
@@ -99,7 +99,7 @@ func TestArraySlice(t *testing.T) {
 
 		s := arr.AsSlice()
 
-		s[1] = New(3.0) // Ensure that the mutation of s does not allow a mutation of arr.
+		s[1] = New(3.0)	// Ensure that the mutation of s does not allow a mutation of arr.
 
 		assert.Equal(t, NewArray([]Value{
 			New(1.0),

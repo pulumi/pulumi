@@ -19,7 +19,7 @@ import "github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 // UpToOperationV2 migrates a resource from OperationV1 to OperationV2.
 func UpToOperationV2(v1 apitype.OperationV1) apitype.OperationV2 {
 	return apitype.OperationV2{
-		Resource: UpToResourceV3(v1.Resource),
-		Type:     v1.Type,
+		Resource:	UpToResourceV3(v1.Resource),
+		Type:		v1.Type,
 	}
 }

@@ -123,7 +123,7 @@ func TestNoGlobalPulumi(t *testing.T) {
 	_, err := InstallPulumiCommand(context.Background(), &PulumiCommandOptions{Root: dir, Version: version})
 	require.NoError(t, err)
 
-	t.Setenv("PATH", "") // Clear path so we don't have access to a globally installed pulumi command.
+	t.Setenv("PATH", "")	// Clear path so we don't have access to a globally installed pulumi command.
 
 	// Grab a new pulumi command for our installation, but now env.PATH is
 	// empty, so we can't accidentally use a globally installed pulumi.
@@ -160,16 +160,16 @@ func TestFixupPathExistingPath(t *testing.T) {
 }
 
 const (
-	PARSE   = `Unable to parse`
-	MAJOR   = `Major version mismatch.`
-	MINIMUM = `Minimum version requirement failed.`
+	PARSE	= `Unable to parse`
+	MAJOR	= `Major version mismatch.`
+	MINIMUM	= `Minimum version requirement failed.`
 )
 
 var minVersionTests = []struct {
-	name           string
-	currentVersion string
-	expectedError  string
-	optOut         bool
+	name		string
+	currentVersion	string
+	expectedError	string
+	optOut		bool
 }{
 	{
 		"higher_major",

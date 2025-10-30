@@ -22,7 +22,7 @@ import (
 
 	uuid "github.com/gofrs/uuid"
 
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -36,16 +36,16 @@ import (
 type builtinProvider struct {
 	plugin.NotForwardCompatibleProvider
 
-	context context.Context
-	cancel  context.CancelFunc
-	diag    diag.Sink
+	context	context.Context
+	cancel	context.CancelFunc
+	diag	diag.Sink
 
-	backendClient BackendClient
+	backendClient	BackendClient
 
 	// news is a map of URNs to new resource states that have been produced by the current deployment.
-	news *gsync.Map[resource.URN, *resource.State]
+	news	*gsync.Map[resource.URN, *resource.State]
 	// reads is a map of URNs to resource states that have been read during the current deployment.
-	reads *gsync.Map[resource.URN, *resource.State]
+	reads	*gsync.Map[resource.URN, *resource.State]
 }
 
 func newBuiltinProvider(
@@ -56,12 +56,12 @@ func newBuiltinProvider(
 ) *builtinProvider {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &builtinProvider{
-		context:       ctx,
-		cancel:        cancel,
-		backendClient: backendClient,
-		news:          news,
-		reads:         reads,
-		diag:          d,
+		context:	ctx,
+		cancel:		cancel,
+		backendClient:	backendClient,
+		news:		news,
+		reads:		reads,
+		diag:		d,
 	}
 }
 
@@ -155,8 +155,8 @@ func (p *builtinProvider) Diff(_ context.Context, req plugin.DiffRequest) (plugi
 
 	if !req.NewInputs["name"].DeepEquals(req.OldInputs["name"]) {
 		return plugin.DiffResult{
-			Changes:     plugin.DiffSome,
-			ReplaceKeys: []resource.PropertyKey{"name"},
+			Changes:	plugin.DiffSome,
+			ReplaceKeys:	[]resource.PropertyKey{"name"},
 		}, nil
 	}
 
@@ -183,9 +183,9 @@ func (p *builtinProvider) Create(_ context.Context, req plugin.CreateRequest) (p
 	}
 
 	return plugin.CreateResponse{
-		ID:         id,
-		Properties: state,
-		Status:     resource.StatusOK,
+		ID:		id,
+		Properties:	state,
+		Status:		resource.StatusOK,
 	}, nil
 }
 
@@ -225,11 +225,11 @@ func (p *builtinProvider) Read(_ context.Context, req plugin.ReadRequest) (plugi
 
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
-			ID:      req.ID,
-			Inputs:  req.Inputs,
-			Outputs: outputs,
+			ID:		req.ID,
+			Inputs:		req.Inputs,
+			Outputs:	outputs,
 		},
-		Status: resource.StatusOK,
+		Status:	resource.StatusOK,
 	}, nil
 }
 
@@ -238,9 +238,9 @@ func (p *builtinProvider) Construct(context.Context, plugin.ConstructRequest) (p
 }
 
 const (
-	readStackOutputs         = "pulumi:pulumi:readStackOutputs"
-	readStackResourceOutputs = "pulumi:pulumi:readStackResourceOutputs" //nolint:gosec // not a credential
-	getResource              = "pulumi:pulumi:getResource"
+	readStackOutputs		= "pulumi:pulumi:readStackOutputs"
+	readStackResourceOutputs	= "pulumi:pulumi:readStackResourceOutputs"	//nolint:gosec // not a credential
+	getResource			= "pulumi:pulumi:getResource"
 )
 
 func (p *builtinProvider) Invoke(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -315,9 +315,9 @@ func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resou
 	})
 
 	return resource.PropertyMap{
-		"name":              name,
-		"outputs":           resource.NewProperty(outputs),
-		"secretOutputNames": resource.NewProperty(secretOutputs),
+		"name":			name,
+		"outputs":		resource.NewProperty(outputs),
+		"secretOutputNames":	resource.NewProperty(secretOutputs),
 	}, nil
 }
 
@@ -336,8 +336,8 @@ func (p *builtinProvider) readStackResourceOutputs(inputs resource.PropertyMap) 
 	}
 
 	return resource.PropertyMap{
-		"name":    name,
-		"outputs": resource.NewProperty(outputs),
+		"name":		name,
+		"outputs":	resource.NewProperty(outputs),
 	}, nil
 }
 
@@ -362,9 +362,9 @@ func (p *builtinProvider) getResource(inputs resource.PropertyMap) (resource.Pro
 	defer state.Lock.Unlock()
 
 	return resource.PropertyMap{
-		"urn":      urnInput,
-		"id":       resource.NewProperty(string(state.ID)),
-		"provider": resource.NewProperty(state.Provider),
-		"state":    resource.NewProperty(state.Outputs),
+		"urn":		urnInput,
+		"id":		resource.NewProperty(string(state.ID)),
+		"provider":	resource.NewProperty(state.Provider),
+		"state":	resource.NewProperty(state.Outputs),
 	}, nil
 }

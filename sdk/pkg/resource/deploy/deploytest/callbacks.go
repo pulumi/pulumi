@@ -27,17 +27,17 @@ import (
 
 func NewCallbacksServer() (*CallbackServer, error) {
 	callbackServer := &CallbackServer{
-		callbacks: make(map[string]func(args []byte) (proto.Message, error)),
-		stop:      make(chan bool),
+		callbacks:	make(map[string]func(args []byte) (proto.Message, error)),
+		stop:		make(chan bool),
 	}
 
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: callbackServer.stop,
+		Cancel:	callbackServer.stop,
 		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterCallbacksServer(srv, callbackServer)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options:	rpcutil.OpenTracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("could not start resource provider service: %w", err)
@@ -50,9 +50,9 @@ func NewCallbacksServer() (*CallbackServer, error) {
 type CallbackServer struct {
 	pulumirpc.UnsafeCallbacksServer
 
-	stop      chan bool
-	handle    rpcutil.ServeHandle
-	callbacks map[string]func(req []byte) (proto.Message, error)
+	stop		chan bool
+	handle		rpcutil.ServeHandle
+	callbacks	map[string]func(req []byte) (proto.Message, error)
 }
 
 func (s *CallbackServer) Close() error {
@@ -66,8 +66,8 @@ func (s *CallbackServer) Allocate(
 	token := uuid.NewString()
 	s.callbacks[token] = callback
 	return &pulumirpc.Callback{
-		Target: fmt.Sprintf("127.0.0.1:%d", s.handle.Port),
-		Token:  token,
+		Target:	fmt.Sprintf("127.0.0.1:%d", s.handle.Port),
+		Token:	token,
 	}, nil
 }
 

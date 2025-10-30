@@ -23,8 +23,8 @@ import (
 // ResourceHasDependenciesError is returned by DeleteResource if a resource can't be deleted due to the presence of
 // resources that depend directly or indirectly upon it.
 type ResourceHasDependenciesError struct {
-	Condemned    *resource.State
-	Dependencies []*resource.State
+	Condemned	*resource.State
+	Dependencies	[]*resource.State
 }
 
 func (r ResourceHasDependenciesError) Error() string {

@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/jonboulle/clockwork"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
@@ -75,7 +75,7 @@ func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 	backend := &testTokenBackend{tokens: map[string]time.Time{}, clock: clock, t: t}
 
-	tok0, tok0Expires := backend.NewToken(dur / 10) // token expires after 8ms
+	tok0, tok0Expires := backend.NewToken(dur / 10)	// token expires after 8ms
 	ts, err := newTokenSource(ctx, clock, tok0, tok0Expires, dur, backend.Refresh)
 	require.NoError(t, err)
 	defer ts.Close()
@@ -125,12 +125,12 @@ func TestTokenSourceWithClient(t *testing.T) {
 
 	updateIdentifier := client.UpdateIdentifier{
 		StackIdentifier: client.StackIdentifier{
-			Owner:   "my-owner",
-			Project: "my-project",
-			Stack:   tokens.MustParseStackName("my-stack"),
+			Owner:		"my-owner",
+			Project:	"my-project",
+			Stack:		tokens.MustParseStackName("my-stack"),
 		},
-		UpdateKind: apitype.PreviewUpdate,
-		UpdateID:   "my-update",
+		UpdateKind:	apitype.PreviewUpdate,
+		UpdateID:	"my-update",
 	}
 
 	renewLease := RenewLeaseFunc(apiClient, updateIdentifier, assumedExpires)
@@ -176,12 +176,12 @@ func TestTokenSourceWithClient(t *testing.T) {
 }
 
 type testTokenBackend struct {
-	mu                  sync.Mutex
-	counter             int
-	tokens              map[string]time.Time
-	clock               clockwork.Clock
-	networkErrorCounter int
-	t                   *testing.T
+	mu			sync.Mutex
+	counter			int
+	tokens			map[string]time.Time
+	clock			clockwork.Clock
+	networkErrorCounter	int
+	t			*testing.T
 }
 
 func (ts *testTokenBackend) NewToken(duration time.Duration) (string, time.Time) {
@@ -204,7 +204,7 @@ func (ts *testTokenBackend) Refresh(
 	// means we have 4 retries before the token expires. We want
 	// to simulate some network errors, but not so many that we
 	// can hit the retry limit, and the test flakes.
-	if ts.networkErrorCounter < 2 && rand.Float32() < 0.1 { //nolint:gosec // test is not security sensitive
+	if ts.networkErrorCounter < 2 && rand.Float32() < 0.1 {	//nolint:gosec // test is not security sensitive
 		ts.networkErrorCounter++
 		ts.t.Log("network error")
 		return "", time.Time{}, errors.New("network error")

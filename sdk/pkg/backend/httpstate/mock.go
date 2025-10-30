@@ -18,24 +18,24 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 type MockHTTPBackend struct {
 	backend.MockBackend
-	FClient   func() *client.Client
-	FCloudURL func() string
-	FSearch   func(ctx context.Context,
+	FClient		func() *client.Client
+	FCloudURL	func() string
+	FSearch		func(ctx context.Context,
 		orgName string,
 		queryParams *apitype.PulumiQueryRequest,
 	) (*apitype.ResourceSearchResponse, error)
-	FNaturalLanguageSearch func(ctx context.Context, orgName string, query string) (*apitype.ResourceSearchResponse, error)
-	FPromptAI              func(ctx context.Context, requestBody AIPromptRequestBody) (*http.Response, error)
-	FStackConsoleURL       func(stackRef backend.StackReference) (string, error)
-	FRunDeployment         func(
+	FNaturalLanguageSearch	func(ctx context.Context, orgName string, query string) (*apitype.ResourceSearchResponse, error)
+	FPromptAI		func(ctx context.Context, requestBody AIPromptRequestBody) (*http.Response, error)
+	FStackConsoleURL	func(stackRef backend.StackReference) (string, error)
+	FRunDeployment		func(
 		ctx context.Context,
 		stackRef backend.StackReference,
 		req apitype.CreateDeploymentRequest,
@@ -43,7 +43,7 @@ type MockHTTPBackend struct {
 		deploymentInitiator string,
 		suppressStreamLogs bool,
 	) error
-	FGetCloudRegistry func() (backend.CloudRegistry, error)
+	FGetCloudRegistry	func() (backend.CloudRegistry, error)
 }
 
 func (b *MockHTTPBackend) Client() *client.Client {

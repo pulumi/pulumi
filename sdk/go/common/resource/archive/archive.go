@@ -51,23 +51,23 @@ const (
 // helper routines exist as members in order to easily interact with archives of different kinds.
 type Archive struct {
 	// Sig is the unique archive type signature (see properties.go).
-	Sig string `json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"`
+	Sig	string	`json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"`
 	// Hash contains the SHA256 hash of the archive's contents.
-	Hash string `json:"hash,omitempty" yaml:"hash,omitempty"`
+	Hash	string	`json:"hash,omitempty" yaml:"hash,omitempty"`
 	// Assets, when non-nil, is a collection of other assets/archives.
-	Assets map[string]any `json:"assets,omitempty" yaml:"assets,omitempty"`
+	Assets	map[string]any	`json:"assets,omitempty" yaml:"assets,omitempty"`
 	// Path is a non-empty string representing a path to a file on the current filesystem, for file archives.
-	Path string `json:"path,omitempty" yaml:"path,omitempty"`
+	Path	string	`json:"path,omitempty" yaml:"path,omitempty"`
 	// URI is a non-empty URI (file://, http://, https://, etc), for URI-backed archives.
-	URI string `json:"uri,omitempty" yaml:"uri,omitempty"`
+	URI	string	`json:"uri,omitempty" yaml:"uri,omitempty"`
 }
 
 const (
-	ArchiveSig            = sig.ArchiveSig
-	ArchiveHashProperty   = "hash"   // the dynamic property for an archive's hash.
-	ArchiveAssetsProperty = "assets" // the dynamic property for an archive's assets.
-	ArchivePathProperty   = "path"   // the dynamic property for an archive's path.
-	ArchiveURIProperty    = "uri"    // the dynamic property for an archive's URI.
+	ArchiveSig		= sig.ArchiveSig
+	ArchiveHashProperty	= "hash"	// the dynamic property for an archive's hash.
+	ArchiveAssetsProperty	= "assets"	// the dynamic property for an archive's assets.
+	ArchivePathProperty	= "path"	// the dynamic property for an archive's path.
+	ArchiveURIProperty	= "uri"		// the dynamic property for an archive's URI.
 )
 
 func FromAssetsWithWD(assets map[string]any, wd string) (*Archive, error) {
@@ -140,8 +140,8 @@ func (a *Archive) IsAssets() bool {
 	}
 	return false
 }
-func (a *Archive) IsPath() bool { return a.Path != "" }
-func (a *Archive) IsURI() bool  { return a.URI != "" }
+func (a *Archive) IsPath() bool	{ return a.Path != "" }
+func (a *Archive) IsURI() bool	{ return a.URI != "" }
 
 func (a *Archive) GetAssets() (map[string]any, bool) {
 	if a.IsAssets() {
@@ -352,11 +352,11 @@ func (a *Archive) OpenWithWD(wd string) (Reader, error) {
 
 // assetsArchiveReader is used to read an Assets archive.
 type assetsArchiveReader struct {
-	assets      map[string]any
-	keys        []string
-	archive     Reader
-	archiveRoot string
-	wd          string
+	assets		map[string]any
+	keys		[]string
+	archive		Reader
+	archiveRoot	string
+	wd		string
 }
 
 func (r *assetsArchiveReader) Next() (string, *asset.Blob, error) {
@@ -427,17 +427,17 @@ func (a *Archive) readAssets(wd string) (Reader, error) {
 	sort.Strings(keys)
 
 	r := &assetsArchiveReader{
-		assets: m,
-		keys:   keys,
-		wd:     wd,
+		assets:	m,
+		keys:	keys,
+		wd:	wd,
 	}
 	return r, nil
 }
 
 // directoryArchiveReader is used to read an archive that is represented by a directory in the host filesystem.
 type directoryArchiveReader struct {
-	directoryPath string
-	assetPaths    []string
+	directoryPath	string
+	assetPaths	[]string
 }
 
 func (r *directoryArchiveReader) Next() (string, *asset.Blob, error) {
@@ -536,8 +536,8 @@ func (a *Archive) readPath(wd string) (Reader, error) {
 		}
 
 		r := &directoryArchiveReader{
-			directoryPath: path,
-			assetPaths:    assetPaths,
+			directoryPath:	path,
+			assetPaths:	assetPaths,
 		}
 		return r, nil
 	}
@@ -655,9 +655,9 @@ func addNextFileToTar(r Reader, tw *tar.Writer, seenFiles map[string]bool) error
 
 	sz := data.Size()
 	if err = tw.WriteHeader(&tar.Header{
-		Name: file,
-		Mode: 0o600,
-		Size: sz,
+		Name:	file,
+		Mode:	0o600,
+		Size:	sz,
 	}); err != nil {
 		return err
 	}
@@ -719,8 +719,8 @@ func addNextFileToZIP(r Reader, zw *zip.Writer, seenFiles map[string]bool) error
 	sz := data.Size()
 	fh := &zip.FileHeader{
 		// These are the two fields set by zw.Create()
-		Name:   file,
-		Method: zip.Deflate,
+		Name:	file,
+		Method:	zip.Deflate,
 	}
 
 	// Set a nonzero -- but constant -- modification time. Otherwise, some agents (e.g. Azure
@@ -838,20 +838,20 @@ func (a *Archive) EnsureHashWithWD(wd string) error {
 type Format int
 
 const (
-	NotArchive     = iota // not an archive.
-	TarArchive            // a POSIX tar archive.
-	TarGZIPArchive        // a POSIX tar archive that has been subsequently compressed using GZip.
-	ZIPArchive            // a multi-file ZIP archive.
-	JARArchive            // a Java JAR file
+	NotArchive	= iota	// not an archive.
+	TarArchive		// a POSIX tar archive.
+	TarGZIPArchive		// a POSIX tar archive that has been subsequently compressed using GZip.
+	ZIPArchive		// a multi-file ZIP archive.
+	JARArchive		// a Java JAR file
 )
 
 // ArchiveExts maps from a file extension and its associated archive and/or compression format.
 var ArchiveExts = map[string]Format{
-	".tar":    TarArchive,
-	".tgz":    TarGZIPArchive,
-	".tar.gz": TarGZIPArchive,
-	".zip":    ZIPArchive,
-	".jar":    JARArchive,
+	".tar":		TarArchive,
+	".tgz":		TarGZIPArchive,
+	".tar.gz":	TarGZIPArchive,
+	".zip":		ZIPArchive,
+	".jar":		JARArchive,
 }
 
 // detectArchiveFormat takes a path and infers its archive format based on the file extension.
@@ -900,8 +900,8 @@ func readArchive(ar io.ReadCloser, format Format) (Reader, error) {
 
 // tarArchiveReader is used to read an archive that is stored in tar format.
 type tarArchiveReader struct {
-	ar io.ReadCloser
-	tr *tar.Reader
+	ar	io.ReadCloser
+	tr	*tar.Reader
 }
 
 func (r *tarArchiveReader) Next() (string, *asset.Blob, error) {
@@ -913,7 +913,7 @@ func (r *tarArchiveReader) Next() (string, *asset.Blob, error) {
 
 		switch file.Typeflag {
 		case tar.TypeDir:
-			continue // skip directories
+			continue	// skip directories
 		case tar.TypeReg:
 			// Return the tar reader for this file's contents.
 			data := asset.NewRawBlob(io.NopCloser(r.tr), file.Size)
@@ -931,8 +931,8 @@ func (r *tarArchiveReader) Close() error {
 
 func readTarArchive(ar io.ReadCloser) (Reader, error) {
 	r := &tarArchiveReader{
-		ar: ar,
-		tr: tar.NewReader(ar),
+		ar:	ar,
+		tr:	tar.NewReader(ar),
 	}
 	return r, nil
 }
@@ -950,9 +950,9 @@ func readTarGZIPArchive(ar io.ReadCloser) (Reader, error) {
 
 // zipArchiveReader is used to read an archive that is stored in ZIP format.
 type zipArchiveReader struct {
-	ar    io.ReaderAt
-	zr    *zip.Reader
-	index int
+	ar	io.ReaderAt
+	zr	*zip.Reader
+	index	int
 }
 
 func (r *zipArchiveReader) Next() (string, *asset.Blob, error) {
@@ -996,8 +996,8 @@ func readZIPArchive(ar io.ReaderAt, size int64) (Reader, error) {
 	}
 
 	r := &zipArchiveReader{
-		ar: ar,
-		zr: zr,
+		ar:	ar,
+		zr:	zr,
 	}
 	return r, nil
 }

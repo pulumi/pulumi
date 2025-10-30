@@ -15,14 +15,14 @@
 package dotnet
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
 )
 
 const (
 	// intrinsicAwait is the name of the intrinsic to await tasks.
-	intrinsicAwait = "__await"
+	intrinsicAwait	= "__await"
 	// intrinsicOutput is the name of the intrinsic to convert tasks to Pulumi outputs.
-	intrinsicOutput = "__output"
+	intrinsicOutput	= "__output"
 )
 
 // newAwaitCall creates a new call to the await intrinsic.
@@ -34,15 +34,15 @@ func newAwaitCall(promise model.Expression) model.Expression {
 	}
 
 	return &model.FunctionCallExpression{
-		Name: intrinsicAwait,
+		Name:	intrinsicAwait,
 		Signature: model.StaticFunctionSignature{
 			Parameters: []model.Parameter{{
-				Name: "promise",
-				Type: promiseType,
+				Name:	"promise",
+				Type:	promiseType,
 			}},
-			ReturnType: promiseType.ElementType,
+			ReturnType:	promiseType.ElementType,
 		},
-		Args: []model.Expression{promise},
+		Args:	[]model.Expression{promise},
 	}
 }
 
@@ -54,14 +54,14 @@ func newOutputCall(promise model.Expression) model.Expression {
 	}
 
 	return &model.FunctionCallExpression{
-		Name: intrinsicOutput,
+		Name:	intrinsicOutput,
 		Signature: model.StaticFunctionSignature{
 			Parameters: []model.Parameter{{
-				Name: "promise",
-				Type: promiseType,
+				Name:	"promise",
+				Type:	promiseType,
 			}},
-			ReturnType: model.NewOutputType(promiseType.ElementType),
+			ReturnType:	model.NewOutputType(promiseType.ElementType),
 		},
-		Args: []model.Expression{promise},
+		Args:	[]model.Expression{promise},
 	}
 }

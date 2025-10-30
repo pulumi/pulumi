@@ -22,12 +22,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
@@ -40,61 +40,61 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 	t.Parallel()
 
 	outputsWithSecret := resource.PropertyMap{
-		"bucketName": resource.NewProperty("mybucket-1234"),
+		"bucketName":	resource.NewProperty("mybucket-1234"),
 		"password": resource.NewProperty(&resource.Secret{
 			Element: resource.NewProperty("hunter2"),
 		}),
 	}
 
 	tests := []struct {
-		desc string
+		desc	string
 
 		// Map of stack outputs.
-		outputs resource.PropertyMap
+		outputs	resource.PropertyMap
 
 		// Whether the --show-secrets flag is set.
-		showSecrets bool
+		showSecrets	bool
 
 		// Any additional command line arguments.
-		args []string
+		args	[]string
 
 		// Expectations from stdout:
-		contains    []string
-		notContains []string
-		equals      string // only valid if non-empty
+		contains	[]string
+		notContains	[]string
+		equals		string	// only valid if non-empty
 	}{
 		{
-			desc:        "default",
-			outputs:     outputsWithSecret,
-			contains:    []string{"mybucket-1234", "password", "[secret]"},
-			notContains: []string{"hunter2"},
+			desc:		"default",
+			outputs:	outputsWithSecret,
+			contains:	[]string{"mybucket-1234", "password", "[secret]"},
+			notContains:	[]string{"hunter2"},
 		},
 		{
-			desc:        "show-secrets",
-			outputs:     outputsWithSecret,
-			showSecrets: true,
-			contains:    []string{"mybucket-1234", "password", "hunter2"},
+			desc:		"show-secrets",
+			outputs:	outputsWithSecret,
+			showSecrets:	true,
+			contains:	[]string{"mybucket-1234", "password", "hunter2"},
 		},
 		{
-			desc:    "single property",
-			outputs: outputsWithSecret,
-			args:    []string{"bucketName"},
-			equals:  "mybucket-1234\n",
+			desc:		"single property",
+			outputs:	outputsWithSecret,
+			args:		[]string{"bucketName"},
+			equals:		"mybucket-1234\n",
 		},
 		{
 			// Should not show the secret even if requested
 			// if --show-secrets is not set.
-			desc:    "single hidden property",
-			outputs: outputsWithSecret,
-			args:    []string{"password"},
-			equals:  "[secret]\n",
+			desc:		"single hidden property",
+			outputs:	outputsWithSecret,
+			args:		[]string{"password"},
+			equals:		"[secret]\n",
 		},
 		{
-			desc:        "single property with show-secrets",
-			outputs:     outputsWithSecret,
-			showSecrets: true,
-			args:        []string{"password"},
-			equals:      "hunter2\n",
+			desc:		"single property with show-secrets",
+			outputs:	outputsWithSecret,
+			showSecrets:	true,
+			args:		[]string{"password"},
+			equals:		"hunter2\n",
 		},
 	}
 
@@ -105,8 +105,8 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 			snap := deploy.Snapshot{
 				Resources: []*resource.State{
 					{
-						Type:    resource.RootStackType,
-						Outputs: tt.outputs,
+						Type:		resource.RootStackType,
+						Outputs:	tt.outputs,
 					},
 				},
 			}
@@ -122,9 +122,9 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 
 			var stdoutBuff bytes.Buffer
 			cmd := stackOutputCmd{
-				Stdout:       &stdoutBuff,
-				requireStack: requireStack,
-				showSecrets:  tt.showSecrets,
+				Stdout:		&stdoutBuff,
+				requireStack:	requireStack,
+				showSecrets:	tt.showSecrets,
 			}
 			require.NoError(t, cmd.Run(context.Background(), tt.args))
 			stdout := stdoutBuff.String()
@@ -148,64 +148,64 @@ func TestStackOutputCmd_json(t *testing.T) {
 	t.Parallel()
 
 	outputsWithSecret := resource.PropertyMap{
-		"bucketName": resource.NewProperty("mybucket-1234"),
+		"bucketName":	resource.NewProperty("mybucket-1234"),
 		"password": resource.NewProperty(&resource.Secret{
 			Element: resource.NewProperty("hunter2"),
 		}),
 	}
 
 	tests := []struct {
-		desc string
+		desc	string
 
 		// Map of stack outputs.
-		outputs resource.PropertyMap
+		outputs	resource.PropertyMap
 
 		// Whether the --show-secrets flag is set.
-		showSecrets bool
+		showSecrets	bool
 
 		// Any additional command line arguments.
-		args []string
+		args	[]string
 
 		// Expected parsed JSON output.
-		want any
+		want	any
 	}{
 		{
-			desc:    "default",
-			outputs: outputsWithSecret,
+			desc:		"default",
+			outputs:	outputsWithSecret,
 			want: map[string]any{
-				"bucketName": "mybucket-1234",
-				"password":   "[secret]",
+				"bucketName":	"mybucket-1234",
+				"password":	"[secret]",
 			},
 		},
 		{
-			desc:        "show-secrets",
-			outputs:     outputsWithSecret,
-			showSecrets: true,
+			desc:		"show-secrets",
+			outputs:	outputsWithSecret,
+			showSecrets:	true,
 			want: map[string]any{
-				"bucketName": "mybucket-1234",
-				"password":   "hunter2",
+				"bucketName":	"mybucket-1234",
+				"password":	"hunter2",
 			},
 		},
 		{
-			desc:    "single property",
-			outputs: outputsWithSecret,
-			args:    []string{"bucketName"},
-			want:    "mybucket-1234",
+			desc:		"single property",
+			outputs:	outputsWithSecret,
+			args:		[]string{"bucketName"},
+			want:		"mybucket-1234",
 		},
 		{
 			// Should not show the secret even if requested
 			// if --show-secrets is not set.
-			desc:    "single hidden property",
-			outputs: outputsWithSecret,
-			args:    []string{"password"},
-			want:    "[secret]",
+			desc:		"single hidden property",
+			outputs:	outputsWithSecret,
+			args:		[]string{"password"},
+			want:		"[secret]",
 		},
 		{
-			desc:        "single property with show-secrets",
-			outputs:     outputsWithSecret,
-			showSecrets: true,
-			args:        []string{"password"},
-			want:        "hunter2",
+			desc:		"single property with show-secrets",
+			outputs:	outputsWithSecret,
+			showSecrets:	true,
+			args:		[]string{"password"},
+			want:		"hunter2",
 		},
 	}
 
@@ -216,8 +216,8 @@ func TestStackOutputCmd_json(t *testing.T) {
 			snap := deploy.Snapshot{
 				Resources: []*resource.State{
 					{
-						Type:    resource.RootStackType,
-						Outputs: tt.outputs,
+						Type:		resource.RootStackType,
+						Outputs:	tt.outputs,
 					},
 				},
 			}
@@ -233,10 +233,10 @@ func TestStackOutputCmd_json(t *testing.T) {
 
 			var stdoutBuff bytes.Buffer
 			cmd := stackOutputCmd{
-				requireStack: requireStack,
-				showSecrets:  tt.showSecrets,
-				jsonOut:      true,
-				Stdout:       &stdoutBuff,
+				requireStack:	requireStack,
+				showSecrets:	tt.showSecrets,
+				jsonOut:	true,
+				Stdout:		&stdoutBuff,
 			}
 			require.NoError(t, cmd.Run(context.Background(), tt.args))
 
@@ -256,73 +256,73 @@ func TestStackOutputCmd_shell(t *testing.T) {
 	t.Parallel()
 
 	outputsWithSecret := resource.PropertyMap{
-		"bucketName": resource.NewProperty("mybucket-1234"),
+		"bucketName":	resource.NewProperty("mybucket-1234"),
 		"password": resource.NewProperty(&resource.Secret{
 			Element: resource.NewProperty("hunter2"),
 		}),
 	}
 
 	tests := []struct {
-		desc string
+		desc	string
 
 		// Map of stack outputs.
-		outputs resource.PropertyMap
+		outputs	resource.PropertyMap
 
 		// Whether the --show-secrets flag is set.
-		showSecrets bool
+		showSecrets	bool
 
 		// Current operating system.
 		// Defaults to "linux".
-		os string
+		os	string
 
 		// Any additional command line arguments.
-		args []string
+		args	[]string
 
 		// Lines expected in the output.
-		want []string
+		want	[]string
 	}{
 		{
-			desc:    "default",
-			outputs: outputsWithSecret,
+			desc:		"default",
+			outputs:	outputsWithSecret,
 			want: []string{
 				"bucketName=mybucket-1234",
 				`password=\[secret]`,
 			},
 		},
 		{
-			desc:        "show-secrets",
-			outputs:     outputsWithSecret,
-			showSecrets: true,
+			desc:		"show-secrets",
+			outputs:	outputsWithSecret,
+			showSecrets:	true,
 			want: []string{
 				"bucketName=mybucket-1234",
 				"password=hunter2",
 			},
 		},
 		{
-			desc:    "single property",
-			outputs: outputsWithSecret,
-			args:    []string{"bucketName"},
-			want:    []string{"bucketName=mybucket-1234"},
+			desc:		"single property",
+			outputs:	outputsWithSecret,
+			args:		[]string{"bucketName"},
+			want:		[]string{"bucketName=mybucket-1234"},
 		},
 		{
 			// Should not show the secret even if requested
 			// if --show-secrets is not set.
-			desc:    "single hidden property",
-			outputs: outputsWithSecret,
-			args:    []string{"password"},
-			want:    []string{`password=\[secret]`},
+			desc:		"single hidden property",
+			outputs:	outputsWithSecret,
+			args:		[]string{"password"},
+			want:		[]string{`password=\[secret]`},
 		},
 		{
-			desc:        "single property with show-secrets",
-			outputs:     outputsWithSecret,
-			showSecrets: true,
-			args:        []string{"password"},
-			want:        []string{"password=hunter2"},
+			desc:		"single property with show-secrets",
+			outputs:	outputsWithSecret,
+			showSecrets:	true,
+			args:		[]string{"password"},
+			want:		[]string{"password=hunter2"},
 		},
 		{
-			desc:    "powershell on windows",
-			outputs: outputsWithSecret,
-			os:      "windows",
+			desc:		"powershell on windows",
+			outputs:	outputsWithSecret,
+			os:		"windows",
 			want: []string{
 				"$bucketName = 'mybucket-1234'",
 				"$password = '[secret]'",
@@ -337,8 +337,8 @@ func TestStackOutputCmd_shell(t *testing.T) {
 			snap := deploy.Snapshot{
 				Resources: []*resource.State{
 					{
-						Type:    resource.RootStackType,
-						Outputs: tt.outputs,
+						Type:		resource.RootStackType,
+						Outputs:	tt.outputs,
 					},
 				},
 			}
@@ -359,11 +359,11 @@ func TestStackOutputCmd_shell(t *testing.T) {
 
 			var stdoutBuff bytes.Buffer
 			cmd := stackOutputCmd{
-				requireStack: requireStack,
-				showSecrets:  tt.showSecrets,
-				shellOut:     true,
-				OS:           osys,
-				Stdout:       &stdoutBuff,
+				requireStack:	requireStack,
+				showSecrets:	tt.showSecrets,
+				shellOut:	true,
+				OS:		osys,
+				Stdout:		&stdoutBuff,
 			}
 			require.NoError(t, cmd.Run(context.Background(), tt.args))
 
@@ -386,8 +386,8 @@ func TestStackOutputCmd_jsonAndShellConflict(t *testing.T) {
 			t.Fatal("This function should not be called")
 			return nil, errors.New("should not be called")
 		},
-		shellOut: true,
-		jsonOut:  true,
+		shellOut:	true,
+		jsonOut:	true,
 	}
 
 	err := cmd.Run(context.Background(), nil)
@@ -398,46 +398,46 @@ func TestShellStackOutputWriter_quoting(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		desc     string
-		give     any
-		wantBash string
-		wantPwsh string
+		desc		string
+		give		any
+		wantBash	string
+		wantPwsh	string
 	}{
 		{
-			desc:     "string",
-			give:     "foo",
-			wantBash: "foo",
-			wantPwsh: "'foo'",
+			desc:		"string",
+			give:		"foo",
+			wantBash:	"foo",
+			wantPwsh:	"'foo'",
 		},
 		{
-			desc:     "number",
-			give:     42,
-			wantBash: "42",
-			wantPwsh: "'42'",
+			desc:		"number",
+			give:		42,
+			wantBash:	"42",
+			wantPwsh:	"'42'",
 		},
 		{
-			desc:     "string/spaces",
-			give:     "foo bar",
-			wantBash: "'foo bar'",
-			wantPwsh: "'foo bar'",
+			desc:		"string/spaces",
+			give:		"foo bar",
+			wantBash:	"'foo bar'",
+			wantPwsh:	"'foo bar'",
 		},
 		{
-			desc:     "string/double quotes",
-			give:     `foo "bar" baz`,
-			wantBash: `'foo "bar" baz'`,
-			wantPwsh: `'foo "bar" baz'`,
+			desc:		"string/double quotes",
+			give:		`foo "bar" baz`,
+			wantBash:	`'foo "bar" baz'`,
+			wantPwsh:	`'foo "bar" baz'`,
 		},
 		{
-			desc:     "string/single quotes",
-			give:     "foo 'bar' baz",
-			wantBash: `'foo '\''bar'\'' baz'`,
-			wantPwsh: `'foo ''bar'' baz'`,
+			desc:		"string/single quotes",
+			give:		"foo 'bar' baz",
+			wantBash:	`'foo '\''bar'\'' baz'`,
+			wantPwsh:	`'foo ''bar'' baz'`,
 		},
 		{
-			desc:     "string/single and double quotes",
-			give:     `foo "bar" 'baz' qux`,
-			wantBash: `'foo "bar" '\''baz'\'' qux'`,
-			wantPwsh: `'foo "bar" ''baz'' qux'`,
+			desc:		"string/single and double quotes",
+			give:		`foo "bar" 'baz' qux`,
+			wantBash:	`'foo "bar" '\''baz'\'' qux'`,
+			wantPwsh:	`'foo "bar" ''baz'' qux'`,
 		},
 	}
 
@@ -445,7 +445,7 @@ func TestShellStackOutputWriter_quoting(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
-			t.Run("bash", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
+			t.Run("bash", func(t *testing.T) {	//nolint:paralleltest // golangci-lint v2 upgrade
 				var got bytes.Buffer
 				writer := bashStackOutputWriter{W: &got}
 				require.NoError(t, writer.WriteOne("myoutput", tt.give))
@@ -454,7 +454,7 @@ func TestShellStackOutputWriter_quoting(t *testing.T) {
 				assert.Equal(t, want, got.String())
 			})
 
-			t.Run("pwsh", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
+			t.Run("pwsh", func(t *testing.T) {	//nolint:paralleltest // golangci-lint v2 upgrade
 				var got bytes.Buffer
 				writer := powershellStackOutputWriter{W: &got}
 				require.NoError(t, writer.WriteOne("myoutput", tt.give))

@@ -19,8 +19,8 @@ func main() {
 			"simple", version, policyx.EnforcementLevelAdvisory,
 			[]policyx.Policy{
 				policyx.NewResourceValidationPolicy("truthiness", policyx.ResourceValidationPolicyArgs{
-					Description:      "Verifies properties are true",
-					EnforcementLevel: policyx.EnforcementLevelAdvisory,
+					Description:		"Verifies properties are true",
+					EnforcementLevel:	policyx.EnforcementLevelAdvisory,
 					ValidateResource: func(ctx context.Context, args policyx.ResourceValidationArgs) error {
 						if args.Resource.Type != "simple:index:Resource" {
 							return nil
@@ -32,8 +32,8 @@ func main() {
 					},
 				}),
 				policyx.NewResourceValidationPolicy("falsiness", policyx.ResourceValidationPolicyArgs{
-					Description:      "Verifies properties are false",
-					EnforcementLevel: policyx.EnforcementLevelMandatory,
+					Description:		"Verifies properties are false",
+					EnforcementLevel:	policyx.EnforcementLevelMandatory,
 					ValidateResource: func(ctx context.Context, args policyx.ResourceValidationArgs) error {
 						if args.Resource.Type != "simple:index:Resource" {
 							return nil

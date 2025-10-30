@@ -95,8 +95,8 @@ type UnimplementedResourceStatusServer struct{}
 func (UnimplementedResourceStatusServer) PublishViewSteps(context.Context, *PublishViewStepsRequest) (*PublishViewStepsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PublishViewSteps not implemented")
 }
-func (UnimplementedResourceStatusServer) mustEmbedUnimplementedResourceStatusServer() {}
-func (UnimplementedResourceStatusServer) testEmbeddedByValue()                        {}
+func (UnimplementedResourceStatusServer) mustEmbedUnimplementedResourceStatusServer()	{}
+func (UnimplementedResourceStatusServer) testEmbeddedByValue()				{}
 
 // UnsafeResourceStatusServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to ResourceStatusServer will
@@ -125,8 +125,8 @@ func _ResourceStatus_PublishViewSteps_Handler(srv interface{}, ctx context.Conte
 		return srv.(ResourceStatusServer).PublishViewSteps(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceStatus_PublishViewSteps_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceStatus_PublishViewSteps_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceStatusServer).PublishViewSteps(ctx, req.(*PublishViewStepsRequest))
@@ -138,14 +138,14 @@ func _ResourceStatus_PublishViewSteps_Handler(srv interface{}, ctx context.Conte
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ResourceStatus_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "pulumirpc.ResourceStatus",
-	HandlerType: (*ResourceStatusServer)(nil),
+	ServiceName:	"pulumirpc.ResourceStatus",
+	HandlerType:	(*ResourceStatusServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "PublishViewSteps",
-			Handler:    _ResourceStatus_PublishViewSteps_Handler,
+			MethodName:	"PublishViewSteps",
+			Handler:	_ResourceStatus_PublishViewSteps_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "pulumi/resource_status.proto",
+	Streams:	[]grpc.StreamDesc{},
+	Metadata:	"pulumi/resource_status.proto",
 }

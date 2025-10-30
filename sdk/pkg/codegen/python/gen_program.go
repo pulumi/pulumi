@@ -28,12 +28,12 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model/format"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -47,13 +47,13 @@ type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
 
-	program     *pcl.Program
-	diagnostics hcl.Diagnostics
+	program		*pcl.Program
+	diagnostics	hcl.Diagnostics
 
-	configCreated           bool
-	quotes                  map[model.Expression]string
-	isComponent             bool
-	deferredOutputVariables []*pcl.DeferredOutputVariable
+	configCreated		bool
+	quotes			map[model.Expression]string
+	isComponent		bool
+	deferredOutputVariables	[]*pcl.DeferredOutputVariable
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -437,8 +437,8 @@ func newGenerator(program *pcl.Program) (*generator, error) {
 	}
 
 	g := &generator{
-		program: program,
-		quotes:  map[model.Expression]string{},
+		program:	program,
+		quotes:		map[model.Expression]string{},
 	}
 	g.Formatter = format.NewFormatter(g)
 
@@ -517,9 +517,9 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	// Accumulate other imports for the various providers. Don't emit them yet, as we need to sort them later on.
 	type Import struct {
 		// Use an "import ${KEY} as ${.Pkg}"
-		ImportAs bool
+		ImportAs	bool
 		// Only relevant for when ImportAs=true
-		Pkg string
+		Pkg	string
 	}
 	importSet := map[string]Import{}
 	for _, n := range program.Nodes {
@@ -555,8 +555,8 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 							maybePkg = importPackage[len("pulumi_"):]
 						}
 						importSet[importPackage] = Import{
-							ImportAs: importAs,
-							Pkg:      maybePkg,
+							ImportAs:	importAs,
+							Pkg:		maybePkg,
 						}
 					}
 				}
@@ -657,10 +657,10 @@ func resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) {
 		pkg, err := r.Schema.PackageReference.Definition()
 		if err != nil {
 			diagnostics = append(diagnostics, &hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "unable to bind schema for resource",
-				Detail:   err.Error(),
-				Subject:  r.Definition.Syntax.DefRange().Ptr(),
+				Severity:	hcl.DiagError,
+				Summary:	"unable to bind schema for resource",
+				Detail:		err.Error(),
+				Subject:	r.Definition.Syntax.DefRange().Ptr(),
 			})
 		} else {
 			err = pkg.ImportLanguages(map[string]schema.Language{"python": Importer})
@@ -764,8 +764,8 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	appendOption := func(name string, value model.Expression) {
 		if block == nil {
 			block = &model.Block{
-				Type: "options",
-				Body: &model.Body{},
+				Type:	"options",
+				Body:	&model.Body{},
 			}
 		}
 
@@ -773,9 +773,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 		temps = append(temps, valueTemps...)
 
 		block.Body.Items = append(block.Body.Items, &model.Attribute{
-			Tokens: syntax.NewAttributeTokens(name),
-			Name:   name,
-			Value:  value,
+			Tokens:	syntax.NewAttributeTokens(name),
+			Name:	name,
+			Value:	value,
 		})
 	}
 
@@ -905,8 +905,8 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 			g.Fgenf(w, "def %s(range_body):\n", localFuncName)
 			g.Indented(func() {
 				r.Options.Range = model.VariableReference(&model.Variable{
-					Name:         "range_body",
-					VariableType: model.ResolveOutputs(rangeExpr.Type()),
+					Name:		"range_body",
+					VariableType:	model.ResolveOutputs(rangeExpr.Type()),
 				})
 				g.genResourceDeclaration(w, r, false)
 				g.Fgen(w, "\n")
@@ -1052,8 +1052,8 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	for _, attr := range r.Inputs {
 		expr, deferredOutputs := pcl.ExtractDeferredOutputVariables(g.program, r, attr.Value)
 		componentInputs = append(componentInputs, &model.Attribute{
-			Name:  attr.Name,
-			Value: expr,
+			Name:	attr.Name,
+			Value:	expr,
 		})
 
 		// add the deferred outputs local to this component
@@ -1237,9 +1237,9 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 func (g *generator) genNYI(w io.Writer, reason string, vs ...any) {
 	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
-		Severity: hcl.DiagError,
-		Summary:  message,
-		Detail:   message,
+		Severity:	hcl.DiagError,
+		Summary:	message,
+		Detail:		message,
 	})
 	g.Fgenf(w, "(lambda: raise Exception(%q))()", fmt.Sprintf(reason, vs...))
 }

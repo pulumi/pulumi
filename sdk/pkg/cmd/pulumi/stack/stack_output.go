@@ -27,14 +27,14 @@ import (
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/secrets"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -44,9 +44,9 @@ import (
 func newStackOutputCmd() *cobra.Command {
 	var socmd stackOutputCmd
 	cmd := &cobra.Command{
-		Use:   "output [property-name]",
-		Args:  cmdutil.MaximumNArgs(1),
-		Short: "Show a stack's output properties",
+		Use:	"output [property-name]",
+		Args:	cmdutil.MaximumNArgs(1),
+		Short:	"Show a stack's output properties",
 		Long: "Show a stack's output properties.\n" +
 			"\n" +
 			"By default, this command lists all output properties exported from a stack.\n" +
@@ -69,23 +69,23 @@ func newStackOutputCmd() *cobra.Command {
 }
 
 type stackOutputCmd struct {
-	stackName   string
-	showSecrets bool
-	jsonOut     bool
-	shellOut    bool
+	stackName	string
+	showSecrets	bool
+	jsonOut		bool
+	shellOut	bool
 
-	ws pkgWorkspace.Context
-	OS string // defaults to runtime.GOOS
+	ws	pkgWorkspace.Context
+	OS	string	// defaults to runtime.GOOS
 
 	// requireStack is a reference to the top-level requireStack function.
 	// This is a field on stackOutputCmd so that we can replace it
 	// from tests.
-	requireStack func(
+	requireStack	func(
 		ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
 		name string, lopt LoadOption, opts display.Options,
 	) (backend.Stack, error)
 
-	Stdout io.Writer // defaults to os.Stdout
+	Stdout	io.Writer	// defaults to os.Stdout
 }
 
 func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {

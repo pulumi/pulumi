@@ -48,15 +48,15 @@ func readConsoleFancy(stdout io.Writer, stdin io.Reader, prompt string, secret b
 
 // readConsoleModel drives a bubbletea widget that reads from the console.
 type readConsoleModel struct {
-	input  textinput.Model
-	secret bool
+	input	textinput.Model
+	secret	bool
 
 	// Canceled is set to true when the model finishes
 	// if the user canceled the operation by pressing Ctrl-C or Esc.
-	Canceled bool
+	Canceled	bool
 
 	// Value is the user's response to the prompt.
-	Value string
+	Value	string
 }
 
 var _ tea.Model = readConsoleModel{}
@@ -64,24 +64,24 @@ var _ tea.Model = readConsoleModel{}
 func newReadConsoleModel(prompt string, secret bool) readConsoleModel {
 	input := textinput.New()
 	input.Cursor.Style = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("205")) // 205 = hot pink cursor
+		Foreground(lipgloss.Color("205"))	// 205 = hot pink cursor
 	if secret {
 		input.EchoMode = textinput.EchoPassword
 	}
 	if prompt != "" {
 		input.Prompt = prompt + ": "
 	}
-	input.Focus() // required to receive input
+	input.Focus()	// required to receive input
 
 	return readConsoleModel{
-		input:  input,
-		secret: secret,
+		input:	input,
+		secret:	secret,
 	}
 }
 
 // Init initializes the model.
 // We don't have any initialization to do, so we just return nil.
-func (readConsoleModel) Init() tea.Cmd { return nil }
+func (readConsoleModel) Init() tea.Cmd	{ return nil }
 
 // Update handles a single tick of the bubbletea loop.
 func (m readConsoleModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -97,7 +97,7 @@ func (m readConsoleModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Value = m.input.Value()
 			m.Canceled = msg.Type != tea.KeyEnter
 
-			m.input.Blur() // hide the cursor
+			m.input.Blur()	// hide the cursor
 			if m.secret {
 				// If we're in secret mode, don't include
 				// the '*' characters in the final output

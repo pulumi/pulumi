@@ -22,10 +22,10 @@ import (
 	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 
-	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	cmdCmd "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/cmd"
+	cmdDiag "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/diag"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/packages"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -40,9 +40,9 @@ func newGenSdkCommand() *cobra.Command {
 	var version string
 	var local bool
 	cmd := &cobra.Command{
-		Use:   "gen-sdk <schema_source> [provider parameters]",
-		Args:  cobra.MinimumNArgs(1),
-		Short: "Generate SDK(s) from a package or schema",
+		Use:	"gen-sdk <schema_source> [provider parameters]",
+		Args:	cobra.MinimumNArgs(1),
+		Short:	"Generate SDK(s) from a package or schema",
 		Long: `Generate SDK(s) from a package or schema.
 
 <schema_source> can be a package name or the path to a plugin binary or folder.

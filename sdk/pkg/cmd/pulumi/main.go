@@ -20,7 +20,7 @@ import (
 	"runtime"
 	"runtime/debug"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 
 	"go.uber.org/automaxprocs/maxprocs"
@@ -54,7 +54,7 @@ func panicHandler(finished *bool) {
 func main() {
 	// Fix for https://github.com/pulumi/pulumi/issues/18814, set GOMAXPROCs to the number of CPUs available
 	// taking into account quotas and cgroup limits.
-	maxprocs.Set() //nolint:errcheck // we don't care if this fails
+	maxprocs.Set()	//nolint:errcheck // we don't care if this fails
 
 	finished := new(bool)
 	defer panicHandler(finished)

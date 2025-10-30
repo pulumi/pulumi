@@ -18,7 +18,7 @@ package b64
 import (
 	"encoding/json"
 
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
@@ -31,7 +31,7 @@ func NewBase64SecretsManager() secrets.Manager {
 
 type manager struct{}
 
-func (m *manager) Type() string                { return Type }
-func (m *manager) State() json.RawMessage      { return nil }
-func (m *manager) Encrypter() config.Encrypter { return config.Base64Crypter }
-func (m *manager) Decrypter() config.Decrypter { return config.Base64Crypter }
+func (m *manager) Type() string			{ return Type }
+func (m *manager) State() json.RawMessage	{ return nil }
+func (m *manager) Encrypter() config.Encrypter	{ return config.Base64Crypter }
+func (m *manager) Decrypter() config.Decrypter	{ return config.Base64Crypter }

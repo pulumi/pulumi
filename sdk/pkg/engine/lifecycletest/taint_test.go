@@ -23,10 +23,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	. "github.com/pulumi/pulumi/sdk/v3/pkg/engine"	//nolint:revive
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
@@ -43,9 +43,9 @@ func TestTaintReplacement(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					id++
 					return plugin.CreateResponse{
-						ID:         resource.ID(strconv.Itoa(id)),
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		resource.ID(strconv.Itoa(id)),
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
@@ -77,7 +77,7 @@ func TestTaintReplacement(t *testing.T) {
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
-	require.Len(t, snap.Resources, 2) // stack + resA
+	require.Len(t, snap.Resources, 2)	// stack + resA
 
 	// Find resA and taint it
 	var resA *resource.State
@@ -94,7 +94,7 @@ func TestTaintReplacement(t *testing.T) {
 	// Run update with the tainted resource
 	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
-	require.Len(t, snap.Resources, 2) // stack + replaced resA
+	require.Len(t, snap.Resources, 2)	// stack + replaced resA
 
 	// Verify the resource was replaced
 	var newResA *resource.State
@@ -123,9 +123,9 @@ func TestTaintMultipleResources(t *testing.T) {
 					name := req.URN.Name()
 					createIDs[name]++
 					return plugin.CreateResponse{
-						ID:         resource.ID(name + "-v" + string(rune('0'+createIDs[name]))),
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		resource.ID(name + "-v" + string(rune('0'+createIDs[name]))),
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
@@ -163,7 +163,7 @@ func TestTaintMultipleResources(t *testing.T) {
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
-	require.Len(t, snap.Resources, 4) // stack + 3 resources
+	require.Len(t, snap.Resources, 4)	// stack + 3 resources
 
 	// Taint resA and resC, but not resB
 	for _, r := range snap.Resources {
@@ -175,7 +175,7 @@ func TestTaintMultipleResources(t *testing.T) {
 	// Run update with tainted resources
 	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
-	require.Len(t, snap.Resources, 4) // stack + 3 resources
+	require.Len(t, snap.Resources, 4)	// stack + 3 resources
 
 	// Check that taint is cleared and IDs are updated for replaced resources
 	replacedCount := 0
@@ -205,9 +205,9 @@ func TestTaintWithPendingDelete(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "new-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"new-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
@@ -241,31 +241,31 @@ func TestTaintWithPendingDelete(t *testing.T) {
 	old := &deploy.Snapshot{
 		Resources: []*resource.State{
 			{
-				Type:   resURN.Type(),
-				URN:    resURN,
-				Custom: true,
-				ID:     "current-id",
+				Type:	resURN.Type(),
+				URN:	resURN,
+				Custom:	true,
+				ID:	"current-id",
 				Inputs: resource.PropertyMap{
 					"foo": resource.NewProperty("bar"),
 				},
 				Outputs: resource.PropertyMap{
 					"foo": resource.NewProperty("bar"),
 				},
-				Taint: true, // This resource is tainted and should be replaced
+				Taint:	true,	// This resource is tainted and should be replaced
 			},
 			{
-				Type:   resURN.Type(),
-				URN:    resURN,
-				Custom: true,
-				ID:     "old-id",
+				Type:	resURN.Type(),
+				URN:	resURN,
+				Custom:	true,
+				ID:	"old-id",
 				Inputs: resource.PropertyMap{
 					"foo": resource.NewProperty("old"),
 				},
 				Outputs: resource.PropertyMap{
 					"foo": resource.NewProperty("old"),
 				},
-				Delete: true, // This resource is marked for deletion
-				Taint:  true, // Taint on deleted resource should be ignored
+				Delete:	true,	// This resource is marked for deletion
+				Taint:	true,	// Taint on deleted resource should be ignored
 			},
 		},
 	}
@@ -306,9 +306,9 @@ func TestTaintNoChanges(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					id++
 					return plugin.CreateResponse{
-						ID:         resource.ID("id-" + string(rune('0'+id))),
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		resource.ID("id-" + string(rune('0'+id))),
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {

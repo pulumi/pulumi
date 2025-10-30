@@ -23,10 +23,10 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
 
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	interceptors "github.com/pulumi/pulumi/pkg/v3/util/rpcdebug"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
+	interceptors "github.com/pulumi/pulumi/sdk/v3/pkg/util/rpcdebug"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -63,8 +63,8 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 
 	if logFile := env.DebugGRPC.Value(); logFile != "" {
 		di, err := interceptors.NewDebugInterceptor(interceptors.DebugInterceptorOptions{
-			LogFile: logFile,
-			Mutex:   ctx.DebugTraceMutex,
+			LogFile:	logFile,
+			Mutex:		ctx.DebugTraceMutex,
 		})
 		if err != nil {
 			return "", "", nil, err
@@ -110,14 +110,14 @@ func newDeploymentContext(u UpdateInfo, opName string, parentSpan opentracing.Sp
 	tracingSpan := opentracing.StartSpan("pulumi-plan", opts...)
 
 	return &deploymentContext{
-		Update:      u,
-		TracingSpan: tracingSpan,
+		Update:		u,
+		TracingSpan:	tracingSpan,
 	}, nil
 }
 
 type deploymentContext struct {
-	Update      UpdateInfo       // The update being processed.
-	TracingSpan opentracing.Span // An OpenTracing span to parent deployment operations within.
+	Update		UpdateInfo		// The update being processed.
+	TracingSpan	opentracing.Span	// An OpenTracing span to parent deployment operations within.
 }
 
 func (ctx *deploymentContext) Close() {
@@ -130,33 +130,33 @@ type deploymentOptions struct {
 
 	// SourceFunc is a factory that returns an EvalSource to use during deployment.  This is the thing that
 	// creates resources to compare against the current checkpoint state (e.g., by evaluating a program, etc).
-	SourceFunc deploymentSourceFunc
+	SourceFunc	deploymentSourceFunc
 
 	// pluginManager manages plugin installations.
-	pluginManager PluginManager
+	pluginManager	PluginManager
 
 	// true if we should print the DOT file for this deployment.
-	DOT bool
+	DOT	bool
 	// the channel to write events from the engine to.
-	Events eventEmitter
+	Events	eventEmitter
 	// the sink to use for diag'ing.
-	Diag diag.Sink
+	Diag	diag.Sink
 	// the sink to use for diag'ing status messages.
-	StatusDiag diag.Sink
+	StatusDiag	diag.Sink
 
 	// True if this is an import operation.
-	isImport bool
+	isImport	bool
 	// Resources to import, if this is an import.
-	imports []deploy.Import
+	imports	[]deploy.Import
 
 	// true if this deployment is (only) a refresh operation. This should not be
 	// confused with UpdateOptions.Refresh, which will be true whenever a refresh
 	// is happening as part of an operation (e.g. `up --refresh`).
-	isRefresh bool
+	isRefresh	bool
 
 	// true if this deployment is a dry run, such as a preview action or a preview
 	// operation preceding e.g. a refresh or destroy.
-	DryRun bool
+	DryRun	bool
 }
 
 // deploymentSourceFunc is a callback that will be used to prepare for, and evaluate, the "new" state for a stack.
@@ -222,25 +222,25 @@ func newDeployment(
 	localPolicyPackPaths := ConvertLocalPolicyPacksToPaths(opts.LocalPolicyPacks)
 
 	deplOpts := &deploy.Options{
-		ParallelDiff:              opts.ParallelDiff,
-		DryRun:                    opts.DryRun,
-		Parallel:                  opts.Parallel,
-		Refresh:                   opts.Refresh,
-		RefreshOnly:               opts.isRefresh,
-		RefreshProgram:            opts.RefreshProgram,
-		DestroyProgram:            opts.DestroyProgram,
-		ReplaceTargets:            opts.ReplaceTargets,
-		Targets:                   opts.Targets,
-		Excludes:                  opts.Excludes,
-		TargetDependents:          opts.TargetDependents,
-		ExcludeDependents:         opts.ExcludeDependents,
-		UseLegacyDiff:             opts.UseLegacyDiff,
-		UseLegacyRefreshDiff:      opts.UseLegacyRefreshDiff,
-		DisableResourceReferences: opts.DisableResourceReferences,
-		DisableOutputValues:       opts.DisableOutputValues,
-		GeneratePlan:              opts.GeneratePlan,
-		ContinueOnError:           opts.ContinueOnError,
-		Autonamer:                 opts.Autonamer,
+		ParallelDiff:			opts.ParallelDiff,
+		DryRun:				opts.DryRun,
+		Parallel:			opts.Parallel,
+		Refresh:			opts.Refresh,
+		RefreshOnly:			opts.isRefresh,
+		RefreshProgram:			opts.RefreshProgram,
+		DestroyProgram:			opts.DestroyProgram,
+		ReplaceTargets:			opts.ReplaceTargets,
+		Targets:			opts.Targets,
+		Excludes:			opts.Excludes,
+		TargetDependents:		opts.TargetDependents,
+		ExcludeDependents:		opts.ExcludeDependents,
+		UseLegacyDiff:			opts.UseLegacyDiff,
+		UseLegacyRefreshDiff:		opts.UseLegacyRefreshDiff,
+		DisableResourceReferences:	opts.DisableResourceReferences,
+		DisableOutputValues:		opts.DisableOutputValues,
+		GeneratePlan:			opts.GeneratePlan,
+		ContinueOnError:		opts.ContinueOnError,
+		Autonamer:			opts.Autonamer,
 	}
 
 	var depl *deploy.Deployment
@@ -257,7 +257,7 @@ func newDeployment(
 			target,
 			opts,
 			plugctx,
-			false, /*returnInstallErrors*/
+			false,	/*returnInstallErrors*/
 		)
 		if pluginErr != nil {
 			return nil, pluginErr
@@ -302,9 +302,9 @@ func newDeployment(
 						}
 
 						imp.Parameterization = &deploy.Parameterization{
-							PluginName:    tokens.Package(dpi.Name),
-							PluginVersion: *dpi.Version,
-							Value:         dpi.Parameterization.Value,
+							PluginName:	tokens.Package(dpi.Name),
+							PluginVersion:	*dpi.Version,
+							Value:		dpi.Parameterization.Value,
 						}
 					}
 				}
@@ -320,25 +320,25 @@ func newDeployment(
 		return nil, err
 	}
 	return &deployment{
-		Ctx:        info,
-		Plugctx:    plugctx,
-		Deployment: depl,
-		Actions:    actions,
-		Options:    opts,
+		Ctx:		info,
+		Plugctx:	plugctx,
+		Deployment:	depl,
+		Actions:	actions,
+		Options:	opts,
 	}, nil
 }
 
 type deployment struct {
 	// deployment context information.
-	Ctx *deploymentContext
+	Ctx	*deploymentContext
 	// the context containing plugins and their state.
-	Plugctx *plugin.Context
+	Plugctx	*plugin.Context
 	// the deployment created by this command.
-	Deployment *deploy.Deployment
+	Deployment	*deploy.Deployment
 	// the actions to run during the deployment.
-	Actions runActions
+	Actions	runActions
 	// the options used while deploying.
-	Options *deploymentOptions
+	Options	*deploymentOptions
 }
 
 // runActions represents a set of actions to run as part of a deployment,

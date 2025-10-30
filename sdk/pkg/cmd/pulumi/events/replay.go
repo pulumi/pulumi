@@ -23,8 +23,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -49,8 +49,8 @@ func NewReplayEventsCmd() *cobra.Command {
 	var period time.Duration
 
 	cmd := &cobra.Command{
-		Use:   "replay-events <kind> <events-file>",
-		Short: "Replay events from a prior update, refresh, or destroy",
+		Use:	"replay-events <kind> <events-file>",
+		Short:	"Replay events from a prior update, refresh, or destroy",
 		Long: "Replay events from a prior update, refresh, or destroy.\n" +
 			"\n" +
 			"This command is used to replay events emitted by a prior\n" +
@@ -60,8 +60,8 @@ func NewReplayEventsCmd() *cobra.Command {
 			"using either the progress view or the diff view.\n" +
 			"\n" +
 			"The <kind> argument must be one of: update, refresh, destroy, import.\n",
-		Args:   cmdutil.ExactArgs(2),
-		Hidden: !env.DebugCommands.Value(),
+		Args:	cmdutil.ExactArgs(2),
+		Hidden:	!env.DebugCommands.Value(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var action apitype.UpdateKind
 			switch args[0] {
@@ -87,17 +87,17 @@ func NewReplayEventsCmd() *cobra.Command {
 			}
 
 			displayOpts := display.Options{
-				Color:                cmdutil.GetGlobalColorization(),
-				ShowConfig:           showConfig,
-				ShowReplacementSteps: showReplacementSteps,
-				ShowSameResources:    showSames,
-				ShowReads:            showReads,
-				SuppressOutputs:      suppressOutputs,
-				SuppressProgress:     suppressProgress,
-				IsInteractive:        cmdutil.Interactive(),
-				Type:                 displayType,
-				JSONDisplay:          jsonDisplay,
-				Debug:                debug,
+				Color:			cmdutil.GetGlobalColorization(),
+				ShowConfig:		showConfig,
+				ShowReplacementSteps:	showReplacementSteps,
+				ShowSameResources:	showSames,
+				ShowReads:		showReads,
+				SuppressOutputs:	suppressOutputs,
+				SuppressProgress:	suppressProgress,
+				IsInteractive:		cmdutil.Interactive(),
+				Type:			displayType,
+				JSONDisplay:		jsonDisplay,
+				Debug:			debug,
 			}
 
 			events, err := loadEvents(args[1])

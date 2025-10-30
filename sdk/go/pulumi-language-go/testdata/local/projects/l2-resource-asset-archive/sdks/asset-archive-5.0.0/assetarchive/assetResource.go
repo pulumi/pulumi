@@ -15,7 +15,7 @@ import (
 type AssetResource struct {
 	pulumi.CustomResourceState
 
-	Value pulumi.AssetOrArchiveOutput `pulumi:"value"`
+	Value	pulumi.AssetOrArchiveOutput	`pulumi:"value"`
 }
 
 // NewAssetResource registers a new resource with the given unique name, arguments, and options.

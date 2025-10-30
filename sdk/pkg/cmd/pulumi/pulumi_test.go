@@ -154,8 +154,8 @@ func TestGetCLIVersionInfo_SendsMetadataToPulumiCloud(t *testing.T) {
 	t.Setenv("PULUMI_HOME", pulumiHome)
 
 	metadata := map[string]string{
-		"Command": "test-command",
-		"Flags":   "--foo",
+		"Command":	"test-command",
+		"Flags":	"--foo",
 	}
 
 	token := time.Now().String()
@@ -189,7 +189,7 @@ func TestGetCLIVersionInfo_SendsMetadataToPulumiCloud(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	err := workspace.StoreCredentials(workspace.Credentials{
-		Current: srv.URL,
+		Current:	srv.URL,
 		Accounts: map[string]workspace.Account{
 			srv.URL: {
 				AccessToken: token,
@@ -222,8 +222,8 @@ func TestGetCLIVersionInfo_DoesNotSendMetadataToOtherBackends(t *testing.T) {
 	t.Setenv("PULUMI_HOME", pulumiHome)
 
 	metadata := map[string]string{
-		"Command": "test-command",
-		"Flags":   "--foo",
+		"Command":	"test-command",
+		"Flags":	"--foo",
 	}
 
 	token := time.Now().String()
@@ -258,7 +258,7 @@ func TestGetCLIVersionInfo_DoesNotSendMetadataToOtherBackends(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	err := workspace.StoreCredentials(workspace.Credentials{
-		Current: "https://example.com",
+		Current:	"https://example.com",
 		Accounts: map[string]workspace.Account{
 			srv.URL: {
 				AccessToken: token,
@@ -289,34 +289,34 @@ func TestGetCLIMetadata(t *testing.T) {
 
 	// Arrange.
 	cases := []struct {
-		name     string
-		cmd      *cobra.Command
-		environ  []string
-		metadata map[string]string
+		name		string
+		cmd		*cobra.Command
+		environ		[]string
+		metadata	map[string]string
 	}{
 		{
-			name:     "nil",
-			cmd:      nil,
-			metadata: nil,
-			environ:  nil,
+			name:		"nil",
+			cmd:		nil,
+			metadata:	nil,
+			environ:	nil,
 		},
 		{
-			name: "no set flags",
+			name:	"no set flags",
 			cmd: (func() *cobra.Command {
 				cmd := &cobra.Command{Use: "no-set"}
 				cmd.Flags().Bool("bool", false, "bool flag")
 				cmd.Flags().String("string", "", "string flag")
 				return cmd
 			})(),
-			environ: []string{},
+			environ:	[]string{},
 			metadata: map[string]string{
-				"Command":     "no-set",
-				"Flags":       "",
-				"Environment": "",
+				"Command":	"no-set",
+				"Flags":	"",
+				"Environment":	"",
 			},
 		},
 		{
-			name: "one set bool flag",
+			name:	"one set bool flag",
 			cmd: (func() *cobra.Command {
 				cmd := &cobra.Command{Use: "one-set"}
 				cmd.Flags().Bool("bool", false, "bool flag")
@@ -330,13 +330,13 @@ func TestGetCLIMetadata(t *testing.T) {
 				return cmd
 			})(),
 			metadata: map[string]string{
-				"Command":     "one-set",
-				"Flags":       "--bool",
-				"Environment": "",
+				"Command":	"one-set",
+				"Flags":	"--bool",
+				"Environment":	"",
 			},
 		},
 		{
-			name: "one set string flag",
+			name:	"one set string flag",
 			cmd: (func() *cobra.Command {
 				cmd := &cobra.Command{Use: "one-set"}
 				cmd.Flags().Bool("bool", false, "bool flag")
@@ -350,13 +350,13 @@ func TestGetCLIMetadata(t *testing.T) {
 				return cmd
 			})(),
 			metadata: map[string]string{
-				"Command":     "one-set",
-				"Flags":       "--string",
-				"Environment": "",
+				"Command":	"one-set",
+				"Flags":	"--string",
+				"Environment":	"",
 			},
 		},
 		{
-			name: "multiple set flags",
+			name:	"multiple set flags",
 			cmd: (func() *cobra.Command {
 				cmd := &cobra.Command{Use: "multiple-set"}
 				cmd.Flags().Bool("bool", false, "bool flag")
@@ -370,13 +370,13 @@ func TestGetCLIMetadata(t *testing.T) {
 				return cmd
 			})(),
 			metadata: map[string]string{
-				"Command":     "multiple-set",
-				"Flags":       "--bool --string",
-				"Environment": "",
+				"Command":	"multiple-set",
+				"Flags":	"--bool --string",
+				"Environment":	"",
 			},
 		},
 		{
-			name: "longer command path",
+			name:	"longer command path",
 			cmd: (func() *cobra.Command {
 				parent := &cobra.Command{Use: "parent"}
 				err := parent.Execute()
@@ -388,39 +388,39 @@ func TestGetCLIMetadata(t *testing.T) {
 				return cmd
 			})(),
 			metadata: map[string]string{
-				"Command":     "parent multiple-set",
-				"Flags":       "",
-				"Environment": "",
+				"Command":	"parent multiple-set",
+				"Flags":	"",
+				"Environment":	"",
 			},
 		},
 		{
-			name: "no valid PULUMI_ env variables",
+			name:	"no valid PULUMI_ env variables",
 			cmd: (func() *cobra.Command {
 				cmd := &cobra.Command{Use: "version"}
 				err := cmd.Execute()
 				require.NoError(t, err)
 				return cmd
 			})(),
-			environ: []string{"PULUMICOPILOT=true", "OTHER_FLAG=true", "PULUMI_NO_EQUALS_SIGN"},
+			environ:	[]string{"PULUMICOPILOT=true", "OTHER_FLAG=true", "PULUMI_NO_EQUALS_SIGN"},
 			metadata: map[string]string{
-				"Command":     "version",
-				"Flags":       "",
-				"Environment": "",
+				"Command":	"version",
+				"Flags":	"",
+				"Environment":	"",
 			},
 		},
 		{
-			name: "has valid PULUMI_ env variables",
+			name:	"has valid PULUMI_ env variables",
 			cmd: (func() *cobra.Command {
 				cmd := &cobra.Command{Use: "version"}
 				err := cmd.Execute()
 				require.NoError(t, err)
 				return cmd
 			})(),
-			environ: []string{"PULUMI_EXPERIMENTAL=true", "PULUMI_COPILOT=true"},
+			environ:	[]string{"PULUMI_EXPERIMENTAL=true", "PULUMI_COPILOT=true"},
 			metadata: map[string]string{
-				"Command":     "version",
-				"Flags":       "",
-				"Environment": "PULUMI_EXPERIMENTAL PULUMI_COPILOT",
+				"Command":	"version",
+				"Flags":	"",
+				"Environment":	"PULUMI_EXPERIMENTAL PULUMI_COPILOT",
 			},
 		},
 	}
@@ -805,59 +805,59 @@ func TestDiffVersions(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		v1        string
-		v2        string
-		minorDiff int64
+		v1		string
+		v2		string
+		minorDiff	int64
 	}{
 		{
-			v1:        "1.0.0",
-			v2:        "1.0.0",
-			minorDiff: 0,
+			v1:		"1.0.0",
+			v2:		"1.0.0",
+			minorDiff:	0,
 		},
 		{
-			v1:        "1.0.0",
-			v2:        "1.0.1",
-			minorDiff: 0,
+			v1:		"1.0.0",
+			v2:		"1.0.1",
+			minorDiff:	0,
 		},
 		{
-			v1:        "1.0.0",
-			v2:        "1.1.0",
-			minorDiff: 1,
+			v1:		"1.0.0",
+			v2:		"1.1.0",
+			minorDiff:	1,
 		},
 		{
-			v1:        "1.0.0",
-			v2:        "1.20.0",
-			minorDiff: 20,
+			v1:		"1.0.0",
+			v2:		"1.20.0",
+			minorDiff:	20,
 		},
 		{
-			v1:        "1.10.0",
-			v2:        "1.20.0",
-			minorDiff: 10,
+			v1:		"1.10.0",
+			v2:		"1.20.0",
+			minorDiff:	10,
 		},
 		{
-			v1:        "1.0.0",
-			v2:        "2.0.0",
-			minorDiff: 0,
+			v1:		"1.0.0",
+			v2:		"2.0.0",
+			minorDiff:	0,
 		},
 		{
-			v1:        "3.0.0",
-			v2:        "2.0.0",
-			minorDiff: 0,
+			v1:		"3.0.0",
+			v2:		"2.0.0",
+			minorDiff:	0,
 		},
 		{
-			v1:        "1.0.0",
-			v2:        "0.9.9",
-			minorDiff: 0,
+			v1:		"1.0.0",
+			v2:		"0.9.9",
+			minorDiff:	0,
 		},
 		{
-			v1:        "1.0.0",
-			v2:        "1.0.0-rc.1",
-			minorDiff: 0,
+			v1:		"1.0.0",
+			v2:		"1.0.0-rc.1",
+			minorDiff:	0,
 		},
 		{
-			v1:        "1.40.0",
-			v2:        "1.20.0",
-			minorDiff: -20,
+			v1:		"1.40.0",
+			v2:		"1.20.0",
+			minorDiff:	-20,
 		},
 	}
 

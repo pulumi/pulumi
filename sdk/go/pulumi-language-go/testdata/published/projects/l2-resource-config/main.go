@@ -8,8 +8,8 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		prov, err := config.NewProvider(ctx, "prov", &config.ProviderArgs{
-			Name:              pulumi.String("my config"),
-			PluginDownloadURL: pulumi.String("not the same as the pulumi resource option"),
+			Name:			pulumi.String("my config"),
+			PluginDownloadURL:	pulumi.String("not the same as the pulumi resource option"),
 		})
 		if err != nil {
 			return err

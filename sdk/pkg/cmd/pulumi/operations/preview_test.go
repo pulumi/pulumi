@@ -19,10 +19,10 @@ import (
 	"testing"
 
 	"github.com/gofrs/uuid"
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
@@ -31,20 +31,20 @@ import (
 
 func makeRootStackMetadata(op display.StepOp) engine.StepEventMetadata {
 	return engine.StepEventMetadata{
-		Op:   op,
-		URN:  resource.DefaultRootStackURN("stack", "project"),
-		Type: resource.RootStackType,
+		Op:	op,
+		URN:	resource.DefaultRootStackURN("stack", "project"),
+		Type:	resource.RootStackType,
 		New: &engine.StepEventStateMetadata{
-			URN:  resource.DefaultRootStackURN("stack", "project"),
-			Type: resource.RootStackType,
+			URN:	resource.DefaultRootStackURN("stack", "project"),
+			Type:	resource.RootStackType,
 		},
 	}
 }
 
 type stateOptions struct {
-	Parent   resource.URN
-	Provider *providers.Reference
-	Inputs   resource.PropertyMap
+	Parent		resource.URN
+	Provider	*providers.Reference
+	Inputs		resource.PropertyMap
 }
 
 func makeStateMetadata(
@@ -64,23 +64,23 @@ func makeStateMetadata(
 	urn := resource.CreateURN(name, string(typ), "", "project", "stack")
 
 	return engine.StepEventStateMetadata{
-		URN:      urn,
-		Type:     typ,
-		Custom:   custom,
-		Provider: provider,
-		Parent:   parent,
-		Inputs:   opts.Inputs,
+		URN:		urn,
+		Type:		typ,
+		Custom:		custom,
+		Provider:	provider,
+		Parent:		parent,
+		Inputs:		opts.Inputs,
 	}
 }
 
 func makeMetadata(op display.StepOp, state engine.StepEventStateMetadata) engine.StepEventMetadata {
 	return engine.StepEventMetadata{
-		Op:       op,
-		URN:      state.URN,
-		Type:     state.Type,
-		Provider: state.Provider,
-		New:      &state,
-		Res:      &state,
+		Op:		op,
+		URN:		state.URN,
+		Type:		state.Type,
+		Provider:	state.Provider,
+		New:		&state,
+		Res:		&state,
 	}
 }
 
@@ -111,38 +111,38 @@ func TestBuildImportFile_SingleResource(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		input    engine.StepEventStateMetadata
-		expected importSpec
+		name		string
+		input		engine.StepEventStateMetadata
+		expected	importSpec
 	}{
 		{
 			"custom",
 			makeStateMetadata(t, "res", "pkg:mod:typ", true, stateOptions{}),
 			importSpec{
-				ID:      "<PLACEHOLDER>",
-				Type:    "pkg:mod:typ",
-				Name:    "res",
-				Version: "1.2.3",
+				ID:		"<PLACEHOLDER>",
+				Type:		"pkg:mod:typ",
+				Name:		"res",
+				Version:	"1.2.3",
 			},
 		},
 		{
 			"component",
 			makeStateMetadata(t, "comp", "my/component", false, stateOptions{}),
 			importSpec{
-				Type:      "my/component",
-				Name:      "comp",
-				Component: true,
+				Type:		"my/component",
+				Name:		"comp",
+				Component:	true,
 			},
 		},
 		{
 			"remote component",
 			makeStateMetadata(t, "rem", "mlc:index:typ", false, stateOptions{}),
 			importSpec{
-				Type:      "mlc:index:typ",
-				Name:      "rem",
-				Component: true,
-				Remote:    true,
-				Version:   "1.2.3",
+				Type:		"mlc:index:typ",
+				Name:		"rem",
+				Component:	true,
+				Remote:		true,
+				Version:	"1.2.3",
 			},
 		},
 	}
@@ -223,11 +223,11 @@ func TestBuildImportFile_ExistingParent(t *testing.T) {
 	// And there should be the one expected resource in the resources table
 	require.Len(t, importFile.Resources, 1)
 	expected := importSpec{
-		ID:      "<PLACEHOLDER>",
-		Type:    "pkg:mod:child",
-		Name:    "child",
-		Parent:  "parent",
-		Version: "1.2.3",
+		ID:		"<PLACEHOLDER>",
+		Type:		"pkg:mod:child",
+		Name:		"child",
+		Parent:		"parent",
+		Version:	"1.2.3",
 	}
 	assert.Equal(t, expected, importFile.Resources[0])
 }
@@ -275,18 +275,18 @@ func TestBuildImportFile_NewParent(t *testing.T) {
 	// And there should be the two expected resources in the resources table
 	require.Len(t, importFile.Resources, 2)
 	expected := importSpec{
-		ID:      "<PLACEHOLDER>",
-		Type:    "pkg:mod:parent",
-		Name:    "parent",
-		Version: "1.2.3",
+		ID:		"<PLACEHOLDER>",
+		Type:		"pkg:mod:parent",
+		Name:		"parent",
+		Version:	"1.2.3",
 	}
 	assert.Equal(t, expected, importFile.Resources[0])
 	expected = importSpec{
-		ID:      "<PLACEHOLDER>",
-		Type:    "pkg:mod:child",
-		Name:    "child",
-		Parent:  "parent",
-		Version: "1.2.3",
+		ID:		"<PLACEHOLDER>",
+		Type:		"pkg:mod:child",
+		Name:		"child",
+		Parent:		"parent",
+		Version:	"1.2.3",
 	}
 	assert.Equal(t, expected, importFile.Resources[1])
 }
@@ -339,11 +339,11 @@ func TestBuildImportFile_ExistingProvider(t *testing.T) {
 	// And there should be the one expected resource in the resources table
 	require.Len(t, importFile.Resources, 1)
 	expected := importSpec{
-		ID:       "<PLACEHOLDER>",
-		Type:     "pkg:mod:typ",
-		Name:     "res",
-		Provider: "prov",
-		Version:  "3.2.1",
+		ID:		"<PLACEHOLDER>",
+		Type:		"pkg:mod:typ",
+		Name:		"res",
+		Provider:	"prov",
+		Version:	"3.2.1",
 	}
 	assert.Equal(t, expected, importFile.Resources[0])
 }
@@ -431,18 +431,18 @@ func TestBuildImportFile_DuplicateNames(t *testing.T) {
 	// And there should be the two expected resource in the resources table
 	require.Len(t, importFile.Resources, 2)
 	expected := importSpec{
-		ID:      "<PLACEHOLDER>",
-		Type:    "pkg:index:typA",
-		Name:    "res",
-		Version: "1.2.3",
+		ID:		"<PLACEHOLDER>",
+		Type:		"pkg:index:typA",
+		Name:		"res",
+		Version:	"1.2.3",
 	}
 	assert.Equal(t, expected, importFile.Resources[0])
 	expected = importSpec{
-		ID:          "<PLACEHOLDER>",
-		Type:        "pkg:index:typB",
-		Name:        "resTypB",
-		LogicalName: "res",
-		Version:     "1.2.3",
+		ID:		"<PLACEHOLDER>",
+		Type:		"pkg:index:typB",
+		Name:		"resTypB",
+		LogicalName:	"res",
+		Version:	"1.2.3",
 	}
 	assert.Equal(t, expected, importFile.Resources[1])
 }
@@ -497,25 +497,25 @@ func TestBuildImportFile_NameConflict(t *testing.T) {
 	// And there should be the two expected resource in the resources table
 	require.Len(t, importFile.Resources, 3)
 	expected := importSpec{
-		ID:      "<PLACEHOLDER>",
-		Type:    "pkg:index:typA",
-		Name:    "res",
-		Version: "1.2.3",
+		ID:		"<PLACEHOLDER>",
+		Type:		"pkg:index:typA",
+		Name:		"res",
+		Version:	"1.2.3",
 	}
 	assert.Equal(t, expected, importFile.Resources[0])
 	expected = importSpec{
-		ID:          "<PLACEHOLDER>",
-		Type:        "pkg:index:typB",
-		Name:        "resTypB2",
-		LogicalName: "res",
-		Version:     "1.2.3",
+		ID:		"<PLACEHOLDER>",
+		Type:		"pkg:index:typB",
+		Name:		"resTypB2",
+		LogicalName:	"res",
+		Version:	"1.2.3",
 	}
 	assert.Equal(t, expected, importFile.Resources[1])
 	expected = importSpec{
-		ID:      "<PLACEHOLDER>",
-		Type:    "pkg:index:typB",
-		Name:    "resTypB",
-		Version: "1.2.3",
+		ID:		"<PLACEHOLDER>",
+		Type:		"pkg:index:typB",
+		Name:		"resTypB",
+		Version:	"1.2.3",
 	}
 	assert.Equal(t, expected, importFile.Resources[2])
 }

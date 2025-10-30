@@ -78,7 +78,7 @@ func PkgVersion() (semver.Version, error) {
 	re := regexp.MustCompile("^.*/pulumi-namespaced/sdk(/v\\d+)?")
 	if match := re.FindStringSubmatch(pkgPath); match != nil {
 		vStr := match[1]
-		if len(vStr) == 0 { // If the version capture group was empty, default to v1.
+		if len(vStr) == 0 {	// If the version capture group was empty, default to v1.
 			return semver.Version{Major: 1}, nil
 		}
 		return semver.MustParse(fmt.Sprintf("%s.0.0", vStr[2:])), nil

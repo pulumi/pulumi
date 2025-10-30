@@ -18,7 +18,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -28,7 +28,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -38,9 +38,9 @@ func newPluginRmCmd() *cobra.Command {
 	var all bool
 	var yes bool
 	cmd := &cobra.Command{
-		Use:   "rm [KIND [NAME [VERSION]]]",
-		Args:  cmdutil.MaximumNArgs(3),
-		Short: "Remove one or more plugins from the download cache",
+		Use:	"rm [KIND [NAME [VERSION]]]",
+		Args:	cmdutil.MaximumNArgs(3),
+		Short:	"Remove one or more plugins from the download cache",
 		Long: "Remove one or more plugins from the download cache.\n" +
 			"\n" +
 			"Specify KIND, NAME, and/or VERSION to narrow down what will be removed.\n" +

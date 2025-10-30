@@ -24,10 +24,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	. "github.com/pulumi/pulumi/sdk/v3/pkg/engine"	//nolint:revive
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -46,9 +46,9 @@ func TestPackageRef(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "0",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"0",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -57,9 +57,9 @@ func TestPackageRef(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "1",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"1",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -144,8 +144,8 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 					param = string(value.Value)
 
 					return plugin.ParameterizeResponse{
-						Name:    value.Name,
-						Version: value.Version,
+						Name:		value.Name,
+						Version:	value.Version,
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
@@ -154,9 +154,9 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 					}
 
 					return plugin.CreateResponse{
-						ID:         "id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -178,11 +178,11 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      req.ID,
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							ID:		req.ID,
+							Inputs:		req.Inputs,
+							Outputs:	req.State,
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 				CallF: func(_ context.Context, req plugin.CallRequest, _ *deploytest.ResourceMonitor) (plugin.CallResponse, error) {
@@ -199,7 +199,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 						ReturnDependencies: map[resource.PropertyKey][]resource.URN{
 							"output": {"urn:pulumi:stack::m::typA::resB"},
 						},
-						Failures: nil,
+						Failures:	nil,
 					}, nil
 				},
 				ConstructF: func(
@@ -216,7 +216,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 					}
 
 					return plugin.ConstructResponse{
-						URN: resource.NewURN("", "", "", req.Type, req.Name),
+						URN:	resource.NewURN("", "", "", req.Type, req.Name),
 						Outputs: resource.PropertyMap{
 							"output": resource.NewProperty("output"),
 						},
@@ -241,8 +241,8 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 
 		// Register a multi-language component with the base provider
 		mlcA, err := monitor.RegisterResource("pkgA:m:typA", "mlcA", true, deploytest.ResourceOptions{
-			PackageRef: pkgRef,
-			Remote:     true,
+			PackageRef:	pkgRef,
+			Remote:		true,
 		})
 		require.NoError(t, err)
 		assert.Equal(t, "mlcA", mlcA.URN.Name())
@@ -255,9 +255,9 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 
 		// Now register a replacement provider
 		extRef, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, &pulumirpc.Parameterization{
-			Name:    "pkgExt",
-			Version: "0.5.0",
-			Value:   []byte("replacement"),
+			Name:		"pkgExt",
+			Version:	"0.5.0",
+			Value:		[]byte("replacement"),
 		})
 		require.NoError(t, err)
 
@@ -269,8 +269,8 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 
 		// Register a multi-language component with the replacement provider
 		mlcB, err := monitor.RegisterResource("pkgExt:m:typA", "mlcB", true, deploytest.ResourceOptions{
-			PackageRef: extRef,
-			Remote:     true,
+			PackageRef:	extRef,
+			Remote:		true,
 		})
 		require.NoError(t, err)
 		assert.Equal(t, "mlcB", mlcB.URN.Name())
@@ -315,8 +315,8 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 			map[resource.PropertyKey][]resource.URN{
 				"input": {"urn:pulumi:stack::m::typA::resB"},
 			},
-			"", /*provider*/
-			"", /*version*/
+			"",	/*provider*/
+			"",	/*version*/
 			extRef,
 			"",
 			nil,
@@ -367,11 +367,11 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 	assert.Equal(t, tokens.Type("pulumi:providers:pkgExt"), prov.Type)
 	assert.Equal(t, "default_0_5_0", prov.URN.Name())
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
-		"version": "0.5.0",
+		"version":	"0.5.0",
 		"__internal": map[string]any{
-			"name":             "pkgA",
-			"version":          "1.0.0",
-			"parameterization": "cmVwbGFjZW1lbnQ=",
+			"name":			"pkgA",
+			"version":		"1.0.0",
+			"parameterization":	"cmVwbGFjZW1lbnQ=",
 		},
 	}), prov.Inputs)
 
@@ -403,13 +403,13 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 					var expected resource.PropertyMap
 					if param == "replacement" {
 						expected = resource.NewPropertyMapFromMap(map[string]any{
-							"version": "0.5.0",
-							"name":    "testingExt",
+							"version":	"0.5.0",
+							"name":		"testingExt",
 						})
 					} else {
 						expected = resource.NewPropertyMapFromMap(map[string]any{
-							"version": "1.0.0",
-							"name":    "testingBase",
+							"version":	"1.0.0",
+							"name":		"testingBase",
 						})
 					}
 
@@ -427,8 +427,8 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 					param = string(value.Value)
 
 					return plugin.ParameterizeResponse{
-						Name:    value.Name,
-						Version: value.Version,
+						Name:		value.Name,
+						Version:	value.Version,
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
@@ -437,9 +437,9 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 					}
 
 					return plugin.CreateResponse{
-						ID:         "id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -458,9 +458,9 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 
 		// Now register a replacement provider
 		extRef, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, &pulumirpc.Parameterization{
-			Name:    "pkgExt",
-			Version: "0.5.0",
-			Value:   []byte("replacement"),
+			Name:		"pkgExt",
+			Version:	"0.5.0",
+			Value:		[]byte("replacement"),
 		})
 		require.NoError(t, err)
 
@@ -474,10 +474,10 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Options:	lt.TestUpdateOptions{T: t, HostF: hostF},
 		Config: config.Map{
-			config.MustParseKey("pkgA:name"):   config.NewValue("testingBase"),
-			config.MustParseKey("pkgExt:name"): config.NewValue("testingExt"),
+			config.MustParseKey("pkgA:name"):	config.NewValue("testingBase"),
+			config.MustParseKey("pkgExt:name"):	config.NewValue("testingExt"),
 		},
 	}
 
@@ -491,12 +491,12 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 	prov := snap.Resources[2]
 	assert.Equal(t, tokens.Type("pulumi:providers:pkgExt"), prov.Type)
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
-		"version": "0.5.0",
-		"name":    "testingExt",
+		"version":	"0.5.0",
+		"name":		"testingExt",
 		"__internal": map[string]any{
-			"name":             "pkgA",
-			"version":          "1.0.0",
-			"parameterization": "cmVwbGFjZW1lbnQ=",
+			"name":			"pkgA",
+			"version":		"1.0.0",
+			"parameterization":	"cmVwbGFjZW1lbnQ=",
 		},
 	}), prov.Inputs)
 
@@ -534,8 +534,8 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 					param = string(value.Value)
 
 					return plugin.ParameterizeResponse{
-						Name:    value.Name,
-						Version: value.Version,
+						Name:		value.Name,
+						Version:	value.Version,
 					}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
@@ -549,7 +549,7 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID: req.ID,
+							ID:	req.ID,
 							Inputs: resource.PropertyMap{
 								"input": resource.NewProperty("input"),
 							},
@@ -557,7 +557,7 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 								"output": resource.NewProperty("output"),
 							},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -570,8 +570,8 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 
 		// Import a resource using that base provider
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			PackageRef: pkgRef,
-			ImportID:   "idA",
+			PackageRef:	pkgRef,
+			ImportID:	"idA",
 			Inputs: resource.PropertyMap{
 				"input": resource.NewProperty("input"),
 			},
@@ -580,16 +580,16 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 
 		// Now register a replacement provider
 		extRef, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, &pulumirpc.Parameterization{
-			Name:    "pkgExt",
-			Version: "0.5.0",
-			Value:   []byte("replacement"),
+			Name:		"pkgExt",
+			Version:	"0.5.0",
+			Value:		[]byte("replacement"),
 		})
 		require.NoError(t, err)
 
 		// Test importing a resource with the replacement provider
 		_, err = monitor.RegisterResource("pkgExt:m:typA", "resB", true, deploytest.ResourceOptions{
-			PackageRef: extRef,
-			ImportID:   "idB",
+			PackageRef:	extRef,
+			ImportID:	"idB",
 			Inputs: resource.PropertyMap{
 				"input": resource.NewProperty("input"),
 			},
@@ -606,8 +606,8 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgExt:m:typA", "resC", true, deploytest.ResourceOptions{
-			Provider: provRef.String(),
-			ImportID: "idB",
+			Provider:	provRef.String(),
+			ImportID:	"idB",
 			Inputs: resource.PropertyMap{
 				"input": resource.NewProperty("input"),
 			},
@@ -636,11 +636,11 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 	assert.Equal(t, tokens.Type("pulumi:providers:pkgExt"), prov.Type)
 	assert.Equal(t, "default_0_5_0", prov.URN.Name())
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
-		"version": "0.5.0",
+		"version":	"0.5.0",
 		"__internal": map[string]any{
-			"name":             "pkgA",
-			"version":          "1.0.0",
-			"parameterization": "cmVwbGFjZW1lbnQ=",
+			"name":			"pkgA",
+			"version":		"1.0.0",
+			"parameterization":	"cmVwbGFjZW1lbnQ=",
 		},
 	}), prov.Inputs)
 

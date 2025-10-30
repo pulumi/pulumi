@@ -21,11 +21,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -35,10 +35,10 @@ func newPolicyLsCmd() *cobra.Command {
 	var jsonOut bool
 
 	cmd := &cobra.Command{
-		Use:   "ls [org-name]",
-		Args:  cmdutil.MaximumNArgs(1),
-		Short: "List all Policy Packs for a Pulumi organization",
-		Long:  "List all Policy Packs for a Pulumi organization",
+		Use:	"ls [org-name]",
+		Args:	cmdutil.MaximumNArgs(1),
+		Short:	"List all Policy Packs for a Pulumi organization",
+		Long:	"List all Policy Packs for a Pulumi organization",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 
@@ -70,8 +70,8 @@ func newPolicyLsCmd() *cobra.Command {
 
 			// Gather all Policy Packs for the organization.
 			var (
-				allPolicyPacks []apitype.PolicyPackWithVersions
-				inContToken    backend.ContinuationToken
+				allPolicyPacks	[]apitype.PolicyPackWithVersions
+				inContToken	backend.ContinuationToken
 			)
 			for {
 				resp, outContToken, err := b.ListPolicyPacks(ctx, orgName, inContToken)
@@ -116,8 +116,8 @@ func formatPolicyPacksConsole(policyPacks []apitype.PolicyPackWithVersions) erro
 		rows = append(rows, cmdutil.TableRow{Columns: columns})
 	}
 	ui.PrintTable(cmdutil.Table{
-		Headers: headers,
-		Rows:    rows,
+		Headers:	headers,
+		Rows:		rows,
 	}, nil)
 	return nil
 }
@@ -126,16 +126,16 @@ func formatPolicyPacksConsole(policyPacks []apitype.PolicyPackWithVersions) erro
 // of policyPacksJSON objects.  While we can add fields to this structure in the future, we should not change
 // existing fields.
 type policyPacksJSON struct {
-	Name     string   `json:"name"`
-	Versions []string `json:"versions"`
+	Name		string		`json:"name"`
+	Versions	[]string	`json:"versions"`
 }
 
 func formatPolicyPacksJSON(policyPacks []apitype.PolicyPackWithVersions) error {
 	output := make([]policyPacksJSON, len(policyPacks))
 	for i, pack := range policyPacks {
 		output[i] = policyPacksJSON{
-			Name:     pack.Name,
-			Versions: pack.VersionTags,
+			Name:		pack.Name,
+			Versions:	pack.VersionTags,
 		}
 	}
 	return ui.PrintJSON(output)

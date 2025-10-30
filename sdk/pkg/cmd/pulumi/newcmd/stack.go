@@ -19,14 +19,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 )
 
 // GetStack gets a stack and the project name & description, or returns nil if the stack doesn't exist.

@@ -23,9 +23,9 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/testing/utils"
 )
 
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
@@ -53,9 +53,9 @@ func TestMakeSafeEnumName(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		input    string
-		expected string
-		wantErr  bool
+		input		string
+		expected	string
+		wantErr		bool
 	}{
 		{"red", "RED", false},
 		{"snake_cased_name", "SNAKE_CASED_NAME", false},
@@ -94,8 +94,8 @@ func TestMakePyPiVersion(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		input    string
-		expected string
+		input		string
+		expected	string
 	}{
 		{"1.2.3", "1.2.3"},
 		{"1.2.3+dirty", "1.2.3+dirty"},

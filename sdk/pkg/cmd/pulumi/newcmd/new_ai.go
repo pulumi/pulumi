@@ -23,17 +23,17 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 )
 
 const (
-	noSelection     = "no"
-	yesSelection    = "yes"
-	refineSelection = "refine"
+	noSelection	= "no"
+	yesSelection	= "yes"
+	refineSelection	= "refine"
 )
 
 func deriveAIOrTemplate(args newArgs) string {
@@ -67,8 +67,8 @@ func runAINew(
 	var rawLanguageSelect string
 	if args.aiLanguage == "" {
 		if err = survey.AskOne(&survey.Select{
-			Message: "Please select a language for your project:",
-			Options: languageOptions,
+			Message:	"Please select a language for your project:",
+			Options:	languageOptions,
 		}, &rawLanguageSelect, ui.SurveyIcons(opts.Color)); err != nil {
 			return "", err
 		}
@@ -127,11 +127,11 @@ func sendPromptToPulumiAI(
 		return "", "", "", err
 	}
 	requestBody := httpstate.AIPromptRequestBody{
-		Language:       language,
-		Instructions:   promptMessage,
-		ResponseMode:   "code",
-		ConversationID: conversationID,
-		ConnectionID:   connectionID,
+		Language:	language,
+		Instructions:	promptMessage,
+		ResponseMode:	"code",
+		ConversationID:	conversationID,
+		ConnectionID:	connectionID,
 	}
 	fmt.Println("Sending prompt to Pulumi AI...")
 	res, err := backend.PromptAI(ctx, requestBody)
@@ -244,14 +244,14 @@ func runAINewPromptStep(
 		noSelection,
 	}
 	continuePromptOptionsDescriptions := map[string]string{
-		refineSelection: "Write a prompt to further refine this program",
-		yesSelection:    "Use this program to create the project",
-		noSelection:     "Abort the prompt and exit",
+		refineSelection:	"Write a prompt to further refine this program",
+		yesSelection:		"Use this program to create the project",
+		noSelection:		"Abort the prompt and exit",
 	}
 	if !args.yes {
 		if err := survey.AskOne(&survey.Select{
-			Message: "Use this program as a template?",
-			Options: continuePromptOptions,
+			Message:	"Use this program as a template?",
+			Options:	continuePromptOptions,
 			Description: func(opt string, _ int) string {
 				return continuePromptOptionsDescriptions[opt]
 			},
@@ -275,14 +275,14 @@ func chooseWithAIOrTemplate(opts display.Options) (string, error) {
 	}
 
 	optionsDescriptionMap := map[string]string{
-		"template": "Create a new Pulumi project using a template",
-		"ai":       "Create a new Pulumi project using Pulumi AI",
+		"template":	"Create a new Pulumi project using a template",
+		"ai":		"Create a new Pulumi project using Pulumi AI",
 	}
 
 	var ai string
 	if err := survey.AskOne(&survey.Select{
-		Message: "Would you like to create a project from a template or using a Pulumi AI prompt?",
-		Options: options,
+		Message:	"Would you like to create a project from a template or using a Pulumi AI prompt?",
+		Options:	options,
 		Description: func(opt string, _ int) string {
 			return optionsDescriptionMap[opt]
 		},

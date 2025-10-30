@@ -26,19 +26,19 @@ import (
 )
 
 var (
-	releaseVersionRegex = regexp.MustCompile(
+	releaseVersionRegex	= regexp.MustCompile(
 		`^v(?P<version>\d+\.\d+\.\d+)(?P<dirty>\+dirty)?$`)
-	rcVersionRegex = regexp.MustCompile(
+	rcVersionRegex	= regexp.MustCompile(
 		`^v(?P<version>\d+\.\d+\.\d+)-rc\.(?P<rcN>\d+)(?P<dirty>\+dirty)?$`)
-	betaVersionRegex = regexp.MustCompile(
+	betaVersionRegex	= regexp.MustCompile(
 		`^v(?P<version>\d+\.\d+\.\d+)-beta\.(?P<betaN>\d+)(?P<dirty>.dirty)?$`)
-	alphaVersionRegex = regexp.MustCompile(
+	alphaVersionRegex	= regexp.MustCompile(
 		`^v(?P<version>\d+\.\d+\.\d+)-alpha\.(?P<time>\d+)\+(?P<gitInfo>g[a-z0-9]+)(?P<dirty>.dirty)?$`)
-	devVersionRegex = regexp.MustCompile(
+	devVersionRegex	= regexp.MustCompile(
 		`^v(?P<version>\d+\.\d+\.\d+)-dev\.(?P<time>\d+)\+(?P<gitInfo>g[a-z0-9]+)(?P<dirty>.dirty)?$`)
 	//nolint:lll
 	// https://github.com/golang/go/blob/9f40f9f4d3e9e5a08cfd1df5af23a6f61d67d408/src/cmd/go/internal/modfetch/pseudo.go#L49
-	pseudoVersionRegex = regexp.MustCompile(`^v[0-9]+\.(0\.0-|\d+\.\d+-([^+]*\.)?0\.)\d{14}-[A-Za-z0-9]+(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$`)
+	pseudoVersionRegex	= regexp.MustCompile(`^v[0-9]+\.(0\.0-|\d+\.\d+-([^+]*\.)?0\.)\d{14}-[A-Za-z0-9]+(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$`)
 )
 
 // IsPseudoVersion reports whether v is a go modules pseudo-version.

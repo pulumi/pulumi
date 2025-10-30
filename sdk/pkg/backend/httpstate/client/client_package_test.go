@@ -30,18 +30,18 @@ import (
 )
 
 var (
-	testSchemaData  = []byte(`{"name": "test-package", "version": "1.0.0"}`)
-	testReadmeData  = []byte("# Test Package\nThis is a test package")
-	testInstallData = []byte("# Installation\nHow to install this package")
+	testSchemaData	= []byte(`{"name": "test-package", "version": "1.0.0"}`)
+	testReadmeData	= []byte("# Test Package\nThis is a test package")
+	testInstallData	= []byte("# Installation\nHow to install this package")
 )
 
 type testCase struct {
-	name             string
-	setupServer      func(blobStorage *httptest.Server) *httptest.Server
-	setupBlobStorage func() *httptest.Server
-	input            *apitype.PackagePublishOp
-	errorMessage     string
-	httpClient       *http.Client
+	name			string
+	setupServer		func(blobStorage *httptest.Server) *httptest.Server
+	setupBlobStorage	func() *httptest.Server
+	input			*apitype.PackagePublishOp
+	errorMessage		string
+	httpClient		*http.Client
 }
 
 type errorTransport struct {
@@ -59,7 +59,7 @@ func TestPublishPackage(t *testing.T) {
 
 	tests := []testCase{
 		{
-			name: "SuccessfulPublish",
+			name:	"SuccessfulPublish",
 			setupBlobStorage: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
@@ -71,11 +71,11 @@ func TestPublishPackage(t *testing.T) {
 					case "/api/preview/registry/packages/pulumi/test-publisher/test-package/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := apitype.StartPackagePublishResponse{
-							OperationID: "test-operation-id",
+							OperationID:	"test-operation-id",
 							UploadURLs: apitype.PackageUpload{
-								Schema:                    blobStorage.URL + "/upload/schema",
-								Index:                     blobStorage.URL + "/upload/index",
-								InstallationConfiguration: blobStorage.URL + "/upload/install",
+								Schema:				blobStorage.URL + "/upload/schema",
+								Index:				blobStorage.URL + "/upload/index",
+								InstallationConfiguration:	blobStorage.URL + "/upload/install",
 							},
 							RequiredHeaders: map[string]string{
 								"Content-Type": "application/octet-stream",
@@ -90,7 +90,7 @@ func TestPublishPackage(t *testing.T) {
 			},
 		},
 		{
-			name: "FailedStartPublish",
+			name:	"FailedStartPublish",
 			setupBlobStorage: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
@@ -105,10 +105,10 @@ func TestPublishPackage(t *testing.T) {
 					}
 				}))
 			},
-			errorMessage: "publish package failed",
+			errorMessage:	"publish package failed",
 		},
 		{
-			name: "FailedSchemaUpload",
+			name:	"FailedSchemaUpload",
 			setupBlobStorage: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					if r.URL.Path == "/upload/schema" {
@@ -124,11 +124,11 @@ func TestPublishPackage(t *testing.T) {
 					case "/api/preview/registry/packages/pulumi/test-publisher/test-package/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := apitype.StartPackagePublishResponse{
-							OperationID: "test-operation-id",
+							OperationID:	"test-operation-id",
 							UploadURLs: apitype.PackageUpload{
-								Schema:                    blobStorage.URL + "/upload/schema",
-								Index:                     blobStorage.URL + "/upload/index",
-								InstallationConfiguration: blobStorage.URL + "/upload/install",
+								Schema:				blobStorage.URL + "/upload/schema",
+								Index:				blobStorage.URL + "/upload/index",
+								InstallationConfiguration:	blobStorage.URL + "/upload/install",
 							},
 							RequiredHeaders: map[string]string{
 								"Content-Type": "application/octet-stream",
@@ -138,10 +138,10 @@ func TestPublishPackage(t *testing.T) {
 					}
 				}))
 			},
-			errorMessage: "failed to upload schema",
+			errorMessage:	"failed to upload schema",
 		},
 		{
-			name: "FailedReadmeUpload",
+			name:	"FailedReadmeUpload",
 			setupBlobStorage: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					if r.URL.Path == "/upload/index" {
@@ -157,11 +157,11 @@ func TestPublishPackage(t *testing.T) {
 					case "/api/preview/registry/packages/pulumi/test-publisher/test-package/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := apitype.StartPackagePublishResponse{
-							OperationID: "test-operation-id",
+							OperationID:	"test-operation-id",
 							UploadURLs: apitype.PackageUpload{
-								Schema:                    blobStorage.URL + "/upload/schema",
-								Index:                     blobStorage.URL + "/upload/index",
-								InstallationConfiguration: blobStorage.URL + "/upload/install",
+								Schema:				blobStorage.URL + "/upload/schema",
+								Index:				blobStorage.URL + "/upload/index",
+								InstallationConfiguration:	blobStorage.URL + "/upload/install",
 							},
 							RequiredHeaders: map[string]string{
 								"Content-Type": "application/octet-stream",
@@ -171,10 +171,10 @@ func TestPublishPackage(t *testing.T) {
 					}
 				}))
 			},
-			errorMessage: "failed to upload index",
+			errorMessage:	"failed to upload index",
 		},
 		{
-			name: "FailedInstallDocsUpload",
+			name:	"FailedInstallDocsUpload",
 			setupBlobStorage: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					if r.URL.Path == "/upload/install" {
@@ -190,11 +190,11 @@ func TestPublishPackage(t *testing.T) {
 					case "/api/preview/registry/packages/pulumi/test-publisher/test-package/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := apitype.StartPackagePublishResponse{
-							OperationID: "test-operation-id",
+							OperationID:	"test-operation-id",
 							UploadURLs: apitype.PackageUpload{
-								Schema:                    blobStorage.URL + "/upload/schema",
-								Index:                     blobStorage.URL + "/upload/index",
-								InstallationConfiguration: blobStorage.URL + "/upload/install",
+								Schema:				blobStorage.URL + "/upload/schema",
+								Index:				blobStorage.URL + "/upload/index",
+								InstallationConfiguration:	blobStorage.URL + "/upload/install",
 							},
 							RequiredHeaders: map[string]string{
 								"Content-Type": "application/octet-stream",
@@ -204,10 +204,10 @@ func TestPublishPackage(t *testing.T) {
 					}
 				}))
 			},
-			errorMessage: "failed to upload installation configuration",
+			errorMessage:	"failed to upload installation configuration",
 		},
 		{
-			name: "FailedCompletePublish",
+			name:	"FailedCompletePublish",
 			setupBlobStorage: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
@@ -219,11 +219,11 @@ func TestPublishPackage(t *testing.T) {
 					case "/api/preview/registry/packages/pulumi/test-publisher/test-package/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := apitype.StartPackagePublishResponse{
-							OperationID: "test-operation-id",
+							OperationID:	"test-operation-id",
 							UploadURLs: apitype.PackageUpload{
-								Schema:                    blobStorage.URL + "/upload/schema",
-								Index:                     blobStorage.URL + "/upload/index",
-								InstallationConfiguration: blobStorage.URL + "/upload/install",
+								Schema:				blobStorage.URL + "/upload/schema",
+								Index:				blobStorage.URL + "/upload/index",
+								InstallationConfiguration:	blobStorage.URL + "/upload/install",
 							},
 							RequiredHeaders: map[string]string{
 								"Content-Type": "application/octet-stream",
@@ -237,10 +237,10 @@ func TestPublishPackage(t *testing.T) {
 					}
 				}))
 			},
-			errorMessage: "failed to complete package publishing operation",
+			errorMessage:	"failed to complete package publishing operation",
 		},
 		{
-			name: "PublishWithoutInstallDocs",
+			name:	"PublishWithoutInstallDocs",
 			setupBlobStorage: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					if r.URL.Path == "/upload/install" {
@@ -257,11 +257,11 @@ func TestPublishPackage(t *testing.T) {
 					case "/api/preview/registry/packages/pulumi/test-publisher/test-package/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := apitype.StartPackagePublishResponse{
-							OperationID: "test-operation-id",
+							OperationID:	"test-operation-id",
 							UploadURLs: apitype.PackageUpload{
-								Schema:                    blobStorage.URL + "/upload/schema",
-								Index:                     blobStorage.URL + "/upload/index",
-								InstallationConfiguration: blobStorage.URL + "/upload/install",
+								Schema:				blobStorage.URL + "/upload/schema",
+								Index:				blobStorage.URL + "/upload/index",
+								InstallationConfiguration:	blobStorage.URL + "/upload/install",
 							},
 							RequiredHeaders: map[string]string{
 								"Content-Type": "application/octet-stream",
@@ -275,17 +275,17 @@ func TestPublishPackage(t *testing.T) {
 				}))
 			},
 			input: &apitype.PackagePublishOp{
-				Source:      "pulumi",
-				Publisher:   "test-publisher",
-				Name:        "test-package",
-				Version:     semver.MustParse("1.0.0"),
-				Schema:      bytes.NewReader(testSchemaData),
-				Readme:      bytes.NewReader(testReadmeData),
-				InstallDocs: nil, // No install docs
+				Source:		"pulumi",
+				Publisher:	"test-publisher",
+				Name:		"test-package",
+				Version:	semver.MustParse("1.0.0"),
+				Schema:		bytes.NewReader(testSchemaData),
+				Readme:		bytes.NewReader(testReadmeData),
+				InstallDocs:	nil,	// No install docs
 			},
 		},
 		{
-			name: "FailedPublish",
+			name:	"FailedPublish",
 			httpClient: &http.Client{
 				Transport: &errorTransport{
 					roundTripFunc: func(req *http.Request) (*http.Response, error) {
@@ -293,7 +293,7 @@ func TestPublishPackage(t *testing.T) {
 					},
 				},
 			},
-			errorMessage: "simulated network error",
+			errorMessage:	"simulated network error",
 			setupBlobStorage: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
@@ -305,11 +305,11 @@ func TestPublishPackage(t *testing.T) {
 					case "/api/preview/registry/packages/pulumi/test-publisher/test-package/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := apitype.StartPackagePublishResponse{
-							OperationID: "test-operation-id",
+							OperationID:	"test-operation-id",
 							UploadURLs: apitype.PackageUpload{
-								Schema:                    blobStorage.URL + "/upload/schema",
-								Index:                     blobStorage.URL + "/upload/index",
-								InstallationConfiguration: blobStorage.URL + "/upload/install",
+								Schema:				blobStorage.URL + "/upload/schema",
+								Index:				blobStorage.URL + "/upload/index",
+								InstallationConfiguration:	blobStorage.URL + "/upload/install",
 							},
 							RequiredHeaders: map[string]string{
 								"Content-Type": "application/octet-stream",
@@ -321,20 +321,20 @@ func TestPublishPackage(t *testing.T) {
 			},
 		},
 		{
-			name: "FailedBodyRead",
+			name:	"FailedBodyRead",
 			httpClient: &http.Client{
 				Transport: &errorTransport{
 					roundTripFunc: func(req *http.Request) (*http.Response, error) {
 						// Return a response with a failing body reader
 						return &http.Response{
-							StatusCode: 400,
-							Status:     "400 Bad Request",
-							Body:       failingReadCloser{},
+							StatusCode:	400,
+							Status:		"400 Bad Request",
+							Body:		failingReadCloser{},
 						}, nil
 					},
 				},
 			},
-			errorMessage: "failed to upload schema: 400 Bad Request",
+			errorMessage:	"failed to upload schema: 400 Bad Request",
 			setupBlobStorage: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
@@ -346,11 +346,11 @@ func TestPublishPackage(t *testing.T) {
 					case "/api/preview/registry/packages/pulumi/test-publisher/test-package/versions":
 						w.WriteHeader(http.StatusAccepted)
 						response := apitype.StartPackagePublishResponse{
-							OperationID: "test-operation-id",
+							OperationID:	"test-operation-id",
 							UploadURLs: apitype.PackageUpload{
-								Schema:                    blobStorage.URL + "/upload/schema",
-								Index:                     blobStorage.URL + "/upload/index",
-								InstallationConfiguration: blobStorage.URL + "/upload/install",
+								Schema:				blobStorage.URL + "/upload/schema",
+								Index:				blobStorage.URL + "/upload/index",
+								InstallationConfiguration:	blobStorage.URL + "/upload/install",
 							},
 							RequiredHeaders: map[string]string{
 								"Content-Type": "application/octet-stream",
@@ -380,9 +380,9 @@ func TestPublishPackage(t *testing.T) {
 
 			// Create client pointing to our test server
 			client := &Client{
-				apiURL:     server.URL,
-				apiToken:   "fake-token",
-				httpClient: httpClient,
+				apiURL:		server.URL,
+				apiToken:	"fake-token",
+				httpClient:	httpClient,
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
 						client: http.DefaultClient,
@@ -395,13 +395,13 @@ func TestPublishPackage(t *testing.T) {
 				input = *tt.input
 			} else {
 				input = apitype.PackagePublishOp{
-					Source:      "pulumi",
-					Publisher:   "test-publisher",
-					Name:        "test-package",
-					Version:     semver.MustParse("1.0.0"),
-					Schema:      bytes.NewReader(testSchemaData),
-					Readme:      bytes.NewReader(testReadmeData),
-					InstallDocs: bytes.NewReader(testInstallData),
+					Source:		"pulumi",
+					Publisher:	"test-publisher",
+					Name:		"test-package",
+					Version:	semver.MustParse("1.0.0"),
+					Schema:		bytes.NewReader(testSchemaData),
+					Readme:		bytes.NewReader(testReadmeData),
+					InstallDocs:	bytes.NewReader(testInstallData),
 				}
 			}
 

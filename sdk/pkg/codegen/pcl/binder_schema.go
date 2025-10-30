@@ -23,27 +23,27 @@ import (
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
 
 type packageSchema struct {
-	schema schema.PackageReference
+	schema	schema.PackageReference
 
 	// These maps map from canonical tokens to actual tokens.
 	//
 	// Both maps take `nil` to mean uninitialized.
-	resourceTokenMap map[string]string
-	functionTokenMap map[string]string
+	resourceTokenMap	map[string]string
+	functionTokenMap	map[string]string
 }
 
 type packageOpts struct {
-	version           string
-	pluginDownloadURL string
+	version			string
+	pluginDownloadURL	string
 }
 
 // Lookup a PCL invoke token in a schema.
@@ -119,15 +119,15 @@ func newPackageSchema(pkg schema.PackageReference) *packageSchema {
 }
 
 type PackageInfo struct {
-	name    string
-	version string
+	name	string
+	version	string
 }
 
 type PackageCache struct {
-	m sync.RWMutex
+	m	sync.RWMutex
 
 	// cache by (name, version)
-	entries map[PackageInfo]*packageSchema
+	entries	map[PackageInfo]*packageSchema
 }
 
 func NewPackageCache() *PackageCache {
@@ -152,8 +152,8 @@ func (c *PackageCache) loadPackageSchema(
 	name, version, pluginDownloadURL string,
 ) (*packageSchema, error) {
 	pkgInfo := PackageInfo{
-		name:    name,
-		version: version,
+		name:		name,
+		version:	version,
 	}
 	if s, ok := c.getPackageSchema(pkgInfo); ok {
 		return s, nil
@@ -165,9 +165,9 @@ func (c *PackageCache) loadPackageSchema(
 	}
 
 	pkg, err := schema.LoadPackageReferenceV2(ctx, loader, &schema.PackageDescriptor{
-		Name:        name,
-		Version:     versionSemver,
-		DownloadURL: pluginDownloadURL,
+		Name:		name,
+		Version:	versionSemver,
+		DownloadURL:	pluginDownloadURL,
 	})
 	if err != nil {
 		return nil, err
@@ -195,8 +195,8 @@ func (c *PackageCache) loadPackageSchemaFromDescriptor(
 	}
 
 	pkgInfo := PackageInfo{
-		name:    descriptor.PackageName(),
-		version: version,
+		name:		descriptor.PackageName(),
+		version:	version,
 	}
 
 	if s, ok := c.getPackageSchema(pkgInfo); ok {
@@ -227,8 +227,8 @@ func canonicalizeToken(tok string, pkg schema.PackageReference) string {
 // getPkgOpts gets the package options from an unbound resource node.
 func (b *binder) getPkgOpts(node *Resource) packageOpts {
 	node.VariableType = model.NewObjectType(map[string]model.Type{
-		"id":  model.NewOutputType(model.StringType),
-		"urn": model.NewOutputType(model.StringType),
+		"id":	model.NewOutputType(model.StringType),
+		"urn":	model.NewOutputType(model.StringType),
 	})
 	var rangeKey, rangeValue model.Type
 	for _, block := range node.syntax.Body.Blocks {
@@ -669,8 +669,8 @@ func GenEnum(
 			unsafeEnum(from)
 			knownVal := strings.Split(strings.Split(known.GoString(), "(")[1], ")")[0]
 			diag := &hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  fmt.Sprintf("%v is not a valid value of the enum \"%v\"", knownVal, t.Token),
+				Severity:	hcl.DiagError,
+				Summary:	fmt.Sprintf("%v is not a valid value of the enum \"%v\"", knownVal, t.Token),
 			}
 			if members := enumMemberValues(t); len(members) > 0 {
 				diag.Detail = fmt.Sprintf("Valid members are %v", listToString(members))

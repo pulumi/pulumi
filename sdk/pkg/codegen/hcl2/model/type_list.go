@@ -20,17 +20,17 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model/pretty"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 )
 
 // ListType represents lists of particular element types.
 type ListType struct {
 	// ElementType is the element type of the list.
-	ElementType Type
+	ElementType	Type
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache	*gsync.Map[Type, cacheEntry]
 }
 
 // NewListType creates a new list type with the given element type.
@@ -56,9 +56,9 @@ func (t *ListType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Forma
 	}
 
 	seenFormatters[t] = &pretty.Wrap{
-		Prefix:  "list(",
-		Postfix: ")",
-		Value:   formatter,
+		Prefix:		"list(",
+		Postfix:	")",
+		Value:		formatter,
 	}
 
 	return seenFormatters[t]
@@ -185,4 +185,4 @@ func (t *ListType) unify(other Type) (Type, ConversionKind) {
 	})
 }
 
-func (*ListType) isType() {}
+func (*ListType) isType()	{}

@@ -136,7 +136,7 @@ func TestLanguage(t *testing.T) {
 						pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 						return nil
 					},
-					Cancel: cancel,
+					Cancel:	cancel,
 				})
 				require.NoError(t, err)
 
@@ -158,24 +158,24 @@ func TestLanguage(t *testing.T) {
 
 				// Prepare to run the tests
 				prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
-					LanguagePluginName:   "nodejs",
-					LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
-					TemporaryDirectory:   rootDir,
-					SnapshotDirectory:    snapshotDir,
-					CoreSdkDirectory:     "../..",
-					CoreSdkVersion:       sdk.Version.String(),
-					PolicyPackDirectory:  "testdata/policies",
-					Local:                local,
+					LanguagePluginName:	"nodejs",
+					LanguagePluginTarget:	fmt.Sprintf("127.0.0.1:%d", handle.Port),
+					TemporaryDirectory:	rootDir,
+					SnapshotDirectory:	snapshotDir,
+					CoreSdkDirectory:	"../..",
+					CoreSdkVersion:		sdk.Version.String(),
+					PolicyPackDirectory:	"testdata/policies",
+					Local:			local,
 					SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
 						{
-							Path:        "package\\.json",
-							Pattern:     fmt.Sprintf("pulumi-pulumi-%s\\.tgz", sdk.Version.String()),
-							Replacement: "pulumi-pulumi-CORE.VERSION.tgz",
+							Path:		"package\\.json",
+							Pattern:	fmt.Sprintf("pulumi-pulumi-%s\\.tgz", sdk.Version.String()),
+							Replacement:	"pulumi-pulumi-CORE.VERSION.tgz",
 						},
 						{
-							Path:        "package\\.json",
-							Pattern:     rootDir + "/artifacts",
-							Replacement: "ROOT/artifacts",
+							Path:		"package\\.json",
+							Pattern:	rootDir + "/artifacts",
+							Replacement:	"ROOT/artifacts",
 						},
 					},
 				})
@@ -211,8 +211,8 @@ func TestLanguage(t *testing.T) {
 						}
 
 						result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
-							Token: prepare.Token,
-							Test:  tt,
+							Token:	prepare.Token,
+							Test:	tt,
 						})
 
 						require.NoError(t, err)

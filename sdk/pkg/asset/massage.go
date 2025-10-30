@@ -22,12 +22,12 @@ import (
 )
 
 var (
-	functionRegexp    = regexp.MustCompile(`function __.*`)
-	withRegexp        = regexp.MustCompile(`    with\({ .* }\) {`)
-	environmentRegexp = regexp.MustCompile(`  }\).apply\(.*\).apply\(this, arguments\);`)
-	preambleRegexp    = regexp.MustCompile(
+	functionRegexp		= regexp.MustCompile(`function __.*`)
+	withRegexp		= regexp.MustCompile(`    with\({ .* }\) {`)
+	environmentRegexp	= regexp.MustCompile(`  }\).apply\(.*\).apply\(this, arguments\);`)
+	preambleRegexp		= regexp.MustCompile(
 		`function __.*\(\) {\n  return \(function\(\) {\n    with \(__closure\) {\n\nreturn `)
-	postambleRegexp = regexp.MustCompile(
+	postambleRegexp	= regexp.MustCompile(
 		`;\n\n    }\n  }\).apply\(__environment\).apply\(this, arguments\);\n}`)
 )
 

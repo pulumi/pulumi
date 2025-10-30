@@ -22,20 +22,20 @@ import (
 // cachingMapper wraps another Mapper, caching the results of GetMapping calls by source provider name.
 type cachingMapper struct {
 	// The underlying Mapper to which calls will be delegated when there is no cache hit.
-	mapper Mapper
+	mapper	Mapper
 
 	// A cache of provider mappings, keyed by source provider name.
-	entries map[string][]byte
+	entries	map[string][]byte
 
 	// Mutex to protect concurrent access to the entries map
-	mu sync.RWMutex
+	mu	sync.RWMutex
 }
 
 // NewCachingMapper creates a new caching mapper backed by the given Mapper.
 func NewCachingMapper(mapper Mapper) Mapper {
 	return &cachingMapper{
-		mapper:  mapper,
-		entries: map[string][]byte{},
+		mapper:		mapper,
+		entries:	map[string][]byte{},
 	}
 }
 

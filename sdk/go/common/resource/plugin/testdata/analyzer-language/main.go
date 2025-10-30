@@ -45,10 +45,10 @@ func (a *analyzer) StackConfigure(ctx context.Context, req *pulumirpc.AnalyzerSt
 	}
 
 	expectedConfig := map[string]string{
-		"test-project:bool":   "true",
-		"test-project:float":  "1.5",
-		"test-project:string": "hello",
-		"test-project:obj":    "{\"key\":\"value\"}",
+		"test-project:bool":	"true",
+		"test-project:float":	"1.5",
+		"test-project:string":	"hello",
+		"test-project:obj":	"{\"key\":\"value\"}",
 	}
 
 	if !reflect.DeepEqual(req.Config, expectedConfig) {
@@ -98,12 +98,12 @@ func (l *language) RunPlugin(req *pulumirpc.RunPluginRequest, srv pulumirpc.Lang
 	// Run the analyzer plugin
 	var cancelChannel chan bool
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: cancelChannel,
+		Cancel:	cancelChannel,
 		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterAnalyzerServer(srv, &analyzer{})
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options:	rpcutil.OpenTracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		return err
@@ -135,12 +135,12 @@ func main() {
 
 	var cancelChannel chan bool
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: cancelChannel,
+		Cancel:	cancelChannel,
 		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterLanguageRuntimeServer(srv, &language{})
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options:	rpcutil.OpenTracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		fmt.Printf("fatal: %v\n", err)

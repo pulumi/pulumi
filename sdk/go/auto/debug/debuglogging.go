@@ -22,16 +22,16 @@ type LoggingOptions struct {
 	// Note - These logs may include sensitive information that is provided from your
 	// execution environment to your cloud provider (and which Pulumi may not even
 	// itself be aware of).
-	LogLevel *uint
+	LogLevel	*uint
 	// LogToStdErr specifies that all logs should be sent directly to stderr - making it
 	// more accessible and avoiding OS level buffering.
-	LogToStdErr bool
+	LogToStdErr	bool
 	// FlowToPlugins reflects the logging settings to plugins as well.
-	FlowToPlugins bool
+	FlowToPlugins	bool
 	// Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
-	Tracing string
+	Tracing	string
 	// Print detailed debugging output during resource operations
-	Debug bool
+	Debug	bool
 }
 
 func AddArgs(debugLogOpts *LoggingOptions, sharedArgs []string) []string {

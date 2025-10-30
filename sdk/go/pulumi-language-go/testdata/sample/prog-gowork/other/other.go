@@ -1,3 +1,3 @@
 package other
 
-func Bar() {}
+func Bar()	{}

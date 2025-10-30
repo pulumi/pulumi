@@ -38,19 +38,19 @@ import (
 // Source is responsible for cleaning up old templates, and should always be [Close]d when
 // created.
 type Source struct {
-	templates    []Template
-	errorOnEmpty []error
-	errors       []error
+	templates	[]Template
+	errorOnEmpty	[]error
+	errors		[]error
 
 	// cancel holds the function to cancel the context passed into the [New] that created the source.
-	cancel context.CancelFunc
+	cancel	context.CancelFunc
 	// closers holds a list of functions to be invoked when the Source is closed.
-	closers []func() error
-	closed  bool
+	closers	[]func() error
+	closed	bool
 
 	// m should be held whenever Source is mutated.
-	m  sync.Mutex
-	wg sync.WaitGroup
+	m	sync.Mutex
+	wg	sync.WaitGroup
 }
 
 // Templates lists the templates available to the [Source].
@@ -58,7 +58,7 @@ type Source struct {
 // Templates *does not* produce a sorted list. If templates need to be sorted, then the
 // caller is responsible for sorting them.
 func (s *Source) Templates() ([]Template, error) {
-	s.wg.Wait() // Wait to ensure that all templates have been fetched before returning the template list.
+	s.wg.Wait()	// Wait to ensure that all templates have been fetched before returning the template list.
 
 	s.lockOpen("read templates")
 	defer s.m.Unlock()
@@ -107,7 +107,7 @@ func (s *Source) lockOpen(action string) {
 func (s *Source) Close() error {
 	s.cancel()
 
-	s.wg.Wait() // Wait to ensure that all templates have been fetched so all closers are visible.
+	s.wg.Wait()	// Wait to ensure that all templates have been fetched so all closers are visible.
 
 	s.lockOpen("close")
 	defer s.m.Unlock()
@@ -132,9 +132,9 @@ type SearchScope struct{ kind string }
 
 var (
 	// ScopeAll searches for templates in all available locations.
-	ScopeAll = SearchScope{}
+	ScopeAll	= SearchScope{}
 	// ScopeLocal searches for templates only locally (on disk).
-	ScopeLocal = SearchScope{"local"}
+	ScopeLocal	= SearchScope{"local"}
 )
 
 // Create a new [Template] [Source] associated with a given [SearchScope].

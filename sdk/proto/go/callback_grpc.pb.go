@@ -85,8 +85,8 @@ type UnimplementedCallbacksServer struct{}
 func (UnimplementedCallbacksServer) Invoke(context.Context, *CallbackInvokeRequest) (*CallbackInvokeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Invoke not implemented")
 }
-func (UnimplementedCallbacksServer) mustEmbedUnimplementedCallbacksServer() {}
-func (UnimplementedCallbacksServer) testEmbeddedByValue()                   {}
+func (UnimplementedCallbacksServer) mustEmbedUnimplementedCallbacksServer()	{}
+func (UnimplementedCallbacksServer) testEmbeddedByValue()			{}
 
 // UnsafeCallbacksServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to CallbacksServer will
@@ -115,8 +115,8 @@ func _Callbacks_Invoke_Handler(srv interface{}, ctx context.Context, dec func(in
 		return srv.(CallbacksServer).Invoke(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Callbacks_Invoke_FullMethodName,
+		Server:		srv,
+		FullMethod:	Callbacks_Invoke_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(CallbacksServer).Invoke(ctx, req.(*CallbackInvokeRequest))
@@ -128,14 +128,14 @@ func _Callbacks_Invoke_Handler(srv interface{}, ctx context.Context, dec func(in
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Callbacks_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "pulumirpc.Callbacks",
-	HandlerType: (*CallbacksServer)(nil),
+	ServiceName:	"pulumirpc.Callbacks",
+	HandlerType:	(*CallbacksServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Invoke",
-			Handler:    _Callbacks_Invoke_Handler,
+			MethodName:	"Invoke",
+			Handler:	_Callbacks_Invoke_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "pulumi/callback.proto",
+	Streams:	[]grpc.StreamDesc{},
+	Metadata:	"pulumi/callback.proto",
 }

@@ -23,9 +23,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	. "github.com/pulumi/pulumi/sdk/v3/pkg/engine"	//nolint:revive
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
@@ -42,8 +42,8 @@ func TestRetainOnDelete(t *testing.T) {
 					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
 						// If foo changes do a replace, we use this to check we don't delete on replace
 						return plugin.DiffResult{
-							Changes:     plugin.DiffSome,
-							ReplaceKeys: []resource.PropertyKey{"foo"},
+							Changes:	plugin.DiffSome,
+							ReplaceKeys:	[]resource.PropertyKey{"foo"},
 						}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -52,9 +52,9 @@ func TestRetainOnDelete(t *testing.T) {
 					resourceID := resource.ID(fmt.Sprintf("created-id-%d", idCounter))
 					idCounter = idCounter + 1
 					return plugin.CreateResponse{
-						ID:         resourceID,
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		resourceID,
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
@@ -75,8 +75,8 @@ func TestRetainOnDelete(t *testing.T) {
 		if createResource {
 			retainOnDelete := true
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-				Inputs:         ins,
-				RetainOnDelete: &retainOnDelete,
+				Inputs:		ins,
+				RetainOnDelete:	&retainOnDelete,
 			})
 			require.NoError(t, err)
 		}

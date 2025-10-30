@@ -18,27 +18,27 @@ package dotnet
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 var testPackageSpec = schema.PackageSpec{
-	Name:        "aws",
-	Version:     "0.0.1",
-	Description: "A fake provider package used for testing.",
+	Name:		"aws",
+	Version:	"0.0.1",
+	Description:	"A fake provider package used for testing.",
 	Meta: &schema.MetadataSpec{
 		ModuleFormat: "(.*)(?:/[^/]*)",
 	},
 	Types: map[string]schema.ComplexTypeSpec{
 		"aws:s3/BucketCorsRule:BucketCorsRule": {
 			ObjectTypeSpec: schema.ObjectTypeSpec{
-				Description: "The resource options object.",
-				Type:        "object",
+				Description:	"The resource options object.",
+				Type:		"object",
 				Properties: map[string]schema.PropertySpec{
 					"stringProp": {
-						Description: "A string prop.",
+						Description:	"A string prop.",
 						TypeSpec: schema.TypeSpec{
 							Type: "string",
 						},

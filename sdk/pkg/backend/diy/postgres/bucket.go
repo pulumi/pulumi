@@ -55,14 +55,14 @@ import (
 
 // blobData represents the JSON structure for storing blob data in PostgreSQL
 type blobData struct {
-	Data string `json:"data"` // base64 encoded binary data
+	Data string `json:"data"`	// base64 encoded binary data
 }
 
 // Bucket implements blob.Bucket storage using PostgreSQL.
 type Bucket struct {
-	db        *sql.DB
-	tableName string
-	bucket    *blob.Bucket
+	db		*sql.DB
+	tableName	string
+	bucket		*blob.Bucket
 }
 
 //go:embed schema.sql
@@ -79,7 +79,7 @@ func NewPostgresBucket(ctx context.Context, u *url.URL) (*Bucket, error) {
 	if tableName == "" {
 		tableName = "pulumi_state"
 	}
-	q.Del("table") // Remove it from connection string
+	q.Del("table")	// Remove it from connection string
 	u.RawQuery = q.Encode()
 
 	// Connect to database
@@ -108,8 +108,8 @@ func NewPostgresBucket(ctx context.Context, u *url.URL) (*Bucket, error) {
 	}
 
 	bucket := &Bucket{
-		db:        db,
-		tableName: tableName,
+		db:		db,
+		tableName:	tableName,
 	}
 
 	// Create the driver.Bucket implementation
@@ -170,7 +170,7 @@ func (d *postgresBucketDriver) ErrorCode(err error) gcerrors.ErrorCode {
 func (d *postgresBucketDriver) Copy(ctx context.Context, dstKey, srcKey string, opts *driver.CopyOptions) error {
 	// Read the source data
 	// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
-	query := fmt.Sprintf("SELECT data FROM %s WHERE key = $1", d.bucket.tableName) //nolint:gosec
+	query := fmt.Sprintf("SELECT data FROM %s WHERE key = $1", d.bucket.tableName)	//nolint:gosec
 	var dataJSON string
 	err := d.bucket.db.QueryRowContext(ctx, query, srcKey).Scan(&dataJSON)
 	if err != nil {
@@ -182,7 +182,7 @@ func (d *postgresBucketDriver) Copy(ctx context.Context, dstKey, srcKey string, 
 
 	// Write to the destination key
 	// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
-	insertQuery := fmt.Sprintf( //nolint:gosec
+	insertQuery := fmt.Sprintf(	//nolint:gosec
 		"INSERT INTO %s (key, data) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET data = $2, updated_at = now()",
 		d.bucket.tableName,
 	)
@@ -194,7 +194,7 @@ func (d *postgresBucketDriver) Copy(ctx context.Context, dstKey, srcKey string, 
 func (d *postgresBucketDriver) ListPaged(ctx context.Context, opts *driver.ListOptions) (*driver.ListPage, error) {
 	// The SQL query to list blob keys
 	// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
-	query := "SELECT key FROM " + d.bucket.tableName //nolint:gosec
+	query := "SELECT key FROM " + d.bucket.tableName	//nolint:gosec
 	args := []any{}
 
 	// Add conditions to filter by prefix
@@ -252,10 +252,10 @@ func (d *postgresBucketDriver) ListPaged(ctx context.Context, opts *driver.ListO
 
 				if !found {
 					page.Objects = append(page.Objects, &driver.ListObject{
-						Key:     dirPrefix,
-						ModTime: time.Time{},
-						Size:    0,
-						IsDir:   true,
+						Key:		dirPrefix,
+						ModTime:	time.Time{},
+						Size:		0,
+						IsDir:		true,
 					})
 				}
 				continue
@@ -266,7 +266,7 @@ func (d *postgresBucketDriver) ListPaged(ctx context.Context, opts *driver.ListO
 		var updatedAt time.Time
 		var size int64
 		// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
-		metaQuery := fmt.Sprintf( //nolint:gosec
+		metaQuery := fmt.Sprintf(	//nolint:gosec
 			"SELECT updated_at, octet_length((data->>'data')::text) / 4 * 3 FROM %s WHERE key = $1",
 			d.bucket.tableName,
 		)
@@ -276,10 +276,10 @@ func (d *postgresBucketDriver) ListPaged(ctx context.Context, opts *driver.ListO
 		}
 
 		page.Objects = append(page.Objects, &driver.ListObject{
-			Key:     key,
-			ModTime: updatedAt,
-			Size:    size,
-			IsDir:   false,
+			Key:		key,
+			ModTime:	updatedAt,
+			Size:		size,
+			IsDir:		false,
 		})
 	}
 
@@ -303,7 +303,7 @@ func (d *postgresBucketDriver) ListPaged(ctx context.Context, opts *driver.ListO
 // Attributes implements driver.Bucket.Attributes.
 func (d *postgresBucketDriver) Attributes(ctx context.Context, key string) (*driver.Attributes, error) {
 	// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
-	query := fmt.Sprintf( //nolint:gosec
+	query := fmt.Sprintf(	//nolint:gosec
 		"SELECT updated_at, octet_length((data->>'data')::text) / 4 * 3 FROM %s WHERE key = $1",
 		d.bucket.tableName,
 	)
@@ -318,16 +318,16 @@ func (d *postgresBucketDriver) Attributes(ctx context.Context, key string) (*dri
 	}
 
 	return &driver.Attributes{
-		CacheControl:       "",
-		ContentDisposition: "",
-		ContentEncoding:    "",
-		ContentLanguage:    "",
-		ContentType:        "application/octet-stream",
-		Metadata:           nil,
-		ModTime:            updatedAt,
-		Size:               size,
-		MD5:                nil,
-		ETag:               "",
+		CacheControl:		"",
+		ContentDisposition:	"",
+		ContentEncoding:	"",
+		ContentLanguage:	"",
+		ContentType:		"application/octet-stream",
+		Metadata:		nil,
+		ModTime:		updatedAt,
+		Size:			size,
+		MD5:			nil,
+		ETag:			"",
 	}, nil
 }
 
@@ -336,7 +336,7 @@ func (d *postgresBucketDriver) NewRangeReader(
 	ctx context.Context, key string, offset, length int64, opts *driver.ReaderOptions,
 ) (driver.Reader, error) {
 	// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
-	query := fmt.Sprintf("SELECT data FROM %s WHERE key = $1", d.bucket.tableName) //nolint:gosec
+	query := fmt.Sprintf("SELECT data FROM %s WHERE key = $1", d.bucket.tableName)	//nolint:gosec
 	var dataJSON string
 	err := d.bucket.db.QueryRowContext(ctx, query, key).Scan(&dataJSON)
 	if err != nil {
@@ -372,10 +372,10 @@ func (d *postgresBucketDriver) NewRangeReader(
 	// Create an io.Reader from the data
 	r := io.NewSectionReader(strings.NewReader(string(data)), offset, length)
 	return &postgresReader{
-		r:        r,
-		size:     length,
-		modTime:  time.Now(),
-		metadata: nil,
+		r:		r,
+		size:		length,
+		modTime:	time.Now(),
+		metadata:	nil,
 	}, nil
 }
 
@@ -384,18 +384,18 @@ func (d *postgresBucketDriver) NewTypedWriter(
 	ctx context.Context, key string, contentType string, opts *driver.WriterOptions,
 ) (driver.Writer, error) {
 	return &postgresWriter{
-		ctx:         ctx,
-		bucket:      d.bucket,
-		key:         key,
-		contentType: contentType,
-		opts:        opts,
+		ctx:		ctx,
+		bucket:		d.bucket,
+		key:		key,
+		contentType:	contentType,
+		opts:		opts,
 	}, nil
 }
 
 // Delete implements driver.Bucket.Delete.
 func (d *postgresBucketDriver) Delete(ctx context.Context, key string) error {
 	// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
-	query := fmt.Sprintf("DELETE FROM %s WHERE key = $1", d.bucket.tableName) //nolint:gosec
+	query := fmt.Sprintf("DELETE FROM %s WHERE key = $1", d.bucket.tableName)	//nolint:gosec
 	result, err := d.bucket.db.ExecContext(ctx, query, key)
 	if err != nil {
 		return err
@@ -428,10 +428,10 @@ func (d *postgresBucketDriver) Close() error {
 
 // postgresReader implements driver.Reader for PostgreSQL.
 type postgresReader struct {
-	r        io.ReadSeeker
-	size     int64
-	modTime  time.Time
-	metadata map[string]string
+	r		io.ReadSeeker
+	size		int64
+	modTime		time.Time
+	metadata	map[string]string
 }
 
 // Read implements io.Reader.
@@ -452,9 +452,9 @@ func (r *postgresReader) Close() error {
 // Attributes implements driver.Reader.Attributes.
 func (r *postgresReader) Attributes() *driver.ReaderAttributes {
 	return &driver.ReaderAttributes{
-		ContentType: "application/octet-stream",
-		ModTime:     r.modTime,
-		Size:        r.size,
+		ContentType:	"application/octet-stream",
+		ModTime:	r.modTime,
+		Size:		r.size,
 	}
 }
 
@@ -465,12 +465,12 @@ func (r *postgresReader) As(i any) bool {
 
 // postgresWriter implements driver.Writer for PostgreSQL.
 type postgresWriter struct {
-	ctx         context.Context
-	bucket      *Bucket
-	key         string
-	contentType string
-	opts        *driver.WriterOptions
-	buf         []byte
+	ctx		context.Context
+	bucket		*Bucket
+	key		string
+	contentType	string
+	opts		*driver.WriterOptions
+	buf		[]byte
 }
 
 // Write implements io.Writer.
@@ -490,7 +490,7 @@ func (w *postgresWriter) Close() error {
 	}
 
 	// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
-	query := fmt.Sprintf( //nolint:gosec
+	query := fmt.Sprintf(	//nolint:gosec
 		"INSERT INTO %s (key, data) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET data = $2, updated_at = now()",
 		w.bucket.tableName,
 	)

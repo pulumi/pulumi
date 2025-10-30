@@ -20,13 +20,13 @@ import (
 	"io"
 	"os"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	backend_secrets "github.com/pulumi/pulumi/sdk/v3/pkg/backend/secrets"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -36,19 +36,19 @@ import (
 )
 
 type stackChangeSecretsProviderCmd struct {
-	stdout io.Writer
+	stdout	io.Writer
 
-	stack string
+	stack	string
 
-	secretsProvider secrets.Provider
+	secretsProvider	secrets.Provider
 }
 
 func newStackChangeSecretsProviderCmd() *cobra.Command {
 	var scspcmd stackChangeSecretsProviderCmd
 	cmd := &cobra.Command{
-		Use:   "change-secrets-provider <new-secrets-provider>",
-		Args:  cmdutil.ExactArgs(1),
-		Short: "Change the secrets provider for a stack",
+		Use:	"change-secrets-provider <new-secrets-provider>",
+		Args:	cmdutil.ExactArgs(1),
+		Short:	"Change the secrets provider for a stack",
 		Long: "Change the secrets provider for a stack. " +
 			"Valid secret providers types are `default`, `passphrase`, `awskms`, `azurekeyvault`, `gcpkms`, `hashivault`.\n\n" +
 			"To change to using the Pulumi Default Secrets Provider, use the following:\n" +

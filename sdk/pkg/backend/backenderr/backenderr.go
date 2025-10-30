@@ -24,12 +24,12 @@ import (
 )
 
 var (
-	ErrNotFound NotFoundError
+	ErrNotFound	NotFoundError
 	// ErrNoPreviousDeployment is returned when there isn't a previous deployment.
-	ErrNoPreviousDeployment = errors.New("no previous deployment")
+	ErrNoPreviousDeployment	= errors.New("no previous deployment")
 	// ErrLoginRequired is returned when a command requires logging in.
-	ErrLoginRequired LoginRequiredError
-	ErrForbidden     ForbiddenError
+	ErrLoginRequired	LoginRequiredError
+	ErrForbidden		ForbiddenError
 )
 
 // StackAlreadyExistsError is returned from CreateStack when the stack already exists in the backend.
@@ -56,7 +56,7 @@ func (e OverStackLimitError) Error() string {
 // ConflictingUpdateError represents an error which occurred while starting an update/destroy operation.
 // Another update of the same stack was in progress, so the operation got canceled due to this conflict.
 type ConflictingUpdateError struct {
-	Err error // The error that occurred while starting the operation.
+	Err error	// The error that occurred while starting the operation.
 }
 
 func (c ConflictingUpdateError) Error() string {
@@ -87,7 +87,7 @@ func (err NotFoundError) Error() string {
 	return err.Err.Error()
 }
 
-func (err NotFoundError) Unwrap() error { return err.Err }
+func (err NotFoundError) Unwrap() error	{ return err.Err }
 
 func (err NotFoundError) Is(other error) bool {
 	switch other.(type) {

@@ -50,8 +50,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/%s"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	codegen "github.com/pulumi/pulumi/sdk/v3/pkg/codegen/%s"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/testing/test"
 )
 
 func TestGenerateProgram(t *testing.T) {
@@ -76,7 +76,7 @@ func TestGenerateProgram(t *testing.T) {
 			testPath := filepath.Join(dir, "gen_program_test.go")
 
 			sourceCode := fmt.Sprintf(template, packageName, lang, i, n)
-			err = os.WriteFile(testPath, []byte(sourceCode), 0o755) //nolint:gosec
+			err = os.WriteFile(testPath, []byte(sourceCode), 0o755)	//nolint:gosec
 			if err != nil {
 				panic(fmt.Sprintf("unexpected error generating codegen tests: %v", err))
 			}

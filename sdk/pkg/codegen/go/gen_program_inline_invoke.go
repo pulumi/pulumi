@@ -19,14 +19,14 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
 )
 
 type inlineInvokeTemp struct {
-	Name  string
-	Value *model.FunctionCallExpression
+	Name	string
+	Value	*model.FunctionCallExpression
 }
 
 func (temp *inlineInvokeTemp) Type() model.Type {
@@ -42,8 +42,8 @@ func (temp *inlineInvokeTemp) SyntaxNode() hclsyntax.Node {
 }
 
 type inlineInvokeSpiller struct {
-	temps []*inlineInvokeTemp
-	count int
+	temps	[]*inlineInvokeTemp
+	count	int
 }
 
 func (spiller *inlineInvokeSpiller) spillExpression(
@@ -62,8 +62,8 @@ func (spiller *inlineInvokeSpiller) spillExpression(
 				tempName = "invoke" + fn
 			}
 			temp := &inlineInvokeTemp{
-				Name:  tempName,
-				Value: expr,
+				Name:	tempName,
+				Value:	expr,
 			}
 			spiller.temps = append(spiller.temps, temp)
 

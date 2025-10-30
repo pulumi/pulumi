@@ -25,25 +25,25 @@ import (
 type Alias struct {
 	// Optional URN that uniquely identifies a resource. If specified, it takes preference and
 	// other members of the struct are ignored.
-	URN URNInput
+	URN	URNInput
 	// The previous name of the resource.  If not provided, the current name of the resource is used.
-	Name StringInput
+	Name	StringInput
 	// The previous type of the resource.  If not provided, the current type of the resource is used.
-	Type StringInput
+	Type	StringInput
 	// The previous parent of the resource. If not provided, the current parent of the resource is used by default.
 	// This option is mutually exclusive to `ParentURN` and `NoParent`.
 	// Use `Alias { NoParent: pulumi.Bool(true) }` to avoid defaulting to the current parent.
-	Parent Resource
+	Parent	Resource
 	// The previous parent of the resource in URN format, mutually exclusive to `Parent` and `ParentURN`.
 	// To specify no original parent, use `Alias { NoParent: pulumi.Bool(true) }`.
-	ParentURN URNInput
+	ParentURN	URNInput
 	// When true, indicates that the resource previously had no parent.
 	// This option is mutually exclusive to `Parent` and `ParentURN`.
-	NoParent BoolInput
+	NoParent	BoolInput
 	// The name of the previous stack of the resource.  If not provided, defaults to `context.GetStack()
-	Stack StringInput
+	Stack	StringInput
 	// The previous project of the resource. If not provided, defaults to `context.GetProject()`.
-	Project StringInput
+	Project	StringInput
 }
 
 // More than one bool is set to true.

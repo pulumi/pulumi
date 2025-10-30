@@ -27,24 +27,24 @@ func TestSplitGoPathShouldReturnExpected(t *testing.T) {
 	t.Parallel()
 
 	tt := []struct {
-		path     string
-		os       string
-		expected int
+		path		string
+		os		string
+		expected	int
 	}{
 		{
-			path:     "/home/user/go:/usr/local/go",
-			os:       "linux",
-			expected: 2,
+			path:		"/home/user/go:/usr/local/go",
+			os:		"linux",
+			expected:	2,
 		},
 		{
-			path:     "C:/Users/User/Documents/go;C:/Workspace/go",
-			os:       "windows",
-			expected: 2,
+			path:		"C:/Users/User/Documents/go;C:/Workspace/go",
+			os:		"windows",
+			expected:	2,
 		},
 		{
-			path:     "/home/user/go",
-			os:       "linux",
-			expected: 1,
+			path:		"/home/user/go",
+			os:		"linux",
+			expected:	1,
 		},
 	}
 

@@ -31,33 +31,33 @@ import (
 type Provider struct {
 	plugin.NotForwardCompatibleProvider
 
-	Name    string
-	Package tokens.Package
-	Version semver.Version
+	Name	string
+	Package	tokens.Package
+	Version	semver.Version
 
-	Config     resource.PropertyMap
-	configured bool
+	Config		resource.PropertyMap
+	configured	bool
 
-	DialMonitorF func(ctx context.Context, endpoint string) (*ResourceMonitor, error)
-	CancelF      func() error
+	DialMonitorF	func(ctx context.Context, endpoint string) (*ResourceMonitor, error)
+	CancelF		func() error
 
-	HandshakeF    func(context.Context, plugin.ProviderHandshakeRequest) (*plugin.ProviderHandshakeResponse, error)
-	ParameterizeF func(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error)
-	GetSchemaF    func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error)
-	CheckConfigF  func(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error)
-	DiffConfigF   func(context.Context, plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error)
-	ConfigureF    func(context.Context, plugin.ConfigureRequest) (plugin.ConfigureResponse, error)
-	CheckF        func(context.Context, plugin.CheckRequest) (plugin.CheckResponse, error)
-	DiffF         func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error)
-	CreateF       func(context.Context, plugin.CreateRequest) (plugin.CreateResponse, error)
-	UpdateF       func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error)
-	DeleteF       func(context.Context, plugin.DeleteRequest) (plugin.DeleteResponse, error)
-	ReadF         func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error)
-	ConstructF    func(context.Context, plugin.ConstructRequest, *ResourceMonitor) (plugin.ConstructResponse, error)
-	InvokeF       func(context.Context, plugin.InvokeRequest) (plugin.InvokeResponse, error)
-	CallF         func(context.Context, plugin.CallRequest, *ResourceMonitor) (plugin.CallResponse, error)
-	GetMappingF   func(context.Context, plugin.GetMappingRequest) (plugin.GetMappingResponse, error)
-	GetMappingsF  func(context.Context, plugin.GetMappingsRequest) (plugin.GetMappingsResponse, error)
+	HandshakeF	func(context.Context, plugin.ProviderHandshakeRequest) (*plugin.ProviderHandshakeResponse, error)
+	ParameterizeF	func(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error)
+	GetSchemaF	func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error)
+	CheckConfigF	func(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error)
+	DiffConfigF	func(context.Context, plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error)
+	ConfigureF	func(context.Context, plugin.ConfigureRequest) (plugin.ConfigureResponse, error)
+	CheckF		func(context.Context, plugin.CheckRequest) (plugin.CheckResponse, error)
+	DiffF		func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error)
+	CreateF		func(context.Context, plugin.CreateRequest) (plugin.CreateResponse, error)
+	UpdateF		func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error)
+	DeleteF		func(context.Context, plugin.DeleteRequest) (plugin.DeleteResponse, error)
+	ReadF		func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error)
+	ConstructF	func(context.Context, plugin.ConstructRequest, *ResourceMonitor) (plugin.ConstructResponse, error)
+	InvokeF		func(context.Context, plugin.InvokeRequest) (plugin.InvokeResponse, error)
+	CallF		func(context.Context, plugin.CallRequest, *ResourceMonitor) (plugin.CallResponse, error)
+	GetMappingF	func(context.Context, plugin.GetMappingRequest) (plugin.GetMappingResponse, error)
+	GetMappingsF	func(context.Context, plugin.GetMappingsRequest) (plugin.GetMappingsResponse, error)
 }
 
 func (prov *Provider) Handshake(
@@ -86,8 +86,8 @@ func (prov *Provider) Pkg() tokens.Package {
 
 func (prov *Provider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{
-		Name:    prov.Name,
-		Version: &prov.Version,
+		Name:		prov.Name,
+		Version:	&prov.Version,
 	}, nil
 }
 
@@ -153,8 +153,8 @@ func (prov *Provider) Create(ctx context.Context, req plugin.CreateRequest) (plu
 			return plugin.CreateResponse{}, err
 		}
 		return plugin.CreateResponse{
-			ID:         resource.ID(uuid.String()),
-			Properties: resource.PropertyMap{},
+			ID:		resource.ID(uuid.String()),
+			Properties:	resource.PropertyMap{},
 		}, nil
 	}
 	return prov.CreateF(ctx, req)
@@ -196,11 +196,11 @@ func (prov *Provider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.
 
 		return plugin.ReadResponse{
 			ReadResult: plugin.ReadResult{
-				ID:      req.ID,
-				Outputs: state,
-				Inputs:  inputs,
+				ID:		req.ID,
+				Outputs:	state,
+				Inputs:		inputs,
 			},
-			Status: resource.StatusOK,
+			Status:	resource.StatusOK,
 		}, nil
 	}
 

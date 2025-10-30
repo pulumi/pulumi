@@ -28,8 +28,8 @@ import (
 )
 
 type TestStruct struct {
-	Foo map[string]string
-	Bar string
+	Foo	map[string]string
+	Bar	string
 }
 
 // TestConfig tests the basic config wrapper.
@@ -38,11 +38,11 @@ func TestConfig(t *testing.T) {
 
 	ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 		Config: map[string]string{
-			"testpkg:sss":    "a string value",
-			"testpkg:bbb":    "true",
-			"testpkg:intint": "42",
-			"testpkg:badint": "4d2",
-			"testpkg:fpfpfp": "99.963",
+			"testpkg:sss":		"a string value",
+			"testpkg:bbb":		"true",
+			"testpkg:intint":	"42",
+			"testpkg:badint":	"4d2",
+			"testpkg:fpfpfp":	"99.963",
 			"testpkg:obj": `
 				{
 					"foo": {
@@ -52,7 +52,7 @@ func TestConfig(t *testing.T) {
 					"bar": "abc"
 				}
 			`,
-			"testpkg:malobj": "not_a_struct",
+			"testpkg:malobj":	"not_a_struct",
 		},
 	})
 	require.NoError(t, err)
@@ -66,8 +66,8 @@ func TestConfig(t *testing.T) {
 	fooMap["a"] = "1"
 	fooMap["b"] = "2"
 	expectedTestStruct := TestStruct{
-		Foo: fooMap,
-		Bar: "abc",
+		Foo:	fooMap,
+		Bar:	"abc",
 	}
 
 	// Test basic keys.
@@ -173,10 +173,10 @@ func TestSecretConfig(t *testing.T) {
 
 	ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 		Config: map[string]string{
-			"testpkg:sss":    "a string value",
-			"testpkg:bbb":    "true",
-			"testpkg:intint": "42",
-			"testpkg:fpfpfp": "99.963",
+			"testpkg:sss":		"a string value",
+			"testpkg:bbb":		"true",
+			"testpkg:intint":	"42",
+			"testpkg:fpfpfp":	"99.963",
 			"testpkg:obj": `
 				{
 					"foo": {
@@ -186,7 +186,7 @@ func TestSecretConfig(t *testing.T) {
 					"bar": "abc"
 				}
 			`,
-			"testpkg:malobj": "not_a_struct",
+			"testpkg:malobj":	"not_a_struct",
 		},
 	})
 	require.NoError(t, err)
@@ -197,8 +197,8 @@ func TestSecretConfig(t *testing.T) {
 	fooMap["a"] = "1"
 	fooMap["b"] = "2"
 	expectedTestStruct := TestStruct{
-		Foo: fooMap,
-		Bar: "abc",
+		Foo:	fooMap,
+		Bar:	"abc",
 	}
 
 	s1, err := cfg.TrySecret("sss")

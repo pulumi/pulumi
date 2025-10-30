@@ -18,10 +18,10 @@ package resource
 type HookType string
 
 const (
-	BeforeCreate HookType = "BeforeCreate"
-	AfterCreate  HookType = "AfterCreate"
-	BeforeUpdate HookType = "BeforeUpdate"
-	AfterUpdate  HookType = "AfterUpdate"
-	BeforeDelete HookType = "BeforeDelete"
-	AfterDelete  HookType = "AfterDelete"
+	BeforeCreate	HookType	= "BeforeCreate"
+	AfterCreate	HookType	= "AfterCreate"
+	BeforeUpdate	HookType	= "BeforeUpdate"
+	AfterUpdate	HookType	= "AfterUpdate"
+	BeforeDelete	HookType	= "BeforeDelete"
+	AfterDelete	HookType	= "AfterDelete"
 )

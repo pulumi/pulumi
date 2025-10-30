@@ -17,11 +17,11 @@ package backend
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/diy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -99,7 +99,7 @@ func (f *lm) Login(
 }
 
 type MockLoginManager struct {
-	CurrentF func(
+	CurrentF	func(
 		ctx context.Context,
 		ws pkgWorkspace.Context,
 		sink diag.Sink,
@@ -108,7 +108,7 @@ type MockLoginManager struct {
 		setCurrent bool,
 	) (backend.Backend, error)
 
-	LoginF func(
+	LoginF	func(
 		ctx context.Context,
 		ws pkgWorkspace.Context,
 		sink diag.Sink,

@@ -19,7 +19,7 @@ import (
 	"io"
 	"math"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -66,10 +66,10 @@ type ExpressionGenerator interface {
 // the io.Writer interface.
 type Formatter struct {
 	// The current indent level as a string.
-	Indent string
+	Indent	string
 
 	// The ExpressionGenerator to use in {G,Fg}en{,f}
-	g ExpressionGenerator
+	g	ExpressionGenerator
 }
 
 // NewFormatter creates a new emitter targeting the given io.Writer that will use the given ExpressionGenerator when

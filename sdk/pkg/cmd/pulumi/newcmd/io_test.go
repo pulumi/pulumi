@@ -27,36 +27,36 @@ func TestErrorIfNotEmptyDirectory(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		desc  string
-		files []string
-		dirs  []string
-		ok    bool
+		desc	string
+		files	[]string
+		dirs	[]string
+		ok	bool
 	}{
 		{
-			desc: "empty",
-			ok:   true,
+			desc:	"empty",
+			ok:	true,
 		},
 		{
-			desc:  "non-empty",
-			files: []string{"foo"},
-			dirs:  []string{"bar"},
-			ok:    false,
+			desc:	"non-empty",
+			files:	[]string{"foo"},
+			dirs:	[]string{"bar"},
+			ok:	false,
 		},
 		{
-			desc: "empty git repository",
-			dirs: []string{".git"},
-			ok:   true,
+			desc:	"empty git repository",
+			dirs:	[]string{".git"},
+			ok:	true,
 		},
 		{
-			desc:  "non-empty git repository",
-			dirs:  []string{".git"},
-			files: []string{".gitignore"},
-			ok:    false,
+			desc:	"non-empty git repository",
+			dirs:	[]string{".git"},
+			files:	[]string{".gitignore"},
+			ok:	false,
 		},
 		{
-			desc: "every VCS",
-			dirs: []string{".git", ".hg", ".bzr"},
-			ok:   true,
+			desc:	"every VCS",
+			dirs:	[]string{".git", ".hg", ".bzr"},
+			ok:	true,
 		},
 	}
 

@@ -18,10 +18,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -36,13 +36,13 @@ func newDeploymentRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var suppressPermalink bool
 
 	cmd := &cobra.Command{
-		Use:   "run <operation> [url]",
-		Short: "Launch a deployment job on Pulumi Cloud",
+		Use:	"run <operation> [url]",
+		Short:	"Launch a deployment job on Pulumi Cloud",
 		Long: "Launch a deployment job on Pulumi Cloud\n" +
 			"\n" +
 			"This command queues a new deployment job for any supported operation of type \n" +
 			"update, preview, destroy, refresh, detect-drift or remediate-drift.",
-		Args: cmdutil.RangeArgs(1, 2),
+		Args:	cmdutil.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
@@ -57,10 +57,10 @@ func newDeploymentRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 			}
 
 			display := display.Options{
-				Color: cmdutil.GetGlobalColorization(),
+				Color:	cmdutil.GetGlobalColorization(),
 				// we only suppress permalinks if the user passes true. the default is an empty string
 				// which we pass as 'false'
-				SuppressPermalink: suppressPermalink,
+				SuppressPermalink:	suppressPermalink,
 			}
 
 			project, _, err := ws.ReadProject()

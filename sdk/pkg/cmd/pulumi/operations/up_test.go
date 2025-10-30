@@ -26,54 +26,54 @@ func TestValidatePolicyPackConfig(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		PolicyPackPaths       []string
-		PolicyPackConfigPaths []string
-		ExpectError           bool
+		PolicyPackPaths		[]string
+		PolicyPackConfigPaths	[]string
+		ExpectError		bool
 	}{
 		{
-			PolicyPackPaths:       nil,
-			PolicyPackConfigPaths: nil,
-			ExpectError:           false,
+			PolicyPackPaths:	nil,
+			PolicyPackConfigPaths:	nil,
+			ExpectError:		false,
 		},
 		{
-			PolicyPackPaths:       []string{},
-			PolicyPackConfigPaths: []string{},
-			ExpectError:           false,
+			PolicyPackPaths:	[]string{},
+			PolicyPackConfigPaths:	[]string{},
+			ExpectError:		false,
 		},
 		{
-			PolicyPackPaths:       []string{"foo"},
-			PolicyPackConfigPaths: []string{},
-			ExpectError:           false,
+			PolicyPackPaths:	[]string{"foo"},
+			PolicyPackConfigPaths:	[]string{},
+			ExpectError:		false,
 		},
 		{
-			PolicyPackPaths:       []string{"foo", "bar"},
-			PolicyPackConfigPaths: []string{},
-			ExpectError:           false,
+			PolicyPackPaths:	[]string{"foo", "bar"},
+			PolicyPackConfigPaths:	[]string{},
+			ExpectError:		false,
 		},
 		{
-			PolicyPackPaths:       []string{"foo"},
-			PolicyPackConfigPaths: []string{"foo"},
-			ExpectError:           false,
+			PolicyPackPaths:	[]string{"foo"},
+			PolicyPackConfigPaths:	[]string{"foo"},
+			ExpectError:		false,
 		},
 		{
-			PolicyPackPaths:       []string{"foo", "bar"},
-			PolicyPackConfigPaths: []string{"foo", "bar"},
-			ExpectError:           false,
+			PolicyPackPaths:	[]string{"foo", "bar"},
+			PolicyPackConfigPaths:	[]string{"foo", "bar"},
+			ExpectError:		false,
 		},
 		{
-			PolicyPackPaths:       []string{"foo", "bar"},
-			PolicyPackConfigPaths: []string{"foo"},
-			ExpectError:           true,
+			PolicyPackPaths:	[]string{"foo", "bar"},
+			PolicyPackConfigPaths:	[]string{"foo"},
+			ExpectError:		true,
 		},
 		{
-			PolicyPackPaths:       []string{},
-			PolicyPackConfigPaths: []string{"foo"},
-			ExpectError:           true,
+			PolicyPackPaths:	[]string{},
+			PolicyPackConfigPaths:	[]string{"foo"},
+			ExpectError:		true,
 		},
 		{
-			PolicyPackPaths:       []string{"foo"},
-			PolicyPackConfigPaths: []string{"foo", "bar"},
-			ExpectError:           true,
+			PolicyPackPaths:	[]string{"foo"},
+			PolicyPackConfigPaths:	[]string{"foo", "bar"},
+			ExpectError:		true,
 		},
 	}
 

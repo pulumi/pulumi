@@ -18,8 +18,8 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 )
 
 // Call is the name of the PCL `call` intrinsic, which can be used to invoke methods on resources.
@@ -106,19 +106,19 @@ func (b *binder) bindCallSignature(args []model.Expression) (model.StaticFunctio
 	sig := model.StaticFunctionSignature{
 		Parameters: []model.Parameter{
 			{
-				Name: "self",
-				Type: self.Type(),
+				Name:	"self",
+				Type:	self.Type(),
 			},
 			{
-				Name: "method",
-				Type: model.StringType,
+				Name:	"method",
+				Type:	model.StringType,
 			},
 			{
-				Name: "args",
-				Type: sigArgsType,
+				Name:	"args",
+				Type:	sigArgsType,
 			},
 		},
-		ReturnType: model.NewOutputType(b.schemaTypeToType(method.Function.ReturnType)),
+		ReturnType:	model.NewOutputType(b.schemaTypeToType(method.Function.ReturnType)),
 	}
 
 	if argsObject, isObjectExpression := args[1].(*model.ObjectConsExpression); isObjectExpression {
@@ -138,19 +138,19 @@ func (b *binder) zeroCallSignature() model.StaticFunctionSignature {
 	return model.StaticFunctionSignature{
 		Parameters: []model.Parameter{
 			{
-				Name: "self",
-				Type: model.DynamicType,
+				Name:	"self",
+				Type:	model.DynamicType,
 			},
 			{
-				Name: "method",
-				Type: model.StringType,
+				Name:	"method",
+				Type:	model.StringType,
 			},
 			{
-				Name: "args",
-				Type: model.DynamicType,
+				Name:	"args",
+				Type:	model.DynamicType,
 			},
 		},
-		ReturnType: model.DynamicType,
+		ReturnType:	model.DynamicType,
 	}
 }
 

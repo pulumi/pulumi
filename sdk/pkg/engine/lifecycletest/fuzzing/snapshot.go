@@ -17,8 +17,8 @@ package fuzzing
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -30,10 +30,10 @@ import (
 type SnapshotSpec struct {
 	// A mapping from package names to provider resources. The provider resources will also be included in the Resources
 	// slice -- this field serves as a means to quickly look up provider resources by package name.
-	Providers map[tokens.Package]*ResourceSpec
+	Providers	map[tokens.Package]*ResourceSpec
 
 	// The set of resources in the snapshot.
-	Resources []*ResourceSpec
+	Resources	[]*ResourceSpec
 }
 
 // Creates a SnapshotSpec from the given deploy.Snapshot.
@@ -117,10 +117,10 @@ func (s *SnapshotSpec) Pretty(indent string) string {
 
 // A ResourceDependenciesSpec specifies the dependencies of a resource in a snapshot.
 type ResourceDependenciesSpec struct {
-	Parent               resource.URN
-	Dependencies         []resource.URN
-	PropertyDependencies map[resource.PropertyKey][]resource.URN
-	DeletedWith          resource.URN
+	Parent			resource.URN
+	Dependencies		[]resource.URN
+	PropertyDependencies	map[resource.PropertyKey][]resource.URN
+	DeletedWith		resource.URN
 }
 
 // ApplyTo applies the dependencies specified in this ResourceDependenciesSpec to the given ResourceSpec.
@@ -140,9 +140,9 @@ func GeneratedResourceDependencies(
 ) *rapid.Generator[*ResourceDependenciesSpec] {
 	return rapid.Custom(func(t *rapid.T) *ResourceDependenciesSpec {
 		rds := &ResourceDependenciesSpec{
-			Dependencies:         []resource.URN{},
-			PropertyDependencies: map[resource.PropertyKey][]resource.URN{},
-			DeletedWith:          "",
+			Dependencies:		[]resource.URN{},
+			PropertyDependencies:	map[resource.PropertyKey][]resource.URN{},
+			DeletedWith:		"",
 		}
 
 		// As the number of resources in a snapshot grows, the probability of picking none of them will decrease rapidly if
@@ -220,16 +220,16 @@ var stateDependencyTypes = []resource.StateDependencyType{
 type SnapshotSpecOptions struct {
 	// A source DeploymentV3 from which resources should be taken literally,
 	// skipping the generation process.
-	SourceDeploymentV3 *apitype.DeploymentV3
+	SourceDeploymentV3	*apitype.DeploymentV3
 
 	// A generator for the maximum number of resources to generate in the snapshot.
-	ResourceCount *rapid.Generator[int]
+	ResourceCount	*rapid.Generator[int]
 
 	// A generator for actions that should be taken when generating a snapshot.
-	Action *rapid.Generator[SnapshotSpecAction]
+	Action	*rapid.Generator[SnapshotSpecAction]
 
 	// A set of options for configuring the generation of resources in the snapshot.
-	ResourceOpts ResourceSpecOptions
+	ResourceOpts	ResourceSpecOptions
 }
 
 // Returns a copy of the given SnapshotSpecOptions with the given overrides applied.
@@ -253,21 +253,21 @@ type SnapshotSpecAction string
 
 const (
 	// Generate a new resource.
-	SnapshotSpecNew SnapshotSpecAction = "snapshot.new"
+	SnapshotSpecNew	SnapshotSpecAction	= "snapshot.new"
 	// Generate an old (deleted) version of an existing resource in the snapshot.
-	SnapshotSpecOld SnapshotSpecAction = "snapshot.old"
+	SnapshotSpecOld	SnapshotSpecAction	= "snapshot.old"
 	// Generate a provider resource.
-	SnapshotSpecProvider SnapshotSpecAction = "snapshot.provider"
+	SnapshotSpecProvider	SnapshotSpecAction	= "snapshot.provider"
 )
 
 // A default set of SnapshotSpecOptions. By default, we'll generate a snapshot with between 2 and 5 resources, with
 // equal probability that each resource will be new, old, or a provider. Resources will be created using the default set
 // of ResourceSpecOptions.
 var defaultSnapshotSpecOptions = SnapshotSpecOptions{
-	SourceDeploymentV3: nil,
-	ResourceCount:      rapid.IntRange(2, 5),
-	Action:             rapid.SampledFrom(snapshotSpecActions),
-	ResourceOpts:       defaultResourceSpecOptions,
+	SourceDeploymentV3:	nil,
+	ResourceCount:		rapid.IntRange(2, 5),
+	Action:			rapid.SampledFrom(snapshotSpecActions),
+	ResourceOpts:		defaultResourceSpecOptions,
 }
 
 var snapshotSpecActions = []SnapshotSpecAction{

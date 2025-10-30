@@ -43,12 +43,12 @@ func TestGetPermalink(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]struct {
-		testee string
-		want   string
-		err    error
+		testee	string
+		want	string
+		err	error
 	}{
-		"successful parsing": {testee: testPermalink + "\n", want: "https://gotest"},
-		"failed parsing":     {testee: testPermalink, err: ErrParsePermalinkFailed},
+		"successful parsing":	{testee: testPermalink + "\n", want: "https://gotest"},
+		"failed parsing":	{testee: testPermalink, err: ErrParsePermalinkFailed},
 	}
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
@@ -200,8 +200,8 @@ func TestUpOptsConfigFileNestedSecretLocalBackend(t *testing.T) {
 	// Config with a nested secret.
 	cfg := ConfigMap{
 		"foo.bar": ConfigValue{
-			Value:  "triggers-failure",
-			Secret: true,
+			Value:	"triggers-failure",
+			Secret:	true,
 		},
 	}
 
@@ -209,8 +209,8 @@ func TestUpOptsConfigFileNestedSecretLocalBackend(t *testing.T) {
 	opts := []LocalWorkspaceOption{
 		SecretsProvider("passphrase"),
 		EnvVars(map[string]string{
-			"PULUMI_CONFIG_PASSPHRASE": "password",
-			"PULUMI_BACKEND_URL":       "file://" + filepath.ToSlash(t.TempDir()),
+			"PULUMI_CONFIG_PASSPHRASE":	"password",
+			"PULUMI_BACKEND_URL":		"file://" + filepath.ToSlash(t.TempDir()),
 		}),
 	}
 
@@ -225,8 +225,8 @@ func TestUpOptsConfigFileNestedSecretLocalBackend(t *testing.T) {
 	configFile := filepath.Join(stack.Workspace().WorkDir(), "test.yaml")
 
 	err = stack.SetAllConfigWithOptions(ctx, cfg, &ConfigOptions{
-		ConfigFile: configFile,
-		Path:       true,
+		ConfigFile:	configFile,
+		Path:		true,
 	})
 	if err != nil {
 		t.Errorf("failed to set config, err: %v", err)

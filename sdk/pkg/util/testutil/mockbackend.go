@@ -17,8 +17,8 @@ package testutil
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
 )
 
 // MockBackendInstance sets the backend instance for the test and cleans it up after.

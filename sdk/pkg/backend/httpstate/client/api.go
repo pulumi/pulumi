@@ -30,8 +30,8 @@ import (
 	"github.com/google/go-querystring/query"
 	"github.com/opentracing/opentracing-go"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
-	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/backenderr"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -42,8 +42,8 @@ import (
 )
 
 const (
-	apiRequestLogLevel       = 10 // log level for logging API requests and responses
-	apiRequestDetailLogLevel = 11 // log level for logging extra details about API requests and responses
+	apiRequestLogLevel		= 10	// log level for logging API requests and responses
+	apiRequestDetailLogLevel	= 11	// log level for logging extra details about API requests and responses
 )
 
 func UserAgent() string {
@@ -52,9 +52,9 @@ func UserAgent() string {
 
 // StackIdentifier is the set of data needed to identify a Pulumi Cloud stack.
 type StackIdentifier struct {
-	Owner   string
-	Project string
-	Stack   tokens.StackName
+	Owner	string
+	Project	string
+	Stack	tokens.StackName
 }
 
 func (s StackIdentifier) String() string {
@@ -65,8 +65,8 @@ func (s StackIdentifier) String() string {
 type UpdateIdentifier struct {
 	StackIdentifier
 
-	UpdateKind apitype.UpdateKind
-	UpdateID   string
+	UpdateKind	apitype.UpdateKind
+	UpdateID	string
 }
 
 // accessTokenKind is enumerates the various types of access token used with the Pulumi API. These kinds correspond
@@ -75,9 +75,9 @@ type accessTokenKind string
 
 const (
 	// accessTokenKindAPIToken denotes a standard Pulumi API token.
-	accessTokenKindAPIToken accessTokenKind = "token"
+	accessTokenKindAPIToken	accessTokenKind	= "token"
 	// accessTokenKindUpdateToken denotes an update lease token.
-	accessTokenKindUpdateToken accessTokenKind = "update-token"
+	accessTokenKindUpdateToken	accessTokenKind	= "update-token"
 )
 
 // accessToken is an abstraction over the two different kinds of access tokens used by the Pulumi API.
@@ -90,16 +90,16 @@ type httpCallOptions struct {
 	// RetryPolicy defines the policy for retrying requests by httpClient.Do.
 	//
 	// By default, only GET requests are retried.
-	RetryPolicy retryPolicy
+	RetryPolicy	retryPolicy
 
 	// GzipCompress compresses the request using gzip before sending it.
-	GzipCompress bool
+	GzipCompress	bool
 
 	// Header is any additional headers to add to the request.
-	Header http.Header
+	Header	http.Header
 
 	// ErrorResponse is an optional response body for errors.
-	ErrorResponse any
+	ErrorResponse	any
 }
 
 // apiAccessToken is an implementation of accessToken for Pulumi API tokens (i.e. tokens of kind
@@ -161,12 +161,12 @@ type retryPolicy int
 
 const (
 	// retryNone indicates that no retry should be attempted.
-	retryNone retryPolicy = iota - 1
+	retryNone	retryPolicy	= iota - 1
 
 	// retryGetMethod indicates that only GET requests should be retried.
 	//
 	// This is the default retry policy.
-	retryGetMethod // == 0
+	retryGetMethod	// == 0
 
 	// retryAllMethods indicates that all requests should be retried.
 	retryAllMethods
@@ -195,7 +195,7 @@ func (p retryPolicy) shouldRetry(req *http.Request) bool {
 		return true
 	default:
 		contract.Failf("unknown retry policy: %v", p)
-		return false // unreachable
+		return false	// unreachable
 	}
 }
 
@@ -215,12 +215,12 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 	// maximum delay is reached. Stop after maxRetryCount requests have
 	// been made.
 	opts := httputil.RetryOpts{
-		Delay:    durationPtr(time.Second),
-		Backoff:  float64Ptr(2.0),
-		MaxDelay: durationPtr(30 * time.Second),
+		Delay:		durationPtr(time.Second),
+		Backoff:	float64Ptr(2.0),
+		MaxDelay:	durationPtr(30 * time.Second),
 
-		MaxRetryCount:         intPtr(4),
-		HandshakeTimeoutsOnly: !policy.shouldRetry(req),
+		MaxRetryCount:		intPtr(4),
+		HandshakeTimeoutsOnly:	!policy.shouldRetry(req),
 	}
 	return httputil.DoWithRetryOpts(req, c.client, opts)
 }

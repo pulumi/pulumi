@@ -52,11 +52,11 @@ import (
 
 type PulumiParameterizationJSON struct {
 	// The name of the parameterized package.
-	Name string `json:"name"`
+	Name	string	`json:"name"`
 	// The version of the parameterized package.
-	Version string `json:"version"`
+	Version	string	`json:"version"`
 	// The parameter value of the parameterized package.
-	Value []byte `json:"value"`
+	Value	[]byte	`json:"value"`
 }
 
 // PulumiPluginJSON represents additional information about a package's associated Pulumi plugin.
@@ -66,15 +66,15 @@ type PulumiParameterizationJSON struct {
 // For Go, the content is inside a pulumi-plugin.json file inside the module.
 type PulumiPluginJSON struct {
 	// Indicates whether the package has an associated resource plugin. Set to false to indicate no plugin.
-	Resource bool `json:"resource"`
+	Resource	bool	`json:"resource"`
 	// Optional plugin name. If not set, the plugin name is derived from the package name.
-	Name string `json:"name,omitempty"`
+	Name	string	`json:"name,omitempty"`
 	// Optional plugin version. If not set, the version is derived from the package version (if possible).
-	Version string `json:"version,omitempty"`
+	Version	string	`json:"version,omitempty"`
 	// Optional plugin server. If not set, the default server is used when installing the plugin.
-	Server string `json:"server,omitempty"`
+	Server	string	`json:"server,omitempty"`
 	// Parameterization information for the package.
-	Parameterization *PulumiParameterizationJSON `json:"parameterization,omitempty"`
+	Parameterization	*PulumiParameterizationJSON	`json:"parameterization,omitempty"`
 }
 
 func (plugin *PulumiPluginJSON) JSON() ([]byte, error) {
@@ -102,39 +102,39 @@ func LoadPulumiPluginJSON(path string) (*PulumiPluginJSON, error) {
 }
 
 type Plugin struct {
-	stdoutDone <-chan bool
-	stderrDone <-chan bool
+	stdoutDone	<-chan bool
+	stderrDone	<-chan bool
 
 	// The unstructured output of the process.
 	//
 	// unstructuredOutput is only non-nil if Pulumi launched the process and is hiding
 	// unstructured output.
-	unstructuredOutput *unstructuredOutput
+	unstructuredOutput	*unstructuredOutput
 
-	Bin  string
-	Args []string
+	Bin	string
+	Args	[]string
 	// Env specifies the environment of the plugin in the same format as go's os/exec.Cmd.Env
 	// https://golang.org/pkg/os/exec/#Cmd (each entry is of the form "key=value").
-	Env  []string
-	Conn *grpc.ClientConn
+	Env	[]string
+	Conn	*grpc.ClientConn
 	// Function to trigger the plugin to be killed. If the plugin is a process this will just SIGKILL it.
-	Kill   func() error
-	Stdin  io.WriteCloser
-	Stdout io.ReadCloser
-	Stderr io.ReadCloser
+	Kill	func() error
+	Stdin	io.WriteCloser
+	Stdout	io.ReadCloser
+	Stderr	io.ReadCloser
 	// Function to wait for the plugin to exit, this will either return the exitcode from the process or an
 	// error if we didn't get a normal process exit.
-	Wait func(context.Context) (int, error)
+	Wait	func(context.Context) (int, error)
 }
 
 type unstructuredOutput struct {
-	output bytes.Buffer
+	output	bytes.Buffer
 	// outputLock prevents concurrent writes to output.
-	outputLock sync.Mutex
-	diag       diag.Sink
+	outputLock	sync.Mutex
+	diag		diag.Sink
 
 	// done is true when the output has already been written to the user.
-	done atomic.Bool
+	done	atomic.Bool
 }
 
 // WriteString a string of unstructured output.
@@ -194,7 +194,7 @@ func dialPlugin[T any](
 			for {
 				handshakeRes, err = handshake(timeout, bin, prefix, conn)
 				if err == nil {
-					break // successful connect
+					break	// successful connect
 				}
 
 				// We have an error; see if it's a known status and, if so, react appropriately.
@@ -202,7 +202,7 @@ func dialPlugin[T any](
 				if ok && status.Code() == codes.Unavailable {
 					// The server is unavailable.  This is the Linux bug.  Wait a little and retry.
 					time.Sleep(time.Millisecond * 10)
-					continue // keep retrying
+					continue	// keep retrying
 				}
 
 				// Unexpected error; get outta dodge.
@@ -344,7 +344,7 @@ func newPlugin[T any](
 		n, readerr := plug.Stdout.Read(b)
 		if readerr != nil {
 			killerr := plug.Kill()
-			contract.IgnoreError(killerr) // We are ignoring because the readerr trumps it.
+			contract.IgnoreError(killerr)	// We are ignoring because the readerr trumps it.
 
 			// If from the output we have seen, return a specific error if possible.
 			if sawPolicyModuleNotFoundErr {
@@ -389,7 +389,7 @@ func newPlugin[T any](
 	var port int
 	if port, err = parsePort(portString); err != nil {
 		killerr := plug.Kill()
-		contract.IgnoreError(killerr) // ignoring the error because the existing one trumps it.
+		contract.IgnoreError(killerr)	// ignoring the error because the existing one trumps it.
 		return nil, nil, fmt.Errorf(
 			"%v plugin [%v] wrote an invalid port to stdout: %w", prefix, bin, err)
 	}
@@ -440,11 +440,11 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	pluginArgs []string, pwd string, env []string, attachDebugger bool,
 ) (*Plugin, error) {
 	args := buildPluginArguments(pluginArgumentOptions{
-		pluginArgs:      pluginArgs,
-		tracingEndpoint: cmdutil.TracingEndpoint,
-		logFlow:         logging.LogFlow,
-		logToStderr:     logging.LogToStderr,
-		verbose:         logging.Verbose,
+		pluginArgs:		pluginArgs,
+		tracingEndpoint:	cmdutil.TracingEndpoint,
+		logFlow:		logging.LogFlow,
+		logToStderr:		logging.LogToStderr,
+		verbose:		logging.Verbose,
 	})
 
 	// Check to see if we have a binary we can invoke directly
@@ -457,7 +457,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		}
 
 		var runtimeInfo workspace.ProjectRuntimeInfo
-		switch kind { //nolint:exhaustive // golangci-lint v2 upgrade
+		switch kind {	//nolint:exhaustive // golangci-lint v2 upgrade
 		case apitype.ResourcePlugin, apitype.ConverterPlugin:
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPlugin.yaml"))
 			if err != nil {
@@ -491,24 +491,24 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		rctx, kill := context.WithCancel(ctx.Request())
 
 		stdout, stderr, done, err := runtime.RunPlugin(rctx, RunPluginInfo{
-			Info:             info,
-			WorkingDirectory: ctx.Pwd,
-			Args:             args,
-			Env:              env,
-			Kind:             string(kind),
-			AttachDebugger:   attachDebugger,
+			Info:			info,
+			WorkingDirectory:	ctx.Pwd,
+			Args:			args,
+			Env:			env,
+			Kind:			string(kind),
+			AttachDebugger:		attachDebugger,
 		})
 		if err != nil {
 			return nil, err
 		}
 
 		return &Plugin{
-			Bin:    bin,
-			Args:   args,
-			Env:    env,
-			Kill:   func() error { kill(); return nil },
-			Stdout: io.NopCloser(stdout),
-			Stderr: io.NopCloser(stderr),
+			Bin:	bin,
+			Args:	args,
+			Env:	env,
+			Kill:	func() error { kill(); return nil },
+			Stdout:	io.NopCloser(stdout),
+			Stderr:	io.NopCloser(stderr),
 			Wait: func(ctx context.Context) (int, error) {
 				exitcode, err := done.Result(ctx)
 				if err != nil {
@@ -594,13 +594,13 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	})
 
 	return &Plugin{
-		Bin:    bin,
-		Args:   args,
-		Env:    env,
-		Kill:   kill,
-		Stdin:  in,
-		Stdout: outr,
-		Stderr: errr,
+		Bin:	bin,
+		Args:	args,
+		Env:	env,
+		Kill:	kill,
+		Stdin:	in,
+		Stdout:	outr,
+		Stderr:	errr,
 		Wait: func(ctx context.Context) (int, error) {
 			_, err := wait.Promise().Result(ctx)
 			if err != nil {
@@ -618,10 +618,10 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 }
 
 type pluginArgumentOptions struct {
-	pluginArgs           []string
-	tracingEndpoint      string
-	logFlow, logToStderr bool
-	verbose              int
+	pluginArgs		[]string
+	tracingEndpoint		string
+	logFlow, logToStderr	bool
+	verbose			int
 }
 
 func buildPluginArguments(opts pluginArgumentOptions) []string {
@@ -680,7 +680,7 @@ func (p *Plugin) healthCheck() bool {
 	select {
 	case result := <-healthy:
 		return result
-	case <-ctx.Done(): // hit deadline
+	case <-ctx.Done():	// hit deadline
 		return false
 	}
 }

@@ -23,16 +23,16 @@ type Lazy[T any] interface {
 }
 
 type lazy[T any] struct {
-	once   sync.Once
-	result T
-	f      func() T
+	once	sync.Once
+	result	T
+	f	func() T
 }
 
 // New creates a new Lazy[T] with the given function to compute the value.
 func New[T any](f func() T) Lazy[T] {
 	return &lazy[T]{
-		f:    f,
-		once: sync.Once{},
+		f:	f,
+		once:	sync.Once{},
 	}
 }
 

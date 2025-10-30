@@ -28,13 +28,13 @@ func TestStackReference(t *testing.T) {
 	t.Parallel()
 	var resName string
 	outputs := map[string]any{
-		"foo": "bar",
-		"baz": []any{"qux"},
+		"foo":	"bar",
+		"baz":	[]any{"qux"},
 		"zed": map[string]any{
 			"alpha": "beta",
 		},
-		"numf": 123.4,
-		"numi": 567.0,
+		"numf":	123.4,
+		"numi":	567.0,
 	}
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
@@ -46,8 +46,8 @@ func TestStackReference(t *testing.T) {
 			assert.Equal(t, "", args.Provider)
 			assert.Equal(t, args.Inputs["name"].StringValue(), args.ID)
 			return args.Inputs["name"].StringValue(), resource.NewPropertyMapFromMap(map[string]any{
-				"name":    "stack",
-				"outputs": outputs,
+				"name":		"stack",
+				"outputs":	outputs,
 			}), nil
 		},
 	}
@@ -113,8 +113,8 @@ func TestStackReference(t *testing.T) {
 	}, WithDryRun(true), WithMocks("project", "stack", &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			return args.Inputs["name"].StringValue(), resource.NewPropertyMapFromMap(map[string]any{
-				"name":    "stack",
-				"outputs": outputs,
+				"name":		"stack",
+				"outputs":	outputs,
 			}), nil
 		},
 	}))
@@ -126,21 +126,21 @@ func TestStackReferenceSecrets(t *testing.T) {
 	var resName string
 
 	expected := map[string]any{
-		"foo": "bar",
-		"baz": []any{"qux"},
+		"foo":	"bar",
+		"baz":	[]any{"qux"},
 		"zed": map[string]any{
 			"alpha": "beta",
 		},
-		"numf": 123.4,
-		"numi": 567.0,
+		"numf":	123.4,
+		"numi":	567.0,
 
-		"secret-foo": "bar",
-		"secret-baz": []any{"qux"},
+		"secret-foo":	"bar",
+		"secret-baz":	[]any{"qux"},
 		"secret-zed": map[string]any{
 			"alpha": "beta",
 		},
-		"secret-numf": 123.4,
-		"secret-numi": 567.0,
+		"secret-numf":	123.4,
+		"secret-numi":	567.0,
 	}
 
 	properties := resource.PropertyMap{}
@@ -164,8 +164,8 @@ func TestStackReferenceSecrets(t *testing.T) {
 			assert.Equal(t, "", args.Provider)
 			assert.Equal(t, args.Inputs["name"].StringValue(), args.ID)
 			return args.Inputs["name"].StringValue(), resource.PropertyMap{
-				"name":    resource.NewProperty("stack"),
-				"outputs": outputs,
+				"name":		resource.NewProperty("stack"),
+				"outputs":	outputs,
 			}, nil
 		},
 	}
@@ -213,7 +213,7 @@ func TestStackReference_GetOutputDetails(t *testing.T) {
 	t.Parallel()
 
 	outputs := resource.PropertyMap{
-		"bucket": resource.NewProperty("mybucket-1234"),
+		"bucket":	resource.NewProperty("mybucket-1234"),
 		"password": resource.NewProperty(&resource.Secret{
 			Element: resource.NewProperty("supersecretpassword"),
 		}),
@@ -223,30 +223,30 @@ func TestStackReference_GetOutputDetails(t *testing.T) {
 			assert.Equal(t, "pulumi:pulumi:StackReference", args.TypeToken)
 			assert.Equal(t, "ref", args.Name)
 			return args.Name, resource.PropertyMap{
-				"name":    resource.NewProperty(args.Name),
-				"outputs": resource.NewProperty(outputs),
+				"name":		resource.NewProperty(args.Name),
+				"outputs":	resource.NewProperty(outputs),
 			}, nil
 		},
 	}
 
 	tests := []struct {
-		desc string
-		name string
-		want StackReferenceOutputDetails
+		desc	string
+		name	string
+		want	StackReferenceOutputDetails
 	}{
 		{
-			desc: "non secret",
-			name: "bucket",
-			want: StackReferenceOutputDetails{Value: "mybucket-1234"},
+			desc:	"non secret",
+			name:	"bucket",
+			want:	StackReferenceOutputDetails{Value: "mybucket-1234"},
 		},
 		{
-			desc: "secret",
-			name: "password",
-			want: StackReferenceOutputDetails{SecretValue: "supersecretpassword"},
+			desc:	"secret",
+			name:	"password",
+			want:	StackReferenceOutputDetails{SecretValue: "supersecretpassword"},
 		},
 		{
-			desc: "unknown",
-			name: "does-not-exist",
+			desc:	"unknown",
+			name:	"does-not-exist",
 			// want empty struct
 		},
 	}

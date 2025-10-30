@@ -23,9 +23,9 @@ import (
 )
 
 type StackContext struct {
-	Organization string
-	Project      string
-	Stack        string
+	Organization	string
+	Project		string
+	Stack		string
 }
 
 // stackPatternEval is a helper struct for resolving stack-level expressions in autonaming patterns.
@@ -33,8 +33,8 @@ type StackContext struct {
 // These are all expressions that can be resolved at startup time because they don't depend
 // on the resource URN.
 type stackPatternEval struct {
-	ctx            StackContext
-	getConfigValue func(key string) (string, error)
+	ctx		StackContext
+	getConfigValue	func(key string) (string, error)
 }
 
 // newStackPatternEval creates a new stack pattern evaluator based on the given stack and configuration.
@@ -55,8 +55,8 @@ func newStackPatternEval(s StackContext, cfg config.Map, decrypter config.Decryp
 		return v, nil
 	}
 	return &stackPatternEval{
-		ctx:            s,
-		getConfigValue: getConfigValue,
+		ctx:		s,
+		getConfigValue:	getConfigValue,
 	}
 }
 

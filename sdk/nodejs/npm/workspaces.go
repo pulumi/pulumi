@@ -44,7 +44,7 @@ func FindWorkspaceRoot(startingPath string) (string, error) {
 	}
 	currentDir := packageJSONDir
 	nextDir := filepath.Dir(currentDir)
-	for currentDir != nextDir { // We're at the root when the nextDir is the same as the currentDir.
+	for currentDir != nextDir {	// We're at the root when the nextDir is the same as the currentDir.
 		p := filepath.Join(currentDir, "package.json")
 		_, err := os.Stat(p)
 		if err != nil {

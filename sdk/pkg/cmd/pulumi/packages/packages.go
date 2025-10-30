@@ -31,11 +31,11 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
-	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/packageresolution"
+	go_gen "github.com/pulumi/pulumi/sdk/v3/pkg/codegen/go"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
+	pkgCmdUtil "github.com/pulumi/pulumi/sdk/v3/pkg/util/cmdutil"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -82,8 +82,8 @@ func InstallPackage(proj workspace.BaseProject, pctx *plugin.Context, language, 
 		language,
 		tempOut,
 		pkg,
-		"",    /*overlays*/
-		local, /*local*/
+		"",	/*overlays*/
+		local,	/*local*/
 	)
 	if err != nil {
 		return nil, nil, diags, fmt.Errorf("failed to generate SDK: %w", err)
@@ -120,15 +120,15 @@ func InstallPackage(proj workspace.BaseProject, pctx *plugin.Context, language, 
 
 	// Link the package to the project
 	if err := LinkPackage(&LinkPackageContext{
-		Writer:            os.Stdout,
-		Project:           proj,
-		Language:          language,
-		Root:              root,
-		Pkg:               pkg,
-		PluginContext:     pctx,
-		PackageDescriptor: packageDescriptor,
-		Out:               out,
-		Install:           true,
+		Writer:			os.Stdout,
+		Project:		proj,
+		Language:		language,
+		Root:			root,
+		Pkg:			pkg,
+		PluginContext:		pctx,
+		PackageDescriptor:	packageDescriptor,
+		Out:			out,
+		Install:		true,
 	}); err != nil {
 		return nil, nil, diags, err
 	}
@@ -216,24 +216,24 @@ func GenSDK(language, out string, pkg *schema.Package, overlays string, local bo
 
 type LinkPackageContext struct {
 	// The project into which the SDK package is being linked.
-	Project workspace.BaseProject
+	Project	workspace.BaseProject
 	// The programming language of the SDK package being linked.
-	Language string
+	Language	string
 	// The root directory of the project to which the SDK package is being linked.
-	Root string
+	Root	string
 	// The schema of the Pulumi package from which the SDK being linked was generated.
-	Pkg *schema.Package
+	Pkg	*schema.Package
 	// A plugin context to load languages and providers.
-	PluginContext *plugin.Context
+	PluginContext	*plugin.Context
 	// The descriptor for the package to link.
-	PackageDescriptor workspace.PackageDescriptor
+	PackageDescriptor	workspace.PackageDescriptor
 	// The output directory where the SDK package to be linked is located.
-	Out string
+	Out	string
 	// True if the linked SDK package should be installed into the project it is being added to. If this is false, the
 	// package will be linked (e.g. an entry added to package.json), but not installed (e.g. its contents unpacked into
 	// node_modules).
-	Install bool
-	Writer  io.Writer
+	Install	bool
+	Writer	io.Writer
 }
 
 // LinkPackage links a locally generated SDK to an existing project.
@@ -247,7 +247,7 @@ func LinkPackage(ctx *LinkPackageContext) error {
 	case "java":
 		return printJavaLinkInstructions(ctx)
 	case "yaml":
-		return nil // Nothing to do for YAML
+		return nil	// Nothing to do for YAML
 	default:
 		return linkPackage(ctx)
 	}
@@ -290,8 +290,8 @@ func linkPackage(ctx *LinkPackageContext) error {
 		return err
 	}
 	deps := []workspace.LinkablePackageDescriptor{{
-		Path:       packagePath,
-		Descriptor: ctx.PackageDescriptor,
+		Path:		packagePath,
+		Descriptor:	ctx.PackageDescriptor,
 	}}
 
 	instructions, err := languagePlugin.Link(programInfo, deps, grpcServer.Addr())
@@ -633,8 +633,8 @@ func SchemaFromSchemaSource(
 		}
 
 		request = plugin.GetSchemaRequest{
-			SubpackageName:    resp.Name,
-			SubpackageVersion: &resp.Version,
+			SubpackageName:		resp.Name,
+			SubpackageVersion:	&resp.Version,
 		}
 	}
 
@@ -658,9 +658,9 @@ func SchemaFromSchemaSource(
 }
 
 type Provider struct {
-	Provider plugin.Provider
+	Provider	plugin.Provider
 
-	AlreadyParameterized bool
+	AlreadyParameterized	bool
 }
 
 // ProviderFromSource takes a plugin name or path.
@@ -681,8 +681,8 @@ func ProviderFromSource(
 		p, err := pctx.Host.Provider(descriptor)
 		if err == nil {
 			return Provider{
-				Provider:             p,
-				AlreadyParameterized: descriptor.Parameterization != nil,
+				Provider:		p,
+				AlreadyParameterized:	descriptor.Parameterization != nil,
 			}, nil
 		}
 		// There is an executable or directory with the same name, so suggest that
@@ -746,9 +746,9 @@ func ProviderFromSource(
 		if descriptor.Parameterization != nil {
 			_, err := p.Provider.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
 				Parameters: &plugin.ParameterizeValue{
-					Name:    descriptor.Parameterization.Name,
-					Version: descriptor.Parameterization.Version,
-					Value:   descriptor.Parameterization.Value,
+					Name:		descriptor.Parameterization.Name,
+					Version:	descriptor.Parameterization.Version,
+					Value:		descriptor.Parameterization.Value,
 				},
 			})
 			if err != nil {
@@ -764,9 +764,9 @@ func ProviderFromSource(
 		packageresolution.DefaultWorkspace(),
 		pluginSpec,
 		packageresolution.Options{
-			DisableRegistryResolve:      env.DisableRegistryResolve.Value(),
-			Experimental:                env.Experimental.Value(),
-			IncludeInstalledInWorkspace: true,
+			DisableRegistryResolve:		env.DisableRegistryResolve.Value(),
+			Experimental:			env.Experimental.Value(),
+			IncludeInstalledInWorkspace:	true,
 		},
 		pctx.Root,
 	)
@@ -827,23 +827,23 @@ func setupProviderFromRegistryMeta(
 	setupProvider func(workspace.PackageDescriptor, *workspace.PackageSpec) (Provider, *workspace.PackageSpec, error),
 ) (Provider, *workspace.PackageSpec, error) {
 	spec := workspace.PluginSpec{
-		Name:              meta.Name,
-		Kind:              apitype.ResourcePlugin,
-		Version:           &meta.Version,
-		PluginDownloadURL: meta.PluginDownloadURL,
+		Name:			meta.Name,
+		Kind:			apitype.ResourcePlugin,
+		Version:		&meta.Version,
+		PluginDownloadURL:	meta.PluginDownloadURL,
 	}
 	var params *workspace.Parameterization
 	if meta.Parameterization != nil {
 		spec.Name = meta.Parameterization.BaseProvider.Name
 		spec.Version = &meta.Parameterization.BaseProvider.Version
 		params = &workspace.Parameterization{
-			Name:    meta.Name,
-			Version: meta.Version,
-			Value:   meta.Parameterization.Parameter,
+			Name:		meta.Name,
+			Version:	meta.Version,
+			Value:		meta.Parameterization.Parameter,
 		}
 	}
 	return setupProvider(workspace.NewPackageDescriptor(spec, params), &workspace.PackageSpec{
-		Source:  meta.Source + "/" + meta.Publisher + "/" + meta.Name,
-		Version: meta.Version.String(),
+		Source:		meta.Source + "/" + meta.Publisher + "/" + meta.Name,
+		Version:	meta.Version.String(),
 	})
 }

@@ -22,14 +22,14 @@ import (
 	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/hashicorp/hcl/v2"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -42,8 +42,8 @@ type NameTable map[resource.URN]string
 
 // A DiagnosticsError captures HCL2 diagnostics.
 type DiagnosticsError struct {
-	diagnostics         hcl.Diagnostics
-	newDiagnosticWriter func(w io.Writer, width uint, color bool) hcl.DiagnosticWriter
+	diagnostics		hcl.Diagnostics
+	newDiagnosticWriter	func(w io.Writer, width uint, color bool) hcl.DiagnosticWriter
 }
 
 func (e *DiagnosticsError) Diagnostics() hcl.Diagnostics {
@@ -99,11 +99,11 @@ func createPathedValue(
 
 	if property.IsString() {
 		return &PathedLiteralValue{
-			Root:  root,
-			Value: property.StringValue(),
+			Root:	root,
+			Value:	property.StringValue(),
 			ExpressionReference: &model.ScopeTraversalExpression{
-				RootName:  root,
-				Traversal: currentPath,
+				RootName:	root,
+				Traversal:	currentPath,
 			},
 		}
 	}
@@ -134,10 +134,10 @@ func createImportState(states []*resource.State, snapshot []*resource.State, nam
 			name = mappedName
 		}
 		pathedLiteralValues = append(pathedLiteralValues, PathedLiteralValue{
-			Root:  name,
-			Value: resourceID,
+			Root:	name,
+			Value:	resourceID,
 			ExpressionReference: &model.ScopeTraversalExpression{
-				RootName: name,
+				RootName:	name,
 				Traversal: hcl.Traversal{
 					hcl.TraverseRoot{Name: name},
 					hcl.TraverseAttr{Name: "id"},
@@ -158,9 +158,9 @@ func createImportState(states []*resource.State, snapshot []*resource.State, nam
 	}
 
 	return ImportState{
-		Names:               names,
-		PathedLiteralValues: pathedLiteralValues,
-		Snapshot:            snapshot,
+		Names:			names,
+		PathedLiteralValues:	pathedLiteralValues,
+		Snapshot:		snapshot,
 	}
 }
 
@@ -199,14 +199,14 @@ func GenerateLanguageDefinitions(
 
 				items := make([]model.BodyItem, 0)
 				items = append(items, &model.Attribute{
-					Name: "baseProviderName",
+					Name:	"baseProviderName",
 					Value: &model.LiteralValueExpression{
 						Value: cty.StringVal("\"" + pkgDesc.Name + "\""),
 					},
 				})
 				if pkgDesc.Version != nil {
 					items = append(items, &model.Attribute{
-						Name: "baseProviderVersion",
+						Name:	"baseProviderVersion",
 						Value: &model.LiteralValueExpression{
 							Value: cty.StringVal("\"" + pkgDesc.Version.String() + "\""),
 						},
@@ -214,7 +214,7 @@ func GenerateLanguageDefinitions(
 				}
 				if pkgDesc.DownloadURL != "" {
 					items = append(items, &model.Attribute{
-						Name: "baseProviderDownloadUrl",
+						Name:	"baseProviderDownloadUrl",
 						Value: &model.LiteralValueExpression{
 							Value: cty.StringVal("\"" + pkgDesc.DownloadURL + "\""),
 						},
@@ -224,24 +224,24 @@ func GenerateLanguageDefinitions(
 					base64Value := base64.StdEncoding.EncodeToString(pkgDesc.Parameterization.Value)
 
 					items = append(items, &model.Block{
-						Tokens: syntax.NewBlockTokens("parameterization"),
-						Type:   "parameterization",
+						Tokens:	syntax.NewBlockTokens("parameterization"),
+						Type:	"parameterization",
 						Body: &model.Body{
 							Items: []model.BodyItem{
 								&model.Attribute{
-									Name: "name",
+									Name:	"name",
 									Value: &model.LiteralValueExpression{
 										Value: cty.StringVal("\"" + pkgDesc.Parameterization.Name + "\""),
 									},
 								},
 								&model.Attribute{
-									Name: "version",
+									Name:	"version",
 									Value: &model.LiteralValueExpression{
 										Value: cty.StringVal("\"" + pkgDesc.Parameterization.Version.String() + "\""),
 									},
 								},
 								&model.Attribute{
-									Name: "value",
+									Name:	"value",
 									Value: &model.LiteralValueExpression{
 										Value: cty.StringVal("\"" + base64Value + "\""),
 									},
@@ -252,9 +252,9 @@ func GenerateLanguageDefinitions(
 				}
 
 				pkgBlock := &model.Block{
-					Tokens: syntax.NewBlockTokens("package", pkgName),
-					Type:   "package",
-					Labels: []string{pkgName},
+					Tokens:	syntax.NewBlockTokens("package", pkgName),
+					Type:	"package",
+					Labels:	[]string{pkgName},
 					Body: &model.Body{
 						Items: items,
 					},
@@ -275,8 +275,8 @@ func GenerateLanguageDefinitions(
 		if parser.Diagnostics.HasErrors() {
 			// HCL2 text generation should always generate proper code.
 			return nil, nil, fmt.Errorf("internal error: %w", &DiagnosticsError{
-				diagnostics:         parser.Diagnostics,
-				newDiagnosticWriter: parser.NewDiagnosticWriter,
+				diagnostics:		parser.Diagnostics,
+				newDiagnosticWriter:	parser.NewDiagnosticWriter,
 			})
 		}
 
@@ -314,8 +314,8 @@ func GenerateLanguageDefinitions(
 		// It is possible that the provided states do not contain appropriately-shaped inputs, so this may be user
 		// error.
 		return &DiagnosticsError{
-			diagnostics:         diags,
-			newDiagnosticWriter: program.NewDiagnosticWriter,
+			diagnostics:		diags,
+			newDiagnosticWriter:	program.NewDiagnosticWriter,
 		}
 	}
 

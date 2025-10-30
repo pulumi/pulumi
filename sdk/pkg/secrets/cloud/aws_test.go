@@ -112,8 +112,8 @@ func TestAWSCloudManager_AssumedRole(t *testing.T) {
 		}
 	}`, *caller.Arn)
 	role, err := iamClient.CreateRole(ctx, &iam.CreateRoleInput{
-		RoleName:                 &roleName,
-		AssumeRolePolicyDocument: &assumeRolePolicyDocument,
+		RoleName:			&roleName,
+		AssumeRolePolicyDocument:	&assumeRolePolicyDocument,
 	})
 	require.NoError(t, err)
 	defer func() {
@@ -136,14 +136,14 @@ func TestAWSCloudManager_AssumedRole(t *testing.T) {
 		}
 	}`, *key.KeyMetadata.Arn)
 	policy, err := iamClient.CreatePolicy(ctx, &iam.CreatePolicyInput{
-		PolicyName:     &policyName,
-		PolicyDocument: &policyDocument,
+		PolicyName:	&policyName,
+		PolicyDocument:	&policyDocument,
 	})
 	require.NoError(t, err)
 	defer func() {
 		_, err := iamClient.DetachRolePolicy(ctx, &iam.DetachRolePolicyInput{
-			PolicyArn: policy.Policy.Arn,
-			RoleName:  &roleName,
+			PolicyArn:	policy.Policy.Arn,
+			RoleName:	&roleName,
 		})
 		require.NoError(t, err)
 		_, err = iamClient.DeletePolicy(ctx, &iam.DeletePolicyInput{
@@ -152,16 +152,16 @@ func TestAWSCloudManager_AssumedRole(t *testing.T) {
 		require.NoError(t, err)
 	}()
 	_, err = iamClient.AttachRolePolicy(ctx, &iam.AttachRolePolicyInput{
-		PolicyArn: policy.Policy.Arn,
-		RoleName:  &roleName,
+		PolicyArn:	policy.Policy.Arn,
+		RoleName:	&roleName,
 	})
 	require.NoError(t, err)
 
 	// AssumeRole takes about 10 seconds to take effect.
 	// We'll try for up to 20.
 	const (
-		MaxAttempts = 10
-		Delay       = 2 * time.Second
+		MaxAttempts	= 10
+		Delay		= 2 * time.Second
 	)
 
 	// Now assume that role and try and use the secret manager
@@ -170,8 +170,8 @@ func TestAWSCloudManager_AssumedRole(t *testing.T) {
 	for i := 0; i < MaxAttempts; i++ {
 		sessionName := "test-session-" + randomName(t)
 		assume, err = stsClient.AssumeRole(ctx, &sts.AssumeRoleInput{
-			RoleArn:         role.Role.Arn,
-			RoleSessionName: &sessionName,
+			RoleArn:		role.Role.Arn,
+			RoleSessionName:	&sessionName,
 		})
 		if err == nil {
 			break

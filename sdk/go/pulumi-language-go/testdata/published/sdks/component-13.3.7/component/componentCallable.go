@@ -16,7 +16,7 @@ import (
 type ComponentCallable struct {
 	pulumi.ResourceState
 
-	Value pulumi.StringOutput `pulumi:"value"`
+	Value	pulumi.StringOutput	`pulumi:"value"`
 }
 
 // NewComponentCallable registers a new resource with the given unique name, arguments, and options.

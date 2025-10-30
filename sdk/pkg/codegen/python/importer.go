@@ -17,7 +17,7 @@ package python
 import (
 	"encoding/json"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 )
 
 // Compatibility mode for Kubernetes 2.0 SDK
@@ -34,37 +34,37 @@ type PropertyInfo struct {
 // PackageInfo tracks Python-specific information associated with a package.
 type PackageInfo struct {
 	// PackageName is an override for the name of the generated python package.
-	PackageName string `json:"packageName,omitempty"`
+	PackageName	string	`json:"packageName,omitempty"`
 	// PythonRequires determines the Python versions that the generated provider supports
-	PythonRequires string            `json:"pythonRequires,omitempty"`
-	Requires       map[string]string `json:"requires,omitempty"`
+	PythonRequires	string			`json:"pythonRequires,omitempty"`
+	Requires	map[string]string	`json:"requires,omitempty"`
 	// Readme contains the text for the package's README.md files.
-	Readme string `json:"readme,omitempty"`
+	Readme	string	`json:"readme,omitempty"`
 	// Optional overrides for Pulumi module names
 	//
 	//    { "flowcontrol.apiserver.k8s.io/v1alpha1": "flowcontrol/v1alpha1" }
 	//
-	ModuleNameOverrides map[string]string `json:"moduleNameOverrides,omitempty"`
+	ModuleNameOverrides	map[string]string	`json:"moduleNameOverrides,omitempty"`
 	// Toggle compatibility mode for a specified target.
-	Compatibility string `json:"compatibility,omitempty"`
+	Compatibility	string	`json:"compatibility,omitempty"`
 	// Deprecated: This bool is no longer needed since all providers now use input/output classes.
-	UsesIOClasses bool `json:"usesIOClasses,omitempty"`
+	UsesIOClasses	bool	`json:"usesIOClasses,omitempty"`
 	// Determines whether to make single-return-value methods return an output object or the single value.
-	LiftSingleValueMethodReturns bool `json:"liftSingleValueMethodReturns,omitempty"`
+	LiftSingleValueMethodReturns	bool	`json:"liftSingleValueMethodReturns,omitempty"`
 
 	// Respect the Pkg.Version field for emitted code.
-	RespectSchemaVersion bool `json:"respectSchemaVersion,omitempty"`
+	RespectSchemaVersion	bool	`json:"respectSchemaVersion,omitempty"`
 
 	// If enabled, a pyproject.toml file will be generated.
-	PyProject struct {
+	PyProject	struct {
 		Enabled bool `json:"enabled,omitempty"`
-	} `json:"pyproject,omitempty"`
+	}	`json:"pyproject,omitempty"`
 
 	// Specifies what types are used for inputs.
 	// Allowed values are the following:
 	// - "classes": Args classes only
 	// - "classes-and-dicts" (default): TypedDicts side-by-side with Args classes.
-	InputTypes string `json:"inputTypes,omitempty"`
+	InputTypes	string	`json:"inputTypes,omitempty"`
 }
 
 // Importer implements schema.Language for Python.

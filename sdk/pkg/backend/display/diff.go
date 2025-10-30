@@ -27,8 +27,8 @@ import (
 
 	"github.com/dustin/go-humanize/english"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -429,7 +429,7 @@ func renderDiff(
 					opts.SummaryDiff, opts.TruncateOutput, debug, opts.ShowSecrets, hidden)
 			} else {
 				PrintObject(
-					&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true, /*prefix*/
+					&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true,	/*prefix*/
 					opts.TruncateOutput, debug, opts.ShowSecrets)
 			}
 			details = buf.String()
@@ -467,7 +467,7 @@ func renderDiffResourceOutputsEvent(
 ) string {
 	out := &bytes.Buffer{}
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
-		refresh := false // are these outputs from a refresh?
+		refresh := false	// are these outputs from a refresh?
 		if m, has := seen[payload.Metadata.URN]; has && m.Op == deploy.OpRefresh {
 			refresh = true
 		}

@@ -27,9 +27,9 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/testutil"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -40,21 +40,21 @@ import (
 //nolint:paralleltest // This test uses the global backend variable
 func TestTemplatePublishCmd_Run(t *testing.T) {
 	tests := []struct {
-		name            string
-		args            publishTemplateArgs
-		templateDir     func(t *testing.T) string
-		mockOrg         string
-		mockOrgErr      error
-		publishErr      error
-		expectedErr     string
-		validateArchive func(t *testing.T, archive io.Reader)
+		name		string
+		args		publishTemplateArgs
+		templateDir	func(t *testing.T) string
+		mockOrg		string
+		mockOrgErr	error
+		publishErr	error
+		expectedErr	string
+		validateArchive	func(t *testing.T, archive io.Reader)
 	}{
 		{
-			name: "successful publish with publisher from command line",
+			name:	"successful publish with publisher from command line",
 			args: publishTemplateArgs{
-				publisher: "testpublisher",
-				name:      "test-template",
-				version:   "1.0.0",
+				publisher:	"testpublisher",
+				name:		"test-template",
+				version:	"1.0.0",
 			},
 			templateDir: func(t *testing.T) string {
 				t.Helper()
@@ -80,10 +80,10 @@ export const message = "Hello, Pulumi!";
 			},
 		},
 		{
-			name: "successful publish with default org",
+			name:	"successful publish with default org",
 			args: publishTemplateArgs{
-				name:    "test-template",
-				version: "1.0.0",
+				name:		"test-template",
+				version:	"1.0.0",
 			},
 			templateDir: func(t *testing.T) string {
 				t.Helper()
@@ -96,7 +96,7 @@ runtime: nodejs
 
 				return dir
 			},
-			mockOrg: "defaultorg",
+			mockOrg:	"defaultorg",
 			validateArchive: func(t *testing.T, archive io.Reader) {
 				content, err := io.ReadAll(archive)
 				require.NoError(t, err)
@@ -104,10 +104,10 @@ runtime: nodejs
 			},
 		},
 		{
-			name: "error when no publisher available",
+			name:	"error when no publisher available",
 			args: publishTemplateArgs{
-				name:    "test-template",
-				version: "1.0.0",
+				name:		"test-template",
+				version:	"1.0.0",
 			},
 			templateDir: func(t *testing.T) string {
 				t.Helper()
@@ -120,13 +120,13 @@ runtime: nodejs
 
 				return dir
 			},
-			expectedErr: "no publisher specified and no default organization found",
+			expectedErr:	"no publisher specified and no default organization found",
 		},
 		{
-			name: "error when determining default org fails",
+			name:	"error when determining default org fails",
 			args: publishTemplateArgs{
-				name:    "test-template",
-				version: "1.0.0",
+				name:		"test-template",
+				version:	"1.0.0",
 			},
 			templateDir: func(t *testing.T) string {
 				t.Helper()
@@ -139,27 +139,27 @@ runtime: nodejs
 
 				return dir
 			},
-			mockOrgErr:  errors.New("unexpected error"),
-			expectedErr: "failed to determine default organization: unexpected error",
+			mockOrgErr:	errors.New("unexpected error"),
+			expectedErr:	"failed to determine default organization: unexpected error",
 		},
 		{
-			name: "error when template directory does not exist",
+			name:	"error when template directory does not exist",
 			args: publishTemplateArgs{
-				publisher: "testpublisher",
-				name:      "test-template",
-				version:   "1.0.0",
+				publisher:	"testpublisher",
+				name:		"test-template",
+				version:	"1.0.0",
 			},
 			templateDir: func(t *testing.T) string {
 				return "/path/that/does/not/exist"
 			},
-			expectedErr: "template directory does not exist",
+			expectedErr:	"template directory does not exist",
 		},
 		{
-			name: "error when version is invalid",
+			name:	"error when version is invalid",
 			args: publishTemplateArgs{
-				publisher: "testpublisher",
-				name:      "test-template",
-				version:   "not-a-version",
+				publisher:	"testpublisher",
+				name:		"test-template",
+				version:	"not-a-version",
 			},
 			templateDir: func(t *testing.T) string {
 				t.Helper()
@@ -172,14 +172,14 @@ runtime: nodejs
 
 				return dir
 			},
-			expectedErr: "invalid version format",
+			expectedErr:	"invalid version format",
 		},
 		{
-			name: "error when template name is invalid",
+			name:	"error when template name is invalid",
 			args: publishTemplateArgs{
-				publisher: "testpublisher",
-				name:      "INVALID-NAME!!!",
-				version:   "1.0.0",
+				publisher:	"testpublisher",
+				name:		"INVALID-NAME!!!",
+				version:	"1.0.0",
 			},
 			templateDir: func(t *testing.T) string {
 				t.Helper()
@@ -192,14 +192,14 @@ runtime: nodejs
 
 				return dir
 			},
-			expectedErr: "invalid template name",
+			expectedErr:	"invalid template name",
 		},
 		{
-			name: "error when publish fails",
+			name:	"error when publish fails",
 			args: publishTemplateArgs{
-				publisher: "testpublisher",
-				name:      "test-template",
-				version:   "1.0.0",
+				publisher:	"testpublisher",
+				name:		"test-template",
+				version:	"1.0.0",
 			},
 			templateDir: func(t *testing.T) string {
 				t.Helper()
@@ -212,8 +212,8 @@ runtime: nodejs
 
 				return dir
 			},
-			publishErr:  errors.New("publish failed"),
-			expectedErr: "failed to publish template",
+			publishErr:	errors.New("publish failed"),
+			expectedErr:	"failed to publish template",
 		},
 	}
 
@@ -278,12 +278,12 @@ runtime: nodejs
 //nolint:paralleltest // This test uses the global backend variable
 func TestTemplatePublishCmd_BackendErrors(t *testing.T) {
 	tests := []struct {
-		name           string
-		setupBackend   func(t *testing.T)
-		expectedErrStr string
+		name		string
+		setupBackend	func(t *testing.T)
+		expectedErrStr	string
 	}{
 		{
-			name: "error getting cloud registry",
+			name:	"error getting cloud registry",
 			setupBackend: func(t *testing.T) {
 				testutil.MockBackendInstance(t, &backend.MockBackend{
 					GetCloudRegistryF: func() (backend.CloudRegistry, error) {
@@ -291,7 +291,7 @@ func TestTemplatePublishCmd_BackendErrors(t *testing.T) {
 					},
 				})
 			},
-			expectedErrStr: "failed to get cloud registry",
+			expectedErrStr:	"failed to get cloud registry",
 		},
 	}
 
@@ -313,9 +313,9 @@ runtime: nodejs
 
 			mockCmd := &cobra.Command{}
 			err = cmd.Run(context.Background(), mockCmd, publishTemplateArgs{
-				publisher: "publisher",
-				name:      "test-template",
-				version:   "1.0.0",
+				publisher:	"publisher",
+				name:		"test-template",
+				version:	"1.0.0",
 			}, tmpDir)
 
 			assert.Error(t, err)
@@ -359,9 +359,9 @@ runtime: nodejs
 
 	mockCmd := &cobra.Command{}
 	err = cmd.Run(context.Background(), mockCmd, publishTemplateArgs{
-		publisher: "publisher",
-		name:      "test-template",
-		version:   "1.0.0",
+		publisher:	"publisher",
+		name:		"test-template",
+		version:	"1.0.0",
 	}, tmpDir)
 
 	assert.Error(t, err)
@@ -414,7 +414,7 @@ func TestTemplatePublishCmd_RelativePathBug(t *testing.T) {
 	}
 
 	err := cmd.Run(context.Background(), &cobra.Command{}, publishTemplateArgs{
-		publisher: "test", name: "test", version: "1.0.0",
+		publisher:	"test", name: "test", version: "1.0.0",
 	}, "./template-subdir")
 
 	require.NoError(t, err)
@@ -423,13 +423,13 @@ func TestTemplatePublishCmd_RelativePathBug(t *testing.T) {
 //nolint:paralleltest // This test uses the global backend variable
 func TestTemplatePublishCmd_ArchiveCreation(t *testing.T) {
 	tests := []struct {
-		name          string
-		setupDir      func(t *testing.T) string
-		expectedFiles []string
-		excludedFiles []string
+		name		string
+		setupDir	func(t *testing.T) string
+		expectedFiles	[]string
+		excludedFiles	[]string
 	}{
 		{
-			name: "archive creation with gitignore exclusions",
+			name:	"archive creation with gitignore exclusions",
 			setupDir: func(t *testing.T) string {
 				t.Helper()
 				dir := t.TempDir()
@@ -470,7 +470,7 @@ dist/
 			},
 		},
 		{
-			name: "archive creation without gitignore",
+			name:	"archive creation without gitignore",
 			setupDir: func(t *testing.T) string {
 				t.Helper()
 				dir := t.TempDir()
@@ -488,7 +488,7 @@ dist/
 				"__main__.py",
 				"requirements.txt",
 			},
-			excludedFiles: []string{},
+			excludedFiles:	[]string{},
 		},
 	}
 
@@ -545,9 +545,9 @@ dist/
 
 			mockCmd := &cobra.Command{}
 			err := cmd.Run(context.Background(), mockCmd, publishTemplateArgs{
-				publisher: "testpublisher",
-				name:      "test-template",
-				version:   "1.0.0",
+				publisher:	"testpublisher",
+				name:		"test-template",
+				version:	"1.0.0",
 			}, templateDir)
 
 			require.NoError(t, err)

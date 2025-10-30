@@ -22,10 +22,10 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	. "github.com/pulumi/pulumi/sdk/v3/pkg/engine"	//nolint:revive
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -36,9 +36,9 @@ import (
 )
 
 type testRequiredPolicy struct {
-	name    string
-	version string
-	config  map[string]*json.RawMessage
+	name	string
+	version	string
+	config	map[string]*json.RawMessage
 }
 
 func (p *testRequiredPolicy) Name() string {
@@ -59,9 +59,9 @@ func (p *testRequiredPolicy) Config() map[string]*json.RawMessage {
 
 func NewRequiredPolicy(name, version string, config map[string]*json.RawMessage) RequiredPolicy {
 	return &testRequiredPolicy{
-		name:    name,
-		version: version,
-		config:  config,
+		name:		name,
+		version:	version,
+		config:		config,
 	}
 }
 
@@ -78,10 +78,10 @@ func TestSimpleAnalyzer(t *testing.T) {
 			assert.Equal(t, "test", opts.Stack)
 
 			assert.Equal(t, map[config.Key]string{
-				config.MustMakeKey(opts.Project, "bool"):   "true",
-				config.MustMakeKey(opts.Project, "float"):  "1.5",
-				config.MustMakeKey(opts.Project, "string"): "hello",
-				config.MustMakeKey(opts.Project, "obj"):    "{\"key\":\"value\"}",
+				config.MustMakeKey(opts.Project, "bool"):	"true",
+				config.MustMakeKey(opts.Project, "float"):	"1.5",
+				config.MustMakeKey(opts.Project, "string"):	"hello",
+				config.MustMakeKey(opts.Project, "obj"):	"{\"key\":\"value\"}",
 			}, opts.Config)
 
 			return &deploytest.Analyzer{}, nil
@@ -97,19 +97,19 @@ func TestSimpleAnalyzer(t *testing.T) {
 
 	proj := "test-proj"
 	p := &lt.TestPlan{
-		Project: proj,
+		Project:	proj,
 		Options: lt.TestUpdateOptions{
-			T: t,
+			T:	t,
 			UpdateOptions: UpdateOptions{
 				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
 			},
-			HostF: hostF,
+			HostF:	hostF,
 		},
 		Config: config.Map{
-			config.MustMakeKey(proj, "bool"):   config.NewTypedValue("true", config.TypeBool),
-			config.MustMakeKey(proj, "float"):  config.NewTypedValue("1.5", config.TypeFloat),
-			config.MustMakeKey(proj, "string"): config.NewTypedValue("hello", config.TypeString),
-			config.MustMakeKey(proj, "obj"):    config.NewObjectValue("{\"key\": \"value\"}"),
+			config.MustMakeKey(proj, "bool"):	config.NewTypedValue("true", config.TypeBool),
+			config.MustMakeKey(proj, "float"):	config.NewTypedValue("1.5", config.TypeFloat),
+			config.MustMakeKey(proj, "string"):	config.NewTypedValue("hello", config.TypeString),
+			config.MustMakeKey(proj, "obj"):	config.NewObjectValue("{\"key\": \"value\"}"),
 		},
 	}
 
@@ -128,13 +128,13 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 			return &deploytest.Analyzer{
 				Info: plugin.AnalyzerInfo{
-					Name: "analyzerA",
+					Name:	"analyzerA",
 					Policies: []plugin.AnalyzerPolicyInfo{
 						{
-							Name:             "always-fails",
-							Description:      "a policy that always fails",
-							EnforcementLevel: apitype.Mandatory,
-							Severity:         apitype.PolicySeverityHigh,
+							Name:			"always-fails",
+							Description:		"a policy that always fails",
+							EnforcementLevel:	apitype.Mandatory,
+							Severity:		apitype.PolicySeverityHigh,
 						},
 					},
 				},
@@ -148,12 +148,12 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 					}
 
 					return plugin.AnalyzeResponse{Diagnostics: []plugin.AnalyzeDiagnostic{{
-						PolicyName:       "always-fails",
-						PolicyPackName:   "analyzerA",
-						Description:      "a policy that always fails",
-						Message:          "a policy failed",
-						EnforcementLevel: apitype.Mandatory,
-						URN:              r.URN,
+						PolicyName:		"always-fails",
+						PolicyPackName:		"analyzerA",
+						Description:		"a policy that always fails",
+						Message:		"a policy failed",
+						EnforcementLevel:	apitype.Mandatory,
+						URN:			r.URN,
 					}}}, nil
 				},
 			}, nil
@@ -169,11 +169,11 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T: t,
+			T:	t,
 			UpdateOptions: UpdateOptions{
 				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
 			},
-			HostF: hostF,
+			HostF:	hostF,
 		},
 	}
 
@@ -186,7 +186,7 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 		var violationEvents []Event
 		var summaryEvents []Event
 		for _, e := range events {
-			switch e.Type { //nolint:exhaustive
+			switch e.Type {	//nolint:exhaustive
 			case PolicyViolationEvent:
 				violationEvents = append(violationEvents, e)
 			case PolicyAnalyzeSummaryEvent:
@@ -238,23 +238,23 @@ func TestSimpleAnalyzeStackFailure(t *testing.T) {
 		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 			return &deploytest.Analyzer{
 				Info: plugin.AnalyzerInfo{
-					Name: "analyzerA",
+					Name:	"analyzerA",
 					Policies: []plugin.AnalyzerPolicyInfo{
 						{
-							Name:             "always-fails",
-							Description:      "a policy that always fails",
-							EnforcementLevel: apitype.Mandatory,
+							Name:			"always-fails",
+							Description:		"a policy that always fails",
+							EnforcementLevel:	apitype.Mandatory,
 						},
 					},
 				},
 				AnalyzeStackF: func(rs []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
 					return plugin.AnalyzeResponse{Diagnostics: []plugin.AnalyzeDiagnostic{{
-						PolicyName:       "always-fails",
-						PolicyPackName:   "analyzerA",
-						Description:      "a policy that always fails",
-						Message:          "a policy failed",
-						EnforcementLevel: apitype.Mandatory,
-						URN:              rs[0].URN,
+						PolicyName:		"always-fails",
+						PolicyPackName:		"analyzerA",
+						Description:		"a policy that always fails",
+						Message:		"a policy failed",
+						EnforcementLevel:	apitype.Mandatory,
+						URN:			rs[0].URN,
 					}}}, nil
 				},
 			}, nil
@@ -270,12 +270,12 @@ func TestSimpleAnalyzeStackFailure(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			SkipDisplayTests: true, // TODO: this seems flaky, could use some more investigation.
+			T:			t,
+			SkipDisplayTests:	true,	// TODO: this seems flaky, could use some more investigation.
 			UpdateOptions: UpdateOptions{
 				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
 			},
-			HostF: hostF,
+			HostF:	hostF,
 		},
 	}
 
@@ -285,7 +285,7 @@ func TestSimpleAnalyzeStackFailure(t *testing.T) {
 		var violationEvents []Event
 		var summaryEvents []Event
 		for _, e := range events {
-			switch e.Type { //nolint:exhaustive
+			switch e.Type {	//nolint:exhaustive
 			case PolicyViolationEvent:
 				violationEvents = append(violationEvents, e)
 			case PolicyAnalyzeStackSummaryEvent:
@@ -328,18 +328,18 @@ func TestResourceRemediation(t *testing.T) {
 		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 			return &deploytest.Analyzer{
 				Info: plugin.AnalyzerInfo{
-					Name:    "analyzerA",
-					Version: "1.0.0",
+					Name:		"analyzerA",
+					Version:	"1.0.0",
 					Policies: []plugin.AnalyzerPolicyInfo{
 						{
-							Name:             "ignored",
-							Description:      "a remediation that gets ignored because it runs first",
-							EnforcementLevel: apitype.Remediate,
+							Name:			"ignored",
+							Description:		"a remediation that gets ignored because it runs first",
+							EnforcementLevel:	apitype.Remediate,
 						},
 						{
-							Name:             "real-deal",
-							Description:      "a remediation that actually gets applied because it runs last",
-							EnforcementLevel: apitype.Remediate,
+							Name:			"real-deal",
+							Description:		"a remediation that actually gets applied because it runs last",
+							EnforcementLevel:	apitype.Remediate,
 						},
 					},
 				},
@@ -356,24 +356,24 @@ func TestResourceRemediation(t *testing.T) {
 					// Run two remediations to ensure they are applied in order.
 					return plugin.RemediateResponse{Remediations: []plugin.Remediation{
 						{
-							PolicyName:        "ignored",
-							PolicyPackName:    "analyzerA",
-							PolicyPackVersion: "1.0.0",
-							Description:       "a remediation that gets ignored because it runs first",
+							PolicyName:		"ignored",
+							PolicyPackName:		"analyzerA",
+							PolicyPackVersion:	"1.0.0",
+							Description:		"a remediation that gets ignored because it runs first",
 							Properties: resource.PropertyMap{
-								"a":   resource.NewProperty("nope"),
-								"ggg": resource.NewProperty(true),
+								"a":	resource.NewProperty("nope"),
+								"ggg":	resource.NewProperty(true),
 							},
 						},
 						{
-							PolicyName:        "real-deal",
-							PolicyPackName:    "analyzerA",
-							PolicyPackVersion: "1.0.0",
-							Description:       "a remediation that actually gets applied because it runs last",
+							PolicyName:		"real-deal",
+							PolicyPackName:		"analyzerA",
+							PolicyPackVersion:	"1.0.0",
+							Description:		"a remediation that actually gets applied because it runs last",
 							Properties: resource.PropertyMap{
-								"a":   resource.NewProperty("foo"),
-								"fff": resource.NewProperty(true),
-								"z":   resource.NewProperty("bar"),
+								"a":	resource.NewProperty("foo"),
+								"fff":	resource.NewProperty(true),
+								"z":	resource.NewProperty("bar"),
 							},
 						},
 					}}, nil
@@ -391,11 +391,11 @@ func TestResourceRemediation(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T: t,
+			T:	t,
 			UpdateOptions: UpdateOptions{
 				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
 			},
-			HostF: host,
+			HostF:	host,
 		},
 	}
 
@@ -408,7 +408,7 @@ func TestResourceRemediation(t *testing.T) {
 		var remediationEvents []Event
 		var summaryEvents []Event
 		for _, e := range events {
-			switch e.Type { //nolint:exhaustive
+			switch e.Type {	//nolint:exhaustive
 			case PolicyRemediationEvent:
 				remediationEvents = append(remediationEvents, e)
 			case PolicyRemediateSummaryEvent:
@@ -426,8 +426,8 @@ func TestResourceRemediation(t *testing.T) {
 		assert.Equal(t, "1.0.0", remediationPayload0.PolicyPackVersion)
 		assert.Equal(t, resource.PropertyMap{}, remediationPayload0.Before)
 		assert.Equal(t, resource.PropertyMap{
-			"a":   resource.NewProperty("nope"),
-			"ggg": resource.NewProperty(true),
+			"a":	resource.NewProperty("nope"),
+			"ggg":	resource.NewProperty(true),
 		}, remediationPayload0.After)
 
 		require.IsType(t, PolicyRemediationEventPayload{}, remediationEvents[1].Payload())
@@ -437,13 +437,13 @@ func TestResourceRemediation(t *testing.T) {
 		assert.Equal(t, "analyzerA", remediationPayload1.PolicyPackName)
 		assert.Equal(t, "1.0.0", remediationPayload1.PolicyPackVersion)
 		assert.Equal(t, resource.PropertyMap{
-			"a":   resource.NewProperty("nope"),
-			"ggg": resource.NewProperty(true),
+			"a":	resource.NewProperty("nope"),
+			"ggg":	resource.NewProperty(true),
 		}, remediationPayload1.Before)
 		assert.Equal(t, resource.PropertyMap{
-			"a":   resource.NewProperty("foo"),
-			"fff": resource.NewProperty(true),
-			"z":   resource.NewProperty("bar"),
+			"a":	resource.NewProperty("foo"),
+			"fff":	resource.NewProperty(true),
+			"z":	resource.NewProperty("bar"),
 		}, remediationPayload1.After)
 
 		require.Len(t, summaryEvents, 2)
@@ -473,7 +473,7 @@ func TestResourceRemediation(t *testing.T) {
 	// Expect no error, valid snapshot, two resources:
 	assert.Nil(t, err)
 	require.NotNil(t, snap)
-	require.Len(t, snap.Resources, 2) // stack plus pkA:m:typA
+	require.Len(t, snap.Resources, 2)	// stack plus pkA:m:typA
 
 	// Ensure the rewritten properties have been applied to the inputs:
 	r := snap.Resources[1]
@@ -497,11 +497,11 @@ func TestRemediationDiagnostic(t *testing.T) {
 			return &deploytest.Analyzer{
 				RemediateF: func(r plugin.AnalyzerResource) (plugin.RemediateResponse, error) {
 					return plugin.RemediateResponse{Remediations: []plugin.Remediation{{
-						PolicyName:        "warning",
-						PolicyPackName:    "analyzerA",
-						PolicyPackVersion: "1.0.0",
-						Description:       "a remediation with a diagnostic",
-						Diagnostic:        "warning - could not run due to unknowns",
+						PolicyName:		"warning",
+						PolicyPackName:		"analyzerA",
+						PolicyPackVersion:	"1.0.0",
+						Description:		"a remediation with a diagnostic",
+						Diagnostic:		"warning - could not run due to unknowns",
 					}}}, nil
 				},
 			}, nil
@@ -517,11 +517,11 @@ func TestRemediationDiagnostic(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T: t,
+			T:	t,
 			UpdateOptions: UpdateOptions{
 				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
 			},
-			HostF: host,
+			HostF:	host,
 		},
 	}
 
@@ -531,7 +531,7 @@ func TestRemediationDiagnostic(t *testing.T) {
 	// Expect no error, valid snapshot, two resources:
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	require.Len(t, snap.Resources, 2) // stack plus pkA:m:typA
+	require.Len(t, snap.Resources, 2)	// stack plus pkA:m:typA
 }
 
 // TestRemediateFailure tests the case where a remediation fails to execute. In this case, the whole
@@ -561,11 +561,11 @@ func TestRemediateFailure(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T: t,
+			T:	t,
 			UpdateOptions: UpdateOptions{
 				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
 			},
-			HostF: host,
+			HostF:	host,
 		},
 	}
 
@@ -587,12 +587,12 @@ func TestSimpleAnalyzeResourceFailureRemediateDowngradedToMandatory(t *testing.T
 			return &deploytest.Analyzer{
 				AnalyzeF: func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
 					return plugin.AnalyzeResponse{Diagnostics: []plugin.AnalyzeDiagnostic{{
-						PolicyName:       "always-fails",
-						PolicyPackName:   "analyzerA",
-						Description:      "a policy that always fails",
-						Message:          "a policy failed",
-						EnforcementLevel: apitype.Remediate,
-						URN:              r.URN,
+						PolicyName:		"always-fails",
+						PolicyPackName:		"analyzerA",
+						Description:		"a policy that always fails",
+						Message:		"a policy failed",
+						EnforcementLevel:	apitype.Remediate,
+						URN:			r.URN,
 					}}}, nil
 				},
 			}, nil
@@ -608,17 +608,17 @@ func TestSimpleAnalyzeResourceFailureRemediateDowngradedToMandatory(t *testing.T
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T: t,
+			T:	t,
 			UpdateOptions: UpdateOptions{
 				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
 			},
-			HostF: hostF,
+			HostF:	hostF,
 		},
 		Steps: []lt.TestStep{
 			{
-				Op:            Update,
-				SkipPreview:   true,
-				ExpectFailure: true,
+				Op:		Update,
+				SkipPreview:	true,
+				ExpectFailure:	true,
 				Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 					events []Event, err error,
 				) error {
@@ -652,12 +652,12 @@ func TestSimpleAnalyzeStackFailureRemediateDowngradedToMandatory(t *testing.T) {
 			return &deploytest.Analyzer{
 				AnalyzeStackF: func(rs []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
 					return plugin.AnalyzeResponse{Diagnostics: []plugin.AnalyzeDiagnostic{{
-						PolicyName:       "always-fails",
-						PolicyPackName:   "analyzerA",
-						Description:      "a policy that always fails",
-						Message:          "a policy failed",
-						EnforcementLevel: apitype.Remediate,
-						URN:              rs[0].URN,
+						PolicyName:		"always-fails",
+						PolicyPackName:		"analyzerA",
+						Description:		"a policy that always fails",
+						Message:		"a policy failed",
+						EnforcementLevel:	apitype.Remediate,
+						URN:			rs[0].URN,
 					}}}, nil
 				},
 			}, nil
@@ -673,18 +673,18 @@ func TestSimpleAnalyzeStackFailureRemediateDowngradedToMandatory(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			SkipDisplayTests: true, // TODO: this seems flaky, could use some more investigation.
+			T:			t,
+			SkipDisplayTests:	true,	// TODO: this seems flaky, could use some more investigation.
 			UpdateOptions: UpdateOptions{
 				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
 			},
-			HostF: hostF,
+			HostF:	hostF,
 		},
 		Steps: []lt.TestStep{
 			{
-				Op:            Update,
-				SkipPreview:   true,
-				ExpectFailure: true,
+				Op:		Update,
+				SkipPreview:	true,
+				ExpectFailure:	true,
 				Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 					events []Event, err error,
 				) error {
@@ -733,11 +733,11 @@ func TestAnalyzerCancellation(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T: t,
+			T:	t,
 			UpdateOptions: UpdateOptions{
 				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
 			},
-			HostF: hostF,
+			HostF:	hostF,
 		},
 	}
 	project, target := p.GetProject(), p.GetTarget(t, nil)
@@ -759,69 +759,69 @@ func TestSimpleAnalyzeResourceMultipleViolations(t *testing.T) {
 		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 			policies := []plugin.AnalyzerPolicyInfo{
 				{
-					Name:             "always-fails-advisory-unspecified",
-					Description:      "a policy that always fails unspecified",
-					EnforcementLevel: apitype.Advisory,
+					Name:			"always-fails-advisory-unspecified",
+					Description:		"a policy that always fails unspecified",
+					EnforcementLevel:	apitype.Advisory,
 				},
 				{
-					Name:             "always-fails-advisory-low",
-					Description:      "a policy that always fails low",
-					EnforcementLevel: apitype.Advisory,
-					Severity:         apitype.PolicySeverityLow,
+					Name:			"always-fails-advisory-low",
+					Description:		"a policy that always fails low",
+					EnforcementLevel:	apitype.Advisory,
+					Severity:		apitype.PolicySeverityLow,
 				},
 				{
-					Name:             "always-fails-advisory-medium",
-					Description:      "a policy that always fails medium",
-					EnforcementLevel: apitype.Advisory,
-					Severity:         apitype.PolicySeverityMedium,
+					Name:			"always-fails-advisory-medium",
+					Description:		"a policy that always fails medium",
+					EnforcementLevel:	apitype.Advisory,
+					Severity:		apitype.PolicySeverityMedium,
 				},
 				{
-					Name:             "always-fails-advisory-high",
-					Description:      "a policy that always fails high",
-					EnforcementLevel: apitype.Advisory,
-					Severity:         apitype.PolicySeverityHigh,
+					Name:			"always-fails-advisory-high",
+					Description:		"a policy that always fails high",
+					EnforcementLevel:	apitype.Advisory,
+					Severity:		apitype.PolicySeverityHigh,
 				},
 				{
-					Name:             "always-fails-advisory-critical",
-					Description:      "a policy that always fails critical",
-					EnforcementLevel: apitype.Advisory,
-					Severity:         apitype.PolicySeverityCritical,
+					Name:			"always-fails-advisory-critical",
+					Description:		"a policy that always fails critical",
+					EnforcementLevel:	apitype.Advisory,
+					Severity:		apitype.PolicySeverityCritical,
 				},
 				{
-					Name:             "always-fails-unspecified",
-					Description:      "a policy that always fails unspecified",
-					EnforcementLevel: apitype.Mandatory,
+					Name:			"always-fails-unspecified",
+					Description:		"a policy that always fails unspecified",
+					EnforcementLevel:	apitype.Mandatory,
 				},
 				{
-					Name:             "always-fails-low",
-					Description:      "a policy that always fails low",
-					EnforcementLevel: apitype.Mandatory,
-					Severity:         apitype.PolicySeverityLow,
+					Name:			"always-fails-low",
+					Description:		"a policy that always fails low",
+					EnforcementLevel:	apitype.Mandatory,
+					Severity:		apitype.PolicySeverityLow,
 				},
 				{
-					Name:             "always-fails-medium",
-					Description:      "a policy that always fails medium",
-					EnforcementLevel: apitype.Mandatory,
-					Severity:         apitype.PolicySeverityMedium,
+					Name:			"always-fails-medium",
+					Description:		"a policy that always fails medium",
+					EnforcementLevel:	apitype.Mandatory,
+					Severity:		apitype.PolicySeverityMedium,
 				},
 				{
-					Name:             "always-fails-high",
-					Description:      "a policy that always fails high",
-					EnforcementLevel: apitype.Mandatory,
-					Severity:         apitype.PolicySeverityHigh,
+					Name:			"always-fails-high",
+					Description:		"a policy that always fails high",
+					EnforcementLevel:	apitype.Mandatory,
+					Severity:		apitype.PolicySeverityHigh,
 				},
 				{
-					Name:             "always-fails-critical",
-					Description:      "a policy that always fails critical",
-					EnforcementLevel: apitype.Mandatory,
-					Severity:         apitype.PolicySeverityCritical,
+					Name:			"always-fails-critical",
+					Description:		"a policy that always fails critical",
+					EnforcementLevel:	apitype.Mandatory,
+					Severity:		apitype.PolicySeverityCritical,
 				},
 			}
 			return &deploytest.Analyzer{
 				Info: plugin.AnalyzerInfo{
-					Name:     "analyzerA",
-					Version:  "1.0.0",
-					Policies: policies,
+					Name:		"analyzerA",
+					Version:	"1.0.0",
+					Policies:	policies,
 				},
 				AnalyzeF: func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
 					if r.Type != "pkgA:m:typA" {
@@ -835,14 +835,14 @@ func TestSimpleAnalyzeResourceMultipleViolations(t *testing.T) {
 					var diagnostics []plugin.AnalyzeDiagnostic
 					for _, p := range policies {
 						diagnostics = append(diagnostics, plugin.AnalyzeDiagnostic{
-							PolicyName:        p.Name,
-							PolicyPackName:    "analyzerA",
-							PolicyPackVersion: "1.0.0",
-							Description:       p.Description,
-							Message:           "a policy failed",
-							EnforcementLevel:  p.EnforcementLevel,
-							Severity:          p.Severity,
-							URN:               r.URN,
+							PolicyName:		p.Name,
+							PolicyPackName:		"analyzerA",
+							PolicyPackVersion:	"1.0.0",
+							Description:		p.Description,
+							Message:		"a policy failed",
+							EnforcementLevel:	p.EnforcementLevel,
+							Severity:		p.Severity,
+							URN:			r.URN,
 						})
 					}
 
@@ -861,11 +861,11 @@ func TestSimpleAnalyzeResourceMultipleViolations(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T: t,
+			T:	t,
 			UpdateOptions: UpdateOptions{
 				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "1.0.0", nil)},
 			},
-			HostF: hostF,
+			HostF:	hostF,
 		},
 	}
 
@@ -888,13 +888,13 @@ func TestSimpleAnalyzeResourceFailureSeverityOverride(t *testing.T) {
 		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 			return &deploytest.Analyzer{
 				Info: plugin.AnalyzerInfo{
-					Name: "analyzerA",
+					Name:	"analyzerA",
 					Policies: []plugin.AnalyzerPolicyInfo{
 						{
-							Name:             "always-fails",
-							Description:      "a policy that always fails",
-							EnforcementLevel: apitype.Mandatory,
-							Severity:         apitype.PolicySeverityMedium,
+							Name:			"always-fails",
+							Description:		"a policy that always fails",
+							EnforcementLevel:	apitype.Mandatory,
+							Severity:		apitype.PolicySeverityMedium,
 						},
 					},
 				},
@@ -908,13 +908,13 @@ func TestSimpleAnalyzeResourceFailureSeverityOverride(t *testing.T) {
 					}
 
 					return plugin.AnalyzeResponse{Diagnostics: []plugin.AnalyzeDiagnostic{{
-						PolicyName:       "always-fails",
-						PolicyPackName:   "analyzerA",
-						Description:      "a policy that always fails",
-						Message:          "a policy failed",
-						EnforcementLevel: apitype.Mandatory,
-						URN:              r.URN,
-						Severity:         apitype.PolicySeverityCritical,
+						PolicyName:		"always-fails",
+						PolicyPackName:		"analyzerA",
+						Description:		"a policy that always fails",
+						Message:		"a policy failed",
+						EnforcementLevel:	apitype.Mandatory,
+						URN:			r.URN,
+						Severity:		apitype.PolicySeverityCritical,
 					}}}, nil
 				},
 			}, nil
@@ -930,11 +930,11 @@ func TestSimpleAnalyzeResourceFailureSeverityOverride(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T: t,
+			T:	t,
 			UpdateOptions: UpdateOptions{
 				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
 			},
-			HostF: hostF,
+			HostF:	hostF,
 		},
 	}
 
@@ -947,7 +947,7 @@ func TestSimpleAnalyzeResourceFailureSeverityOverride(t *testing.T) {
 		var violationEvents []Event
 		var summaryEvents []Event
 		for _, e := range events {
-			switch e.Type { //nolint:exhaustive
+			switch e.Type {	//nolint:exhaustive
 			case PolicyViolationEvent:
 				violationEvents = append(violationEvents, e)
 			case PolicyAnalyzeSummaryEvent:

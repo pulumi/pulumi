@@ -25,8 +25,8 @@ import (
 )
 
 const (
-	DefaultColumns int    = 100
-	DefaultIndent  string = "  "
+	DefaultColumns	int	= 100
+	DefaultIndent	string	= "  "
 )
 
 // Run the String() function for a formatter.
@@ -40,10 +40,10 @@ func fmtString(f Formatter) string {
 type visitedFormatter struct {
 	// The tag associated with a `Formatter`. If no tag is associated with the
 	// `Formatter`, the tag is "".
-	tag string
+	tag	string
 	// The number of occurrences of the `Formatter` at the current node. If the number
 	// ever exceeds 1, it indicates the type is recursive.
-	count int
+	count	int
 }
 
 type tagGenerator struct {
@@ -52,26 +52,26 @@ type tagGenerator struct {
 	// valueSeen exists to prevent infinite recursion when visiting types to detect
 	// structural recursion. Since all `Formatter`s are pointer types, `valueSeen` allows
 	// multiple types that are structurally the same, but different values in memory.
-	valueSeen map[Formatter]bool
+	valueSeen	map[Formatter]bool
 	// A cache of `Formatter` to their hash values.
 	//
 	// Since hashing is O(n), it is helpful to store
-	knownHashes map[Formatter]string
+	knownHashes	map[Formatter]string
 	// The "hash" of `Formatter`s already seen.
 	//
 	// structuralSeen exists to prevent infinite recursion when printing types, and
 	// operates at the level of structural equality (ignoring pointers).
-	structuralSeen map[string]visitedFormatter
+	structuralSeen	map[string]visitedFormatter
 	// Type tags are labeled by occurrence, so we keep track of how many have been
 	// generated.
-	generatedTags int
+	generatedTags	int
 }
 
 func newTagGenerator() *tagGenerator {
 	return &tagGenerator{
-		valueSeen:      map[Formatter]bool{},
-		knownHashes:    map[Formatter]string{},
-		structuralSeen: map[string]visitedFormatter{},
+		valueSeen:	map[Formatter]bool{},
+		knownHashes:	map[Formatter]string{},
+		structuralSeen:	map[string]visitedFormatter{},
 	}
 }
 
@@ -130,8 +130,8 @@ func (s *tagGenerator) tag(f Formatter) (tag string, tagOnly bool) {
 	s.generatedTags++
 	tag = fmt.Sprintf("'T%d", s.generatedTags)
 	s.structuralSeen[h] = visitedFormatter{
-		tag:   tag,
-		count: seen.count,
+		tag:	tag,
+		count:	seen.count,
 	}
 	return tag, false
 }
@@ -158,8 +158,8 @@ type Formatter interface {
 // Indent a (multi-line) string, passing on column adjustments.
 type indent struct {
 	// The prefix to be applied to each line
-	prefix string
-	inner  Formatter
+	prefix	string
+	inner	Formatter
 }
 
 func sanitizeColumns(i int) int {
@@ -217,9 +217,9 @@ func FromStringer(s fmt.Stringer) Formatter {
 // A string literal that implements Formatter (ignoring Column).
 type literal struct {
 	// A source for a string.
-	t fmt.Stringer
+	t	fmt.Stringer
 	// A raw string.
-	s string
+	s	string
 }
 
 func (b *literal) visit(visiter func(Formatter) func()) {
@@ -283,12 +283,12 @@ func (b literal) Columns(columns int) Formatter {
 //
 // depending on the column constrains.
 type Wrap struct {
-	Prefix, Postfix string
+	Prefix, Postfix	string
 	// Require that the Postfix is always on the same line as Value.
-	PostfixSameline bool
-	Value           Formatter
+	PostfixSameline	bool
+	Value		Formatter
 
-	cols int
+	cols	int
 }
 
 func (w *Wrap) String() string {
@@ -337,8 +337,8 @@ func (w *Wrap) string(tg *tagGenerator) string {
 			columns -= len(w.Postfix)
 		}
 		return pre + (&indent{
-			prefix: DefaultIndent,
-			inner:  w.Value,
+			prefix:	DefaultIndent,
+			inner:	w.Value,
 		}).columns(columns).string(tg) + post
 	}
 
@@ -354,8 +354,8 @@ func (w *Wrap) string(tg *tagGenerator) string {
 		s += "\n"
 	}
 	s += (&indent{
-		prefix: DefaultIndent,
-		inner:  w.Value,
+		prefix:	DefaultIndent,
+		inner:	w.Value,
 	}).columns(columns).string(tg)
 	if w.Postfix != "" && !w.PostfixSameline {
 		s += "\n" + w.Postfix
@@ -378,8 +378,8 @@ func (w Wrap) Columns(columns int) Formatter {
 // It does this by deciding if the object should be compressed into a single line, or have
 // one field per line.
 type Object struct {
-	Properties map[string]Formatter
-	cols       int
+	Properties	map[string]Formatter
+	cols		int
 }
 
 func (o *Object) String() string {
@@ -483,12 +483,12 @@ func (o *Object) string(tg *tagGenerator) string {
 	s = tag + "{\n"
 	for _, key := range keys {
 		s += (&indent{
-			prefix: DefaultIndent,
+			prefix:	DefaultIndent,
 			inner: &Wrap{
-				Prefix:          key + ": ",
-				Postfix:         ",",
-				PostfixSameline: true,
-				Value:           o.Properties[key],
+				Prefix:			key + ": ",
+				Postfix:		",",
+				PostfixSameline:	true,
+				Value:			o.Properties[key],
 			},
 		}).columns(columns).string(tg) + "\n"
 	}
@@ -509,11 +509,11 @@ func (o *Object) Columns(columns int) Formatter {
 // Items can be displayed on a single line if it fits within the column constraint.
 // Otherwise items will be displayed across multiple lines.
 type List struct {
-	Elements        []Formatter
-	Separator       string
-	AdjoinSeparator bool
+	Elements	[]Formatter
+	Separator	string
+	AdjoinSeparator	bool
 
-	cols int
+	cols	int
 }
 
 func (l *List) String() string {
@@ -593,8 +593,8 @@ func (l *List) string(tg *tagGenerator) string {
 	separator := strings.TrimLeft(l.Separator, " ")
 	for i, el := range l.Elements {
 		v := (&indent{
-			prefix: strings.Repeat(" ", len(separator)),
-			inner:  el,
+			prefix:	strings.Repeat(" ", len(separator)),
+			inner:	el,
 		}).columns(columns).string(tg)
 		if i != 0 {
 			v = "\n" + separator + v[len(separator):]

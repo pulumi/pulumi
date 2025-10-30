@@ -24,17 +24,17 @@ import (
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/secrets"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/cmd"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/edit"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -178,9 +178,9 @@ func TotalStateEdit(
 func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resource.URN) (*resource.State, error) {
 	candidateResources := edit.LocateResource(snap, urn)
 	switch {
-	case len(candidateResources) == 0: // resource was not found
+	case len(candidateResources) == 0:	// resource was not found
 		return nil, fmt.Errorf("No such resource %q exists in the current state", urn)
-	case len(candidateResources) == 1: // resource was unambiguously found
+	case len(candidateResources) == 1:	// resource was unambiguously found
 		return candidateResources[0], nil
 	}
 
@@ -218,9 +218,9 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 
 	var option string
 	if err := survey.AskOne(&survey.Select{
-		Message:  prompt,
-		Options:  options,
-		PageSize: cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: len(options)}),
+		Message:	prompt,
+		Options:	options,
+		PageSize:	cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: len(options)}),
 	}, &option, ui.SurveyIcons(opts.Color)); err != nil {
 		return nil, errors.New("no resource selected")
 	}
@@ -275,8 +275,8 @@ func getURNFromState(
 	}
 	var urn string
 	err := survey.AskOne(&survey.Select{
-		Message: prompt,
-		Options: urnList,
+		Message:	prompt,
+		Options:	urnList,
 	}, &urn, survey.WithValidator(survey.Required), ui.SurveyIcons(cmdutil.GetGlobalColorization()))
 	if err != nil {
 		return "", err

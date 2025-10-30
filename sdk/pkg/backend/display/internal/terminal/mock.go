@@ -21,15 +21,15 @@ import (
 )
 
 type MockTerminal struct {
-	m sync.Mutex
+	m	sync.Mutex
 
-	width, height int
-	raw           bool
-	info          Info
+	width, height	int
+	raw		bool
+	info		Info
 
-	keys chan string
+	keys	chan string
 
-	dest io.Writer
+	dest	io.Writer
 }
 
 var _ Terminal = &MockTerminal{}
@@ -39,12 +39,12 @@ var _ Terminal = &MockTerminal{}
 // test outputs.
 func NewMockTerminal(dest io.Writer, width, height int, raw bool) *MockTerminal {
 	return &MockTerminal{
-		width:  width,
-		height: height,
-		raw:    raw,
-		info:   mockTermInfo(0),
-		keys:   make(chan string),
-		dest:   dest,
+		width:	width,
+		height:	height,
+		raw:	raw,
+		info:	mockTermInfo(0),
+		keys:	make(chan string),
+		dest:	dest,
 	}
 }
 

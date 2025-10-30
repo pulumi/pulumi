@@ -25,26 +25,26 @@ import (
 	humanize "github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/secrets"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 type stackArgs struct {
-	showIDs                bool
-	showURNs               bool
-	showSecrets            bool
-	startTime              string
-	showStackName          bool
-	fullyQualifyStackNames bool
+	showIDs			bool
+	showURNs		bool
+	showSecrets		bool
+	startTime		string
+	showStackName		bool
+	fullyQualifyStackNames	bool
 }
 
 func NewStackCmd() *cobra.Command {
@@ -52,14 +52,14 @@ func NewStackCmd() *cobra.Command {
 	args := stackArgs{}
 
 	cmd := &cobra.Command{
-		Use:   "stack",
-		Short: "Manage stacks and view stack state",
+		Use:	"stack",
+		Short:	"Manage stacks and view stack state",
 		Long: "Manage stacks and view stack state\n" +
 			"\n" +
 			"A stack is a named update target, and a single project may have many of them.\n" +
 			"Each stack has a configuration and update history associated with it, stored in\n" +
 			"the workspace, in addition to a full checkpoint of the last known good update.\n",
-		Args: cmdutil.NoArgs,
+		Args:	cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()
@@ -188,9 +188,9 @@ func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArg
 		}
 
 		ui.PrintTable(cmdutil.Table{
-			Headers: []string{"TYPE", "NAME"},
-			Rows:    rows,
-			Prefix:  "    ",
+			Headers:	[]string{"TYPE", "NAME"},
+			Rows:		rows,
+			Prefix:		"    ",
 		}, nil)
 
 		outputs, err := getStackOutputs(snap, args.showSecrets)
@@ -241,9 +241,9 @@ func fprintStackOutputs(w io.Writer, outputs map[string]any) error {
 	}
 
 	return cmdutil.FprintTable(w, cmdutil.Table{
-		Headers: []string{"OUTPUT", "VALUE"},
-		Rows:    rows,
-		Prefix:  "    ",
+		Headers:	[]string{"OUTPUT", "VALUE"},
+		Rows:		rows,
+		Prefix:		"    ",
 	})
 }
 
@@ -264,8 +264,8 @@ func stringifyOutput(v any) string {
 }
 
 type treeNode struct {
-	res      *resource.State
-	children []*treeNode
+	res		*resource.State
+	children	[]*treeNode
 }
 
 func renderNode(node *treeNode, padding, branch string, showURNs, showIDs bool, rows *[]cmdutil.TableRow) {

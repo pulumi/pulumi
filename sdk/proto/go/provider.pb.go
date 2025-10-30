@@ -32,9 +32,9 @@ import (
 
 const (
 	// Verify that this generated code is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
+	_	= protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
+	_	= protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
 // The mode that controls how the provider handles the proposed name. If not specified, defaults to `PROPOSE`.
@@ -45,22 +45,22 @@ const (
 type CheckRequest_AutonamingOptions_Mode int32
 
 const (
-	CheckRequest_AutonamingOptions_PROPOSE CheckRequest_AutonamingOptions_Mode = 0
-	CheckRequest_AutonamingOptions_ENFORCE CheckRequest_AutonamingOptions_Mode = 1
-	CheckRequest_AutonamingOptions_DISABLE CheckRequest_AutonamingOptions_Mode = 2
+	CheckRequest_AutonamingOptions_PROPOSE	CheckRequest_AutonamingOptions_Mode	= 0
+	CheckRequest_AutonamingOptions_ENFORCE	CheckRequest_AutonamingOptions_Mode	= 1
+	CheckRequest_AutonamingOptions_DISABLE	CheckRequest_AutonamingOptions_Mode	= 2
 )
 
 // Enum value maps for CheckRequest_AutonamingOptions_Mode.
 var (
-	CheckRequest_AutonamingOptions_Mode_name = map[int32]string{
-		0: "PROPOSE",
-		1: "ENFORCE",
-		2: "DISABLE",
+	CheckRequest_AutonamingOptions_Mode_name	= map[int32]string{
+		0:	"PROPOSE",
+		1:	"ENFORCE",
+		2:	"DISABLE",
 	}
-	CheckRequest_AutonamingOptions_Mode_value = map[string]int32{
-		"PROPOSE": 0,
-		"ENFORCE": 1,
-		"DISABLE": 2,
+	CheckRequest_AutonamingOptions_Mode_value	= map[string]int32{
+		"PROPOSE":	0,
+		"ENFORCE":	1,
+		"DISABLE":	2,
 	}
 )
 
@@ -96,36 +96,36 @@ type PropertyDiff_Kind int32
 
 const (
 	// This property was added.
-	PropertyDiff_ADD PropertyDiff_Kind = 0
+	PropertyDiff_ADD	PropertyDiff_Kind	= 0
 	// This property was added, and this change requires a replace.
-	PropertyDiff_ADD_REPLACE PropertyDiff_Kind = 1
+	PropertyDiff_ADD_REPLACE	PropertyDiff_Kind	= 1
 	// This property was removed.
-	PropertyDiff_DELETE PropertyDiff_Kind = 2
+	PropertyDiff_DELETE	PropertyDiff_Kind	= 2
 	// This property was removed, and this change requires a replace.
-	PropertyDiff_DELETE_REPLACE PropertyDiff_Kind = 3
+	PropertyDiff_DELETE_REPLACE	PropertyDiff_Kind	= 3
 	// This property's value was changed.
-	PropertyDiff_UPDATE PropertyDiff_Kind = 4
+	PropertyDiff_UPDATE	PropertyDiff_Kind	= 4
 	// This property's value was changed, and this change requires a replace.
-	PropertyDiff_UPDATE_REPLACE PropertyDiff_Kind = 5
+	PropertyDiff_UPDATE_REPLACE	PropertyDiff_Kind	= 5
 )
 
 // Enum value maps for PropertyDiff_Kind.
 var (
-	PropertyDiff_Kind_name = map[int32]string{
-		0: "ADD",
-		1: "ADD_REPLACE",
-		2: "DELETE",
-		3: "DELETE_REPLACE",
-		4: "UPDATE",
-		5: "UPDATE_REPLACE",
+	PropertyDiff_Kind_name	= map[int32]string{
+		0:	"ADD",
+		1:	"ADD_REPLACE",
+		2:	"DELETE",
+		3:	"DELETE_REPLACE",
+		4:	"UPDATE",
+		5:	"UPDATE_REPLACE",
 	}
-	PropertyDiff_Kind_value = map[string]int32{
-		"ADD":            0,
-		"ADD_REPLACE":    1,
-		"DELETE":         2,
-		"DELETE_REPLACE": 3,
-		"UPDATE":         4,
-		"UPDATE_REPLACE": 5,
+	PropertyDiff_Kind_value	= map[string]int32{
+		"ADD":			0,
+		"ADD_REPLACE":		1,
+		"DELETE":		2,
+		"DELETE_REPLACE":	3,
+		"UPDATE":		4,
+		"UPDATE_REPLACE":	5,
 	}
 )
 
@@ -162,24 +162,24 @@ type DiffResponse_DiffChanges int32
 const (
 	// A diff was performed but it is unknown whether there are changes or not. This exists to support legacy
 	// behaviour and should be generally avoided wherever possible.
-	DiffResponse_DIFF_UNKNOWN DiffResponse_DiffChanges = 0
+	DiffResponse_DIFF_UNKNOWN	DiffResponse_DiffChanges	= 0
 	// A diff was performed and there were no changes. An update is not required.
-	DiffResponse_DIFF_NONE DiffResponse_DiffChanges = 1
+	DiffResponse_DIFF_NONE	DiffResponse_DiffChanges	= 1
 	// A diff was performed, and changes were detected that require an update or replacement.
-	DiffResponse_DIFF_SOME DiffResponse_DiffChanges = 2
+	DiffResponse_DIFF_SOME	DiffResponse_DiffChanges	= 2
 )
 
 // Enum value maps for DiffResponse_DiffChanges.
 var (
-	DiffResponse_DiffChanges_name = map[int32]string{
-		0: "DIFF_UNKNOWN",
-		1: "DIFF_NONE",
-		2: "DIFF_SOME",
+	DiffResponse_DiffChanges_name	= map[int32]string{
+		0:	"DIFF_UNKNOWN",
+		1:	"DIFF_NONE",
+		2:	"DIFF_SOME",
 	}
-	DiffResponse_DiffChanges_value = map[string]int32{
-		"DIFF_UNKNOWN": 0,
-		"DIFF_NONE":    1,
-		"DIFF_SOME":    2,
+	DiffResponse_DiffChanges_value	= map[string]int32{
+		"DIFF_UNKNOWN":	0,
+		"DIFF_NONE":	1,
+		"DIFF_SOME":	2,
 	}
 )
 
@@ -212,28 +212,28 @@ func (DiffResponse_DiffChanges) EnumDescriptor() ([]byte, []int) {
 
 // `ProviderHandshakeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Handshake) call.
 type ProviderHandshakeRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The gRPC address of the engine handshaking with the provider. At a minimum, this address will expose an instance
 	// of the [](pulumirpc.Engine) service.
-	EngineAddress string `protobuf:"bytes,1,opt,name=engine_address,json=engineAddress,proto3" json:"engine_address,omitempty"`
+	EngineAddress	string	`protobuf:"bytes,1,opt,name=engine_address,json=engineAddress,proto3" json:"engine_address,omitempty"`
 	// A *root directory* where the provider's binary, `PulumiPlugin.yaml`, or other identifying source code is located.
 	// In the event that the provider is *not* being booted by the engine (e.g. in the case that the engine has been
 	// asked to attach to an existing running provider instance via a host/port number), this field will be empty.
-	RootDirectory *string `protobuf:"bytes,2,opt,name=root_directory,json=rootDirectory,proto3,oneof" json:"root_directory,omitempty"`
+	RootDirectory	*string	`protobuf:"bytes,2,opt,name=root_directory,json=rootDirectory,proto3,oneof" json:"root_directory,omitempty"`
 	// A *program directory* in which the provider should execute. This is generally a subdirectory of the root
 	// directory, though this is not required. In the event that the provider is *not* being booted by the engine (e.g.
 	// in the case that the engine has been asked to attach to an existing running provider instance via a host/port
 	// number), this field will be empty.
-	ProgramDirectory *string `protobuf:"bytes,3,opt,name=program_directory,json=programDirectory,proto3,oneof" json:"program_directory,omitempty"`
+	ProgramDirectory	*string	`protobuf:"bytes,3,opt,name=program_directory,json=programDirectory,proto3,oneof" json:"program_directory,omitempty"`
 	// If true the engine will send URN, Name, Type, and ID to the provider as part of the configuration.
-	ConfigureWithUrn bool `protobuf:"varint,4,opt,name=configure_with_urn,json=configureWithUrn,proto3" json:"configure_with_urn,omitempty"`
+	ConfigureWithUrn	bool	`protobuf:"varint,4,opt,name=configure_with_urn,json=configureWithUrn,proto3" json:"configure_with_urn,omitempty"`
 	// If true the engine supports views and can send the address of a [](pulumirpc.ResourceStatus) service which can be
 	// used to e.g. create or update view resources.
-	SupportsViews bool `protobuf:"varint,5,opt,name=supports_views,json=supportsViews,proto3" json:"supports_views,omitempty"`
+	SupportsViews	bool	`protobuf:"varint,5,opt,name=supports_views,json=supportsViews,proto3" json:"supports_views,omitempty"`
 	// If true the engine supports letting the provider mark resource states as requiring refresh before update.
-	SupportsRefreshBeforeUpdate bool `protobuf:"varint,6,opt,name=supports_refresh_before_update,json=supportsRefreshBeforeUpdate,proto3" json:"supports_refresh_before_update,omitempty"`
-	unknownFields               protoimpl.UnknownFields
-	sizeCache                   protoimpl.SizeCache
+	SupportsRefreshBeforeUpdate	bool	`protobuf:"varint,6,opt,name=supports_refresh_before_update,json=supportsRefreshBeforeUpdate,proto3" json:"supports_refresh_before_update,omitempty"`
+	unknownFields			protoimpl.UnknownFields
+	sizeCache			protoimpl.SizeCache
 }
 
 func (x *ProviderHandshakeRequest) Reset() {
@@ -247,7 +247,7 @@ func (x *ProviderHandshakeRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ProviderHandshakeRequest) ProtoMessage() {}
+func (*ProviderHandshakeRequest) ProtoMessage()	{}
 
 func (x *ProviderHandshakeRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[0]
@@ -310,23 +310,23 @@ func (x *ProviderHandshakeRequest) GetSupportsRefreshBeforeUpdate() bool {
 
 // `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.
 type ProviderHandshakeResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
 	// values to the provider. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
-	AcceptSecrets bool `protobuf:"varint,1,opt,name=accept_secrets,json=acceptSecrets,proto3" json:"accept_secrets,omitempty"`
+	AcceptSecrets	bool	`protobuf:"varint,1,opt,name=accept_secrets,json=acceptSecrets,proto3" json:"accept_secrets,omitempty"`
 	// True if and only if the provider supports strongly typed resources. If true, the caller should pass resources as
 	// strongly typed values to the provider. *Must* match the value returned in response to
 	// [](pulumirpc.ResourceProvider.Configure).
-	AcceptResources bool `protobuf:"varint,2,opt,name=accept_resources,json=acceptResources,proto3" json:"accept_resources,omitempty"`
+	AcceptResources	bool	`protobuf:"varint,2,opt,name=accept_resources,json=acceptResources,proto3" json:"accept_resources,omitempty"`
 	// True if and only if the provider supports output values as inputs. If true, the engine should pass output values
 	// to the provider where possible. *Must* match the value returned in response to
 	// [](pulumirpc.ResourceProvider.Configure).
-	AcceptOutputs bool `protobuf:"varint,3,opt,name=accept_outputs,json=acceptOutputs,proto3" json:"accept_outputs,omitempty"`
+	AcceptOutputs	bool	`protobuf:"varint,3,opt,name=accept_outputs,json=acceptOutputs,proto3" json:"accept_outputs,omitempty"`
 	// True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
 	// user. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
-	SupportsAutonamingConfiguration bool `protobuf:"varint,4,opt,name=supports_autonaming_configuration,json=supportsAutonamingConfiguration,proto3" json:"supports_autonaming_configuration,omitempty"`
-	unknownFields                   protoimpl.UnknownFields
-	sizeCache                       protoimpl.SizeCache
+	SupportsAutonamingConfiguration	bool	`protobuf:"varint,4,opt,name=supports_autonaming_configuration,json=supportsAutonamingConfiguration,proto3" json:"supports_autonaming_configuration,omitempty"`
+	unknownFields			protoimpl.UnknownFields
+	sizeCache			protoimpl.SizeCache
 }
 
 func (x *ProviderHandshakeResponse) Reset() {
@@ -340,7 +340,7 @@ func (x *ProviderHandshakeResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ProviderHandshakeResponse) ProtoMessage() {}
+func (*ProviderHandshakeResponse) ProtoMessage()	{}
 
 func (x *ProviderHandshakeResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[1]
@@ -400,14 +400,14 @@ func (x *ProviderHandshakeResponse) GetSupportsAutonamingConfiguration() bool {
 // command-line permits providers to implement optimizations for the common, fast-path case (program execution), such as
 // embedding a generated schema as opposed to generating it on-demand for each resource registration.
 type ParameterizeRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// Types that are valid to be assigned to Parameters:
 	//
 	//	*ParameterizeRequest_Args
 	//	*ParameterizeRequest_Value
-	Parameters    isParameterizeRequest_Parameters `protobuf_oneof:"parameters"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Parameters	isParameterizeRequest_Parameters	`protobuf_oneof:"parameters"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *ParameterizeRequest) Reset() {
@@ -421,7 +421,7 @@ func (x *ParameterizeRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ParameterizeRequest) ProtoMessage() {}
+func (*ParameterizeRequest) ProtoMessage()	{}
 
 func (x *ParameterizeRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[2]
@@ -479,21 +479,21 @@ type ParameterizeRequest_Value struct {
 	Value *ParameterizeRequest_ParametersValue `protobuf:"bytes,2,opt,name=value,proto3,oneof"`
 }
 
-func (*ParameterizeRequest_Args) isParameterizeRequest_Parameters() {}
+func (*ParameterizeRequest_Args) isParameterizeRequest_Parameters()	{}
 
-func (*ParameterizeRequest_Value) isParameterizeRequest_Parameters() {}
+func (*ParameterizeRequest_Value) isParameterizeRequest_Parameters()	{}
 
 // `ParameterizeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Parameterize) call. It
 // contains a name and version that can be used to identify the sub-package that now exists as a result of
 // parameterization.
 type ParameterizeResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The name of the sub-package parameterized.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Name	string	`protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// The version of the sub-package parameterized.
-	Version       string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Version		string	`protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *ParameterizeResponse) Reset() {
@@ -507,7 +507,7 @@ func (x *ParameterizeResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ParameterizeResponse) ProtoMessage() {}
+func (*ParameterizeResponse) ProtoMessage()	{}
 
 func (x *ParameterizeResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[3]
@@ -541,15 +541,15 @@ func (x *ParameterizeResponse) GetVersion() string {
 }
 
 type GetSchemaRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// the schema version.
-	Version int32 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	Version	int32	`protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
 	// the name of the sub-package to lookup
-	SubpackageName string `protobuf:"bytes,2,opt,name=subpackage_name,json=subpackageName,proto3" json:"subpackage_name,omitempty"`
+	SubpackageName	string	`protobuf:"bytes,2,opt,name=subpackage_name,json=subpackageName,proto3" json:"subpackage_name,omitempty"`
 	// the version of the sub-package to lookup
-	SubpackageVersion string `protobuf:"bytes,3,opt,name=subpackage_version,json=subpackageVersion,proto3" json:"subpackage_version,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	SubpackageVersion	string	`protobuf:"bytes,3,opt,name=subpackage_version,json=subpackageVersion,proto3" json:"subpackage_version,omitempty"`
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *GetSchemaRequest) Reset() {
@@ -563,7 +563,7 @@ func (x *GetSchemaRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetSchemaRequest) ProtoMessage() {}
+func (*GetSchemaRequest) ProtoMessage()	{}
 
 func (x *GetSchemaRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[4]
@@ -604,10 +604,10 @@ func (x *GetSchemaRequest) GetSubpackageVersion() string {
 }
 
 type GetSchemaResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Schema        string                 `protobuf:"bytes,1,opt,name=schema,proto3" json:"schema,omitempty"` // the JSON-encoded schema.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Schema		string			`protobuf:"bytes,1,opt,name=schema,proto3" json:"schema,omitempty"`	// the JSON-encoded schema.
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *GetSchemaResponse) Reset() {
@@ -621,7 +621,7 @@ func (x *GetSchemaResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetSchemaResponse) ProtoMessage() {}
+func (*GetSchemaResponse) ProtoMessage()	{}
 
 func (x *GetSchemaResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[5]
@@ -651,7 +651,7 @@ func (x *GetSchemaResponse) GetSchema() string {
 // include both provider-specific inputs (`variables` or `args`) and provider-agnostic ("protocol") configuration
 // (`acceptSecrets`, `acceptResources`, and so on).
 type ConfigureRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// :::{warning}
 	// `variables` is deprecated; `args` should be used instead wherever possible.
 	// :::
@@ -681,46 +681,46 @@ type ConfigureRequest struct {
 	//	}
 	//
 	// ```
-	Variables map[string]string `protobuf:"bytes,1,rep,name=variables,proto3" json:"variables,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Variables	map[string]string	`protobuf:"bytes,1,rep,name=variables,proto3" json:"variables,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// A map of input properties for the provider.
 	//
 	// :::{warning}
 	// `args` may include secrets. Because `ConfigureRequest` is sent before [](pulumirpc.ConfigureResponse) can specify
 	// whether or not the provider accepts secrets in general, providers *must* handle secrets if they appear in `args`.
 	// :::
-	Args *structpb.Struct `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`
+	Args	*structpb.Struct	`protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`
 	// True if and only if the caller supports secrets. If true, operations should return strongly typed secrets if the
 	// provider supports them also. *Must* be true if the caller has previously called
 	// [](pulumirpc.ResourceProvider.Handshake).
-	AcceptSecrets bool `protobuf:"varint,3,opt,name=acceptSecrets,proto3" json:"acceptSecrets,omitempty"`
+	AcceptSecrets	bool	`protobuf:"varint,3,opt,name=acceptSecrets,proto3" json:"acceptSecrets,omitempty"`
 	// True if and only if the caller supports strongly typed resources. If true, operations should return resources as
 	// strongly typed values if the provider supports them also. *Must* be true if the caller has previously called
 	// [](pulumirpc.ResourceProvider.Handshake).
-	AcceptResources bool `protobuf:"varint,4,opt,name=acceptResources,proto3" json:"acceptResources,omitempty"`
+	AcceptResources	bool	`protobuf:"varint,4,opt,name=acceptResources,proto3" json:"acceptResources,omitempty"`
 	// True if and only if the caller supports sending old inputs as part of [](pulumirpc.ResourceProvider.Diff) and
 	// [](pulumirpc.ResourceProvider.Update) calls. If true, the provider should expect these fields to be populated in
 	// these calls. *Must* be true if the caller has previously called [](pulumirpc.ResourceProvider.Handshake).
-	SendsOldInputs bool `protobuf:"varint,5,opt,name=sends_old_inputs,json=sendsOldInputs,proto3" json:"sends_old_inputs,omitempty"`
+	SendsOldInputs	bool	`protobuf:"varint,5,opt,name=sends_old_inputs,json=sendsOldInputs,proto3" json:"sends_old_inputs,omitempty"`
 	// True if and only if the caller supports sending old inputs and outputs as part of
 	// [](pulumirpc.ResourceProvider.Delete) calls. If true, the provider should expect these fields to be populated in
 	// these calls. *Must* be true if the caller has previously called [](pulumirpc.ResourceProvider.Handshake).
-	SendsOldInputsToDelete bool `protobuf:"varint,6,opt,name=sends_old_inputs_to_delete,json=sendsOldInputsToDelete,proto3" json:"sends_old_inputs_to_delete,omitempty"`
+	SendsOldInputsToDelete	bool	`protobuf:"varint,6,opt,name=sends_old_inputs_to_delete,json=sendsOldInputsToDelete,proto3" json:"sends_old_inputs_to_delete,omitempty"`
 	// The ID of the provider being configured. N.B. This will be null if configure_with_urn was false in
 	// Handshake.
-	Id *string `protobuf:"bytes,7,opt,name=id,proto3,oneof" json:"id,omitempty"`
+	Id	*string	`protobuf:"bytes,7,opt,name=id,proto3,oneof" json:"id,omitempty"`
 	// The URN of the provider being configured. N.B. This will be null if configure_with_urn was false in
 	// Handshake.
-	Urn *string `protobuf:"bytes,8,opt,name=urn,proto3,oneof" json:"urn,omitempty"`
+	Urn	*string	`protobuf:"bytes,8,opt,name=urn,proto3,oneof" json:"urn,omitempty"`
 	// The name of the provider being configured. This must match the name specified by the `urn` field, and
 	// is passed so that providers do not have to implement URN parsing in order to extract the name of the
 	// provider.  N.B. This will be null if configure_with_urn was false in Handshake.
-	Name *string `protobuf:"bytes,9,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Name	*string	`protobuf:"bytes,9,opt,name=name,proto3,oneof" json:"name,omitempty"`
 	// The type of the provider being configured. This must match the type specified by the `urn` field, and
 	// is passed so that providers do not have to implement URN parsing in order to extract the type of the
 	// provider. N.B. This will be null if configure_with_urn was false in Handshake.
-	Type          *string `protobuf:"bytes,10,opt,name=type,proto3,oneof" json:"type,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Type		*string	`protobuf:"bytes,10,opt,name=type,proto3,oneof" json:"type,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *ConfigureRequest) Reset() {
@@ -734,7 +734,7 @@ func (x *ConfigureRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ConfigureRequest) ProtoMessage() {}
+func (*ConfigureRequest) ProtoMessage()	{}
 
 func (x *ConfigureRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[6]
@@ -826,29 +826,29 @@ func (x *ConfigureRequest) GetType() string {
 // `ConfigureResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Configure) call. Its primary
 // purpose is to communicate features that the provider supports back to the caller.
 type ConfigureResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
 	// values to the provider. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Handshake)
 	// if the provider supports handshaking.
-	AcceptSecrets bool `protobuf:"varint,1,opt,name=acceptSecrets,proto3" json:"acceptSecrets,omitempty"`
+	AcceptSecrets	bool	`protobuf:"varint,1,opt,name=acceptSecrets,proto3" json:"acceptSecrets,omitempty"`
 	// True if and only if the provider supports the `preview` field on [](pulumirpc.ResourceProvider.Create) and
 	// [](pulumirpc.ResourceProvider.Update) calls. If true, the engine should invoke these calls with `preview` set to
 	// `true` during previews. *Must* be true if the provider implements [](pulumirpc.ResourceProvider.Handshake).
-	SupportsPreview bool `protobuf:"varint,2,opt,name=supportsPreview,proto3" json:"supportsPreview,omitempty"`
+	SupportsPreview	bool	`protobuf:"varint,2,opt,name=supportsPreview,proto3" json:"supportsPreview,omitempty"`
 	// True if and only if the provider supports strongly typed resources. If true, the caller should pass resources as
 	// strongly typed values to the provider. *Must* match the value returned in response to
 	// [](pulumirpc.ResourceProvider.Handshake) if the provider supports handshaking.
-	AcceptResources bool `protobuf:"varint,3,opt,name=acceptResources,proto3" json:"acceptResources,omitempty"`
+	AcceptResources	bool	`protobuf:"varint,3,opt,name=acceptResources,proto3" json:"acceptResources,omitempty"`
 	// True if and only if the provider supports output values as inputs. If true, the engine should pass output values
 	// to the provider where possible. *Must* match the value returned in response to
 	// [](pulumirpc.ResourceProvider.Handshake) if the provider supports handshaking.
-	AcceptOutputs bool `protobuf:"varint,4,opt,name=acceptOutputs,proto3" json:"acceptOutputs,omitempty"`
+	AcceptOutputs	bool	`protobuf:"varint,4,opt,name=acceptOutputs,proto3" json:"acceptOutputs,omitempty"`
 	// True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
 	// user. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Handshake) if the provider
 	// supports handshaking.
-	SupportsAutonamingConfiguration bool `protobuf:"varint,5,opt,name=supports_autonaming_configuration,json=supportsAutonamingConfiguration,proto3" json:"supports_autonaming_configuration,omitempty"`
-	unknownFields                   protoimpl.UnknownFields
-	sizeCache                       protoimpl.SizeCache
+	SupportsAutonamingConfiguration	bool	`protobuf:"varint,5,opt,name=supports_autonaming_configuration,json=supportsAutonamingConfiguration,proto3" json:"supports_autonaming_configuration,omitempty"`
+	unknownFields			protoimpl.UnknownFields
+	sizeCache			protoimpl.SizeCache
 }
 
 func (x *ConfigureResponse) Reset() {
@@ -862,7 +862,7 @@ func (x *ConfigureResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ConfigureResponse) ProtoMessage() {}
+func (*ConfigureResponse) ProtoMessage()	{}
 
 func (x *ConfigureResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[7]
@@ -919,11 +919,11 @@ func (x *ConfigureResponse) GetSupportsAutonamingConfiguration() bool {
 // `ConfigureErrorMissingKeys` is the type of error details that may be sent in response to a
 // [](pulumirpc.ResourceProvider.Configure) call when required configuration keys are missing.
 type ConfigureErrorMissingKeys struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// A list of required configuration keys that were not supplied.
-	MissingKeys   []*ConfigureErrorMissingKeys_MissingKey `protobuf:"bytes,1,rep,name=missingKeys,proto3" json:"missingKeys,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	MissingKeys	[]*ConfigureErrorMissingKeys_MissingKey	`protobuf:"bytes,1,rep,name=missingKeys,proto3" json:"missingKeys,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *ConfigureErrorMissingKeys) Reset() {
@@ -937,7 +937,7 @@ func (x *ConfigureErrorMissingKeys) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ConfigureErrorMissingKeys) ProtoMessage() {}
+func (*ConfigureErrorMissingKeys) ProtoMessage()	{}
 
 func (x *ConfigureErrorMissingKeys) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[8]
@@ -964,11 +964,11 @@ func (x *ConfigureErrorMissingKeys) GetMissingKeys() []*ConfigureErrorMissingKey
 }
 
 type InvokeRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tok           string                 `protobuf:"bytes,1,opt,name=tok,proto3" json:"tok,omitempty"`   // the function token to invoke.
-	Args          *structpb.Struct       `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"` // the arguments for the function invocation.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Tok		string			`protobuf:"bytes,1,opt,name=tok,proto3" json:"tok,omitempty"`	// the function token to invoke.
+	Args		*structpb.Struct	`protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`	// the arguments for the function invocation.
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *InvokeRequest) Reset() {
@@ -982,7 +982,7 @@ func (x *InvokeRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*InvokeRequest) ProtoMessage() {}
+func (*InvokeRequest) ProtoMessage()	{}
 
 func (x *InvokeRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[9]
@@ -1016,11 +1016,11 @@ func (x *InvokeRequest) GetArgs() *structpb.Struct {
 }
 
 type InvokeResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Return        *structpb.Struct       `protobuf:"bytes,1,opt,name=return,proto3" json:"return,omitempty"`     // the returned values, if invoke was successful.
-	Failures      []*CheckFailure        `protobuf:"bytes,2,rep,name=failures,proto3" json:"failures,omitempty"` // the failures if any arguments didn't pass verification.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Return		*structpb.Struct	`protobuf:"bytes,1,opt,name=return,proto3" json:"return,omitempty"`	// the returned values, if invoke was successful.
+	Failures	[]*CheckFailure		`protobuf:"bytes,2,rep,name=failures,proto3" json:"failures,omitempty"`	// the failures if any arguments didn't pass verification.
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *InvokeResponse) Reset() {
@@ -1034,7 +1034,7 @@ func (x *InvokeResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*InvokeResponse) ProtoMessage() {}
+func (*InvokeResponse) ProtoMessage()	{}
 
 func (x *InvokeResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[10]
@@ -1068,23 +1068,23 @@ func (x *InvokeResponse) GetFailures() []*CheckFailure {
 }
 
 type CallRequest struct {
-	state               protoimpl.MessageState                       `protogen:"open.v1"`
-	Tok                 string                                       `protobuf:"bytes,1,opt,name=tok,proto3" json:"tok,omitempty"`                                                                                                   // the function token to invoke.
-	Args                *structpb.Struct                             `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`                                                                                                 // the arguments for the function invocation.
-	ArgDependencies     map[string]*CallRequest_ArgumentDependencies `protobuf:"bytes,3,rep,name=argDependencies,proto3" json:"argDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // a map from argument keys to the dependencies of the argument.
-	Project             string                                       `protobuf:"bytes,6,opt,name=project,proto3" json:"project,omitempty"`                                                                                           // the project name.
-	Stack               string                                       `protobuf:"bytes,7,opt,name=stack,proto3" json:"stack,omitempty"`                                                                                               // the name of the stack being deployed into.
-	Config              map[string]string                            `protobuf:"bytes,8,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`                   // the configuration variables to apply before running.
-	ConfigSecretKeys    []string                                     `protobuf:"bytes,9,rep,name=configSecretKeys,proto3" json:"configSecretKeys,omitempty"`                                                                         // the configuration keys that have secret values.
-	DryRun              bool                                         `protobuf:"varint,10,opt,name=dryRun,proto3" json:"dryRun,omitempty"`                                                                                           // true if we're only doing a dryrun (preview).
-	Parallel            int32                                        `protobuf:"varint,11,opt,name=parallel,proto3" json:"parallel,omitempty"`                                                                                       // the degree of parallelism for resource operations (<=1 for serial).
-	MonitorEndpoint     string                                       `protobuf:"bytes,12,opt,name=monitorEndpoint,proto3" json:"monitorEndpoint,omitempty"`                                                                          // the address for communicating back to the resource monitor.
-	Organization        string                                       `protobuf:"bytes,14,opt,name=organization,proto3" json:"organization,omitempty"`                                                                                // the organization of the stack being deployed into.
-	AcceptsOutputValues bool                                         `protobuf:"varint,17,opt,name=accepts_output_values,json=acceptsOutputValues,proto3" json:"accepts_output_values,omitempty"`                                    // the engine can be passed output values back, returnDependencies can be left blank if returning output values.
+	state			protoimpl.MessageState				`protogen:"open.v1"`
+	Tok			string						`protobuf:"bytes,1,opt,name=tok,proto3" json:"tok,omitempty"`													// the function token to invoke.
+	Args			*structpb.Struct				`protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`													// the arguments for the function invocation.
+	ArgDependencies		map[string]*CallRequest_ArgumentDependencies	`protobuf:"bytes,3,rep,name=argDependencies,proto3" json:"argDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`	// a map from argument keys to the dependencies of the argument.
+	Project			string						`protobuf:"bytes,6,opt,name=project,proto3" json:"project,omitempty"`												// the project name.
+	Stack			string						`protobuf:"bytes,7,opt,name=stack,proto3" json:"stack,omitempty"`												// the name of the stack being deployed into.
+	Config			map[string]string				`protobuf:"bytes,8,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`			// the configuration variables to apply before running.
+	ConfigSecretKeys	[]string					`protobuf:"bytes,9,rep,name=configSecretKeys,proto3" json:"configSecretKeys,omitempty"`										// the configuration keys that have secret values.
+	DryRun			bool						`protobuf:"varint,10,opt,name=dryRun,proto3" json:"dryRun,omitempty"`												// true if we're only doing a dryrun (preview).
+	Parallel		int32						`protobuf:"varint,11,opt,name=parallel,proto3" json:"parallel,omitempty"`											// the degree of parallelism for resource operations (<=1 for serial).
+	MonitorEndpoint		string						`protobuf:"bytes,12,opt,name=monitorEndpoint,proto3" json:"monitorEndpoint,omitempty"`										// the address for communicating back to the resource monitor.
+	Organization		string						`protobuf:"bytes,14,opt,name=organization,proto3" json:"organization,omitempty"`										// the organization of the stack being deployed into.
+	AcceptsOutputValues	bool						`protobuf:"varint,17,opt,name=accepts_output_values,json=acceptsOutputValues,proto3" json:"accepts_output_values,omitempty"`					// the engine can be passed output values back, returnDependencies can be left blank if returning output values.
 	// The stack trace handle for the call. Supports stitching stack traces together across plugins.
-	StackTraceHandle string `protobuf:"bytes,18,opt,name=stack_trace_handle,json=stackTraceHandle,proto3" json:"stack_trace_handle,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	StackTraceHandle	string	`protobuf:"bytes,18,opt,name=stack_trace_handle,json=stackTraceHandle,proto3" json:"stack_trace_handle,omitempty"`
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *CallRequest) Reset() {
@@ -1098,7 +1098,7 @@ func (x *CallRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CallRequest) ProtoMessage() {}
+func (*CallRequest) ProtoMessage()	{}
 
 func (x *CallRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[11]
@@ -1209,16 +1209,16 @@ func (x *CallRequest) GetStackTraceHandle() string {
 }
 
 type CallResponse struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Return   *structpb.Struct       `protobuf:"bytes,1,opt,name=return,proto3" json:"return,omitempty"`     // the returned values, if call was successful.
-	Failures []*CheckFailure        `protobuf:"bytes,3,rep,name=failures,proto3" json:"failures,omitempty"` // the failures if any arguments didn't pass verification.
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Return		*structpb.Struct	`protobuf:"bytes,1,opt,name=return,proto3" json:"return,omitempty"`	// the returned values, if call was successful.
+	Failures	[]*CheckFailure		`protobuf:"bytes,3,rep,name=failures,proto3" json:"failures,omitempty"`	// the failures if any arguments didn't pass verification.
 	// a map from return value keys to the dependencies of the return value.
 	//
 	// returnDependencies will be augmented by the set of dependencies specified in return
 	// via output property values.
-	ReturnDependencies map[string]*CallResponse_ReturnDependencies `protobuf:"bytes,2,rep,name=returnDependencies,proto3" json:"returnDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	ReturnDependencies	map[string]*CallResponse_ReturnDependencies	`protobuf:"bytes,2,rep,name=returnDependencies,proto3" json:"returnDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *CallResponse) Reset() {
@@ -1232,7 +1232,7 @@ func (x *CallResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CallResponse) ProtoMessage() {}
+func (*CallResponse) ProtoMessage()	{}
 
 func (x *CallResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[12]
@@ -1278,13 +1278,13 @@ func (x *CallResponse) GetReturnDependencies() map[string]*CallResponse_ReturnDe
 // resource being constructed, which may or may not be a [default provider](default-providers), and the inputs will be
 // the provider configuration.
 type CheckRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The URN of the resource whose inputs are being checked. In the case of
 	// [](pulumirpc.ResourceProvider.CheckConfig), this will be the URN of the provider resource being constructed,
 	// which may or may not be a [default provider](default-providers).
-	Urn string `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
+	Urn	string	`protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
 	// The old input properties or configuration for the resource, if any.
-	Olds *structpb.Struct `protobuf:"bytes,2,opt,name=olds,proto3" json:"olds,omitempty"`
+	Olds	*structpb.Struct	`protobuf:"bytes,2,opt,name=olds,proto3" json:"olds,omitempty"`
 	// The new input properties or configuration for the resource, if any.
 	//
 	// :::{note}
@@ -1294,18 +1294,18 @@ type CheckRequest struct {
 	// Pulumi engine) is expected to preprocess the `news` value by replacing every property matched by `ignoreChanges`
 	// with its corresponding `olds` value (effectively ignoring the change).
 	// :::
-	News *structpb.Struct `protobuf:"bytes,3,opt,name=news,proto3" json:"news,omitempty"`
+	News	*structpb.Struct	`protobuf:"bytes,3,opt,name=news,proto3" json:"news,omitempty"`
 	// A random but deterministically computed hash, intended to be used for generating globally unique names.
-	RandomSeed []byte `protobuf:"bytes,5,opt,name=randomSeed,proto3" json:"randomSeed,omitempty"`
+	RandomSeed	[]byte	`protobuf:"bytes,5,opt,name=randomSeed,proto3" json:"randomSeed,omitempty"`
 	// The name of the resource being checked. This must match the name specified by the `urn` field, and is passed so
 	// that providers do not have to implement URN parsing in order to extract the name of the resource.
-	Name string `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
+	Name	string	`protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
 	// The type of the resource being checked. This must match the type specified by the `urn` field, and is passed so
 	// that providers do not have to implement URN parsing in order to extract the type of the resource.
-	Type          string                          `protobuf:"bytes,7,opt,name=type,proto3" json:"type,omitempty"`
-	Autonaming    *CheckRequest_AutonamingOptions `protobuf:"bytes,8,opt,name=autonaming,proto3" json:"autonaming,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Type		string				`protobuf:"bytes,7,opt,name=type,proto3" json:"type,omitempty"`
+	Autonaming	*CheckRequest_AutonamingOptions	`protobuf:"bytes,8,opt,name=autonaming,proto3" json:"autonaming,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *CheckRequest) Reset() {
@@ -1319,7 +1319,7 @@ func (x *CheckRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CheckRequest) ProtoMessage() {}
+func (*CheckRequest) ProtoMessage()	{}
 
 func (x *CheckRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[13]
@@ -1399,13 +1399,13 @@ func (x *CheckRequest) GetAutonaming() *CheckRequest_AutonamingOptions {
 // In cases where the supplied set of inputs is valid, a `CheckResponse` may contain default values that should
 // persisted to Pulumi state and passed to subsequent calls.
 type CheckResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// A valid, checked set of inputs. May contain defaults.
-	Inputs *structpb.Struct `protobuf:"bytes,1,opt,name=inputs,proto3" json:"inputs,omitempty"`
+	Inputs	*structpb.Struct	`protobuf:"bytes,1,opt,name=inputs,proto3" json:"inputs,omitempty"`
 	// Any validation failures that occurred.
-	Failures      []*CheckFailure `protobuf:"bytes,2,rep,name=failures,proto3" json:"failures,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Failures	[]*CheckFailure	`protobuf:"bytes,2,rep,name=failures,proto3" json:"failures,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *CheckResponse) Reset() {
@@ -1419,7 +1419,7 @@ func (x *CheckResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CheckResponse) ProtoMessage() {}
+func (*CheckResponse) ProtoMessage()	{}
 
 func (x *CheckResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[14]
@@ -1455,13 +1455,13 @@ func (x *CheckResponse) GetFailures() []*CheckFailure {
 // A `CheckFailure` describes a single validation error that arose as part of a
 // [](pulumirpc.ResourceProvider.CheckConfig) or [](pulumirpc.ResourceProvider.Check) call.
 type CheckFailure struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The input property that failed validation.
-	Property string `protobuf:"bytes,1,opt,name=property,proto3" json:"property,omitempty"`
+	Property	string	`protobuf:"bytes,1,opt,name=property,proto3" json:"property,omitempty"`
 	// The reason that the named property failed validation.
-	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Reason		string	`protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *CheckFailure) Reset() {
@@ -1475,7 +1475,7 @@ func (x *CheckFailure) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CheckFailure) ProtoMessage() {}
+func (*CheckFailure) ProtoMessage()	{}
 
 func (x *CheckFailure) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[15]
@@ -1522,28 +1522,28 @@ func (x *CheckFailure) GetReason() string {
 // [](pulumirpc.ResourceProvider.Diff) call should have been previously checked by a call to
 // [](pulumirpc.ResourceProvider.Check).
 type DiffRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The ID of the resource being diffed.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id	string	`protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// The URN of the resource being diffed.
-	Urn string `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`
+	Urn	string	`protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`
 	// The old *output* properties of the resource being diffed.
-	Olds *structpb.Struct `protobuf:"bytes,3,opt,name=olds,proto3" json:"olds,omitempty"`
+	Olds	*structpb.Struct	`protobuf:"bytes,3,opt,name=olds,proto3" json:"olds,omitempty"`
 	// The new *input* properties of the resource being diffed. These should have been validated by an appropriate call
 	// to [](pulumirpc.ResourceProvider.CheckConfig) or [](pulumirpc.ResourceProvider.Check).
-	News *structpb.Struct `protobuf:"bytes,4,opt,name=news,proto3" json:"news,omitempty"`
+	News	*structpb.Struct	`protobuf:"bytes,4,opt,name=news,proto3" json:"news,omitempty"`
 	// A set of [property paths](property-paths) that should be treated as unchanged.
-	IgnoreChanges []string `protobuf:"bytes,5,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`
+	IgnoreChanges	[]string	`protobuf:"bytes,5,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`
 	// The old *input* properties of the resource being diffed.
-	OldInputs *structpb.Struct `protobuf:"bytes,6,opt,name=old_inputs,json=oldInputs,proto3" json:"old_inputs,omitempty"`
+	OldInputs	*structpb.Struct	`protobuf:"bytes,6,opt,name=old_inputs,json=oldInputs,proto3" json:"old_inputs,omitempty"`
 	// The name of the resource being diffed. This must match the name specified by the `urn` field, and is passed so
 	// that providers do not have to implement URN parsing in order to extract the name of the resource.
-	Name string `protobuf:"bytes,7,opt,name=name,proto3" json:"name,omitempty"`
+	Name	string	`protobuf:"bytes,7,opt,name=name,proto3" json:"name,omitempty"`
 	// The type of the resource being diffed. This must match the type specified by the `urn` field, and is passed so
 	// that providers do not have to implement URN parsing in order to extract the type of the resource.
-	Type          string `protobuf:"bytes,8,opt,name=type,proto3" json:"type,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Type		string	`protobuf:"bytes,8,opt,name=type,proto3" json:"type,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *DiffRequest) Reset() {
@@ -1557,7 +1557,7 @@ func (x *DiffRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DiffRequest) ProtoMessage() {}
+func (*DiffRequest) ProtoMessage()	{}
 
 func (x *DiffRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[16]
@@ -1636,14 +1636,14 @@ func (x *DiffRequest) GetType() string {
 // indicate that a property was added, deleted, or updated, and may further indicate that the change requires a
 // replacement.
 type PropertyDiff struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The kind of diff associated with this property.
-	Kind PropertyDiff_Kind `protobuf:"varint,1,opt,name=kind,proto3,enum=pulumirpc.PropertyDiff_Kind" json:"kind,omitempty"`
+	Kind	PropertyDiff_Kind	`protobuf:"varint,1,opt,name=kind,proto3,enum=pulumirpc.PropertyDiff_Kind" json:"kind,omitempty"`
 	// True if and only if this difference represents one between a pair of old and new inputs, as opposed to a pair of
 	// old and new states.
-	InputDiff     bool `protobuf:"varint,2,opt,name=inputDiff,proto3" json:"inputDiff,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	InputDiff	bool	`protobuf:"varint,2,opt,name=inputDiff,proto3" json:"inputDiff,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *PropertyDiff) Reset() {
@@ -1657,7 +1657,7 @@ func (x *PropertyDiff) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PropertyDiff) ProtoMessage() {}
+func (*PropertyDiff) ProtoMessage()	{}
 
 func (x *PropertyDiff) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[17]
@@ -1713,30 +1713,30 @@ func (x *PropertyDiff) GetInputDiff() bool {
 // * `diff` does not contain duplicates.
 // * `detailedDiff` does not contain duplicate keys.
 type DiffResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// A set of properties which have changed and whose changes require the resource being diffed to be replaced. The
 	// caller should replace the resource if this set is non-empty, or if any of the properties specified in
 	// `detailedDiff` have a `*_REPLACE` kind.
-	Replaces []string `protobuf:"bytes,1,rep,name=replaces,proto3" json:"replaces,omitempty"`
+	Replaces	[]string	`protobuf:"bytes,1,rep,name=replaces,proto3" json:"replaces,omitempty"`
 	// An optional list of properties that will not ever change (are stable).
-	Stables []string `protobuf:"bytes,2,rep,name=stables,proto3" json:"stables,omitempty"`
+	Stables	[]string	`protobuf:"bytes,2,rep,name=stables,proto3" json:"stables,omitempty"`
 	// If true, this resource must be deleted *before* its replacement is created.
-	DeleteBeforeReplace bool `protobuf:"varint,3,opt,name=deleteBeforeReplace,proto3" json:"deleteBeforeReplace,omitempty"`
+	DeleteBeforeReplace	bool	`protobuf:"varint,3,opt,name=deleteBeforeReplace,proto3" json:"deleteBeforeReplace,omitempty"`
 	// The result of the diff. Indicates at a high level whether the resource has changed or not (or, in legacy cases,
 	// if the provider does not know).
-	Changes DiffResponse_DiffChanges `protobuf:"varint,4,opt,name=changes,proto3,enum=pulumirpc.DiffResponse_DiffChanges" json:"changes,omitempty"`
+	Changes	DiffResponse_DiffChanges	`protobuf:"varint,4,opt,name=changes,proto3,enum=pulumirpc.DiffResponse_DiffChanges" json:"changes,omitempty"`
 	// The set of properties which have changed. This field only supports top-level properties. It *does not* support
 	// full [property paths](property-paths); implementations should use `detailedDiff` when this is required.
-	Diffs []string `protobuf:"bytes,5,rep,name=diffs,proto3" json:"diffs,omitempty"`
+	Diffs	[]string	`protobuf:"bytes,5,rep,name=diffs,proto3" json:"diffs,omitempty"`
 	// `detailedDiff` can be used to implement more detailed diffs. A detailed diff is a map from [property
 	// paths](property-paths) to [](pulumirpc.PropertyDiff)s, which describe the kind of change that occurred to the
 	// property located at that path. If a provider does not implement this, the caller (typically the Pulumi engine)
 	// will compute a representation based on the simple diff fields (`changes`, `replaces`, and so on).
-	DetailedDiff map[string]*PropertyDiff `protobuf:"bytes,6,rep,name=detailedDiff,proto3" json:"detailedDiff,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	DetailedDiff	map[string]*PropertyDiff	`protobuf:"bytes,6,rep,name=detailedDiff,proto3" json:"detailedDiff,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// True if and only if this response contains a `detailedDiff`.
-	HasDetailedDiff bool `protobuf:"varint,7,opt,name=hasDetailedDiff,proto3" json:"hasDetailedDiff,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	HasDetailedDiff	bool	`protobuf:"varint,7,opt,name=hasDetailedDiff,proto3" json:"hasDetailedDiff,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *DiffResponse) Reset() {
@@ -1750,7 +1750,7 @@ func (x *DiffResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DiffResponse) ProtoMessage() {}
+func (*DiffResponse) ProtoMessage()	{}
 
 func (x *DiffResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[18]
@@ -1820,29 +1820,29 @@ func (x *DiffResponse) GetHasDetailedDiff() bool {
 
 // `CreateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Create) call.
 type CreateRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The URN of the resource being created.
-	Urn string `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
+	Urn	string	`protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
 	// The resource's input properties, to be set during creation. These should have been validated by a call to
 	// [](pulumirpc.ResourceProvider.Check).
-	Properties *structpb.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
+	Properties	*structpb.Struct	`protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
 	// A timeout in seconds that the caller is prepared to wait for the operation to complete.
-	Timeout float64 `protobuf:"fixed64,3,opt,name=timeout,proto3" json:"timeout,omitempty"`
+	Timeout	float64	`protobuf:"fixed64,3,opt,name=timeout,proto3" json:"timeout,omitempty"`
 	// True if and only if the request is being made as part of a preview/dry run, in which case the provider should not
 	// actually create the resource.
-	Preview bool `protobuf:"varint,4,opt,name=preview,proto3" json:"preview,omitempty"`
+	Preview	bool	`protobuf:"varint,4,opt,name=preview,proto3" json:"preview,omitempty"`
 	// The name of the resource being created. This must match the name specified by the `urn` field, and is passed so
 	// that providers do not have to implement URN parsing in order to extract the name of the resource.
-	Name string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
+	Name	string	`protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
 	// The type of the resource being created. This must match the type specified by the `urn` field, and is passed so
 	// that providers do not have to implement URN parsing in order to extract the type of the resource.
-	Type string `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty"`
+	Type	string	`protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty"`
 	// The address of a [](pulumirpc.ResourceStatus) service which can be used to e.g. create or update view resources.
-	ResourceStatusAddress string `protobuf:"bytes,7,opt,name=resource_status_address,json=resourceStatusAddress,proto3" json:"resource_status_address,omitempty"`
+	ResourceStatusAddress	string	`protobuf:"bytes,7,opt,name=resource_status_address,json=resourceStatusAddress,proto3" json:"resource_status_address,omitempty"`
 	// The [](pulumirpc.ResourceStatus) service context token to pass when calling methods on the service.
-	ResourceStatusToken string `protobuf:"bytes,8,opt,name=resource_status_token,json=resourceStatusToken,proto3" json:"resource_status_token,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	ResourceStatusToken	string	`protobuf:"bytes,8,opt,name=resource_status_token,json=resourceStatusToken,proto3" json:"resource_status_token,omitempty"`
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *CreateRequest) Reset() {
@@ -1856,7 +1856,7 @@ func (x *CreateRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CreateRequest) ProtoMessage() {}
+func (*CreateRequest) ProtoMessage()	{}
 
 func (x *CreateRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[19]
@@ -1934,16 +1934,16 @@ func (x *CreateRequest) GetResourceStatusToken() string {
 // `CreateResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Create) call. A `CreateResponse`
 // contains the ID of the created resource, as well as any output properties that arose from the creation process.
 type CreateResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The ID of the created resource.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id	string	`protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// The resource's output properties. Typically this will be a union of the resource's input properties and any
 	// additional values that were computed or made available during creation.
-	Properties *structpb.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
+	Properties	*structpb.Struct	`protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
 	// Indicates that this resource should always be refreshed prior to updates.
-	RefreshBeforeUpdate bool `protobuf:"varint,3,opt,name=refresh_before_update,json=refreshBeforeUpdate,proto3" json:"refresh_before_update,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	RefreshBeforeUpdate	bool	`protobuf:"varint,3,opt,name=refresh_before_update,json=refreshBeforeUpdate,proto3" json:"refresh_before_update,omitempty"`
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *CreateResponse) Reset() {
@@ -1957,7 +1957,7 @@ func (x *CreateResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CreateResponse) ProtoMessage() {}
+func (*CreateResponse) ProtoMessage()	{}
 
 func (x *CreateResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[20]
@@ -1999,31 +1999,31 @@ func (x *CreateResponse) GetRefreshBeforeUpdate() bool {
 
 // `ReadRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Read) call.
 type ReadRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The ID of the resource to read.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id	string	`protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// The URN of the resource being read.
-	Urn string `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`
+	Urn	string	`protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`
 	// Any current state for the resource being read. This state should be sufficient to uniquely identify the resource.
-	Properties *structpb.Struct `protobuf:"bytes,3,opt,name=properties,proto3" json:"properties,omitempty"`
+	Properties	*structpb.Struct	`protobuf:"bytes,3,opt,name=properties,proto3" json:"properties,omitempty"`
 	// Any current input properties for the resource being read. These will only be populated when the
 	// [](pulumirpc.ResourceProvider.Read) call is being made as part of a refresh operation.
-	Inputs *structpb.Struct `protobuf:"bytes,4,opt,name=inputs,proto3" json:"inputs,omitempty"`
+	Inputs	*structpb.Struct	`protobuf:"bytes,4,opt,name=inputs,proto3" json:"inputs,omitempty"`
 	// The name of the resource being read. This must match the name specified by the `urn` field, and is passed so that
 	// providers do not have to implement URN parsing in order to extract the name of the resource.
-	Name string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
+	Name	string	`protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
 	// The type of the resource being read. This must match the type specified by the `urn` field, and is passed so that
 	// providers do not have to implement URN parsing in order to extract the type of the resource.
-	Type string `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty"`
+	Type	string	`protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty"`
 	// The address of a [](pulumirpc.ResourceStatus) service which can be used to e.g. create or update view resources.
-	ResourceStatusAddress string `protobuf:"bytes,7,opt,name=resource_status_address,json=resourceStatusAddress,proto3" json:"resource_status_address,omitempty"`
+	ResourceStatusAddress	string	`protobuf:"bytes,7,opt,name=resource_status_address,json=resourceStatusAddress,proto3" json:"resource_status_address,omitempty"`
 	// The [](pulumirpc.ResourceStatus) service context token to pass when calling methods on the service.
-	ResourceStatusToken string `protobuf:"bytes,8,opt,name=resource_status_token,json=resourceStatusToken,proto3" json:"resource_status_token,omitempty"`
+	ResourceStatusToken	string	`protobuf:"bytes,8,opt,name=resource_status_token,json=resourceStatusToken,proto3" json:"resource_status_token,omitempty"`
 	// The old views for the resource being read. These will only be populated when the
 	// [](pulumirpc.ResourceProvider.Read) call is being made as part of a refresh operation.
-	OldViews      []*View `protobuf:"bytes,9,rep,name=old_views,json=oldViews,proto3" json:"old_views,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	OldViews	[]*View	`protobuf:"bytes,9,rep,name=old_views,json=oldViews,proto3" json:"old_views,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *ReadRequest) Reset() {
@@ -2037,7 +2037,7 @@ func (x *ReadRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ReadRequest) ProtoMessage() {}
+func (*ReadRequest) ProtoMessage()	{}
 
 func (x *ReadRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[21]
@@ -2122,18 +2122,18 @@ func (x *ReadRequest) GetOldViews() []*View {
 // `ReadResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Read) call. A `ReadResponse` contains
 // the ID of the resource being read, as well as any state that was successfully read from the live environment.
 type ReadResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The ID of the read resource.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id	string	`protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// The output properties of the resource read from the live environment.
-	Properties *structpb.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
+	Properties	*structpb.Struct	`protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
 	// Output-derived input properties for the resource. These are returned as they would be returned from a
 	// [](pulumirpc.ResourceProvider.Check) call with the same values.
-	Inputs *structpb.Struct `protobuf:"bytes,3,opt,name=inputs,proto3" json:"inputs,omitempty"`
+	Inputs	*structpb.Struct	`protobuf:"bytes,3,opt,name=inputs,proto3" json:"inputs,omitempty"`
 	// Indicates that this resource should always be refreshed prior to updates.
-	RefreshBeforeUpdate bool `protobuf:"varint,4,opt,name=refresh_before_update,json=refreshBeforeUpdate,proto3" json:"refresh_before_update,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	RefreshBeforeUpdate	bool	`protobuf:"varint,4,opt,name=refresh_before_update,json=refreshBeforeUpdate,proto3" json:"refresh_before_update,omitempty"`
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *ReadResponse) Reset() {
@@ -2147,7 +2147,7 @@ func (x *ReadResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ReadResponse) ProtoMessage() {}
+func (*ReadResponse) ProtoMessage()	{}
 
 func (x *ReadResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[22]
@@ -2196,39 +2196,39 @@ func (x *ReadResponse) GetRefreshBeforeUpdate() bool {
 
 // `UpdateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Update) call.
 type UpdateRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The ID of the resource being updated.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id	string	`protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// The URN of the resource being updated.
-	Urn string `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`
+	Urn	string	`protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`
 	// The old *output* properties of the resource being updated.
-	Olds *structpb.Struct `protobuf:"bytes,3,opt,name=olds,proto3" json:"olds,omitempty"`
+	Olds	*structpb.Struct	`protobuf:"bytes,3,opt,name=olds,proto3" json:"olds,omitempty"`
 	// The new input properties of the resource being updated. These should have been validated by a call to
 	// [](pulumirpc.ResourceProvider.Check).
-	News *structpb.Struct `protobuf:"bytes,4,opt,name=news,proto3" json:"news,omitempty"`
+	News	*structpb.Struct	`protobuf:"bytes,4,opt,name=news,proto3" json:"news,omitempty"`
 	// A timeout in seconds that the caller is prepared to wait for the operation to complete.
-	Timeout float64 `protobuf:"fixed64,5,opt,name=timeout,proto3" json:"timeout,omitempty"`
+	Timeout	float64	`protobuf:"fixed64,5,opt,name=timeout,proto3" json:"timeout,omitempty"`
 	// A set of [property paths](property-paths) that should be treated as unchanged.
-	IgnoreChanges []string `protobuf:"bytes,6,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`
+	IgnoreChanges	[]string	`protobuf:"bytes,6,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`
 	// True if and only if the request is being made as part of a preview/dry run, in which case the provider should not
 	// actually update the resource.
-	Preview bool `protobuf:"varint,7,opt,name=preview,proto3" json:"preview,omitempty"`
+	Preview	bool	`protobuf:"varint,7,opt,name=preview,proto3" json:"preview,omitempty"`
 	// The old *input* properties of the resource being updated.
-	OldInputs *structpb.Struct `protobuf:"bytes,8,opt,name=old_inputs,json=oldInputs,proto3" json:"old_inputs,omitempty"`
+	OldInputs	*structpb.Struct	`protobuf:"bytes,8,opt,name=old_inputs,json=oldInputs,proto3" json:"old_inputs,omitempty"`
 	// The name of the resource being updated. This must match the name specified by the `urn` field, and is passed so
 	// that providers do not have to implement URN parsing in order to extract the name of the resource.
-	Name string `protobuf:"bytes,9,opt,name=name,proto3" json:"name,omitempty"`
+	Name	string	`protobuf:"bytes,9,opt,name=name,proto3" json:"name,omitempty"`
 	// The type of the resource being updated. This must match the type specified by the `urn` field, and is passed so
 	// that providers do not have to implement URN parsing in order to extract the type of the resource.
-	Type string `protobuf:"bytes,10,opt,name=type,proto3" json:"type,omitempty"`
+	Type	string	`protobuf:"bytes,10,opt,name=type,proto3" json:"type,omitempty"`
 	// The address of a [](pulumirpc.ResourceStatus) service which can be used to e.g. create or update view resources.
-	ResourceStatusAddress string `protobuf:"bytes,11,opt,name=resource_status_address,json=resourceStatusAddress,proto3" json:"resource_status_address,omitempty"`
+	ResourceStatusAddress	string	`protobuf:"bytes,11,opt,name=resource_status_address,json=resourceStatusAddress,proto3" json:"resource_status_address,omitempty"`
 	// The [](pulumirpc.ResourceStatus) service context token to pass when calling methods on the service.
-	ResourceStatusToken string `protobuf:"bytes,12,opt,name=resource_status_token,json=resourceStatusToken,proto3" json:"resource_status_token,omitempty"`
+	ResourceStatusToken	string	`protobuf:"bytes,12,opt,name=resource_status_token,json=resourceStatusToken,proto3" json:"resource_status_token,omitempty"`
 	// The old views for the resource being updated.
-	OldViews      []*View `protobuf:"bytes,13,rep,name=old_views,json=oldViews,proto3" json:"old_views,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	OldViews	[]*View	`protobuf:"bytes,13,rep,name=old_views,json=oldViews,proto3" json:"old_views,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *UpdateRequest) Reset() {
@@ -2242,7 +2242,7 @@ func (x *UpdateRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*UpdateRequest) ProtoMessage() {}
+func (*UpdateRequest) ProtoMessage()	{}
 
 func (x *UpdateRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[23]
@@ -2354,14 +2354,14 @@ func (x *UpdateRequest) GetOldViews() []*View {
 
 // `UpdateResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Update) call.
 type UpdateResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// An updated set of resource output properties. Typically this will be a union of the resource's inputs and any
 	// additional values that were computed or made available during the update.
-	Properties *structpb.Struct `protobuf:"bytes,1,opt,name=properties,proto3" json:"properties,omitempty"`
+	Properties	*structpb.Struct	`protobuf:"bytes,1,opt,name=properties,proto3" json:"properties,omitempty"`
 	// Indicates that this resource should always be refreshed prior to updates.
-	RefreshBeforeUpdate bool `protobuf:"varint,2,opt,name=refresh_before_update,json=refreshBeforeUpdate,proto3" json:"refresh_before_update,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	RefreshBeforeUpdate	bool	`protobuf:"varint,2,opt,name=refresh_before_update,json=refreshBeforeUpdate,proto3" json:"refresh_before_update,omitempty"`
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *UpdateResponse) Reset() {
@@ -2375,7 +2375,7 @@ func (x *UpdateResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*UpdateResponse) ProtoMessage() {}
+func (*UpdateResponse) ProtoMessage()	{}
 
 func (x *UpdateResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[24]
@@ -2410,31 +2410,31 @@ func (x *UpdateResponse) GetRefreshBeforeUpdate() bool {
 
 // `DeleteRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Delete) call.
 type DeleteRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The ID of the resource to delete.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id	string	`protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// The URN of the resource to delete.
-	Urn string `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`
+	Urn	string	`protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`
 	// The old *output* properties of the resource being deleted.
-	Properties *structpb.Struct `protobuf:"bytes,3,opt,name=properties,proto3" json:"properties,omitempty"`
+	Properties	*structpb.Struct	`protobuf:"bytes,3,opt,name=properties,proto3" json:"properties,omitempty"`
 	// A timeout in seconds that the caller is prepared to wait for the operation to complete.
-	Timeout float64 `protobuf:"fixed64,4,opt,name=timeout,proto3" json:"timeout,omitempty"`
+	Timeout	float64	`protobuf:"fixed64,4,opt,name=timeout,proto3" json:"timeout,omitempty"`
 	// The old *input* properties of the resource being deleted.
-	OldInputs *structpb.Struct `protobuf:"bytes,5,opt,name=old_inputs,json=oldInputs,proto3" json:"old_inputs,omitempty"` // the old input values of the resource to delete.
+	OldInputs	*structpb.Struct	`protobuf:"bytes,5,opt,name=old_inputs,json=oldInputs,proto3" json:"old_inputs,omitempty"`	// the old input values of the resource to delete.
 	// The name of the resource being deleted. This must match the name specified by the `urn` field, and is passed so
 	// that providers do not have to implement URN parsing in order to extract the name of the resource.
-	Name string `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
+	Name	string	`protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
 	// The type of the resource being deleted. This must match the type specified by the `urn` field, and is passed so
 	// that providers do not have to implement URN parsing in order to extract the type of the resource.
-	Type string `protobuf:"bytes,7,opt,name=type,proto3" json:"type,omitempty"`
+	Type	string	`protobuf:"bytes,7,opt,name=type,proto3" json:"type,omitempty"`
 	// The address of a [](pulumirpc.ResourceStatus) service which can be used to e.g. create or update view resources.
-	ResourceStatusAddress string `protobuf:"bytes,8,opt,name=resource_status_address,json=resourceStatusAddress,proto3" json:"resource_status_address,omitempty"`
+	ResourceStatusAddress	string	`protobuf:"bytes,8,opt,name=resource_status_address,json=resourceStatusAddress,proto3" json:"resource_status_address,omitempty"`
 	// The [](pulumirpc.ResourceStatus) service context token to pass when calling methods on the service.
-	ResourceStatusToken string `protobuf:"bytes,9,opt,name=resource_status_token,json=resourceStatusToken,proto3" json:"resource_status_token,omitempty"`
+	ResourceStatusToken	string	`protobuf:"bytes,9,opt,name=resource_status_token,json=resourceStatusToken,proto3" json:"resource_status_token,omitempty"`
 	// The old views for the resource being read.
-	OldViews      []*View `protobuf:"bytes,10,rep,name=old_views,json=oldViews,proto3" json:"old_views,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	OldViews	[]*View	`protobuf:"bytes,10,rep,name=old_views,json=oldViews,proto3" json:"old_views,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *DeleteRequest) Reset() {
@@ -2448,7 +2448,7 @@ func (x *DeleteRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DeleteRequest) ProtoMessage() {}
+func (*DeleteRequest) ProtoMessage()	{}
 
 func (x *DeleteRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[25]
@@ -2541,80 +2541,80 @@ func (x *DeleteRequest) GetOldViews() []*View {
 // `ConstructRequest` captures enough data to be able to register nested components against the caller's resource
 // monitor.
 type ConstructRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The project to which this resource and its nested resources will belong.
-	Project string `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`
+	Project	string	`protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`
 	// The name of the stack being deployed into.
-	Stack string `protobuf:"bytes,2,opt,name=stack,proto3" json:"stack,omitempty"`
+	Stack	string	`protobuf:"bytes,2,opt,name=stack,proto3" json:"stack,omitempty"`
 	// Configuration for the specified project and stack.
-	Config map[string]string `protobuf:"bytes,3,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Config	map[string]string	`protobuf:"bytes,3,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// True if and only if the request is being made as part of a preview/dry run, in which case the provider should not
 	// actually construct the component.
-	DryRun bool `protobuf:"varint,4,opt,name=dryRun,proto3" json:"dryRun,omitempty"`
+	DryRun	bool	`protobuf:"varint,4,opt,name=dryRun,proto3" json:"dryRun,omitempty"`
 	// The degree of parallelism that may be used for resource operations. A value less than or equal to 1 indicates
 	// that operations should be performed serially.
-	Parallel int32 `protobuf:"varint,5,opt,name=parallel,proto3" json:"parallel,omitempty"`
+	Parallel	int32	`protobuf:"varint,5,opt,name=parallel,proto3" json:"parallel,omitempty"`
 	// The address of the [](pulumirpc.ResourceMonitor) that the provider should connect to in order to send [resource
 	// registrations](resource-registration) for its nested resources.
-	MonitorEndpoint string `protobuf:"bytes,6,opt,name=monitorEndpoint,proto3" json:"monitorEndpoint,omitempty"`
+	MonitorEndpoint	string	`protobuf:"bytes,6,opt,name=monitorEndpoint,proto3" json:"monitorEndpoint,omitempty"`
 	// The type of the component resource being constructed. This must match the type specified by the `urn` field, and
 	// is passed so that providers do not have to implement URN parsing in order to extract the type of the resource.
-	Type string `protobuf:"bytes,7,opt,name=type,proto3" json:"type,omitempty"`
+	Type	string	`protobuf:"bytes,7,opt,name=type,proto3" json:"type,omitempty"`
 	// The name of the component resource being constructed. This must match the name specified by the `urn` field, and
 	// is passed so that providers do not have to implement URN parsing in order to extract the name of the resource.
-	Name string `protobuf:"bytes,8,opt,name=name,proto3" json:"name,omitempty"`
+	Name	string	`protobuf:"bytes,8,opt,name=name,proto3" json:"name,omitempty"`
 	// An optional parent resource that the component (and by extension, its nested resources) should be children of.
-	Parent string `protobuf:"bytes,9,opt,name=parent,proto3" json:"parent,omitempty"`
+	Parent	string	`protobuf:"bytes,9,opt,name=parent,proto3" json:"parent,omitempty"`
 	// The component resource's input properties. Unlike the inputs of custom resources, these will *not* have been
 	// passed to a call to [](pulumirpc.ResourceProvider.Check). By virtue of their being a composition of other
 	// resources, component resources are able to (and therefore expected) to validate their own inputs. Moreover,
 	// [](pulumirpc.ResourceProvider.Check) will be called on any inputs passed to nested custom resources as usual.
-	Inputs *structpb.Struct `protobuf:"bytes,10,opt,name=inputs,proto3" json:"inputs,omitempty"`
+	Inputs	*structpb.Struct	`protobuf:"bytes,10,opt,name=inputs,proto3" json:"inputs,omitempty"`
 	// A map of property dependencies for the component resource and its nested resources.
-	InputDependencies map[string]*ConstructRequest_PropertyDependencies `protobuf:"bytes,11,rep,name=inputDependencies,proto3" json:"inputDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	InputDependencies	map[string]*ConstructRequest_PropertyDependencies	`protobuf:"bytes,11,rep,name=inputDependencies,proto3" json:"inputDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// A map of package names to provider references for the component resource and its nested resources.
-	Providers map[string]string `protobuf:"bytes,13,rep,name=providers,proto3" json:"providers,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Providers	map[string]string	`protobuf:"bytes,13,rep,name=providers,proto3" json:"providers,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// A list of URNs that this resource and its nested resources depend on.
-	Dependencies []string `protobuf:"bytes,15,rep,name=dependencies,proto3" json:"dependencies,omitempty"`
+	Dependencies	[]string	`protobuf:"bytes,15,rep,name=dependencies,proto3" json:"dependencies,omitempty"`
 	// A set of configuration keys whose values are [secret](output-secrets).
-	ConfigSecretKeys []string `protobuf:"bytes,16,rep,name=configSecretKeys,proto3" json:"configSecretKeys,omitempty"`
+	ConfigSecretKeys	[]string	`protobuf:"bytes,16,rep,name=configSecretKeys,proto3" json:"configSecretKeys,omitempty"`
 	// The organization to which this resource and its nested resources will belong.
-	Organization string `protobuf:"bytes,17,opt,name=organization,proto3" json:"organization,omitempty"`
+	Organization	string	`protobuf:"bytes,17,opt,name=organization,proto3" json:"organization,omitempty"`
 	// True if and only if the resource (and by extension, its nested resources) should be marked as protected.
 	// Protected resources cannot be deleted without first being unprotected.
-	Protect *bool `protobuf:"varint,12,opt,name=protect,proto3,oneof" json:"protect,omitempty"`
+	Protect	*bool	`protobuf:"varint,12,opt,name=protect,proto3,oneof" json:"protect,omitempty"`
 	// A list of additional URNs that should be considered the same as this component's URN (and which will therefore be
 	// used to build aliases for its nested resource URNs). These may be URNs that previously referred to this component
 	// e.g. if it had its parent (and consequently URN) changed.
-	Aliases []string `protobuf:"bytes,14,rep,name=aliases,proto3" json:"aliases,omitempty"`
+	Aliases	[]string	`protobuf:"bytes,14,rep,name=aliases,proto3" json:"aliases,omitempty"`
 	// A list of input properties whose values should be treated as [secret](output-secrets).
-	AdditionalSecretOutputs []string `protobuf:"bytes,18,rep,name=additionalSecretOutputs,proto3" json:"additionalSecretOutputs,omitempty"`
+	AdditionalSecretOutputs	[]string	`protobuf:"bytes,18,rep,name=additionalSecretOutputs,proto3" json:"additionalSecretOutputs,omitempty"`
 	// A set of custom timeouts that specify how long the caller is prepared to wait for the various CRUD operations of
 	// this resource's nested resources.
-	CustomTimeouts *ConstructRequest_CustomTimeouts `protobuf:"bytes,19,opt,name=customTimeouts,proto3" json:"customTimeouts,omitempty"`
+	CustomTimeouts	*ConstructRequest_CustomTimeouts	`protobuf:"bytes,19,opt,name=customTimeouts,proto3" json:"customTimeouts,omitempty"`
 	// The URN of a resource that this resource (and thus its nested resources) will be implicitly deleted with. If the
 	// resource referred to by this URN is deleted in the same operation that this resource would be deleted, the
 	// [](pulumirpc.ResourceProvider.Delete) call for this resource will be elided (since this dependency signals that
 	// it will have already been deleted).
-	DeletedWith string `protobuf:"bytes,20,opt,name=deletedWith,proto3" json:"deletedWith,omitempty"`
+	DeletedWith	string	`protobuf:"bytes,20,opt,name=deletedWith,proto3" json:"deletedWith,omitempty"`
 	// If true, this resource (and its nested resources) must be deleted *before* its replacement is created.
-	DeleteBeforeReplace *bool `protobuf:"varint,21,opt,name=deleteBeforeReplace,proto3,oneof" json:"deleteBeforeReplace,omitempty"`
+	DeleteBeforeReplace	*bool	`protobuf:"varint,21,opt,name=deleteBeforeReplace,proto3,oneof" json:"deleteBeforeReplace,omitempty"`
 	// A set of [property paths](property-paths) that should be treated as unchanged.
-	IgnoreChanges []string `protobuf:"bytes,22,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`
+	IgnoreChanges	[]string	`protobuf:"bytes,22,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`
 	// A set of properties that, when changed, trigger a replacement.
-	ReplaceOnChanges []string `protobuf:"bytes,23,rep,name=replaceOnChanges,proto3" json:"replaceOnChanges,omitempty"`
+	ReplaceOnChanges	[]string	`protobuf:"bytes,23,rep,name=replaceOnChanges,proto3" json:"replaceOnChanges,omitempty"`
 	// True if [](pulumirpc.ResourceProvider.Delete) should *not* be called when the resource (and by extension, its
 	// nested resources) are removed from a Pulumi program.
-	RetainOnDelete *bool `protobuf:"varint,24,opt,name=retainOnDelete,proto3,oneof" json:"retainOnDelete,omitempty"`
+	RetainOnDelete	*bool	`protobuf:"varint,24,opt,name=retainOnDelete,proto3,oneof" json:"retainOnDelete,omitempty"`
 	// True if the caller is capable of accepting output values in response to the call. If this is set, these outputs
 	// may be used to communicate dependency information and so there is no need to populate
 	// [](pulumirpc.ConstructResponse)'s `stateDependencies` field.
-	AcceptsOutputValues bool                                   `protobuf:"varint,25,opt,name=accepts_output_values,json=acceptsOutputValues,proto3" json:"accepts_output_values,omitempty"`
-	ResourceHooks       *ConstructRequest_ResourceHooksBinding `protobuf:"bytes,26,opt,name=resource_hooks,json=resourceHooks,proto3,oneof" json:"resource_hooks,omitempty"`
+	AcceptsOutputValues	bool					`protobuf:"varint,25,opt,name=accepts_output_values,json=acceptsOutputValues,proto3" json:"accepts_output_values,omitempty"`
+	ResourceHooks		*ConstructRequest_ResourceHooksBinding	`protobuf:"bytes,26,opt,name=resource_hooks,json=resourceHooks,proto3,oneof" json:"resource_hooks,omitempty"`
 	// The stack trace handle for the construct call. Supports stitching stack traces together across plugins.
-	StackTraceHandle string `protobuf:"bytes,27,opt,name=stack_trace_handle,json=stackTraceHandle,proto3" json:"stack_trace_handle,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	StackTraceHandle	string	`protobuf:"bytes,27,opt,name=stack_trace_handle,json=stackTraceHandle,proto3" json:"stack_trace_handle,omitempty"`
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *ConstructRequest) Reset() {
@@ -2628,7 +2628,7 @@ func (x *ConstructRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ConstructRequest) ProtoMessage() {}
+func (*ConstructRequest) ProtoMessage()	{}
 
 func (x *ConstructRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[26]
@@ -2838,17 +2838,17 @@ func (x *ConstructRequest) GetStackTraceHandle() string {
 
 // `ConstructResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Construct) call.
 type ConstructResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The URN of the constructed component resource.
-	Urn string `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
+	Urn	string	`protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
 	// Any output properties that the component registered as part of its construction.
-	State *structpb.Struct `protobuf:"bytes,2,opt,name=state,proto3" json:"state,omitempty"`
+	State	*structpb.Struct	`protobuf:"bytes,2,opt,name=state,proto3" json:"state,omitempty"`
 	// A map of property dependencies for the component's outputs. This will be set if the caller indicated that it
 	// could not receive dependency-communicating [output](outputs) values by setting [](pulumirpc.ConstructRequest)'s
 	// `accepts_output_values` field to false.
-	StateDependencies map[string]*ConstructResponse_PropertyDependencies `protobuf:"bytes,3,rep,name=stateDependencies,proto3" json:"stateDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	StateDependencies	map[string]*ConstructResponse_PropertyDependencies	`protobuf:"bytes,3,rep,name=stateDependencies,proto3" json:"stateDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *ConstructResponse) Reset() {
@@ -2862,7 +2862,7 @@ func (x *ConstructResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ConstructResponse) ProtoMessage() {}
+func (*ConstructResponse) ProtoMessage()	{}
 
 func (x *ConstructResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[27]
@@ -2905,15 +2905,15 @@ func (x *ConstructResponse) GetStateDependencies() map[string]*ConstructResponse
 // ErrorResourceInitFailed is sent as a Detail `ResourceProvider.{Create, Update}` fail because a
 // resource was created successfully, but failed to initialize.
 type ErrorResourceInitFailed struct {
-	state      protoimpl.MessageState `protogen:"open.v1"`
-	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                 // the ID of the created resource.
-	Properties *structpb.Struct       `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"` // any properties that were computed during updating.
-	Reasons    []string               `protobuf:"bytes,3,rep,name=reasons,proto3" json:"reasons,omitempty"`       // error messages associated with initialization failure.
-	Inputs     *structpb.Struct       `protobuf:"bytes,4,opt,name=inputs,proto3" json:"inputs,omitempty"`         // the current inputs to this resource (only applicable for Read)
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Id		string			`protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`			// the ID of the created resource.
+	Properties	*structpb.Struct	`protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`	// any properties that were computed during updating.
+	Reasons		[]string		`protobuf:"bytes,3,rep,name=reasons,proto3" json:"reasons,omitempty"`		// error messages associated with initialization failure.
+	Inputs		*structpb.Struct	`protobuf:"bytes,4,opt,name=inputs,proto3" json:"inputs,omitempty"`		// the current inputs to this resource (only applicable for Read)
 	// Indicates that this resource should always be refreshed prior to updates.
-	RefreshBeforeUpdate bool `protobuf:"varint,5,opt,name=refresh_before_update,json=refreshBeforeUpdate,proto3" json:"refresh_before_update,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	RefreshBeforeUpdate	bool	`protobuf:"varint,5,opt,name=refresh_before_update,json=refreshBeforeUpdate,proto3" json:"refresh_before_update,omitempty"`
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *ErrorResourceInitFailed) Reset() {
@@ -2927,7 +2927,7 @@ func (x *ErrorResourceInitFailed) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ErrorResourceInitFailed) ProtoMessage() {}
+func (*ErrorResourceInitFailed) ProtoMessage()	{}
 
 func (x *ErrorResourceInitFailed) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[28]
@@ -2983,17 +2983,17 @@ func (x *ErrorResourceInitFailed) GetRefreshBeforeUpdate() bool {
 
 // `GetMappingRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.GetMapping) call.
 type GetMappingRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The conversion key for the mapping being requested. This typically corresponds to the source language, such as
 	// `terraform` in the case of mapping Terraform names to Pulumi names.
-	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Key	string	`protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	// An optional *source provider key* for the mapping being requested. If this is empty, the provider should assume
 	// that this request is from an old engine prior to the introduction of [](pulumirpc.ResourceProvider.GetMappings).
 	// In these cases the request should be answered with the "primary" mapping. If this field is set, the `provider`
 	// field in the corresponding [](pulumirpc.GetMappingResponse) should contain the same value.
-	Provider      string `protobuf:"bytes,2,opt,name=provider,proto3" json:"provider,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Provider	string	`protobuf:"bytes,2,opt,name=provider,proto3" json:"provider,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *GetMappingRequest) Reset() {
@@ -3007,7 +3007,7 @@ func (x *GetMappingRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetMappingRequest) ProtoMessage() {}
+func (*GetMappingRequest) ProtoMessage()	{}
 
 func (x *GetMappingRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[29]
@@ -3044,13 +3044,13 @@ func (x *GetMappingRequest) GetProvider() string {
 // within a `GetMappingResponse` will normally be human-readable JSON (e.g. an object mapping names from the source to
 // Pulumi), but the engine doesn't mandate any specific format.
 type GetMappingResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The *source provider key* that this mapping contains data for.
-	Provider string `protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
+	Provider	string	`protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
 	// Mapping data in a format specific to the conversion plugin/source language.
-	Data          []byte `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Data		[]byte	`protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *GetMappingResponse) Reset() {
@@ -3064,7 +3064,7 @@ func (x *GetMappingResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetMappingResponse) ProtoMessage() {}
+func (*GetMappingResponse) ProtoMessage()	{}
 
 func (x *GetMappingResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[30]
@@ -3099,12 +3099,12 @@ func (x *GetMappingResponse) GetData() []byte {
 
 // `GetMappingsRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.GetMappings) call.
 type GetMappingsRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The conversion key for the mapping being requested. This typically corresponds to the source language, such as
 	// `terraform` in the case of mapping Terraform names to Pulumi names.
-	Key           string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Key		string	`protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *GetMappingsRequest) Reset() {
@@ -3118,7 +3118,7 @@ func (x *GetMappingsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetMappingsRequest) ProtoMessage() {}
+func (*GetMappingsRequest) ProtoMessage()	{}
 
 func (x *GetMappingsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[31]
@@ -3146,12 +3146,12 @@ func (x *GetMappingsRequest) GetKey() string {
 
 // `GetMappingsResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.GetMappings) call.
 type GetMappingsResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The set of *source provider keys* this provider can supply mappings for. For example the Pulumi provider
 	// `terraform-template` would return `["template"]` for this.
-	Providers     []string `protobuf:"bytes,1,rep,name=providers,proto3" json:"providers,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Providers	[]string	`protobuf:"bytes,1,rep,name=providers,proto3" json:"providers,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *GetMappingsResponse) Reset() {
@@ -3165,7 +3165,7 @@ func (x *GetMappingsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetMappingsResponse) ProtoMessage() {}
+func (*GetMappingsResponse) ProtoMessage()	{}
 
 func (x *GetMappingsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[32]
@@ -3193,21 +3193,21 @@ func (x *GetMappingsResponse) GetProviders() []string {
 
 // `View` represents the state of a view resource.
 type View struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The type of the view resource.
-	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Type	string	`protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
 	// The name of the view resource.
-	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Name	string	`protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// An optional type of the parent view resource.
-	ParentType string `protobuf:"bytes,3,opt,name=parent_type,json=parentType,proto3" json:"parent_type,omitempty"`
+	ParentType	string	`protobuf:"bytes,3,opt,name=parent_type,json=parentType,proto3" json:"parent_type,omitempty"`
 	// An optional name of the parent view resource.
-	ParentName string `protobuf:"bytes,4,opt,name=parent_name,json=parentName,proto3" json:"parent_name,omitempty"`
+	ParentName	string	`protobuf:"bytes,4,opt,name=parent_name,json=parentName,proto3" json:"parent_name,omitempty"`
 	// The view resource's inputs.
-	Inputs *structpb.Struct `protobuf:"bytes,5,opt,name=inputs,proto3" json:"inputs,omitempty"`
+	Inputs	*structpb.Struct	`protobuf:"bytes,5,opt,name=inputs,proto3" json:"inputs,omitempty"`
 	// The view resource's outputs.
-	Outputs       *structpb.Struct `protobuf:"bytes,6,opt,name=outputs,proto3" json:"outputs,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Outputs		*structpb.Struct	`protobuf:"bytes,6,opt,name=outputs,proto3" json:"outputs,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *View) Reset() {
@@ -3221,7 +3221,7 @@ func (x *View) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*View) ProtoMessage() {}
+func (*View) ProtoMessage()	{}
 
 func (x *View) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[33]
@@ -3285,10 +3285,10 @@ func (x *View) GetOutputs() *structpb.Struct {
 // A parameter value, represented as an array of strings, as might be provided by a command-line invocation, such as
 // that used to generate an SDK.
 type ParameterizeRequest_ParametersArgs struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Args          []string               `protobuf:"bytes,1,rep,name=args,proto3" json:"args,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Args		[]string		`protobuf:"bytes,1,rep,name=args,proto3" json:"args,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *ParameterizeRequest_ParametersArgs) Reset() {
@@ -3302,7 +3302,7 @@ func (x *ParameterizeRequest_ParametersArgs) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ParameterizeRequest_ParametersArgs) ProtoMessage() {}
+func (*ParameterizeRequest_ParametersArgs) ProtoMessage()	{}
 
 func (x *ParameterizeRequest_ParametersArgs) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[34]
@@ -3331,15 +3331,15 @@ func (x *ParameterizeRequest_ParametersArgs) GetArgs() []string {
 // A parameter value, represented by an arbitrary array of bytes accompanied by a name and version. This is expected
 // to be the format used by parameterized provider SDKs.
 type ParameterizeRequest_ParametersValue struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The sub-package name for this sub-schema parameterization.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Name	string	`protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// The sub-package version for this sub-schema parameterization.
-	Version string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	Version	string	`protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
 	// The embedded value from the sub-package.
-	Value         []byte `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Value		[]byte	`protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *ParameterizeRequest_ParametersValue) Reset() {
@@ -3353,7 +3353,7 @@ func (x *ParameterizeRequest_ParametersValue) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ParameterizeRequest_ParametersValue) ProtoMessage() {}
+func (*ParameterizeRequest_ParametersValue) ProtoMessage()	{}
 
 func (x *ParameterizeRequest_ParametersValue) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[35]
@@ -3396,18 +3396,18 @@ func (x *ParameterizeRequest_ParametersValue) GetValue() []byte {
 // The type of key-value pairs representing keys that are missing from a [](pulumirpc.ResourceProvider.Configure)
 // call.
 type ConfigureErrorMissingKeys_MissingKey struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The name of the missing configuration key.
 	//
 	// :::{note}
 	// This should be the *Pulumi name* of the missing key, and not any provider-internal or upstream name. Names
 	// that differ between Pulumi and an upstream provider should be translated prior to being returned.
 	// :::
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Name	string	`protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// A description of the missing config key, as reported by the provider.
-	Description   string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Description	string	`protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *ConfigureErrorMissingKeys_MissingKey) Reset() {
@@ -3421,7 +3421,7 @@ func (x *ConfigureErrorMissingKeys_MissingKey) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ConfigureErrorMissingKeys_MissingKey) ProtoMessage() {}
+func (*ConfigureErrorMissingKeys_MissingKey) ProtoMessage()	{}
 
 func (x *ConfigureErrorMissingKeys_MissingKey) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[37]
@@ -3456,10 +3456,10 @@ func (x *ConfigureErrorMissingKeys_MissingKey) GetDescription() string {
 
 // ArgumentDependencies describes the resources that a particular argument depends on.
 type CallRequest_ArgumentDependencies struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Urns          []string               `protobuf:"bytes,1,rep,name=urns,proto3" json:"urns,omitempty"` // A list of URNs this argument depends on.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Urns		[]string		`protobuf:"bytes,1,rep,name=urns,proto3" json:"urns,omitempty"`	// A list of URNs this argument depends on.
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *CallRequest_ArgumentDependencies) Reset() {
@@ -3473,7 +3473,7 @@ func (x *CallRequest_ArgumentDependencies) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CallRequest_ArgumentDependencies) ProtoMessage() {}
+func (*CallRequest_ArgumentDependencies) ProtoMessage()	{}
 
 func (x *CallRequest_ArgumentDependencies) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[38]
@@ -3501,10 +3501,10 @@ func (x *CallRequest_ArgumentDependencies) GetUrns() []string {
 
 // ReturnDependencies describes the resources that a particular return value depends on.
 type CallResponse_ReturnDependencies struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Urns          []string               `protobuf:"bytes,1,rep,name=urns,proto3" json:"urns,omitempty"` // A list of URNs this return value depends on.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Urns		[]string		`protobuf:"bytes,1,rep,name=urns,proto3" json:"urns,omitempty"`	// A list of URNs this return value depends on.
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *CallResponse_ReturnDependencies) Reset() {
@@ -3518,7 +3518,7 @@ func (x *CallResponse_ReturnDependencies) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CallResponse_ReturnDependencies) ProtoMessage() {}
+func (*CallResponse_ReturnDependencies) ProtoMessage()	{}
 
 func (x *CallResponse_ReturnDependencies) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[41]
@@ -3547,13 +3547,13 @@ func (x *CallResponse_ReturnDependencies) GetUrns() []string {
 // Configuration for automatic resource naming behavior. This structure contains fields that control how the provider
 // handles resource names, including proposed names and naming modes.
 type CheckRequest_AutonamingOptions struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The proposed name for the resource being checked. This may be used by the provider as a suggestion
 	// for the final resource name, depending on the specified mode.
-	ProposedName  string                              `protobuf:"bytes,1,opt,name=proposed_name,json=proposedName,proto3" json:"proposed_name,omitempty"`
-	Mode          CheckRequest_AutonamingOptions_Mode `protobuf:"varint,2,opt,name=mode,proto3,enum=pulumirpc.CheckRequest_AutonamingOptions_Mode" json:"mode,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ProposedName	string					`protobuf:"bytes,1,opt,name=proposed_name,json=proposedName,proto3" json:"proposed_name,omitempty"`
+	Mode		CheckRequest_AutonamingOptions_Mode	`protobuf:"varint,2,opt,name=mode,proto3,enum=pulumirpc.CheckRequest_AutonamingOptions_Mode" json:"mode,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *CheckRequest_AutonamingOptions) Reset() {
@@ -3567,7 +3567,7 @@ func (x *CheckRequest_AutonamingOptions) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CheckRequest_AutonamingOptions) ProtoMessage() {}
+func (*CheckRequest_AutonamingOptions) ProtoMessage()	{}
 
 func (x *CheckRequest_AutonamingOptions) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[43]
@@ -3602,11 +3602,11 @@ func (x *CheckRequest_AutonamingOptions) GetMode() CheckRequest_AutonamingOption
 
 // A `PropertyDependencies` list is a set of URNs that a particular property may depend on.
 type ConstructRequest_PropertyDependencies struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// A list of URNs that this property depends on.
-	Urns          []string `protobuf:"bytes,1,rep,name=urns,proto3" json:"urns,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Urns		[]string	`protobuf:"bytes,1,rep,name=urns,proto3" json:"urns,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *ConstructRequest_PropertyDependencies) Reset() {
@@ -3620,7 +3620,7 @@ func (x *ConstructRequest_PropertyDependencies) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ConstructRequest_PropertyDependencies) ProtoMessage() {}
+func (*ConstructRequest_PropertyDependencies) ProtoMessage()	{}
 
 func (x *ConstructRequest_PropertyDependencies) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[45]
@@ -3658,18 +3658,18 @@ func (x *ConstructRequest_PropertyDependencies) GetUrns() []string {
 // * `m`: minutes
 // * `h`: hours
 type ConstructRequest_CustomTimeouts struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Create) operation
 	// to complete.
-	Create string `protobuf:"bytes,1,opt,name=create,proto3" json:"create,omitempty"`
+	Create	string	`protobuf:"bytes,1,opt,name=create,proto3" json:"create,omitempty"`
 	// How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Update) operation
 	// to complete.
-	Update string `protobuf:"bytes,2,opt,name=update,proto3" json:"update,omitempty"`
+	Update	string	`protobuf:"bytes,2,opt,name=update,proto3" json:"update,omitempty"`
 	// How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Delete) operation
 	// to complete.
-	Delete        string `protobuf:"bytes,3,opt,name=delete,proto3" json:"delete,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Delete		string	`protobuf:"bytes,3,opt,name=delete,proto3" json:"delete,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *ConstructRequest_CustomTimeouts) Reset() {
@@ -3683,7 +3683,7 @@ func (x *ConstructRequest_CustomTimeouts) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ConstructRequest_CustomTimeouts) ProtoMessage() {}
+func (*ConstructRequest_CustomTimeouts) ProtoMessage()	{}
 
 func (x *ConstructRequest_CustomTimeouts) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[46]
@@ -3724,15 +3724,15 @@ func (x *ConstructRequest_CustomTimeouts) GetDelete() string {
 }
 
 type ConstructRequest_ResourceHooksBinding struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BeforeCreate  []string               `protobuf:"bytes,1,rep,name=before_create,json=beforeCreate,proto3" json:"before_create,omitempty"`
-	AfterCreate   []string               `protobuf:"bytes,2,rep,name=after_create,json=afterCreate,proto3" json:"after_create,omitempty"`
-	BeforeUpdate  []string               `protobuf:"bytes,3,rep,name=before_update,json=beforeUpdate,proto3" json:"before_update,omitempty"`
-	AfterUpdate   []string               `protobuf:"bytes,4,rep,name=after_update,json=afterUpdate,proto3" json:"after_update,omitempty"`
-	BeforeDelete  []string               `protobuf:"bytes,5,rep,name=before_delete,json=beforeDelete,proto3" json:"before_delete,omitempty"`
-	AfterDelete   []string               `protobuf:"bytes,6,rep,name=after_delete,json=afterDelete,proto3" json:"after_delete,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	BeforeCreate	[]string		`protobuf:"bytes,1,rep,name=before_create,json=beforeCreate,proto3" json:"before_create,omitempty"`
+	AfterCreate	[]string		`protobuf:"bytes,2,rep,name=after_create,json=afterCreate,proto3" json:"after_create,omitempty"`
+	BeforeUpdate	[]string		`protobuf:"bytes,3,rep,name=before_update,json=beforeUpdate,proto3" json:"before_update,omitempty"`
+	AfterUpdate	[]string		`protobuf:"bytes,4,rep,name=after_update,json=afterUpdate,proto3" json:"after_update,omitempty"`
+	BeforeDelete	[]string		`protobuf:"bytes,5,rep,name=before_delete,json=beforeDelete,proto3" json:"before_delete,omitempty"`
+	AfterDelete	[]string		`protobuf:"bytes,6,rep,name=after_delete,json=afterDelete,proto3" json:"after_delete,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *ConstructRequest_ResourceHooksBinding) Reset() {
@@ -3746,7 +3746,7 @@ func (x *ConstructRequest_ResourceHooksBinding) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ConstructRequest_ResourceHooksBinding) ProtoMessage() {}
+func (*ConstructRequest_ResourceHooksBinding) ProtoMessage()	{}
 
 func (x *ConstructRequest_ResourceHooksBinding) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[50]
@@ -3809,11 +3809,11 @@ func (x *ConstructRequest_ResourceHooksBinding) GetAfterDelete() []string {
 
 // A `PropertyDependencies` list is a set of URNs that a particular property may depend on.
 type ConstructResponse_PropertyDependencies struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// A list of URNs that this property depends on.
-	Urns          []string `protobuf:"bytes,1,rep,name=urns,proto3" json:"urns,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Urns		[]string	`protobuf:"bytes,1,rep,name=urns,proto3" json:"urns,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *ConstructResponse_PropertyDependencies) Reset() {
@@ -3827,7 +3827,7 @@ func (x *ConstructResponse_PropertyDependencies) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ConstructResponse_PropertyDependencies) ProtoMessage() {}
+func (*ConstructResponse_PropertyDependencies) ProtoMessage()	{}
 
 func (x *ConstructResponse_PropertyDependencies) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[51]
@@ -4213,8 +4213,8 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\vGetMappings\x12\x1d.pulumirpc.GetMappingsRequest\x1a\x1e.pulumirpc.GetMappingsResponse\"\x00B4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3"
 
 var (
-	file_pulumi_provider_proto_rawDescOnce sync.Once
-	file_pulumi_provider_proto_rawDescData []byte
+	file_pulumi_provider_proto_rawDescOnce	sync.Once
+	file_pulumi_provider_proto_rawDescData	[]byte
 )
 
 func file_pulumi_provider_proto_rawDescGZIP() []byte {
@@ -4227,174 +4227,174 @@ func file_pulumi_provider_proto_rawDescGZIP() []byte {
 var file_pulumi_provider_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
 var file_pulumi_provider_proto_msgTypes = make([]protoimpl.MessageInfo, 53)
 var file_pulumi_provider_proto_goTypes = []any{
-	(CheckRequest_AutonamingOptions_Mode)(0),    // 0: pulumirpc.CheckRequest.AutonamingOptions.Mode
-	(PropertyDiff_Kind)(0),                      // 1: pulumirpc.PropertyDiff.Kind
-	(DiffResponse_DiffChanges)(0),               // 2: pulumirpc.DiffResponse.DiffChanges
-	(*ProviderHandshakeRequest)(nil),            // 3: pulumirpc.ProviderHandshakeRequest
-	(*ProviderHandshakeResponse)(nil),           // 4: pulumirpc.ProviderHandshakeResponse
-	(*ParameterizeRequest)(nil),                 // 5: pulumirpc.ParameterizeRequest
-	(*ParameterizeResponse)(nil),                // 6: pulumirpc.ParameterizeResponse
-	(*GetSchemaRequest)(nil),                    // 7: pulumirpc.GetSchemaRequest
-	(*GetSchemaResponse)(nil),                   // 8: pulumirpc.GetSchemaResponse
-	(*ConfigureRequest)(nil),                    // 9: pulumirpc.ConfigureRequest
-	(*ConfigureResponse)(nil),                   // 10: pulumirpc.ConfigureResponse
-	(*ConfigureErrorMissingKeys)(nil),           // 11: pulumirpc.ConfigureErrorMissingKeys
-	(*InvokeRequest)(nil),                       // 12: pulumirpc.InvokeRequest
-	(*InvokeResponse)(nil),                      // 13: pulumirpc.InvokeResponse
-	(*CallRequest)(nil),                         // 14: pulumirpc.CallRequest
-	(*CallResponse)(nil),                        // 15: pulumirpc.CallResponse
-	(*CheckRequest)(nil),                        // 16: pulumirpc.CheckRequest
-	(*CheckResponse)(nil),                       // 17: pulumirpc.CheckResponse
-	(*CheckFailure)(nil),                        // 18: pulumirpc.CheckFailure
-	(*DiffRequest)(nil),                         // 19: pulumirpc.DiffRequest
-	(*PropertyDiff)(nil),                        // 20: pulumirpc.PropertyDiff
-	(*DiffResponse)(nil),                        // 21: pulumirpc.DiffResponse
-	(*CreateRequest)(nil),                       // 22: pulumirpc.CreateRequest
-	(*CreateResponse)(nil),                      // 23: pulumirpc.CreateResponse
-	(*ReadRequest)(nil),                         // 24: pulumirpc.ReadRequest
-	(*ReadResponse)(nil),                        // 25: pulumirpc.ReadResponse
-	(*UpdateRequest)(nil),                       // 26: pulumirpc.UpdateRequest
-	(*UpdateResponse)(nil),                      // 27: pulumirpc.UpdateResponse
-	(*DeleteRequest)(nil),                       // 28: pulumirpc.DeleteRequest
-	(*ConstructRequest)(nil),                    // 29: pulumirpc.ConstructRequest
-	(*ConstructResponse)(nil),                   // 30: pulumirpc.ConstructResponse
-	(*ErrorResourceInitFailed)(nil),             // 31: pulumirpc.ErrorResourceInitFailed
-	(*GetMappingRequest)(nil),                   // 32: pulumirpc.GetMappingRequest
-	(*GetMappingResponse)(nil),                  // 33: pulumirpc.GetMappingResponse
-	(*GetMappingsRequest)(nil),                  // 34: pulumirpc.GetMappingsRequest
-	(*GetMappingsResponse)(nil),                 // 35: pulumirpc.GetMappingsResponse
-	(*View)(nil),                                // 36: pulumirpc.View
-	(*ParameterizeRequest_ParametersArgs)(nil),  // 37: pulumirpc.ParameterizeRequest.ParametersArgs
-	(*ParameterizeRequest_ParametersValue)(nil), // 38: pulumirpc.ParameterizeRequest.ParametersValue
-	nil, // 39: pulumirpc.ConfigureRequest.VariablesEntry
-	(*ConfigureErrorMissingKeys_MissingKey)(nil), // 40: pulumirpc.ConfigureErrorMissingKeys.MissingKey
-	(*CallRequest_ArgumentDependencies)(nil),     // 41: pulumirpc.CallRequest.ArgumentDependencies
-	nil,                                          // 42: pulumirpc.CallRequest.ArgDependenciesEntry
-	nil,                                          // 43: pulumirpc.CallRequest.ConfigEntry
-	(*CallResponse_ReturnDependencies)(nil),      // 44: pulumirpc.CallResponse.ReturnDependencies
-	nil,                                          // 45: pulumirpc.CallResponse.ReturnDependenciesEntry
-	(*CheckRequest_AutonamingOptions)(nil),       // 46: pulumirpc.CheckRequest.AutonamingOptions
-	nil,                                          // 47: pulumirpc.DiffResponse.DetailedDiffEntry
-	(*ConstructRequest_PropertyDependencies)(nil), // 48: pulumirpc.ConstructRequest.PropertyDependencies
-	(*ConstructRequest_CustomTimeouts)(nil),       // 49: pulumirpc.ConstructRequest.CustomTimeouts
-	nil,                                           // 50: pulumirpc.ConstructRequest.ConfigEntry
-	nil,                                           // 51: pulumirpc.ConstructRequest.InputDependenciesEntry
-	nil,                                           // 52: pulumirpc.ConstructRequest.ProvidersEntry
-	(*ConstructRequest_ResourceHooksBinding)(nil),  // 53: pulumirpc.ConstructRequest.ResourceHooksBinding
-	(*ConstructResponse_PropertyDependencies)(nil), // 54: pulumirpc.ConstructResponse.PropertyDependencies
-	nil,                     // 55: pulumirpc.ConstructResponse.StateDependenciesEntry
-	(*structpb.Struct)(nil), // 56: google.protobuf.Struct
-	(*emptypb.Empty)(nil),   // 57: google.protobuf.Empty
-	(*PluginAttach)(nil),    // 58: pulumirpc.PluginAttach
-	(*PluginInfo)(nil),      // 59: pulumirpc.PluginInfo
+	(CheckRequest_AutonamingOptions_Mode)(0),	// 0: pulumirpc.CheckRequest.AutonamingOptions.Mode
+	(PropertyDiff_Kind)(0),				// 1: pulumirpc.PropertyDiff.Kind
+	(DiffResponse_DiffChanges)(0),			// 2: pulumirpc.DiffResponse.DiffChanges
+	(*ProviderHandshakeRequest)(nil),		// 3: pulumirpc.ProviderHandshakeRequest
+	(*ProviderHandshakeResponse)(nil),		// 4: pulumirpc.ProviderHandshakeResponse
+	(*ParameterizeRequest)(nil),			// 5: pulumirpc.ParameterizeRequest
+	(*ParameterizeResponse)(nil),			// 6: pulumirpc.ParameterizeResponse
+	(*GetSchemaRequest)(nil),			// 7: pulumirpc.GetSchemaRequest
+	(*GetSchemaResponse)(nil),			// 8: pulumirpc.GetSchemaResponse
+	(*ConfigureRequest)(nil),			// 9: pulumirpc.ConfigureRequest
+	(*ConfigureResponse)(nil),			// 10: pulumirpc.ConfigureResponse
+	(*ConfigureErrorMissingKeys)(nil),		// 11: pulumirpc.ConfigureErrorMissingKeys
+	(*InvokeRequest)(nil),				// 12: pulumirpc.InvokeRequest
+	(*InvokeResponse)(nil),				// 13: pulumirpc.InvokeResponse
+	(*CallRequest)(nil),				// 14: pulumirpc.CallRequest
+	(*CallResponse)(nil),				// 15: pulumirpc.CallResponse
+	(*CheckRequest)(nil),				// 16: pulumirpc.CheckRequest
+	(*CheckResponse)(nil),				// 17: pulumirpc.CheckResponse
+	(*CheckFailure)(nil),				// 18: pulumirpc.CheckFailure
+	(*DiffRequest)(nil),				// 19: pulumirpc.DiffRequest
+	(*PropertyDiff)(nil),				// 20: pulumirpc.PropertyDiff
+	(*DiffResponse)(nil),				// 21: pulumirpc.DiffResponse
+	(*CreateRequest)(nil),				// 22: pulumirpc.CreateRequest
+	(*CreateResponse)(nil),				// 23: pulumirpc.CreateResponse
+	(*ReadRequest)(nil),				// 24: pulumirpc.ReadRequest
+	(*ReadResponse)(nil),				// 25: pulumirpc.ReadResponse
+	(*UpdateRequest)(nil),				// 26: pulumirpc.UpdateRequest
+	(*UpdateResponse)(nil),				// 27: pulumirpc.UpdateResponse
+	(*DeleteRequest)(nil),				// 28: pulumirpc.DeleteRequest
+	(*ConstructRequest)(nil),			// 29: pulumirpc.ConstructRequest
+	(*ConstructResponse)(nil),			// 30: pulumirpc.ConstructResponse
+	(*ErrorResourceInitFailed)(nil),		// 31: pulumirpc.ErrorResourceInitFailed
+	(*GetMappingRequest)(nil),			// 32: pulumirpc.GetMappingRequest
+	(*GetMappingResponse)(nil),			// 33: pulumirpc.GetMappingResponse
+	(*GetMappingsRequest)(nil),			// 34: pulumirpc.GetMappingsRequest
+	(*GetMappingsResponse)(nil),			// 35: pulumirpc.GetMappingsResponse
+	(*View)(nil),					// 36: pulumirpc.View
+	(*ParameterizeRequest_ParametersArgs)(nil),	// 37: pulumirpc.ParameterizeRequest.ParametersArgs
+	(*ParameterizeRequest_ParametersValue)(nil),	// 38: pulumirpc.ParameterizeRequest.ParametersValue
+	nil,	// 39: pulumirpc.ConfigureRequest.VariablesEntry
+	(*ConfigureErrorMissingKeys_MissingKey)(nil),	// 40: pulumirpc.ConfigureErrorMissingKeys.MissingKey
+	(*CallRequest_ArgumentDependencies)(nil),	// 41: pulumirpc.CallRequest.ArgumentDependencies
+	nil,						// 42: pulumirpc.CallRequest.ArgDependenciesEntry
+	nil,						// 43: pulumirpc.CallRequest.ConfigEntry
+	(*CallResponse_ReturnDependencies)(nil),	// 44: pulumirpc.CallResponse.ReturnDependencies
+	nil,						// 45: pulumirpc.CallResponse.ReturnDependenciesEntry
+	(*CheckRequest_AutonamingOptions)(nil),		// 46: pulumirpc.CheckRequest.AutonamingOptions
+	nil,						// 47: pulumirpc.DiffResponse.DetailedDiffEntry
+	(*ConstructRequest_PropertyDependencies)(nil),	// 48: pulumirpc.ConstructRequest.PropertyDependencies
+	(*ConstructRequest_CustomTimeouts)(nil),	// 49: pulumirpc.ConstructRequest.CustomTimeouts
+	nil,						// 50: pulumirpc.ConstructRequest.ConfigEntry
+	nil,						// 51: pulumirpc.ConstructRequest.InputDependenciesEntry
+	nil,						// 52: pulumirpc.ConstructRequest.ProvidersEntry
+	(*ConstructRequest_ResourceHooksBinding)(nil),	// 53: pulumirpc.ConstructRequest.ResourceHooksBinding
+	(*ConstructResponse_PropertyDependencies)(nil),	// 54: pulumirpc.ConstructResponse.PropertyDependencies
+	nil,				// 55: pulumirpc.ConstructResponse.StateDependenciesEntry
+	(*structpb.Struct)(nil),	// 56: google.protobuf.Struct
+	(*emptypb.Empty)(nil),		// 57: google.protobuf.Empty
+	(*PluginAttach)(nil),		// 58: pulumirpc.PluginAttach
+	(*PluginInfo)(nil),		// 59: pulumirpc.PluginInfo
 }
 var file_pulumi_provider_proto_depIdxs = []int32{
-	37, // 0: pulumirpc.ParameterizeRequest.args:type_name -> pulumirpc.ParameterizeRequest.ParametersArgs
-	38, // 1: pulumirpc.ParameterizeRequest.value:type_name -> pulumirpc.ParameterizeRequest.ParametersValue
-	39, // 2: pulumirpc.ConfigureRequest.variables:type_name -> pulumirpc.ConfigureRequest.VariablesEntry
-	56, // 3: pulumirpc.ConfigureRequest.args:type_name -> google.protobuf.Struct
-	40, // 4: pulumirpc.ConfigureErrorMissingKeys.missingKeys:type_name -> pulumirpc.ConfigureErrorMissingKeys.MissingKey
-	56, // 5: pulumirpc.InvokeRequest.args:type_name -> google.protobuf.Struct
-	56, // 6: pulumirpc.InvokeResponse.return:type_name -> google.protobuf.Struct
-	18, // 7: pulumirpc.InvokeResponse.failures:type_name -> pulumirpc.CheckFailure
-	56, // 8: pulumirpc.CallRequest.args:type_name -> google.protobuf.Struct
-	42, // 9: pulumirpc.CallRequest.argDependencies:type_name -> pulumirpc.CallRequest.ArgDependenciesEntry
-	43, // 10: pulumirpc.CallRequest.config:type_name -> pulumirpc.CallRequest.ConfigEntry
-	56, // 11: pulumirpc.CallResponse.return:type_name -> google.protobuf.Struct
-	18, // 12: pulumirpc.CallResponse.failures:type_name -> pulumirpc.CheckFailure
-	45, // 13: pulumirpc.CallResponse.returnDependencies:type_name -> pulumirpc.CallResponse.ReturnDependenciesEntry
-	56, // 14: pulumirpc.CheckRequest.olds:type_name -> google.protobuf.Struct
-	56, // 15: pulumirpc.CheckRequest.news:type_name -> google.protobuf.Struct
-	46, // 16: pulumirpc.CheckRequest.autonaming:type_name -> pulumirpc.CheckRequest.AutonamingOptions
-	56, // 17: pulumirpc.CheckResponse.inputs:type_name -> google.protobuf.Struct
-	18, // 18: pulumirpc.CheckResponse.failures:type_name -> pulumirpc.CheckFailure
-	56, // 19: pulumirpc.DiffRequest.olds:type_name -> google.protobuf.Struct
-	56, // 20: pulumirpc.DiffRequest.news:type_name -> google.protobuf.Struct
-	56, // 21: pulumirpc.DiffRequest.old_inputs:type_name -> google.protobuf.Struct
-	1,  // 22: pulumirpc.PropertyDiff.kind:type_name -> pulumirpc.PropertyDiff.Kind
-	2,  // 23: pulumirpc.DiffResponse.changes:type_name -> pulumirpc.DiffResponse.DiffChanges
-	47, // 24: pulumirpc.DiffResponse.detailedDiff:type_name -> pulumirpc.DiffResponse.DetailedDiffEntry
-	56, // 25: pulumirpc.CreateRequest.properties:type_name -> google.protobuf.Struct
-	56, // 26: pulumirpc.CreateResponse.properties:type_name -> google.protobuf.Struct
-	56, // 27: pulumirpc.ReadRequest.properties:type_name -> google.protobuf.Struct
-	56, // 28: pulumirpc.ReadRequest.inputs:type_name -> google.protobuf.Struct
-	36, // 29: pulumirpc.ReadRequest.old_views:type_name -> pulumirpc.View
-	56, // 30: pulumirpc.ReadResponse.properties:type_name -> google.protobuf.Struct
-	56, // 31: pulumirpc.ReadResponse.inputs:type_name -> google.protobuf.Struct
-	56, // 32: pulumirpc.UpdateRequest.olds:type_name -> google.protobuf.Struct
-	56, // 33: pulumirpc.UpdateRequest.news:type_name -> google.protobuf.Struct
-	56, // 34: pulumirpc.UpdateRequest.old_inputs:type_name -> google.protobuf.Struct
-	36, // 35: pulumirpc.UpdateRequest.old_views:type_name -> pulumirpc.View
-	56, // 36: pulumirpc.UpdateResponse.properties:type_name -> google.protobuf.Struct
-	56, // 37: pulumirpc.DeleteRequest.properties:type_name -> google.protobuf.Struct
-	56, // 38: pulumirpc.DeleteRequest.old_inputs:type_name -> google.protobuf.Struct
-	36, // 39: pulumirpc.DeleteRequest.old_views:type_name -> pulumirpc.View
-	50, // 40: pulumirpc.ConstructRequest.config:type_name -> pulumirpc.ConstructRequest.ConfigEntry
-	56, // 41: pulumirpc.ConstructRequest.inputs:type_name -> google.protobuf.Struct
-	51, // 42: pulumirpc.ConstructRequest.inputDependencies:type_name -> pulumirpc.ConstructRequest.InputDependenciesEntry
-	52, // 43: pulumirpc.ConstructRequest.providers:type_name -> pulumirpc.ConstructRequest.ProvidersEntry
-	49, // 44: pulumirpc.ConstructRequest.customTimeouts:type_name -> pulumirpc.ConstructRequest.CustomTimeouts
-	53, // 45: pulumirpc.ConstructRequest.resource_hooks:type_name -> pulumirpc.ConstructRequest.ResourceHooksBinding
-	56, // 46: pulumirpc.ConstructResponse.state:type_name -> google.protobuf.Struct
-	55, // 47: pulumirpc.ConstructResponse.stateDependencies:type_name -> pulumirpc.ConstructResponse.StateDependenciesEntry
-	56, // 48: pulumirpc.ErrorResourceInitFailed.properties:type_name -> google.protobuf.Struct
-	56, // 49: pulumirpc.ErrorResourceInitFailed.inputs:type_name -> google.protobuf.Struct
-	56, // 50: pulumirpc.View.inputs:type_name -> google.protobuf.Struct
-	56, // 51: pulumirpc.View.outputs:type_name -> google.protobuf.Struct
-	41, // 52: pulumirpc.CallRequest.ArgDependenciesEntry.value:type_name -> pulumirpc.CallRequest.ArgumentDependencies
-	44, // 53: pulumirpc.CallResponse.ReturnDependenciesEntry.value:type_name -> pulumirpc.CallResponse.ReturnDependencies
-	0,  // 54: pulumirpc.CheckRequest.AutonamingOptions.mode:type_name -> pulumirpc.CheckRequest.AutonamingOptions.Mode
-	20, // 55: pulumirpc.DiffResponse.DetailedDiffEntry.value:type_name -> pulumirpc.PropertyDiff
-	48, // 56: pulumirpc.ConstructRequest.InputDependenciesEntry.value:type_name -> pulumirpc.ConstructRequest.PropertyDependencies
-	54, // 57: pulumirpc.ConstructResponse.StateDependenciesEntry.value:type_name -> pulumirpc.ConstructResponse.PropertyDependencies
-	3,  // 58: pulumirpc.ResourceProvider.Handshake:input_type -> pulumirpc.ProviderHandshakeRequest
-	5,  // 59: pulumirpc.ResourceProvider.Parameterize:input_type -> pulumirpc.ParameterizeRequest
-	7,  // 60: pulumirpc.ResourceProvider.GetSchema:input_type -> pulumirpc.GetSchemaRequest
-	16, // 61: pulumirpc.ResourceProvider.CheckConfig:input_type -> pulumirpc.CheckRequest
-	19, // 62: pulumirpc.ResourceProvider.DiffConfig:input_type -> pulumirpc.DiffRequest
-	9,  // 63: pulumirpc.ResourceProvider.Configure:input_type -> pulumirpc.ConfigureRequest
-	12, // 64: pulumirpc.ResourceProvider.Invoke:input_type -> pulumirpc.InvokeRequest
-	14, // 65: pulumirpc.ResourceProvider.Call:input_type -> pulumirpc.CallRequest
-	16, // 66: pulumirpc.ResourceProvider.Check:input_type -> pulumirpc.CheckRequest
-	19, // 67: pulumirpc.ResourceProvider.Diff:input_type -> pulumirpc.DiffRequest
-	22, // 68: pulumirpc.ResourceProvider.Create:input_type -> pulumirpc.CreateRequest
-	24, // 69: pulumirpc.ResourceProvider.Read:input_type -> pulumirpc.ReadRequest
-	26, // 70: pulumirpc.ResourceProvider.Update:input_type -> pulumirpc.UpdateRequest
-	28, // 71: pulumirpc.ResourceProvider.Delete:input_type -> pulumirpc.DeleteRequest
-	29, // 72: pulumirpc.ResourceProvider.Construct:input_type -> pulumirpc.ConstructRequest
-	57, // 73: pulumirpc.ResourceProvider.Cancel:input_type -> google.protobuf.Empty
-	57, // 74: pulumirpc.ResourceProvider.GetPluginInfo:input_type -> google.protobuf.Empty
-	58, // 75: pulumirpc.ResourceProvider.Attach:input_type -> pulumirpc.PluginAttach
-	32, // 76: pulumirpc.ResourceProvider.GetMapping:input_type -> pulumirpc.GetMappingRequest
-	34, // 77: pulumirpc.ResourceProvider.GetMappings:input_type -> pulumirpc.GetMappingsRequest
-	4,  // 78: pulumirpc.ResourceProvider.Handshake:output_type -> pulumirpc.ProviderHandshakeResponse
-	6,  // 79: pulumirpc.ResourceProvider.Parameterize:output_type -> pulumirpc.ParameterizeResponse
-	8,  // 80: pulumirpc.ResourceProvider.GetSchema:output_type -> pulumirpc.GetSchemaResponse
-	17, // 81: pulumirpc.ResourceProvider.CheckConfig:output_type -> pulumirpc.CheckResponse
-	21, // 82: pulumirpc.ResourceProvider.DiffConfig:output_type -> pulumirpc.DiffResponse
-	10, // 83: pulumirpc.ResourceProvider.Configure:output_type -> pulumirpc.ConfigureResponse
-	13, // 84: pulumirpc.ResourceProvider.Invoke:output_type -> pulumirpc.InvokeResponse
-	15, // 85: pulumirpc.ResourceProvider.Call:output_type -> pulumirpc.CallResponse
-	17, // 86: pulumirpc.ResourceProvider.Check:output_type -> pulumirpc.CheckResponse
-	21, // 87: pulumirpc.ResourceProvider.Diff:output_type -> pulumirpc.DiffResponse
-	23, // 88: pulumirpc.ResourceProvider.Create:output_type -> pulumirpc.CreateResponse
-	25, // 89: pulumirpc.ResourceProvider.Read:output_type -> pulumirpc.ReadResponse
-	27, // 90: pulumirpc.ResourceProvider.Update:output_type -> pulumirpc.UpdateResponse
-	57, // 91: pulumirpc.ResourceProvider.Delete:output_type -> google.protobuf.Empty
-	30, // 92: pulumirpc.ResourceProvider.Construct:output_type -> pulumirpc.ConstructResponse
-	57, // 93: pulumirpc.ResourceProvider.Cancel:output_type -> google.protobuf.Empty
-	59, // 94: pulumirpc.ResourceProvider.GetPluginInfo:output_type -> pulumirpc.PluginInfo
-	57, // 95: pulumirpc.ResourceProvider.Attach:output_type -> google.protobuf.Empty
-	33, // 96: pulumirpc.ResourceProvider.GetMapping:output_type -> pulumirpc.GetMappingResponse
-	35, // 97: pulumirpc.ResourceProvider.GetMappings:output_type -> pulumirpc.GetMappingsResponse
-	78, // [78:98] is the sub-list for method output_type
-	58, // [58:78] is the sub-list for method input_type
-	58, // [58:58] is the sub-list for extension type_name
-	58, // [58:58] is the sub-list for extension extendee
-	0,  // [0:58] is the sub-list for field type_name
+	37,	// 0: pulumirpc.ParameterizeRequest.args:type_name -> pulumirpc.ParameterizeRequest.ParametersArgs
+	38,	// 1: pulumirpc.ParameterizeRequest.value:type_name -> pulumirpc.ParameterizeRequest.ParametersValue
+	39,	// 2: pulumirpc.ConfigureRequest.variables:type_name -> pulumirpc.ConfigureRequest.VariablesEntry
+	56,	// 3: pulumirpc.ConfigureRequest.args:type_name -> google.protobuf.Struct
+	40,	// 4: pulumirpc.ConfigureErrorMissingKeys.missingKeys:type_name -> pulumirpc.ConfigureErrorMissingKeys.MissingKey
+	56,	// 5: pulumirpc.InvokeRequest.args:type_name -> google.protobuf.Struct
+	56,	// 6: pulumirpc.InvokeResponse.return:type_name -> google.protobuf.Struct
+	18,	// 7: pulumirpc.InvokeResponse.failures:type_name -> pulumirpc.CheckFailure
+	56,	// 8: pulumirpc.CallRequest.args:type_name -> google.protobuf.Struct
+	42,	// 9: pulumirpc.CallRequest.argDependencies:type_name -> pulumirpc.CallRequest.ArgDependenciesEntry
+	43,	// 10: pulumirpc.CallRequest.config:type_name -> pulumirpc.CallRequest.ConfigEntry
+	56,	// 11: pulumirpc.CallResponse.return:type_name -> google.protobuf.Struct
+	18,	// 12: pulumirpc.CallResponse.failures:type_name -> pulumirpc.CheckFailure
+	45,	// 13: pulumirpc.CallResponse.returnDependencies:type_name -> pulumirpc.CallResponse.ReturnDependenciesEntry
+	56,	// 14: pulumirpc.CheckRequest.olds:type_name -> google.protobuf.Struct
+	56,	// 15: pulumirpc.CheckRequest.news:type_name -> google.protobuf.Struct
+	46,	// 16: pulumirpc.CheckRequest.autonaming:type_name -> pulumirpc.CheckRequest.AutonamingOptions
+	56,	// 17: pulumirpc.CheckResponse.inputs:type_name -> google.protobuf.Struct
+	18,	// 18: pulumirpc.CheckResponse.failures:type_name -> pulumirpc.CheckFailure
+	56,	// 19: pulumirpc.DiffRequest.olds:type_name -> google.protobuf.Struct
+	56,	// 20: pulumirpc.DiffRequest.news:type_name -> google.protobuf.Struct
+	56,	// 21: pulumirpc.DiffRequest.old_inputs:type_name -> google.protobuf.Struct
+	1,	// 22: pulumirpc.PropertyDiff.kind:type_name -> pulumirpc.PropertyDiff.Kind
+	2,	// 23: pulumirpc.DiffResponse.changes:type_name -> pulumirpc.DiffResponse.DiffChanges
+	47,	// 24: pulumirpc.DiffResponse.detailedDiff:type_name -> pulumirpc.DiffResponse.DetailedDiffEntry
+	56,	// 25: pulumirpc.CreateRequest.properties:type_name -> google.protobuf.Struct
+	56,	// 26: pulumirpc.CreateResponse.properties:type_name -> google.protobuf.Struct
+	56,	// 27: pulumirpc.ReadRequest.properties:type_name -> google.protobuf.Struct
+	56,	// 28: pulumirpc.ReadRequest.inputs:type_name -> google.protobuf.Struct
+	36,	// 29: pulumirpc.ReadRequest.old_views:type_name -> pulumirpc.View
+	56,	// 30: pulumirpc.ReadResponse.properties:type_name -> google.protobuf.Struct
+	56,	// 31: pulumirpc.ReadResponse.inputs:type_name -> google.protobuf.Struct
+	56,	// 32: pulumirpc.UpdateRequest.olds:type_name -> google.protobuf.Struct
+	56,	// 33: pulumirpc.UpdateRequest.news:type_name -> google.protobuf.Struct
+	56,	// 34: pulumirpc.UpdateRequest.old_inputs:type_name -> google.protobuf.Struct
+	36,	// 35: pulumirpc.UpdateRequest.old_views:type_name -> pulumirpc.View
+	56,	// 36: pulumirpc.UpdateResponse.properties:type_name -> google.protobuf.Struct
+	56,	// 37: pulumirpc.DeleteRequest.properties:type_name -> google.protobuf.Struct
+	56,	// 38: pulumirpc.DeleteRequest.old_inputs:type_name -> google.protobuf.Struct
+	36,	// 39: pulumirpc.DeleteRequest.old_views:type_name -> pulumirpc.View
+	50,	// 40: pulumirpc.ConstructRequest.config:type_name -> pulumirpc.ConstructRequest.ConfigEntry
+	56,	// 41: pulumirpc.ConstructRequest.inputs:type_name -> google.protobuf.Struct
+	51,	// 42: pulumirpc.ConstructRequest.inputDependencies:type_name -> pulumirpc.ConstructRequest.InputDependenciesEntry
+	52,	// 43: pulumirpc.ConstructRequest.providers:type_name -> pulumirpc.ConstructRequest.ProvidersEntry
+	49,	// 44: pulumirpc.ConstructRequest.customTimeouts:type_name -> pulumirpc.ConstructRequest.CustomTimeouts
+	53,	// 45: pulumirpc.ConstructRequest.resource_hooks:type_name -> pulumirpc.ConstructRequest.ResourceHooksBinding
+	56,	// 46: pulumirpc.ConstructResponse.state:type_name -> google.protobuf.Struct
+	55,	// 47: pulumirpc.ConstructResponse.stateDependencies:type_name -> pulumirpc.ConstructResponse.StateDependenciesEntry
+	56,	// 48: pulumirpc.ErrorResourceInitFailed.properties:type_name -> google.protobuf.Struct
+	56,	// 49: pulumirpc.ErrorResourceInitFailed.inputs:type_name -> google.protobuf.Struct
+	56,	// 50: pulumirpc.View.inputs:type_name -> google.protobuf.Struct
+	56,	// 51: pulumirpc.View.outputs:type_name -> google.protobuf.Struct
+	41,	// 52: pulumirpc.CallRequest.ArgDependenciesEntry.value:type_name -> pulumirpc.CallRequest.ArgumentDependencies
+	44,	// 53: pulumirpc.CallResponse.ReturnDependenciesEntry.value:type_name -> pulumirpc.CallResponse.ReturnDependencies
+	0,	// 54: pulumirpc.CheckRequest.AutonamingOptions.mode:type_name -> pulumirpc.CheckRequest.AutonamingOptions.Mode
+	20,	// 55: pulumirpc.DiffResponse.DetailedDiffEntry.value:type_name -> pulumirpc.PropertyDiff
+	48,	// 56: pulumirpc.ConstructRequest.InputDependenciesEntry.value:type_name -> pulumirpc.ConstructRequest.PropertyDependencies
+	54,	// 57: pulumirpc.ConstructResponse.StateDependenciesEntry.value:type_name -> pulumirpc.ConstructResponse.PropertyDependencies
+	3,	// 58: pulumirpc.ResourceProvider.Handshake:input_type -> pulumirpc.ProviderHandshakeRequest
+	5,	// 59: pulumirpc.ResourceProvider.Parameterize:input_type -> pulumirpc.ParameterizeRequest
+	7,	// 60: pulumirpc.ResourceProvider.GetSchema:input_type -> pulumirpc.GetSchemaRequest
+	16,	// 61: pulumirpc.ResourceProvider.CheckConfig:input_type -> pulumirpc.CheckRequest
+	19,	// 62: pulumirpc.ResourceProvider.DiffConfig:input_type -> pulumirpc.DiffRequest
+	9,	// 63: pulumirpc.ResourceProvider.Configure:input_type -> pulumirpc.ConfigureRequest
+	12,	// 64: pulumirpc.ResourceProvider.Invoke:input_type -> pulumirpc.InvokeRequest
+	14,	// 65: pulumirpc.ResourceProvider.Call:input_type -> pulumirpc.CallRequest
+	16,	// 66: pulumirpc.ResourceProvider.Check:input_type -> pulumirpc.CheckRequest
+	19,	// 67: pulumirpc.ResourceProvider.Diff:input_type -> pulumirpc.DiffRequest
+	22,	// 68: pulumirpc.ResourceProvider.Create:input_type -> pulumirpc.CreateRequest
+	24,	// 69: pulumirpc.ResourceProvider.Read:input_type -> pulumirpc.ReadRequest
+	26,	// 70: pulumirpc.ResourceProvider.Update:input_type -> pulumirpc.UpdateRequest
+	28,	// 71: pulumirpc.ResourceProvider.Delete:input_type -> pulumirpc.DeleteRequest
+	29,	// 72: pulumirpc.ResourceProvider.Construct:input_type -> pulumirpc.ConstructRequest
+	57,	// 73: pulumirpc.ResourceProvider.Cancel:input_type -> google.protobuf.Empty
+	57,	// 74: pulumirpc.ResourceProvider.GetPluginInfo:input_type -> google.protobuf.Empty
+	58,	// 75: pulumirpc.ResourceProvider.Attach:input_type -> pulumirpc.PluginAttach
+	32,	// 76: pulumirpc.ResourceProvider.GetMapping:input_type -> pulumirpc.GetMappingRequest
+	34,	// 77: pulumirpc.ResourceProvider.GetMappings:input_type -> pulumirpc.GetMappingsRequest
+	4,	// 78: pulumirpc.ResourceProvider.Handshake:output_type -> pulumirpc.ProviderHandshakeResponse
+	6,	// 79: pulumirpc.ResourceProvider.Parameterize:output_type -> pulumirpc.ParameterizeResponse
+	8,	// 80: pulumirpc.ResourceProvider.GetSchema:output_type -> pulumirpc.GetSchemaResponse
+	17,	// 81: pulumirpc.ResourceProvider.CheckConfig:output_type -> pulumirpc.CheckResponse
+	21,	// 82: pulumirpc.ResourceProvider.DiffConfig:output_type -> pulumirpc.DiffResponse
+	10,	// 83: pulumirpc.ResourceProvider.Configure:output_type -> pulumirpc.ConfigureResponse
+	13,	// 84: pulumirpc.ResourceProvider.Invoke:output_type -> pulumirpc.InvokeResponse
+	15,	// 85: pulumirpc.ResourceProvider.Call:output_type -> pulumirpc.CallResponse
+	17,	// 86: pulumirpc.ResourceProvider.Check:output_type -> pulumirpc.CheckResponse
+	21,	// 87: pulumirpc.ResourceProvider.Diff:output_type -> pulumirpc.DiffResponse
+	23,	// 88: pulumirpc.ResourceProvider.Create:output_type -> pulumirpc.CreateResponse
+	25,	// 89: pulumirpc.ResourceProvider.Read:output_type -> pulumirpc.ReadResponse
+	27,	// 90: pulumirpc.ResourceProvider.Update:output_type -> pulumirpc.UpdateResponse
+	57,	// 91: pulumirpc.ResourceProvider.Delete:output_type -> google.protobuf.Empty
+	30,	// 92: pulumirpc.ResourceProvider.Construct:output_type -> pulumirpc.ConstructResponse
+	57,	// 93: pulumirpc.ResourceProvider.Cancel:output_type -> google.protobuf.Empty
+	59,	// 94: pulumirpc.ResourceProvider.GetPluginInfo:output_type -> pulumirpc.PluginInfo
+	57,	// 95: pulumirpc.ResourceProvider.Attach:output_type -> google.protobuf.Empty
+	33,	// 96: pulumirpc.ResourceProvider.GetMapping:output_type -> pulumirpc.GetMappingResponse
+	35,	// 97: pulumirpc.ResourceProvider.GetMappings:output_type -> pulumirpc.GetMappingsResponse
+	78,	// [78:98] is the sub-list for method output_type
+	58,	// [58:78] is the sub-list for method input_type
+	58,	// [58:58] is the sub-list for extension type_name
+	58,	// [58:58] is the sub-list for extension extendee
+	0,	// [0:58] is the sub-list for field type_name
 }
 
-func init() { file_pulumi_provider_proto_init() }
+func init()	{ file_pulumi_provider_proto_init() }
 func file_pulumi_provider_proto_init() {
 	if File_pulumi_provider_proto != nil {
 		return
@@ -4410,17 +4410,17 @@ func file_pulumi_provider_proto_init() {
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
-			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_provider_proto_rawDesc), len(file_pulumi_provider_proto_rawDesc)),
-			NumEnums:      3,
-			NumMessages:   53,
-			NumExtensions: 0,
-			NumServices:   1,
+			GoPackagePath:	reflect.TypeOf(x{}).PkgPath(),
+			RawDescriptor:	unsafe.Slice(unsafe.StringData(file_pulumi_provider_proto_rawDesc), len(file_pulumi_provider_proto_rawDesc)),
+			NumEnums:	3,
+			NumMessages:	53,
+			NumExtensions:	0,
+			NumServices:	1,
 		},
-		GoTypes:           file_pulumi_provider_proto_goTypes,
-		DependencyIndexes: file_pulumi_provider_proto_depIdxs,
-		EnumInfos:         file_pulumi_provider_proto_enumTypes,
-		MessageInfos:      file_pulumi_provider_proto_msgTypes,
+		GoTypes:		file_pulumi_provider_proto_goTypes,
+		DependencyIndexes:	file_pulumi_provider_proto_depIdxs,
+		EnumInfos:		file_pulumi_provider_proto_enumTypes,
+		MessageInfos:		file_pulumi_provider_proto_msgTypes,
 	}.Build()
 	File_pulumi_provider_proto = out.File
 	file_pulumi_provider_proto_goTypes = nil

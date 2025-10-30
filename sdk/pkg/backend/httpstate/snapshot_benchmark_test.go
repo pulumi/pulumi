@@ -35,17 +35,17 @@ import (
 	"github.com/pgavlin/fx/v2"
 	fxm "github.com/pgavlin/fx/v2/maps"
 	fxs "github.com/pgavlin/fx/v2/slices"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
-	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate/client"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/b64"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/cancel"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -85,7 +85,7 @@ func (snapshotBackendClient) GetStackResourceOutputs(
 type snapshotBenchProvider struct {
 	deploytest.Provider
 
-	outputs gsync.Map[resource.URN, resource.PropertyMap]
+	outputs	gsync.Map[resource.URN, resource.PropertyMap]
 }
 
 // Implement Parameterize so that we can return legal results for arbitrary parameterizations.
@@ -105,8 +105,8 @@ func (p *snapshotBenchProvider) Parameterize(
 	}
 
 	return plugin.ParameterizeResponse{
-		Name:    name,
-		Version: semver.MustParse("1.0.0"),
+		Name:		name,
+		Version:	semver.MustParse("1.0.0"),
 	}, nil
 }
 
@@ -124,8 +124,8 @@ func (p *snapshotBenchProvider) Create(ctx context.Context, req plugin.CreateReq
 		return plugin.CreateResponse{}, fmt.Errorf("unknown resource %v", req.URN)
 	}
 	return plugin.CreateResponse{
-		ID:         "id",
-		Properties: outputs,
+		ID:		"id",
+		Properties:	outputs,
 	}, nil
 }
 
@@ -136,8 +136,8 @@ func (p *snapshotBenchProvider) Read(ctx context.Context, req plugin.ReadRequest
 	}
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
-			ID:      "id",
-			Outputs: outputs,
+			ID:		"id",
+			Outputs:	outputs,
 		},
 	}, nil
 }
@@ -200,24 +200,24 @@ func update(
 
 	_, _, err = engine.Update(
 		engine.UpdateInfo{
-			Root: t.TempDir(),
+			Root:	t.TempDir(),
 			Project: &workspace.Project{
-				Name:    tokens.PackageName(project),
-				Runtime: workspace.NewProjectRuntimeInfo("test", nil),
+				Name:		tokens.PackageName(project),
+				Runtime:	workspace.NewProjectRuntimeInfo("test", nil),
 			},
 			Target: &deploy.Target{
-				Name:      stackName,
-				Config:    nil,
-				Decrypter: config.NopDecrypter,
-				Snapshot:  base,
+				Name:		stackName,
+				Config:		nil,
+				Decrypter:	config.NopDecrypter,
+				Snapshot:	base,
 			},
 		},
 		&engine.Context{
-			Cancel:          cancelCtx,
-			Events:          events,
-			SnapshotManager: snapshots,
-			PluginManager:   framework.NopPluginManager{},
-			BackendClient:   snapshotBackendClient{},
+			Cancel:			cancelCtx,
+			Events:			events,
+			SnapshotManager:	snapshots,
+			PluginManager:		framework.NopPluginManager{},
+			BackendClient:		snapshotBackendClient{},
 		},
 		engine.UpdateOptions{Host: host},
 		false,
@@ -254,7 +254,7 @@ func (c dynamicStackCase) getRun(
 	newManager func(testing.TB, *deploy.Snapshot) engine.SnapshotManager,
 ) func(t testing.TB) {
 	return func(t testing.TB) {
-		r := rand.New(rand.NewSource(int64(c.seed))) //nolint:gosec
+		r := rand.New(rand.NewSource(int64(c.seed)))	//nolint:gosec
 		testOrBenchmarkSnapshotManager(
 			t,
 			"test",
@@ -265,11 +265,11 @@ func (c dynamicStackCase) getRun(
 				defer cancel()
 
 				ctx, err := pulumi.NewContext(cancelCtx, pulumi.RunInfo{
-					Project:     info.Project,
-					Stack:       info.Stack,
-					Parallel:    info.Parallel,
-					DryRun:      info.DryRun,
-					MonitorAddr: info.MonitorAddress,
+					Project:	info.Project,
+					Stack:		info.Stack,
+					Parallel:	info.Parallel,
+					DryRun:		info.DryRun,
+					MonitorAddr:	info.MonitorAddress,
 				})
 				if err != nil {
 					return fmt.Errorf("creating context: %w", err)
@@ -281,7 +281,7 @@ func (c dynamicStackCase) getRun(
 						pulumi.CustomResourceState
 					}
 
-					for i := 0; i < c.resourceCount; i++ { //nolint:staticcheck
+					for i := 0; i < c.resourceCount; i++ {	//nolint:staticcheck
 						name := fmt.Sprintf("dummy-%d", i)
 						urn := resource.NewURN("test", "test", "", "test:dummy:Dummy", name)
 
@@ -328,8 +328,8 @@ func (c recordedReplayCase) getRun(
 	newManager func(testing.TB, *deploy.Snapshot) engine.SnapshotManager,
 ) func(t testing.TB) {
 	type deployment struct {
-		Version    int                   `json:"version"`
-		Deployment *apitype.DeploymentV3 `json:"deployment"`
+		Version		int			`json:"version"`
+		Deployment	*apitype.DeploymentV3	`json:"deployment"`
 	}
 
 	f, err := os.Open(string(c))
@@ -384,12 +384,12 @@ func toStrings[S ~string](s []S) []string {
 
 // A resourceData node serves as a promise for a resource's URN, ID, and registration error.
 type resourceData struct {
-	c *sync.Cond
+	c	*sync.Cond
 
-	done bool
-	urn  string
-	id   string
-	err  error
+	done	bool
+	urn	string
+	id	string
+	err	error
 }
 
 func newResourceData() *resourceData {
@@ -417,10 +417,10 @@ func (r *resourceData) wait() (urn, id string, _ error) {
 // The registrar is responsible for registring resources from a state file and ensuring that registration happens in
 // dependency order.
 type registrar struct {
-	stack     string
-	project   string
-	monitor   pulumirpc.ResourceMonitorClient
-	resources gsync.Map[resource.URN, *resourceData]
+	stack		string
+	project		string
+	monitor		pulumirpc.ResourceMonitorClient
+	resources	gsync.Map[resource.URN, *resourceData]
 }
 
 func (r *registrar) DecryptValue(ctx context.Context, v string) (string, error) {
@@ -492,8 +492,8 @@ func (r *registrar) registerResource(ctx context.Context, res apitype.ResourceV3
 				return "", "", fmt.Errorf("deserializing inputs for %v: %w", res.URN, err)
 			}
 			inputObject, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
-				KeepSecrets:   true,
-				KeepResources: true,
+				KeepSecrets:	true,
+				KeepResources:	true,
 			})
 			if err != nil {
 				return "", "", fmt.Errorf("marshaling inputs for %v: %w", res.URN, err)
@@ -545,13 +545,13 @@ func (r *registrar) registerResource(ctx context.Context, res apitype.ResourceV3
 			var urn, id string
 			if res.External {
 				resp, err := r.monitor.ReadResource(ctx, &pulumirpc.ReadResourceRequest{
-					Id:           res.ID.String(),
-					Type:         typ,
-					Name:         name,
-					Parent:       parent,
-					Properties:   inputObject,
-					Dependencies: deps,
-					Provider:     providerRef,
+					Id:		res.ID.String(),
+					Type:		typ,
+					Name:		name,
+					Parent:		parent,
+					Properties:	inputObject,
+					Dependencies:	deps,
+					Provider:	providerRef,
 				})
 				if err != nil {
 					return "", "", err
@@ -559,23 +559,23 @@ func (r *registrar) registerResource(ctx context.Context, res apitype.ResourceV3
 				urn, id = resp.Urn, res.ID.String()
 			} else {
 				resp, err := r.monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-					Type:                    typ,
-					Name:                    name,
-					Parent:                  parent,
-					Custom:                  res.Custom,
-					ImportId:                string(res.ImportID),
-					Object:                  inputObject,
-					Protect:                 &res.Protect,
-					Dependencies:            deps,
-					PropertyDependencies:    propertyDeps,
-					AcceptSecrets:           true,
-					AdditionalSecretOutputs: toStrings(res.AdditionalSecretOutputs),
-					AliasURNs:               toStrings(res.Aliases),
-					SupportsPartialValues:   true,
-					Remote:                  false,
-					AcceptResources:         true,
-					DeletedWith:             string(res.DeletedWith),
-					Provider:                providerRef,
+					Type:				typ,
+					Name:				name,
+					Parent:				parent,
+					Custom:				res.Custom,
+					ImportId:			string(res.ImportID),
+					Object:				inputObject,
+					Protect:			&res.Protect,
+					Dependencies:			deps,
+					PropertyDependencies:		propertyDeps,
+					AcceptSecrets:			true,
+					AdditionalSecretOutputs:	toStrings(res.AdditionalSecretOutputs),
+					AliasURNs:			toStrings(res.Aliases),
+					SupportsPartialValues:		true,
+					Remote:				false,
+					AcceptResources:		true,
+					DeletedWith:			string(res.DeletedWith),
+					Provider:			providerRef,
 				})
 				if err != nil {
 					return "", "", err
@@ -585,16 +585,16 @@ func (r *registrar) registerResource(ctx context.Context, res apitype.ResourceV3
 
 			if !res.Custom {
 				outputObject, oerr := plugin.MarshalProperties(outputs, plugin.MarshalOptions{
-					KeepSecrets:   true,
-					KeepResources: true,
+					KeepSecrets:	true,
+					KeepResources:	true,
 				})
 				if oerr != nil {
 					return "", "", fmt.Errorf("marshaling outputs for %v: %w", res.URN, oerr)
 				}
 
 				_, err = r.monitor.RegisterResourceOutputs(ctx, &pulumirpc.RegisterResourceOutputsRequest{
-					Urn:     urn,
-					Outputs: outputObject,
+					Urn:		urn,
+					Outputs:	outputObject,
 				})
 			}
 			return urn, id, err
@@ -618,17 +618,17 @@ func newMockPersister(t testing.TB, server *httptest.Server) *cloudSnapshotPersi
 	backend := backendGeneric.(*cloudBackend)
 	stackID := client.StackIdentifier{Owner: "owner", Project: "project", Stack: tokens.MustParseStackName("stack")}
 	return backend.newSnapshotPersister(context.Background(), client.UpdateIdentifier{
-		StackIdentifier: stackID,
-		UpdateKind:      "update",
-		UpdateID:        "update",
+		StackIdentifier:	stackID,
+		UpdateKind:		"update",
+		UpdateID:		"update",
 	}, newMockTokenSource())
 }
 
 type benchmarkServer struct {
-	t          testing.TB
-	p          *cloudSnapshotPersister
-	totalCalls int
-	totalBytes int64
+	t		testing.TB
+	p		*cloudSnapshotPersister
+	totalCalls	int
+	totalBytes	int64
 }
 
 // newServerPersister creates a new benchmarkServer that implements both SnapshotPersister and JournalPersister. The
@@ -660,9 +660,9 @@ func (s *benchmarkServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		bytes, err := json.Marshal(apitype.DeltaCheckpointUploadsConfigV2{})
 		require.NoError(s.t, err)
 		resp := apitype.CapabilitiesResponse{Capabilities: []apitype.APICapabilityConfig{{
-			Version:       2,
-			Capability:    apitype.DeltaCheckpointUploadsV2,
-			Configuration: json.RawMessage(bytes),
+			Version:	2,
+			Capability:	apitype.DeltaCheckpointUploadsV2,
+			Configuration:	json.RawMessage(bytes),
 		}}}
 		err = json.NewEncoder(w).Encode(resp)
 		require.NoError(s.t, err)

@@ -21,19 +21,19 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model/pretty"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 )
 
 // ConstType represents a type that is a single constant value.
 type ConstType struct {
 	// Type is the underlying value type.
-	Type Type
+	Type	Type
 	// Value is the constant value.
-	Value cty.Value
+	Value	cty.Value
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache	*gsync.Map[Type, cacheEntry]
 }
 
 // NewConstType creates a new constant type with the given type and value.
@@ -127,7 +127,7 @@ func (t *ConstType) unify(other Type) (Type, ConversionKind) {
 	})
 }
 
-func (*ConstType) isType() {}
+func (*ConstType) isType()	{}
 
 func IsConstType(t Type) bool {
 	switch t := t.(type) {

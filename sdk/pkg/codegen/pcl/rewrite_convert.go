@@ -19,9 +19,9 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
@@ -121,12 +121,12 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 				continue
 			}
 
-			key, ediags := item.Key.Evaluate(&hcl.EvalContext{}) // empty context, we need a constant string
+			key, ediags := item.Key.Evaluate(&hcl.EvalContext{})	// empty context, we need a constant string
 			*diags = diags.Extend(ediags)
 
 			valueType, tdiags := to.Traverse(hcl.TraverseIndex{
-				Key:      key,
-				SrcRange: item.Key.SyntaxNode().Range(),
+				Key:		key,
+				SrcRange:	item.Key.SyntaxNode().Range(),
 			})
 			*diags = diags.Extend(tdiags)
 
@@ -143,8 +143,8 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 				continue
 			}
 			valueType, tdiags := to.Traverse(hcl.TraverseIndex{
-				Key:      cty.NumberIntVal(int64(i)),
-				SrcRange: x.Syntax.Range(),
+				Key:		cty.NumberIntVal(int64(i)),
+				SrcRange:	x.Syntax.Range(),
 			})
 			*diags = diags.Extend(tdiags)
 

@@ -19,11 +19,11 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/operations"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -34,9 +34,9 @@ import (
 
 type StackConfigLocation struct {
 	// IsRemote indicates if the stack's configuration is stored remotely instead of in a local file.
-	IsRemote bool
+	IsRemote	bool
 	// EscEnv is the optional name of an ESC Environment being used to store the stack's configuration.
-	EscEnv *string
+	EscEnv	*string
 }
 
 // Stack is used to manage stacks of resources against a pluggable backend.

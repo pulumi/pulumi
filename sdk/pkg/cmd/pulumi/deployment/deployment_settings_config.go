@@ -22,11 +22,11 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -36,31 +36,31 @@ import (
 )
 
 const (
-	optYes                         = "Yes"
-	optNo                          = "No"
-	optOidcAws                     = "Enable AWS integration"
-	optOidcAzure                   = "Enable Azure integration"
-	optOidcGcp                     = "Enable Google Cloud integration"
-	optGit                         = "Git"
-	optExecutorImage               = "Executor image"
-	optAdvancedSettings            = "Advanced settings"
-	optPreviewPr                   = "Run previews for pull requests"
-	optUpdatePushes                = "Run updates for pushed commits"
-	optPrTemplate                  = "Use this stack as a template for pull request stacks"
-	optNoAuthentication            = "No authentication"
-	optUserPass                    = "Username/Password"
-	optSSH                         = "SSH key"
-	optSkipDepsInstall             = "Skip automatic dependency installation step"
-	optSkipIntermediateDeployments = "Skip intermediate deployments"
+	optYes				= "Yes"
+	optNo				= "No"
+	optOidcAws			= "Enable AWS integration"
+	optOidcAzure			= "Enable Azure integration"
+	optOidcGcp			= "Enable Google Cloud integration"
+	optGit				= "Git"
+	optExecutorImage		= "Executor image"
+	optAdvancedSettings		= "Advanced settings"
+	optPreviewPr			= "Run previews for pull requests"
+	optUpdatePushes			= "Run updates for pushed commits"
+	optPrTemplate			= "Use this stack as a template for pull request stacks"
+	optNoAuthentication		= "No authentication"
+	optUserPass			= "Username/Password"
+	optSSH				= "SSH key"
+	optSkipDepsInstall		= "Skip automatic dependency installation step"
+	optSkipIntermediateDeployments	= "Skip intermediate deployments"
 )
 
 var errAbortCmd = errors.New("abort")
 
 func newDeploymentSettingsCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "settings",
-		Args:  cmdutil.NoArgs,
-		Short: "Manage stack deployment settings",
+		Use:	"settings",
+		Args:	cmdutil.NoArgs,
+		Short:	"Manage stack deployment settings",
 		Long: "Manage stack deployment settings\n" +
 			"\n" +
 			"Use this command to manage a stack's deployment settings like\n" +
@@ -82,14 +82,14 @@ func newDeploymentSettingsCmd() *cobra.Command {
 }
 
 type deploymentSettingsCommandDependencies struct {
-	DisplayOptions *display.Options
-	Stack          backend.Stack
-	Deployment     *workspace.ProjectStackDeployment
-	Backend        backend.Backend
-	Interactive    bool
-	Ctx            context.Context
-	Prompts        prompts
-	WorkDir        string
+	DisplayOptions	*display.Options
+	Stack		backend.Stack
+	Deployment	*workspace.ProjectStackDeployment
+	Backend		backend.Backend
+	Interactive	bool
+	Ctx		context.Context
+	Prompts		prompts
+	WorkDir		string
 }
 
 func initializeDeploymentSettingsCmd(
@@ -98,8 +98,8 @@ func initializeDeploymentSettingsCmd(
 	interactive := cmdutil.Interactive()
 
 	displayOpts := display.Options{
-		Color:         cmdutil.GetGlobalColorization(),
-		IsInteractive: interactive,
+		Color:		cmdutil.GetGlobalColorization(),
+		IsInteractive:	interactive,
 	}
 
 	project, _, err := ws.ReadProject()
@@ -157,14 +157,14 @@ func initializeDeploymentSettingsCmd(
 	}
 
 	return &deploymentSettingsCommandDependencies{
-		DisplayOptions: &displayOpts,
-		Stack:          s,
-		Deployment:     sd,
-		Backend:        be,
-		Interactive:    interactive,
-		Ctx:            ctx,
-		Prompts:        promptHandlers{},
-		WorkDir:        wd,
+		DisplayOptions:	&displayOpts,
+		Stack:		s,
+		Deployment:	sd,
+		Backend:	be,
+		Interactive:	interactive,
+		Ctx:		ctx,
+		Prompts:	promptHandlers{},
+		WorkDir:	wd,
 	}, nil
 }
 
@@ -175,11 +175,11 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 	var gitSSHPrivateKeyValue string
 
 	cmd := &cobra.Command{
-		Use:        "init",
-		SuggestFor: []string{"new", "create"},
-		Args:       cmdutil.ExactArgs(0),
-		Short:      "Initialize the stack's deployment.yaml file",
-		Long:       "",
+		Use:		"init",
+		SuggestFor:	[]string{"new", "create"},
+		Args:		cmdutil.ExactArgs(0),
+		Short:		"Initialize the stack's deployment.yaml file",
+		Long:		"",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			d, err := initializeDeploymentSettingsCmd(cmd.Context(), pkgWorkspace.Instance, stack)
 			if err != nil {
@@ -289,10 +289,10 @@ func newDeploymentSettingsConfigureCmd() *cobra.Command {
 	var gitSSHPrivateKeyValue string
 
 	cmd := &cobra.Command{
-		Use:   "configure",
-		Args:  cmdutil.ExactArgs(0),
-		Short: "Updates stack's deployment settings secrets",
-		Long:  "",
+		Use:	"configure",
+		Args:	cmdutil.ExactArgs(0),
+		Short:	"Updates stack's deployment settings secrets",
+		Long:	"",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !cmdutil.Interactive() {
 				return errors.New("configure command is only supported in interactive mode")
@@ -629,8 +629,8 @@ func configureGitPassword(d *deploymentSettingsCommandDependencies) error {
 
 	sd.DeploymentSettings.SourceContext.Git.GitAuth = &apitype.GitAuthConfig{
 		BasicAuth: &apitype.BasicAuth{
-			UserName: apitype.SecretValue{Value: username},
-			Password: *secret,
+			UserName:	apitype.SecretValue{Value: username},
+			Password:	*secret,
 		},
 	}
 
@@ -929,8 +929,8 @@ func configureImageRepository(d *deploymentSettingsCommandDependencies) error {
 	}
 
 	sd.DeploymentSettings.Executor.ExecutorImage.Credentials = &apitype.DockerImageCredentials{
-		Username: username,
-		Password: *secret,
+		Username:	username,
+		Password:	*secret,
 	}
 
 	return nil

@@ -22,9 +22,9 @@ import (
 	"sort"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -35,11 +35,11 @@ import (
 
 type Parameterization struct {
 	// The base plugin name to use for this parameterization.
-	PluginName tokens.Package
+	PluginName	tokens.Package
 	// The version of the plugin to use for this parameterization.
-	PluginVersion semver.Version
+	PluginVersion	semver.Version
 	// The value to use for this parameterization.
-	Value []byte
+	Value	[]byte
 }
 
 // ToProviderParameterization converts a workspace parameterization to a provider parameterization.
@@ -55,36 +55,36 @@ func (p *Parameterization) ToProviderParameterization(
 	}
 
 	return p.PluginName, &p.PluginVersion, &workspace.Parameterization{
-		Name:    string(typ.Package()),
-		Version: *version,
-		Value:   p.Value,
+		Name:		string(typ.Package()),
+		Version:	*version,
+		Value:		p.Value,
 	}, nil
 }
 
 // An Import specifies a resource to import.
 type Import struct {
-	Type              tokens.Type       // The type token for the resource. Required.
-	Name              string            // The name of the resource. Required.
-	ID                resource.ID       // The ID of the resource. Required.
-	Parent            resource.URN      // The parent of the resource, if any.
-	Provider          resource.URN      // The specific provider to use for the resource, if any.
-	Version           *semver.Version   // The provider version to use for the resource, if any.
-	PluginDownloadURL string            // The provider PluginDownloadURL to use for the resource, if any.
-	PluginChecksums   map[string][]byte // The provider checksums to use for the resource, if any.
-	Protect           bool              // Whether to mark the resource as protected after import
-	Properties        []string          // Which properties to include (Defaults to required properties)
-	Parameterization  *Parameterization // The parameterization to use for the resource, if any.
+	Type			tokens.Type		// The type token for the resource. Required.
+	Name			string			// The name of the resource. Required.
+	ID			resource.ID		// The ID of the resource. Required.
+	Parent			resource.URN		// The parent of the resource, if any.
+	Provider		resource.URN		// The specific provider to use for the resource, if any.
+	Version			*semver.Version		// The provider version to use for the resource, if any.
+	PluginDownloadURL	string			// The provider PluginDownloadURL to use for the resource, if any.
+	PluginChecksums		map[string][]byte	// The provider checksums to use for the resource, if any.
+	Protect			bool			// Whether to mark the resource as protected after import
+	Properties		[]string		// Which properties to include (Defaults to required properties)
+	Parameterization	*Parameterization	// The parameterization to use for the resource, if any.
 
 	// True if this import should create an empty component resource. ID must not be set if this is used.
-	Component bool
+	Component	bool
 	// True if this is a remote component resource. Component must be true if this is true.
-	Remote bool
+	Remote	bool
 }
 
 // ImportOptions controls the import process.
 type ImportOptions struct {
-	Events   Events // an optional events callback interface.
-	Parallel int    // the degree of parallelism for resource operations (<=1 for serial).
+	Events		Events	// an optional events callback interface.
+	Parallel	int	// the degree of parallelism for resource operations (<=1 for serial).
 }
 
 // NewImportDeployment creates a new import deployment from a resource snapshot plus a set of resources to import.
@@ -124,9 +124,9 @@ func NewImportDeployment(
 	newGoals := &gsync.Map[resource.URN, *resource.Goal]{}
 
 	builtins := newBuiltinProvider(
-		nil, /*backendClient*/
-		nil, /*news*/
-		nil, /*reads*/
+		nil,	/*backendClient*/
+		nil,	/*news*/
+		nil,	/*reads*/
 		ctx.Diag,
 	)
 
@@ -135,42 +135,42 @@ func NewImportDeployment(
 
 	// Return the prepared deployment.
 	return &Deployment{
-		ctx:                             ctx,
-		opts:                            opts,
-		events:                          events,
-		writeSnapshot:                   needsWrite,
-		target:                          target,
-		prev:                            prev,
-		hasRefreshBeforeUpdateResources: hasRefreshBeforeUpdateResources,
-		olds:                            olds,
-		oldViews:                        oldViews,
-		goals:                           newGoals,
-		imports:                         imports,
-		isImport:                        true,
-		schemaLoader:                    schema.NewPluginLoader(ctx.Host),
-		source:                          NewErrorSource(projectName),
-		providers:                       reg,
-		newPlans:                        newResourcePlan(target.Config),
-		news:                            &gsync.Map[resource.URN, *resource.State]{},
+		ctx:					ctx,
+		opts:					opts,
+		events:					events,
+		writeSnapshot:				needsWrite,
+		target:					target,
+		prev:					prev,
+		hasRefreshBeforeUpdateResources:	hasRefreshBeforeUpdateResources,
+		olds:					olds,
+		oldViews:				oldViews,
+		goals:					newGoals,
+		imports:				imports,
+		isImport:				true,
+		schemaLoader:				schema.NewPluginLoader(ctx.Host),
+		source:					NewErrorSource(projectName),
+		providers:				reg,
+		newPlans:				newResourcePlan(target.Config),
+		news:					&gsync.Map[resource.URN, *resource.State]{},
 	}, nil
 }
 
 type noopEvent int
 
-func (noopEvent) event()                      {}
-func (noopEvent) Goal() *resource.Goal        { return nil }
-func (noopEvent) Done(result *RegisterResult) {}
+func (noopEvent) event()			{}
+func (noopEvent) Goal() *resource.Goal		{ return nil }
+func (noopEvent) Done(result *RegisterResult)	{}
 
 type noopOutputsEvent resource.URN
 
-func (noopOutputsEvent) event()                        {}
-func (e noopOutputsEvent) URN() resource.URN           { return resource.URN(e) }
-func (noopOutputsEvent) Outputs() resource.PropertyMap { return resource.PropertyMap{} }
-func (noopOutputsEvent) Done()                         {}
+func (noopOutputsEvent) event()				{}
+func (e noopOutputsEvent) URN() resource.URN		{ return resource.URN(e) }
+func (noopOutputsEvent) Outputs() resource.PropertyMap	{ return resource.PropertyMap{} }
+func (noopOutputsEvent) Done()				{}
 
 type importer struct {
-	deployment *Deployment
-	executor   *stepExecutor
+	deployment	*Deployment
+	executor	*stepExecutor
 }
 
 func (i *importer) executeSerial(ctx context.Context, steps ...Step) bool {
@@ -222,38 +222,38 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
 	urn := resource.NewURN(stackName.Q(), projectName, "", typ, name)
 	state := resource.NewState{
-		Type:                    typ,
-		URN:                     urn,
-		Custom:                  false,
-		Delete:                  false,
-		ID:                      "",
-		Inputs:                  resource.PropertyMap{},
-		Outputs:                 nil,
-		Parent:                  "",
-		Protect:                 false,
-		Taint:                   false,
-		External:                false,
-		Dependencies:            nil,
-		InitErrors:              nil,
-		Provider:                "",
-		PropertyDependencies:    nil,
-		PendingReplacement:      false,
-		AdditionalSecretOutputs: nil,
-		Aliases:                 nil,
-		CustomTimeouts:          nil,
-		ImportID:                "",
-		RetainOnDelete:          false,
-		DeletedWith:             "",
-		Created:                 nil,
-		Modified:                nil,
-		SourcePosition:          "",
-		StackTrace:              nil,
-		IgnoreChanges:           nil,
-		HideDiff:                nil,
-		ReplaceOnChanges:        nil,
-		RefreshBeforeUpdate:     false,
-		ViewOf:                  "",
-		ResourceHooks:           nil,
+		Type:				typ,
+		URN:				urn,
+		Custom:				false,
+		Delete:				false,
+		ID:				"",
+		Inputs:				resource.PropertyMap{},
+		Outputs:			nil,
+		Parent:				"",
+		Protect:			false,
+		Taint:				false,
+		External:			false,
+		Dependencies:			nil,
+		InitErrors:			nil,
+		Provider:			"",
+		PropertyDependencies:		nil,
+		PendingReplacement:		false,
+		AdditionalSecretOutputs:	nil,
+		Aliases:			nil,
+		CustomTimeouts:			nil,
+		ImportID:			"",
+		RetainOnDelete:			false,
+		DeletedWith:			"",
+		Created:			nil,
+		Modified:			nil,
+		SourcePosition:			"",
+		StackTrace:			nil,
+		IgnoreChanges:			nil,
+		HideDiff:			nil,
+		ReplaceOnChanges:		nil,
+		RefreshBeforeUpdate:		false,
+		ViewOf:				"",
+		ResourceHooks:			nil,
 	}.Make()
 	// TODO(seqnum) should stacks be created with 1? When do they ever get recreated/replaced?
 	if !i.executeSerial(ctx, NewCreateStep(i.deployment, noopEvent(0), state)) {
@@ -355,45 +355,45 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			providers.SetProviderParameterization(inputs, parameterization)
 		}
 		resp, err := i.deployment.providers.Check(ctx, plugin.CheckRequest{
-			URN:  urn,
-			News: inputs,
+			URN:	urn,
+			News:	inputs,
 		})
 		if err != nil {
 			return nil, false, fmt.Errorf("failed to validate provider config: %w", err)
 		}
 		state := resource.NewState{
-			Type:                    typ,
-			URN:                     urn,
-			Custom:                  true,
-			Delete:                  false,
-			ID:                      "",
-			Inputs:                  inputs,
-			Outputs:                 nil,
-			Parent:                  "",
-			Protect:                 false,
-			Taint:                   false,
-			External:                false,
-			Dependencies:            nil,
-			InitErrors:              nil,
-			Provider:                "",
-			PropertyDependencies:    nil,
-			PendingReplacement:      false,
-			AdditionalSecretOutputs: nil,
-			Aliases:                 nil,
-			CustomTimeouts:          nil,
-			ImportID:                "",
-			RetainOnDelete:          false,
-			DeletedWith:             "",
-			Created:                 nil,
-			Modified:                nil,
-			SourcePosition:          "",
-			StackTrace:              nil,
-			IgnoreChanges:           nil,
-			HideDiff:                nil,
-			ReplaceOnChanges:        nil,
-			RefreshBeforeUpdate:     false,
-			ViewOf:                  "",
-			ResourceHooks:           nil,
+			Type:				typ,
+			URN:				urn,
+			Custom:				true,
+			Delete:				false,
+			ID:				"",
+			Inputs:				inputs,
+			Outputs:			nil,
+			Parent:				"",
+			Protect:			false,
+			Taint:				false,
+			External:			false,
+			Dependencies:			nil,
+			InitErrors:			nil,
+			Provider:			"",
+			PropertyDependencies:		nil,
+			PendingReplacement:		false,
+			AdditionalSecretOutputs:	nil,
+			Aliases:			nil,
+			CustomTimeouts:			nil,
+			ImportID:			"",
+			RetainOnDelete:			false,
+			DeletedWith:			"",
+			Created:			nil,
+			Modified:			nil,
+			SourcePosition:			"",
+			StackTrace:			nil,
+			IgnoreChanges:			nil,
+			HideDiff:			nil,
+			ReplaceOnChanges:		nil,
+			RefreshBeforeUpdate:		false,
+			ViewOf:				"",
+			ResourceHooks:			nil,
 		}.Make()
 		// TODO(seqnum) should default providers be created with 1? When do they ever get recreated/replaced?
 		if issueCheckErrors(i.deployment, state, urn, resp.Failures) {
@@ -491,38 +491,38 @@ func (i *importer) importResources(ctx context.Context) error {
 
 		// Create the new desired state. Note that the resource is protected. Provider might be "" at this point.
 		new := resource.NewState{
-			Type:                    urn.Type(),
-			URN:                     urn,
-			Custom:                  !imp.Component,
-			Delete:                  false,
-			ID:                      "",
-			Inputs:                  resource.PropertyMap{},
-			Outputs:                 nil,
-			Parent:                  parent,
-			Protect:                 imp.Protect,
-			Taint:                   false,
-			External:                false,
-			Dependencies:            nil,
-			InitErrors:              nil,
-			Provider:                provider,
-			PropertyDependencies:    nil,
-			PendingReplacement:      false,
-			AdditionalSecretOutputs: nil,
-			Aliases:                 nil,
-			CustomTimeouts:          nil,
-			ImportID:                imp.ID,
-			RetainOnDelete:          false,
-			DeletedWith:             "",
-			Created:                 nil,
-			Modified:                nil,
-			SourcePosition:          "",
-			StackTrace:              nil,
-			IgnoreChanges:           nil,
-			ReplaceOnChanges:        nil,
-			HideDiff:                nil,
-			RefreshBeforeUpdate:     false,
-			ViewOf:                  "",
-			ResourceHooks:           nil,
+			Type:				urn.Type(),
+			URN:				urn,
+			Custom:				!imp.Component,
+			Delete:				false,
+			ID:				"",
+			Inputs:				resource.PropertyMap{},
+			Outputs:			nil,
+			Parent:				parent,
+			Protect:			imp.Protect,
+			Taint:				false,
+			External:			false,
+			Dependencies:			nil,
+			InitErrors:			nil,
+			Provider:			provider,
+			PropertyDependencies:		nil,
+			PendingReplacement:		false,
+			AdditionalSecretOutputs:	nil,
+			Aliases:			nil,
+			CustomTimeouts:			nil,
+			ImportID:			imp.ID,
+			RetainOnDelete:			false,
+			DeletedWith:			"",
+			Created:			nil,
+			Modified:			nil,
+			SourcePosition:			"",
+			StackTrace:			nil,
+			IgnoreChanges:			nil,
+			ReplaceOnChanges:		nil,
+			HideDiff:			nil,
+			RefreshBeforeUpdate:		false,
+			ViewOf:				"",
+			ResourceHooks:			nil,
 		}.Make()
 		// Set a dummy goal so the resource is tracked as managed.
 		i.deployment.goals.Store(urn, &resource.Goal{})

@@ -24,9 +24,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	. "github.com/pulumi/pulumi/sdk/v3/pkg/engine"	//nolint:revive
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
@@ -58,9 +58,9 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 		diffsCalled[req.URN.Name()] = true
 		if req.URN.Name() == "resA" {
 			return plugin.DiffResult{
-				Changes:             plugin.DiffSome,
-				ReplaceKeys:         []resource.PropertyKey{"key"},
-				DeleteBeforeReplace: true,
+				Changes:		plugin.DiffSome,
+				ReplaceKeys:		[]resource.PropertyKey{"key"},
+				DeleteBeforeReplace:	true,
 			}, nil
 		} else if req.URN.Name() == "resB" {
 			return plugin.DiffResult{
@@ -98,9 +98,9 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 	) (plugin.CreateResponse, error) {
 		createsCalled[req.URN.Name()] = true
 		return plugin.CreateResponse{
-			ID:         resource.ID(fmt.Sprintf("%s-%s", req.URN.Name(), trackingCreateIDSuffix)),
-			Properties: req.Properties,
-			Status:     resource.StatusOK,
+			ID:		resource.ID(fmt.Sprintf("%s-%s", req.URN.Name(), trackingCreateIDSuffix)),
+			Properties:	req.Properties,
+			Status:		resource.StatusOK,
 		}, nil
 	}
 
@@ -146,8 +146,8 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 	replaceLoaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF:   replacingADiff,
-				DeleteF: throwingDelete,
+				DiffF:		replacingADiff,
+				DeleteF:	throwingDelete,
 			}, nil
 		}),
 	}
@@ -182,9 +182,9 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 	retryLoaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF:   replacingADiff,
-				DeleteF: trackingDelete,
-				CreateF: trackingCreate,
+				DiffF:		replacingADiff,
+				DeleteF:	trackingDelete,
+				CreateF:	trackingCreate,
 			}, nil
 		}),
 	}
@@ -232,9 +232,9 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 	) (plugin.DiffResult, error) {
 		if req.URN.Name() == "resA" {
 			return plugin.DiffResult{
-				Changes:             plugin.DiffSome,
-				ReplaceKeys:         []resource.PropertyKey{"key"},
-				DeleteBeforeReplace: true,
+				Changes:		plugin.DiffSome,
+				ReplaceKeys:		[]resource.PropertyKey{"key"},
+				DeleteBeforeReplace:	true,
 			}, nil
 		}
 
@@ -257,8 +257,8 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 	) (plugin.CreateResponse, error) {
 		createCalled = true
 		return plugin.CreateResponse{
-			Properties: req.Properties,
-			Status:     resource.StatusUnknown,
+			Properties:	req.Properties,
+			Status:		resource.StatusUnknown,
 		}, errors.New("interrupt replace")
 	}
 
@@ -268,9 +268,9 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 	) (plugin.CreateResponse, error) {
 		createCalled = true
 		return plugin.CreateResponse{
-			ID:         "created-id",
-			Properties: req.Properties,
-			Status:     resource.StatusOK,
+			ID:		"created-id",
+			Properties:	req.Properties,
+			Status:		resource.StatusOK,
 		}, nil
 	}
 
@@ -311,9 +311,9 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 	replaceLoaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF:   returnReplaceDiff,
-				DeleteF: trackedDelete,
-				CreateF: throwingCreate,
+				DiffF:		returnReplaceDiff,
+				DeleteF:	trackedDelete,
+				CreateF:	throwingCreate,
 			}, nil
 		}),
 	}
@@ -339,9 +339,9 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 	removeLoaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF:   returnReplaceDiff,
-				DeleteF: trackedDelete,
-				CreateF: trackedCreate,
+				DiffF:		returnReplaceDiff,
+				DeleteF:	trackedDelete,
+				CreateF:	trackedCreate,
 			}, nil
 		}),
 	}
@@ -384,9 +384,9 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 	) (plugin.DiffResult, error) {
 		if req.URN.Name() == "resA" {
 			return plugin.DiffResult{
-				Changes:             plugin.DiffSome,
-				ReplaceKeys:         []resource.PropertyKey{"key"},
-				DeleteBeforeReplace: true,
+				Changes:		plugin.DiffSome,
+				ReplaceKeys:		[]resource.PropertyKey{"key"},
+				DeleteBeforeReplace:	true,
 			}, nil
 		}
 
@@ -409,8 +409,8 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 	) (plugin.CreateResponse, error) {
 		createCalled = true
 		return plugin.CreateResponse{
-			Properties: req.Properties,
-			Status:     resource.StatusUnknown,
+			Properties:	req.Properties,
+			Status:		resource.StatusUnknown,
 		}, errors.New("interrupt replace")
 	}
 
@@ -420,9 +420,9 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 	) (plugin.CreateResponse, error) {
 		createCalled = true
 		return plugin.CreateResponse{
-			ID:         "created-id",
-			Properties: req.Properties,
-			Status:     resource.StatusOK,
+			ID:		"created-id",
+			Properties:	req.Properties,
+			Status:		resource.StatusOK,
 		}, nil
 	}
 
@@ -464,9 +464,9 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 	replaceLoaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF:   returnReplaceDiff,
-				DeleteF: trackedDelete,
-				CreateF: throwingCreate,
+				DiffF:		returnReplaceDiff,
+				DeleteF:	trackedDelete,
+				CreateF:	throwingCreate,
 			}, nil
 		}),
 	}
@@ -493,9 +493,9 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 	removeLoaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF:   returnReplaceDiff,
-				DeleteF: trackedDelete,
-				CreateF: trackedCreate,
+				DiffF:		returnReplaceDiff,
+				DeleteF:	trackedDelete,
+				CreateF:	trackedCreate,
 			}, nil
 		}),
 	}
@@ -547,9 +547,9 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 	) (plugin.DiffResult, error) {
 		if req.URN.Name() == "resA" {
 			return plugin.DiffResult{
-				Changes:             plugin.DiffSome,
-				ReplaceKeys:         []resource.PropertyKey{"key"},
-				DeleteBeforeReplace: true,
+				Changes:		plugin.DiffSome,
+				ReplaceKeys:		[]resource.PropertyKey{"key"},
+				DeleteBeforeReplace:	true,
 			}, nil
 		}
 
@@ -562,8 +562,8 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 	) (plugin.DiffResult, error) {
 		if req.URN.Name() == "resA" {
 			return plugin.DiffResult{
-				Changes:             plugin.DiffSome,
-				DeleteBeforeReplace: true,
+				Changes:		plugin.DiffSome,
+				DeleteBeforeReplace:	true,
 			}, nil
 		}
 
@@ -586,8 +586,8 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 	) (plugin.CreateResponse, error) {
 		createCalled = true
 		return plugin.CreateResponse{
-			Properties: req.Properties,
-			Status:     resource.StatusUnknown,
+			Properties:	req.Properties,
+			Status:		resource.StatusUnknown,
 		}, errors.New("interrupt replace")
 	}
 
@@ -597,9 +597,9 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 	) (plugin.CreateResponse, error) {
 		createCalled = true
 		return plugin.CreateResponse{
-			ID:         "created-id",
-			Properties: req.Properties,
-			Status:     resource.StatusOK,
+			ID:		"created-id",
+			Properties:	req.Properties,
+			Status:		resource.StatusOK,
 		}, nil
 	}
 
@@ -640,9 +640,9 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 	replaceLoaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF:   returnReplaceDiff,
-				DeleteF: trackedDelete,
-				CreateF: throwingCreate,
+				DiffF:		returnReplaceDiff,
+				DeleteF:	trackedDelete,
+				CreateF:	throwingCreate,
 			}, nil
 		}),
 	}
@@ -671,9 +671,9 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 	removeLoaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF:   returnNonReplaceDiff,
-				DeleteF: trackedDelete,
-				CreateF: trackedCreate,
+				DiffF:		returnNonReplaceDiff,
+				DeleteF:	trackedDelete,
+				CreateF:	trackedCreate,
 			}, nil
 		}),
 	}
@@ -749,8 +749,8 @@ func TestInteruptedPendingReplace(t *testing.T) {
 			DiffF: func(ctx context.Context, dr plugin.DiffRequest) (plugin.DiffResult, error) {
 				if dr.URN.Name() == "resA" {
 					return plugin.DiffResult{
-						Changes:     plugin.DiffSome,
-						ReplaceKeys: []resource.PropertyKey{"key"},
+						Changes:	plugin.DiffSome,
+						ReplaceKeys:	[]resource.PropertyKey{"key"},
 					}, nil
 				}
 				return plugin.DiffResult{
@@ -795,8 +795,8 @@ func TestInteruptedPendingReplace(t *testing.T) {
 			DiffF: func(ctx context.Context, dr plugin.DiffRequest) (plugin.DiffResult, error) {
 				if dr.URN.Name() == "resA" {
 					return plugin.DiffResult{
-						Changes:     plugin.DiffSome,
-						ReplaceKeys: []resource.PropertyKey{"key"},
+						Changes:	plugin.DiffSome,
+						ReplaceKeys:	[]resource.PropertyKey{"key"},
 					}, nil
 				}
 				return plugin.DiffResult{
@@ -805,8 +805,8 @@ func TestInteruptedPendingReplace(t *testing.T) {
 			},
 			CreateF: func(ctx context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
 				return plugin.CreateResponse{
-					ID:         "created-id",
-					Properties: cr.Properties,
+					ID:		"created-id",
+					Properties:	cr.Properties,
 				}, nil
 			},
 		}

@@ -21,9 +21,9 @@ import (
 	"sync"
 
 	"github.com/gofrs/uuid"
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
-	interceptors "github.com/pulumi/pulumi/pkg/v3/util/rpcdebug"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
+	interceptors "github.com/pulumi/pulumi/sdk/v3/pkg/util/rpcdebug"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -42,53 +42,53 @@ type resourceStatusServer struct {
 
 	pulumirpc.UnsafeResourceStatusServer
 
-	cancel chan bool
-	handle rpcutil.ServeHandle
+	cancel	chan bool
+	handle	rpcutil.ServeHandle
 
 	// The deployment to which this step generator belongs.
-	deployment *Deployment
+	deployment	*Deployment
 
 	// The address the server is listening on.
-	address string
+	address	string
 
 	// A map of URNs to tokens.
-	urns gsync.Map[resource.URN, string] // urn -> token
+	urns	gsync.Map[resource.URN, string]	// urn -> token
 
 	// A map of tokens to URNs.
-	tokens gsync.Map[string, *tokenInfo] // token -> tokenInfo
+	tokens	gsync.Map[string, *tokenInfo]	// token -> tokenInfo
 
 	// Protects refresh steps
-	refreshStepsLock sync.Mutex
+	refreshStepsLock	sync.Mutex
 
 	// Refresh steps that were published to the status server.
-	refreshSteps []Step
+	refreshSteps	[]Step
 }
 
 // tokenInfo holds information about a token reserved for a resource status operation.
 type tokenInfo struct {
 	// The owning resource URN for this token.
-	urn resource.URN
+	urn	resource.URN
 
 	// Whether this token is for a refresh operation.
-	refresh bool
+	refresh	bool
 
 	// If this is a refresh operation, whether the steps should be persisted.
-	persisted bool
+	persisted	bool
 
 	// Protects the steps slice.
-	mu sync.Mutex
+	mu	sync.Mutex
 
 	// Steps that were published with this token.
-	steps []stepInfo
+	steps	[]stepInfo
 }
 
 // stepInfo holds the step and the payload context associated with the OnResourceStepPre event.
 type stepInfo struct {
 	// The step.
-	step Step
+	step	Step
 
 	// The payload context associated with the OnResourceStepPre event.
-	payload any
+	payload	any
 }
 
 // newResourceStatusServer creates a new resource status server and starts listening for incoming requests.
@@ -96,19 +96,19 @@ func newResourceStatusServer(deployment *Deployment) (*resourceStatusServer, err
 	cancel := make(chan bool)
 
 	rs := &resourceStatusServer{
-		deployment: deployment,
-		urns:       gsync.Map[resource.URN, string]{},
-		tokens:     gsync.Map[string, *tokenInfo]{},
+		deployment:	deployment,
+		urns:		gsync.Map[resource.URN, string]{},
+		tokens:		gsync.Map[string, *tokenInfo]{},
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: cancel,
+		Cancel:	cancel,
 		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterResourceStatusServer(srv, rs)
 			return nil
 		},
-		Options: resourceStatusServeOptions(deployment.ctx, env.DebugGRPC.Value()),
+		Options:	resourceStatusServeOptions(deployment.ctx, env.DebugGRPC.Value()),
 	})
 	if err != nil {
 		return nil, err
@@ -126,8 +126,8 @@ func resourceStatusServeOptions(ctx *plugin.Context, logFile string) []grpc.Serv
 	var serveOpts []grpc.ServerOption
 	if logFile != "" {
 		di, err := interceptors.NewDebugInterceptor(interceptors.DebugInterceptorOptions{
-			LogFile: logFile,
-			Mutex:   ctx.DebugTraceMutex,
+			LogFile:	logFile,
+			Mutex:		ctx.DebugTraceMutex,
 		})
 		if err != nil {
 			// ignoring
@@ -187,9 +187,9 @@ func (rs *resourceStatusServer) reserveToken(urn resource.URN, refresh, persiste
 	tokenString := token.String()
 	rs.urns.Store(urn, tokenString)
 	info := &tokenInfo{
-		urn:       urn,
-		refresh:   refresh,
-		persisted: persisted,
+		urn:		urn,
+		refresh:	refresh,
+		persisted:	persisted,
 	}
 	rs.tokens.Store(tokenString, info)
 	return tokenString, info, nil
@@ -310,8 +310,8 @@ func (rs *resourceStatusServer) publishViewSteps(info *tokenInfo, steps []Step) 
 
 		info.mu.Lock()
 		info.steps = append(info.steps, stepInfo{
-			step:    step,
-			payload: payload,
+			step:		step,
+			payload:	payload,
 		})
 		info.mu.Unlock()
 	}
@@ -406,8 +406,8 @@ func (rs *resourceStatusServer) unmarshalDetailedDiff(step *pulumirpc.ViewStep) 
 			d = plugin.DiffUpdate
 		}
 		detailedDiff[k] = plugin.PropertyDiff{
-			Kind:      d,
-			InputDiff: v.GetInputDiff(),
+			Kind:		d,
+			InputDiff:	v.GetInputDiff(),
 		}
 	}
 
@@ -428,31 +428,31 @@ func (rs *resourceStatusServer) unmarshalViewStepState(
 	// TODO[pulumi/pulumi#19704]: Implement parenting.
 
 	inputs, err := plugin.UnmarshalProperties(state.GetInputs(), plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
+		KeepUnknowns:	true,
+		KeepSecrets:	true,
+		KeepResources:	true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("unmarshaling inputs: %w", err)
 	}
 
 	outputs, err := plugin.UnmarshalProperties(state.GetOutputs(), plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
+		KeepUnknowns:	true,
+		KeepSecrets:	true,
+		KeepResources:	true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("unmarshaling outputs: %w", err)
 	}
 
 	return &resource.State{
-		Custom:  false,
-		ViewOf:  viewOf,
-		Parent:  viewOf,
-		URN:     stateURN,
-		Type:    stateType,
-		Inputs:  inputs,
-		Outputs: outputs,
+		Custom:		false,
+		ViewOf:		viewOf,
+		Parent:		viewOf,
+		URN:		stateURN,
+		Type:		stateType,
+		Inputs:		inputs,
+		Outputs:	outputs,
 	}, nil
 }
 

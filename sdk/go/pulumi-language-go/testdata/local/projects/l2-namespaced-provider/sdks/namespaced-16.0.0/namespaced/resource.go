@@ -16,8 +16,8 @@ import (
 type Resource struct {
 	pulumi.CustomResourceState
 
-	ResourceRef component.CustomOutput `pulumi:"resourceRef"`
-	Value       pulumi.BoolOutput      `pulumi:"value"`
+	ResourceRef	component.CustomOutput	`pulumi:"resourceRef"`
+	Value		pulumi.BoolOutput	`pulumi:"value"`
 }
 
 // NewResource registers a new resource with the given unique name, arguments, and options.
@@ -63,14 +63,14 @@ func (ResourceState) ElementType() reflect.Type {
 }
 
 type resourceArgs struct {
-	ResourceRef *component.Custom `pulumi:"resourceRef"`
-	Value       bool              `pulumi:"value"`
+	ResourceRef	*component.Custom	`pulumi:"resourceRef"`
+	Value		bool			`pulumi:"value"`
 }
 
 // The set of arguments for constructing a Resource resource.
 type ResourceArgs struct {
-	ResourceRef component.CustomInput
-	Value       pulumi.BoolInput
+	ResourceRef	component.CustomInput
+	Value		pulumi.BoolInput
 }
 
 func (ResourceArgs) ElementType() reflect.Type {

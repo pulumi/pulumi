@@ -30,15 +30,15 @@ import (
 
 const (
 	// Verify that this generated code is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
+	_	= protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
+	_	= protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
 type GetLanguageTestsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *GetLanguageTestsRequest) Reset() {
@@ -52,7 +52,7 @@ func (x *GetLanguageTestsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetLanguageTestsRequest) ProtoMessage() {}
+func (*GetLanguageTestsRequest) ProtoMessage()	{}
 
 func (x *GetLanguageTestsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_testing_language_proto_msgTypes[0]
@@ -72,10 +72,10 @@ func (*GetLanguageTestsRequest) Descriptor() ([]byte, []int) {
 }
 
 type GetLanguageTestsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tests         []string               `protobuf:"bytes,1,rep,name=tests,proto3" json:"tests,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Tests		[]string		`protobuf:"bytes,1,rep,name=tests,proto3" json:"tests,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *GetLanguageTestsResponse) Reset() {
@@ -89,7 +89,7 @@ func (x *GetLanguageTestsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetLanguageTestsResponse) ProtoMessage() {}
+func (*GetLanguageTestsResponse) ProtoMessage()	{}
 
 func (x *GetLanguageTestsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_testing_language_proto_msgTypes[1]
@@ -116,31 +116,31 @@ func (x *GetLanguageTestsResponse) GetTests() []string {
 }
 
 type PrepareLanguageTestsRequest struct {
-	state                protoimpl.MessageState                     `protogen:"open.v1"`
-	LanguagePluginName   string                                     `protobuf:"bytes,1,opt,name=language_plugin_name,json=languagePluginName,proto3" json:"language_plugin_name,omitempty"`
-	LanguagePluginTarget string                                     `protobuf:"bytes,2,opt,name=language_plugin_target,json=languagePluginTarget,proto3" json:"language_plugin_target,omitempty"`
-	SnapshotDirectory    string                                     `protobuf:"bytes,3,opt,name=snapshot_directory,json=snapshotDirectory,proto3" json:"snapshot_directory,omitempty"`
-	TemporaryDirectory   string                                     `protobuf:"bytes,4,opt,name=temporary_directory,json=temporaryDirectory,proto3" json:"temporary_directory,omitempty"`
-	CoreSdkDirectory     string                                     `protobuf:"bytes,5,opt,name=core_sdk_directory,json=coreSdkDirectory,proto3" json:"core_sdk_directory,omitempty"`
-	CoreSdkVersion       string                                     `protobuf:"bytes,6,opt,name=core_sdk_version,json=coreSdkVersion,proto3" json:"core_sdk_version,omitempty"`
-	SnapshotEdits        []*PrepareLanguageTestsRequest_Replacement `protobuf:"bytes,7,rep,name=snapshot_edits,json=snapshotEdits,proto3" json:"snapshot_edits,omitempty"`
+	state			protoimpl.MessageState				`protogen:"open.v1"`
+	LanguagePluginName	string						`protobuf:"bytes,1,opt,name=language_plugin_name,json=languagePluginName,proto3" json:"language_plugin_name,omitempty"`
+	LanguagePluginTarget	string						`protobuf:"bytes,2,opt,name=language_plugin_target,json=languagePluginTarget,proto3" json:"language_plugin_target,omitempty"`
+	SnapshotDirectory	string						`protobuf:"bytes,3,opt,name=snapshot_directory,json=snapshotDirectory,proto3" json:"snapshot_directory,omitempty"`
+	TemporaryDirectory	string						`protobuf:"bytes,4,opt,name=temporary_directory,json=temporaryDirectory,proto3" json:"temporary_directory,omitempty"`
+	CoreSdkDirectory	string						`protobuf:"bytes,5,opt,name=core_sdk_directory,json=coreSdkDirectory,proto3" json:"core_sdk_directory,omitempty"`
+	CoreSdkVersion		string						`protobuf:"bytes,6,opt,name=core_sdk_version,json=coreSdkVersion,proto3" json:"core_sdk_version,omitempty"`
+	SnapshotEdits		[]*PrepareLanguageTestsRequest_Replacement	`protobuf:"bytes,7,rep,name=snapshot_edits,json=snapshotEdits,proto3" json:"snapshot_edits,omitempty"`
 	// a JSON string that will be inserted into every schema loaded (for both GeneratePackage and GenerateProject) in
 	// the "Languages[language_plugin_name]" field. This can be used to test language specific options such as
 	// inputTypes in python.
-	LanguageInfo string `protobuf:"bytes,8,opt,name=language_info,json=languageInfo,proto3" json:"language_info,omitempty"`
+	LanguageInfo	string	`protobuf:"bytes,8,opt,name=language_info,json=languageInfo,proto3" json:"language_info,omitempty"`
 	// A map of test names to program overrides. This may be used to specify tests for which program generation should
 	// not be run (e.g. because it does not support the necessary features), but where the test can still execute and
 	// pass. This is useful in cases where e.g. a language's code SDK is relatively feature complete (and thus it's
 	// desirable to test that feature set) but where program code generation is not yet complete enough to support
 	// generating programs which exercise that functionality.
-	ProgramOverrides map[string]*PrepareLanguageTestsRequest_ProgramOverride `protobuf:"bytes,9,rep,name=program_overrides,json=programOverrides,proto3" json:"program_overrides,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	ProgramOverrides	map[string]*PrepareLanguageTestsRequest_ProgramOverride	`protobuf:"bytes,9,rep,name=program_overrides,json=programOverrides,proto3" json:"program_overrides,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// A folder pointing to policy packs to use for the tests. This is used to test the language plugin's policy pack
 	// support. These must be manually written.
-	PolicyPackDirectory string `protobuf:"bytes,10,opt,name=policy_pack_directory,json=policyPackDirectory,proto3" json:"policy_pack_directory,omitempty"`
+	PolicyPackDirectory	string	`protobuf:"bytes,10,opt,name=policy_pack_directory,json=policyPackDirectory,proto3" json:"policy_pack_directory,omitempty"`
 	// If true, tests will be run in "local" mode, meaning all SDKs will be generated with the `--local` flag and not packed.
-	Local         bool `protobuf:"varint,11,opt,name=local,proto3" json:"local,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Local		bool	`protobuf:"varint,11,opt,name=local,proto3" json:"local,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *PrepareLanguageTestsRequest) Reset() {
@@ -154,7 +154,7 @@ func (x *PrepareLanguageTestsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PrepareLanguageTestsRequest) ProtoMessage() {}
+func (*PrepareLanguageTestsRequest) ProtoMessage()	{}
 
 func (x *PrepareLanguageTestsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_testing_language_proto_msgTypes[2]
@@ -251,10 +251,10 @@ func (x *PrepareLanguageTestsRequest) GetLocal() bool {
 }
 
 type PrepareLanguageTestsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Token		string			`protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *PrepareLanguageTestsResponse) Reset() {
@@ -268,7 +268,7 @@ func (x *PrepareLanguageTestsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PrepareLanguageTestsResponse) ProtoMessage() {}
+func (*PrepareLanguageTestsResponse) ProtoMessage()	{}
 
 func (x *PrepareLanguageTestsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_testing_language_proto_msgTypes[3]
@@ -295,11 +295,11 @@ func (x *PrepareLanguageTestsResponse) GetToken() string {
 }
 
 type RunLanguageTestRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
-	Test          string                 `protobuf:"bytes,2,opt,name=test,proto3" json:"test,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Token		string			`protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	Test		string			`protobuf:"bytes,2,opt,name=test,proto3" json:"test,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *RunLanguageTestRequest) Reset() {
@@ -313,7 +313,7 @@ func (x *RunLanguageTestRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RunLanguageTestRequest) ProtoMessage() {}
+func (*RunLanguageTestRequest) ProtoMessage()	{}
 
 func (x *RunLanguageTestRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_testing_language_proto_msgTypes[4]
@@ -347,13 +347,13 @@ func (x *RunLanguageTestRequest) GetTest() string {
 }
 
 type RunLanguageTestResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
-	Messages      []string               `protobuf:"bytes,2,rep,name=messages,proto3" json:"messages,omitempty"`
-	Stdout        string                 `protobuf:"bytes,3,opt,name=stdout,proto3" json:"stdout,omitempty"`
-	Stderr        string                 `protobuf:"bytes,4,opt,name=stderr,proto3" json:"stderr,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Success		bool			`protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Messages	[]string		`protobuf:"bytes,2,rep,name=messages,proto3" json:"messages,omitempty"`
+	Stdout		string			`protobuf:"bytes,3,opt,name=stdout,proto3" json:"stdout,omitempty"`
+	Stderr		string			`protobuf:"bytes,4,opt,name=stderr,proto3" json:"stderr,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *RunLanguageTestResponse) Reset() {
@@ -367,7 +367,7 @@ func (x *RunLanguageTestResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RunLanguageTestResponse) ProtoMessage() {}
+func (*RunLanguageTestResponse) ProtoMessage()	{}
 
 func (x *RunLanguageTestResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_testing_language_proto_msgTypes[5]
@@ -415,12 +415,12 @@ func (x *RunLanguageTestResponse) GetStderr() string {
 }
 
 type PrepareLanguageTestsRequest_Replacement struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Path          string                 `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
-	Pattern       string                 `protobuf:"bytes,2,opt,name=pattern,proto3" json:"pattern,omitempty"`
-	Replacement   string                 `protobuf:"bytes,3,opt,name=replacement,proto3" json:"replacement,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Path		string			`protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	Pattern		string			`protobuf:"bytes,2,opt,name=pattern,proto3" json:"pattern,omitempty"`
+	Replacement	string			`protobuf:"bytes,3,opt,name=replacement,proto3" json:"replacement,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *PrepareLanguageTestsRequest_Replacement) Reset() {
@@ -434,7 +434,7 @@ func (x *PrepareLanguageTestsRequest_Replacement) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PrepareLanguageTestsRequest_Replacement) ProtoMessage() {}
+func (*PrepareLanguageTestsRequest_Replacement) ProtoMessage()	{}
 
 func (x *PrepareLanguageTestsRequest_Replacement) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_testing_language_proto_msgTypes[6]
@@ -479,13 +479,13 @@ func (x *PrepareLanguageTestsRequest_Replacement) GetReplacement() string {
 // requisite program code generation is not yet complete enough to support generating programs which exercise that
 // functionality.
 type PrepareLanguageTestsRequest_ProgramOverride struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// A list of paths to directories containing programs to use for the test. The length of this list should
 	// correspond to the number of `Runs` in the test, with each entry being used for the corresponding run (e.g.
 	// entry 0 for run 0, entry 1 for run 1, etc.).
-	Paths         []string `protobuf:"bytes,1,rep,name=paths,proto3" json:"paths,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Paths		[]string	`protobuf:"bytes,1,rep,name=paths,proto3" json:"paths,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *PrepareLanguageTestsRequest_ProgramOverride) Reset() {
@@ -499,7 +499,7 @@ func (x *PrepareLanguageTestsRequest_ProgramOverride) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PrepareLanguageTestsRequest_ProgramOverride) ProtoMessage() {}
+func (*PrepareLanguageTestsRequest_ProgramOverride) ProtoMessage()	{}
 
 func (x *PrepareLanguageTestsRequest_ProgramOverride) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_testing_language_proto_msgTypes[7]
@@ -571,8 +571,8 @@ const file_pulumi_testing_language_proto_rawDesc = "" +
 	"\x0fRunLanguageTest\x12).pulumirpc.testing.RunLanguageTestRequest\x1a*.pulumirpc.testing.RunLanguageTestResponse\"\x00B2Z0github.com/pulumi/pulumi/sdk/v3/proto/go/testingb\x06proto3"
 
 var (
-	file_pulumi_testing_language_proto_rawDescOnce sync.Once
-	file_pulumi_testing_language_proto_rawDescData []byte
+	file_pulumi_testing_language_proto_rawDescOnce	sync.Once
+	file_pulumi_testing_language_proto_rawDescData	[]byte
 )
 
 func file_pulumi_testing_language_proto_rawDescGZIP() []byte {
@@ -584,34 +584,34 @@ func file_pulumi_testing_language_proto_rawDescGZIP() []byte {
 
 var file_pulumi_testing_language_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_pulumi_testing_language_proto_goTypes = []any{
-	(*GetLanguageTestsRequest)(nil),                     // 0: pulumirpc.testing.GetLanguageTestsRequest
-	(*GetLanguageTestsResponse)(nil),                    // 1: pulumirpc.testing.GetLanguageTestsResponse
-	(*PrepareLanguageTestsRequest)(nil),                 // 2: pulumirpc.testing.PrepareLanguageTestsRequest
-	(*PrepareLanguageTestsResponse)(nil),                // 3: pulumirpc.testing.PrepareLanguageTestsResponse
-	(*RunLanguageTestRequest)(nil),                      // 4: pulumirpc.testing.RunLanguageTestRequest
-	(*RunLanguageTestResponse)(nil),                     // 5: pulumirpc.testing.RunLanguageTestResponse
-	(*PrepareLanguageTestsRequest_Replacement)(nil),     // 6: pulumirpc.testing.PrepareLanguageTestsRequest.Replacement
-	(*PrepareLanguageTestsRequest_ProgramOverride)(nil), // 7: pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverride
-	nil, // 8: pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverridesEntry
+	(*GetLanguageTestsRequest)(nil),			// 0: pulumirpc.testing.GetLanguageTestsRequest
+	(*GetLanguageTestsResponse)(nil),			// 1: pulumirpc.testing.GetLanguageTestsResponse
+	(*PrepareLanguageTestsRequest)(nil),			// 2: pulumirpc.testing.PrepareLanguageTestsRequest
+	(*PrepareLanguageTestsResponse)(nil),			// 3: pulumirpc.testing.PrepareLanguageTestsResponse
+	(*RunLanguageTestRequest)(nil),				// 4: pulumirpc.testing.RunLanguageTestRequest
+	(*RunLanguageTestResponse)(nil),			// 5: pulumirpc.testing.RunLanguageTestResponse
+	(*PrepareLanguageTestsRequest_Replacement)(nil),	// 6: pulumirpc.testing.PrepareLanguageTestsRequest.Replacement
+	(*PrepareLanguageTestsRequest_ProgramOverride)(nil),	// 7: pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverride
+	nil,	// 8: pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverridesEntry
 }
 var file_pulumi_testing_language_proto_depIdxs = []int32{
-	6, // 0: pulumirpc.testing.PrepareLanguageTestsRequest.snapshot_edits:type_name -> pulumirpc.testing.PrepareLanguageTestsRequest.Replacement
-	8, // 1: pulumirpc.testing.PrepareLanguageTestsRequest.program_overrides:type_name -> pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverridesEntry
-	7, // 2: pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverridesEntry.value:type_name -> pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverride
-	0, // 3: pulumirpc.testing.LanguageTest.GetLanguageTests:input_type -> pulumirpc.testing.GetLanguageTestsRequest
-	2, // 4: pulumirpc.testing.LanguageTest.PrepareLanguageTests:input_type -> pulumirpc.testing.PrepareLanguageTestsRequest
-	4, // 5: pulumirpc.testing.LanguageTest.RunLanguageTest:input_type -> pulumirpc.testing.RunLanguageTestRequest
-	1, // 6: pulumirpc.testing.LanguageTest.GetLanguageTests:output_type -> pulumirpc.testing.GetLanguageTestsResponse
-	3, // 7: pulumirpc.testing.LanguageTest.PrepareLanguageTests:output_type -> pulumirpc.testing.PrepareLanguageTestsResponse
-	5, // 8: pulumirpc.testing.LanguageTest.RunLanguageTest:output_type -> pulumirpc.testing.RunLanguageTestResponse
-	6, // [6:9] is the sub-list for method output_type
-	3, // [3:6] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	6,	// 0: pulumirpc.testing.PrepareLanguageTestsRequest.snapshot_edits:type_name -> pulumirpc.testing.PrepareLanguageTestsRequest.Replacement
+	8,	// 1: pulumirpc.testing.PrepareLanguageTestsRequest.program_overrides:type_name -> pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverridesEntry
+	7,	// 2: pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverridesEntry.value:type_name -> pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverride
+	0,	// 3: pulumirpc.testing.LanguageTest.GetLanguageTests:input_type -> pulumirpc.testing.GetLanguageTestsRequest
+	2,	// 4: pulumirpc.testing.LanguageTest.PrepareLanguageTests:input_type -> pulumirpc.testing.PrepareLanguageTestsRequest
+	4,	// 5: pulumirpc.testing.LanguageTest.RunLanguageTest:input_type -> pulumirpc.testing.RunLanguageTestRequest
+	1,	// 6: pulumirpc.testing.LanguageTest.GetLanguageTests:output_type -> pulumirpc.testing.GetLanguageTestsResponse
+	3,	// 7: pulumirpc.testing.LanguageTest.PrepareLanguageTests:output_type -> pulumirpc.testing.PrepareLanguageTestsResponse
+	5,	// 8: pulumirpc.testing.LanguageTest.RunLanguageTest:output_type -> pulumirpc.testing.RunLanguageTestResponse
+	6,	// [6:9] is the sub-list for method output_type
+	3,	// [3:6] is the sub-list for method input_type
+	3,	// [3:3] is the sub-list for extension type_name
+	3,	// [3:3] is the sub-list for extension extendee
+	0,	// [0:3] is the sub-list for field type_name
 }
 
-func init() { file_pulumi_testing_language_proto_init() }
+func init()	{ file_pulumi_testing_language_proto_init() }
 func file_pulumi_testing_language_proto_init() {
 	if File_pulumi_testing_language_proto != nil {
 		return
@@ -619,16 +619,16 @@ func file_pulumi_testing_language_proto_init() {
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
-			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_testing_language_proto_rawDesc), len(file_pulumi_testing_language_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   9,
-			NumExtensions: 0,
-			NumServices:   1,
+			GoPackagePath:	reflect.TypeOf(x{}).PkgPath(),
+			RawDescriptor:	unsafe.Slice(unsafe.StringData(file_pulumi_testing_language_proto_rawDesc), len(file_pulumi_testing_language_proto_rawDesc)),
+			NumEnums:	0,
+			NumMessages:	9,
+			NumExtensions:	0,
+			NumServices:	1,
 		},
-		GoTypes:           file_pulumi_testing_language_proto_goTypes,
-		DependencyIndexes: file_pulumi_testing_language_proto_depIdxs,
-		MessageInfos:      file_pulumi_testing_language_proto_msgTypes,
+		GoTypes:		file_pulumi_testing_language_proto_goTypes,
+		DependencyIndexes:	file_pulumi_testing_language_proto_depIdxs,
+		MessageInfos:		file_pulumi_testing_language_proto_msgTypes,
 	}.Build()
 	File_pulumi_testing_language_proto = out.File
 	file_pulumi_testing_language_proto_goTypes = nil

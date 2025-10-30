@@ -22,12 +22,12 @@ import (
 	"os"
 
 	"github.com/erikgeiser/promptkit/confirmation"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -37,22 +37,22 @@ import (
 
 func newConfigEnvCmd(ws pkgWorkspace.Context, stackRef *string) *cobra.Command {
 	impl := configEnvCmd{
-		stdin:            os.Stdin,
-		stdout:           os.Stdout,
-		diags:            cmdutil.Diag(),
-		ws:               ws,
-		requireStack:     cmdStack.RequireStack,
-		loadProjectStack: cmdStack.LoadProjectStack,
-		saveProjectStack: cmdStack.SaveProjectStack,
-		stackRef:         stackRef,
+		stdin:			os.Stdin,
+		stdout:			os.Stdout,
+		diags:			cmdutil.Diag(),
+		ws:			ws,
+		requireStack:		cmdStack.RequireStack,
+		loadProjectStack:	cmdStack.LoadProjectStack,
+		saveProjectStack:	cmdStack.SaveProjectStack,
+		stackRef:		stackRef,
 	}
 
 	cmd := &cobra.Command{
-		Use:   "env",
-		Short: "Manage ESC environments for a stack",
+		Use:	"env",
+		Short:	"Manage ESC environments for a stack",
 		Long: "Manages the ESC environment associated with a specific stack. To create a new environment\n" +
 			"from a stack's configuration, use `pulumi config env init`.",
-		Args: cmdutil.NoArgs,
+		Args:	cmdutil.NoArgs,
 	}
 
 	cmd.AddCommand(newConfigEnvInitCmd(&impl))
@@ -64,17 +64,17 @@ func newConfigEnvCmd(ws pkgWorkspace.Context, stackRef *string) *cobra.Command {
 }
 
 type configEnvCmd struct {
-	stdin  io.Reader
-	stdout io.Writer
+	stdin	io.Reader
+	stdout	io.Writer
 
-	interactive bool
-	color       colors.Colorization
-	diags       diag.Sink
+	interactive	bool
+	color		colors.Colorization
+	diags		diag.Sink
 
-	ssml cmdStack.SecretsManagerLoader
-	ws   pkgWorkspace.Context
+	ssml	cmdStack.SecretsManagerLoader
+	ws	pkgWorkspace.Context
 
-	requireStack func(
+	requireStack	func(
 		ctx context.Context,
 		sink diag.Sink,
 		ws pkgWorkspace.Context,
@@ -84,16 +84,16 @@ type configEnvCmd struct {
 		opts display.Options,
 	) (backend.Stack, error)
 
-	loadProjectStack func(
+	loadProjectStack	func(
 		ctx context.Context,
 		diags diag.Sink,
 		project *workspace.Project,
 		stack backend.Stack,
 	) (*workspace.ProjectStack, error)
 
-	saveProjectStack func(ctx context.Context, stack backend.Stack, ps *workspace.ProjectStack) error
+	saveProjectStack	func(ctx context.Context, stack backend.Stack, ps *workspace.ProjectStack) error
 
-	stackRef *string
+	stackRef	*string
 }
 
 func (cmd *configEnvCmd) initArgs() {
@@ -162,8 +162,8 @@ func (cmd *configEnvCmd) listStackEnvironments(ctx context.Context, jsonOut bool
 
 		if len(imports) > 0 {
 			ui.FprintTable(cmd.stdout, cmdutil.Table{
-				Headers: []string{"ENVIRONMENTS"},
-				Rows:    rows,
+				Headers:	[]string{"ENVIRONMENTS"},
+				Rows:		rows,
 			}, nil)
 		} else {
 			ui.Fprintf(cmd.stdout, "This stack configuration has no environments listed. "+
@@ -201,8 +201,8 @@ func (cmd *configEnvCmd) editStackEnvironment(
 		*stack,
 		projectStack,
 		showSecrets,
-		false, /*jsonOut*/
-		false, /*openEnvironment*/
+		false,	/*jsonOut*/
+		false,	/*openEnvironment*/
 	); err != nil {
 		return err
 	}

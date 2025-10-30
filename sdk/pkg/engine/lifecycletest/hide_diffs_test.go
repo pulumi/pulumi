@@ -22,10 +22,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
@@ -72,15 +72,15 @@ func testHideDiffs(t *testing.T, detailedDiff bool) {
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					return plugin.UpdateResponse{
-						Properties: req.NewInputs,
-						Status:     resource.StatusOK,
+						Properties:	req.NewInputs,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -91,7 +91,7 @@ func testHideDiffs(t *testing.T, detailedDiff bool) {
 		// This resource checks that we behave correctly when all updating fields are hidden.
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"scalar": propValue,
+				"scalar":	propValue,
 				"array": resource.NewProperty([]resource.PropertyValue{
 					propValue,
 				}),
@@ -111,7 +111,7 @@ func testHideDiffs(t *testing.T, detailedDiff bool) {
 		// non-hidden fields are diffed.
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"scalar": propValue,
+				"scalar":	propValue,
 				"array": resource.NewProperty([]resource.PropertyValue{
 					propValue,
 				}),
@@ -143,15 +143,15 @@ func testHideDiffs(t *testing.T, detailedDiff bool) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: false,
+			T:			t,
+			HostF:			hostF,
+			SkipDisplayTests:	false,
 		},
 		Steps: []lt.TestStep{{
-			Op: engine.Update,
+			Op:	engine.Update,
 			// This test validates our display logic, so we don't need to
 			// validate events or state.
-			Validate: nil,
+			Validate:	nil,
 		}},
 	}
 
@@ -162,5 +162,5 @@ func testHideDiffs(t *testing.T, detailedDiff bool) {
 		{"scalar"},
 	})
 	propValue = resource.NewProperty("b")
-	p.Run(t, created) // Update
+	p.Run(t, created)	// Update
 }

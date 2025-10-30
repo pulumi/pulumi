@@ -37,15 +37,15 @@ import (
 var (
 	// StacksDir is a path under the state's root directory
 	// where the diy backend stores stack information.
-	StacksDir = filepath.Join(workspace.BookkeepingDir, workspace.StackDir)
+	StacksDir	= filepath.Join(workspace.BookkeepingDir, workspace.StackDir)
 
 	// HistoriesDir is a path under the state's root directory
 	// where the diy backend stores histories for all stacks.
-	HistoriesDir = filepath.Join(workspace.BookkeepingDir, workspace.HistoryDir)
+	HistoriesDir	= filepath.Join(workspace.BookkeepingDir, workspace.HistoryDir)
 
 	// BackupsDir is a path under the state's root directory
 	// where the diy backend stores backups of stacks.
-	BackupsDir = filepath.Join(workspace.BookkeepingDir, workspace.BackupDir)
+	BackupsDir	= filepath.Join(workspace.BookkeepingDir, workspace.BackupDir)
 )
 
 // referenceStore stores and provides access to stack information.
@@ -91,18 +91,18 @@ type referenceStore interface {
 //
 // This is version 1 of the stack storage format.
 type projectReferenceStore struct {
-	bucket Bucket
+	bucket	Bucket
 
 	// currentProject is a thread-safe way to get the current project.
-	currentProject func() *workspace.Project
+	currentProject	func() *workspace.Project
 }
 
 var _ referenceStore = (*projectReferenceStore)(nil)
 
 func newProjectReferenceStore(bucket Bucket, currentProject func() *workspace.Project) *projectReferenceStore {
 	return &projectReferenceStore{
-		bucket:         bucket,
-		currentProject: currentProject,
+		bucket:		bucket,
+		currentProject:	currentProject,
 	}
 }
 
@@ -110,10 +110,10 @@ func newProjectReferenceStore(bucket Bucket, currentProject func() *workspace.Pr
 // This DOES NOT modify the underlying storage.
 func (p *projectReferenceStore) newReference(project tokens.Name, name tokens.StackName) *diyBackendReference {
 	return &diyBackendReference{
-		name:           name,
-		project:        project,
-		store:          p,
-		currentProject: p.currentProject,
+		name:		name,
+		project:	project,
+		store:		p,
+		currentProject:	p.currentProject,
 	}
 }
 
@@ -147,7 +147,7 @@ func (p *projectReferenceStore) ParseReference(stackRef string) (*diyBackendRefe
 	}
 
 	var name, project, org string
-	split := strings.Split(stackRef, "/") // guaranteed to have at least one element
+	split := strings.Split(stackRef, "/")	// guaranteed to have at least one element
 	switch len(split) {
 	case 1:
 		name = split[0]
@@ -213,7 +213,7 @@ func (p *projectReferenceStore) ListProjects(ctx context.Context) ([]tokens.Name
 	projects := slice.Prealloc[tokens.Name](len(files))
 	for _, file := range files {
 		if !file.IsDir {
-			continue // ignore files
+			continue	// ignore files
 		}
 
 		projName := objectName(file)
@@ -275,7 +275,7 @@ func (p *projectReferenceStore) ListReferences(ctx context.Context) ([]*diyBacke
 
 		parts := strings.Split(strings.TrimPrefix(file.Key, prefix), "/")
 		if len(parts) != 2 {
-			continue // skip paths too shallow or too deep
+			continue	// skip paths too shallow or too deep
 		}
 		projName := parts[0]
 		objName := parts[1]
@@ -334,8 +334,8 @@ func newLegacyReferenceStore(b Bucket) *legacyReferenceStore {
 // This DOES NOT modify the underlying storage.
 func (p *legacyReferenceStore) newReference(name tokens.StackName) *diyBackendReference {
 	return &diyBackendReference{
-		name:  name,
-		store: p,
+		name:	name,
+		store:	p,
 	}
 }
 

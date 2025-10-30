@@ -19,22 +19,22 @@ type OperationType string
 
 const (
 	// OperationTypeCreating is the state of resources that are being created.
-	OperationTypeCreating OperationType = "creating"
+	OperationTypeCreating	OperationType	= "creating"
 	// OperationTypeUpdating is the state of resources that are being updated.
-	OperationTypeUpdating OperationType = "updating"
+	OperationTypeUpdating	OperationType	= "updating"
 	// OperationTypeDeleting is the state of resources that are being deleted.
-	OperationTypeDeleting OperationType = "deleting"
+	OperationTypeDeleting	OperationType	= "deleting"
 	// OperationTypeReading is the state of resources that are being read.
-	OperationTypeReading OperationType = "reading"
+	OperationTypeReading	OperationType	= "reading"
 	// OperationTypeImporting is the state of resources that are being imported.
-	OperationTypeImporting OperationType = "importing"
+	OperationTypeImporting	OperationType	= "importing"
 )
 
 // Operation represents an operation that the engine has initiated but has not yet completed. It is
 // essentially just a tuple of a resource and a string identifying the operation.
 type Operation struct {
-	Resource *State
-	Type     OperationType
+	Resource	*State
+	Type		OperationType
 }
 
 // NewOperation constructs a new Operation from a state and an operation name.
@@ -44,7 +44,7 @@ func NewOperation(state *State, op OperationType) Operation {
 
 func (op Operation) Copy() Operation {
 	return Operation{
-		Resource: op.Resource.Copy(),
-		Type:     op.Type,
+		Resource:	op.Resource.Copy(),
+		Type:		op.Type,
 	}
 }

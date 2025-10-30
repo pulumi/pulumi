@@ -27,9 +27,9 @@ import (
 
 // A StackContext provides context for generating URNs and references to resources.
 type StackContext struct {
-	projectName string
-	stackName   string
-	resources   []*resource.State
+	projectName	string
+	stackName	string
+	resources	[]*resource.State
 }
 
 // NewStackContext creates a new stack context with the given project name, stack name, and list of resources.
@@ -232,8 +232,8 @@ func LiteralArchiveGenerator(maxDepth int) *rapid.Generator[*archive.Archive] {
 			contentsGenerator = rapid.MapOfN(
 				rapid.StringMatching(`^(/[^[:cntrl:]/]+)*/?[^[:cntrl:]/]+$`),
 				rapid.OneOf(AssetGenerator().AsAny(), ArchiveGenerator(maxDepth-1).AsAny()),
-				0,  // min length
-				16, // max length
+				0,	// min length
+				16,	// max length
 			)
 		} else {
 			contentsGenerator = rapid.Just(map[string]any{})
@@ -272,9 +272,9 @@ func resourceReferenceGenerator(ctx *StackContext) *rapid.Generator[resource.Res
 			}
 
 			return &resource.State{
-				URN:    URNGenerator().Draw(t, "resource URN"),
-				Custom: custom,
-				ID:     id,
+				URN:	URNGenerator().Draw(t, "resource URN"),
+				Custom:	custom,
+				ID:	id,
 			}
 		})
 	} else {
@@ -294,9 +294,9 @@ func resourceReferenceGenerator(ctx *StackContext) *rapid.Generator[resource.Res
 		}
 
 		return resource.ResourceReference{
-			URN:            r.URN,
-			ID:             id,
-			PackageVersion: SemverStringGenerator().Draw(t, "package version"),
+			URN:		r.URN,
+			ID:		id,
+			PackageVersion:	SemverStringGenerator().Draw(t, "package version"),
 		}
 	})
 }
@@ -345,8 +345,8 @@ func propertyMapGenerator(ctx *StackContext, maxDepth int) *rapid.Generator[reso
 			rapid.MapOfN(
 				PropertyKeyGenerator(),
 				propertyValueGenerator(ctx, maxDepth-1),
-				0,  // min length
-				32, // max length
+				0,	// min length
+				32,	// max length
 			).Draw(t, "property map"))
 	})
 }
@@ -392,10 +392,10 @@ func outputPropertyGenerator(ctx *StackContext, maxDepth int) *rapid.Generator[r
 		}
 
 		return resource.NewProperty(resource.Output{
-			Element:      element,
-			Known:        known,
-			Secret:       rapid.Bool().Draw(t, "secret"),
-			Dependencies: rapid.SliceOfN(urnGenerator, 0, dependenciesUpperBound).Draw(t, "dependencies"),
+			Element:	element,
+			Known:		known,
+			Secret:		rapid.Bool().Draw(t, "secret"),
+			Dependencies:	rapid.SliceOfN(urnGenerator, 0, dependenciesUpperBound).Draw(t, "dependencies"),
 		})
 	})
 }

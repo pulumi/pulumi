@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -84,38 +84,38 @@ func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
 		outputs = resource.PropertyMap{}
 	}
 	return resource.NewState{
-		Type:                    s.Type,
-		URN:                     s.URN,
-		Custom:                  s.Custom,
-		Delete:                  s.Delete,
-		ID:                      s.ID,
-		Inputs:                  inputs,
-		Outputs:                 outputs,
-		Parent:                  s.Parent,
-		Protect:                 s.Protect,
-		Taint:                   s.Taint,
-		External:                s.External,
-		Dependencies:            s.Dependencies,
-		InitErrors:              s.InitErrors,
-		Provider:                s.Provider,
-		PropertyDependencies:    s.PropertyDependencies,
-		PendingReplacement:      s.PendingReplacement,
-		AdditionalSecretOutputs: s.AdditionalSecretOutputs,
-		Aliases:                 s.Aliases,
-		CustomTimeouts:          &s.CustomTimeouts,
-		ImportID:                s.ImportID,
-		RetainOnDelete:          s.RetainOnDelete,
-		DeletedWith:             s.DeletedWith,
-		Created:                 s.Created,
-		Modified:                s.Modified,
-		SourcePosition:          s.SourcePosition,
-		StackTrace:              s.StackTrace,
-		IgnoreChanges:           s.IgnoreChanges,
-		HideDiff:                s.HideDiff,
-		ReplaceOnChanges:        s.ReplaceOnChanges,
-		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,
-		ViewOf:                  s.ViewOf,
-		ResourceHooks:           s.ResourceHooks,
+		Type:				s.Type,
+		URN:				s.URN,
+		Custom:				s.Custom,
+		Delete:				s.Delete,
+		ID:				s.ID,
+		Inputs:				inputs,
+		Outputs:			outputs,
+		Parent:				s.Parent,
+		Protect:			s.Protect,
+		Taint:				s.Taint,
+		External:			s.External,
+		Dependencies:			s.Dependencies,
+		InitErrors:			s.InitErrors,
+		Provider:			s.Provider,
+		PropertyDependencies:		s.PropertyDependencies,
+		PendingReplacement:		s.PendingReplacement,
+		AdditionalSecretOutputs:	s.AdditionalSecretOutputs,
+		Aliases:			s.Aliases,
+		CustomTimeouts:			&s.CustomTimeouts,
+		ImportID:			s.ImportID,
+		RetainOnDelete:			s.RetainOnDelete,
+		DeletedWith:			s.DeletedWith,
+		Created:			s.Created,
+		Modified:			s.Modified,
+		SourcePosition:			s.SourcePosition,
+		StackTrace:			s.StackTrace,
+		IgnoreChanges:			s.IgnoreChanges,
+		HideDiff:			s.HideDiff,
+		ReplaceOnChanges:		s.ReplaceOnChanges,
+		RefreshBeforeUpdate:		s.RefreshBeforeUpdate,
+		ViewOf:				s.ViewOf,
+		ResourceHooks:			s.ResourceHooks,
 	}.Make()
 }
 
@@ -171,9 +171,9 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 			p := e.Payload().(engine.DiagEventPayload)
 			if !p.Ephemeral && p.Severity != diag.Debug {
 				digest.Diagnostics = append(digest.Diagnostics, display.PreviewDiagnostic{
-					URN:      p.URN,
-					Message:  colors.Never.Colorize(p.Prefix + p.Message),
-					Severity: p.Severity,
+					URN:		p.URN,
+					Message:	colors.Never.Colorize(p.Prefix + p.Message),
+					Severity:	p.Severity,
 				})
 			}
 		case engine.StartDebuggingEvent:
@@ -184,8 +184,8 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 			// Append stdout events as informational messages, and elide all colorization.
 			p := e.Payload().(engine.StdoutEventPayload)
 			digest.Diagnostics = append(digest.Diagnostics, display.PreviewDiagnostic{
-				Message:  colors.Never.Colorize(p.Message),
-				Severity: diag.Info,
+				Message:	colors.Never.Colorize(p.Message),
+				Severity:	diag.Info,
 			})
 		case engine.ResourcePreEvent:
 			// Create the detailed metadata for this step and the initial state of its
@@ -259,19 +259,19 @@ func getPreviewMetadataStep(
 		detailedDiff = make(map[string]display.PropertyDiff)
 		for k, v := range m.DetailedDiff {
 			detailedDiff[k] = display.PropertyDiff{
-				Kind:      v.Kind.String(),
-				InputDiff: v.InputDiff,
+				Kind:		v.Kind.String(),
+				InputDiff:	v.InputDiff,
 			}
 		}
 	}
 
 	step := &display.PreviewStep{
-		Op:             m.Op,
-		URN:            m.URN,
-		Provider:       m.Provider,
-		DiffReasons:    m.Diffs,
-		ReplaceReasons: m.Keys,
-		DetailedDiff:   detailedDiff,
+		Op:		m.Op,
+		URN:		m.URN,
+		Provider:	m.Provider,
+		DiffReasons:	m.Diffs,
+		ReplaceReasons:	m.Keys,
+		DetailedDiff:	detailedDiff,
 	}
 
 	ctx := context.TODO()

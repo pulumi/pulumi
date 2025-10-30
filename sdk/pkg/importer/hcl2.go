@@ -21,11 +21,11 @@ import (
 	"math"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -35,24 +35,24 @@ import (
 
 // Null represents Pulumi HCL2's `null` variable.
 var Null = &model.Variable{
-	Name:         "null",
-	VariableType: model.NoneType,
+	Name:		"null",
+	VariableType:	model.NoneType,
 }
 
 type PathedLiteralValue struct {
-	Root                string
-	Value               string
-	ExpressionReference *model.ScopeTraversalExpression
+	Root			string
+	Value			string
+	ExpressionReference	*model.ScopeTraversalExpression
 }
 
 // ImportState tracks the state of an import process.
 type ImportState struct {
-	Names               NameTable
-	PathedLiteralValues []PathedLiteralValue
+	Names			NameTable
+	PathedLiteralValues	[]PathedLiteralValue
 
 	// A snapshot of the resources in the Pulumi program that new resources are being imported to. This is used to resolve
 	// references to packages providers.
-	Snapshot []*resource.State
+	Snapshot	[]*resource.State
 }
 
 // filterReferences filters out self-references from the import state so that if a resource has a property
@@ -69,9 +69,9 @@ func filterReferences(resourceName string, importState ImportState) ImportState 
 	withoutDuplicates := removeDuplicatePathedValues(pathedLiteralValues)
 
 	return ImportState{
-		Names:               importState.Names,
-		PathedLiteralValues: withoutDuplicates,
-		Snapshot:            importState.Snapshot,
+		Names:			importState.Names,
+		PathedLiteralValues:	withoutDuplicates,
+		Snapshot:		importState.Snapshot,
 	}
 }
 
@@ -126,17 +126,17 @@ func GenerateHCL2Definition(
 	}
 	if parameters != nil {
 		parameterization = &schema.ParameterizationDescriptor{
-			Name:    parameters.Name,
-			Version: parameters.Version,
-			Value:   parameters.Value,
+			Name:		parameters.Name,
+			Version:	parameters.Version,
+			Value:		parameters.Value,
 		}
 	}
 
 	pkgDesc := &schema.PackageDescriptor{
-		Name:             string(pluginName),
-		Version:          pluginVersion,
-		DownloadURL:      downloadURL,
-		Parameterization: parameterization,
+		Name:			string(pluginName),
+		Version:		pluginVersion,
+		DownloadURL:		downloadURL,
+		Parameterization:	parameterization,
 	}
 
 	pkg, err := schema.LoadPackageReferenceV2(context.TODO(), loader, pkgDesc)
@@ -177,7 +177,7 @@ func GenerateHCL2Definition(
 	// the resource block.
 	if mappedName, ok := importState.Names[state.URN]; ok {
 		items = append(items, &model.Attribute{
-			Name: "__logicalName",
+			Name:	"__logicalName",
 			Value: &model.TemplateExpression{
 				Parts: []model.Expression{
 					&model.LiteralValueExpression{
@@ -205,8 +205,8 @@ func GenerateHCL2Definition(
 		}
 		if x != nil {
 			items = append(items, &model.Attribute{
-				Name:  p.Name,
-				Value: x,
+				Name:	p.Name,
+				Value:	x,
 			})
 		}
 	}
@@ -221,9 +221,9 @@ func GenerateHCL2Definition(
 
 	typ := string(state.URN.Type())
 	return &model.Block{
-		Tokens: syntax.NewBlockTokens("resource", name, typ),
-		Type:   "resource",
-		Labels: []string{name, typ},
+		Tokens:	syntax.NewBlockTokens("resource", name, typ),
+		Type:	"resource",
+		Labels:	[]string{name, typ},
 		Body: &model.Body{
 			Items: items,
 		},
@@ -232,23 +232,23 @@ func GenerateHCL2Definition(
 
 func newVariableReference(name string) model.Expression {
 	return model.VariableReference(&model.Variable{
-		Name:         name,
-		VariableType: model.DynamicType,
+		Name:		name,
+		VariableType:	model.DynamicType,
 	})
 }
 
 func appendResourceOption(block *model.Block, name string, value model.Expression) *model.Block {
 	if block == nil {
 		block = &model.Block{
-			Tokens: syntax.NewBlockTokens("options"),
-			Type:   "options",
-			Body:   &model.Body{},
+			Tokens:	syntax.NewBlockTokens("options"),
+			Type:	"options",
+			Body:	&model.Body{},
 		}
 	}
 	block.Body.Items = append(block.Body.Items, &model.Attribute{
-		Tokens: syntax.NewAttributeTokens(name),
-		Name:   name,
-		Value:  value,
+		Tokens:	syntax.NewAttributeTokens(name),
+		Name:	name,
+		Value:	value,
 	})
 	return block
 }
@@ -296,20 +296,20 @@ func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[s
 		}
 
 		resourceOptions = appendResourceOption(resourceOptions, "dependsOn", &model.TupleConsExpression{
-			Tokens:      syntax.NewTupleConsTokens(len(deps)),
-			Expressions: deps,
+			Tokens:		syntax.NewTupleConsTokens(len(deps)),
+			Expressions:	deps,
 		})
 	}
 	if state.Protect {
 		resourceOptions = appendResourceOption(resourceOptions, "protect", &model.LiteralValueExpression{
-			Tokens: syntax.NewLiteralValueTokens(cty.True),
-			Value:  cty.True,
+			Tokens:	syntax.NewLiteralValueTokens(cty.True),
+			Value:	cty.True,
 		})
 	}
 	if state.RetainOnDelete {
 		resourceOptions = appendResourceOption(resourceOptions, "retainOnDelete", &model.LiteralValueExpression{
-			Tokens: syntax.NewLiteralValueTokens(cty.True),
-			Value:  cty.True,
+			Tokens:	syntax.NewLiteralValueTokens(cty.True),
+			Value:	cty.True,
 		})
 	}
 	if len(state.IgnoreChanges) > 0 {
@@ -317,13 +317,13 @@ func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[s
 		for i, prop := range state.IgnoreChanges {
 			v := cty.StringVal(prop)
 			ignoreChanges[i] = &model.LiteralValueExpression{
-				Tokens: syntax.NewLiteralValueTokens(v),
-				Value:  v,
+				Tokens:	syntax.NewLiteralValueTokens(v),
+				Value:	v,
 			}
 		}
 		resourceOptions = appendResourceOption(resourceOptions, "ignoreChanges", &model.TupleConsExpression{
-			Tokens:      syntax.NewTupleConsTokens(len(ignoreChanges)),
-			Expressions: ignoreChanges,
+			Tokens:		syntax.NewTupleConsTokens(len(ignoreChanges)),
+			Expressions:	ignoreChanges,
 		})
 	}
 	if state.DeletedWith != "" {
@@ -520,7 +520,7 @@ func zeroValue(t schema.Type) model.Expression {
 					Key: &model.LiteralValueExpression{
 						Value: cty.StringVal(p.Name),
 					},
-					Value: zeroValue(p.Type),
+					Value:	zeroValue(p.Type),
 				})
 			}
 		}
@@ -813,8 +813,8 @@ func generateValue(
 			exprs[i] = x
 		}
 		return &model.TupleConsExpression{
-			Tokens:      syntax.NewTupleConsTokens(len(exprs)),
-			Expressions: exprs,
+			Tokens:		syntax.NewTupleConsTokens(len(exprs)),
+			Expressions:	exprs,
 		}, nil
 	case value.IsAsset():
 		return nil, errors.New("NYI: assets")
@@ -846,7 +846,7 @@ func generateValue(
 						Key: &model.LiteralValueExpression{
 							Value: cty.StringVal(p.Name),
 						},
-						Value: x,
+						Value:	x,
 					})
 				}
 			}
@@ -875,13 +875,13 @@ func generateValue(
 					Key: &model.LiteralValueExpression{
 						Value: cty.StringVal(propKey),
 					},
-					Value: x,
+					Value:	x,
 				})
 			}
 		}
 		return &model.ObjectConsExpression{
-			Tokens: syntax.NewObjectConsTokens(len(items)),
-			Items:  items,
+			Tokens:	syntax.NewObjectConsTokens(len(items)),
+			Items:	items,
 		}, nil
 	case value.IsSecret():
 		arg, err := generateValue(typ, value.SecretValue().Element, importState, onReferenceFound)
@@ -889,15 +889,15 @@ func generateValue(
 			return nil, err
 		}
 		return &model.FunctionCallExpression{
-			Name: "secret",
+			Name:	"secret",
 			Signature: model.StaticFunctionSignature{
 				Parameters: []model.Parameter{{
-					Name: "value",
-					Type: arg.Type(),
+					Name:	"value",
+					Type:	arg.Type(),
 				}},
-				ReturnType: model.NewOutputType(arg.Type()),
+				ReturnType:	model.NewOutputType(arg.Type()),
 			},
-			Args: []model.Expression{arg},
+			Args:	[]model.Expression{arg},
 		}, nil
 	case value.IsString():
 		x := &model.TemplateExpression{
@@ -910,13 +910,13 @@ func generateValue(
 		switch typ {
 		case schema.ArchiveType:
 			return &model.FunctionCallExpression{
-				Name: "fileArchive",
-				Args: []model.Expression{x},
+				Name:	"fileArchive",
+				Args:	[]model.Expression{x},
 			}, nil
 		case schema.AssetType:
 			return &model.FunctionCallExpression{
-				Name: "fileAsset",
-				Args: []model.Expression{x},
+				Name:	"fileAsset",
+				Args:	[]model.Expression{x},
 			}, nil
 		default:
 			for _, pathedValue := range importState.PathedLiteralValues {

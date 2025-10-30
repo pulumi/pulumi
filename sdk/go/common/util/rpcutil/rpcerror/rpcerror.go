@@ -45,11 +45,11 @@ import (
 // It contains a gRPC error code, a message, and a chain of "wrapped"
 // errors that led to the final dispatch of this particular error message.
 type Error struct {
-	code                  codes.Code
-	message               string
-	cause                 *ErrorCause
-	inputPropertiesErrors []perrors.InputPropertyErrorDetails
-	details               []any
+	code			codes.Code
+	message			string
+	cause			*ErrorCause
+	inputPropertiesErrors	[]perrors.InputPropertyErrorDetails
+	details			[]any
 }
 
 var _ error = (*Error)(nil)
@@ -99,8 +99,8 @@ func (r *Error) InputPropertiesErrors() []perrors.InputPropertyErrorDetails {
 // Notably, the pkg/errors package will affix stack traces to errors created through
 // the errors.New and errors.Wrap.
 type ErrorCause struct {
-	message    string
-	stackTrace string
+	message		string
+	stackTrace	string
 }
 
 // Message returns the message associated with this error cause.
@@ -161,8 +161,8 @@ func WrapDetailedError(err error) error {
 		errorDetails := pulumirpc.InputPropertiesError{}
 		for _, e := range iperr.Errors {
 			errorDetails.Errors = append(errorDetails.Errors, &pulumirpc.InputPropertiesError_PropertyError{
-				PropertyPath: e.PropertyPath,
-				Reason:       e.Reason,
+				PropertyPath:	e.PropertyPath,
+				Reason:		e.Reason,
 			})
 		}
 		status, newErr := status.WithDetails(&errorDetails)
@@ -208,16 +208,16 @@ func FromError(err error) (*Error, bool) {
 			rpcError.inputPropertiesErrors = make([]perrors.InputPropertyErrorDetails, len(d.Errors))
 			for i, e := range d.GetErrors() {
 				rpcError.inputPropertiesErrors[i] = perrors.InputPropertyErrorDetails{
-					PropertyPath: e.GetPropertyPath(),
-					Reason:       e.GetReason(),
+					PropertyPath:	e.GetPropertyPath(),
+					Reason:		e.GetReason(),
 				}
 			}
 		}
 		if errorCause, ok := details.(*pulumirpc.ErrorCause); ok {
 			contract.Assertf(rpcError.cause == nil, "RPC endpoint sent more than one ErrorCause")
 			rpcError.cause = &ErrorCause{
-				message:    errorCause.Message,
-				stackTrace: errorCause.StackTrace,
+				message:	errorCause.Message,
+				stackTrace:	errorCause.StackTrace,
 			}
 		}
 	}
@@ -250,7 +250,7 @@ func serializeErrorCause(err error) *pulumirpc.ErrorCause {
 	}
 
 	return &pulumirpc.ErrorCause{
-		Message:    message,
-		StackTrace: stackTrace,
+		Message:	message,
+		StackTrace:	stackTrace,
 	}
 }

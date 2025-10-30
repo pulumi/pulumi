@@ -403,15 +403,15 @@ func TestRuntimeErrorPython(t *testing.T) {
 	}
 
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-		Toolchain:  toolchain.Pip,
-		Root:       pDir,
-		Virtualenv: "venv",
+		Toolchain:	toolchain.Pip,
+		Root:		pDir,
+		Virtualenv:	"venv",
 	})
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
 	}
-	err = tc.InstallDependencies(context.Background(), pDir, false, /*useLanguageVersionTools */
+	err = tc.InstallDependencies(context.Background(), pDir, false,	/*useLanguageVersionTools */
 		true /*showOutput*/, os.Stdout, os.Stderr)
 	if err != nil {
 		t.Errorf("failed to create a venv and install project dependencies: %v", err)

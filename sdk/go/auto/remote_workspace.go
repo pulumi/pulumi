@@ -174,28 +174,28 @@ func remoteToLocalOptions(repo GitRepo, opts ...RemoteWorkspaceOption) ([]LocalW
 
 type remoteWorkspaceOptions struct {
 	// InheritSettings sets whether to inherit deployment settings from the stack.
-	InheritSettings bool
+	InheritSettings	bool
 	// EnvVars is a map of environment values scoped to the workspace.
 	// These values will be passed to all Workspace and Stack level commands.
-	EnvVars map[string]EnvVarValue
+	EnvVars	map[string]EnvVarValue
 	// PreRunCommands is an optional list of arbitrary commands to run before the remote Pulumi operation is invoked.
-	PreRunCommands []string
+	PreRunCommands	[]string
 	// SkipInstallDependencies sets whether to skip the default dependency installation step. Defaults to false.
-	SkipInstallDependencies bool
+	SkipInstallDependencies	bool
 	// ExecutorImage is the image to use for the remote executor.
-	ExecutorImage *ExecutorImage
+	ExecutorImage	*ExecutorImage
 	// AgentPoolID is the agent pool (also called deployment runner pool) to use for the remote Pulumi operation.
-	AgentPoolID string
+	AgentPoolID	string
 }
 
 type ExecutorImage struct {
-	Image       string
-	Credentials *DockerImageCredentials
+	Image		string
+	Credentials	*DockerImageCredentials
 }
 
 type DockerImageCredentials struct {
-	Username string
-	Password string
+	Username	string
+	Password	string
 }
 
 // RemoteWorkspaceOption is used to customize and configure a RemoteWorkspace at initialization time.

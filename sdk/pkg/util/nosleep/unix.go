@@ -35,8 +35,8 @@ func keepRunning() DoneFunc {
 	// Docs for this interface can be found at
 	// https://lira.no-ip.org:8443/doc/gnome-session/dbus/gnome-session.html#org.gnome.SessionManager.Inhibit
 	obj := conn.Object("org.gnome.SessionManager", "/org/gnome/SessionManager")
-	inhibitIdleFlag := uint(8) // inhibit the session from being marked as idle
-	toplevelXid := uint(42)    // value doesn't seem to matter here
+	inhibitIdleFlag := uint(8)	// inhibit the session from being marked as idle
+	toplevelXid := uint(42)		// value doesn't seem to matter here
 	err = obj.Call(
 		"org.gnome.SessionManager.Inhibit",
 		0,

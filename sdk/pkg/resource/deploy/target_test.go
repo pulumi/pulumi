@@ -36,8 +36,8 @@ func TestTarget(t *testing.T) {
 				expectedErr := errors.New("expected error")
 				target := &Target{
 					Config: config.Map{
-						config.MustMakeKey("test", "secret"):  config.NewSecureValue("secret-value"),
-						config.MustMakeKey("test", "regular"): config.NewValue("secret-value"),
+						config.MustMakeKey("test", "secret"):	config.NewSecureValue("secret-value"),
+						config.MustMakeKey("test", "regular"):	config.NewValue("secret-value"),
 					},
 					Decrypter: &decrypterMock{
 						DecryptValueF: func(
@@ -54,25 +54,25 @@ func TestTarget(t *testing.T) {
 			t.Run("different namespace", func(t *testing.T) {
 				target := &Target{
 					Config: config.Map{
-						config.MustMakeKey("a", "val"): config.NewSecureValue("secret-value"),
-						config.MustMakeKey("b", "val"): config.NewValue("plain-value"),
+						config.MustMakeKey("a", "val"):	config.NewSecureValue("secret-value"),
+						config.MustMakeKey("b", "val"):	config.NewValue("plain-value"),
 					},
-					Decrypter: &decrypterMock{},
+					Decrypter:	&decrypterMock{},
 				}
 				_, err := target.GetPackageConfig("something-else")
 				require.NoError(t, err)
 			})
 		})
 
-		t.Run("ok", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
+		t.Run("ok", func(t *testing.T) {	//nolint:paralleltest // golangci-lint v2 upgrade
 			expectedErr := errors.New("expected error")
 			target := &Target{
 				Config: config.Map{
-					config.MustMakeKey("a", "val"):        config.NewValue("a-value"),
-					config.MustMakeKey("b", "val"):        config.NewValue("b-value"),
-					config.MustMakeKey("c", "val"):        config.NewValue("c-value"),
-					config.MustMakeKey("test", "secret"):  config.NewSecureValue("secret-value"),
-					config.MustMakeKey("test", "regular"): config.NewValue("regular-value"),
+					config.MustMakeKey("a", "val"):		config.NewValue("a-value"),
+					config.MustMakeKey("b", "val"):		config.NewValue("b-value"),
+					config.MustMakeKey("c", "val"):		config.NewValue("c-value"),
+					config.MustMakeKey("test", "secret"):	config.NewSecureValue("secret-value"),
+					config.MustMakeKey("test", "regular"):	config.NewValue("regular-value"),
 				},
 				Decrypter: &decrypterMock{
 					DecryptValueF: func(

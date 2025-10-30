@@ -20,11 +20,11 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -46,8 +46,8 @@ func TestSearch_cmd(t *testing.T) {
 	orgName := "org1"
 	cmd := orgSearchCmd{
 		searchCmd: searchCmd{
-			orgName: orgName,
-			Stdout:  &buff,
+			orgName:	orgName,
+			Stdout:		&buff,
 			currentBackend: func(
 				context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
 			) (backend.Backend, error) {
@@ -56,17 +56,17 @@ func TestSearch_cmd(t *testing.T) {
 						return &apitype.ResourceSearchResponse{
 							Resources: []apitype.ResourceResult{
 								{
-									Name:     &name,
-									Type:     &typ,
-									Program:  &program,
-									Stack:    &stack,
-									Package:  &pack,
-									Module:   &mod,
-									Modified: &modified,
+									Name:		&name,
+									Type:		&typ,
+									Program:	&program,
+									Stack:		&stack,
+									Package:	&pack,
+									Module:		&mod,
+									Modified:	&modified,
 								},
 							},
-							URL:   searchURL,
-							Total: &total,
+							URL:	searchURL,
+							Total:	&total,
 						}, nil
 					},
 					CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
@@ -101,7 +101,7 @@ func TestSearchNoOrgName_cmd(t *testing.T) {
 	total := int64(132)
 	cmd := orgSearchCmd{
 		searchCmd: searchCmd{
-			Stdout: &buff,
+			Stdout:	&buff,
 			currentBackend: func(
 				context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
 			) (backend.Backend, error) {
@@ -110,17 +110,17 @@ func TestSearchNoOrgName_cmd(t *testing.T) {
 						return &apitype.ResourceSearchResponse{
 							Resources: []apitype.ResourceResult{
 								{
-									Name:     &name,
-									Type:     &typ,
-									Program:  &program,
-									Stack:    &stack,
-									Package:  &pack,
-									Module:   &mod,
-									Modified: &modified,
+									Name:		&name,
+									Type:		&typ,
+									Program:	&program,
+									Stack:		&stack,
+									Package:	&pack,
+									Module:		&mod,
+									Modified:	&modified,
 								},
 							},
-							URL:   searchURL,
-							Total: &total,
+							URL:	searchURL,
+							Total:	&total,
 						}, nil
 					},
 					CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
@@ -144,12 +144,12 @@ func TestSearchNoOrgName_cmd(t *testing.T) {
 type stubHTTPBackend struct {
 	httpstate.Backend
 
-	SearchF func(
+	SearchF	func(
 		context.Context, string, *apitype.PulumiQueryRequest,
 	) (*apitype.ResourceSearchResponse, error)
-	NaturalLanguageSearchF func(context.Context, string, string) (*apitype.ResourceSearchResponse, error)
-	CurrentUserF           func() (string, []string, *workspace.TokenInformation, error)
-	GetDefaultOrgF         func(ctx context.Context) (string, error)
+	NaturalLanguageSearchF	func(context.Context, string, string) (*apitype.ResourceSearchResponse, error)
+	CurrentUserF		func() (string, []string, *workspace.TokenInformation, error)
+	GetDefaultOrgF		func(ctx context.Context) (string, error)
 }
 
 var _ httpstate.Backend = (*stubHTTPBackend)(nil)

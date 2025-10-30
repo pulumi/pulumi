@@ -20,7 +20,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -37,12 +37,12 @@ type BodyItem interface {
 // Body represents an HCL2 body. A Body may be the root of an HCL2 file or the contents of an HCL2 block.
 type Body struct {
 	// The syntax node for the body, if any.
-	Syntax *hclsyntax.Body
+	Syntax	*hclsyntax.Body
 	// The tokens for the body.
-	Tokens *syntax.BodyTokens
+	Tokens	*syntax.BodyTokens
 
 	// The items that make up the body's contents.
-	Items []BodyItem
+	Items	[]BodyItem
 }
 
 // SyntaxNode returns the syntax node of the body, and will either return an *hclsyntax.Body or syntax.None.
@@ -147,8 +147,8 @@ func BindBody(body *hclsyntax.Body, scopes Scopes, tokens syntax.TokenMap,
 
 	bodyTokens, _ := tokens.ForNode(body).(*syntax.BodyTokens)
 	return &Body{
-		Syntax: body,
-		Tokens: bodyTokens,
-		Items:  items,
+		Syntax:	body,
+		Tokens:	bodyTokens,
+		Items:	items,
 	}, diagnostics
 }

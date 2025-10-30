@@ -25,7 +25,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/segmentio/encoding/json"
 
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -38,24 +38,24 @@ import (
 // ParameterizationDescriptor is the serializable description of a dependency's parameterization.
 type ParameterizationDescriptor struct {
 	// Name is the name of the package.
-	Name string `json:"name" yaml:"name"`
+	Name	string	`json:"name" yaml:"name"`
 	// Version is the version of the package.
-	Version semver.Version `json:"version" yaml:"version"`
+	Version	semver.Version	`json:"version" yaml:"version"`
 	// Value is the parameter value of the package.
-	Value []byte `json:"value" yaml:"value"`
+	Value	[]byte	`json:"value" yaml:"value"`
 }
 
 // PackageDescriptor is a descriptor for a package, this is similar to a plugin spec but also contains parameterization
 // info.
 type PackageDescriptor struct {
 	// Name is the simple name of the plugin.
-	Name string `json:"name" yaml:"name"`
+	Name	string	`json:"name" yaml:"name"`
 	// Version is the optional version of the plugin.
-	Version *semver.Version `json:"version,omitempty" yaml:"version,omitempty"`
+	Version	*semver.Version	`json:"version,omitempty" yaml:"version,omitempty"`
 	// DownloadURL is the optional URL to use when downloading the provider plugin binary.
-	DownloadURL string `json:"downloadURL,omitempty" yaml:"downloadURL,omitempty"`
+	DownloadURL	string	`json:"downloadURL,omitempty" yaml:"downloadURL,omitempty"`
 	// Parameterization is the optional parameterization of the package.
-	Parameterization *ParameterizationDescriptor `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
+	Parameterization	*ParameterizationDescriptor	`json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
 }
 
 // PackageName returns the name of the package.
@@ -104,19 +104,19 @@ type ReferenceLoader interface {
 }
 
 type pluginLoader struct {
-	host plugin.Host
+	host	plugin.Host
 
-	cacheOptions pluginLoaderCacheOptions
+	cacheOptions	pluginLoaderCacheOptions
 }
 
 // Caching options intended for benchmarking or debugging:
 type pluginLoaderCacheOptions struct {
 	// useEntriesCache enables in-memory re-use of packages
-	disableEntryCache bool
+	disableEntryCache	bool
 	// useFileCache enables skipping plugin loading when possible and caching JSON schemas to files
-	disableFileCache bool
+	disableFileCache	bool
 	// useMmap enables the use of memory mapped IO to avoid copying the JSON schema
-	disableMmap bool
+	disableMmap	bool
 }
 
 func NewPluginLoader(host plugin.Host) ReferenceLoader {
@@ -126,9 +126,9 @@ func NewPluginLoader(host plugin.Host) ReferenceLoader {
 func newPluginLoaderWithOptions(host plugin.Host, cacheOptions pluginLoaderCacheOptions) ReferenceLoader {
 	var l ReferenceLoader
 	l = &pluginLoader{
-		host: host,
+		host:	host,
 
-		cacheOptions: cacheOptions,
+		cacheOptions:	cacheOptions,
 	}
 	if !cacheOptions.disableEntryCache {
 		l = NewCachedLoader(l)
@@ -179,8 +179,8 @@ func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version)
 	return l.LoadPackageReferenceV2(
 		context.TODO(),
 		&PackageDescriptor{
-			Name:    pkg,
-			Version: version,
+			Name:		pkg,
+			Version:	version,
 		})
 }
 
@@ -231,8 +231,8 @@ func LoadPackageReference(loader Loader, pkg string, version *semver.Version) (P
 		context.TODO(),
 		loader,
 		&PackageDescriptor{
-			Name:    pkg,
-			Version: version,
+			Name:		pkg,
+			Version:	version,
 		})
 }
 
@@ -272,19 +272,19 @@ func LoadPackageReferenceV2(
 
 	if name != ref.Name() {
 		return ref, &PackageReferenceNameMismatchError{
-			RequestedName:    name,
-			RequestedVersion: version,
-			LoadedName:       ref.Name(),
-			LoadedVersion:    ref.Version(),
+			RequestedName:		name,
+			RequestedVersion:	version,
+			LoadedName:		ref.Name(),
+			LoadedVersion:		ref.Version(),
 		}
 	}
 
 	if version != nil && ref.Version() != nil && !ref.Version().Equals(*version) {
 		err := &PackageReferenceVersionMismatchError{
-			RequestedName:    name,
-			RequestedVersion: version,
-			LoadedName:       ref.Name(),
-			LoadedVersion:    ref.Version(),
+			RequestedName:		name,
+			RequestedVersion:	version,
+			LoadedName:		ref.Name(),
+			LoadedVersion:		ref.Version(),
 		}
 		if l, ok := loader.(*cachedLoader); ok {
 			err.Message = fmt.Sprintf("entries: %v", l.entries)
@@ -300,15 +300,15 @@ func LoadPackageReferenceV2(
 // loaded reference does not match the requested name.
 type PackageReferenceNameMismatchError struct {
 	// The requested . name
-	RequestedName string
+	RequestedName	string
 	// The requested version.
-	RequestedVersion *semver.Version
+	RequestedVersion	*semver.Version
 	// The loaded name.
-	LoadedName string
+	LoadedName	string
 	// The loaded version.
-	LoadedVersion *semver.Version
+	LoadedVersion	*semver.Version
 	// An optional message to be appended to the error's string representation.
-	Message string
+	Message	string
 }
 
 func (e *PackageReferenceNameMismatchError) Error() string {
@@ -332,15 +332,15 @@ func (e *PackageReferenceNameMismatchError) Error() string {
 // loaded reference does not match the requested version.
 type PackageReferenceVersionMismatchError struct {
 	// The requested name.
-	RequestedName string
+	RequestedName	string
 	// The requested version.
-	RequestedVersion *semver.Version
+	RequestedVersion	*semver.Version
 	// The loaded name.
-	LoadedName string
+	LoadedName	string
 	// The loaded version.
-	LoadedVersion *semver.Version
+	LoadedVersion	*semver.Version
 	// An optional message to be appended to the error's string representation.
-	Message string
+	Message	string
 }
 
 func (e *PackageReferenceVersionMismatchError) Error() string {
@@ -362,10 +362,10 @@ func (e *PackageReferenceVersionMismatchError) Error() string {
 
 func pluginSpecFromPackageDescriptor(descriptor *PackageDescriptor) workspace.PluginSpec {
 	return workspace.PluginSpec{
-		Name:              descriptor.Name,
-		Version:           descriptor.Version,
-		PluginDownloadURL: descriptor.DownloadURL,
-		Kind:              apitype.ResourcePlugin,
+		Name:			descriptor.Name,
+		Version:		descriptor.Version,
+		PluginDownloadURL:	descriptor.DownloadURL,
+		Kind:			apitype.ResourcePlugin,
 	}
 }
 
@@ -391,7 +391,7 @@ func (l *pluginLoader) loadSchemaBytes(
 		pluginVersion := descriptor.Version
 		if pluginVersion == nil {
 			info, err := provider.GetPluginInfo(ctx)
-			contract.IgnoreError(err) // nonfatal error
+			contract.IgnoreError(err)	// nonfatal error
 			pluginVersion = info.Version
 		}
 		return schemaBytes, pluginVersion, nil
@@ -406,10 +406,10 @@ func (l *pluginLoader) loadSchemaBytes(
 		}
 
 		spec := workspace.PluginSpec{
-			Kind:              apitype.ResourcePlugin,
-			Name:              descriptor.Name,
-			Version:           descriptor.Version,
-			PluginDownloadURL: descriptor.DownloadURL,
+			Kind:			apitype.ResourcePlugin,
+			Name:			descriptor.Name,
+			Version:		descriptor.Version,
+			PluginDownloadURL:	descriptor.DownloadURL,
 		}
 
 		log := func(sev diag.Severity, msg string) {
@@ -455,7 +455,7 @@ func (l *pluginLoader) loadSchemaBytes(
 	}
 
 	if pluginVersion == nil {
-		info, _ := provider.GetPluginInfo(ctx) // nonfatal error
+		info, _ := provider.GetPluginInfo(ctx)	// nonfatal error
 		pluginVersion = info.Version
 	}
 
@@ -467,17 +467,17 @@ func (l *pluginLoader) loadPluginSchemaBytes(
 ) ([]byte, plugin.Provider, error) {
 	wsDescriptor := workspace.PackageDescriptor{
 		PluginSpec: workspace.PluginSpec{
-			Name:              descriptor.Name,
-			Version:           descriptor.Version,
-			PluginDownloadURL: descriptor.DownloadURL,
-			Kind:              apitype.ResourcePlugin,
+			Name:			descriptor.Name,
+			Version:		descriptor.Version,
+			PluginDownloadURL:	descriptor.DownloadURL,
+			Kind:			apitype.ResourcePlugin,
 		},
 	}
 	if descriptor.Parameterization != nil {
 		wsDescriptor.Parameterization = &workspace.Parameterization{
-			Name:    descriptor.Parameterization.Name,
-			Version: descriptor.Parameterization.Version,
-			Value:   descriptor.Parameterization.Value,
+			Name:		descriptor.Parameterization.Name,
+			Version:	descriptor.Parameterization.Version,
+			Value:		descriptor.Parameterization.Value,
 		}
 	}
 
@@ -496,9 +496,9 @@ func (l *pluginLoader) loadPluginSchemaBytes(
 	if descriptor.Parameterization != nil {
 		parameterization := plugin.ParameterizeRequest{
 			Parameters: &plugin.ParameterizeValue{
-				Name:    descriptor.Parameterization.Name,
-				Version: descriptor.Parameterization.Version,
-				Value:   descriptor.Parameterization.Value,
+				Name:		descriptor.Parameterization.Name,
+				Version:	descriptor.Parameterization.Version,
+				Value:		descriptor.Parameterization.Value,
 			},
 		}
 		resp, err := provider.Parameterize(ctx, parameterization)

@@ -30,9 +30,9 @@ import (
 
 // S3Reporter is a TestStatsReporter that publises test data to S3
 type S3Reporter struct {
-	s3svc     *s3.S3
-	bucket    string
-	keyPrefix string
+	s3svc		*s3.S3
+	bucket		string
+	keyPrefix	string
 }
 
 var _ TestStatsReporter = (*S3Reporter)(nil)
@@ -48,9 +48,9 @@ func NewS3Reporter(region string, bucket string, keyPrefix string) *S3Reporter {
 	}
 	s3svc := s3.New(sess)
 	return &S3Reporter{
-		s3svc:     s3svc,
-		bucket:    bucket,
-		keyPrefix: keyPrefix,
+		s3svc:		s3svc,
+		bucket:		bucket,
+		keyPrefix:	keyPrefix,
 	}
 }
 
@@ -63,10 +63,10 @@ func (r *S3Reporter) ReportCommand(stats TestCommandStats) {
 	}
 	name, _ := resource.NewUniqueHex(fmt.Sprintf("%v-", time.Now().UnixNano()), -1, -1)
 	_, err = r.s3svc.PutObject(&s3.PutObjectInput{
-		Bucket: aws.String(r.bucket),
-		Key:    aws.String(path.Join(r.keyPrefix, name)),
-		Body:   bytes.NewReader(byts),
-		ACL:    aws.String(s3.ObjectCannedACLBucketOwnerFullControl),
+		Bucket:	aws.String(r.bucket),
+		Key:	aws.String(path.Join(r.keyPrefix, name)),
+		Body:	bytes.NewReader(byts),
+		ACL:	aws.String(s3.ObjectCannedACLBucketOwnerFullControl),
 	})
 	if err != nil {
 		fmt.Printf("Failed to upload test command report to S3: %v\n", err)

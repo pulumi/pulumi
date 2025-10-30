@@ -25,13 +25,13 @@ import (
 // It contains the type, properties, URN, and name of the resource.
 type AnalyzerProviderResource struct {
 	// Type is the type token of the resource.
-	Type string
+	Type	string
 	// Properties are the full properties to use for validation.
-	Properties property.Map
+	Properties	property.Map
 	// URN is the URN of the resource.
-	URN string
+	URN	string
 	// Name is the name for the resource's URN.
-	Name string
+	Name	string
 }
 
 // AnalyzerResource defines the view of a Pulumi-managed resource as sent to Analyzers.
@@ -39,51 +39,51 @@ type AnalyzerProviderResource struct {
 // See the Analyzer service definition for more information.
 type AnalyzerResource struct {
 	// Type is the type token of the resource.
-	Type string
+	Type	string
 	// Properties are the full properties to use for validation.
-	Properties property.Map
+	Properties	property.Map
 	// URN is the URN of the resource.
-	URN string
+	URN	string
 	// Name is the name for the resource's URN.
-	Name string
+	Name	string
 	// Options are the resource options for the resource.
-	Options pulumi.ResourceOptions
+	Options	pulumi.ResourceOptions
 	// Provider is the provider for the resource.
-	Provider AnalyzerProviderResource
+	Provider	AnalyzerProviderResource
 	// Parent is the URN of the parent resource, if any.
-	Parent string
+	Parent	string
 	// Dependencies is a list of URNs of resources this resource depends on.
-	Dependencies []string
+	Dependencies	[]string
 	// PropertyDependencies maps property names to the list of URNs they depend on.
-	PropertyDependencies map[string][]string
+	PropertyDependencies	map[string][]string
 }
 
 // ResourceValidationArgs contains the arguments passed to a resource validation policy.
 type ResourceValidationArgs struct {
 	// Manager is the policy manager.
-	Manager PolicyManager
+	Manager	PolicyManager
 	// Resource is the resource being validated.
-	Resource AnalyzerResource
+	Resource	AnalyzerResource
 	// Config is the policy configuration.
-	Config map[string]any
+	Config	map[string]any
 	// DryRun indicates if the current operation is a dry run (preview).
-	DryRun bool
+	DryRun	bool
 }
 
 // ResourceValidationArgs contains the arguments passed to a resource validation policy.
 type ResourceRemediationArgs struct {
 	// Resource is the resource being validated.
-	Resource AnalyzerResource
+	Resource	AnalyzerResource
 	// Config is the policy configuration.
-	Config map[string]any
+	Config	map[string]any
 }
 
 // StackValidationArgs contains the arguments passed to a stack validation policy.
 type StackValidationArgs struct {
 	// Manager is the policy manager.
-	Manager PolicyManager
+	Manager	PolicyManager
 	// Resources is the list of resources in the stack.
-	Resources []AnalyzerResource
+	Resources	[]AnalyzerResource
 }
 
 // Policy is the interface implemented by all policies.
@@ -123,36 +123,36 @@ type StackValidationPolicy interface {
 // ResourceValidationPolicyArgs contains the arguments for creating a resource validation policy.
 type ResourceValidationPolicyArgs struct {
 	// Description is the description of the policy.
-	Description string
+	Description	string
 	// EnforcementLevel is the enforcement level of the policy.
-	EnforcementLevel EnforcementLevel
+	EnforcementLevel	EnforcementLevel
 	// ConfigSchema is the configuration schema for the policy, if any.
-	ConfigSchema *ConfigSchema
+	ConfigSchema	*ConfigSchema
 	// ValidateResource is the validation function for the policy.
-	ValidateResource func(ctx context.Context, args ResourceValidationArgs) error
+	ValidateResource	func(ctx context.Context, args ResourceValidationArgs) error
 }
 
 // ResourceRemediationArgs contains the arguments for creating a resource remediation policy.
 type ResourceRemediationPolicyArgs struct {
 	// Description is the description of the policy.
-	Description string
+	Description	string
 	// ConfigSchema is the configuration schema for the policy, if any.
-	ConfigSchema *ConfigSchema
+	ConfigSchema	*ConfigSchema
 	// RemediateResource is the remediation function for the policy.
-	RemediateResource func(ctx context.Context, args ResourceRemediationArgs) (*property.Map, error)
+	RemediateResource	func(ctx context.Context, args ResourceRemediationArgs) (*property.Map, error)
 }
 
 // resourceValidationPolicy is an implementation of ResourceValidationPolicy.
 type resourceValidationPolicy struct {
-	name             string
-	description      string
-	enforcementLevel EnforcementLevel
-	configSchema     *ConfigSchema
-	validateResource func(ctx context.Context, args ResourceValidationArgs) error
+	name			string
+	description		string
+	enforcementLevel	EnforcementLevel
+	configSchema		*ConfigSchema
+	validateResource	func(ctx context.Context, args ResourceValidationArgs) error
 }
 
 // isPolicy marks resourceValidationPolicy as a Policy.
-func (p *resourceValidationPolicy) isPolicy() {}
+func (p *resourceValidationPolicy) isPolicy()	{}
 
 // Name returns the name of the policy.
 func (p *resourceValidationPolicy) Name() string {
@@ -188,24 +188,24 @@ func NewResourceValidationPolicy(
 	args ResourceValidationPolicyArgs,
 ) ResourceValidationPolicy {
 	return &resourceValidationPolicy{
-		name:             name,
-		description:      args.Description,
-		enforcementLevel: args.EnforcementLevel,
-		validateResource: args.ValidateResource,
-		configSchema:     args.ConfigSchema,
+		name:			name,
+		description:		args.Description,
+		enforcementLevel:	args.EnforcementLevel,
+		validateResource:	args.ValidateResource,
+		configSchema:		args.ConfigSchema,
 	}
 }
 
 // resourceRemediationPolicy is an implementation of ResourceRemediationPolicy.
 type resourceRemediationPolicy struct {
-	name              string
-	description       string
-	configSchema      *ConfigSchema
-	remediateResource func(ctx context.Context, args ResourceRemediationArgs) (*property.Map, error)
+	name			string
+	description		string
+	configSchema		*ConfigSchema
+	remediateResource	func(ctx context.Context, args ResourceRemediationArgs) (*property.Map, error)
 }
 
 // isPolicy marks resourceRemediationPolicy as a Policy.
-func (p *resourceRemediationPolicy) isPolicy() {}
+func (p *resourceRemediationPolicy) isPolicy()	{}
 
 // Name returns the name of the policy.
 func (p *resourceRemediationPolicy) Name() string {
@@ -243,9 +243,9 @@ func NewResourceRemediationPolicy(
 	args ResourceRemediationPolicyArgs,
 ) ResourceRemediationPolicy {
 	return &resourceRemediationPolicy{
-		name:              name,
-		description:       args.Description,
-		remediateResource: args.RemediateResource,
-		configSchema:      args.ConfigSchema,
+		name:			name,
+		description:		args.Description,
+		remediateResource:	args.RemediateResource,
+		configSchema:		args.ConfigSchema,
 	}
 }

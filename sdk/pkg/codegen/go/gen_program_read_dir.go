@@ -19,13 +19,13 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
 )
 
 type readDirTemp struct {
-	Name  string
-	Value *model.FunctionCallExpression
+	Name	string
+	Value	*model.FunctionCallExpression
 }
 
 func (rt *readDirTemp) Type() model.Type {
@@ -41,8 +41,8 @@ func (rt *readDirTemp) SyntaxNode() hclsyntax.Node {
 }
 
 type readDirSpiller struct {
-	temps []*readDirTemp
-	count int
+	temps	[]*readDirTemp
+	count	int
 }
 
 func (rs *readDirSpiller) spillExpression(x model.Expression) (model.Expression, hcl.Diagnostics) {
@@ -54,8 +54,8 @@ func (rs *readDirSpiller) spillExpression(x model.Expression) (model.Expression,
 		case "readDir":
 			scopeName = fmt.Sprintf("fileNames%d", rs.count)
 			temp = &readDirTemp{
-				Name:  fmt.Sprintf("files%d", rs.count),
-				Value: x,
+				Name:	fmt.Sprintf("files%d", rs.count),
+				Value:	x,
 			}
 			rs.temps = append(rs.temps, temp)
 			rs.count++
@@ -66,9 +66,9 @@ func (rs *readDirSpiller) spillExpression(x model.Expression) (model.Expression,
 		return x, nil
 	}
 	return &model.ScopeTraversalExpression{
-		RootName:  scopeName,
-		Traversal: hcl.Traversal{hcl.TraverseRoot{Name: ""}},
-		Parts:     []model.Traversable{temp},
+		RootName:	scopeName,
+		Traversal:	hcl.Traversal{hcl.TraverseRoot{Name: ""}},
+		Parts:		[]model.Traversable{temp},
 	}, nil
 }
 

@@ -22,7 +22,7 @@ func (MyComponentArgs) ElementType() reflect.Type {
 
 type MyComponent struct {
 	pulumi.ResourceState
-	Output pulumi.AnyOutput
+	Output	pulumi.AnyOutput
 }
 
 func NewMyComponent(

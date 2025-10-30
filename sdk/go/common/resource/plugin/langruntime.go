@@ -34,10 +34,10 @@ import (
 
 // ProgramInfo contains minimal information about the program to be run.
 type ProgramInfo struct {
-	root       string
-	program    string
-	entryPoint string
-	options    map[string]any
+	root		string
+	program		string
+	entryPoint	string
+	options		map[string]any
 }
 
 func NewProgramInfo(rootDirectory, programDirectory, entryPoint string, options map[string]any) ProgramInfo {
@@ -58,10 +58,10 @@ func NewProgramInfo(rootDirectory, programDirectory, entryPoint string, options 
 	}
 
 	return ProgramInfo{
-		root:       rootDirectory,
-		program:    programDirectory,
-		entryPoint: entryPoint,
-		options:    options,
+		root:		rootDirectory,
+		program:	programDirectory,
+		entryPoint:	entryPoint,
+		options:	options,
 	}
 }
 
@@ -96,17 +96,17 @@ func (info ProgramInfo) Marshal() (*pulumirpc.ProgramInfo, error) {
 	}
 
 	return &pulumirpc.ProgramInfo{
-		RootDirectory:    info.root,
-		ProgramDirectory: info.program,
-		EntryPoint:       info.entryPoint,
-		Options:          opts,
+		RootDirectory:		info.root,
+		ProgramDirectory:	info.program,
+		EntryPoint:		info.entryPoint,
+		Options:		opts,
 	}, nil
 }
 
 type InstallDependenciesRequest struct {
-	Info                    ProgramInfo
-	UseLanguageVersionTools bool
-	IsPlugin                bool
+	Info			ProgramInfo
+	UseLanguageVersionTools	bool
+	IsPlugin		bool
 }
 
 func (options InstallDependenciesRequest) String() string {
@@ -181,60 +181,60 @@ type LanguageRuntime interface {
 // These are the languages dependencies, they are not necessarily Pulumi packages.
 type DependencyInfo struct {
 	// The name of the dependency.
-	Name string
+	Name	string
 	// The version of the dependency. Unlike most versions in the system this is not guaranteed to be a semantic
 	// version.
-	Version string
+	Version	string
 }
 
 type AboutInfo struct {
-	Executable string
-	Version    string
-	Metadata   map[string]string
+	Executable	string
+	Version		string
+	Metadata	map[string]string
 }
 
 type RunPluginInfo struct {
-	Info             ProgramInfo
-	WorkingDirectory string
-	Args             []string
-	Env              []string
-	Kind             string
-	AttachDebugger   bool
+	Info			ProgramInfo
+	WorkingDirectory	string
+	Args			[]string
+	Env			[]string
+	Kind			string
+	AttachDebugger		bool
 }
 
 // RunInfo contains all of the information required to perform a plan or deployment operation.
 type RunInfo struct {
-	Info              ProgramInfo           // the information about the program to run.
-	MonitorAddress    string                // the RPC address to the host resource monitor.
-	Project           string                // the project name housing the program being run.
-	Stack             string                // the stack name being evaluated.
-	Pwd               string                // the program's working directory.
-	Args              []string              // any arguments to pass to the program.
-	Config            map[config.Key]string // the configuration variables to apply before running.
-	ConfigSecretKeys  []config.Key          // the configuration keys that have secret values.
-	ConfigPropertyMap resource.PropertyMap  // the configuration as a property map.
-	DryRun            bool                  // true if we are performing a dry-run (preview).
-	QueryMode         bool                  // true if we're only doing a query.
-	Parallel          int32                 // the degree of parallelism for resource operations (<=1 for serial).
-	Organization      string                // the organization name housing the program being run (might be empty).
-	LoaderAddress     string                // the RPC address of the host's schema loader.
-	AttachDebugger    bool                  // true if we are starting the program under a debugger.
+	Info			ProgramInfo		// the information about the program to run.
+	MonitorAddress		string			// the RPC address to the host resource monitor.
+	Project			string			// the project name housing the program being run.
+	Stack			string			// the stack name being evaluated.
+	Pwd			string			// the program's working directory.
+	Args			[]string		// any arguments to pass to the program.
+	Config			map[config.Key]string	// the configuration variables to apply before running.
+	ConfigSecretKeys	[]config.Key		// the configuration keys that have secret values.
+	ConfigPropertyMap	resource.PropertyMap	// the configuration as a property map.
+	DryRun			bool			// true if we are performing a dry-run (preview).
+	QueryMode		bool			// true if we're only doing a query.
+	Parallel		int32			// the degree of parallelism for resource operations (<=1 for serial).
+	Organization		string			// the organization name housing the program being run (might be empty).
+	LoaderAddress		string			// the RPC address of the host's schema loader.
+	AttachDebugger		bool			// true if we are starting the program under a debugger.
 }
 
 type RuntimeOptionType int
 
 const (
-	PromptTypeString RuntimeOptionType = iota
+	PromptTypeString	RuntimeOptionType	= iota
 	PromptTypeInt32
 )
 
 // RuntimeOptionValue represents a single value that can be selected for a runtime option.
 // The value can be either a string or an int32.
 type RuntimeOptionValue struct {
-	PromptType  RuntimeOptionType
-	StringValue string
-	Int32Value  int32
-	DisplayName string
+	PromptType	RuntimeOptionType
+	StringValue	string
+	Int32Value	int32
+	DisplayName	string
 }
 
 func (v RuntimeOptionValue) Value() any {
@@ -266,40 +266,40 @@ func RuntimeOptionValueFromString(promptType RuntimeOptionType, value string) (R
 // be free-form if Choices is empty.
 // Key is the key as used in runtime.options.<Key> in the Pulumi.yaml file.
 type RuntimeOptionPrompt struct {
-	Key         string
-	Description string
-	Choices     []RuntimeOptionValue
-	Default     *RuntimeOptionValue
-	PromptType  RuntimeOptionType
+	Key		string
+	Description	string
+	Choices		[]RuntimeOptionValue
+	Default		*RuntimeOptionValue
+	PromptType	RuntimeOptionType
 }
 
 func UnmarshallRuntimeOptionPrompt(p *pulumirpc.RuntimeOptionPrompt) (RuntimeOptionPrompt, error) {
 	choices := make([]RuntimeOptionValue, 0, len(p.Choices))
 	for _, choice := range p.Choices {
 		choices = append(choices, RuntimeOptionValue{
-			PromptType:  RuntimeOptionType(choice.PromptType),
-			StringValue: choice.StringValue,
-			Int32Value:  choice.Int32Value,
-			DisplayName: choice.DisplayName,
+			PromptType:	RuntimeOptionType(choice.PromptType),
+			StringValue:	choice.StringValue,
+			Int32Value:	choice.Int32Value,
+			DisplayName:	choice.DisplayName,
 		})
 	}
 
 	var defaultValue *RuntimeOptionValue
 	if p.Default != nil {
 		defaultValue = &RuntimeOptionValue{
-			PromptType:  RuntimeOptionType(p.Default.PromptType),
-			StringValue: p.Default.StringValue,
-			Int32Value:  p.Default.Int32Value,
-			DisplayName: p.Default.DisplayName,
+			PromptType:	RuntimeOptionType(p.Default.PromptType),
+			StringValue:	p.Default.StringValue,
+			Int32Value:	p.Default.Int32Value,
+			DisplayName:	p.Default.DisplayName,
 		}
 	}
 
 	return RuntimeOptionPrompt{
-		Key:         p.Key,
-		Description: p.Description,
-		Choices:     choices,
-		Default:     defaultValue,
-		PromptType:  RuntimeOptionType(p.PromptType),
+		Key:		p.Key,
+		Description:	p.Description,
+		Choices:	choices,
+		Default:	defaultValue,
+		PromptType:	RuntimeOptionType(p.PromptType),
 	}, nil
 }
 
@@ -307,8 +307,8 @@ func UnmarshallRuntimeOptionPrompt(p *pulumirpc.RuntimeOptionPrompt) (RuntimeOpt
 // If an executable is not found, it will be listed with a `[not found]` suffix at the end of the list.
 func MakeExecutablePromptChoices(executables ...string) []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue {
 	type packagemanagers struct {
-		name  string
-		found bool
+		name	string
+		found	bool
 	}
 	pms := []packagemanagers{}
 	for _, pm := range executables {
@@ -335,9 +335,9 @@ func MakeExecutablePromptChoices(executables ...string) []*pulumirpc.RuntimeOpti
 			displayName += " [not found]"
 		}
 		choices = append(choices, &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
-			PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
-			StringValue: pm.name,
-			DisplayName: displayName,
+			PromptType:	pulumirpc.RuntimeOptionPrompt_STRING,
+			StringValue:	pm.name,
+			DisplayName:	displayName,
 		})
 	}
 	return choices

@@ -79,8 +79,8 @@ func makeStubHooks(names []string) []*ResourceHook {
 		hooks := []*ResourceHook{}
 		for _, name := range names {
 			hooks = append(hooks, &ResourceHook{
-				Name:       name,
-				registered: registered, // mark the stub hook as registered
+				Name:		name,
+				registered:	registered,	// mark the stub hook as registered
 			})
 		}
 		return hooks

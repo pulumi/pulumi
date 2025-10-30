@@ -22,9 +22,9 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -60,8 +60,8 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			return apiEvent, eventTypePayloadMismatch
 		}
 		apiEvent.StdoutEvent = &apitype.StdoutEngineEvent{
-			Message: p.Message,
-			Color:   string(p.Color),
+			Message:	p.Message,
+			Color:		string(p.Color),
 		}
 
 	case engine.DiagEvent:
@@ -74,12 +74,12 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		cleanedMsg := matchAnsiControlCodes.ReplaceAllString(p.Message, "")
 
 		apiEvent.DiagnosticEvent = &apitype.DiagnosticEvent{
-			URN:       string(p.URN),
-			Prefix:    p.Prefix,
-			Message:   cleanedMsg,
-			Color:     string(p.Color),
-			Severity:  string(p.Severity),
-			Ephemeral: p.Ephemeral,
+			URN:		string(p.URN),
+			Prefix:		p.Prefix,
+			Message:	cleanedMsg,
+			Color:		string(p.Color),
+			Severity:	string(p.Severity),
+			Ephemeral:	p.Ephemeral,
 		}
 
 	case engine.StartDebuggingEvent:
@@ -98,15 +98,15 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			return apiEvent, eventTypePayloadMismatch
 		}
 		apiEvent.PolicyEvent = &apitype.PolicyEvent{
-			ResourceURN:          string(p.ResourceURN),
-			Message:              p.Message,
-			Color:                string(p.Color),
-			PolicyName:           p.PolicyName,
-			PolicyPackName:       p.PolicyPackName,
-			PolicyPackVersion:    p.PolicyPackVersion,
-			PolicyPackVersionTag: p.PolicyPackVersion,
-			EnforcementLevel:     string(p.EnforcementLevel),
-			Severity:             string(p.Severity),
+			ResourceURN:		string(p.ResourceURN),
+			Message:		p.Message,
+			Color:			string(p.Color),
+			PolicyName:		p.PolicyName,
+			PolicyPackName:		p.PolicyPackName,
+			PolicyPackVersion:	p.PolicyPackVersion,
+			PolicyPackVersionTag:	p.PolicyPackVersion,
+			EnforcementLevel:	string(p.EnforcementLevel),
+			Severity:		string(p.Severity),
 		}
 
 	case engine.PolicyRemediationEvent:
@@ -124,14 +124,14 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		contract.IgnoreError(err)
 
 		apiEvent.PolicyRemediationEvent = &apitype.PolicyRemediationEvent{
-			ResourceURN:          string(p.ResourceURN),
-			Color:                string(p.Color),
-			PolicyName:           p.PolicyName,
-			PolicyPackName:       p.PolicyPackName,
-			PolicyPackVersion:    p.PolicyPackVersion,
-			PolicyPackVersionTag: p.PolicyPackVersion,
-			Before:               before,
-			After:                after,
+			ResourceURN:		string(p.ResourceURN),
+			Color:			string(p.Color),
+			PolicyName:		p.PolicyName,
+			PolicyPackName:		p.PolicyPackName,
+			PolicyPackVersion:	p.PolicyPackVersion,
+			PolicyPackVersionTag:	p.PolicyPackVersion,
+			Before:			before,
+			After:			after,
 		}
 
 	case engine.PolicyAnalyzeSummaryEvent:
@@ -140,12 +140,12 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			return apiEvent, eventTypePayloadMismatch
 		}
 		apiEvent.PolicyAnalyzeSummaryEvent = &apitype.PolicyAnalyzeSummaryEvent{
-			ResourceURN:          string(p.ResourceURN),
-			PolicyPackName:       p.PolicyPackName,
-			PolicyPackVersion:    p.PolicyPackVersion,
-			PolicyPackVersionTag: p.PolicyPackVersion,
-			Passed:               p.Passed,
-			Failed:               p.Failed,
+			ResourceURN:		string(p.ResourceURN),
+			PolicyPackName:		p.PolicyPackName,
+			PolicyPackVersion:	p.PolicyPackVersion,
+			PolicyPackVersionTag:	p.PolicyPackVersion,
+			Passed:			p.Passed,
+			Failed:			p.Failed,
 		}
 
 	case engine.PolicyRemediateSummaryEvent:
@@ -154,12 +154,12 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			return apiEvent, eventTypePayloadMismatch
 		}
 		apiEvent.PolicyRemediateSummaryEvent = &apitype.PolicyRemediateSummaryEvent{
-			ResourceURN:          string(p.ResourceURN),
-			PolicyPackName:       p.PolicyPackName,
-			PolicyPackVersion:    p.PolicyPackVersion,
-			PolicyPackVersionTag: p.PolicyPackVersion,
-			Passed:               p.Passed,
-			Failed:               p.Failed,
+			ResourceURN:		string(p.ResourceURN),
+			PolicyPackName:		p.PolicyPackName,
+			PolicyPackVersion:	p.PolicyPackVersion,
+			PolicyPackVersionTag:	p.PolicyPackVersion,
+			Passed:			p.Passed,
+			Failed:			p.Failed,
 		}
 
 	case engine.PolicyAnalyzeStackSummaryEvent:
@@ -168,11 +168,11 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			return apiEvent, eventTypePayloadMismatch
 		}
 		apiEvent.PolicyAnalyzeStackSummaryEvent = &apitype.PolicyAnalyzeStackSummaryEvent{
-			PolicyPackName:       p.PolicyPackName,
-			PolicyPackVersion:    p.PolicyPackVersion,
-			PolicyPackVersionTag: p.PolicyPackVersion,
-			Passed:               p.Passed,
-			Failed:               p.Failed,
+			PolicyPackName:		p.PolicyPackName,
+			PolicyPackVersion:	p.PolicyPackVersion,
+			PolicyPackVersionTag:	p.PolicyPackVersion,
+			Passed:			p.Passed,
+			Failed:			p.Failed,
 		}
 
 	case engine.PreludeEvent:
@@ -200,11 +200,11 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			changes[apitype.OpType(op)] = count
 		}
 		apiEvent.SummaryEvent = &apitype.SummaryEvent{
-			MaybeCorrupt:    p.MaybeCorrupt,
-			DurationSeconds: int(math.Ceil(p.Duration.Seconds())),
-			ResourceChanges: changes,
-			PolicyPacks:     p.PolicyPacks,
-			IsPreview:       p.IsPreview,
+			MaybeCorrupt:		p.MaybeCorrupt,
+			DurationSeconds:	int(math.Ceil(p.Duration.Seconds())),
+			ResourceChanges:	changes,
+			PolicyPacks:		p.PolicyPacks,
+			IsPreview:		p.IsPreview,
 		}
 
 	case engine.ResourcePreEvent:
@@ -213,8 +213,8 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			return apiEvent, eventTypePayloadMismatch
 		}
 		apiEvent.ResourcePreEvent = &apitype.ResourcePreEvent{
-			Metadata: convertStepEventMetadata(p.Metadata, showSecrets),
-			Planning: p.Planning,
+			Metadata:	convertStepEventMetadata(p.Metadata, showSecrets),
+			Planning:	p.Planning,
 		}
 
 	case engine.ResourceOutputsEvent:
@@ -223,8 +223,8 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			return apiEvent, eventTypePayloadMismatch
 		}
 		apiEvent.ResOutputsEvent = &apitype.ResOutputsEvent{
-			Metadata: convertStepEventMetadata(p.Metadata, showSecrets),
-			Planning: p.Planning,
+			Metadata:	convertStepEventMetadata(p.Metadata, showSecrets),
+			Planning:	p.Planning,
 		}
 
 	case engine.ResourceOperationFailed:
@@ -233,9 +233,9 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			return apiEvent, eventTypePayloadMismatch
 		}
 		apiEvent.ResOpFailedEvent = &apitype.ResOpFailedEvent{
-			Metadata: convertStepEventMetadata(p.Metadata, showSecrets),
-			Status:   int(p.Status),
-			Steps:    int(p.Steps),
+			Metadata:	convertStepEventMetadata(p.Metadata, showSecrets),
+			Status:		int(p.Status),
+			Steps:		int(p.Steps),
 		}
 
 	case engine.PolicyLoadEvent:
@@ -247,12 +247,12 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			return apiEvent, eventTypePayloadMismatch
 		}
 		apiEvent.ProgressEvent = &apitype.ProgressEvent{
-			Type:      apitype.ProgressType(p.Type),
-			ID:        p.ID,
-			Message:   p.Message,
-			Completed: p.Completed,
-			Total:     p.Total,
-			Done:      p.Done,
+			Type:		apitype.ProgressType(p.Type),
+			ID:		p.ID,
+			Message:	p.Message,
+			Completed:	p.Completed,
+			Total:		p.Total,
+			Done:		p.Done,
 		}
 	case engine.ErrorEvent:
 		p, ok := e.Payload().(engine.ErrorEventPayload)
@@ -303,25 +303,25 @@ func convertStepEventMetadata(md engine.StepEventMetadata, showSecrets bool) api
 				contract.Failf("unrecognized diff kind %v", v)
 			}
 			detailedDiff[k] = apitype.PropertyDiff{
-				Kind:      d,
-				InputDiff: v.InputDiff,
+				Kind:		d,
+				InputDiff:	v.InputDiff,
 			}
 		}
 	}
 
 	return apitype.StepEventMetadata{
-		Op:   apitype.OpType(md.Op),
-		URN:  string(md.URN),
-		Type: string(md.Type),
+		Op:	apitype.OpType(md.Op),
+		URN:	string(md.URN),
+		Type:	string(md.Type),
 
-		Old: convertStepEventStateMetadata(md.Old, showSecrets),
-		New: convertStepEventStateMetadata(md.New, showSecrets),
+		Old:	convertStepEventStateMetadata(md.Old, showSecrets),
+		New:	convertStepEventStateMetadata(md.New, showSecrets),
 
-		Keys:         keys,
-		Diffs:        diffs,
-		DetailedDiff: detailedDiff,
-		Logical:      md.Logical,
-		Provider:     md.Provider,
+		Keys:		keys,
+		Diffs:		diffs,
+		DetailedDiff:	detailedDiff,
+		Logical:	md.Logical,
+		Provider:	md.Provider,
 	}
 }
 
@@ -346,21 +346,21 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
 	contract.IgnoreError(err)
 
 	return &apitype.StepEventStateMetadata{
-		Type: string(md.Type),
-		URN:  string(md.URN),
+		Type:	string(md.Type),
+		URN:	string(md.URN),
 
-		Custom:         md.Custom,
-		Delete:         md.Delete,
-		ID:             string(md.ID),
-		Parent:         string(md.Parent),
-		Provider:       md.Provider,
-		Protect:        md.Protect,
-		Taint:          md.Taint,
-		RetainOnDelete: md.RetainOnDelete,
-		Inputs:         inputs,
-		Outputs:        outputs,
-		InitErrors:     md.InitErrors,
-		HideDiffs:      md.HideDiffs,
+		Custom:		md.Custom,
+		Delete:		md.Delete,
+		ID:		string(md.ID),
+		Parent:		string(md.Parent),
+		Provider:	md.Provider,
+		Protect:	md.Protect,
+		Taint:		md.Taint,
+		RetainOnDelete:	md.RetainOnDelete,
+		Inputs:		inputs,
+		Outputs:	outputs,
+		InitErrors:	md.InitErrors,
+		HideDiffs:	md.HideDiffs,
 	}
 }
 
@@ -379,33 +379,33 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 	case apiEvent.StdoutEvent != nil:
 		p := apiEvent.StdoutEvent
 		event = engine.NewEvent(engine.StdoutEventPayload{
-			Message: p.Message,
-			Color:   colors.Colorization(p.Color),
+			Message:	p.Message,
+			Color:		colors.Colorization(p.Color),
 		})
 
 	case apiEvent.DiagnosticEvent != nil:
 		p := apiEvent.DiagnosticEvent
 		event = engine.NewEvent(engine.DiagEventPayload{
-			URN:       resource.URN(p.URN),
-			Prefix:    p.Prefix,
-			Message:   p.Message,
-			Color:     colors.Colorization(p.Color),
-			Severity:  diag.Severity(p.Severity),
-			Ephemeral: p.Ephemeral,
+			URN:		resource.URN(p.URN),
+			Prefix:		p.Prefix,
+			Message:	p.Message,
+			Color:		colors.Colorization(p.Color),
+			Severity:	diag.Severity(p.Severity),
+			Ephemeral:	p.Ephemeral,
 		})
 		apiEvent.DiagnosticEvent = &apitype.DiagnosticEvent{}
 
 	case apiEvent.PolicyEvent != nil:
 		p := apiEvent.PolicyEvent
 		event = engine.NewEvent(engine.PolicyViolationEventPayload{
-			ResourceURN:       resource.URN(p.ResourceURN),
-			Message:           p.Message,
-			Color:             colors.Colorization(p.Color),
-			PolicyName:        p.PolicyName,
-			PolicyPackName:    p.PolicyPackName,
-			PolicyPackVersion: p.PolicyPackVersion,
-			EnforcementLevel:  apitype.EnforcementLevel(p.EnforcementLevel),
-			Severity:          apitype.PolicySeverity(p.Severity),
+			ResourceURN:		resource.URN(p.ResourceURN),
+			Message:		p.Message,
+			Color:			colors.Colorization(p.Color),
+			PolicyName:		p.PolicyName,
+			PolicyPackName:		p.PolicyPackName,
+			PolicyPackVersion:	p.PolicyPackVersion,
+			EnforcementLevel:	apitype.EnforcementLevel(p.EnforcementLevel),
+			Severity:		apitype.PolicySeverity(p.Severity),
 		})
 
 	case apiEvent.PolicyRemediationEvent != nil:
@@ -420,42 +420,42 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 		contract.IgnoreError(err)
 
 		event = engine.NewEvent(engine.PolicyRemediationEventPayload{
-			ResourceURN:       resource.URN(p.ResourceURN),
-			Color:             colors.Colorization(p.Color),
-			PolicyName:        p.PolicyName,
-			PolicyPackName:    p.PolicyPackName,
-			PolicyPackVersion: p.PolicyPackVersion,
-			Before:            before,
-			After:             after,
+			ResourceURN:		resource.URN(p.ResourceURN),
+			Color:			colors.Colorization(p.Color),
+			PolicyName:		p.PolicyName,
+			PolicyPackName:		p.PolicyPackName,
+			PolicyPackVersion:	p.PolicyPackVersion,
+			Before:			before,
+			After:			after,
 		})
 
 	case apiEvent.PolicyAnalyzeSummaryEvent != nil:
 		p := apiEvent.PolicyAnalyzeSummaryEvent
 		event = engine.NewEvent(engine.PolicyAnalyzeSummaryEventPayload{
-			ResourceURN:       resource.URN(p.ResourceURN),
-			PolicyPackName:    p.PolicyPackName,
-			PolicyPackVersion: p.PolicyPackVersion,
-			Passed:            p.Passed,
-			Failed:            p.Failed,
+			ResourceURN:		resource.URN(p.ResourceURN),
+			PolicyPackName:		p.PolicyPackName,
+			PolicyPackVersion:	p.PolicyPackVersion,
+			Passed:			p.Passed,
+			Failed:			p.Failed,
 		})
 
 	case apiEvent.PolicyRemediateSummaryEvent != nil:
 		p := apiEvent.PolicyRemediateSummaryEvent
 		event = engine.NewEvent(engine.PolicyRemediateSummaryEventPayload{
-			ResourceURN:       resource.URN(p.ResourceURN),
-			PolicyPackName:    p.PolicyPackName,
-			PolicyPackVersion: p.PolicyPackVersion,
-			Passed:            p.Passed,
-			Failed:            p.Failed,
+			ResourceURN:		resource.URN(p.ResourceURN),
+			PolicyPackName:		p.PolicyPackName,
+			PolicyPackVersion:	p.PolicyPackVersion,
+			Passed:			p.Passed,
+			Failed:			p.Failed,
 		})
 
 	case apiEvent.PolicyAnalyzeStackSummaryEvent != nil:
 		p := apiEvent.PolicyAnalyzeStackSummaryEvent
 		event = engine.NewEvent(engine.PolicyAnalyzeStackSummaryEventPayload{
-			PolicyPackName:    p.PolicyPackName,
-			PolicyPackVersion: p.PolicyPackVersion,
-			Passed:            p.Passed,
-			Failed:            p.Failed,
+			PolicyPackName:		p.PolicyPackName,
+			PolicyPackVersion:	p.PolicyPackVersion,
+			Passed:			p.Passed,
+			Failed:			p.Failed,
 		})
 
 	case apiEvent.PreludeEvent != nil:
@@ -474,33 +474,33 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			changes[display.StepOp(op)] = count
 		}
 		event = engine.NewEvent(engine.SummaryEventPayload{
-			MaybeCorrupt:    p.MaybeCorrupt,
-			Duration:        time.Duration(p.DurationSeconds) * time.Second,
-			ResourceChanges: changes,
-			PolicyPacks:     p.PolicyPacks,
-			IsPreview:       p.IsPreview,
+			MaybeCorrupt:		p.MaybeCorrupt,
+			Duration:		time.Duration(p.DurationSeconds) * time.Second,
+			ResourceChanges:	changes,
+			PolicyPacks:		p.PolicyPacks,
+			IsPreview:		p.IsPreview,
 		})
 
 	case apiEvent.ResourcePreEvent != nil:
 		p := apiEvent.ResourcePreEvent
 		event = engine.NewEvent(engine.ResourcePreEventPayload{
-			Metadata: convertJSONStepEventMetadata(p.Metadata),
-			Planning: p.Planning,
+			Metadata:	convertJSONStepEventMetadata(p.Metadata),
+			Planning:	p.Planning,
 		})
 
 	case apiEvent.ResOutputsEvent != nil:
 		p := apiEvent.ResOutputsEvent
 		event = engine.NewEvent(engine.ResourceOutputsEventPayload{
-			Metadata: convertJSONStepEventMetadata(p.Metadata),
-			Planning: p.Planning,
+			Metadata:	convertJSONStepEventMetadata(p.Metadata),
+			Planning:	p.Planning,
 		})
 
 	case apiEvent.ResOpFailedEvent != nil:
 		p := apiEvent.ResOpFailedEvent
 		event = engine.NewEvent(engine.ResourceOperationFailedPayload{
-			Metadata: convertJSONStepEventMetadata(p.Metadata),
-			Status:   resource.Status(p.Status),
-			Steps:    int32(p.Steps), //nolint:gosec // We only ever write int32 sized values to the API.
+			Metadata:	convertJSONStepEventMetadata(p.Metadata),
+			Status:		resource.Status(p.Status),
+			Steps:		int32(p.Steps),	//nolint:gosec // We only ever write int32 sized values to the API.
 		})
 
 	case apiEvent.PolicyLoadEvent != nil:
@@ -515,12 +515,12 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 	case apiEvent.ProgressEvent != nil:
 		p := apiEvent.ProgressEvent
 		event = engine.NewEvent(engine.ProgressEventPayload{
-			Type:      engine.ProgressType(p.Type),
-			ID:        p.ID,
-			Message:   p.Message,
-			Completed: p.Completed,
-			Total:     p.Total,
-			Done:      p.Done,
+			Type:		engine.ProgressType(p.Type),
+			ID:		p.ID,
+			Message:	p.Message,
+			Completed:	p.Completed,
+			Total:		p.Total,
+			Done:		p.Done,
 		})
 
 	case apiEvent.ErrorEvent != nil:
@@ -567,8 +567,8 @@ func convertJSONStepEventMetadata(md apitype.StepEventMetadata) engine.StepEvent
 				contract.Failf("unrecognized diff kind %v", v)
 			}
 			detailedDiff[k] = plugin.PropertyDiff{
-				Kind:      d,
-				InputDiff: v.InputDiff,
+				Kind:		d,
+				InputDiff:	v.InputDiff,
 			}
 		}
 	}
@@ -581,19 +581,19 @@ func convertJSONStepEventMetadata(md apitype.StepEventMetadata) engine.StepEvent
 	}
 
 	return engine.StepEventMetadata{
-		Op:   display.StepOp(md.Op),
-		URN:  resource.URN(md.URN),
-		Type: tokens.Type(md.Type),
+		Op:	display.StepOp(md.Op),
+		URN:	resource.URN(md.URN),
+		Type:	tokens.Type(md.Type),
 
-		Old: old,
-		New: new,
-		Res: res,
+		Old:	old,
+		New:	new,
+		Res:	res,
 
-		Keys:         keys,
-		Diffs:        diffs,
-		DetailedDiff: detailedDiff,
-		Logical:      md.Logical,
-		Provider:     md.Provider,
+		Keys:		keys,
+		Diffs:		diffs,
+		DetailedDiff:	detailedDiff,
+		Logical:	md.Logical,
+		Provider:	md.Provider,
 	}
 }
 
@@ -615,20 +615,20 @@ func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engi
 	contract.IgnoreError(err)
 
 	return &engine.StepEventStateMetadata{
-		Type: tokens.Type(md.Type),
-		URN:  resource.URN(md.URN),
+		Type:	tokens.Type(md.Type),
+		URN:	resource.URN(md.URN),
 
-		Custom:         md.Custom,
-		Delete:         md.Delete,
-		ID:             resource.ID(md.ID),
-		Parent:         resource.URN(md.Parent),
-		Provider:       md.Provider,
-		Protect:        md.Protect,
-		Taint:          md.Taint,
-		RetainOnDelete: md.RetainOnDelete,
-		Inputs:         inputs,
-		Outputs:        outputs,
-		InitErrors:     md.InitErrors,
-		HideDiffs:      md.HideDiffs,
+		Custom:		md.Custom,
+		Delete:		md.Delete,
+		ID:		resource.ID(md.ID),
+		Parent:		resource.URN(md.Parent),
+		Provider:	md.Provider,
+		Protect:	md.Protect,
+		Taint:		md.Taint,
+		RetainOnDelete:	md.RetainOnDelete,
+		Inputs:		inputs,
+		Outputs:	outputs,
+		InitErrors:	md.InitErrors,
+		HideDiffs:	md.HideDiffs,
 	}
 }

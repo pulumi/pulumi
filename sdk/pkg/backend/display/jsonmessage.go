@@ -24,8 +24,8 @@ import (
 	"strconv"
 	"unicode/utf8"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display/internal/terminal"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -36,9 +36,9 @@ import (
 // are placed and updated in the progress-grid based on their ID.  Messages do not need an ID, while
 // Actions must have an ID.
 type Progress struct {
-	ID      string
-	Message string
-	Action  string
+	ID	string
+	Message	string
+	Action	string
 }
 
 func makeMessageProgress(message string) Progress {
@@ -84,24 +84,24 @@ func (jm *Progress) Display(out io.Writer, term terminal.Terminal) {
 }
 
 type messageRenderer struct {
-	opts          Options
-	isInteractive bool
+	opts		Options
+	isInteractive	bool
 
-	display        *ProgressDisplay
-	terminal       terminal.Terminal
-	terminalWidth  int
-	terminalHeight int
+	display		*ProgressDisplay
+	terminal	terminal.Terminal
+	terminalWidth	int
+	terminalHeight	int
 
 	// A spinner to use to show that we're still doing work even when no output has been
 	// printed to the console in a while.
-	nonInteractiveSpinner cmdutil.Spinner
+	nonInteractiveSpinner	cmdutil.Spinner
 
-	progressOutput chan<- Progress
-	closed         <-chan bool
+	progressOutput	chan<- Progress
+	closed		<-chan bool
 
 	// Cache of lines we've already printed.  We don't print a progress message again if it hasn't
 	// changed between the last time we printed and now.
-	printedProgressCache map[string]Progress
+	printedProgressCache	map[string]Progress
 }
 
 func newInteractiveMessageRenderer(term terminal.Terminal, opts Options) progressRenderer {
@@ -134,11 +134,11 @@ func newMessageRenderer(out io.Writer, opts Options, isInteractive bool) *messag
 	}()
 
 	return &messageRenderer{
-		opts:                 opts,
-		isInteractive:        isInteractive,
-		progressOutput:       progressOutput,
-		closed:               closed,
-		printedProgressCache: make(map[string]Progress),
+		opts:			opts,
+		isInteractive:		isInteractive,
+		progressOutput:		progressOutput,
+		closed:			closed,
+		printedProgressCache:	make(map[string]Progress),
 	}
 }
 

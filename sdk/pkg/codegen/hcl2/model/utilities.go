@@ -20,7 +20,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -55,9 +55,9 @@ func SourceOrderBody(body *hclsyntax.Body) []hclsyntax.Node {
 
 func VariableReference(v *Variable) *ScopeTraversalExpression {
 	x := &ScopeTraversalExpression{
-		RootName:  v.Name,
-		Traversal: hcl.Traversal{hcl.TraverseRoot{Name: v.Name}},
-		Parts:     []Traversable{v},
+		RootName:	v.Name,
+		Traversal:	hcl.Traversal{hcl.TraverseRoot{Name: v.Name}},
+		Parts:		[]Traversable{v},
 	}
 	diags := x.Typecheck(false)
 	contract.Assertf(len(diags) == 0, "error typechecking variable reference: %v", diags)
@@ -66,9 +66,9 @@ func VariableReference(v *Variable) *ScopeTraversalExpression {
 
 func ConstantReference(c *Constant) *ScopeTraversalExpression {
 	x := &ScopeTraversalExpression{
-		RootName:  c.Name,
-		Traversal: hcl.Traversal{hcl.TraverseRoot{Name: c.Name}},
-		Parts:     []Traversable{c},
+		RootName:	c.Name,
+		Traversal:	hcl.Traversal{hcl.TraverseRoot{Name: c.Name}},
+		Parts:		[]Traversable{c},
 	}
 	diags := x.Typecheck(false)
 	contract.Assertf(len(diags) == 0, "error typechecking constant reference: %v", diags)

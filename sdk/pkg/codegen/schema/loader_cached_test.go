@@ -45,8 +45,8 @@ func (m *mockLoader) LoadPackageV2(ctx context.Context, descriptor *PackageDescr
 
 func (m *mockLoader) LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error) {
 	return m.LoadPackageReferenceV2(context.TODO(), &PackageDescriptor{
-		Name:    pkg,
-		Version: version,
+		Name:		pkg,
+		Version:	version,
 	})
 }
 

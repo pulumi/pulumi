@@ -26,8 +26,8 @@ func marshalDeployment(d *apitype.DeploymentV3) (json.RawMessage, error) {
 		return nil, err
 	}
 	return json.Marshal(apitype.UntypedDeployment{
-		Version:    3,
-		Deployment: json.RawMessage(raw),
+		Version:	3,
+		Deployment:	json.RawMessage(raw),
 	})
 }
 

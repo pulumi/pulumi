@@ -20,17 +20,17 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model/pretty"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 )
 
 // MapType represents maps from strings to particular element types.
 type MapType struct {
 	// ElementType is the element type of the map.
-	ElementType Type
+	ElementType	Type
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache	*gsync.Map[Type, cacheEntry]
 }
 
 // NewMapType creates a new map type with the given element type.
@@ -47,9 +47,9 @@ func (t *MapType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Format
 	}
 
 	return &pretty.Wrap{
-		Prefix:  "map(",
-		Postfix: ")",
-		Value:   formatter,
+		Prefix:		"map(",
+		Postfix:	")",
+		Value:		formatter,
 	}
 }
 
@@ -174,4 +174,4 @@ func (t *MapType) unify(other Type) (Type, ConversionKind) {
 	})
 }
 
-func (*MapType) isType() {}
+func (*MapType) isType()	{}

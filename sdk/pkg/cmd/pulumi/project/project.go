@@ -23,13 +23,13 @@ import (
 // NewProjectCmd creates a new command that manages Pulumi projects.
 func NewProjectCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "project",
-		Short: "Manage Pulumi projects",
+		Use:	"project",
+		Short:	"Manage Pulumi projects",
 		Long: "Manage Pulumi projects.\n" +
 			"\n" +
 			"This command can be used to manage Pulumi projects. Projects are the " +
 			"unit of organization in Pulumi, and contain multiple stacks.",
-		Args: cmdutil.NoArgs,
+		Args:	cmdutil.NoArgs,
 	}
 
 	// Add subcommands

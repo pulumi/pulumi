@@ -30,12 +30,12 @@ func (s *NoopSink) Logf(sev diag.Severity, diag *diag.Diag, args ...any) {
 	}
 }
 
-func (s *NoopSink) Debugf(diag *diag.Diag, args ...any) {}
+func (s *NoopSink) Debugf(diag *diag.Diag, args ...any)	{}
 
-func (s *NoopSink) Infof(diag *diag.Diag, args ...any) {}
+func (s *NoopSink) Infof(diag *diag.Diag, args ...any)	{}
 
-func (s *NoopSink) Infoerrf(diag *diag.Diag, args ...any) {}
+func (s *NoopSink) Infoerrf(diag *diag.Diag, args ...any)	{}
 
-func (s *NoopSink) Errorf(diag *diag.Diag, args ...any) {}
+func (s *NoopSink) Errorf(diag *diag.Diag, args ...any)	{}
 
-func (s *NoopSink) Warningf(diag *diag.Diag, args ...any) {}
+func (s *NoopSink) Warningf(diag *diag.Diag, args ...any)	{}

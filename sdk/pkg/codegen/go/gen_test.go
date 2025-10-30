@@ -30,9 +30,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/testing/test"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/testing/utils"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
@@ -93,13 +93,13 @@ func TestGeneratePackage(t *testing.T) {
 	}
 
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
-		Language:   "go",
-		GenPackage: generatePackage,
+		Language:	"go",
+		GenPackage:	generatePackage,
 		Checks: map[string]test.CodegenCheck{
-			"go/compile": typeCheckGeneratedPackage,
-			"go/test":    testGeneratedPackage,
+			"go/compile":	typeCheckGeneratedPackage,
+			"go/test":	testGeneratedPackage,
 		},
-		TestCases: test.PulumiPulumiSDKTests,
+		TestCases:	test.PulumiPulumiSDKTests,
 	})
 }
 
@@ -276,23 +276,23 @@ func TestPackageNaming(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		importBasePath  string
-		rootPackageName string
-		name            string
-		expectedRoot    string
+		importBasePath	string
+		rootPackageName	string
+		name		string
+		expectedRoot	string
 	}{
 		{
-			importBasePath: "github.com/pulumi/pulumi-azure-quickstart-acr-geo-replication/sdk/go/acr",
-			expectedRoot:   "acr",
+			importBasePath:	"github.com/pulumi/pulumi-azure-quickstart-acr-geo-replication/sdk/go/acr",
+			expectedRoot:	"acr",
 		},
 		{
-			importBasePath:  "github.com/ihave/animport",
-			rootPackageName: "root",
-			expectedRoot:    "",
+			importBasePath:		"github.com/ihave/animport",
+			rootPackageName:	"root",
+			expectedRoot:		"",
 		},
 		{
-			name:         "named-package",
-			expectedRoot: "namedpackage",
+			name:		"named-package",
+			expectedRoot:	"namedpackage",
 		},
 	}
 	for _, tt := range testCases {
@@ -310,8 +310,8 @@ func TestPackageNaming(t *testing.T) {
 			}
 			schema.Language = map[string]any{
 				"go": GoPackageInfo{
-					ImportBasePath:  tt.importBasePath,
-					RootPackageName: tt.rootPackageName,
+					ImportBasePath:		tt.importBasePath,
+					RootPackageName:	tt.rootPackageName,
 				},
 			}
 			files, err := GeneratePackage("test", schema, nil)
@@ -338,7 +338,7 @@ func TestTokenToType(t *testing.T) {
 
 	const awsImportBasePath = "github.com/pulumi/pulumi-aws/sdk/v4/go/aws"
 	awsSpec := schema.PackageSpec{
-		Name: "aws",
+		Name:	"aws",
 		Meta: &schema.MetadataSpec{
 			ModuleFormat: "(.*)(?:/[^/]*)",
 		},
@@ -350,39 +350,39 @@ func TestTokenToType(t *testing.T) {
 	}
 
 	tests := []struct {
-		pkg      *pkgContext
-		token    string
-		expected string
+		pkg		*pkgContext
+		token		string
+		expected	string
 	}{
 		{
 			pkg: &pkgContext{
-				pkg:            importSpec(t, awsSpec).Reference(),
-				importBasePath: awsImportBasePath,
+				pkg:		importSpec(t, awsSpec).Reference(),
+				importBasePath:	awsImportBasePath,
 			},
-			token:    "aws:s3/BucketWebsite:BucketWebsite",
-			expected: "s3.BucketWebsite",
+			token:		"aws:s3/BucketWebsite:BucketWebsite",
+			expected:	"s3.BucketWebsite",
 		},
 		{
 			pkg: &pkgContext{
-				pkg:            importSpec(t, awsSpec).Reference(),
-				importBasePath: awsImportBasePath,
+				pkg:		importSpec(t, awsSpec).Reference(),
+				importBasePath:	awsImportBasePath,
 				pkgImportAliases: map[string]string{
 					"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3": "awss3",
 				},
 			},
-			token:    "aws:s3/BucketWebsite:BucketWebsite",
-			expected: "awss3.BucketWebsite",
+			token:		"aws:s3/BucketWebsite:BucketWebsite",
+			expected:	"awss3.BucketWebsite",
 		},
 		{
 			pkg: &pkgContext{
-				pkg:            importSpec(t, googleNativeSpec).Reference(),
-				importBasePath: googleNativeImportBasePath,
+				pkg:		importSpec(t, googleNativeSpec).Reference(),
+				importBasePath:	googleNativeImportBasePath,
 				pkgImportAliases: map[string]string{
 					"github.com/pulumi/pulumi-google-native/sdk/go/google/dns/v1": "dns",
 				},
 			},
-			token:    "google-native:dns/v1:DnsKeySpec",
-			expected: "dns.DnsKeySpec",
+			token:		"google-native:dns/v1:DnsKeySpec",
+			expected:	"dns.DnsKeySpec",
 		},
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
@@ -401,7 +401,7 @@ func TestTokenToResource(t *testing.T) {
 
 	const awsImportBasePath = "github.com/pulumi/pulumi-aws/sdk/v4/go/aws"
 	awsSpec := schema.PackageSpec{
-		Name: "aws",
+		Name:	"aws",
 		Meta: &schema.MetadataSpec{
 			ModuleFormat: "(.*)(?:/[^/]*)",
 		},
@@ -413,39 +413,39 @@ func TestTokenToResource(t *testing.T) {
 	}
 
 	tests := []struct {
-		pkg      *pkgContext
-		token    string
-		expected string
+		pkg		*pkgContext
+		token		string
+		expected	string
 	}{
 		{
 			pkg: &pkgContext{
-				pkg:            importSpec(t, awsSpec).Reference(),
-				importBasePath: awsImportBasePath,
+				pkg:		importSpec(t, awsSpec).Reference(),
+				importBasePath:	awsImportBasePath,
 			},
-			token:    "aws:s3/Bucket:Bucket",
-			expected: "s3.Bucket",
+			token:		"aws:s3/Bucket:Bucket",
+			expected:	"s3.Bucket",
 		},
 		{
 			pkg: &pkgContext{
-				pkg:            importSpec(t, awsSpec).Reference(),
-				importBasePath: awsImportBasePath,
+				pkg:		importSpec(t, awsSpec).Reference(),
+				importBasePath:	awsImportBasePath,
 				pkgImportAliases: map[string]string{
 					"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3": "awss3",
 				},
 			},
-			token:    "aws:s3/Bucket:Bucket",
-			expected: "awss3.Bucket",
+			token:		"aws:s3/Bucket:Bucket",
+			expected:	"awss3.Bucket",
 		},
 		{
 			pkg: &pkgContext{
-				pkg:            importSpec(t, googleNativeSpec).Reference(),
-				importBasePath: googleNativeImportBasePath,
+				pkg:		importSpec(t, googleNativeSpec).Reference(),
+				importBasePath:	googleNativeImportBasePath,
 				pkgImportAliases: map[string]string{
 					"github.com/pulumi/pulumi-google-native/sdk/go/google/dns/v1": "dns",
 				},
 			},
-			token:    "google-native:dns/v1:Policy",
-			expected: "dns.Policy",
+			token:		"google-native:dns/v1:Policy",
+			expected:	"dns.Policy",
 		},
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
@@ -471,8 +471,8 @@ func TestGenHeader(t *testing.T) {
 	t.Parallel()
 
 	pkg := &pkgContext{
-		tool: "a tool",
-		pkg:  (&schema.Package{Name: "test-pkg"}).Reference(),
+		tool:	"a tool",
+		pkg:	(&schema.Package{Name: "test-pkg"}).Reference(),
 	}
 
 	s := func() string {
@@ -527,22 +527,22 @@ func TestTitle(t *testing.T) {
 func TestRegressTypeDuplicatesInChunking(t *testing.T) {
 	t.Parallel()
 	pkgSpec := schema.PackageSpec{
-		Name:      "test",
-		Version:   "0.0.1",
-		Resources: make(map[string]schema.ResourceSpec),
+		Name:		"test",
+		Version:	"0.0.1",
+		Resources:	make(map[string]schema.ResourceSpec),
 		Types: map[string]schema.ComplexTypeSpec{
 			"test:index:PolicyStatusAutogenRules": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Type: "object",
+					Type:	"object",
 					Properties: map[string]schema.PropertySpec{
 						"imageExtractors": {
 							TypeSpec: schema.TypeSpec{
-								Type: "object",
+								Type:	"object",
 								AdditionalProperties: &schema.TypeSpec{
-									Type: "array",
+									Type:	"array",
 									Items: &schema.TypeSpec{
-										Type: "object",
-										Ref:  "#/types/test:index:Im",
+										Type:	"object",
+										Ref:	"#/types/test:index:Im",
 									},
 								},
 							},
@@ -552,12 +552,12 @@ func TestRegressTypeDuplicatesInChunking(t *testing.T) {
 			},
 			"test:index:Im": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Type: "object",
+					Type:	"object",
 					Properties: map[string]schema.PropertySpec{
-						"name": {TypeSpec: schema.TypeSpec{Type: "string"}},
-						"path": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						"name":	{TypeSpec: schema.TypeSpec{Type: "string"}},
+						"path":	{TypeSpec: schema.TypeSpec{Type: "string"}},
 					},
-					Required: []string{"path"},
+					Required:	[]string{"path"},
 				},
 			},
 		},
@@ -579,8 +579,8 @@ func TestRegressTypeDuplicatesInChunking(t *testing.T) {
 		ttok := fmt.Sprintf("test:index:Typ%d", i)
 		pkgSpec.Types[ttok] = schema.ComplexTypeSpec{
 			ObjectTypeSpec: schema.ObjectTypeSpec{
-				Type:     "object",
-				Required: []string{"x"},
+				Type:		"object",
+				Required:	[]string{"x"},
 				Properties: map[string]schema.PropertySpec{
 					"x": {TypeSpec: schema.TypeSpec{Type: "string"}},
 				},

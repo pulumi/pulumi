@@ -21,11 +21,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -49,14 +49,14 @@ func TestRemoveANSI(t *testing.T) {
 
 func TestEmptyDetailedDiff(t *testing.T) {
 	t.Parallel()
-	expected := `{"sequence":0,"timestamp":0,"resOutputsEvent":{"metadata":{"op":"import","urn":"urn:pul:resource:type::name","type":"urn:pul:resource:type","old":null,"new":null,"detailedDiff":{},"provider":""}}}` //nolint:lll
+	expected := `{"sequence":0,"timestamp":0,"resOutputsEvent":{"metadata":{"op":"import","urn":"urn:pul:resource:type::name","type":"urn:pul:resource:type","old":null,"new":null,"detailedDiff":{},"provider":""}}}`	//nolint:lll
 	e := engine.NewEvent(
 		engine.ResourceOutputsEventPayload{
 			Metadata: engine.StepEventMetadata{
-				Op:           deploy.OpImport,
-				URN:          "urn:pul:resource:type::name",
-				Type:         "urn:pul:resource:type",
-				DetailedDiff: map[string]plugin.PropertyDiff{},
+				Op:		deploy.OpImport,
+				URN:		"urn:pul:resource:type::name",
+				Type:		"urn:pul:resource:type",
+				DetailedDiff:	map[string]plugin.PropertyDiff{},
 			},
 		},
 	)
@@ -85,7 +85,7 @@ func TestConvertJSONEventExhaustive(t *testing.T) {
 			// Build an event with exactly this field set non-nil.
 			var v apitype.EngineEvent
 			rv := reflect.ValueOf(&v).Elem()
-			rv.Field(i).Set(reflect.New(f.Type.Elem())) // zero value pointer, but non-nil
+			rv.Field(i).Set(reflect.New(f.Type.Elem()))	// zero value pointer, but non-nil
 
 			_, err := ConvertJSONEvent(v)
 			require.NoError(t, err, "field %s is not handled by ConvertJSONEvent", f.Name)

@@ -22,27 +22,27 @@ import (
 // SimpleTerminal is a terminal which ignores terminal codes and writes its
 // output to a buffer.
 type SimpleTerminal struct {
-	m sync.Mutex
+	m	sync.Mutex
 
-	width, height int
-	raw           bool
-	info          Info
+	width, height	int
+	raw		bool
+	info		Info
 
-	keys chan string
+	keys	chan string
 
-	dest io.Writer
+	dest	io.Writer
 }
 
 var _ Terminal = &SimpleTerminal{}
 
 func NewSimpleTerminal(dest io.Writer, width, height int) *SimpleTerminal {
 	return &SimpleTerminal{
-		width:  width,
-		height: height,
-		raw:    true,
-		info:   nil,
-		keys:   make(chan string),
-		dest:   dest,
+		width:	width,
+		height:	height,
+		raw:	true,
+		info:	nil,
+		keys:	make(chan string),
+		dest:	dest,
 	}
 }
 
@@ -66,13 +66,13 @@ func (t *SimpleTerminal) Write(b []byte) (int, error) {
 	return t.dest.Write(b)
 }
 
-func (t *SimpleTerminal) ClearLine()           {}
-func (t *SimpleTerminal) ClearEnd()            {}
-func (t *SimpleTerminal) CarriageReturn()      {}
-func (t *SimpleTerminal) CursorUp(count int)   {}
-func (t *SimpleTerminal) CursorDown(count int) {}
-func (t *SimpleTerminal) HideCursor()          {}
-func (t *SimpleTerminal) ShowCursor()          {}
+func (t *SimpleTerminal) ClearLine()		{}
+func (t *SimpleTerminal) ClearEnd()		{}
+func (t *SimpleTerminal) CarriageReturn()	{}
+func (t *SimpleTerminal) CursorUp(count int)	{}
+func (t *SimpleTerminal) CursorDown(count int)	{}
+func (t *SimpleTerminal) HideCursor()		{}
+func (t *SimpleTerminal) ShowCursor()		{}
 
 func (t *SimpleTerminal) ReadKey() (string, error) {
 	k, ok := <-t.keys

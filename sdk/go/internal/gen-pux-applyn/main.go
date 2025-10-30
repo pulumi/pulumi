@@ -45,7 +45,7 @@ import (
 )
 
 func main() {
-	log.SetFlags(0) // don't print timestamps
+	log.SetFlags(0)	// don't print timestamps
 
 	var p params
 	flag.StringVar(&p.Dir, "d", "", "output directory (default: current directory)")
@@ -58,8 +58,8 @@ func main() {
 }
 
 type params struct {
-	Dir string // output directory
-	N   int    // max parameter count for an Apply function
+	Dir	string	// output directory
+	N	int	// max parameter count for an Apply function
 }
 
 func run(p *params) error {
@@ -82,9 +82,9 @@ func run(p *params) error {
 
 var (
 	//go:embed tmpl/*
-	_tmplFS embed.FS
+	_tmplFS	embed.FS
 
-	_tmpl = template.Must(
+	_tmpl	= template.Must(
 		template.New("").
 			Funcs(template.FuncMap{
 				"seq": seq,
@@ -104,10 +104,10 @@ func seq(start, stop int) []int {
 }
 
 type generator struct {
-	Dir string // output directory
+	Dir	string	// output directory
 
 	// Errors encountered during generation.
-	errors []error
+	errors	[]error
 }
 
 // Err returns an error if any errors were encountered during generation.
@@ -122,13 +122,13 @@ func (g *generator) Err() error {
 // [start, stop] (inclusive).
 func (g *generator) Generate(start, stop int) {
 	data := struct {
-		Start int
-		Stop  int
-		Year  int
+		Start	int
+		Stop	int
+		Year	int
 	}{
-		Start: start,
-		Stop:  stop,
-		Year:  time.Now().Year(),
+		Start:	start,
+		Stop:	stop,
+		Year:	time.Now().Year(),
 	}
 
 	var src, test bytes.Buffer

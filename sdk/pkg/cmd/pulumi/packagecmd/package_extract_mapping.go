@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"os"
 
-	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	cmdCmd "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/packages"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -32,9 +32,9 @@ func newExtractMappingCommand() *cobra.Command {
 	var out string
 
 	cmd := &cobra.Command{
-		Use:   "get-mapping <key> <schema_source> [provider key] [provider parameters]",
-		Args:  cobra.MinimumNArgs(2),
-		Short: "Get the mapping information for a given key from a package",
+		Use:	"get-mapping <key> <schema_source> [provider key] [provider parameters]",
+		Args:	cobra.MinimumNArgs(2),
+		Short:	"Get the mapping information for a given key from a package",
 		Long: `Get the mapping information for a given key from a package.
 
 <schema_source> can be a package name or the path to a plugin binary. [provider key]
@@ -85,8 +85,8 @@ empty string.`,
 			}
 
 			mapping, err := p.Provider.GetMapping(cmd.Context(), plugin.GetMappingRequest{
-				Key:      key,
-				Provider: provider,
+				Key:		key,
+				Provider:	provider,
 			})
 			if err != nil {
 				return fmt.Errorf("get mapping: %w", err)

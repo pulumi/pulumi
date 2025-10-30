@@ -18,8 +18,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
@@ -28,10 +28,10 @@ func newPolicyValidateCmd() *cobra.Command {
 	var argConfig string
 
 	cmd := &cobra.Command{
-		Use:   "validate-config <org-name>/<policy-pack-name> <version>",
-		Args:  cmdutil.ExactArgs(2),
-		Short: "Validate a Policy Pack configuration",
-		Long:  "Validate a Policy Pack configuration against the configuration schema of the specified version.",
+		Use:	"validate-config <org-name>/<policy-pack-name> <version>",
+		Args:	cmdutil.ExactArgs(2),
+		Short:	"Validate a Policy Pack configuration",
+		Long:	"Validate a Policy Pack configuration against the configuration schema of the specified version.",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
@@ -54,9 +54,9 @@ func newPolicyValidateCmd() *cobra.Command {
 
 			err = policyPack.Validate(ctx,
 				backend.PolicyPackOperation{
-					VersionTag: version,
-					Scopes:     backend.CancellationScopes,
-					Config:     config,
+					VersionTag:	version,
+					Scopes:		backend.CancellationScopes,
+					Config:		config,
 				})
 			if err != nil {
 				return err
@@ -68,7 +68,7 @@ func newPolicyValidateCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&argConfig, "config", "",
 		"The file path for the Policy Pack configuration file")
-	cmd.MarkFlagRequired("config") //nolint:errcheck
+	cmd.MarkFlagRequired("config")	//nolint:errcheck
 
 	return cmd
 }

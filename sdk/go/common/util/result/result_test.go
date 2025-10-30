@@ -64,84 +64,84 @@ func TestMergeBails(t *testing.T) {
 
 	// Arrange.
 	cases := []struct {
-		name     string
-		errs     []error
-		expected error
+		name		string
+		errs		[]error
+		expected	error
 	}{
 		{
-			name:     "no errors",
-			errs:     []error{},
-			expected: nil,
+			name:		"no errors",
+			errs:		[]error{},
+			expected:	nil,
 		},
 		{
-			name:     "one nil",
-			errs:     []error{nil},
-			expected: nil,
+			name:		"one nil",
+			errs:		[]error{nil},
+			expected:	nil,
 		},
 		{
-			name:     "one error",
-			errs:     []error{errors.New("boom")},
-			expected: errors.New("boom"),
+			name:		"one error",
+			errs:		[]error{errors.New("boom")},
+			expected:	errors.New("boom"),
 		},
 		{
-			name:     "one bail",
-			errs:     []error{BailErrorf("boom")},
-			expected: BailErrorf("BAIL: boom"),
+			name:		"one bail",
+			errs:		[]error{BailErrorf("boom")},
+			expected:	BailErrorf("BAIL: boom"),
 		},
 		{
-			name:     "all nil",
-			errs:     []error{nil, nil, nil},
-			expected: nil,
+			name:		"all nil",
+			errs:		[]error{nil, nil, nil},
+			expected:	nil,
 		},
 		{
-			name: "all bails",
+			name:	"all bails",
 			errs: []error{
 				BailError(errors.New("boom")),
 				BailError(errors.New("bang")),
 				BailErrorf("biff"),
 			},
-			expected: BailErrorf("BAIL: boom\nBAIL: bang\nBAIL: biff"),
+			expected:	BailErrorf("BAIL: boom\nBAIL: bang\nBAIL: biff"),
 		},
 		{
-			name: "all errors",
+			name:	"all errors",
 			errs: []error{
 				errors.New("boom"),
 				errors.New("bang"),
 				errors.New("biff"),
 			},
-			expected: errors.New("boom\nbang\nbiff"),
+			expected:	errors.New("boom\nbang\nbiff"),
 		},
 		{
-			name: "nils and errors",
+			name:	"nils and errors",
 			errs: []error{
 				nil,
 				errors.New("boom"),
 				nil,
 				errors.New("bang"),
 			},
-			expected: errors.New("boom\nbang"),
+			expected:	errors.New("boom\nbang"),
 		},
 		{
-			name: "nils and bails",
+			name:	"nils and bails",
 			errs: []error{
 				nil,
 				BailError(errors.New("boom")),
 				nil,
 				BailErrorf("bang"),
 			},
-			expected: BailErrorf("BAIL: boom\nBAIL: bang"),
+			expected:	BailErrorf("BAIL: boom\nBAIL: bang"),
 		},
 		{
-			name: "errors and bails",
+			name:	"errors and bails",
 			errs: []error{
 				errors.New("boom"),
 				BailError(errors.New("bang")),
 				errors.New("biff"),
 			},
-			expected: errors.New("boom\nbiff"),
+			expected:	errors.New("boom\nbiff"),
 		},
 		{
-			name: "errors, bails, and nils",
+			name:	"errors, bails, and nils",
 			errs: []error{
 				errors.New("boom"),
 				nil,
@@ -151,7 +151,7 @@ func TestMergeBails(t *testing.T) {
 				errors.New("biff"),
 				nil,
 			},
-			expected: errors.New("boom\nbiff"),
+			expected:	errors.New("boom\nbiff"),
 		},
 	}
 

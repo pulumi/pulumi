@@ -24,14 +24,14 @@ import (
 )
 
 type Analyzer struct {
-	Info plugin.AnalyzerInfo
+	Info	plugin.AnalyzerInfo
 
-	AnalyzeF      func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error)
-	AnalyzeStackF func(resources []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error)
-	RemediateF    func(r plugin.AnalyzerResource) (plugin.RemediateResponse, error)
+	AnalyzeF	func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error)
+	AnalyzeStackF	func(resources []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error)
+	RemediateF	func(r plugin.AnalyzerResource) (plugin.RemediateResponse, error)
 
-	ConfigureF func(policyConfig map[string]plugin.AnalyzerPolicyConfig) error
-	CancelF    func() error
+	ConfigureF	func(policyConfig map[string]plugin.AnalyzerPolicyConfig) error
+	CancelF		func() error
 }
 
 var _ = plugin.Analyzer((*Analyzer)(nil))
@@ -71,8 +71,8 @@ func (a *Analyzer) GetAnalyzerInfo() (plugin.AnalyzerInfo, error) {
 
 func (a *Analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{
-		Kind: apitype.AnalyzerPlugin,
-		Name: a.Info.Name,
+		Kind:	apitype.AnalyzerPlugin,
+		Name:	a.Info.Name,
 	}, nil
 }
 

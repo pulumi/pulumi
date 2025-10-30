@@ -21,12 +21,12 @@ import (
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/backend/state"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/state"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -34,9 +34,9 @@ import (
 func NewConsoleCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var stackName string
 	cmd := &cobra.Command{
-		Use:   "console",
-		Short: "Opens the current stack in the Pulumi Console",
-		Args:  cmdutil.NoArgs,
+		Use:	"console",
+		Short:	"Opens the current stack in the Pulumi Console",
+		Args:	cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{

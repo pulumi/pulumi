@@ -25,8 +25,8 @@ import (
 )
 
 var (
-	snkMutex sync.Mutex
-	snk      diag.Sink
+	snkMutex	sync.Mutex
+	snk		diag.Sink
 )
 
 // By default we'll attempt to figure out if we should have colors or not. This can be overridden

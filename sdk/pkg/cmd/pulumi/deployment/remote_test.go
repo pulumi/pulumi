@@ -25,17 +25,17 @@ func TestParseEnv(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]struct {
-		input     string
-		name      string
-		value     string
-		errString string
+		input		string
+		name		string
+		value		string
+		errString	string
 	}{
-		"name val":            {input: "FOO=bar", name: "FOO", value: "bar"},
-		"name empty val":      {input: "FOO=", name: "FOO"},
-		"name val extra seps": {input: "FOO=bar=baz", name: "FOO", value: "bar=baz"},
-		"empty":               {input: "", errString: `expected value of the form "NAME=value": missing "=" in ""`},
-		"no sep":              {input: "foo", errString: `expected value of the form "NAME=value": missing "=" in "foo"`},
-		"empty name val":      {input: "=", errString: `expected non-empty environment name in "="`},
+		"name val":		{input: "FOO=bar", name: "FOO", value: "bar"},
+		"name empty val":	{input: "FOO=", name: "FOO"},
+		"name val extra seps":	{input: "FOO=bar=baz", name: "FOO", value: "bar=baz"},
+		"empty":		{input: "", errString: `expected value of the form "NAME=value": missing "=" in ""`},
+		"no sep":		{input: "foo", errString: `expected value of the form "NAME=value": missing "=" in "foo"`},
+		"empty name val":	{input: "=", errString: `expected non-empty environment name in "="`},
 	}
 
 	for name, tc := range tests {

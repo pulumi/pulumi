@@ -20,11 +20,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
-	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/diy/unauthenticatedregistry"
+	cmdCmd "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/cmd"
+	cmdDiag "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/diag"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/packages"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -37,9 +37,9 @@ import (
 // Constructs the `pulumi package add` command.
 func newPackageAddCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add <provider|schema|path> [provider-parameter...]",
-		Args:  cobra.MinimumNArgs(1),
-		Short: "Add a package to your Pulumi project or plugin",
+		Use:	"add <provider|schema|path> [provider-parameter...]",
+		Args:	cobra.MinimumNArgs(1),
+		Short:	"Add a package to your Pulumi project or plugin",
 		Long: `Add a package to your Pulumi project or plugin.
 
 This command locally generates an SDK in the currently selected Pulumi language,
@@ -160,9 +160,9 @@ from the parameters, as in:
 				packageSpec.Parameters = parameters.Args
 			} else if packageSpec == nil {
 				packageSpec = &workspace.PackageSpec{
-					Source:     source,
-					Version:    version,
-					Parameters: parameters.Args,
+					Source:		source,
+					Version:	version,
+					Parameters:	parameters.Args,
 				}
 			}
 			proj.AddPackage(pkg.Name, *packageSpec)

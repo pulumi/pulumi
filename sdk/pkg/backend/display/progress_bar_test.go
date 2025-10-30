@@ -17,7 +17,7 @@ package display
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,8 +29,8 @@ func TestProgressBars(t *testing.T) {
 
 		// Arrange.
 		cases := []struct {
-			value    int64
-			expected string
+			value		int64
+			expected	string
 		}{
 			{value: 0, expected: "0 B"},
 			{value: 1, expected: "1 B"},
@@ -59,10 +59,10 @@ func TestProgressBars(t *testing.T) {
 
 		// Arrange.
 		cases := []struct {
-			completed int64
-			total     int64
-			width     int
-			expected  string
+			completed	int64
+			total		int64
+			width		int
+			expected	string
 		}{
 			{completed: 0, total: 100, width: 20, expected: "[                  ]"},
 			{completed: 50, total: 100, width: 20, expected: "[█████████         ]"},
@@ -94,10 +94,10 @@ func TestProgressBars(t *testing.T) {
 
 		// Arrange.
 		cases := []struct {
-			completed int64
-			total     int64
-			width     int
-			expected  string
+			completed	int64
+			total		int64
+			width		int
+			expected	string
 		}{
 			{completed: 0, total: 100, width: 20, expected: "[__________________]"},
 			{completed: 50, total: 100, width: 20, expected: "[--------->________]"},
@@ -129,58 +129,58 @@ func TestProgressBars(t *testing.T) {
 
 		// Arrange.
 		cases := []struct {
-			typ       engine.ProgressType
-			completed int64
-			total     int64
-			message   string
-			width     int
-			expected  string
+			typ		engine.ProgressType
+			completed	int64
+			total		int64
+			message		string
+			width		int
+			expected	string
 		}{
 			// Room for everything.
 			{
-				typ:       engine.PluginDownload,
-				completed: 20,
-				total:     100,
-				message:   "Downloading plugin",
-				width:     40,
-				expected:  "Downloading plugin [█▍     ]  20 B/100 B",
+				typ:		engine.PluginDownload,
+				completed:	20,
+				total:		100,
+				message:	"Downloading plugin",
+				width:		40,
+				expected:	"Downloading plugin [█▍     ]  20 B/100 B",
 			},
 			// Not enough room for completed/total sizes.
 			{
-				typ:       engine.PluginDownload,
-				completed: 20,
-				total:     100,
-				message:   "Downloading plugin",
-				width:     30,
-				expected:  "Downloading plugin [█▊       ]",
+				typ:		engine.PluginDownload,
+				completed:	20,
+				total:		100,
+				message:	"Downloading plugin",
+				width:		30,
+				expected:	"Downloading plugin [█▊       ]",
 			},
 			// Not enough room for the progress bar.
 			{
-				typ:       engine.PluginDownload,
-				completed: 20,
-				total:     100,
-				message:   "Downloading plugin",
-				width:     20,
-				expected:  "Downloading plugin",
+				typ:		engine.PluginDownload,
+				completed:	20,
+				total:		100,
+				message:	"Downloading plugin",
+				width:		20,
+				expected:	"Downloading plugin",
 			},
 			// Not enough room for the entire message.
 			{
-				typ:       engine.PluginDownload,
-				completed: 20,
-				total:     100,
-				message:   "Downloading plugin",
-				width:     15,
-				expected:  "Downloading plu",
+				typ:		engine.PluginDownload,
+				completed:	20,
+				total:		100,
+				message:	"Downloading plugin",
+				width:		15,
+				expected:	"Downloading plu",
 			},
 		}
 
 		for _, c := range cases {
 			payload := engine.ProgressEventPayload{
-				Type:      c.typ,
-				Completed: c.completed,
-				Total:     c.total,
-				Message:   c.message,
-				ID:        "id",
+				Type:		c.typ,
+				Completed:	c.completed,
+				Total:		c.total,
+				Message:	c.message,
+				ID:		"id",
 			}
 
 			// Act.
@@ -196,58 +196,58 @@ func TestProgressBars(t *testing.T) {
 
 		// Arrange.
 		cases := []struct {
-			typ       engine.ProgressType
-			completed int64
-			total     int64
-			message   string
-			width     int
-			expected  string
+			typ		engine.ProgressType
+			completed	int64
+			total		int64
+			message		string
+			width		int
+			expected	string
 		}{
 			// Room for everything.
 			{
-				typ:       engine.PluginDownload,
-				completed: 20,
-				total:     100,
-				message:   "Downloading plugin",
-				width:     40,
-				expected:  "Downloading plugin [->_____]  20 B/100 B",
+				typ:		engine.PluginDownload,
+				completed:	20,
+				total:		100,
+				message:	"Downloading plugin",
+				width:		40,
+				expected:	"Downloading plugin [->_____]  20 B/100 B",
 			},
 			// Not enough room for completed/total sizes.
 			{
-				typ:       engine.PluginDownload,
-				completed: 20,
-				total:     100,
-				message:   "Downloading plugin",
-				width:     30,
-				expected:  "Downloading plugin [->_______]",
+				typ:		engine.PluginDownload,
+				completed:	20,
+				total:		100,
+				message:	"Downloading plugin",
+				width:		30,
+				expected:	"Downloading plugin [->_______]",
 			},
 			// Not enough room for the progress bar.
 			{
-				typ:       engine.PluginDownload,
-				completed: 20,
-				total:     100,
-				message:   "Downloading plugin",
-				width:     20,
-				expected:  "Downloading plugin",
+				typ:		engine.PluginDownload,
+				completed:	20,
+				total:		100,
+				message:	"Downloading plugin",
+				width:		20,
+				expected:	"Downloading plugin",
 			},
 			// Not enough room for the entire message.
 			{
-				typ:       engine.PluginDownload,
-				completed: 20,
-				total:     100,
-				message:   "Downloading plugin",
-				width:     15,
-				expected:  "Downloading plu",
+				typ:		engine.PluginDownload,
+				completed:	20,
+				total:		100,
+				message:	"Downloading plugin",
+				width:		15,
+				expected:	"Downloading plu",
 			},
 		}
 
 		for _, c := range cases {
 			payload := engine.ProgressEventPayload{
-				Completed: c.completed,
-				Total:     c.total,
-				Message:   c.message,
-				Type:      engine.PluginDownload,
-				ID:        "id",
+				Completed:	c.completed,
+				Total:		c.total,
+				Message:	c.message,
+				Type:		engine.PluginDownload,
+				ID:		"id",
 			}
 
 			// Act.

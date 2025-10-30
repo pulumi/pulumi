@@ -20,13 +20,13 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -329,17 +329,17 @@ func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, en
 }
 
 var functionNamespaces = map[string][]string{
-	"assetArchive":     {"System.Collections.Generic"},
-	"readDir":          {"System.IO", "System.Linq"},
-	"readFile":         {"System.IO"},
-	"cwd":              {"System.IO"},
-	"filebase64":       {"System", "System.IO"},
-	"filebase64sha256": {"System", "System.IO", "System.Security.Cryptography", "System.Text"},
-	"toJSON":           {"System.Text.Json", "System.Collections.Generic"},
-	"toBase64":         {"System"},
-	"fromBase64":       {"System"},
-	"sha1":             {"System.Security.Cryptography", "System.Text"},
-	"singleOrNone":     {"System.Linq"},
+	"assetArchive":		{"System.Collections.Generic"},
+	"readDir":		{"System.IO", "System.Linq"},
+	"readFile":		{"System.IO"},
+	"cwd":			{"System.IO"},
+	"filebase64":		{"System", "System.IO"},
+	"filebase64sha256":	{"System", "System.IO", "System.Security.Cryptography", "System.Text"},
+	"toJSON":		{"System.Text.Json", "System.Collections.Generic"},
+	"toBase64":		{"System"},
+	"fromBase64":		{"System"},
+	"sha1":			{"System.Security.Cryptography", "System.Text"},
+	"singleOrNone":		{"System.Linq"},
 }
 
 func (g *generator) genFunctionUsings(x *model.FunctionCallExpression) []string {
@@ -434,7 +434,7 @@ func (g *generator) genIntrensic(w io.Writer, from model.Expression, to model.Ty
 			}
 		}
 	default:
-		g.Fgenf(w, "%.v", from) // <- probably wrong w.r.t. precedence
+		g.Fgenf(w, "%.v", from)	// <- probably wrong w.r.t. precedence
 	}
 }
 

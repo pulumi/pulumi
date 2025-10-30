@@ -20,17 +20,17 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model/pretty"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 )
 
 // PromiseType represents eventual values that do not carry additional information.
 type PromiseType struct {
 	// ElementType is the element type of the promise.
-	ElementType Type
+	ElementType	Type
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache	*gsync.Map[Type, cacheEntry]
 }
 
 // NewPromiseType creates a new promise type with the given element type after replacing any promise types within
@@ -53,9 +53,9 @@ func (t *PromiseType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Fo
 	}
 
 	return &pretty.Wrap{
-		Prefix:  "promise(",
-		Postfix: ")",
-		Value:   formatter,
+		Prefix:		"promise(",
+		Postfix:	")",
+		Value:		formatter,
 	}
 }
 
@@ -141,4 +141,4 @@ func (t *PromiseType) unify(other Type) (Type, ConversionKind) {
 	})
 }
 
-func (t *PromiseType) isType() {}
+func (t *PromiseType) isType()	{}

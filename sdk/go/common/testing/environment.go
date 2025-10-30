@@ -33,8 +33,8 @@ import (
 
 const (
 	//nolint:gosec
-	pulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
-	pulumiBinaryPathEnvVar      = "PULUMI_INTEGRATION_BINARY_PATH"
+	pulumiCredentialsPathEnvVar	= "PULUMI_CREDENTIALS_PATH"
+	pulumiBinaryPathEnvVar		= "PULUMI_INTEGRATION_BINARY_PATH"
 )
 
 // Environment is an extension of the testing.T type that provides support for a test environment
@@ -44,21 +44,21 @@ type Environment struct {
 	*testing.T
 
 	// HomePath is the PULUMI_HOME directory for the environment
-	HomePath string
+	HomePath	string
 	// RootPath is a new temp directory where the environment starts.
-	RootPath string
+	RootPath	string
 	// Current working directory, defaults to the root path.
-	CWD string
+	CWD	string
 	// Backend to use for commands
-	Backend string
+	Backend	string
 	// Environment variables to add to the environment for commands (`key=value`).
-	Env []string
+	Env	[]string
 	// Passphrase for config secrets, if any
-	Passphrase string
+	Passphrase	string
 	// Set to true to turn off setting PULUMI_CONFIG_PASSPHRASE.
-	NoPassphrase bool
+	NoPassphrase	bool
 	// Content to pass on stdin, if any
-	Stdin io.Reader
+	Stdin	io.Reader
 }
 
 // WriteYarnRCForTest writes a .yarnrc file which sets global configuration for every yarn inovcation. We use this
@@ -88,10 +88,10 @@ func NewEnvironment(t *testing.T) *Environment {
 
 	t.Logf("Created new test environment:  %v", root)
 	return &Environment{
-		T:        t,
-		HomePath: home,
-		RootPath: root,
-		CWD:      root,
+		T:		t,
+		HomePath:	home,
+		RootPath:	root,
+		CWD:		root,
 	}
 }
 

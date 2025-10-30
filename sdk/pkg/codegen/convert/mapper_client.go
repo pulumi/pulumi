@@ -29,8 +29,8 @@ import (
 
 // mapperClient reflects a mapper service, loaded dynamically from the engine process over gRPC.
 type mapperClient struct {
-	conn      *grpc.ClientConn        // the underlying gRPC connection.
-	clientRaw codegenrpc.MapperClient // the raw mapper client; usually unsafe to use directly.
+	conn		*grpc.ClientConn	// the underlying gRPC connection.
+	clientRaw	codegenrpc.MapperClient	// the raw mapper client; usually unsafe to use directly.
 }
 
 func NewMapperClient(target string) (Mapper, error) {
@@ -46,8 +46,8 @@ func NewMapperClient(target string) (Mapper, error) {
 	}
 
 	m := &mapperClient{
-		conn:      conn,
-		clientRaw: codegenrpc.NewMapperClient(conn),
+		conn:		conn,
+		clientRaw:	codegenrpc.NewMapperClient(conn),
 	}
 
 	return m, nil
@@ -77,17 +77,17 @@ func (m *mapperClient) GetMapping(
 		pluginName = hint.PluginName
 		if hint.Parameterization != nil {
 			parameterizationHint = &codegenrpc.MapperParameterizationHint{
-				Name:    hint.Parameterization.Name,
-				Version: hint.Parameterization.Version.String(),
-				Value:   hint.Parameterization.Value,
+				Name:		hint.Parameterization.Name,
+				Version:	hint.Parameterization.Version.String(),
+				Value:		hint.Parameterization.Value,
 			}
 		}
 	}
 
 	resp, err := m.clientRaw.GetMapping(ctx, &codegenrpc.GetMappingRequest{
-		Provider:             provider,
-		PulumiProvider:       pluginName,
-		ParameterizationHint: parameterizationHint,
+		Provider:		provider,
+		PulumiProvider:		pluginName,
+		ParameterizationHint:	parameterizationHint,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

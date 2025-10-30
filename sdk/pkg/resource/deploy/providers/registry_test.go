@@ -37,9 +37,9 @@ import (
 )
 
 type testPluginHost struct {
-	t             *testing.T
-	provider      func(descriptor workspace.PackageDescriptor) (plugin.Provider, error)
-	closeProvider func(provider plugin.Provider) error
+	t		*testing.T
+	provider	func(descriptor workspace.PackageDescriptor) (plugin.Provider, error)
+	closeProvider	func(provider plugin.Provider) error
 }
 
 func (host *testPluginHost) SignalCancellation() error {
@@ -120,13 +120,13 @@ func (host *testPluginHost) AttachDebugger(_ plugin.DebugSpec) bool {
 type testProvider struct {
 	plugin.UnimplementedProvider
 
-	pkg         tokens.Package
-	version     semver.Version
-	configured  bool
-	checkConfig func(resource.URN, resource.PropertyMap,
+	pkg		tokens.Package
+	version		semver.Version
+	configured	bool
+	checkConfig	func(resource.URN, resource.PropertyMap,
 		resource.PropertyMap, bool) (resource.PropertyMap, []plugin.CheckFailure, error)
-	diffConfig func(resource.URN, resource.PropertyMap, resource.PropertyMap, bool, []string) (plugin.DiffResult, error)
-	config     func(resource.PropertyMap) error
+	diffConfig	func(resource.URN, resource.PropertyMap, resource.PropertyMap, bool, []string) (plugin.DiffResult, error)
+	config		func(resource.PropertyMap) error
 }
 
 func (prov *testProvider) Pkg() tokens.Package {
@@ -164,8 +164,8 @@ func (prov *testProvider) Configure(
 
 func (prov *testProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{
-		Name:    "testProvider",
-		Version: &prov.version,
+		Name:		"testProvider",
+		Version:	&prov.version,
 	}, nil
 }
 
@@ -182,14 +182,14 @@ func (prov *testProvider) GetMappings(
 }
 
 type providerLoader struct {
-	pkg     tokens.Package
-	version semver.Version
-	load    func() (plugin.Provider, error)
+	pkg	tokens.Package
+	version	semver.Version
+	load	func() (plugin.Provider, error)
 }
 
 func newPluginHost(t *testing.T, loaders []*providerLoader) plugin.Host {
 	return &testPluginHost{
-		t: t,
+		t:	t,
 		provider: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
 			var best *providerLoader
 			for _, l := range loaders {
@@ -225,8 +225,8 @@ func newLoader(t *testing.T, pkg, version string,
 		ver = v
 	}
 	return &providerLoader{
-		pkg:     tokens.Package(pkg),
-		version: ver,
+		pkg:		tokens.Package(pkg),
+		version:	ver,
 		load: func() (plugin.Provider, error) {
 			return load(tokens.Package(pkg), ver)
 		},
@@ -241,8 +241,8 @@ func newSimpleLoader(t *testing.T, pkg, version string, config func(resource.Pro
 	}
 	return newLoader(t, pkg, version, func(pkg tokens.Package, ver semver.Version) (plugin.Provider, error) {
 		return &testProvider{
-			pkg:     pkg,
-			version: ver,
+			pkg:		pkg,
+			version:	ver,
 			checkConfig: func(urn resource.URN, olds,
 				news resource.PropertyMap, allowUnknowns bool,
 			) (resource.PropertyMap, []plugin.CheckFailure, error) {
@@ -253,7 +253,7 @@ func newSimpleLoader(t *testing.T, pkg, version string, config func(resource.Pro
 			) (plugin.DiffResult, error) {
 				return plugin.DiffResult{}, nil
 			},
-			config: config,
+			config:	config,
 		}, nil
 	})
 }
@@ -265,12 +265,12 @@ func newProviderState(pkg, name, id string, del bool, inputs resource.PropertyMa
 		inputs = resource.PropertyMap{}
 	}
 	return &resource.State{
-		Type:   typ,
-		URN:    urn,
-		Custom: true,
-		Delete: del,
-		ID:     resource.ID(id),
-		Inputs: inputs,
+		Type:	typ,
+		URN:	urn,
+		Custom:	true,
+		Delete:	del,
+		ID:	resource.ID(id),
+		Inputs:	inputs,
 	}
 }
 
@@ -391,9 +391,9 @@ func TestCRUD(t *testing.T) {
 
 		// Check
 		check, err := r.Check(context.Background(), plugin.CheckRequest{
-			URN:  urn,
-			Olds: olds,
-			News: news,
+			URN:	urn,
+			Olds:	olds,
+			News:	news,
 		})
 		require.NoError(t, err)
 		assert.Equal(t, news, check.Properties)
@@ -406,11 +406,11 @@ func TestCRUD(t *testing.T) {
 
 		// Create
 		create, err := r.Create(context.Background(), plugin.CreateRequest{
-			URN:        urn,
-			Name:       urn.Name(),
-			Type:       urn.Type(),
-			Properties: check.Properties,
-			Timeout:    timeout,
+			URN:		urn,
+			Name:		urn.Name(),
+			Type:		urn.Type(),
+			Properties:	check.Properties,
+			Timeout:	timeout,
 		})
 		require.NoError(t, err)
 		assert.NotEqual(t, "", create.ID)
@@ -437,9 +437,9 @@ func TestCRUD(t *testing.T) {
 
 		// Check
 		check, err := r.Check(context.Background(), plugin.CheckRequest{
-			URN:  urn,
-			Olds: olds,
-			News: news,
+			URN:	urn,
+			Olds:	olds,
+			News:	news,
 		})
 		require.NoError(t, err)
 		assert.Equal(t, news, check.Properties)
@@ -453,10 +453,10 @@ func TestCRUD(t *testing.T) {
 
 		// Diff
 		diff, err := r.Diff(context.Background(), plugin.DiffRequest{
-			URN:        urn,
-			ID:         id,
-			OldOutputs: olds,
-			NewInputs:  news,
+			URN:		urn,
+			ID:		id,
+			OldOutputs:	olds,
+			NewInputs:	news,
 		})
 		require.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
@@ -468,11 +468,11 @@ func TestCRUD(t *testing.T) {
 
 		// Update
 		update, err := r.Update(context.Background(), plugin.UpdateRequest{
-			URN:        urn,
-			ID:         id,
-			OldOutputs: olds,
-			NewInputs:  check.Properties,
-			Timeout:    timeout,
+			URN:		urn,
+			ID:		id,
+			OldOutputs:	olds,
+			NewInputs:	check.Properties,
+			Timeout:	timeout,
 		})
 		require.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{}, update.Properties)
@@ -495,11 +495,11 @@ func TestCRUD(t *testing.T) {
 
 		// Delete
 		resp, err := r.Delete(context.Background(), plugin.DeleteRequest{
-			URN:     urn,
-			ID:      id,
-			Inputs:  resource.PropertyMap{},
-			Outputs: resource.PropertyMap{},
-			Timeout: timeout,
+			URN:		urn,
+			ID:		id,
+			Inputs:		resource.PropertyMap{},
+			Outputs:	resource.PropertyMap{},
+			Timeout:	timeout,
 		})
 		require.NoError(t, err)
 		assert.Equal(t, resource.StatusOK, resp.Status)
@@ -524,8 +524,8 @@ func TestCRUDPreview(t *testing.T) {
 		newSimpleLoader(t, "pkgC", "", nil),
 		newLoader(t, "pkgD", "", func(pkg tokens.Package, ver semver.Version) (plugin.Provider, error) {
 			return &testProvider{
-				pkg:     pkg,
-				version: ver,
+				pkg:		pkg,
+				version:	ver,
 				checkConfig: func(urn resource.URN, olds,
 					news resource.PropertyMap, allowUnknowns bool,
 				) (resource.PropertyMap, []plugin.CheckFailure, error) {
@@ -576,9 +576,9 @@ func TestCRUDPreview(t *testing.T) {
 
 		// Check
 		check, err := r.Check(context.Background(), plugin.CheckRequest{
-			URN:  urn,
-			Olds: olds,
-			News: news,
+			URN:	urn,
+			Olds:	olds,
+			News:	news,
 		})
 		require.NoError(t, err)
 		assert.Equal(t, news, check.Properties)
@@ -601,9 +601,9 @@ func TestCRUDPreview(t *testing.T) {
 
 		// Check
 		check, err := r.Check(context.Background(), plugin.CheckRequest{
-			URN:  urn,
-			Olds: olds,
-			News: news,
+			URN:	urn,
+			Olds:	olds,
+			News:	news,
 		})
 		require.NoError(t, err)
 		assert.Equal(t, news, check.Properties)
@@ -617,10 +617,10 @@ func TestCRUDPreview(t *testing.T) {
 
 		// Diff
 		diff, err := r.Diff(context.Background(), plugin.DiffRequest{
-			URN:        urn,
-			ID:         id,
-			OldOutputs: olds,
-			NewInputs:  news,
+			URN:		urn,
+			ID:		id,
+			OldOutputs:	olds,
+			NewInputs:	news,
 		})
 		require.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
@@ -643,9 +643,9 @@ func TestCRUDPreview(t *testing.T) {
 
 		// Check
 		check, err := r.Check(context.Background(), plugin.CheckRequest{
-			URN:  urn,
-			Olds: olds,
-			News: news,
+			URN:	urn,
+			Olds:	olds,
+			News:	news,
 		})
 		require.NoError(t, err)
 		assert.Equal(t, news, check.Properties)
@@ -659,10 +659,10 @@ func TestCRUDPreview(t *testing.T) {
 
 		// Diff
 		diff, err := r.Diff(context.Background(), plugin.DiffRequest{
-			URN:        urn,
-			ID:         id,
-			OldOutputs: olds,
-			NewInputs:  news,
+			URN:		urn,
+			ID:		id,
+			OldOutputs:	olds,
+			NewInputs:	news,
 		})
 		require.NoError(t, err)
 		assert.True(t, diff.Replace())
@@ -689,9 +689,9 @@ func TestCRUDNoProviders(t *testing.T) {
 
 	// Check
 	check, err := r.Check(context.Background(), plugin.CheckRequest{
-		URN:  urn,
-		Olds: olds,
-		News: news,
+		URN:	urn,
+		Olds:	olds,
+		News:	news,
 	})
 	assert.Error(t, err)
 	assert.Empty(t, check.Failures)
@@ -715,9 +715,9 @@ func TestCRUDWrongPackage(t *testing.T) {
 
 	// Check
 	check, err := r.Check(context.Background(), plugin.CheckRequest{
-		URN:  urn,
-		Olds: olds,
-		News: news,
+		URN:	urn,
+		Olds:	olds,
+		News:	news,
 	})
 	assert.Error(t, err)
 	assert.Empty(t, check.Failures)
@@ -741,9 +741,9 @@ func TestCRUDWrongVersion(t *testing.T) {
 
 	// Check
 	check, err := r.Check(context.Background(), plugin.CheckRequest{
-		URN:  urn,
-		Olds: olds,
-		News: news,
+		URN:	urn,
+		Olds:	olds,
+		News:	news,
 	})
 	assert.Error(t, err)
 	assert.Empty(t, check.Failures)
@@ -767,9 +767,9 @@ func TestCRUDBadVersionNotString(t *testing.T) {
 
 	// Check
 	check, err := r.Check(context.Background(), plugin.CheckRequest{
-		URN:  urn,
-		Olds: olds,
-		News: news,
+		URN:	urn,
+		Olds:	olds,
+		News:	news,
 	})
 	require.NoError(t, err)
 	require.Len(t, check.Failures, 1)
@@ -794,9 +794,9 @@ func TestCRUDBadVersion(t *testing.T) {
 
 	// Check
 	check, err := r.Check(context.Background(), plugin.CheckRequest{
-		URN:  urn,
-		Olds: olds,
-		News: news,
+		URN:	urn,
+		Olds:	olds,
+		News:	news,
 	})
 	require.NoError(t, err)
 	require.Len(t, check.Failures, 1)
@@ -818,9 +818,9 @@ func TestLoadProvider_missingError(t *testing.T) {
 		func(p tokens.Package, v semver.Version) (plugin.Provider, error) {
 			return nil, workspace.NewMissingError(
 				workspace.PluginSpec{
-					Kind:    apitype.ResourcePlugin,
-					Name:    "myplugin",
-					Version: &version,
+					Kind:		apitype.ResourcePlugin,
+					Name:		"myplugin",
+					Version:	&version,
 				}, false /* ambient */)
 		})
 	host := newPluginHost(t, []*providerLoader{loader})
@@ -887,9 +887,9 @@ func TestConcurrentRegistryUsage(t *testing.T) {
 
 			// Check
 			check, err := r.Check(context.Background(), plugin.CheckRequest{
-				URN:  providerURN,
-				Olds: olds,
-				News: news,
+				URN:	providerURN,
+				Olds:	olds,
+				News:	news,
 			})
 			require.NoError(t, err)
 			require.Len(t, check.Failures, 1)

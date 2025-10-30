@@ -29,20 +29,20 @@ import (
 type componentProvider struct {
 	pulumirpc.UnimplementedResourceProviderServer
 
-	host      *HostClient
-	name      string
-	version   string
-	schema    []byte
-	construct provider.ConstructFunc
-	call      provider.CallFunc
+	host		*HostClient
+	name		string
+	version		string
+	schema		[]byte
+	construct	provider.ConstructFunc
+	call		provider.CallFunc
 }
 
 type Options struct {
-	Name      string
-	Version   string
-	Schema    []byte
-	Construct provider.ConstructFunc
-	Call      provider.CallFunc
+	Name		string
+	Version		string
+	Schema		[]byte
+	Construct	provider.ConstructFunc
+	Call		provider.CallFunc
 }
 
 // MainWithOptions is an entrypoint for a resource provider plugin that implements `Construct` and optionally also
@@ -53,12 +53,12 @@ type Options struct {
 func MainWithOptions(opts Options) error {
 	return Main(opts.Name, func(host *HostClient) (pulumirpc.ResourceProviderServer, error) {
 		return &componentProvider{
-			host:      host,
-			name:      opts.Name,
-			version:   opts.Version,
-			schema:    opts.Schema,
-			construct: opts.Construct,
-			call:      opts.Call,
+			host:		host,
+			name:		opts.Name,
+			version:	opts.Version,
+			schema:		opts.Schema,
+			construct:	opts.Construct,
+			call:		opts.Call,
 		}, nil
 	})
 }
@@ -69,11 +69,11 @@ func MainWithOptions(opts Options) error {
 func ComponentMain(name, version string, schema []byte, construct provider.ConstructFunc) error {
 	return Main(name, func(host *HostClient) (pulumirpc.ResourceProviderServer, error) {
 		return &componentProvider{
-			host:      host,
-			name:      name,
-			version:   version,
-			schema:    schema,
-			construct: construct,
+			host:		host,
+			name:		name,
+			version:	version,
+			schema:		schema,
+			construct:	construct,
 		}, nil
 	})
 }
@@ -104,10 +104,10 @@ func (p *componentProvider) Configure(ctx context.Context,
 	req *pulumirpc.ConfigureRequest,
 ) (*pulumirpc.ConfigureResponse, error) {
 	return &pulumirpc.ConfigureResponse{
-		AcceptSecrets:   true,
-		SupportsPreview: true,
-		AcceptResources: true,
-		AcceptOutputs:   true,
+		AcceptSecrets:		true,
+		SupportsPreview:	true,
+		AcceptResources:	true,
+		AcceptOutputs:		true,
 	}, nil
 }
 

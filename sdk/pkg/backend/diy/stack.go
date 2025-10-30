@@ -22,10 +22,10 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -33,25 +33,25 @@ import (
 // diyStack is a diy stack descriptor.
 type diyStack struct {
 	// the stack's reference (qualified name).
-	ref *diyBackendReference
+	ref	*diyBackendReference
 	// a snapshot representing the latest deployment state, allocated on first use. It's valid for the
 	// snapshot itself to be nil.
-	snapshot atomic.Pointer[*deploy.Snapshot]
+	snapshot	atomic.Pointer[*deploy.Snapshot]
 	// a pointer to the backend this stack belongs to.
-	b *diyBackend
+	b	*diyBackend
 }
 
 func newStack(ref *diyBackendReference, b *diyBackend) backend.Stack {
 	contract.Requiref(ref != nil, "ref", "ref was nil")
 
 	return &diyStack{
-		ref: ref,
-		b:   b,
+		ref:	ref,
+		b:	b,
 	}
 }
 
-func (s *diyStack) Ref() backend.StackReference                 { return s.ref }
-func (s *diyStack) ConfigLocation() backend.StackConfigLocation { return backend.StackConfigLocation{} }
+func (s *diyStack) Ref() backend.StackReference			{ return s.ref }
+func (s *diyStack) ConfigLocation() backend.StackConfigLocation	{ return backend.StackConfigLocation{} }
 
 func (s *diyStack) LoadRemoteConfig(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
 	return nil, errors.New("remote config not implemented for the DIY backend")
@@ -75,16 +75,16 @@ func (s *diyStack) Snapshot(ctx context.Context, secretsProvider secrets.Provide
 	s.snapshot.Store(&snap)
 	return snap, nil
 }
-func (s *diyStack) Backend() backend.Backend              { return s.b }
-func (s *diyStack) Tags() map[apitype.StackTagName]string { return nil }
+func (s *diyStack) Backend() backend.Backend			{ return s.b }
+func (s *diyStack) Tags() map[apitype.StackTagName]string	{ return nil }
 
 func (s *diyStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets.Manager, error) {
 	return passphrase.NewPromptingPassphraseSecretsManager(info, false /* rotatePassphraseSecretsProvider */)
 }
 
 type diyStackSummary struct {
-	name backend.StackReference
-	chk  *apitype.CheckpointV3
+	name	backend.StackReference
+	chk	*apitype.CheckpointV3
 }
 
 func newDIYStackSummary(name backend.StackReference, chk *apitype.CheckpointV3) diyStackSummary {

@@ -35,22 +35,22 @@ import (
 )
 
 type deploymentDiffState struct {
-	lastSavedDeployment deployment
-	sequenceNumber      int
-	minimalDiffSize     int
-	buffer              *bytes.Buffer
+	lastSavedDeployment	deployment
+	sequenceNumber		int
+	minimalDiffSize		int
+	buffer			*bytes.Buffer
 }
 
 type deploymentDiff struct {
-	sequenceNumber  int
-	checkpointHash  string
-	deploymentDelta json.RawMessage
+	sequenceNumber	int
+	checkpointHash	string
+	deploymentDelta	json.RawMessage
 }
 
 func newDeploymentDiffState(minimalDiffSize int) *deploymentDiffState {
 	return &deploymentDiffState{
-		sequenceNumber:  1,
-		minimalDiffSize: minimalDiffSize,
+		sequenceNumber:		1,
+		minimalDiffSize:	minimalDiffSize,
 	}
 }
 
@@ -109,9 +109,9 @@ func (dds *deploymentDiffState) Diff(ctx context.Context, deployment deployment)
 	tracingSpan.SetTag("hash", checkpointHash)
 
 	diff := deploymentDiff{
-		checkpointHash:  checkpointHash,
-		deploymentDelta: delta,
-		sequenceNumber:  dds.sequenceNumber,
+		checkpointHash:		checkpointHash,
+		deploymentDelta:	delta,
+		sequenceNumber:		dds.sequenceNumber,
 	}
 
 	return diff, nil
@@ -137,27 +137,27 @@ func (*deploymentDiffState) computeHash(ctx context.Context, deployment json.Raw
 }
 
 type deployment struct {
-	raw   json.RawMessage
-	buf   *bytes.Buffer
-	spans spans
+	raw	json.RawMessage
+	buf	*bytes.Buffer
+	spans	spans
 }
 
 type spanner struct {
 	*bytes.Buffer
 
-	start int
-	spans spans
+	start	int
+	spans	spans
 }
 
 type spans struct {
-	offsets []int
-	spans   [][]byte
+	offsets	[]int
+	spans	[][]byte
 }
 
 func newSpans(capacity int) spans {
 	return spans{
-		offsets: slice.Prealloc[int](capacity),
-		spans:   slice.Prealloc[[]byte](capacity),
+		offsets:	slice.Prealloc[int](capacity),
+		spans:		slice.Prealloc[[]byte](capacity),
 	}
 }
 
@@ -283,8 +283,8 @@ func (*deploymentDiffState) computeEdits(ctx context.Context, before, after depl
 		start, end := before.spans.offsets[di.Start], before.spans.offsets[di.End]
 		replStart, replEnd := after.spans.offsets[di.ReplStart], after.spans.offsets[di.ReplEnd]
 		edits[i] = gotextdiff.TextEdit{
-			Span:    span.New("", span.NewPoint(1, 0, start), span.NewPoint(1, 0, end)),
-			NewText: string(after.raw[replStart:replEnd]),
+			Span:		span.New("", span.NewPoint(1, 0, start), span.NewPoint(1, 0, end)),
+			NewText:	string(after.raw[replStart:replEnd]),
 		}
 	}
 

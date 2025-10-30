@@ -18,18 +18,18 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
 	"github.com/stretchr/testify/require"
 )
 
 var _ = SnapshotManager(&MockSnapshotManager{})
 
 type MockSnapshotManager struct {
-	WriteF                   func(base *deploy.Snapshot) error
-	RebuiltBaseStateF        func() error
-	BeginMutationF           func(step deploy.Step) (SnapshotMutation, error)
-	RegisterResourceOutputsF func(step deploy.Step) error
-	CloseF                   func() error
+	WriteF				func(base *deploy.Snapshot) error
+	RebuiltBaseStateF		func() error
+	BeginMutationF			func(step deploy.Step) (SnapshotMutation, error)
+	RegisterResourceOutputsF	func(step deploy.Step) error
+	CloseF				func() error
 }
 
 type MockSanpshotMutation struct {
@@ -138,8 +138,8 @@ func TestIgnoreSomeErrors(t *testing.T) {
 	}
 
 	cm := &CombinedManager{
-		Managers:          []SnapshotManager{workingManager, erroringManager},
-		CollectErrorsOnly: []bool{false, true},
+		Managers:		[]SnapshotManager{workingManager, erroringManager},
+		CollectErrorsOnly:	[]bool{false, true},
 	}
 
 	err := cm.Write(&deploy.Snapshot{})
@@ -172,5 +172,5 @@ func TestIgnoreSomeErrors(t *testing.T) {
 	require.Equal(t, 2, beginCalled)
 	require.Equal(t, 2, registerCalled)
 	require.Equal(t, 2, closeCalled)
-	require.Equal(t, 1, endCalled) // Only the working manager's mutation's End is called
+	require.Equal(t, 1, endCalled)	// Only the working manager's mutation's End is called
 }

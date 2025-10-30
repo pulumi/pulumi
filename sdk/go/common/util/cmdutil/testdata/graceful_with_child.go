@@ -37,7 +37,7 @@ func parentMain() {
 	signal.Notify(sigch, os.Interrupt)
 
 	cmd := exec.Command(exe)
-	cmd.Args[0] = "child" // process dispatches on args[0]
+	cmd.Args[0] = "child"	// process dispatches on args[0]
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {

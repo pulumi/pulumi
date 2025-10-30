@@ -17,9 +17,9 @@ package model
 type typeTransform int
 
 var (
-	makeIdentity = typeTransform(0)
-	makePromise  = typeTransform(1)
-	makeOutput   = typeTransform(2)
+	makeIdentity	= typeTransform(0)
+	makePromise	= typeTransform(1)
+	makeOutput	= typeTransform(2)
 )
 
 func (f typeTransform) do(t Type) Type {

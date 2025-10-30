@@ -25,18 +25,18 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/secrets"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/deployment"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/metadata"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/state"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -91,8 +91,8 @@ func NewRefreshCmd() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   use,
-		Short: "Refresh the resources in a stack",
+		Use:	use,
+		Short:	"Refresh the resources in a stack",
 		Long: "Refresh the resources in a stack.\n" +
 			"\n" +
 			"This command compares the current stack's resource state with the state known to exist in\n" +
@@ -102,7 +102,7 @@ func NewRefreshCmd() *cobra.Command {
 			"\n" +
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
-		Args: cmdArgs,
+		Args:	cmdArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
@@ -131,17 +131,17 @@ func NewRefreshCmd() *cobra.Command {
 			}
 
 			opts.Display = display.Options{
-				Color:                cmdutil.GetGlobalColorization(),
-				ShowConfig:           showConfig,
-				ShowReplacementSteps: showReplacementSteps,
-				ShowSameResources:    showSames,
-				SuppressOutputs:      suppressOutputs,
-				SuppressProgress:     suppressProgress,
-				IsInteractive:        interactive,
-				Type:                 displayType,
-				EventLogPath:         eventLogPath,
-				Debug:                debug,
-				JSONDisplay:          jsonDisplay,
+				Color:			cmdutil.GetGlobalColorization(),
+				ShowConfig:		showConfig,
+				ShowReplacementSteps:	showReplacementSteps,
+				ShowSameResources:	showSames,
+				SuppressOutputs:	suppressOutputs,
+				SuppressProgress:	suppressProgress,
+				IsInteractive:		interactive,
+				Type:			displayType,
+				EventLogPath:		eventLogPath,
+				Debug:			debug,
+				JSONDisplay:		jsonDisplay,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -286,32 +286,32 @@ func NewRefreshCmd() *cobra.Command {
 			excludeUrns = append(excludeUrns, *excludes...)
 
 			opts.Engine = engine.UpdateOptions{
-				ParallelDiff:              env.ParallelDiff.Value(),
-				Parallel:                  parallel,
-				Debug:                     debug,
-				UseLegacyDiff:             env.EnableLegacyDiff.Value(),
-				UseLegacyRefreshDiff:      env.EnableLegacyRefreshDiff.Value(),
-				DisableProviderPreview:    env.DisableProviderPreview.Value(),
-				DisableResourceReferences: env.DisableResourceReferences.Value(),
-				DisableOutputValues:       env.DisableOutputValues.Value(),
-				Targets:                   deploy.NewUrnTargets(targetUrns),
-				Excludes:                  deploy.NewUrnTargets(excludeUrns),
-				TargetDependents:          targetDependents,
-				ExcludeDependents:         excludeDependents,
-				Experimental:              env.Experimental.Value(),
-				ExecKind:                  execKind,
-				RefreshProgram:            runProgram,
+				ParallelDiff:			env.ParallelDiff.Value(),
+				Parallel:			parallel,
+				Debug:				debug,
+				UseLegacyDiff:			env.EnableLegacyDiff.Value(),
+				UseLegacyRefreshDiff:		env.EnableLegacyRefreshDiff.Value(),
+				DisableProviderPreview:		env.DisableProviderPreview.Value(),
+				DisableResourceReferences:	env.DisableResourceReferences.Value(),
+				DisableOutputValues:		env.DisableOutputValues.Value(),
+				Targets:			deploy.NewUrnTargets(targetUrns),
+				Excludes:			deploy.NewUrnTargets(excludeUrns),
+				TargetDependents:		targetDependents,
+				ExcludeDependents:		excludeDependents,
+				Experimental:			env.Experimental.Value(),
+				ExecKind:			execKind,
+				RefreshProgram:			runProgram,
 			}
 
 			changes, err := backend.RefreshStack(ctx, s, backend.UpdateOperation{
-				Proj:               proj,
-				Root:               root,
-				M:                  m,
-				Opts:               opts,
-				StackConfiguration: cfg,
-				SecretsManager:     sm,
-				SecretsProvider:    secrets.DefaultProvider,
-				Scopes:             backend.CancellationScopes,
+				Proj:			proj,
+				Root:			root,
+				M:			m,
+				Opts:			opts,
+				StackConfiguration:	cfg,
+				SecretsManager:		sm,
+				SecretsProvider:	secrets.DefaultProvider,
+				Scopes:			backend.CancellationScopes,
 			})
 
 			switch {
@@ -523,8 +523,8 @@ func interactiveFixPendingCreate(op resource.Operation) (*resource.Operation, er
 			"import (the CREATE succeeded; provide a resource ID and complete the CREATE operation)",
 		}
 		if err := survey.AskOne(&survey.Select{
-			Message: fmt.Sprintf("Options for pending CREATE of %s", op.Resource.URN),
-			Options: options,
+			Message:	fmt.Sprintf("Options for pending CREATE of %s", op.Resource.URN),
+			Options:	options,
 		}, &option, nil); err != nil {
 			return nil, fmt.Errorf("no option selected: %w", err)
 		}

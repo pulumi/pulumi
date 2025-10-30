@@ -24,10 +24,10 @@ import (
 
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/cmd/esc/cli"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -80,7 +80,7 @@ func getStackConfigurationWithFallback(
 	ssml cmdStack.SecretsManagerLoader,
 	s backend.Stack,
 	project *workspace.Project,
-	fallbackGetConfig func(err error) (config.Map, error), // optional
+	fallbackGetConfig func(err error) (config.Map, error),	// optional
 ) (backend.StackConfiguration, secrets.Manager, error) {
 	workspaceStack, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), project, s)
 	if err != nil || workspaceStack == nil {
@@ -154,20 +154,20 @@ func getStackConfigurationFromProjectStack(
 	// the correct decrypter for the diy backend would involve prompting for a passphrase)
 	if !needsCrypter(workspaceStack.Config, pulumiEnv) {
 		return backend.StackConfiguration{
-			EnvironmentImports: workspaceStack.Environment.Imports(),
-			Environment:        pulumiEnv,
-			Config:             workspaceStack.Config,
-			Decrypter:          config.NewPanicCrypter(),
+			EnvironmentImports:	workspaceStack.Environment.Imports(),
+			Environment:		pulumiEnv,
+			Config:			workspaceStack.Config,
+			Decrypter:		config.NewPanicCrypter(),
 		}, nil
 	}
 
 	crypter := sm.Decrypter()
 
 	return backend.StackConfiguration{
-		EnvironmentImports: workspaceStack.Environment.Imports(),
-		Environment:        pulumiEnv,
-		Config:             workspaceStack.Config,
-		Decrypter:          crypter,
+		EnvironmentImports:	workspaceStack.Environment.Imports(),
+		Environment:		pulumiEnv,
+		Config:			workspaceStack.Config,
+		Decrypter:		crypter,
 	}, nil
 }
 

@@ -22,10 +22,10 @@ import (
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -36,9 +36,9 @@ import (
 // ApplierOptions is a bag of configuration settings for an Applier.
 type ApplierOptions struct {
 	// DryRun indicates if the update should not change any resource state and instead just preview changes.
-	DryRun bool
+	DryRun	bool
 	// ShowLink indicates if a link to the update persisted result can be displayed.
-	ShowLink bool
+	ShowLink	bool
 }
 
 // Applier applies the changes specified by this update operation against the target stack.
@@ -68,23 +68,23 @@ func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 }
 
 var updateTextMap = map[apitype.UpdateKind]struct {
-	previewText string
-	text        string
+	previewText	string
+	text		string
 }{
-	apitype.PreviewUpdate:        {"update", "Previewing"},
-	apitype.UpdateUpdate:         {"update", "Updating"},
-	apitype.RefreshUpdate:        {"refresh", "Refreshing"},
-	apitype.DestroyUpdate:        {"destroy", "Destroying"},
-	apitype.StackImportUpdate:    {"stack import", "Importing"},
-	apitype.ResourceImportUpdate: {"import", "Importing"},
+	apitype.PreviewUpdate:		{"update", "Previewing"},
+	apitype.UpdateUpdate:		{"update", "Updating"},
+	apitype.RefreshUpdate:		{"refresh", "Refreshing"},
+	apitype.DestroyUpdate:		{"destroy", "Destroying"},
+	apitype.StackImportUpdate:	{"stack import", "Importing"},
+	apitype.ResourceImportUpdate:	{"import", "Importing"},
 }
 
 type response string
 
 const (
-	yes     response = "yes"
-	no      response = "no"
-	details response = "details"
+	yes	response	= "yes"
+	no	response	= "no"
+	details	response	= "details"
 )
 
 func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack,
@@ -121,8 +121,8 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	// thing the user cares about would be the link to the actual update if they
 	// confirm the prompt.
 	opts := ApplierOptions{
-		DryRun:   true,
-		ShowLink: true,
+		DryRun:		true,
+		ShowLink:	true,
 	}
 
 	plan, changes, err := apply(ctx, kind, stack, op, opts, eventsChannel)
@@ -221,9 +221,9 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRe
 		// Now prompt the user for a yes, no, or details, and then proceed accordingly.
 		allAskOpts := append([]survey.AskOpt{surveyIcons}, askOpts...)
 		if err := survey.AskOne(&survey.Select{
-			Message: prompt,
-			Options: choices,
-			Default: string(no),
+			Message:	prompt,
+			Options:	choices,
+			Default:	string(no),
 		}, &response, allAskOpts...); err != nil {
 			return nil, fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", kind, err)
 		}
@@ -242,7 +242,7 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRe
 
 		if response == string(details) {
 			displayOpts := opts.Display
-			displayOpts.TruncateOutput = false // We want to always show the full details
+			displayOpts.TruncateOutput = false	// We want to always show the full details
 			diff, err := display.CreateDiff(events, displayOpts)
 			if err != nil {
 				return nil, err
@@ -309,8 +309,8 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 	// Perform the change (!DryRun) and show the cloud link to the result.
 	// We don't care about the events it issues, so just pass a nil channel along.
 	opts := ApplierOptions{
-		DryRun:   false,
-		ShowLink: true,
+		DryRun:		false,
+		ShowLink:	true,
 	}
 	// No need to generate a plan at this stage, there's no way for the system or user to extract the plan
 	// after here.
@@ -320,8 +320,8 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 }
 
 type updateStats struct {
-	numNonStackResources int
-	retainedResources    []engine.StepEventMetadata
+	numNonStackResources	int
+	retainedResources	[]engine.StepEventMetadata
 }
 
 func computeUpdateStats(events []engine.Event) updateStats {

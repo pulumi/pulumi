@@ -29,14 +29,14 @@ import (
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/backend/state"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/state"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -52,8 +52,8 @@ func NewAboutCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var stack string
 	short := "Print information about the Pulumi environment."
 	cmd := &cobra.Command{
-		Use:   "about",
-		Short: short,
+		Use:	"about",
+		Short:	short,
 		Long: short + "\n" +
 			"\n" +
 			"Prints out information helpful for debugging the Pulumi CLI." +
@@ -64,7 +64,7 @@ func NewAboutCmd(ws pkgWorkspace.Context) *cobra.Command {
 			" - the current project\n" +
 			" - the current stack\n" +
 			" - the current backend\n",
-		Args: cmdutil.MaximumNArgs(0),
+		Args:	cmdutil.MaximumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			summary := getSummaryAbout(ctx, ws, cmdBackend.DefaultLoginManager, transitiveDependencies, stack)
@@ -93,16 +93,16 @@ type summaryAbout struct {
 	// We use pointers here to allow the field to be nullable. When
 	// constructing, we either fill in a field or add an error. We still
 	// indicate that the field should be present when we serialize the struct.
-	Plugins       []pluginAbout            `json:"plugins"`
-	Host          *hostAbout               `json:"host"`
-	Backend       *backendAbout            `json:"backend"`
-	CurrentStack  *currentStackAbout       `json:"currentStack"`
-	CLI           *cliAbout                `json:"cliAbout"`
-	Runtime       *projectRuntimeAbout     `json:"runtime"`
-	Dependencies  []programDependencyAbout `json:"dependencies"`
-	ErrorMessages []string                 `json:"errors"`
-	Errors        []error                  `json:"-"`
-	LogMessage    string                   `json:"-"`
+	Plugins		[]pluginAbout			`json:"plugins"`
+	Host		*hostAbout			`json:"host"`
+	Backend		*backendAbout			`json:"backend"`
+	CurrentStack	*currentStackAbout		`json:"currentStack"`
+	CLI		*cliAbout			`json:"cliAbout"`
+	Runtime		*projectRuntimeAbout		`json:"runtime"`
+	Dependencies	[]programDependencyAbout	`json:"dependencies"`
+	ErrorMessages	[]string			`json:"errors"`
+	Errors		[]error				`json:"-"`
+	LogMessage	string				`json:"-"`
 }
 
 func getSummaryAbout(
@@ -112,10 +112,10 @@ func getSummaryAbout(
 	var err error
 	cli := getCLIAbout()
 	result := summaryAbout{
-		CLI:           &cli,
-		Errors:        []error{},
-		ErrorMessages: []string{},
-		LogMessage:    formatLogAbout(),
+		CLI:		&cli,
+		Errors:		[]error{},
+		ErrorMessages:	[]string{},
+		LogMessage:	formatLogAbout(),
 	}
 	addError := func(err error, message string) {
 		err = fmt.Errorf("%s: %w", message, err)
@@ -160,10 +160,10 @@ func getSummaryAbout(
 					addError(err, "Failed to get information about the project runtime")
 				} else {
 					result.Runtime = &projectRuntimeAbout{
-						other:      aboutResponse.Metadata,
-						Language:   proj.Runtime.Name(),
-						Executable: aboutResponse.Executable,
-						Version:    aboutResponse.Version,
+						other:		aboutResponse.Metadata,
+						Language:	proj.Runtime.Name(),
+						Executable:	aboutResponse.Executable,
+						Version:	aboutResponse.Version,
 					}
 				}
 
@@ -174,8 +174,8 @@ func getSummaryAbout(
 					result.Dependencies = make([]programDependencyAbout, len(deps))
 					for i, dep := range deps {
 						result.Dependencies[i] = programDependencyAbout{
-							Name:    dep.Name,
-							Version: dep.Version,
+							Name:		dep.Name,
+							Version:	dep.Version,
 						}
 					}
 				}
@@ -228,9 +228,9 @@ func (summary *summaryAbout) Print() {
 }
 
 type pluginAbout struct {
-	Name    string             `json:"name"`
-	Version *semver.Version    `json:"version"`
-	Kind    apitype.PluginKind `json:"kind"`
+	Name	string			`json:"name"`
+	Version	*semver.Version		`json:"version"`
+	Kind	apitype.PluginKind	`json:"kind"`
 }
 
 func getPluginsAbout(ctx *plugin.Context, proj *workspace.Project, pwd, main string) ([]pluginAbout, error) {
@@ -252,9 +252,9 @@ func getPluginsAbout(ctx *plugin.Context, proj *workspace.Project, pwd, main str
 	plugins := make([]pluginAbout, len(pluginSpec))
 	for i, p := range pluginSpec {
 		plugins[i] = pluginAbout{
-			Name:    p.Name,
-			Version: p.Version,
-			Kind:    p.Kind,
+			Name:		p.Name,
+			Version:	p.Version,
+			Kind:		p.Kind,
 		}
 	}
 	return plugins, nil
@@ -274,16 +274,16 @@ func formatPlugins(p []pluginAbout) string {
 		})
 	}
 	table := cmdutil.Table{
-		Headers: []string{"KIND", "NAME", "VERSION"},
-		Rows:    rows,
+		Headers:	[]string{"KIND", "NAME", "VERSION"},
+		Rows:		rows,
 	}
 	return "Plugins\n" + table.String()
 }
 
 type hostAbout struct {
-	Os      string `json:"os"`
-	Version string `json:"version"`
-	Arch    string `json:"arch"`
+	Os	string	`json:"os"`
+	Version	string	`json:"version"`
+	Arch	string	`json:"arch"`
 }
 
 func getHostAbout() (hostAbout, error) {
@@ -292,15 +292,15 @@ func getHostAbout() (hostAbout, error) {
 		return hostAbout{}, err
 	}
 	return hostAbout{
-		Os:      stats.Platform,
-		Version: stats.PlatformVersion,
-		Arch:    stats.KernelArch,
+		Os:		stats.Platform,
+		Version:	stats.PlatformVersion,
+		Arch:		stats.KernelArch,
 	}, nil
 }
 
 func (host hostAbout) String() string {
 	return cmdutil.Table{
-		Headers: []string{"Host", ""},
+		Headers:	[]string{"Host", ""},
 		Rows: simpleTableRows([][]string{
 			{"OS", host.Os},
 			{"Version", host.Version},
@@ -310,11 +310,11 @@ func (host hostAbout) String() string {
 }
 
 type backendAbout struct {
-	Name             string                      `json:"name"`
-	URL              string                      `json:"url"`
-	User             string                      `json:"user"`
-	Organizations    []string                    `json:"organizations"`
-	TokenInformation *workspace.TokenInformation `json:"tokenInformation,omitempty"`
+	Name			string				`json:"name"`
+	URL			string				`json:"url"`
+	User			string				`json:"user"`
+	Organizations		[]string			`json:"organizations"`
+	TokenInformation	*workspace.TokenInformation	`json:"tokenInformation,omitempty"`
 }
 
 func getBackendAbout(b backend.Backend) backendAbout {
@@ -323,11 +323,11 @@ func getBackendAbout(b backend.Backend) backendAbout {
 		currentUser = "Unknown"
 	}
 	return backendAbout{
-		Name:             b.Name(),
-		URL:              b.URL(),
-		User:             currentUser,
-		Organizations:    currentOrgs,
-		TokenInformation: tokenInfo,
+		Name:			b.Name(),
+		URL:			b.URL(),
+		User:			currentUser,
+		Organizations:		currentOrgs,
+		TokenInformation:	tokenInfo,
 	}
 }
 
@@ -355,21 +355,21 @@ func (b backendAbout) String() string {
 	}
 
 	return cmdutil.Table{
-		Headers: []string{"Backend", ""},
-		Rows:    simpleTableRows(rows),
+		Headers:	[]string{"Backend", ""},
+		Rows:		simpleTableRows(rows),
 	}.String()
 }
 
 type currentStackAbout struct {
-	Name               string       `json:"name"`
-	FullyQualifiedName string       `json:"fullyQualifiedName"`
-	Resources          []aboutState `json:"resources"`
-	PendingOps         []aboutState `json:"pendingOps"`
+	Name			string		`json:"name"`
+	FullyQualifiedName	string		`json:"fullyQualifiedName"`
+	Resources		[]aboutState	`json:"resources"`
+	PendingOps		[]aboutState	`json:"pendingOps"`
 }
 
 type aboutState struct {
-	Type string `json:"type"`
-	URN  string `json:"urn"`
+	Type	string	`json:"type"`
+	URN	string	`json:"urn"`
 }
 
 func getCurrentStackAbout(ctx context.Context, b backend.Backend, selectedStack string) (currentStackAbout, error) {
@@ -406,22 +406,22 @@ func getCurrentStackAbout(ctx context.Context, b backend.Backend, selectedStack 
 	aboutResources := make([]aboutState, len(resources))
 	for i, r := range resources {
 		aboutResources[i] = aboutState{
-			Type: string(r.Type),
-			URN:  string(r.URN),
+			Type:	string(r.Type),
+			URN:	string(r.URN),
 		}
 	}
 	aboutPending := make([]aboutState, len(pendingOps))
 	for i, p := range pendingOps {
 		aboutPending[i] = aboutState{
-			Type: string(p.Type),
-			URN:  string(p.Resource.URN),
+			Type:	string(p.Type),
+			URN:	string(p.Resource.URN),
 		}
 	}
 	return currentStackAbout{
-		Name:               name,
-		FullyQualifiedName: s.Ref().FullyQualifiedName().String(),
-		Resources:          aboutResources,
-		PendingOps:         aboutPending,
+		Name:			name,
+		FullyQualifiedName:	s.Ref().FullyQualifiedName().String(),
+		Resources:		aboutResources,
+		PendingOps:		aboutPending,
 	}, nil
 }
 
@@ -437,8 +437,8 @@ func (current currentStackAbout) String() string {
 			}
 		}
 		resources = cmdutil.Table{
-			Headers: []string{"TYPE", "URN"},
-			Rows:    rows,
+			Headers:	[]string{"TYPE", "URN"},
+			Rows:		rows,
 		}.String() + "\n"
 	}
 	var pending string
@@ -452,8 +452,8 @@ func (current currentStackAbout) String() string {
 			}
 		}
 		pending = cmdutil.Table{
-			Headers: []string{"OPP TYPE", "URN"},
-			Rows:    rows,
+			Headers:	[]string{"OPP TYPE", "URN"},
+			Rows:		rows,
 		}.String() + "\n"
 	}
 	stackName := current.Name
@@ -474,8 +474,8 @@ func simpleTableRows(arr [][]string) []cmdutil.TableRow {
 }
 
 type programDependencyAbout struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
+	Name	string	`json:"name"`
+	Version	string	`json:"version"`
 }
 
 func formatProgramDependenciesAbout(deps []programDependencyAbout) string {
@@ -489,15 +489,15 @@ func formatProgramDependenciesAbout(deps []programDependencyAbout) string {
 		}
 	}
 	return "Dependencies:\n" + cmdutil.Table{
-		Headers: []string{"NAME", "VERSION"},
-		Rows:    rows,
+		Headers:	[]string{"NAME", "VERSION"},
+		Rows:		rows,
 	}.String()
 }
 
 type cliAbout struct {
-	Version    string `json:"version"`
-	GoVersion  string `json:"goVersion"`
-	GoCompiler string `json:"goCompiler"`
+	Version		string	`json:"version"`
+	GoVersion	string	`json:"goVersion"`
+	GoCompiler	string	`json:"goCompiler"`
 }
 
 func getCLIAbout() cliAbout {
@@ -513,15 +513,15 @@ func getCLIAbout() cliAbout {
 		cliVersion = version.Version
 	}
 	return cliAbout{
-		Version:    cliVersion,
-		GoVersion:  runtime.Version(),
-		GoCompiler: runtime.Compiler,
+		Version:	cliVersion,
+		GoVersion:	runtime.Version(),
+		GoCompiler:	runtime.Compiler,
 	}
 }
 
 func (cli cliAbout) String() string {
 	return cmdutil.Table{
-		Headers: []string{"CLI", ""},
+		Headers:	[]string{"CLI", ""},
 		Rows: simpleTableRows([][]string{
 			{"Version", cli.Version},
 			{"Go Version", cli.GoVersion},
@@ -539,10 +539,10 @@ func formatLogAbout() string {
 }
 
 type projectRuntimeAbout struct {
-	Language   string
-	Executable string
-	Version    string
-	other      map[string]string
+	Language	string
+	Executable	string
+	Version		string
+	other		map[string]string
 }
 
 func (runtime projectRuntimeAbout) MarshalJSON() ([]byte, error) {

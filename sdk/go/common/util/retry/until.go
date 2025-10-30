@@ -20,10 +20,10 @@ import (
 )
 
 type Acceptor struct {
-	Accept   Acceptance     // a function that determines when to proceed.
-	Delay    *time.Duration // an optional delay duration.
-	Backoff  *float64       // an optional backoff multiplier.
-	MaxDelay *time.Duration // an optional maximum delay duration.
+	Accept		Acceptance	// a function that determines when to proceed.
+	Delay		*time.Duration	// an optional delay duration.
+	Backoff		*float64	// an optional backoff multiplier.
+	MaxDelay	*time.Duration	// an optional maximum delay duration.
 }
 
 // Acceptance is meant to accept a condition.
@@ -37,9 +37,9 @@ type Acceptor struct {
 type Acceptance func(try int, nextRetryTime time.Duration) (success bool, result any, err error)
 
 const (
-	DefaultDelay    time.Duration = 100 * time.Millisecond // by default, delay by 100ms
-	DefaultBackoff  float64       = 1.5                    // by default, backoff by 1.5x
-	DefaultMaxDelay time.Duration = 5 * time.Second        // by default, no more than 5 seconds
+	DefaultDelay	time.Duration	= 100 * time.Millisecond	// by default, delay by 100ms
+	DefaultBackoff	float64		= 1.5				// by default, backoff by 1.5x
+	DefaultMaxDelay	time.Duration	= 5 * time.Second		// by default, no more than 5 seconds
 )
 
 // Retryer provides the ability to run and retry a fallible operation

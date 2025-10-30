@@ -56,8 +56,8 @@ func TestDynamicType(t *testing.T) {
 	assert.True(t, DynamicType.AssignableFrom(NewListType(BoolType)))
 	assert.True(t, DynamicType.AssignableFrom(NewUnionType(BoolType, IntType)))
 	assert.True(t, DynamicType.AssignableFrom(NewObjectType(map[string]Type{
-		"bool": BoolType,
-		"int":  IntType,
+		"bool":	BoolType,
+		"int":	IntType,
 	})))
 
 	// Test that DynamicType is assignable to certain types and not assignable to others.
@@ -78,8 +78,8 @@ func TestDynamicType(t *testing.T) {
 	assert.False(t, NewListType(BoolType).AssignableFrom(DynamicType))
 	assert.False(t, NewUnionType(BoolType, IntType).AssignableFrom(DynamicType))
 	assert.False(t, NewObjectType(map[string]Type{
-		"bool": BoolType,
-		"int":  IntType,
+		"bool":	BoolType,
+		"int":	IntType,
 	}).AssignableFrom(DynamicType))
 
 	// Test that DynamicType is convertible from any type.
@@ -95,8 +95,8 @@ func TestDynamicType(t *testing.T) {
 	assert.True(t, DynamicType.ConversionFrom(NewListType(BoolType)).Exists())
 	assert.True(t, DynamicType.ConversionFrom(NewUnionType(BoolType, IntType)).Exists())
 	assert.True(t, DynamicType.ConversionFrom(NewObjectType(map[string]Type{
-		"bool": BoolType,
-		"int":  IntType,
+		"bool":	BoolType,
+		"int":	IntType,
 	})).Exists())
 
 	// Test that DynamicType is convertible to any type.
@@ -112,8 +112,8 @@ func TestDynamicType(t *testing.T) {
 	assert.True(t, NewListType(BoolType).ConversionFrom(DynamicType).Exists())
 	assert.True(t, NewUnionType(BoolType, IntType).ConversionFrom(DynamicType).Exists())
 	assert.True(t, NewObjectType(map[string]Type{
-		"bool": BoolType,
-		"int":  IntType,
+		"bool":	BoolType,
+		"int":	IntType,
 	}).ConversionFrom(DynamicType).Exists())
 
 	// Test that traversals on DynamicType always succeed.
@@ -212,11 +212,11 @@ func TestOutputType(t *testing.T) {
 	assert.Equal(t, NewUnionType(BoolType, IntType), ResolveOutputs(NewUnionType(NewOutputType(BoolType),
 		NewOutputType(IntType))))
 	assert.Equal(t, NewObjectType(map[string]Type{
-		"bool": BoolType,
-		"int":  IntType,
+		"bool":	BoolType,
+		"int":	IntType,
 	}), ResolveOutputs(NewObjectType(map[string]Type{
-		"bool": NewOutputType(BoolType),
-		"int":  NewOutputType(IntType),
+		"bool":	NewOutputType(BoolType),
+		"int":	NewOutputType(IntType),
 	})))
 
 	// Test that NewOutputType correctly handles nested outputs.
@@ -228,11 +228,11 @@ func TestOutputType(t *testing.T) {
 	assert.Equal(t, NewOutputType(NewUnionType(BoolType, IntType)),
 		NewOutputType(NewUnionType(NewOutputType(BoolType), NewOutputType(IntType))))
 	assert.Equal(t, NewOutputType(NewObjectType(map[string]Type{
-		"bool": BoolType,
-		"int":  IntType,
+		"bool":	BoolType,
+		"int":	IntType,
 	})), NewOutputType(NewObjectType(map[string]Type{
-		"bool": NewOutputType(BoolType),
-		"int":  NewOutputType(IntType),
+		"bool":	NewOutputType(BoolType),
+		"int":	NewOutputType(IntType),
 	})))
 }
 
@@ -283,11 +283,11 @@ func TestPromiseType(t *testing.T) {
 	assert.Equal(t, NewUnionType(BoolType, IntType),
 		ResolvePromises(NewUnionType(NewPromiseType(BoolType), NewPromiseType(IntType))))
 	assert.Equal(t, NewObjectType(map[string]Type{
-		"bool": BoolType,
-		"int":  IntType,
+		"bool":	BoolType,
+		"int":	IntType,
 	}), ResolvePromises(NewObjectType(map[string]Type{
-		"bool": NewPromiseType(BoolType),
-		"int":  NewPromiseType(IntType),
+		"bool":	NewPromiseType(BoolType),
+		"int":	NewPromiseType(IntType),
 	})))
 
 	// Test that NewPromiseType correctly handles nested promises.
@@ -299,11 +299,11 @@ func TestPromiseType(t *testing.T) {
 	assert.Equal(t, NewPromiseType(NewUnionType(BoolType, IntType)),
 		NewPromiseType(NewUnionType(NewPromiseType(BoolType), NewPromiseType(IntType))))
 	assert.Equal(t, NewPromiseType(NewObjectType(map[string]Type{
-		"bool": BoolType,
-		"int":  IntType,
+		"bool":	BoolType,
+		"int":	IntType,
 	})), NewPromiseType(NewObjectType(map[string]Type{
-		"bool": NewPromiseType(BoolType),
-		"int":  NewPromiseType(IntType),
+		"bool":	NewPromiseType(BoolType),
+		"int":	NewPromiseType(IntType),
 	})))
 }
 
@@ -327,9 +327,9 @@ func TestMapType(t *testing.T) {
 
 	// Test that map(T) is convertible from object(K_0=U_0, .., K_N=U_N) where unify(U_0, ..., U_N) is assignable to T.
 	assert.True(t, typ.ConversionFrom(NewObjectType(map[string]Type{
-		"foo": IntType,
-		"bar": NumberType,
-		"baz": StringType,
+		"foo":	IntType,
+		"bar":	NumberType,
+		"baz":	StringType,
 	})).Exists())
 
 	// Test that map(T) is _not_ assignable from map(U), where U is not assignable to T.
@@ -460,18 +460,18 @@ func TestObjectType(t *testing.T) {
 	t.Parallel()
 
 	typ := NewObjectType(map[string]Type{
-		"foo": BoolType,
-		"bar": IntType,
-		"baz": NumberType,
-		"qux": NewOptionalType(BoolType),
+		"foo":	BoolType,
+		"bar":	IntType,
+		"baz":	NumberType,
+		"qux":	NewOptionalType(BoolType),
 	})
 
 	// Test that creating a union with the same element types does not create a new type.
 	typ2 := NewObjectType(map[string]Type{
-		"foo": BoolType,
-		"bar": IntType,
-		"baz": NumberType,
-		"qux": NewOptionalType(BoolType),
+		"foo":	BoolType,
+		"bar":	IntType,
+		"baz":	NumberType,
+		"qux":	NewOptionalType(BoolType),
 	})
 	assert.EqualValues(t, typ, typ2)
 
@@ -481,31 +481,31 @@ func TestObjectType(t *testing.T) {
 	// Test that object(K_0=T_0, ..., K_N=T_N) is assignable from object(K_0=U_0, ..., K_N=U_N) if for each key K_i
 	// T_i is assignable from U_i.
 	assert.True(t, typ.ConversionFrom(NewObjectType(map[string]Type{
-		"foo": BoolType,
-		"bar": IntType,
-		"baz": IntType,
-		"qux": BoolType,
+		"foo":	BoolType,
+		"bar":	IntType,
+		"baz":	IntType,
+		"qux":	BoolType,
 	})).Exists())
 	// Test that object(K_0=T_0, ..., K_N=T_N) is assignable from object(K_0=U_0, ..., K_M=U_M) if M < N and for each
 	// key K_i where 0 <= i <= M, T_i is assignable from U_i and for each K_j where M < j <= N, T_j is optional.
 	assert.True(t, typ.ConversionFrom(NewObjectType(map[string]Type{
-		"foo": BoolType,
-		"bar": IntType,
-		"baz": NumberType,
+		"foo":	BoolType,
+		"bar":	IntType,
+		"baz":	NumberType,
 	})).Exists())
 
 	// Test that object(K_0=T_0, ..., K_N=T_N) is _unsafely_ convertible from object(L_0=U_0, ..., L_M=U_M) if there exists
 	// some key K_i a matching key K_i exists and T_i is unsafely convertible from U_i.
 	assert.Equal(t, UnsafeConversion, typ.ConversionFrom(NewObjectType(map[string]Type{
-		"foo": BoolType,
-		"bar": IntType,
-		"baz": NumberType,
-		"qux": StringType,
+		"foo":	BoolType,
+		"bar":	IntType,
+		"baz":	NumberType,
+		"qux":	StringType,
 	})))
 	assert.Equal(t, UnsafeConversion, typ.ConversionFrom(NewObjectType(map[string]Type{
-		"foo": BoolType,
-		"bar": IntType,
-		"baz": StringType,
+		"foo":	BoolType,
+		"bar":	IntType,
+		"baz":	StringType,
 	})))
 
 	// Test that traversing an object type with a property name K_i returns T_i.
@@ -631,8 +631,8 @@ func TestUnifyType(t *testing.T) {
 	m3 := NewObjectType(map[string]Type{"foo": NewOptionalType(StringType), "bar": NewOptionalType(StringType)})
 	m4 := NewObjectType(map[string]Type{"foo": NewMapType(StringType), "bar": NewListType(StringType)})
 	m5 := NewObjectType(map[string]Type{
-		"foo": NewOptionalType(NewUnionType(NewMapType(StringType), StringType, NoneType)),
-		"bar": NewOptionalType(NewUnionType(NewListType(StringType), StringType, NoneType)),
+		"foo":	NewOptionalType(NewUnionType(NewMapType(StringType), StringType, NoneType)),
+		"bar":	NewOptionalType(NewUnionType(NewListType(StringType), StringType, NoneType)),
 	})
 	assertUnified(t, m0, m0, m0, m1)
 	assertUnified(t, m3, m3, m0, m2)

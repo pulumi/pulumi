@@ -77,8 +77,8 @@ func errorf(path, message string, args ...any) *hcl.Diagnostic {
 
 	summary := path + ": " + fmt.Sprintf(message, args...)
 	return &hcl.Diagnostic{
-		Severity: hcl.DiagError,
-		Summary:  summary,
+		Severity:	hcl.DiagError,
+		Summary:	summary,
 	}
 }
 
@@ -87,8 +87,8 @@ func warningf(path, message string, args ...any) *hcl.Diagnostic {
 
 	summary := path + ": " + fmt.Sprintf(message, args...)
 	return &hcl.Diagnostic{
-		Severity: hcl.DiagWarning,
-		Summary:  summary,
+		Severity:	hcl.DiagWarning,
+		Summary:	summary,
 	}
 }
 
@@ -268,25 +268,25 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 	diags = diags.Extend(parameterizationDiagnostics)
 
 	pkg := &Package{
-		SupportPack:         supportPack,
-		moduleFormat:        moduleFormatRegexp,
-		Name:                info.Name,
-		DisplayName:         info.DisplayName,
-		Version:             version,
-		Description:         info.Description,
-		Keywords:            info.Keywords,
-		Homepage:            info.Homepage,
-		License:             info.License,
-		Attribution:         info.Attribution,
-		Repository:          info.Repository,
-		PluginDownloadURL:   info.PluginDownloadURL,
-		Publisher:           info.Publisher,
-		Namespace:           info.Namespace,
-		Dependencies:        info.Dependencies,
-		AllowedPackageNames: info.AllowedPackageNames,
-		LogoURL:             info.LogoURL,
-		Language:            language,
-		Parameterization:    parameterization,
+		SupportPack:		supportPack,
+		moduleFormat:		moduleFormatRegexp,
+		Name:			info.Name,
+		DisplayName:		info.DisplayName,
+		Version:		version,
+		Description:		info.Description,
+		Keywords:		info.Keywords,
+		Homepage:		info.Homepage,
+		License:		info.License,
+		Attribution:		info.Attribution,
+		Repository:		info.Repository,
+		PluginDownloadURL:	info.PluginDownloadURL,
+		Publisher:		info.Publisher,
+		Namespace:		info.Namespace,
+		Dependencies:		info.Dependencies,
+		AllowedPackageNames:	info.AllowedPackageNames,
+		LogoURL:		info.LogoURL,
+		Language:		language,
+		Parameterization:	parameterization,
 	}
 
 	// We want to use the same loader instance for all referenced packages, so only instantiate the loader if the
@@ -307,22 +307,22 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 
 	// Create a type binder.
 	types := &types{
-		pkg:          pkg,
-		spec:         spec,
-		loader:       loader,
-		loadCtx:      loadCtx,
-		typeDefs:     map[string]Type{},
-		functionDefs: map[string]*Function{},
-		resourceDefs: map[string]*Resource{},
-		resources:    map[string]*ResourceType{},
-		arrays:       map[Type]*ArrayType{},
-		maps:         map[Type]*MapType{},
-		unions:       map[string]*UnionType{},
-		tokens:       map[string]*TokenType{},
-		inputs:       map[Type]*InputType{},
-		optionals:    map[Type]*OptionalType{},
+		pkg:		pkg,
+		spec:		spec,
+		loader:		loader,
+		loadCtx:	loadCtx,
+		typeDefs:	map[string]Type{},
+		functionDefs:	map[string]*Function{},
+		resourceDefs:	map[string]*Resource{},
+		resources:	map[string]*ResourceType{},
+		arrays:		map[Type]*ArrayType{},
+		maps:		map[Type]*MapType{},
+		unions:		map[string]*UnionType{},
+		tokens:		map[string]*TokenType{},
+		inputs:		map[Type]*InputType{},
+		optionals:	map[Type]*OptionalType{},
 
-		bindToReference: bindTo,
+		bindToReference:	bindTo,
 	}
 
 	return types, diags, nil
@@ -360,8 +360,8 @@ func ImportSpec(spec PackageSpec, languages map[string]Language, options Validat
 // contents of a package are not needed (e.g. for referenced packages).
 func ImportPartialSpec(spec PartialPackageSpec, languages map[string]Language, loader Loader) (*PartialPackage, error) {
 	pkg := &PartialPackage{
-		spec:      &spec,
-		languages: languages,
+		spec:		&spec,
+		languages:	languages,
 	}
 	types, diags, err := newBinder(spec.PackageInfoSpec, partialPackageSpecSource{&spec}, loader, pkg)
 	if err != nil {
@@ -454,25 +454,25 @@ func (s partialPackageSpecSource) GetResourceSpec(token string) (ResourceSpec, b
 // types facilitates interning (only storing a single reference to an object) during schema processing. The fields
 // correspond to fields in the schema, and are populated during the binding process.
 type types struct {
-	pkg     *Package
-	spec    specSource
-	loader  Loader
-	loadCtx io.Closer
+	pkg	*Package
+	spec	specSource
+	loader	Loader
+	loadCtx	io.Closer
 
-	typeDefs     map[string]Type      // objects and enums
-	functionDefs map[string]*Function // function definitions
-	resourceDefs map[string]*Resource // resource definitions
+	typeDefs	map[string]Type		// objects and enums
+	functionDefs	map[string]*Function	// function definitions
+	resourceDefs	map[string]*Resource	// resource definitions
 
-	resources map[string]*ResourceType
-	arrays    map[Type]*ArrayType
-	maps      map[Type]*MapType
-	unions    map[string]*UnionType
-	tokens    map[string]*TokenType
-	inputs    map[Type]*InputType
-	optionals map[Type]*OptionalType
+	resources	map[string]*ResourceType
+	arrays		map[Type]*ArrayType
+	maps		map[Type]*MapType
+	unions		map[string]*UnionType
+	tokens		map[string]*TokenType
+	inputs		map[Type]*InputType
+	optionals	map[Type]*OptionalType
 
 	// A pointer to the package reference that `types` is a part of if it exists.
-	bindToReference PackageReference
+	bindToReference	PackageReference
 }
 
 func (t *types) Close() error {
@@ -507,19 +507,19 @@ func (t *types) bindPrimitiveType(path, name string) (Type, hcl.Diagnostics) {
 
 // typeSpecRef contains the parsed fields from a type spec reference.
 type typeSpecRef struct {
-	URL *url.URL // The parsed URL
+	URL	*url.URL	// The parsed URL
 
-	Package string          // The package component of the schema ref
-	Version *semver.Version // The version component of the schema ref
+	Package	string		// The package component of the schema ref
+	Version	*semver.Version	// The version component of the schema ref
 
-	Kind  string // The kind of reference: 'resources', 'types', or 'provider'
-	Token string // The type token
+	Kind	string	// The kind of reference: 'resources', 'types', or 'provider'
+	Token	string	// The type token
 }
 
 const (
-	resourcesRef = "resources"
-	typesRef     = "types"
-	providerRef  = "provider"
+	resourcesRef	= "resources"
+	typesRef	= "types"
+	providerRef	= "provider"
 )
 
 // validateTypeToken validates an individual type token. It accepts a map which relates permitted package names to the
@@ -676,11 +676,11 @@ func (t *types) parseTypeSpecRef(refPath, ref string) (typeSpecRef, hcl.Diagnost
 	}
 
 	return typeSpecRef{
-		URL:     parsedURL,
-		Package: pkgName,
-		Version: pkgVersion,
-		Kind:    kind,
-		Token:   token,
+		URL:		parsedURL,
+		Package:	pkgName,
+		Version:	pkgVersion,
+		Kind:		kind,
+		Token:		token,
 	}, diagnostics
 }
 
@@ -739,10 +739,10 @@ func (t *types) newUnionType(
 	elements []Type, defaultType Type, discriminator string, mapping map[string]string,
 ) *UnionType {
 	union := &UnionType{
-		ElementTypes:  elements,
-		DefaultType:   defaultType,
-		Discriminator: discriminator,
-		Mapping:       mapping,
+		ElementTypes:	elements,
+		DefaultType:	defaultType,
+		Discriminator:	discriminator,
+		Mapping:	mapping,
 	}
 	if typ, ok := t.unions[union.String()]; ok {
 		return typ
@@ -784,8 +784,8 @@ func (t *types) bindTypeDef(token string, options ValidationOptions) (Type, hcl.
 		// that reference object types (e.g. arrays, maps, unions)
 		obj := &ObjectType{Token: token, IsOverlay: spec.IsOverlay, OverlaySupportedLanguages: spec.OverlaySupportedLanguages}
 		obj.InputShape = &ObjectType{
-			Token: token, PlainShape: obj, IsOverlay: spec.IsOverlay,
-			OverlaySupportedLanguages: spec.OverlaySupportedLanguages,
+			Token:	token, PlainShape: obj, IsOverlay: spec.IsOverlay,
+			OverlaySupportedLanguages:	spec.OverlaySupportedLanguages,
 		}
 		t.typeDefs[token] = obj
 
@@ -1209,17 +1209,17 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 		diags = diags.Extend(dvDiags)
 
 		p := &Property{
-			Name:                 name,
-			Comment:              spec.Description,
-			Type:                 t.newOptionalType(typ),
-			ConstValue:           cv,
-			DefaultValue:         dv,
-			DeprecationMessage:   spec.DeprecationMessage,
-			Language:             makeLanguageMap(spec.Language),
-			Secret:               spec.Secret,
-			ReplaceOnChanges:     spec.ReplaceOnChanges,
-			WillReplaceOnChanges: spec.WillReplaceOnChanges,
-			Plain:                spec.Plain,
+			Name:			name,
+			Comment:		spec.Description,
+			Type:			t.newOptionalType(typ),
+			ConstValue:		cv,
+			DefaultValue:		dv,
+			DeprecationMessage:	spec.DeprecationMessage,
+			Language:		makeLanguageMap(spec.Language),
+			Secret:			spec.Secret,
+			ReplaceOnChanges:	spec.ReplaceOnChanges,
+			WillReplaceOnChanges:	spec.WillReplaceOnChanges,
+			Plain:			spec.Plain,
 		}
 
 		propertyMap[name], result = p, append(result, p)
@@ -1335,20 +1335,20 @@ func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, hcl
 		diags = diags.Extend(valueDiags)
 
 		values[i] = &Enum{
-			Value:              value,
-			Comment:            spec.Description,
-			Name:               spec.Name,
-			DeprecationMessage: spec.DeprecationMessage,
+			Value:			value,
+			Comment:		spec.Description,
+			Name:			spec.Name,
+			DeprecationMessage:	spec.DeprecationMessage,
 		}
 	}
 
 	return &EnumType{
-		PackageReference: t.externalPackage(),
-		Token:            token,
-		Elements:         values,
-		ElementType:      typ,
-		Comment:          spec.Description,
-		IsOverlay:        spec.IsOverlay,
+		PackageReference:	t.externalPackage(),
+		Token:			token,
+		Elements:		values,
+		ElementType:		typ,
+		Comment:		spec.Description,
+		IsOverlay:		spec.IsOverlay,
 	}, diags
 }
 
@@ -1491,8 +1491,8 @@ func bindMethods(
 		}
 		function.IsMethod = true
 		result = append(result, &Method{
-			Name:     name,
-			Function: function,
+			Name:		name,
+			Function:	function,
 		})
 	}
 	return result, diags, nil
@@ -1518,10 +1518,10 @@ func bindParameterization(spec *ParameterizationSpec) (*Parameterization, hcl.Di
 
 	return &Parameterization{
 		BaseProvider: BaseProvider{
-			Name:    spec.BaseProvider.Name,
-			Version: ver,
+			Name:		spec.BaseProvider.Name,
+			Version:	ver,
 		},
-		Parameter: spec.Parameter,
+		Parameter:	spec.Parameter,
 	}, nil
 }
 
@@ -1643,19 +1643,19 @@ func (t *types) bindResourceDetails(
 	}
 
 	*decl = Resource{
-		PackageReference:          t.externalPackage(),
-		Token:                     token,
-		Comment:                   spec.Description,
-		InputProperties:           inputProperties,
-		Properties:                properties,
-		StateInputs:               stateInputs,
-		Aliases:                   aliases,
-		DeprecationMessage:        spec.DeprecationMessage,
-		Language:                  makeLanguageMap(spec.Language),
-		IsComponent:               spec.IsComponent,
-		Methods:                   methods,
-		IsOverlay:                 spec.IsOverlay,
-		OverlaySupportedLanguages: spec.OverlaySupportedLanguages,
+		PackageReference:		t.externalPackage(),
+		Token:				token,
+		Comment:			spec.Description,
+		InputProperties:		inputProperties,
+		Properties:			properties,
+		StateInputs:			stateInputs,
+		Aliases:			aliases,
+		DeprecationMessage:		spec.DeprecationMessage,
+		Language:			makeLanguageMap(spec.Language),
+		IsComponent:			spec.IsComponent,
+		Methods:			methods,
+		IsOverlay:			spec.IsOverlay,
+		OverlaySupportedLanguages:	spec.OverlaySupportedLanguages,
 	}
 	return diags, nil
 }
@@ -1762,8 +1762,8 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 	// Check that spec.MultiArgumentInputs => spec.Inputs
 	if len(spec.MultiArgumentInputs) > 0 && spec.Inputs == nil {
 		diags = diags.Append(&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "cannot specify multi-argument inputs without specifying inputs",
+			Severity:	hcl.DiagError,
+			Summary:	"cannot specify multi-argument inputs without specifying inputs",
 		})
 	}
 	var inputs *ObjectType
@@ -1783,8 +1783,8 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 			for k, i := range idx {
 				if _, ok := spec.Inputs.Properties[k]; !ok {
 					diags = diags.Append(&hcl.Diagnostic{
-						Severity: hcl.DiagError,
-						Summary:  fmt.Sprintf("multiArgumentInputs[%d] refers to non-existent property %#v", i, k),
+						Severity:	hcl.DiagError,
+						Summary:	fmt.Sprintf("multiArgumentInputs[%d] refers to non-existent property %#v", i, k),
 					})
 				}
 			}
@@ -1792,8 +1792,8 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 			for k := range spec.Inputs.Properties {
 				if _, ok := idx[k]; !ok {
 					diag := hcl.Diagnostic{
-						Severity: hcl.DiagError,
-						Summary:  fmt.Sprintf("Property %#v not specified by multiArgumentInputs", k),
+						Severity:	hcl.DiagError,
+						Summary:	fmt.Sprintf("Property %#v not specified by multiArgumentInputs", k),
 					}
 					if !detailGiven {
 						detailGiven = true
@@ -1883,19 +1883,19 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 	}
 
 	fn := &Function{
-		PackageReference:          t.externalPackage(),
-		Token:                     token,
-		Comment:                   spec.Description,
-		Inputs:                    inputs,
-		MultiArgumentInputs:       len(spec.MultiArgumentInputs) > 0,
-		InlineObjectAsReturnType:  inlineObjectAsReturnType,
-		Outputs:                   outputs,
-		ReturnType:                returnType,
-		ReturnTypePlain:           returnTypePlain,
-		DeprecationMessage:        spec.DeprecationMessage,
-		Language:                  makeLanguageMap(spec.Language),
-		IsOverlay:                 spec.IsOverlay,
-		OverlaySupportedLanguages: spec.OverlaySupportedLanguages,
+		PackageReference:		t.externalPackage(),
+		Token:				token,
+		Comment:			spec.Description,
+		Inputs:				inputs,
+		MultiArgumentInputs:		len(spec.MultiArgumentInputs) > 0,
+		InlineObjectAsReturnType:	inlineObjectAsReturnType,
+		Outputs:			outputs,
+		ReturnType:			returnType,
+		ReturnTypePlain:		returnTypePlain,
+		DeprecationMessage:		spec.DeprecationMessage,
+		Language:			makeLanguageMap(spec.Language),
+		IsOverlay:			spec.IsOverlay,
+		OverlaySupportedLanguages:	spec.OverlaySupportedLanguages,
 	}
 	t.functionDefs[token] = fn
 

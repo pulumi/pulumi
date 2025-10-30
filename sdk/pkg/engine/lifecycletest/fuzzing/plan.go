@@ -17,10 +17,10 @@ package fuzzing
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"pgregory.net/rapid"
 )
@@ -29,13 +29,13 @@ import (
 // configured set of providers.
 type PlanSpec struct {
 	// The operation that will be executed (e.g. update, refresh, destroy).
-	Operation OperationSpec
+	Operation	OperationSpec
 	// The set of target URNs that will be passed to the operation, if any.
-	TargetURNs []resource.URN
+	TargetURNs	[]resource.URN
 	// Whether to refresh the snapshot before executing the operation.
-	Refresh bool
+	Refresh	bool
 	// Whether to run the program with a refresh
-	RefreshProgram bool
+	RefreshProgram	bool
 }
 
 // The type of operations that may be executed as part of a PlanSpec.
@@ -43,23 +43,23 @@ type OperationSpec string
 
 const (
 	// An update operation.
-	PlanOperationUpdate OperationSpec = "plan.update"
+	PlanOperationUpdate	OperationSpec	= "plan.update"
 	// A refresh operation.
-	PlanOperationRefresh OperationSpec = "plan.refresh"
+	PlanOperationRefresh	OperationSpec	= "plan.refresh"
 	// A refresh operation with program execution.
-	PlanOperationRefreshV2 OperationSpec = "plan.refreshV2"
+	PlanOperationRefreshV2	OperationSpec	= "plan.refreshV2"
 	// A destroy operation.
-	PlanOperationDestroy OperationSpec = "plan.destroy"
+	PlanOperationDestroy	OperationSpec	= "plan.destroy"
 	// A destroy operation with program execution.
-	PlanOperationDestroyV2 OperationSpec = "plan.destroyV2"
+	PlanOperationDestroyV2	OperationSpec	= "plan.destroyV2"
 )
 
 // Returns a set of test options and a test operation that can be used to execute this PlanSpec as part of a lifecycle
 // test.
 func (ps *PlanSpec) Executors(t lt.TB, hostF deploytest.PluginHostFactory) (lt.TestUpdateOptions, lt.TestOp) {
 	opts := lt.TestUpdateOptions{
-		T:     t,
-		HostF: hostF,
+		T:	t,
+		HostF:	hostF,
 	}
 
 	if len(ps.TargetURNs) > 0 {
@@ -114,19 +114,19 @@ func (ps *PlanSpec) Pretty(indent string) string {
 // A set of options for configuring the generation of a PlanSpec.
 type PlanSpecOptions struct {
 	// A generator for operations that might be planned.
-	Operation *rapid.Generator[OperationSpec]
+	Operation	*rapid.Generator[OperationSpec]
 
 	// A source set of targets that should be used literally, skipping the target generation process.
-	SourceTargets []resource.URN
+	SourceTargets	[]resource.URN
 
 	// A generator for the maximum number of resources to target in a plan.
-	TargetCount *rapid.Generator[int]
+	TargetCount	*rapid.Generator[int]
 
 	// Whether to refresh the snapshot before executing the plan.
-	Refresh *rapid.Generator[bool]
+	Refresh	*rapid.Generator[bool]
 
 	// Whether to run the program with a refresh
-	RefreshProgram *rapid.Generator[bool]
+	RefreshProgram	*rapid.Generator[bool]
 }
 
 // Returns a copy of the given PlanSpecOptions with the given overrides applied.
@@ -150,11 +150,11 @@ func (pso PlanSpecOptions) With(overrides PlanSpecOptions) PlanSpecOptions {
 // A default set of PlanSpecOptions. By default, a PlanSpec will have a random operation and between 0 and 5 target
 // URNs.
 var defaultPlanSpecOptions = PlanSpecOptions{
-	Operation:      rapid.SampledFrom(operationSpecs),
-	SourceTargets:  nil,
-	TargetCount:    rapid.IntRange(0, 5),
-	Refresh:        rapid.Bool(),
-	RefreshProgram: rapid.Bool(),
+	Operation:	rapid.SampledFrom(operationSpecs),
+	SourceTargets:	nil,
+	TargetCount:	rapid.IntRange(0, 5),
+	Refresh:	rapid.Bool(),
+	RefreshProgram:	rapid.Bool(),
 }
 
 var operationSpecs = []OperationSpec{
@@ -192,10 +192,10 @@ func GeneratedPlanSpec(ss *SnapshotSpec, pso PlanSpecOptions) *rapid.Generator[*
 		}
 
 		ps := &PlanSpec{
-			Operation:      op,
-			TargetURNs:     targetURNs,
-			Refresh:        pso.Refresh.Draw(t, "PlanSpec.Refresh"),
-			RefreshProgram: pso.RefreshProgram.Draw(t, "PlanSpec.RefreshProgram"),
+			Operation:	op,
+			TargetURNs:	targetURNs,
+			Refresh:	pso.Refresh.Draw(t, "PlanSpec.Refresh"),
+			RefreshProgram:	pso.RefreshProgram.Draw(t, "PlanSpec.RefreshProgram"),
 		}
 
 		return ps

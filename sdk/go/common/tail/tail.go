@@ -35,17 +35,17 @@ import (
 var ErrStop = errors.New("tail should now stop")
 
 type Line struct {
-	Text     string    // The contents of the file
-	Num      int       // The line number
-	SeekInfo SeekInfo  // SeekInfo
-	Time     time.Time // Present time
-	Err      error     // Error from tail
+	Text		string		// The contents of the file
+	Num		int		// The line number
+	SeekInfo	SeekInfo	// SeekInfo
+	Time		time.Time	// Present time
+	Err		error		// Error from tail
 }
 
 // SeekInfo represents arguments to io.Seek. See: https://golang.org/pkg/io/#SectionReader.Seek
 type SeekInfo struct {
-	Offset int64
-	Whence int
+	Offset	int64
+	Whence	int
 }
 
 type logger interface {
@@ -63,46 +63,46 @@ type logger interface {
 // Config is used to specify how a file must be tailed.
 type Config struct {
 	// File-specifc
-	Location  *SeekInfo // Tail from this location. If nil, start at the beginning of the file
-	ReOpen    bool      // Reopen recreated files (tail -F)
-	MustExist bool      // Fail early if the file does not exist
-	Poll      bool      // Poll for file changes instead of using the default inotify
-	Pipe      bool      // The file is a named pipe (mkfifo)
+	Location	*SeekInfo	// Tail from this location. If nil, start at the beginning of the file
+	ReOpen		bool		// Reopen recreated files (tail -F)
+	MustExist	bool		// Fail early if the file does not exist
+	Poll		bool		// Poll for file changes instead of using the default inotify
+	Pipe		bool		// The file is a named pipe (mkfifo)
 
 	// Generic IO
-	Follow        bool // Continue looking for new lines (tail -f)
-	MaxLineSize   int  // If non-zero, split longer lines into multiple lines
-	CompleteLines bool // Only return complete lines (that end with "\n" or EOF when Follow is false)
+	Follow		bool	// Continue looking for new lines (tail -f)
+	MaxLineSize	int	// If non-zero, split longer lines into multiple lines
+	CompleteLines	bool	// Only return complete lines (that end with "\n" or EOF when Follow is false)
 
 	// Optionally use a Logger. When nil, the Logger is set to tail.DefaultLogger.
 	// To disable logging, set it to tail.DiscardingLogger
-	Logger logger
+	Logger	logger
 }
 
 type Tail struct {
-	Filename string     // The filename
-	Lines    chan *Line // A consumable channel of *Line
-	Config              // Tail.Configuration
+	Filename	string		// The filename
+	Lines		chan *Line	// A consumable channel of *Line
+	Config				// Tail.Configuration
 
-	file    *os.File
-	reader  *bufio.Reader
-	lineNum int
+	file	*os.File
+	reader	*bufio.Reader
+	lineNum	int
 
-	lineBuf *strings.Builder
+	lineBuf	*strings.Builder
 
-	watcher watch.FileWatcher
-	changes *watch.FileChanges
+	watcher	watch.FileWatcher
+	changes	*watch.FileChanges
 
-	tomb.Tomb // provides: Done, Kill, Dying
+	tomb.Tomb	// provides: Done, Kill, Dying
 
-	lk sync.Mutex
+	lk	sync.Mutex
 }
 
 var (
 	// DefaultLogger logs to os.Stderr and it is used when Config.Logger == nil
-	DefaultLogger = log.New(os.Stderr, "", log.LstdFlags)
+	DefaultLogger	= log.New(os.Stderr, "", log.LstdFlags)
 	// DiscardingLogger can be used to disable logging output
-	DiscardingLogger = log.New(io.Discard, "", 0)
+	DiscardingLogger	= log.New(io.Discard, "", 0)
 )
 
 // File begins tailing the file. And returns a pointer to a Tail struct
@@ -116,9 +116,9 @@ func File(filename string, config Config) (*Tail, error) {
 	}
 
 	t := &Tail{
-		Filename: filename,
-		Lines:    make(chan *Line),
-		Config:   config,
+		Filename:	filename,
+		Lines:		make(chan *Line),
+		Config:		config,
 	}
 
 	if config.CompleteLines {

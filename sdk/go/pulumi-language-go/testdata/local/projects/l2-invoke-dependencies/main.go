@@ -18,8 +18,8 @@ func main() {
 		// because it uses .secret from the invoke which depends on first
 		_, err = simple.NewResource(ctx, "second", &simple.ResourceArgs{
 			Value: simpleinvoke.SecretInvokeOutput(ctx, simpleinvoke.SecretInvokeOutputArgs{
-				Value:          pulumi.String("hello"),
-				SecretResponse: first.Value,
+				Value:		pulumi.String("hello"),
+				SecretResponse:	first.Value,
 			}, nil).ApplyT(func(invoke simpleinvoke.SecretInvokeResult) (bool, error) {
 				return invoke.Secret, nil
 			}).(pulumi.BoolOutput),

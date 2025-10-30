@@ -35,8 +35,8 @@ import (
 	"github.com/blang/semver"
 	"github.com/opentracing/opentracing-go"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/util/validation"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/validation"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -65,9 +65,9 @@ type StartTemplatePublishRequest struct {
 // It returns a presigned URL to upload the template archive.
 type StartTemplatePublishResponse struct {
 	// OperationID uniquely identifies the publishing operation.
-	OperationID TemplatePublishOperationID `json:"operationID"`
+	OperationID	TemplatePublishOperationID	`json:"operationID"`
 	// UploadURLs contains the presigned URLs for uploading template artifacts.
-	UploadURLs TemplateUploadURLs `json:"uploadURLs"`
+	UploadURLs	TemplateUploadURLs	`json:"uploadURLs"`
 }
 
 // TemplateUploadURLs contains the presigned URLs for uploading template artifacts.
@@ -87,18 +87,18 @@ type PublishTemplateVersionCompleteResponse struct{}
 
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.
 type Client struct {
-	apiURL     string
-	apiToken   apiAccessToken
-	apiUser    string
-	apiOrgs    []string
-	tokenInfo  *workspace.TokenInformation // might be nil if running against old services
-	diag       diag.Sink
-	insecure   bool
-	restClient restClient
-	httpClient *http.Client
+	apiURL		string
+	apiToken	apiAccessToken
+	apiUser		string
+	apiOrgs		[]string
+	tokenInfo	*workspace.TokenInformation	// might be nil if running against old services
+	diag		diag.Sink
+	insecure	bool
+	restClient	restClient
+	httpClient	*http.Client
 
 	// If true, do not probe the backend with GET /api/capabilities and assume no capabilities.
-	DisableCapabilityProbing bool
+	DisableCapabilityProbing	bool
 }
 
 // newClient creates a new Pulumi API client with the given URL and API token. It is a variable instead of a regular
@@ -116,10 +116,10 @@ var newClient = func(apiURL, apiToken string, insecure bool, d diag.Sink) *Clien
 	}
 
 	return &Client{
-		apiURL:     apiURL,
-		apiToken:   apiAccessToken(apiToken),
-		diag:       d,
-		httpClient: httpClient,
+		apiURL:		apiURL,
+		apiToken:	apiAccessToken(apiToken),
+		diag:		d,
+		httpClient:	httpClient,
 		restClient: &defaultRESTClient{
 			client: &defaultHTTPClient{
 				client: httpClient,
@@ -279,30 +279,30 @@ func completeTemplatePublishPath(source, publisher, name string, version semver.
 
 // Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L7-L16
 type serviceUserInfo struct {
-	Name        string `json:"name"`
-	GitHubLogin string `json:"githubLogin"`
-	AvatarURL   string `json:"avatarUrl"`
-	Email       string `json:"email,omitempty"`
+	Name		string	`json:"name"`
+	GitHubLogin	string	`json:"githubLogin"`
+	AvatarURL	string	`json:"avatarUrl"`
+	Email		string	`json:"email,omitempty"`
 }
 
 // Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L20-L37
 type serviceUser struct {
-	ID            string            `json:"id"`
-	GitHubLogin   string            `json:"githubLogin"`
-	Name          string            `json:"name"`
-	Email         string            `json:"email"`
-	AvatarURL     string            `json:"avatarUrl"`
-	Organizations []serviceUserInfo `json:"organizations"`
-	Identities    []string          `json:"identities"`
-	SiteAdmin     *bool             `json:"siteAdmin,omitempty"`
-	TokenInfo     *serviceTokenInfo `json:"tokenInfo,omitempty"`
+	ID		string			`json:"id"`
+	GitHubLogin	string			`json:"githubLogin"`
+	Name		string			`json:"name"`
+	Email		string			`json:"email"`
+	AvatarURL	string			`json:"avatarUrl"`
+	Organizations	[]serviceUserInfo	`json:"organizations"`
+	Identities	[]string		`json:"identities"`
+	SiteAdmin	*bool			`json:"siteAdmin,omitempty"`
+	TokenInfo	*serviceTokenInfo	`json:"tokenInfo,omitempty"`
 }
 
 // Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L39-L43
 type serviceTokenInfo struct {
-	Name         string `json:"name"`
-	Organization string `json:"organization,omitempty"`
-	Team         string `json:"team,omitempty"`
+	Name		string	`json:"name"`
+	Organization	string	`json:"organization,omitempty"`
+	Team		string	`json:"team,omitempty"`
 }
 
 // GetPulumiAccountDetails returns the user implied by the API token associated with this client.
@@ -328,9 +328,9 @@ func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string
 		}
 		if resp.TokenInfo != nil {
 			pc.tokenInfo = &workspace.TokenInformation{
-				Name:         resp.TokenInfo.Name,
-				Organization: resp.TokenInfo.Organization,
-				Team:         resp.TokenInfo.Team,
+				Name:		resp.TokenInfo.Name,
+				Organization:	resp.TokenInfo.Organization,
+				Team:		resp.TokenInfo.Team,
 			}
 		}
 	}
@@ -355,12 +355,12 @@ func (pc *Client) GetCLIVersionInfo(
 		ctx,
 		"GET",
 		"/api/cli/version",
-		nil,          // query
-		nil,          // request
-		&versionInfo, // response
+		nil,		// query
+		nil,		// request
+		&versionInfo,	// response
 		httpCallOptions{
-			RetryPolicy: retryNone,
-			Header:      http.Header(headers),
+			RetryPolicy:	retryNone,
+			Header:		http.Header(headers),
 		},
 	)
 	if err != nil {
@@ -409,10 +409,10 @@ func (pc *Client) GetDefaultOrg(ctx context.Context) (apitype.GetDefaultOrganiza
 
 // ListStacksFilter describes optional filters when listing stacks.
 type ListStacksFilter struct {
-	Project      *string
-	Organization *string
-	TagName      *string
-	TagValue     *string
+	Project		*string
+	Organization	*string
+	TagName		*string
+	TagValue	*string
 }
 
 // ListStacks lists all stacks the current user has access to, optionally filtered by project.
@@ -420,17 +420,17 @@ func (pc *Client) ListStacks(
 	ctx context.Context, filter ListStacksFilter, inContToken *string,
 ) ([]apitype.StackSummary, *string, error) {
 	queryFilter := struct {
-		Project           *string `url:"project,omitempty"`
-		Organization      *string `url:"organization,omitempty"`
-		TagName           *string `url:"tagName,omitempty"`
-		TagValue          *string `url:"tagValue,omitempty"`
-		ContinuationToken *string `url:"continuationToken,omitempty"`
+		Project			*string	`url:"project,omitempty"`
+		Organization		*string	`url:"organization,omitempty"`
+		TagName			*string	`url:"tagName,omitempty"`
+		TagValue		*string	`url:"tagValue,omitempty"`
+		ContinuationToken	*string	`url:"continuationToken,omitempty"`
 	}{
-		Project:           filter.Project,
-		Organization:      filter.Organization,
-		TagName:           filter.TagName,
-		TagValue:          filter.TagValue,
-		ContinuationToken: inContToken,
+		Project:		filter.Project,
+		Organization:		filter.Organization,
+		TagName:		filter.TagName,
+		TagValue:		filter.TagValue,
+		ContinuationToken:	inContToken,
 	}
 
 	var resp apitype.ListStacksResponse
@@ -456,9 +456,9 @@ type TarReaderCloser struct {
 	data io.ReadCloser
 }
 
-func (trc *TarReaderCloser) Tar() *tar.Reader { return tar.NewReader(trc.data) }
+func (trc *TarReaderCloser) Tar() *tar.Reader	{ return tar.NewReader(trc.data) }
 
-func (trc *TarReaderCloser) Close() error { return trc.data.Close() }
+func (trc *TarReaderCloser) Close() error	{ return trc.data.Close() }
 
 func (pc *Client) DownloadOrgTemplate(ctx context.Context, org, sourceURL string) (*TarReaderCloser, error) {
 	path := "/api/orgs/" + url.PathEscape(org) + "/template/download?url=" + url.PathEscape(sourceURL)
@@ -556,17 +556,17 @@ func (pc *Client) CreateStack(
 	}
 
 	stack := apitype.Stack{
-		StackName:   stackID.Stack.Q(),
-		ProjectName: stackID.Project,
-		OrgName:     stackID.Owner,
-		Tags:        tags,
+		StackName:	stackID.Stack.Q(),
+		ProjectName:	stackID.Project,
+		OrgName:	stackID.Owner,
+		Tags:		tags,
 	}
 	createStackReq := apitype.CreateStackRequest{
-		StackName: stackID.Stack.String(),
-		Tags:      tags,
-		Teams:     teams,
-		State:     state,
-		Config:    config,
+		StackName:	stackID.Stack.String(),
+		Tags:		tags,
+		Teams:		teams,
+		State:		state,
+		Config:		config,
 	}
 
 	endpoint := fmt.Sprintf("/api/stacks/%s/%s", stackID.Owner, stackID.Project)
@@ -732,16 +732,16 @@ func (pc *Client) ImportStackDeployment(ctx context.Context, stack StackIdentifi
 	}
 
 	return UpdateIdentifier{
-		StackIdentifier: stack,
-		UpdateKind:      apitype.UpdateUpdate,
-		UpdateID:        resp.UpdateID,
+		StackIdentifier:	stack,
+		UpdateKind:		apitype.UpdateUpdate,
+		UpdateID:		resp.UpdateID,
 	}, nil
 }
 
 type CreateUpdateDetails struct {
-	Messages                    []apitype.Message
-	RequiredPolicies            []apitype.RequiredPolicy
-	IsCopilotIntegrationEnabled bool
+	Messages			[]apitype.Message
+	RequiredPolicies		[]apitype.RequiredPolicy
+	IsCopilotIntegrationEnabled	bool
 }
 
 // CreateUpdate creates a new update for the indicated stack with the given kind and assorted options. If the update
@@ -759,9 +759,9 @@ func (pc *Client) CreateUpdate(
 		contract.AssertNoErrorf(err, "error fetching config value for key %v", k)
 
 		wireConfig[k.String()] = apitype.ConfigValue{
-			String: v,
-			Secret: cv.Secure(),
-			Object: cv.Object(),
+			String:	v,
+			Secret:	cv.Secure(),
+			Object:	cv.Object(),
 		}
 	}
 
@@ -771,21 +771,21 @@ func (pc *Client) CreateUpdate(
 	}
 
 	updateRequest := apitype.UpdateProgramRequest{
-		Name:        string(proj.Name),
-		Runtime:     proj.Runtime.Name(),
-		Main:        proj.Main,
-		Description: description,
-		Config:      wireConfig,
+		Name:		string(proj.Name),
+		Runtime:	proj.Runtime.Name(),
+		Main:		proj.Main,
+		Description:	description,
+		Config:		wireConfig,
 		Options: apitype.UpdateOptions{
-			LocalPolicyPackPaths: engine.ConvertLocalPolicyPacksToPaths(opts.LocalPolicyPacks),
-			Color:                colors.Raw, // force raw colorization, we handle colorization in the CLI
-			DryRun:               dryRun,
-			Parallel:             opts.Parallel,
-			ShowConfig:           false, // This is a legacy option now, the engine will always emit config information
-			ShowReplacementSteps: false, // This is a legacy option now, the engine will always emit this information
-			ShowSames:            false, // This is a legacy option now, the engine will always emit this information
+			LocalPolicyPackPaths:	engine.ConvertLocalPolicyPacksToPaths(opts.LocalPolicyPacks),
+			Color:			colors.Raw,	// force raw colorization, we handle colorization in the CLI
+			DryRun:			dryRun,
+			Parallel:		opts.Parallel,
+			ShowConfig:		false,	// This is a legacy option now, the engine will always emit config information
+			ShowReplacementSteps:	false,	// This is a legacy option now, the engine will always emit this information
+			ShowSames:		false,	// This is a legacy option now, the engine will always emit this information
 		},
-		Metadata: m,
+		Metadata:	m,
 	}
 
 	// Create the initial update object.
@@ -812,21 +812,21 @@ func (pc *Client) CreateUpdate(
 	}
 
 	return UpdateIdentifier{
-			StackIdentifier: stack,
-			UpdateKind:      kind,
-			UpdateID:        updateResponse.UpdateID,
+			StackIdentifier:	stack,
+			UpdateKind:		kind,
+			UpdateID:		updateResponse.UpdateID,
 		}, CreateUpdateDetails{
-			Messages:                    updateResponse.Messages,
-			RequiredPolicies:            updateResponse.RequiredPolicies,
-			IsCopilotIntegrationEnabled: updateResponse.AISettings.CopilotIsEnabled,
+			Messages:			updateResponse.Messages,
+			RequiredPolicies:		updateResponse.RequiredPolicies,
+			IsCopilotIntegrationEnabled:	updateResponse.AISettings.CopilotIsEnabled,
 		}, nil
 }
 
 // RenameStack renames the provided stack to have the new identifier.
 func (pc *Client) RenameStack(ctx context.Context, currentID, newID StackIdentifier) error {
 	req := apitype.StackRenameRequest{
-		NewName:    newID.Stack.String(),
-		NewProject: newID.Project,
+		NewName:	newID.Stack.String(),
+		NewProject:	newID.Project,
 	}
 	return pc.restCall(ctx, "POST", getStackPath(currentID, "rename"), nil, &req, nil)
 }
@@ -906,31 +906,31 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		}
 
 		policies[i] = apitype.Policy{
-			Name:             policy.Name,
-			DisplayName:      policy.DisplayName,
-			Description:      policy.Description,
-			EnforcementLevel: policy.EnforcementLevel,
-			Message:          policy.Message,
-			ConfigSchema:     configSchema,
-			Severity:         policy.Severity,
-			Framework:        convertPolicyComplianceFramework(policy.Framework),
-			Tags:             policy.Tags,
-			RemediationSteps: policy.RemediationSteps,
-			URL:              policy.URL,
+			Name:			policy.Name,
+			DisplayName:		policy.DisplayName,
+			Description:		policy.Description,
+			EnforcementLevel:	policy.EnforcementLevel,
+			Message:		policy.Message,
+			ConfigSchema:		configSchema,
+			Severity:		policy.Severity,
+			Framework:		convertPolicyComplianceFramework(policy.Framework),
+			Tags:			policy.Tags,
+			RemediationSteps:	policy.RemediationSteps,
+			URL:			policy.URL,
 		}
 	}
 
 	req := apitype.CreatePolicyPackRequest{
-		Name:        analyzerInfo.Name,
-		DisplayName: analyzerInfo.DisplayName,
-		VersionTag:  analyzerInfo.Version,
-		Policies:    policies,
-		Description: analyzerInfo.Description,
-		Readme:      analyzerInfo.Readme,
-		Provider:    analyzerInfo.Provider,
-		Tags:        analyzerInfo.Tags,
-		Repository:  analyzerInfo.Repository,
-		Metadata:    metadata,
+		Name:		analyzerInfo.Name,
+		DisplayName:	analyzerInfo.DisplayName,
+		VersionTag:	analyzerInfo.Version,
+		Policies:	policies,
+		Description:	analyzerInfo.Description,
+		Readme:		analyzerInfo.Readme,
+		Provider:	analyzerInfo.Provider,
+		Tags:		analyzerInfo.Tags,
+		Repository:	analyzerInfo.Repository,
+		Metadata:	metadata,
 	}
 
 	// Print a publishing message. We have to handle the case where an older version of pulumi/policy
@@ -1001,9 +1001,9 @@ func convertPolicyConfigSchema(schema *plugin.AnalyzerPolicyConfigSchema) (*apit
 		properties[k] = &raw
 	}
 	return &apitype.PolicyConfigSchema{
-		Type:       apitype.Object,
-		Properties: properties,
-		Required:   schema.Required,
+		Type:		apitype.Object,
+		Properties:	properties,
+		Required:	schema.Required,
 	}, nil
 }
 
@@ -1013,10 +1013,10 @@ func convertPolicyComplianceFramework(f *plugin.AnalyzerPolicyComplianceFramewor
 		return nil
 	}
 	return &apitype.PolicyComplianceFramework{
-		Name:          f.Name,
-		Version:       f.Version,
-		Reference:     f.Reference,
-		Specification: f.Specification,
+		Name:		f.Name,
+		Version:	f.Version,
+		Reference:	f.Reference,
+		Specification:	f.Specification,
 	}
 }
 
@@ -1048,9 +1048,9 @@ func (pc *Client) ApplyPolicyPack(ctx context.Context, orgName, policyGroup,
 
 	req := apitype.UpdatePolicyGroupRequest{
 		AddPolicyPack: &apitype.PolicyPackMetadata{
-			Name:       policyPackName,
-			VersionTag: versionTag,
-			Config:     policyPackConfig,
+			Name:		policyPackName,
+			VersionTag:	versionTag,
+			Config:		policyPackConfig,
 		},
 	}
 
@@ -1086,8 +1086,8 @@ func (pc *Client) DisablePolicyPack(ctx context.Context, orgName string, policyG
 
 	req := apitype.UpdatePolicyGroupRequest{
 		RemovePolicyPack: &apitype.PolicyPackMetadata{
-			Name:       policyPackName,
-			VersionTag: versionTag,
+			Name:		policyPackName,
+			VersionTag:	versionTag,
 		},
 	}
 
@@ -1184,9 +1184,9 @@ func (pc *Client) PatchUpdateCheckpoint(
 	token UpdateTokenSource,
 ) error {
 	req := apitype.PatchUpdateCheckpointRequest{
-		Version:    deployment.Version,
-		Features:   deployment.Features,
-		Deployment: deployment.Deployment,
+		Version:	deployment.Version,
+		Features:	deployment.Features,
+		Deployment:	deployment.Deployment,
 	}
 
 	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
@@ -1201,9 +1201,9 @@ func (pc *Client) PatchUpdateCheckpointVerbatim(ctx context.Context, update Upda
 	sequenceNumber int, untypedDeploymentBytes json.RawMessage, deploymentVersion int, token UpdateTokenSource,
 ) error {
 	req := apitype.PatchUpdateVerbatimCheckpointRequest{
-		Version:           deploymentVersion,
-		UntypedDeployment: untypedDeploymentBytes,
-		SequenceNumber:    sequenceNumber,
+		Version:		deploymentVersion,
+		UntypedDeployment:	untypedDeploymentBytes,
+		SequenceNumber:		sequenceNumber,
 	}
 
 	reqPayload, err := marshalVerbatimCheckpointRequest(req)
@@ -1225,10 +1225,10 @@ func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateI
 	token UpdateTokenSource,
 ) error {
 	req := apitype.PatchUpdateCheckpointDeltaRequest{
-		Version:         deploymentVersion,
-		CheckpointHash:  checkpointHash,
-		SequenceNumber:  sequenceNumber,
-		DeploymentDelta: deploymentDelta,
+		Version:		deploymentVersion,
+		CheckpointHash:		checkpointHash,
+		SequenceNumber:		sequenceNumber,
+		DeploymentDelta:	deploymentDelta,
 	}
 
 	// It is safe to retry because SequenceNumber serves as an idempotency key.
@@ -1298,8 +1298,8 @@ func (pc *Client) RecordEngineEvents(
 	ctx context.Context, update UpdateIdentifier, batch apitype.EngineEventBatch, token UpdateTokenSource,
 ) error {
 	callOpts := httpCallOptions{
-		GzipCompress: true,
-		RetryPolicy:  retryAllMethods,
+		GzipCompress:	true,
+		RetryPolicy:	retryAllMethods,
 	}
 	return pc.updateRESTCall(
 		ctx, "POST", getUpdatePath(update, "events/batch"),

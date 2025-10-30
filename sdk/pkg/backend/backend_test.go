@@ -21,8 +21,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
@@ -92,7 +92,7 @@ func TestGetStackResourceOutputs(t *testing.T) {
 
 	resc2Type, exists := resc2Actual.ObjectValue()["type"]
 	assert.True(t, exists)
-	assert.Equal(t, typ, resc2Type.V) // Same type.
+	assert.Equal(t, typ, resc2Type.V)	// Same type.
 
 	resc2Outs, exists := resc2Actual.ObjectValue()["outputs"]
 	assert.True(t, exists)
@@ -113,12 +113,12 @@ func testURN(typ, name string) resource.URN {
 
 func deleteState(typ, name string, outs resource.PropertyMap) *resource.State {
 	return &resource.State{
-		Delete: true, Type: tokens.Type(typ), URN: testURN(typ, name), Outputs: outs,
+		Delete:	true, Type: tokens.Type(typ), URN: testURN(typ, name), Outputs: outs,
 	}
 }
 
 func liveState(typ, name string, outs resource.PropertyMap) *resource.State {
 	return &resource.State{
-		Delete: false, Type: tokens.Type(typ), URN: testURN(typ, name), Outputs: outs,
+		Delete:	false, Type: tokens.Type(typ), URN: testURN(typ, name), Outputs: outs,
 	}
 }

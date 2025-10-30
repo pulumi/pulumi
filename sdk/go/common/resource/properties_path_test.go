@@ -79,8 +79,8 @@ func TestPropertyPath(t *testing.T) {
 						},
 					},
 				},
-				`key with "escaped" quotes`: true,
-				"key with a .":              true,
+				`key with "escaped" quotes`:	true,
+				"key with a .":			true,
 			},
 			`root key with "escaped" quotes`: map[string]any{
 				"nested": true,
@@ -93,9 +93,9 @@ func TestPropertyPath(t *testing.T) {
 	}
 
 	cases := []struct {
-		path     string
-		parsed   PropertyPath
-		expected string
+		path		string
+		parsed		PropertyPath
+		expected	string
 	}{
 		{
 			"root",
@@ -223,8 +223,8 @@ func TestPropertyPath(t *testing.T) {
 	}
 
 	simpleCases := []struct {
-		path     string
-		expected PropertyPath
+		path		string
+		expected	PropertyPath
 	}{
 		{
 			`root["*"].field[1]`,
@@ -309,9 +309,9 @@ func TestPropertyPathContains(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		p1       PropertyPath
-		p2       PropertyPath
-		expected bool
+		p1		PropertyPath
+		p2		PropertyPath
+		expected	bool
 	}{
 		{
 			PropertyPath{"root", "nested"},
@@ -431,11 +431,11 @@ func TestReset(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name     string
-		path     PropertyPath
-		old      PropertyMap
-		new      PropertyMap
-		expected *PropertyMap
+		name		string
+		path		PropertyPath
+		old		PropertyMap
+		new		PropertyMap
+		expected	*PropertyMap
 	}{
 		{
 			"Missing key, not in object",
@@ -762,12 +762,12 @@ func TestReset(t *testing.T) {
 			"Nested object wildcard index reset fails",
 			PropertyPath{"root", "*", 0},
 			PropertyMap{"root": NewProperty(PropertyMap{
-				"passes": NewProperty(1.0),
-				"fails":  NewProperty([]PropertyValue{NewProperty(1.0)}),
+				"passes":	NewProperty(1.0),
+				"fails":	NewProperty([]PropertyValue{NewProperty(1.0)}),
 			})},
 			PropertyMap{"root": NewProperty(PropertyMap{
-				"passes": NewProperty(2.0),
-				"fails":  NewProperty([]PropertyValue{}),
+				"passes":	NewProperty(2.0),
+				"fails":	NewProperty([]PropertyValue{}),
 			})},
 			nil,
 		},

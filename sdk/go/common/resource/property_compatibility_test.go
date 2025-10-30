@@ -51,9 +51,9 @@ func testRoundTripThroughGRPC(t require.TestingT, v property.Value) {
 	rm := resource.ToResourcePropertyValue(v)
 
 	marshalOpts := plugin.MarshalOptions{
-		KeepUnknowns:     true,
-		KeepSecrets:      true,
-		KeepOutputValues: true,
+		KeepUnknowns:		true,
+		KeepSecrets:		true,
+		KeepOutputValues:	true,
 	}
 
 	mm, err := plugin.MarshalPropertyValue("", rm, marshalOpts)
@@ -91,8 +91,8 @@ func TestConversionThroughGRPC(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name  string
-		value property.Value
+		name	string
+		value	property.Value
 	}{
 		{"known", property.New("v1")},
 		{"unknown-output", property.New(property.Computed).WithSecret(true)},

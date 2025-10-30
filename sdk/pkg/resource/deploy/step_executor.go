@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -30,11 +30,11 @@ import (
 
 const (
 	// Dummy workerID for synchronous operations.
-	synchronousWorkerID = -1
-	infiniteWorkerID    = -2
+	synchronousWorkerID	= -1
+	infiniteWorkerID	= -2
 
 	// Utility constant for easy debugging.
-	stepExecutorLogLevel = 4
+	stepExecutorLogLevel	= 4
 )
 
 // StepApplyFailed is a sentinel error for errors that arise when step application fails.
@@ -82,8 +82,8 @@ func (c completionToken) Wait(ctx context.Context) {
 
 // incomingChain represents a request to the step executor to execute a chain.
 type incomingChain struct {
-	Chain          chain     // The chain we intend to execute
-	CompletionChan chan bool // A completion channel to be closed when the chain has completed execution
+	Chain		chain		// The chain we intend to execute
+	CompletionChan	chan bool	// A completion channel to be closed when the chain has completed execution
 }
 
 // stepExecutor is the component of the engine responsible for taking steps and executing
@@ -95,38 +95,38 @@ type incomingChain struct {
 // ready to execute.
 type stepExecutor struct {
 	// The deployment currently being executed.
-	deployment *Deployment
+	deployment	*Deployment
 	// Resources that have been created but are pending a RegisterResourceOutputs.
-	pendingNews gsync.Map[resource.URN, Step]
+	pendingNews	gsync.Map[resource.URN, Step]
 
 	// True if errors should be ignored completely, without any handling or
 	// reporting. This is used in the case of imports and refreshes. It is _not_
 	// the same as ContinueOnError, which allows execution to continue in the face
 	// of errors that may occur during updates. If both ignoreErrors and
 	// ContinueOnError are set, ignoreErrors takes precedence.
-	ignoreErrors bool
+	ignoreErrors	bool
 
 	// Lock protecting the running of workers. This can be used to synchronize with step executor.
-	workerLock sync.RWMutex
+	workerLock	sync.RWMutex
 
-	workers        sync.WaitGroup     // WaitGroup tracking the worker goroutines that are owned by this step executor.
-	incomingChains chan incomingChain // Incoming chains that we are to execute
+	workers		sync.WaitGroup		// WaitGroup tracking the worker goroutines that are owned by this step executor.
+	incomingChains	chan incomingChain	// Incoming chains that we are to execute
 
-	ctx    context.Context    // cancellation context for the current deployment.
-	cancel context.CancelFunc // CancelFunc that cancels the above context.
+	ctx	context.Context		// cancellation context for the current deployment.
+	cancel	context.CancelFunc	// CancelFunc that cancels the above context.
 
 	// async promise indicating an error seen by the step executor, if multiple errors are seen this will only
 	// record the first.
-	sawError promise.CompletionSource[struct{}]
+	sawError	promise.CompletionSource[struct{}]
 
-	erroredStepLock sync.RWMutex
-	erroredSteps    []Step
+	erroredStepLock	sync.RWMutex
+	erroredSteps	[]Step
 
 	// ExecuteRegisterResourceOutputs will save the event for the stack resource so that the stack outputs
 	// can be finalized at the end of the deployment. We do this so we can determine whether or not the
 	// deployment succeeded. If there were errors, we update any stack outputs that were updated, but don't delete
 	// any old outputs.
-	stackOutputsEvent RegisterResourceOutputsEvent
+	stackOutputsEvent	RegisterResourceOutputsEvent
 }
 
 //
@@ -280,22 +280,22 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 		if s, ok := reg.(*CreateStep); ok {
 			if err := s.Deployment().RunHooks(
 				s.new.ResourceHooks[resource.AfterCreate],
-				false, /* isBeforeHook */
+				false,	/* isBeforeHook */
 				s.new.ID,
 				s.new.URN,
 				s.new.URN.Name(),
 				s.Type(),
 				s.new.Inputs,
-				nil, /* oldInputs */
+				nil,	/* oldInputs */
 				s.new.Outputs,
-				nil, /* oldOutputs */
+				nil,	/* oldOutputs */
 			); err != nil {
 				return err
 			}
 		} else if s, ok := reg.(*UpdateStep); ok {
 			if err := s.Deployment().RunHooks(
 				s.new.ResourceHooks[resource.AfterUpdate],
-				false, /* isBeforeHook */
+				false,	/* isBeforeHook */
 				s.new.ID,
 				s.new.URN,
 				s.new.URN.Name(),
@@ -492,13 +492,13 @@ func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step
 		for _, k := range newState.AdditionalSecretOutputs {
 			if k == "id" {
 				se.deployment.Diag().Warningf(&diag.Diag{
-					URN:     step.URN(),
-					Message: "The 'id' property cannot be made secret. See pulumi/pulumi#2717 for more details.",
+					URN:		step.URN(),
+					Message:	"The 'id' property cannot be made secret. See pulumi/pulumi#2717 for more details.",
 				})
 			} else {
 				if v, has := newState.Outputs[k]; has && !v.IsSecret() {
 					newState.Outputs[k] = resource.MakeSecret(v)
-				} else if !has { //nolint:staticcheck // https://github.com/pulumi/pulumi/issues/9926
+				} else if !has {	//nolint:staticcheck // https://github.com/pulumi/pulumi/issues/9926
 					// TODO (https://github.com/pulumi/pulumi/issues/9926): We want to re-enable this warning
 					// but it requires that providers always return back _every_ output even in preview. We
 					// might need to add a new "unset" PropertyValue to do this as there might be optional
@@ -686,11 +686,11 @@ func newStepExecutor(
 	ignoreErrors bool,
 ) *stepExecutor {
 	exec := &stepExecutor{
-		deployment:     deployment,
-		ignoreErrors:   ignoreErrors,
-		incomingChains: make(chan incomingChain),
-		ctx:            ctx,
-		cancel:         cancel,
+		deployment:	deployment,
+		ignoreErrors:	ignoreErrors,
+		incomingChains:	make(chan incomingChain),
+		ctx:		ctx,
+		cancel:		cancel,
 	}
 
 	// If we're being asked to run as parallel as possible, spawn a single worker that launches chain executions

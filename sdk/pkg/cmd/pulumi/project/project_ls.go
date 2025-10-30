@@ -21,10 +21,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdbackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	cmdbackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -37,9 +37,9 @@ type StackReferenceWithOrg interface {
 
 // projectListResult represents the results of a project listing for display purposes.
 type projectListResult struct {
-	Name         string `json:"name"`
-	Organization string `json:"organization,omitempty"`
-	StackCount   int    `json:"stackCount,omitempty"`
+	Name		string	`json:"name"`
+	Organization	string	`json:"organization,omitempty"`
+	StackCount	int	`json:"stackCount,omitempty"`
 }
 
 func newProjectLsCmd() *cobra.Command {
@@ -47,13 +47,13 @@ func newProjectLsCmd() *cobra.Command {
 	var jsonOut bool
 
 	cmd := &cobra.Command{
-		Use:     "ls",
-		Aliases: []string{"list"},
-		Short:   "List your Pulumi projects",
+		Use:		"ls",
+		Aliases:	[]string{"list"},
+		Short:		"List your Pulumi projects",
 		Long: "List your Pulumi projects.\n" +
 			"\n" +
 			"This command lists all Pulumi projects accessible to the current user.",
-		Args: cmdutil.NoArgs,
+		Args:	cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			displayOpts := display.Options{
@@ -127,9 +127,9 @@ func newProjectLsCmd() *cobra.Command {
 				project, exists := projectMap[projectNameStr]
 				if !exists {
 					project = projectListResult{
-						Name:         projectNameStr,
-						Organization: org,
-						StackCount:   0,
+						Name:		projectNameStr,
+						Organization:	org,
+						StackCount:	0,
 					}
 				}
 				project.StackCount++

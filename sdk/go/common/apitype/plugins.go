@@ -33,15 +33,15 @@ type PluginKind string
 
 const (
 	// AnalyzerPlugin is a plugin that can be used as a resource analyzer.
-	AnalyzerPlugin PluginKind = "analyzer"
+	AnalyzerPlugin	PluginKind	= "analyzer"
 	// LanguagePlugin is a plugin that can be used as a language host.
-	LanguagePlugin PluginKind = "language"
+	LanguagePlugin	PluginKind	= "language"
 	// ResourcePlugin is a plugin that can be used as a resource provider for custom CRUD operations.
-	ResourcePlugin PluginKind = "resource"
+	ResourcePlugin	PluginKind	= "resource"
 	// ConverterPlugin is a plugin that can be used to convert from other ecosystems to Pulumi.
-	ConverterPlugin PluginKind = "converter"
+	ConverterPlugin	PluginKind	= "converter"
 	// ToolPlugin is an arbitrary plugin that can be run as a tool.
-	ToolPlugin PluginKind = "tool"
+	ToolPlugin	PluginKind	= "tool"
 )
 
 // IsPluginKind returns true if k is a valid plugin kind, and false otherwise.

@@ -39,77 +39,77 @@ func TestDeterminePluginVersion(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		input    string
-		expected string
-		err      string
+		input		string
+		expected	string
+		err		string
 	}{
 		{
-			input:    "0.1",
-			expected: "0.1.0",
+			input:		"0.1",
+			expected:	"0.1.0",
 		},
 		{
-			input:    "1.0",
-			expected: "1.0.0",
+			input:		"1.0",
+			expected:	"1.0.0",
 		},
 		{
-			input:    "1.0.0",
-			expected: "1.0.0",
+			input:		"1.0.0",
+			expected:	"1.0.0",
 		},
 		{
-			input: "",
-			err:   "cannot parse empty string",
+			input:	"",
+			err:	"cannot parse empty string",
 		},
 		{
-			input:    "4.3.2.1",
-			expected: "4.3.2.1",
+			input:		"4.3.2.1",
+			expected:	"4.3.2.1",
 		},
 		{
-			input: " 1 . 2 . 3 ",
-			err:   `' 1 . 2 . 3 ' still unparsed`,
+			input:	" 1 . 2 . 3 ",
+			err:	`' 1 . 2 . 3 ' still unparsed`,
 		},
 		{
-			input:    "2.1a123456789",
-			expected: "2.1.0-alpha.123456789",
+			input:		"2.1a123456789",
+			expected:	"2.1.0-alpha.123456789",
 		},
 		{
-			input:    "2.14.0a1605583329",
-			expected: "2.14.0-alpha.1605583329",
+			input:		"2.14.0a1605583329",
+			expected:	"2.14.0-alpha.1605583329",
 		},
 		{
-			input:    "1.2.3b123456",
-			expected: "1.2.3-beta.123456",
+			input:		"1.2.3b123456",
+			expected:	"1.2.3-beta.123456",
 		},
 		{
-			input:    "3.2.1rc654321",
-			expected: "3.2.1-rc.654321",
+			input:		"3.2.1rc654321",
+			expected:	"3.2.1-rc.654321",
 		},
 		{
-			input: "1.2.3dev7890",
-			err:   "'dev7890' still unparsed",
+			input:	"1.2.3dev7890",
+			err:	"'dev7890' still unparsed",
 		},
 		{
-			input:    "1.2.3.dev456",
-			expected: "1.2.3+dev456",
+			input:		"1.2.3.dev456",
+			expected:	"1.2.3+dev456",
 		},
 		{
-			input: "1.",
-			err:   "'.' still unparsed",
+			input:	"1.",
+			err:	"'.' still unparsed",
 		},
 		{
-			input:    "3.2.post32",
-			expected: "3.2.0+post32",
+			input:		"3.2.post32",
+			expected:	"3.2.0+post32",
 		},
 		{
-			input:    "0.3.0b8",
-			expected: "0.3.0-beta.8",
+			input:		"0.3.0b8",
+			expected:	"0.3.0-beta.8",
 		},
 		{
-			input: "10!3.2.1",
-			err:   "epochs are not supported",
+			input:	"10!3.2.1",
+			err:	"epochs are not supported",
 		},
 		{
-			input:    "3.2.post1.dev0",
-			expected: "3.2.0+post1dev0",
+			input:		"3.2.post1.dev0",
+			expected:	"3.2.0+post1dev0",
 		},
 	}
 	for _, tt := range tests {
@@ -132,19 +132,19 @@ func getOptions(t *testing.T, name, cwd string) toolchain.PythonOptions {
 	switch name {
 	case "pip":
 		return toolchain.PythonOptions{
-			Toolchain:  toolchain.Pip,
-			Virtualenv: ".venv",
-			Root:       cwd,
+			Toolchain:	toolchain.Pip,
+			Virtualenv:	".venv",
+			Root:		cwd,
 		}
 	case "poetry":
 		return toolchain.PythonOptions{
-			Toolchain: toolchain.Poetry,
-			Root:      cwd,
+			Toolchain:	toolchain.Poetry,
+			Root:		cwd,
 		}
 	case "uv":
 		return toolchain.PythonOptions{
-			Toolchain: toolchain.Uv,
-			Root:      cwd,
+			Toolchain:	toolchain.Uv,
+			Root:		cwd,
 		}
 	}
 	t.Fatalf("unknown toolchain: %s", name)

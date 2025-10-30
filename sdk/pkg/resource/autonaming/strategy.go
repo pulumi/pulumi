@@ -62,8 +62,8 @@ func Verbatim() Autonamer {
 func (verbatimAutonaming) AutonamingForResource(urn urn.URN, _ []byte,
 ) (opts *plugin.AutonamingOptions, deleteBeforeReplace bool) {
 	return &plugin.AutonamingOptions{
-		ProposedName: urn.Name(),
-		Mode:         plugin.AutonamingModeEnforce,
+		ProposedName:	urn.Name(),
+		Mode:		plugin.AutonamingModeEnforce,
 	}, true
 }
 
@@ -84,10 +84,10 @@ func (disabledAutonaming) AutonamingForResource(urn.URN, []byte,
 // Pattern is an autonaming config that uses a pattern to generate a name.
 type Pattern struct {
 	// Pattern is the pattern to use to generate the name.
-	Pattern string
+	Pattern	string
 	// Enforce, if true, will enforce the use of the generated name, as opposed to proposing it.
 	// A proposed name can still be overridden by the provider, while an enforced name cannot.
-	Enforce bool
+	Enforce	bool
 }
 
 func (a *Pattern) AutonamingForResource(urn urn.URN, randomSeed []byte,
@@ -98,9 +98,9 @@ func (a *Pattern) AutonamingForResource(urn urn.URN, randomSeed []byte,
 	}
 	proposedName, hasRandom := generateName(a.Pattern, urn, randomSeed)
 	return &plugin.AutonamingOptions{
-		ProposedName:    proposedName,
-		Mode:            mode,
-		WarnIfNoSupport: a.Enforce,
+		ProposedName:		proposedName,
+		Mode:			mode,
+		WarnIfNoSupport:	a.Enforce,
 	}, !hasRandom
 }
 
@@ -108,22 +108,22 @@ func (a *Pattern) AutonamingForResource(urn urn.URN, randomSeed []byte,
 type Provider struct {
 	// Default is the default autonaming config for the provider unless overridden by a more specific
 	// resource config.
-	Default Autonamer
+	Default	Autonamer
 
 	// Resources maps resource types to their specific configurations
 	// Key format: provider:module:type (e.g., "aws:s3/bucket:Bucket")
-	Resources map[string]Autonamer
+	Resources	map[string]Autonamer
 }
 
 // Global represents the root configuration object for Pulumi autonaming
 type Global struct {
 	// Default is the default autonaming config for all the providers unless overridden by a more specific
 	// provider config.
-	Default Autonamer
+	Default	Autonamer
 
 	// Providers maps provider names to their configurations
 	// Key format: provider name (e.g., "aws")
-	Providers map[string]Provider
+	Providers	map[string]Provider
 }
 
 func (o *Global) pluginOptionsForResourceType(resourceType tokens.Type) (Autonamer, bool) {
@@ -168,10 +168,10 @@ func (o *Global) AutonamingForResource(urn urn.URN, randomSeed []byte) (*plugin.
 }
 
 var (
-	hexRegex   = regexp.MustCompile(`\${hex\((\d+)\)}`)
-	alphaRegex = regexp.MustCompile(`\${alphanum\((\d+)\)}`)
-	strRegex   = regexp.MustCompile(`\${string\((\d+)\)}`)
-	numRegex   = regexp.MustCompile(`\${num\((\d+)\)}`)
+	hexRegex	= regexp.MustCompile(`\${hex\((\d+)\)}`)
+	alphaRegex	= regexp.MustCompile(`\${alphanum\((\d+)\)}`)
+	strRegex	= regexp.MustCompile(`\${string\((\d+)\)}`)
+	numRegex	= regexp.MustCompile(`\${num\((\d+)\)}`)
 )
 
 func replaceHex(pattern string, random *frand.RNG) string {
@@ -256,8 +256,8 @@ func generateName(pattern string, urn urn.URN, randomSeed []byte) (string, bool)
 		hash := crypto.SHA256.New()
 		hash.Write(randomSeed)
 		seed := hash.Sum(nil)
-		bufsize := 1024 // Same bufsize as used by frand.New.
-		rounds := 12    // Same rounds as used by frand.New.
+		bufsize := 1024	// Same bufsize as used by frand.New.
+		rounds := 12	// Same rounds as used by frand.New.
 		random = frand.NewCustom(seed, bufsize, rounds)
 	}
 

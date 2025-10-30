@@ -19,7 +19,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	_syntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	_syntax "github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -27,8 +27,8 @@ import (
 type BindOption func(options *bindOptions)
 
 type bindOptions struct {
-	allowMissingVariables bool
-	skipRangeTypechecking bool
+	allowMissingVariables	bool
+	skipRangeTypechecking	bool
 }
 
 func AllowMissingVariables(options *bindOptions) {
@@ -40,10 +40,10 @@ func SkipRangeTypechecking(options *bindOptions) {
 }
 
 type expressionBinder struct {
-	options     bindOptions
-	anonSymbols map[*hclsyntax.AnonSymbolExpr]Definition
-	scope       *Scope
-	tokens      _syntax.TokenMap
+	options		bindOptions
+	anonSymbols	map[*hclsyntax.AnonSymbolExpr]Definition
+	scope		*Scope
+	tokens		_syntax.TokenMap
 }
 
 // BindExpression binds an HCL2 expression using the given scope and token map.
@@ -56,10 +56,10 @@ func BindExpression(syntax hclsyntax.Node, scope *Scope, tokens _syntax.TokenMap
 	}
 
 	b := &expressionBinder{
-		options:     options,
-		anonSymbols: map[*hclsyntax.AnonSymbolExpr]Definition{},
-		scope:       scope,
-		tokens:      tokens,
+		options:	options,
+		anonSymbols:	map[*hclsyntax.AnonSymbolExpr]Definition{},
+		scope:		scope,
+		tokens:		tokens,
 	}
 
 	return b.bindExpression(syntax)
@@ -188,14 +188,14 @@ func getOperationSignature(op *hclsyntax.Operation) StaticFunctionSignature {
 	}
 	for i, p := range ctyParams {
 		sig.Parameters[i] = Parameter{
-			Name: p.Name,
-			Type: ctyTypeToType(p.Type, p.AllowNull),
+			Name:	p.Name,
+			Type:	ctyTypeToType(p.Type, p.AllowNull),
 		}
 	}
 	if p := op.Impl.VarParam(); p != nil {
 		sig.VarargsParameter = &Parameter{
-			Name: p.Name,
-			Type: ctyTypeToType(p.Type, p.AllowNull),
+			Name:	p.Name,
+			Type:	ctyTypeToType(p.Type, p.AllowNull),
 		}
 	}
 	sig.ReturnType = ctyTypeToType(op.Type, false)
@@ -255,13 +255,13 @@ func (b *expressionBinder) bindAnonSymbolExpression(syntax *hclsyntax.AnonSymbol
 	traversal := hcl.Traversal{hcl.TraverseRoot{Name: "", SrcRange: syntax.SrcRange}}
 	return &ScopeTraversalExpression{
 		Syntax: &hclsyntax.ScopeTraversalExpr{
-			Traversal: traversal,
-			SrcRange:  syntax.SrcRange,
+			Traversal:	traversal,
+			SrcRange:	syntax.SrcRange,
 		},
-		Tokens:    _syntax.NewScopeTraversalTokens(traversal),
-		RootName:  "",
-		Parts:     []Traversable{lv},
-		Traversal: traversal,
+		Tokens:		_syntax.NewScopeTraversalTokens(traversal),
+		RootName:	"",
+		Parts:		[]Traversable{lv},
+		Traversal:	traversal,
 	}, diagnostics
 }
 
@@ -282,11 +282,11 @@ func (b *expressionBinder) bindBinaryOpExpression(syntax *hclsyntax.BinaryOpExpr
 		tokens = _syntax.NewBinaryOpTokens(syntax.Op)
 	}
 	expr := &BinaryOpExpression{
-		Syntax:       syntax,
-		Tokens:       tokens,
-		LeftOperand:  leftOperand,
-		Operation:    syntax.Op,
-		RightOperand: rightOperand,
+		Syntax:		syntax,
+		Tokens:		tokens,
+		LeftOperand:	leftOperand,
+		Operation:	syntax.Op,
+		RightOperand:	rightOperand,
 	}
 
 	typecheckDiags := expr.Typecheck(false)
@@ -312,11 +312,11 @@ func (b *expressionBinder) bindConditionalExpression(syntax *hclsyntax.Condition
 	diagnostics = append(diagnostics, falseDiags...)
 
 	expr := &ConditionalExpression{
-		Syntax:      syntax,
-		Tokens:      b.tokens.ForNode(syntax),
-		Condition:   condition,
-		TrueResult:  trueResult,
-		FalseResult: falseResult,
+		Syntax:		syntax,
+		Tokens:		b.tokens.ForNode(syntax),
+		Condition:	condition,
+		TrueResult:	trueResult,
+		FalseResult:	falseResult,
 	}
 	typecheckDiags := expr.Typecheck(false)
 	diagnostics = append(diagnostics, typecheckDiags...)
@@ -379,16 +379,16 @@ func (b *expressionBinder) bindForExpression(syntax *hclsyntax.ForExpr) (Express
 			syntax.CondExpr != nil)
 	}
 	expr := &ForExpression{
-		Syntax:                       syntax,
-		Tokens:                       tokens,
-		KeyVariable:                  keyVariable,
-		ValueVariable:                valueVariable,
-		Collection:                   collection,
-		Key:                          key,
-		Value:                        value,
-		Condition:                    condition,
-		Group:                        syntax.Group,
-		StrictCollectionTypechecking: !b.options.skipRangeTypechecking,
+		Syntax:				syntax,
+		Tokens:				tokens,
+		KeyVariable:			keyVariable,
+		ValueVariable:			valueVariable,
+		Collection:			collection,
+		Key:				key,
+		Value:				value,
+		Condition:			condition,
+		Group:				syntax.Group,
+		StrictCollectionTypechecking:	!b.options.skipRangeTypechecking,
 	}
 	typecheckDiags := expr.typecheck(false, false)
 	diagnostics = append(diagnostics, typecheckDiags...)
@@ -423,14 +423,14 @@ func (b *expressionBinder) bindFunctionCallExpression(
 		diagnostics = append(diagnostics, unknownFunction(syntax.Name, syntax.NameRange))
 
 		return &FunctionCallExpression{
-			Syntax: syntax,
-			Tokens: tokens,
-			Name:   syntax.Name,
+			Syntax:	syntax,
+			Tokens:	tokens,
+			Name:	syntax.Name,
 			Signature: StaticFunctionSignature{
-				VarargsParameter: &Parameter{Name: "args", Type: DynamicType},
-				ReturnType:       DynamicType,
+				VarargsParameter:	&Parameter{Name: "args", Type: DynamicType},
+				ReturnType:		DynamicType,
 			},
-			Args: args,
+			Args:	args,
 		}, diagnostics
 	}
 
@@ -439,11 +439,11 @@ func (b *expressionBinder) bindFunctionCallExpression(
 	diagnostics = append(diagnostics, sigDiags...)
 
 	expr := &FunctionCallExpression{
-		Syntax:    syntax,
-		Tokens:    tokens,
-		Name:      syntax.Name,
-		Signature: signature,
-		Args:      args,
+		Syntax:		syntax,
+		Tokens:		tokens,
+		Name:		syntax.Name,
+		Signature:	signature,
+		Args:		args,
 	}
 	typecheckDiags := expr.Typecheck(false)
 	diagnostics = append(diagnostics, typecheckDiags...)
@@ -474,11 +474,11 @@ func (b *expressionBinder) bindIndexExpression(syntax *hclsyntax.IndexExpr) (Exp
 		tokens = _syntax.NewIndexTokens()
 	}
 	expr := &IndexExpression{
-		Syntax:                       syntax,
-		Tokens:                       tokens,
-		Collection:                   collection,
-		Key:                          key,
-		StrictCollectionTypechecking: !b.options.skipRangeTypechecking,
+		Syntax:				syntax,
+		Tokens:				tokens,
+		Collection:			collection,
+		Key:				key,
+		StrictCollectionTypechecking:	!b.options.skipRangeTypechecking,
 	}
 	typecheckDiags := expr.Typecheck(false)
 	diagnostics = append(diagnostics, typecheckDiags...)
@@ -498,9 +498,9 @@ func (b *expressionBinder) bindLiteralValueExpression(
 		tokens = _syntax.NewLiteralValueTokens(syntax.Val)
 	}
 	expr := &LiteralValueExpression{
-		Syntax: syntax,
-		Tokens: tokens,
-		Value:  syntax.Val,
+		Syntax:	syntax,
+		Tokens:	tokens,
+		Value:	syntax.Val,
 	}
 	typecheckDiags := expr.Typecheck(false)
 	diagnostics = append(diagnostics, typecheckDiags...)
@@ -531,9 +531,9 @@ func (b *expressionBinder) bindObjectConsExpression(syntax *hclsyntax.ObjectCons
 		tokens = _syntax.NewObjectConsTokens(len(syntax.Items))
 	}
 	expr := &ObjectConsExpression{
-		Syntax: syntax,
-		Tokens: tokens,
-		Items:  items,
+		Syntax:	syntax,
+		Tokens:	tokens,
+		Items:	items,
 	}
 	typecheckDiags := expr.Typecheck(false)
 	diagnostics = append(diagnostics, typecheckDiags...)
@@ -546,8 +546,8 @@ func (b *expressionBinder) bindObjectConsKeyExpr(syntax *hclsyntax.ObjectConsKey
 	if !syntax.ForceNonLiteral {
 		if name := hcl.ExprAsKeyword(syntax); name != "" {
 			expr, diags := b.bindExpression(&hclsyntax.LiteralValueExpr{
-				Val:      cty.StringVal(name),
-				SrcRange: syntax.Range(),
+				Val:		cty.StringVal(name),
+				SrcRange:	syntax.Range(),
 			})
 			lit := expr.(*LiteralValueExpression)
 			lit.Tokens, _ = b.tokens.ForNode(syntax).(*_syntax.LiteralValueTokens)
@@ -583,10 +583,10 @@ func (b *expressionBinder) bindRelativeTraversalExpression(
 	}
 
 	expr := &RelativeTraversalExpression{
-		Syntax:    syntax,
-		Tokens:    tokens,
-		Source:    source,
-		Traversal: syntax.Traversal,
+		Syntax:		syntax,
+		Tokens:		tokens,
+		Source:		source,
+		Traversal:	syntax.Traversal,
 	}
 	typecheckDiags := expr.typecheck(false, b.options.allowMissingVariables)
 	diagnostics = append(diagnostics, typecheckDiags...)
@@ -620,20 +620,20 @@ func (b *expressionBinder) bindScopeTraversalExpression(
 				b.options.allowMissingVariables),
 		}
 		return &ScopeTraversalExpression{
-			Syntax:    syntax,
-			Tokens:    tokens,
-			Parts:     parts,
-			RootName:  syntax.Traversal.RootName(),
-			Traversal: syntax.Traversal,
+			Syntax:		syntax,
+			Tokens:		tokens,
+			Parts:		parts,
+			RootName:	syntax.Traversal.RootName(),
+			Traversal:	syntax.Traversal,
 		}, diagnostics
 	}
 
 	expr := &ScopeTraversalExpression{
-		Syntax:    syntax,
-		Tokens:    tokens,
-		Parts:     []Traversable{def},
-		RootName:  syntax.Traversal.RootName(),
-		Traversal: syntax.Traversal,
+		Syntax:		syntax,
+		Tokens:		tokens,
+		Parts:		[]Traversable{def},
+		RootName:	syntax.Traversal.RootName(),
+		Traversal:	syntax.Traversal,
 	}
 	typecheckDiags := expr.typecheck(false, b.options.allowMissingVariables)
 	diagnostics = append(diagnostics, typecheckDiags...)
@@ -665,11 +665,11 @@ func (b *expressionBinder) bindSplatExpression(syntax *hclsyntax.SplatExpr) (Exp
 		tokens = _syntax.NewSplatTokens(false)
 	}
 	expr := &SplatExpression{
-		Syntax: syntax,
-		Tokens: tokens,
-		Source: source,
-		Each:   each,
-		Item:   item,
+		Syntax:	syntax,
+		Tokens:	tokens,
+		Source:	source,
+		Each:	each,
+		Item:	item,
 	}
 	typecheckDiags := expr.typecheck(false, false)
 	diagnostics = append(diagnostics, typecheckDiags...)
@@ -692,9 +692,9 @@ func (b *expressionBinder) bindTemplateExpression(syntax *hclsyntax.TemplateExpr
 		tokens = _syntax.NewTemplateTokens()
 	}
 	expr := &TemplateExpression{
-		Syntax: syntax,
-		Tokens: tokens,
-		Parts:  parts,
+		Syntax:	syntax,
+		Tokens:	tokens,
+		Parts:	parts,
 	}
 	typecheckDiags := expr.Typecheck(false)
 	diagnostics = append(diagnostics, typecheckDiags...)
@@ -710,8 +710,8 @@ func (b *expressionBinder) bindTemplateJoinExpression(
 	tuple, diagnostics := b.bindExpression(syntax.Tuple)
 
 	expr := &TemplateJoinExpression{
-		Syntax: syntax,
-		Tuple:  tuple,
+		Syntax:	syntax,
+		Tuple:	tuple,
 	}
 	typecheckDiags := expr.Typecheck(false)
 	diagnostics = append(diagnostics, typecheckDiags...)
@@ -746,9 +746,9 @@ func (b *expressionBinder) bindTupleConsExpression(syntax *hclsyntax.TupleConsEx
 		tokens = _syntax.NewTupleConsTokens(len(syntax.Exprs))
 	}
 	expr := &TupleConsExpression{
-		Syntax:      syntax,
-		Tokens:      tokens,
-		Expressions: exprs,
+		Syntax:		syntax,
+		Tokens:		tokens,
+		Expressions:	exprs,
 	}
 	typecheckDiags := expr.Typecheck(false)
 	diagnostics = append(diagnostics, typecheckDiags...)
@@ -771,10 +771,10 @@ func (b *expressionBinder) bindUnaryOpExpression(syntax *hclsyntax.UnaryOpExpr) 
 	}
 
 	expr := &UnaryOpExpression{
-		Syntax:    syntax,
-		Tokens:    tokens,
-		Operation: syntax.Op,
-		Operand:   operand,
+		Syntax:		syntax,
+		Tokens:		tokens,
+		Operation:	syntax.Op,
+		Operand:	operand,
 	}
 	typecheckDiags := expr.Typecheck(false)
 	diagnostics = append(diagnostics, typecheckDiags...)
@@ -785,12 +785,12 @@ func (b *expressionBinder) bindUnaryOpExpression(syntax *hclsyntax.UnaryOpExpr) 
 			newVal := lit.Value.Negate()
 
 			lit.Tokens = &_syntax.LiteralValueTokens{
-				Parentheses: tokens.Parentheses,
-				Value:       append([]_syntax.Token{tokens.Operator}, lit.Tokens.Value...),
+				Parentheses:	tokens.Parentheses,
+				Value:		append([]_syntax.Token{tokens.Operator}, lit.Tokens.Value...),
 			}
 			lit.Syntax = &hclsyntax.LiteralValueExpr{
-				SrcRange: syntax.SrcRange,
-				Val:      newVal,
+				SrcRange:	syntax.SrcRange,
+				Val:		newVal,
 			}
 			lit.Value = newVal
 			return lit, diagnostics

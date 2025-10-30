@@ -4,7 +4,7 @@ go 1.24.7
 
 replace (
 	github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
-	github.com/pulumi/pulumi/pkg/v3 => ../../../pkg
+	github.com/pulumi/pulumi/sdk/v3/pkg => ../../../pkg
 	github.com/pulumi/pulumi/sdk/v3 => ../../
 )
 
@@ -12,7 +12,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/hashicorp/go-version v1.6.0
 	github.com/opentracing/opentracing-go v1.2.0
-	github.com/pulumi/pulumi/pkg/v3 v3.156.0
+	github.com/pulumi/pulumi/sdk/v3/pkg v3.156.0
 	github.com/pulumi/pulumi/sdk/v3 v3.205.0
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/mod v0.25.0

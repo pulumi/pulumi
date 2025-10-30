@@ -23,14 +23,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/stretchr/testify/require"
 )
 
 func generateSchema(t *testing.T) []byte {
 	spec := &schema.PackageSpec{
-		Name:    "test",
-		Version: "0.0.1",
+		Name:		"test",
+		Version:	"0.0.1",
 		Description: `test description
 markdown formatted
 
@@ -38,44 +38,44 @@ another paragraph`,
 		Resources: map[string]schema.ResourceSpec{
 			"test:index:Test": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Description: "test\nresource\ndescription\n\nanother paragraph",
+					Description:	"test\nresource\ndescription\n\nanother paragraph",
 					Properties: map[string]schema.PropertySpec{
 						"prop1": {
-							Description: "this is a string property",
+							Description:	"this is a string property",
 							TypeSpec: schema.TypeSpec{
 								Type: "string",
 							},
 						},
 						"arrayProp": {
-							Description: "this is an array property",
+							Description:	"this is an array property",
 							TypeSpec: schema.TypeSpec{
-								Type: "array",
+								Type:	"array",
 								Items: &schema.TypeSpec{
 									Ref: "#/types/test:index:TestType",
 								},
 							},
 						},
 						"enumProp": {
-							Description: "this is an enum property",
+							Description:	"this is an enum property",
 							TypeSpec: schema.TypeSpec{
 								Ref: "#/types/test:index:EnumType",
 							},
 						},
 						"mapProp": {
-							Description: "this is a map property",
+							Description:	"this is a map property",
 							TypeSpec: schema.TypeSpec{
-								Type: "object",
+								Type:	"object",
 								AdditionalProperties: &schema.TypeSpec{
 									Type: "string",
 								},
 							},
 						},
 					},
-					Required: []string{"prop1"},
+					Required:	[]string{"prop1"},
 				},
 				InputProperties: map[string]schema.PropertySpec{
 					"prop1": {
-						Description: "this is a string property",
+						Description:	"this is a string property",
 						TypeSpec: schema.TypeSpec{
 							Type: "string",
 						},
@@ -88,32 +88,32 @@ another paragraph`,
 				},
 				InputProperties: map[string]schema.PropertySpec{
 					"propA": {
-						Description: "this is propA",
+						Description:	"this is propA",
 						TypeSpec: schema.TypeSpec{
 							Type: "string",
 						},
 					},
 				},
-				RequiredInputs: []string{"propA"},
+				RequiredInputs:	[]string{"propA"},
 			},
-			"test:another/Test:Test": {},
+			"test:another/Test:Test":	{},
 		},
 		Types: map[string]schema.ComplexTypeSpec{
 			"test:index:TestType": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Description: "this is a test type",
-					Type:        "object",
+					Description:	"this is a test type",
+					Type:		"object",
 				},
 			},
 			"test:index:EnumType": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Description: "this is an enum type",
-					Type:        "string",
+					Description:	"this is an enum type",
+					Type:		"string",
 				},
 				Enum: []schema.EnumValueSpec{
 					{
-						Name:  "EnumValue1",
-						Value: "value1",
+						Name:	"EnumValue1",
+						Value:	"value1",
 					},
 					{
 						Value: "value2",
@@ -123,12 +123,12 @@ another paragraph`,
 		},
 		Functions: map[string]schema.FunctionSpec{
 			"test:funs:TestFunction": {
-				Description: "this is a test function",
+				Description:	"this is a test function",
 				Inputs: &schema.ObjectTypeSpec{
-					Description: "properties for TestFunction",
+					Description:	"properties for TestFunction",
 					Properties: map[string]schema.PropertySpec{
 						"input1": {
-							Description: "the first and only input",
+							Description:	"the first and only input",
 							TypeSpec: schema.TypeSpec{
 								Type: "string",
 							},
@@ -143,22 +143,22 @@ another paragraph`,
 			},
 			"test:funs:TestFunction2": {
 				Inputs: &schema.ObjectTypeSpec{
-					Description: "properties for TestFunction2",
+					Description:	"properties for TestFunction2",
 					Properties: map[string]schema.PropertySpec{
 						"input1": {
-							Description: "a flag input",
+							Description:	"a flag input",
 							TypeSpec: schema.TypeSpec{
 								Type: "boolean",
 							},
 						},
 					},
-					Required: []string{"input1"},
+					Required:	[]string{"input1"},
 				},
 				Outputs: &schema.ObjectTypeSpec{
-					Description: "the outputs for TestFunction2",
+					Description:	"the outputs for TestFunction2",
 					Properties: map[string]schema.PropertySpec{
 						"output1": {
-							Description: "the first and only output",
+							Description:	"the first and only output",
 							TypeSpec: schema.TypeSpec{
 								Type: "string",
 							},

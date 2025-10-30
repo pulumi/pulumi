@@ -19,10 +19,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -46,16 +46,16 @@ func TestSearchAI_cmd(t *testing.T) {
 			return &apitype.ResourceSearchResponse{
 				Resources: []apitype.ResourceResult{
 					{
-						Name:     &name,
-						Type:     &typ,
-						Program:  &program,
-						Stack:    &stack,
-						Package:  &pack,
-						Module:   &mod,
-						Modified: &modified,
+						Name:		&name,
+						Type:		&typ,
+						Program:	&program,
+						Stack:		&stack,
+						Package:	&pack,
+						Module:		&mod,
+						Modified:	&modified,
 					},
 				},
-				Total: &total,
+				Total:	&total,
 			}, nil
 		},
 		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
@@ -64,14 +64,14 @@ func TestSearchAI_cmd(t *testing.T) {
 	}
 	cmd := searchAICmd{
 		searchCmd: searchCmd{
-			orgName: orgName,
-			Stdout:  &buff,
+			orgName:	orgName,
+			Stdout:		&buff,
 			currentBackend: func(
 				context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
 			) (backend.Backend, error) {
 				return b, nil
 			},
-			outputFormat: outputFormatTable,
+			outputFormat:	outputFormatTable,
 		},
 	}
 
@@ -96,8 +96,8 @@ func TestAISearchUserOrgFailure_cmd(t *testing.T) {
 	orgName := "user"
 	cmd := searchAICmd{
 		searchCmd: searchCmd{
-			orgName: orgName,
-			Stdout:  &buff,
+			orgName:	orgName,
+			Stdout:		&buff,
 			currentBackend: func(
 				context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
 			) (backend.Backend, error) {
@@ -106,13 +106,13 @@ func TestAISearchUserOrgFailure_cmd(t *testing.T) {
 						return &apitype.ResourceSearchResponse{
 							Resources: []apitype.ResourceResult{
 								{
-									Name:     &name,
-									Type:     &typ,
-									Program:  &program,
-									Stack:    &stack,
-									Package:  &pack,
-									Module:   &mod,
-									Modified: &modified,
+									Name:		&name,
+									Type:		&typ,
+									Program:	&program,
+									Stack:		&stack,
+									Package:	&pack,
+									Module:		&mod,
+									Modified:	&modified,
 								},
 							},
 						}, nil

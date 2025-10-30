@@ -25,13 +25,13 @@ func TestMapStructTypes(t *testing.T) {
 	t.Parallel()
 
 	type A struct {
-		Foo string
-		Bar int
+		Foo	string
+		Bar	int
 	}
 
 	type B struct {
-		Bar int
-		Foo string
+		Bar	int
+		Foo	string
 	}
 
 	atype := reflect.TypeOf(A{})
@@ -58,8 +58,8 @@ func TestMapStructTypes_sameType(t *testing.T) {
 	t.Parallel()
 
 	type A struct {
-		Foo string
-		Bar int
+		Foo	string
+		Bar	int
 	}
 
 	atype := reflect.TypeOf(A{})

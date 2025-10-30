@@ -19,7 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
@@ -28,12 +28,12 @@ import (
 // errors caused by secret decryption so that plain/insecure values can still be used.
 type errorCatchingSecretsProvider struct {
 	// The underlying secrets.Provider that will be used to perform actual operations.
-	delegateProvider secrets.Provider
+	delegateProvider	secrets.Provider
 
 	// A callback that will be invoked when an error is encountered during decryption. The callback can return a new error
 	// to be returned, or nil to indicate that the error should be ignored and that one or more empty objects should be
 	// returned as plaintext(s) instead.
-	onDecryptError func(error) error
+	onDecryptError	func(error) error
 }
 
 var _ secrets.Provider = (*errorCatchingSecretsProvider)(nil)
@@ -47,8 +47,8 @@ func newErrorCatchingSecretsProvider(
 	onDecryptError func(error) error,
 ) *errorCatchingSecretsProvider {
 	return &errorCatchingSecretsProvider{
-		delegateProvider: delegate,
-		onDecryptError:   onDecryptError,
+		delegateProvider:	delegate,
+		onDecryptError:		onDecryptError,
 	}
 }
 
@@ -59,8 +59,8 @@ func (p *errorCatchingSecretsProvider) OfType(ty string, state json.RawMessage) 
 	}
 
 	manager := &errorCatchingSecretsManager{
-		delegateManager: delegateManager,
-		onDecryptError:  p.onDecryptError,
+		delegateManager:	delegateManager,
+		onDecryptError:		p.onDecryptError,
 	}
 
 	return manager, nil
@@ -71,11 +71,11 @@ func (p *errorCatchingSecretsProvider) OfType(ty string, state json.RawMessage) 
 // results returned by errorCatchingSecretsProvider.OfType.
 type errorCatchingSecretsManager struct {
 	// The underlying secrets.Manager that will be used to perform actual operations.
-	delegateManager secrets.Manager
+	delegateManager	secrets.Manager
 	// A callback that will be invoked when an error is encountered during decryption. The callback can return a new error
 	// to be returned, or nil to indicate that the error should be ignored and that one or more empty objects should be
 	// returned as plaintext(s) instead.
-	onDecryptError func(error) error
+	onDecryptError	func(error) error
 }
 
 var _ secrets.Manager = (*errorCatchingSecretsManager)(nil)

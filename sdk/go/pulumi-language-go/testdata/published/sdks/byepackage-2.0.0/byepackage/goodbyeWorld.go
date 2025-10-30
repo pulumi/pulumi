@@ -14,7 +14,7 @@ import (
 type GoodbyeWorld struct {
 	pulumi.CustomResourceState
 
-	ParameterValue pulumi.StringOutput `pulumi:"parameterValue"`
+	ParameterValue	pulumi.StringOutput	`pulumi:"parameterValue"`
 }
 
 // NewGoodbyeWorld registers a new resource with the given unique name, arguments, and options.

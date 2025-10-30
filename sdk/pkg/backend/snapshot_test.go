@@ -21,9 +21,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -36,8 +36,8 @@ type MockRegisterResourceEvent struct {
 	deploy.SourceEvent
 }
 
-func (m MockRegisterResourceEvent) Goal() *resource.Goal               { return nil }
-func (m MockRegisterResourceEvent) Done(result *deploy.RegisterResult) {}
+func (m MockRegisterResourceEvent) Goal() *resource.Goal		{ return nil }
+func (m MockRegisterResourceEvent) Done(result *deploy.RegisterResult)	{}
 
 type MockStackPersister struct {
 	SavedSnapshots []*deploy.Snapshot
@@ -62,21 +62,21 @@ func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (*SnapshotManager, *Mock
 
 func NewResourceWithDeps(urn resource.URN, deps []resource.URN) *resource.State {
 	return &resource.State{
-		Type:         tokens.Type("test"),
-		URN:          urn,
-		Inputs:       make(resource.PropertyMap),
-		Outputs:      make(resource.PropertyMap),
-		Dependencies: deps,
+		Type:		tokens.Type("test"),
+		URN:		urn,
+		Inputs:		make(resource.PropertyMap),
+		Outputs:	make(resource.PropertyMap),
+		Dependencies:	deps,
 	}
 }
 
 func NewResourceWithInputs(urn resource.URN, inputs resource.PropertyMap) *resource.State {
 	return &resource.State{
-		Type:         tokens.Type("test"),
-		URN:          urn,
-		Inputs:       inputs,
-		Outputs:      make(resource.PropertyMap),
-		Dependencies: []resource.URN{},
+		Type:		tokens.Type("test"),
+		URN:		urn,
+		Inputs:		inputs,
+		Outputs:	make(resource.PropertyMap),
+		Dependencies:	[]resource.URN{},
 	}
 }
 
@@ -86,17 +86,17 @@ func NewResource(urn resource.URN, deps ...resource.URN) *resource.State {
 
 func NewSnapshot(resources []*resource.State) *deploy.Snapshot {
 	return deploy.NewSnapshot(deploy.Manifest{
-		Time:    time.Now(),
-		Version: version.Version,
-		Plugins: nil,
+		Time:		time.Now(),
+		Version:	version.Version,
+		Plugins:	nil,
 	}, b64.NewBase64SecretsManager(), resources, nil, deploy.SnapshotMetadata{})
 }
 
 var (
-	aUniqueUrn          = resource.NewURN("test-stack", "test-project", "", "pkg:typ", "a-unique-urn")
-	aUniqueUrnResourceA = resource.NewURN("test-stack", "test-project", "", "pkg:typ", "a-unique-urn-resource-a")
-	aUniqueUrnResourceB = resource.NewURN("test-stack", "test-project", "", "pkg:typ", "a-unique-urn-resource-b")
-	aUniqueUrnResourceP = resource.NewURN("test-stack", "test-project", "", "pkg:typ", "a-unique-urn-resource-p")
+	aUniqueUrn		= resource.NewURN("test-stack", "test-project", "", "pkg:typ", "a-unique-urn")
+	aUniqueUrnResourceA	= resource.NewURN("test-stack", "test-project", "", "pkg:typ", "a-unique-urn-resource-a")
+	aUniqueUrnResourceB	= resource.NewURN("test-stack", "test-project", "", "pkg:typ", "a-unique-urn-resource-b")
+	aUniqueUrnResourceP	= resource.NewURN("test-stack", "test-project", "", "pkg:typ", "a-unique-urn-resource-p")
 )
 
 func TestIdenticalSames(t *testing.T) {

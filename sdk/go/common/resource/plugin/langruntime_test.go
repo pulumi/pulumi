@@ -167,10 +167,10 @@ func TestRunPluginPassesCorrectPwd(t *testing.T) {
 	pCtx, err := NewContext(context.Background(), nil, nil, nil, nil, "", nil, false, nil)
 	require.NoError(t, err)
 	host := &langhost{
-		ctx:     pCtx,
-		runtime: "go",
-		plug:    nil,
-		client:  mockLanguageRuntime,
+		ctx:		pCtx,
+		runtime:	"go",
+		plug:		nil,
+		client:		mockLanguageRuntime,
 	}
 
 	// Test that the plugin is run with the correct working directory.

@@ -33,9 +33,9 @@ func warnf(subject hcl.Range, f string, args ...any) *hcl.Diagnostic {
 func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ...any) *hcl.Diagnostic {
 	message := fmt.Sprintf(f, args...)
 	return &hcl.Diagnostic{
-		Severity: severity,
-		Summary:  message,
-		Subject:  &subject,
+		Severity:	severity,
+		Summary:	message,
+		Subject:	&subject,
 	}
 }
 
@@ -147,7 +147,7 @@ func cannotTraverseFunction(rng hcl.Range) *hcl.Diagnostic {
 
 func cannotEvaluateAnonymousFunctionExpressions() *hcl.Diagnostic {
 	return &hcl.Diagnostic{
-		Severity: hcl.DiagError,
-		Summary:  "cannot evaluate anonymous function expressions",
+		Severity:	hcl.DiagError,
+		Summary:	"cannot evaluate anonymous function expressions",
 	}
 }

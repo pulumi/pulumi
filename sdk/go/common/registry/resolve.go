@@ -103,8 +103,8 @@ func ResolvePackageFromName(
 
 			return apitype.PackageMetadata{},
 				errorSuggestedPackages{
-					err:      err,
-					packages: privatePackageMetadata,
+					err:		err,
+					packages:	privatePackageMetadata,
 				}
 		}
 
@@ -121,10 +121,10 @@ func ResolvePackageFromName(
 			}
 			if errors.Is(err, ErrNotFound) {
 				return apitype.PackageMetadata{}, versionMismatchError{
-					found: meta, desired: *version,
+					found:	meta, desired: *version,
 					err: errorSuggestedPackages{
-						packages: []apitype.PackageMetadata{meta},
-						err:      ErrNotFound,
+						packages:	[]apitype.PackageMetadata{meta},
+						err:		ErrNotFound,
 					},
 				}
 			}
@@ -143,8 +143,8 @@ func ResolvePackageFromName(
 		}
 		return apitype.PackageMetadata{}, fmt.Errorf(
 			"%w: %s%s does not match a registry package", errorSuggestedPackages{
-				packages: suggested,
-				err:      ErrNotFound,
+				packages:	suggested,
+				err:		ErrNotFound,
 			}, name, versionStr)
 	default:
 		return apitype.PackageMetadata{}, InvalidIdentifierError{name}
@@ -158,8 +158,8 @@ func GetSuggestedPackages(err error) []apitype.PackageMetadata {
 }
 
 type errorSuggestedPackages struct {
-	err      error
-	packages []apitype.PackageMetadata
+	err		error
+	packages	[]apitype.PackageMetadata
 }
 
 func (err errorSuggestedPackages) Error() string {
@@ -173,9 +173,9 @@ func (err errorSuggestedPackages) Unwrap() error {
 // An error indicating that the registry contains the correct "package", but not the
 // correct "package version".
 type versionMismatchError struct {
-	found   apitype.PackageMetadata
-	desired semver.Version
-	err     error
+	found	apitype.PackageMetadata
+	desired	semver.Version
+	err	error
 }
 
 func (err versionMismatchError) Error() string {
@@ -184,7 +184,7 @@ func (err versionMismatchError) Error() string {
 	)
 }
 
-func (err versionMismatchError) Unwrap() error { return err.err }
+func (err versionMismatchError) Unwrap() error	{ return err.err }
 
 type InvalidIdentifierError struct{ given string }
 

@@ -14,8 +14,8 @@ import (
 var _ = internal.GetEnvOrDefault
 
 type Data struct {
-	Private string `pulumi:"private"`
-	Public  string `pulumi:"public"`
+	Private	string	`pulumi:"private"`
+	Public	string	`pulumi:"public"`
 }
 
 // DataInput is an input type that accepts DataArgs and DataOutput values.
@@ -30,8 +30,8 @@ type DataInput interface {
 }
 
 type DataArgs struct {
-	Private pulumi.StringInput `pulumi:"private"`
-	Public  pulumi.StringInput `pulumi:"public"`
+	Private	pulumi.StringInput	`pulumi:"private"`
+	Public	pulumi.StringInput	`pulumi:"public"`
 }
 
 func (DataArgs) ElementType() reflect.Type {

@@ -24,10 +24,10 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
@@ -328,15 +328,15 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				// We create a diag instead of panicking since panics are caught in go
 				// format expressions.
 				g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
-					Severity:    hcl.DiagError,
-					Summary:     "Error when generating an output-versioned Invoke",
-					Detail:      fmt.Sprintf("underlying error: %v", err),
-					Subject:     &hcl.Range{},
-					Context:     &hcl.Range{},
-					Expression:  nil,
-					EvalContext: &hcl.EvalContext{},
+					Severity:	hcl.DiagError,
+					Summary:	"Error when generating an output-versioned Invoke",
+					Detail:		fmt.Sprintf("underlying error: %v", err),
+					Subject:	&hcl.Range{},
+					Context:	&hcl.Range{},
+					Expression:	nil,
+					EvalContext:	&hcl.EvalContext{},
 				})
-				g.Fgenf(w, "%q", "failed") // Write a value to avoid syntax errors
+				g.Fgenf(w, "%q", "failed")	// Write a value to avoid syntax errors
 				return
 			}
 			g.Fgenf(w, "%s.%sOutput(ctx, ", module, fn)
@@ -458,8 +458,8 @@ func outputVersionFunctionArgTypeName(t model.Type, cache *Cache) (string, error
 	}
 
 	pkg := &pkgContext{
-		pkg:              (&schema.Package{Name: "main"}).Reference(),
-		externalPackages: cache,
+		pkg:			(&schema.Package{Name: "main"}).Reference(),
+		externalPackages:	cache,
 	}
 
 	var ty string
@@ -803,7 +803,7 @@ func (g *generator) genTemplateExpression(w io.Writer, expr *model.TemplateExpre
 }
 
 // GenTemplateJoinExpression generates code for a TemplateJoinExpression.
-func (g *generator) GenTemplateJoinExpression(w io.Writer, expr *model.TemplateJoinExpression) { /*TODO*/
+func (g *generator) GenTemplateJoinExpression(w io.Writer, expr *model.TemplateJoinExpression) {	/*TODO*/
 }
 
 func (g *generator) GenTupleConsExpression(w io.Writer, expr *model.TupleConsExpression) {
@@ -856,8 +856,8 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 
 	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
 		return (&pkgContext{
-			pkg:              (&schema.Package{Name: "main"}).Reference(),
-			externalPackages: g.externalCache,
+			pkg:			(&schema.Package{Name: "main"}).Reference(),
+			externalPackages:	g.externalCache,
 		}).argsType(schemaType)
 	}
 
@@ -1097,9 +1097,9 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 func (g *generator) genNYI(w io.Writer, reason string, vs ...any) {
 	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
-		Severity: hcl.DiagWarning,
-		Summary:  message,
-		Detail:   message,
+		Severity:	hcl.DiagWarning,
+		Summary:	message,
+		Detail:		message,
 	})
 	g.Fgenf(w, "\"TODO: %s\"", fmt.Sprintf(reason, vs...))
 }
@@ -1165,12 +1165,12 @@ func (g *generator) rewriteThenForAllApply(
 	interfaceArrayType := model.NewTupleType(model.BoolType, model.StringType, model.IntType)
 
 	then.Parameters = []*model.Variable{{
-		Name:         "_args",
-		VariableType: interfaceArrayType,
+		Name:		"_args",
+		VariableType:	interfaceArrayType,
 	}}
 	then.Signature.Parameters = []model.Parameter{{
-		Name: "_args",
-		Type: interfaceArrayType,
+		Name:	"_args",
+		Type:	interfaceArrayType,
 	}}
 
 	return then, typeConvDecls
@@ -1279,18 +1279,18 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string, str
 }
 
 var functionPackages = map[string][]string{
-	"join":             {"strings"},
-	"mimeType":         {"mime", "path"},
-	"readDir":          {"os"},
-	"readFile":         {"os"},
-	"filebase64":       {"encoding/base64", "os"},
-	"toBase64":         {"encoding/base64"},
-	"fromBase64":       {"encoding/base64"},
-	"toJSON":           {"encoding/json"},
-	"sha1":             {"crypto/sha1", "encoding/hex"},
-	"filebase64sha256": {"crypto/sha256", "os"},
-	"cwd":              {"os"},
-	"singleOrNone":     {"fmt"},
+	"join":			{"strings"},
+	"mimeType":		{"mime", "path"},
+	"readDir":		{"os"},
+	"readFile":		{"os"},
+	"filebase64":		{"encoding/base64", "os"},
+	"toBase64":		{"encoding/base64"},
+	"fromBase64":		{"encoding/base64"},
+	"toJSON":		{"encoding/json"},
+	"sha1":			{"crypto/sha1", "encoding/hex"},
+	"filebase64sha256":	{"crypto/sha256", "os"},
+	"cwd":			{"os"},
+	"singleOrNone":		{"fmt"},
 }
 
 func (g *generator) genFunctionPackages(x *model.FunctionCallExpression) []string {

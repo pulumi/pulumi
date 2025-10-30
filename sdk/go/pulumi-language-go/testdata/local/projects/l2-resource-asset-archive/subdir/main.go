@@ -27,10 +27,10 @@ func main() {
 		}
 		_, err = assetarchive.NewArchiveResource(ctx, "assarc", &assetarchive.ArchiveResourceArgs{
 			Value: pulumi.NewAssetArchive(map[string]interface{}{
-				"string":  pulumi.NewStringAsset("file contents"),
-				"file":    pulumi.NewFileAsset("../test.txt"),
-				"folder":  pulumi.NewFileArchive("../folder"),
-				"archive": pulumi.NewFileArchive("../archive.tar"),
+				"string":	pulumi.NewStringAsset("file contents"),
+				"file":		pulumi.NewFileAsset("../test.txt"),
+				"folder":	pulumi.NewFileArchive("../folder"),
+				"archive":	pulumi.NewFileArchive("../archive.tar"),
 			}),
 		})
 		if err != nil {

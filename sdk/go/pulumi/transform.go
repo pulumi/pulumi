@@ -19,15 +19,15 @@ import "golang.org/x/net/context"
 // ResourceTransformArgs is the argument bag passed to a resource transform.
 type ResourceTransformArgs struct {
 	// If the resource is a custom or component resource
-	Custom bool
+	Custom	bool
 	// The type of the resource.
-	Type string
+	Type	string
 	// The name of the resource.
-	Name string
+	Name	string
 	// The original properties passed to the resource constructor.
-	Props Map
+	Props	Map
 	// The original resource options passed to the resource constructor.
-	Opts ResourceOptions
+	Opts	ResourceOptions
 }
 
 // ResourceTransformResult is the result that must be returned by a resource transform
@@ -35,9 +35,9 @@ type ResourceTransformArgs struct {
 // the originally provided values.
 type ResourceTransformResult struct {
 	// The new properties to use in place of the original `props`.
-	Props Map
+	Props	Map
 	// The new resource options to use in place of the original `opts`.
-	Opts ResourceOptions
+	Opts	ResourceOptions
 }
 
 // ResourceTransform is the callback signature for the `transforms` resource option.  A
@@ -51,11 +51,11 @@ type ResourceTransform func(context.Context, *ResourceTransformArgs) *ResourceTr
 // InvokeTransformArgs is the argument bag passed to a invoke transform.
 type InvokeTransformArgs struct {
 	// The token of the invoke.
-	Token string
+	Token	string
 	// The original args passed to the resource constructor.
-	Args Map
+	Args	Map
 	// The original invoke options passed to the resource constructor.
-	Opts InvokeOptions
+	Opts	InvokeOptions
 }
 
 // InvokeTransformResult is the result that must be returned by an invoke transform
@@ -63,9 +63,9 @@ type InvokeTransformArgs struct {
 // the originally provided values.
 type InvokeTransformResult struct {
 	// The new args to use in place of the original `args`.
-	Args Map
+	Args	Map
 	// The new invoke options to use in place of the original `opts`.
-	Opts InvokeOptions
+	Opts	InvokeOptions
 }
 
 // InvokeTransform is the callback signature for the `transforms` resource option for invokes.  A

@@ -23,16 +23,16 @@ import (
 
 func newPulumiPackage() *Package {
 	spec := PackageSpec{
-		Name:        "pulumi",
-		DisplayName: "Pulumi",
-		Version:     "1.0.0",
-		Description: "mock pulumi package",
+		Name:		"pulumi",
+		DisplayName:	"Pulumi",
+		Version:	"1.0.0",
+		Description:	"mock pulumi package",
 		Resources: map[string]ResourceSpec{
 			"pulumi:pulumi:StackReference": {
 				ObjectTypeSpec: ObjectTypeSpec{
 					Properties: map[string]PropertySpec{
 						"outputs": {TypeSpec: TypeSpec{
-							Type: "object",
+							Type:	"object",
 							AdditionalProperties: &TypeSpec{
 								Ref: "pulumi.json#/Any",
 							},
@@ -50,7 +50,7 @@ func newPulumiPackage() *Package {
 		Provider: ResourceSpec{
 			InputProperties: map[string]PropertySpec{
 				"name": {
-					Description: "fully qualified name of stack, i.e. <organization>/<project>/<stack>",
+					Description:	"fully qualified name of stack, i.e. <organization>/<project>/<stack>",
 					TypeSpec: TypeSpec{
 						Type: "string",
 					},

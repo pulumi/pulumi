@@ -25,10 +25,10 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/testutil"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -43,90 +43,90 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 	version := semver.MustParse("1.0.0")
 
 	tests := []struct {
-		name                string
-		args                publishPackageArgs
-		packageSource       string
-		packageParams       plugin.ParameterizeParameters
-		mockSchema          *schema.Package
-		schemaExtractionErr error
-		mockOrg             string
-		mockOrgErr          error
-		publishErr          error
-		expectedErr         string
-		readmeContent       string
-		installContent      string
-		sourceDir           func(t *testing.T) string
-		pluginDir           func(t *testing.T) string
+		name			string
+		args			publishPackageArgs
+		packageSource		string
+		packageParams		plugin.ParameterizeParameters
+		mockSchema		*schema.Package
+		schemaExtractionErr	error
+		mockOrg			string
+		mockOrgErr		error
+		publishErr		error
+		expectedErr		string
+		readmeContent		string
+		installContent		string
+		sourceDir		func(t *testing.T) string
+		pluginDir		func(t *testing.T) string
 	}{
 		{
-			name: "successful publish with publisher from schema",
+			name:	"successful publish with publisher from schema",
 			args: publishPackageArgs{
 				source: "pulumi",
 			},
-			packageSource: "testpackage",
+			packageSource:	"testpackage",
 			mockSchema: &schema.Package{
-				Name:      "testpkg",
-				Publisher: "testpublisher",
-				Version:   &version,
-				Provider:  &schema.Resource{},
+				Name:		"testpkg",
+				Publisher:	"testpublisher",
+				Version:	&version,
+				Provider:	&schema.Resource{},
 			},
-			readmeContent:  "# Test README\nThis is a test readme.",
-			installContent: "# Installation\nHow to install this package.",
+			readmeContent:	"# Test README\nThis is a test readme.",
+			installContent:	"# Installation\nHow to install this package.",
 		},
 		{
-			name: "successful publish with publisher from command line",
+			name:	"successful publish with publisher from command line",
 			args: publishPackageArgs{
-				source:    "pulumi",
-				publisher: "cmdpublisher",
+				source:		"pulumi",
+				publisher:	"cmdpublisher",
 			},
-			packageSource: "testpackage",
+			packageSource:	"testpackage",
 			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+				Name:		"testpkg",
+				Version:	&version,
+				Provider:	&schema.Resource{},
 			},
-			readmeContent:  "# Test README\nThis is a test readme.",
-			installContent: "# Installation\nHow to install this package.",
+			readmeContent:	"# Test README\nThis is a test readme.",
+			installContent:	"# Installation\nHow to install this package.",
 		},
 		{
-			name: "successful publish with default org",
+			name:	"successful publish with default org",
 			args: publishPackageArgs{
 				source: "pulumi",
 			},
-			packageSource: "testpackage",
+			packageSource:	"testpackage",
 			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+				Name:		"testpkg",
+				Version:	&version,
+				Provider:	&schema.Resource{},
 			},
-			mockOrg:        "defaultorg",
-			readmeContent:  "# Test README\nThis is a test readme.",
-			installContent: "# Installation\nHow to install this package.",
+			mockOrg:	"defaultorg",
+			readmeContent:	"# Test README\nThis is a test readme.",
+			installContent:	"# Installation\nHow to install this package.",
 		},
 		{
-			name: "successful publish without installation docs",
+			name:	"successful publish without installation docs",
 			args: publishPackageArgs{
-				source:    "pulumi",
-				publisher: "publisher",
+				source:		"pulumi",
+				publisher:	"publisher",
 			},
-			packageSource: "testpackage",
+			packageSource:	"testpackage",
 			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+				Name:		"testpkg",
+				Version:	&version,
+				Provider:	&schema.Resource{},
 			},
-			readmeContent: "# Test README\nThis is a test readme.",
+			readmeContent:	"# Test README\nThis is a test readme.",
 		},
 		{
-			name: "loads readme from package source",
+			name:	"loads readme from package source",
 			args: publishPackageArgs{
-				source:    "pulumi",
-				publisher: "publisher",
+				source:		"pulumi",
+				publisher:	"publisher",
 			},
 			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+				Name:		"testpkg",
+				Version:	&version,
+				Provider:	&schema.Resource{},
 			},
 			sourceDir: func(t *testing.T) string {
 				t.Helper()
@@ -140,16 +140,16 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 			},
 		},
 		{
-			name: "loads readme from installed plugin",
+			name:	"loads readme from installed plugin",
 			args: publishPackageArgs{
-				source:    "pulumi",
-				publisher: "publisher",
+				source:		"pulumi",
+				publisher:	"publisher",
 			},
-			packageSource: "testpackage",
+			packageSource:	"testpackage",
 			mockSchema: &schema.Package{
-				Name:     "testpackage",
-				Version:  &version,
-				Provider: &schema.Resource{},
+				Name:		"testpackage",
+				Version:	&version,
+				Provider:	&schema.Resource{},
 			},
 			pluginDir: func(t *testing.T) string {
 				t.Helper()
@@ -166,139 +166,139 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 			},
 		},
 		{
-			name: "error when no publisher available",
+			name:	"error when no publisher available",
 			args: publishPackageArgs{
 				source: "pulumi",
 			},
-			packageSource: "testpackage",
+			packageSource:	"testpackage",
 			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+				Name:		"testpkg",
+				Version:	&version,
+				Provider:	&schema.Resource{},
 			},
-			expectedErr:    "no publisher specified and no default organization found",
-			readmeContent:  "# Test README\nThis is a test readme.",
-			installContent: "# Installation\nHow to install this package.",
+			expectedErr:	"no publisher specified and no default organization found",
+			readmeContent:	"# Test README\nThis is a test readme.",
+			installContent:	"# Installation\nHow to install this package.",
 		},
 		{
-			name: "error when determining default org fails",
+			name:	"error when determining default org fails",
 			args: publishPackageArgs{
 				source: "pulumi",
 			},
-			packageSource: "testpackage",
+			packageSource:	"testpackage",
 			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+				Name:		"testpkg",
+				Version:	&version,
+				Provider:	&schema.Resource{},
 			},
-			mockOrgErr:     errors.New("unexpected error"),
-			expectedErr:    "failed to determine default organization: unexpected error",
-			readmeContent:  "# Test README\nThis is a test readme.",
-			installContent: "# Installation\nHow to install this package.",
+			mockOrgErr:	errors.New("unexpected error"),
+			expectedErr:	"failed to determine default organization: unexpected error",
+			readmeContent:	"# Test README\nThis is a test readme.",
+			installContent:	"# Installation\nHow to install this package.",
 		},
 		{
-			name: "error when extracting schema fails",
+			name:	"error when extracting schema fails",
 			args: publishPackageArgs{
-				source:    "pulumi",
-				publisher: "publisher",
+				source:		"pulumi",
+				publisher:	"publisher",
 			},
-			packageSource:  "testpackage",
-			mockSchema:     nil,
-			expectedErr:    "failed to get schema",
-			readmeContent:  "# Test README\nThis is a test readme.",
-			installContent: "# Installation\nHow to install this package.",
+			packageSource:	"testpackage",
+			mockSchema:	nil,
+			expectedErr:	"failed to get schema",
+			readmeContent:	"# Test README\nThis is a test readme.",
+			installContent:	"# Installation\nHow to install this package.",
 		},
 		{
-			name: "error when no package name in schema",
+			name:	"error when no package name in schema",
 			args: publishPackageArgs{
-				source:    "pulumi",
-				publisher: "publisher",
+				source:		"pulumi",
+				publisher:	"publisher",
 			},
-			packageSource: "testpackage",
+			packageSource:	"testpackage",
 			mockSchema: &schema.Package{
-				Version:  &version,
-				Provider: &schema.Resource{},
+				Version:	&version,
+				Provider:	&schema.Resource{},
 			},
-			expectedErr:    "no package name specified",
-			readmeContent:  "# Test README\nThis is a test readme.",
-			installContent: "# Installation\nHow to install this package.",
+			expectedErr:	"no package name specified",
+			readmeContent:	"# Test README\nThis is a test readme.",
+			installContent:	"# Installation\nHow to install this package.",
 		},
 		{
-			name: "error when no version in schema",
+			name:	"error when no version in schema",
 			args: publishPackageArgs{
-				source:    "pulumi",
-				publisher: "publisher",
+				source:		"pulumi",
+				publisher:	"publisher",
 			},
-			packageSource: "testpackage",
+			packageSource:	"testpackage",
 			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Provider: &schema.Resource{},
+				Name:		"testpkg",
+				Provider:	&schema.Resource{},
 			},
-			expectedErr:    "no version specified",
-			readmeContent:  "# Test README\nThis is a test readme.",
-			installContent: "# Installation\nHow to install this package.",
+			expectedErr:	"no version specified",
+			readmeContent:	"# Test README\nThis is a test readme.",
+			installContent:	"# Installation\nHow to install this package.",
 		},
 		{
-			name: "error when readme is omitted",
+			name:	"error when readme is omitted",
 			args: publishPackageArgs{
-				source:    "pulumi",
-				publisher: "publisher",
+				source:		"pulumi",
+				publisher:	"publisher",
 			},
-			packageSource: "testpackage",
+			packageSource:	"testpackage",
 			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+				Name:		"testpkg",
+				Version:	&version,
+				Provider:	&schema.Resource{},
 			},
-			expectedErr: "no README found. Please add one named README.md to the package, or use --readme to specify the path",
+			expectedErr:	"no README found. Please add one named README.md to the package, or use --readme to specify the path",
 		},
 		{
-			name: "error when publish fails",
+			name:	"error when publish fails",
 			args: publishPackageArgs{
-				source:    "pulumi",
-				publisher: "publisher",
+				source:		"pulumi",
+				publisher:	"publisher",
 			},
-			packageSource: "testpackage",
+			packageSource:	"testpackage",
 			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+				Name:		"testpkg",
+				Version:	&version,
+				Provider:	&schema.Resource{},
 			},
-			publishErr:     errors.New("publish failed"),
-			expectedErr:    "failed to publish package",
-			readmeContent:  "# Test README\nThis is a test readme.",
-			installContent: "# Installation\nHow to install this package.",
+			publishErr:	errors.New("publish failed"),
+			expectedErr:	"failed to publish package",
+			readmeContent:	"# Test README\nThis is a test readme.",
+			installContent:	"# Installation\nHow to install this package.",
 		},
 		{
-			name: "error when schema extraction fails",
+			name:	"error when schema extraction fails",
 			args: publishPackageArgs{
-				source:    "pulumi",
-				publisher: "publisher",
+				source:		"pulumi",
+				publisher:	"publisher",
 			},
-			packageSource: "testpackage",
+			packageSource:	"testpackage",
 			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+				Name:		"testpkg",
+				Version:	&version,
+				Provider:	&schema.Resource{},
 			},
-			schemaExtractionErr: errors.New("schema extraction failed"),
-			expectedErr:         "failed to get schema: schema extraction failed",
-			readmeContent:       "# Test README\nThis is a test readme.",
-			installContent:      "# Installation\nHow to install this package.",
+			schemaExtractionErr:	errors.New("schema extraction failed"),
+			expectedErr:		"failed to get schema: schema extraction failed",
+			readmeContent:		"# Test README\nThis is a test readme.",
+			installContent:		"# Installation\nHow to install this package.",
 		},
 		{
-			name: "error when readme extraction fails",
+			name:	"error when readme extraction fails",
 			args: publishPackageArgs{
-				source:    "pulumi",
-				publisher: "publisher",
+				source:		"pulumi",
+				publisher:	"publisher",
 			},
-			packageSource: "testpackage@not-a-valid-version",
+			packageSource:	"testpackage@not-a-valid-version",
 			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+				Name:		"testpkg",
+				Version:	&version,
+				Provider:	&schema.Resource{},
 			},
-			expectedErr: "failed to find readme: failed to create plugin spec: VERSION must be valid semver",
+			expectedErr:	"failed to find readme: failed to create plugin spec: VERSION must be valid semver",
 		},
 	}
 
@@ -399,7 +399,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				GetCloudRegistryF: func() (backend.CloudRegistry, error) {
 					return mockCloudRegistry, nil
 				},
-				GetReadOnlyCloudRegistryF: func() registry.Registry { return mockCloudRegistry },
+				GetReadOnlyCloudRegistryF:	func() registry.Registry { return mockCloudRegistry },
 			})
 
 			// Setup defaultOrg mock
@@ -408,7 +408,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 			}
 
 			cmd := &packagePublishCmd{
-				defaultOrg: defaultOrg,
+				defaultOrg:	defaultOrg,
 				extractSchema: func(
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
 				) (*schema.Package, *workspace.PackageSpec, error) {
@@ -417,7 +417,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 					}
 					return tt.mockSchema, nil, tt.schemaExtractionErr
 				},
-				pluginDir: pluginDir,
+				pluginDir:	pluginDir,
 			}
 
 			err := cmd.Run(context.Background(), tt.args, packageSource, tt.packageParams)
@@ -436,37 +436,37 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 	t.Parallel()
 	version := semver.MustParse("1.0.0")
 	validSchema := &schema.Package{
-		Name:      "testpkg",
-		Publisher: "testpublisher",
-		Version:   &version,
-		Provider:  &schema.Resource{},
+		Name:		"testpkg",
+		Publisher:	"testpublisher",
+		Version:	&version,
+		Provider:	&schema.Resource{},
 	}
 
 	tests := []struct {
-		name           string
-		args           publishPackageArgs
-		mockSchema     *schema.Package
-		setupTest      func(*testing.T) (string, string)
-		expectedErrStr string
+		name		string
+		args		publishPackageArgs
+		mockSchema	*schema.Package
+		setupTest	func(*testing.T) (string, string)
+		expectedErrStr	string
 	}{
 		{
-			name: "readme file not found",
+			name:	"readme file not found",
 			args: publishPackageArgs{
-				source:     "pulumi",
-				publisher:  "publisher",
-				readmePath: "nonexistent-readme.md",
+				source:		"pulumi",
+				publisher:	"publisher",
+				readmePath:	"nonexistent-readme.md",
 			},
-			mockSchema:     validSchema,
-			expectedErrStr: "failed to open readme file",
+			mockSchema:	validSchema,
+			expectedErrStr:	"failed to open readme file",
 		},
 		{
-			name: "install docs file not found",
+			name:	"install docs file not found",
 			args: publishPackageArgs{
-				source:          "pulumi",
-				publisher:       "publisher",
-				installDocsPath: "nonexistent-install.md",
+				source:			"pulumi",
+				publisher:		"publisher",
+				installDocsPath:	"nonexistent-install.md",
 			},
-			mockSchema: validSchema,
+			mockSchema:	validSchema,
 			setupTest: func(t *testing.T) (string, string) {
 				tempDir := t.TempDir()
 				readmePath := path.Join(tempDir, "readme.md")
@@ -476,7 +476,7 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 
 				return readmePath, ""
 			},
-			expectedErrStr: "failed to open install docs file",
+			expectedErrStr:	"failed to open install docs file",
 		},
 	}
 
@@ -501,7 +501,7 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 						},
 					}, nil
 				},
-				GetReadOnlyCloudRegistryF: func() registry.Registry { return &backend.MockCloudRegistry{} },
+				GetReadOnlyCloudRegistryF:	func() registry.Registry { return &backend.MockCloudRegistry{} },
 			})
 
 			cmd := &packagePublishCmd{
@@ -526,19 +526,19 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 	version := semver.MustParse("1.0.0")
 	validSchema := &schema.Package{
-		Name:      "testpkg",
-		Publisher: "testpublisher",
-		Version:   &version,
-		Provider:  &schema.Resource{},
+		Name:		"testpkg",
+		Publisher:	"testpublisher",
+		Version:	&version,
+		Provider:	&schema.Resource{},
 	}
 
 	tests := []struct {
-		name           string
-		setupBackend   func(t *testing.T)
-		expectedErrStr string
+		name		string
+		setupBackend	func(t *testing.T)
+		expectedErrStr	string
 	}{
 		{
-			name: "error getting package registry",
+			name:	"error getting package registry",
 			setupBackend: func(t *testing.T) {
 				testutil.MockBackendInstance(t, &backend.MockBackend{
 					GetCloudRegistryF: func() (backend.CloudRegistry, error) {
@@ -549,7 +549,7 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 					},
 				})
 			},
-			expectedErrStr: "failed to get package registry",
+			expectedErrStr:	"failed to get package registry",
 		},
 	}
 
@@ -576,9 +576,9 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 			}
 
 			err = cmd.Run(context.Background(), publishPackageArgs{
-				source:     "pulumi",
-				publisher:  "publisher",
-				readmePath: readmePath,
+				source:		"pulumi",
+				publisher:	"publisher",
+				readmePath:	readmePath,
 			}, "testpackage", nil /* packageParams */)
 
 			assert.Error(t, err)
@@ -614,8 +614,8 @@ func TestPackagePublishCmd_Run_ReadProjectError(t *testing.T) {
 			registry registry.Registry,
 		) (*schema.Package, *workspace.PackageSpec, error) {
 			pkg := &schema.Package{
-				Name:    "test-package",
-				Version: &semver.Version{Major: 1, Minor: 0, Patch: 0},
+				Name:		"test-package",
+				Version:	&semver.Version{Major: 1, Minor: 0, Patch: 0},
 			}
 			return pkg, nil, nil
 		},

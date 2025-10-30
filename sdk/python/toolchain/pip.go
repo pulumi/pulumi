@@ -39,11 +39,11 @@ const (
 
 type pip struct {
 	// The absolute path to the virtual env. Empty if not using a virtual env.
-	virtualenvPath string
+	virtualenvPath	string
 	// The virtual option as set in Pulumi.yaml.
-	virtualenvOption string
+	virtualenvOption	string
 	// The root directory of the project.
-	root string
+	root	string
 }
 
 var _ Toolchain = &pip{}
@@ -101,7 +101,7 @@ func (p *pip) LinkPackages(ctx context.Context, packages map[string]string) erro
 	filteredLines := make([]string, 0, len(lines))
 	for _, originalLine := range lines {
 		line := strings.TrimSpace(originalLine)
-		if line == "" { // preserve whitespace only lines
+		if line == "" {	// preserve whitespace only lines
 			filteredLines = append(filteredLines, originalLine)
 			continue
 		}
@@ -199,8 +199,8 @@ func (p *pip) About(ctx context.Context) (Info, error) {
 	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
 
 	return Info{
-		Executable: cmd.Path,
-		Version:    version,
+		Executable:	cmd.Path,
+		Version:	version,
 	}, nil
 }
 

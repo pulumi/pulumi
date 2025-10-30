@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
@@ -35,22 +35,22 @@ func TestDependencyGraph(t *testing.T) {
 
 	a1 := &resource.State{URN: "a1", Provider: providerARef}
 	a2 := &resource.State{
-		URN:          "a2",
-		Provider:     providerARef,
-		Dependencies: []resource.URN{a1.URN},
+		URN:		"a2",
+		Provider:	providerARef,
+		Dependencies:	[]resource.URN{a1.URN},
 	}
 
 	providerB, providerBRef := makeProvider("pkg", "providerB", "1", a1.URN, a2.URN)
 
 	b1 := &resource.State{
-		URN:          "b1",
-		Provider:     providerBRef,
-		Dependencies: []resource.URN{a1.URN},
+		URN:		"b1",
+		Provider:	providerBRef,
+		Dependencies:	[]resource.URN{a1.URN},
 	}
 
 	c1 := &resource.State{
-		URN:          "c1",
-		Dependencies: []resource.URN{a2.URN},
+		URN:		"c1",
+		Dependencies:	[]resource.URN{a2.URN},
 	}
 
 	providerD, providerDRef := makeProvider("pkg", "providerD", "2")
@@ -68,7 +68,7 @@ func TestDependencyGraph(t *testing.T) {
 	e1 := &resource.State{URN: "e1"}
 	e2 := &resource.State{URN: "e2", Dependencies: []resource.URN{e1.URN}}
 	e3 := &resource.State{
-		URN: "e3",
+		URN:	"e3",
 		PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 			"e3Prop1": {e1.URN},
 		},
@@ -114,11 +114,11 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := []*resource.State{
-				a1,        // a1's provider is providerA
-				a2,        // a2's provider is providerA; a2 also depends on a1
-				providerB, // providerB depends on a1 and a2
-				b1,        // b1 depends on a1 and providerB
-				c1,        // c1 depends on a2
+				a1,		// a1's provider is providerA
+				a2,		// a2's provider is providerA; a2 also depends on a1
+				providerB,	// providerB depends on a1 and a2
+				b1,		// b1 depends on a1 and providerB
+				c1,		// c1 depends on a2
 			}
 
 			// Act.
@@ -133,10 +133,10 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := []*resource.State{
-				a2,        // a2 depends on a1
-				providerB, // providerB depends on a1 and a2
-				b1,        // b1 depends on a1 and providerB
-				c1,        // c1 depends on a2
+				a2,		// a2 depends on a1
+				providerB,	// providerB depends on a1 and a2
+				b1,		// b1 depends on a1 and providerB
+				c1,		// c1 depends on a2
 			}
 
 			// Act.
@@ -151,9 +151,9 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := []*resource.State{
-				providerB, // providerB depends on a2
-				b1,        // b1's provider is providerB
-				c1,        // c1 depends on a2
+				providerB,	// providerB depends on a2
+				b1,		// b1's provider is providerB
+				c1,		// c1 depends on a2
 			}
 
 			// Act.
@@ -168,7 +168,7 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := []*resource.State{
-				b1, // b1's provider is providerB
+				b1,	// b1's provider is providerB
 			}
 
 			// Act.
@@ -203,10 +203,10 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := []*resource.State{
-				a2,        // a2's provider is providerA
-				providerB, // providerB depends on a2
-				b1,        // b1's provider is providerB
-				c1,        // c1 depends on a2
+				a2,		// a2's provider is providerA
+				providerB,	// providerB depends on a2
+				b1,		// b1's provider is providerB
+				c1,		// c1 depends on a2
 			}
 
 			// Act.
@@ -221,9 +221,9 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := []*resource.State{
-				a1,        // a1's provider is providerA
-				providerB, // providerB depends on a1
-				b1,        // b1's provider is providerB
+				a1,		// a1's provider is providerA
+				providerB,	// providerB depends on a1
+				b1,		// b1's provider is providerB
 			}
 
 			// Act.
@@ -248,8 +248,8 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := []*resource.State{
-				providerB, // providerB depends on a1
-				b1,        // b1's provider is providerB
+				providerB,	// providerB depends on a1
+				b1,		// b1's provider is providerB
 			}
 
 			// Act.
@@ -264,7 +264,7 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := []*resource.State{
-				b1, // b1 depends on a1
+				b1,	// b1 depends on a1
 			}
 
 			// Act.
@@ -279,7 +279,7 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := []*resource.State{
-				c1, // c1 depends on a2
+				c1,	// c1 depends on a2
 			}
 
 			// Act.
@@ -304,8 +304,8 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := []*resource.State{
-				d1, // d1's provider is providerD
-				d3, // d3's provider is providerD; d3 is deleted with d1
+				d1,	// d1's provider is providerD
+				d3,	// d3's provider is providerD; d3 is deleted with d1
 			}
 
 			// Act.
@@ -320,11 +320,11 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := []*resource.State{
-				d1, // d1's provider is providerD
-				d2, // d2 is a child of d1
-				d3, // d3's provider is providerD; d3 is deleted with d1
-				d4, // d4 is a child of d2
-				d5, // d5 is a child of d3
+				d1,	// d1's provider is providerD
+				d2,	// d2 is a child of d1
+				d3,	// d3's provider is providerD; d3 is deleted with d1
+				d4,	// d4 is a child of d2
+				d5,	// d5 is a child of d3
 			}
 
 			// Act.
@@ -339,7 +339,7 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := []*resource.State{
-				d3, // d3's provider is providerD
+				d3,	// d3's provider is providerD
 			}
 
 			// Act.
@@ -354,7 +354,7 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := []*resource.State{
-				d3, // d3 is deleted with d1
+				d3,	// d3 is deleted with d1
 			}
 
 			// Act.
@@ -369,10 +369,10 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := []*resource.State{
-				d2, // d2 is a child of d1
-				d3, // d3 is deleted with d1
-				d4, // d4 is a child of d2
-				d5, // d5 is a child of d3
+				d2,	// d2 is a child of d1
+				d3,	// d3 is deleted with d1
+				d4,	// d4 is a child of d2
+				d5,	// d5 is a child of d3
 			}
 
 			// Act.
@@ -407,10 +407,10 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := []*resource.State{
-				e2, // e2 depends on e3
-				e3, // e3 has a property dependency on e1
-				e4, // e4 depends on e3
-				e5, // e5 is deleted with e3
+				e2,	// e2 depends on e3
+				e3,	// e3 has a property dependency on e1
+				e4,	// e4 depends on e3
+				e5,	// e5 is deleted with e3
 			}
 
 			// Act.
@@ -425,7 +425,7 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := []*resource.State{
-				e2, // e2 depends on e3
+				e2,	// e2 depends on e3
 			}
 
 			// Act.
@@ -440,8 +440,8 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := []*resource.State{
-				e4, // e4 depends on e3
-				e5, // e5 is deleted with e3
+				e4,	// e4 depends on e3
+				e5,	// e5 is deleted with e3
 			}
 
 			// Act.
@@ -521,24 +521,24 @@ func TestDependencyGraph(t *testing.T) {
 
 		fy := &resource.State{URN: "fy", Provider: providerF3Ref, Dependencies: []resource.URN{fx1.URN}}
 		fz := &resource.State{
-			URN:      "fz",
-			Provider: providerF3Ref,
+			URN:		"fz",
+			Provider:	providerF3Ref,
 			PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 				"fzProp1": {fx1.URN},
 			},
 		}
 
 		fw := &resource.State{
-			URN:         "fw",
-			Provider:    providerF3Ref,
-			DeletedWith: fx1.URN,
+			URN:		"fw",
+			Provider:	providerF3Ref,
+			DeletedWith:	fx1.URN,
 		}
 
 		fu := &resource.State{URN: "fu", Provider: providerF3Ref}
 		fv := &resource.State{
-			URN:         "fv",
-			Provider:    providerF3Ref,
-			DeletedWith: fu.URN,
+			URN:		"fv",
+			Provider:	providerF3Ref,
+			DeletedWith:	fu.URN,
 		}
 
 		dgOnly := NewDependencyGraph([]*resource.State{
@@ -655,7 +655,7 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Act.
 			actual := dg.DependenciesOf(
-				a1, // a1's provider is providerA
+				a1,	// a1's provider is providerA
 			)
 
 			// Assert.
@@ -667,8 +667,8 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				providerA, // a2's provider is providerA
-				a1,        // a2 depends on a1
+				providerA,	// a2's provider is providerA
+				a1,		// a2 depends on a1
 			)
 
 			// Act.
@@ -683,8 +683,8 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				a1, // providerB depends on a1
-				a2, // providerB depends on a2
+				a1,	// providerB depends on a1
+				a2,	// providerB depends on a2
 			)
 
 			// Act.
@@ -699,8 +699,8 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				providerB, // b1's provider is providerB
-				a1,        // b1 depends on a1
+				providerB,	// b1's provider is providerB
+				a1,		// b1 depends on a1
 			)
 
 			// Act.
@@ -715,7 +715,7 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				a2, // c1 depends on a2
+				a2,	// c1 depends on a2
 			)
 
 			// Act.
@@ -743,7 +743,7 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				providerD, // d1's provider is providerD
+				providerD,	// d1's provider is providerD
 			)
 
 			// Act.
@@ -758,7 +758,7 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				d1, // d2 is a child of d1
+				d1,	// d2 is a child of d1
 			)
 
 			// Act.
@@ -773,9 +773,9 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				providerD, // d3's provider is providerD
-				d1,        // d3 is deleted with d1 (a component)
-				d2,        // d2 is a child of d1 that appears before d3
+				providerD,	// d3's provider is providerD
+				d1,		// d3 is deleted with d1 (a component)
+				d2,		// d2 is a child of d1 that appears before d3
 			)
 
 			// Act.
@@ -803,7 +803,7 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				d6, // d7 is a child of d6
+				d6,	// d7 is a child of d6
 			)
 
 			// Act.
@@ -818,7 +818,7 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				d6, // d8 is deleted with d6
+				d6,	// d8 is deleted with d6
 				// d7 does not appear as a child of d6 because d6 is not a component
 			)
 
@@ -847,7 +847,7 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				e1, // e2 depends on e1
+				e1,	// e2 depends on e1
 			)
 
 			// Act.
@@ -862,7 +862,7 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				e1, // e3 has a property dependency on e1
+				e1,	// e3 has a property dependency on e1
 			)
 
 			// Act.
@@ -877,7 +877,7 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				e3, // e4 depends on e3
+				e3,	// e4 depends on e3
 			)
 
 			// Act.
@@ -892,7 +892,7 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				e3, // e5 is deleted with e3
+				e3,	// e5 is deleted with e3
 			)
 
 			// Act.
@@ -924,7 +924,7 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				providerA, // a1's provider is providerA
+				providerA,	// a1's provider is providerA
 			)
 
 			// Act.
@@ -939,8 +939,8 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				providerA, // a2's provider is providerA
-				a1,        // a2 depends on a1
+				providerA,	// a2's provider is providerA
+				a1,		// a2 depends on a1
 			)
 
 			// Act.
@@ -955,9 +955,9 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				a1,        // providerB depends on a1
-				a2,        // providerB depends on a2
-				providerA, // (transitive) providerA is a1's and a2's provider
+				a1,		// providerB depends on a1
+				a2,		// providerB depends on a2
+				providerA,	// (transitive) providerA is a1's and a2's provider
 			)
 
 			// Act.
@@ -972,10 +972,10 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				providerB, // b1's provider is providerB
-				a1,        // b1 depends on a1
-				a2,        // (transitive) providerB depends on a2
-				providerA, // (transitive) providerA is a1's and a2's provider
+				providerB,	// b1's provider is providerB
+				a1,		// b1 depends on a1
+				a2,		// (transitive) providerB depends on a2
+				providerA,	// (transitive) providerA is a1's and a2's provider
 			)
 
 			// Act.
@@ -990,9 +990,9 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				a2,        // c1 depends on a2
-				providerA, // (transitive) providerA is a2's provider
-				a1,        // (transitive) a2 depends on a1
+				a2,		// c1 depends on a2
+				providerA,	// (transitive) providerA is a2's provider
+				a1,		// (transitive) a2 depends on a1
 			)
 
 			// Act.
@@ -1020,7 +1020,7 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				providerD, // d1's provider is providerD
+				providerD,	// d1's provider is providerD
 			)
 
 			// Act.
@@ -1035,8 +1035,8 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				d1,        // d2 is a child of d1
-				providerD, // (transitive) d1's provider is providerD
+				d1,		// d2 is a child of d1
+				providerD,	// (transitive) d1's provider is providerD
 			)
 
 			// Act.
@@ -1051,8 +1051,8 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				providerD, // d3's provider is providerD
-				d1,        // d3 is deleted with d1 (a component)
+				providerD,	// d3's provider is providerD
+				d1,		// d3 is deleted with d1 (a component)
 
 				// BUG: Not currently true
 				// d2,        // d2 is a child of d1
@@ -1070,7 +1070,7 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				d6, // d8 is deleted with d6
+				d6,	// d8 is deleted with d6
 				// d7 does not appear as a child of d6 because d6 is not a component
 			)
 
@@ -1086,8 +1086,8 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				d8, // d9 is a child of d8
-				d6, // (transitive) d8 is deleted with d6
+				d8,	// d9 is a child of d8
+				d6,	// (transitive) d8 is deleted with d6
 				// d7 does not appear as a child of d6 because d6 is not a component
 			)
 
@@ -1116,7 +1116,7 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				e1, // e2 depends on e1
+				e1,	// e2 depends on e1
 			)
 
 			// Act.
@@ -1131,7 +1131,7 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				e1, // e3 has a property dependency on e1
+				e1,	// e3 has a property dependency on e1
 			)
 
 			// Act.
@@ -1146,8 +1146,8 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				e3, // e4 depends on e3
-				e1, // (transitive) e3 has a property dependency on e1
+				e3,	// e4 depends on e3
+				e1,	// (transitive) e3 has a property dependency on e1
 			)
 
 			// Act.
@@ -1162,8 +1162,8 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				e3, // e5 is deleted with e3
-				e1, // (transitive) e3 has a property dependency on e1
+				e3,	// e5 is deleted with e3
+				e1,	// (transitive) e3 has a property dependency on e1
 			)
 
 			// Act.
@@ -1191,7 +1191,7 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Arrange.
 			expected := mapset.NewSet(
-				f1, // f2 is deleted with f1
+				f1,	// f2 is deleted with f1
 			)
 
 			// Act.
@@ -1346,13 +1346,13 @@ func makeProvider(pkg, name, id string, deps ...resource.URN) (*resource.State, 
 	t := providers.MakeProviderType(tokens.Package(pkg))
 
 	provider := &resource.State{
-		Type:         t,
-		Custom:       true,
-		URN:          resource.NewURN("stack", "proj", "", t, name),
-		ID:           resource.ID(id),
-		Inputs:       resource.PropertyMap{},
-		Outputs:      resource.PropertyMap{},
-		Dependencies: deps,
+		Type:		t,
+		Custom:		true,
+		URN:		resource.NewURN("stack", "proj", "", t, name),
+		ID:		resource.ID(id),
+		Inputs:		resource.PropertyMap{},
+		Outputs:	resource.PropertyMap{},
+		Dependencies:	deps,
 	}
 
 	providerRef, err := providers.NewReference(provider.URN, provider.ID)

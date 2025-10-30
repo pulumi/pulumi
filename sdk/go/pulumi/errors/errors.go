@@ -18,8 +18,8 @@ import "fmt"
 
 // InputPropertyErrorDetails contains the error details for an input property error.
 type InputPropertyErrorDetails struct {
-	PropertyPath string
-	Reason       string
+	PropertyPath	string
+	Reason		string
 }
 
 func (d InputPropertyErrorDetails) String() string {
@@ -29,31 +29,31 @@ func (d InputPropertyErrorDetails) String() string {
 // InputPropertiesError can be used to indicate that the client has made a request with
 // bad input properties.
 type InputPropertiesError struct {
-	Message string
-	Errors  []InputPropertyErrorDetails
+	Message	string
+	Errors	[]InputPropertyErrorDetails
 }
 
 // Create a new InputPropertiesError with a single property error.
 func NewInputPropertyError(propertyPath string, reason string) *InputPropertiesError {
 	return NewInputPropertiesError("", InputPropertyErrorDetails{
-		PropertyPath: propertyPath,
-		Reason:       reason,
+		PropertyPath:	propertyPath,
+		Reason:		reason,
 	})
 }
 
 // Create a new InputPropertiesError with a single property error.
 func InputPropertyErrorf(propertyPath string, format string, args ...any) *InputPropertiesError {
 	return NewInputPropertiesError("", InputPropertyErrorDetails{
-		PropertyPath: propertyPath,
-		Reason:       fmt.Sprintf(format, args...),
+		PropertyPath:	propertyPath,
+		Reason:		fmt.Sprintf(format, args...),
 	})
 }
 
 // Create a new InputPropertiesError with a message and a list of property errors.
 func NewInputPropertiesError(message string, details ...InputPropertyErrorDetails) *InputPropertiesError {
 	return &InputPropertiesError{
-		Message: message,
-		Errors:  details,
+		Message:	message,
+		Errors:		details,
 	}
 }
 

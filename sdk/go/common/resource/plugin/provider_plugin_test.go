@@ -44,44 +44,44 @@ func TestAnnotateSecrets(t *testing.T) {
 	t.Parallel()
 
 	from := resource.PropertyMap{
-		"stringValue": resource.MakeSecret(resource.NewProperty("hello")),
-		"numberValue": resource.MakeSecret(resource.NewProperty(1.00)),
-		"boolValue":   resource.MakeSecret(resource.NewProperty(true)),
+		"stringValue":	resource.MakeSecret(resource.NewProperty("hello")),
+		"numberValue":	resource.MakeSecret(resource.NewProperty(1.00)),
+		"boolValue":	resource.MakeSecret(resource.NewProperty(true)),
 		"secretArrayValue": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
 			resource.NewProperty("a"),
 			resource.NewProperty("b"),
 			resource.NewProperty("c"),
 		})),
 		"secretObjectValue": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("aValue"),
-			"b": resource.NewProperty("bValue"),
-			"c": resource.NewProperty("cValue"),
+			"a":	resource.NewProperty("aValue"),
+			"b":	resource.NewProperty("bValue"),
+			"c":	resource.NewProperty("cValue"),
 		})),
 		"objectWithSecretValue": resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("aValue"),
-			"b": resource.MakeSecret(resource.NewProperty("bValue")),
-			"c": resource.NewProperty("cValue"),
+			"a":	resource.NewProperty("aValue"),
+			"b":	resource.MakeSecret(resource.NewProperty("bValue")),
+			"c":	resource.NewProperty("cValue"),
 		}),
 	}
 
 	to := resource.PropertyMap{
-		"stringValue": resource.NewProperty("hello"),
-		"numberValue": resource.NewProperty(1.00),
-		"boolValue":   resource.NewProperty(true),
+		"stringValue":	resource.NewProperty("hello"),
+		"numberValue":	resource.NewProperty(1.00),
+		"boolValue":	resource.NewProperty(true),
 		"secretArrayValue": resource.NewProperty([]resource.PropertyValue{
 			resource.NewProperty("a"),
 			resource.NewProperty("b"),
 			resource.NewProperty("c"),
 		}),
 		"secretObjectValue": resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("aValue"),
-			"b": resource.NewProperty("bValue"),
-			"c": resource.NewProperty("cValue"),
+			"a":	resource.NewProperty("aValue"),
+			"b":	resource.NewProperty("bValue"),
+			"c":	resource.NewProperty("cValue"),
 		}),
 		"objectWithSecretValue": resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("aValue"),
-			"b": resource.NewProperty("bValue"),
-			"c": resource.NewProperty("cValue"),
+			"a":	resource.NewProperty("aValue"),
+			"b":	resource.NewProperty("bValue"),
+			"c":	resource.NewProperty("cValue"),
 		}),
 	}
 
@@ -97,37 +97,37 @@ func TestAnnotateSecretsDifferentProperties(t *testing.T) {
 	// are not present in from stay in to, but any secretness is propigated for shared keys.
 
 	from := resource.PropertyMap{
-		"stringValue": resource.MakeSecret(resource.NewProperty("hello")),
-		"numberValue": resource.MakeSecret(resource.NewProperty(1.00)),
-		"boolValue":   resource.MakeSecret(resource.NewProperty(true)),
+		"stringValue":	resource.MakeSecret(resource.NewProperty("hello")),
+		"numberValue":	resource.MakeSecret(resource.NewProperty(1.00)),
+		"boolValue":	resource.MakeSecret(resource.NewProperty(true)),
 		"secretObjectValue": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("aValue"),
-			"b": resource.NewProperty("bValue"),
-			"c": resource.NewProperty("cValue"),
+			"a":	resource.NewProperty("aValue"),
+			"b":	resource.NewProperty("bValue"),
+			"c":	resource.NewProperty("cValue"),
 		})),
 		"objectWithSecretValue": resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("aValue"),
-			"b": resource.MakeSecret(resource.NewProperty("bValue")),
-			"c": resource.NewProperty("cValue"),
+			"a":	resource.NewProperty("aValue"),
+			"b":	resource.MakeSecret(resource.NewProperty("bValue")),
+			"c":	resource.NewProperty("cValue"),
 		}),
-		"extraFromValue": resource.NewProperty("extraFromValue"),
+		"extraFromValue":	resource.NewProperty("extraFromValue"),
 	}
 
 	to := resource.PropertyMap{
-		"stringValue": resource.NewProperty("hello"),
-		"numberValue": resource.NewProperty(1.00),
-		"boolValue":   resource.NewProperty(true),
+		"stringValue":	resource.NewProperty("hello"),
+		"numberValue":	resource.NewProperty(1.00),
+		"boolValue":	resource.NewProperty(true),
 		"secretObjectValue": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("aValue"),
-			"b": resource.NewProperty("bValue"),
-			"c": resource.NewProperty("cValue"),
+			"a":	resource.NewProperty("aValue"),
+			"b":	resource.NewProperty("bValue"),
+			"c":	resource.NewProperty("cValue"),
 		})),
 		"objectWithSecretValue": resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("aValue"),
-			"b": resource.NewProperty("bValue"),
-			"c": resource.NewProperty("cValue"),
+			"a":	resource.NewProperty("aValue"),
+			"b":	resource.NewProperty("bValue"),
+			"c":	resource.NewProperty("cValue"),
 		}),
-		"extraToValue": resource.NewProperty("extraToValue"),
+		"extraToValue":	resource.NewProperty("extraToValue"),
 	}
 
 	annotateSecrets(to, from)
@@ -199,43 +199,43 @@ func TestNestedSecret(t *testing.T) {
 	t.Parallel()
 
 	from := resource.PropertyMap{
-		"secretString": resource.MakeSecret(resource.NewProperty("shh")),
+		"secretString":	resource.MakeSecret(resource.NewProperty("shh")),
 		"secretArray": resource.NewProperty([]resource.PropertyValue{
 			resource.NewProperty("hello"),
 			resource.MakeSecret(resource.NewProperty("shh")),
 			resource.NewProperty("goodbye"),
 		}),
 		"secretMap": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("a"),
-			"b": resource.NewProperty("b"),
+			"a":	resource.NewProperty("a"),
+			"b":	resource.NewProperty("b"),
 		})),
 		"deepSecretMap": resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("a"),
-			"b": resource.MakeSecret(resource.NewProperty("b")),
+			"a":	resource.NewProperty("a"),
+			"b":	resource.MakeSecret(resource.NewProperty("b")),
 		}),
 	}
 
 	to := resource.PropertyMap{
-		"secretString": resource.NewProperty("shh"),
+		"secretString":	resource.NewProperty("shh"),
 		"secretArray": resource.NewProperty([]resource.PropertyValue{
 			resource.NewProperty("shh"),
 			resource.NewProperty("hello"),
 			resource.NewProperty("goodbye"),
 		}),
 		"secretMap": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("a"),
-			"b": resource.NewProperty("b"),
+			"a":	resource.NewProperty("a"),
+			"b":	resource.NewProperty("b"),
 		})),
 		"deepSecretMap": resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("a"),
-			"b": resource.NewProperty("b"),
+			"a":	resource.NewProperty("a"),
+			"b":	resource.NewProperty("b"),
 			// Note the additional property here, which we expect to be kept when annotating.
-			"c": resource.NewProperty("c"),
+			"c":	resource.NewProperty("c"),
 		}),
 	}
 
 	expected := resource.PropertyMap{
-		"secretString": resource.MakeSecret(resource.NewProperty("shh")),
+		"secretString":	resource.MakeSecret(resource.NewProperty("shh")),
 		// The entire array has been marked a secret because it contained a secret member in from. Since arrays
 		// are often used for sets, we didn't try to apply the secretness to a specific member of the array, like
 		// we would have with maps (where we can use the keys to correlate related properties)
@@ -245,13 +245,13 @@ func TestNestedSecret(t *testing.T) {
 			resource.NewProperty("goodbye"),
 		})),
 		"secretMap": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("a"),
-			"b": resource.NewProperty("b"),
+			"a":	resource.NewProperty("a"),
+			"b":	resource.NewProperty("b"),
 		})),
 		"deepSecretMap": resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("a"),
-			"b": resource.MakeSecret(resource.NewProperty("b")),
-			"c": resource.NewProperty("c"),
+			"a":	resource.NewProperty("a"),
+			"b":	resource.MakeSecret(resource.NewProperty("b")),
+			"c":	resource.NewProperty("c"),
 		}),
 	}
 
@@ -269,10 +269,10 @@ func TestRestoreElidedAssetContents(t *testing.T) {
 	}
 
 	original := resource.PropertyMap{
-		"source": textAsset("Hello world"),
+		"source":	textAsset("Hello world"),
 		"nested": resource.NewProperty(resource.PropertyMap{
-			"another":      textAsset("Another"),
-			"doubleNested": textAsset("Double nested"),
+			"another":	textAsset("Another"),
+			"doubleNested":	textAsset("Double nested"),
 			"tripleNested": resource.NewProperty(resource.PropertyMap{
 				"secret": resource.MakeSecret(textAsset("Secret content")),
 			}),
@@ -290,8 +290,8 @@ func TestRestoreElidedAssetContents(t *testing.T) {
 	}
 
 	serialized, err := MarshalProperties(original, MarshalOptions{
-		ElideAssetContents: true,
-		KeepSecrets:        true,
+		ElideAssetContents:	true,
+		KeepSecrets:		true,
 	})
 	require.NoError(t, err, "failed to marshal properties")
 
@@ -322,66 +322,66 @@ func TestProvider_DeleteRequests(t *testing.T) {
 	urn := resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:aws", "qux")
 
 	tests := []struct {
-		desc string
-		give DeleteRequest
-		want *pulumirpc.DeleteRequest
+		desc	string
+		give	DeleteRequest
+		want	*pulumirpc.DeleteRequest
 	}{
 		{
-			desc: "empty",
+			desc:	"empty",
 			give: DeleteRequest{
-				ID:      id,
-				URN:     urn,
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+				ID:		id,
+				URN:		urn,
+				Inputs:		resource.PropertyMap{},
+				Outputs:	resource.PropertyMap{},
 			},
 			want: &pulumirpc.DeleteRequest{
-				Id:         string(id),
-				Urn:        string(urn),
-				Name:       "qux",
-				Type:       "pulumi:provider:aws",
-				OldInputs:  &structpb.Struct{Fields: map[string]*structpb.Value{}},
-				Properties: &structpb.Struct{Fields: map[string]*structpb.Value{}},
+				Id:		string(id),
+				Urn:		string(urn),
+				Name:		"qux",
+				Type:		"pulumi:provider:aws",
+				OldInputs:	&structpb.Struct{Fields: map[string]*structpb.Value{}},
+				Properties:	&structpb.Struct{Fields: map[string]*structpb.Value{}},
 			},
 		},
 		{
-			desc: "inputs",
+			desc:	"inputs",
 			give: DeleteRequest{
-				ID:  id,
-				URN: urn,
+				ID:	id,
+				URN:	urn,
 				Inputs: resource.PropertyMap{
 					"foo": resource.NewProperty("bar"),
 				},
-				Outputs: resource.PropertyMap{},
+				Outputs:	resource.PropertyMap{},
 			},
 			want: &pulumirpc.DeleteRequest{
-				Id:   string(id),
-				Urn:  string(urn),
-				Name: "qux",
-				Type: "pulumi:provider:aws",
+				Id:	string(id),
+				Urn:	string(urn),
+				Name:	"qux",
+				Type:	"pulumi:provider:aws",
 				OldInputs: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"foo": {Kind: &structpb.Value_StringValue{StringValue: "bar"}},
 					},
 				},
-				Properties: &structpb.Struct{Fields: map[string]*structpb.Value{}},
+				Properties:	&structpb.Struct{Fields: map[string]*structpb.Value{}},
 			},
 		},
 		{
-			desc: "outputs",
+			desc:	"outputs",
 			give: DeleteRequest{
-				ID:     id,
-				URN:    urn,
-				Inputs: resource.PropertyMap{},
+				ID:	id,
+				URN:	urn,
+				Inputs:	resource.PropertyMap{},
 				Outputs: resource.PropertyMap{
 					"baz": resource.NewProperty("quux"),
 				},
 			},
 			want: &pulumirpc.DeleteRequest{
-				Id:        string(id),
-				Urn:       string(urn),
-				Name:      "qux",
-				Type:      "pulumi:provider:aws",
-				OldInputs: &structpb.Struct{Fields: map[string]*structpb.Value{}},
+				Id:		string(id),
+				Urn:		string(urn),
+				Name:		"qux",
+				Type:		"pulumi:provider:aws",
+				OldInputs:	&structpb.Struct{Fields: map[string]*structpb.Value{}},
 				Properties: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"baz": {Kind: &structpb.Value_StringValue{StringValue: "quux"}},
@@ -390,42 +390,42 @@ func TestProvider_DeleteRequests(t *testing.T) {
 			},
 		},
 		{
-			desc: "timeout",
+			desc:	"timeout",
 			give: DeleteRequest{
-				ID:      id,
-				URN:     urn,
-				Timeout: 30,
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+				ID:		id,
+				URN:		urn,
+				Timeout:	30,
+				Inputs:		resource.PropertyMap{},
+				Outputs:	resource.PropertyMap{},
 			},
 			want: &pulumirpc.DeleteRequest{
-				Id:         string(id),
-				Urn:        string(urn),
-				Name:       "qux",
-				Type:       "pulumi:provider:aws",
-				OldInputs:  &structpb.Struct{Fields: map[string]*structpb.Value{}},
-				Properties: &structpb.Struct{Fields: map[string]*structpb.Value{}},
-				Timeout:    30,
+				Id:		string(id),
+				Urn:		string(urn),
+				Name:		"qux",
+				Type:		"pulumi:provider:aws",
+				OldInputs:	&structpb.Struct{Fields: map[string]*structpb.Value{}},
+				Properties:	&structpb.Struct{Fields: map[string]*structpb.Value{}},
+				Timeout:	30,
 			},
 		},
 		{
-			desc: "all",
+			desc:	"all",
 			give: DeleteRequest{
-				ID:  id,
-				URN: urn,
+				ID:	id,
+				URN:	urn,
 				Inputs: resource.PropertyMap{
 					"foo": resource.NewProperty("bar"),
 				},
 				Outputs: resource.PropertyMap{
 					"baz": resource.NewProperty("quux"),
 				},
-				Timeout: 30,
+				Timeout:	30,
 			},
 			want: &pulumirpc.DeleteRequest{
-				Id:   string(id),
-				Urn:  string(urn),
-				Name: "qux",
-				Type: "pulumi:provider:aws",
+				Id:	string(id),
+				Urn:	string(urn),
+				Name:	"qux",
+				Type:	"pulumi:provider:aws",
 				OldInputs: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"foo": {Kind: &structpb.Value_StringValue{StringValue: "bar"}},
@@ -436,7 +436,7 @@ func TestProvider_DeleteRequests(t *testing.T) {
 						"baz": {Kind: &structpb.Value_StringValue{StringValue: "quux"}},
 					},
 				},
-				Timeout: 30,
+				Timeout:	30,
 			},
 		},
 	}
@@ -486,8 +486,8 @@ func TestProvider_ConstructOptions(t *testing.T) {
 		//	if len(*s) == 0 {
 		//		*s = nil
 		//	}
-		v := reflect.ValueOf(s) // *T for some T = []T or map[T]*
-		v = v.Elem()            // *T -> T
+		v := reflect.ValueOf(s)	// *T for some T = []T or map[T]*
+		v = v.Elem()		// *T -> T
 		if v.Len() == 0 {
 			// Zero value of a slice or map is nil.
 			v.Set(reflect.Zero(v.Type()))
@@ -498,17 +498,17 @@ func TestProvider_ConstructOptions(t *testing.T) {
 	}
 
 	tests := []struct {
-		desc   string
-		give   ConstructOptions
-		want   *pulumirpc.ConstructRequest
-		parent resource.URN
+		desc	string
+		give	ConstructOptions
+		want	*pulumirpc.ConstructRequest
+		parent	resource.URN
 	}{
 		{
-			desc: "empty",
-			want: &pulumirpc.ConstructRequest{},
+			desc:	"empty",
+			want:	&pulumirpc.ConstructRequest{},
 		},
 		{
-			desc: "aliases",
+			desc:	"aliases",
 			give: ConstructOptions{
 				Aliases: []resource.Alias{
 					{URN: resource.URN("urn:pulumi:stack::project::type::oldName")},
@@ -523,7 +523,7 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			},
 		},
 		{
-			desc: "dependencies",
+			desc:	"dependencies",
 			give: ConstructOptions{
 				Dependencies: []resource.URN{
 					"urn:pulumi:stack::project::type::dep1",
@@ -538,7 +538,7 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			},
 		},
 		{
-			desc: "protect",
+			desc:	"protect",
 			give: ConstructOptions{
 				Protect: ptr(true),
 			},
@@ -547,37 +547,37 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			},
 		},
 		{
-			desc: "providers",
+			desc:	"providers",
 			give: ConstructOptions{
 				Providers: map[string]string{
-					"pkg1": "prov1",
-					"pkg2": "prov2",
+					"pkg1":	"prov1",
+					"pkg2":	"prov2",
 				},
 			},
 			want: &pulumirpc.ConstructRequest{
 				Providers: map[string]string{
-					"pkg1": "prov1",
-					"pkg2": "prov2",
+					"pkg1":	"prov1",
+					"pkg2":	"prov2",
 				},
 			},
 		},
 		{
-			desc: "property dependencies",
+			desc:	"property dependencies",
 			give: ConstructOptions{
 				PropertyDependencies: map[resource.PropertyKey][]resource.URN{
-					"foo": {"urn:pulumi:stack::project::type::dep1"},
-					"bar": {"urn:pulumi:stack::project::type::dep2"},
+					"foo":	{"urn:pulumi:stack::project::type::dep1"},
+					"bar":	{"urn:pulumi:stack::project::type::dep2"},
 				},
 			},
 			want: &pulumirpc.ConstructRequest{
 				InputDependencies: map[string]*pulumirpc.ConstructRequest_PropertyDependencies{
-					"foo": {Urns: []string{"urn:pulumi:stack::project::type::dep1"}},
-					"bar": {Urns: []string{"urn:pulumi:stack::project::type::dep2"}},
+					"foo":	{Urns: []string{"urn:pulumi:stack::project::type::dep1"}},
+					"bar":	{Urns: []string{"urn:pulumi:stack::project::type::dep2"}},
 				},
 			},
 		},
 		{
-			desc: "additional secret outputs",
+			desc:	"additional secret outputs",
 			give: ConstructOptions{
 				AdditionalSecretOutputs: []string{"foo", "bar"},
 			},
@@ -586,24 +586,24 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			},
 		},
 		{
-			desc: "custom timeouts",
+			desc:	"custom timeouts",
 			give: ConstructOptions{
 				CustomTimeouts: &CustomTimeouts{
-					Create: "1s",
-					Update: "2s",
-					Delete: "3s",
+					Create:	"1s",
+					Update:	"2s",
+					Delete:	"3s",
 				},
 			},
 			want: &pulumirpc.ConstructRequest{
 				CustomTimeouts: &pulumirpc.ConstructRequest_CustomTimeouts{
-					Create: "1s",
-					Update: "2s",
-					Delete: "3s",
+					Create:	"1s",
+					Update:	"2s",
+					Delete:	"3s",
 				},
 			},
 		},
 		{
-			desc: "deleted with",
+			desc:	"deleted with",
 			give: ConstructOptions{
 				DeletedWith: "urn:pulumi:stack::project::type::dep1",
 			},
@@ -612,7 +612,7 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			},
 		},
 		{
-			desc: "delete before replace",
+			desc:	"delete before replace",
 			give: ConstructOptions{
 				DeleteBeforeReplace: ptr(true),
 			},
@@ -621,7 +621,7 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			},
 		},
 		{
-			desc: "ignore changes",
+			desc:	"ignore changes",
 			give: ConstructOptions{
 				IgnoreChanges: []string{"foo", "bar"},
 			},
@@ -630,7 +630,7 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			},
 		},
 		{
-			desc: "replace on changes",
+			desc:	"replace on changes",
 			give: ConstructOptions{
 				ReplaceOnChanges: []string{"foo", "bar"},
 			},
@@ -639,7 +639,7 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			},
 		},
 		{
-			desc: "retain on delete",
+			desc:	"retain on delete",
 			give: ConstructOptions{
 				RetainOnDelete: ptr(true),
 			},
@@ -695,12 +695,12 @@ func TestProvider_ConstructOptions(t *testing.T) {
 
 			_, err = p.Construct(context.Background(),
 				ConstructRequest{
-					Info:    ConstructInfo{Project: "project", Stack: "stack"},
-					Type:    "type",
-					Name:    "name",
-					Parent:  tt.parent,
-					Inputs:  resource.PropertyMap{},
-					Options: tt.give,
+					Info:		ConstructInfo{Project: "project", Stack: "stack"},
+					Type:		"type",
+					Name:		"name",
+					Parent:		tt.parent,
+					Inputs:		resource.PropertyMap{},
+					Options:	tt.give,
 				},
 			)
 			require.NoError(t, err)
@@ -753,13 +753,13 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 
 		close(deleting)
 		_, err := p.Delete(context.Background(), DeleteRequest{
-			URN:     resource.NewURN("org/proj/dev", "foo", "", "bar:baz", "qux"),
-			Name:    "qux",
-			Type:    "bar:baz",
-			ID:      "whatever",
-			Inputs:  props,
-			Outputs: props,
-			Timeout: 1000,
+			URN:		resource.NewURN("org/proj/dev", "foo", "", "bar:baz", "qux"),
+			Name:		"qux",
+			Type:		"bar:baz",
+			ID:		"whatever",
+			Inputs:		props,
+			Outputs:	props,
+			Timeout:	1000,
 		})
 		require.NoError(t, err, "Delete failed")
 	}()
@@ -798,15 +798,15 @@ func newTestContext(t testing.TB) *Context {
 type stubClient struct {
 	pulumirpc.ResourceProviderClient
 
-	DiffConfigF    func(*pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error)
-	ConstructF     func(*pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error)
-	ConfigureF     func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error)
-	CreateF        func(*pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error)
-	DeleteF        func(*pulumirpc.DeleteRequest) error
-	GetSchemaF     func(*pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error)
-	GetPluginInfoF func() (*pulumirpc.PluginInfo, error)
-	ReadF          func(*pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error)
-	UpdateF        func(*pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error)
+	DiffConfigF	func(*pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error)
+	ConstructF	func(*pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error)
+	ConfigureF	func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error)
+	CreateF		func(*pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error)
+	DeleteF		func(*pulumirpc.DeleteRequest) error
+	GetSchemaF	func(*pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error)
+	GetPluginInfoF	func() (*pulumirpc.PluginInfo, error)
+	ReadF		func(*pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error)
+	UpdateF		func(*pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error)
 }
 
 func (c *stubClient) DiffConfig(
@@ -1053,27 +1053,27 @@ func TestProvider_PartialFailure_RefreshBeforeUpdate(t *testing.T) {
 		CreateF: func(req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {
 			reasons := []string{"create issue"}
 			detail := pulumirpc.ErrorResourceInitFailed{
-				Id:                  "some-id",
-				Reasons:             reasons,
-				RefreshBeforeUpdate: true,
+				Id:			"some-id",
+				Reasons:		reasons,
+				RefreshBeforeUpdate:	true,
 			}
 			return nil, rpcerror.WithDetails(rpcerror.New(codes.Unknown, reasons[0]), &detail)
 		},
 		ReadF: func(req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
 			reasons := []string{"read issue"}
 			detail := pulumirpc.ErrorResourceInitFailed{
-				Id:                  "some-id",
-				Reasons:             reasons,
-				RefreshBeforeUpdate: true,
+				Id:			"some-id",
+				Reasons:		reasons,
+				RefreshBeforeUpdate:	true,
 			}
 			return nil, rpcerror.WithDetails(rpcerror.New(codes.Unknown, reasons[0]), &detail)
 		},
 		UpdateF: func(req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error) {
 			reasons := []string{"update issue"}
 			detail := pulumirpc.ErrorResourceInitFailed{
-				Id:                  "some-id",
-				Reasons:             reasons,
-				RefreshBeforeUpdate: true,
+				Id:			"some-id",
+				Reasons:		reasons,
+				RefreshBeforeUpdate:	true,
 			}
 			return nil, rpcerror.WithDetails(rpcerror.New(codes.Unknown, reasons[0]), &detail)
 		},
@@ -1087,35 +1087,35 @@ func TestProvider_PartialFailure_RefreshBeforeUpdate(t *testing.T) {
 	var initErr *InitError
 
 	createResp, err := p.Create(context.Background(), CreateRequest{
-		URN:        urn,
-		Name:       urn.Name(),
-		Type:       urn.Type(),
-		Properties: resource.PropertyMap{},
+		URN:		urn,
+		Name:		urn.Name(),
+		Type:		urn.Type(),
+		Properties:	resource.PropertyMap{},
 	})
 	assert.True(t, createResp.RefreshBeforeUpdate)
 	assert.ErrorAs(t, err, &initErr, "expected an InitError")
 	assert.Equal(t, []string{"create issue"}, initErr.Reasons)
 
 	readResp, err := p.Read(context.Background(), ReadRequest{
-		URN:    urn,
-		Name:   urn.Name(),
-		Type:   urn.Type(),
-		ID:     "some-id",
-		Inputs: resource.PropertyMap{},
-		State:  resource.PropertyMap{},
+		URN:	urn,
+		Name:	urn.Name(),
+		Type:	urn.Type(),
+		ID:	"some-id",
+		Inputs:	resource.PropertyMap{},
+		State:	resource.PropertyMap{},
 	})
 	assert.True(t, readResp.RefreshBeforeUpdate)
 	assert.ErrorAs(t, err, &initErr, "expected an InitError")
 	assert.Equal(t, []string{"read issue"}, initErr.Reasons)
 
 	updateResp, err := p.Update(context.Background(), UpdateRequest{
-		URN:        urn,
-		Name:       urn.Name(),
-		Type:       urn.Type(),
-		ID:         "some-id",
-		OldInputs:  resource.PropertyMap{},
-		OldOutputs: resource.PropertyMap{},
-		NewInputs:  resource.PropertyMap{},
+		URN:		urn,
+		Name:		urn.Name(),
+		Type:		urn.Type(),
+		ID:		"some-id",
+		OldInputs:	resource.PropertyMap{},
+		OldOutputs:	resource.PropertyMap{},
+		NewInputs:	resource.PropertyMap{},
 	})
 	assert.True(t, updateResp.RefreshBeforeUpdate)
 	assert.ErrorAs(t, err, &initErr, "expected an InitError")

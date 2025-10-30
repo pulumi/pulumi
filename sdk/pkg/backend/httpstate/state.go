@@ -22,19 +22,19 @@ import (
 	"time"
 
 	"github.com/jonboulle/clockwork"
-	"github.com/pulumi/pulumi/pkg/v3/channel"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/channel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate/client"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
@@ -79,7 +79,7 @@ func (b *cloudBackend) recordAndDisplayEvents(
 	// We take the channel of engine events and pass them to separate components that will display
 	// them to the console or persist them on the Pulumi Service. Both should terminate as soon as
 	// they see a CancelEvent, and when finished, close the "done" channel.
-	displayEvents := make(chan engine.Event) // Note: unbuffered, but we assume it won't matter in practice.
+	displayEvents := make(chan engine.Event)	// Note: unbuffered, but we assume it won't matter in practice.
 	displayEventsDone := make(chan bool)
 
 	persistEvents := make(chan engine.Event, 100)
@@ -98,7 +98,7 @@ func (b *cloudBackend) recordAndDisplayEvents(
 		displayEvents, displayEventsDone, opts, isPreview)
 	go b.persistEngineEvents(
 		ctx, tokenSource, update,
-		opts.Debug, /* persist debug events */
+		opts.Debug,	/* persist debug events */
 		persistEvents, persistEventsDone)
 
 	for e := range events {
@@ -165,9 +165,9 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 	}
 
 	info := engine.UpdateInfo{
-		Root:    op.Root,
-		Project: op.Proj,
-		Target:  target,
+		Root:		op.Root,
+		Project:	op.Proj,
+		Target:		target,
 	}
 
 	return info, tokenSource, nil
@@ -230,12 +230,12 @@ func (b *cloudBackend) getTarget(ctx context.Context, secretsProvider secrets.Pr
 	}
 
 	return &deploy.Target{
-		Name:         stackID.Stack,
-		Organization: tokens.Name(stackID.Owner),
-		Config:       cfg,
-		Decrypter:    dec,
-		Snapshot:     snapshot,
-		Tags:         stk.Tags,
+		Name:		stackID.Stack,
+		Organization:	tokens.Name(stackID.Owner),
+		Config:		cfg,
+		Decrypter:	dec,
+		Snapshot:	snapshot,
+		Tags:		stk.Tags,
 	}, nil
 }
 
@@ -244,8 +244,8 @@ func isDebugDiagEvent(e engine.Event) bool {
 }
 
 type engineEventBatch struct {
-	sequenceStart int
-	events        []engine.Event
+	sequenceStart	int
+	events		[]engine.Event
 }
 
 // persistEngineEvents reads from a channel of engine events and persists them on the
@@ -328,8 +328,8 @@ func (b *cloudBackend) persistEngineEvents(
 		}
 
 		batch := engineEventBatch{
-			sequenceStart: eventIdx,
-			events:        eventBatch,
+			sequenceStart:	eventIdx,
+			events:		eventBatch,
 		}
 		// This will block until one of the spawned go-routines is available to read the data.
 		// Effectively providing a global rate limit for how quickly we can send data to the

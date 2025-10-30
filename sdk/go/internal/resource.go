@@ -32,4 +32,4 @@ type ResourceState struct{}
 var _ Resource = ResourceState{}
 
 // isResource is a marker method for the ResourceState type.
-func (ResourceState) isResource() {}
+func (ResourceState) isResource()	{}

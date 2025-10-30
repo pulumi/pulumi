@@ -22,8 +22,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
@@ -35,16 +35,16 @@ func GenerateGoProgramTest(
 ) {
 	expectedVersion := map[string]PkgVersionInfo{
 		"aws-resource-options-4.26": {
-			Pkg:          "github.com/pulumi/pulumi-aws/sdk/v4",
-			OpAndVersion: "v4.26.0",
+			Pkg:		"github.com/pulumi/pulumi-aws/sdk/v4",
+			OpAndVersion:	"v4.26.0",
 		},
 		"aws-resource-options-5.16.2": {
-			Pkg:          "github.com/pulumi/pulumi-aws/sdk/v5",
-			OpAndVersion: "v5.16.2",
+			Pkg:		"github.com/pulumi/pulumi-aws/sdk/v5",
+			OpAndVersion:	"v5.16.2",
 		},
 		"modpath": {
-			Pkg:          "git.example.org/thirdparty/sdk",
-			OpAndVersion: "v0.1.0",
+			Pkg:		"git.example.org/thirdparty/sdk",
+			OpAndVersion:	"v0.1.0",
 		},
 	}
 
@@ -53,38 +53,38 @@ func GenerateGoProgramTest(
 
 	TestProgramCodegen(t,
 		ProgramCodegenOptions{
-			Language:   "go",
-			Extension:  "go",
-			OutputFile: "main.go",
+			Language:	"go",
+			Extension:	"go",
+			OutputFile:	"main.go",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
 				checkGo(t, path, dependencies, sdkDir)
 			},
-			GenProgram: genProgram,
+			GenProgram:	genProgram,
 			TestCases: []ProgramTest{
 				{
-					Directory:   "aws-resource-options-4.26",
-					Description: "Resource Options",
+					Directory:	"aws-resource-options-4.26",
+					Description:	"Resource Options",
 				},
 				{
-					Directory:   "aws-resource-options-5.16.2",
-					Description: "Resource Options",
+					Directory:	"aws-resource-options-5.16.2",
+					Description:	"Resource Options",
 				},
 				{
-					Directory:   "modpath",
-					Description: "Check that modpath is respected",
+					Directory:	"modpath",
+					Description:	"Check that modpath is respected",
 					MockPluginVersions: map[string]string{
 						"other": "0.1.0",
 					},
 					// We don't compile because the test relies on the `other` package,
 					// which does not exist.
-					SkipCompile: codegen.NewStringSet("go"),
+					SkipCompile:	codegen.NewStringSet("go"),
 				},
 			},
 
-			IsGenProject:    true,
-			GenProject:      genProject,
-			ExpectedVersion: expectedVersion,
-			DependencyFile:  "go.mod",
+			IsGenProject:		true,
+			GenProject:		genProject,
+			ExpectedVersion:	expectedVersion,
+			DependencyFile:		"go.mod",
 		})
 }
 
@@ -99,14 +99,14 @@ func GenerateGoBatchTest(
 
 	TestProgramCodegen(t,
 		ProgramCodegenOptions{
-			Language:   "go",
-			Extension:  "go",
-			OutputFile: "main.go",
+			Language:	"go",
+			Extension:	"go",
+			OutputFile:	"main.go",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
 				checkGo(t, path, dependencies, sdkDir)
 			},
-			GenProgram: genProgram,
-			TestCases:  testCases,
+			GenProgram:	genProgram,
+			TestCases:	testCases,
 		})
 }
 
@@ -118,14 +118,14 @@ func GenerateGoYAMLBatchTest(t *testing.T, rootDir string, genProgram GenProgram
 
 	TestProgramCodegen(t,
 		ProgramCodegenOptions{
-			Language:   "go",
-			Extension:  "go",
-			OutputFile: "main.go",
+			Language:	"go",
+			Extension:	"go",
+			OutputFile:	"main.go",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
 				checkGo(t, path, dependencies, sdkDir)
 			},
-			GenProgram: genProgram,
-			TestCases:  PulumiPulumiYAMLProgramTests,
+			GenProgram:	genProgram,
+			TestCases:	PulumiPulumiYAMLProgramTests,
 		})
 }
 

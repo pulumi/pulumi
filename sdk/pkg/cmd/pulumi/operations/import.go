@@ -32,24 +32,24 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
-	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
-	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/importer"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/secrets"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/config"
+	cmdConvert "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/convert"
+	cmdDiag "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/diag"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/metadata"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/convert"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/importer"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -87,20 +87,20 @@ func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFi
 	specs := make([]importSpec, len(resources))
 	for i, res := range resources {
 		specs[i] = importSpec{
-			Type:              tokens.Type(res.Type),
-			Name:              res.Name,
-			ID:                resource.ID(res.ID),
-			Version:           res.Version,
-			PluginDownloadURL: res.PluginDownloadURL,
-			Component:         res.IsComponent,
-			Remote:            res.IsRemote,
-			LogicalName:       res.LogicalName,
+			Type:			tokens.Type(res.Type),
+			Name:			res.Name,
+			ID:			resource.ID(res.ID),
+			Version:		res.Version,
+			PluginDownloadURL:	res.PluginDownloadURL,
+			Component:		res.IsComponent,
+			Remote:			res.IsRemote,
+			LogicalName:		res.LogicalName,
 		}
 	}
 
 	return importFile{
-		NameTable: nameTable,
-		Resources: specs,
+		NameTable:	nameTable,
+		Resources:	specs,
 	}, nil
 }
 
@@ -111,11 +111,11 @@ func makeImportFile(
 ) (importFile, error) {
 	nameTable := map[string]resource.URN{}
 	res := importSpec{
-		Type:       tokens.Type(typ),
-		Name:       name,
-		ID:         resource.ID(id),
-		Version:    version,
-		Properties: properties,
+		Type:		tokens.Type(typ),
+		Name:		name,
+		ID:		resource.ID(id),
+		Version:	version,
+		Properties:	properties,
 	}
 
 	if parentSpec != "" {
@@ -145,30 +145,30 @@ func makeImportFile(
 	}
 
 	return importFile{
-		NameTable: nameTable,
-		Resources: []importSpec{res},
+		NameTable:	nameTable,
+		Resources:	[]importSpec{res},
 	}, nil
 }
 
 type importSpec struct {
-	Type              tokens.Type `json:"type"`
-	Name              string      `json:"name"`
-	ID                resource.ID `json:"id,omitempty"`
-	Parent            string      `json:"parent,omitempty"`
-	Provider          string      `json:"provider,omitempty"`
-	Version           string      `json:"version,omitempty"`
-	PluginDownloadURL string      `json:"pluginDownloadUrl,omitempty"`
-	Properties        []string    `json:"properties,omitempty"`
-	Component         bool        `json:"component,omitempty"`
-	Remote            bool        `json:"remote,omitempty"`
+	Type			tokens.Type	`json:"type"`
+	Name			string		`json:"name"`
+	ID			resource.ID	`json:"id,omitempty"`
+	Parent			string		`json:"parent,omitempty"`
+	Provider		string		`json:"provider,omitempty"`
+	Version			string		`json:"version,omitempty"`
+	PluginDownloadURL	string		`json:"pluginDownloadUrl,omitempty"`
+	Properties		[]string	`json:"properties,omitempty"`
+	Component		bool		`json:"component,omitempty"`
+	Remote			bool		`json:"remote,omitempty"`
 
 	// LogicalName is the resources Pulumi name (i.e. the first argument to `new Resource`).
-	LogicalName string `json:"logicalName,omitempty"`
+	LogicalName	string	`json:"logicalName,omitempty"`
 }
 
 type importFile struct {
-	NameTable map[string]resource.URN `json:"nameTable,omitempty"`
-	Resources []importSpec            `json:"resources,omitempty"`
+	NameTable	map[string]resource.URN	`json:"nameTable,omitempty"`
+	Resources	[]importSpec		`json:"resources,omitempty"`
 }
 
 func readImportFile(p string) (importFile, error) {
@@ -440,14 +440,14 @@ func parseImportFile(
 	imports := make([]deploy.Import, len(f.Resources))
 	for i, spec := range f.Resources {
 		imp := deploy.Import{
-			Type:              spec.Type,
-			Name:              spec.LogicalName,
-			ID:                spec.ID,
-			Protect:           protectResources,
-			Properties:        spec.Properties,
-			PluginDownloadURL: spec.PluginDownloadURL,
-			Component:         spec.Component,
-			Remote:            spec.Remote,
+			Type:			spec.Type,
+			Name:			spec.LogicalName,
+			ID:			spec.ID,
+			Protect:		protectResources,
+			Properties:		spec.Properties,
+			PluginDownloadURL:	spec.PluginDownloadURL,
+			Component:		spec.Component,
+			Remote:			spec.Remote,
 		}
 
 		if spec.Parent != "" {
@@ -517,10 +517,10 @@ func generateImportedDefinitions(ctx *plugin.Context,
 		v := recover()
 		if v != nil {
 			errMsg := strings.Builder{}
-			errMsg.WriteString("Your resource has been imported into Pulumi state, but there was an error generating the import code.\n") //nolint:lll
+			errMsg.WriteString("Your resource has been imported into Pulumi state, but there was an error generating the import code.\n")	//nolint:lll
 			errMsg.WriteString("\n")
 			if strings.Contains(fmt.Sprintf("%v", v), "invalid Go source code:") {
-				errMsg.WriteString("You will need to copy and paste the generated code into your Pulumi application and manually edit it to correct any errors.\n\n") //nolint:lll
+				errMsg.WriteString("You will need to copy and paste the generated code into your Pulumi application and manually edit it to correct any errors.\n\n")	//nolint:lll
 			}
 			fmt.Fprintf(&errMsg, "%v\n", v)
 			fmt.Print(errMsg.String())
@@ -613,8 +613,8 @@ func NewImportCmd() *cobra.Command {
 	var generateResources string
 
 	cmd := &cobra.Command{
-		Use:   "import [type] [name] [id]",
-		Short: "Import resources into an existing stack",
+		Use:	"import [type] [name] [id]",
+		Short:	"Import resources into an existing stack",
 		Long: "Import resources into an existing stack.\n" +
 			"\n" +
 			"Resources that are not managed by Pulumi can be imported into a Pulumi stack\n" +
@@ -737,10 +737,10 @@ func NewImportCmd() *cobra.Command {
 
 				baseMapper, err := convert.NewBasePluginMapper(
 					convert.DefaultWorkspace(),
-					from, /*conversionKey*/
+					from,	/*conversionKey*/
 					convert.ProviderFactoryFromHost(ctx, pCtx.Host),
 					installPlugin,
-					nil, /*mappings*/
+					nil,	/*mappings*/
 				)
 				mapper := convert.NewCachingMapper(baseMapper)
 				if err != nil {
@@ -754,8 +754,8 @@ func NewImportCmd() *cobra.Command {
 				}
 
 				resp, err := converter.ConvertState(ctx, &plugin.ConvertStateRequest{
-					MapperTarget: grpcServer.Addr(),
-					Args:         args,
+					MapperTarget:	grpcServer.Addr(),
+					Args:		args,
 				})
 				if err != nil {
 					return err
@@ -838,15 +838,15 @@ func NewImportCmd() *cobra.Command {
 			}
 
 			opts.Display = display.Options{
-				Color:            cmdutil.GetGlobalColorization(),
-				ShowConfig:       showConfig,
-				SuppressOutputs:  suppressOutputs,
-				SuppressProgress: suppressProgress,
-				IsInteractive:    interactive,
-				Type:             displayType,
-				EventLogPath:     eventLogPath,
-				Debug:            debug,
-				JSONDisplay:      jsonDisplay,
+				Color:			cmdutil.GetGlobalColorization(),
+				ShowConfig:		showConfig,
+				SuppressOutputs:	suppressOutputs,
+				SuppressProgress:	suppressProgress,
+				IsInteractive:		interactive,
+				Type:			displayType,
+				EventLogPath:		eventLogPath,
+				Debug:			debug,
+				JSONDisplay:		jsonDisplay,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -953,22 +953,22 @@ func NewImportCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				Parallel:             parallel,
-				Debug:                debug,
-				UseLegacyDiff:        env.EnableLegacyDiff.Value(),
-				UseLegacyRefreshDiff: env.EnableLegacyRefreshDiff.Value(),
-				Experimental:         env.Experimental.Value(),
+				Parallel:		parallel,
+				Debug:			debug,
+				UseLegacyDiff:		env.EnableLegacyDiff.Value(),
+				UseLegacyRefreshDiff:	env.EnableLegacyRefreshDiff.Value(),
+				Experimental:		env.Experimental.Value(),
 			}
 
 			_, err = backend.ImportStack(ctx, s, backend.UpdateOperation{
-				Proj:               proj,
-				Root:               root,
-				M:                  m,
-				Opts:               opts,
-				StackConfiguration: cfg,
-				SecretsManager:     sm,
-				SecretsProvider:    secrets.DefaultProvider,
-				Scopes:             backend.CancellationScopes,
+				Proj:			proj,
+				Root:			root,
+				M:			m,
+				Opts:			opts,
+				StackConfiguration:	cfg,
+				SecretsManager:		sm,
+				SecretsProvider:	secrets.DefaultProvider,
+				Scopes:			backend.CancellationScopes,
 			}, imports)
 
 			if generateCode {

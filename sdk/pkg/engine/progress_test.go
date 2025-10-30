@@ -44,7 +44,7 @@ func TestProgressReportingCloser(t *testing.T) {
 		"test-id",
 		"Test message",
 		int64(size),
-		0, /*reportingInterval*/
+		0,	/*reportingInterval*/
 		&constantReadCloser{read: read},
 	)
 

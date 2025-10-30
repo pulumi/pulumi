@@ -25,8 +25,8 @@ func TestTemplateFilePath(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		give string
-		want string
+		give	string
+		want	string
 	}{
 		{"foo-bar.go.template", filepath.Join("foo", "bar.go")},
 		{"bar.go.template", "bar.go"},

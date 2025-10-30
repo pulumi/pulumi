@@ -15,9 +15,9 @@ import (
 type Provider struct {
 	pulumi.ProviderResourceState
 
-	Name              pulumi.StringOutput    `pulumi:"name"`
-	PluginDownloadURL pulumi.StringPtrOutput `pulumi:"pluginDownloadURL"`
-	Version           pulumi.StringOutput    `pulumi:"version"`
+	Name			pulumi.StringOutput	`pulumi:"name"`
+	PluginDownloadURL	pulumi.StringPtrOutput	`pulumi:"pluginDownloadURL"`
+	Version			pulumi.StringOutput	`pulumi:"version"`
 }
 
 // NewProvider registers a new resource with the given unique name, arguments, and options.
@@ -40,14 +40,14 @@ func NewProvider(ctx *pulumi.Context,
 }
 
 type providerArgs struct {
-	Name              string  `pulumi:"name"`
-	PluginDownloadURL *string `pulumi:"pluginDownloadURL"`
+	Name			string	`pulumi:"name"`
+	PluginDownloadURL	*string	`pulumi:"pluginDownloadURL"`
 }
 
 // The set of arguments for constructing a Provider resource.
 type ProviderArgs struct {
-	Name              pulumi.StringInput
-	PluginDownloadURL pulumi.StringPtrInput
+	Name			pulumi.StringInput
+	PluginDownloadURL	pulumi.StringPtrInput
 }
 
 func (ProviderArgs) ElementType() reflect.Type {

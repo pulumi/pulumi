@@ -49,17 +49,17 @@ func GCPOperationsProvider(
 	}
 
 	prov := &gcpOpsProvider{
-		ctx:       ctx,
-		client:    client,
-		component: component,
+		ctx:		ctx,
+		client:		client,
+		component:	component,
 	}
 	return prov, nil
 }
 
 type gcpOpsProvider struct {
-	ctx       context.Context
-	client    *gcplogging.Client
-	component *Resource
+	ctx		context.Context
+	client		*gcplogging.Client
+	component	*Resource
 }
 
 var _ Provider = (*gcpOpsProvider)(nil)
@@ -105,8 +105,8 @@ func (ops *gcpOpsProvider) getFunctionLogs(state *resource.State, query LogQuery
 	}
 
 	req := &loggingpb.ListLogEntriesRequest{
-		ResourceNames: []string{"projects/" + project},
-		Filter:        strings.Join(logFilter, " "),
+		ResourceNames:	[]string{"projects/" + project},
+		Filter:		strings.Join(logFilter, " "),
 	}
 
 	var logs []LogEntry
@@ -130,9 +130,9 @@ func (ops *gcpOpsProvider) getFunctionLogs(state *resource.State, query LogQuery
 		}
 
 		logs = append(logs, LogEntry{
-			ID:        name,
-			Message:   message,
-			Timestamp: entry.GetTimestamp().Seconds * 1000,
+			ID:		name,
+			Message:	message,
+			Timestamp:	entry.GetTimestamp().Seconds * 1000,
 		})
 	}
 }

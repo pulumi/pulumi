@@ -27,34 +27,34 @@ func TestParseConfigSuccess(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Array    []string
-		Path     bool
-		Expected config.Map
+		Array		[]string
+		Path		bool
+		Expected	config.Map
 	}{
 		{
-			Array:    []string{},
-			Expected: config.Map{},
+			Array:		[]string{},
+			Expected:	config.Map{},
 		},
 		{
-			Array: []string{"my:testKey"},
+			Array:	[]string{"my:testKey"},
 			Expected: config.Map{
 				config.MustMakeKey("my", "testKey"): config.NewValue(""),
 			},
 		},
 		{
-			Array: []string{"my:testKey="},
+			Array:	[]string{"my:testKey="},
 			Expected: config.Map{
 				config.MustMakeKey("my", "testKey"): config.NewValue(""),
 			},
 		},
 		{
-			Array: []string{"my:testKey=testValue"},
+			Array:	[]string{"my:testKey=testValue"},
 			Expected: config.Map{
 				config.MustMakeKey("my", "testKey"): config.NewValue("testValue"),
 			},
 		},
 		{
-			Array: []string{"my:testKey=test=Value"},
+			Array:	[]string{"my:testKey=test=Value"},
 			Expected: config.Map{
 				config.MustMakeKey("my", "testKey"): config.NewValue("test=Value"),
 			},
@@ -88,7 +88,7 @@ func TestParseConfigSuccess(t *testing.T) {
 			Array: []string{
 				"my:testKey=testValue",
 			},
-			Path: true,
+			Path:	true,
 			Expected: config.Map{
 				config.MustMakeKey("my", "testKey"): config.NewValue("testValue"),
 			},
@@ -97,7 +97,7 @@ func TestParseConfigSuccess(t *testing.T) {
 			Array: []string{
 				"my:0=testValue",
 			},
-			Path: true,
+			Path:	true,
 			Expected: config.Map{
 				config.MustMakeKey("my", "0"): config.NewValue("testValue"),
 			},
@@ -106,7 +106,7 @@ func TestParseConfigSuccess(t *testing.T) {
 			Array: []string{
 				"my:true=testValue",
 			},
-			Path: true,
+			Path:	true,
 			Expected: config.Map{
 				config.MustMakeKey("my", "true"): config.NewValue("testValue"),
 			},
@@ -115,7 +115,7 @@ func TestParseConfigSuccess(t *testing.T) {
 			Array: []string{
 				`my:["test.Key"]=testValue`,
 			},
-			Path: true,
+			Path:	true,
 			Expected: config.Map{
 				config.MustMakeKey("my", "test.Key"): config.NewValue("testValue"),
 			},
@@ -124,7 +124,7 @@ func TestParseConfigSuccess(t *testing.T) {
 			Array: []string{
 				`my:outer.inner=value`,
 			},
-			Path: true,
+			Path:	true,
 			Expected: config.Map{
 				config.MustMakeKey("my", "outer"): config.NewObjectValue(`{"inner":"value"}`),
 			},
@@ -133,7 +133,7 @@ func TestParseConfigSuccess(t *testing.T) {
 			Array: []string{
 				`my:outer.inner.nested=value`,
 			},
-			Path: true,
+			Path:	true,
 			Expected: config.Map{
 				config.MustMakeKey("my", "outer"): config.NewObjectValue(`{"inner":{"nested":"value"}}`),
 			},
@@ -142,7 +142,7 @@ func TestParseConfigSuccess(t *testing.T) {
 			Array: []string{
 				`my:name[0]=value`,
 			},
-			Path: true,
+			Path:	true,
 			Expected: config.Map{
 				config.MustMakeKey("my", "name"): config.NewObjectValue(`["value"]`),
 			},
@@ -151,7 +151,7 @@ func TestParseConfigSuccess(t *testing.T) {
 			Array: []string{
 				`my:name[0][0]=value`,
 			},
-			Path: true,
+			Path:	true,
 			Expected: config.Map{
 				config.MustMakeKey("my", "name"): config.NewObjectValue(`[["value"]]`),
 			},
@@ -160,7 +160,7 @@ func TestParseConfigSuccess(t *testing.T) {
 			Array: []string{
 				`my:servers[0].name=foo`,
 			},
-			Path: true,
+			Path:	true,
 			Expected: config.Map{
 				config.MustMakeKey("my", "servers"): config.NewObjectValue(`[{"name":"foo"}]`),
 			},
@@ -201,7 +201,7 @@ func TestParseConfigSuccess(t *testing.T) {
 			Array: []string{
 				`my:testKey[0]=false`,
 			},
-			Path: true,
+			Path:	true,
 			Expected: config.Map{
 				config.MustMakeKey("my", "testKey"): config.NewObjectValue(`[false]`),
 			},
@@ -210,7 +210,7 @@ func TestParseConfigSuccess(t *testing.T) {
 			Array: []string{
 				`my:testKey[0]=true`,
 			},
-			Path: true,
+			Path:	true,
 			Expected: config.Map{
 				config.MustMakeKey("my", "testKey"): config.NewObjectValue(`[true]`),
 			},
@@ -219,7 +219,7 @@ func TestParseConfigSuccess(t *testing.T) {
 			Array: []string{
 				`my:testKey[0]=10`,
 			},
-			Path: true,
+			Path:	true,
 			Expected: config.Map{
 				config.MustMakeKey("my", "testKey"): config.NewObjectValue(`[10]`),
 			},
@@ -228,7 +228,7 @@ func TestParseConfigSuccess(t *testing.T) {
 			Array: []string{
 				`my:testKey[0]=-1`,
 			},
-			Path: true,
+			Path:	true,
 			Expected: config.Map{
 				config.MustMakeKey("my", "testKey"): config.NewObjectValue(`[-1]`),
 			},
@@ -239,7 +239,7 @@ func TestParseConfigSuccess(t *testing.T) {
 				`my:names[1]=b`,
 				`my:names[2]=c`,
 			},
-			Path: true,
+			Path:	true,
 			Expected: config.Map{
 				config.MustMakeKey("my", "names"): config.NewObjectValue(`["a","b","c"]`),
 			},
@@ -251,7 +251,7 @@ func TestParseConfigSuccess(t *testing.T) {
 				`my:names[2]=c`,
 				`my:names[0]=rewritten`,
 			},
-			Path: true,
+			Path:	true,
 			Expected: config.Map{
 				config.MustMakeKey("my", "names"): config.NewObjectValue(`["rewritten","b","c"]`),
 			},
@@ -274,8 +274,8 @@ func TestSetFail(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Array    []string
-		Expected config.Map
+		Array		[]string
+		Expected	config.Map
 	}{
 		{
 			Array: []string{`my:[""]=value`},

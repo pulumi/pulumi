@@ -27,13 +27,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	cmdTemplates "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/templates"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/testutil"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -54,12 +54,12 @@ func TestFailInInteractiveWithoutYes(t *testing.T) {
 	t.Chdir(tempdir)
 
 	args := newArgs{
-		interactive:       false,
-		yes:               false,
-		prompt:            ui.PromptForValue,
-		secretsProvider:   "default",
-		stack:             stackName,
-		templateNameOrURL: "typescript",
+		interactive:		false,
+		yes:			false,
+		prompt:			ui.PromptForValue,
+		secretsProvider:	"default",
+		stack:			stackName,
+		templateNameOrURL:	"typescript",
 	}
 
 	err := runNew(context.Background(), args)
@@ -74,13 +74,13 @@ func TestFailIfProjectNameDoesNotMatch(t *testing.T) {
 	t.Chdir(tempdir)
 
 	args := newArgs{
-		interactive:       false,
-		yes:               true,
-		prompt:            ui.PromptForValue,
-		secretsProvider:   "default",
-		stack:             "org/projectA/stack",
-		name:              "projectB",
-		templateNameOrURL: "typescript",
+		interactive:		false,
+		yes:			true,
+		prompt:			ui.PromptForValue,
+		secretsProvider:	"default",
+		stack:			"org/projectA/stack",
+		name:			"projectB",
+		templateNameOrURL:	"typescript",
 	}
 
 	err := runNew(context.Background(), args)
@@ -100,12 +100,12 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 	fullStackName := fmt.Sprintf("%s/%s/%s", currentUser(t), filepath.Base(tempdir), stackName)
 
 	args := newArgs{
-		interactive:       false,
-		yes:               true,
-		prompt:            ui.PromptForValue,
-		secretsProvider:   "default",
-		stack:             orgStackName,
-		templateNameOrURL: "typescript",
+		interactive:		false,
+		yes:			true,
+		prompt:			ui.PromptForValue,
+		secretsProvider:	"default",
+		stack:			orgStackName,
+		templateNameOrURL:	"typescript",
 	}
 
 	err := runNew(context.Background(), args)
@@ -127,10 +127,10 @@ func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 	fullStackName := fmt.Sprintf("%s/%s/%s", currentUser(t), filepath.Base(tempdir), stackName)
 
 	args := newArgs{
-		interactive:       true,
-		prompt:            promptMock(uniqueProjectName, orgStackName),
-		secretsProvider:   "default",
-		templateNameOrURL: "typescript",
+		interactive:		true,
+		prompt:			promptMock(uniqueProjectName, orgStackName),
+		secretsProvider:	"default",
+		templateNameOrURL:	"typescript",
 	}
 
 	err := runNew(context.Background(), args)
@@ -152,12 +152,12 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 	fullStackName := fmt.Sprintf("%s/%s/%s", currentUser(t), uniqueProjectName, stackName)
 
 	args := newArgs{
-		interactive:       false,
-		yes:               true,
-		prompt:            ui.PromptForValue,
-		secretsProvider:   "default",
-		stack:             fullStackName,
-		templateNameOrURL: "typescript",
+		interactive:		false,
+		yes:			true,
+		prompt:			ui.PromptForValue,
+		secretsProvider:	"default",
+		stack:			fullStackName,
+		templateNameOrURL:	"typescript",
 	}
 
 	err := runNew(context.Background(), args)
@@ -176,13 +176,13 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 	uniqueProjectName := filepath.Base(tempdir) + "test"
 
 	args := newArgs{
-		interactive:       false,
-		yes:               true,
-		name:              uniqueProjectName,
-		prompt:            ui.PromptForValue,
-		secretsProvider:   "default",
-		stack:             stackName,
-		templateNameOrURL: "typescript",
+		interactive:		false,
+		yes:			true,
+		name:			uniqueProjectName,
+		prompt:			ui.PromptForValue,
+		secretsProvider:	"default",
+		stack:			stackName,
+		templateNameOrURL:	"typescript",
 	}
 
 	err := runNew(context.Background(), args)
@@ -203,10 +203,10 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 	uniqueProjectName := filepath.Base(tempdir) + "test"
 
 	args := newArgs{
-		interactive:       true,
-		prompt:            promptMock(uniqueProjectName, stackName),
-		secretsProvider:   "default",
-		templateNameOrURL: "typescript",
+		interactive:		true,
+		prompt:			promptMock(uniqueProjectName, stackName),
+		secretsProvider:	"default",
+		templateNameOrURL:	"typescript",
 	}
 
 	err := runNew(context.Background(), args)
@@ -239,12 +239,12 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 	})
 
 	args := newArgs{
-		interactive:       false,
-		yes:               true,
-		name:              projectName,
-		prompt:            ui.PromptForValue,
-		secretsProvider:   "default",
-		templateNameOrURL: "typescript",
+		interactive:		false,
+		yes:			true,
+		name:			projectName,
+		prompt:			ui.PromptForValue,
+		secretsProvider:	"default",
+		templateNameOrURL:	"typescript",
 	}
 
 	err := runNew(context.Background(), args)
@@ -267,7 +267,7 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
-		NameF: func() string { return "mock" },
+		NameF:	func() string { return "mock" },
 		GetReadOnlyCloudRegistryF: func() registry.Registry {
 			return &backend.MockCloudRegistry{
 				ListTemplatesF: listTemplates,
@@ -276,10 +276,10 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 	})
 
 	args := newArgs{
-		interactive:       true,
-		prompt:            promptMock(projectName, ""),
-		secretsProvider:   "default",
-		templateNameOrURL: "typescript",
+		interactive:		true,
+		prompt:			promptMock(projectName, ""),
+		secretsProvider:	"default",
+		templateNameOrURL:	"typescript",
 	}
 
 	err := runNew(context.Background(), args)
@@ -305,18 +305,18 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 				},
 			}
 		},
-		NameF: func() string { return "mock" },
+		NameF:	func() string { return "mock" },
 	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
 	args := newArgs{
-		generateOnly:      true,
-		interactive:       false,
-		yes:               true,
-		name:              projectName,
-		prompt:            ui.PromptForValue,
-		secretsProvider:   "default",
-		templateNameOrURL: "typescript",
+		generateOnly:		true,
+		interactive:		false,
+		yes:			true,
+		name:			projectName,
+		prompt:			ui.PromptForValue,
+		secretsProvider:	"default",
+		templateNameOrURL:	"typescript",
 	}
 
 	err := runNew(context.Background(), args)
@@ -345,16 +345,16 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 				},
 			}
 		},
-		NameF: func() string { return "mock" },
+		NameF:	func() string { return "mock" },
 	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
 	args := newArgs{
-		generateOnly:      true,
-		interactive:       true,
-		prompt:            promptMock(projectName, ""),
-		secretsProvider:   "default",
-		templateNameOrURL: "typescript",
+		generateOnly:		true,
+		interactive:		true,
+		prompt:			promptMock(projectName, ""),
+		secretsProvider:	"default",
+		templateNameOrURL:	"typescript",
 	}
 
 	err := runNew(context.Background(), args)
@@ -383,12 +383,12 @@ func TestCreatingProjectWithEmptyConfig(t *testing.T) {
 	}
 
 	args := newArgs{
-		name:              uniqueProjectName,
-		stack:             stackName,
-		interactive:       true,
-		prompt:            prompt,
-		secretsProvider:   "default",
-		templateNameOrURL: "aws-typescript",
+		name:			uniqueProjectName,
+		stack:			stackName,
+		interactive:		true,
+		prompt:			prompt,
+		secretsProvider:	"default",
+		templateNameOrURL:	"aws-typescript",
 	}
 
 	err := runNew(context.Background(), args)
@@ -425,13 +425,13 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
 	args := newArgs{
-		generateOnly:      true,
-		interactive:       false,
-		yes:               true,
-		name:              "not#valid",
-		prompt:            ui.PromptForValue,
-		secretsProvider:   "default",
-		templateNameOrURL: "typescript",
+		generateOnly:		true,
+		interactive:		false,
+		yes:			true,
+		name:			"not#valid",
+		prompt:			ui.PromptForValue,
+		secretsProvider:	"default",
+		templateNameOrURL:	"typescript",
 	}
 
 	err := runNew(context.Background(), args)
@@ -457,25 +457,25 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 				},
 			}
 		},
-		NameF: func() string { return "mock" },
+		NameF:	func() string { return "mock" },
 	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
 	err := runNew(context.Background(), newArgs{
-		generateOnly:      true,
-		interactive:       true,
-		prompt:            promptMock("not#valid", ""),
-		secretsProvider:   "default",
-		templateNameOrURL: "typescript",
+		generateOnly:		true,
+		interactive:		true,
+		prompt:			promptMock("not#valid", ""),
+		secretsProvider:	"default",
+		templateNameOrURL:	"typescript",
 	})
 	assert.ErrorContains(t, err, "project names may only contain")
 
 	err = runNew(context.Background(), newArgs{
-		generateOnly:      true,
-		interactive:       true,
-		prompt:            promptMock("", ""),
-		secretsProvider:   "default",
-		templateNameOrURL: "typescript",
+		generateOnly:		true,
+		interactive:		true,
+		prompt:			promptMock("", ""),
+		secretsProvider:	"default",
+		templateNameOrURL:	"typescript",
 	})
 	assert.ErrorContains(t, err, "project names may not be empty")
 }
@@ -489,12 +489,12 @@ func TestInvalidTemplateName(t *testing.T) {
 		t.Chdir(tempdir)
 
 		args := newArgs{
-			chooseTemplate:    ChooseTemplate,
-			interactive:       false,
-			yes:               true,
-			secretsProvider:   "default",
-			templateNameOrURL: "",
-			templateMode:      true,
+			chooseTemplate:		ChooseTemplate,
+			interactive:		false,
+			yes:			true,
+			secretsProvider:	"default",
+			templateNameOrURL:	"",
+			templateMode:		true,
 		}
 
 		err := runNew(context.Background(), args)
@@ -509,10 +509,10 @@ func TestInvalidTemplateName(t *testing.T) {
 		template := "this-is-not-the-template-youre-looking-for"
 
 		args := newArgs{
-			interactive:       false,
-			yes:               true,
-			secretsProvider:   "default",
-			templateNameOrURL: template,
+			interactive:		false,
+			yes:			true,
+			secretsProvider:	"default",
+			templateNameOrURL:	template,
 		}
 
 		err := runNew(context.Background(), args)
@@ -527,11 +527,11 @@ func TestInvalidTemplateName(t *testing.T) {
 		template := "this-is-not-the-template-youre-looking-for"
 
 		args := newArgs{
-			generateOnly:      true,
-			offline:           true,
-			secretsProvider:   "default",
-			templateNameOrURL: template,
-			yes:               true,
+			generateOnly:		true,
+			offline:		true,
+			secretsProvider:	"default",
+			templateNameOrURL:	template,
+			yes:			true,
 		}
 
 		err := runNew(context.Background(), args)
@@ -570,13 +570,13 @@ func TestValidateStackRefAndProjectName(t *testing.T) {
 				}, nil
 			case 2:
 				return &backend.MockStackReference{
-					ProjectV: tokens.Name(parts[0]),
-					NameV:    tokens.MustParseStackName(parts[1]),
+					ProjectV:	tokens.Name(parts[0]),
+					NameV:		tokens.MustParseStackName(parts[1]),
 				}, nil
 			case 3:
 				return &backend.MockStackReference{
-					ProjectV: tokens.Name(parts[1]),
-					NameV:    tokens.MustParseStackName(parts[2]),
+					ProjectV:	tokens.Name(parts[1]),
+					NameV:		tokens.MustParseStackName(parts[2]),
 				}, nil
 
 			default:
@@ -593,34 +593,34 @@ func TestValidateStackRefAndProjectName(t *testing.T) {
 	}
 
 	tests := []struct {
-		projectName string
-		stackRef    string
-		valid       bool
+		projectName	string
+		stackRef	string
+		valid		bool
 	}{
 		{
-			projectName: "foo",
-			stackRef:    "foo",
-			valid:       true,
+			projectName:	"foo",
+			stackRef:	"foo",
+			valid:		true,
 		},
 		{
-			projectName: "fooo",
-			stackRef:    "org/foo/dev",
-			valid:       false,
+			projectName:	"fooo",
+			stackRef:	"org/foo/dev",
+			valid:		false,
 		},
 		{
-			projectName: "",
-			stackRef:    "org/foo/dev",
-			valid:       true,
+			projectName:	"",
+			stackRef:	"org/foo/dev",
+			valid:		true,
 		},
 		{
-			projectName: "foo",
-			stackRef:    "",
-			valid:       true,
+			projectName:	"foo",
+			stackRef:	"",
+			valid:		true,
 		},
 		{
-			projectName: "foo",
-			stackRef:    "org/foo/dev",
-			valid:       true,
+			projectName:	"foo",
+			stackRef:	"org/foo/dev",
+			valid:		true,
 		},
 	}
 
@@ -648,7 +648,7 @@ func TestProjectExists(t *testing.T) {
 				"moolumi": {
 					"my-moolumi-project": {},
 				},
-				"pulumi": {},
+				"pulumi":	{},
 			}
 			orgProjects, ok := projects[Org(orgName)]
 			if !ok {
@@ -668,29 +668,29 @@ func TestProjectExists(t *testing.T) {
 
 	// Table Test
 	type Project struct {
-		orgName     string
-		projectName string
+		orgName		string
+		projectName	string
 	}
 	tests := []struct {
-		name   string
-		give   Project
-		hasErr bool
+		name	string
+		give	Project
+		hasErr	bool
 	}{
 		{
-			name: "project exists",
+			name:	"project exists",
 			give: Project{
-				projectName: "my-moolumi-project",
-				orgName:     "moolumi",
+				projectName:	"my-moolumi-project",
+				orgName:	"moolumi",
 			},
-			hasErr: true,
+			hasErr:	true,
 		},
 		{
-			name: "project exists in another org",
+			name:	"project exists in another org",
 			give: Project{
-				projectName: "my-moolumi-project",
-				orgName:     "pulumi",
+				projectName:	"my-moolumi-project",
+				orgName:	"pulumi",
 			},
-			hasErr: false,
+			hasErr:	false,
 		},
 	}
 	for _, tt := range tests {
@@ -712,8 +712,8 @@ func TestGenerateOnlyProjectCheck(t *testing.T) {
 	// project name and stack work when generateOnly is set (thus skipping backend checks).
 
 	cases := []struct {
-		name  string
-		stack string
+		name	string
+		stack	string
 	}{
 		{name: "mismatched project name", stack: "organization/boom/stack"},
 		{name: "fully qualified stack name", stack: "organization/project/stack"},
@@ -727,14 +727,14 @@ func TestGenerateOnlyProjectCheck(t *testing.T) {
 			t.Chdir(tempdir)
 
 			args := newArgs{
-				generateOnly:      true,
-				interactive:       false,
-				yes:               true,
-				prompt:            ui.PromptForValue,
-				secretsProvider:   "default",
-				stack:             tt.stack,
-				name:              "project",
-				templateNameOrURL: "typescript",
+				generateOnly:		true,
+				interactive:		false,
+				yes:			true,
+				prompt:			ui.PromptForValue,
+				secretsProvider:	"default",
+				stack:			tt.stack,
+				name:			"project",
+				templateNameOrURL:	"typescript",
 			}
 
 			err := runNew(context.Background(), args)
@@ -789,9 +789,9 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 		t.Skip("Skipping test because PULUMI_ACCESS_TOKEN is not set")
 	}
 	tests := []struct {
-		argument string
-		prompted string
-		expected string
+		argument	string
+		prompted	string
+		expected	string
 	}{
 		{
 			"typescript",
@@ -836,16 +836,16 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 			}
 
 			args := newArgs{
-				interactive:          tt.prompted != "",
-				generateOnly:         true,
-				yes:                  true,
-				templateMode:         true,
-				name:                 projectName,
-				prompt:               promptMock(uniqueProjectName, stackName),
-				promptRuntimeOptions: runtimeOptionsMock,
-				chooseTemplate:       chooseTemplateMock,
-				secretsProvider:      "default",
-				templateNameOrURL:    tt.argument,
+				interactive:		tt.prompted != "",
+				generateOnly:		true,
+				yes:			true,
+				templateMode:		true,
+				name:			projectName,
+				prompt:			promptMock(uniqueProjectName, stackName),
+				promptRuntimeOptions:	runtimeOptionsMock,
+				chooseTemplate:		chooseTemplateMock,
+				secretsProvider:	"default",
+				templateNameOrURL:	tt.argument,
 			}
 
 			err := runNew(context.Background(), args)
@@ -874,15 +874,15 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 	}
 
 	args := newArgs{
-		interactive:          false,
-		generateOnly:         true,
-		yes:                  true,
-		templateMode:         true,
-		name:                 projectName,
-		prompt:               ui.PromptForValue,
-		promptRuntimeOptions: runtimeOptionsMock,
-		secretsProvider:      "default",
-		templateNameOrURL:    "python",
+		interactive:		false,
+		generateOnly:		true,
+		yes:			true,
+		templateMode:		true,
+		name:			projectName,
+		prompt:			ui.PromptForValue,
+		promptRuntimeOptions:	runtimeOptionsMock,
+		secretsProvider:	"default",
+		templateNameOrURL:	"python",
 	}
 
 	err := runNew(context.Background(), args)
@@ -899,7 +899,7 @@ func TestPulumiNewWithOrgTemplates(t *testing.T) {
 	// Set environment variable to disable registry resolution and use org templates
 	t.Setenv("PULUMI_DISABLE_REGISTRY_RESOLVE", "true")
 	mockBackend := &backend.MockBackend{
-		SupportsTemplatesF: func() bool { return true },
+		SupportsTemplatesF:	func() bool { return true },
 		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 			return "fred", []string{"org1", "personal"}, nil, nil
 		},
@@ -907,25 +907,25 @@ func TestPulumiNewWithOrgTemplates(t *testing.T) {
 			switch orgName {
 			case "org1":
 				return apitype.ListOrgTemplatesResponse{
-					OrgHasTemplates: true,
+					OrgHasTemplates:	true,
 					Templates: map[string][]*apitype.PulumiTemplateRemote{
 						"github.com/example/foo": {
 							{
-								SourceName:  "Foo",
-								Name:        "template-1",
-								TemplateURL: "github.com/example/foo/template-1",
+								SourceName:	"Foo",
+								Name:		"template-1",
+								TemplateURL:	"github.com/example/foo/template-1",
 								ProjectTemplate: apitype.ProjectTemplate{
-									DisplayName: "Display 1",
-									Description: "Describe 1",
+									DisplayName:	"Display 1",
+									Description:	"Describe 1",
 								},
 							},
 							{
-								SourceName:  "Foo",
-								Name:        "template-2",
-								TemplateURL: "github.com/example/foo/template-2",
+								SourceName:	"Foo",
+								Name:		"template-2",
+								TemplateURL:	"github.com/example/foo/template-2",
 								ProjectTemplate: apitype.ProjectTemplate{
-									DisplayName: "Display 2",
-									Description: "Describe 2",
+									DisplayName:	"Display 2",
+									Description:	"Describe 2",
 								},
 							},
 						},
@@ -994,7 +994,7 @@ Available Templates:
 	assert.Equal(t, "", stderr.String())
 }
 
-func ref[T any](v T) *T { return &v }
+func ref[T any](v T) *T	{ return &v }
 
 //nolint:paralleltest // Sets a global mock backend
 func TestPulumiNewWithRegistryTemplates(t *testing.T) {
@@ -1004,12 +1004,12 @@ func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 		ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
 			return func(yield func(apitype.TemplateMetadata, error) bool) {
 				if !yield(apitype.TemplateMetadata{
-					Name: "template-1", Description: ref("Describe 1"),
+					Name:	"template-1", Description: ref("Describe 1"),
 				}, nil) {
 					return
 				}
 				if !yield(apitype.TemplateMetadata{
-					Name: "template-2", Description: ref("Describe 2"),
+					Name:	"template-2", Description: ref("Describe 2"),
 				}, nil) {
 					return
 				}
@@ -1112,7 +1112,7 @@ func TestPulumiNewWithoutTemplateSupport(t *testing.T) {
 				},
 			}
 		},
-		NameF: func() string { return "mock" },
+		NameF:	func() string { return "mock" },
 	})
 
 	newCmd := NewNewCmd()
@@ -1138,7 +1138,7 @@ func TestPulumiNewOrgTemplate(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 	mockBackend := &backend.MockBackend{
-		SupportsTemplatesF: func() bool { return true },
+		SupportsTemplatesF:	func() bool { return true },
 		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 			return "fred", []string{"org1"}, nil, nil
 		},
@@ -1146,16 +1146,16 @@ func TestPulumiNewOrgTemplate(t *testing.T) {
 			switch orgName {
 			case "org1":
 				return apitype.ListOrgTemplatesResponse{
-					OrgHasTemplates: true,
+					OrgHasTemplates:	true,
 					Templates: map[string][]*apitype.PulumiTemplateRemote{
 						"github.com/example/foo": {
 							{
-								SourceName:  "Foo",
-								Name:        "template-1",
-								TemplateURL: "https://github.com/example/foo/template-1",
+								SourceName:	"Foo",
+								Name:		"template-1",
+								TemplateURL:	"https://github.com/example/foo/template-1",
 								ProjectTemplate: apitype.ProjectTemplate{
-									DisplayName: "Display 1",
-									Description: "Describe 1",
+									DisplayName:	"Display 1",
+									Description:	"Describe 1",
 								},
 							},
 						},
@@ -1252,8 +1252,8 @@ func TestNoPromptWithYes(t *testing.T) {
 	for _, interactive := range []bool{true, false} {
 		t.Run(fmt.Sprintf("interactive=%t", interactive), func(t *testing.T) {
 			args := newArgs{
-				interactive: interactive,
-				yes:         true,
+				interactive:	interactive,
+				yes:		true,
 			}
 
 			mockBackend := &backend.MockBackend{
@@ -1265,7 +1265,7 @@ func TestNoPromptWithYes(t *testing.T) {
 						},
 					}
 				},
-				NameF: func() string { return "mock" },
+				NameF:	func() string { return "mock" },
 			}
 
 			require.False(t, shouldPromptForAIOrTemplate(args, mockBackend))

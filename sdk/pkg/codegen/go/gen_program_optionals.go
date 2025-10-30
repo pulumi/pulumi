@@ -17,16 +17,16 @@ package gen
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 )
 
 type optionalTemp struct {
-	Name  string
-	Value model.Expression
+	Name	string
+	Value	model.Expression
 }
 
 func (ot *optionalTemp) Type() model.Type {
@@ -42,8 +42,8 @@ func (ot *optionalTemp) SyntaxNode() hclsyntax.Node {
 }
 
 type optionalSpiller struct {
-	invocation         *model.FunctionCallExpression
-	intrinsicConvertTo *model.Type
+	invocation		*model.FunctionCallExpression
+	intrinsicConvertTo	*model.Type
 }
 
 func (os *optionalSpiller) preVisitor(x model.Expression) (model.Expression, hcl.Diagnostics) {
@@ -96,15 +96,15 @@ func (os *optionalSpiller) preVisitor(x model.Expression) (model.Expression, hcl
 								expectedModelType := os.getExpectedModelType(schemaType)
 
 								x.Items[i].Value = &model.FunctionCallExpression{
-									Name: functionName,
+									Name:	functionName,
 									Signature: model.StaticFunctionSignature{
 										Parameters: []model.Parameter{{
-											Name: "val",
-											Type: expectedModelType,
+											Name:	"val",
+											Type:	expectedModelType,
 										}},
-										ReturnType: model.NewOptionalType(expectedModelType),
+										ReturnType:	model.NewOptionalType(expectedModelType),
 									},
-									Args: []model.Expression{item.Value},
+									Args:	[]model.Expression{item.Value},
 								}
 							}
 						}

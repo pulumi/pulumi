@@ -29,11 +29,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/backenderr"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/cmd"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
@@ -169,9 +169,9 @@ func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateNa
 }
 
 type registryTemplate struct {
-	t        apitype.TemplateMetadata
-	registry registry.Registry
-	source   *Source
+	t		apitype.TemplateMetadata
+	registry	registry.Registry
+	source		*Source
 }
 
 func (r registryTemplate) Name() string {
@@ -195,7 +195,7 @@ func (r registryTemplate) ProjectDescription() string {
 	return *r.t.Description
 }
 
-func (r registryTemplate) Error() error { return nil }
+func (r registryTemplate) Error() error	{ return nil }
 
 func (r registryTemplate) Download(ctx context.Context) (workspace.Template, error) {
 	templateBytes, err := r.registry.DownloadTemplate(ctx, r.t.DownloadURL)
@@ -223,10 +223,10 @@ func (r registryTemplate) Download(ctx context.Context) (workspace.Template, err
 	return template, err
 }
 
-func (r registryTemplate) GetRegistryName() string { return r.t.Name }
-func (r registryTemplate) GetTemplateName() string { return r.Name() }
-func (r registryTemplate) GetSource() string       { return r.t.Source }
-func (r registryTemplate) GetPublisher() string    { return r.t.Publisher }
+func (r registryTemplate) GetRegistryName() string	{ return r.t.Name }
+func (r registryTemplate) GetTemplateName() string	{ return r.Name() }
+func (r registryTemplate) GetSource() string		{ return r.t.Source }
+func (r registryTemplate) GetPublisher() string		{ return r.t.Publisher }
 
 func (s *Source) getOrgTemplates(
 	ctx context.Context, templateName string,
@@ -261,7 +261,7 @@ func (s *Source) getOrgTemplates(
 	if _, _, _, err := b.CurrentUser(); err != nil {
 		if errors.Is(err, backenderr.ErrLoginRequired) {
 			logging.Infof("user is not logged in")
-			return // No current user - so don't proceed
+			return	// No current user - so don't proceed
 		}
 		s.addError(fmt.Errorf("could not get the current user for %s: %s", url, err))
 		return
@@ -278,7 +278,7 @@ func (s *Source) getOrgTemplates(
 		s.addError(fmt.Errorf("could not get the current user: %w", err))
 		return
 	} else if user == "" {
-		return // No current user - so don't proceed.
+		return	// No current user - so don't proceed.
 	}
 
 	alreadySeenSourceURLs := map[string]struct{}{}
@@ -335,10 +335,10 @@ func (s *Source) getOrgTemplates(
 
 				logging.V(10).Infof("adding template %q", template.Name)
 				s.addTemplate(orgTemplate{
-					t:       template,
-					org:     org,
-					source:  s,
-					backend: b,
+					t:		template,
+					org:		org,
+					source:		s,
+					backend:	b,
 				})
 			}
 		}
@@ -351,16 +351,16 @@ func (s *Source) getOrgTemplates(
 }
 
 type orgTemplate struct {
-	t       *apitype.PulumiTemplateRemote
-	org     string
-	source  *Source
-	backend backend.Backend
+	t	*apitype.PulumiTemplateRemote
+	org	string
+	source	*Source
+	backend	backend.Backend
 }
 
-func (t orgTemplate) Name() string               { return t.t.Name }
-func (t orgTemplate) Description() string        { return "" }
-func (t orgTemplate) ProjectDescription() string { return t.t.Description }
-func (t orgTemplate) Error() error               { return nil }
+func (t orgTemplate) Name() string			{ return t.t.Name }
+func (t orgTemplate) Description() string		{ return "" }
+func (t orgTemplate) ProjectDescription() string	{ return t.t.Description }
+func (t orgTemplate) Error() error			{ return nil }
 func (t orgTemplate) Download(ctx context.Context) (workspace.Template, error) {
 	templateDir, err := os.MkdirTemp("", "pulumi-template-")
 	if err != nil {
@@ -384,7 +384,7 @@ func (t orgTemplate) Download(ctx context.Context) (workspace.Template, error) {
 	return workspace.LoadTemplate(templateDir)
 }
 
-const maxDecompressedSize = 100 << 20 // 100MB
+const maxDecompressedSize = 100 << 20	// 100MB
 
 // isGzipMagic checks if the given bytes start with the gzip magic number.
 // See https://datatracker.ietf.org/doc/html/rfc1952#section-2
@@ -408,8 +408,8 @@ func createTarReader(reader io.Reader) (io.ReadCloser, error) {
 			io.Reader
 			io.Closer
 		}{
-			Reader: io.LimitReader(gzipReader, maxDecompressedSize),
-			Closer: gzipReader,
+			Reader:	io.LimitReader(gzipReader, maxDecompressedSize),
+			Closer:	gzipReader,
 		}, nil
 	}
 
@@ -450,7 +450,7 @@ func writeTar(ctx context.Context, reader *tar.Reader, dst string) error {
 				return fmt.Errorf("invalid file mode for %q: %02x", header.Name, header.Mode)
 			}
 
-			fileMode := os.FileMode(header.Mode) //nolint:gosec // We checked the overflow
+			fileMode := os.FileMode(header.Mode)	//nolint:gosec // We checked the overflow
 			err := os.Mkdir(target, fileMode)
 			if err != nil && !errors.Is(err, fs.ErrExist) {
 				return err
@@ -461,7 +461,7 @@ func writeTar(ctx context.Context, reader *tar.Reader, dst string) error {
 				return fmt.Errorf("invalid file mode for %q: %02x", header.Name, header.Mode)
 			}
 
-			fileMode := os.FileMode(header.Mode) //nolint:gosec // We checked the overflow
+			fileMode := os.FileMode(header.Mode)	//nolint:gosec // We checked the overflow
 			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, fileMode)
 			if err != nil {
 				return err

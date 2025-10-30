@@ -35,7 +35,7 @@ type typeChecker int
 
 const (
 	// TypeCheckerNone is the default typeChecker
-	TypeCheckerNone typeChecker = iota
+	TypeCheckerNone	typeChecker	= iota
 	// TypeCheckerMypy is the mypy typeChecker
 	TypeCheckerMypy
 	// TypeCheckerPyright is the pyright typeChecker
@@ -45,33 +45,33 @@ const (
 type toolchain int
 
 const (
-	Pip toolchain = iota
+	Pip	toolchain	= iota
 	Poetry
 	Uv
 )
 
 type PythonOptions struct {
 	// The root directory of the project.
-	Root string
+	Root	string
 	// The program directory of the project.
-	ProgramDir string
+	ProgramDir	string
 	// Virtual environment to use, relative to `Root`.
-	Virtualenv string
+	Virtualenv	string
 	// Use a typechecker to type check.
-	Typechecker typeChecker
+	Typechecker	typeChecker
 	// The package manager to use for managing dependencies.
-	Toolchain toolchain
+	Toolchain	toolchain
 }
 
 type PythonPackage struct {
-	Name     string `json:"name"`
-	Version  string `json:"version"`
-	Location string `json:"location"`
+	Name		string	`json:"name"`
+	Version		string	`json:"version"`
+	Location	string	`json:"location"`
 }
 
 type Info struct {
-	Executable string
-	Version    string
+	Executable	string
+	Version		string
 }
 
 type Toolchain interface {
@@ -115,7 +115,7 @@ func Name(tc toolchain) string {
 }
 
 func ResolveToolchain(options PythonOptions) (Toolchain, error) {
-	switch options.Toolchain { //nolint:exhaustive // golangci-lint v2 upgrade
+	switch options.Toolchain {	//nolint:exhaustive // golangci-lint v2 upgrade
 	case Poetry:
 		dir := options.ProgramDir
 		if dir == "" {

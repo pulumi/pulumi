@@ -24,7 +24,7 @@ import (
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 	"github.com/AlecAivazis/survey/v2/terminal"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
@@ -182,9 +182,9 @@ func PromptUser(
 
 	var response string
 	if err := survey.AskOne(&survey.Select{
-		Message: prompt,
-		Options: options,
-		Default: defaultOption,
+		Message:	prompt,
+		Options:	options,
+		Default:	defaultOption,
 	}, &response, allSurveyAskOpts...); err != nil {
 		return ""
 	}
@@ -218,9 +218,9 @@ func PromptUserMulti(msg string, options []string, defaultOptions []string, colo
 
 	var response []string
 	if err := survey.AskOne(&survey.MultiSelect{
-		Message: prompt,
-		Options: options,
-		Default: defaultOptions,
+		Message:	prompt,
+		Options:	options,
+		Default:	defaultOptions,
 	}, &response, surveyIcons); err != nil {
 		return []string{}
 	}

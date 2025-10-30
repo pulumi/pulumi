@@ -18,14 +18,14 @@ import "slices"
 
 var (
 	// These property names are reserved
-	reservedKeywords = []string{"pulumi"}
+	reservedKeywords	= []string{"pulumi"}
 
-	reservedTopLevelPropertyNames = []string{"version"}
+	reservedTopLevelPropertyNames	= []string{"version"}
 	// urn is a reserved property name for all resources
 	// id is a reserved property name for resources which are not components
-	reservedResourcePropertyKeys = []string{"urn"}
+	reservedResourcePropertyKeys	= []string{"urn"}
 	// These are only reserved for non-component resources
-	reservedNonComponentPropertyKeys = []string{"id"}
+	reservedNonComponentPropertyKeys	= []string{"id"}
 )
 
 func isReservedKeyword(name string) bool {

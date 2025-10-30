@@ -38,17 +38,17 @@ func TestDefaultProvidersSingle(t *testing.T) {
 	languagePlugins := NewPackageSet()
 	languagePlugins.Add(workspace.PackageDescriptor{
 		PluginSpec: workspace.PluginSpec{
-			Name:    "aws",
-			Version: mustMakeVersion("0.17.1"),
-			Kind:    apitype.ResourcePlugin,
+			Name:		"aws",
+			Version:	mustMakeVersion("0.17.1"),
+			Kind:		apitype.ResourcePlugin,
 		},
 	})
 	languagePlugins.Add(workspace.PackageDescriptor{
 		PluginSpec: workspace.PluginSpec{
-			Name:              "kubernetes",
-			Version:           mustMakeVersion("0.22.0"),
-			Kind:              apitype.ResourcePlugin,
-			PluginDownloadURL: "com.server.url",
+			Name:			"kubernetes",
+			Version:		mustMakeVersion("0.22.0"),
+			Kind:			apitype.ResourcePlugin,
+			PluginDownloadURL:	"com.server.url",
 		},
 	})
 
@@ -75,16 +75,16 @@ func TestDefaultProvidersOverrideNoVersion(t *testing.T) {
 	languagePlugins := NewPackageSet()
 	languagePlugins.Add(workspace.PackageDescriptor{
 		PluginSpec: workspace.PluginSpec{
-			Name:    "aws",
-			Version: mustMakeVersion("0.17.1"),
-			Kind:    apitype.ResourcePlugin,
+			Name:		"aws",
+			Version:	mustMakeVersion("0.17.1"),
+			Kind:		apitype.ResourcePlugin,
 		},
 	})
 	languagePlugins.Add(workspace.PackageDescriptor{
 		PluginSpec: workspace.PluginSpec{
-			Name:    "aws",
-			Version: nil,
-			Kind:    apitype.ResourcePlugin,
+			Name:		"aws",
+			Version:	nil,
+			Kind:		apitype.ResourcePlugin,
 		},
 	})
 
@@ -103,23 +103,23 @@ func TestDefaultProvidersOverrideNewerVersion(t *testing.T) {
 	languagePlugins := NewPackageSet()
 	languagePlugins.Add(workspace.PackageDescriptor{
 		PluginSpec: workspace.PluginSpec{
-			Name:    "aws",
-			Version: mustMakeVersion("0.17.0"),
-			Kind:    apitype.ResourcePlugin,
+			Name:		"aws",
+			Version:	mustMakeVersion("0.17.0"),
+			Kind:		apitype.ResourcePlugin,
 		},
 	})
 	languagePlugins.Add(workspace.PackageDescriptor{
 		PluginSpec: workspace.PluginSpec{
-			Name:    "aws",
-			Version: mustMakeVersion("0.17.1"),
-			Kind:    apitype.ResourcePlugin,
+			Name:		"aws",
+			Version:	mustMakeVersion("0.17.1"),
+			Kind:		apitype.ResourcePlugin,
 		},
 	})
 	languagePlugins.Add(workspace.PackageDescriptor{
 		PluginSpec: workspace.PluginSpec{
-			Name:    "aws",
-			Version: mustMakeVersion("0.17.2-dev.1553126336"),
-			Kind:    apitype.ResourcePlugin,
+			Name:		"aws",
+			Version:	mustMakeVersion("0.17.2-dev.1553126336"),
+			Kind:		apitype.ResourcePlugin,
 		},
 	})
 
@@ -138,16 +138,16 @@ func TestDefaultProvidersSnapshotOverrides(t *testing.T) {
 	languagePlugins := NewPackageSet()
 	languagePlugins.Add(workspace.PackageDescriptor{
 		PluginSpec: workspace.PluginSpec{
-			Name: "python",
-			Kind: apitype.LanguagePlugin,
+			Name:	"python",
+			Kind:	apitype.LanguagePlugin,
 		},
 	})
 	snapshotPlugins := NewPackageSet()
 	snapshotPlugins.Add(workspace.PackageDescriptor{
 		PluginSpec: workspace.PluginSpec{
-			Name:    "aws",
-			Version: mustMakeVersion("0.17.0"),
-			Kind:    apitype.ResourcePlugin,
+			Name:		"aws",
+			Version:	mustMakeVersion("0.17.0"),
+			Kind:		apitype.ResourcePlugin,
 		},
 	})
 
@@ -163,49 +163,49 @@ func TestDefaultProvidersSnapshotOverrides(t *testing.T) {
 func TestPluginSetDeduplicate(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		input    PluginSet
-		expected PluginSet
+		input		PluginSet
+		expected	PluginSet
 	}{{
 		input: NewPluginSet(workspace.PluginSpec{
-			Name:    "foo",
-			Version: &semver.Version{Major: 1},
+			Name:		"foo",
+			Version:	&semver.Version{Major: 1},
 		}, workspace.PluginSpec{
 			Name: "foo",
 		}),
 		expected: NewPluginSet(workspace.PluginSpec{
-			Name:    "foo",
-			Version: &semver.Version{Major: 1},
+			Name:		"foo",
+			Version:	&semver.Version{Major: 1},
 		}),
 	}, {
 		input: NewPluginSet(workspace.PluginSpec{
-			Name:    "bar",
-			Version: &semver.Version{Minor: 3},
+			Name:		"bar",
+			Version:	&semver.Version{Minor: 3},
 		}, workspace.PluginSpec{
-			Name:              "bar",
-			PluginDownloadURL: "example.com/bar",
+			Name:			"bar",
+			PluginDownloadURL:	"example.com/bar",
 		}, workspace.PluginSpec{
-			Name:              "bar",
-			Version:           &semver.Version{Patch: 3},
-			PluginDownloadURL: "example.com",
+			Name:			"bar",
+			Version:		&semver.Version{Patch: 3},
+			PluginDownloadURL:	"example.com",
 		}, workspace.PluginSpec{
 			Name: "foo",
 		}),
 		expected: NewPluginSet(workspace.PluginSpec{
-			Name:    "bar",
-			Version: &semver.Version{Minor: 3},
+			Name:		"bar",
+			Version:	&semver.Version{Minor: 3},
 		}, workspace.PluginSpec{
-			Name:              "bar",
-			PluginDownloadURL: "example.com/bar",
+			Name:			"bar",
+			PluginDownloadURL:	"example.com/bar",
 		}, workspace.PluginSpec{
-			Name:              "bar",
-			Version:           &semver.Version{Patch: 3},
-			PluginDownloadURL: "example.com",
+			Name:			"bar",
+			Version:		&semver.Version{Patch: 3},
+			PluginDownloadURL:	"example.com",
 		}, workspace.PluginSpec{
 			Name: "foo",
 		}),
 	}}
 
-	for _, c := range cases { //nolint:parallelTest
+	for _, c := range cases {	//nolint:parallelTest
 		t.Run(fmt.Sprintf("%s", c.input), func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, c.expected, c.input.Deduplicate())
@@ -218,137 +218,137 @@ func TestPackageSetUpdatesTo(t *testing.T) {
 
 	// Arrange.
 	cases := []struct {
-		name     string
-		olds     PackageSet
-		news     PackageSet
-		expected []PackageUpdate
+		name		string
+		olds		PackageSet
+		news		PackageSet
+		expected	[]PackageUpdate
 	}{
 		{
-			name:     "Both empty",
-			olds:     NewPackageSet(),
-			news:     NewPackageSet(),
-			expected: nil,
+			name:		"Both empty",
+			olds:		NewPackageSet(),
+			news:		NewPackageSet(),
+			expected:	nil,
 		},
 		{
-			name: "Olds empty",
-			olds: NewPackageSet(),
+			name:	"Olds empty",
+			olds:	NewPackageSet(),
 			news: NewPackageSet(workspace.PackageDescriptor{
 				PluginSpec: workspace.PluginSpec{
-					Name:    "foo",
-					Kind:    apitype.ResourcePlugin,
-					Version: &semver.Version{Major: 1},
+					Name:		"foo",
+					Kind:		apitype.ResourcePlugin,
+					Version:	&semver.Version{Major: 1},
 				},
 			}),
-			expected: nil,
+			expected:	nil,
 		},
 		{
-			name: "News empty",
+			name:	"News empty",
 			olds: NewPackageSet(workspace.PackageDescriptor{
 				PluginSpec: workspace.PluginSpec{
-					Name:    "foo",
-					Kind:    apitype.ResourcePlugin,
-					Version: &semver.Version{Major: 1},
+					Name:		"foo",
+					Kind:		apitype.ResourcePlugin,
+					Version:	&semver.Version{Major: 1},
 				},
 			}),
-			news:     NewPackageSet(),
-			expected: nil,
+			news:		NewPackageSet(),
+			expected:	nil,
 		},
 		{
-			name: "No matches by name",
+			name:	"No matches by name",
 			olds: NewPackageSet(workspace.PackageDescriptor{
 				PluginSpec: workspace.PluginSpec{
-					Name:    "foo",
-					Kind:    apitype.ResourcePlugin,
-					Version: &semver.Version{Major: 1},
-				},
-			}),
-			news: NewPackageSet(workspace.PackageDescriptor{
-				PluginSpec: workspace.PluginSpec{
-					Name:    "bar",
-					Kind:    apitype.ResourcePlugin,
-					Version: &semver.Version{Major: 1},
-				},
-			}),
-			expected: nil,
-		},
-		{
-			name: "No matches by kind",
-			olds: NewPackageSet(workspace.PackageDescriptor{
-				PluginSpec: workspace.PluginSpec{
-					Name:    "foo",
-					Kind:    apitype.ResourcePlugin,
-					Version: &semver.Version{Major: 1},
+					Name:		"foo",
+					Kind:		apitype.ResourcePlugin,
+					Version:	&semver.Version{Major: 1},
 				},
 			}),
 			news: NewPackageSet(workspace.PackageDescriptor{
 				PluginSpec: workspace.PluginSpec{
-					Name:    "foo",
-					Kind:    apitype.AnalyzerPlugin,
-					Version: &semver.Version{Major: 1},
+					Name:		"bar",
+					Kind:		apitype.ResourcePlugin,
+					Version:	&semver.Version{Major: 1},
 				},
 			}),
-			expected: nil,
+			expected:	nil,
 		},
 		{
-			name: "Matches with no updates (equal)",
+			name:	"No matches by kind",
 			olds: NewPackageSet(workspace.PackageDescriptor{
 				PluginSpec: workspace.PluginSpec{
-					Name:    "foo",
-					Kind:    apitype.ResourcePlugin,
-					Version: &semver.Version{Major: 1},
+					Name:		"foo",
+					Kind:		apitype.ResourcePlugin,
+					Version:	&semver.Version{Major: 1},
 				},
 			}),
 			news: NewPackageSet(workspace.PackageDescriptor{
 				PluginSpec: workspace.PluginSpec{
-					Name:    "foo",
-					Kind:    apitype.ResourcePlugin,
-					Version: &semver.Version{Major: 1},
+					Name:		"foo",
+					Kind:		apitype.AnalyzerPlugin,
+					Version:	&semver.Version{Major: 1},
 				},
 			}),
-			expected: nil,
+			expected:	nil,
 		},
 		{
-			name: "Matches with no updates (news has an older version)",
+			name:	"Matches with no updates (equal)",
 			olds: NewPackageSet(workspace.PackageDescriptor{
 				PluginSpec: workspace.PluginSpec{
-					Name:    "foo",
-					Kind:    apitype.ResourcePlugin,
-					Version: &semver.Version{Major: 2},
+					Name:		"foo",
+					Kind:		apitype.ResourcePlugin,
+					Version:	&semver.Version{Major: 1},
 				},
 			}),
 			news: NewPackageSet(workspace.PackageDescriptor{
 				PluginSpec: workspace.PluginSpec{
-					Name:    "foo",
-					Kind:    apitype.ResourcePlugin,
-					Version: &semver.Version{Major: 1},
+					Name:		"foo",
+					Kind:		apitype.ResourcePlugin,
+					Version:	&semver.Version{Major: 1},
 				},
 			}),
-			expected: nil,
+			expected:	nil,
 		},
 		{
-			name: "Matches with one update",
+			name:	"Matches with no updates (news has an older version)",
+			olds: NewPackageSet(workspace.PackageDescriptor{
+				PluginSpec: workspace.PluginSpec{
+					Name:		"foo",
+					Kind:		apitype.ResourcePlugin,
+					Version:	&semver.Version{Major: 2},
+				},
+			}),
+			news: NewPackageSet(workspace.PackageDescriptor{
+				PluginSpec: workspace.PluginSpec{
+					Name:		"foo",
+					Kind:		apitype.ResourcePlugin,
+					Version:	&semver.Version{Major: 1},
+				},
+			}),
+			expected:	nil,
+		},
+		{
+			name:	"Matches with one update",
 			olds: NewPackageSet(
 				workspace.PackageDescriptor{
 					PluginSpec: workspace.PluginSpec{
-						Name:    "foo",
-						Kind:    apitype.ResourcePlugin,
-						Version: &semver.Version{Major: 1},
+						Name:		"foo",
+						Kind:		apitype.ResourcePlugin,
+						Version:	&semver.Version{Major: 1},
 					},
 				},
 				workspace.PackageDescriptor{
 					PluginSpec: workspace.PluginSpec{
-						Name:    "bar",
-						Kind:    apitype.ResourcePlugin,
-						Version: &semver.Version{Major: 1},
+						Name:		"bar",
+						Kind:		apitype.ResourcePlugin,
+						Version:	&semver.Version{Major: 1},
 					},
 				},
 			),
 			news: NewPackageSet(
 				workspace.PackageDescriptor{
 					PluginSpec: workspace.PluginSpec{
-						Name:    "foo",
-						Kind:    apitype.ResourcePlugin,
-						Version: &semver.Version{Major: 2},
+						Name:		"foo",
+						Kind:		apitype.ResourcePlugin,
+						Version:	&semver.Version{Major: 2},
 					},
 				},
 			),
@@ -356,66 +356,66 @@ func TestPackageSetUpdatesTo(t *testing.T) {
 				{
 					Old: workspace.PackageDescriptor{
 						PluginSpec: workspace.PluginSpec{
-							Name:    "foo",
-							Kind:    apitype.ResourcePlugin,
-							Version: &semver.Version{Major: 1},
+							Name:		"foo",
+							Kind:		apitype.ResourcePlugin,
+							Version:	&semver.Version{Major: 1},
 						},
 					},
 					New: workspace.PackageDescriptor{
 						PluginSpec: workspace.PluginSpec{
-							Name:    "foo",
-							Kind:    apitype.ResourcePlugin,
-							Version: &semver.Version{Major: 2},
+							Name:		"foo",
+							Kind:		apitype.ResourcePlugin,
+							Version:	&semver.Version{Major: 2},
 						},
 					},
 				},
 			},
 		},
 		{
-			name: "Matches with multiple updates",
+			name:	"Matches with multiple updates",
 			olds: NewPackageSet(
 				workspace.PackageDescriptor{
 					PluginSpec: workspace.PluginSpec{
-						Name:    "foo",
-						Kind:    apitype.ResourcePlugin,
-						Version: &semver.Version{Major: 1},
+						Name:		"foo",
+						Kind:		apitype.ResourcePlugin,
+						Version:	&semver.Version{Major: 1},
 					},
 				},
 				workspace.PackageDescriptor{
 					PluginSpec: workspace.PluginSpec{
-						Name:    "bar",
-						Kind:    apitype.ResourcePlugin,
-						Version: &semver.Version{Major: 2},
+						Name:		"bar",
+						Kind:		apitype.ResourcePlugin,
+						Version:	&semver.Version{Major: 2},
 					},
 				},
 				workspace.PackageDescriptor{
 					PluginSpec: workspace.PluginSpec{
-						Name:    "baz",
-						Kind:    apitype.AnalyzerPlugin,
-						Version: &semver.Version{Major: 3},
+						Name:		"baz",
+						Kind:		apitype.AnalyzerPlugin,
+						Version:	&semver.Version{Major: 3},
 					},
 				},
 			),
 			news: NewPackageSet(
 				workspace.PackageDescriptor{
 					PluginSpec: workspace.PluginSpec{
-						Name:    "foo",
-						Kind:    apitype.ResourcePlugin,
-						Version: &semver.Version{Major: 2},
+						Name:		"foo",
+						Kind:		apitype.ResourcePlugin,
+						Version:	&semver.Version{Major: 2},
 					},
 				},
 				workspace.PackageDescriptor{
 					PluginSpec: workspace.PluginSpec{
-						Name:    "bar",
-						Kind:    apitype.ResourcePlugin,
-						Version: &semver.Version{Major: 2},
+						Name:		"bar",
+						Kind:		apitype.ResourcePlugin,
+						Version:	&semver.Version{Major: 2},
 					},
 				},
 				workspace.PackageDescriptor{
 					PluginSpec: workspace.PluginSpec{
-						Name:    "baz",
-						Kind:    apitype.AnalyzerPlugin,
-						Version: &semver.Version{Major: 4},
+						Name:		"baz",
+						Kind:		apitype.AnalyzerPlugin,
+						Version:	&semver.Version{Major: 4},
 					},
 				},
 			),
@@ -423,156 +423,156 @@ func TestPackageSetUpdatesTo(t *testing.T) {
 				{
 					Old: workspace.PackageDescriptor{
 						PluginSpec: workspace.PluginSpec{
-							Name:    "foo",
-							Kind:    apitype.ResourcePlugin,
-							Version: &semver.Version{Major: 1},
+							Name:		"foo",
+							Kind:		apitype.ResourcePlugin,
+							Version:	&semver.Version{Major: 1},
 						},
 					},
 
 					New: workspace.PackageDescriptor{
 						PluginSpec: workspace.PluginSpec{
-							Name:    "foo",
-							Kind:    apitype.ResourcePlugin,
-							Version: &semver.Version{Major: 2},
+							Name:		"foo",
+							Kind:		apitype.ResourcePlugin,
+							Version:	&semver.Version{Major: 2},
 						},
 					},
 				},
 				{
 					Old: workspace.PackageDescriptor{
 						PluginSpec: workspace.PluginSpec{
-							Name:    "baz",
-							Kind:    apitype.AnalyzerPlugin,
-							Version: &semver.Version{Major: 3},
+							Name:		"baz",
+							Kind:		apitype.AnalyzerPlugin,
+							Version:	&semver.Version{Major: 3},
 						},
 					},
 					New: workspace.PackageDescriptor{
 						PluginSpec: workspace.PluginSpec{
-							Name:    "baz",
-							Kind:    apitype.AnalyzerPlugin,
-							Version: &semver.Version{Major: 4},
+							Name:		"baz",
+							Kind:		apitype.AnalyzerPlugin,
+							Version:	&semver.Version{Major: 4},
 						},
 					},
 				},
 			},
 		},
 		{
-			name: "Base plugin and parameterized package",
+			name:	"Base plugin and parameterized package",
 			olds: NewPackageSet(workspace.PackageDescriptor{
 				PluginSpec: workspace.PluginSpec{
-					Name:    "foo",
-					Kind:    apitype.ResourcePlugin,
-					Version: &semver.Version{Major: 1},
+					Name:		"foo",
+					Kind:		apitype.ResourcePlugin,
+					Version:	&semver.Version{Major: 1},
 				},
 			}),
 			news: NewPackageSet(workspace.PackageDescriptor{
 				PluginSpec: workspace.PluginSpec{
-					Name:    "foo",
-					Kind:    apitype.ResourcePlugin,
-					Version: &semver.Version{Major: 2},
+					Name:		"foo",
+					Kind:		apitype.ResourcePlugin,
+					Version:	&semver.Version{Major: 2},
 				},
 				Parameterization: &workspace.Parameterization{
-					Name:    "bar",
-					Version: semver.Version{Major: 2},
-					Value:   []byte("data"),
+					Name:		"bar",
+					Version:	semver.Version{Major: 2},
+					Value:		[]byte("data"),
 				},
 			}),
-			expected: nil,
+			expected:	nil,
 		},
 		{
-			name: "Parameterized package update",
+			name:	"Parameterized package update",
 			olds: NewPackageSet(workspace.PackageDescriptor{
 				PluginSpec: workspace.PluginSpec{
-					Name:    "foo",
-					Kind:    apitype.ResourcePlugin,
-					Version: &semver.Version{Major: 1},
+					Name:		"foo",
+					Kind:		apitype.ResourcePlugin,
+					Version:	&semver.Version{Major: 1},
 				},
 				Parameterization: &workspace.Parameterization{
-					Name:    "bar",
-					Version: semver.Version{Major: 1},
-					Value:   []byte("data"),
+					Name:		"bar",
+					Version:	semver.Version{Major: 1},
+					Value:		[]byte("data"),
 				},
 			}),
 			news: NewPackageSet(workspace.PackageDescriptor{
 				PluginSpec: workspace.PluginSpec{
-					Name:    "foo",
-					Kind:    apitype.ResourcePlugin,
-					Version: &semver.Version{Major: 1},
+					Name:		"foo",
+					Kind:		apitype.ResourcePlugin,
+					Version:	&semver.Version{Major: 1},
 				},
 				Parameterization: &workspace.Parameterization{
-					Name:    "bar",
-					Version: semver.Version{Major: 2},
-					Value:   []byte("data"),
+					Name:		"bar",
+					Version:	semver.Version{Major: 2},
+					Value:		[]byte("data"),
 				},
 			}),
 			expected: []PackageUpdate{
 				{
 					Old: workspace.PackageDescriptor{
 						PluginSpec: workspace.PluginSpec{
-							Name:    "foo",
-							Kind:    apitype.ResourcePlugin,
-							Version: &semver.Version{Major: 1},
+							Name:		"foo",
+							Kind:		apitype.ResourcePlugin,
+							Version:	&semver.Version{Major: 1},
 						},
 						Parameterization: &workspace.Parameterization{
-							Name:    "bar",
-							Version: semver.Version{Major: 1},
-							Value:   []byte("data"),
+							Name:		"bar",
+							Version:	semver.Version{Major: 1},
+							Value:		[]byte("data"),
 						},
 					},
 					New: workspace.PackageDescriptor{
 						PluginSpec: workspace.PluginSpec{
-							Name:    "foo",
-							Kind:    apitype.ResourcePlugin,
-							Version: &semver.Version{Major: 1},
+							Name:		"foo",
+							Kind:		apitype.ResourcePlugin,
+							Version:	&semver.Version{Major: 1},
 						},
 						Parameterization: &workspace.Parameterization{
-							Name:    "bar",
-							Version: semver.Version{Major: 2},
-							Value:   []byte("data"),
+							Name:		"bar",
+							Version:	semver.Version{Major: 2},
+							Value:		[]byte("data"),
 						},
 					},
 				},
 			},
 		},
 		{
-			name: "Non-parameterized to parameterized package update",
+			name:	"Non-parameterized to parameterized package update",
 			olds: NewPackageSet(workspace.PackageDescriptor{
 				PluginSpec: workspace.PluginSpec{
-					Name:    "foo",
-					Kind:    apitype.ResourcePlugin,
-					Version: &semver.Version{Major: 1},
+					Name:		"foo",
+					Kind:		apitype.ResourcePlugin,
+					Version:	&semver.Version{Major: 1},
 				},
 			}),
 			news: NewPackageSet(workspace.PackageDescriptor{
 				PluginSpec: workspace.PluginSpec{
-					Name:    "base",
-					Kind:    apitype.ResourcePlugin,
-					Version: &semver.Version{Major: 1},
+					Name:		"base",
+					Kind:		apitype.ResourcePlugin,
+					Version:	&semver.Version{Major: 1},
 				},
 				Parameterization: &workspace.Parameterization{
-					Name:    "foo",
-					Version: semver.Version{Major: 2},
-					Value:   []byte("data"),
+					Name:		"foo",
+					Version:	semver.Version{Major: 2},
+					Value:		[]byte("data"),
 				},
 			}),
 			expected: []PackageUpdate{
 				{
 					Old: workspace.PackageDescriptor{
 						PluginSpec: workspace.PluginSpec{
-							Name:    "foo",
-							Kind:    apitype.ResourcePlugin,
-							Version: &semver.Version{Major: 1},
+							Name:		"foo",
+							Kind:		apitype.ResourcePlugin,
+							Version:	&semver.Version{Major: 1},
 						},
 					},
 					New: workspace.PackageDescriptor{
 						PluginSpec: workspace.PluginSpec{
-							Name:    "base",
-							Kind:    apitype.ResourcePlugin,
-							Version: &semver.Version{Major: 1},
+							Name:		"base",
+							Kind:		apitype.ResourcePlugin,
+							Version:	&semver.Version{Major: 1},
 						},
 						Parameterization: &workspace.Parameterization{
-							Name:    "foo",
-							Version: semver.Version{Major: 2},
-							Value:   []byte("data"),
+							Name:		"foo",
+							Version:	semver.Version{Major: 2},
+							Value:		[]byte("data"),
 						},
 					},
 				},
@@ -598,17 +598,17 @@ func TestDefaultProviderPluginsSorting(t *testing.T) {
 	v1 := semver.MustParse("0.0.1-alpha.10")
 	p1 := workspace.PackageDescriptor{
 		PluginSpec: workspace.PluginSpec{
-			Name:    "foo",
-			Version: &v1,
-			Kind:    apitype.ResourcePlugin,
+			Name:		"foo",
+			Version:	&v1,
+			Kind:		apitype.ResourcePlugin,
 		},
 	}
 	v2 := semver.MustParse("0.0.1-alpha.10+dirty")
 	p2 := workspace.PackageDescriptor{
 		PluginSpec: workspace.PluginSpec{
-			Name:    "foo",
-			Version: &v2,
-			Kind:    apitype.ResourcePlugin,
+			Name:		"foo",
+			Version:	&v2,
+			Kind:		apitype.ResourcePlugin,
 		},
 	}
 	plugins := NewPackageSet(p1, p2)

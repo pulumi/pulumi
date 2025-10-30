@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 )
 
 // DocLanguageHelper is the NodeJS-specific implementation of the DocLanguageHelper.
@@ -86,9 +86,9 @@ func (d DocLanguageHelper) GetTypeName(pkg schema.PackageReference, t schema.Typ
 	}
 
 	modCtx := &modContext{
-		pkg:      pkg,
-		modToPkg: info.ModuleToPackage,
-		mod:      moduleName(relativeToModule, pkg),
+		pkg:		pkg,
+		modToPkg:	info.ModuleToPackage,
+		mod:		moduleName(relativeToModule, pkg),
 	}
 	typeName := modCtx.typeString(t, input, nil)
 
@@ -131,8 +131,8 @@ func (d DocLanguageHelper) GetMethodResultName(pkg schema.PackageReference, modN
 			objectReturnType = objectType
 		} else {
 			modCtx := &modContext{
-				pkg: pkg,
-				mod: modName,
+				pkg:	pkg,
+				mod:	modName,
 			}
 			return modCtx.typeString(m.Function.ReturnType, false, nil)
 		}
@@ -145,8 +145,8 @@ func (d DocLanguageHelper) GetMethodResultName(pkg schema.PackageReference, modN
 
 	if info.LiftSingleValueMethodReturns && objectReturnType != nil && len(objectReturnType.Properties) == 1 {
 		modCtx := &modContext{
-			pkg: pkg,
-			mod: modName,
+			pkg:	pkg,
+			mod:	modName,
 		}
 		return modCtx.typeString(objectReturnType.Properties[0].Type, false, nil)
 	}

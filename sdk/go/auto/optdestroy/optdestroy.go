@@ -176,46 +176,46 @@ type Option interface {
 type Options struct {
 	// Parallel is the number of resource operations to run in parallel at once
 	// (1 for no parallelism). Defaults to unbounded. (default 2147483647)
-	Parallel int
+	Parallel	int
 	// Message (optional) to associate with the destroy operation
-	Message string
+	Message	string
 	// Specify an exclusive list of resource URNs to update
-	Target []string
+	Target	[]string
 	// Allows updating of dependent targets discovered but not specified in the Target list
-	TargetDependents bool
+	TargetDependents	bool
 	// Specify an exclusive list of resource URNs to ignore
-	Exclude []string
+	Exclude	[]string
 	// Allows ignoring of dependent targets discovered but not specified in the Exclude list
-	ExcludeDependents bool
+	ExcludeDependents	bool
 	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stdout
-	ProgressStreams []io.Writer
+	ProgressStreams	[]io.Writer
 	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stderr
-	ErrorProgressStreams []io.Writer
+	ErrorProgressStreams	[]io.Writer
 	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
-	EventStreams []chan<- events.EngineEvent
+	EventStreams	[]chan<- events.EngineEvent
 	// DebugLogOpts specifies additional settings for debug logging
-	DebugLogOpts debug.LoggingOptions
+	DebugLogOpts	debug.LoggingOptions
 	// UserAgent specifies the agent responsible for the update, stored in backends as "environment.exec.agent"
-	UserAgent string
+	UserAgent	string
 	// Colorize output. Choices are: always, never, raw, auto (default "auto")
-	Color string
+	Color	string
 	// Show config secrets when they appear.
-	ShowSecrets *bool
+	ShowSecrets	*bool
 	// Refresh will run a refresh before the destroy.
-	Refresh bool
+	Refresh	bool
 	// Suppress display of periodic progress dots
-	SuppressProgress bool
+	SuppressProgress	bool
 	// Suppress display of stack outputs (in case they contain sensitive values)
-	SuppressOutputs bool
+	SuppressOutputs	bool
 	// Continue to perform the destroy operation despite the occurrence of errors.
-	ContinueOnError bool
+	ContinueOnError	bool
 	// Remove the stack and its configuration after all resources in the stack
 	// have been deleted.
-	Remove bool
+	Remove	bool
 	// Run using the configuration values in the specified file rather than detecting the file name
-	ConfigFile string
+	ConfigFile	string
 	// When set to true, run the program in the workspace to perform the destroy.
-	RunProgram *bool
+	RunProgram	*bool
 }
 
 type optionFunc func(*Options)

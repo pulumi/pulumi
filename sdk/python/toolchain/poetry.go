@@ -40,9 +40,9 @@ import (
 
 type poetry struct {
 	// The executable path for poetry.
-	poetryExecutable string
+	poetryExecutable	string
 	// The directory that contains the poetry project.
-	directory string
+	directory	string
 }
 
 var _ Toolchain = &poetry{}
@@ -64,13 +64,13 @@ func newPoetry(directory string) (*poetry, error) {
 	}
 	logging.V(9).Infof("Python toolchain: using poetry at %s in %s", poetryPath, directory)
 	return &poetry{
-		poetryExecutable: poetryPath,
-		directory:        directory,
+		poetryExecutable:	poetryPath,
+		directory:		directory,
 	}, nil
 }
 
 func poetryVersionOutput(poetryPath string) (string, error) {
-	cmd := exec.Command(poetryPath, "--version", "--no-ansi") //nolint:gosec
+	cmd := exec.Command(poetryPath, "--version", "--no-ansi")	//nolint:gosec
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	if err := cmd.Run(); err != nil {
@@ -127,7 +127,7 @@ func (p *poetry) InstallDependencies(ctx context.Context,
 		}
 	}
 
-	poetryCmd := exec.Command(p.poetryExecutable, "install", "--no-ansi") //nolint:gosec
+	poetryCmd := exec.Command(p.poetryExecutable, "install", "--no-ansi")	//nolint:gosec
 	if useLanguageVersionTools {
 		// For poetry to work nicely with pyenv, we need to make poetry use the active python,
 		// otherwise poetry will use the python version used to run poetry itself.
@@ -147,7 +147,7 @@ func (p *poetry) InstallDependencies(ctx context.Context,
 
 func (p *poetry) LinkPackages(ctx context.Context, packages map[string]string) error {
 	logging.V(9).Infof("poetry linking %s", packages)
-	args := []string{"add", "--lock"} // Add package to lockfile only
+	args := []string{"add", "--lock"}	// Add package to lockfile only
 	paths := slices.Collect(maps.Values(packages))
 	args = append(args, paths...)
 	cmd := exec.Command("poetry", args...)
@@ -218,8 +218,8 @@ func (p *poetry) About(ctx context.Context) (Info, error) {
 	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
 
 	return Info{
-		Executable: executable,
-		Version:    version,
+		Executable:	executable,
+		Version:	version,
 	}, nil
 }
 
@@ -246,7 +246,7 @@ func (p *poetry) EnsureVenv(ctx context.Context, cwd string, useLanguageVersionT
 }
 
 func (p *poetry) VirtualEnvPath(ctx context.Context) (string, error) {
-	pathCmd := exec.CommandContext(ctx, p.poetryExecutable, "env", "info", "--path") //nolint:gosec
+	pathCmd := exec.CommandContext(ctx, p.poetryExecutable, "env", "info", "--path")	//nolint:gosec
 	pathCmd.Dir = p.directory
 	out, err := pathCmd.Output()
 	if err != nil {
@@ -305,20 +305,20 @@ func (p *poetry) convertRequirementsTxt(requirementsTxt, pyprojectToml string, s
 func (p *poetry) generatePyProjectTOML(dependencies map[string]any) (string, error) {
 	pp := Pyproject{
 		BuildSystem: &BuildSystem{
-			Requires:     []string{"poetry-core"},
-			BuildBackend: "poetry.core.masonry.api",
+			Requires:	[]string{"poetry-core"},
+			BuildBackend:	"poetry.core.masonry.api",
 		},
 		Tool: map[string]any{
 			"poetry": map[string]any{
-				"package-mode": false,
-				"dependencies": dependencies,
+				"package-mode":	false,
+				"dependencies":	dependencies,
 			},
 		},
 	}
 
 	w := &bytes.Buffer{}
 	encoder := toml.NewEncoder(w)
-	encoder.Indent = "" // Disable indentation
+	encoder.Indent = ""	// Disable indentation
 	if err := encoder.Encode(pp); err != nil {
 		return "", err
 	}

@@ -16,8 +16,8 @@ package fuzzing
 
 // A set of options for configuring stacks used by rapid.Generators in this package.
 type StackSpecOptions struct {
-	Project string
-	Stack   string
+	Project	string
+	Stack	string
 }
 
 // Returns a copy of the StackSpecOptions with the given overrides applied.
@@ -34,6 +34,6 @@ func (sso StackSpecOptions) With(overrides StackSpecOptions) StackSpecOptions {
 
 // A default set of StackSpecOptions.
 var defaultStackSpecOptions = StackSpecOptions{
-	Project: "test-project",
-	Stack:   "test-stack",
+	Project:	"test-project",
+	Stack:		"test-stack",
 }

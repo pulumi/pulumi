@@ -27,7 +27,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -40,9 +40,9 @@ func newSchemaCheckCommand() *cobra.Command {
 	schemaCheckArgs := checkArgs{}
 
 	cmd := &cobra.Command{
-		Use:   "check",
-		Args:  cmdutil.ExactArgs(1),
-		Short: "Check a Pulumi package schema for errors",
+		Use:	"check",
+		Args:	cmdutil.ExactArgs(1),
+		Short:	"Check a Pulumi package schema for errors",
 		Long: "Check a Pulumi package schema for errors.\n" +
 			"\n" +
 			"Ensure that a Pulumi package schema meets the requirements imposed by the\n" +

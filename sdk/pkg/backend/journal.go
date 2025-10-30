@@ -23,10 +23,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -60,8 +60,8 @@ func SerializeJournalEntry(
 	var secretsManager *apitype.SecretsProvidersV1
 	if je.SecretsManager != nil {
 		secretsManager = &apitype.SecretsProvidersV1{
-			Type:  je.SecretsManager.Type(),
-			State: je.SecretsManager.State(),
+			Type:	je.SecretsManager.Type(),
+			State:	je.SecretsManager.State(),
 		}
 	}
 
@@ -75,21 +75,21 @@ func SerializeJournalEntry(
 	}
 
 	serializedEntry := apitype.JournalEntry{
-		Version:               1,
-		Kind:                  apitype.JournalEntryKind(je.Kind),
-		SequenceID:            je.SequenceID,
-		OperationID:           je.OperationID,
-		RemoveOld:             je.RemoveOld,
-		RemoveNew:             je.RemoveNew,
-		State:                 state,
-		Operation:             operation,
-		SecretsProvider:       secretsManager,
-		PendingReplacementOld: je.PendingReplacementOld,
-		PendingReplacementNew: je.PendingReplacementNew,
-		DeleteOld:             je.DeleteOld,
-		DeleteNew:             je.DeleteNew,
-		IsRefresh:             je.IsRefresh,
-		NewSnapshot:           snapshot,
+		Version:		1,
+		Kind:			apitype.JournalEntryKind(je.Kind),
+		SequenceID:		je.SequenceID,
+		OperationID:		je.OperationID,
+		RemoveOld:		je.RemoveOld,
+		RemoveNew:		je.RemoveNew,
+		State:			state,
+		Operation:		operation,
+		SecretsProvider:	secretsManager,
+		PendingReplacementOld:	je.PendingReplacementOld,
+		PendingReplacementNew:	je.PendingReplacementNew,
+		DeleteOld:		je.DeleteOld,
+		DeleteNew:		je.DeleteNew,
+		IsRefresh:		je.IsRefresh,
+		NewSnapshot:		snapshot,
 	}
 
 	return serializedEntry, nil
@@ -97,47 +97,47 @@ func SerializeJournalEntry(
 
 type JournalReplayer struct {
 	// toRemove tracks operation IDs of resources that are to be removed.
-	toRemove map[int64]struct{}
+	toRemove	map[int64]struct{}
 	// toDeleteInSnapshot tracks the indices of resources in the snapshot that are to be deleted.
-	toDeleteInSnapshot map[int64]struct{}
+	toDeleteInSnapshot	map[int64]struct{}
 	// toReplaceInSnapshot tracks indices of resources in the snapshot that are to be replaced.
-	toReplaceInSnapshot map[int64]*apitype.ResourceV3
+	toReplaceInSnapshot	map[int64]*apitype.ResourceV3
 	// markAsDeletion tracks indices of resources in the snapshot that are to be marked for deletion.
-	markAsDeletion map[int64]struct{}
+	markAsDeletion	map[int64]struct{}
 	// markAsPendingReplacement tracks indices of resources in the snapshot that are to be marked for pending replacement.
-	markAsPendingReplacement map[int64]struct{}
+	markAsPendingReplacement	map[int64]struct{}
 
 	// operationIDToResourceIndex maps operation IDs to resource indices in the new resource list.
 	// This is used to replace resources that are being replaced, and remove new resources that are being deleted.
-	operationIDToResourceIndex map[int64]int64
+	operationIDToResourceIndex	map[int64]int64
 
 	// incompleteOps tracks operations that have begun but not yet completed.
-	incompleteOps map[int64]apitype.JournalEntry
+	incompleteOps	map[int64]apitype.JournalEntry
 
 	// hasRefresh indicates whether any of the journal entries were part of a refresh operation.
-	hasRefresh bool
+	hasRefresh	bool
 
 	// index is the current index in the new resource list.
-	index int64
+	index	int64
 
 	// base is the base snapshot.
-	base *apitype.DeploymentV3
+	base	*apitype.DeploymentV3
 
 	// newResources is the list of new resources created by the current plan.
-	newResources []*apitype.ResourceV3
+	newResources	[]*apitype.ResourceV3
 }
 
 func NewJournalReplayer(base *apitype.DeploymentV3) *JournalReplayer {
 	replayer := JournalReplayer{
-		toRemove:                   make(map[int64]struct{}),
-		toDeleteInSnapshot:         make(map[int64]struct{}),
-		toReplaceInSnapshot:        make(map[int64]*apitype.ResourceV3),
-		markAsDeletion:             make(map[int64]struct{}),
-		markAsPendingReplacement:   make(map[int64]struct{}),
-		operationIDToResourceIndex: make(map[int64]int64),
-		incompleteOps:              make(map[int64]apitype.JournalEntry),
-		newResources:               make([]*apitype.ResourceV3, 0),
-		base:                       base,
+		toRemove:			make(map[int64]struct{}),
+		toDeleteInSnapshot:		make(map[int64]struct{}),
+		toReplaceInSnapshot:		make(map[int64]*apitype.ResourceV3),
+		markAsDeletion:			make(map[int64]struct{}),
+		markAsPendingReplacement:	make(map[int64]struct{}),
+		operationIDToResourceIndex:	make(map[int64]int64),
+		incompleteOps:			make(map[int64]apitype.JournalEntry),
+		newResources:			make([]*apitype.ResourceV3, 0),
+		base:				base,
 	}
 	return &replayer
 }
@@ -358,8 +358,8 @@ func (r *JournalReplayer) GenerateDeployment() (*apitype.DeploymentV3, int, []st
 	}
 
 	manifest := deploy.Manifest{
-		Time:    time.Now(),
-		Version: version.Version,
+		Time:		time.Now(),
+		Version:	version.Version,
 		// Plugins: sm.plugins, - Explicitly dropped, since we don't use the plugin list in the manifest anymore.
 	}
 	manifest.Magic = manifest.NewMagic()
@@ -467,9 +467,9 @@ func (sj *SnapshotJournaler) saveSnapshot(ctx context.Context) error {
 		snap.Metadata.IntegrityErrorMetadata = nil
 	} else {
 		snap.Metadata.IntegrityErrorMetadata = &deploy.SnapshotIntegrityErrorMetadata{
-			Version: version.Version,
-			Command: strings.Join(os.Args, " "),
-			Error:   integrityError.Error(),
+			Version:	version.Version,
+			Command:	strings.Join(os.Args, " "),
+			Error:		integrityError.Error(),
 		}
 	}
 	persister := sj.persister
@@ -542,16 +542,16 @@ func (sj *SnapshotJournaler) unsafeServiceLoop(
 }
 
 type SnapshotJournaler struct {
-	ctx             context.Context
-	persister       SnapshotPersister
-	snapshot        *apitype.DeploymentV3
-	journalEvents   chan writeJournalEntryRequest
-	journalEntries  []apitype.JournalEntry
-	cancel          chan bool
-	done            chan error
-	secretsManager  secrets.Manager
-	secretsProvider secrets.Provider
-	errors          []error
+	ctx		context.Context
+	persister	SnapshotPersister
+	snapshot	*apitype.DeploymentV3
+	journalEvents	chan writeJournalEntryRequest
+	journalEntries	[]apitype.JournalEntry
+	cancel		chan bool
+	done		chan error
+	secretsManager	secrets.Manager
+	secretsProvider	secrets.Provider
+	errors		[]error
 }
 
 // NewSnapshotJournaler creates a new Journal that uses a SnapshotPersister to persist the
@@ -583,11 +583,11 @@ func NewSnapshotJournaler(
 	snapCopy := &deploy.Snapshot{}
 	if baseSnap != nil {
 		snapCopy = &deploy.Snapshot{
-			Manifest:          baseSnap.Manifest,
-			SecretsManager:    baseSnap.SecretsManager,
-			Resources:         make([]*resource.State, 0),
-			PendingOperations: make([]resource.Operation, 0),
-			Metadata:          baseSnap.Metadata,
+			Manifest:		baseSnap.Manifest,
+			SecretsManager:		baseSnap.SecretsManager,
+			Resources:		make([]*resource.State, 0),
+			PendingOperations:	make([]resource.Operation, 0),
+			Metadata:		baseSnap.Metadata,
 		}
 		// Copy the resources from the base snapshot to the new snapshot.
 		for _, res := range baseSnap.Resources {
@@ -619,15 +619,15 @@ func NewSnapshotJournaler(
 	}
 
 	journaler := SnapshotJournaler{
-		ctx:             ctx,
-		persister:       persister,
-		snapshot:        deployment,
-		journalEvents:   journalEvents,
-		journalEntries:  make([]apitype.JournalEntry, 0),
-		secretsManager:  secretsManager,
-		secretsProvider: secretsProvider,
-		cancel:          cancel,
-		done:            done,
+		ctx:			ctx,
+		persister:		persister,
+		snapshot:		deployment,
+		journalEvents:		journalEvents,
+		journalEntries:		make([]apitype.JournalEntry, 0),
+		secretsManager:		secretsManager,
+		secretsProvider:	secretsProvider,
+		cancel:			cancel,
+		done:			done,
 	}
 
 	serviceLoop := journaler.defaultServiceLoop
@@ -646,9 +646,9 @@ func (sj *SnapshotJournaler) Entries() []apitype.JournalEntry {
 }
 
 type writeJournalEntryRequest struct {
-	journalEntry apitype.JournalEntry
-	elideWrite   bool
-	result       chan error
+	journalEntry	apitype.JournalEntry
+	elideWrite	bool
+	result		chan error
 }
 
 func (sj *SnapshotJournaler) journalMutation(entry engine.JournalEntry) error {
@@ -672,9 +672,9 @@ func (sj *SnapshotJournaler) journalMutation(entry engine.JournalEntry) error {
 	result := make(chan error)
 	select {
 	case sj.journalEvents <- writeJournalEntryRequest{
-		journalEntry: serializedEntry,
-		elideWrite:   entry.ElideWrite,
-		result:       result,
+		journalEntry:	serializedEntry,
+		elideWrite:	entry.ElideWrite,
+		result:		result,
 	}:
 		// We don't need to check for cancellation here, as the service loop guarantees
 		// that it will return a result for every journal entry that it processes.
@@ -698,10 +698,10 @@ func (sj SnapshotJournaler) Close() error {
 }
 
 type journaler struct {
-	ctx            context.Context
-	persister      JournalPersister
-	snapshot       *apitype.DeploymentV3
-	secretsManager secrets.Manager
+	ctx		context.Context
+	persister	JournalPersister
+	snapshot	*apitype.DeploymentV3
+	secretsManager	secrets.Manager
 }
 
 // A JournalPersister implements persistence of journal entries in some store.
@@ -738,11 +738,11 @@ func NewJournaler(
 	snapCopy := &deploy.Snapshot{}
 	if baseSnap != nil {
 		snapCopy = &deploy.Snapshot{
-			Manifest:          baseSnap.Manifest,
-			SecretsManager:    baseSnap.SecretsManager,
-			Resources:         make([]*resource.State, 0),
-			PendingOperations: make([]resource.Operation, 0),
-			Metadata:          baseSnap.Metadata,
+			Manifest:		baseSnap.Manifest,
+			SecretsManager:		baseSnap.SecretsManager,
+			Resources:		make([]*resource.State, 0),
+			PendingOperations:	make([]resource.Operation, 0),
+			Metadata:		baseSnap.Metadata,
 		}
 		// Copy the resources from the base snapshot to the new snapshot.
 		for _, res := range baseSnap.Resources {
@@ -770,10 +770,10 @@ func NewJournaler(
 	}
 
 	return &journaler{
-		ctx:            ctx,
-		persister:      persister,
-		snapshot:       deployment,
-		secretsManager: secretsManager,
+		ctx:		ctx,
+		persister:	persister,
+		snapshot:	deployment,
+		secretsManager:	secretsManager,
 	}, nil
 }
 

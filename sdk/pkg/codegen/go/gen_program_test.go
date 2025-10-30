@@ -27,13 +27,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model/format"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/testing/test"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/testing/utils"
 )
 
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
@@ -77,28 +77,28 @@ func TestFileImporter(t *testing.T) {
 	// importCall is a single call to fileImporter.Import.
 	type importCall struct {
 		// Import path to import.
-		importPath string
+		importPath	string
 
 		// Name of the package at the import path.
-		name string
+		name	string
 
 		// Expected name used to refer to the imported package.
-		want string
+		want	string
 	}
 
 	tests := []struct {
-		desc string
+		desc	string
 
 		// List of Import method invocations made in-order.
-		imports []importCall
+		imports	[]importCall
 
 		// List of import groups generated from the collective effect
 		// of all import calls in this test case.
-		wantGroups [][]string
+		wantGroups	[][]string
 	}{
 		{desc: "no imports"},
 		{
-			desc: "single import/std",
+			desc:	"single import/std",
 			imports: []importCall{
 				{importPath: "fmt", name: "fmt", want: "fmt"},
 			},
@@ -107,7 +107,7 @@ func TestFileImporter(t *testing.T) {
 			},
 		},
 		{
-			desc: "single import/pulumi",
+			desc:	"single import/pulumi",
 			imports: []importCall{
 				{importPath: "github.com/pulumi/pulumi/sdk/v3/go/pulumi", name: "pulumi", want: "pulumi"},
 			},
@@ -116,7 +116,7 @@ func TestFileImporter(t *testing.T) {
 			},
 		},
 		{
-			desc: "std and pulumi/no conflict",
+			desc:	"std and pulumi/no conflict",
 			imports: []importCall{
 				{importPath: "fmt", name: "fmt", want: "fmt"},
 				{importPath: "github.com/pulumi/pulumi/sdk/v3/go/pulumi", name: "pulumi", want: "pulumi"},
@@ -127,7 +127,7 @@ func TestFileImporter(t *testing.T) {
 			},
 		},
 		{
-			desc: "std and pulumi many imports, no conflict",
+			desc:	"std and pulumi many imports, no conflict",
 			imports: []importCall{
 				{importPath: "fmt", name: "fmt", want: "fmt"},
 				{importPath: "github.com/pulumi/pulumi/sdk/v3/go/pulumi", name: "pulumi", want: "pulumi"},
@@ -152,15 +152,15 @@ func TestFileImporter(t *testing.T) {
 			},
 		},
 		{
-			desc: "std and pulumi/conflict",
+			desc:	"std and pulumi/conflict",
 			imports: []importCall{
 				{importPath: "encoding/json", name: "json", want: "json"},
 				{
 					// This doesn't actually exist yet,
 					// but it's conceivable that it might.
-					importPath: "github.com/pulumi/pulumi-std/sdk/go/std/encoding/json",
-					name:       "json",
-					want:       "encodingjson",
+					importPath:	"github.com/pulumi/pulumi-std/sdk/go/std/encoding/json",
+					name:		"json",
+					want:		"encodingjson",
 				},
 			},
 			wantGroups: [][]string{
@@ -169,19 +169,19 @@ func TestFileImporter(t *testing.T) {
 			},
 		},
 		{
-			desc: "std and pulumi/conflict repeated",
+			desc:	"std and pulumi/conflict repeated",
 			imports: []importCall{
 				{importPath: "encoding/json", name: "json", want: "json"},
 				{
-					importPath: "github.com/pulumi/pulumi-std/sdk/go/std/encoding/json",
-					name:       "json",
-					want:       "encodingjson",
+					importPath:	"github.com/pulumi/pulumi-std/sdk/go/std/encoding/json",
+					name:		"json",
+					want:		"encodingjson",
 				},
 				{importPath: "encoding/json/v2", name: "json", want: "jsonv2"},
 				{
-					importPath: "github.com/pulumi/pulumi-std/sdk/v2/go/std/encoding/json",
-					name:       "json",
-					want:       "json2",
+					importPath:	"github.com/pulumi/pulumi-std/sdk/v2/go/std/encoding/json",
+					name:		"json",
+					want:		"json2",
 				},
 			},
 			wantGroups: [][]string{
@@ -196,14 +196,14 @@ func TestFileImporter(t *testing.T) {
 			},
 		},
 		{
-			desc: "std and pulumi/conflict reverse",
+			desc:	"std and pulumi/conflict reverse",
 			imports: []importCall{
 				{
 					// This doesn't actually exist yet,
 					// but it's conceivable that it might.
-					importPath: "github.com/pulumi/pulumi-std/sdk/go/std/encoding/json",
-					name:       "json",
-					want:       "json",
+					importPath:	"github.com/pulumi/pulumi-std/sdk/go/std/encoding/json",
+					name:		"json",
+					want:		"json",
 				},
 				{importPath: "encoding/json", name: "json", want: "json2"},
 			},
@@ -213,7 +213,7 @@ func TestFileImporter(t *testing.T) {
 			},
 		},
 		{
-			desc: "pulumi aws awsx conflict",
+			desc:	"pulumi aws awsx conflict",
 			imports: []importCall{
 				{importPath: "github.com/pulumi/pulumi-aws/sdk/v5/go/aws/ecs", name: "ecs", want: "ecs"},
 				{importPath: "github.com/pulumi/pulumi-awsx/sdk/go/awsx/ecs", name: "ecs", want: "awsxecs"},
@@ -226,7 +226,7 @@ func TestFileImporter(t *testing.T) {
 			},
 		},
 		{
-			desc: "basename mismatch/std",
+			desc:	"basename mismatch/std",
 			imports: []importCall{
 				{importPath: "math/rand/v2", name: "rand", want: "rand"},
 			},
@@ -235,7 +235,7 @@ func TestFileImporter(t *testing.T) {
 			},
 		},
 		{
-			desc: "basename mismatch/pulumi",
+			desc:	"basename mismatch/pulumi",
 			imports: []importCall{
 				{importPath: "github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/core/v1", name: "corev1", want: "corev1"},
 			},
@@ -244,7 +244,7 @@ func TestFileImporter(t *testing.T) {
 			},
 		},
 		{
-			desc: "basename mismatch/third party",
+			desc:	"basename mismatch/third party",
 			imports: []importCall{
 				{importPath: "gopkg.in/yaml.v3", name: "yaml", want: "yaml"},
 			},
@@ -253,7 +253,7 @@ func TestFileImporter(t *testing.T) {
 			},
 		},
 		{
-			desc: "already imported",
+			desc:	"already imported",
 			imports: []importCall{
 				{importPath: "example.com/foo/bar", name: "bar", want: "bar"},
 				{importPath: "example.com/baz/bar", name: "bar", want: "bazbar"},
@@ -273,7 +273,7 @@ func TestFileImporter(t *testing.T) {
 			},
 		},
 		{
-			desc: "many conflicts",
+			desc:	"many conflicts",
 			imports: []importCall{
 				{importPath: "example.com/foo/bar", name: "bar", want: "bar"},
 				{importPath: "example.com/baz/bar", name: "bar", want: "bazbar"},
@@ -293,11 +293,11 @@ func TestFileImporter(t *testing.T) {
 			},
 		},
 		{
-			desc: "conflict with special characters",
+			desc:	"conflict with special characters",
 			imports: []importCall{
 				{importPath: "example.com/foo/bar-go", name: "bar", want: "bar"},
 				{importPath: "example.com/foo/bar.go", name: "bar", want: "foobargo"},
-				{importPath: "example.com/bar", name: "bar", want: "bar2"}, // nothing to join with
+				{importPath: "example.com/bar", name: "bar", want: "bar2"},	// nothing to join with
 				{importPath: "example.com/f-o-o/bar", name: "bar", want: "foobar"},
 			},
 			wantGroups: [][]string{
@@ -335,7 +335,7 @@ func TestFileImporter_Reset(t *testing.T) {
 	// Add imports.
 	assert.Equal(t, "bar", fimp.Import("example.com/foo/bar", "bar"))
 	assert.Equal(t, "bazbar", fimp.Import("example.com/baz/bar", "bar"))
-	assert.NotEmpty(t, fimp.ImportGroups()) // sanity check
+	assert.NotEmpty(t, fimp.ImportGroups())	// sanity check
 
 	// Reset and check that imports are gone.
 	fimp.Reset()
@@ -352,9 +352,9 @@ func TestToIdentifier(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		give string
-		want string
-		ok   bool
+		give	string
+		want	string
+		ok	bool
 	}{
 		{"foo", "foo", true},
 		{"foo-bar", "foobar", true},
@@ -383,40 +383,40 @@ func TestSecondLastIndex(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		desc     string
-		haystack string
-		needle   string
-		want     int
+		desc		string
+		haystack	string
+		needle		string
+		want		int
 	}{
 		{
-			desc:     "empty",
-			haystack: "",
-			needle:   "foo",
-			want:     -1,
+			desc:		"empty",
+			haystack:	"",
+			needle:		"foo",
+			want:		-1,
 		},
 		{
-			desc:     "no match",
-			haystack: "foo",
-			needle:   "bar",
-			want:     -1,
+			desc:		"no match",
+			haystack:	"foo",
+			needle:		"bar",
+			want:		-1,
 		},
 		{
-			desc:     "one match",
-			haystack: "a/b",
-			needle:   "/",
-			want:     -1,
+			desc:		"one match",
+			haystack:	"a/b",
+			needle:		"/",
+			want:		-1,
 		},
 		{
-			desc:     "two matches",
-			haystack: "a/b/c",
-			needle:   "/",
-			want:     1,
+			desc:		"two matches",
+			haystack:	"a/b/c",
+			needle:		"/",
+			want:		1,
 		},
 		{
-			desc:     "three matches",
-			haystack: "a/b/c/d",
-			needle:   "/",
-			want:     3,
+			desc:		"three matches",
+			haystack:	"a/b/c/d",
+			needle:		"/",
+			want:		3,
 		},
 	}
 
@@ -453,16 +453,16 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 	}
 
 	g := &generator{
-		program:             program,
-		jsonTempSpiller:     &jsonSpiller{},
-		ternaryTempSpiller:  &tempSpiller{},
-		readDirTempSpiller:  &readDirSpiller{},
-		splatSpiller:        &splatSpiller{},
-		optionalSpiller:     &optionalSpiller{},
-		inlineInvokeSpiller: &inlineInvokeSpiller{},
-		scopeTraversalRoots: codegen.NewStringSet(),
-		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
-		importer:            newFileImporter(),
+		program:		program,
+		jsonTempSpiller:	&jsonSpiller{},
+		ternaryTempSpiller:	&tempSpiller{},
+		readDirTempSpiller:	&readDirSpiller{},
+		splatSpiller:		&splatSpiller{},
+		optionalSpiller:	&optionalSpiller{},
+		inlineInvokeSpiller:	&inlineInvokeSpiller{},
+		scopeTraversalRoots:	codegen.NewStringSet(),
+		arrayHelpers:		make(map[string]*promptToInputArrayHelper),
+		importer:		newFileImporter(),
 	}
 	g.Formatter = format.NewFormatter(g)
 	return g

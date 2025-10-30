@@ -80,17 +80,17 @@ type PropertyValue struct {
 // Computed represents the absence of a property value, because it will be computed at some point in the future.  It
 // contains a property value which represents the underlying expected type of the eventual property value.
 type Computed struct {
-	Element PropertyValue // the eventual value (type) of the computed property.
+	Element PropertyValue	// the eventual value (type) of the computed property.
 }
 
 // Output is a property value that will eventually be computed by the resource provider.  If an output property is
 // encountered, it means the resource has not yet been created, and so the output value is unavailable.  Note that an
 // output property is a special case of computed, but carries additional semantic meaning.
 type Output struct {
-	Element      PropertyValue // the value of this output if it is resolved.
-	Known        bool          `json:"-"` // true if this output's value is known.
-	Secret       bool          `json:"-"` // true if this output's value is secret.
-	Dependencies []URN         `json:"-"` // the dependencies associated with this output.
+	Element		PropertyValue	// the value of this output if it is resolved.
+	Known		bool		`json:"-"`	// true if this output's value is known.
+	Secret		bool		`json:"-"`	// true if this output's value is secret.
+	Dependencies	[]URN		`json:"-"`	// the dependencies associated with this output.
 }
 
 // Secret indicates that the underlying value should be persisted securely.
@@ -113,9 +113,9 @@ type Secret struct {
 //
 //nolint:revive
 type ResourceReference struct {
-	URN            URN
-	ID             PropertyValue
-	PackageVersion string
+	URN		URN
+	ID		PropertyValue
+	PackageVersion	string
 }
 
 func (ref ResourceReference) IDString() (value string, hasID bool) {
@@ -236,18 +236,18 @@ func NewProperty[T PropertyValueType](v T) PropertyValue {
 	return PropertyValue{v}
 }
 
-func NewNullProperty() PropertyValue                                 { return PropertyValue{nil} }
-func NewBoolProperty(v bool) PropertyValue                           { return PropertyValue{v} }
-func NewNumberProperty(v float64) PropertyValue                      { return PropertyValue{v} }
-func NewStringProperty(v string) PropertyValue                       { return PropertyValue{v} }
-func NewArrayProperty(v []PropertyValue) PropertyValue               { return PropertyValue{v} }
-func NewAssetProperty(v *asset.Asset) PropertyValue                  { return PropertyValue{v} }
-func NewArchiveProperty(v *archive.Archive) PropertyValue            { return PropertyValue{v} }
-func NewObjectProperty(v PropertyMap) PropertyValue                  { return PropertyValue{v} }
-func NewComputedProperty(v Computed) PropertyValue                   { return PropertyValue{v} }
-func NewOutputProperty(v Output) PropertyValue                       { return PropertyValue{v} }
-func NewSecretProperty(v *Secret) PropertyValue                      { return PropertyValue{v} }
-func NewResourceReferenceProperty(v ResourceReference) PropertyValue { return PropertyValue{v} }
+func NewNullProperty() PropertyValue					{ return PropertyValue{nil} }
+func NewBoolProperty(v bool) PropertyValue				{ return PropertyValue{v} }
+func NewNumberProperty(v float64) PropertyValue				{ return PropertyValue{v} }
+func NewStringProperty(v string) PropertyValue				{ return PropertyValue{v} }
+func NewArrayProperty(v []PropertyValue) PropertyValue			{ return PropertyValue{v} }
+func NewAssetProperty(v *asset.Asset) PropertyValue			{ return PropertyValue{v} }
+func NewArchiveProperty(v *archive.Archive) PropertyValue		{ return PropertyValue{v} }
+func NewObjectProperty(v PropertyMap) PropertyValue			{ return PropertyValue{v} }
+func NewComputedProperty(v Computed) PropertyValue			{ return PropertyValue{v} }
+func NewOutputProperty(v Output) PropertyValue				{ return PropertyValue{v} }
+func NewSecretProperty(v *Secret) PropertyValue				{ return PropertyValue{v} }
+func NewResourceReferenceProperty(v ResourceReference) PropertyValue	{ return PropertyValue{v} }
 
 func MakeComputed(v PropertyValue) PropertyValue {
 	return NewProperty(Computed{Element: v})
@@ -264,8 +264,8 @@ func MakeSecret(v PropertyValue) PropertyValue {
 // MakeComponentResourceReference creates a reference to a component resource.
 func MakeComponentResourceReference(urn URN, packageVersion string) PropertyValue {
 	return NewProperty(ResourceReference{
-		URN:            urn,
-		PackageVersion: packageVersion,
+		URN:		urn,
+		PackageVersion:	packageVersion,
 	})
 }
 
@@ -278,9 +278,9 @@ func MakeCustomResourceReference(urn URN, id ID, packageVersion string) Property
 	}
 
 	return NewProperty(ResourceReference{
-		ID:             idProp,
-		URN:            urn,
-		PackageVersion: packageVersion,
+		ID:		idProp,
+		URN:		urn,
+		PackageVersion:	packageVersion,
 	})
 }
 
@@ -441,37 +441,37 @@ func (v PropertyValue) ContainsSecrets() bool {
 }
 
 // BoolValue fetches the underlying bool value (panicking if it isn't a bool).
-func (v PropertyValue) BoolValue() bool { return v.V.(bool) }
+func (v PropertyValue) BoolValue() bool	{ return v.V.(bool) }
 
 // NumberValue fetches the underlying number value (panicking if it isn't a number).
-func (v PropertyValue) NumberValue() float64 { return v.V.(float64) }
+func (v PropertyValue) NumberValue() float64	{ return v.V.(float64) }
 
 // StringValue fetches the underlying string value (panicking if it isn't a string).
-func (v PropertyValue) StringValue() string { return v.V.(string) }
+func (v PropertyValue) StringValue() string	{ return v.V.(string) }
 
 // ArrayValue fetches the underlying array value (panicking if it isn't a array).
-func (v PropertyValue) ArrayValue() []PropertyValue { return v.V.([]PropertyValue) }
+func (v PropertyValue) ArrayValue() []PropertyValue	{ return v.V.([]PropertyValue) }
 
 // AssetValue fetches the underlying asset value (panicking if it isn't an asset).
-func (v PropertyValue) AssetValue() *asset.Asset { return v.V.(*asset.Asset) }
+func (v PropertyValue) AssetValue() *asset.Asset	{ return v.V.(*asset.Asset) }
 
 // ArchiveValue fetches the underlying archive value (panicking if it isn't an archive).
-func (v PropertyValue) ArchiveValue() *archive.Archive { return v.V.(*archive.Archive) }
+func (v PropertyValue) ArchiveValue() *archive.Archive	{ return v.V.(*archive.Archive) }
 
 // ObjectValue fetches the underlying object value (panicking if it isn't a object).
-func (v PropertyValue) ObjectValue() PropertyMap { return v.V.(PropertyMap) }
+func (v PropertyValue) ObjectValue() PropertyMap	{ return v.V.(PropertyMap) }
 
 // Input fetches the underlying computed value (panicking if it isn't a computed).
-func (v PropertyValue) Input() Computed { return v.V.(Computed) }
+func (v PropertyValue) Input() Computed	{ return v.V.(Computed) }
 
 // OutputValue fetches the underlying output value (panicking if it isn't a output).
-func (v PropertyValue) OutputValue() Output { return v.V.(Output) }
+func (v PropertyValue) OutputValue() Output	{ return v.V.(Output) }
 
 // SecretValue fetches the underlying secret value (panicking if it isn't a secret).
-func (v PropertyValue) SecretValue() *Secret { return v.V.(*Secret) }
+func (v PropertyValue) SecretValue() *Secret	{ return v.V.(*Secret) }
 
 // ResourceReferenceValue fetches the underlying resource reference value (panicking if it isn't a resource reference).
-func (v PropertyValue) ResourceReferenceValue() ResourceReference { return v.V.(ResourceReference) }
+func (v PropertyValue) ResourceReferenceValue() ResourceReference	{ return v.V.(ResourceReference) }
 
 // IsNull returns true if the underlying value is a null.
 func (v PropertyValue) IsNull() bool {
@@ -646,8 +646,8 @@ func (v PropertyValue) String() string {
 
 // Property is a pair of key and value.
 type Property struct {
-	Key   PropertyKey
-	Value PropertyValue
+	Key	PropertyKey
+	Value	PropertyValue
 }
 
 // SigKey is sometimes used to encode type identity inside of a map.  This is required when flattening into ordinary

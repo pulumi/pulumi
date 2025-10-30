@@ -16,15 +16,15 @@ package model
 
 import (
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
 )
 
 var typeBuiltins = map[string]Type{
-	"any":    DynamicType,
-	"string": StringType,
-	"number": NumberType,
-	"int":    IntType,
-	"bool":   BoolType,
+	"any":		DynamicType,
+	"string":	StringType,
+	"number":	NumberType,
+	"int":		IntType,
+	"bool":		BoolType,
 }
 
 var typeFunctions = map[string]FunctionSignature{
@@ -34,8 +34,8 @@ var typeFunctions = map[string]FunctionSignature{
 			resultType = NewListType(args[0].Type())
 		}
 		return StaticFunctionSignature{
-			Parameters: []Parameter{{Name: "elementType", Type: DynamicType}},
-			ReturnType: resultType,
+			Parameters:	[]Parameter{{Name: "elementType", Type: DynamicType}},
+			ReturnType:	resultType,
 		}, nil
 	}),
 	"set": GenericFunctionSignature(func(args []Expression) (StaticFunctionSignature, hcl.Diagnostics) {
@@ -44,8 +44,8 @@ var typeFunctions = map[string]FunctionSignature{
 			resultType = NewSetType(args[0].Type())
 		}
 		return StaticFunctionSignature{
-			Parameters: []Parameter{{Name: "elementType", Type: DynamicType}},
-			ReturnType: resultType,
+			Parameters:	[]Parameter{{Name: "elementType", Type: DynamicType}},
+			ReturnType:	resultType,
 		}, nil
 	}),
 	"map": GenericFunctionSignature(func(args []Expression) (StaticFunctionSignature, hcl.Diagnostics) {
@@ -54,8 +54,8 @@ var typeFunctions = map[string]FunctionSignature{
 			resultType = NewMapType(args[0].Type())
 		}
 		return StaticFunctionSignature{
-			Parameters: []Parameter{{Name: "elementType", Type: DynamicType}},
-			ReturnType: resultType,
+			Parameters:	[]Parameter{{Name: "elementType", Type: DynamicType}},
+			ReturnType:	resultType,
 		}, nil
 	}),
 	"object": GenericFunctionSignature(func(args []Expression) (StaticFunctionSignature, hcl.Diagnostics) {
@@ -67,15 +67,15 @@ var typeFunctions = map[string]FunctionSignature{
 			} else {
 				rng := args[0].SyntaxNode().Range()
 				diagnostics = hcl.Diagnostics{{
-					Severity: hcl.DiagError,
-					Summary:  "the argument to object() must be an object type",
-					Subject:  &rng,
+					Severity:	hcl.DiagError,
+					Summary:	"the argument to object() must be an object type",
+					Subject:	&rng,
 				}}
 			}
 		}
 		return StaticFunctionSignature{
-			Parameters: []Parameter{{Name: "objectType", Type: DynamicType}},
-			ReturnType: resultType,
+			Parameters:	[]Parameter{{Name: "objectType", Type: DynamicType}},
+			ReturnType:	resultType,
 		}, diagnostics
 	}),
 	"tuple": GenericFunctionSignature(func(args []Expression) (StaticFunctionSignature, hcl.Diagnostics) {
@@ -87,15 +87,15 @@ var typeFunctions = map[string]FunctionSignature{
 			} else {
 				rng := args[0].SyntaxNode().Range()
 				diagnostics = hcl.Diagnostics{{
-					Severity: hcl.DiagError,
-					Summary:  "the argument to tuple() must be an tuple type",
-					Subject:  &rng,
+					Severity:	hcl.DiagError,
+					Summary:	"the argument to tuple() must be an tuple type",
+					Subject:	&rng,
 				}}
 			}
 		}
 		return StaticFunctionSignature{
-			Parameters: []Parameter{{Name: "tupleType", Type: DynamicType}},
-			ReturnType: resultType,
+			Parameters:	[]Parameter{{Name: "tupleType", Type: DynamicType}},
+			ReturnType:	resultType,
 		}, diagnostics
 	}),
 }
@@ -106,8 +106,8 @@ func init() {
 	TypeScope = NewRootScope(syntax.None)
 	for name, typ := range typeBuiltins {
 		TypeScope.Define(name, &Variable{
-			Name:         name,
-			VariableType: typ,
+			Name:		name,
+			VariableType:	typ,
 		})
 	}
 	for name, sig := range typeFunctions {

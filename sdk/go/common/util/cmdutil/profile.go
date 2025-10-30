@@ -85,7 +85,7 @@ func memoryProfileWriteLoop(prefix string) {
 			return
 		}
 
-		runtime.GC() // get up-to-date statistics
+		runtime.GC()	// get up-to-date statistics
 		if err = pprof.Lookup("allocs").WriteTo(mem, 0); err != nil {
 			fmt.Fprintf(os.Stderr, "could not create memory profile: %s\n", err.Error())
 		}

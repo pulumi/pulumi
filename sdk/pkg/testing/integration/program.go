@@ -41,10 +41,10 @@ import (
 	"golang.org/x/mod/module"
 	"gopkg.in/yaml.v3"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/operations"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -60,12 +60,12 @@ import (
 )
 
 const (
-	PythonRuntime = "python"
-	NodeJSRuntime = "nodejs"
-	GoRuntime     = "go"
-	DotNetRuntime = "dotnet"
-	YAMLRuntime   = "yaml"
-	JavaRuntime   = "java"
+	PythonRuntime	= "python"
+	NodeJSRuntime	= "nodejs"
+	GoRuntime	= "go"
+	DotNetRuntime	= "dotnet"
+	YAMLRuntime	= "yaml"
+	JavaRuntime	= "java"
 )
 
 const windowsOS = "windows"
@@ -74,62 +74,62 @@ var ErrTestFailed = errors.New("test failed")
 
 // RuntimeValidationStackInfo contains details related to the stack that runtime validation logic may want to use.
 type RuntimeValidationStackInfo struct {
-	StackName    tokens.QName
-	Deployment   *apitype.DeploymentV3
-	RootResource apitype.ResourceV3
-	Outputs      map[string]any
-	Events       []apitype.EngineEvent
+	StackName	tokens.QName
+	Deployment	*apitype.DeploymentV3
+	RootResource	apitype.ResourceV3
+	Outputs		map[string]any
+	Events		[]apitype.EngineEvent
 }
 
 // EditDir is an optional edit to apply to the example, as subsequent deployments.
 type EditDir struct {
-	Dir                    string
-	ExtraRuntimeValidation func(t *testing.T, stack RuntimeValidationStackInfo)
+	Dir			string
+	ExtraRuntimeValidation	func(t *testing.T, stack RuntimeValidationStackInfo)
 
 	// Additive is true if Dir should be copied *on top* of the test directory.
 	// Otherwise Dir *replaces* the test directory, except we keep .pulumi/ and Pulumi.yaml and Pulumi.<stack>.yaml.
-	Additive bool
+	Additive	bool
 
 	// ExpectFailure is true if we expect this test to fail.  This is very coarse grained, and will essentially
 	// tolerate *any* failure in the program (IDEA: in the future, offer a way to narrow this down more).
-	ExpectFailure bool
+	ExpectFailure	bool
 
 	// ExpectNoChanges is true if the edit is expected to not propose any changes.
-	ExpectNoChanges bool
+	ExpectNoChanges	bool
 
 	// Stdout is the writer to use for all stdout messages.
-	Stdout io.Writer
+	Stdout	io.Writer
 	// Stderr is the writer to use for all stderr messages.
-	Stderr io.Writer
+	Stderr	io.Writer
 	// Verbose may be set to true to print messages as they occur, rather than buffering and showing upon failure.
-	Verbose bool
+	Verbose	bool
 
 	// Run program directory in query mode.
-	QueryMode bool
+	QueryMode	bool
 }
 
 // TestCommandStats is a collection of data related to running a single command during a test.
 type TestCommandStats struct {
 	// StartTime is the time at which the command was started
-	StartTime string `json:"startTime"`
+	StartTime	string	`json:"startTime"`
 	// EndTime is the time at which the command exited
-	EndTime string `json:"endTime"`
+	EndTime	string	`json:"endTime"`
 	// ElapsedSeconds is the time at which the command exited
-	ElapsedSeconds float64 `json:"elapsedSeconds"`
+	ElapsedSeconds	float64	`json:"elapsedSeconds"`
 	// StackName is the name of the stack
-	StackName string `json:"stackName"`
+	StackName	string	`json:"stackName"`
 	// TestId is the unique ID of the test run
-	TestID string `json:"testId"`
+	TestID	string	`json:"testId"`
 	// StepName is the command line which was invoked
-	StepName string `json:"stepName"`
+	StepName	string	`json:"stepName"`
 	// CommandLine is the command line which was invoked
-	CommandLine string `json:"commandLine"`
+	CommandLine	string	`json:"commandLine"`
 	// TestName is the name of the directory in which the test was executed
-	TestName string `json:"testName"`
+	TestName	string	`json:"testName"`
 	// IsError is true if the command failed
-	IsError bool `json:"isError"`
+	IsError	bool	`json:"isError"`
 	// The Cloud that the test was run against, or empty for local deployments
-	CloudURL string `json:"cloudURL"`
+	CloudURL	string	`json:"cloudURL"`
 }
 
 // TestStatsReporter reports results and metadata from a test run.
@@ -140,119 +140,119 @@ type TestStatsReporter interface {
 // Environment is used to create environments for use by test programs.
 type Environment struct {
 	// The name of the environment.
-	Name string
+	Name	string
 	// The definition of the environment.
-	Definition map[string]any
+	Definition	map[string]any
 }
 
 // ConfigValue is used to provide config values to a test program.
 type ConfigValue struct {
 	// The config key to pass to `pulumi config`.
-	Key string
+	Key	string
 	// The config value to pass to `pulumi config`.
-	Value string
+	Value	string
 	// Secret indicates that the `--secret` flag should be specified when calling `pulumi config`.
-	Secret bool
+	Secret	bool
 	// Path indicates that the `--path` flag should be specified when calling `pulumi config`.
-	Path bool
+	Path	bool
 }
 
 // ProgramTestOptions provides options for ProgramTest
 type ProgramTestOptions struct {
 	// Dir is the program directory to test.
-	Dir string
+	Dir	string
 	// Array of NPM packages which must be `yarn linked` (e.g. {"pulumi", "@pulumi/aws"})
-	Dependencies []string
+	Dependencies	[]string
 	// Map of package names to versions. The test will use the specified versions of these packages instead of what
 	// is declared in `package.json`.
-	Overrides map[string]string
+	Overrides	map[string]string
 	// Automatically use the latest dev version of pulumi SDKs if available.
-	InstallDevReleases bool
+	InstallDevReleases	bool
 	// List of environments to create in order.
-	CreateEnvironments []Environment
+	CreateEnvironments	[]Environment
 	// List of environments to use.
-	Environments []string
+	Environments	[]string
 	// Map of config keys and values to set (e.g. {"aws:region": "us-east-2"}).
-	Config map[string]string
+	Config	map[string]string
 	// Map of secure config keys and values to set (e.g. {"aws:region": "us-east-2"}).
-	Secrets map[string]string
+	Secrets	map[string]string
 	// List of config keys and values to set in order, including Secret and Path options.
-	OrderedConfig []ConfigValue
+	OrderedConfig	[]ConfigValue
 	// SecretsProvider is the optional custom secrets provider to use instead of the default.
-	SecretsProvider string
+	SecretsProvider	string
 	// EditDirs is an optional list of edits to apply to the example, as subsequent deployments.
-	EditDirs []EditDir
+	EditDirs	[]EditDir
 	// ExtraRuntimeValidation is an optional callback for additional validation, called before applying edits.
-	ExtraRuntimeValidation func(t *testing.T, stack RuntimeValidationStackInfo)
+	ExtraRuntimeValidation	func(t *testing.T, stack RuntimeValidationStackInfo)
 	// RelativeWorkDir is an optional path relative to `Dir` which should be used as working directory during tests.
-	RelativeWorkDir string
+	RelativeWorkDir	string
 	// AllowEmptyPreviewChanges is true if we expect that this test's no-op preview may propose changes (e.g.
 	// because the test is sensitive to the exact contents of its working directory and those contents change
 	// incidentally between the initial update and the empty update).
-	AllowEmptyPreviewChanges bool
+	AllowEmptyPreviewChanges	bool
 	// AllowEmptyUpdateChanges is true if we expect that this test's no-op update may perform changes (e.g.
 	// because the test is sensitive to the exact contents of its working directory and those contents change
 	// incidentally between the initial update and the empty update).
-	AllowEmptyUpdateChanges bool
+	AllowEmptyUpdateChanges	bool
 	// ExpectFailure is true if we expect this test to fail.  This is very coarse grained, and will essentially
 	// tolerate *any* failure in the program (IDEA: in the future, offer a way to narrow this down more).
-	ExpectFailure bool
+	ExpectFailure	bool
 	// ExpectRefreshChanges may be set to true if a test is expected to have changes yielded by an immediate refresh.
 	// This could occur, for example, is a resource's state is constantly changing outside of Pulumi (e.g., timestamps).
-	ExpectRefreshChanges bool
+	ExpectRefreshChanges	bool
 	// RetryFailedSteps indicates that failed updates, refreshes, and destroys should be retried after a brief
 	// intermission. A maximum of 3 retries will be attempted.
-	RetryFailedSteps bool
+	RetryFailedSteps	bool
 	// SkipRefresh indicates that the refresh step should be skipped entirely.
-	SkipRefresh bool
+	SkipRefresh	bool
 	// Require a preview after refresh to be a no-op (expect no changes). Has no effect if SkipRefresh is true.
-	RequireEmptyPreviewAfterRefresh bool
+	RequireEmptyPreviewAfterRefresh	bool
 	// SkipPreview indicates that the preview step should be skipped entirely.
-	SkipPreview bool
+	SkipPreview	bool
 	// SkipUpdate indicates that the update step should be skipped entirely.
-	SkipUpdate bool
+	SkipUpdate	bool
 	// SkipExportImport skips testing that exporting and importing the stack works properly.
-	SkipExportImport bool
+	SkipExportImport	bool
 	// SkipEmptyPreviewUpdate skips the no-change preview/update that is performed that validates
 	// that no changes happen.
-	SkipEmptyPreviewUpdate bool
+	SkipEmptyPreviewUpdate	bool
 	// SkipStackRemoval indicates that the stack should not be removed. (And so the test's results could be inspected
 	// in the Pulumi Service after the test has completed.)
-	SkipStackRemoval bool
+	SkipStackRemoval	bool
 	// Destroy on cleanup defers stack destruction until the test cleanup step, rather than after
 	// program test execution. This is useful for more realistic stack reference testing, allowing one
 	// project and stack to be stood up and a second to be run before the first is destroyed.
 	//
 	// Implies NoParallel because we expect that another caller to ProgramTest will set that
-	DestroyOnCleanup bool
+	DestroyOnCleanup	bool
 	// DestroyExcludeProtected indicates that when the test stack is destroyed,
 	// protected resources should be excluded from the destroy operation.
-	DestroyExcludeProtected bool
+	DestroyExcludeProtected	bool
 	// Quick implies SkipPreview, SkipExportImport and SkipEmptyPreviewUpdate
-	Quick bool
+	Quick	bool
 	// RequireService indicates that the test must be run against the Pulumi Service
-	RequireService bool
+	RequireService	bool
 	// PreviewCommandlineFlags specifies flags to add to the `pulumi preview` command line (e.g. "--color=raw")
-	PreviewCommandlineFlags []string
+	PreviewCommandlineFlags	[]string
 	// UpdateCommandlineFlags specifies flags to add to the `pulumi up` command line (e.g. "--color=raw")
-	UpdateCommandlineFlags []string
+	UpdateCommandlineFlags	[]string
 	// QueryCommandlineFlags specifies flags to add to the `pulumi query` command line (e.g. "--color=raw")
-	QueryCommandlineFlags []string
+	QueryCommandlineFlags	[]string
 	// RunBuild indicates that the build step should be run (e.g. run `yarn build` for `nodejs` programs)
-	RunBuild bool
+	RunBuild	bool
 	// RunUpdateTest will ensure that updates to the package version can test for spurious diffs
-	RunUpdateTest bool
+	RunUpdateTest	bool
 	// DecryptSecretsInOutput will ensure that stack output is passed `--show-secrets` parameter
 	// Used in conjunction with ExtraRuntimeValidation
-	DecryptSecretsInOutput bool
+	DecryptSecretsInOutput	bool
 
 	// CloudURL is an optional URL to override the default Pulumi Service API (https://api.pulumi-staging.io). The
 	// PULUMI_ACCESS_TOKEN environment variable must also be set to a valid access token for the target cloud.
-	CloudURL string
+	CloudURL	string
 
 	// StackName allows the stack name to be explicitly provided instead of computed from the
 	// environment during tests.
-	StackName string
+	StackName	string
 
 	// If non-empty, specifies the value of the `--tracing` flag to pass
 	// to Pulumi CLI, which may be a Zipkin endpoint or a
@@ -263,90 +263,90 @@ type ProgramTestOptions struct {
 	// file-based tracing since `ProgramTest` performs multiple
 	// CLI invocations that can inadvertently overwrite the trace
 	// file.
-	Tracing string
+	Tracing	string
 
 	// NoParallel will opt the test out of being ran in parallel.
-	NoParallel bool
+	NoParallel	bool
 
 	// PrePulumiCommand specifies a callback that will be executed before each `pulumi` invocation. This callback may
 	// optionally return another callback to be invoked after the `pulumi` invocation completes.
-	PrePulumiCommand func(verb string) (func(err error) error, error)
+	PrePulumiCommand	func(verb string) (func(err error) error, error)
 
 	// ReportStats optionally specifies how to report results from the test for external collection.
-	ReportStats TestStatsReporter
+	ReportStats	TestStatsReporter
 
 	// Stdout is the writer to use for all stdout messages.
-	Stdout io.Writer
+	Stdout	io.Writer
 	// Stderr is the writer to use for all stderr messages.
-	Stderr io.Writer
+	Stderr	io.Writer
 	// Verbose may be set to true to print messages as they occur, rather than buffering and showing upon failure.
-	Verbose bool
+	Verbose	bool
 
 	// DebugLogLevel may be set to anything >0 to enable excessively verbose debug logging from `pulumi`. This
 	// is equivalent to `--logflow --logtostderr -v=N`, where N is the value of DebugLogLevel. This may also
 	// be enabled by setting the environment variable PULUMI_TEST_DEBUG_LOG_LEVEL.
-	DebugLogLevel int
+	DebugLogLevel	int
 	// DebugUpdates may be set to true to enable debug logging from `pulumi preview`, `pulumi up`, and
 	// `pulumi destroy`.  This may also be enabled by setting the environment variable PULUMI_TEST_DEBUG_UPDATES.
-	DebugUpdates bool
+	DebugUpdates	bool
 
 	// Bin is a location of a `pulumi` executable to be run.  Taken from the $PATH if missing.
-	Bin string
+	Bin	string
 	// YarnBin is a location of a `yarn` executable to be run.  Taken from the $PATH if missing.
-	YarnBin string
+	YarnBin	string
 	// GoBin is a location of a `go` executable to be run.  Taken from the $PATH if missing.
-	GoBin string
+	GoBin	string
 	// PythonBin is a location of a `python` executable to be run.  Taken from the $PATH if missing.
-	PythonBin string
+	PythonBin	string
 	// PipenvBin is a location of a `pipenv` executable to run.  Taken from the $PATH if missing.
-	PipenvBin string
+	PipenvBin	string
 	// DotNetBin is a location of a `dotnet` executable to be run.  Taken from the $PATH if missing.
-	DotNetBin string
+	DotNetBin	string
 
 	// Additional environment variables to pass for each command we run.
-	Env []string
+	Env	[]string
 
 	// Automatically create and use a virtual environment, rather than using the Pipenv tool. This is now the default
 	// behavior, so this option no longer has any affect. To go back to the old behavior use the `UsePipenv` option.
-	UseAutomaticVirtualEnv bool
+	UseAutomaticVirtualEnv	bool
 	// Use the Pipenv tool to manage the virtual environment.
-	UsePipenv bool
+	UsePipenv	bool
 	// Use a shared virtual environment for tests based on the contents of the requirements file. Defaults to false.
-	UseSharedVirtualEnv *bool
+	UseSharedVirtualEnv	*bool
 	// Shared venv path when UseSharedVirtualEnv is true. Defaults to $HOME/.pulumi-test-venvs.
-	SharedVirtualEnvPath string
+	SharedVirtualEnvPath	string
 	// Refers to the shared venv directory when UseSharedVirtualEnv is true. Otherwise defaults to venv
-	virtualEnvDir string
+	virtualEnvDir	string
 
 	// If set, this hook is called after the `pulumi preview` command has completed.
-	PreviewCompletedHook func(dir string) error
+	PreviewCompletedHook	func(dir string) error
 
 	// JSONOutput indicates that the `--json` flag should be passed to `up`, `preview`,
 	// `refresh` and `destroy` commands.
-	JSONOutput bool
+	JSONOutput	bool
 
 	// If set, this hook is called after `pulumi stack export` on the exported file. If `SkipExportImport` is set, this
 	// hook is ignored.
-	ExportStateValidator func(t *testing.T, stack []byte)
+	ExportStateValidator	func(t *testing.T, stack []byte)
 
 	// If not nil, specifies the logic of preparing a project by
 	// ensuring dependencies. If left as nil, runs default
 	// preparation logic by dispatching on whether the project
 	// uses Node, Python, .NET or Go.
-	PrepareProject func(*engine.Projinfo) error
+	PrepareProject	func(*engine.Projinfo) error
 
 	// If not nil, will be run before the project has been prepared.
-	PrePrepareProject func(*engine.Projinfo) error
+	PrePrepareProject	func(*engine.Projinfo) error
 
 	// If not nil, will be run after the project has been prepared.
-	PostPrepareProject func(*engine.Projinfo) error
+	PostPrepareProject	func(*engine.Projinfo) error
 
 	// Array of provider plugin dependencies which come from local packages.
-	LocalProviders []LocalDependency
+	LocalProviders	[]LocalDependency
 
 	// The directory to use for PULUMI_HOME. Useful for benchmarks where you want to run a warmup run of `ProgramTest`
 	// to download plugins before running the timed run of `ProgramTest`.
-	PulumiHomeDir string
+	PulumiHomeDir	string
 }
 
 func (opts *ProgramTestOptions) GetUseSharedVirtualEnv() bool {
@@ -357,8 +357,8 @@ func (opts *ProgramTestOptions) GetUseSharedVirtualEnv() bool {
 }
 
 type LocalDependency struct {
-	Package string
-	Path    string
+	Package	string
+	Path	string
 }
 
 func (opts *ProgramTestOptions) GetDebugLogLevel() int {
@@ -701,9 +701,9 @@ func (rf *regexFlag) Set(v string) error {
 }
 
 var (
-	directoryMatcher regexFlag
-	listDirs         bool
-	pipMutex         *fsutil.FileMutex
+	directoryMatcher	regexFlag
+	listDirs		bool
+	pipMutex		*fsutil.FileMutex
 )
 
 func init() {
@@ -870,20 +870,20 @@ func ProgramTestManualLifeCycle(t *testing.T, opts *ProgramTestOptions) *Program
 
 // ProgramTester contains state associated with running a single test pass.
 type ProgramTester struct {
-	t              *testing.T          // the Go tester for this run.
-	opts           *ProgramTestOptions // options that control this test run.
-	bin            string              // the `pulumi` binary we are using.
-	yarnBin        string              // the `yarn` binary we are using.
-	goBin          string              // the `go` binary we are using.
-	pythonBin      string              // the `python` binary we are using.
-	pipenvBin      string              // The `pipenv` binary we are using.
-	dotNetBin      string              // the `dotnet` binary we are using.
-	updateEventLog string              // The path to the engine event log for `pulumi up` in this test.
-	maxStepTries   int                 // The maximum number of times to retry a failed pulumi step.
-	tmpdir         string              // the temporary directory we use for our test environment
-	projdir        string              // the project directory we use for this run
-	TestFinished   bool                // whether or not the test if finished
-	pulumiHome     string              // The directory PULUMI_HOME will be set to
+	t		*testing.T		// the Go tester for this run.
+	opts		*ProgramTestOptions	// options that control this test run.
+	bin		string			// the `pulumi` binary we are using.
+	yarnBin		string			// the `yarn` binary we are using.
+	goBin		string			// the `go` binary we are using.
+	pythonBin	string			// the `python` binary we are using.
+	pipenvBin	string			// The `pipenv` binary we are using.
+	dotNetBin	string			// the `dotnet` binary we are using.
+	updateEventLog	string			// The path to the engine event log for `pulumi up` in this test.
+	maxStepTries	int			// The maximum number of times to retry a failed pulumi step.
+	tmpdir		string			// the temporary directory we use for our test environment
+	projdir		string			// the project directory we use for this run
+	TestFinished	bool			// whether or not the test if finished
+	pulumiHome	string			// The directory PULUMI_HOME will be set to
 }
 
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
@@ -899,11 +899,11 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 		home = t.TempDir()
 	}
 	return &ProgramTester{
-		t:              t,
-		opts:           opts,
-		updateEventLog: filepath.Join(os.TempDir(), string(stackName)+"-events.json"),
-		maxStepTries:   maxStepTries,
-		pulumiHome:     home,
+		t:		t,
+		opts:		opts,
+		updateEventLog:	filepath.Join(os.TempDir(), string(stackName)+"-events.json"),
+		maxStepTries:	maxStepTries,
+		pulumiHome:	home,
 	}
 }
 
@@ -1906,11 +1906,11 @@ func (pt *ProgramTester) performExtraRuntimeValidation(
 
 	// Populate stack info object with all of this data to pass to the validation function
 	stackInfo := RuntimeValidationStackInfo{
-		StackName:    pt.opts.GetStackName(),
-		Deployment:   &deployment,
-		RootResource: rootResource,
-		Outputs:      outputs,
-		Events:       events,
+		StackName:	pt.opts.GetStackName(),
+		Deployment:	&deployment,
+		RootResource:	rootResource,
+		Outputs:	outputs,
+		Events:		events,
 	}
 
 	pt.t.Log("Performing extra runtime validation.")
@@ -2027,8 +2027,8 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 			}
 
 			projinfo.Proj.Plugins.Providers = append(projinfo.Proj.Plugins.Providers, workspace.PluginOptions{
-				Name: provider.Package,
-				Path: absPath,
+				Name:	provider.Package,
+				Path:	absPath,
 			})
 		}
 	}
@@ -2709,9 +2709,9 @@ func (pt *ProgramTester) defaultPrepareProject(projinfo *engine.Projinfo) error 
 // AssertPerfBenchmark implements the integration.TestStatsReporter interface, and reports test
 // failures when a scenario exceeds the provided threshold.
 type AssertPerfBenchmark struct {
-	T                  *testing.T
-	MaxPreviewDuration time.Duration
-	MaxUpdateDuration  time.Duration
+	T			*testing.T
+	MaxPreviewDuration	time.Duration
+	MaxUpdateDuration	time.Duration
 }
 
 func (t AssertPerfBenchmark) ReportCommand(stats TestCommandStats) {

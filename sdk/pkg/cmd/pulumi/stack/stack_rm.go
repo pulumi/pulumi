@@ -19,17 +19,17 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/state"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/state"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -44,9 +44,9 @@ func newStackRmCmd() *cobra.Command {
 	var preserveConfig bool
 	var removeBackups bool
 	cmd := &cobra.Command{
-		Use:   "rm [<stack-name>]",
-		Args:  cmdutil.MaximumNArgs(1),
-		Short: "Remove a stack and its configuration",
+		Use:	"rm [<stack-name>]",
+		Args:	cmdutil.MaximumNArgs(1),
+		Short:	"Remove a stack and its configuration",
 		Long: "Remove a stack and its configuration\n" +
 			"\n" +
 			"This command removes a stack and its configuration state.  Please refer to the\n" +

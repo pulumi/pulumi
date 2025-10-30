@@ -18,11 +18,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -59,8 +59,8 @@ func TestStackInit_teamsUnsupportedByBackend(t *testing.T) {
 		},
 	}
 	cmd := &stackInitCmd{
-		teams:     []string{"red", "blue"},
-		stackName: "dev",
+		teams:		[]string{"red", "blue"},
+		stackName:	"dev",
 		currentBackend: func(
 			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
 		) (backend.Backend, error) {
@@ -83,30 +83,30 @@ func TestNewCreateStackOptsFiltersWhitespace(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name      string
-		giveTeams []string
-		wantTeams []string
+		name		string
+		giveTeams	[]string
+		wantTeams	[]string
 	}{
 		{
-			name: "empty",
+			name:	"empty",
 			// no raw or valid teams
-			giveTeams: []string{},
-			wantTeams: []string{},
+			giveTeams:	[]string{},
+			wantTeams:	[]string{},
 		},
 		{
-			name:      "single valid",
-			giveTeams: []string{"TeamRocket"},
-			wantTeams: []string{"TeamRocket"},
+			name:		"single valid",
+			giveTeams:	[]string{"TeamRocket"},
+			wantTeams:	[]string{"TeamRocket"},
 		},
 		{
-			name:      "all invalid",
-			giveTeams: []string{" ", "\t", "\n"},
-			wantTeams: []string{},
+			name:		"all invalid",
+			giveTeams:	[]string{" ", "\t", "\n"},
+			wantTeams:	[]string{},
 		},
 		{
-			name:      "valid and invalid",
-			giveTeams: []string{" ", "Edward", "\t", "Jacob", "\n"},
-			wantTeams: []string{"Edward", "Jacob"},
+			name:		"valid and invalid",
+			giveTeams:	[]string{" ", "Edward", "\t", "Jacob", "\n"},
+			wantTeams:	[]string{"Edward", "Jacob"},
 		},
 	}
 

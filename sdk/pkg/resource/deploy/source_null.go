@@ -35,8 +35,8 @@ type nullSource struct {
 // Deprecated: A NullSource with no project name.
 var NullSource Source = &nullSource{}
 
-func (src *nullSource) Close() error                { return nil }
-func (src *nullSource) Project() tokens.PackageName { return src.project }
+func (src *nullSource) Close() error			{ return nil }
+func (src *nullSource) Project() tokens.PackageName	{ return src.project }
 
 func (src *nullSource) Iterate(ctx context.Context, providers ProviderSource) (SourceIterator, error) {
 	contract.Ignore(ctx)
@@ -47,9 +47,9 @@ func (src *nullSource) Iterate(ctx context.Context, providers ProviderSource) (S
 type nullSourceIterator struct{}
 
 func (iter *nullSourceIterator) Cancel(context.Context) error {
-	return nil // nothing to do.
+	return nil	// nothing to do.
 }
 
 func (iter *nullSourceIterator) Next() (SourceEvent, error) {
-	return nil, nil // means "done"
+	return nil, nil	// means "done"
 }

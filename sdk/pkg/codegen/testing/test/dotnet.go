@@ -23,8 +23,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
@@ -35,39 +35,39 @@ func GenerateDotnetProgramTest(
 ) {
 	expectedVersion := map[string]PkgVersionInfo{
 		"aws-resource-options-4.26": {
-			Pkg:          "<PackageReference Include=\"Pulumi.Aws\"",
-			OpAndVersion: "Version=\"4.26.0\"",
+			Pkg:		"<PackageReference Include=\"Pulumi.Aws\"",
+			OpAndVersion:	"Version=\"4.26.0\"",
 		},
 		"aws-resource-options-5.16.2": {
-			Pkg:          "<PackageReference Include=\"Pulumi.Aws\"",
-			OpAndVersion: "Version=\"5.16.2\"",
+			Pkg:		"<PackageReference Include=\"Pulumi.Aws\"",
+			OpAndVersion:	"Version=\"5.16.2\"",
 		},
 	}
 
 	TestProgramCodegen(t,
 		ProgramCodegenOptions{
-			Language:   "dotnet",
-			Extension:  "cs",
-			OutputFile: "Program.cs",
+			Language:	"dotnet",
+			Extension:	"cs",
+			OutputFile:	"Program.cs",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
 				checkDotnet(t, path, dependencies, "")
 			},
-			GenProgram: genProgram,
+			GenProgram:	genProgram,
 			TestCases: []ProgramTest{
 				{
-					Directory:   "aws-resource-options-4.26",
-					Description: "Resource Options",
+					Directory:	"aws-resource-options-4.26",
+					Description:	"Resource Options",
 				},
 				{
-					Directory:   "aws-resource-options-5.16.2",
-					Description: "Resource Options",
+					Directory:	"aws-resource-options-5.16.2",
+					Description:	"Resource Options",
 				},
 			},
 
-			IsGenProject:    true,
-			GenProject:      genProject,
-			ExpectedVersion: expectedVersion,
-			DependencyFile:  "test.csproj",
+			IsGenProject:		true,
+			GenProject:		genProject,
+			ExpectedVersion:	expectedVersion,
+			DependencyFile:		"test.csproj",
 		},
 	)
 }
@@ -75,14 +75,14 @@ func GenerateDotnetProgramTest(
 func GenerateDotnetBatchTest(t *testing.T, rootDir string, genProgram GenProgram, testCases []ProgramTest) {
 	TestProgramCodegen(t,
 		ProgramCodegenOptions{
-			Language:   "dotnet",
-			Extension:  "cs",
-			OutputFile: "Program.cs",
+			Language:	"dotnet",
+			Extension:	"cs",
+			OutputFile:	"Program.cs",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
 				checkDotnet(t, path, dependencies, "")
 			},
-			GenProgram: genProgram,
-			TestCases:  testCases,
+			GenProgram:	genProgram,
+			TestCases:	testCases,
 		},
 	)
 }
@@ -92,14 +92,14 @@ func GenerateDotnetYAMLBatchTest(t *testing.T, rootDir string, genProgram GenPro
 
 	TestProgramCodegen(t,
 		ProgramCodegenOptions{
-			Language:   "dotnet",
-			Extension:  "cs",
-			OutputFile: "Program.cs",
+			Language:	"dotnet",
+			Extension:	"cs",
+			OutputFile:	"Program.cs",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
 				checkDotnet(t, path, dependencies, "")
 			},
-			GenProgram: genProgram,
-			TestCases:  PulumiPulumiYAMLProgramTests,
+			GenProgram:	genProgram,
+			TestCases:	PulumiPulumiYAMLProgramTests,
 		},
 	)
 }
@@ -178,8 +178,8 @@ func typeCheckDotnet(t *testing.T, path string, dependencies codegen.StringSet, 
 }
 
 type dep struct {
-	Name    string
-	Version string
+	Name	string
+	Version	string
 }
 
 func (pkg dep) install(t *testing.T, ex, dir string) {

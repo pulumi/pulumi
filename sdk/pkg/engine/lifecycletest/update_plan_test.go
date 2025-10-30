@@ -25,11 +25,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	. "github.com/pulumi/pulumi/sdk/v3/pkg/engine"	//nolint:revive
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -43,9 +43,9 @@ func TestPlannedUpdate(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -69,9 +69,9 @@ func TestPlannedUpdate(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:             t,
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:		t,
+			HostF:		hostF,
+			UpdateOptions:	UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -80,16 +80,16 @@ func TestPlannedUpdate(t *testing.T) {
 	// Generate a plan.
 	computed := any(resource.Computed{Element: resource.NewProperty("")})
 	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+		"foo":	"bar",
 		"baz": map[string]any{
-			"a": 42,
-			"b": computed,
+			"a":	42,
+			"b":	computed,
 		},
 		"qux": []any{
 			computed,
 			24,
 		},
-		"zed": computed,
+		"zed":	computed,
 	})
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
 	require.NoError(t, err)
@@ -119,16 +119,16 @@ func TestPlannedUpdate(t *testing.T) {
 	// Attempt to run an update using the plan.
 	expectError = false
 	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+		"foo":	"bar",
 		"baz": map[string]any{
-			"a": 42,
-			"b": "alpha",
+			"a":	42,
+			"b":	"alpha",
 		},
 		"qux": []any{
 			"beta",
 			24,
 		},
-		"zed": "grr",
+		"zed":	"grr",
 	})
 	p.Options.Plan = plan.Clone()
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -138,16 +138,16 @@ func TestPlannedUpdate(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 
 	expected := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+		"foo":	"bar",
 		"baz": map[string]any{
-			"a": 42,
-			"b": "alpha",
+			"a":	42,
+			"b":	"alpha",
 		},
 		"qux": []any{
 			"beta",
 			24,
 		},
-		"zed": "grr",
+		"zed":	"grr",
 	})
 	assert.Equal(t, expected, snap.Resources[1].Outputs)
 }
@@ -160,9 +160,9 @@ func TestUnplannedCreate(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -186,9 +186,9 @@ func TestUnplannedCreate(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:             t,
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:		t,
+			HostF:		hostF,
+			UpdateOptions:	UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -219,9 +219,9 @@ func TestUnplannedDelete(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         resource.ID("created-id-" + req.URN.Name()),
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		resource.ID("created-id-" + req.URN.Name()),
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				DeleteF: func(context.Context, plugin.DeleteRequest) (plugin.DeleteResponse, error) {
@@ -254,9 +254,9 @@ func TestUnplannedDelete(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:             t,
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:		t,
+			HostF:		hostF,
+			UpdateOptions:	UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -292,9 +292,9 @@ func TestExpectedDelete(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         resource.ID("created-id-" + req.URN.Name()),
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		resource.ID("created-id-" + req.URN.Name()),
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				DeleteF: func(context.Context, plugin.DeleteRequest) (plugin.DeleteResponse, error) {
@@ -332,9 +332,9 @@ func TestExpectedDelete(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:             t,
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:		t,
+			HostF:		hostF,
+			UpdateOptions:	UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -375,9 +375,9 @@ func TestExpectedCreate(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         resource.ID("created-id-" + req.URN.Name()),
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		resource.ID("created-id-" + req.URN.Name()),
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -407,9 +407,9 @@ func TestExpectedCreate(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:             t,
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:		t,
+			HostF:		hostF,
+			UpdateOptions:	UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -449,9 +449,9 @@ func TestPropertySetChange(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         resource.ID("created-id-" + req.URN.Name()),
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		resource.ID("created-id-" + req.URN.Name()),
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -459,8 +459,8 @@ func TestPropertySetChange(t *testing.T) {
 	}
 
 	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo":  "bar",
-		"frob": "baz",
+		"foo":	"bar",
+		"frob":	"baz",
 	})
 	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -479,9 +479,9 @@ func TestPropertySetChange(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:             t,
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:		t,
+			HostF:		hostF,
+			UpdateOptions:	UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -514,9 +514,9 @@ func TestExpectedUnneededCreate(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         resource.ID("created-id-" + req.URN.Name()),
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		resource.ID("created-id-" + req.URN.Name()),
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -538,9 +538,9 @@ func TestExpectedUnneededCreate(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:             t,
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:		t,
+			HostF:		hostF,
+			UpdateOptions:	UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -574,9 +574,9 @@ func TestExpectedUnneededDelete(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         resource.ID("created-id-" + req.URN.Name()),
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		resource.ID("created-id-" + req.URN.Name()),
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				DeleteF: func(context.Context, plugin.DeleteRequest) (plugin.DeleteResponse, error) {
@@ -604,9 +604,9 @@ func TestExpectedUnneededDelete(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:             t,
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:		t,
+			HostF:		hostF,
+			UpdateOptions:	UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -648,9 +648,9 @@ func TestResoucesWithSames(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -682,9 +682,9 @@ func TestResoucesWithSames(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:             t,
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:		t,
+			HostF:		hostF,
+			UpdateOptions:	UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -695,8 +695,8 @@ func TestResoucesWithSames(t *testing.T) {
 	createB = false
 	computed := any(resource.Computed{Element: resource.NewProperty("")})
 	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
-		"zed": computed,
+		"foo":	"bar",
+		"zed":	computed,
 	})
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
 	require.NoError(t, err)
@@ -719,8 +719,8 @@ func TestResoucesWithSames(t *testing.T) {
 	createA = true
 	createB = true
 	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
-		"zed": 24,
+		"foo":	"bar",
+		"zed":	24,
 	})
 	p.Options.Plan = plan.Clone()
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -735,8 +735,8 @@ func TestResoucesWithSames(t *testing.T) {
 	assert.Equal(t, expected, snap.Resources[2].Outputs)
 
 	expected = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
-		"zed": 24,
+		"foo":	"bar",
+		"zed":	24,
 	})
 	assert.Equal(t, expected, snap.Resources[1].Outputs)
 }
@@ -751,9 +751,9 @@ func TestPlannedPreviews(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -777,9 +777,9 @@ func TestPlannedPreviews(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:             t,
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:		t,
+			HostF:		hostF,
+			UpdateOptions:	UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -788,16 +788,16 @@ func TestPlannedPreviews(t *testing.T) {
 	// Generate a plan.
 	computed := any(resource.Computed{Element: resource.NewProperty("")})
 	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+		"foo":	"bar",
 		"baz": map[string]any{
-			"a": 42,
-			"b": computed,
+			"a":	42,
+			"b":	computed,
 		},
 		"qux": []any{
 			computed,
 			24,
 		},
-		"zed": computed,
+		"zed":	computed,
 	})
 	plan, err := lt.TestOp(Update).PlanStep(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil, "0")
 	require.NoError(t, err)
@@ -820,16 +820,16 @@ func TestPlannedPreviews(t *testing.T) {
 	// Attempt to run an preview using the plan, such that the property set is now valid
 	expectError = false
 	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+		"foo":	"bar",
 		"baz": map[string]any{
-			"a": 42,
-			"b": computed,
+			"a":	42,
+			"b":	computed,
 		},
 		"qux": []any{
 			"beta",
 			24,
 		},
-		"zed": "grr",
+		"zed":	"grr",
 	})
 	p.Options.Plan = plan.Clone()
 	_, err = lt.TestOp(Update).PlanStep(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil, "1")
@@ -846,9 +846,9 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -872,9 +872,9 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:             t,
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:		t,
+			HostF:		hostF,
+			UpdateOptions:	UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -882,24 +882,24 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 
 	// Set initial data for foo and zed
 	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
-		"zed": 24,
+		"foo":	"bar",
+		"zed":	24,
 	})
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
 	// Generate a plan that we want to change foo
 	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "baz",
-		"zed": 24,
+		"foo":	"baz",
+		"zed":	24,
 	})
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
 	require.NoError(t, err)
 
 	// Change zed in the stack
 	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
-		"zed": 26,
+		"foo":	"bar",
+		"zed":	26,
 	})
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
@@ -907,8 +907,8 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 	// Attempt to run an update using the plan but where we haven't updated our program for the change of zed
 	expectError = true
 	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "baz",
-		"zed": 24,
+		"foo":	"baz",
+		"zed":	24,
 	})
 	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
@@ -921,8 +921,8 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 
 	expected := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
-		"zed": 26,
+		"foo":	"bar",
+		"zed":	26,
 	})
 	assert.Equal(t, expected, snap.Resources[1].Outputs)
 }
@@ -935,9 +935,9 @@ func TestPlannedOutputChanges(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         resource.ID("created-id-" + req.URN.Name()),
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		resource.ID("created-id-" + req.URN.Name()),
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -945,8 +945,8 @@ func TestPlannedOutputChanges(t *testing.T) {
 	}
 
 	outs := resource.NewPropertyMapFromMap(map[string]any{
-		"foo":  "bar",
-		"frob": "baz",
+		"foo":	"bar",
+		"frob":	"baz",
 	})
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
@@ -960,9 +960,9 @@ func TestPlannedOutputChanges(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:             t,
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:		t,
+			HostF:		hostF,
+			UpdateOptions:	UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -991,14 +991,14 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 	// This tests that plans are working on the program inputs, not the provider outputs
 
 	createOutputs := resource.NewPropertyMapFromMap(map[string]any{
-		"foo":  "bar",
-		"frob": "baz",
-		"baz":  24,
+		"foo":	"bar",
+		"frob":	"baz",
+		"baz":	24,
 	})
 	updateOutputs := resource.NewPropertyMapFromMap(map[string]any{
-		"foo":  "bar",
-		"frob": "newBazzer",
-		"baz":  24,
+		"foo":	"bar",
+		"frob":	"newBazzer",
+		"baz":	24,
 	})
 
 	loaders := []*deploytest.ProviderLoader{
@@ -1006,15 +1006,15 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         resource.ID("created-id-" + req.URN.Name()),
-						Properties: createOutputs,
-						Status:     resource.StatusOK,
+						ID:		resource.ID("created-id-" + req.URN.Name()),
+						Properties:	createOutputs,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					return plugin.UpdateResponse{
-						Properties: updateOutputs,
-						Status:     resource.StatusOK,
+						Properties:	updateOutputs,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -1022,8 +1022,8 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 	}
 
 	inputs := resource.NewPropertyMapFromMap(map[string]any{
-		"foo":  "bar",
-		"frob": "baz",
+		"foo":	"bar",
+		"frob":	"baz",
 	})
 	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -1042,9 +1042,9 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:             t,
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:		t,
+			HostF:		hostF,
+			UpdateOptions:	UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -1063,8 +1063,8 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 
 	// Make a plan to change resA
 	inputs = resource.NewPropertyMapFromMap(map[string]any{
-		"foo":  "bar",
-		"frob": "newBazzer",
+		"foo":	"bar",
+		"frob":	"newBazzer",
 	})
 	p.Options.Plan = nil
 	plan, err = lt.TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
@@ -1074,8 +1074,8 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 	// Test the plan fails if we don't pass newBazzer
 	expectError = true
 	inputs = resource.NewPropertyMapFromMap(map[string]any{
-		"foo":  "bar",
-		"frob": "differentBazzer",
+		"foo":	"bar",
+		"frob":	"differentBazzer",
 	})
 	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
@@ -1088,8 +1088,8 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 	// Check the plan succeeds if we do pass newBazzer
 	expectError = false
 	inputs = resource.NewPropertyMapFromMap(map[string]any{
-		"foo":  "bar",
-		"frob": "newBazzer",
+		"foo":	"bar",
+		"frob":	"newBazzer",
 	})
 	p.Options.Plan = plan.Clone()
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
@@ -1107,9 +1107,9 @@ func TestAliasWithPlans(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         resource.ID("created-id-" + req.URN.Name()),
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		resource.ID("created-id-" + req.URN.Name()),
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -1119,13 +1119,13 @@ func TestAliasWithPlans(t *testing.T) {
 	resourceName := "resA"
 	var aliases []resource.URN
 	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo":  "bar",
-		"frob": "baz",
+		"foo":	"bar",
+		"frob":	"baz",
 	})
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", resourceName, true, deploytest.ResourceOptions{
-			Inputs:    ins,
-			AliasURNs: aliases,
+			Inputs:		ins,
+			AliasURNs:	aliases,
 		})
 		require.NoError(t, err)
 
@@ -1135,9 +1135,9 @@ func TestAliasWithPlans(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:             t,
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:		t,
+			HostF:		hostF,
+			UpdateOptions:	UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -1174,9 +1174,9 @@ func TestComputedCanBeDropped(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         resource.ID("created-id-" + req.URN.Name()),
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		resource.ID("created-id-" + req.URN.Name()),
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -1203,9 +1203,9 @@ func TestComputedCanBeDropped(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:             t,
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:		t,
+			HostF:		hostF,
+			UpdateOptions:	UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -1214,36 +1214,36 @@ func TestComputedCanBeDropped(t *testing.T) {
 	// The three property sets we'll use in this test
 	computed := any(resource.Computed{Element: resource.NewProperty("")})
 	computedPropertySet := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+		"foo":	"bar",
 		"baz": map[string]any{
-			"a": 42,
-			"b": computed,
+			"a":	42,
+			"b":	computed,
 		},
 		"qux": []any{
 			computed,
 			24,
 		},
-		"zed": computed,
+		"zed":	computed,
 	})
 	fullPropertySet := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+		"foo":	"bar",
 		"baz": map[string]any{
-			"a": 42,
-			"b": "alpha",
+			"a":	42,
+			"b":	"alpha",
 		},
 		"qux": []any{
 			"beta",
 			24,
 		},
-		"zed": "grr",
+		"zed":	"grr",
 	})
 	partialPropertySet := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+		"foo":	"bar",
 		"baz": map[string]any{
 			"a": 42,
 		},
 		"qux": []any{
-			nil, // computed values that resolve to undef don't get dropped from arrays, they just become null
+			nil,	// computed values that resolve to undef don't get dropped from arrays, they just become null
 			24,
 		},
 	})
@@ -1303,9 +1303,9 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         resource.ID("created-id-" + req.URN.Name()),
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		resource.ID("created-id-" + req.URN.Name()),
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				CheckF: func(
@@ -1359,9 +1359,9 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:             t,
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:		t,
+			HostF:		hostF,
+			UpdateOptions:	UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -1370,8 +1370,8 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 	// Generate a plan.
 	computed := any(resource.Computed{Element: resource.NewProperty("")})
 	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
-		"zed": computed,
+		"foo":	"bar",
+		"zed":	computed,
 	})
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
 	require.NoError(t, err)
@@ -1380,8 +1380,8 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 	// This should fail because of the non-determinism
 	expectError = true
 	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
-		"zed": "baz",
+		"foo":	"bar",
+		"zed":	"baz",
 	})
 	p.Options.Plan = plan.Clone()
 
@@ -1405,9 +1405,9 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				CheckF: func(
@@ -1417,8 +1417,8 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 					if req.News["foo"].StringValue() == "bad" {
 						return plugin.CheckResponse{
 							Failures: []plugin.CheckFailure{{
-								Property: resource.PropertyKey("foo"),
-								Reason:   "Bad foo",
+								Property:	resource.PropertyKey("foo"),
+								Reason:		"Bad foo",
 							}},
 						}, nil
 					}
@@ -1445,9 +1445,9 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:             t,
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:		t,
+			HostF:		hostF,
+			UpdateOptions:	UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -1512,9 +1512,9 @@ func TestPluginsAreDownloaded(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:             t,
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:		t,
+			HostF:		hostF,
+			UpdateOptions:	UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -1556,17 +1556,17 @@ func TestProviderDeterministicPreview(t *testing.T) {
 					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
 						// If foo changes do a replace, we use this to check we get a new name
 						return plugin.DiffResult{
-							Changes:     plugin.DiffSome,
-							ReplaceKeys: []resource.PropertyKey{"foo"},
+							Changes:	plugin.DiffSome,
+							ReplaceKeys:	[]resource.PropertyKey{"foo"},
 						}, nil
 					}
 					return plugin.DiffResult{}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -1588,9 +1588,9 @@ func TestProviderDeterministicPreview(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:             t,
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:		t,
+			HostF:		hostF,
+			UpdateOptions:	UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -1635,9 +1635,9 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         resource.ID("created-id-" + req.URN.Name()),
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		resource.ID("created-id-" + req.URN.Name()),
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				CheckF: func(
@@ -1665,8 +1665,8 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typB", "resB", true, deploytest.ResourceOptions{
-			Inputs:       respA.Outputs,
-			Dependencies: []resource.URN{respA.URN},
+			Inputs:		respA.Outputs,
+			Dependencies:	[]resource.URN{respA.URN},
 		})
 		require.NoError(t, err)
 
@@ -1682,8 +1682,8 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 
 	// Create an initial ResA and resB
 	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
-		"zed": "baz",
+		"foo":	"bar",
+		"zed":	"baz",
 	})
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NotNil(t, snap)
@@ -1691,20 +1691,20 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 
 	// Update the input and mark it as a replace, check that both A and B are marked as replacements
 	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "frob",
-		"zed": "baz",
+		"foo":	"frob",
+		"zed":	"baz",
 	})
 	diffResult = &plugin.DiffResult{
-		Changes:     plugin.DiffSome,
-		ReplaceKeys: []resource.PropertyKey{"foo"},
-		StableKeys:  []resource.PropertyKey{"zed"},
+		Changes:	plugin.DiffSome,
+		ReplaceKeys:	[]resource.PropertyKey{"foo"},
+		StableKeys:	[]resource.PropertyKey{"zed"},
 		DetailedDiff: map[string]plugin.PropertyDiff{
 			"foo": {
-				Kind:      plugin.DiffUpdateReplace,
-				InputDiff: true,
+				Kind:		plugin.DiffUpdateReplace,
+				InputDiff:	true,
 			},
 		},
-		DeleteBeforeReplace: true,
+		DeleteBeforeReplace:	true,
 	}
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
 	require.NotNil(t, plan)
@@ -1762,11 +1762,11 @@ func TestResourcesTargeted(t *testing.T) {
 
 	// Create the update plan with only targeted resources.
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), lt.TestUpdateOptions{
-		T:     t,
-		HostF: hostF,
+		T:	t,
+		HostF:	hostF,
 		UpdateOptions: UpdateOptions{
-			Experimental: true,
-			GeneratePlan: true,
+			Experimental:	true,
+			GeneratePlan:	true,
 			Targets: deploy.NewUrnTargets([]string{
 				"urn:pulumi:test::test::pkgA:m:typA::resB",
 			}),
@@ -1779,12 +1779,12 @@ func TestResourcesTargeted(t *testing.T) {
 	// to the resource.
 	expectError = true
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), lt.TestUpdateOptions{
-		T:     t,
-		HostF: hostF,
+		T:	t,
+		HostF:	hostF,
 		UpdateOptions: UpdateOptions{
 			// Clone the plan as the plan will be mutated by the engine and useless in future runs.
-			Plan:         plan.Clone(),
-			Experimental: true,
+			Plan:		plan.Clone(),
+			Experimental:	true,
 		},
 	}, false, p.BackendClient, nil, "0")
 	assert.Error(t, err)
@@ -1792,12 +1792,12 @@ func TestResourcesTargeted(t *testing.T) {
 	// Check that running an update with the same Targets as the Plan succeeds.
 	expectError = false
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), lt.TestUpdateOptions{
-		T:     t,
-		HostF: hostF,
+		T:	t,
+		HostF:	hostF,
 		UpdateOptions: UpdateOptions{
 			// Clone the plan as the plan will be mutated by the engine and useless in future runs.
-			Plan:         plan.Clone(),
-			Experimental: true,
+			Plan:		plan.Clone(),
+			Experimental:	true,
 			Targets: deploy.NewUrnTargets([]string{
 				"urn:pulumi:test::test::pkgA:m:typA::resB",
 			}),
@@ -1842,11 +1842,11 @@ func TestStackOutputsWithTargetedPlan(t *testing.T) {
 
 	// Create the update plan without targeting the root stack.
 	plan, err := lt.TestOp(Update).PlanStep(project, p.GetTarget(t, nil), lt.TestUpdateOptions{
-		T:     t,
-		HostF: p.Options.HostF,
+		T:	t,
+		HostF:	p.Options.HostF,
 		UpdateOptions: UpdateOptions{
-			Experimental: true,
-			GeneratePlan: true,
+			Experimental:	true,
+			GeneratePlan:	true,
 			Targets: deploy.NewUrnTargetsFromUrns([]resource.URN{
 				resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"),
 			}),
@@ -1857,11 +1857,11 @@ func TestStackOutputsWithTargetedPlan(t *testing.T) {
 
 	// Check that update succeeds despite the root stack not being targeted.
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), lt.TestUpdateOptions{
-		T:     t,
-		HostF: p.Options.HostF,
+		T:	t,
+		HostF:	p.Options.HostF,
 		UpdateOptions: UpdateOptions{
-			GeneratePlan: true,
-			Experimental: true,
+			GeneratePlan:	true,
+			Experimental:	true,
 			Targets: deploy.NewUrnTargetsFromUrns([]resource.URN{
 				resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"),
 			}),

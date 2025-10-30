@@ -35,23 +35,23 @@ import (
 // routines exist as members in order to easily interact with the assets referenced by an instance of this type.
 type Asset struct {
 	// Sig is the unique asset type signature (see properties.go).
-	Sig string `json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"`
+	Sig	string	`json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"`
 	// Hash is the SHA256 hash of the asset's contents.
-	Hash string `json:"hash,omitempty" yaml:"hash,omitempty"`
+	Hash	string	`json:"hash,omitempty" yaml:"hash,omitempty"`
 	// Text is set to a non-empty value for textual assets.
-	Text string `json:"text,omitempty" yaml:"text,omitempty"`
+	Text	string	`json:"text,omitempty" yaml:"text,omitempty"`
 	// Path will contain a non-empty path to the file on the current filesystem for file assets.
-	Path string `json:"path,omitempty" yaml:"path,omitempty"`
+	Path	string	`json:"path,omitempty" yaml:"path,omitempty"`
 	// URI will contain a non-empty URI (file://, http://, https://, or custom) for URI-backed assets.
-	URI string `json:"uri,omitempty" yaml:"uri,omitempty"`
+	URI	string	`json:"uri,omitempty" yaml:"uri,omitempty"`
 }
 
 const (
-	AssetSig          = sig.AssetSig
-	AssetHashProperty = "hash" // the dynamic property for an asset's hash.
-	AssetTextProperty = "text" // the dynamic property for an asset's text.
-	AssetPathProperty = "path" // the dynamic property for an asset's path.
-	AssetURIProperty  = "uri"  // the dynamic property for an asset's URI.
+	AssetSig		= sig.AssetSig
+	AssetHashProperty	= "hash"	// the dynamic property for an asset's hash.
+	AssetTextProperty	= "text"	// the dynamic property for an asset's text.
+	AssetPathProperty	= "path"	// the dynamic property for an asset's path.
+	AssetURIProperty	= "uri"		// the dynamic property for an asset's URI.
 )
 
 // FromText produces a new asset and its corresponding SHA256 hash from the given text.
@@ -102,8 +102,8 @@ func (a *Asset) IsText() bool {
 	}
 	return false
 }
-func (a *Asset) IsPath() bool { return a.Path != "" }
-func (a *Asset) IsURI() bool  { return a.URI != "" }
+func (a *Asset) IsPath() bool	{ return a.Path != "" }
+func (a *Asset) IsURI() bool	{ return a.URI != "" }
 
 func (a *Asset) GetText() (string, bool) {
 	if a.IsText() {
@@ -296,8 +296,8 @@ func (a *Asset) readPath(wd string) (*Blob, error) {
 	}
 
 	blob := &Blob{
-		rd: file,
-		sz: info.Size(),
+		rd:	file,
+		sz:	info.Size(),
 	}
 	return blob, nil
 }
@@ -378,19 +378,19 @@ func (a *Asset) EnsureHashWithWD(wd string) error {
 
 // Blob is a blob that implements ReadCloser and offers Len functionality.
 type Blob struct {
-	rd io.ReadCloser // an underlying reader.
-	sz int64         // the size of the blob.
+	rd	io.ReadCloser	// an underlying reader.
+	sz	int64		// the size of the blob.
 }
 
-func (blob *Blob) Close() error               { return blob.rd.Close() }
-func (blob *Blob) Read(p []byte) (int, error) { return blob.rd.Read(p) }
-func (blob *Blob) Size() int64                { return blob.sz }
+func (blob *Blob) Close() error			{ return blob.rd.Close() }
+func (blob *Blob) Read(p []byte) (int, error)	{ return blob.rd.Read(p) }
+func (blob *Blob) Size() int64			{ return blob.sz }
 
 // NewByteBlob creates a new byte blob.
 func NewByteBlob(data []byte) *Blob {
 	return &Blob{
-		rd: io.NopCloser(bytes.NewReader(data)),
-		sz: int64(len(data)),
+		rd:	io.NopCloser(bytes.NewReader(data)),
+		sz:	int64(len(data)),
 	}
 }
 
@@ -401,8 +401,8 @@ func NewFileBlob(f *os.File) (*Blob, error) {
 		return nil, err
 	}
 	return &Blob{
-		rd: f,
-		sz: stat.Size(),
+		rd:	f,
+		sz:	stat.Size(),
 	}, nil
 }
 

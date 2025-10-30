@@ -19,17 +19,17 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model/pretty"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 )
 
 // OutputType represents eventual values that carry additional application-specific information.
 type OutputType struct {
 	// ElementType is the element type of the output.
-	ElementType Type
+	ElementType	Type
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache	*gsync.Map[Type, cacheEntry]
 }
 
 // NewOutputType creates a new output type with the given element type after replacing any output or promise types
@@ -52,9 +52,9 @@ func (t *OutputType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.For
 	}
 
 	return &pretty.Wrap{
-		Prefix:  "output(",
-		Postfix: ")",
-		Value:   formatter,
+		Prefix:		"output(",
+		Postfix:	")",
+		Value:		formatter,
 	}
 }
 
@@ -144,4 +144,4 @@ func (t *OutputType) unify(other Type) (Type, ConversionKind) {
 	})
 }
 
-func (t *OutputType) isType() {}
+func (t *OutputType) isType()	{}

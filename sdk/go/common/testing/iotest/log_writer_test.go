@@ -28,23 +28,23 @@ func TestLogWriter(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		desc   string
-		prefix string // prefix string, if any
+		desc	string
+		prefix	string	// prefix string, if any
 
-		writes []string // individual write calls
-		want   []string // expected log output
+		writes	[]string	// individual write calls
+		want	[]string	// expected log output
 	}{
 		{
-			desc:   "empty strings",
-			writes: []string{"", "", ""},
+			desc:	"empty strings",
+			writes:	[]string{"", "", ""},
 		},
 		{
-			desc:   "no newline",
-			writes: []string{"foo", "bar", "baz"},
-			want:   []string{"foobarbaz"},
+			desc:	"no newline",
+			writes:	[]string{"foo", "bar", "baz"},
+			want:	[]string{"foobarbaz"},
 		},
 		{
-			desc: "newline separated",
+			desc:	"newline separated",
 			writes: []string{
 				"foo\n",
 				"bar\n",
@@ -60,27 +60,27 @@ func TestLogWriter(t *testing.T) {
 			},
 		},
 		{
-			desc:   "partial line",
-			writes: []string{"foo", "bar\nbazqux"},
+			desc:	"partial line",
+			writes:	[]string{"foo", "bar\nbazqux"},
 			want: []string{
 				"foobar",
 				"bazqux",
 			},
 		},
 		{
-			desc:   "prefixed/empty strings",
-			prefix: "out: ",
-			writes: []string{"", "", ""},
+			desc:	"prefixed/empty strings",
+			prefix:	"out: ",
+			writes:	[]string{"", "", ""},
 		},
 		{
-			desc:   "prefixed/no newline",
-			prefix: "out: ",
-			writes: []string{"foo", "bar", "baz"},
-			want:   []string{"out: foobarbaz"},
+			desc:	"prefixed/no newline",
+			prefix:	"out: ",
+			writes:	[]string{"foo", "bar", "baz"},
+			want:	[]string{"out: foobarbaz"},
 		},
 		{
-			desc:   "prefixed/newline separated",
-			prefix: "out: ",
+			desc:	"prefixed/newline separated",
+			prefix:	"out: ",
 			writes: []string{
 				"foo\n",
 				"bar\n",
@@ -96,9 +96,9 @@ func TestLogWriter(t *testing.T) {
 			},
 		},
 		{
-			desc:   "prefixed/partial line",
-			prefix: "out: ",
-			writes: []string{"foo", "bar\nbazqux"},
+			desc:	"prefixed/partial line",
+			prefix:	"out: ",
+			writes:	[]string{"foo", "bar\nbazqux"},
 			want: []string{
 				"out: foobar",
 				"out: bazqux",
@@ -132,7 +132,7 @@ func TestLogWriter(t *testing.T) {
 func TestLogWriterRace(t *testing.T) {
 	t.Parallel()
 
-	const N = 100 // number of concurrent writers
+	const N = 100	// number of concurrent writers
 
 	fakeT := fakeT{TB: t}
 	w := LogWriter(&fakeT)
@@ -158,8 +158,8 @@ func TestLogWriterRace(t *testing.T) {
 type fakeT struct {
 	testing.TB
 
-	msgs     []string
-	cleanups []func()
+	msgs		[]string
+	cleanups	[]func()
 }
 
 func (t *fakeT) Logf(msg string, args ...any) {

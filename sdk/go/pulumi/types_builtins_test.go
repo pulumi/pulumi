@@ -605,8 +605,8 @@ func TestOutputApply(t *testing.T) {
 	// Test some chained applies.
 	{
 		type myStructType struct {
-			foo int
-			bar string
+			foo	int
+			bar	string
 		}
 
 		out := newIntOutput()
@@ -660,8 +660,8 @@ func TestOutputApply(t *testing.T) {
 
 		res4 := All(out, out2).ApplyT(func(v []any) *myStructType {
 			return &myStructType{
-				foo: v[0].(int),
-				bar: v[1].(string),
+				foo:	v[0].(int),
+				bar:	v[1].(string),
 			}
 		})
 

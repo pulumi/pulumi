@@ -20,8 +20,8 @@ import (
 	"slices"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -31,12 +31,12 @@ import (
 
 // A ProviderSpec specifies the behavior of a set of providers that will be mocked in a lifecycle test.
 type ProviderSpec struct {
-	Packages map[tokens.Package]bool
-	Create   ProviderCreateSpec
-	Delete   ProviderDeleteSpec
-	Diff     ProviderDiffSpec
-	Read     ProviderReadSpec
-	Update   ProviderUpdateSpec
+	Packages	map[tokens.Package]bool
+	Create		ProviderCreateSpec
+	Delete		ProviderDeleteSpec
+	Diff		ProviderDiffSpec
+	Read		ProviderReadSpec
+	Update		ProviderUpdateSpec
 }
 
 // Adds the given package to the set of packages that this ProviderSpec will mock.
@@ -60,11 +60,11 @@ func (ps *ProviderSpec) AsProviderLoaders() []*deploytest.ProviderLoader {
 	// register for all packages.
 	load := func() (plugin.Provider, error) {
 		return &deploytest.Provider{
-			CreateF: ps.Create.AsCreateF(),
-			DeleteF: ps.Delete.AsDeleteF(),
-			DiffF:   ps.Diff.AsDiffF(),
-			ReadF:   ps.Read.AsReadF(),
-			UpdateF: ps.Update.AsUpdateF(),
+			CreateF:	ps.Create.AsCreateF(),
+			DeleteF:	ps.Delete.AsDeleteF(),
+			DiffF:		ps.Diff.AsDiffF(),
+			ReadF:		ps.Read.AsReadF(),
+			UpdateF:	ps.Update.AsUpdateF(),
 		}, nil
 	}
 
@@ -169,9 +169,9 @@ func (pcs ProviderCreateSpec) AsCreateF() func(context.Context, plugin.CreateReq
 		// ID we return. ResourceSpec.AsResource makes use of this, for instance.
 		id := req.Properties["__id"].String()
 		return plugin.CreateResponse{
-			ID:         resource.ID(id),
-			Properties: req.Properties,
-			Status:     resource.StatusOK,
+			ID:		resource.ID(id),
+			Properties:	req.Properties,
+			Status:		resource.StatusOK,
 		}, nil
 	}
 }
@@ -236,13 +236,13 @@ type ProviderDiffSpecAction string
 
 const (
 	// Return a diff that indicates that the resource should be deleted before being replaced.
-	ProviderDiffDeleteBeforeReplace ProviderDiffSpecAction = "provider.diff-delete-before-replace"
+	ProviderDiffDeleteBeforeReplace	ProviderDiffSpecAction	= "provider.diff-delete-before-replace"
 	// Return a diff that indicates that the resource should be replaced by first creating a replacement.
-	ProviderDiffDeleteAfterReplace ProviderDiffSpecAction = "provider.diff-delete-after-replace"
+	ProviderDiffDeleteAfterReplace	ProviderDiffSpecAction	= "provider.diff-delete-after-replace"
 	// Return a diff that indicates that the resource should be updated in place.
-	ProviderDiffChange ProviderDiffSpecAction = "provider.diff-change"
+	ProviderDiffChange	ProviderDiffSpecAction	= "provider.diff-change"
 	// Fail the Diff operation.
-	ProviderDiffFailure ProviderDiffSpecAction = "provider.diff-failure"
+	ProviderDiffFailure	ProviderDiffSpecAction	= "provider.diff-failure"
 )
 
 // Implements PrettySpec.Pretty. Returns a human-readable string representation of this ProviderDiffSpec, suitable for
@@ -276,15 +276,15 @@ func (pds ProviderDiffSpec) AsDiffF() func(context.Context, plugin.DiffRequest) 
 			switch action {
 			case ProviderDiffDeleteBeforeReplace:
 				return plugin.DiffResponse{
-					Changes:             plugin.DiffSome,
-					ReplaceKeys:         []resource.PropertyKey{"__replace"},
-					DeleteBeforeReplace: true,
+					Changes:		plugin.DiffSome,
+					ReplaceKeys:		[]resource.PropertyKey{"__replace"},
+					DeleteBeforeReplace:	true,
 				}, nil
 			case ProviderDiffDeleteAfterReplace:
 				return plugin.DiffResponse{
-					Changes:             plugin.DiffSome,
-					ReplaceKeys:         []resource.PropertyKey{"__replace"},
-					DeleteBeforeReplace: false,
+					Changes:		plugin.DiffSome,
+					ReplaceKeys:		[]resource.PropertyKey{"__replace"},
+					DeleteBeforeReplace:	false,
 				}, nil
 			case ProviderDiffChange:
 				return plugin.DiffResponse{Changes: plugin.DiffSome}, nil
@@ -307,9 +307,9 @@ type ProviderReadSpecAction string
 
 const (
 	// Return a result that indicates that the resource has been deleted.
-	ProviderReadDeleted ProviderReadSpecAction = "provider.read-deleted"
+	ProviderReadDeleted	ProviderReadSpecAction	= "provider.read-deleted"
 	// Fail the Read operation.
-	ProviderReadFailure ProviderReadSpecAction = "provider.read-failure"
+	ProviderReadFailure	ProviderReadSpecAction	= "provider.read-failure"
 )
 
 // Implements PrettySpec.Pretty. Returns a human-readable string representation of this ProviderReadSpec, suitable for
@@ -348,7 +348,7 @@ func (prs ProviderReadSpec) AsReadF() func(context.Context, plugin.ReadRequest) 
 			ReadResult: plugin.ReadResult{
 				Outputs: resource.PropertyMap{},
 			},
-			Status: resource.StatusOK,
+			Status:	resource.StatusOK,
 		}, nil
 	}
 }
@@ -396,19 +396,19 @@ func (pus ProviderUpdateSpec) AsUpdateF() func(context.Context, plugin.UpdateReq
 		}
 
 		return plugin.UpdateResponse{
-			Properties: req.NewInputs,
-			Status:     resource.StatusOK,
+			Properties:	req.NewInputs,
+			Status:		resource.StatusOK,
 		}, nil
 	}
 }
 
 // A set of options for configuring the generation of a ProviderSpec.
 type ProviderSpecOptions struct {
-	CreateAction *rapid.Generator[ProviderCreateSpecAction]
-	DeleteAction *rapid.Generator[ProviderDeleteSpecAction]
-	DiffAction   *rapid.Generator[ProviderDiffSpecAction]
-	ReadAction   *rapid.Generator[ProviderReadSpecAction]
-	UpdateAction *rapid.Generator[ProviderUpdateSpecAction]
+	CreateAction	*rapid.Generator[ProviderCreateSpecAction]
+	DeleteAction	*rapid.Generator[ProviderDeleteSpecAction]
+	DiffAction	*rapid.Generator[ProviderDiffSpecAction]
+	ReadAction	*rapid.Generator[ProviderReadSpecAction]
+	UpdateAction	*rapid.Generator[ProviderUpdateSpecAction]
 }
 
 // Returns a copy of the given ProviderSpecOptions with the given overrides applied.
@@ -434,11 +434,11 @@ func (pso ProviderSpecOptions) With(overrides ProviderSpecOptions) ProviderSpecO
 
 // A default set of ProviderSpecOptions. By default, all actions for all operations are equally likely.
 var defaultProviderSpecOptions = ProviderSpecOptions{
-	CreateAction: rapid.SampledFrom(providerCreateSpecActions),
-	DeleteAction: rapid.SampledFrom(providerDeleteSpecActions),
-	DiffAction:   rapid.SampledFrom(providerDiffSpecActions),
-	ReadAction:   rapid.SampledFrom(providerReadSpecActions),
-	UpdateAction: rapid.SampledFrom(providerUpdateSpecActions),
+	CreateAction:	rapid.SampledFrom(providerCreateSpecActions),
+	DeleteAction:	rapid.SampledFrom(providerDeleteSpecActions),
+	DiffAction:	rapid.SampledFrom(providerDiffSpecActions),
+	ReadAction:	rapid.SampledFrom(providerReadSpecActions),
+	UpdateAction:	rapid.SampledFrom(providerUpdateSpecActions),
 }
 
 var providerCreateSpecActions = []ProviderCreateSpecAction{
@@ -477,12 +477,12 @@ func GeneratedProviderSpec(progSpec *ProgramSpec, pso ProviderSpecOptions) *rapi
 
 	return rapid.Custom(func(t *rapid.T) *ProviderSpec {
 		provSpec := &ProviderSpec{
-			Packages: map[tokens.Package]bool{},
-			Create:   map[resource.URN]ProviderCreateSpecAction{},
-			Delete:   map[resource.URN]ProviderDeleteSpecAction{},
-			Diff:     map[resource.URN]ProviderDiffSpecAction{},
-			Read:     map[resource.URN]ProviderReadSpecAction{},
-			Update:   map[resource.URN]ProviderUpdateSpecAction{},
+			Packages:	map[tokens.Package]bool{},
+			Create:		map[resource.URN]ProviderCreateSpecAction{},
+			Delete:		map[resource.URN]ProviderDeleteSpecAction{},
+			Diff:		map[resource.URN]ProviderDiffSpecAction{},
+			Read:		map[resource.URN]ProviderReadSpecAction{},
+			Update:		map[resource.URN]ProviderUpdateSpecAction{},
 		}
 
 		if len(progSpec.ResourceRegistrations) == 0 && len(progSpec.Drops) == 0 {

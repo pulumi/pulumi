@@ -19,48 +19,48 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/graph"
-	"github.com/pulumi/pulumi/pkg/v3/graph/dotconv"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/graph"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/graph/dotconv"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
 
 type graphCommandOptions struct {
-	stackName string
+	stackName	string
 
 	// Whether or not we should ignore parent edges when building up our graph.
-	ignoreParentEdges bool
+	ignoreParentEdges	bool
 
 	// Whether or not we should ignore dependency edges when building up our graph.
-	ignoreDependencyEdges bool
+	ignoreDependencyEdges	bool
 
 	// The color of dependency edges in the graph. Defaults to #246C60, a blush-green.
-	dependencyEdgeColor string
+	dependencyEdgeColor	string
 
 	// The color of parent edges in the graph. Defaults to #AA6639, an orange.
-	parentEdgeColor string
+	parentEdgeColor	string
 
 	// Whether or not to return resource name as the node label for each node of the graph.
-	shortNodeName bool
+	shortNodeName	bool
 
 	// A DOT fragment that will be inserted at the top of the digraph element. This
 	// can be used for styling the graph elements, setting graph properties etc.")
-	dotFragment string
+	dotFragment	string
 }
 
 func newStackGraphCmd() *cobra.Command {
 	var cmdOpts graphCommandOptions
 
 	cmd := &cobra.Command{
-		Use:   "graph [filename]",
-		Args:  cmdutil.ExactArgs(1),
-		Short: "Export a stack's dependency graph to a file",
+		Use:	"graph [filename]",
+		Args:	cmdutil.ExactArgs(1),
+		Short:	"Export a stack's dependency graph to a file",
 		Long: "Export a stack's dependency graph to a file.\n" +
 			"\n" +
 			"This command can be used to view the dependency graph that a Pulumi program\n" +
@@ -137,10 +137,10 @@ func newStackGraphCmd() *cobra.Command {
 // `dependencyEdge` implements graph.Edge, `dependencyVertex` implements graph.Vertex, and
 // `dependencyGraph` implements `graph.Graph`.
 type dependencyEdge struct {
-	to     *dependencyVertex
-	from   *dependencyVertex
-	labels []string
-	color  string
+	to	*dependencyVertex
+	from	*dependencyVertex
+	labels	[]string
+	color	string
 }
 
 // In this simple case, edges have no data.
@@ -168,9 +168,9 @@ func (edge *dependencyEdge) Color() string {
 // exists alongside the dependency graph. An edge exists from node
 // A to node B if node B is considered to be a parent of node A.
 type parentEdge struct {
-	to    *dependencyVertex
-	from  *dependencyVertex
-	color string
+	to	*dependencyVertex
+	from	*dependencyVertex
+	color	string
 }
 
 func (edge *parentEdge) Data() any {
@@ -198,11 +198,11 @@ func (edge *parentEdge) Color() string {
 // and to the resource state that it represents. Incoming and outgoing edges
 // are calculated on-demand using the combination of the graph and the state.
 type dependencyVertex struct {
-	graph         *dependencyGraph
-	resource      *resource.State
-	incomingEdges []graph.Edge
-	outgoingEdges []graph.Edge
-	useShortName  bool
+	graph		*dependencyGraph
+	resource	*resource.State
+	incomingEdges	[]graph.Edge
+	outgoingEdges	[]graph.Edge
+	useShortName	bool
 }
 
 func (vertex *dependencyVertex) Data() any {
@@ -239,8 +239,8 @@ func (dg *dependencyGraph) Roots() []graph.Edge {
 	rootEdges := []graph.Edge{}
 	for _, vertex := range dg.vertices {
 		edge := &dependencyEdge{
-			to:   vertex,
-			from: nil,
+			to:	vertex,
+			from:	nil,
 		}
 
 		rootEdges = append(rootEdges, edge)
@@ -258,9 +258,9 @@ func makeDependencyGraph(snapshot *deploy.Snapshot, opts *graphCommandOptions) *
 
 	for _, resource := range snapshot.Resources {
 		vertex := &dependencyVertex{
-			graph:        dg,
-			resource:     resource,
-			useShortName: opts.shortNodeName,
+			graph:		dg,
+			resource:	resource,
+			useShortName:	opts.shortNodeName,
 		}
 
 		dg.vertices[resource.URN] = vertex
@@ -294,9 +294,9 @@ func makeDependencyGraph(snapshot *deploy.Snapshot, opts *graphCommandOptions) *
 			if parent := vertex.resource.Parent; parent != resource.URN("") {
 				parentVertex := dg.vertices[parent]
 				vertex.outgoingEdges = append(vertex.outgoingEdges, &parentEdge{
-					to:    parentVertex,
-					from:  vertex,
-					color: opts.parentEdgeColor,
+					to:	parentVertex,
+					from:	vertex,
+					color:	opts.parentEdgeColor,
 				})
 			}
 		}

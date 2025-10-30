@@ -35,32 +35,32 @@ const (
 )
 
 type (
-	Asset         = asset.Asset
-	Blob          = asset.Blob
-	Archive       = archive.Archive
-	ArchiveFormat = archive.Format
-	Reader        = archive.Reader
+	Asset		= asset.Asset
+	Blob		= asset.Blob
+	Archive		= archive.Archive
+	ArchiveFormat	= archive.Format
+	Reader		= archive.Reader
 )
 
 const (
-	AssetSig          = asset.AssetSig
-	AssetHashProperty = asset.AssetHashProperty
-	AssetTextProperty = asset.AssetTextProperty
-	AssetPathProperty = asset.AssetPathProperty
-	AssetURIProperty  = asset.AssetURIProperty
+	AssetSig		= asset.AssetSig
+	AssetHashProperty	= asset.AssetHashProperty
+	AssetTextProperty	= asset.AssetTextProperty
+	AssetPathProperty	= asset.AssetPathProperty
+	AssetURIProperty	= asset.AssetURIProperty
 
-	ArchiveSig            = archive.ArchiveSig
-	ArchiveHashProperty   = archive.ArchiveHashProperty   // the dynamic property for an archive's hash.
-	ArchiveAssetsProperty = archive.ArchiveAssetsProperty // the dynamic property for an archive's assets.
-	ArchivePathProperty   = archive.ArchivePathProperty   // the dynamic property for an archive's path.
-	ArchiveURIProperty    = archive.ArchiveURIProperty    // the dynamic property for an archive's URI.
+	ArchiveSig		= archive.ArchiveSig
+	ArchiveHashProperty	= archive.ArchiveHashProperty	// the dynamic property for an archive's hash.
+	ArchiveAssetsProperty	= archive.ArchiveAssetsProperty	// the dynamic property for an archive's assets.
+	ArchivePathProperty	= archive.ArchivePathProperty	// the dynamic property for an archive's path.
+	ArchiveURIProperty	= archive.ArchiveURIProperty	// the dynamic property for an archive's URI.
 )
 
 // NewTextAsset produces a new asset and its corresponding SHA256 hash from the given text.
-func NewTextAsset(text string) (*Asset, error) { return asset.FromText(text) }
+func NewTextAsset(text string) (*Asset, error)	{ return asset.FromText(text) }
 
 // NewPathAsset produces a new asset and its corresponding SHA256 hash from the given filesystem path.
-func NewPathAsset(path string) (*Asset, error) { return asset.FromPath(path) }
+func NewPathAsset(path string) (*Asset, error)	{ return asset.FromPath(path) }
 
 // NewPathAsset produces a new asset and its corresponding SHA256 hash from the given filesystem path.
 func NewPathAssetWithWD(path string, cwd string) (*Asset, error) {
@@ -68,7 +68,7 @@ func NewPathAssetWithWD(path string, cwd string) (*Asset, error) {
 }
 
 // NewURIAsset produces a new asset and its corresponding SHA256 hash from the given network URI.
-func NewURIAsset(uri string) (*Asset, error) { return asset.FromURI(uri) }
+func NewURIAsset(uri string) (*Asset, error)	{ return asset.FromURI(uri) }
 
 // DeserializeAsset checks to see if the map contains an asset, using its signature, and if so deserializes it.
 func DeserializeAsset(obj map[string]any) (*Asset, bool, error) {
@@ -76,13 +76,13 @@ func DeserializeAsset(obj map[string]any) (*Asset, bool, error) {
 }
 
 // NewByteBlob creates a new byte blob.
-func NewByteBlob(data []byte) *Blob { return asset.NewByteBlob(data) }
+func NewByteBlob(data []byte) *Blob	{ return asset.NewByteBlob(data) }
 
 // NewFileBlob creates a new asset blob whose size is known thanks to stat.
-func NewFileBlob(f *os.File) (*Blob, error) { return asset.NewFileBlob(f) }
+func NewFileBlob(f *os.File) (*Blob, error)	{ return asset.NewFileBlob(f) }
 
 // NewReadCloserBlob turn any old ReadCloser into an Blob, usually by making a copy.
-func NewReadCloserBlob(r io.ReadCloser) (*Blob, error) { return asset.NewReadCloserBlob(r) }
+func NewReadCloserBlob(r io.ReadCloser) (*Blob, error)	{ return asset.NewReadCloserBlob(r) }
 
 func NewAssetArchive(assets map[string]any) (*Archive, error) {
 	return archive.FromAssets(assets)
@@ -110,12 +110,12 @@ func DeserializeArchive(obj map[string]any) (*Archive, bool, error) {
 }
 
 const (
-	NotArchive = archive.NotArchive // not an archive.
-	TarArchive = archive.TarArchive // a POSIX tar archive.
+	NotArchive	= archive.NotArchive	// not an archive.
+	TarArchive	= archive.TarArchive	// a POSIX tar archive.
 	// a POSIX tar archive that has been subsequently compressed using GZip.
-	TarGZIPArchive = archive.TarGZIPArchive
-	ZIPArchive     = archive.ZIPArchive // a multi-file ZIP archive.
-	JARArchive     = archive.JARArchive // a Java JAR file
+	TarGZIPArchive	= archive.TarGZIPArchive
+	ZIPArchive	= archive.ZIPArchive	// a multi-file ZIP archive.
+	JARArchive	= archive.JARArchive	// a Java JAR file
 )
 
 // ArchiveExts maps from a file extension and its associated archive and/or compression format.

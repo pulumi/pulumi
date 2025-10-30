@@ -19,8 +19,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,36 +30,36 @@ func TestAbbreviateFilePath(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		path     string
-		expected string
+		path		string
+		expected	string
 	}{
 		{
-			path:     "/Users/username/test-policy",
-			expected: "/Users/username/test-policy",
+			path:		"/Users/username/test-policy",
+			expected:	"/Users/username/test-policy",
 		},
 		{
-			path:     "./..//test-policy",
-			expected: "../test-policy",
+			path:		"./..//test-policy",
+			expected:	"../test-policy",
 		},
 		{
 			path: `/Users/username/averylongpath/one/two/three/four/` +
 				`five/six/seven/eight/nine/ten/eleven/twelve/test-policy`,
-			expected: "/Users/.../twelve/test-policy",
+			expected:	"/Users/.../twelve/test-policy",
 		},
 		{
 			path: `nonrootdir/username/averylongpath/one/two/three/four/` +
 				`five/six/seven/eight/nine/ten/eleven/twelve/test-policy`,
-			expected: "nonrootdir/username/.../twelve/test-policy",
+			expected:	"nonrootdir/username/.../twelve/test-policy",
 		},
 		{
 			path: `C:/Documents and Settings/username/My Documents/averylongpath/` +
 				`one/two/three/four/five/six/seven/eight/test-policy`,
-			expected: "C:/Documents and Settings/.../eight/test-policy",
+			expected:	"C:/Documents and Settings/.../eight/test-policy",
 		},
 		{
 			path: `C:\Documents and Settings\username\My Documents\averylongpath\` +
 				`one\two\three\four\five\six\seven\eight\test-policy`,
-			expected: `C:\Documents and Settings\...\eight\test-policy`,
+			expected:	`C:\Documents and Settings\...\eight\test-policy`,
 		},
 	}
 
@@ -81,16 +81,16 @@ func TestDeletingComponentResourceProducesResourceOutputsEvent(t *testing.T) {
 	acts.Opts.Events.ch = eventsChan
 
 	step := deploy.NewDeleteStep(&deploy.Deployment{}, map[resource.URN]bool{}, &resource.State{
-		URN:      resource.URN("urn:pulumi:stack::project::my:example:Foo::foo"),
-		ID:       "foo",
-		Custom:   false,
-		Provider: "unimportant",
+		URN:		resource.URN("urn:pulumi:stack::project::my:example:Foo::foo"),
+		ID:		"foo",
+		Custom:		false,
+		Provider:	"unimportant",
 	}, nil)
 	acts.Seen[resource.URN("urn:pulumi:stack::project::my:example:Foo::foo")] = step
 
 	err := acts.OnResourceStepPost(
 		&mockSnapshotMutation{}, step, resource.StatusOK,
-		nil, /* err */
+		nil,	/* err */
 	)
 	require.NoError(t, err)
 
@@ -107,4 +107,4 @@ func TestDeletingComponentResourceProducesResourceOutputsEvent(t *testing.T) {
 
 type mockSnapshotMutation struct{}
 
-func (msm *mockSnapshotMutation) End(step deploy.Step, successful bool) error { return nil }
+func (msm *mockSnapshotMutation) End(step deploy.Step, successful bool) error	{ return nil }

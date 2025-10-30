@@ -97,9 +97,9 @@ runtime: yaml`
 		ctx := context.Background()
 
 		cfg := map[config.Key]config.Value{
-			config.MustMakeKey("aws", "region"):   config.NewValue("us-west-2"),
-			config.MustMakeKey("app", "password"): config.NewSecureValue("aHVudGVyMg==" /*base64 of hunter2*/),
-			config.MustMakeKey("app", "tags"):     config.NewObjectValue(`{"env":"testing","owners":["alice","bob"]}`),
+			config.MustMakeKey("aws", "region"):	config.NewValue("us-west-2"),
+			config.MustMakeKey("app", "password"):	config.NewSecureValue("aHVudGVyMg==" /*base64 of hunter2*/),
+			config.MustMakeKey("app", "tags"):	config.NewObjectValue(`{"env":"testing","owners":["alice","bob"]}`),
 		}
 
 		stackYAML, err := encoding.YAML.Marshal(workspace.ProjectStack{Config: cfg})
@@ -161,9 +161,9 @@ runtime: yaml`
 		ctx := context.Background()
 
 		cfg := map[config.Key]config.Value{
-			config.MustMakeKey("aws", "region"):   config.NewValue("us-west-2"),
-			config.MustMakeKey("app", "password"): config.NewSecureValue("aHVudGVyMg==" /*base64 of hunter2*/),
-			config.MustMakeKey("app", "tags"):     config.NewObjectValue(`{"env":"testing","owners":["alice","bob"]}`),
+			config.MustMakeKey("aws", "region"):	config.NewValue("us-west-2"),
+			config.MustMakeKey("app", "password"):	config.NewSecureValue("aHVudGVyMg==" /*base64 of hunter2*/),
+			config.MustMakeKey("app", "tags"):	config.NewObjectValue(`{"env":"testing","owners":["alice","bob"]}`),
 		}
 
 		stackYAML, err := encoding.YAML.Marshal(workspace.ProjectStack{Config: cfg})
@@ -224,14 +224,14 @@ runtime: yaml`
 		ctx := context.Background()
 
 		cfg := map[config.Key]config.Value{
-			config.MustMakeKey("aws", "region"):   config.NewValue("us-west-2"),
-			config.MustMakeKey("app", "password"): config.NewSecureValue("aHVudGVyMg==" /*base64 of hunter2*/),
-			config.MustMakeKey("app", "tags"):     config.NewObjectValue(`{"env":"testing","owners":["alice","bob"]}`),
+			config.MustMakeKey("aws", "region"):	config.NewValue("us-west-2"),
+			config.MustMakeKey("app", "password"):	config.NewSecureValue("aHVudGVyMg==" /*base64 of hunter2*/),
+			config.MustMakeKey("app", "tags"):	config.NewObjectValue(`{"env":"testing","owners":["alice","bob"]}`),
 		}
 
 		stackYAML, err := encoding.YAML.Marshal(workspace.ProjectStack{
-			Environment: workspace.NewEnvironment([]string{"env"}),
-			Config:      cfg,
+			Environment:	workspace.NewEnvironment([]string{"env"}),
+			Config:		cfg,
 		})
 		require.NoError(t, err)
 

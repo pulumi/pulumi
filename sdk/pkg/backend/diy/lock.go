@@ -26,7 +26,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -35,10 +35,10 @@ import (
 )
 
 type lockContent struct {
-	Pid       int       `json:"pid"`
-	Username  string    `json:"username"`
-	Hostname  string    `json:"hostname"`
-	Timestamp time.Time `json:"timestamp"`
+	Pid		int		`json:"pid"`
+	Username	string		`json:"username"`
+	Hostname	string		`json:"hostname"`
+	Timestamp	time.Time	`json:"timestamp"`
 }
 
 func newLockContent() (*lockContent, error) {
@@ -51,10 +51,10 @@ func newLockContent() (*lockContent, error) {
 		return nil, err
 	}
 	return &lockContent{
-		Pid:       os.Getpid(),
-		Username:  u.Username,
-		Hostname:  hostname,
-		Timestamp: time.Now(),
+		Pid:		os.Getpid(),
+		Username:	u.Username,
+		Hostname:	hostname,
+		Timestamp:	time.Now(),
 	}, nil
 }
 

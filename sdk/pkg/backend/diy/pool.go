@@ -57,25 +57,25 @@ import (
 //	}
 type workerPool struct {
 	// Target number of workers.
-	numWorkers int
+	numWorkers	int
 
 	// Tracks individual workers.
 	//
 	// When this hits zero, all workers have exited and Close can return.
-	workers sync.WaitGroup
+	workers	sync.WaitGroup
 
 	// Tracks ongoing tasks.
 	//
 	// When this hits zero, we no longer have any work in flight,
 	// so Wait can return.
-	ongoing sync.WaitGroup
+	ongoing	sync.WaitGroup
 
 	// Enqueues tasks for workers.
-	tasks chan func() error
+	tasks	chan func() error
 
 	// Errors encountered while running tasks.
-	errs  []error
-	errMu sync.Mutex // guards errs
+	errs	[]error
+	errMu	sync.Mutex	// guards errs
 }
 
 // newWorkerPool creates a new worker pool with the given number of workers.
@@ -95,7 +95,7 @@ func newWorkerPool(numWorkers, numTasksHint int) *workerPool {
 	}
 
 	p := &workerPool{
-		numWorkers: numWorkers,
+		numWorkers:	numWorkers,
 		// We use an unbuffered channel.
 		// This blocks Enqueue until a worker is ready
 		// to accept a task.
@@ -103,7 +103,7 @@ func newWorkerPool(numWorkers, numTasksHint int) *workerPool {
 		// a few Enqueue calls followed by a Wait call.
 		// It discourages attempts to Enqueue from inside a worker
 		// because that would deadlock.
-		tasks: make(chan func() error),
+		tasks:	make(chan func() error),
 	}
 
 	p.workers.Add(numWorkers)

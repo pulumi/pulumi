@@ -32,34 +32,34 @@ import (
 
 const (
 	// Verify that this generated code is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
+	_	= protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
+	_	= protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
 // EnforcementLevel indicates the severity of a policy violation.
 type EnforcementLevel int32
 
 const (
-	EnforcementLevel_ADVISORY  EnforcementLevel = 0 // Displayed to users, but does not block deployment.
-	EnforcementLevel_MANDATORY EnforcementLevel = 1 // Stops deployment, cannot be overridden.
-	EnforcementLevel_DISABLED  EnforcementLevel = 2 // Disabled policies do not run during a deployment.
-	EnforcementLevel_REMEDIATE EnforcementLevel = 3 // Remediated policies actually fixes problems instead of issuing diagnostics.
+	EnforcementLevel_ADVISORY	EnforcementLevel	= 0	// Displayed to users, but does not block deployment.
+	EnforcementLevel_MANDATORY	EnforcementLevel	= 1	// Stops deployment, cannot be overridden.
+	EnforcementLevel_DISABLED	EnforcementLevel	= 2	// Disabled policies do not run during a deployment.
+	EnforcementLevel_REMEDIATE	EnforcementLevel	= 3	// Remediated policies actually fixes problems instead of issuing diagnostics.
 )
 
 // Enum value maps for EnforcementLevel.
 var (
-	EnforcementLevel_name = map[int32]string{
-		0: "ADVISORY",
-		1: "MANDATORY",
-		2: "DISABLED",
-		3: "REMEDIATE",
+	EnforcementLevel_name	= map[int32]string{
+		0:	"ADVISORY",
+		1:	"MANDATORY",
+		2:	"DISABLED",
+		3:	"REMEDIATE",
 	}
-	EnforcementLevel_value = map[string]int32{
-		"ADVISORY":  0,
-		"MANDATORY": 1,
-		"DISABLED":  2,
-		"REMEDIATE": 3,
+	EnforcementLevel_value	= map[string]int32{
+		"ADVISORY":	0,
+		"MANDATORY":	1,
+		"DISABLED":	2,
+		"REMEDIATE":	3,
 	}
 )
 
@@ -94,22 +94,22 @@ func (EnforcementLevel) EnumDescriptor() ([]byte, []int) {
 type PolicyType int32
 
 const (
-	PolicyType_POLICY_TYPE_UNKNOWN  PolicyType = 0 // Unknown policy type.
-	PolicyType_POLICY_TYPE_RESOURCE PolicyType = 1 // A policy that validates a resource.
-	PolicyType_POLICY_TYPE_STACK    PolicyType = 2 // A policy that validates a stack.
+	PolicyType_POLICY_TYPE_UNKNOWN	PolicyType	= 0	// Unknown policy type.
+	PolicyType_POLICY_TYPE_RESOURCE	PolicyType	= 1	// A policy that validates a resource.
+	PolicyType_POLICY_TYPE_STACK	PolicyType	= 2	// A policy that validates a stack.
 )
 
 // Enum value maps for PolicyType.
 var (
-	PolicyType_name = map[int32]string{
-		0: "POLICY_TYPE_UNKNOWN",
-		1: "POLICY_TYPE_RESOURCE",
-		2: "POLICY_TYPE_STACK",
+	PolicyType_name	= map[int32]string{
+		0:	"POLICY_TYPE_UNKNOWN",
+		1:	"POLICY_TYPE_RESOURCE",
+		2:	"POLICY_TYPE_STACK",
 	}
-	PolicyType_value = map[string]int32{
-		"POLICY_TYPE_UNKNOWN":  0,
-		"POLICY_TYPE_RESOURCE": 1,
-		"POLICY_TYPE_STACK":    2,
+	PolicyType_value	= map[string]int32{
+		"POLICY_TYPE_UNKNOWN":	0,
+		"POLICY_TYPE_RESOURCE":	1,
+		"POLICY_TYPE_STACK":	2,
 	}
 )
 
@@ -144,28 +144,28 @@ func (PolicyType) EnumDescriptor() ([]byte, []int) {
 type PolicySeverity int32
 
 const (
-	PolicySeverity_POLICY_SEVERITY_UNSPECIFIED PolicySeverity = 0 // Unspecified severity.
-	PolicySeverity_POLICY_SEVERITY_LOW         PolicySeverity = 1 // Low severity.
-	PolicySeverity_POLICY_SEVERITY_MEDIUM      PolicySeverity = 2 // Medium severity.
-	PolicySeverity_POLICY_SEVERITY_HIGH        PolicySeverity = 3 // High severity.
-	PolicySeverity_POLICY_SEVERITY_CRITICAL    PolicySeverity = 4 // Critical severity.
+	PolicySeverity_POLICY_SEVERITY_UNSPECIFIED	PolicySeverity	= 0	// Unspecified severity.
+	PolicySeverity_POLICY_SEVERITY_LOW		PolicySeverity	= 1	// Low severity.
+	PolicySeverity_POLICY_SEVERITY_MEDIUM		PolicySeverity	= 2	// Medium severity.
+	PolicySeverity_POLICY_SEVERITY_HIGH		PolicySeverity	= 3	// High severity.
+	PolicySeverity_POLICY_SEVERITY_CRITICAL		PolicySeverity	= 4	// Critical severity.
 )
 
 // Enum value maps for PolicySeverity.
 var (
-	PolicySeverity_name = map[int32]string{
-		0: "POLICY_SEVERITY_UNSPECIFIED",
-		1: "POLICY_SEVERITY_LOW",
-		2: "POLICY_SEVERITY_MEDIUM",
-		3: "POLICY_SEVERITY_HIGH",
-		4: "POLICY_SEVERITY_CRITICAL",
+	PolicySeverity_name	= map[int32]string{
+		0:	"POLICY_SEVERITY_UNSPECIFIED",
+		1:	"POLICY_SEVERITY_LOW",
+		2:	"POLICY_SEVERITY_MEDIUM",
+		3:	"POLICY_SEVERITY_HIGH",
+		4:	"POLICY_SEVERITY_CRITICAL",
 	}
-	PolicySeverity_value = map[string]int32{
-		"POLICY_SEVERITY_UNSPECIFIED": 0,
-		"POLICY_SEVERITY_LOW":         1,
-		"POLICY_SEVERITY_MEDIUM":      2,
-		"POLICY_SEVERITY_HIGH":        3,
-		"POLICY_SEVERITY_CRITICAL":    4,
+	PolicySeverity_value	= map[string]int32{
+		"POLICY_SEVERITY_UNSPECIFIED":	0,
+		"POLICY_SEVERITY_LOW":		1,
+		"POLICY_SEVERITY_MEDIUM":	2,
+		"POLICY_SEVERITY_HIGH":		3,
+		"POLICY_SEVERITY_CRITICAL":	4,
 	}
 )
 
@@ -198,23 +198,23 @@ func (PolicySeverity) EnumDescriptor() ([]byte, []int) {
 
 // `AnalyzerStackConfigureRequest` is the message for the stack configuration of the stack being analyzed.
 type AnalyzerStackConfigureRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The stack name being analyzed.
-	Stack string `protobuf:"bytes,1,opt,name=stack,proto3" json:"stack,omitempty"`
+	Stack	string	`protobuf:"bytes,1,opt,name=stack,proto3" json:"stack,omitempty"`
 	// The project name of the stack being analyzed.
-	Project string `protobuf:"bytes,2,opt,name=project,proto3" json:"project,omitempty"`
+	Project	string	`protobuf:"bytes,2,opt,name=project,proto3" json:"project,omitempty"`
 	// The organization name of the stack being analyzed.
-	Organization string `protobuf:"bytes,3,opt,name=organization,proto3" json:"organization,omitempty"`
+	Organization	string	`protobuf:"bytes,3,opt,name=organization,proto3" json:"organization,omitempty"`
 	// True if this is a preview/dry run.
-	DryRun bool `protobuf:"varint,4,opt,name=dry_run,json=dryRun,proto3" json:"dry_run,omitempty"`
+	DryRun	bool	`protobuf:"varint,4,opt,name=dry_run,json=dryRun,proto3" json:"dry_run,omitempty"`
 	// A list of configuration keys whose values should be treated as secrets.
-	ConfigSecretKeys []string `protobuf:"bytes,6,rep,name=config_secret_keys,json=configSecretKeys,proto3" json:"config_secret_keys,omitempty"`
+	ConfigSecretKeys	[]string	`protobuf:"bytes,6,rep,name=config_secret_keys,json=configSecretKeys,proto3" json:"config_secret_keys,omitempty"`
 	// The configuration of the stack being analyzed.
-	Config map[string]string `protobuf:"bytes,7,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Config	map[string]string	`protobuf:"bytes,7,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// Tags for the current stack.
-	Tags          map[string]string `protobuf:"bytes,8,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Tags		map[string]string	`protobuf:"bytes,8,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *AnalyzerStackConfigureRequest) Reset() {
@@ -228,7 +228,7 @@ func (x *AnalyzerStackConfigureRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AnalyzerStackConfigureRequest) ProtoMessage() {}
+func (*AnalyzerStackConfigureRequest) ProtoMessage()	{}
 
 func (x *AnalyzerStackConfigureRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_analyzer_proto_msgTypes[0]
@@ -298,9 +298,9 @@ func (x *AnalyzerStackConfigureRequest) GetTags() map[string]string {
 
 // `AnalyzerStackConfigureResponse` is the type of responses sent by a [](pulumirpc.Analyzer.ConfigureStack) call.
 type AnalyzerStackConfigureResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *AnalyzerStackConfigureResponse) Reset() {
@@ -314,7 +314,7 @@ func (x *AnalyzerStackConfigureResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AnalyzerStackConfigureResponse) ProtoMessage() {}
+func (*AnalyzerStackConfigureResponse) ProtoMessage()	{}
 
 func (x *AnalyzerStackConfigureResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_analyzer_proto_msgTypes[1]
@@ -335,21 +335,21 @@ func (*AnalyzerStackConfigureResponse) Descriptor() ([]byte, []int) {
 
 // `AnalyzerHandshakeRequest` is the type of requests sent as part of a [](pulumirpc.Analyzer.Handshake) call.
 type AnalyzerHandshakeRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The gRPC address of the engine handshaking with the analyzer. At a minimum, this address will expose an instance
 	// of the [](pulumirpc.Engine) service.
-	EngineAddress string `protobuf:"bytes,1,opt,name=engine_address,json=engineAddress,proto3" json:"engine_address,omitempty"`
+	EngineAddress	string	`protobuf:"bytes,1,opt,name=engine_address,json=engineAddress,proto3" json:"engine_address,omitempty"`
 	// A *root directory* where the analyzer's binary, `PulumiPolicy.yaml`, or other identifying source code is located.
 	// In the event that the analyzer is *not* being booted by the engine (e.g. in the case that the engine has been
 	// asked to attach to an existing running analyzer instance via a host/port number), this field will be empty.
-	RootDirectory *string `protobuf:"bytes,2,opt,name=root_directory,json=rootDirectory,proto3,oneof" json:"root_directory,omitempty"`
+	RootDirectory	*string	`protobuf:"bytes,2,opt,name=root_directory,json=rootDirectory,proto3,oneof" json:"root_directory,omitempty"`
 	// A *program directory* in which the analyzer should execute. This is generally a subdirectory of the root
 	// directory, though this is not required. In the event that the analyzer is *not* being booted by the engine (e.g.
 	// in the case that the engine has been asked to attach to an existing running analyzer instance via a host/port
 	// number), this field will be empty.
-	ProgramDirectory *string `protobuf:"bytes,3,opt,name=program_directory,json=programDirectory,proto3,oneof" json:"program_directory,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	ProgramDirectory	*string	`protobuf:"bytes,3,opt,name=program_directory,json=programDirectory,proto3,oneof" json:"program_directory,omitempty"`
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *AnalyzerHandshakeRequest) Reset() {
@@ -363,7 +363,7 @@ func (x *AnalyzerHandshakeRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AnalyzerHandshakeRequest) ProtoMessage() {}
+func (*AnalyzerHandshakeRequest) ProtoMessage()	{}
 
 func (x *AnalyzerHandshakeRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_analyzer_proto_msgTypes[2]
@@ -405,9 +405,9 @@ func (x *AnalyzerHandshakeRequest) GetProgramDirectory() string {
 
 // `AnalyzerHandshakeResponse` is the type of responses sent by a [](pulumirpc.Analyzer.Handshake) call.
 type AnalyzerHandshakeResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *AnalyzerHandshakeResponse) Reset() {
@@ -421,7 +421,7 @@ func (x *AnalyzerHandshakeResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AnalyzerHandshakeResponse) ProtoMessage() {}
+func (*AnalyzerHandshakeResponse) ProtoMessage()	{}
 
 func (x *AnalyzerHandshakeResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_analyzer_proto_msgTypes[3]
@@ -441,15 +441,15 @@ func (*AnalyzerHandshakeResponse) Descriptor() ([]byte, []int) {
 }
 
 type AnalyzeRequest struct {
-	state         protoimpl.MessageState    `protogen:"open.v1"`
-	Type          string                    `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`             // the type token of the resource.
-	Properties    *structpb.Struct          `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"` // the full properties to use for validation.
-	Urn           string                    `protobuf:"bytes,3,opt,name=urn,proto3" json:"urn,omitempty"`               // the URN of the resource.
-	Name          string                    `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`             // the name for the resource's URN.
-	Options       *AnalyzerResourceOptions  `protobuf:"bytes,5,opt,name=options,proto3" json:"options,omitempty"`       // the resource options.
-	Provider      *AnalyzerProviderResource `protobuf:"bytes,6,opt,name=provider,proto3" json:"provider,omitempty"`     // the resource's provider.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState		`protogen:"open.v1"`
+	Type		string				`protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`			// the type token of the resource.
+	Properties	*structpb.Struct		`protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`	// the full properties to use for validation.
+	Urn		string				`protobuf:"bytes,3,opt,name=urn,proto3" json:"urn,omitempty"`			// the URN of the resource.
+	Name		string				`protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`			// the name for the resource's URN.
+	Options		*AnalyzerResourceOptions	`protobuf:"bytes,5,opt,name=options,proto3" json:"options,omitempty"`		// the resource options.
+	Provider	*AnalyzerProviderResource	`protobuf:"bytes,6,opt,name=provider,proto3" json:"provider,omitempty"`		// the resource's provider.
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *AnalyzeRequest) Reset() {
@@ -463,7 +463,7 @@ func (x *AnalyzeRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AnalyzeRequest) ProtoMessage() {}
+func (*AnalyzeRequest) ProtoMessage()	{}
 
 func (x *AnalyzeRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_analyzer_proto_msgTypes[4]
@@ -528,18 +528,18 @@ func (x *AnalyzeRequest) GetProvider() *AnalyzerProviderResource {
 // of the resource are specific to the type of analysis being performed. See the Analyzer
 // service definition for more information.
 type AnalyzerResource struct {
-	state                protoimpl.MessageState                   `protogen:"open.v1"`
-	Type                 string                                   `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`                                                                                                           // the type token of the resource.
-	Properties           *structpb.Struct                         `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`                                                                                               // the full properties to use for validation.
-	Urn                  string                                   `protobuf:"bytes,3,opt,name=urn,proto3" json:"urn,omitempty"`                                                                                                             // the URN of the resource.
-	Name                 string                                   `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`                                                                                                           // the name for the resource's URN.
-	Options              *AnalyzerResourceOptions                 `protobuf:"bytes,5,opt,name=options,proto3" json:"options,omitempty"`                                                                                                     // the resource options.
-	Provider             *AnalyzerProviderResource                `protobuf:"bytes,6,opt,name=provider,proto3" json:"provider,omitempty"`                                                                                                   // the resource's provider.
-	Parent               string                                   `protobuf:"bytes,7,opt,name=parent,proto3" json:"parent,omitempty"`                                                                                                       // an optional parent URN that this child resource belongs to.
-	Dependencies         []string                                 `protobuf:"bytes,8,rep,name=dependencies,proto3" json:"dependencies,omitempty"`                                                                                           // a list of URNs that this resource depends on.
-	PropertyDependencies map[string]*AnalyzerPropertyDependencies `protobuf:"bytes,9,rep,name=propertyDependencies,proto3" json:"propertyDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // a map from property keys to the dependencies of the property.
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	state			protoimpl.MessageState				`protogen:"open.v1"`
+	Type			string						`protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`															// the type token of the resource.
+	Properties		*structpb.Struct				`protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`													// the full properties to use for validation.
+	Urn			string						`protobuf:"bytes,3,opt,name=urn,proto3" json:"urn,omitempty"`															// the URN of the resource.
+	Name			string						`protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`															// the name for the resource's URN.
+	Options			*AnalyzerResourceOptions			`protobuf:"bytes,5,opt,name=options,proto3" json:"options,omitempty"`														// the resource options.
+	Provider		*AnalyzerProviderResource			`protobuf:"bytes,6,opt,name=provider,proto3" json:"provider,omitempty"`														// the resource's provider.
+	Parent			string						`protobuf:"bytes,7,opt,name=parent,proto3" json:"parent,omitempty"`														// an optional parent URN that this child resource belongs to.
+	Dependencies		[]string					`protobuf:"bytes,8,rep,name=dependencies,proto3" json:"dependencies,omitempty"`													// a list of URNs that this resource depends on.
+	PropertyDependencies	map[string]*AnalyzerPropertyDependencies	`protobuf:"bytes,9,rep,name=propertyDependencies,proto3" json:"propertyDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`	// a map from property keys to the dependencies of the property.
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *AnalyzerResource) Reset() {
@@ -553,7 +553,7 @@ func (x *AnalyzerResource) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AnalyzerResource) ProtoMessage() {}
+func (*AnalyzerResource) ProtoMessage()	{}
 
 func (x *AnalyzerResource) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_analyzer_proto_msgTypes[5]
@@ -637,17 +637,17 @@ func (x *AnalyzerResource) GetPropertyDependencies() map[string]*AnalyzerPropert
 
 // AnalyzerResourceOptions defines the options associated with a resource.
 type AnalyzerResourceOptions struct {
-	state                      protoimpl.MessageState                  `protogen:"open.v1"`
-	Protect                    bool                                    `protobuf:"varint,1,opt,name=protect,proto3" json:"protect,omitempty"`                                       // true if the resource should be marked protected.
-	IgnoreChanges              []string                                `protobuf:"bytes,2,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`                            // a list of property names to ignore during changes.
-	DeleteBeforeReplace        bool                                    `protobuf:"varint,3,opt,name=deleteBeforeReplace,proto3" json:"deleteBeforeReplace,omitempty"`               // true if this resource should be deleted before replacement.
-	DeleteBeforeReplaceDefined bool                                    `protobuf:"varint,4,opt,name=deleteBeforeReplaceDefined,proto3" json:"deleteBeforeReplaceDefined,omitempty"` // true if the deleteBeforeReplace property should be treated as defined even if it is false.
-	AdditionalSecretOutputs    []string                                `protobuf:"bytes,5,rep,name=additionalSecretOutputs,proto3" json:"additionalSecretOutputs,omitempty"`        // a list of output properties that should also be treated as secret, in addition to ones we detect.
-	Aliases                    []string                                `protobuf:"bytes,6,rep,name=aliases,proto3" json:"aliases,omitempty"`                                        // a list of additional URNs that shoud be considered the same.
-	CustomTimeouts             *AnalyzerResourceOptions_CustomTimeouts `protobuf:"bytes,7,opt,name=customTimeouts,proto3" json:"customTimeouts,omitempty"`                          // a config block that will be used to configure timeouts for CRUD operations.
-	Parent                     string                                  `protobuf:"bytes,8,opt,name=parent,proto3" json:"parent,omitempty"`                                          // an optional parent URN that this child resource belongs to.
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	state				protoimpl.MessageState			`protogen:"open.v1"`
+	Protect				bool					`protobuf:"varint,1,opt,name=protect,proto3" json:"protect,omitempty"`						// true if the resource should be marked protected.
+	IgnoreChanges			[]string				`protobuf:"bytes,2,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`				// a list of property names to ignore during changes.
+	DeleteBeforeReplace		bool					`protobuf:"varint,3,opt,name=deleteBeforeReplace,proto3" json:"deleteBeforeReplace,omitempty"`			// true if this resource should be deleted before replacement.
+	DeleteBeforeReplaceDefined	bool					`protobuf:"varint,4,opt,name=deleteBeforeReplaceDefined,proto3" json:"deleteBeforeReplaceDefined,omitempty"`	// true if the deleteBeforeReplace property should be treated as defined even if it is false.
+	AdditionalSecretOutputs		[]string				`protobuf:"bytes,5,rep,name=additionalSecretOutputs,proto3" json:"additionalSecretOutputs,omitempty"`		// a list of output properties that should also be treated as secret, in addition to ones we detect.
+	Aliases				[]string				`protobuf:"bytes,6,rep,name=aliases,proto3" json:"aliases,omitempty"`						// a list of additional URNs that shoud be considered the same.
+	CustomTimeouts			*AnalyzerResourceOptions_CustomTimeouts	`protobuf:"bytes,7,opt,name=customTimeouts,proto3" json:"customTimeouts,omitempty"`				// a config block that will be used to configure timeouts for CRUD operations.
+	Parent				string					`protobuf:"bytes,8,opt,name=parent,proto3" json:"parent,omitempty"`						// an optional parent URN that this child resource belongs to.
+	unknownFields			protoimpl.UnknownFields
+	sizeCache			protoimpl.SizeCache
 }
 
 func (x *AnalyzerResourceOptions) Reset() {
@@ -661,7 +661,7 @@ func (x *AnalyzerResourceOptions) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AnalyzerResourceOptions) ProtoMessage() {}
+func (*AnalyzerResourceOptions) ProtoMessage()	{}
 
 func (x *AnalyzerResourceOptions) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_analyzer_proto_msgTypes[6]
@@ -738,13 +738,13 @@ func (x *AnalyzerResourceOptions) GetParent() string {
 
 // AnalyzerProviderResource provides information about a resource's provider.
 type AnalyzerProviderResource struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Type          string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`             // the type token of the resource.
-	Properties    *structpb.Struct       `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"` // the full properties to use for validation.
-	Urn           string                 `protobuf:"bytes,3,opt,name=urn,proto3" json:"urn,omitempty"`               // the URN of the resource.
-	Name          string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`             // the name for the resource's URN.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Type		string			`protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`			// the type token of the resource.
+	Properties	*structpb.Struct	`protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`	// the full properties to use for validation.
+	Urn		string			`protobuf:"bytes,3,opt,name=urn,proto3" json:"urn,omitempty"`			// the URN of the resource.
+	Name		string			`protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`			// the name for the resource's URN.
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *AnalyzerProviderResource) Reset() {
@@ -758,7 +758,7 @@ func (x *AnalyzerProviderResource) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AnalyzerProviderResource) ProtoMessage() {}
+func (*AnalyzerProviderResource) ProtoMessage()	{}
 
 func (x *AnalyzerProviderResource) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_analyzer_proto_msgTypes[7]
@@ -807,10 +807,10 @@ func (x *AnalyzerProviderResource) GetName() string {
 
 // AnalyzerPropertyDependencies describes the resources that a particular property depends on.
 type AnalyzerPropertyDependencies struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Urns          []string               `protobuf:"bytes,1,rep,name=urns,proto3" json:"urns,omitempty"` // A list of URNs this property depends on.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Urns		[]string		`protobuf:"bytes,1,rep,name=urns,proto3" json:"urns,omitempty"`	// A list of URNs this property depends on.
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *AnalyzerPropertyDependencies) Reset() {
@@ -824,7 +824,7 @@ func (x *AnalyzerPropertyDependencies) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AnalyzerPropertyDependencies) ProtoMessage() {}
+func (*AnalyzerPropertyDependencies) ProtoMessage()	{}
 
 func (x *AnalyzerPropertyDependencies) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_analyzer_proto_msgTypes[8]
@@ -851,10 +851,10 @@ func (x *AnalyzerPropertyDependencies) GetUrns() []string {
 }
 
 type AnalyzeStackRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Resources     []*AnalyzerResource    `protobuf:"bytes,1,rep,name=resources,proto3" json:"resources,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Resources	[]*AnalyzerResource	`protobuf:"bytes,1,rep,name=resources,proto3" json:"resources,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *AnalyzeStackRequest) Reset() {
@@ -868,7 +868,7 @@ func (x *AnalyzeStackRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AnalyzeStackRequest) ProtoMessage() {}
+func (*AnalyzeStackRequest) ProtoMessage()	{}
 
 func (x *AnalyzeStackRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_analyzer_proto_msgTypes[9]
@@ -895,11 +895,11 @@ func (x *AnalyzeStackRequest) GetResources() []*AnalyzerResource {
 }
 
 type AnalyzeResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Diagnostics   []*AnalyzeDiagnostic   `protobuf:"bytes,2,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"`                          // information about policy violations.
-	NotApplicable []*PolicyNotApplicable `protobuf:"bytes,3,rep,name=not_applicable,json=notApplicable,proto3" json:"not_applicable,omitempty"` // information about policies that were not applicable.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Diagnostics	[]*AnalyzeDiagnostic	`protobuf:"bytes,2,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"`				// information about policy violations.
+	NotApplicable	[]*PolicyNotApplicable	`protobuf:"bytes,3,rep,name=not_applicable,json=notApplicable,proto3" json:"not_applicable,omitempty"`	// information about policies that were not applicable.
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *AnalyzeResponse) Reset() {
@@ -913,7 +913,7 @@ func (x *AnalyzeResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AnalyzeResponse) ProtoMessage() {}
+func (*AnalyzeResponse) ProtoMessage()	{}
 
 func (x *AnalyzeResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_analyzer_proto_msgTypes[10]
@@ -947,17 +947,17 @@ func (x *AnalyzeResponse) GetNotApplicable() []*PolicyNotApplicable {
 }
 
 type AnalyzeDiagnostic struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	PolicyName        string                 `protobuf:"bytes,1,opt,name=policyName,proto3" json:"policyName,omitempty"`                                              // Name of the violated policy.
-	PolicyPackName    string                 `protobuf:"bytes,2,opt,name=policyPackName,proto3" json:"policyPackName,omitempty"`                                      // Name of the policy pack the policy is in.
-	PolicyPackVersion string                 `protobuf:"bytes,3,opt,name=policyPackVersion,proto3" json:"policyPackVersion,omitempty"`                                // Version of the policy pack.
-	Description       string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`                                            // Description of policy rule. e.g., "encryption enabled."
-	Message           string                 `protobuf:"bytes,5,opt,name=message,proto3" json:"message,omitempty"`                                                    // Message to display on policy violation, e.g., remediation steps.
-	EnforcementLevel  EnforcementLevel       `protobuf:"varint,7,opt,name=enforcementLevel,proto3,enum=pulumirpc.EnforcementLevel" json:"enforcementLevel,omitempty"` // Enforcement level of the policy violation.
-	Urn               string                 `protobuf:"bytes,8,opt,name=urn,proto3" json:"urn,omitempty"`                                                            // URN of the resource that violates the policy.
-	Severity          PolicySeverity         `protobuf:"varint,9,opt,name=severity,proto3,enum=pulumirpc.PolicySeverity" json:"severity,omitempty"`                   // Severity of the policy violation.
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state			protoimpl.MessageState	`protogen:"open.v1"`
+	PolicyName		string			`protobuf:"bytes,1,opt,name=policyName,proto3" json:"policyName,omitempty"`							// Name of the violated policy.
+	PolicyPackName		string			`protobuf:"bytes,2,opt,name=policyPackName,proto3" json:"policyPackName,omitempty"`						// Name of the policy pack the policy is in.
+	PolicyPackVersion	string			`protobuf:"bytes,3,opt,name=policyPackVersion,proto3" json:"policyPackVersion,omitempty"`					// Version of the policy pack.
+	Description		string			`protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`							// Description of policy rule. e.g., "encryption enabled."
+	Message			string			`protobuf:"bytes,5,opt,name=message,proto3" json:"message,omitempty"`								// Message to display on policy violation, e.g., remediation steps.
+	EnforcementLevel	EnforcementLevel	`protobuf:"varint,7,opt,name=enforcementLevel,proto3,enum=pulumirpc.EnforcementLevel" json:"enforcementLevel,omitempty"`	// Enforcement level of the policy violation.
+	Urn			string			`protobuf:"bytes,8,opt,name=urn,proto3" json:"urn,omitempty"`									// URN of the resource that violates the policy.
+	Severity		PolicySeverity		`protobuf:"varint,9,opt,name=severity,proto3,enum=pulumirpc.PolicySeverity" json:"severity,omitempty"`				// Severity of the policy violation.
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *AnalyzeDiagnostic) Reset() {
@@ -971,7 +971,7 @@ func (x *AnalyzeDiagnostic) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AnalyzeDiagnostic) ProtoMessage() {}
+func (*AnalyzeDiagnostic) ProtoMessage()	{}
 
 func (x *AnalyzeDiagnostic) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_analyzer_proto_msgTypes[11]
@@ -1048,15 +1048,15 @@ func (x *AnalyzeDiagnostic) GetSeverity() PolicySeverity {
 
 // Remediation is a single resource remediation result.
 type Remediation struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	PolicyName        string                 `protobuf:"bytes,1,opt,name=policyName,proto3" json:"policyName,omitempty"`               // Name of the policy that performed the remediation.
-	PolicyPackName    string                 `protobuf:"bytes,2,opt,name=policyPackName,proto3" json:"policyPackName,omitempty"`       // Name of the policy pack the transform is in.
-	PolicyPackVersion string                 `protobuf:"bytes,3,opt,name=policyPackVersion,proto3" json:"policyPackVersion,omitempty"` // Version of the policy pack.
-	Description       string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`             // Description of transform rule. e.g., "auto-tag resources."
-	Properties        *structpb.Struct       `protobuf:"bytes,5,opt,name=properties,proto3" json:"properties,omitempty"`               // the transformed properties to use.
-	Diagnostic        string                 `protobuf:"bytes,6,opt,name=diagnostic,proto3" json:"diagnostic,omitempty"`               // an optional warning diagnostic to emit, if a transform failed.
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state			protoimpl.MessageState	`protogen:"open.v1"`
+	PolicyName		string			`protobuf:"bytes,1,opt,name=policyName,proto3" json:"policyName,omitempty"`			// Name of the policy that performed the remediation.
+	PolicyPackName		string			`protobuf:"bytes,2,opt,name=policyPackName,proto3" json:"policyPackName,omitempty"`		// Name of the policy pack the transform is in.
+	PolicyPackVersion	string			`protobuf:"bytes,3,opt,name=policyPackVersion,proto3" json:"policyPackVersion,omitempty"`	// Version of the policy pack.
+	Description		string			`protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`			// Description of transform rule. e.g., "auto-tag resources."
+	Properties		*structpb.Struct	`protobuf:"bytes,5,opt,name=properties,proto3" json:"properties,omitempty"`			// the transformed properties to use.
+	Diagnostic		string			`protobuf:"bytes,6,opt,name=diagnostic,proto3" json:"diagnostic,omitempty"`			// an optional warning diagnostic to emit, if a transform failed.
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *Remediation) Reset() {
@@ -1070,7 +1070,7 @@ func (x *Remediation) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Remediation) ProtoMessage() {}
+func (*Remediation) ProtoMessage()	{}
 
 func (x *Remediation) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_analyzer_proto_msgTypes[12]
@@ -1133,11 +1133,11 @@ func (x *Remediation) GetDiagnostic() string {
 
 // RemediateResponse contains a sequence of remediations applied, in order.
 type RemediateResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Remediations  []*Remediation         `protobuf:"bytes,1,rep,name=remediations,proto3" json:"remediations,omitempty"`                        // the list of remediations that were applied.
-	NotApplicable []*PolicyNotApplicable `protobuf:"bytes,2,rep,name=not_applicable,json=notApplicable,proto3" json:"not_applicable,omitempty"` // information about policies that were not applicable.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Remediations	[]*Remediation		`protobuf:"bytes,1,rep,name=remediations,proto3" json:"remediations,omitempty"`				// the list of remediations that were applied.
+	NotApplicable	[]*PolicyNotApplicable	`protobuf:"bytes,2,rep,name=not_applicable,json=notApplicable,proto3" json:"not_applicable,omitempty"`	// information about policies that were not applicable.
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *RemediateResponse) Reset() {
@@ -1151,7 +1151,7 @@ func (x *RemediateResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RemediateResponse) ProtoMessage() {}
+func (*RemediateResponse) ProtoMessage()	{}
 
 func (x *RemediateResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_analyzer_proto_msgTypes[13]
@@ -1186,20 +1186,20 @@ func (x *RemediateResponse) GetNotApplicable() []*PolicyNotApplicable {
 
 // AnalyzerInfo provides metadata about a PolicyPack inside an analyzer.
 type AnalyzerInfo struct {
-	state          protoimpl.MessageState   `protogen:"open.v1"`
-	Name           string                   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`                                                                                             // Name of the PolicyPack.
-	DisplayName    string                   `protobuf:"bytes,2,opt,name=displayName,proto3" json:"displayName,omitempty"`                                                                               // Pretty name for the PolicyPack.
-	Policies       []*PolicyInfo            `protobuf:"bytes,3,rep,name=policies,proto3" json:"policies,omitempty"`                                                                                     // Metadata about policies contained in PolicyPack.
-	Version        string                   `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`                                                                                       // Version of the Policy Pack.
-	SupportsConfig bool                     `protobuf:"varint,5,opt,name=supportsConfig,proto3" json:"supportsConfig,omitempty"`                                                                        // Whether the Policy Pack supports config.
-	InitialConfig  map[string]*PolicyConfig `protobuf:"bytes,6,rep,name=initialConfig,proto3" json:"initialConfig,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // Map of policy name to config.
-	Description    string                   `protobuf:"bytes,7,opt,name=description,proto3" json:"description,omitempty"`                                                                               // Description of the policy pack.
-	Readme         string                   `protobuf:"bytes,8,opt,name=readme,proto3" json:"readme,omitempty"`                                                                                         // README text for the policy pack.
-	Provider       string                   `protobuf:"bytes,9,opt,name=provider,proto3" json:"provider,omitempty"`                                                                                     // Cloud provider/platform associated with the policy pack.
-	Tags           []string                 `protobuf:"bytes,10,rep,name=tags,proto3" json:"tags,omitempty"`                                                                                            // Tags for this policy pack.
-	Repository     string                   `protobuf:"bytes,11,opt,name=repository,proto3" json:"repository,omitempty"`                                                                                // A URL to the repository where the policy pack is defined.
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state		protoimpl.MessageState		`protogen:"open.v1"`
+	Name		string				`protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`													// Name of the PolicyPack.
+	DisplayName	string				`protobuf:"bytes,2,opt,name=displayName,proto3" json:"displayName,omitempty"`											// Pretty name for the PolicyPack.
+	Policies	[]*PolicyInfo			`protobuf:"bytes,3,rep,name=policies,proto3" json:"policies,omitempty"`												// Metadata about policies contained in PolicyPack.
+	Version		string				`protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`												// Version of the Policy Pack.
+	SupportsConfig	bool				`protobuf:"varint,5,opt,name=supportsConfig,proto3" json:"supportsConfig,omitempty"`										// Whether the Policy Pack supports config.
+	InitialConfig	map[string]*PolicyConfig	`protobuf:"bytes,6,rep,name=initialConfig,proto3" json:"initialConfig,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`	// Map of policy name to config.
+	Description	string				`protobuf:"bytes,7,opt,name=description,proto3" json:"description,omitempty"`											// Description of the policy pack.
+	Readme		string				`protobuf:"bytes,8,opt,name=readme,proto3" json:"readme,omitempty"`												// README text for the policy pack.
+	Provider	string				`protobuf:"bytes,9,opt,name=provider,proto3" json:"provider,omitempty"`												// Cloud provider/platform associated with the policy pack.
+	Tags		[]string			`protobuf:"bytes,10,rep,name=tags,proto3" json:"tags,omitempty"`												// Tags for this policy pack.
+	Repository	string				`protobuf:"bytes,11,opt,name=repository,proto3" json:"repository,omitempty"`											// A URL to the repository where the policy pack is defined.
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *AnalyzerInfo) Reset() {
@@ -1213,7 +1213,7 @@ func (x *AnalyzerInfo) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AnalyzerInfo) ProtoMessage() {}
+func (*AnalyzerInfo) ProtoMessage()	{}
 
 func (x *AnalyzerInfo) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_analyzer_proto_msgTypes[14]
@@ -1311,21 +1311,21 @@ func (x *AnalyzerInfo) GetRepository() string {
 
 // PolicyInfo provides metadata about a policy within a Policy Pack.
 type PolicyInfo struct {
-	state            protoimpl.MessageState     `protogen:"open.v1"`
-	Name             string                     `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`                                                          // Name of the policy.
-	DisplayName      string                     `protobuf:"bytes,2,opt,name=displayName,proto3" json:"displayName,omitempty"`                                            // Pretty name for the policy.
-	Description      string                     `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`                                            // Description of policy rule. e.g., "encryption enabled."
-	Message          string                     `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`                                                    // Message to display on policy violation, e.g., remediation steps.
-	EnforcementLevel EnforcementLevel           `protobuf:"varint,5,opt,name=enforcementLevel,proto3,enum=pulumirpc.EnforcementLevel" json:"enforcementLevel,omitempty"` // Severity of the policy violation.
-	ConfigSchema     *PolicyConfigSchema        `protobuf:"bytes,6,opt,name=configSchema,proto3" json:"configSchema,omitempty"`                                          // Config schema for the policy.
-	PolicyType       PolicyType                 `protobuf:"varint,7,opt,name=policy_type,json=policyType,proto3,enum=pulumirpc.PolicyType" json:"policy_type,omitempty"` // Type of the policy.
-	Severity         PolicySeverity             `protobuf:"varint,8,opt,name=severity,proto3,enum=pulumirpc.PolicySeverity" json:"severity,omitempty"`                   // Severity of the policy.
-	Framework        *PolicyComplianceFramework `protobuf:"bytes,9,opt,name=framework,proto3" json:"framework,omitempty"`                                                // Compliance framework that this policy belongs to.
-	Tags             []string                   `protobuf:"bytes,10,rep,name=tags,proto3" json:"tags,omitempty"`                                                         // Tags associated with the policy.
-	RemediationSteps string                     `protobuf:"bytes,11,opt,name=remediation_steps,json=remediationSteps,proto3" json:"remediation_steps,omitempty"`         // A description of the steps to take to remediate a policy violation.
-	Url              string                     `protobuf:"bytes,12,opt,name=url,proto3" json:"url,omitempty"`                                                           // A URL to more information about the policy.
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state			protoimpl.MessageState		`protogen:"open.v1"`
+	Name			string				`protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`									// Name of the policy.
+	DisplayName		string				`protobuf:"bytes,2,opt,name=displayName,proto3" json:"displayName,omitempty"`							// Pretty name for the policy.
+	Description		string				`protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`							// Description of policy rule. e.g., "encryption enabled."
+	Message			string				`protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`								// Message to display on policy violation, e.g., remediation steps.
+	EnforcementLevel	EnforcementLevel		`protobuf:"varint,5,opt,name=enforcementLevel,proto3,enum=pulumirpc.EnforcementLevel" json:"enforcementLevel,omitempty"`	// Severity of the policy violation.
+	ConfigSchema		*PolicyConfigSchema		`protobuf:"bytes,6,opt,name=configSchema,proto3" json:"configSchema,omitempty"`							// Config schema for the policy.
+	PolicyType		PolicyType			`protobuf:"varint,7,opt,name=policy_type,json=policyType,proto3,enum=pulumirpc.PolicyType" json:"policy_type,omitempty"`	// Type of the policy.
+	Severity		PolicySeverity			`protobuf:"varint,8,opt,name=severity,proto3,enum=pulumirpc.PolicySeverity" json:"severity,omitempty"`				// Severity of the policy.
+	Framework		*PolicyComplianceFramework	`protobuf:"bytes,9,opt,name=framework,proto3" json:"framework,omitempty"`							// Compliance framework that this policy belongs to.
+	Tags			[]string			`protobuf:"bytes,10,rep,name=tags,proto3" json:"tags,omitempty"`								// Tags associated with the policy.
+	RemediationSteps	string				`protobuf:"bytes,11,opt,name=remediation_steps,json=remediationSteps,proto3" json:"remediation_steps,omitempty"`		// A description of the steps to take to remediate a policy violation.
+	Url			string				`protobuf:"bytes,12,opt,name=url,proto3" json:"url,omitempty"`									// A URL to more information about the policy.
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *PolicyInfo) Reset() {
@@ -1339,7 +1339,7 @@ func (x *PolicyInfo) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PolicyInfo) ProtoMessage() {}
+func (*PolicyInfo) ProtoMessage()	{}
 
 func (x *PolicyInfo) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_analyzer_proto_msgTypes[15]
@@ -1444,11 +1444,11 @@ func (x *PolicyInfo) GetUrl() string {
 
 // PolicyConfigSchema provides the schema for a policy's configuration.
 type PolicyConfigSchema struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Properties    *structpb.Struct       `protobuf:"bytes,1,opt,name=properties,proto3" json:"properties,omitempty"` // JSON schema for each property.
-	Required      []string               `protobuf:"bytes,2,rep,name=required,proto3" json:"required,omitempty"`     // Required properties.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Properties	*structpb.Struct	`protobuf:"bytes,1,opt,name=properties,proto3" json:"properties,omitempty"`	// JSON schema for each property.
+	Required	[]string		`protobuf:"bytes,2,rep,name=required,proto3" json:"required,omitempty"`		// Required properties.
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *PolicyConfigSchema) Reset() {
@@ -1462,7 +1462,7 @@ func (x *PolicyConfigSchema) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PolicyConfigSchema) ProtoMessage() {}
+func (*PolicyConfigSchema) ProtoMessage()	{}
 
 func (x *PolicyConfigSchema) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_analyzer_proto_msgTypes[16]
@@ -1497,11 +1497,11 @@ func (x *PolicyConfigSchema) GetRequired() []string {
 
 // PolicyConfig provides configuration for a policy.
 type PolicyConfig struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	EnforcementLevel EnforcementLevel       `protobuf:"varint,1,opt,name=enforcementLevel,proto3,enum=pulumirpc.EnforcementLevel" json:"enforcementLevel,omitempty"` // Enforcement level of the policy.
-	Properties       *structpb.Struct       `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`                                              // Configuration properties of the policy.
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state			protoimpl.MessageState	`protogen:"open.v1"`
+	EnforcementLevel	EnforcementLevel	`protobuf:"varint,1,opt,name=enforcementLevel,proto3,enum=pulumirpc.EnforcementLevel" json:"enforcementLevel,omitempty"`	// Enforcement level of the policy.
+	Properties		*structpb.Struct	`protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`							// Configuration properties of the policy.
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *PolicyConfig) Reset() {
@@ -1515,7 +1515,7 @@ func (x *PolicyConfig) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PolicyConfig) ProtoMessage() {}
+func (*PolicyConfig) ProtoMessage()	{}
 
 func (x *PolicyConfig) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_analyzer_proto_msgTypes[17]
@@ -1550,10 +1550,10 @@ func (x *PolicyConfig) GetProperties() *structpb.Struct {
 
 // ConfigureAnalyzerRequest provides configuration information to the analyzer.
 type ConfigureAnalyzerRequest struct {
-	state         protoimpl.MessageState   `protogen:"open.v1"`
-	PolicyConfig  map[string]*PolicyConfig `protobuf:"bytes,1,rep,name=policyConfig,proto3" json:"policyConfig,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // Map of policy name to config.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState		`protogen:"open.v1"`
+	PolicyConfig	map[string]*PolicyConfig	`protobuf:"bytes,1,rep,name=policyConfig,proto3" json:"policyConfig,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`	// Map of policy name to config.
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *ConfigureAnalyzerRequest) Reset() {
@@ -1567,7 +1567,7 @@ func (x *ConfigureAnalyzerRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ConfigureAnalyzerRequest) ProtoMessage() {}
+func (*ConfigureAnalyzerRequest) ProtoMessage()	{}
 
 func (x *ConfigureAnalyzerRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_analyzer_proto_msgTypes[18]
@@ -1595,13 +1595,13 @@ func (x *ConfigureAnalyzerRequest) GetPolicyConfig() map[string]*PolicyConfig {
 
 // PolicyComplianceFramework provides information about the compliance framework that a policy belongs to.
 type PolicyComplianceFramework struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`                   // The compliance framework name.
-	Version       string                 `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`             // The compliance framework version.
-	Reference     string                 `protobuf:"bytes,3,opt,name=reference,proto3" json:"reference,omitempty"`         // The compliance framework reference.
-	Specification string                 `protobuf:"bytes,4,opt,name=specification,proto3" json:"specification,omitempty"` // The compliance framework specification.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Name		string			`protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`				// The compliance framework name.
+	Version		string			`protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`			// The compliance framework version.
+	Reference	string			`protobuf:"bytes,3,opt,name=reference,proto3" json:"reference,omitempty"`		// The compliance framework reference.
+	Specification	string			`protobuf:"bytes,4,opt,name=specification,proto3" json:"specification,omitempty"`	// The compliance framework specification.
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *PolicyComplianceFramework) Reset() {
@@ -1615,7 +1615,7 @@ func (x *PolicyComplianceFramework) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PolicyComplianceFramework) ProtoMessage() {}
+func (*PolicyComplianceFramework) ProtoMessage()	{}
 
 func (x *PolicyComplianceFramework) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_analyzer_proto_msgTypes[19]
@@ -1664,11 +1664,11 @@ func (x *PolicyComplianceFramework) GetSpecification() string {
 
 // PolicyNotApplicable describes a policy that was not applicable, including an optional reason why.
 type PolicyNotApplicable struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PolicyName    string                 `protobuf:"bytes,1,opt,name=policy_name,json=policyName,proto3" json:"policy_name,omitempty"` // The name of the policy that was not applicable.
-	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`                           // An optional reason why the policy was not applicable.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	PolicyName	string			`protobuf:"bytes,1,opt,name=policy_name,json=policyName,proto3" json:"policy_name,omitempty"`	// The name of the policy that was not applicable.
+	Reason		string			`protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`				// An optional reason why the policy was not applicable.
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *PolicyNotApplicable) Reset() {
@@ -1682,7 +1682,7 @@ func (x *PolicyNotApplicable) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PolicyNotApplicable) ProtoMessage() {}
+func (*PolicyNotApplicable) ProtoMessage()	{}
 
 func (x *PolicyNotApplicable) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_analyzer_proto_msgTypes[20]
@@ -1717,12 +1717,12 @@ func (x *PolicyNotApplicable) GetReason() string {
 
 // CustomTimeouts allows a user to be able to create a set of custom timeout parameters.
 type AnalyzerResourceOptions_CustomTimeouts struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Create        float64                `protobuf:"fixed64,1,opt,name=create,proto3" json:"create,omitempty"` // The create resource timeout in seconds.
-	Update        float64                `protobuf:"fixed64,2,opt,name=update,proto3" json:"update,omitempty"` // The update resource timeout in seconds.
-	Delete        float64                `protobuf:"fixed64,3,opt,name=delete,proto3" json:"delete,omitempty"` // The delete resource timeout in seconds.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Create		float64			`protobuf:"fixed64,1,opt,name=create,proto3" json:"create,omitempty"`	// The create resource timeout in seconds.
+	Update		float64			`protobuf:"fixed64,2,opt,name=update,proto3" json:"update,omitempty"`	// The update resource timeout in seconds.
+	Delete		float64			`protobuf:"fixed64,3,opt,name=delete,proto3" json:"delete,omitempty"`	// The delete resource timeout in seconds.
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *AnalyzerResourceOptions_CustomTimeouts) Reset() {
@@ -1736,7 +1736,7 @@ func (x *AnalyzerResourceOptions_CustomTimeouts) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AnalyzerResourceOptions_CustomTimeouts) ProtoMessage() {}
+func (*AnalyzerResourceOptions_CustomTimeouts) ProtoMessage()	{}
 
 func (x *AnalyzerResourceOptions_CustomTimeouts) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_analyzer_proto_msgTypes[24]
@@ -1967,8 +1967,8 @@ const file_pulumi_analyzer_proto_rawDesc = "" +
 	"\x06Cancel\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x00B4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3"
 
 var (
-	file_pulumi_analyzer_proto_rawDescOnce sync.Once
-	file_pulumi_analyzer_proto_rawDescData []byte
+	file_pulumi_analyzer_proto_rawDescOnce	sync.Once
+	file_pulumi_analyzer_proto_rawDescData	[]byte
 )
 
 func file_pulumi_analyzer_proto_rawDescGZIP() []byte {
@@ -1981,100 +1981,100 @@ func file_pulumi_analyzer_proto_rawDescGZIP() []byte {
 var file_pulumi_analyzer_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
 var file_pulumi_analyzer_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_pulumi_analyzer_proto_goTypes = []any{
-	(EnforcementLevel)(0),                          // 0: pulumirpc.EnforcementLevel
-	(PolicyType)(0),                                // 1: pulumirpc.PolicyType
-	(PolicySeverity)(0),                            // 2: pulumirpc.PolicySeverity
-	(*AnalyzerStackConfigureRequest)(nil),          // 3: pulumirpc.AnalyzerStackConfigureRequest
-	(*AnalyzerStackConfigureResponse)(nil),         // 4: pulumirpc.AnalyzerStackConfigureResponse
-	(*AnalyzerHandshakeRequest)(nil),               // 5: pulumirpc.AnalyzerHandshakeRequest
-	(*AnalyzerHandshakeResponse)(nil),              // 6: pulumirpc.AnalyzerHandshakeResponse
-	(*AnalyzeRequest)(nil),                         // 7: pulumirpc.AnalyzeRequest
-	(*AnalyzerResource)(nil),                       // 8: pulumirpc.AnalyzerResource
-	(*AnalyzerResourceOptions)(nil),                // 9: pulumirpc.AnalyzerResourceOptions
-	(*AnalyzerProviderResource)(nil),               // 10: pulumirpc.AnalyzerProviderResource
-	(*AnalyzerPropertyDependencies)(nil),           // 11: pulumirpc.AnalyzerPropertyDependencies
-	(*AnalyzeStackRequest)(nil),                    // 12: pulumirpc.AnalyzeStackRequest
-	(*AnalyzeResponse)(nil),                        // 13: pulumirpc.AnalyzeResponse
-	(*AnalyzeDiagnostic)(nil),                      // 14: pulumirpc.AnalyzeDiagnostic
-	(*Remediation)(nil),                            // 15: pulumirpc.Remediation
-	(*RemediateResponse)(nil),                      // 16: pulumirpc.RemediateResponse
-	(*AnalyzerInfo)(nil),                           // 17: pulumirpc.AnalyzerInfo
-	(*PolicyInfo)(nil),                             // 18: pulumirpc.PolicyInfo
-	(*PolicyConfigSchema)(nil),                     // 19: pulumirpc.PolicyConfigSchema
-	(*PolicyConfig)(nil),                           // 20: pulumirpc.PolicyConfig
-	(*ConfigureAnalyzerRequest)(nil),               // 21: pulumirpc.ConfigureAnalyzerRequest
-	(*PolicyComplianceFramework)(nil),              // 22: pulumirpc.PolicyComplianceFramework
-	(*PolicyNotApplicable)(nil),                    // 23: pulumirpc.PolicyNotApplicable
-	nil,                                            // 24: pulumirpc.AnalyzerStackConfigureRequest.ConfigEntry
-	nil,                                            // 25: pulumirpc.AnalyzerStackConfigureRequest.TagsEntry
-	nil,                                            // 26: pulumirpc.AnalyzerResource.PropertyDependenciesEntry
-	(*AnalyzerResourceOptions_CustomTimeouts)(nil), // 27: pulumirpc.AnalyzerResourceOptions.CustomTimeouts
-	nil,                     // 28: pulumirpc.AnalyzerInfo.InitialConfigEntry
-	nil,                     // 29: pulumirpc.ConfigureAnalyzerRequest.PolicyConfigEntry
-	(*structpb.Struct)(nil), // 30: google.protobuf.Struct
-	(*emptypb.Empty)(nil),   // 31: google.protobuf.Empty
-	(*PluginInfo)(nil),      // 32: pulumirpc.PluginInfo
+	(EnforcementLevel)(0),				// 0: pulumirpc.EnforcementLevel
+	(PolicyType)(0),				// 1: pulumirpc.PolicyType
+	(PolicySeverity)(0),				// 2: pulumirpc.PolicySeverity
+	(*AnalyzerStackConfigureRequest)(nil),		// 3: pulumirpc.AnalyzerStackConfigureRequest
+	(*AnalyzerStackConfigureResponse)(nil),		// 4: pulumirpc.AnalyzerStackConfigureResponse
+	(*AnalyzerHandshakeRequest)(nil),		// 5: pulumirpc.AnalyzerHandshakeRequest
+	(*AnalyzerHandshakeResponse)(nil),		// 6: pulumirpc.AnalyzerHandshakeResponse
+	(*AnalyzeRequest)(nil),				// 7: pulumirpc.AnalyzeRequest
+	(*AnalyzerResource)(nil),			// 8: pulumirpc.AnalyzerResource
+	(*AnalyzerResourceOptions)(nil),		// 9: pulumirpc.AnalyzerResourceOptions
+	(*AnalyzerProviderResource)(nil),		// 10: pulumirpc.AnalyzerProviderResource
+	(*AnalyzerPropertyDependencies)(nil),		// 11: pulumirpc.AnalyzerPropertyDependencies
+	(*AnalyzeStackRequest)(nil),			// 12: pulumirpc.AnalyzeStackRequest
+	(*AnalyzeResponse)(nil),			// 13: pulumirpc.AnalyzeResponse
+	(*AnalyzeDiagnostic)(nil),			// 14: pulumirpc.AnalyzeDiagnostic
+	(*Remediation)(nil),				// 15: pulumirpc.Remediation
+	(*RemediateResponse)(nil),			// 16: pulumirpc.RemediateResponse
+	(*AnalyzerInfo)(nil),				// 17: pulumirpc.AnalyzerInfo
+	(*PolicyInfo)(nil),				// 18: pulumirpc.PolicyInfo
+	(*PolicyConfigSchema)(nil),			// 19: pulumirpc.PolicyConfigSchema
+	(*PolicyConfig)(nil),				// 20: pulumirpc.PolicyConfig
+	(*ConfigureAnalyzerRequest)(nil),		// 21: pulumirpc.ConfigureAnalyzerRequest
+	(*PolicyComplianceFramework)(nil),		// 22: pulumirpc.PolicyComplianceFramework
+	(*PolicyNotApplicable)(nil),			// 23: pulumirpc.PolicyNotApplicable
+	nil,						// 24: pulumirpc.AnalyzerStackConfigureRequest.ConfigEntry
+	nil,						// 25: pulumirpc.AnalyzerStackConfigureRequest.TagsEntry
+	nil,						// 26: pulumirpc.AnalyzerResource.PropertyDependenciesEntry
+	(*AnalyzerResourceOptions_CustomTimeouts)(nil),	// 27: pulumirpc.AnalyzerResourceOptions.CustomTimeouts
+	nil,				// 28: pulumirpc.AnalyzerInfo.InitialConfigEntry
+	nil,				// 29: pulumirpc.ConfigureAnalyzerRequest.PolicyConfigEntry
+	(*structpb.Struct)(nil),	// 30: google.protobuf.Struct
+	(*emptypb.Empty)(nil),		// 31: google.protobuf.Empty
+	(*PluginInfo)(nil),		// 32: pulumirpc.PluginInfo
 }
 var file_pulumi_analyzer_proto_depIdxs = []int32{
-	24, // 0: pulumirpc.AnalyzerStackConfigureRequest.config:type_name -> pulumirpc.AnalyzerStackConfigureRequest.ConfigEntry
-	25, // 1: pulumirpc.AnalyzerStackConfigureRequest.tags:type_name -> pulumirpc.AnalyzerStackConfigureRequest.TagsEntry
-	30, // 2: pulumirpc.AnalyzeRequest.properties:type_name -> google.protobuf.Struct
-	9,  // 3: pulumirpc.AnalyzeRequest.options:type_name -> pulumirpc.AnalyzerResourceOptions
-	10, // 4: pulumirpc.AnalyzeRequest.provider:type_name -> pulumirpc.AnalyzerProviderResource
-	30, // 5: pulumirpc.AnalyzerResource.properties:type_name -> google.protobuf.Struct
-	9,  // 6: pulumirpc.AnalyzerResource.options:type_name -> pulumirpc.AnalyzerResourceOptions
-	10, // 7: pulumirpc.AnalyzerResource.provider:type_name -> pulumirpc.AnalyzerProviderResource
-	26, // 8: pulumirpc.AnalyzerResource.propertyDependencies:type_name -> pulumirpc.AnalyzerResource.PropertyDependenciesEntry
-	27, // 9: pulumirpc.AnalyzerResourceOptions.customTimeouts:type_name -> pulumirpc.AnalyzerResourceOptions.CustomTimeouts
-	30, // 10: pulumirpc.AnalyzerProviderResource.properties:type_name -> google.protobuf.Struct
-	8,  // 11: pulumirpc.AnalyzeStackRequest.resources:type_name -> pulumirpc.AnalyzerResource
-	14, // 12: pulumirpc.AnalyzeResponse.diagnostics:type_name -> pulumirpc.AnalyzeDiagnostic
-	23, // 13: pulumirpc.AnalyzeResponse.not_applicable:type_name -> pulumirpc.PolicyNotApplicable
-	0,  // 14: pulumirpc.AnalyzeDiagnostic.enforcementLevel:type_name -> pulumirpc.EnforcementLevel
-	2,  // 15: pulumirpc.AnalyzeDiagnostic.severity:type_name -> pulumirpc.PolicySeverity
-	30, // 16: pulumirpc.Remediation.properties:type_name -> google.protobuf.Struct
-	15, // 17: pulumirpc.RemediateResponse.remediations:type_name -> pulumirpc.Remediation
-	23, // 18: pulumirpc.RemediateResponse.not_applicable:type_name -> pulumirpc.PolicyNotApplicable
-	18, // 19: pulumirpc.AnalyzerInfo.policies:type_name -> pulumirpc.PolicyInfo
-	28, // 20: pulumirpc.AnalyzerInfo.initialConfig:type_name -> pulumirpc.AnalyzerInfo.InitialConfigEntry
-	0,  // 21: pulumirpc.PolicyInfo.enforcementLevel:type_name -> pulumirpc.EnforcementLevel
-	19, // 22: pulumirpc.PolicyInfo.configSchema:type_name -> pulumirpc.PolicyConfigSchema
-	1,  // 23: pulumirpc.PolicyInfo.policy_type:type_name -> pulumirpc.PolicyType
-	2,  // 24: pulumirpc.PolicyInfo.severity:type_name -> pulumirpc.PolicySeverity
-	22, // 25: pulumirpc.PolicyInfo.framework:type_name -> pulumirpc.PolicyComplianceFramework
-	30, // 26: pulumirpc.PolicyConfigSchema.properties:type_name -> google.protobuf.Struct
-	0,  // 27: pulumirpc.PolicyConfig.enforcementLevel:type_name -> pulumirpc.EnforcementLevel
-	30, // 28: pulumirpc.PolicyConfig.properties:type_name -> google.protobuf.Struct
-	29, // 29: pulumirpc.ConfigureAnalyzerRequest.policyConfig:type_name -> pulumirpc.ConfigureAnalyzerRequest.PolicyConfigEntry
-	11, // 30: pulumirpc.AnalyzerResource.PropertyDependenciesEntry.value:type_name -> pulumirpc.AnalyzerPropertyDependencies
-	20, // 31: pulumirpc.AnalyzerInfo.InitialConfigEntry.value:type_name -> pulumirpc.PolicyConfig
-	20, // 32: pulumirpc.ConfigureAnalyzerRequest.PolicyConfigEntry.value:type_name -> pulumirpc.PolicyConfig
-	7,  // 33: pulumirpc.Analyzer.Analyze:input_type -> pulumirpc.AnalyzeRequest
-	12, // 34: pulumirpc.Analyzer.AnalyzeStack:input_type -> pulumirpc.AnalyzeStackRequest
-	7,  // 35: pulumirpc.Analyzer.Remediate:input_type -> pulumirpc.AnalyzeRequest
-	31, // 36: pulumirpc.Analyzer.GetAnalyzerInfo:input_type -> google.protobuf.Empty
-	31, // 37: pulumirpc.Analyzer.GetPluginInfo:input_type -> google.protobuf.Empty
-	21, // 38: pulumirpc.Analyzer.Configure:input_type -> pulumirpc.ConfigureAnalyzerRequest
-	5,  // 39: pulumirpc.Analyzer.Handshake:input_type -> pulumirpc.AnalyzerHandshakeRequest
-	3,  // 40: pulumirpc.Analyzer.ConfigureStack:input_type -> pulumirpc.AnalyzerStackConfigureRequest
-	31, // 41: pulumirpc.Analyzer.Cancel:input_type -> google.protobuf.Empty
-	13, // 42: pulumirpc.Analyzer.Analyze:output_type -> pulumirpc.AnalyzeResponse
-	13, // 43: pulumirpc.Analyzer.AnalyzeStack:output_type -> pulumirpc.AnalyzeResponse
-	16, // 44: pulumirpc.Analyzer.Remediate:output_type -> pulumirpc.RemediateResponse
-	17, // 45: pulumirpc.Analyzer.GetAnalyzerInfo:output_type -> pulumirpc.AnalyzerInfo
-	32, // 46: pulumirpc.Analyzer.GetPluginInfo:output_type -> pulumirpc.PluginInfo
-	31, // 47: pulumirpc.Analyzer.Configure:output_type -> google.protobuf.Empty
-	6,  // 48: pulumirpc.Analyzer.Handshake:output_type -> pulumirpc.AnalyzerHandshakeResponse
-	4,  // 49: pulumirpc.Analyzer.ConfigureStack:output_type -> pulumirpc.AnalyzerStackConfigureResponse
-	31, // 50: pulumirpc.Analyzer.Cancel:output_type -> google.protobuf.Empty
-	42, // [42:51] is the sub-list for method output_type
-	33, // [33:42] is the sub-list for method input_type
-	33, // [33:33] is the sub-list for extension type_name
-	33, // [33:33] is the sub-list for extension extendee
-	0,  // [0:33] is the sub-list for field type_name
+	24,	// 0: pulumirpc.AnalyzerStackConfigureRequest.config:type_name -> pulumirpc.AnalyzerStackConfigureRequest.ConfigEntry
+	25,	// 1: pulumirpc.AnalyzerStackConfigureRequest.tags:type_name -> pulumirpc.AnalyzerStackConfigureRequest.TagsEntry
+	30,	// 2: pulumirpc.AnalyzeRequest.properties:type_name -> google.protobuf.Struct
+	9,	// 3: pulumirpc.AnalyzeRequest.options:type_name -> pulumirpc.AnalyzerResourceOptions
+	10,	// 4: pulumirpc.AnalyzeRequest.provider:type_name -> pulumirpc.AnalyzerProviderResource
+	30,	// 5: pulumirpc.AnalyzerResource.properties:type_name -> google.protobuf.Struct
+	9,	// 6: pulumirpc.AnalyzerResource.options:type_name -> pulumirpc.AnalyzerResourceOptions
+	10,	// 7: pulumirpc.AnalyzerResource.provider:type_name -> pulumirpc.AnalyzerProviderResource
+	26,	// 8: pulumirpc.AnalyzerResource.propertyDependencies:type_name -> pulumirpc.AnalyzerResource.PropertyDependenciesEntry
+	27,	// 9: pulumirpc.AnalyzerResourceOptions.customTimeouts:type_name -> pulumirpc.AnalyzerResourceOptions.CustomTimeouts
+	30,	// 10: pulumirpc.AnalyzerProviderResource.properties:type_name -> google.protobuf.Struct
+	8,	// 11: pulumirpc.AnalyzeStackRequest.resources:type_name -> pulumirpc.AnalyzerResource
+	14,	// 12: pulumirpc.AnalyzeResponse.diagnostics:type_name -> pulumirpc.AnalyzeDiagnostic
+	23,	// 13: pulumirpc.AnalyzeResponse.not_applicable:type_name -> pulumirpc.PolicyNotApplicable
+	0,	// 14: pulumirpc.AnalyzeDiagnostic.enforcementLevel:type_name -> pulumirpc.EnforcementLevel
+	2,	// 15: pulumirpc.AnalyzeDiagnostic.severity:type_name -> pulumirpc.PolicySeverity
+	30,	// 16: pulumirpc.Remediation.properties:type_name -> google.protobuf.Struct
+	15,	// 17: pulumirpc.RemediateResponse.remediations:type_name -> pulumirpc.Remediation
+	23,	// 18: pulumirpc.RemediateResponse.not_applicable:type_name -> pulumirpc.PolicyNotApplicable
+	18,	// 19: pulumirpc.AnalyzerInfo.policies:type_name -> pulumirpc.PolicyInfo
+	28,	// 20: pulumirpc.AnalyzerInfo.initialConfig:type_name -> pulumirpc.AnalyzerInfo.InitialConfigEntry
+	0,	// 21: pulumirpc.PolicyInfo.enforcementLevel:type_name -> pulumirpc.EnforcementLevel
+	19,	// 22: pulumirpc.PolicyInfo.configSchema:type_name -> pulumirpc.PolicyConfigSchema
+	1,	// 23: pulumirpc.PolicyInfo.policy_type:type_name -> pulumirpc.PolicyType
+	2,	// 24: pulumirpc.PolicyInfo.severity:type_name -> pulumirpc.PolicySeverity
+	22,	// 25: pulumirpc.PolicyInfo.framework:type_name -> pulumirpc.PolicyComplianceFramework
+	30,	// 26: pulumirpc.PolicyConfigSchema.properties:type_name -> google.protobuf.Struct
+	0,	// 27: pulumirpc.PolicyConfig.enforcementLevel:type_name -> pulumirpc.EnforcementLevel
+	30,	// 28: pulumirpc.PolicyConfig.properties:type_name -> google.protobuf.Struct
+	29,	// 29: pulumirpc.ConfigureAnalyzerRequest.policyConfig:type_name -> pulumirpc.ConfigureAnalyzerRequest.PolicyConfigEntry
+	11,	// 30: pulumirpc.AnalyzerResource.PropertyDependenciesEntry.value:type_name -> pulumirpc.AnalyzerPropertyDependencies
+	20,	// 31: pulumirpc.AnalyzerInfo.InitialConfigEntry.value:type_name -> pulumirpc.PolicyConfig
+	20,	// 32: pulumirpc.ConfigureAnalyzerRequest.PolicyConfigEntry.value:type_name -> pulumirpc.PolicyConfig
+	7,	// 33: pulumirpc.Analyzer.Analyze:input_type -> pulumirpc.AnalyzeRequest
+	12,	// 34: pulumirpc.Analyzer.AnalyzeStack:input_type -> pulumirpc.AnalyzeStackRequest
+	7,	// 35: pulumirpc.Analyzer.Remediate:input_type -> pulumirpc.AnalyzeRequest
+	31,	// 36: pulumirpc.Analyzer.GetAnalyzerInfo:input_type -> google.protobuf.Empty
+	31,	// 37: pulumirpc.Analyzer.GetPluginInfo:input_type -> google.protobuf.Empty
+	21,	// 38: pulumirpc.Analyzer.Configure:input_type -> pulumirpc.ConfigureAnalyzerRequest
+	5,	// 39: pulumirpc.Analyzer.Handshake:input_type -> pulumirpc.AnalyzerHandshakeRequest
+	3,	// 40: pulumirpc.Analyzer.ConfigureStack:input_type -> pulumirpc.AnalyzerStackConfigureRequest
+	31,	// 41: pulumirpc.Analyzer.Cancel:input_type -> google.protobuf.Empty
+	13,	// 42: pulumirpc.Analyzer.Analyze:output_type -> pulumirpc.AnalyzeResponse
+	13,	// 43: pulumirpc.Analyzer.AnalyzeStack:output_type -> pulumirpc.AnalyzeResponse
+	16,	// 44: pulumirpc.Analyzer.Remediate:output_type -> pulumirpc.RemediateResponse
+	17,	// 45: pulumirpc.Analyzer.GetAnalyzerInfo:output_type -> pulumirpc.AnalyzerInfo
+	32,	// 46: pulumirpc.Analyzer.GetPluginInfo:output_type -> pulumirpc.PluginInfo
+	31,	// 47: pulumirpc.Analyzer.Configure:output_type -> google.protobuf.Empty
+	6,	// 48: pulumirpc.Analyzer.Handshake:output_type -> pulumirpc.AnalyzerHandshakeResponse
+	4,	// 49: pulumirpc.Analyzer.ConfigureStack:output_type -> pulumirpc.AnalyzerStackConfigureResponse
+	31,	// 50: pulumirpc.Analyzer.Cancel:output_type -> google.protobuf.Empty
+	42,	// [42:51] is the sub-list for method output_type
+	33,	// [33:42] is the sub-list for method input_type
+	33,	// [33:33] is the sub-list for extension type_name
+	33,	// [33:33] is the sub-list for extension extendee
+	0,	// [0:33] is the sub-list for field type_name
 }
 
-func init() { file_pulumi_analyzer_proto_init() }
+func init()	{ file_pulumi_analyzer_proto_init() }
 func file_pulumi_analyzer_proto_init() {
 	if File_pulumi_analyzer_proto != nil {
 		return
@@ -2084,17 +2084,17 @@ func file_pulumi_analyzer_proto_init() {
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
-			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_analyzer_proto_rawDesc), len(file_pulumi_analyzer_proto_rawDesc)),
-			NumEnums:      3,
-			NumMessages:   27,
-			NumExtensions: 0,
-			NumServices:   1,
+			GoPackagePath:	reflect.TypeOf(x{}).PkgPath(),
+			RawDescriptor:	unsafe.Slice(unsafe.StringData(file_pulumi_analyzer_proto_rawDesc), len(file_pulumi_analyzer_proto_rawDesc)),
+			NumEnums:	3,
+			NumMessages:	27,
+			NumExtensions:	0,
+			NumServices:	1,
 		},
-		GoTypes:           file_pulumi_analyzer_proto_goTypes,
-		DependencyIndexes: file_pulumi_analyzer_proto_depIdxs,
-		EnumInfos:         file_pulumi_analyzer_proto_enumTypes,
-		MessageInfos:      file_pulumi_analyzer_proto_msgTypes,
+		GoTypes:		file_pulumi_analyzer_proto_goTypes,
+		DependencyIndexes:	file_pulumi_analyzer_proto_depIdxs,
+		EnumInfos:		file_pulumi_analyzer_proto_enumTypes,
+		MessageInfos:		file_pulumi_analyzer_proto_msgTypes,
 	}.Build()
 	File_pulumi_analyzer_proto = out.File
 	file_pulumi_analyzer_proto_goTypes = nil

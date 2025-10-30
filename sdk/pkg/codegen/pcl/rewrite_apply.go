@@ -19,8 +19,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/inflector"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -32,12 +32,12 @@ type NameInfo interface {
 // The applyRewriter is responsible for driving the apply rewrite process. The rewriter uses a stack of contexts to
 // deal with the possibility of expressions that observe outputs nested inside expressions that do not.
 type applyRewriter struct {
-	nameInfo      NameInfo
-	applyPromises bool
-	skipToJSON    bool
+	nameInfo	NameInfo
+	applyPromises	bool
+	skipToJSON	bool
 
-	activeContext applyRewriteContext
-	exprStack     []model.Expression
+	activeContext	applyRewriteContext
+	exprStack	[]model.Expression
 }
 
 type applyRewriteContext interface {
@@ -50,9 +50,9 @@ type applyRewriteContext interface {
 type inspectContext struct {
 	*applyRewriter
 
-	parent *observeContext
+	parent	*observeContext
 
-	root model.Expression
+	root	model.Expression
 }
 
 // An observeContext is used when we are inside an expression that does observe eventual values. It is responsible for
@@ -61,15 +61,15 @@ type inspectContext struct {
 type observeContext struct {
 	*applyRewriter
 
-	parent applyRewriteContext
+	parent	applyRewriteContext
 
-	root            model.Expression
-	applyArgs       []model.Expression
-	callbackParams  []*model.Variable
-	paramReferences []*model.ScopeTraversalExpression
+	root		model.Expression
+	applyArgs	[]model.Expression
+	callbackParams	[]*model.Variable
+	paramReferences	[]*model.ScopeTraversalExpression
 
-	assignedNames codegen.StringSet
-	nameCounts    map[string]int
+	assignedNames	codegen.StringSet
+	nameCounts	map[string]int
 }
 
 func HasEventualTypes(t model.Type) bool {
@@ -385,8 +385,8 @@ func (ctx *observeContext) rewriteApplyArg(applyArg model.Expression, paramType 
 	}
 
 	callbackParam := &model.Variable{
-		Name:         fmt.Sprintf("<arg%d>", len(ctx.callbackParams)),
-		VariableType: paramType,
+		Name:		fmt.Sprintf("<arg%d>", len(ctx.callbackParams)),
+		VariableType:	paramType,
 	}
 
 	ctx.applyArgs, ctx.callbackParams = append(ctx.applyArgs, applyArg), append(ctx.callbackParams, callbackParam)
@@ -400,9 +400,9 @@ func (ctx *observeContext) rewriteApplyArg(applyArg model.Expression, paramType 
 	}
 
 	result := &model.ScopeTraversalExpression{
-		Parts:     resolvedParts,
-		RootName:  callbackParam.Name,
-		Traversal: hcl.TraversalJoin(hcl.Traversal{hcl.TraverseRoot{Name: callbackParam.Name}}, traversal),
+		Parts:		resolvedParts,
+		RootName:	callbackParam.Name,
+		Traversal:	hcl.TraversalJoin(hcl.Traversal{hcl.TraverseRoot{Name: callbackParam.Name}}, traversal),
 	}
 	ctx.paramReferences = append(ctx.paramReferences, result)
 	return result
@@ -474,9 +474,9 @@ func (ctx *observeContext) rewriteScopeTraversalExpression(expr *model.ScopeTrav
 	}
 	if rootIsEventual {
 		applyArg = &model.ScopeTraversalExpression{
-			Parts:     expr.Parts[:1],
-			RootName:  splitTraversal.Abs.RootName(),
-			Traversal: splitTraversal.Abs,
+			Parts:		expr.Parts[:1],
+			RootName:	splitTraversal.Abs.RootName(),
+			Traversal:	splitTraversal.Abs,
 		}
 		paramType, traversal, parts = rootResolvedType, expr.Traversal.SimpleSplit().Rel, expr.Parts[1:]
 	} else {
@@ -489,9 +489,9 @@ func (ctx *observeContext) rewriteScopeTraversalExpression(expr *model.ScopeTrav
 				absTraversal, relTraversal := expr.Traversal[:i+2], expr.Traversal[i+2:]
 
 				applyArg = &model.ScopeTraversalExpression{
-					Parts:     expr.Parts[:i+2],
-					RootName:  absTraversal.RootName(),
-					Traversal: absTraversal,
+					Parts:		expr.Parts[:i+2],
+					RootName:	absTraversal.RootName(),
+					Traversal:	absTraversal,
 				}
 				paramType, traversal, parts = partResolvedType, relTraversal, expr.Parts[i+2:]
 				break
@@ -536,11 +536,11 @@ func (ctx *observeContext) rewriteRoot(expr model.Expression) model.Expression {
 	// Create a new anonymous function definition.
 	callback := &model.AnonymousFunctionExpression{
 		Signature: model.StaticFunctionSignature{
-			Parameters: make([]model.Parameter, len(ctx.callbackParams)),
-			ReturnType: expr.Type(),
+			Parameters:	make([]model.Parameter, len(ctx.callbackParams)),
+			ReturnType:	expr.Type(),
 		},
-		Parameters: ctx.callbackParams,
-		Body:       expr,
+		Parameters:	ctx.callbackParams,
+		Body:		expr,
 	}
 	for i, p := range ctx.callbackParams {
 		callback.Signature.Parameters[i] = model.Parameter{Name: p.Name, Type: p.VariableType}
@@ -553,17 +553,17 @@ func (ctx *observeContext) PreVisit(expr model.Expression) (model.Expression, hc
 	if ctx.inspectsEventualValues(expr) {
 		if ctx.observesEventualValues(expr) {
 			ctx.activeContext = &observeContext{
-				applyRewriter: ctx.applyRewriter,
-				parent:        ctx,
-				root:          expr,
-				assignedNames: codegen.StringSet{},
-				nameCounts:    map[string]int{},
+				applyRewriter:	ctx.applyRewriter,
+				parent:		ctx,
+				root:		expr,
+				assignedNames:	codegen.StringSet{},
+				nameCounts:	map[string]int{},
 			}
 		} else {
 			ctx.activeContext = &inspectContext{
-				applyRewriter: ctx.applyRewriter,
-				parent:        ctx,
-				root:          expr,
+				applyRewriter:	ctx.applyRewriter,
+				parent:		ctx,
+				root:		expr,
 			}
 		}
 	}
@@ -605,11 +605,11 @@ func (ctx *observeContext) PostVisit(expr model.Expression) (model.Expression, h
 func (ctx *inspectContext) PreVisit(expr model.Expression) (model.Expression, hcl.Diagnostics) {
 	if ctx.observesEventualValues(expr) {
 		observeCtx := &observeContext{
-			applyRewriter: ctx.applyRewriter,
-			parent:        ctx,
-			root:          expr,
-			assignedNames: codegen.StringSet{},
-			nameCounts:    map[string]int{},
+			applyRewriter:	ctx.applyRewriter,
+			parent:		ctx,
+			root:		expr,
+			assignedNames:	codegen.StringSet{},
+			nameCounts:	map[string]int{},
 		}
 		ctx.activeContext = observeCtx
 	}
@@ -676,13 +676,13 @@ func RewriteAppliesWithSkipToJSON(
 	skipToJSON bool,
 ) (model.Expression, hcl.Diagnostics) {
 	applyRewriter := &applyRewriter{
-		nameInfo:      nameInfo,
-		applyPromises: applyPromises,
-		skipToJSON:    skipToJSON,
+		nameInfo:	nameInfo,
+		applyPromises:	applyPromises,
+		skipToJSON:	skipToJSON,
 	}
 	applyRewriter.activeContext = &inspectContext{
-		applyRewriter: applyRewriter,
-		root:          expr,
+		applyRewriter:	applyRewriter,
+		root:		expr,
 	}
 	return model.VisitExpression(expr, applyRewriter.preVisit, applyRewriter.postVisit)
 }

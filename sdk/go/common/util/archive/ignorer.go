@@ -19,8 +19,8 @@ type ignorer interface {
 }
 
 type ignoreState struct {
-	ignorer ignorer
-	next    *ignoreState
+	ignorer	ignorer
+	next	*ignoreState
 }
 
 func (s *ignoreState) Append(ignorer ignorer) *ignoreState {

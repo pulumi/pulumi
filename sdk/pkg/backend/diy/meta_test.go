@@ -37,70 +37,70 @@ func TestEnsurePulumiMeta(t *testing.T) {
 	}
 
 	tests := []struct {
-		desc string
-		give map[string]string // files in the bucket
-		env  env.MapStore      // environment variables
-		want pulumiMeta
+		desc	string
+		give	map[string]string	// files in the bucket
+		env	env.MapStore		// environment variables
+		want	pulumiMeta
 	}{
 		{
 			// Empty bucket should be initialized to
 			// the current version by default.
-			desc: "empty",
-			want: pulumiMeta{Version: 1},
+			desc:	"empty",
+			want:	pulumiMeta{Version: 1},
 		},
 		{
 			// Use legacy mode even for the new bucket
 			// because the environment variable is "1".
-			desc: "empty/legacy",
-			env:  mkmap("1"),
-			want: pulumiMeta{Version: 0},
+			desc:	"empty/legacy",
+			env:	mkmap("1"),
+			want:	pulumiMeta{Version: 0},
 		},
 		{
 			// Use legacy mode even for the new bucket
 			// because the environment variable is "true".
-			desc: "empty/legacy/true",
-			env:  mkmap("true"),
-			want: pulumiMeta{Version: 0},
+			desc:	"empty/legacy/true",
+			env:	mkmap("true"),
+			want:	pulumiMeta{Version: 0},
 		},
 		{
 			// Legacy mode is disabled by setting the env var
 			// to "false".
 			// This is also the default behavior.
-			desc: "empty/legacy/false",
-			env:  mkmap("false"),
-			want: pulumiMeta{Version: 1},
+			desc:	"empty/legacy/false",
+			env:	mkmap("false"),
+			want:	pulumiMeta{Version: 1},
 		},
 		{
 			// Non-empty bucket without a version file
 			// should get version 0 for legacy mode.
-			desc: "legacy",
+			desc:	"legacy",
 			give: map[string]string{
 				".pulumi/stacks/a.json": `{}`,
 			},
-			want: pulumiMeta{Version: 0},
+			want:	pulumiMeta{Version: 0},
 		},
 		{
-			desc: "version 0",
+			desc:	"version 0",
 			give: map[string]string{
 				".pulumi/meta.yaml": `version: 0`,
 			},
-			want: pulumiMeta{Version: 0},
+			want:	pulumiMeta{Version: 0},
 		},
 		{
 			// Non-empty bucket with a version file
 			// should get whatever is in the file.
-			desc: "version 1",
+			desc:	"version 1",
 			give: map[string]string{
 				".pulumi/meta.yaml": `version: 1`,
 			},
-			want: pulumiMeta{Version: 1},
+			want:	pulumiMeta{Version: 1},
 		},
 		{
-			desc: "future version",
+			desc:	"future version",
 			give: map[string]string{
 				".pulumi/meta.yaml": `version: 42`,
 			},
-			want: pulumiMeta{Version: 42},
+			want:	pulumiMeta{Version: 42},
 		},
 	}
 
@@ -125,24 +125,24 @@ func TestEnsurePulumiMeta_corruption(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		desc    string
-		give    string // contents of meta.yaml
-		wantErr string
+		desc	string
+		give	string	// contents of meta.yaml
+		wantErr	string
 	}{
 		{
-			desc:    "empty",
-			give:    ``,
-			wantErr: `corrupt store: missing version in ".pulumi/meta.yaml"`,
+			desc:		"empty",
+			give:		``,
+			wantErr:	`corrupt store: missing version in ".pulumi/meta.yaml"`,
 		},
 		{
-			desc:    "other fields",
-			give:    `foo: bar`,
-			wantErr: `corrupt store: missing version in ".pulumi/meta.yaml"`,
+			desc:		"other fields",
+			give:		`foo: bar`,
+			wantErr:	`corrupt store: missing version in ".pulumi/meta.yaml"`,
 		},
 		{
-			desc:    "corrupt version",
-			give:    `version: foo`,
-			wantErr: `corrupt store: unmarshal ".pulumi/meta.yaml"`,
+			desc:		"corrupt version",
+			give:		`version: foo`,
+			wantErr:	`corrupt store: unmarshal ".pulumi/meta.yaml"`,
 		},
 	}
 
@@ -165,8 +165,8 @@ func TestMeta_roundTrip(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		desc string
-		give pulumiMeta
+		desc	string
+		give	pulumiMeta
 	}{
 		{desc: "zero", give: pulumiMeta{Version: 0}},
 		{desc: "one", give: pulumiMeta{Version: 1}},

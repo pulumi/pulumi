@@ -22,11 +22,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -39,9 +39,9 @@ const (
 func newStackInitCmd() *cobra.Command {
 	var sicmd stackInitCmd
 	cmd := &cobra.Command{
-		Use:   "init [<org-name>/]<stack-name>",
-		Args:  cmdutil.MaximumNArgs(1),
-		Short: "Create an empty stack with the given name, ready for updates",
+		Use:	"init [<org-name>/]<stack-name>",
+		Args:	cmdutil.MaximumNArgs(1),
+		Short:	"Create an empty stack with the given name, ready for updates",
 		Long: "Create an empty stack with the given name, ready for updates\n" +
 			"\n" +
 			"This command creates an empty stack with the given name.  It has no resources,\n" +
@@ -96,16 +96,16 @@ func newStackInitCmd() *cobra.Command {
 
 // stackInitCmd implements the `pulumi stack init` command.
 type stackInitCmd struct {
-	secretsProvider string
-	stackName       string
-	stackToCopy     string
-	noSelect        bool
-	teams           []string
-	remoteConfig    bool
+	secretsProvider	string
+	stackName	string
+	stackToCopy	string
+	noSelect	bool
+	teams		[]string
+	remoteConfig	bool
 
 	// currentBackend is a reference to the top-level currentBackend function.
 	// This is used to override the default implementation for testing purposes.
-	currentBackend func(
+	currentBackend	func(
 		context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
 	) (backend.Backend, error)
 }
@@ -117,7 +117,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 	if cmd.currentBackend == nil {
 		cmd.currentBackend = cmdBackend.CurrentBackend
 	}
-	currentBackend := cmd.currentBackend // shadow the top-level function
+	currentBackend := cmd.currentBackend	// shadow the top-level function
 
 	opts := display.Options{
 		Color: cmdutil.GetGlobalColorization(),
@@ -252,7 +252,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 // from the provided options.
 func sanitizeTeams(teams []string) []string {
 	// Remove any strings from the list that are empty or just whitespace.
-	validTeams := teams[:0] // reuse storage.
+	validTeams := teams[:0]	// reuse storage.
 	for _, team := range teams {
 		team = strings.TrimSpace(team)
 		if len(team) > 0 {

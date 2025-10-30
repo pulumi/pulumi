@@ -38,8 +38,8 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/blang/semver"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -48,8 +48,8 @@ import (
 )
 
 const (
-	InputTypesSettingClasses         = "classes"
-	InputTypesSettingClassesAndDicts = "classes-and-dicts"
+	InputTypesSettingClasses		= "classes"
+	InputTypesSettingClassesAndDicts	= "classes-and-dicts"
 )
 
 func typedDictEnabled(setting string) bool {
@@ -57,10 +57,10 @@ func typedDictEnabled(setting string) bool {
 }
 
 type typeDetails struct {
-	outputType         bool
-	inputType          bool
-	resourceOutputType bool
-	plainType          bool
+	outputType		bool
+	inputType		bool
+	resourceOutputType	bool
+	plainType		bool
 }
 
 type imports codegen.StringSet
@@ -118,30 +118,30 @@ type modLocator struct {
 }
 
 type modContext struct {
-	pkg              schema.PackageReference
-	modLocator       *modLocator
-	mod              string
-	pyPkgName        string
-	types            []*schema.ObjectType
-	enums            []*schema.EnumType
-	resources        []*schema.Resource
-	functions        []*schema.Function
-	typeDetails      map[*schema.ObjectType]*typeDetails
-	children         []*modContext
-	parent           *modContext
-	tool             string
-	extraSourceFiles []string
-	isConfig         bool
+	pkg			schema.PackageReference
+	modLocator		*modLocator
+	mod			string
+	pyPkgName		string
+	types			[]*schema.ObjectType
+	enums			[]*schema.EnumType
+	resources		[]*schema.Resource
+	functions		[]*schema.Function
+	typeDetails		map[*schema.ObjectType]*typeDetails
+	children		[]*modContext
+	parent			*modContext
+	tool			string
+	extraSourceFiles	[]string
+	isConfig		bool
 
 	// Name overrides set in PackageInfo
-	modNameOverrides map[string]string // Optional overrides for Pulumi module names
-	compatibility    string            // Toggle compatibility mode for a specified target.
+	modNameOverrides	map[string]string	// Optional overrides for Pulumi module names
+	compatibility		string			// Toggle compatibility mode for a specified target.
 
 	// Determine whether to lift single-value method return values
-	liftSingleValueMethodReturns bool
+	liftSingleValueMethodReturns	bool
 
 	// Controls what types are used for inputs, see PackageInfo.InputTypes.
-	inputTypes string
+	inputTypes	string
 }
 
 func (mod *modContext) isTopLevel() bool {
@@ -198,9 +198,9 @@ func (mod *modContext) modNameAndName(pkg schema.PackageReference, t schema.Type
 		token, name = t.Token, tokenToName(t.Token)
 	case *schema.ObjectType:
 		namingCtx := &modContext{
-			pkg:              pkg,
-			modNameOverrides: info.ModuleNameOverrides,
-			compatibility:    info.Compatibility,
+			pkg:			pkg,
+			modNameOverrides:	info.ModuleNameOverrides,
+			compatibility:		info.Compatibility,
 		}
 		token, name = t.Token, namingCtx.unqualifiedObjectTypeName(t, input)
 	case *schema.ResourceType:
@@ -1307,9 +1307,9 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 			mod.collectImportsForResource(returnType.Properties, imports, false /*input*/, res)
 		} else if method.Function.ReturnTypePlain {
 			mod.collectImportsForResource([]*schema.Property{{
-				Name:  "res",
-				Type:  method.Function.ReturnType,
-				Plain: true,
+				Name:	"res",
+				Type:	method.Function.ReturnType,
+				Plain:	true,
 			}}, imports, false /*input*/, res)
 		}
 	}
@@ -1683,9 +1683,9 @@ func (mod *modContext) genMethodReturnType(w io.Writer, method *schema.Method) s
 		comment = ""
 		properties = []*schema.Property{
 			{
-				Name:  "res",
-				Type:  method.Function.ReturnType,
-				Plain: true,
+				Name:	"res",
+				Type:	method.Function.ReturnType,
+				Plain:	true,
 			},
 		}
 	}
@@ -2221,17 +2221,17 @@ func (mod *modContext) collectImportsForResource(properties []*schema.Property, 
 }
 
 var (
-	requirementRegex = regexp.MustCompile(`^>=([^,]+),<[^,]+$`)
-	pep440AlphaRegex = regexp.MustCompile(`^(\d+\.\d+\.\d)+a(\d+)$`)
-	pep440BetaRegex  = regexp.MustCompile(`^(\d+\.\d+\.\d+)b(\d+)$`)
-	pep440RCRegex    = regexp.MustCompile(`^(\d+\.\d+\.\d+)rc(\d+)$`)
-	pep440DevRegex   = regexp.MustCompile(`^(\d+\.\d+\.\d+)\.dev(\d+)$`)
+	requirementRegex	= regexp.MustCompile(`^>=([^,]+),<[^,]+$`)
+	pep440AlphaRegex	= regexp.MustCompile(`^(\d+\.\d+\.\d)+a(\d+)$`)
+	pep440BetaRegex		= regexp.MustCompile(`^(\d+\.\d+\.\d+)b(\d+)$`)
+	pep440RCRegex		= regexp.MustCompile(`^(\d+\.\d+\.\d+)rc(\d+)$`)
+	pep440DevRegex		= regexp.MustCompile(`^(\d+\.\d+\.\d+)\.dev(\d+)$`)
 )
 
 var oldestAllowedPulumi = semver.Version{
-	Major: 0,
-	Minor: 17,
-	Patch: 28,
+	Major:	0,
+	Minor:	17,
+	Patch:	28,
 }
 
 func sanitizePackageDescription(description string) string {
@@ -2244,9 +2244,9 @@ func sanitizePackageDescription(description string) string {
 
 func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
 	pulumiPlugin := &plugin.PulumiPluginJSON{
-		Resource: true,
-		Name:     pkg.Name,
-		Server:   pkg.PluginDownloadURL,
+		Resource:	true,
+		Name:		pkg.Name,
+		Server:		pkg.PluginDownloadURL,
 	}
 
 	if info, ok := pkg.Language["python"].(PackageInfo); pkg.Version != nil && ok && info.RespectSchemaVersion {
@@ -2261,9 +2261,9 @@ func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
 		// For a parameterized package the plugin name/version is from the base provider information, not the
 		// top-level package name/version.
 		pulumiPlugin.Parameterization = &plugin.PulumiParameterizationJSON{
-			Name:    pulumiPlugin.Name,
-			Version: pulumiPlugin.Version,
-			Value:   pkg.Parameterization.Parameter,
+			Name:		pulumiPlugin.Name,
+			Version:	pulumiPlugin.Version,
+			Value:		pkg.Parameterization.Parameter,
 		}
 		pulumiPlugin.Name = pkg.Parameterization.BaseProvider.Name
 		pulumiPlugin.Version = pkg.Parameterization.BaseProvider.Version.String()
@@ -2525,13 +2525,13 @@ func (mod *modContext) genPropDocstring(w io.Writer, name string, prop *schema.P
 
 type typeStringOpts struct {
 	// Whether the type is an input
-	input bool
+	input	bool
 	// Whether we should try to use the UnionType directly and avoid the InputType wrapper if possible
-	acceptMapping bool
+	acceptMapping	bool
 	// Whether the object is a dict or not
-	forDict bool
+	forDict	bool
 	// Whether these types are going to be used in the docs
-	forDocs bool
+	forDocs	bool
 }
 
 func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
@@ -3015,14 +3015,14 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 		mod, ok := modules[modName]
 		if !ok {
 			mod = &modContext{
-				pkg:                          p,
-				pyPkgName:                    pyPkgName,
-				mod:                          modName,
-				tool:                         tool,
-				modNameOverrides:             info.ModuleNameOverrides,
-				compatibility:                info.Compatibility,
-				liftSingleValueMethodReturns: info.LiftSingleValueMethodReturns,
-				inputTypes:                   info.InputTypes,
+				pkg:				p,
+				pyPkgName:			pyPkgName,
+				mod:				modName,
+				tool:				tool,
+				modNameOverrides:		info.ModuleNameOverrides,
+				compatibility:			info.Compatibility,
+				liftSingleValueMethodReturns:	info.LiftSingleValueMethodReturns,
+				inputTypes:			info.InputTypes,
 			}
 
 			if modName != "" && codegen.PkgEquals(p, pkg.Reference()) {
@@ -3051,7 +3051,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 
 	// Create the config module if necessary.
 	if len(pkg.Config) > 0 &&
-		info.Compatibility != kubernetes20 { // k8s SDK doesn't use config.
+		info.Compatibility != kubernetes20 {	// k8s SDK doesn't use config.
 		configMod := getMod("config", pkg.Reference())
 		configMod.isConfig = true
 	}
@@ -3191,8 +3191,8 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 type LanguageResource struct {
 	*schema.Resource
 
-	Name    string // The resource name (e.g. Deployment)
-	Package string // The package name (e.g. pulumi_kubernetes.apps.v1)
+	Name	string	// The resource name (e.g. Deployment)
+	Package	string	// The package name (e.g. pulumi_kubernetes.apps.v1)
 }
 
 // LanguageResources returns a map of resources that can be used by downstream codegen. The map
@@ -3222,9 +3222,9 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 
 			packagePath := strings.ReplaceAll(modName, "/", ".")
 			lr := LanguageResource{
-				Resource: r,
-				Package:  packagePath,
-				Name:     pyClassName(tokenToName(r.Token)),
+				Resource:	r,
+				Package:	packagePath,
+				Name:		pyClassName(tokenToName(r.Token)),
 			}
 			resources[r.Token] = lr
 		}
@@ -3380,8 +3380,8 @@ func genPyprojectTOML(tool string,
 	// including the required files `py.typed` and `pulumi-plugin.json` in the distro.
 
 	schema.BuildSystem = &BuildSystem{
-		Requires:     []string{"setuptools>=61.0"},
-		BuildBackend: "setuptools.build_meta",
+		Requires:	[]string{"setuptools>=61.0"},
+		BuildBackend:	"setuptools.build_meta",
 	}
 
 	schema.Tool = map[string]any{

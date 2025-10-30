@@ -30,17 +30,17 @@ import (
 
 const (
 	// Verify that this generated code is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
+	_	= protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
+	_	= protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
 type ErrorCause struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
-	StackTrace    string                 `protobuf:"bytes,2,opt,name=stackTrace,proto3" json:"stackTrace,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Message		string			`protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	StackTrace	string			`protobuf:"bytes,2,opt,name=stackTrace,proto3" json:"stackTrace,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *ErrorCause) Reset() {
@@ -54,7 +54,7 @@ func (x *ErrorCause) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ErrorCause) ProtoMessage() {}
+func (*ErrorCause) ProtoMessage()	{}
 
 func (x *ErrorCause) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_errors_proto_msgTypes[0]
@@ -90,11 +90,11 @@ func (x *ErrorCause) GetStackTrace() string {
 // An error that can be returned from a component provider and includes details of the
 // error, which can be multiple properties.
 type InputPropertiesError struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The list of invalid input properties.
-	Errors        []*InputPropertiesError_PropertyError `protobuf:"bytes,1,rep,name=errors,proto3" json:"errors,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Errors		[]*InputPropertiesError_PropertyError	`protobuf:"bytes,1,rep,name=errors,proto3" json:"errors,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *InputPropertiesError) Reset() {
@@ -108,7 +108,7 @@ func (x *InputPropertiesError) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*InputPropertiesError) ProtoMessage() {}
+func (*InputPropertiesError) ProtoMessage()	{}
 
 func (x *InputPropertiesError) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_errors_proto_msgTypes[1]
@@ -136,13 +136,13 @@ func (x *InputPropertiesError) GetErrors() []*InputPropertiesError_PropertyError
 
 // A single invalid input property.
 type InputPropertiesError_PropertyError struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The path to the property that is invalid.
-	PropertyPath string `protobuf:"bytes,1,opt,name=property_path,json=propertyPath,proto3" json:"property_path,omitempty"`
+	PropertyPath	string	`protobuf:"bytes,1,opt,name=property_path,json=propertyPath,proto3" json:"property_path,omitempty"`
 	// The reason the property is invalid.
-	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Reason		string	`protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *InputPropertiesError_PropertyError) Reset() {
@@ -156,7 +156,7 @@ func (x *InputPropertiesError_PropertyError) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*InputPropertiesError_PropertyError) ProtoMessage() {}
+func (*InputPropertiesError_PropertyError) ProtoMessage()	{}
 
 func (x *InputPropertiesError_PropertyError) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_errors_proto_msgTypes[2]
@@ -207,8 +207,8 @@ const file_pulumi_errors_proto_rawDesc = "" +
 	"\x06reason\x18\x02 \x01(\tR\x06reasonB4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3"
 
 var (
-	file_pulumi_errors_proto_rawDescOnce sync.Once
-	file_pulumi_errors_proto_rawDescData []byte
+	file_pulumi_errors_proto_rawDescOnce	sync.Once
+	file_pulumi_errors_proto_rawDescData	[]byte
 )
 
 func file_pulumi_errors_proto_rawDescGZIP() []byte {
@@ -220,20 +220,20 @@ func file_pulumi_errors_proto_rawDescGZIP() []byte {
 
 var file_pulumi_errors_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_pulumi_errors_proto_goTypes = []any{
-	(*ErrorCause)(nil),                         // 0: pulumirpc.ErrorCause
-	(*InputPropertiesError)(nil),               // 1: pulumirpc.InputPropertiesError
-	(*InputPropertiesError_PropertyError)(nil), // 2: pulumirpc.InputPropertiesError.PropertyError
+	(*ErrorCause)(nil),				// 0: pulumirpc.ErrorCause
+	(*InputPropertiesError)(nil),			// 1: pulumirpc.InputPropertiesError
+	(*InputPropertiesError_PropertyError)(nil),	// 2: pulumirpc.InputPropertiesError.PropertyError
 }
 var file_pulumi_errors_proto_depIdxs = []int32{
-	2, // 0: pulumirpc.InputPropertiesError.errors:type_name -> pulumirpc.InputPropertiesError.PropertyError
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	2,	// 0: pulumirpc.InputPropertiesError.errors:type_name -> pulumirpc.InputPropertiesError.PropertyError
+	1,	// [1:1] is the sub-list for method output_type
+	1,	// [1:1] is the sub-list for method input_type
+	1,	// [1:1] is the sub-list for extension type_name
+	1,	// [1:1] is the sub-list for extension extendee
+	0,	// [0:1] is the sub-list for field type_name
 }
 
-func init() { file_pulumi_errors_proto_init() }
+func init()	{ file_pulumi_errors_proto_init() }
 func file_pulumi_errors_proto_init() {
 	if File_pulumi_errors_proto != nil {
 		return
@@ -241,16 +241,16 @@ func file_pulumi_errors_proto_init() {
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
-			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_errors_proto_rawDesc), len(file_pulumi_errors_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   3,
-			NumExtensions: 0,
-			NumServices:   0,
+			GoPackagePath:	reflect.TypeOf(x{}).PkgPath(),
+			RawDescriptor:	unsafe.Slice(unsafe.StringData(file_pulumi_errors_proto_rawDesc), len(file_pulumi_errors_proto_rawDesc)),
+			NumEnums:	0,
+			NumMessages:	3,
+			NumExtensions:	0,
+			NumServices:	0,
 		},
-		GoTypes:           file_pulumi_errors_proto_goTypes,
-		DependencyIndexes: file_pulumi_errors_proto_depIdxs,
-		MessageInfos:      file_pulumi_errors_proto_msgTypes,
+		GoTypes:		file_pulumi_errors_proto_goTypes,
+		DependencyIndexes:	file_pulumi_errors_proto_depIdxs,
+		MessageInfos:		file_pulumi_errors_proto_msgTypes,
 	}.Build()
 	File_pulumi_errors_proto = out.File
 	file_pulumi_errors_proto_goTypes = nil

@@ -21,8 +21,8 @@ import (
 	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
@@ -36,16 +36,16 @@ import (
 // Its primary responsibility is to own a `stepGenerator` and `stepExecutor`, serving
 // as the glue that links the two subsystems together.
 type deploymentExecutor struct {
-	deployment *Deployment // The deployment that we are executing
+	deployment	*Deployment	// The deployment that we are executing
 
-	stepGen  *stepGenerator // step generator owned by this deployment
-	stepExec *stepExecutor  // step executor owned by this deployment
+	stepGen		*stepGenerator	// step generator owned by this deployment
+	stepExec	*stepExecutor	// step executor owned by this deployment
 
-	skipped mapset.Set[urn.URN] // The set of resources that have failed
+	skipped	mapset.Set[urn.URN]	// The set of resources that have failed
 
 	// The number of expected events remaining from step generaton, this tells us we're still expecting events
 	// to be posted back to us from async work such as DiffSteps.
-	asyncEventsExpected int32
+	asyncEventsExpected	int32
 }
 
 // checkTargets validates that all the targets passed in refer to existing resources.  Diagnostics
@@ -235,8 +235,8 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	// We iterate the source in its own goroutine because iteration is blocking and we want the main loop to be able to
 	// respond to cancellation requests promptly.
 	type nextEvent struct {
-		Event SourceEvent
-		Error error
+		Event	SourceEvent
+		Error	error
 	}
 	incomingEvents := make(chan nextEvent)
 	go func() {
@@ -639,8 +639,8 @@ func (ex *deploymentExecutor) importResources(callerCtx context.Context) (*Plan,
 	stepExec := newStepExecutor(ctx, cancel, ex.deployment, true)
 
 	importer := &importer{
-		deployment: ex.deployment,
-		executor:   stepExec,
+		deployment:	ex.deployment,
+		executor:	stepExec,
 	}
 	err := importer.importResources(ctx)
 	stepExec.SignalCompletion()

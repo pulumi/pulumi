@@ -20,8 +20,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/fuzzing"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/fuzzing"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"
@@ -88,8 +88,8 @@ func TestFuzzFromStateFile(t *testing.T) {
 
 	rapid.Check(t, fuzzing.GeneratedFixture(fuzzing.FixtureOptions{
 		StackSpecOptions: fuzzing.StackSpecOptions{
-			Project: string(project),
-			Stack:   string(stack),
+			Project:	string(project),
+			Stack:		string(stack),
 		},
 		SnapshotSpecOptions: fuzzing.SnapshotSpecOptions{
 			SourceDeploymentV3: v3Deployment,

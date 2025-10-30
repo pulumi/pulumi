@@ -45,26 +45,26 @@ func (c *testConverter) ConvertState(
 
 	diags := hcl.Diagnostics{
 		{
-			Severity: hcl.DiagError,
-			Summary:  "test:summary",
-			Detail:   "test:detail",
+			Severity:	hcl.DiagError,
+			Summary:	"test:summary",
+			Detail:		"test:detail",
 		},
 	}
 
 	return &ConvertStateResponse{
 		Resources: []ResourceImport{
 			{
-				Type:              "test:type",
-				Name:              "test:name",
-				ID:                "test:id",
-				Version:           "test:version",
-				PluginDownloadURL: "test:pluginDownloadURL",
-				LogicalName:       "test:logicalName",
-				IsRemote:          true,
-				IsComponent:       true,
+				Type:			"test:type",
+				Name:			"test:name",
+				ID:			"test:id",
+				Version:		"test:version",
+				PluginDownloadURL:	"test:pluginDownloadURL",
+				LogicalName:		"test:logicalName",
+				IsRemote:		true,
+				IsComponent:		true,
 			},
 		},
-		Diagnostics: diags,
+		Diagnostics:	diags,
 	}, nil
 }
 
@@ -83,9 +83,9 @@ func (c *testConverter) ConvertProgram(
 
 	diags := hcl.Diagnostics{
 		{
-			Severity: hcl.DiagError,
-			Summary:  "test:summary",
-			Detail:   "test:detail",
+			Severity:	hcl.DiagError,
+			Summary:	"test:summary",
+			Detail:		"test:detail",
 		},
 	}
 
@@ -100,8 +100,8 @@ func TestConverterServer_State(t *testing.T) {
 	server := NewConverterServer(&testConverter{})
 
 	resp, err := server.ConvertState(context.Background(), &pulumirpc.ConvertStateRequest{
-		Args:         []string{"arg1", "arg2"},
-		MapperTarget: "localhost:1234",
+		Args:		[]string{"arg1", "arg2"},
+		MapperTarget:	"localhost:1234",
 	})
 
 	require.NoError(t, err)
@@ -129,11 +129,11 @@ func TestConverterServer_Program(t *testing.T) {
 	server := NewConverterServer(&testConverter{})
 
 	resp, err := server.ConvertProgram(context.Background(), &pulumirpc.ConvertProgramRequest{
-		MapperTarget:    "localhost:1234",
-		LoaderTarget:    "localhost:4321",
-		SourceDirectory: "src",
-		TargetDirectory: "dst",
-		Args:            []string{"arg1", "arg2"},
+		MapperTarget:		"localhost:1234",
+		LoaderTarget:		"localhost:4321",
+		SourceDirectory:	"src",
+		TargetDirectory:	"dst",
+		Args:			[]string{"arg1", "arg2"},
 	})
 
 	require.NoError(t, err)

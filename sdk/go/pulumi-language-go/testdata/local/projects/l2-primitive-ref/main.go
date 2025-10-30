@@ -9,17 +9,17 @@ func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		_, err := primitiveref.NewResource(ctx, "res", &primitiveref.ResourceArgs{
 			Data: &primitiveref.DataArgs{
-				Boolean: pulumi.Bool(false),
-				Float:   pulumi.Float64(2.17),
-				Integer: pulumi.Int(-12),
-				String:  pulumi.String("Goodbye"),
+				Boolean:	pulumi.Bool(false),
+				Float:		pulumi.Float64(2.17),
+				Integer:	pulumi.Int(-12),
+				String:		pulumi.String("Goodbye"),
 				BoolArray: pulumi.BoolArray{
 					pulumi.Bool(false),
 					pulumi.Bool(true),
 				},
 				StringMap: pulumi.StringMap{
-					"two":   pulumi.String("turtle doves"),
-					"three": pulumi.String("french hens"),
+					"two":		pulumi.String("turtle doves"),
+					"three":	pulumi.String("french hens"),
 				},
 			},
 		})

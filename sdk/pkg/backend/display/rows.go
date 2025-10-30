@@ -22,9 +22,9 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize/english"
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -69,8 +69,8 @@ type ResourceRow interface {
 
 // Implementation of a Row, used for the header of the grid.
 type headerRowData struct {
-	display *ProgressDisplay
-	columns []string
+	display	*ProgressDisplay
+	columns	[]string
 }
 
 func (data *headerRowData) HideRowIfUnnecessary() bool {
@@ -113,28 +113,28 @@ func (data *headerRowData) ColorizedSuffix() string {
 
 // resourceRowData is the implementation of a row used for all the resource rows in the grid.
 type resourceRowData struct {
-	displayOrderIndex int
+	displayOrderIndex	int
 
-	display *ProgressDisplay
+	display	*ProgressDisplay
 
 	// The change that the engine wants apply to that resource.
-	step        engine.StepEventMetadata
-	outputSteps []engine.StepEventMetadata
+	step		engine.StepEventMetadata
+	outputSteps	[]engine.StepEventMetadata
 
 	// The tick we were on when we created this row.  Purely used for generating an
 	// ellipses to show progress for in-flight resources.
-	tick int
+	tick	int
 
 	// If we failed this operation for any reason.
-	failed bool
+	failed	bool
 
-	diagInfo                  *DiagInfo
-	policyPayloads            []engine.PolicyViolationEventPayload
-	policyRemediationPayloads []engine.PolicyRemediationEventPayload
+	diagInfo			*DiagInfo
+	policyPayloads			[]engine.PolicyViolationEventPayload
+	policyRemediationPayloads	[]engine.PolicyRemediationEventPayload
 
 	// If this row should be hidden by default.  We will hide unless we have any child nodes
 	// we need to show.
-	hideRowIfUnnecessary bool
+	hideRowIfUnnecessary	bool
 }
 
 func (data *resourceRowData) DisplayOrderIndex() int {
@@ -247,11 +247,11 @@ func (data *resourceRowData) RecordPolicyRemediationEvent(event engine.Event) {
 type column int
 
 const (
-	opColumn     column = 0
-	typeColumn   column = 1
-	nameColumn   column = 2
-	statusColumn column = 3
-	infoColumn   column = 4
+	opColumn	column	= 0
+	typeColumn	column	= 1
+	nameColumn	column	= 2
+	statusColumn	column	= 3
+	infoColumn	column	= 4
 )
 
 func (data *resourceRowData) IsDone() bool {
@@ -449,10 +449,10 @@ func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) strin
 			if old != new {
 				if diff == nil {
 					diff = &resource.ObjectDiff{
-						Adds:    make(resource.PropertyMap),
-						Deletes: make(resource.PropertyMap),
-						Sames:   make(resource.PropertyMap),
-						Updates: make(map[resource.PropertyKey]resource.ValueDiff),
+						Adds:		make(resource.PropertyMap),
+						Deletes:	make(resource.PropertyMap),
+						Sames:		make(resource.PropertyMap),
+						Updates:	make(map[resource.PropertyKey]resource.ValueDiff),
 					}
 				}
 

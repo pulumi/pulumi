@@ -36,7 +36,7 @@ import (
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	"gopkg.in/yaml.v3"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/testing/utils"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -287,17 +287,17 @@ func TestImportSpec(t *testing.T) {
 }
 
 var enumTests = []struct {
-	filename    string
-	shouldError bool
-	expected    *EnumType
+	filename	string
+	shouldError	bool
+	expected	*EnumType
 }{
 	{"bad-enum-1.json", true, nil},
 	{"bad-enum-2.json", true, nil},
 	{"bad-enum-3.json", true, nil},
 	{"bad-enum-4.json", true, nil},
 	{"good-enum-1.json", false, &EnumType{
-		Token:       "fake-provider:module1:Color",
-		ElementType: stringType,
+		Token:		"fake-provider:module1:Color",
+		ElementType:	stringType,
 		Elements: []*Enum{
 			{Value: "Red"},
 			{Value: "Orange"},
@@ -306,8 +306,8 @@ var enumTests = []struct {
 		},
 	}},
 	{"good-enum-2.json", false, &EnumType{
-		Token:       "fake-provider:module1:Number",
-		ElementType: intType,
+		Token:		"fake-provider:module1:Number",
+		ElementType:	intType,
 		Elements: []*Enum{
 			{Value: int32(1), Name: "One"},
 			{Value: int32(2), Name: "Two"},
@@ -316,17 +316,17 @@ var enumTests = []struct {
 		},
 	}},
 	{"good-enum-3.json", false, &EnumType{
-		Token:       "fake-provider:module1:Boolean",
-		ElementType: boolType,
+		Token:		"fake-provider:module1:Boolean",
+		ElementType:	boolType,
 		Elements: []*Enum{
 			{Value: true, Name: "One"},
 			{Value: false, Name: "Zero"},
 		},
 	}},
 	{"good-enum-4.json", false, &EnumType{
-		Token:       "fake-provider:module1:Number2",
-		ElementType: numberType,
-		Comment:     "what a great description",
+		Token:		"fake-provider:module1:Number2",
+		ElementType:	numberType,
+		Comment:	"what a great description",
 		Elements: []*Enum{
 			{Value: float64(1), Comment: "one", Name: "One"},
 			{Value: float64(2), Comment: "two", Name: "Two"},
@@ -367,7 +367,7 @@ func TestUnmarshalJSONFunctionSpec(t *testing.T) {
 func TestMarshalJSONFunctionSpec(t *testing.T) {
 	t.Parallel()
 	functionSpec := &FunctionSpec{
-		Description: "Test function",
+		Description:	"Test function",
 		ReturnType: &ReturnTypeSpec{
 			TypeSpec: &TypeSpec{Type: "number"},
 		},
@@ -383,9 +383,9 @@ func TestMarshalJSONFunctionSpec(t *testing.T) {
 func TestMarshalJSONFunctionSpecWithOutputs(t *testing.T) {
 	t.Parallel()
 	functionSpec := &FunctionSpec{
-		Description: "Test function",
+		Description:	"Test function",
 		Outputs: &ObjectTypeSpec{
-			Type: "object",
+			Type:	"object",
 			Properties: map[string]PropertySpec{
 				"foo": {
 					TypeSpec: TypeSpec{Type: "string"},
@@ -404,7 +404,7 @@ func TestMarshalJSONFunctionSpecWithOutputs(t *testing.T) {
 func TestMarshalYAMLFunctionSpec(t *testing.T) {
 	t.Parallel()
 	functionSpec := &FunctionSpec{
-		Description: "Test function",
+		Description:	"Test function",
 		ReturnType: &ReturnTypeSpec{
 			TypeSpec: &TypeSpec{Type: "number"},
 		},
@@ -425,8 +425,8 @@ func TestInvalidTypes(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		filename string
-		expected string
+		filename	string
+		expected	string
 	}{
 		{"bad-type-1.json", "invalid token 'fake-provider:index:provider' (provider is a reserved word for the root module)"},
 		{"bad-type-2.json", "invalid token 'fake-provider::provider' (provider is a reserved word for the root module)"},
@@ -478,14 +478,14 @@ func TestRejectDuplicateNames(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		spec     PackageSpec
-		expected hcl.Diagnostics
+		name		string
+		spec		PackageSpec
+		expected	hcl.Diagnostics
 	}{
 		{
 			"resource function no duplicate",
 			PackageSpec{
-				Name: "test",
+				Name:	"test",
 				Resources: map[string]ResourceSpec{
 					"test:index:Res": {},
 				},
@@ -498,10 +498,10 @@ func TestRejectDuplicateNames(t *testing.T) {
 		{
 			"resource function duplicate",
 			PackageSpec{
-				Name: "test",
+				Name:	"test",
 				Resources: map[string]ResourceSpec{
-					"test:index:Duplicate": {},
-					"test:index:Res2":      {},
+					"test:index:Duplicate":	{},
+					"test:index:Res2":	{},
 				},
 				Functions: map[string]FunctionSpec{
 					"test:index:Duplicate": {},
@@ -509,21 +509,21 @@ func TestRejectDuplicateNames(t *testing.T) {
 			},
 			hcl.Diagnostics{
 				{
-					Severity: hcl.DiagError,
-					Summary:  "#/functions/test:index:Duplicate: multiple tokens map to test:index:duplicate",
-					Detail:   "other paths(s) are #/resources/test:index:Duplicate",
+					Severity:	hcl.DiagError,
+					Summary:	"#/functions/test:index:Duplicate: multiple tokens map to test:index:duplicate",
+					Detail:		"other paths(s) are #/resources/test:index:Duplicate",
 				},
 				{
-					Severity: hcl.DiagError,
-					Summary:  "#/resources/test:index:Duplicate: multiple tokens map to test:index:duplicate",
-					Detail:   "other paths(s) are #/functions/test:index:Duplicate",
+					Severity:	hcl.DiagError,
+					Summary:	"#/resources/test:index:Duplicate: multiple tokens map to test:index:duplicate",
+					Detail:		"other paths(s) are #/functions/test:index:Duplicate",
 				},
 			},
 		},
 		{
 			"resource function type duplicate",
 			PackageSpec{
-				Name: "test",
+				Name:	"test",
 				Resources: map[string]ResourceSpec{
 					"test:index:Duplicate": {},
 				},
@@ -536,43 +536,43 @@ func TestRejectDuplicateNames(t *testing.T) {
 			},
 			hcl.Diagnostics{
 				{
-					Severity: hcl.DiagError,
-					Summary:  "#/functions/test:index:Duplicate: multiple tokens map to test:index:duplicate",
-					Detail:   "other paths(s) are #/resources/test:index:Duplicate",
+					Severity:	hcl.DiagError,
+					Summary:	"#/functions/test:index:Duplicate: multiple tokens map to test:index:duplicate",
+					Detail:		"other paths(s) are #/resources/test:index:Duplicate",
 				},
 				{
-					Severity: hcl.DiagError,
-					Summary:  "#/resources/test:index:Duplicate: multiple tokens map to test:index:duplicate",
-					Detail:   "other paths(s) are #/functions/test:index:Duplicate",
+					Severity:	hcl.DiagError,
+					Summary:	"#/resources/test:index:Duplicate: multiple tokens map to test:index:duplicate",
+					Detail:		"other paths(s) are #/functions/test:index:Duplicate",
 				},
 			},
 		},
 		{
 			"difference by case",
 			PackageSpec{
-				Name: "test",
+				Name:	"test",
 				Resources: map[string]ResourceSpec{
-					"test:index:Duplicate": {},
-					"test:index:duplicatE": {},
+					"test:index:Duplicate":	{},
+					"test:index:duplicatE":	{},
 				},
 			},
 			hcl.Diagnostics{
 				{
-					Severity: hcl.DiagError,
-					Summary:  "#/resources/test:index:Duplicate: multiple tokens map to test:index:duplicate",
-					Detail:   "other paths(s) are #/resources/test:index:duplicatE",
+					Severity:	hcl.DiagError,
+					Summary:	"#/resources/test:index:Duplicate: multiple tokens map to test:index:duplicate",
+					Detail:		"other paths(s) are #/resources/test:index:duplicatE",
 				},
 				{
-					Severity: hcl.DiagError,
-					Summary:  "#/resources/test:index:duplicatE: multiple tokens map to test:index:duplicate",
-					Detail:   "other paths(s) are #/resources/test:index:Duplicate",
+					Severity:	hcl.DiagError,
+					Summary:	"#/resources/test:index:duplicatE: multiple tokens map to test:index:duplicate",
+					Detail:		"other paths(s) are #/resources/test:index:Duplicate",
 				},
 			},
 		},
 		{
 			"difference by case across kinds",
 			PackageSpec{
-				Name: "test",
+				Name:	"test",
 				Resources: map[string]ResourceSpec{
 					"test:index:DupeName": {},
 				},
@@ -585,14 +585,14 @@ func TestRejectDuplicateNames(t *testing.T) {
 			},
 			hcl.Diagnostics{
 				{
-					Severity: hcl.DiagError,
-					Summary:  "#/functions/test:index:dupeName: multiple tokens map to test:index:dupename",
-					Detail:   "other paths(s) are #/resources/test:index:DupeName",
+					Severity:	hcl.DiagError,
+					Summary:	"#/functions/test:index:dupeName: multiple tokens map to test:index:dupename",
+					Detail:		"other paths(s) are #/resources/test:index:DupeName",
 				},
 				{
-					Severity: hcl.DiagError,
-					Summary:  "#/resources/test:index:DupeName: multiple tokens map to test:index:dupename",
-					Detail:   "other paths(s) are #/functions/test:index:dupeName",
+					Severity:	hcl.DiagError,
+					Summary:	"#/resources/test:index:DupeName: multiple tokens map to test:index:dupename",
+					Detail:		"other paths(s) are #/functions/test:index:dupeName",
 				},
 			},
 		},
@@ -614,10 +614,10 @@ func TestRejectDuplicateNames(t *testing.T) {
 
 func TestImportResourceRef(t *testing.T) {
 	tests := []struct {
-		name       string
-		schemaFile string
-		wantErr    bool
-		validator  func(pkg *Package)
+		name		string
+		schemaFile	string
+		wantErr		bool
+		validator	func(pkg *Package)
 	}{
 		{
 			"simple",
@@ -710,108 +710,108 @@ func Test_parseTypeSpecRef(t *testing.T) {
 
 	typs := &types{
 		pkg: &Package{
-			Name:    "test",
-			Version: toVersionPtr("1.2.3"),
+			Name:		"test",
+			Version:	toVersionPtr("1.2.3"),
 		},
 	}
 
 	tests := []struct {
-		name    string
-		ref     string
-		want    typeSpecRef
-		wantErr bool
+		name	string
+		ref	string
+		want	typeSpecRef
+		wantErr	bool
 	}{
 		{
-			name: "resourceRef",
-			ref:  "#/resources/example::Resource",
+			name:	"resourceRef",
+			ref:	"#/resources/example::Resource",
 			want: typeSpecRef{
-				URL:     toURL("#/resources/example::Resource"),
-				Package: "test",
-				Version: toVersionPtr("1.2.3"),
-				Kind:    "resources",
-				Token:   "example::Resource",
+				URL:		toURL("#/resources/example::Resource"),
+				Package:	"test",
+				Version:	toVersionPtr("1.2.3"),
+				Kind:		"resources",
+				Token:		"example::Resource",
 			},
 		},
 		{
-			name: "typeRef",
-			ref:  "#/types/kubernetes:admissionregistration.k8s.io%2fv1:WebhookClientConfig",
+			name:	"typeRef",
+			ref:	"#/types/kubernetes:admissionregistration.k8s.io%2fv1:WebhookClientConfig",
 			want: typeSpecRef{
-				URL:     toURL("#/types/kubernetes:admissionregistration.k8s.io%2fv1:WebhookClientConfig"),
-				Package: "test",
-				Version: toVersionPtr("1.2.3"),
-				Kind:    "types",
-				Token:   "kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
+				URL:		toURL("#/types/kubernetes:admissionregistration.k8s.io%2fv1:WebhookClientConfig"),
+				Package:	"test",
+				Version:	toVersionPtr("1.2.3"),
+				Kind:		"types",
+				Token:		"kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
 			},
 		},
 		{
-			name: "providerRef",
-			ref:  "#/provider",
+			name:	"providerRef",
+			ref:	"#/provider",
 			want: typeSpecRef{
-				URL:     toURL("#/provider"),
-				Package: "test",
-				Version: toVersionPtr("1.2.3"),
-				Kind:    "provider",
-				Token:   "pulumi:providers:test",
+				URL:		toURL("#/provider"),
+				Package:	"test",
+				Version:	toVersionPtr("1.2.3"),
+				Kind:		"provider",
+				Token:		"pulumi:providers:test",
 			},
 		},
 		{
-			name: "externalResourceRef",
-			ref:  "/random/v2.3.1/schema.json#/resources/random:index%2frandomPet:RandomPet",
+			name:	"externalResourceRef",
+			ref:	"/random/v2.3.1/schema.json#/resources/random:index%2frandomPet:RandomPet",
 			want: typeSpecRef{
-				URL:     toURL("/random/v2.3.1/schema.json#/resources/random:index%2frandomPet:RandomPet"),
-				Package: "random",
-				Version: toVersionPtr("2.3.1"),
-				Kind:    "resources",
-				Token:   "random:index/randomPet:RandomPet",
+				URL:		toURL("/random/v2.3.1/schema.json#/resources/random:index%2frandomPet:RandomPet"),
+				Package:	"random",
+				Version:	toVersionPtr("2.3.1"),
+				Kind:		"resources",
+				Token:		"random:index/randomPet:RandomPet",
 			},
 		},
 		{
-			name:    "invalid externalResourceRef",
-			ref:     "/random/schema.json#/resources/random:index%2frandomPet:RandomPet",
-			wantErr: true,
+			name:		"invalid externalResourceRef",
+			ref:		"/random/schema.json#/resources/random:index%2frandomPet:RandomPet",
+			wantErr:	true,
 		},
 		{
-			name: "externalTypeRef",
-			ref:  "/kubernetes/v2.6.3/schema.json#/types/kubernetes:admissionregistration.k8s.io%2Fv1:WebhookClientConfig",
+			name:	"externalTypeRef",
+			ref:	"/kubernetes/v2.6.3/schema.json#/types/kubernetes:admissionregistration.k8s.io%2Fv1:WebhookClientConfig",
 			want: typeSpecRef{
-				URL:     toURL("/kubernetes/v2.6.3/schema.json#/types/kubernetes:admissionregistration.k8s.io%2Fv1:WebhookClientConfig"),
-				Package: "kubernetes",
-				Version: toVersionPtr("2.6.3"),
-				Kind:    "types",
-				Token:   "kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
+				URL:		toURL("/kubernetes/v2.6.3/schema.json#/types/kubernetes:admissionregistration.k8s.io%2Fv1:WebhookClientConfig"),
+				Package:	"kubernetes",
+				Version:	toVersionPtr("2.6.3"),
+				Kind:		"types",
+				Token:		"kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
 			},
 		},
 		{
-			name: "externalHostResourceRef",
-			ref:  "https://example.com/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet",
+			name:	"externalHostResourceRef",
+			ref:	"https://example.com/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet",
 			want: typeSpecRef{
-				URL:     toURL("https://example.com/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"),
-				Package: "random",
-				Version: toVersionPtr("2.3.1"),
-				Kind:    "resources",
-				Token:   "random:index/randomPet:RandomPet",
+				URL:		toURL("https://example.com/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"),
+				Package:	"random",
+				Version:	toVersionPtr("2.3.1"),
+				Kind:		"resources",
+				Token:		"random:index/randomPet:RandomPet",
 			},
 		},
 		{
-			name: "externalProviderRef",
-			ref:  "/kubernetes/v2.6.3/schema.json#/provider",
+			name:	"externalProviderRef",
+			ref:	"/kubernetes/v2.6.3/schema.json#/provider",
 			want: typeSpecRef{
-				URL:     toURL("/kubernetes/v2.6.3/schema.json#/provider"),
-				Package: "kubernetes",
-				Version: toVersionPtr("2.6.3"),
-				Kind:    "provider",
-				Token:   "pulumi:providers:kubernetes",
+				URL:		toURL("/kubernetes/v2.6.3/schema.json#/provider"),
+				Package:	"kubernetes",
+				Version:	toVersionPtr("2.6.3"),
+				Kind:		"provider",
+				Token:		"pulumi:providers:kubernetes",
 			},
 		},
 		{
-			name: "hyphenatedUrlPath",
-			ref:  "/azure-native/v1.22.0/schema.json#/resources/azure-native:web:WebApp",
+			name:	"hyphenatedUrlPath",
+			ref:	"/azure-native/v1.22.0/schema.json#/resources/azure-native:web:WebApp",
 			want: typeSpecRef{
-				URL:     toURL("/azure-native/v1.22.0/schema.json#/resources/azure-native:web:WebApp"),
-				Package: "azure-native",
-				Version: toVersionPtr("1.22.0"),
-				Kind:    "resources",
-				Token:   "azure-native:web:WebApp",
+				URL:		toURL("/azure-native/v1.22.0/schema.json#/resources/azure-native:web:WebApp"),
+				Package:	"azure-native",
+				Version:	toVersionPtr("1.22.0"),
+				Kind:		"resources",
+				Token:		"azure-native:web:WebApp",
 			},
 		},
 	}
@@ -835,8 +835,8 @@ func TestUsingReservedWordInResourcePropertiesEmitsWarning(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := PackageSpec{
-		Name:    "test",
-		Version: "1.0.0",
+		Name:		"test",
+		Version:	"1.0.0",
 		Resources: map[string]ResourceSpec{
 			"test:index:TestResource": {
 				ObjectTypeSpec: ObjectTypeSpec{
@@ -850,7 +850,7 @@ func TestUsingReservedWordInResourcePropertiesEmitsWarning(t *testing.T) {
 				},
 			},
 			"test:index:TestComponent": {
-				IsComponent: true,
+				IsComponent:	true,
 				ObjectTypeSpec: ObjectTypeSpec{
 					Properties: map[string]PropertySpec{
 						"urn": {
@@ -886,8 +886,8 @@ func TestUsingVersionKeywordInResourcePropertiesIsOk(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := PackageSpec{
-		Name:    "test",
-		Version: "1.0.0",
+		Name:		"test",
+		Version:	"1.0.0",
 		Resources: map[string]ResourceSpec{
 			"test:index:TestResource": {
 				ObjectTypeSpec: ObjectTypeSpec{
@@ -901,7 +901,7 @@ func TestUsingVersionKeywordInResourcePropertiesIsOk(t *testing.T) {
 				},
 			},
 			"test:index:TestComponent": {
-				IsComponent: true,
+				IsComponent:	true,
 				ObjectTypeSpec: ObjectTypeSpec{
 					Properties: map[string]PropertySpec{
 						"version": {
@@ -928,8 +928,8 @@ func TestUsingReservedWordInFunctionsEmitsError(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := PackageSpec{
-		Name:    "test",
-		Version: "1.0.0",
+		Name:		"test",
+		Version:	"1.0.0",
 		Functions: map[string]FunctionSpec{
 			"test:index:pulumi": {
 				Inputs: &ObjectTypeSpec{
@@ -965,8 +965,8 @@ func TestUsingVersionInFunctionParamsIsOk(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := PackageSpec{
-		Name:    "test",
-		Version: "1.0.0",
+		Name:		"test",
+		Version:	"1.0.0",
 		Functions: map[string]FunctionSpec{
 			"test:index:fake": {
 				Inputs: &ObjectTypeSpec{
@@ -994,8 +994,8 @@ func TestUsingReservedWordInFunctionParamsIsNotOk(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := PackageSpec{
-		Name:    "test",
-		Version: "1.0.0",
+		Name:		"test",
+		Version:	"1.0.0",
 		Functions: map[string]FunctionSpec{
 			"test:index:fake": {
 				Inputs: &ObjectTypeSpec{
@@ -1023,12 +1023,12 @@ func TestUsingReservedWordInTypesEmitsError(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := PackageSpec{
-		Name:    "test",
-		Version: "1.0.0",
+		Name:		"test",
+		Version:	"1.0.0",
 		Types: map[string]ComplexTypeSpec{
 			"test:index:pulumi": {
 				ObjectTypeSpec: ObjectTypeSpec{
-					Type: "object",
+					Type:	"object",
 					Properties: map[string]PropertySpec{
 						"pulumi": {
 							TypeSpec: TypeSpec{
@@ -1060,12 +1060,12 @@ func TestUsingVersionPropertyNameIsOk(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := PackageSpec{
-		Name:    "test",
-		Version: "1.0.0",
+		Name:		"test",
+		Version:	"1.0.0",
 		Types: map[string]ComplexTypeSpec{
 			"test:index:fake": {
 				ObjectTypeSpec: ObjectTypeSpec{
-					Type: "object",
+					Type:	"object",
 					Properties: map[string]PropertySpec{
 						"version": {
 							TypeSpec: TypeSpec{
@@ -1090,12 +1090,12 @@ func TestUsingReservedWordPropertyNameIsNotOk(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := PackageSpec{
-		Name:    "test",
-		Version: "1.0.0",
+		Name:		"test",
+		Version:	"1.0.0",
 		Types: map[string]ComplexTypeSpec{
 			"test:index:fake": {
 				ObjectTypeSpec: ObjectTypeSpec{
-					Type: "object",
+					Type:	"object",
 					Properties: map[string]PropertySpec{
 						"pulumi": {
 							TypeSpec: TypeSpec{
@@ -1120,8 +1120,8 @@ func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := PackageSpec{
-		Name:    "test",
-		Version: "1.0.0",
+		Name:		"test",
+		Version:	"1.0.0",
 		Resources: map[string]ResourceSpec{
 			"test:index:TestResource": {
 				ObjectTypeSpec: ObjectTypeSpec{
@@ -1153,11 +1153,11 @@ func TestOmittingVersionWhenSupportsPackEnabledGivesError(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := PackageSpec{
-		Name: "test",
+		Name:	"test",
 		Meta: &MetadataSpec{
 			SupportPack: true,
 		},
-		Resources: map[string]ResourceSpec{},
+		Resources:	map[string]ResourceSpec{},
 	}
 
 	_, diags, _ := BindSpec(pkgSpec, loader, ValidationOptions{
@@ -1172,11 +1172,11 @@ func TestUsingIdInComponentResourcePropertiesEmitsNoWarning(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := PackageSpec{
-		Name:    "test",
-		Version: "1.0.0",
+		Name:		"test",
+		Version:	"1.0.0",
 		Resources: map[string]ResourceSpec{
 			"test:index:TestComponent": {
-				IsComponent: true,
+				IsComponent:	true,
 				ObjectTypeSpec: ObjectTypeSpec{
 					Properties: map[string]PropertySpec{
 						"id": {
@@ -1202,12 +1202,12 @@ func TestMethods(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		filename      string
-		validator     func(pkg *Package)
-		expectedError string
+		filename	string
+		validator	func(pkg *Package)
+		expectedError	string
 	}{
 		{
-			filename: "good-methods-1.json",
+			filename:	"good-methods-1.json",
 			validator: func(pkg *Package) {
 				require.Len(t, pkg.Resources, 1)
 				require.Len(t, pkg.Resources[0].Methods, 1)
@@ -1217,8 +1217,8 @@ func TestMethods(t *testing.T) {
 				inputs := pkg.Resources[0].Methods[0].Function.Inputs.Properties
 				assert.Equal(t, "__self__", inputs[0].Name)
 				assert.Equal(t, &ResourceType{
-					Token:    pkg.Resources[0].Token,
-					Resource: pkg.Resources[0],
+					Token:		pkg.Resources[0].Token,
+					Resource:	pkg.Resources[0],
 				}, inputs[0].Type)
 
 				var objectReturnType *ObjectType
@@ -1238,7 +1238,7 @@ func TestMethods(t *testing.T) {
 			},
 		},
 		{
-			filename: "good-simplified-methods.json",
+			filename:	"good-simplified-methods.json",
 			validator: func(pkg *Package) {
 				require.Len(t, pkg.Functions, 1)
 				require.NotNil(t, pkg.Functions[0].ReturnType, "There should be a return type")
@@ -1246,7 +1246,7 @@ func TestMethods(t *testing.T) {
 			},
 		},
 		{
-			filename: "good-simplified-methods.yml",
+			filename:	"good-simplified-methods.yml",
 			validator: func(pkg *Package) {
 				require.Len(t, pkg.Functions, 1)
 				require.NotNil(t, pkg.Functions[0].ReturnType, "There should be a return type")
@@ -1254,28 +1254,28 @@ func TestMethods(t *testing.T) {
 			},
 		},
 		{
-			filename:      "bad-methods-1.json",
-			expectedError: "unknown function xyz:index:Foo/bar",
+			filename:	"bad-methods-1.json",
+			expectedError:	"unknown function xyz:index:Foo/bar",
 		},
 		{
-			filename:      "bad-methods-2.json",
-			expectedError: "function xyz:index:Foo/bar is already a method",
+			filename:	"bad-methods-2.json",
+			expectedError:	"function xyz:index:Foo/bar is already a method",
 		},
 		{
-			filename:      "bad-methods-3.json",
-			expectedError: "invalid function token format xyz:index:Foo",
+			filename:	"bad-methods-3.json",
+			expectedError:	"invalid function token format xyz:index:Foo",
 		},
 		{
-			filename:      "bad-methods-4.json",
-			expectedError: "invalid function token format xyz:index:Baz/bar",
+			filename:	"bad-methods-4.json",
+			expectedError:	"invalid function token format xyz:index:Baz/bar",
 		},
 		{
-			filename:      "bad-methods-5.json",
-			expectedError: "function xyz:index:Foo/bar has no __self__ parameter",
+			filename:	"bad-methods-5.json",
+			expectedError:	"function xyz:index:Foo/bar has no __self__ parameter",
 		},
 		{
-			filename:      "bad-methods-6.json",
-			expectedError: "xyz:index:Foo already has a property named bar",
+			filename:	"bad-methods-6.json",
+			expectedError:	"xyz:index:Foo already has a property named bar",
 		},
 
 		// Tests for schemata which define methods on provider resources. For these to work, Pulumi needs to accept
@@ -1283,19 +1283,19 @@ func TestMethods(t *testing.T) {
 		// combinations of package names, resources, and allowed package names.
 
 		{
-			filename: "provider-methods-1.json",
+			filename:	"provider-methods-1.json",
 			validator: func(pkg *Package) {
 				require.Len(t, pkg.Functions, 1)
 			},
 		},
 		{
-			filename: "provider-methods-2.json",
+			filename:	"provider-methods-2.json",
 			validator: func(pkg *Package) {
 				require.Len(t, pkg.Functions, 2)
 			},
 		},
 		{
-			filename: "provider-methods-3.json",
+			filename:	"provider-methods-3.json",
 			validator: func(pkg *Package) {
 				require.Len(t, pkg.Functions, 2)
 			},
@@ -1424,11 +1424,11 @@ func TestBindingOutputsPopulatesReturnType(t *testing.T) {
 
 	// Test that using Outputs in PackageSpec correctly populates the return type of the function.
 	pkgSpec := PackageSpec{
-		Name:    "xyz",
-		Version: "0.0.1",
+		Name:		"xyz",
+		Version:	"0.0.1",
 		Functions: map[string]FunctionSpec{
 			"xyz:index:abs": {
-				MultiArgumentInputs: []string{"value"},
+				MultiArgumentInputs:	[]string{"value"},
 				Inputs: &ObjectTypeSpec{
 					Properties: map[string]PropertySpec{
 						"value": {
@@ -1439,7 +1439,7 @@ func TestBindingOutputsPopulatesReturnType(t *testing.T) {
 					},
 				},
 				Outputs: &ObjectTypeSpec{
-					Required: []string{"result"},
+					Required:	[]string{"result"},
 					Properties: map[string]PropertySpec{
 						"result": {
 							TypeSpec: TypeSpec{
@@ -1471,27 +1471,27 @@ func TestReplaceOnChanges(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range []struct {
-		name     string
-		filePath string
-		resource string
-		result   []string
-		errors   []string
+		name		string
+		filePath	string
+		resource	string
+		result		[]string
+		errors		[]string
 	}{
 		{
-			name:     "Simple case",
-			filePath: "replace-on-changes-1.json",
-			resource: "example::Dog",
-			result:   []string{"bone"},
+			name:		"Simple case",
+			filePath:	"replace-on-changes-1.json",
+			resource:	"example::Dog",
+			result:		[]string{"bone"},
 		},
 		{
-			name:     "No replaceOnChanges",
-			filePath: "replace-on-changes-2.json",
-			resource: "example::Dog",
+			name:		"No replaceOnChanges",
+			filePath:	"replace-on-changes-2.json",
+			resource:	"example::Dog",
 		},
 		{
-			name:     "Mutually Recursive",
-			filePath: "replace-on-changes-3.json",
-			resource: "example::Pets",
+			name:		"Mutually Recursive",
+			filePath:	"replace-on-changes-3.json",
+			resource:	"example::Pets",
 			result: []string{
 				"cat.fish",
 				"dog.bone",
@@ -1504,24 +1504,24 @@ func TestReplaceOnChanges(t *testing.T) {
 			},
 		},
 		{
-			name:     "Singularly Recursive",
-			filePath: "replace-on-changes-4.json",
-			resource: "example::Pets",
-			result:   []string{"dog.bone"},
-			errors:   []string{"Failed to genereate full `ReplaceOnChanges`: Found recursive object \"dog\""},
+			name:		"Singularly Recursive",
+			filePath:	"replace-on-changes-4.json",
+			resource:	"example::Pets",
+			result:		[]string{"dog.bone"},
+			errors:		[]string{"Failed to genereate full `ReplaceOnChanges`: Found recursive object \"dog\""},
 		},
 		{
-			name:     "Drill Correctly",
-			filePath: "replace-on-changes-5.json",
-			resource: "example::Pets",
-			result:   []string{"foes.*.color", "friends[*].color", "name", "toy.color"},
+			name:		"Drill Correctly",
+			filePath:	"replace-on-changes-5.json",
+			resource:	"example::Pets",
+			result:		[]string{"foes.*.color", "friends[*].color", "name", "toy.color"},
 		},
 		{
-			name:     "No replace on changes and recursive",
-			filePath: "replace-on-changes-6.json",
-			resource: "example::Child",
-			result:   []string{},
-			errors:   []string{},
+			name:		"No replace on changes and recursive",
+			filePath:	"replace-on-changes-6.json",
+			resource:	"example::Child",
+			result:		[]string{},
+			errors:		[]string{},
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1563,74 +1563,74 @@ func TestValidateTypeToken(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name          string
-		input         string
-		expectError   bool
-		allowedExtras map[string][]string
+		name		string
+		input		string
+		expectError	bool
+		allowedExtras	map[string][]string
 	}{
 		{
-			name:  "valid",
-			input: "example::typename",
+			name:	"valid",
+			input:	"example::typename",
 		},
 		{
-			name:        "invalid",
-			input:       "xyz::typename",
-			expectError: true,
+			name:		"invalid",
+			input:		"xyz::typename",
+			expectError:	true,
 		},
 		{
-			name:  "valid-has-subsection",
-			input: "example:index:typename",
+			name:	"valid-has-subsection",
+			input:	"example:index:typename",
 		},
 		{
-			name:        "invalid-has-subsection",
-			input:       "not:index:typename",
-			expectError: true,
+			name:		"invalid-has-subsection",
+			input:		"not:index:typename",
+			expectError:	true,
 		},
 		{
-			name:  "allowed-extras-valid",
-			input: "other:index:typename",
+			name:	"allowed-extras-valid",
+			input:	"other:index:typename",
 			allowedExtras: map[string][]string{
 				"other": nil,
 			},
 		},
 		{
-			name:        "allowed-extras-invalid-module",
-			input:       "other:foo:typename",
-			expectError: true,
+			name:		"allowed-extras-invalid-module",
+			input:		"other:foo:typename",
+			expectError:	true,
 			allowedExtras: map[string][]string{
 				"other": {"bar"},
 			},
 		},
 		{
-			name:        "allowed-extras-invalid-module-multiple",
-			input:       "other:baz:typename",
-			expectError: true,
+			name:		"allowed-extras-invalid-module-multiple",
+			input:		"other:baz:typename",
+			expectError:	true,
 			allowedExtras: map[string][]string{
 				"other": {"foo", "bar"},
 			},
 		},
 		{
-			name:  "allowed-extras-valid-module",
-			input: "other:foo:typename",
+			name:	"allowed-extras-valid-module",
+			input:	"other:foo:typename",
 			allowedExtras: map[string][]string{
 				"other": {"foo"},
 			},
 		},
 		{
-			name:  "allowed-extras-valid-module-multiple",
-			input: "other:bar:typename",
+			name:	"allowed-extras-valid-module-multiple",
+			input:	"other:bar:typename",
 			allowedExtras: map[string][]string{
 				"other": {"foo", "bar"},
 			},
 		},
 		{
-			name:        "reserved-provider-token-invalid",
-			input:       "example:index:provider",
-			expectError: true,
+			name:		"reserved-provider-token-invalid",
+			input:		"example:index:provider",
+			expectError:	true,
 		},
 		{
-			name:  "non-reserved-provider-token-valid",
-			input: "example:other:provider",
+			name:	"non-reserved-provider-token-valid",
+			input:	"example:other:provider",
 		},
 	}
 	for _, c := range cases {
@@ -1656,8 +1656,8 @@ func TestTypeString(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		input  Type
-		output string
+		input	Type
+		output	string
 	}{
 		{
 			input: &UnionType{
@@ -1666,16 +1666,16 @@ func TestTypeString(t *testing.T) {
 					NumberType,
 				},
 			},
-			output: "Union<string, number>",
+			output:	"Union<string, number>",
 		},
 		{
 			input: &UnionType{
 				ElementTypes: []Type{
 					StringType,
 				},
-				DefaultType: NumberType,
+				DefaultType:	NumberType,
 			},
-			output: "Union<string, default=number>",
+			output:	"Union<string, default=number>",
 		},
 	}
 
@@ -1691,59 +1691,59 @@ func TestPackageIdentity(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		nameA    string
-		versionA string
-		nameB    string
-		versionB string
-		equal    bool
+		nameA		string
+		versionA	string
+		nameB		string
+		versionB	string
+		equal		bool
 	}{
 		{
-			nameA: "example",
-			nameB: "example",
-			equal: true,
+			nameA:	"example",
+			nameB:	"example",
+			equal:	true,
 		},
 		{
-			nameA:    "example",
-			versionA: "1.0.0",
-			nameB:    "example",
-			versionB: "1.0.0",
-			equal:    true,
+			nameA:		"example",
+			versionA:	"1.0.0",
+			nameB:		"example",
+			versionB:	"1.0.0",
+			equal:		true,
 		},
 		{
-			nameA:    "example",
-			versionA: "1.2.3-beta",
-			nameB:    "example",
-			versionB: "1.2.3-beta",
-			equal:    true,
+			nameA:		"example",
+			versionA:	"1.2.3-beta",
+			nameB:		"example",
+			versionB:	"1.2.3-beta",
+			equal:		true,
 		},
 		{
-			nameA:    "example",
-			versionA: "1.2.3-beta+1234",
-			nameB:    "example",
-			versionB: "1.2.3-beta+1234",
-			equal:    true,
+			nameA:		"example",
+			versionA:	"1.2.3-beta+1234",
+			nameB:		"example",
+			versionB:	"1.2.3-beta+1234",
+			equal:		true,
 		},
 		{
-			nameA:    "example",
-			versionA: "1.0.0",
-			nameB:    "example",
+			nameA:		"example",
+			versionA:	"1.0.0",
+			nameB:		"example",
 		},
 		{
-			nameA:    "example",
-			nameB:    "example",
-			versionB: "1.0.0",
+			nameA:		"example",
+			nameB:		"example",
+			versionB:	"1.0.0",
 		},
 		{
-			nameA:    "example",
-			versionA: "1.0.0",
-			nameB:    "example",
-			versionB: "1.2.3-beta",
+			nameA:		"example",
+			versionA:	"1.0.0",
+			nameB:		"example",
+			versionB:	"1.2.3-beta",
 		},
 		{
-			nameA:    "example",
-			versionA: "1.2.3-beta+1234",
-			nameB:    "example",
-			versionB: "1.2.3-beta+5678",
+			nameA:		"example",
+			versionA:	"1.2.3-beta+1234",
+			nameB:		"example",
+			versionB:	"1.2.3-beta+5678",
 		},
 	}
 	for _, c := range cases {
@@ -1799,16 +1799,16 @@ func TestMarshalResourceWithLanguageSettings(t *testing.T) {
 	t.Parallel()
 
 	prop := &Property{
-		Name: "prop1",
+		Name:	"prop1",
 		Language: map[string]any{
 			"csharp": map[string]string{
 				"name": "CSharpProp1",
 			},
 		},
-		Type: stringType,
+		Type:	stringType,
 	}
 	r := Resource{
-		Token: "xyz:index:resource",
+		Token:	"xyz:index:resource",
 		Properties: []*Property{
 			prop,
 		},
@@ -1819,16 +1819,16 @@ func TestMarshalResourceWithLanguageSettings(t *testing.T) {
 		},
 	}
 	p := Package{
-		Name:        "xyz",
-		DisplayName: "xyz package",
+		Name:		"xyz",
+		DisplayName:	"xyz package",
 		Version: &semver.Version{
-			Major: 0,
-			Minor: 0,
-			Patch: 0,
+			Major:	0,
+			Minor:	0,
+			Patch:	0,
 		},
 		Provider: &Resource{
-			IsProvider: true,
-			Token:      "provider",
+			IsProvider:	true,
+			Token:		"provider",
 		},
 		Resources: []*Resource{
 			&r,
@@ -1851,17 +1851,17 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 	t.Parallel()
 
 	type testCase struct {
-		name   string
-		fspec  FunctionSpec
-		serial any
+		name	string
+		fspec	FunctionSpec
+		serial	any
 		// For legacy forms, after turning around through serde FunctionSpec will be
 		// normalized and not exactly equal to the original; tests will check against the
 		// normalized form if provided.
-		normalized *FunctionSpec
+		normalized	*FunctionSpec
 	}
 
 	ots := &ObjectTypeSpec{
-		Type: "object",
+		Type:	"object",
 		Properties: map[string]PropertySpec{
 			"x": {
 				TypeSpec: TypeSpec{
@@ -1872,7 +1872,7 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 	}
 
 	otsPlain := &ObjectTypeSpec{
-		Type: "object",
+		Type:	"object",
 		Properties: map[string]PropertySpec{
 			"x": {
 				TypeSpec: TypeSpec{
@@ -1880,12 +1880,12 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 				},
 			},
 		},
-		Plain: []string{"x"},
+		Plain:	[]string{"x"},
 	}
 
 	testCases := []testCase{
 		{
-			name: "legacy-outputs-form",
+			name:	"legacy-outputs-form",
 			fspec: FunctionSpec{
 				Outputs: ots,
 			},
@@ -1896,7 +1896,7 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 							"type": "integer",
 						},
 					},
-					"type": "object",
+					"type":	"object",
 				},
 			},
 			normalized: &FunctionSpec{
@@ -1906,7 +1906,7 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 			},
 		},
 		{
-			name: "legacy-outputs-form-plain-array",
+			name:	"legacy-outputs-form-plain-array",
 			fspec: FunctionSpec{
 				Outputs: otsPlain,
 			},
@@ -1917,8 +1917,8 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 							"type": "integer",
 						},
 					},
-					"plain": []any{"x"},
-					"type":  "object",
+					"plain":	[]any{"x"},
+					"type":		"object",
 				},
 			},
 			normalized: &FunctionSpec{
@@ -1928,24 +1928,24 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 			},
 		},
 		{
-			name: "return-plain-integer",
+			name:	"return-plain-integer",
 			fspec: FunctionSpec{
 				ReturnType: &ReturnTypeSpec{
 					TypeSpec: &TypeSpec{
-						Type:  "integer",
-						Plain: true,
+						Type:	"integer",
+						Plain:	true,
 					},
 				},
 			},
 			serial: map[string]any{
 				"outputs": map[string]any{
-					"plain": true,
-					"type":  "integer",
+					"plain":	true,
+					"type":		"integer",
 				},
 			},
 		},
 		{
-			name: "return-integer",
+			name:	"return-integer",
 			fspec: FunctionSpec{
 				ReturnType: &ReturnTypeSpec{
 					TypeSpec: &TypeSpec{
@@ -1960,27 +1960,27 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 			},
 		},
 		{
-			name: "return-plain-object",
+			name:	"return-plain-object",
 			fspec: FunctionSpec{
 				ReturnType: &ReturnTypeSpec{
-					ObjectTypeSpec:        ots,
-					ObjectTypeSpecIsPlain: true,
+					ObjectTypeSpec:		ots,
+					ObjectTypeSpecIsPlain:	true,
 				},
 			},
 			serial: map[string]any{
 				"outputs": map[string]any{
-					"plain": true,
+					"plain":	true,
 					"properties": map[string]any{
 						"x": map[string]any{
 							"type": "integer",
 						},
 					},
-					"type": "object",
+					"type":	"object",
 				},
 			},
 		},
 		{
-			name: "return-object",
+			name:	"return-object",
 			fspec: FunctionSpec{
 				ReturnType: &ReturnTypeSpec{
 					ObjectTypeSpec: ots,
@@ -1993,12 +1993,12 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 							"type": "integer",
 						},
 					},
-					"type": "object",
+					"type":	"object",
 				},
 			},
 		},
 		{
-			name: "return-object-plain-array",
+			name:	"return-object-plain-array",
 			fspec: FunctionSpec{
 				ReturnType: &ReturnTypeSpec{
 					ObjectTypeSpec: otsPlain,
@@ -2006,13 +2006,13 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 			},
 			serial: map[string]any{
 				"outputs": map[string]any{
-					"plain": []any{"x"},
+					"plain":	[]any{"x"},
 					"properties": map[string]any{
 						"x": map[string]any{
 							"type": "integer",
 						},
 					},
-					"type": "object",
+					"type":	"object",
 				},
 			},
 		},
@@ -2068,25 +2068,25 @@ func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
 	t.Parallel()
 
 	type testCase struct {
-		name  string
-		fn    *Function
-		fspec FunctionSpec
+		name	string
+		fn	*Function
+		fspec	FunctionSpec
 	}
 
 	testCases := []testCase{
 		{
-			name: "return-type-plain",
+			name:	"return-type-plain",
 			fn: &Function{
-				PackageReference: packageDefRef{},
-				Token:            "token",
-				ReturnType:       IntType,
-				ReturnTypePlain:  true,
+				PackageReference:	packageDefRef{},
+				Token:			"token",
+				ReturnType:		IntType,
+				ReturnTypePlain:	true,
 			},
 			fspec: FunctionSpec{
 				ReturnType: &ReturnTypeSpec{
 					TypeSpec: &TypeSpec{
-						Type:  "integer",
-						Plain: true,
+						Type:	"integer",
+						Plain:	true,
 					},
 				},
 			},
@@ -2111,7 +2111,7 @@ func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
 						},
 					},
 				},
-				functionDefs: map[string]*Function{},
+				functionDefs:	map[string]*Function{},
 			}
 			fn, diags, err := ts.bindFunctionDef("token", ValidationOptions{
 				AllowDanglingReferences: true,
@@ -2128,7 +2128,7 @@ func TestLoaderRespectsDebugProviders(t *testing.T) {
 	loader := NewPluginLoader(host)
 	cancel := make(chan bool)
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: cancel,
+		Cancel:	cancel,
 		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterResourceProviderServer(srv, &debugProvidersHelperServer{})
 			return nil
@@ -2160,8 +2160,8 @@ func (*debugProvidersHelperServer) GetSchema(
 	ctx context.Context, req *pulumirpc.GetSchemaRequest,
 ) (*pulumirpc.GetSchemaResponse, error) {
 	schema := PackageSpec{
-		Name:    "imaginary",
-		Version: "0.0.1",
+		Name:		"imaginary",
+		Version:	"0.0.1",
 	}
 	bytes, err := json.Marshal(schema)
 	if err != nil {
@@ -2202,8 +2202,8 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 
 	// Test that certain names aren't allowed as a property in the package config.
 	pkgSpec := PackageSpec{
-		Name:    "xyz",
-		Version: "0.0.1",
+		Name:		"xyz",
+		Version:	"0.0.1",
 		Config: ConfigSpec{
 			Variables: map[string]PropertySpec{
 				"pulumi": {
@@ -2224,8 +2224,8 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 
 	// Test that certain words aren't allowed as an input property on the provider object.
 	pkgSpec = PackageSpec{
-		Name:    "xyz",
-		Version: "0.0.1",
+		Name:		"xyz",
+		Version:	"0.0.1",
 		Provider: ResourceSpec{
 			InputProperties: map[string]PropertySpec{
 				"pulumi": {
@@ -2245,8 +2245,8 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	assert.Equal(t, diags[0].Summary, "#/provider/inputProperties/pulumi: pulumi is a reserved property name")
 
 	pkgSpec = PackageSpec{
-		Name:    "xyz",
-		Version: "0.0.1",
+		Name:		"xyz",
+		Version:	"0.0.1",
 		Provider: ResourceSpec{
 			InputProperties: map[string]PropertySpec{
 				"version": {
@@ -2267,8 +2267,8 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 
 	// Test that reserved words are not allowed as an output property on the provider object.
 	pkgSpec = PackageSpec{
-		Name:    "xyz",
-		Version: "0.0.1",
+		Name:		"xyz",
+		Version:	"0.0.1",
 		Provider: ResourceSpec{
 			ObjectTypeSpec: ObjectTypeSpec{
 				Properties: map[string]PropertySpec{
@@ -2291,8 +2291,8 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 
 	// Version is, however only banned on input names.
 	pkgSpec = PackageSpec{
-		Name:    "xyz",
-		Version: "0.0.1",
+		Name:		"xyz",
+		Version:	"0.0.1",
 		Provider: ResourceSpec{
 			ObjectTypeSpec: ObjectTypeSpec{
 				Properties: map[string]PropertySpec{
@@ -2320,8 +2320,8 @@ func TestResourceWithKeynameOverlapFunction(t *testing.T) {
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 
 	pkgSpec := PackageSpec{
-		Name:    "xyz",
-		Version: "0.0.1",
+		Name:		"xyz",
+		Version:	"0.0.1",
 		Provider: ResourceSpec{
 			ObjectTypeSpec: ObjectTypeSpec{},
 		},
@@ -2341,8 +2341,8 @@ func TestResourceWithKeynameOverlapResource(t *testing.T) {
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 
 	pkgSpec := PackageSpec{
-		Name:    "xyz",
-		Version: "0.0.1",
+		Name:		"xyz",
+		Version:	"0.0.1",
 		Provider: ResourceSpec{
 			ObjectTypeSpec: ObjectTypeSpec{},
 		},
@@ -2362,15 +2362,15 @@ func TestResourceWithKeynameOverlapType(t *testing.T) {
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 
 	pkgSpec := PackageSpec{
-		Name:    "xyz",
-		Version: "0.0.1",
+		Name:		"xyz",
+		Version:	"0.0.1",
 		Provider: ResourceSpec{
 			ObjectTypeSpec: ObjectTypeSpec{},
 		},
 		Types: map[string]ComplexTypeSpec{
 			"xyz:index:pulumi": {
 				ObjectTypeSpec: ObjectTypeSpec{
-					Type: "object",
+					Type:	"object",
 					Properties: map[string]PropertySpec{
 						"abc": {
 							TypeSpec: TypeSpec{
@@ -2470,69 +2470,69 @@ func TestNoDanglingReferences(t *testing.T) {
 func TestFunctionToken(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name     string
-		token    string
-		expected hcl.Diagnostics
+		name		string
+		token		string
+		expected	hcl.Diagnostics
 	}{
 		{
-			name:     "valid_token_for_provider_method",
-			token:    "pulumi:providers:terraform-provider/providerMethod",
-			expected: hcl.Diagnostics(nil),
+			name:		"valid_token_for_provider_method",
+			token:		"pulumi:providers:terraform-provider/providerMethod",
+			expected:	hcl.Diagnostics(nil),
 		},
 		{
-			name:     "valid_token_without_hyphens",
-			token:    "test:index:getFunction",
-			expected: hcl.Diagnostics(nil),
+			name:		"valid_token_without_hyphens",
+			token:		"test:index:getFunction",
+			expected:	hcl.Diagnostics(nil),
 		},
 		{
-			name:     "valid_token_with_hyphens",
-			token:    "test:index:get-function-data",
-			expected: hcl.Diagnostics(nil),
+			name:		"valid_token_with_hyphens",
+			token:		"test:index:get-function-data",
+			expected:	hcl.Diagnostics(nil),
 		},
 		{
-			name:     "valid_token_with_leading_hyphen",
-			token:    "test:index:-getFunction",
-			expected: hcl.Diagnostics(nil),
+			name:		"valid_token_with_leading_hyphen",
+			token:		"test:index:-getFunction",
+			expected:	hcl.Diagnostics(nil),
 		},
 		{
-			name:     "valid_token_with_consecutive_hyphens",
-			token:    "test:index:get--function",
-			expected: hcl.Diagnostics(nil),
+			name:		"valid_token_with_consecutive_hyphens",
+			token:		"test:index:get--function",
+			expected:	hcl.Diagnostics(nil),
 		},
 		{
-			name:  "invalid_token_with_invalid_package",
-			token: "123:index:getFunction",
+			name:	"invalid_token_with_invalid_package",
+			token:	"123:index:getFunction",
 			expected: hcl.Diagnostics{
 				{
-					Severity: hcl.DiagError,
-					Summary:  "#/functions/123:index:getFunction: doesn't validate with '/$defs/functionToken'",
-					Detail:   "",
+					Severity:	hcl.DiagError,
+					Summary:	"#/functions/123:index:getFunction: doesn't validate with '/$defs/functionToken'",
+					Detail:		"",
 				},
 				{
-					Severity: hcl.DiagError,
-					Summary:  "#/functions/123:index:getFunction: does not match pattern '^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/-]*)?:[^0-9][a-zA-Z0-9._/-]*$'",
-					Detail:   "",
+					Severity:	hcl.DiagError,
+					Summary:	"#/functions/123:index:getFunction: does not match pattern '^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/-]*)?:[^0-9][a-zA-Z0-9._/-]*$'",
+					Detail:		"",
 				},
 				{
-					Severity: hcl.DiagError,
-					Summary:  "#/functions/123:index:getFunction: invalid token '123:index:getFunction' (must have package name 'test')",
-					Detail:   "",
+					Severity:	hcl.DiagError,
+					Summary:	"#/functions/123:index:getFunction: invalid token '123:index:getFunction' (must have package name 'test')",
+					Detail:		"",
 				},
 			},
 		},
 		{
-			name:  "invalid_token_with_invalid_module",
-			token: "test:123:getFunction",
+			name:	"invalid_token_with_invalid_module",
+			token:	"test:123:getFunction",
 			expected: hcl.Diagnostics{
 				{
-					Severity: hcl.DiagError,
-					Summary:  "#/functions/test:123:getFunction: doesn't validate with '/$defs/functionToken'",
-					Detail:   "",
+					Severity:	hcl.DiagError,
+					Summary:	"#/functions/test:123:getFunction: doesn't validate with '/$defs/functionToken'",
+					Detail:		"",
 				},
 				{
-					Severity: hcl.DiagError,
-					Summary:  "#/functions/test:123:getFunction: does not match pattern '^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/-]*)?:[^0-9][a-zA-Z0-9._/-]*$'",
-					Detail:   "",
+					Severity:	hcl.DiagError,
+					Summary:	"#/functions/test:123:getFunction: does not match pattern '^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/-]*)?:[^0-9][a-zA-Z0-9._/-]*$'",
+					Detail:		"",
 				},
 			},
 		},
@@ -2543,7 +2543,7 @@ func TestFunctionToken(t *testing.T) {
 			t.Parallel()
 			// Create a minimal package spec with the function token
 			spec := PackageSpec{
-				Name: "test",
+				Name:	"test",
 				Functions: map[string]FunctionSpec{
 					tt.token: {
 						Description: "Test function",
@@ -2582,7 +2582,7 @@ func TestProviderRefWarning(t *testing.T) {
 	t.Parallel()
 
 	spec := PackageSpec{
-		Name: "test",
+		Name:	"test",
 		Resources: map[string]ResourceSpec{
 			"test:index:SomeResource": {
 				InputProperties: map[string]PropertySpec{
@@ -2604,7 +2604,7 @@ func TestProviderRefWarning(t *testing.T) {
 	require.NoError(t, err)
 	expectedWarning := hcl.Diagnostics{
 		{
-			Severity: hcl.DiagWarning,
+			Severity:	hcl.DiagWarning,
 			Summary: "#/resources/test:index:SomeResource/inputProperties/provider/$ref: " +
 				"reference to provider resource '/resources/pulumi:providers:test' is deprecated, use '#/provider' instead",
 		},

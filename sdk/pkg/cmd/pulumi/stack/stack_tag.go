@@ -20,11 +20,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -34,15 +34,15 @@ func newStackTagCmd() *cobra.Command {
 	var stack string
 
 	cmd := &cobra.Command{
-		Use:   "tag",
-		Short: "Manage stack tags",
+		Use:	"tag",
+		Short:	"Manage stack tags",
 		Long: "Manage stack tags\n" +
 			"\n" +
 			"Stacks have associated metadata in the form of tags. Each tag consists of a name\n" +
 			"and value. The `get`, `ls`, `rm`, and `set` commands can be used to manage tags.\n" +
 			"Some tags are automatically assigned based on the environment each time a stack\n" +
 			"is updated.\n",
-		Args: cmdutil.NoArgs,
+		Args:	cmdutil.NoArgs,
 	}
 
 	cmd.PersistentFlags().StringVarP(
@@ -58,9 +58,9 @@ func newStackTagCmd() *cobra.Command {
 
 func newStackTagGetCmd(stack *string) *cobra.Command {
 	return &cobra.Command{
-		Use:   "get <name>",
-		Short: "Get a single stack tag value",
-		Args:  cmdutil.SpecificArgs([]string{"name"}),
+		Use:	"get <name>",
+		Short:	"Get a single stack tag value",
+		Args:	cmdutil.SpecificArgs([]string{"name"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()
@@ -102,9 +102,9 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 func newStackTagLsCmd(stack *string) *cobra.Command {
 	var jsonOut bool
 	cmd := &cobra.Command{
-		Use:   "ls",
-		Short: "List all stack tags",
-		Args:  cmdutil.NoArgs,
+		Use:	"ls",
+		Short:	"List all stack tags",
+		Args:	cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()
@@ -161,16 +161,16 @@ func printStackTags(tags map[apitype.StackTagName]string) {
 	}
 
 	ui.PrintTable(cmdutil.Table{
-		Headers: []string{"NAME", "VALUE"},
-		Rows:    rows,
+		Headers:	[]string{"NAME", "VALUE"},
+		Rows:		rows,
 	}, nil)
 }
 
 func newStackTagRmCmd(stack *string) *cobra.Command {
 	return &cobra.Command{
-		Use:   "rm <name>",
-		Short: "Remove a stack tag",
-		Args:  cmdutil.SpecificArgs([]string{"name"}),
+		Use:	"rm <name>",
+		Short:	"Remove a stack tag",
+		Args:	cmdutil.SpecificArgs([]string{"name"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()
@@ -208,9 +208,9 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 
 func newStackTagSetCmd(stack *string) *cobra.Command {
 	return &cobra.Command{
-		Use:   "set <name> <value>",
-		Short: "Set a stack tag",
-		Args:  cmdutil.SpecificArgs([]string{"name", "value"}),
+		Use:	"set <name> <value>",
+		Short:	"Set a stack tag",
+		Args:	cmdutil.SpecificArgs([]string{"name", "value"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()

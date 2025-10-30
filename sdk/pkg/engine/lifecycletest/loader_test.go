@@ -26,10 +26,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
+	. "github.com/pulumi/pulumi/sdk/v3/pkg/engine"	//nolint:revive
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -40,12 +40,12 @@ func TestLoader(t *testing.T) {
 	t.Parallel()
 
 	expectedSpec := schema.PackageSpec{
-		Name:    "pkgA",
-		Version: "1.0.0",
+		Name:		"pkgA",
+		Version:	"1.0.0",
 		Resources: map[string]schema.ResourceSpec{
 			"pkgA:index:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Description: "Resource",
+					Description:	"Resource",
 					Properties: map[string]schema.PropertySpec{
 						"foo": {
 							TypeSpec: schema.TypeSpec{Type: "string"},

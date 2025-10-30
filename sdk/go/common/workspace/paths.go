@@ -31,54 +31,54 @@ import (
 
 const (
 	// BackupDir is the name of the folder where backup stack information is stored.
-	BackupDir = "backups"
+	BackupDir	= "backups"
 	// BookkeepingDir is the name of our bookkeeping folder, we store state here (like .git for git).
-	BookkeepingDir = ".pulumi"
+	BookkeepingDir	= ".pulumi"
 	// ConfigDir is the name of the folder that holds local configuration information.
-	ConfigDir = "config"
+	ConfigDir	= "config"
 	// GitDir is the name of the folder git uses to store information.
-	GitDir = ".git"
+	GitDir	= ".git"
 	// HistoryDir is the name of the directory that holds historical information for projects.
-	HistoryDir = "history"
+	HistoryDir	= "history"
 	// PluginDir is the name of the directory containing plugins.
-	PluginDir = "plugins"
+	PluginDir	= "plugins"
 	// PolicyDir is the name of the directory that holds policy packs.
-	PolicyDir = "policies"
+	PolicyDir	= "policies"
 	// StackDir is the name of the directory that holds stack information for projects.
-	StackDir = "stacks"
+	StackDir	= "stacks"
 	// LockDir is the name of the directory that holds locking information for projects.
-	LockDir = "locks"
+	LockDir	= "locks"
 	// TemplateDir is the name of the directory containing templates.
-	TemplateDir = "templates"
+	TemplateDir	= "templates"
 	// TemplatePolicyDir is the name of the directory containing templates for Policy Packs.
-	TemplatePolicyDir = "templates-policy"
+	TemplatePolicyDir	= "templates-policy"
 	// WorkspaceDir is the name of the directory that holds workspace information for projects.
-	WorkspaceDir = "workspaces"
+	WorkspaceDir	= "workspaces"
 
 	// IgnoreFile is the name of the file that we use to control what to upload to the service.
-	IgnoreFile = ".pulumiignore"
+	IgnoreFile	= ".pulumiignore"
 
 	// ProjectFile is the base name of a project file.
-	ProjectFile = "Pulumi"
+	ProjectFile	= "Pulumi"
 	// DeploymentSuffix is the base suffix for deployment settings files (e.g. "Pulumi.<stack>.deploy.yaml").
-	DeploymentSuffix = "deploy"
+	DeploymentSuffix	= "deploy"
 	// RepoFile is the name of the file that holds information specific to the entire repository.
-	RepoFile = "settings.json"
+	RepoFile	= "settings.json"
 	// WorkspaceFile is the name of the file that holds workspace information.
-	WorkspaceFile = "workspace.json"
+	WorkspaceFile	= "workspace.json"
 	// CachedVersionFile is the name of the file we use to store when we last checked if the CLI was out of date
-	CachedVersionFile = ".cachedVersionInfo"
+	CachedVersionFile	= ".cachedVersionInfo"
 
 	// PulumiHomeEnvVar is a path to the '.pulumi' folder with plugins, access token, etc.
 	// The folder can have any name, not necessarily '.pulumi'.
 	// It defaults to the '<user's home>/.pulumi' if not specified.
-	PulumiHomeEnvVar = "PULUMI_HOME"
+	PulumiHomeEnvVar	= "PULUMI_HOME"
 
 	// PolicyPackFile is the base name of a Pulumi policy pack file.
-	PolicyPackFile = "PulumiPolicy"
+	PolicyPackFile	= "PulumiPolicy"
 
 	// PluginFile is the base name of a Pulumi plugin file.
-	PluginFile = "PulumiPlugin"
+	PluginFile	= "PulumiPlugin"
 )
 
 // DetectProjectPath locates the closest project from the current working directory, or an error if not found.

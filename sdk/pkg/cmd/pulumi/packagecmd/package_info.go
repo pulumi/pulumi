@@ -23,10 +23,10 @@ import (
 	"slices"
 	"strings"
 
-	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	cmdCmd "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -41,9 +41,9 @@ func newPackageInfoCmd() *cobra.Command {
 	var resource string
 	var function string
 	cmd := &cobra.Command{
-		Use:   "info <provider|schema|path> [provider-parameter...]",
-		Args:  cmdutil.MinimumNArgs(1),
-		Short: "Show information about a package",
+		Use:	"info <provider|schema|path> [provider-parameter...]",
+		Args:	cmdutil.MinimumNArgs(1),
+		Short:	"Show information about a package",
 		Long: `Show information about a package
 
 This command shows information about a package, its modules and detailed resource info.

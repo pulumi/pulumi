@@ -28,10 +28,10 @@ import (
 	"github.com/erikgeiser/promptkit/confirmation"
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/eval"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	cmdStack "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -43,17 +43,17 @@ import (
 
 func newConfigEnvInitCmd(parent *configEnvCmd) *cobra.Command {
 	impl := &configEnvInitCmd{
-		parent:     parent,
-		newCrypter: newConfigEnvInitCrypter,
+		parent:		parent,
+		newCrypter:	newConfigEnvInitCrypter,
 	}
 
 	cmd := &cobra.Command{
-		Use:   "init",
-		Short: "Creates an environment for a stack",
+		Use:	"init",
+		Short:	"Creates an environment for a stack",
 		Long: "Creates an environment for a specific stack based on the stack's configuration values,\n" +
 			"then replaces the stack's configuration values with a reference to that environment.\n" +
 			"The environment will be created in the same organization as the stack.",
-		Args: cmdutil.NoArgs,
+		Args:	cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			parent.initArgs()
 			return impl.run(cmd.Context(), args)
@@ -86,14 +86,14 @@ var envPreviewTemplate = template.Must(template.New("env-preview").Parse("# Valu
 	"```\n"))
 
 type configEnvInitCmd struct {
-	parent *configEnvCmd
+	parent	*configEnvCmd
 
-	newCrypter func() (evalCrypter, error)
+	newCrypter	func() (evalCrypter, error)
 
-	envName     string
-	showSecrets bool
-	keepConfig  bool
-	yes         bool
+	envName		string
+	showSecrets	bool
+	keepConfig	bool
+	yes		bool
 }
 
 func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
@@ -313,8 +313,8 @@ func (cmd *configEnvInitCmd) renderPreview(
 
 	var markdown bytes.Buffer
 	err = envPreviewTemplate.Execute(&markdown, map[string]any{
-		"Preview":    string(envJSON),
-		"Definition": string(yaml),
+		"Preview":	string(envJSON),
+		"Definition":	string(yaml),
 	})
 	if err != nil {
 		return "", fmt.Errorf("rendering preview: %w", err)

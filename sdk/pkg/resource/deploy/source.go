@@ -18,7 +18,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -29,7 +29,7 @@ import (
 type ResultState int
 
 const (
-	ResultStateSuccess ResultState = iota
+	ResultStateSuccess	ResultState	= iota
 	ResultStateFailed
 	ResultStateSkipped
 )
@@ -96,8 +96,8 @@ type RegisterResourceEvent interface {
 
 // RegisterResult is the state of the resource after it has been registered.
 type RegisterResult struct {
-	State  *resource.State // the resource state.
-	Result ResultState     // the result of the registration.
+	State	*resource.State	// the resource state.
+	Result	ResultState	// the result of the registration.
 }
 
 // RegisterResourceOutputsEvent is an event that asks the engine to complete the provisioning of a resource.
@@ -140,6 +140,6 @@ type ReadResourceEvent interface {
 }
 
 type ReadResult struct {
-	State  *resource.State
-	Result ResultState
+	State	*resource.State
+	Result	ResultState
 }

@@ -161,24 +161,24 @@ type RunFunc func(ctx *Context) error
 
 // RunInfo contains all the metadata about a run request.
 type RunInfo struct {
-	Project           string
-	RootDirectory     string
-	Stack             string
-	Config            map[string]string
-	ConfigSecretKeys  []string
-	ConfigPropertyMap resource.PropertyMap
-	Parallel          int32
-	DryRun            bool
-	MonitorAddr       string
-	EngineAddr        string
-	Organization      string
-	Mocks             MockResourceMonitor
+	Project			string
+	RootDirectory		string
+	Stack			string
+	Config			map[string]string
+	ConfigSecretKeys	[]string
+	ConfigPropertyMap	resource.PropertyMap
+	Parallel		int32
+	DryRun			bool
+	MonitorAddr		string
+	EngineAddr		string
+	Organization		string
+	Mocks			MockResourceMonitor
 
-	getPlugins bool
-	engineConn *grpc.ClientConn // Pre-existing engine connection. If set this is used over EngineAddr.
+	getPlugins	bool
+	engineConn	*grpc.ClientConn	// Pre-existing engine connection. If set this is used over EngineAddr.
 
 	// If non-nil, wraps the resource monitor client used by Context.
-	wrapResourceMonitorClient func(pulumirpc.ResourceMonitorClient) pulumirpc.ResourceMonitorClient
+	wrapResourceMonitorClient	func(pulumirpc.ResourceMonitorClient) pulumirpc.ResourceMonitorClient
 }
 
 // getEnvInfo reads various program information from the process environment.
@@ -199,50 +199,50 @@ func getEnvInfo() RunInfo {
 	}
 
 	return RunInfo{
-		Organization:     os.Getenv(EnvOrganization),
-		Project:          os.Getenv(EnvProject),
-		RootDirectory:    os.Getenv(EnvPulumiRootDirectory),
-		Stack:            os.Getenv(EnvStack),
-		Config:           config,
-		ConfigSecretKeys: configSecretKeys,
-		Parallel:         int32(parallel), //nolint:gosec // guarded by strconv.ParseInt
-		DryRun:           dryRun,
-		MonitorAddr:      os.Getenv(EnvMonitor),
-		EngineAddr:       os.Getenv(EnvEngine),
-		getPlugins:       getPlugins,
+		Organization:		os.Getenv(EnvOrganization),
+		Project:		os.Getenv(EnvProject),
+		RootDirectory:		os.Getenv(EnvPulumiRootDirectory),
+		Stack:			os.Getenv(EnvStack),
+		Config:			config,
+		ConfigSecretKeys:	configSecretKeys,
+		Parallel:		int32(parallel),	//nolint:gosec // guarded by strconv.ParseInt
+		DryRun:			dryRun,
+		MonitorAddr:		os.Getenv(EnvMonitor),
+		EngineAddr:		os.Getenv(EnvEngine),
+		getPlugins:		getPlugins,
 	}
 }
 
 const (
 	// EnvOrganization is the envvar used to read the current Pulumi organization name.
-	EnvOrganization = "PULUMI_ORGANIZATION"
+	EnvOrganization	= "PULUMI_ORGANIZATION"
 	// EnvProject is the envvar used to read the current Pulumi project name.
-	EnvProject = "PULUMI_PROJECT"
+	EnvProject	= "PULUMI_PROJECT"
 	// EnvPulumiRootDirectory is the envvar used to read the current Pulumi project root, location of Pulumi.yaml.
-	EnvPulumiRootDirectory = "PULUMI_ROOT_DIRECTORY"
+	EnvPulumiRootDirectory	= "PULUMI_ROOT_DIRECTORY"
 	// EnvStack is the envvar used to read the current Pulumi stack name.
-	EnvStack = "PULUMI_STACK"
+	EnvStack	= "PULUMI_STACK"
 	// EnvConfig is the envvar used to read the current Pulumi configuration variables.
-	EnvConfig = "PULUMI_CONFIG"
+	EnvConfig	= "PULUMI_CONFIG"
 	// EnvConfigSecretKeys is the envvar used to read the current Pulumi configuration keys that are secrets.
 	//nolint:gosec
-	EnvConfigSecretKeys = "PULUMI_CONFIG_SECRET_KEYS"
+	EnvConfigSecretKeys	= "PULUMI_CONFIG_SECRET_KEYS"
 	// EnvParallel is the envvar used to read the current Pulumi degree of parallelism.
-	EnvParallel = "PULUMI_PARALLEL"
+	EnvParallel	= "PULUMI_PARALLEL"
 	// EnvDryRun is the envvar used to read the current Pulumi dry-run setting.
-	EnvDryRun = "PULUMI_DRY_RUN"
+	EnvDryRun	= "PULUMI_DRY_RUN"
 	// EnvMonitor is the envvar used to read the current Pulumi monitor RPC address.
-	EnvMonitor = "PULUMI_MONITOR"
+	EnvMonitor	= "PULUMI_MONITOR"
 	// EnvEngine is the envvar used to read the current Pulumi engine RPC address.
-	EnvEngine = "PULUMI_ENGINE"
+	EnvEngine	= "PULUMI_ENGINE"
 	// envPlugins is the envvar used to request that the Pulumi program print its set of required plugins and exit.
-	envPlugins = "PULUMI_PLUGINS"
+	envPlugins	= "PULUMI_PLUGINS"
 )
 
 type PackageInfo struct {
-	Name    string `json:"name"`
-	Version string `json:"version,omitempty"`
-	Server  string `json:"server,omitempty"`
+	Name	string	`json:"name"`
+	Version	string	`json:"version,omitempty"`
+	Server	string	`json:"server,omitempty"`
 }
 
 var packageRegistry = map[PackageInfo]struct{}{}

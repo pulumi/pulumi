@@ -23,10 +23,10 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/Netflix/go-expect"
-	backenddisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	backenddisplay "github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -56,14 +56,14 @@ func TestComputeUpdateStats(t *testing.T) {
 func makeResourcePreEvent(urn, resType string, op display.StepOp, retainOnDelete bool) engine.Event {
 	event := engine.NewEvent(engine.ResourcePreEventPayload{
 		Metadata: engine.StepEventMetadata{
-			Op:   op,
-			URN:  resource.URN(urn),
-			Type: tokens.Type(resType),
+			Op:	op,
+			URN:	resource.URN(urn),
+			Type:	tokens.Type(resType),
 			Old: &engine.StepEventStateMetadata{
 				State: &resource.State{
-					URN:            resource.URN(urn),
-					Type:           tokens.Type(resType),
-					RetainOnDelete: retainOnDelete,
+					URN:		resource.URN(urn),
+					Type:		tokens.Type(resType),
+					RetainOnDelete:	retainOnDelete,
 				},
 			},
 		},
@@ -101,8 +101,8 @@ func TestConfirmBeforeUpdating_ExplainerErrorDoesNotCrash(t *testing.T) {
 	}()
 
 	displayOpts := backenddisplay.Options{
-		Color:  colors.Never,
-		Stdout: console.Tty(),
+		Color:	colors.Never,
+		Stdout:	console.Tty(),
 	}
 
 	ctx := context.Background()

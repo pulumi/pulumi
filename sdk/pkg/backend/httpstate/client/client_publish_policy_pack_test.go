@@ -34,42 +34,42 @@ func TestPublishPolicyPack_AllAnalyzerInfoFieldsAreSent(t *testing.T) {
 
 	// Create comprehensive AnalyzerInfo with all possible fields
 	analyzerInfo := plugin.AnalyzerInfo{
-		Name:        "test-policy-pack",
-		DisplayName: "Test Policy Pack",
-		Version:     "1.2.3",
-		Description: "A comprehensive test policy pack",
-		Readme:      "# Test Policy Pack\n\nThis is a test policy pack for validation.",
-		Provider:    "aws",
-		Tags:        []string{"security", "compliance", "test"},
-		Repository:  "https://github.com/example/test-policy-pack",
+		Name:		"test-policy-pack",
+		DisplayName:	"Test Policy Pack",
+		Version:	"1.2.3",
+		Description:	"A comprehensive test policy pack",
+		Readme:		"# Test Policy Pack\n\nThis is a test policy pack for validation.",
+		Provider:	"aws",
+		Tags:		[]string{"security", "compliance", "test"},
+		Repository:	"https://github.com/example/test-policy-pack",
 		Policies: []plugin.AnalyzerPolicyInfo{
 			{
-				Name:             "required-tags",
-				DisplayName:      "Required Tags",
-				Description:      "Ensures all resources have required tags",
-				EnforcementLevel: apitype.Mandatory,
-				Message:          "Resources must have required tags",
-				Severity:         apitype.PolicySeverityHigh,
+				Name:			"required-tags",
+				DisplayName:		"Required Tags",
+				Description:		"Ensures all resources have required tags",
+				EnforcementLevel:	apitype.Mandatory,
+				Message:		"Resources must have required tags",
+				Severity:		apitype.PolicySeverityHigh,
 				Framework: &plugin.AnalyzerPolicyComplianceFramework{
-					Name:          "SOC2",
-					Version:       "2017",
-					Reference:     "CC6.1",
-					Specification: "System Operations - Logical Access",
+					Name:		"SOC2",
+					Version:	"2017",
+					Reference:	"CC6.1",
+					Specification:	"System Operations - Logical Access",
 				},
-				Tags:             []string{"tagging", "governance"},
-				RemediationSteps: "Add the required tags to the resource",
-				URL:              "https://example.com/policies/required-tags",
+				Tags:			[]string{"tagging", "governance"},
+				RemediationSteps:	"Add the required tags to the resource",
+				URL:			"https://example.com/policies/required-tags",
 				ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
 					Properties: map[string]plugin.JSONSchema{
 						"requiredTags": {
-							"type":        "array",
-							"description": "List of required tag keys",
+							"type":		"array",
+							"description":	"List of required tag keys",
 							"items": map[string]any{
 								"type": "string",
 							},
 						},
 					},
-					Required: []string{"requiredTags"},
+					Required:	[]string{"requiredTags"},
 				},
 			},
 		},
@@ -90,8 +90,8 @@ func TestPublishPolicyPack_AllAnalyzerInfoFieldsAreSent(t *testing.T) {
 
 			// Return a successful response
 			resp := apitype.CreatePolicyPackResponse{
-				Version:   1,
-				UploadURI: "http://" + r.Host + "/upload",
+				Version:	1,
+				UploadURI:	"http://" + r.Host + "/upload",
 				RequiredHeaders: map[string]string{
 					"Content-Type": "application/gzip",
 				},
@@ -176,12 +176,12 @@ func TestPublishPolicyPack_EmptyOptionalFields(t *testing.T) {
 
 	// Create minimal AnalyzerInfo with only required fields
 	analyzerInfo := plugin.AnalyzerInfo{
-		Name:    "minimal-policy-pack",
-		Version: "1.0.0",
+		Name:		"minimal-policy-pack",
+		Version:	"1.0.0",
 		Policies: []plugin.AnalyzerPolicyInfo{
 			{
-				Name:             "basic-policy",
-				EnforcementLevel: apitype.Advisory,
+				Name:			"basic-policy",
+				EnforcementLevel:	apitype.Advisory,
 			},
 		},
 	}
@@ -198,8 +198,8 @@ func TestPublishPolicyPack_EmptyOptionalFields(t *testing.T) {
 			require.NoError(t, err)
 
 			resp := apitype.CreatePolicyPackResponse{
-				Version:   1,
-				UploadURI: "http://" + r.Host + "/upload",
+				Version:	1,
+				UploadURI:	"http://" + r.Host + "/upload",
 			}
 			respJSON, err := json.Marshal(resp)
 			require.NoError(t, err)
@@ -246,12 +246,12 @@ func TestPublishPolicyPack_LegacyVersionHandling(t *testing.T) {
 
 	// Create AnalyzerInfo without version (legacy scenario)
 	analyzerInfo := plugin.AnalyzerInfo{
-		Name:    "legacy-policy-pack",
-		Version: "", // Empty version to simulate legacy policy pack
+		Name:		"legacy-policy-pack",
+		Version:	"",	// Empty version to simulate legacy policy pack
 		Policies: []plugin.AnalyzerPolicyInfo{
 			{
-				Name:             "legacy-policy",
-				EnforcementLevel: apitype.Advisory,
+				Name:			"legacy-policy",
+				EnforcementLevel:	apitype.Advisory,
 			},
 		},
 	}
@@ -268,8 +268,8 @@ func TestPublishPolicyPack_LegacyVersionHandling(t *testing.T) {
 			require.NoError(t, err)
 
 			resp := apitype.CreatePolicyPackResponse{
-				Version:   42, // Server-assigned version
-				UploadURI: "http://" + r.Host + "/upload",
+				Version:	42,	// Server-assigned version
+				UploadURI:	"http://" + r.Host + "/upload",
 			}
 			respJSON, err := json.Marshal(resp)
 			require.NoError(t, err)
@@ -310,36 +310,36 @@ func TestPublishPolicyPack_PolicyConfigSchemaConversion(t *testing.T) {
 
 	// Create AnalyzerInfo with complex config schema
 	analyzerInfo := plugin.AnalyzerInfo{
-		Name:    "config-schema-test",
-		Version: "1.0.0",
+		Name:		"config-schema-test",
+		Version:	"1.0.0",
 		Policies: []plugin.AnalyzerPolicyInfo{
 			{
-				Name:             "config-test-policy",
-				EnforcementLevel: apitype.Mandatory,
+				Name:			"config-test-policy",
+				EnforcementLevel:	apitype.Mandatory,
 				ConfigSchema: &plugin.AnalyzerPolicyConfigSchema{
 					Properties: map[string]plugin.JSONSchema{
 						"stringProp": {
-							"type":        "string",
-							"description": "A string property",
-							"default":     "default-value",
+							"type":		"string",
+							"description":	"A string property",
+							"default":	"default-value",
 						},
 						"numberProp": {
-							"type":    "number",
-							"minimum": 0,
-							"maximum": 100,
+							"type":		"number",
+							"minimum":	0,
+							"maximum":	100,
 						},
 						"booleanProp": {
 							"type": "boolean",
 						},
 						"arrayProp": {
-							"type": "array",
+							"type":	"array",
 							"items": map[string]any{
 								"type": "string",
 							},
-							"minItems": 1,
+							"minItems":	1,
 						},
 						"objectProp": {
-							"type": "object",
+							"type":	"object",
 							"properties": map[string]any{
 								"nestedProp": map[string]any{
 									"type": "string",
@@ -347,7 +347,7 @@ func TestPublishPolicyPack_PolicyConfigSchemaConversion(t *testing.T) {
 							},
 						},
 					},
-					Required: []string{"stringProp", "numberProp"},
+					Required:	[]string{"stringProp", "numberProp"},
 				},
 			},
 		},
@@ -365,8 +365,8 @@ func TestPublishPolicyPack_PolicyConfigSchemaConversion(t *testing.T) {
 			require.NoError(t, err)
 
 			resp := apitype.CreatePolicyPackResponse{
-				Version:   1,
-				UploadURI: "http://" + r.Host + "/upload",
+				Version:	1,
+				UploadURI:	"http://" + r.Host + "/upload",
 			}
 			respJSON, err := json.Marshal(resp)
 			require.NoError(t, err)
@@ -424,13 +424,13 @@ func TestPublishPolicyPack_NilConfigSchema(t *testing.T) {
 
 	// Create AnalyzerInfo with nil config schema
 	analyzerInfo := plugin.AnalyzerInfo{
-		Name:    "nil-config-test",
-		Version: "1.0.0",
+		Name:		"nil-config-test",
+		Version:	"1.0.0",
 		Policies: []plugin.AnalyzerPolicyInfo{
 			{
-				Name:             "no-config-policy",
-				EnforcementLevel: apitype.Advisory,
-				ConfigSchema:     nil, // Explicitly nil
+				Name:			"no-config-policy",
+				EnforcementLevel:	apitype.Advisory,
+				ConfigSchema:		nil,	// Explicitly nil
 			},
 		},
 	}
@@ -447,8 +447,8 @@ func TestPublishPolicyPack_NilConfigSchema(t *testing.T) {
 			require.NoError(t, err)
 
 			resp := apitype.CreatePolicyPackResponse{
-				Version:   1,
-				UploadURI: "http://" + r.Host + "/upload",
+				Version:	1,
+				UploadURI:	"http://" + r.Host + "/upload",
 			}
 			respJSON, err := json.Marshal(resp)
 			require.NoError(t, err)
@@ -488,13 +488,13 @@ func TestPublishPolicyPack_NilComplianceFramework(t *testing.T) {
 
 	// Create AnalyzerInfo with nil compliance framework
 	analyzerInfo := plugin.AnalyzerInfo{
-		Name:    "nil-framework-test",
-		Version: "1.0.0",
+		Name:		"nil-framework-test",
+		Version:	"1.0.0",
 		Policies: []plugin.AnalyzerPolicyInfo{
 			{
-				Name:             "no-framework-policy",
-				EnforcementLevel: apitype.Advisory,
-				Framework:        nil, // Explicitly nil
+				Name:			"no-framework-policy",
+				EnforcementLevel:	apitype.Advisory,
+				Framework:		nil,	// Explicitly nil
 			},
 		},
 	}
@@ -511,8 +511,8 @@ func TestPublishPolicyPack_NilComplianceFramework(t *testing.T) {
 			require.NoError(t, err)
 
 			resp := apitype.CreatePolicyPackResponse{
-				Version:   1,
-				UploadURI: "http://" + r.Host + "/upload",
+				Version:	1,
+				UploadURI:	"http://" + r.Host + "/upload",
 			}
 			respJSON, err := json.Marshal(resp)
 			require.NoError(t, err)

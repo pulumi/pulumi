@@ -26,15 +26,15 @@ import (
 
 func newEventSink(events eventEmitter, statusSink bool) diag.Sink {
 	return &eventSink{
-		events:     events,
-		statusSink: statusSink,
+		events:		events,
+		statusSink:	statusSink,
 	}
 }
 
 // eventSink is a sink which writes all events to a channel
 type eventSink struct {
-	events     eventEmitter // the channel to emit events into.
-	statusSink bool         // whether this is an event sink for status messages.
+	events		eventEmitter	// the channel to emit events into.
+	statusSink	bool		// whether this is an event sink for status messages.
 }
 
 func (s *eventSink) Logf(sev diag.Severity, d *diag.Diag, args ...any) {

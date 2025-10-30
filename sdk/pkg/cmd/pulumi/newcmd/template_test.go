@@ -23,8 +23,8 @@ import (
 func TestSanitizeTemplate(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		input    string
-		expected string
+		input		string
+		expected	string
 	}{
 		{"https://user:pass@example.com/path?param=value", "https://example.com/path"},
 		{"https://user:pass@example.com", "https://example.com"},

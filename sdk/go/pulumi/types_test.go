@@ -328,15 +328,15 @@ func TestToOutputAny(t *testing.T) {
 	t.Parallel()
 
 	type args struct {
-		S StringInput
-		I IntInput
-		A Input
+		S	StringInput
+		I	IntInput
+		A	Input
 	}
 
 	out := ToOutput(&args{
-		S: ID("hello"),
-		I: Int(42).ToIntOutput(),
-		A: Map{"world": Bool(true).ToBoolOutput()},
+		S:	ID("hello"),
+		I:	Int(42).ToIntOutput(),
+		A:	Map{"world": Bool(true).ToBoolOutput()},
 	})
 	_, ok := out.(AnyOutput)
 	assert.True(t, ok)
@@ -371,10 +371,10 @@ func TestToOutputAnyDeps(t *testing.T) {
 	t.Parallel()
 
 	type args struct {
-		S StringInput
-		I IntInput
-		A Input
-		R Resource
+		S	StringInput
+		I	IntInput
+		A	Input
+		R	Resource
 	}
 
 	stringDep1, stringDep2 := &ResourceState{}, &ResourceState{}
@@ -403,10 +403,10 @@ func TestToOutputAnyDeps(t *testing.T) {
 	res.urn = urnOut
 
 	out := ToOutput(&args{
-		S: stringOut,
-		I: intOut,
-		A: Map{"world": boolOut},
-		R: res,
+		S:	stringOut,
+		I:	intOut,
+		A:	Map{"world": boolOut},
+		R:	res,
 	})
 	_, ok := out.(AnyOutput)
 	assert.True(t, ok)
@@ -450,15 +450,15 @@ func TestToOutputAnyDeps(t *testing.T) {
 }
 
 type args struct {
-	S string
-	I int
-	A any
+	S	string
+	I	int
+	A	any
 }
 
 type argsInputs struct {
-	S StringInput
-	I IntInput
-	A Input
+	S	StringInput
+	I	IntInput
+	A	Input
 }
 
 func (*argsInputs) ElementType() reflect.Type {
@@ -470,9 +470,9 @@ func TestToOutputInputAny(t *testing.T) {
 	t.Parallel()
 
 	out := ToOutput(&argsInputs{
-		S: ID("hello"),
-		I: Int(42),
-		A: Map{"world": Bool(true).ToBoolOutput()},
+		S:	ID("hello"),
+		I:	Int(42),
+		A:	Map{"world": Bool(true).ToBoolOutput()},
 	})
 	_, ok := out.(AnyOutput)
 	assert.True(t, ok)
@@ -484,9 +484,9 @@ func TestToOutputInputAny(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, &args{
-		S: "hello",
-		I: 42,
-		A: map[string]any{"world": true},
+		S:	"hello",
+		I:	42,
+		A:	map[string]any{"world": true},
 	}, v)
 }
 
@@ -950,7 +950,7 @@ func TestApplyTOutputJoin(t *testing.T) {
 
 	go func() {
 		internal.ResolveOutput(out1, 2, true, false, resourcesToInternal([]Resource{r1}))
-		internal.ResolveOutput(out2, 3, false, false, resourcesToInternal([]Resource{r2})) // value set but known => output.value == nil
+		internal.ResolveOutput(out2, 3, false, false, resourcesToInternal([]Resource{r2}))	// value set but known => output.value == nil
 		internal.ResolveOutput(out3, 5, true, true, resourcesToInternal([]Resource{r3}))
 	}()
 
@@ -971,7 +971,7 @@ func TestApplyTOutputJoin(t *testing.T) {
 
 	assertResult(t, out1, 2, true, false, r1)
 	assertResult(t, out12, nil, false, false, r1, r2)
-	assertResult(t, out123, nil, false, false, r1, r2) /* out2 is unknown, hiding out3 */
+	assertResult(t, out123, nil, false, false, r1, r2)	/* out2 is unknown, hiding out3 */
 
 	/* out2 is unknown, early exit hides all nested outputs */
 	assertResult(t, out2, nil, false, false, r2)
@@ -980,38 +980,38 @@ func TestApplyTOutputJoin(t *testing.T) {
 
 	assertResult(t, out3, 5, true, true, r3)
 	assertResult(t, out31, 2, true, true, r3, r1)
-	assertResult(t, out312, nil, false, true, r3, r1, r2) /* out2 is unknown, hiding the output */
+	assertResult(t, out312, nil, false, true, r3, r1, r2)	/* out2 is unknown, hiding the output */
 }
 
 func TestTypeCoersion(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		input    any
-		expected any
-		err      string
+		input		any
+		expected	any
+		err		string
 	}{
 		{"foo", "foo", ""},
 		{"foo", 0, "expected value of type int, not string"},
 		{
 			map[string]any{
-				"foo":  "bar",
-				"fizz": "buzz",
+				"foo":	"bar",
+				"fizz":	"buzz",
 			},
 			map[string]string{
-				"foo":  "bar",
-				"fizz": "buzz",
+				"foo":	"bar",
+				"fizz":	"buzz",
 			},
 			"",
 		},
 		{
 			map[string]any{
-				"foo":  "bar",
-				"fizz": 8,
+				"foo":	"bar",
+				"fizz":	8,
 			},
 			map[string]string{
-				"foo":  "bar",
-				"fizz": "buzz",
+				"foo":	"bar",
+				"fizz":	"buzz",
 			},
 			`["fizz"]: expected value of type string, not int`,
 		},
@@ -1028,17 +1028,17 @@ func TestTypeCoersion(t *testing.T) {
 		{
 			[]any{
 				map[string]any{
-					"fizz":     []any{3, 15},
-					"buzz":     []any{5, 15},
-					"fizzbuzz": []any{15},
+					"fizz":		[]any{3, 15},
+					"buzz":		[]any{5, 15},
+					"fizzbuzz":	[]any{15},
 				},
 				map[string]any{},
 			},
 			[]map[string][]int{
 				{
-					"fizz":     {3, 15},
-					"buzz":     {5, 15},
-					"fizzbuzz": {15},
+					"fizz":		{3, 15},
+					"buzz":		{5, 15},
+					"fizzbuzz":	{15},
 				},
 				{},
 			},
@@ -1047,17 +1047,17 @@ func TestTypeCoersion(t *testing.T) {
 		{
 			[]any{
 				map[string]any{
-					"fizz":     []any{3, 15},
-					"buzz":     []any{"5", 15},
-					"fizzbuzz": []any{15},
+					"fizz":		[]any{3, 15},
+					"buzz":		[]any{"5", 15},
+					"fizzbuzz":	[]any{15},
 				},
 				map[string]any{},
 			},
 			[]map[string][]int{
 				{
-					"fizz":     {3, 15},
-					"buzz":     {5, 15},
-					"fizzbuzz": {15},
+					"fizz":		{3, 15},
+					"buzz":		{5, 15},
+					"fizzbuzz":	{15},
 				},
 				{},
 			},

@@ -21,11 +21,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/httpstate/client"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets/service"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -37,21 +37,21 @@ import (
 // Stack is a cloud stack.  This simply adds some cloud-specific properties atop the standard backend stack interface.
 type Stack interface {
 	backend.Stack
-	OrgName() string                            // the organization that owns this stack.
-	CurrentOperation() *apitype.OperationStatus // in progress operation, if applicable.
+	OrgName() string				// the organization that owns this stack.
+	CurrentOperation() *apitype.OperationStatus	// in progress operation, if applicable.
 	StackIdentifier() client.StackIdentifier
 }
 
 type cloudBackendReference struct {
-	name    tokens.StackName
-	project tokens.Name
-	owner   string
-	b       *cloudBackend
+	name	tokens.StackName
+	project	tokens.Name
+	owner	string
+	b	*cloudBackend
 
 	// defaultOrg is the user's default organization, either configured by the user or determined otherwise.
 	// If unset, will assume that there is no default organization configured and fall back to referencing
 	// the user's individual org.
-	defaultOrg string
+	defaultOrg	string
 }
 
 func (c cloudBackendReference) String() string {
@@ -103,20 +103,20 @@ func (c cloudBackendReference) FullyQualifiedName() tokens.QName {
 // cloudStack is a cloud stack descriptor.
 type cloudStack struct {
 	// ref is the stack's unique name.
-	ref cloudBackendReference
+	ref	cloudBackendReference
 	// orgName is the organization that owns this stack.
-	orgName string
+	orgName	string
 	// currentOperation contains information about any current operation being performed on the stack, as applicable.
-	currentOperation *apitype.OperationStatus
+	currentOperation	*apitype.OperationStatus
 	// snapshot contains the latest deployment state, allocated on first use. It's valid for the snapshot
 	// itself to be nil.
-	snapshot atomic.Pointer[*deploy.Snapshot]
+	snapshot	atomic.Pointer[*deploy.Snapshot]
 	// b is a pointer to the backend that this stack belongs to.
-	b *cloudBackend
+	b	*cloudBackend
 	// tags contains metadata tags describing additional, extensible properties about this stack.
-	tags map[apitype.StackTagName]string
+	tags	map[apitype.StackTagName]string
 	// escConfigEnv caches if we expect this stack to have its config stored in an ESC environment.
-	escConfigEnv *string
+	escConfigEnv	*string
 }
 
 func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Stack, error) {
@@ -136,26 +136,26 @@ func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Sta
 	// Now assemble all the pieces into a stack structure.
 	return &cloudStack{
 		ref: cloudBackendReference{
-			owner:      apistack.OrgName,
-			project:    tokens.Name(apistack.ProjectName),
-			defaultOrg: defaultOrg,
-			name:       stackName,
-			b:          b,
+			owner:		apistack.OrgName,
+			project:	tokens.Name(apistack.ProjectName),
+			defaultOrg:	defaultOrg,
+			name:		stackName,
+			b:		b,
 		},
-		orgName:          apistack.OrgName,
-		currentOperation: apistack.CurrentOperation,
-		tags:             apistack.Tags,
-		b:                b,
-		escConfigEnv:     escConfigEnv,
+		orgName:		apistack.OrgName,
+		currentOperation:	apistack.CurrentOperation,
+		tags:			apistack.Tags,
+		b:			b,
+		escConfigEnv:		escConfigEnv,
 	}, nil
 }
-func (s *cloudStack) Ref() backend.StackReference { return s.ref }
+func (s *cloudStack) Ref() backend.StackReference	{ return s.ref }
 
 // ConfigLocation returns the ESC environment of the stack config if applicable.
 func (s *cloudStack) ConfigLocation() backend.StackConfigLocation {
 	return backend.StackConfigLocation{
-		IsRemote: s.escConfigEnv != nil,
-		EscEnv:   s.escConfigEnv,
+		IsRemote:	s.escConfigEnv != nil,
+		EscEnv:		s.escConfigEnv,
 	}
 }
 
@@ -173,11 +173,11 @@ func (s *cloudStack) LoadRemoteConfig(ctx context.Context, project *workspace.Pr
 		return nil, nil
 	}
 	projectStack := &workspace.ProjectStack{
-		Environment:     workspace.NewEnvironment([]string{stack.Config.Environment}),
-		SecretsProvider: stack.Config.SecretsProvider,
-		EncryptedKey:    stack.Config.EncryptedKey,
-		EncryptionSalt:  stack.Config.EncryptionSalt,
-		Config:          config.Map{},
+		Environment:		workspace.NewEnvironment([]string{stack.Config.Environment}),
+		SecretsProvider:	stack.Config.SecretsProvider,
+		EncryptedKey:		stack.Config.EncryptedKey,
+		EncryptionSalt:		stack.Config.EncryptionSalt,
+		Config:			config.Map{},
 	}
 	return projectStack, nil
 }
@@ -196,18 +196,18 @@ func (s *cloudStack) SaveRemoteConfig(ctx context.Context, projectStack *workspa
 		return err
 	}
 	err = s.b.client.UpdateStackConfig(ctx, stackID, &apitype.StackConfig{
-		Environment:     imports[0],
-		SecretsProvider: projectStack.SecretsProvider,
-		EncryptedKey:    projectStack.EncryptedKey,
-		EncryptionSalt:  projectStack.EncryptionSalt,
+		Environment:		imports[0],
+		SecretsProvider:	projectStack.SecretsProvider,
+		EncryptedKey:		projectStack.EncryptedKey,
+		EncryptionSalt:		projectStack.EncryptionSalt,
 	})
 	return err
 }
 
-func (s *cloudStack) Backend() backend.Backend                   { return s.b }
-func (s *cloudStack) OrgName() string                            { return s.orgName }
-func (s *cloudStack) CurrentOperation() *apitype.OperationStatus { return s.currentOperation }
-func (s *cloudStack) Tags() map[apitype.StackTagName]string      { return s.tags }
+func (s *cloudStack) Backend() backend.Backend				{ return s.b }
+func (s *cloudStack) OrgName() string					{ return s.orgName }
+func (s *cloudStack) CurrentOperation() *apitype.OperationStatus	{ return s.currentOperation }
+func (s *cloudStack) Tags() map[apitype.StackTagName]string		{ return s.tags }
 
 func (s *cloudStack) StackIdentifier() client.StackIdentifier {
 	si, err := s.b.getCloudStackIdentifier(s.ref)
@@ -237,13 +237,13 @@ func (s *cloudStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets
 // cloudStackSummary implements the backend.StackSummary interface, by wrapping
 // an apitype.StackSummary struct.
 type cloudStackSummary struct {
-	summary apitype.StackSummary
-	b       *cloudBackend
+	summary	apitype.StackSummary
+	b	*cloudBackend
 	// defaultOrg passes a cached value for what the default org should be, through to
 	// `cloudBackendReference` where it may be used to qualify the stack name when stringified.
 	// If unset, `cloudBackendReference` will refer to the individual org rather than manage
 	// an explicit lookup.
-	defaultOrg string
+	defaultOrg	string
 }
 
 func (css cloudStackSummary) Name() backend.StackReference {
@@ -252,11 +252,11 @@ func (css cloudStackSummary) Name() backend.StackReference {
 	contract.AssertNoErrorf(err, "unexpected invalid stack name: %v", css.summary.StackName)
 
 	return cloudBackendReference{
-		owner:      css.summary.OrgName,
-		defaultOrg: css.defaultOrg,
-		project:    tokens.Name(css.summary.ProjectName),
-		name:       stackName,
-		b:          css.b,
+		owner:		css.summary.OrgName,
+		defaultOrg:	css.defaultOrg,
+		project:	tokens.Name(css.summary.ProjectName),
+		name:		stackName,
+		b:		css.b,
 	}
 }
 

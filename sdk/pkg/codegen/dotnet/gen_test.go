@@ -23,25 +23,25 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/testing/test"
 )
 
 func TestGeneratePackage(t *testing.T) {
 	t.Parallel()
 
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
-		Language: "dotnet",
+		Language:	"dotnet",
 		GenPackage: func(
 			t string, p *schema.Package, e map[string][]byte, l schema.ReferenceLoader,
 		) (map[string][]byte, error) {
 			return GeneratePackage(t, p, e, nil)
 		},
 		Checks: map[string]test.CodegenCheck{
-			"dotnet/compile": typeCheckGeneratedPackage,
-			"dotnet/test":    testGeneratedPackage,
+			"dotnet/compile":	typeCheckGeneratedPackage,
+			"dotnet/test":		testGeneratedPackage,
 		},
-		TestCases: test.PulumiPulumiSDKTests,
+		TestCases:	test.PulumiPulumiSDKTests,
 	})
 }
 
@@ -75,8 +75,8 @@ func TestGenerateType(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		typ      schema.Type
-		expected string
+		typ		schema.Type
+		expected	string
 	}{
 		{
 			&schema.InputType{

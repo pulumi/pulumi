@@ -34,22 +34,22 @@ func TestAnalyzerSpawn(t *testing.T) {
 	// Sanity test that from config.Map to envvars we see what we expect to see
 	proj := "test-project"
 	configMap := config.Map{
-		config.MustMakeKey(proj, "bool"):   config.NewTypedValue("true", config.TypeBool),
-		config.MustMakeKey(proj, "float"):  config.NewTypedValue("1.5", config.TypeFloat),
-		config.MustMakeKey(proj, "string"): config.NewTypedValue("hello", config.TypeString),
-		config.MustMakeKey(proj, "obj"):    config.NewObjectValue("{\"key\": \"value\"}"),
+		config.MustMakeKey(proj, "bool"):	config.NewTypedValue("true", config.TypeBool),
+		config.MustMakeKey(proj, "float"):	config.NewTypedValue("1.5", config.TypeFloat),
+		config.MustMakeKey(proj, "string"):	config.NewTypedValue("hello", config.TypeString),
+		config.MustMakeKey(proj, "obj"):	config.NewObjectValue("{\"key\": \"value\"}"),
 	}
 
 	configDecrypted, err := configMap.Decrypt(config.NopDecrypter)
 	require.NoError(t, err)
 
 	opts := PolicyAnalyzerOptions{
-		Organization: "test-org",
-		Project:      proj,
-		Stack:        "test-stack",
-		DryRun:       true,
-		Config:       configDecrypted,
-		Tags:         map[string]string{"tag1": "value1", "tag2": "value2"},
+		Organization:	"test-org",
+		Project:	proj,
+		Stack:		"test-stack",
+		DryRun:		true,
+		Config:		configDecrypted,
+		Tags:		map[string]string{"tag1": "value1", "tag2": "value2"},
 	}
 
 	pluginPath, err := filepath.Abs("./testdata/analyzer")
@@ -98,22 +98,22 @@ func TestAnalyzerSpawnViaLanguage(t *testing.T) {
 	// Sanity test that from config.Map to property values we see what we expect to see
 	proj := "test-project"
 	configMap := config.Map{
-		config.MustMakeKey(proj, "bool"):   config.NewTypedValue("true", config.TypeBool),
-		config.MustMakeKey(proj, "float"):  config.NewTypedValue("1.5", config.TypeFloat),
-		config.MustMakeKey(proj, "string"): config.NewTypedValue("hello", config.TypeString),
-		config.MustMakeKey(proj, "obj"):    config.NewObjectValue("{\"key\": \"value\"}"),
+		config.MustMakeKey(proj, "bool"):	config.NewTypedValue("true", config.TypeBool),
+		config.MustMakeKey(proj, "float"):	config.NewTypedValue("1.5", config.TypeFloat),
+		config.MustMakeKey(proj, "string"):	config.NewTypedValue("hello", config.TypeString),
+		config.MustMakeKey(proj, "obj"):	config.NewObjectValue("{\"key\": \"value\"}"),
 	}
 
 	configDecrypted, err := configMap.Decrypt(config.NopDecrypter)
 	require.NoError(t, err)
 
 	opts := PolicyAnalyzerOptions{
-		Organization: "test-org",
-		Project:      proj,
-		Stack:        "test-stack",
-		DryRun:       true,
-		Config:       configDecrypted,
-		Tags:         map[string]string{"tag1": "value1", "tag2": "value2"},
+		Organization:	"test-org",
+		Project:	proj,
+		Stack:		"test-stack",
+		DryRun:		true,
+		Config:		configDecrypted,
+		Tags:		map[string]string{"tag1": "value1", "tag2": "value2"},
 	}
 
 	pluginPath, err := filepath.Abs("./testdata/analyzer-language")

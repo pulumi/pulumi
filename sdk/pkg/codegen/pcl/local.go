@@ -17,17 +17,17 @@ package pcl
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
 )
 
 // LocalVariable represents a program- or component-scoped local variable.
 type LocalVariable struct {
 	node
 
-	syntax *hclsyntax.Attribute
+	syntax	*hclsyntax.Attribute
 
 	// The variable definition.
-	Definition *model.Attribute
+	Definition	*model.Attribute
 }
 
 // SyntaxNode returns the syntax node associated with the local variable.
@@ -59,4 +59,4 @@ func (lv *LocalVariable) Type() model.Type {
 	return lv.Definition.Type()
 }
 
-func (*LocalVariable) isNode() {}
+func (*LocalVariable) isNode()	{}

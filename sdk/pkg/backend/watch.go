@@ -28,9 +28,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/operations"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -44,8 +44,8 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 	apply Applier, paths []string,
 ) error {
 	opts := ApplierOptions{
-		DryRun:   false,
-		ShowLink: false,
+		DryRun:		false,
+		ShowLink:	false,
 	}
 
 	startTime := time.Now()

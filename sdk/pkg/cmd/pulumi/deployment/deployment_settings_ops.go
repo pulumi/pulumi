@@ -17,7 +17,7 @@ package deployment
 import (
 	"errors"
 
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -38,10 +38,10 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 	var stack string
 
 	cmd := &cobra.Command{
-		Use:   "pull",
-		Args:  cmdutil.ExactArgs(0),
-		Short: "Pull the stack's deployment settings from Pulumi Cloud into the deployment.yaml file",
-		Long:  "",
+		Use:	"pull",
+		Args:	cmdutil.ExactArgs(0),
+		Short:	"Pull the stack's deployment settings from Pulumi Cloud into the deployment.yaml file",
+		Long:	"",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			d, err := initializeDeploymentSettingsCmd(cmd.Context(), pkgWorkspace.Instance, stack)
 			if err != nil {
@@ -78,12 +78,12 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:        "push",
-		Aliases:    []string{"update", "up"},
-		SuggestFor: []string{"apply", "deploy", "push"},
-		Args:       cmdutil.ExactArgs(0),
-		Short:      "Update stack deployment settings from deployment.yaml",
-		Long:       "",
+		Use:		"push",
+		Aliases:	[]string{"update", "up"},
+		SuggestFor:	[]string{"apply", "deploy", "push"},
+		Args:		cmdutil.ExactArgs(0),
+		Short:		"Update stack deployment settings from deployment.yaml",
+		Long:		"",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
@@ -132,12 +132,12 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:        "destroy",
-		Aliases:    []string{"down", "dn", "clear"},
-		SuggestFor: []string{"delete", "kill", "remove", "rm", "stop"},
-		Args:       cmdutil.ExactArgs(0),
-		Short:      "Delete all the stack's deployment settings",
-		Long:       "",
+		Use:		"destroy",
+		Aliases:	[]string{"down", "dn", "clear"},
+		SuggestFor:	[]string{"delete", "kill", "remove", "rm", "stop"},
+		Args:		cmdutil.ExactArgs(0),
+		Short:		"Delete all the stack's deployment settings",
+		Long:		"",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
@@ -183,10 +183,10 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 	var remove bool
 
 	cmd := &cobra.Command{
-		Use:   "env <key> [value]",
-		Args:  cmdutil.RangeArgs(1, 2),
-		Short: "Update stack's deployment settings secrets",
-		Long:  "",
+		Use:	"env <key> [value]",
+		Args:	cmdutil.RangeArgs(1, 2),
+		Short:	"Update stack's deployment settings secrets",
+		Long:	"",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			d, err := initializeDeploymentSettingsCmd(cmd.Context(), pkgWorkspace.Instance, stack)
@@ -199,8 +199,8 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 			}
 
 			var (
-				key   string
-				value string
+				key	string
+				value	string
 			)
 
 			key = args[0]
@@ -235,8 +235,8 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 					}
 				} else {
 					secretValue = &apitype.SecretValue{
-						Value:  value,
-						Secret: false,
+						Value:	value,
+						Secret:	false,
 					}
 				}
 

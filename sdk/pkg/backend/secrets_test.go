@@ -20,7 +20,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -173,8 +173,8 @@ func TestErrorCatchingSecretsManager_DecryptValue_Success(t *testing.T) {
 	delegateManager := &MockProviderManager{encrypterDecrypter: encDecrypter}
 
 	manager := &errorCatchingSecretsManager{
-		delegateManager: delegateManager,
-		onDecryptError:  func(err error) error { return err },
+		delegateManager:	delegateManager,
+		onDecryptError:		func(err error) error { return err },
 	}
 
 	// Act
@@ -200,7 +200,7 @@ func TestErrorCatchingSecretsManager_DecryptValue_ErrorPropagated(t *testing.T) 
 
 	onDecryptErrorCalled := false
 	manager := &errorCatchingSecretsManager{
-		delegateManager: delegateManager,
+		delegateManager:	delegateManager,
 		onDecryptError: func(err error) error {
 			onDecryptErrorCalled = true
 			return err
@@ -228,7 +228,7 @@ func TestErrorCatchingSecretsManager_DecryptValue_ErrorIgnored(t *testing.T) {
 
 	onDecryptErrorCalled := false
 	manager := &errorCatchingSecretsManager{
-		delegateManager: delegateManager,
+		delegateManager:	delegateManager,
 		onDecryptError: func(err error) error {
 			onDecryptErrorCalled = true
 			return nil
@@ -253,8 +253,8 @@ func TestErrorCatchingSecretsManager_DecryptValue_NilDecrypter(t *testing.T) {
 	// Arrange
 	delegateManager := &MockProviderManager{}
 	manager := &errorCatchingSecretsManager{
-		delegateManager: delegateManager,
-		onDecryptError:  func(err error) error { return err },
+		delegateManager:	delegateManager,
+		onDecryptError:		func(err error) error { return err },
 	}
 
 	// Act
@@ -276,8 +276,8 @@ func TestErrorCatchingSecretsManager_BatchDecrypt_Success(t *testing.T) {
 	delegateManager := &MockProviderManager{encrypterDecrypter: encDecrypter}
 
 	manager := &errorCatchingSecretsManager{
-		delegateManager: delegateManager,
-		onDecryptError:  func(err error) error { return err },
+		delegateManager:	delegateManager,
+		onDecryptError:		func(err error) error { return err },
 	}
 
 	// Act
@@ -302,7 +302,7 @@ func TestErrorCatchingSecretsManager_BatchDecrypt_ErrorPropagated(t *testing.T) 
 
 	onDecryptErrorCalled := false
 	manager := &errorCatchingSecretsManager{
-		delegateManager: delegateManager,
+		delegateManager:	delegateManager,
 		onDecryptError: func(err error) error {
 			onDecryptErrorCalled = true
 			return err
@@ -330,7 +330,7 @@ func TestErrorCatchingSecretsManager_BatchDecrypt_ErrorIgnored(t *testing.T) {
 
 	onDecryptErrorCalled := false
 	manager := &errorCatchingSecretsManager{
-		delegateManager: delegateManager,
+		delegateManager:	delegateManager,
 		onDecryptError: func(err error) error {
 			onDecryptErrorCalled = true
 			return nil
@@ -355,8 +355,8 @@ func TestErrorCatchingSecretsManager_BatchDecrypt_NilDecrypter(t *testing.T) {
 	// Arrange
 	delegateManager := &MockProviderManager{encrypterDecrypter: nil}
 	manager := &errorCatchingSecretsManager{
-		delegateManager: delegateManager,
-		onDecryptError:  func(err error) error { return err },
+		delegateManager:	delegateManager,
+		onDecryptError:		func(err error) error { return err },
 	}
 
 	// Act
@@ -369,11 +369,11 @@ func TestErrorCatchingSecretsManager_BatchDecrypt_NilDecrypter(t *testing.T) {
 
 // MockProviderManager implements both secrets.Manager and secrets.Provider interfaces for testing.
 type MockProviderManager struct {
-	typeStr            string
-	state              json.RawMessage
-	encrypterDecrypter *MockEncrypterDecrypter
-	ofTypeCalled       bool
-	ofTypeErr          error
+	typeStr			string
+	state			json.RawMessage
+	encrypterDecrypter	*MockEncrypterDecrypter
+	ofTypeCalled		bool
+	ofTypeErr		error
 }
 
 func (m *MockProviderManager) Type() string {
@@ -414,16 +414,16 @@ func (m *MockProviderManager) OfType(ty string, state json.RawMessage) (secrets.
 
 // MockEncrypterDecrypter combines the config.Encrypter and config.Decrypter interfaces for testing.
 type MockEncrypterDecrypter struct {
-	encryptValueCalled bool
-	encryptValueErr    error
-	batchEncryptCalled bool
-	batchEncryptErr    error
-	decryptValueCalled bool
-	decryptErr         error
-	decryptValue       string
-	batchDecryptCalled bool
-	batchDecryptErr    error
-	batchDecryptValues []string
+	encryptValueCalled	bool
+	encryptValueErr		error
+	batchEncryptCalled	bool
+	batchEncryptErr		error
+	decryptValueCalled	bool
+	decryptErr		error
+	decryptValue		string
+	batchDecryptCalled	bool
+	batchDecryptErr		error
+	batchDecryptValues	[]string
 }
 
 func (m *MockEncrypterDecrypter) EncryptValue(ctx context.Context, plaintext string) (string, error) {

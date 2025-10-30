@@ -86,7 +86,7 @@ func TestAssetOrArchiveArrayContravariance(t *testing.T) {
 func TestBoolArrayContravariance(t *testing.T) {
 	t.Parallel()
 
-	plain := []bool{true, false} // an exhaustive test
+	plain := []bool{true, false}	// an exhaustive test
 
 	anyout := Any(asAnySlice(t, plain))
 	out := anyout.AsBoolArrayOutput()

@@ -21,9 +21,9 @@ import (
 
 	"golang.org/x/exp/slices"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -54,13 +54,13 @@ type SnapshotPersister interface {
 // of the current plan, and a journal of operations, which consists of the operations that are being
 // applied on top of the immutable snapshot.
 type JournalSnapshotManager struct {
-	journal      Journal          // The journal used to record operations performed by this plan
-	baseSnapshot *deploy.Snapshot // The base snapshot for this plan
+	journal		Journal			// The journal used to record operations performed by this plan
+	baseSnapshot	*deploy.Snapshot	// The base snapshot for this plan
 
 	// newResources is a map of resources that have been added to the snapshot in this plan, keyed by the resource
 	// state.  This is used to track the added resources and their operation IDs, allowing us too delete
 	// them later if necessary.
-	newResources gsync.Map[*resource.State, int64]
+	newResources	gsync.Map[*resource.State, int64]
 	// A counter used to generate unique operation IDs for journal entries. Note that we use these
 	// sequential IDs to track the order of operations. This matters for reconstructing the Snapshot,
 	// because we need to know which operations were applied first, so dependencies are resolved correctly.
@@ -69,20 +69,20 @@ type JournalSnapshotManager struct {
 	// start an operation after all its dependencies have been resolved. However when reconstructing
 	// the snapshot we have all journal entries available, so we need to ensure that we apply them
 	// in the right order.
-	operationIDCounter atomic.Int64
+	operationIDCounter	atomic.Int64
 
 	// A counter to generate unique IDs for each journal entry.
-	sequenceIDCounter atomic.Int64
+	sequenceIDCounter	atomic.Int64
 
 	// validationM synchronizes access to the snapshot manager's validation state. Do not use directly; use the
 	// [JournalSnapshotManager.validate] method.
-	validationM sync.Mutex
+	validationM	sync.Mutex
 
 	// hasNewResources is true if any journal operation has changed a new resource.
-	hasNewResources bool
+	hasNewResources	bool
 
 	// Tracks whether or not a terminal RebuiltBaseState event has been sent.
-	hasTerminalRebuiltBaseState bool
+	hasTerminalRebuiltBaseState	bool
 }
 
 var _ SnapshotManager = (*JournalSnapshotManager)(nil)
@@ -94,14 +94,14 @@ func (sm *JournalSnapshotManager) Close() error {
 type JournalEntryKind int
 
 const (
-	JournalEntryBegin            JournalEntryKind = 0
-	JournalEntrySuccess          JournalEntryKind = 1
-	JournalEntryFailure          JournalEntryKind = 2
-	JournalEntryRefreshSuccess   JournalEntryKind = 3
-	JournalEntryOutputs          JournalEntryKind = 4
-	JournalEntryWrite            JournalEntryKind = 5
-	JournalEntrySecretsManager   JournalEntryKind = 6
-	JournalEntryRebuiltBaseState JournalEntryKind = 7
+	JournalEntryBegin		JournalEntryKind	= 0
+	JournalEntrySuccess		JournalEntryKind	= 1
+	JournalEntryFailure		JournalEntryKind	= 2
+	JournalEntryRefreshSuccess	JournalEntryKind	= 3
+	JournalEntryOutputs		JournalEntryKind	= 4
+	JournalEntryWrite		JournalEntryKind	= 5
+	JournalEntrySecretsManager	JournalEntryKind	= 6
+	JournalEntryRebuiltBaseState	JournalEntryKind	= 7
 )
 
 func (k JournalEntryKind) String() string {
@@ -130,38 +130,38 @@ func (k JournalEntryKind) String() string {
 type JournalEntry struct {
 	// The sequence ID of this journal entry. This is a strictly increasing number, unique for
 	// each journal entry.
-	SequenceID int64
+	SequenceID	int64
 	// The kind of journal entry this is.
-	Kind JournalEntryKind
+	Kind	JournalEntryKind
 	// The ID of the operation that this journal entry is associated with.  Note that operation
 	// IDs start at 1, only Write operations have ID 0.
-	OperationID int64
+	OperationID	int64
 	// The index of the resource in the base snapshot to delete.
-	RemoveOld *int64
+	RemoveOld	*int64
 	// The operation ID of a new resource that should be deleted.
-	RemoveNew *int64
+	RemoveNew	*int64
 	// The index of the resource in the base snapshot that should be marked as pending
 	// replacement.
-	PendingReplacementOld *int64
+	PendingReplacementOld	*int64
 	// The operation ID of the new resource that should be marked as pending replacement.
-	PendingReplacementNew *int64
+	PendingReplacementNew	*int64
 	// The index of the resource in the base snapshot that should be marked as deleted.
-	DeleteOld *int64
+	DeleteOld	*int64
 	// The operation ID of the new resource that should be marked as deleted.
-	DeleteNew *int64
+	DeleteNew	*int64
 	// The resource state associated with this journal entry.
-	State *resource.State
+	State	*resource.State
 	// The operation associated with this journal entry, if any.
-	Operation *resource.Operation
+	Operation	*resource.Operation
 	// If true, this journal entry can be elided and does not need to be written immediately.
-	ElideWrite bool
+	ElideWrite	bool
 	// If true, this journal entry is part of a refresh operation.
-	IsRefresh bool
+	IsRefresh	bool
 	// SecretsManager is the secrets manager associated with the operation
-	SecretsManager secrets.Manager
+	SecretsManager	secrets.Manager
 
 	// The new snapshot if this journal entry is part of a rebase operation.
-	NewSnapshot *deploy.Snapshot
+	NewSnapshot	*deploy.Snapshot
 }
 
 func hasNewResource(entry JournalEntry) bool {
@@ -171,9 +171,9 @@ func hasNewResource(entry JournalEntry) bool {
 func (sm *JournalSnapshotManager) newJournalEntry(kind JournalEntryKind, operationID int64) JournalEntry {
 	sequenceID := sm.sequenceIDCounter.Add(1)
 	return JournalEntry{
-		Kind:        kind,
-		OperationID: operationID,
-		SequenceID:  sequenceID,
+		Kind:		kind,
+		OperationID:	operationID,
+		SequenceID:	sequenceID,
 	}
 }
 
@@ -294,11 +294,11 @@ func (sm *JournalSnapshotManager) Write(base *deploy.Snapshot) error {
 	sm.baseSnapshot = base
 
 	snapCopy := &deploy.Snapshot{
-		Manifest:          base.Manifest,
-		SecretsManager:    base.SecretsManager,
-		Resources:         make([]*resource.State, 0, len(base.Resources)),
-		PendingOperations: make([]resource.Operation, 0, len(base.PendingOperations)),
-		Metadata:          base.Metadata,
+		Manifest:		base.Manifest,
+		SecretsManager:		base.SecretsManager,
+		Resources:		make([]*resource.State, 0, len(base.Resources)),
+		PendingOperations:	make([]resource.Operation, 0, len(base.PendingOperations)),
+		Metadata:		base.Metadata,
 	}
 
 	// Copy the resources from the base snapshot to the new snapshot.
@@ -341,8 +341,8 @@ func (sm *JournalSnapshotManager) RebuiltBaseState() error {
 // operations in the journal. This ID is also used to track the newly created resources.
 
 type sameSnapshotMutation struct {
-	manager     *JournalSnapshotManager
-	operationID int64
+	manager		*JournalSnapshotManager
+	operationID	int64
 }
 
 // mustWrite returns true if any semantically meaningful difference exists between the old and new states of a same
@@ -520,8 +520,8 @@ func (sm *JournalSnapshotManager) doCreate(step deploy.Step, operationID int64) 
 }
 
 type createSnapshotMutation struct {
-	manager     *JournalSnapshotManager
-	operationID int64
+	manager		*JournalSnapshotManager
+	operationID	int64
 }
 
 func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -562,8 +562,8 @@ func (sm *JournalSnapshotManager) doUpdate(step deploy.Step, operationID int64) 
 }
 
 type updateSnapshotMutation struct {
-	manager     *JournalSnapshotManager
-	operationID int64
+	manager		*JournalSnapshotManager
+	operationID	int64
 }
 
 func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -596,8 +596,8 @@ func (sm *JournalSnapshotManager) doDelete(step deploy.Step, operationID int64) 
 }
 
 type deleteSnapshotMutation struct {
-	manager     *JournalSnapshotManager
-	operationID int64
+	manager		*JournalSnapshotManager
+	operationID	int64
 }
 
 func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -632,8 +632,8 @@ func (sm *JournalSnapshotManager) doReplace(step deploy.Step, operationID int64)
 }
 
 type replaceSnapshotMutation struct {
-	manager     *JournalSnapshotManager
-	operationID int64
+	manager		*JournalSnapshotManager
+	operationID	int64
 }
 
 func (rsm *replaceSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -654,8 +654,8 @@ func (sm *JournalSnapshotManager) doRead(step deploy.Step, operationID int64) (S
 }
 
 type readSnapshotMutation struct {
-	manager     *JournalSnapshotManager
-	operationID int64
+	manager		*JournalSnapshotManager
+	operationID	int64
 }
 
 func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -686,8 +686,8 @@ func (sm *JournalSnapshotManager) doRefresh(step deploy.Step, operationID int64)
 }
 
 type refreshSnapshotMutation struct {
-	manager     *JournalSnapshotManager
-	operationID int64
+	manager		*JournalSnapshotManager
+	operationID	int64
 }
 
 func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -738,8 +738,8 @@ func (sm *JournalSnapshotManager) doRemovePendingReplace(
 }
 
 type removePendingReplaceSnapshotMutation struct {
-	manager     *JournalSnapshotManager
-	operationID int64
+	manager		*JournalSnapshotManager
+	operationID	int64
 }
 
 func (rsm *removePendingReplaceSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -767,8 +767,8 @@ func (sm *JournalSnapshotManager) doImport(step deploy.Step, operationID int64) 
 }
 
 type importSnapshotMutation struct {
-	manager     *JournalSnapshotManager
-	operationID int64
+	manager		*JournalSnapshotManager
+	operationID	int64
 }
 
 func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -803,8 +803,8 @@ func NewJournalSnapshotManager(
 	sm secrets.Manager,
 ) (*JournalSnapshotManager, error) {
 	manager := &JournalSnapshotManager{
-		journal:      journal,
-		baseSnapshot: baseSnap,
+		journal:	journal,
+		baseSnapshot:	baseSnap,
 	}
 
 	err := manager.RegisterSecretsManager(sm)

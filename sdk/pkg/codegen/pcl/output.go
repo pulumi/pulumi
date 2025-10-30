@@ -17,25 +17,25 @@ package pcl
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/model"
 )
 
 // OutputVariable represents a program- or component-scoped output variable.
 type OutputVariable struct {
 	node
 
-	syntax *hclsyntax.Block
-	typ    model.Type
+	syntax	*hclsyntax.Block
+	typ	model.Type
 
 	// The name visible to API calls related to the output. Used as the Name argument in stack output
 	// constructors (typically a method called "export"), and through those calls to
 	// RegisterResourceOutputs. Must not be modified during code generation to ensure that stack
 	// outputs are not renamed, breaking stack references.
-	logicalName string
+	logicalName	string
 	// The definition of the output.
-	Definition *model.Block
+	Definition	*model.Block
 	// The value of the output.
-	Value model.Expression
+	Value	model.Expression
 }
 
 // SyntaxNode returns the syntax node associated with the output variable.

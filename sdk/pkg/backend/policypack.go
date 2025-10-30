@@ -24,22 +24,22 @@ import (
 
 // PublishOperation publishes a PolicyPack to the backend.
 type PublishOperation struct {
-	Root       string
-	PlugCtx    *plugin.Context
-	PolicyPack *workspace.PolicyPackProject
-	Scopes     CancellationScopeSource
+	Root		string
+	PlugCtx		*plugin.Context
+	PolicyPack	*workspace.PolicyPackProject
+	Scopes		CancellationScopeSource
 
 	// Metadata contains optional data about the environment performing the publish operation,
 	// e.g. the current source code control commit information.
-	Metadata map[string]string
+	Metadata	map[string]string
 }
 
 // PolicyPackOperation is used to make various operations against a Policy Pack.
 type PolicyPackOperation struct {
 	// If nil, the latest version is assumed.
-	VersionTag *string
-	Scopes     CancellationScopeSource
-	Config     map[string]*json.RawMessage
+	VersionTag	*string
+	Scopes		CancellationScopeSource
+	Config		map[string]*json.RawMessage
 }
 
 // PolicyPack is used to manage policy against a pluggable backend.

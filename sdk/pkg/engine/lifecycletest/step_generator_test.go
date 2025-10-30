@@ -19,10 +19,10 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	. "github.com/pulumi/pulumi/sdk/v3/pkg/engine"	//nolint:revive
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
@@ -119,11 +119,11 @@ func TestSecretMasked(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					// Return the secret value as an unmasked output. This should get masked by the engine.
 					return plugin.CreateResponse{
-						ID: "id",
+						ID:	"id",
 						Properties: resource.PropertyMap{
 							"shouldBeSecret": resource.NewProperty("bar"),
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -166,9 +166,9 @@ func TestReadReplaceStep(t *testing.T) {
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 			CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 				return plugin.CreateResponse{
-					ID:         "created-id",
-					Properties: req.Properties,
-					Status:     resource.StatusOK,
+					ID:		"created-id",
+					Properties:	req.Properties,
+					Status:		resource.StatusOK,
 				}, nil
 			},
 		}).
@@ -191,8 +191,8 @@ func TestReadReplaceStep(t *testing.T) {
 				WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 						return plugin.ReadResponse{
-							ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
-							Status:     resource.StatusOK,
+							ReadResult:	plugin.ReadResult{Outputs: resource.PropertyMap{}},
+							Status:		resource.StatusOK,
 						}, nil
 					},
 				}).
@@ -222,9 +222,9 @@ func TestRelinquishStep(t *testing.T) {
 			CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 				// Should match the ReadResource resource ID.
 				return plugin.CreateResponse{
-					ID:         resourceID,
-					Properties: req.Properties,
-					Status:     resource.StatusOK,
+					ID:		resourceID,
+					Properties:	req.Properties,
+					Status:		resource.StatusOK,
 				}, nil
 			},
 		}).
@@ -244,8 +244,8 @@ func TestRelinquishStep(t *testing.T) {
 				WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 						return plugin.ReadResponse{
-							ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
-							Status:     resource.StatusOK,
+							ReadResult:	plugin.ReadResult{Outputs: resource.PropertyMap{}},
+							Status:		resource.StatusOK,
 						}, nil
 					},
 				}).
@@ -273,8 +273,8 @@ func TestTakeOwnershipStep(t *testing.T) {
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 				return plugin.ReadResponse{
-					ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
-					Status:     resource.StatusOK,
+					ReadResult:	plugin.ReadResult{Outputs: resource.PropertyMap{}},
+					Status:		resource.StatusOK,
 				}, nil
 			},
 		}).
@@ -298,9 +298,9 @@ func TestTakeOwnershipStep(t *testing.T) {
 					CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 						// Should match the ReadF resource ID.
 						return plugin.CreateResponse{
-							ID:         "my-resource-id",
-							Properties: req.Properties,
-							Status:     resource.StatusOK,
+							ID:		"my-resource-id",
+							Properties:	req.Properties,
+							Status:		resource.StatusOK,
 						}, nil
 					},
 				}).
@@ -328,34 +328,34 @@ func TestInitErrorsStep(t *testing.T) {
 	lt.NewTestBuilder(t, &deploy.Snapshot{
 		Resources: []*resource.State{
 			{
-				Type:    "pulumi:providers:pkgA",
-				URN:     "urn:pulumi:test::test::pulumi:providers:pkgA::default",
-				Custom:  true,
-				Delete:  false,
-				ID:      "935b2216-aec5-4810-96fd-5f6eae57ac88",
-				Outputs: resource.PropertyMap{},
-				Inputs:  resource.PropertyMap{},
+				Type:		"pulumi:providers:pkgA",
+				URN:		"urn:pulumi:test::test::pulumi:providers:pkgA::default",
+				Custom:		true,
+				Delete:		false,
+				ID:		"935b2216-aec5-4810-96fd-5f6eae57ac88",
+				Outputs:	resource.PropertyMap{},
+				Inputs:		resource.PropertyMap{},
 			},
 			{
-				Type:     "pkgA:m:typA",
-				URN:      "urn:pulumi:test::test::pkgA:m:typA::resA",
-				Custom:   true,
-				ID:       "my-resource-id",
-				Provider: "urn:pulumi:test::test::pulumi:providers:pkgA::default::935b2216-aec5-4810-96fd-5f6eae57ac88",
+				Type:		"pkgA:m:typA",
+				URN:		"urn:pulumi:test::test::pkgA:m:typA::resA",
+				Custom:		true,
+				ID:		"my-resource-id",
+				Provider:	"urn:pulumi:test::test::pulumi:providers:pkgA::default::935b2216-aec5-4810-96fd-5f6eae57ac88",
 				InitErrors: []string{
 					`errors should yield an empty update to "continue" awaiting initialization.`,
 				},
-				Outputs: resource.PropertyMap{},
-				Inputs:  resource.PropertyMap{},
+				Outputs:	resource.PropertyMap{},
+				Inputs:		resource.PropertyMap{},
 			},
 		},
 	}).
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 			CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 				return plugin.CreateResponse{
-					ID:         "my-resource-id",
-					Properties: req.Properties,
-					Status:     resource.StatusOK,
+					ID:		"my-resource-id",
+					Properties:	req.Properties,
+					Status:		resource.StatusOK,
 				}, nil
 			},
 		}).

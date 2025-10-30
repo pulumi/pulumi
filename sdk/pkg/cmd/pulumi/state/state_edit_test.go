@@ -18,7 +18,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,42 +30,42 @@ func TestSnapshotFrontendRoundTrip(t *testing.T) {
 
 	snapshot := &deploy.Snapshot{
 		Manifest: deploy.Manifest{
-			Magic:   "a985ef3cf45426591e732ba9a8c59847d8d3bfcf747713e1e6bb4589b89a75ed",
-			Version: "3.74.1-dev.0",
+			Magic:		"a985ef3cf45426591e732ba9a8c59847d8d3bfcf747713e1e6bb4589b89a75ed",
+			Version:	"3.74.1-dev.0",
 		},
 		Resources: []*resource.State{
 			{
-				URN:  resource.URN("urn:pulumi:dev::random::pulumi:pulumi:Stack::random-dev"),
-				Type: "pulumi:pulumi:Stack",
+				URN:	resource.URN("urn:pulumi:dev::random::pulumi:pulumi:Stack::random-dev"),
+				Type:	"pulumi:pulumi:Stack",
 				Outputs: resource.PropertyMap{
 					resource.PropertyKey("name"): resource.NewProperty("fancy-pig"),
 				},
 			},
 			{
-				URN:    resource.URN("urn:pulumi:dev::random::pulumi:providers:random::default_4_13_2"),
-				Type:   "pulumi:providers:random",
-				Custom: true,
-				ID:     resource.ID("ed72fad1-9a82-49d7-b09f-1659b7a3c7db"),
+				URN:	resource.URN("urn:pulumi:dev::random::pulumi:providers:random::default_4_13_2"),
+				Type:	"pulumi:providers:random",
+				Custom:	true,
+				ID:	resource.ID("ed72fad1-9a82-49d7-b09f-1659b7a3c7db"),
 				Inputs: resource.PropertyMap{
 					resource.PropertyKey("version"): resource.NewProperty("4.13.2"),
 				},
 				Outputs: resource.PropertyMap{
-					resource.PropertyKey("aversion"): resource.NewProperty("4.13.2"),
-					resource.PropertyKey("version"):  resource.NewProperty("4.13.2"),
+					resource.PropertyKey("aversion"):	resource.NewProperty("4.13.2"),
+					resource.PropertyKey("version"):	resource.NewProperty("4.13.2"),
 				},
 			},
 			{
-				URN:    resource.URN("urn:pulumi:dev::random::random:index/randomPet:RandomPet::username-1"),
-				Type:   "random:index/randomPet:RandomPet",
-				Custom: true,
-				ID:     resource.ID("wondrous-doe"),
+				URN:	resource.URN("urn:pulumi:dev::random::random:index/randomPet:RandomPet::username-1"),
+				Type:	"random:index/randomPet:RandomPet",
+				Custom:	true,
+				ID:	resource.ID("wondrous-doe"),
 				Outputs: resource.PropertyMap{
-					resource.PropertyKey("id"):        resource.NewProperty("wondrous-doe"),
-					resource.PropertyKey("length"):    resource.NewProperty(2.0),
-					resource.PropertyKey("separator"): resource.NewProperty("-"),
+					resource.PropertyKey("id"):		resource.NewProperty("wondrous-doe"),
+					resource.PropertyKey("length"):		resource.NewProperty(2.0),
+					resource.PropertyKey("separator"):	resource.NewProperty("-"),
 				},
-				Parent:   resource.URN("urn:pulumi:dev::random::pulumi:pulumi:Stack::random-dev"),
-				Provider: "urn:pulumi:dev::random::pulumi:providers:random::default_4_13_2::ed72fad1-9a82-49d7-b09f-1659b7a3c7db",
+				Parent:		resource.URN("urn:pulumi:dev::random::pulumi:pulumi:Stack::random-dev"),
+				Provider:	"urn:pulumi:dev::random::pulumi:providers:random::default_4_13_2::ed72fad1-9a82-49d7-b09f-1659b7a3c7db",
 			},
 		},
 	}
@@ -92,24 +92,24 @@ func TestSnapshotFrontendRoundTrip(t *testing.T) {
 func TestOpenInEditorMultiPart(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name     string
-		command  string
-		filename string
+		name		string
+		command		string
+		filename	string
 	}{
 		{
-			name:     "Simple command",
-			command:  "echo",
-			filename: "filename.txt",
+			name:		"Simple command",
+			command:	"echo",
+			filename:	"filename.txt",
 		},
 		{
-			name:     "Command with arguments",
-			command:  "echo Hello",
-			filename: "filename.txt",
+			name:		"Command with arguments",
+			command:	"echo Hello",
+			filename:	"filename.txt",
 		},
 		{
-			name:     "Complex command",
-			command:  "echo --foo --bar a",
-			filename: "filename.txt",
+			name:		"Complex command",
+			command:	"echo --foo --bar a",
+			filename:	"filename.txt",
 		},
 	}
 

@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 )
@@ -85,14 +85,14 @@ func TestReadingGitRepo(t *testing.T) {
 		assert.Contains(t, test.Environment, backend.GitHead, "Expected to find Git SHA in update environment map")
 		featureBranch1SHA = test.Environment[backend.GitHead]
 		assertEnvValue(t, test, backend.GitHeadName, "refs/heads/feature/branch1")
-		assertEnvValue(t, test, backend.GitDirty, "true") // Because beta-unsubmitted.txt, after commit
+		assertEnvValue(t, test, backend.GitDirty, "true")	// Because beta-unsubmitted.txt, after commit
 
 		assertEnvValue(t, test, backend.VCSRepoOwner, "owner-name")
 		assertEnvValue(t, test, backend.VCSRepoName, "repo-name")
 	}
 
 	// Two branches sharing the same commit. But head ref will differ.
-	e.RunCommand("git", "checkout", "-b", "feature/branch2") // Same commit as feature/branch1.
+	e.RunCommand("git", "checkout", "-b", "feature/branch2")	// Same commit as feature/branch1.
 
 	{
 		test := &backend.UpdateMetadata{
@@ -115,7 +115,7 @@ func TestReadingGitRepo(t *testing.T) {
 		}
 		require.NoError(t, addGitMetadata(e.RootPath, test))
 
-		assert.Equal(t, "message for commit alpha", test.Message) // The prior commit
+		assert.Equal(t, "message for commit alpha", test.Message)	// The prior commit
 		assert.Contains(t, test.Environment, backend.GitHead, "Expected to find Git SHA in update environment map")
 		assert.NotContains(t, test.Environment, backend.GitHeadName,
 			"Expected no 'git.headName' key, since in detached head state.")
@@ -149,7 +149,7 @@ func TestReadingGitRepo(t *testing.T) {
 
 	// Confirm that data can be inferred from the CI system if unavailable.
 	// Fake running under Travis CI.
-	os.Unsetenv("PULUMI_DISABLE_CI_DETECTION") // Restore our CI/CD detection logic.
+	os.Unsetenv("PULUMI_DISABLE_CI_DETECTION")	// Restore our CI/CD detection logic.
 	t.Setenv("TRAVIS", "1")
 	t.Setenv("TRAVIS_BRANCH", "branch-from-ci")
 	t.Setenv("GITHUB_REF", "branch-from-ci")
@@ -228,7 +228,7 @@ func TestPulumiCLIMetadata(t *testing.T) {
 
 	actualEnv := map[string]string{}
 
-	getEnv := func() []string { // This is the function that returns the environment variables.
+	getEnv := func() []string {	// This is the function that returns the environment variables.
 		return []string{
 			// Checks that a normal flag is set in the environment.
 			"PULUMI_SKIP_UPDATE_CHECK=1",
@@ -242,7 +242,7 @@ func TestPulumiCLIMetadata(t *testing.T) {
 	}
 
 	subCmd := &cobra.Command{
-		Use: "subcommand",
+		Use:	"subcommand",
 		Run: func(cmd *cobra.Command, args []string) {
 			addPulumiCLIMetadataToEnvironment(actualEnv, cmd.Flags(), getEnv)
 		},
@@ -273,25 +273,25 @@ func TestPulumiCLIMetadata(t *testing.T) {
 	// Check that sensitive flags are not leaked in the environment.
 	assert.Equal(t, map[string]string{
 		// These have unknown runtime values across machines and are set to a sentinel value in the test.
-		"pulumi.version": "SKIP",
-		"pulumi.arch":    "SKIP",
-		"pulumi.os":      "SKIP",
+		"pulumi.version":	"SKIP",
+		"pulumi.arch":		"SKIP",
+		"pulumi.os":		"SKIP",
 
 		// CLI flags
-		"pulumi.flag.name":  "set",
-		"pulumi.flag.age":   "set",
-		"pulumi.flag.human": "true",
+		"pulumi.flag.name":	"set",
+		"pulumi.flag.age":	"set",
+		"pulumi.flag.human":	"true",
 
 		// Environment variables
 
 		// Env Vars are considered truthy if they are "1" or "true" case-insensitive.
-		"pulumi.env.PULUMI_SKIP_UPDATE_CHECK": "true",
+		"pulumi.env.PULUMI_SKIP_UPDATE_CHECK":	"true",
 		// The following is a boolean flag that is set to "0", which is falsey.
-		"pulumi.env.PULUMI_EXPERIMENTAL": "false",
+		"pulumi.env.PULUMI_EXPERIMENTAL":	"false",
 		// The following is truthy, but NOT a boolean flag.
-		"pulumi.env.PULUMI_STRING_FLAG": "set",
+		"pulumi.env.PULUMI_STRING_FLAG":	"set",
 		// The following is falsey, but NOT a boolean flag.
-		"pulumi.env.PULUMI_DEPRECATED_FLAG": "set",
+		"pulumi.env.PULUMI_DEPRECATED_FLAG":	"set",
 	}, actualEnv)
 }
 

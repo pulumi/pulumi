@@ -23,11 +23,11 @@ import (
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/cmd"
+	cmdTemplates "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/templates"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/ui"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
@@ -52,9 +52,9 @@ func ChooseTemplate(templates []cmdTemplates.Template, opts display.Options) (cm
 
 	var option string
 	if err := survey.AskOne(&survey.Select{
-		Message:  message,
-		Options:  options,
-		PageSize: pageSize,
+		Message:	message,
+		Options:	options,
+		PageSize:	pageSize,
 	}, &option, ui.SurveyIcons(opts.Color)); err != nil {
 		return nil, errors.New("no template selected; please use `pulumi new` to choose one")
 	}

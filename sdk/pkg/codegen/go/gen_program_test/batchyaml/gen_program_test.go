@@ -21,9 +21,9 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/stretchr/testify/require"
 
-	codegenGo "github.com/pulumi/pulumi/pkg/v3/codegen/go"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	codegenGo "github.com/pulumi/pulumi/sdk/v3/pkg/codegen/go"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/testing/test"
 )
 
 // This specifically tests the synced examples from pulumi/yaml with

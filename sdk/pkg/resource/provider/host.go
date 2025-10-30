@@ -32,8 +32,8 @@ import (
 
 // HostClient is a client interface into the host's engine RPC interface.
 type HostClient struct {
-	conn   *grpc.ClientConn
-	client pulumirpc.EngineClient
+	conn	*grpc.ClientConn
+	client	pulumirpc.EngineClient
 }
 
 // Provider client is sensitive to GRPC info logging to stdout, so ensure they are dropped.
@@ -41,7 +41,7 @@ type HostClient struct {
 //
 // grpclog.SetLoggerV2 sets global state, and thus must be called before any gRPC
 // connection is initiated. To avoid race conditions, we call it when the package loads.
-func init() { grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, os.Stderr)) }
+func init()	{ grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, os.Stderr)) }
 
 // NewHostClient dials the target address, connects over gRPC, and returns a client interface.
 func NewHostClient(addr string) (*HostClient, error) {
@@ -56,8 +56,8 @@ func NewHostClient(addr string) (*HostClient, error) {
 		return nil, err
 	}
 	return &HostClient{
-		conn:   conn,
-		client: pulumirpc.NewEngineClient(conn),
+		conn:	conn,
+		client:	pulumirpc.NewEngineClient(conn),
 	}, nil
 }
 
@@ -88,10 +88,10 @@ func (host *HostClient) log(
 		contract.Failf("Unrecognized log severity type: %v", sev)
 	}
 	_, err := host.client.Log(context, &pulumirpc.LogRequest{
-		Severity:  rpcsev,
-		Message:   strings.ToValidUTF8(msg, "�"),
-		Urn:       string(urn),
-		Ephemeral: ephemeral,
+		Severity:	rpcsev,
+		Message:	strings.ToValidUTF8(msg, "�"),
+		Urn:		string(urn),
+		Ephemeral:	ephemeral,
 	})
 	return err
 }

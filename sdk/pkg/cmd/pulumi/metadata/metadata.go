@@ -30,7 +30,7 @@ import (
 
 	git "github.com/go-git/go-git/v5"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
@@ -63,8 +63,8 @@ func GetUpdateMetadata(
 	msg, root, execKind, execAgent string, updatePlan bool, cfg backend.StackConfiguration, flags *pflag.FlagSet,
 ) (*backend.UpdateMetadata, error) {
 	m := &backend.UpdateMetadata{
-		Message:     msg,
-		Environment: make(map[string]string),
+		Message:	msg,
+		Environment:	make(map[string]string),
 	}
 
 	addPulumiCLIMetadataToEnvironment(m.Environment, flags, os.Environ)
@@ -139,7 +139,7 @@ func addPulumiCLIMetadataToEnvironment(env map[string]string, flags *pflag.FlagS
 			truth, err := flags.GetBool(f.Name)
 			switch {
 			case err != nil:
-				return "set" // not a bool flag
+				return "set"	// not a bool flag
 			case truth:
 				return "true"
 			default:

@@ -17,7 +17,7 @@ package backend
 import (
 	"context"
 
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 

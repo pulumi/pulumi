@@ -27,10 +27,10 @@ import (
 	"github.com/Netflix/go-expect"
 	"github.com/creack/pty"
 	"github.com/hinshun/vt10x"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/diy"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
@@ -44,19 +44,19 @@ func TestStateUpgradeCommand_parseArgsErrors(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		desc    string
-		give    []string
-		wantErr string
+		desc	string
+		give	[]string
+		wantErr	string
 	}{
 		{
-			desc:    "unknown flag",
-			give:    []string{"--unknown"},
-			wantErr: "unknown flag: --unknown",
+			desc:		"unknown flag",
+			give:		[]string{"--unknown"},
+			wantErr:	"unknown flag: --unknown",
 		},
 		{
-			desc:    "unexpected argument",
-			give:    []string{"arg"},
-			wantErr: `unknown command "arg" for "upgrade"`,
+			desc:		"unexpected argument",
+			give:		[]string{"arg"},
+			wantErr:	`unknown command "arg" for "upgrade"`,
 		},
 	}
 
@@ -278,9 +278,9 @@ func TestStateUpgradeProjectNameWidget(t *testing.T) {
 		projects := make([]tokens.Name, len(stacks))
 
 		err := (&stateUpgradeProjectNameWidget{
-			Stdin:  console.Tty(),
-			Stdout: console.Tty(),
-			Stderr: iotest.LogWriterPrefixed(t, "[stderr] "),
+			Stdin:	console.Tty(),
+			Stdout:	console.Tty(),
+			Stderr:	iotest.LogWriterPrefixed(t, "[stderr] "),
 		}).Prompt(stacks, projects)
 		require.NoError(t, err, "prompt failed")
 		assert.Equal(t, []tokens.Name{"foo-project", "", "baz-project"}, projects)
@@ -322,7 +322,7 @@ func TestStateUpgradeProjectNameWidget(t *testing.T) {
 
 	t.Run("long name", func(t *testing.T) {
 		expect(t, "Stack baz")
-		sendLine(t, strings.Repeat("a", 101)) // max length is 100
+		sendLine(t, strings.Repeat("a", 101))	// max length is 100
 		expect(t, "project names are limited to 100 characters")
 	})
 
@@ -352,9 +352,9 @@ func TestStateUpgradeProjectNameWidget_noStacks(t *testing.T) {
 	}()
 
 	err = (&stateUpgradeProjectNameWidget{
-		Stdin:  tty,
-		Stdout: tty,
-		Stderr: iotest.LogWriterPrefixed(t, "[stderr] "),
+		Stdin:	tty,
+		Stdout:	tty,
+		Stderr:	iotest.LogWriterPrefixed(t, "[stderr] "),
 	}).Prompt([]tokens.StackName{}, []tokens.Name{})
 	require.NoError(t, err)
 }
@@ -370,9 +370,9 @@ func TestStateUpgradeProjectNameWidget_notATerminal(t *testing.T) {
 	projects := make([]tokens.Name, len(stacks))
 
 	err := (&stateUpgradeProjectNameWidget{
-		Stdin:  bytes.NewReader(nil),
-		Stdout: bytes.NewBuffer(nil),
-		Stderr: iotest.LogWriterPrefixed(t, "[stderr] "),
+		Stdin:	bytes.NewReader(nil),
+		Stdout:	bytes.NewBuffer(nil),
+		Stderr:	iotest.LogWriterPrefixed(t, "[stderr] "),
 	}).Prompt(stacks, projects)
 	require.NoError(t, err)
 
@@ -383,7 +383,7 @@ func TestStateUpgradeProjectNameWidget_notATerminal(t *testing.T) {
 type stubDIYBackend struct {
 	diy.Backend
 
-	UpgradeF func(context.Context, *diy.UpgradeOptions) error
+	UpgradeF	func(context.Context, *diy.UpgradeOptions) error
 }
 
 var _ diy.Backend = (*stubDIYBackend)(nil)

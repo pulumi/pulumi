@@ -32,8 +32,8 @@ import (
 // The most common reason why this happens is that this key is being decrypted in a stack that's not the same
 // one that encrypted it.
 type DecryptError struct {
-	Key config.Key // The configuration key whose value couldn't be decrypted
-	Err error      // The error that occurred while decrypting
+	Key	config.Key	// The configuration key whose value couldn't be decrypted
+	Err	error		// The error that occurred while decrypting
 }
 
 func (d DecryptError) Error() string {

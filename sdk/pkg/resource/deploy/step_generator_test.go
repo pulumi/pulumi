@@ -18,8 +18,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -32,15 +32,15 @@ func TestIgnoreChanges(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name          string
-		oldInputs     map[string]any
-		newInputs     map[string]any
-		expected      map[string]any
-		ignoreChanges []string
-		expectMessage bool
+		name		string
+		oldInputs	map[string]any
+		newInputs	map[string]any
+		expected	map[string]any
+		ignoreChanges	[]string
+		expectMessage	bool
 	}{
 		{
-			name: "Present in old and new sets",
+			name:	"Present in old and new sets",
 			oldInputs: map[string]any{
 				"a": map[string]any{
 					"b": "foo",
@@ -50,37 +50,37 @@ func TestIgnoreChanges(t *testing.T) {
 				"a": map[string]any{
 					"b": "bar",
 				},
-				"c": 42,
+				"c":	42,
 			},
 			expected: map[string]any{
 				"a": map[string]any{
 					"b": "foo",
 				},
-				"c": 42,
+				"c":	42,
 			},
-			ignoreChanges: []string{"a.b"},
+			ignoreChanges:	[]string{"a.b"},
 		},
 		{
-			name: "Missing in new sets",
+			name:	"Missing in new sets",
 			oldInputs: map[string]any{
 				"a": map[string]any{
 					"b": "foo",
 				},
 			},
 			newInputs: map[string]any{
-				"a": map[string]any{},
-				"c": 42,
+				"a":	map[string]any{},
+				"c":	42,
 			},
 			expected: map[string]any{
 				"a": map[string]any{
 					"b": "foo",
 				},
-				"c": 42,
+				"c":	42,
 			},
-			ignoreChanges: []string{"a.b"},
+			ignoreChanges:	[]string{"a.b"},
 		},
 		{
-			name: "Present in old and new sets, using [\"\"]",
+			name:	"Present in old and new sets, using [\"\"]",
 			oldInputs: map[string]any{
 				"a": map[string]any{
 					"b": map[string]any{
@@ -94,7 +94,7 @@ func TestIgnoreChanges(t *testing.T) {
 						"c": "bar",
 					},
 				},
-				"c": 42,
+				"c":	42,
 			},
 			expected: map[string]any{
 				"a": map[string]any{
@@ -102,12 +102,12 @@ func TestIgnoreChanges(t *testing.T) {
 						"c": "foo",
 					},
 				},
-				"c": 42,
+				"c":	42,
 			},
-			ignoreChanges: []string{"a.b[\"c\"]"},
+			ignoreChanges:	[]string{"a.b[\"c\"]"},
 		},
 		{
-			name: "Missing in new sets, using [\"\"]",
+			name:	"Missing in new sets, using [\"\"]",
 			oldInputs: map[string]any{
 				"a": map[string]any{
 					"b": map[string]any{
@@ -119,7 +119,7 @@ func TestIgnoreChanges(t *testing.T) {
 				"a": map[string]any{
 					"b": map[string]any{},
 				},
-				"c": 42,
+				"c":	42,
 			},
 			expected: map[string]any{
 				"a": map[string]any{
@@ -127,29 +127,29 @@ func TestIgnoreChanges(t *testing.T) {
 						"c": "foo",
 					},
 				},
-				"c": 42,
+				"c":	42,
 			},
-			ignoreChanges: []string{"a.b[\"c\"]"},
+			ignoreChanges:	[]string{"a.b[\"c\"]"},
 		},
 		{
-			name:      "Missing in old deletes",
-			oldInputs: map[string]any{},
+			name:		"Missing in old deletes",
+			oldInputs:	map[string]any{},
 			newInputs: map[string]any{
 				"a": map[string]any{
 					"b": "foo",
 				},
-				"c": 42,
+				"c":	42,
 			},
 			expected: map[string]any{
-				"a": map[string]any{},
-				"c": 42,
+				"a":	map[string]any{},
+				"c":	42,
 			},
-			ignoreChanges: []string{"a.b"},
+			ignoreChanges:	[]string{"a.b"},
 		},
 		{
-			name:      "Missing keys in old and new are OK",
-			oldInputs: map[string]any{},
-			newInputs: map[string]any{},
+			name:		"Missing keys in old and new are OK",
+			oldInputs:	map[string]any{},
+			newInputs:	map[string]any{},
 			ignoreChanges: []string{
 				"a",
 				"a.b",
@@ -157,18 +157,18 @@ func TestIgnoreChanges(t *testing.T) {
 			},
 		},
 		{
-			name: "Missing parent keys in only new",
+			name:	"Missing parent keys in only new",
 			oldInputs: map[string]any{
 				"a": map[string]any{
 					"b": "foo",
 				},
 			},
-			newInputs:     map[string]any{},
-			expected:      map[string]any{},
-			ignoreChanges: []string{"a.b"},
+			newInputs:	map[string]any{},
+			expected:	map[string]any{},
+			ignoreChanges:	[]string{"a.b"},
 		},
 		{
-			name: "Arrays with different lengths",
+			name:	"Arrays with different lengths",
 			oldInputs: map[string]any{
 				"a": []any{
 					map[string]string{"b": "foo", "c": "bar"},
@@ -189,10 +189,10 @@ func TestIgnoreChanges(t *testing.T) {
 					map[string]string{"b": "baz", "c": "qux"},
 				},
 			},
-			ignoreChanges: []string{"a[*].b"},
+			ignoreChanges:	[]string{"a[*].b"},
 		},
 		{
-			name: "Shorter new array",
+			name:	"Shorter new array",
 			oldInputs: map[string]any{
 				"a": []any{
 					map[string]string{"b": "foo", "c": "bar"},
@@ -209,7 +209,7 @@ func TestIgnoreChanges(t *testing.T) {
 					map[string]string{"b": "foo", "c": "bar"},
 				},
 			},
-			ignoreChanges: []string{"a[*].b"},
+			ignoreChanges:	[]string{"a[*].b"},
 		},
 	}
 
@@ -243,88 +243,88 @@ func TestApplyReplaceOnChangesEmptyDetailedDiff(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name             string
-		diff             plugin.DiffResult
-		replaceOnChanges []string
-		hasInitErrors    bool
-		expected         plugin.DiffResult
+		name			string
+		diff			plugin.DiffResult
+		replaceOnChanges	[]string
+		hasInitErrors		bool
+		expected		plugin.DiffResult
 	}{
 		{
-			name:             "Empty diff and replaceOnChanges",
-			diff:             plugin.DiffResult{},
-			replaceOnChanges: []string{},
-			hasInitErrors:    false,
-			expected:         plugin.DiffResult{},
+			name:			"Empty diff and replaceOnChanges",
+			diff:			plugin.DiffResult{},
+			replaceOnChanges:	[]string{},
+			hasInitErrors:		false,
+			expected:		plugin.DiffResult{},
 		},
 		{
-			name: "DiffSome and empty replaceOnChanges",
+			name:	"DiffSome and empty replaceOnChanges",
 			diff: plugin.DiffResult{
-				Changes:     plugin.DiffSome,
-				ChangedKeys: []resource.PropertyKey{"a"},
+				Changes:	plugin.DiffSome,
+				ChangedKeys:	[]resource.PropertyKey{"a"},
 			},
-			replaceOnChanges: []string{},
-			hasInitErrors:    false,
+			replaceOnChanges:	[]string{},
+			hasInitErrors:		false,
 			expected: plugin.DiffResult{
-				Changes:     plugin.DiffSome,
-				ChangedKeys: []resource.PropertyKey{"a"},
+				Changes:	plugin.DiffSome,
+				ChangedKeys:	[]resource.PropertyKey{"a"},
 			},
 		},
 		{
-			name: "DiffSome and non-empty replaceOnChanges",
+			name:	"DiffSome and non-empty replaceOnChanges",
 			diff: plugin.DiffResult{
-				Changes:     plugin.DiffSome,
-				ChangedKeys: []resource.PropertyKey{"a"},
+				Changes:	plugin.DiffSome,
+				ChangedKeys:	[]resource.PropertyKey{"a"},
 			},
-			replaceOnChanges: []string{"a"},
-			hasInitErrors:    false,
+			replaceOnChanges:	[]string{"a"},
+			hasInitErrors:		false,
 			expected: plugin.DiffResult{
-				Changes:     plugin.DiffSome,
-				ChangedKeys: []resource.PropertyKey{"a"},
-				ReplaceKeys: []resource.PropertyKey{"a"},
+				Changes:	plugin.DiffSome,
+				ChangedKeys:	[]resource.PropertyKey{"a"},
+				ReplaceKeys:	[]resource.PropertyKey{"a"},
 			},
 		},
 		{
-			name:             "Empty diff and replaceOnChanges w/ init errors",
-			diff:             plugin.DiffResult{},
-			replaceOnChanges: []string{},
-			hasInitErrors:    true,
-			expected:         plugin.DiffResult{},
+			name:			"Empty diff and replaceOnChanges w/ init errors",
+			diff:			plugin.DiffResult{},
+			replaceOnChanges:	[]string{},
+			hasInitErrors:		true,
+			expected:		plugin.DiffResult{},
 		},
 		{
-			name: "DiffSome and empty replaceOnChanges w/ init errors",
+			name:	"DiffSome and empty replaceOnChanges w/ init errors",
 			diff: plugin.DiffResult{
-				Changes:     plugin.DiffSome,
-				ChangedKeys: []resource.PropertyKey{"a"},
+				Changes:	plugin.DiffSome,
+				ChangedKeys:	[]resource.PropertyKey{"a"},
 			},
-			replaceOnChanges: []string{},
-			hasInitErrors:    true,
+			replaceOnChanges:	[]string{},
+			hasInitErrors:		true,
 			expected: plugin.DiffResult{
-				Changes:     plugin.DiffSome,
-				ChangedKeys: []resource.PropertyKey{"a"},
+				Changes:	plugin.DiffSome,
+				ChangedKeys:	[]resource.PropertyKey{"a"},
 			},
 		},
 		{
-			name: "DiffSome and non-empty replaceOnChanges w/ init errors",
+			name:	"DiffSome and non-empty replaceOnChanges w/ init errors",
 			diff: plugin.DiffResult{
-				Changes:     plugin.DiffSome,
-				ChangedKeys: []resource.PropertyKey{"a"},
+				Changes:	plugin.DiffSome,
+				ChangedKeys:	[]resource.PropertyKey{"a"},
 			},
-			replaceOnChanges: []string{"a"},
-			hasInitErrors:    true,
+			replaceOnChanges:	[]string{"a"},
+			hasInitErrors:		true,
 			expected: plugin.DiffResult{
-				Changes:     plugin.DiffSome,
-				ChangedKeys: []resource.PropertyKey{"a"},
-				ReplaceKeys: []resource.PropertyKey{"a"},
+				Changes:	plugin.DiffSome,
+				ChangedKeys:	[]resource.PropertyKey{"a"},
+				ReplaceKeys:	[]resource.PropertyKey{"a"},
 			},
 		},
 		{
-			name:             "Empty diff and non-empty replaceOnChanges w/ init errors",
-			diff:             plugin.DiffResult{},
-			replaceOnChanges: []string{"*"},
-			hasInitErrors:    true,
+			name:			"Empty diff and non-empty replaceOnChanges w/ init errors",
+			diff:			plugin.DiffResult{},
+			replaceOnChanges:	[]string{"*"},
+			hasInitErrors:		true,
 			expected: plugin.DiffResult{
-				Changes:     plugin.DiffSome,
-				ReplaceKeys: []resource.PropertyKey{"#initerror"},
+				Changes:	plugin.DiffSome,
+				ReplaceKeys:	[]resource.PropertyKey{"#initerror"},
 			},
 		},
 	}
@@ -344,51 +344,51 @@ func TestEngineDiff(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name                 string
-		oldInputs, newInputs resource.PropertyMap
-		ignoreChanges        []string
-		expected             []resource.PropertyKey
-		expectedChanges      plugin.DiffChanges
+		name			string
+		oldInputs, newInputs	resource.PropertyMap
+		ignoreChanges		[]string
+		expected		[]resource.PropertyKey
+		expectedChanges		plugin.DiffChanges
 	}{
 		{
-			name: "Empty diff",
+			name:	"Empty diff",
 			oldInputs: resource.NewPropertyMapFromMap(map[string]any{
-				"val1": resource.NewPropertyValue(8),
-				"val2": resource.NewPropertyValue("hello"),
+				"val1":	resource.NewPropertyValue(8),
+				"val2":	resource.NewPropertyValue("hello"),
 			}),
 			newInputs: resource.NewPropertyMapFromMap(map[string]any{
-				"val1": resource.NewPropertyValue(8),
-				"val2": resource.NewPropertyValue("hello"),
+				"val1":	resource.NewPropertyValue(8),
+				"val2":	resource.NewPropertyValue("hello"),
 			}),
-			expected:        nil,
-			expectedChanges: plugin.DiffNone,
+			expected:		nil,
+			expectedChanges:	plugin.DiffNone,
 		},
 		{
-			name: "All changes",
+			name:	"All changes",
 			oldInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val0": resource.NewPropertyValue(3.14),
 			}),
 			newInputs: resource.NewPropertyMapFromMap(map[string]any{
-				"val1": resource.NewProperty(42.0),
-				"val2": resource.NewPropertyValue("world"),
+				"val1":	resource.NewProperty(42.0),
+				"val2":	resource.NewPropertyValue("world"),
 			}),
-			expected:        []resource.PropertyKey{"val0", "val1", "val2"},
-			expectedChanges: plugin.DiffSome,
+			expected:		[]resource.PropertyKey{"val0", "val1", "val2"},
+			expectedChanges:	plugin.DiffSome,
 		},
 		{
-			name: "Some changes",
+			name:	"Some changes",
 			oldInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val1": resource.NewPropertyValue(42),
 			}),
 			newInputs: resource.NewPropertyMapFromMap(map[string]any{
-				"val1": resource.NewProperty(42.0),
-				"val2": resource.NewPropertyValue("world"),
+				"val1":	resource.NewProperty(42.0),
+				"val2":	resource.NewPropertyValue("world"),
 			}),
-			expected:        []resource.PropertyKey{"val2"},
-			expectedChanges: plugin.DiffSome,
+			expected:		[]resource.PropertyKey{"val2"},
+			expectedChanges:	plugin.DiffSome,
 		},
 		{
-			name: "Ignore some changes",
+			name:	"Ignore some changes",
 			oldInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val1": resource.NewPropertyValue("hello"),
 			}),
@@ -396,12 +396,12 @@ func TestEngineDiff(t *testing.T) {
 				"val2": resource.NewPropertyValue(8),
 			}),
 
-			ignoreChanges:   []string{"val1"},
-			expected:        []resource.PropertyKey{"val2"},
-			expectedChanges: plugin.DiffSome,
+			ignoreChanges:		[]string{"val1"},
+			expected:		[]resource.PropertyKey{"val2"},
+			expectedChanges:	plugin.DiffSome,
 		},
 		{
-			name: "Ignore all changes",
+			name:	"Ignore all changes",
 			oldInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val1": resource.NewPropertyValue("hello"),
 			}),
@@ -409,9 +409,9 @@ func TestEngineDiff(t *testing.T) {
 				"val2": resource.NewPropertyValue(8),
 			}),
 
-			ignoreChanges:   []string{"val1", "val2"},
-			expected:        nil,
-			expectedChanges: plugin.DiffNone,
+			ignoreChanges:		[]string{"val1", "val2"},
+			expected:		nil,
+			expectedChanges:	plugin.DiffNone,
 		},
 	}
 	urn := resource.URN("urn:pulumi:dev::website-and-lambda::aws:s3/bucket:Bucket::my-bucket")
@@ -448,17 +448,17 @@ func TestGenerateAliases(t *testing.T) {
 	parentNameAlias := resource.CreateURN("myres2", "test:resource:type", "", project, stack.String())
 
 	cases := []struct {
-		name         string
-		parentAlias  *resource.URN
-		childAliases []resource.Alias
-		expected     []resource.URN
+		name		string
+		parentAlias	*resource.URN
+		childAliases	[]resource.Alias
+		expected	[]resource.URN
 	}{
 		{
-			name:     "no aliases",
-			expected: nil,
+			name:		"no aliases",
+			expected:	nil,
 		},
 		{
-			name: "child alias (type), no parent aliases",
+			name:	"child alias (type), no parent aliases",
 			childAliases: []resource.Alias{
 				{Type: "test:resource:child2"},
 			},
@@ -467,7 +467,7 @@ func TestGenerateAliases(t *testing.T) {
 			},
 		},
 		{
-			name: "child alias (name), no parent aliases",
+			name:	"child alias (name), no parent aliases",
 			childAliases: []resource.Alias{
 				{Name: "child2"},
 			},
@@ -476,11 +476,11 @@ func TestGenerateAliases(t *testing.T) {
 			},
 		},
 		{
-			name: "child alias (type, noParent), no parent aliases",
+			name:	"child alias (type, noParent), no parent aliases",
 			childAliases: []resource.Alias{
 				{
-					Type:     "test:resource:child2",
-					NoParent: true,
+					Type:		"test:resource:child2",
+					NoParent:	true,
 				},
 			},
 			expected: []resource.URN{
@@ -488,11 +488,11 @@ func TestGenerateAliases(t *testing.T) {
 			},
 		},
 		{
-			name: "child alias (type, parent), no parent aliases",
+			name:	"child alias (type, parent), no parent aliases",
 			childAliases: []resource.Alias{
 				{
-					Type:   "test:resource:child2",
-					Parent: resource.CreateURN("originalparent", "test:resource:original", "", project, stack.String()),
+					Type:	"test:resource:child2",
+					Parent:	resource.CreateURN("originalparent", "test:resource:original", "", project, stack.String()),
 				},
 			},
 			expected: []resource.URN{
@@ -500,8 +500,8 @@ func TestGenerateAliases(t *testing.T) {
 			},
 		},
 		{
-			name:        "child alias (name), parent alias (type)",
-			parentAlias: &parentTypeAlias,
+			name:		"child alias (name), parent alias (type)",
+			parentAlias:	&parentTypeAlias,
 			childAliases: []resource.Alias{
 				{Name: "myres-child2"},
 			},
@@ -512,8 +512,8 @@ func TestGenerateAliases(t *testing.T) {
 			},
 		},
 		{
-			name:        "child alias (name), parent alias (name)",
-			parentAlias: &parentNameAlias,
+			name:		"child alias (name), parent alias (name)",
+			parentAlias:	&parentNameAlias,
 			childAliases: []resource.Alias{
 				{Name: "myres-child2"},
 			},
@@ -531,18 +531,18 @@ func TestGenerateAliases(t *testing.T) {
 
 			parentURN := resource.CreateURN("myres", "test:resource:type", "", project, stack.String())
 			goal := &resource.Goal{
-				Parent:  parentURN,
-				Name:    "myres-child",
-				Type:    "test:resource:child",
-				Aliases: tt.childAliases,
+				Parent:		parentURN,
+				Name:		"myres-child",
+				Type:		"test:resource:child",
+				Aliases:	tt.childAliases,
 			}
 
 			sg := newStepGenerator(&Deployment{
-				opts: &Options{},
+				opts:	&Options{},
 				target: &Target{
 					Name: stack,
 				},
-				source: NewNullSource(project),
+				source:	NewNullSource(project),
 			}, false, updateMode, nil)
 
 			if tt.parentAlias != nil {
@@ -562,9 +562,9 @@ func TestDeleteProtectedErrorUsesCorrectQuotesOnOS(t *testing.T) {
 	err := deleteProtectedError{urn: "resource:urn"}
 
 	expectations := map[string]string{
-		`windows`: `"`,
-		`linux`:   `'`,
-		`darwin`:  `'`,
+		`windows`:	`"`,
+		`linux`:	`'`,
+		`darwin`:	`'`,
 	}
 
 	t.Run(runtime.GOOS, func(t *testing.T) {
@@ -597,7 +597,7 @@ func TestStepGenerator(t *testing.T) {
 		sg := &stepGenerator{
 			deployment: &Deployment{
 				opts: &Options{
-					TargetDependents: false,
+					TargetDependents:	false,
 					Targets: UrnTargets{
 						literals: []resource.URN{"b"},
 					},
@@ -720,7 +720,7 @@ func TestStepGenerator(t *testing.T) {
 		sg := &stepGenerator{
 			deployment: &Deployment{
 				opts: &Options{
-					TargetDependents: true,
+					TargetDependents:	true,
 					Targets: UrnTargets{
 						literals: []resource.URN{"c"},
 					},
@@ -863,11 +863,11 @@ func TestStepGenerator(t *testing.T) {
 					ctx: &plugin.Context{
 						Diag: &deploytest.NoopSink{},
 					},
-					opts: &Options{},
+					opts:	&Options{},
 					target: &Target{
 						Name: tokens.MustParseStackName("stack"),
 					},
-					source: &nullSource{},
+					source:	&nullSource{},
 				},
 			}
 			_, err := sg.GenerateReadSteps(&readResourceEvent{})
@@ -880,12 +880,12 @@ func TestStepGenerator(t *testing.T) {
 		t.Run("could not find parent resource", func(t *testing.T) {
 			t.Parallel()
 			sg := &stepGenerator{
-				urns: map[resource.URN]bool{},
+				urns:	map[resource.URN]bool{},
 				deployment: &Deployment{
 					target: &Target{
 						Name: tokens.MustParseStackName("stack"),
 					},
-					source: &nullSource{},
+					source:	&nullSource{},
 				},
 			}
 			_, _, err := sg.generateSteps(&registerResourceEvent{
@@ -902,7 +902,7 @@ func TestStepGenerator(t *testing.T) {
 		t.Run("handle non-existent target", func(t *testing.T) {
 			t.Parallel()
 			sg := &stepGenerator{
-				urns: map[resource.URN]bool{},
+				urns:	map[resource.URN]bool{},
 				deployment: &Deployment{
 					prev: &Snapshot{
 						Resources: []*resource.State{
@@ -911,7 +911,7 @@ func TestStepGenerator(t *testing.T) {
 							},
 						},
 					},
-					olds: map[resource.URN]*resource.State{},
+					olds:	map[resource.URN]*resource.State{},
 				},
 			}
 			targets, err := sg.determineAllowedResourcesToDeleteFromTargets(
@@ -927,10 +927,10 @@ func TestStepGenerator(t *testing.T) {
 		t.Run("invalid old ProviderReference", func(t *testing.T) {
 			t.Parallel()
 			sg := &stepGenerator{
-				urns: map[resource.URN]bool{},
+				urns:	map[resource.URN]bool{},
 				deployment: &Deployment{
-					prev: &Snapshot{},
-					olds: map[resource.URN]*resource.State{},
+					prev:	&Snapshot{},
+					olds:	map[resource.URN]*resource.State{},
 				},
 			}
 			_, err := sg.providerChanged("",
@@ -947,10 +947,10 @@ func TestStepGenerator(t *testing.T) {
 		t.Run("invalid new ProviderReference", func(t *testing.T) {
 			t.Parallel()
 			sg := &stepGenerator{
-				urns: map[resource.URN]bool{},
+				urns:	map[resource.URN]bool{},
 				deployment: &Deployment{
-					prev: &Snapshot{},
-					olds: map[resource.URN]*resource.State{},
+					prev:	&Snapshot{},
+					olds:	map[resource.URN]*resource.State{},
 				},
 			}
 			_, err := sg.providerChanged("",
@@ -967,11 +967,11 @@ func TestStepGenerator(t *testing.T) {
 		t.Run("error getting new default provider", func(t *testing.T) {
 			t.Parallel()
 			sg := &stepGenerator{
-				urns: map[resource.URN]bool{},
+				urns:	map[resource.URN]bool{},
 				deployment: &Deployment{
-					prev:      &Snapshot{},
-					olds:      map[resource.URN]*resource.State{},
-					providers: &providers.Registry{},
+					prev:		&Snapshot{},
+					olds:		map[resource.URN]*resource.State{},
+					providers:	&providers.Registry{},
 				},
 			}
 			_, err := sg.providerChanged("",

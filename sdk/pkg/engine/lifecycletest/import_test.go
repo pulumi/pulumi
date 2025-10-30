@@ -24,11 +24,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
-	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	. "github.com/pulumi/pulumi/sdk/v3/pkg/engine"	//nolint:revive
+	lt "github.com/pulumi/pulumi/sdk/v3/pkg/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -43,8 +43,8 @@ func TestImportOption(t *testing.T) {
 		"foo": resource.NewProperty("bar"),
 	}
 	readOutputs := resource.PropertyMap{
-		"foo": resource.NewProperty("bar"),
-		"out": resource.NewProperty(41.0),
+		"foo":	resource.NewProperty("bar"),
+		"out":	resource.NewProperty(41.0),
 	}
 
 	// For imports we expect inputs and state to be nil, but when we change to do a read they should both be set to the
@@ -64,7 +64,7 @@ func TestImportOption(t *testing.T) {
 					}
 
 					return plugin.DiffResult{
-						Changes: plugin.DiffSome,
+						Changes:	plugin.DiffSome,
 						DetailedDiff: map[string]plugin.PropertyDiff{
 							"foo": {Kind: diffKind},
 						},
@@ -72,15 +72,15 @@ func TestImportOption(t *testing.T) {
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					return plugin.UpdateResponse{
-						Properties: req.NewInputs,
-						Status:     resource.StatusOK,
+						Properties:	req.NewInputs,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
@@ -89,11 +89,11 @@ func TestImportOption(t *testing.T) {
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							Inputs:  readInputs,
-							Outputs: readOutputs,
-							ID:      "imported-id",
+							Inputs:		readInputs,
+							Outputs:	readOutputs,
+							ID:		"imported-id",
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -109,8 +109,8 @@ func TestImportOption(t *testing.T) {
 			require.NoError(t, err)
 		} else {
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-				Inputs:   inputs,
-				ImportID: importID,
+				Inputs:		inputs,
+				ImportID:	importID,
 			})
 			if err == nil {
 				assert.Equal(t, expectedID, resp.ID)
@@ -383,7 +383,7 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 					}
 
 					return plugin.DiffResult{
-						Changes: plugin.DiffSome,
+						Changes:	plugin.DiffSome,
 						DetailedDiff: map[string]plugin.PropertyDiff{
 							"foo": {Kind: plugin.DiffUpdate},
 						},
@@ -391,16 +391,16 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							// This ID is deliberately not the same as the ID used to import.
-							ID: "id",
+							ID:	"id",
 							Inputs: resource.PropertyMap{
 								"foo": resource.NewProperty("bar"),
 							},
@@ -408,7 +408,7 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 								"foo": resource.NewProperty("bar"),
 							},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -421,7 +421,7 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 				"foo": resource.NewProperty("bar"),
 			},
 			// The import ID is deliberately not the same as the ID returned from Read.
-			ImportID: resource.ID("import-id"),
+			ImportID:	resource.ID("import-id"),
 		})
 		require.NoError(t, err)
 		return nil
@@ -485,11 +485,11 @@ func TestImportUpdatedID(t *testing.T) {
 				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      actualID,
-							Outputs: resource.PropertyMap{},
-							Inputs:  resource.PropertyMap{},
+							ID:		actualID,
+							Outputs:	resource.PropertyMap{},
+							Inputs:		resource.PropertyMap{},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -582,8 +582,8 @@ func diffImportResource(
 	}
 
 	return plugin.DiffResult{
-		Changes:      plugin.DiffSome,
-		DetailedDiff: detailedDiff,
+		Changes:	plugin.DiffSome,
+		DetailedDiff:	detailedDiff,
 	}, nil
 }
 
@@ -594,8 +594,8 @@ func TestImportPlan(t *testing.T) {
 		"foo": resource.NewProperty("bar"),
 	}
 	readOutputs := resource.PropertyMap{
-		"foo":  resource.NewProperty("bar"),
-		"frob": resource.NewProperty(1.0),
+		"foo":	resource.NewProperty("bar"),
+		"frob":	resource.NewProperty(1.0),
 	}
 
 	loaders := []*deploytest.ProviderLoader{
@@ -604,22 +604,22 @@ func TestImportPlan(t *testing.T) {
 				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
 					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
 				},
-				DiffF: diffImportResource,
+				DiffF:	diffImportResource,
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      "actual-id",
-							Inputs:  readInputs,
-							Outputs: readOutputs,
+							ID:		"actual-id",
+							Inputs:		readInputs,
+							Outputs:	readOutputs,
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -644,9 +644,9 @@ func TestImportPlan(t *testing.T) {
 
 	// Run an import.
 	snap, err = lt.ImportOp([]deploy.Import{{
-		Type: "pkgA:m:typA",
-		Name: "resB",
-		ID:   "imported-id",
+		Type:	"pkgA:m:typA",
+		Name:	"resB",
+		ID:	"imported-id",
 	}}).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 
 	require.NoError(t, err)
@@ -670,27 +670,27 @@ func TestImportIgnoreChanges(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: diffImportResource,
+				DiffF:	diffImportResource,
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							Inputs: resource.PropertyMap{
-								"foo":  resource.NewProperty("bar"),
-								"frob": resource.NewProperty(1.0),
+								"foo":	resource.NewProperty("bar"),
+								"frob":	resource.NewProperty(1.0),
 							},
 							Outputs: resource.PropertyMap{
-								"foo":  resource.NewProperty("bar"),
-								"frob": resource.NewProperty(1.0),
+								"foo":	resource.NewProperty("bar"),
+								"frob":	resource.NewProperty(1.0),
 							},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -700,11 +700,11 @@ func TestImportIgnoreChanges(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"foo":  resource.NewProperty("foo"),
-				"frob": resource.NewProperty(1.0),
+				"foo":	resource.NewProperty("foo"),
+				"frob":	resource.NewProperty(1.0),
 			},
-			ImportID:      "import-id",
-			IgnoreChanges: []string{"foo"},
+			ImportID:	"import-id",
+			IgnoreChanges:	[]string{"foo"},
 		})
 		require.NoError(t, err)
 		return nil
@@ -732,27 +732,27 @@ func TestImportPlanExistingImport(t *testing.T) {
 				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
 					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
 				},
-				DiffF: diffImportResource,
+				DiffF:	diffImportResource,
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							Inputs: resource.PropertyMap{
-								"foo":  resource.NewProperty("bar"),
-								"frob": resource.NewProperty(1.0),
+								"foo":	resource.NewProperty("bar"),
+								"frob":	resource.NewProperty(1.0),
 							},
 							Outputs: resource.PropertyMap{
-								"foo":  resource.NewProperty("bar"),
-								"frob": resource.NewProperty(1.0),
+								"foo":	resource.NewProperty("bar"),
+								"frob":	resource.NewProperty(1.0),
 							},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -765,11 +765,11 @@ func TestImportPlanExistingImport(t *testing.T) {
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"foo":  resource.NewProperty("bar"),
-				"frob": resource.NewProperty(1.0),
+				"foo":	resource.NewProperty("bar"),
+				"frob":	resource.NewProperty(1.0),
 			},
-			ImportID: "imported-id",
-			Parent:   resp.URN,
+			ImportID:	"imported-id",
+			Parent:		resp.URN,
 		})
 		require.NoError(t, err)
 
@@ -790,17 +790,17 @@ func TestImportPlanExistingImport(t *testing.T) {
 
 	// Run an import with a different ID. This should fail.
 	_, err = lt.ImportOp([]deploy.Import{{
-		Type: "pkgA:m:typA",
-		Name: "resA",
-		ID:   "imported-id-2",
+		Type:	"pkgA:m:typA",
+		Name:	"resA",
+		ID:	"imported-id-2",
 	}}).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "resource 'urn:pulumi:test::test::pkgA:m:typA::resA' already exists")
 
 	// Run an import with a matching ID. This should succeed and do nothing.
 	snap, err = lt.ImportOp([]deploy.Import{{
-		Type: "pkgA:m:typA",
-		Name: "resA",
-		ID:   "imported-id",
+		Type:	"pkgA:m:typA",
+		Name:	"resA",
+		ID:	"imported-id",
 	}}).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, e := range entries {
@@ -822,27 +822,27 @@ func TestImportPlanEmptyState(t *testing.T) {
 				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
 					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
 				},
-				DiffF: diffImportResource,
+				DiffF:	diffImportResource,
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							Inputs: resource.PropertyMap{
-								"foo":  resource.NewProperty("bar"),
-								"frob": resource.NewProperty(1.0),
+								"foo":	resource.NewProperty("bar"),
+								"frob":	resource.NewProperty(1.0),
 							},
 							Outputs: resource.PropertyMap{
-								"foo":  resource.NewProperty("bar"),
-								"frob": resource.NewProperty(1.0),
+								"foo":	resource.NewProperty("bar"),
+								"frob":	resource.NewProperty(1.0),
 							},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -858,9 +858,9 @@ func TestImportPlanEmptyState(t *testing.T) {
 	// Run the initial import.
 	project := p.GetProject()
 	snap, err := lt.ImportOp([]deploy.Import{{
-		Type: "pkgA:m:typA",
-		Name: "resB",
-		ID:   "imported-id",
+		Type:	"pkgA:m:typA",
+		Name:	"resB",
+		ID:	"imported-id",
 	}}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
 	require.NoError(t, err)
@@ -876,27 +876,27 @@ func TestImportPlanSpecificProvider(t *testing.T) {
 				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
 					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
 				},
-				DiffF: diffImportResource,
+				DiffF:	diffImportResource,
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							Inputs: resource.PropertyMap{
-								"foo":  resource.NewProperty("bar"),
-								"frob": resource.NewProperty(1.0),
+								"foo":	resource.NewProperty("bar"),
+								"frob":	resource.NewProperty(1.0),
 							},
 							Outputs: resource.PropertyMap{
-								"foo":  resource.NewProperty("bar"),
-								"frob": resource.NewProperty(1.0),
+								"foo":	resource.NewProperty("bar"),
+								"frob":	resource.NewProperty(1.0),
 							},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -920,10 +920,10 @@ func TestImportPlanSpecificProvider(t *testing.T) {
 	require.NoError(t, err)
 
 	snap, err = lt.ImportOp([]deploy.Import{{
-		Type:     "pkgA:m:typA",
-		Name:     "resB",
-		ID:       "imported-id",
-		Provider: p.NewProviderURN("pkgA", "provA", ""),
+		Type:		"pkgA:m:typA",
+		Name:		"resB",
+		ID:		"imported-id",
+		Provider:	p.NewProviderURN("pkgA", "provA", ""),
 	}}).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 
 	require.NoError(t, err)
@@ -939,29 +939,29 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
 					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
 				},
-				DiffF: diffImportResource,
+				DiffF:	diffImportResource,
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							Inputs: resource.PropertyMap{
-								"foo":  resource.NewProperty("bar"),
-								"frob": resource.NewProperty(1.0),
-								"baz":  resource.NewProperty(2.0),
+								"foo":	resource.NewProperty("bar"),
+								"frob":	resource.NewProperty(1.0),
+								"baz":	resource.NewProperty(2.0),
 							},
 							Outputs: resource.PropertyMap{
-								"foo":  resource.NewProperty("bar"),
-								"frob": resource.NewProperty(1.0),
-								"baz":  resource.NewProperty(2.0),
+								"foo":	resource.NewProperty("bar"),
+								"frob":	resource.NewProperty(1.0),
+								"baz":	resource.NewProperty(2.0),
 							},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 				CheckF: func(
@@ -1002,11 +1002,11 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 
 	// Import specifying to use just foo and frob
 	snap, err = lt.ImportOp([]deploy.Import{{
-		Type:       "pkgA:m:typA",
-		Name:       "resB",
-		ID:         "imported-id",
-		Provider:   p.NewProviderURN("pkgA", "provA", ""),
-		Properties: []string{"foo", "frob"},
+		Type:		"pkgA:m:typA",
+		Name:		"resB",
+		ID:		"imported-id",
+		Provider:	p.NewProviderURN("pkgA", "provA", ""),
+		Properties:	[]string{"foo", "frob"},
 	}}).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 
 	require.NoError(t, err)
@@ -1027,26 +1027,26 @@ func TestImportIntoParent(t *testing.T) {
 				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
 					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
 				},
-				DiffF: diffImportResource,
+				DiffF:	diffImportResource,
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						Properties: req.Properties,
-						Status:     resource.StatusUnknown,
+						Properties:	req.Properties,
+						Status:		resource.StatusUnknown,
 					}, errors.New("not implemented")
 				},
 				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							Inputs: resource.PropertyMap{
-								"foo":  resource.NewProperty("bar"),
-								"frob": resource.NewProperty(1.0),
+								"foo":	resource.NewProperty("bar"),
+								"frob":	resource.NewProperty(1.0),
 							},
 							Outputs: resource.PropertyMap{
-								"foo":  resource.NewProperty("bar"),
-								"frob": resource.NewProperty(1.0),
+								"foo":	resource.NewProperty("bar"),
+								"frob":	resource.NewProperty(1.0),
 							},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -1063,15 +1063,15 @@ func TestImportIntoParent(t *testing.T) {
 	project := p.GetProject()
 	snap, err := lt.ImportOp([]deploy.Import{
 		{
-			Type:   "pkgA:m:typA",
-			Name:   "resB",
-			ID:     "imported-idB",
-			Parent: p.NewURN("pkgA:m:typA", "resA", ""),
+			Type:	"pkgA:m:typA",
+			Name:	"resB",
+			ID:	"imported-idB",
+			Parent:	p.NewURN("pkgA:m:typA", "resA", ""),
 		},
 		{
-			Type: "pkgA:m:typA",
-			Name: "resA",
-			ID:   "imported-idA",
+			Type:	"pkgA:m:typA",
+			Name:	"resA",
+			ID:	"imported-idA",
 		},
 	}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
@@ -1088,7 +1088,7 @@ func TestImportComponent(t *testing.T) {
 				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
 					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
 				},
-				DiffF: diffImportResource,
+				DiffF:	diffImportResource,
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{Status: resource.StatusUnknown}, errors.New("not implemented")
 				},
@@ -1096,15 +1096,15 @@ func TestImportComponent(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							Inputs: resource.PropertyMap{
-								"foo":  resource.NewProperty("bar"),
-								"frob": resource.NewProperty(1.0),
+								"foo":	resource.NewProperty("bar"),
+								"frob":	resource.NewProperty(1.0),
 							},
 							Outputs: resource.PropertyMap{
-								"foo":  resource.NewProperty("bar"),
-								"frob": resource.NewProperty(1.0),
+								"foo":	resource.NewProperty("bar"),
+								"frob":	resource.NewProperty(1.0),
 							},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -1121,15 +1121,15 @@ func TestImportComponent(t *testing.T) {
 	project := p.GetProject()
 	snap, err := lt.ImportOp([]deploy.Import{
 		{
-			Type:      "my-component",
-			Name:      "comp",
-			Component: true,
+			Type:		"my-component",
+			Name:		"comp",
+			Component:	true,
 		},
 		{
-			Type:   "pkgA:m:typA",
-			Name:   "resB",
-			ID:     "imported-id",
-			Parent: p.NewURN("my-component", "comp", ""),
+			Type:	"pkgA:m:typA",
+			Name:	"resB",
+			ID:	"imported-id",
+			Parent:	p.NewURN("my-component", "comp", ""),
 		},
 	}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
@@ -1161,7 +1161,7 @@ func TestImportRemoteComponent(t *testing.T) {
 				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
 					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
 				},
-				DiffF: diffImportResource,
+				DiffF:	diffImportResource,
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{Status: resource.StatusUnknown}, errors.New("not implemented")
 				},
@@ -1169,15 +1169,15 @@ func TestImportRemoteComponent(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							Inputs: resource.PropertyMap{
-								"foo":  resource.NewProperty("bar"),
-								"frob": resource.NewProperty(1.0),
+								"foo":	resource.NewProperty("bar"),
+								"frob":	resource.NewProperty(1.0),
 							},
 							Outputs: resource.PropertyMap{
-								"foo":  resource.NewProperty("bar"),
-								"frob": resource.NewProperty(1.0),
+								"foo":	resource.NewProperty("bar"),
+								"frob":	resource.NewProperty(1.0),
 							},
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -1194,16 +1194,16 @@ func TestImportRemoteComponent(t *testing.T) {
 	project := p.GetProject()
 	snap, err := lt.ImportOp([]deploy.Import{
 		{
-			Type:      "mlc:index:Component",
-			Name:      "comp",
-			Component: true,
-			Remote:    true,
+			Type:		"mlc:index:Component",
+			Name:		"comp",
+			Component:	true,
+			Remote:		true,
 		},
 		{
-			Type:   "pkgA:m:typA",
-			Name:   "resB",
-			ID:     "imported-id",
-			Parent: p.NewURN("mlc:index:Component", "comp", ""),
+			Type:	"pkgA:m:typA",
+			Name:	"resB",
+			ID:	"imported-id",
+			Parent:	p.NewURN("mlc:index:Component", "comp", ""),
 		},
 	}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
@@ -1235,8 +1235,8 @@ func TestImportInputDiff(t *testing.T) {
 		"foo": resource.NewProperty("bar"),
 	}
 	readOutputs := resource.PropertyMap{
-		"foo":  resource.NewProperty("bar"),
-		"frob": resource.NewProperty(1.0),
+		"foo":	resource.NewProperty("bar"),
+		"frob":	resource.NewProperty(1.0),
 	}
 
 	loaders := []*deploytest.ProviderLoader{
@@ -1247,7 +1247,7 @@ func TestImportInputDiff(t *testing.T) {
 				},
 				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error) {
 					return plugin.DiffResult{
-						Changes: plugin.DiffNone,
+						Changes:	plugin.DiffNone,
 						StableKeys: []resource.PropertyKey{
 							"foo",
 						},
@@ -1256,11 +1256,11 @@ func TestImportInputDiff(t *testing.T) {
 				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      "actual-id",
-							Inputs:  readInputs,
-							Outputs: readOutputs,
+							ID:		"actual-id",
+							Inputs:		readInputs,
+							Outputs:	readOutputs,
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -1283,9 +1283,9 @@ func TestImportInputDiff(t *testing.T) {
 
 	// Run an import.
 	snap, err := lt.ImportOp([]deploy.Import{{
-		Type: "pkgA:m:typA",
-		Name: "resA",
-		ID:   "imported-id",
+		Type:	"pkgA:m:typA",
+		Name:	"resA",
+		ID:	"imported-id",
 	}}).RunStep(
 		project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
 		func(project workspace.Project, target deploy.Target, entries JournalEntries, events []Event, err error) error {
@@ -1325,8 +1325,8 @@ func TestImportDefaultProvider(t *testing.T) {
 		"foo": resource.NewProperty("bar"),
 	}
 	readOutputs := resource.PropertyMap{
-		"foo":  resource.NewProperty("bar"),
-		"frob": resource.NewProperty(1.0),
+		"foo":	resource.NewProperty("bar"),
+		"frob":	resource.NewProperty(1.0),
 	}
 
 	pkgAVersion := semver.MustParse("1.0.0")
@@ -1336,22 +1336,22 @@ func TestImportDefaultProvider(t *testing.T) {
 				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
 					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
 				},
-				DiffF: diffImportResource,
+				DiffF:	diffImportResource,
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
-						ID:         "created-id",
-						Properties: req.Properties,
-						Status:     resource.StatusOK,
+						ID:		"created-id",
+						Properties:	req.Properties,
+						Status:		resource.StatusOK,
 					}, nil
 				},
 				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							ID:      "actual-id",
-							Inputs:  readInputs,
-							Outputs: readOutputs,
+							ID:		"actual-id",
+							Inputs:		readInputs,
+							Outputs:	readOutputs,
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -1362,9 +1362,9 @@ func TestImportDefaultProvider(t *testing.T) {
 		return errors.New("unexpected program execution")
 	}, workspace.PackageDescriptor{
 		PluginSpec: workspace.PluginSpec{
-			Name:    "pkgA",
-			Kind:    apitype.ResourcePlugin,
-			Version: &pkgAVersion,
+			Name:		"pkgA",
+			Kind:		apitype.ResourcePlugin,
+			Version:	&pkgAVersion,
 		},
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -1376,9 +1376,9 @@ func TestImportDefaultProvider(t *testing.T) {
 	// Run an import.
 	project := p.GetProject()
 	snap, err := lt.ImportOp([]deploy.Import{{
-		Type: "pkgA:m:typA",
-		Name: "resB",
-		ID:   "imported-id",
+		Type:	"pkgA:m:typA",
+		Name:	"resB",
+		ID:	"imported-id",
 	}}).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 
 	require.NoError(t, err)
@@ -1419,9 +1419,9 @@ func TestImportStackReference(t *testing.T) {
 	// Run an import.
 	project := p.GetProject()
 	_, err := lt.ImportOp([]deploy.Import{{
-		Type: "pulumi:pulumi:StackReference",
-		Name: "Stack",
-		ID:   "org/proj/stk",
+		Type:	"pulumi:pulumi:StackReference",
+		Name:	"Stack",
+		ID:	"org/proj/stk",
 	}}).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 
 	assert.ErrorContains(t, err, "stack reference can not be imported")
@@ -1436,8 +1436,8 @@ func TestImportWithFailedUpdate(t *testing.T) {
 		"foo": resource.NewProperty("bar"),
 	}
 	readOutputs := resource.PropertyMap{
-		"foo": resource.NewProperty("bar"),
-		"out": resource.NewProperty(41.0),
+		"foo":	resource.NewProperty("bar"),
+		"out":	resource.NewProperty(41.0),
 	}
 
 	// For imports we expect inputs and state to be nil, but when we change to do a read they should both be set to the
@@ -1453,7 +1453,7 @@ func TestImportWithFailedUpdate(t *testing.T) {
 
 					diffKind := plugin.DiffUpdate
 					return plugin.DiffResult{
-						Changes: plugin.DiffSome,
+						Changes:	plugin.DiffSome,
 						DetailedDiff: map[string]plugin.PropertyDiff{
 							"foo": {Kind: diffKind},
 						},
@@ -1468,11 +1468,11 @@ func TestImportWithFailedUpdate(t *testing.T) {
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							Inputs:  readInputs,
-							Outputs: readOutputs,
-							ID:      "imported-id",
+							Inputs:		readInputs,
+							Outputs:	readOutputs,
+							ID:		"imported-id",
 						},
-						Status: resource.StatusOK,
+						Status:	resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -1483,9 +1483,9 @@ func TestImportWithFailedUpdate(t *testing.T) {
 		"foo": resource.NewProperty("baz"),
 	}
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{ //nolint:errcheck
-			Inputs:   inputs,
-			ImportID: importID,
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{	//nolint:errcheck
+			Inputs:		inputs,
+			ImportID:	importID,
 		})
 		require.Fail(t, "RegisterResource should not return")
 		return nil

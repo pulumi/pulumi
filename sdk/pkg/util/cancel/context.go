@@ -24,18 +24,18 @@ import (
 // automatically triggers a corresponding cancellation request. This can be used to implement cancellation with two
 // priority levels.
 type Context struct {
-	terminate context.Context
-	cancel    context.Context
+	terminate	context.Context
+	cancel		context.Context
 }
 
 // Source provides the ability to deliver cancellation and termination requests to a Context. A termination request
 // automatically triggers a corresponding cancellation request. This can be used to implement cancellation with two
 // priority levels.
 type Source struct {
-	context *Context
+	context	*Context
 
-	terminate context.CancelFunc
-	cancel    context.CancelFunc
+	terminate	context.CancelFunc
+	cancel		context.CancelFunc
 }
 
 // NewContext creates a new cancellation context and source parented to the given context. The returned cancellation
@@ -50,13 +50,13 @@ func NewContext(ctx context.Context) (*Context, *Source) {
 	cancellationContext, cancel := context.WithCancel(terminationContext)
 
 	c := &Context{
-		terminate: terminationContext,
-		cancel:    cancellationContext,
+		terminate:	terminationContext,
+		cancel:		cancellationContext,
 	}
 	s := &Source{
-		context:   c,
-		terminate: terminate,
-		cancel:    cancel,
+		context:	c,
+		terminate:	terminate,
+		cancel:		cancel,
 	}
 	return c, s
 }

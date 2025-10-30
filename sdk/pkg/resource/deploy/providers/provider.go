@@ -40,11 +40,11 @@ import (
 // ProviderRequests only hash by their package name, version and download URL. The checksums and parameterization are
 // not used in the hash.
 type ProviderRequest struct {
-	version           *semver.Version
-	name              tokens.Package
-	pluginDownloadURL string
-	pluginChecksums   map[string][]byte
-	parameterization  *workspace.Parameterization
+	version			*semver.Version
+	name			tokens.Package
+	pluginDownloadURL	string
+	pluginChecksums		map[string][]byte
+	parameterization	*workspace.Parameterization
 }
 
 // NewProviderRequest constructs a new provider request from an optional version, optional
@@ -55,11 +55,11 @@ func NewProviderRequest(
 	parameterization *workspace.Parameterization,
 ) ProviderRequest {
 	return ProviderRequest{
-		version:           version,
-		name:              name,
-		pluginDownloadURL: strings.TrimSuffix(pluginDownloadURL, "/"),
-		pluginChecksums:   checksums,
-		parameterization:  parameterization,
+		version:		version,
+		name:			name,
+		pluginDownloadURL:	strings.TrimSuffix(pluginDownloadURL, "/"),
+		pluginChecksums:	checksums,
+		parameterization:	parameterization,
 	}
 }
 

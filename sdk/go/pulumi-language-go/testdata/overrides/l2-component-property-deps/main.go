@@ -20,25 +20,25 @@ func main() {
 			return err
 		}
 		component1, err := componentpropertydeps.NewComponent(ctx, "component1", &componentpropertydeps.ComponentArgs{
-			Resource: custom1,
+			Resource:	custom1,
 			ResourceList: []*componentpropertydeps.Custom{
 				custom1,
 				custom2,
 			},
 			ResourceMap: map[string]*componentpropertydeps.Custom{
-				"one": custom1,
-				"two": custom2,
+				"one":	custom1,
+				"two":	custom2,
 			},
 		})
 		if err != nil {
 			return err
 		}
 		result, err := component1.Refs(ctx, &componentpropertydeps.ComponentRefsArgs{
-			Resource:     custom1,
-			ResourceList: []componentpropertydeps.CustomInput{custom1, custom2},
+			Resource:	custom1,
+			ResourceList:	[]componentpropertydeps.CustomInput{custom1, custom2},
 			ResourceMap: map[string]componentpropertydeps.CustomInput{
-				"one": custom1,
-				"two": custom2,
+				"one":	custom1,
+				"two":	custom2,
 			},
 		})
 		if err != nil {

@@ -46,13 +46,13 @@ type Terminal interface {
 var ErrNotATerminal = errors.New("not a terminal")
 
 type terminal struct {
-	fd   int
-	info Info
-	raw  bool
-	save *term.State
+	fd	int
+	info	Info
+	raw	bool
+	save	*term.State
 
-	out io.Writer
-	in  cancelreader.CancelReader
+	out	io.Writer
+	in	cancelreader.CancelReader
 }
 
 var _ Terminal = &terminal{}
@@ -98,12 +98,12 @@ func Open(in io.Reader, out io.Writer, raw bool) (Terminal, error) {
 	}
 
 	return &terminal{
-		fd:   outFd,
-		info: info,
-		raw:  raw,
-		save: save,
-		out:  out,
-		in:   inFile,
+		fd:	outFd,
+		info:	info,
+		raw:	raw,
+		save:	save,
+		out:	out,
+		in:	inFile,
 	}, nil
 }
 
@@ -186,10 +186,10 @@ type stateFunc func(b byte) stateFunc
 type ansiKind int
 
 const (
-	ansiError   ansiKind = iota // ansiError indicates a decoding error
-	ansiKey                     // ansiKey indicates a normal keypress
-	ansiEscape                  // ansiEscape indicates an ANSI escape sequence
-	ansiControl                 // ansiControl indicates an ANSI control sequence
+	ansiError	ansiKind	= iota	// ansiError indicates a decoding error
+	ansiKey					// ansiKey indicates a normal keypress
+	ansiEscape				// ansiEscape indicates an ANSI escape sequence
+	ansiControl				// ansiControl indicates an ANSI control sequence
 )
 
 // ansiDecoder is responsible for decoding ANSI escape and control sequences as per ECMA-48 et. al.
@@ -206,10 +206,10 @@ const (
 // No post-processing is done on the decoded sequences to ensure that e.g. the parameter count, etc. is valid--any such
 // processing is up to the consumer.
 type ansiDecoder struct {
-	kind         ansiKind // the kind of the decoded sequence.
-	params       []byte   // the decoded control sequence's parameter bytes, if any
-	intermediate []byte   // the decoded escape or control sequence's intermediate bytes, if any.
-	final        byte     // the final byte of the sequence.
+	kind		ansiKind	// the kind of the decoded sequence.
+	params		[]byte		// the decoded control sequence's parameter bytes, if any
+	intermediate	[]byte		// the decoded escape or control sequence's intermediate bytes, if any.
+	final		byte		// the final byte of the sequence.
 }
 
 // stateControlIntermediate decodes optional intermediate bytes and the final byte of a control sequence.
@@ -282,14 +282,14 @@ func (d *ansiDecoder) decode(in io.Reader) error {
 }
 
 const (
-	KeyCtrlC    = "ctrl+c"
-	KeyCtrlO    = "ctrl+o"
-	KeyDown     = "down"
-	KeyEnd      = "end"
-	KeyHome     = "home"
-	KeyPageDown = "page-down"
-	KeyPageUp   = "page-up"
-	KeyUp       = "up"
+	KeyCtrlC	= "ctrl+c"
+	KeyCtrlO	= "ctrl+o"
+	KeyDown		= "down"
+	KeyEnd		= "end"
+	KeyHome		= "home"
+	KeyPageDown	= "page-down"
+	KeyPageUp	= "page-up"
+	KeyUp		= "up"
 )
 
 // ReadKey reads a keypress from the terminal.
@@ -316,13 +316,13 @@ func (t *terminal) ReadKey() (string, error) {
 	switch d.kind {
 	case ansiKey:
 		switch d.final {
-		case 2: // Ctrl+B --- Vim key for page up (page back)
+		case 2:	// Ctrl+B --- Vim key for page up (page back)
 			return KeyPageUp, nil
-		case 3: // ETX
+		case 3:	// ETX
 			return KeyCtrlC, nil
-		case 6: // Ctrl+F ---- Vim key for page down (page forward)
+		case 6:	// Ctrl+F ---- Vim key for page down (page forward)
 			return KeyPageDown, nil
-		case 15: // SI
+		case 15:	// SI
 			return KeyCtrlO, nil
 		}
 		return string([]byte{d.final}), nil

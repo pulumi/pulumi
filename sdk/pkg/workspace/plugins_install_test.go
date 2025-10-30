@@ -41,9 +41,9 @@ func createTGZ(files map[string][]byte) ([]byte, error) {
 
 	for name, content := range files {
 		if err := writer.WriteHeader(&tar.Header{
-			Name: name,
-			Size: int64(len(content)),
-			Mode: 0o600,
+			Name:	name,
+			Size:	int64(len(content)),
+			Mode:	0o600,
 		}); err != nil {
 			return nil, err
 		}
@@ -87,10 +87,10 @@ func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadClose
 
 	v1 := semver.MustParse("0.1.0")
 	plugin := workspace.PluginSpec{
-		Name:      "test",
-		Kind:      apitype.ResourcePlugin,
-		Version:   &v1,
-		PluginDir: dir,
+		Name:		"test",
+		Kind:		apitype.ResourcePlugin,
+		Version:	&v1,
+		PluginDir:	dir,
 	}
 
 	return dir, tarball, plugin

@@ -41,15 +41,15 @@ func TestUntil_exhaustAttempts(t *testing.T) {
 	_, _, err := (&Retryer{
 		After: afterRec.After,
 	}).Until(ctx, Acceptor{
-		Delay:    &delay,
-		Backoff:  &backoff,
-		MaxDelay: &maxDelay,
+		Delay:		&delay,
+		Backoff:	&backoff,
+		MaxDelay:	&maxDelay,
 		Accept: func(try int, delay time.Duration) (bool, any, error) {
 			if try > 3 {
 				return false, nil, errTooManyTries
 			}
 			attempts++
-			return false, nil, nil // operation failed
+			return false, nil, nil	// operation failed
 		},
 	})
 	assert.ErrorIs(t, err, errTooManyTries)
@@ -96,9 +96,9 @@ func TestUntil_maxDelay(t *testing.T) {
 	ok, _, err := (&Retryer{
 		After: afterRec.After,
 	}).Until(ctx, Acceptor{
-		Delay:    &delay,
-		Backoff:  &backoff,
-		MaxDelay: &maxDelay,
+		Delay:		&delay,
+		Backoff:	&backoff,
+		MaxDelay:	&maxDelay,
 		Accept: func(try int, delay time.Duration) (bool, any, error) {
 			// 100 tries should be enough to reach maxDelay.
 			if try < 100 {
@@ -120,11 +120,11 @@ func TestUntil_maxDelay(t *testing.T) {
 // that records all requested sleeps,
 // and advances the current time instantly.
 type afterRecorder struct {
-	mu  sync.Mutex
-	now time.Time
+	mu	sync.Mutex
+	now	time.Time
 
 	// Sleeps is the list of all sleeps requested.
-	Sleeps []time.Duration
+	Sleeps	[]time.Duration
 }
 
 func newAfterRecorder(now time.Time) *afterRecorder {

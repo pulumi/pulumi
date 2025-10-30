@@ -20,10 +20,10 @@ import (
 
 // LogEntry is a row in the logs for a running compute service
 type LogEntry struct {
-	ID string
+	ID	string
 	// Timestamp is a Unix timestamp, in milliseconds
-	Timestamp int64
-	Message   string
+	Timestamp	int64
+	Message		string
 }
 
 // ResourceFilter specifies a specific resource or subset of resources.  It can be provided in three formats:
@@ -40,11 +40,11 @@ type ResourceFilter string
 // and on the wire.
 type LogQuery struct {
 	// StartTime is an optional time indiciating that only logs from after this time should be produced.
-	StartTime *time.Time `url:"startTime,unix"`
+	StartTime	*time.Time	`url:"startTime,unix"`
 	// EndTime is an optional time indiciating that only logs from before this time should be produced.
-	EndTime *time.Time `url:"endTime,unix"`
+	EndTime	*time.Time	`url:"endTime,unix"`
 	// ResourceFilter is a string indicating that logs should be limited to a resource or resources
-	ResourceFilter *ResourceFilter `url:"resourceFilter"`
+	ResourceFilter	*ResourceFilter	`url:"resourceFilter"`
 }
 
 // Provider is the interface for making operational requests about the

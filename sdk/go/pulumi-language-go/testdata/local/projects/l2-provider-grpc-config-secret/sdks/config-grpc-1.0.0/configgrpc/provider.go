@@ -14,12 +14,12 @@ import (
 type Provider struct {
 	pulumi.ProviderResourceState
 
-	SecretString1 pulumi.StringPtrOutput `pulumi:"secretString1"`
-	SecretString2 pulumi.StringPtrOutput `pulumi:"secretString2"`
-	SecretString3 pulumi.StringPtrOutput `pulumi:"secretString3"`
-	String1       pulumi.StringPtrOutput `pulumi:"string1"`
-	String2       pulumi.StringPtrOutput `pulumi:"string2"`
-	String3       pulumi.StringPtrOutput `pulumi:"string3"`
+	SecretString1	pulumi.StringPtrOutput	`pulumi:"secretString1"`
+	SecretString2	pulumi.StringPtrOutput	`pulumi:"secretString2"`
+	SecretString3	pulumi.StringPtrOutput	`pulumi:"secretString3"`
+	String1		pulumi.StringPtrOutput	`pulumi:"string1"`
+	String2		pulumi.StringPtrOutput	`pulumi:"string2"`
+	String3		pulumi.StringPtrOutput	`pulumi:"string3"`
 }
 
 // NewProvider registers a new resource with the given unique name, arguments, and options.
@@ -189,202 +189,202 @@ func NewProvider(ctx *pulumi.Context,
 }
 
 type providerArgs struct {
-	Bool1             *bool              `pulumi:"bool1"`
-	Bool2             *bool              `pulumi:"bool2"`
-	Bool3             *bool              `pulumi:"bool3"`
-	Int1              *int               `pulumi:"int1"`
-	Int2              *int               `pulumi:"int2"`
-	Int3              *int               `pulumi:"int3"`
-	ListBool1         []bool             `pulumi:"listBool1"`
-	ListBool2         []bool             `pulumi:"listBool2"`
-	ListBool3         []bool             `pulumi:"listBool3"`
-	ListInt1          []int              `pulumi:"listInt1"`
-	ListInt2          []int              `pulumi:"listInt2"`
-	ListInt3          []int              `pulumi:"listInt3"`
-	ListNum1          []float64          `pulumi:"listNum1"`
-	ListNum2          []float64          `pulumi:"listNum2"`
-	ListNum3          []float64          `pulumi:"listNum3"`
-	ListSecretBool1   []bool             `pulumi:"listSecretBool1"`
-	ListSecretBool2   []bool             `pulumi:"listSecretBool2"`
-	ListSecretBool3   []bool             `pulumi:"listSecretBool3"`
-	ListSecretInt1    []int              `pulumi:"listSecretInt1"`
-	ListSecretInt2    []int              `pulumi:"listSecretInt2"`
-	ListSecretInt3    []int              `pulumi:"listSecretInt3"`
-	ListSecretNum1    []float64          `pulumi:"listSecretNum1"`
-	ListSecretNum2    []float64          `pulumi:"listSecretNum2"`
-	ListSecretNum3    []float64          `pulumi:"listSecretNum3"`
-	ListSecretString1 []string           `pulumi:"listSecretString1"`
-	ListSecretString2 []string           `pulumi:"listSecretString2"`
-	ListSecretString3 []string           `pulumi:"listSecretString3"`
-	ListString1       []string           `pulumi:"listString1"`
-	ListString2       []string           `pulumi:"listString2"`
-	ListString3       []string           `pulumi:"listString3"`
-	MapBool1          map[string]bool    `pulumi:"mapBool1"`
-	MapBool2          map[string]bool    `pulumi:"mapBool2"`
-	MapBool3          map[string]bool    `pulumi:"mapBool3"`
-	MapInt1           map[string]int     `pulumi:"mapInt1"`
-	MapInt2           map[string]int     `pulumi:"mapInt2"`
-	MapInt3           map[string]int     `pulumi:"mapInt3"`
-	MapNum1           map[string]float64 `pulumi:"mapNum1"`
-	MapNum2           map[string]float64 `pulumi:"mapNum2"`
-	MapNum3           map[string]float64 `pulumi:"mapNum3"`
-	MapSecretBool1    map[string]bool    `pulumi:"mapSecretBool1"`
-	MapSecretBool2    map[string]bool    `pulumi:"mapSecretBool2"`
-	MapSecretBool3    map[string]bool    `pulumi:"mapSecretBool3"`
-	MapSecretInt1     map[string]int     `pulumi:"mapSecretInt1"`
-	MapSecretInt2     map[string]int     `pulumi:"mapSecretInt2"`
-	MapSecretInt3     map[string]int     `pulumi:"mapSecretInt3"`
-	MapSecretNum1     map[string]float64 `pulumi:"mapSecretNum1"`
-	MapSecretNum2     map[string]float64 `pulumi:"mapSecretNum2"`
-	MapSecretNum3     map[string]float64 `pulumi:"mapSecretNum3"`
-	MapSecretString1  map[string]string  `pulumi:"mapSecretString1"`
-	MapSecretString2  map[string]string  `pulumi:"mapSecretString2"`
-	MapSecretString3  map[string]string  `pulumi:"mapSecretString3"`
-	MapString1        map[string]string  `pulumi:"mapString1"`
-	MapString2        map[string]string  `pulumi:"mapString2"`
-	MapString3        map[string]string  `pulumi:"mapString3"`
-	Num1              *float64           `pulumi:"num1"`
-	Num2              *float64           `pulumi:"num2"`
-	Num3              *float64           `pulumi:"num3"`
-	ObjBool1          *Tbool1            `pulumi:"objBool1"`
-	ObjBool2          *Tbool2            `pulumi:"objBool2"`
-	ObjBool3          *Tbool3            `pulumi:"objBool3"`
-	ObjInt1           *Tint1             `pulumi:"objInt1"`
-	ObjInt2           *Tint2             `pulumi:"objInt2"`
-	ObjInt3           *Tint3             `pulumi:"objInt3"`
-	ObjNum1           *Tnum1             `pulumi:"objNum1"`
-	ObjNum2           *Tnum2             `pulumi:"objNum2"`
-	ObjNum3           *Tnum3             `pulumi:"objNum3"`
-	ObjSecretBool1    *TsecretBool1      `pulumi:"objSecretBool1"`
-	ObjSecretBool2    *TsecretBool2      `pulumi:"objSecretBool2"`
-	ObjSecretBool3    *TsecretBool3      `pulumi:"objSecretBool3"`
-	ObjSecretInt1     *TsecretInt1       `pulumi:"objSecretInt1"`
-	ObjSecretInt2     *TsecretInt2       `pulumi:"objSecretInt2"`
-	ObjSecretInt3     *TsecretInt3       `pulumi:"objSecretInt3"`
-	ObjSecretNum1     *TsecretNum1       `pulumi:"objSecretNum1"`
-	ObjSecretNum2     *TsecretNum2       `pulumi:"objSecretNum2"`
-	ObjSecretNum3     *TsecretNum3       `pulumi:"objSecretNum3"`
-	ObjSecretString1  *TsecretString1    `pulumi:"objSecretString1"`
-	ObjSecretString2  *TsecretString2    `pulumi:"objSecretString2"`
-	ObjSecretString3  *TsecretString3    `pulumi:"objSecretString3"`
-	ObjString1        *Tstring1          `pulumi:"objString1"`
-	ObjString2        *Tstring2          `pulumi:"objString2"`
-	ObjString3        *Tstring3          `pulumi:"objString3"`
-	SecretBool1       *bool              `pulumi:"secretBool1"`
-	SecretBool2       *bool              `pulumi:"secretBool2"`
-	SecretBool3       *bool              `pulumi:"secretBool3"`
-	SecretInt1        *int               `pulumi:"secretInt1"`
-	SecretInt2        *int               `pulumi:"secretInt2"`
-	SecretInt3        *int               `pulumi:"secretInt3"`
-	SecretNum1        *float64           `pulumi:"secretNum1"`
-	SecretNum2        *float64           `pulumi:"secretNum2"`
-	SecretNum3        *float64           `pulumi:"secretNum3"`
-	SecretString1     *string            `pulumi:"secretString1"`
-	SecretString2     *string            `pulumi:"secretString2"`
-	SecretString3     *string            `pulumi:"secretString3"`
-	String1           *string            `pulumi:"string1"`
-	String2           *string            `pulumi:"string2"`
-	String3           *string            `pulumi:"string3"`
+	Bool1			*bool			`pulumi:"bool1"`
+	Bool2			*bool			`pulumi:"bool2"`
+	Bool3			*bool			`pulumi:"bool3"`
+	Int1			*int			`pulumi:"int1"`
+	Int2			*int			`pulumi:"int2"`
+	Int3			*int			`pulumi:"int3"`
+	ListBool1		[]bool			`pulumi:"listBool1"`
+	ListBool2		[]bool			`pulumi:"listBool2"`
+	ListBool3		[]bool			`pulumi:"listBool3"`
+	ListInt1		[]int			`pulumi:"listInt1"`
+	ListInt2		[]int			`pulumi:"listInt2"`
+	ListInt3		[]int			`pulumi:"listInt3"`
+	ListNum1		[]float64		`pulumi:"listNum1"`
+	ListNum2		[]float64		`pulumi:"listNum2"`
+	ListNum3		[]float64		`pulumi:"listNum3"`
+	ListSecretBool1		[]bool			`pulumi:"listSecretBool1"`
+	ListSecretBool2		[]bool			`pulumi:"listSecretBool2"`
+	ListSecretBool3		[]bool			`pulumi:"listSecretBool3"`
+	ListSecretInt1		[]int			`pulumi:"listSecretInt1"`
+	ListSecretInt2		[]int			`pulumi:"listSecretInt2"`
+	ListSecretInt3		[]int			`pulumi:"listSecretInt3"`
+	ListSecretNum1		[]float64		`pulumi:"listSecretNum1"`
+	ListSecretNum2		[]float64		`pulumi:"listSecretNum2"`
+	ListSecretNum3		[]float64		`pulumi:"listSecretNum3"`
+	ListSecretString1	[]string		`pulumi:"listSecretString1"`
+	ListSecretString2	[]string		`pulumi:"listSecretString2"`
+	ListSecretString3	[]string		`pulumi:"listSecretString3"`
+	ListString1		[]string		`pulumi:"listString1"`
+	ListString2		[]string		`pulumi:"listString2"`
+	ListString3		[]string		`pulumi:"listString3"`
+	MapBool1		map[string]bool		`pulumi:"mapBool1"`
+	MapBool2		map[string]bool		`pulumi:"mapBool2"`
+	MapBool3		map[string]bool		`pulumi:"mapBool3"`
+	MapInt1			map[string]int		`pulumi:"mapInt1"`
+	MapInt2			map[string]int		`pulumi:"mapInt2"`
+	MapInt3			map[string]int		`pulumi:"mapInt3"`
+	MapNum1			map[string]float64	`pulumi:"mapNum1"`
+	MapNum2			map[string]float64	`pulumi:"mapNum2"`
+	MapNum3			map[string]float64	`pulumi:"mapNum3"`
+	MapSecretBool1		map[string]bool		`pulumi:"mapSecretBool1"`
+	MapSecretBool2		map[string]bool		`pulumi:"mapSecretBool2"`
+	MapSecretBool3		map[string]bool		`pulumi:"mapSecretBool3"`
+	MapSecretInt1		map[string]int		`pulumi:"mapSecretInt1"`
+	MapSecretInt2		map[string]int		`pulumi:"mapSecretInt2"`
+	MapSecretInt3		map[string]int		`pulumi:"mapSecretInt3"`
+	MapSecretNum1		map[string]float64	`pulumi:"mapSecretNum1"`
+	MapSecretNum2		map[string]float64	`pulumi:"mapSecretNum2"`
+	MapSecretNum3		map[string]float64	`pulumi:"mapSecretNum3"`
+	MapSecretString1	map[string]string	`pulumi:"mapSecretString1"`
+	MapSecretString2	map[string]string	`pulumi:"mapSecretString2"`
+	MapSecretString3	map[string]string	`pulumi:"mapSecretString3"`
+	MapString1		map[string]string	`pulumi:"mapString1"`
+	MapString2		map[string]string	`pulumi:"mapString2"`
+	MapString3		map[string]string	`pulumi:"mapString3"`
+	Num1			*float64		`pulumi:"num1"`
+	Num2			*float64		`pulumi:"num2"`
+	Num3			*float64		`pulumi:"num3"`
+	ObjBool1		*Tbool1			`pulumi:"objBool1"`
+	ObjBool2		*Tbool2			`pulumi:"objBool2"`
+	ObjBool3		*Tbool3			`pulumi:"objBool3"`
+	ObjInt1			*Tint1			`pulumi:"objInt1"`
+	ObjInt2			*Tint2			`pulumi:"objInt2"`
+	ObjInt3			*Tint3			`pulumi:"objInt3"`
+	ObjNum1			*Tnum1			`pulumi:"objNum1"`
+	ObjNum2			*Tnum2			`pulumi:"objNum2"`
+	ObjNum3			*Tnum3			`pulumi:"objNum3"`
+	ObjSecretBool1		*TsecretBool1		`pulumi:"objSecretBool1"`
+	ObjSecretBool2		*TsecretBool2		`pulumi:"objSecretBool2"`
+	ObjSecretBool3		*TsecretBool3		`pulumi:"objSecretBool3"`
+	ObjSecretInt1		*TsecretInt1		`pulumi:"objSecretInt1"`
+	ObjSecretInt2		*TsecretInt2		`pulumi:"objSecretInt2"`
+	ObjSecretInt3		*TsecretInt3		`pulumi:"objSecretInt3"`
+	ObjSecretNum1		*TsecretNum1		`pulumi:"objSecretNum1"`
+	ObjSecretNum2		*TsecretNum2		`pulumi:"objSecretNum2"`
+	ObjSecretNum3		*TsecretNum3		`pulumi:"objSecretNum3"`
+	ObjSecretString1	*TsecretString1		`pulumi:"objSecretString1"`
+	ObjSecretString2	*TsecretString2		`pulumi:"objSecretString2"`
+	ObjSecretString3	*TsecretString3		`pulumi:"objSecretString3"`
+	ObjString1		*Tstring1		`pulumi:"objString1"`
+	ObjString2		*Tstring2		`pulumi:"objString2"`
+	ObjString3		*Tstring3		`pulumi:"objString3"`
+	SecretBool1		*bool			`pulumi:"secretBool1"`
+	SecretBool2		*bool			`pulumi:"secretBool2"`
+	SecretBool3		*bool			`pulumi:"secretBool3"`
+	SecretInt1		*int			`pulumi:"secretInt1"`
+	SecretInt2		*int			`pulumi:"secretInt2"`
+	SecretInt3		*int			`pulumi:"secretInt3"`
+	SecretNum1		*float64		`pulumi:"secretNum1"`
+	SecretNum2		*float64		`pulumi:"secretNum2"`
+	SecretNum3		*float64		`pulumi:"secretNum3"`
+	SecretString1		*string			`pulumi:"secretString1"`
+	SecretString2		*string			`pulumi:"secretString2"`
+	SecretString3		*string			`pulumi:"secretString3"`
+	String1			*string			`pulumi:"string1"`
+	String2			*string			`pulumi:"string2"`
+	String3			*string			`pulumi:"string3"`
 }
 
 // The set of arguments for constructing a Provider resource.
 type ProviderArgs struct {
-	Bool1             pulumi.BoolPtrInput
-	Bool2             pulumi.BoolPtrInput
-	Bool3             pulumi.BoolPtrInput
-	Int1              pulumi.IntPtrInput
-	Int2              pulumi.IntPtrInput
-	Int3              pulumi.IntPtrInput
-	ListBool1         pulumi.BoolArrayInput
-	ListBool2         pulumi.BoolArrayInput
-	ListBool3         pulumi.BoolArrayInput
-	ListInt1          pulumi.IntArrayInput
-	ListInt2          pulumi.IntArrayInput
-	ListInt3          pulumi.IntArrayInput
-	ListNum1          pulumi.Float64ArrayInput
-	ListNum2          pulumi.Float64ArrayInput
-	ListNum3          pulumi.Float64ArrayInput
-	ListSecretBool1   pulumi.BoolArrayInput
-	ListSecretBool2   pulumi.BoolArrayInput
-	ListSecretBool3   pulumi.BoolArrayInput
-	ListSecretInt1    pulumi.IntArrayInput
-	ListSecretInt2    pulumi.IntArrayInput
-	ListSecretInt3    pulumi.IntArrayInput
-	ListSecretNum1    pulumi.Float64ArrayInput
-	ListSecretNum2    pulumi.Float64ArrayInput
-	ListSecretNum3    pulumi.Float64ArrayInput
-	ListSecretString1 pulumi.StringArrayInput
-	ListSecretString2 pulumi.StringArrayInput
-	ListSecretString3 pulumi.StringArrayInput
-	ListString1       pulumi.StringArrayInput
-	ListString2       pulumi.StringArrayInput
-	ListString3       pulumi.StringArrayInput
-	MapBool1          pulumi.BoolMapInput
-	MapBool2          pulumi.BoolMapInput
-	MapBool3          pulumi.BoolMapInput
-	MapInt1           pulumi.IntMapInput
-	MapInt2           pulumi.IntMapInput
-	MapInt3           pulumi.IntMapInput
-	MapNum1           pulumi.Float64MapInput
-	MapNum2           pulumi.Float64MapInput
-	MapNum3           pulumi.Float64MapInput
-	MapSecretBool1    pulumi.BoolMapInput
-	MapSecretBool2    pulumi.BoolMapInput
-	MapSecretBool3    pulumi.BoolMapInput
-	MapSecretInt1     pulumi.IntMapInput
-	MapSecretInt2     pulumi.IntMapInput
-	MapSecretInt3     pulumi.IntMapInput
-	MapSecretNum1     pulumi.Float64MapInput
-	MapSecretNum2     pulumi.Float64MapInput
-	MapSecretNum3     pulumi.Float64MapInput
-	MapSecretString1  pulumi.StringMapInput
-	MapSecretString2  pulumi.StringMapInput
-	MapSecretString3  pulumi.StringMapInput
-	MapString1        pulumi.StringMapInput
-	MapString2        pulumi.StringMapInput
-	MapString3        pulumi.StringMapInput
-	Num1              pulumi.Float64PtrInput
-	Num2              pulumi.Float64PtrInput
-	Num3              pulumi.Float64PtrInput
-	ObjBool1          Tbool1PtrInput
-	ObjBool2          Tbool2PtrInput
-	ObjBool3          Tbool3PtrInput
-	ObjInt1           Tint1PtrInput
-	ObjInt2           Tint2PtrInput
-	ObjInt3           Tint3PtrInput
-	ObjNum1           Tnum1PtrInput
-	ObjNum2           Tnum2PtrInput
-	ObjNum3           Tnum3PtrInput
-	ObjSecretBool1    TsecretBool1PtrInput
-	ObjSecretBool2    TsecretBool2PtrInput
-	ObjSecretBool3    TsecretBool3PtrInput
-	ObjSecretInt1     TsecretInt1PtrInput
-	ObjSecretInt2     TsecretInt2PtrInput
-	ObjSecretInt3     TsecretInt3PtrInput
-	ObjSecretNum1     TsecretNum1PtrInput
-	ObjSecretNum2     TsecretNum2PtrInput
-	ObjSecretNum3     TsecretNum3PtrInput
-	ObjSecretString1  TsecretString1PtrInput
-	ObjSecretString2  TsecretString2PtrInput
-	ObjSecretString3  TsecretString3PtrInput
-	ObjString1        Tstring1PtrInput
-	ObjString2        Tstring2PtrInput
-	ObjString3        Tstring3PtrInput
-	SecretBool1       pulumi.BoolPtrInput
-	SecretBool2       pulumi.BoolPtrInput
-	SecretBool3       pulumi.BoolPtrInput
-	SecretInt1        pulumi.IntPtrInput
-	SecretInt2        pulumi.IntPtrInput
-	SecretInt3        pulumi.IntPtrInput
-	SecretNum1        pulumi.Float64PtrInput
-	SecretNum2        pulumi.Float64PtrInput
-	SecretNum3        pulumi.Float64PtrInput
-	SecretString1     pulumi.StringPtrInput
-	SecretString2     pulumi.StringPtrInput
-	SecretString3     pulumi.StringPtrInput
-	String1           pulumi.StringPtrInput
-	String2           pulumi.StringPtrInput
-	String3           pulumi.StringPtrInput
+	Bool1			pulumi.BoolPtrInput
+	Bool2			pulumi.BoolPtrInput
+	Bool3			pulumi.BoolPtrInput
+	Int1			pulumi.IntPtrInput
+	Int2			pulumi.IntPtrInput
+	Int3			pulumi.IntPtrInput
+	ListBool1		pulumi.BoolArrayInput
+	ListBool2		pulumi.BoolArrayInput
+	ListBool3		pulumi.BoolArrayInput
+	ListInt1		pulumi.IntArrayInput
+	ListInt2		pulumi.IntArrayInput
+	ListInt3		pulumi.IntArrayInput
+	ListNum1		pulumi.Float64ArrayInput
+	ListNum2		pulumi.Float64ArrayInput
+	ListNum3		pulumi.Float64ArrayInput
+	ListSecretBool1		pulumi.BoolArrayInput
+	ListSecretBool2		pulumi.BoolArrayInput
+	ListSecretBool3		pulumi.BoolArrayInput
+	ListSecretInt1		pulumi.IntArrayInput
+	ListSecretInt2		pulumi.IntArrayInput
+	ListSecretInt3		pulumi.IntArrayInput
+	ListSecretNum1		pulumi.Float64ArrayInput
+	ListSecretNum2		pulumi.Float64ArrayInput
+	ListSecretNum3		pulumi.Float64ArrayInput
+	ListSecretString1	pulumi.StringArrayInput
+	ListSecretString2	pulumi.StringArrayInput
+	ListSecretString3	pulumi.StringArrayInput
+	ListString1		pulumi.StringArrayInput
+	ListString2		pulumi.StringArrayInput
+	ListString3		pulumi.StringArrayInput
+	MapBool1		pulumi.BoolMapInput
+	MapBool2		pulumi.BoolMapInput
+	MapBool3		pulumi.BoolMapInput
+	MapInt1			pulumi.IntMapInput
+	MapInt2			pulumi.IntMapInput
+	MapInt3			pulumi.IntMapInput
+	MapNum1			pulumi.Float64MapInput
+	MapNum2			pulumi.Float64MapInput
+	MapNum3			pulumi.Float64MapInput
+	MapSecretBool1		pulumi.BoolMapInput
+	MapSecretBool2		pulumi.BoolMapInput
+	MapSecretBool3		pulumi.BoolMapInput
+	MapSecretInt1		pulumi.IntMapInput
+	MapSecretInt2		pulumi.IntMapInput
+	MapSecretInt3		pulumi.IntMapInput
+	MapSecretNum1		pulumi.Float64MapInput
+	MapSecretNum2		pulumi.Float64MapInput
+	MapSecretNum3		pulumi.Float64MapInput
+	MapSecretString1	pulumi.StringMapInput
+	MapSecretString2	pulumi.StringMapInput
+	MapSecretString3	pulumi.StringMapInput
+	MapString1		pulumi.StringMapInput
+	MapString2		pulumi.StringMapInput
+	MapString3		pulumi.StringMapInput
+	Num1			pulumi.Float64PtrInput
+	Num2			pulumi.Float64PtrInput
+	Num3			pulumi.Float64PtrInput
+	ObjBool1		Tbool1PtrInput
+	ObjBool2		Tbool2PtrInput
+	ObjBool3		Tbool3PtrInput
+	ObjInt1			Tint1PtrInput
+	ObjInt2			Tint2PtrInput
+	ObjInt3			Tint3PtrInput
+	ObjNum1			Tnum1PtrInput
+	ObjNum2			Tnum2PtrInput
+	ObjNum3			Tnum3PtrInput
+	ObjSecretBool1		TsecretBool1PtrInput
+	ObjSecretBool2		TsecretBool2PtrInput
+	ObjSecretBool3		TsecretBool3PtrInput
+	ObjSecretInt1		TsecretInt1PtrInput
+	ObjSecretInt2		TsecretInt2PtrInput
+	ObjSecretInt3		TsecretInt3PtrInput
+	ObjSecretNum1		TsecretNum1PtrInput
+	ObjSecretNum2		TsecretNum2PtrInput
+	ObjSecretNum3		TsecretNum3PtrInput
+	ObjSecretString1	TsecretString1PtrInput
+	ObjSecretString2	TsecretString2PtrInput
+	ObjSecretString3	TsecretString3PtrInput
+	ObjString1		Tstring1PtrInput
+	ObjString2		Tstring2PtrInput
+	ObjString3		Tstring3PtrInput
+	SecretBool1		pulumi.BoolPtrInput
+	SecretBool2		pulumi.BoolPtrInput
+	SecretBool3		pulumi.BoolPtrInput
+	SecretInt1		pulumi.IntPtrInput
+	SecretInt2		pulumi.IntPtrInput
+	SecretInt3		pulumi.IntPtrInput
+	SecretNum1		pulumi.Float64PtrInput
+	SecretNum2		pulumi.Float64PtrInput
+	SecretNum3		pulumi.Float64PtrInput
+	SecretString1		pulumi.StringPtrInput
+	SecretString2		pulumi.StringPtrInput
+	SecretString3		pulumi.StringPtrInput
+	String1			pulumi.StringPtrInput
+	String2			pulumi.StringPtrInput
+	String3			pulumi.StringPtrInput
 }
 
 func (ProviderArgs) ElementType() reflect.Type {

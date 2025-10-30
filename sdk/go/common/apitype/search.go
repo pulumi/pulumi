@@ -20,55 +20,55 @@ import (
 )
 
 type ResourceSearchResponse struct {
-	Total        *int64                    `json:"total,omitempty" yaml:"total,omitempty"`
-	Resources    []ResourceResult          `json:"resources,omitempty" yaml:"resources,omitempty"`
-	Aggregations map[string]Aggregation    `json:"aggregations,omitempty" yaml:"aggregations,omitempty"`
-	Pagination   *ResourceSearchPagination `json:"pagination,omitempty" yaml:"pagination,omitempty"`
-	URL          string
-	Query        string `json:"query,omitempty" yaml:"query,omitempty"`
+	Total		*int64				`json:"total,omitempty" yaml:"total,omitempty"`
+	Resources	[]ResourceResult		`json:"resources,omitempty" yaml:"resources,omitempty"`
+	Aggregations	map[string]Aggregation		`json:"aggregations,omitempty" yaml:"aggregations,omitempty"`
+	Pagination	*ResourceSearchPagination	`json:"pagination,omitempty" yaml:"pagination,omitempty"`
+	URL		string
+	Query		string	`json:"query,omitempty" yaml:"query,omitempty"`
 }
 
 // ResourceResult is the user-facing type for our indexed resources.
 type ResourceResult struct {
-	Created      *string          `json:"created,omitempty"`
-	Custom       *bool            `json:"custom,omitempty"`
-	Delete       *bool            `json:"delete,omitempty"`
-	Dependencies []string         `json:"dependencies,omitempty"`
-	ID           *string          `json:"id,omitempty"`
-	Modified     *string          `json:"modified,omitempty"`
-	Module       *string          `json:"module"`
-	Name         *string          `json:"name,omitempty"`
-	Package      *string          `json:"package"`
-	ParentURN    *string          `json:"parent.urn"`
-	Pending      *string          `json:"pending,omitempty"`
-	Program      *string          `json:"project,omitempty"`
-	Protected    *bool            `json:"protected,omitempty"`
-	ProviderURN  *string          `json:"provider.urn"`
-	Stack        *string          `json:"stack,omitempty"`
-	Type         *string          `json:"type,omitempty"`
-	URN          *string          `json:"urn,omitempty"`
-	Teams        []string         `json:"teams,omitempty"`
-	Properties   *json.RawMessage `json:"properties,omitempty"`
+	Created		*string			`json:"created,omitempty"`
+	Custom		*bool			`json:"custom,omitempty"`
+	Delete		*bool			`json:"delete,omitempty"`
+	Dependencies	[]string		`json:"dependencies,omitempty"`
+	ID		*string			`json:"id,omitempty"`
+	Modified	*string			`json:"modified,omitempty"`
+	Module		*string			`json:"module"`
+	Name		*string			`json:"name,omitempty"`
+	Package		*string			`json:"package"`
+	ParentURN	*string			`json:"parent.urn"`
+	Pending		*string			`json:"pending,omitempty"`
+	Program		*string			`json:"project,omitempty"`
+	Protected	*bool			`json:"protected,omitempty"`
+	ProviderURN	*string			`json:"provider.urn"`
+	Stack		*string			`json:"stack,omitempty"`
+	Type		*string			`json:"type,omitempty"`
+	URN		*string			`json:"urn,omitempty"`
+	Teams		[]string		`json:"teams,omitempty"`
+	Properties	*json.RawMessage	`json:"properties,omitempty"`
 }
 
 // Aggregation collects the top 5 aggregated values for the requested dimension.
 type Aggregation struct {
-	Others  *int64              `json:"others,omitempty" yaml:"others,omitempty"`
-	Results []AggregationBucket `json:"results,omitempty" yaml:"results,omitempty"`
+	Others	*int64			`json:"others,omitempty" yaml:"others,omitempty"`
+	Results	[]AggregationBucket	`json:"results,omitempty" yaml:"results,omitempty"`
 }
 
 // AggregationBucket is an example value for the requested aggregation, with a
 // count of how many resources share that value.
 type AggregationBucket struct {
-	Name  *string `json:"name,omitempty" yaml:"name,omitempty"`
-	Count *int64  `json:"count,omitempty" yaml:"count,omitempty"`
+	Name	*string	`json:"name,omitempty" yaml:"name,omitempty"`
+	Count	*int64	`json:"count,omitempty" yaml:"count,omitempty"`
 }
 
 // ResourceSearchPagination provides links for paging through results.
 type ResourceSearchPagination struct {
-	Previous *string `json:"previous,omitempty" yaml:"previous,omitempty"`
-	Next     *string `json:"next,omitempty" yaml:"next,omitempty"`
-	Cursor   *string `json:"cursor,omitempty" yaml:"cursor,omitempty"`
+	Previous	*string	`json:"previous,omitempty" yaml:"previous,omitempty"`
+	Next		*string	`json:"next,omitempty" yaml:"next,omitempty"`
+	Cursor		*string	`json:"cursor,omitempty" yaml:"cursor,omitempty"`
 }
 
 type PulumiQueryResponse struct {

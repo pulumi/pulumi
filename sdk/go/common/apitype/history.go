@@ -24,20 +24,20 @@ type UpdateKind string
 
 const (
 	// UpdateUpdate is the prototypical Pulumi program update.
-	UpdateUpdate UpdateKind = "update"
+	UpdateUpdate	UpdateKind	= "update"
 	// PreviewUpdate is a preview of an update, without impacting resources.
-	PreviewUpdate UpdateKind = "preview"
+	PreviewUpdate	UpdateKind	= "preview"
 	// RefreshUpdate is an update that came from a refresh operation.
-	RefreshUpdate UpdateKind = "refresh"
+	RefreshUpdate	UpdateKind	= "refresh"
 	// RenameUpdate is an update that changes the stack name or project name of a Pulumi program.
 	// NOTE: Do not remove this type - it is used by Pulumi Cloud code.
-	RenameUpdate UpdateKind = "rename"
+	RenameUpdate	UpdateKind	= "rename"
 	// DestroyUpdate is an update which removes all resources.
-	DestroyUpdate UpdateKind = "destroy"
+	DestroyUpdate	UpdateKind	= "destroy"
 	// StackImportUpdate is an update that entails importing a raw checkpoint file.
-	StackImportUpdate UpdateKind = "import"
+	StackImportUpdate	UpdateKind	= "import"
 	// ResourceImportUpdate is an update that entails importing one or more resources.
-	ResourceImportUpdate = "resource-import"
+	ResourceImportUpdate	= "resource-import"
 )
 
 // UpdateResult is an enum for the result of the update.
@@ -48,13 +48,13 @@ type UpdateResult string
 
 const (
 	// NotStartedResult is for updates that have not started.
-	NotStartedResult UpdateResult = "not-started"
+	NotStartedResult	UpdateResult	= "not-started"
 	// InProgressResult is for updates that have not yet completed.
-	InProgressResult UpdateResult = "in-progress"
+	InProgressResult	UpdateResult	= "in-progress"
 	// SucceededResult is for updates that completed successfully.
-	SucceededResult UpdateResult = "succeeded"
+	SucceededResult	UpdateResult	= "succeeded"
 	// FailedResult is for updates that have failed.
-	FailedResult UpdateResult = "failed"
+	FailedResult	UpdateResult	= "failed"
 )
 
 // OpType describes the type of operation performed to a resource managed by Pulumi.
@@ -65,35 +65,35 @@ type OpType string
 
 const (
 	// OpSame indicates no change was made.
-	OpSame OpType = "same"
+	OpSame	OpType	= "same"
 	// OpCreate indicates a new resource was created.
-	OpCreate OpType = "create"
+	OpCreate	OpType	= "create"
 	// OpUpdate indicates an existing resource was updated.
-	OpUpdate OpType = "update"
+	OpUpdate	OpType	= "update"
 	// OpDelete indicates an existing resource was deleted.
-	OpDelete OpType = "delete"
+	OpDelete	OpType	= "delete"
 	// OpReplace indicates an existing resource was replaced with a new one.
-	OpReplace OpType = "replace"
+	OpReplace	OpType	= "replace"
 	// OpCreateReplacement indicates a new resource was created for a replacement.
-	OpCreateReplacement OpType = "create-replacement"
+	OpCreateReplacement	OpType	= "create-replacement"
 	// OpDeleteReplaced indicates an existing resource was deleted after replacement.
-	OpDeleteReplaced OpType = "delete-replaced"
+	OpDeleteReplaced	OpType	= "delete-replaced"
 	// OpRead indicates reading an existing resource.
-	OpRead OpType = "read"
+	OpRead	OpType	= "read"
 	// OpReadReplacement indicates reading an existing resource for a replacement.
-	OpReadReplacement OpType = "read-replacement"
+	OpReadReplacement	OpType	= "read-replacement"
 	// OpRefresh indicates refreshing an existing resource.
-	OpRefresh OpType = "refresh" // refreshing an existing resource.
+	OpRefresh	OpType	= "refresh"	// refreshing an existing resource.
 	// OpReadDiscard indicates removing a resource that was read.
-	OpReadDiscard OpType = "discard"
+	OpReadDiscard	OpType	= "discard"
 	// OpDiscardReplaced indicates discarding a read resource that was replaced.
-	OpDiscardReplaced OpType = "discard-replaced"
+	OpDiscardReplaced	OpType	= "discard-replaced"
 	// OpRemovePendingReplace indicates removing a pending replace resource.
-	OpRemovePendingReplace OpType = "remove-pending-replace"
+	OpRemovePendingReplace	OpType	= "remove-pending-replace"
 	// OpImport indicates importing an existing resource.
-	OpImport OpType = "import"
+	OpImport	OpType	= "import"
 	// OpImportReplacement indicates replacement of an existing resource with an imported resource.
-	OpImportReplacement OpType = "import-replacement"
+	OpImportReplacement	OpType	= "import-replacement"
 )
 
 // UpdateInfo describes a previous update.
@@ -102,19 +102,19 @@ const (
 // flexibility in case there is a breaking change in the backend-type.
 type UpdateInfo struct {
 	// Information known before an update is started.
-	Kind        UpdateKind             `json:"kind"`
-	StartTime   int64                  `json:"startTime"`
-	Message     string                 `json:"message"`
-	Environment map[string]string      `json:"environment"`
-	Config      map[string]ConfigValue `json:"config"`
+	Kind		UpdateKind		`json:"kind"`
+	StartTime	int64			`json:"startTime"`
+	Message		string			`json:"message"`
+	Environment	map[string]string	`json:"environment"`
+	Config		map[string]ConfigValue	`json:"config"`
 
 	// Information obtained from an update completing.
-	Result          UpdateResult    `json:"result"`
-	EndTime         int64           `json:"endTime"`
-	Version         int             `json:"version"`
-	Deployment      json.RawMessage `json:"deployment,omitempty"`
-	ResourceChanges map[OpType]int  `json:"resourceChanges,omitempty"`
-	ResourceCount   int             `json:"resourceCount,omitempty"`
+	Result		UpdateResult	`json:"result"`
+	EndTime		int64		`json:"endTime"`
+	Version		int		`json:"version"`
+	Deployment	json.RawMessage	`json:"deployment,omitempty"`
+	ResourceChanges	map[OpType]int	`json:"resourceChanges,omitempty"`
+	ResourceCount	int		`json:"resourceCount,omitempty"`
 }
 
 // GetHistoryResponse is the response from the Pulumi Service when requesting

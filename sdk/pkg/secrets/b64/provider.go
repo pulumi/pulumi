@@ -18,7 +18,7 @@ package b64
 import (
 	"encoding/json"
 
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/secrets"
 )
 
 // Base64SecretsProvider is a SecretsProvider that only supports base64 secrets, it is intended to be used for tests

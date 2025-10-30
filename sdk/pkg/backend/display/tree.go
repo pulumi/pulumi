@@ -26,8 +26,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/pkg/browser"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend/display/internal/terminal"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -35,30 +35,30 @@ import (
 )
 
 type treeRenderer struct {
-	m sync.Mutex
+	m	sync.Mutex
 
-	opts Options
+	opts	Options
 
-	display *ProgressDisplay
-	term    terminal.Terminal
+	display	*ProgressDisplay
+	term	terminal.Terminal
 
-	permalink string
+	permalink	string
 
-	dirty  bool // True if the display has changed since the last redraw.
-	rewind int  // The number of lines we need to rewind to redraw the entire screen.
+	dirty	bool	// True if the display has changed since the last redraw.
+	rewind	int	// The number of lines we need to rewind to redraw the entire screen.
 
-	treeTableRows         []string
-	sames                 int
-	systemMessages        []string
-	statusMessage         string
-	statusMessageDeadline time.Time
+	treeTableRows		[]string
+	sames			int
+	systemMessages		[]string
+	statusMessage		string
+	statusMessageDeadline	time.Time
 
-	ticker *time.Ticker
-	keys   chan string
-	closed chan bool
+	ticker	*time.Ticker
+	keys	chan string
+	closed	chan bool
 
-	treeTableOffset    int // The scroll offset into the tree table.
-	maxTreeTableOffset int // The maximum scroll offset.
+	treeTableOffset		int	// The scroll offset into the tree table.
+	maxTreeTableOffset	int	// The maximum scroll offset.
 }
 
 func newInteractiveRenderer(term terminal.Terminal, permalink string, opts Options) progressRenderer {
@@ -70,12 +70,12 @@ func newInteractiveRenderer(term terminal.Terminal, permalink string, opts Optio
 	term.HideCursor()
 
 	r := &treeRenderer{
-		opts:      opts,
-		term:      term,
-		permalink: permalink,
-		ticker:    time.NewTicker(16 * time.Millisecond),
-		keys:      make(chan string),
-		closed:    make(chan bool),
+		opts:		opts,
+		term:		term,
+		permalink:	permalink,
+		ticker:		time.NewTicker(16 * time.Millisecond),
+		keys:		make(chan string),
+		closed:		make(chan bool),
 	}
 	if opts.DeterministicOutput {
 		r.ticker.Stop()
@@ -274,7 +274,7 @@ func (r *treeRenderer) frame(locked, done bool) {
 
 	systemMessagesHeight := len(systemMessages)
 	if len(systemMessages) > 0 {
-		systemMessagesHeight += 3 // Account for padding + title
+		systemMessagesHeight += 3	// Account for padding + title
 	}
 
 	statusMessageHeight := 0

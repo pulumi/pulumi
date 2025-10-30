@@ -17,8 +17,8 @@ package stack
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/display"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -46,9 +46,9 @@ func SerializePlanDiff(
 	}
 
 	return apitype.PlanDiffV1{
-		Adds:    adds,
-		Updates: updates,
-		Deletes: deletes,
+		Adds:		adds,
+		Updates:	updates,
+		Deletes:	deletes,
 	}, nil
 }
 
@@ -107,30 +107,30 @@ func SerializeResourcePlan(
 		}
 
 		goal = &apitype.GoalV1{
-			Type:                    plan.Goal.Type,
-			Name:                    plan.Goal.Name,
-			Custom:                  plan.Goal.Custom,
-			InputDiff:               inputDiff,
-			OutputDiff:              outputDiff,
-			Parent:                  plan.Goal.Parent,
-			Protect:                 plan.Goal.Protect,
-			Dependencies:            plan.Goal.Dependencies,
-			Provider:                plan.Goal.Provider,
-			PropertyDependencies:    plan.Goal.PropertyDependencies,
-			DeleteBeforeReplace:     plan.Goal.DeleteBeforeReplace,
-			IgnoreChanges:           plan.Goal.IgnoreChanges,
-			AdditionalSecretOutputs: plan.Goal.AdditionalSecretOutputs,
-			Aliases:                 plan.Goal.Aliases,
-			ID:                      plan.Goal.ID,
-			CustomTimeouts:          plan.Goal.CustomTimeouts,
+			Type:				plan.Goal.Type,
+			Name:				plan.Goal.Name,
+			Custom:				plan.Goal.Custom,
+			InputDiff:			inputDiff,
+			OutputDiff:			outputDiff,
+			Parent:				plan.Goal.Parent,
+			Protect:			plan.Goal.Protect,
+			Dependencies:			plan.Goal.Dependencies,
+			Provider:			plan.Goal.Provider,
+			PropertyDependencies:		plan.Goal.PropertyDependencies,
+			DeleteBeforeReplace:		plan.Goal.DeleteBeforeReplace,
+			IgnoreChanges:			plan.Goal.IgnoreChanges,
+			AdditionalSecretOutputs:	plan.Goal.AdditionalSecretOutputs,
+			Aliases:			plan.Goal.Aliases,
+			ID:				plan.Goal.ID,
+			CustomTimeouts:			plan.Goal.CustomTimeouts,
 		}
 	}
 
 	return apitype.ResourcePlanV1{
-		Goal:    goal,
-		Seed:    plan.Seed,
-		Steps:   steps,
-		Outputs: outputs,
+		Goal:		goal,
+		Seed:		plan.Seed,
+		Steps:		steps,
+		Outputs:	outputs,
 	}, nil
 }
 
@@ -145,9 +145,9 @@ func SerializePlan(plan *deploy.Plan, enc config.Encrypter, showSecrets bool) (a
 	}
 
 	return apitype.DeploymentPlanV1{
-		Manifest:      plan.Manifest.Serialize(),
-		ResourcePlans: resourcePlans,
-		Config:        plan.Config,
+		Manifest:	plan.Manifest.Serialize(),
+		ResourcePlans:	resourcePlans,
+		Config:		plan.Config,
 	}, nil
 }
 
@@ -168,22 +168,22 @@ func DeserializeResourcePlan(
 		}
 
 		goal = &deploy.GoalPlan{
-			Type:                    plan.Goal.Type,
-			Name:                    plan.Goal.Name,
-			Custom:                  plan.Goal.Custom,
-			InputDiff:               inputDiff,
-			OutputDiff:              outputDiff,
-			Parent:                  plan.Goal.Parent,
-			Protect:                 plan.Goal.Protect,
-			Dependencies:            plan.Goal.Dependencies,
-			Provider:                plan.Goal.Provider,
-			PropertyDependencies:    plan.Goal.PropertyDependencies,
-			DeleteBeforeReplace:     plan.Goal.DeleteBeforeReplace,
-			IgnoreChanges:           plan.Goal.IgnoreChanges,
-			AdditionalSecretOutputs: plan.Goal.AdditionalSecretOutputs,
-			Aliases:                 plan.Goal.Aliases,
-			ID:                      plan.Goal.ID,
-			CustomTimeouts:          plan.Goal.CustomTimeouts,
+			Type:				plan.Goal.Type,
+			Name:				plan.Goal.Name,
+			Custom:				plan.Goal.Custom,
+			InputDiff:			inputDiff,
+			OutputDiff:			outputDiff,
+			Parent:				plan.Goal.Parent,
+			Protect:			plan.Goal.Protect,
+			Dependencies:			plan.Goal.Dependencies,
+			Provider:			plan.Goal.Provider,
+			PropertyDependencies:		plan.Goal.PropertyDependencies,
+			DeleteBeforeReplace:		plan.Goal.DeleteBeforeReplace,
+			IgnoreChanges:			plan.Goal.IgnoreChanges,
+			AdditionalSecretOutputs:	plan.Goal.AdditionalSecretOutputs,
+			Aliases:			plan.Goal.Aliases,
+			ID:				plan.Goal.ID,
+			CustomTimeouts:			plan.Goal.CustomTimeouts,
 		}
 	}
 
@@ -202,10 +202,10 @@ func DeserializeResourcePlan(
 	}
 
 	return &deploy.ResourcePlan{
-		Goal:    goal,
-		Seed:    plan.Seed,
-		Ops:     ops,
-		Outputs: outputs,
+		Goal:		goal,
+		Seed:		plan.Seed,
+		Ops:		ops,
+		Outputs:	outputs,
 	}, nil
 }
 
@@ -216,9 +216,9 @@ func DeserializePlan(plan apitype.DeploymentPlanV1, dec config.Decrypter) (*depl
 	}
 
 	deserializedPlan := &deploy.Plan{
-		Config:        plan.Config,
-		Manifest:      *manifest,
-		ResourcePlans: make(map[resource.URN]*deploy.ResourcePlan),
+		Config:		plan.Config,
+		Manifest:	*manifest,
+		ResourcePlans:	make(map[resource.URN]*deploy.ResourcePlan),
 	}
 	for urn, resourcePlan := range plan.ResourcePlans {
 		deserializedResourcePlan, err := DeserializeResourcePlan(resourcePlan, dec)

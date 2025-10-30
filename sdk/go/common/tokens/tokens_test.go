@@ -61,39 +61,39 @@ func TestTypeDisplayName(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		desc string
-		give Type
-		want string
+		desc	string
+		give	Type
+		want	string
 	}{
 		{
-			desc: "not enough parts",
-			give: "incomplete",
-			want: "incomplete",
+			desc:	"not enough parts",
+			give:	"incomplete",
+			want:	"incomplete",
 		},
 		{
-			desc: "no name",
-			give: "pkg:mod:",
-			want: "pkg:mod:",
+			desc:	"no name",
+			give:	"pkg:mod:",
+			want:	"pkg:mod:",
 		},
 		{
-			desc: "no slash",
-			give: "pkg:mod:typ",
-			want: "pkg:mod:typ",
+			desc:	"no slash",
+			give:	"pkg:mod:typ",
+			want:	"pkg:mod:typ",
 		},
 		{
-			desc: "bad casing",
-			give: "pkg:Mod/foo:typ",
-			want: "pkg:Mod/foo:typ",
+			desc:	"bad casing",
+			give:	"pkg:Mod/foo:typ",
+			want:	"pkg:Mod/foo:typ",
 		},
 		{
-			desc: "remove slash",
-			give: "pkg:mod/foo/bar:Bar",
-			want: "pkg:mod/foo:Bar",
+			desc:	"remove slash",
+			give:	"pkg:mod/foo/bar:Bar",
+			want:	"pkg:mod/foo:Bar",
 		},
 		{
-			desc: "remove up to last slash",
-			give: "pkg:mod/foo/bar/baz:Baz",
-			want: "pkg:mod/foo/bar:Baz",
+			desc:	"remove up to last slash",
+			give:	"pkg:mod/foo/bar/baz:Baz",
+			want:	"pkg:mod/foo/bar:Baz",
 		},
 	}
 

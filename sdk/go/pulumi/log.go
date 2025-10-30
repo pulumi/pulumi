@@ -34,25 +34,25 @@ type Log interface {
 }
 
 type logState struct {
-	engine pulumirpc.EngineClient
-	ctx    context.Context
-	join   *workGroup
+	engine	pulumirpc.EngineClient
+	ctx	context.Context
+	join	*workGroup
 }
 
 // LogArgs may be used to specify arguments to be used for logging.
 type LogArgs struct {
 	// Optional resource this log is associated with.
-	Resource Resource
+	Resource	Resource
 
 	// Optional stream id that a stream of log messages can be associated with. This allows
 	// clients to not have to buffer a large set of log messages that they all want to be
 	// conceptually connected.  Instead the messages can be sent as chunks (with the same stream id)
 	// and the end display can show the messages as they arrive, while still stitching them together
 	// into one total log message.
-	StreamID int32
+	StreamID	int32
 
 	// Optional value indicating whether this is a status message.
-	Ephemeral bool
+	Ephemeral	bool
 }
 
 // Debug logs a debug-level message that is generally hidden from end-users.
@@ -96,11 +96,11 @@ func (log *logState) _log(severity pulumirpc.LogSeverity, message string, args *
 	}
 
 	logRequest := &pulumirpc.LogRequest{
-		Severity:  severity,
-		Message:   strings.ToValidUTF8(message, "�"),
-		Urn:       urn,
-		StreamId:  args.StreamID,
-		Ephemeral: args.Ephemeral,
+		Severity:	severity,
+		Message:	strings.ToValidUTF8(message, "�"),
+		Urn:		urn,
+		StreamId:	args.StreamID,
+		Ephemeral:	args.Ephemeral,
 	}
 	_, err := log.engine.Log(log.ctx, logRequest)
 	return err

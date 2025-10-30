@@ -17,9 +17,9 @@ package plugin
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/packageresolution"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/engine"
+	pkgWorkspace "github.com/pulumi/pulumi/sdk/v3/pkg/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -29,8 +29,8 @@ import (
 
 func NewPluginCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "plugin",
-		Short: "Manage language and resource provider plugins",
+		Use:	"plugin",
+		Short:	"Manage language and resource provider plugins",
 		Long: "Manage language and resource provider plugins.\n" +
 			"\n" +
 			"Pulumi uses dynamically loaded plugins as an extensibility mechanism for\n" +
@@ -45,13 +45,13 @@ func NewPluginCmd() *cobra.Command {
 			"The plugin family of commands provides a way of explicitly managing plugins.\n" +
 			"\n" +
 			"For a list of available resource plugins, please see https://www.pulumi.com/registry/.",
-		Args: cmdutil.NoArgs,
+		Args:	cmdutil.NoArgs,
 	}
 
 	packageResolutionOptions := packageresolution.Options{
-		DisableRegistryResolve:      env.DisableRegistryResolve.Value(),
-		Experimental:                env.Experimental.Value(),
-		IncludeInstalledInWorkspace: false,
+		DisableRegistryResolve:		env.DisableRegistryResolve.Value(),
+		Experimental:			env.Experimental.Value(),
+		IncludeInstalledInWorkspace:	false,
 	}
 	cmd.AddCommand(newPluginInstallCmd(packageResolutionOptions))
 	cmd.AddCommand(newPluginLsCmd())

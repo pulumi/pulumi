@@ -37,16 +37,16 @@ func NewProgressReportingCloser(
 	}
 
 	return &progressReportingCloser{
-		events:            events,
-		typ:               typ,
-		id:                id,
-		message:           message,
-		received:          0,
-		total:             size,
-		lastReported:      time.Now(),
-		reportingInterval: reportingInterval,
-		closed:            false,
-		closer:            closer,
+		events:			events,
+		typ:			typ,
+		id:			id,
+		message:		message,
+		received:		0,
+		total:			size,
+		lastReported:		time.Now(),
+		reportingInterval:	reportingInterval,
+		closed:			false,
+		closer:			closer,
 	}
 }
 
@@ -54,25 +54,25 @@ func NewProgressReportingCloser(
 // underlying eventEmitter as bytes are read and when it is closed.
 type progressReportingCloser struct {
 	// The eventEmitter to report progress events to.
-	events eventEmitter
+	events	eventEmitter
 	// The type of progress being reported.
-	typ ProgressType
+	typ	ProgressType
 	// A unique ID for the download being reported.
-	id string
+	id	string
 	// A message to include in progress events.
-	message string
+	message	string
 	// The number of bytes received so far.
-	received int64
+	received	int64
 	// The total number of bytes expected.
-	total int64
+	total	int64
 	// The last time a progress event was reported.
-	lastReported time.Time
+	lastReported	time.Time
 	// The interval at which progress events should be reported.
-	reportingInterval time.Duration
+	reportingInterval	time.Duration
 	// True if the underlying ReadCloser has been closed.
-	closed bool
+	closed	bool
 	// The underlying ReadCloser to read from.
-	closer io.ReadCloser
+	closer	io.ReadCloser
 }
 
 func (d *progressReportingCloser) Read(p []byte) (n int, err error) {

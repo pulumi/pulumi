@@ -21,12 +21,12 @@ import (
 
 func NewTemplateCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "template",
-		Short: "Work with Pulumi templates",
+		Use:	"template",
+		Short:	"Work with Pulumi templates",
 		Long: `Work with Pulumi templates
 
 Publish and manage Pulumi templates.`,
-		Args: cmdutil.NoArgs,
+		Args:	cmdutil.NoArgs,
 	}
 	cmd.AddCommand(
 		newTemplatePublishCmd(),

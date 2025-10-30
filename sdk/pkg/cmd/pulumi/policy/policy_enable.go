@@ -17,9 +17,9 @@ package policy
 import (
 	"encoding/json"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/backend"
+	cmdBackend "github.com/pulumi/pulumi/sdk/v3/pkg/cmd/pulumi/backend"
+	resourceanalyzer "github.com/pulumi/pulumi/sdk/v3/pkg/resource/analyzer"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
@@ -28,17 +28,17 @@ import (
 const latestKeyword = "latest"
 
 type policyEnableArgs struct {
-	policyGroup string
-	config      string
+	policyGroup	string
+	config		string
 }
 
 func newPolicyEnableCmd() *cobra.Command {
 	args := policyEnableArgs{}
 
 	cmd := &cobra.Command{
-		Use:   "enable <org-name>/<policy-pack-name> <latest|version>",
-		Args:  cmdutil.ExactArgs(2),
-		Short: "Enable a Policy Pack for a Pulumi organization",
+		Use:	"enable <org-name>/<policy-pack-name> <latest|version>",
+		Args:	cmdutil.ExactArgs(2),
+		Short:	"Enable a Policy Pack for a Pulumi organization",
 		Long: "Enable a Policy Pack for a Pulumi organization. " +
 			"Can specify latest to enable the latest version of the Policy Pack or a specific version number.",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
@@ -67,9 +67,9 @@ func newPolicyEnableCmd() *cobra.Command {
 			// Attempt to enable the Policy Pack.
 			return policyPack.Enable(ctx, args.policyGroup,
 				backend.PolicyPackOperation{
-					VersionTag: version,
-					Scopes:     backend.CancellationScopes,
-					Config:     config,
+					VersionTag:	version,
+					Scopes:		backend.CancellationScopes,
+					Config:		config,
 				})
 		},
 	}

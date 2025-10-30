@@ -17,7 +17,7 @@ package newcmd
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -33,8 +33,8 @@ func InstallDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeI
 	}
 
 	err = cmdutil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
-		Info:     programInfo,
-		IsPlugin: false,
+		Info:		programInfo,
+		IsPlugin:	false,
 	})
 	if err != nil {
 		//revive:disable-next-line:error-strings // This error message is user facing.

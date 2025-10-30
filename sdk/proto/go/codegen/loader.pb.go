@@ -30,19 +30,19 @@ import (
 
 const (
 	// Verify that this generated code is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
+	_	= protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
+	_	= protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
 // Parameterization specifies the name, version, and value for a parameterized package.
 type Parameterization struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`       // the parameterized package name.
-	Version       string                 `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"` // the parameterized package version.
-	Value         []byte                 `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`     // the parameter value for the parameterized package.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Name		string			`protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`		// the parameterized package name.
+	Version		string			`protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`	// the parameterized package version.
+	Value		[]byte			`protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`	// the parameter value for the parameterized package.
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *Parameterization) Reset() {
@@ -56,7 +56,7 @@ func (x *Parameterization) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Parameterization) ProtoMessage() {}
+func (*Parameterization) ProtoMessage()	{}
 
 func (x *Parameterization) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_codegen_loader_proto_msgTypes[0]
@@ -98,17 +98,17 @@ func (x *Parameterization) GetValue() []byte {
 
 // GetSchemaRequest allows the engine to return a schema for a given package and version.
 type GetSchemaRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// the package name for the schema being requested.
-	Package string `protobuf:"bytes,1,opt,name=package,proto3" json:"package,omitempty"`
+	Package	string	`protobuf:"bytes,1,opt,name=package,proto3" json:"package,omitempty"`
 	// the version for the schema being requested, must be a valid semver or empty.
-	Version string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	Version	string	`protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
 	// the optional download url for the schema being requested.
-	DownloadUrl string `protobuf:"bytes,3,opt,name=download_url,json=downloadUrl,proto3" json:"download_url,omitempty"`
+	DownloadUrl	string	`protobuf:"bytes,3,opt,name=download_url,json=downloadUrl,proto3" json:"download_url,omitempty"`
 	// the parameterization for the schema being requested, can be empty.
-	Parameterization *Parameterization `protobuf:"bytes,4,opt,name=parameterization,proto3" json:"parameterization,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	Parameterization	*Parameterization	`protobuf:"bytes,4,opt,name=parameterization,proto3" json:"parameterization,omitempty"`
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *GetSchemaRequest) Reset() {
@@ -122,7 +122,7 @@ func (x *GetSchemaRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetSchemaRequest) ProtoMessage() {}
+func (*GetSchemaRequest) ProtoMessage()	{}
 
 func (x *GetSchemaRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_codegen_loader_proto_msgTypes[1]
@@ -171,11 +171,11 @@ func (x *GetSchemaRequest) GetParameterization() *Parameterization {
 
 // GetSchemaResponse returns the schema data for the requested package.
 type GetSchemaResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// the JSON encoded schema.
-	Schema        []byte `protobuf:"bytes,1,opt,name=schema,proto3" json:"schema,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Schema		[]byte	`protobuf:"bytes,1,opt,name=schema,proto3" json:"schema,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *GetSchemaResponse) Reset() {
@@ -189,7 +189,7 @@ func (x *GetSchemaResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetSchemaResponse) ProtoMessage() {}
+func (*GetSchemaResponse) ProtoMessage()	{}
 
 func (x *GetSchemaResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_codegen_loader_proto_msgTypes[2]
@@ -235,8 +235,8 @@ const file_pulumi_codegen_loader_proto_rawDesc = "" +
 	"\tGetSchema\x12\x19.codegen.GetSchemaRequest\x1a\x1a.codegen.GetSchemaResponse\"\x00B2Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3"
 
 var (
-	file_pulumi_codegen_loader_proto_rawDescOnce sync.Once
-	file_pulumi_codegen_loader_proto_rawDescData []byte
+	file_pulumi_codegen_loader_proto_rawDescOnce	sync.Once
+	file_pulumi_codegen_loader_proto_rawDescData	[]byte
 )
 
 func file_pulumi_codegen_loader_proto_rawDescGZIP() []byte {
@@ -248,22 +248,22 @@ func file_pulumi_codegen_loader_proto_rawDescGZIP() []byte {
 
 var file_pulumi_codegen_loader_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_pulumi_codegen_loader_proto_goTypes = []any{
-	(*Parameterization)(nil),  // 0: codegen.Parameterization
-	(*GetSchemaRequest)(nil),  // 1: codegen.GetSchemaRequest
-	(*GetSchemaResponse)(nil), // 2: codegen.GetSchemaResponse
+	(*Parameterization)(nil),	// 0: codegen.Parameterization
+	(*GetSchemaRequest)(nil),	// 1: codegen.GetSchemaRequest
+	(*GetSchemaResponse)(nil),	// 2: codegen.GetSchemaResponse
 }
 var file_pulumi_codegen_loader_proto_depIdxs = []int32{
-	0, // 0: codegen.GetSchemaRequest.parameterization:type_name -> codegen.Parameterization
-	1, // 1: codegen.Loader.GetSchema:input_type -> codegen.GetSchemaRequest
-	2, // 2: codegen.Loader.GetSchema:output_type -> codegen.GetSchemaResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0,	// 0: codegen.GetSchemaRequest.parameterization:type_name -> codegen.Parameterization
+	1,	// 1: codegen.Loader.GetSchema:input_type -> codegen.GetSchemaRequest
+	2,	// 2: codegen.Loader.GetSchema:output_type -> codegen.GetSchemaResponse
+	2,	// [2:3] is the sub-list for method output_type
+	1,	// [1:2] is the sub-list for method input_type
+	1,	// [1:1] is the sub-list for extension type_name
+	1,	// [1:1] is the sub-list for extension extendee
+	0,	// [0:1] is the sub-list for field type_name
 }
 
-func init() { file_pulumi_codegen_loader_proto_init() }
+func init()	{ file_pulumi_codegen_loader_proto_init() }
 func file_pulumi_codegen_loader_proto_init() {
 	if File_pulumi_codegen_loader_proto != nil {
 		return
@@ -271,16 +271,16 @@ func file_pulumi_codegen_loader_proto_init() {
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
-			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_codegen_loader_proto_rawDesc), len(file_pulumi_codegen_loader_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   3,
-			NumExtensions: 0,
-			NumServices:   1,
+			GoPackagePath:	reflect.TypeOf(x{}).PkgPath(),
+			RawDescriptor:	unsafe.Slice(unsafe.StringData(file_pulumi_codegen_loader_proto_rawDesc), len(file_pulumi_codegen_loader_proto_rawDesc)),
+			NumEnums:	0,
+			NumMessages:	3,
+			NumExtensions:	0,
+			NumServices:	1,
 		},
-		GoTypes:           file_pulumi_codegen_loader_proto_goTypes,
-		DependencyIndexes: file_pulumi_codegen_loader_proto_depIdxs,
-		MessageInfos:      file_pulumi_codegen_loader_proto_msgTypes,
+		GoTypes:		file_pulumi_codegen_loader_proto_goTypes,
+		DependencyIndexes:	file_pulumi_codegen_loader_proto_depIdxs,
+		MessageInfos:		file_pulumi_codegen_loader_proto_msgTypes,
 	}.Build()
 	File_pulumi_codegen_loader_proto = out.File
 	file_pulumi_codegen_loader_proto_goTypes = nil
