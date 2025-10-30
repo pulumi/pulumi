@@ -1,0 +1,5 @@
+Configuration:
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:dev::urlencodedoutput::pulumi:pulumi:Stack::urlencodedoutput-dev]
+    --outputs:--
+  ~ path: "%2F" => "%2f"

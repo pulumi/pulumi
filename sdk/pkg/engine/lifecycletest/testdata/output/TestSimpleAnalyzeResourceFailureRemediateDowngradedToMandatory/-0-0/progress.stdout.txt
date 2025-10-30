@@ -1,0 +1,11 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+<{%fg 5%}>Loading policy packs...<{%reset%}>
+
+
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Policies:<{%reset%}>
+    ❌ <{%fg 5%}>analyzerA@v<{%reset%}>
+        - <{%fg 1%}>[mandatory]  always-fails<{%reset%}>  (pulumi:providers:pkgA: default)
+          <{%reset%}>a policy failed<{%reset%}>
+

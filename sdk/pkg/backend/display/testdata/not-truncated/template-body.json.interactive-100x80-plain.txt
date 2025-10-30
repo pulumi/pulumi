@@ -1,0 +1,131 @@
+View in Browser (Ctrl+O): link
+
+     Type                                    Name                                       Status     
+     pulumi:pulumi:Stack                     aws-ts-eks-dev                                        
+     ├─ awsx:x:ec2:Vpc                       vpc                                                   
+     │  ├─ aws:ec2:Vpc                       vpc                                                   
+     │  ├─ awsx:x:ec2:InternetGateway        vpc                                                   
+     │  │  └─ aws:ec2:InternetGateway        vpc                                                   
+     │  ├─ awsx:x:ec2:NatGateway             vpc-0                                                 
+     │  │  ├─ aws:ec2:Eip                    vpc-0                                                 
+     │  │  └─ aws:ec2:NatGateway             vpc-0                                                 
+     │  ├─ awsx:x:ec2:NatGateway             vpc-1                                                 
+     │  │  ├─ aws:ec2:Eip                    vpc-1                                                 
+     │  │  └─ aws:ec2:NatGateway             vpc-1                                                 
+     │  ├─ awsx:x:ec2:Subnet                 vpc-private-0                                         
+     │  │  ├─ aws:ec2:Route                  vpc-private-0-nat-0                                   
+     │  │  ├─ aws:ec2:RouteTable             vpc-private-0                                         
+     │  │  ├─ aws:ec2:RouteTableAssociation  vpc-private-0                                         
+     │  │  └─ aws:ec2:Subnet                 vpc-private-0                                         
+     │  ├─ awsx:x:ec2:Subnet                 vpc-private-1                                         
+     │  │  ├─ aws:ec2:Route                  vpc-private-1-nat-1                                   
+     │  │  ├─ aws:ec2:RouteTable             vpc-private-1                                         
+     │  │  ├─ aws:ec2:RouteTableAssociation  vpc-private-1                                         
+     │  │  └─ aws:ec2:Subnet                 vpc-private-1                                         
+     │  ├─ awsx:x:ec2:Subnet                 vpc-public-0                                          
+     │  │  ├─ aws:ec2:Route                  vpc-public-0-ig                                       
+     │  │  ├─ aws:ec2:RouteTable             vpc-public-0                                          
+     │  │  ├─ aws:ec2:RouteTableAssociation  vpc-public-0                                          
+     │  │  └─ aws:ec2:Subnet                 vpc-public-0                                          
+     │  └─ awsx:x:ec2:Subnet                 vpc-public-1                                          
+     │     ├─ aws:ec2:Route                  vpc-public-1-ig                                       
+     │     ├─ aws:ec2:RouteTable             vpc-public-1                                          
+     │     ├─ aws:ec2:RouteTableAssociation  vpc-public-1                                          
+     │     └─ aws:ec2:Subnet                 vpc-public-1                                          
+     └─ eks:index:Cluster                    cluster                                               
+ ~      ├─ aws:cloudformation:Stack          cluster-nodes                              updated    
+        ├─ aws:ec2:LaunchConfiguration       cluster-nodeLaunchConfiguration                       
+        ├─ aws:ec2:SecurityGroup             cluster-eksClusterSecurityGroup                       
+        ├─ aws:ec2:SecurityGroup             cluster-nodeSecurityGroup                             
+        ├─ aws:ec2:SecurityGroupRule         cluster-eksClusterIngressRule                         
+        ├─ aws:ec2:SecurityGroupRule         cluster-eksClusterInternetEgressRule                  
+        ├─ aws:ec2:SecurityGroupRule         cluster-eksExtApiServerClusterIngressRule             
+        ├─ aws:ec2:SecurityGroupRule         cluster-eksNodeClusterIngressRule                     
+        ├─ aws:ec2:SecurityGroupRule         cluster-eksNodeIngressRule                            
+        ├─ aws:ec2:SecurityGroupRule         cluster-eksNodeInternetEgressRule                     
+        ├─ aws:eks:Cluster                   cluster-eksCluster                                    
+        ├─ aws:iam:InstanceProfile           cluster-instanceProfile                               
+        ├─ eks:index:RandomSuffix            cluster-cfnStackName                                  
+        ├─ eks:index:ServiceRole             cluster-eksRole                                       
+        │  ├─ aws:iam:Role                   cluster-eksRole-role                                  
+        │  ├─ aws:iam:RolePolicyAttachment   cluster-eksRole-4b490823                              
+        │  └─ aws:iam:RolePolicyAttachment   cluster-eksRole-90eb1c99                              
+        ├─ eks:index:ServiceRole             cluster-instanceRole                                  
+        │  ├─ aws:iam:Role                   cluster-instanceRole-role                             
+        │  ├─ aws:iam:RolePolicyAttachment   cluster-instanceRole-03516f97                         
+        │  ├─ aws:iam:RolePolicyAttachment   cluster-instanceRole-3eb088f2                         
+        │  └─ aws:iam:RolePolicyAttachment   cluster-instanceRole-e1b295bd                         
+        ├─ eks:index:VpcCni                  cluster-vpc-cni                                       
+        ├─ kubernetes:core/v1:ConfigMap      cluster-nodeAccess                                    
+        ├─ pulumi:providers:kubernetes       cluster-eks-k8s                                       
+        └─ pulumi:providers:kubernetes       cluster-provider                                      
+
+Changes:
+  aws:cloudformation:Stack (cluster-nodes):
+    ~ aws:cloudformation/stack:Stack: (update)
+        [id=arn:aws:cloudformation:us-west-2:616138583583:stack/cluster-9085c3f2/838936d0-b705-11ec-b5c6-0a71999bcd3f]
+        [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$aws:cloudformation/stack:Stack::cluster-nodes]
+        [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
+      ~ templateBody:
+            ...
+                                      LaunchConfigurationName: cluster-nodeLaunchConfiguration-1013b9d
+                                      MinSize: 1
+          -                           MaxSize: 2
+          +                           MaxSize: 3
+                                      VPCZoneIdentifier: ["subnet-0065b9ab25cb0ab6b","subnet-0e7f681a099ea15a1"]
+                                      Tags:
+            ...
+
+Diagnostics:
+  pulumi:pulumi:Stack (aws-ts-eks-dev):
+    Configuration:
+        aws:region: us-west-2
+
+Outputs:
+    kubeconfig: {
+        apiVersion     : "v1"
+        clusters       : [
+            [0]: {
+                cluster: {
+                    certificate-authority-data: "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM1ekNDQWMrZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJeU1EUXdPREEyTWpjMU5Wb1hEVE15TURRd05UQTJNamMxTlZvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBT2M5Ck9FSTNSLzltTnpWZy9nS284V3dmb3R6dHk5T2F5Y2hadkpXVStjWUJLVzVrUS9jc0lIVWk0M3pGWk52VjdRd2sKSkR5elFwZXI3R29CM3ZrSUlXNlpzZjdIRUVIU2h0QUxvRHJrOTlwU1ltcDJvNEhzMkx2aC9WSHkwZG4zRE9IcwpwSFkxWU9mSmUyK25UcUJ2NHhseTVDWjEzUTV3MGRVMUY1bm56b1RsS1ppTkdmYWhHNEN2QStsS3FPWFZ3dHZiCkcxRmJkVThBQXRDUnZPSmg5eTN6eDN1b0pPWVc0QkU0VDNsM0dpTlk4TVl3eGVRd3JvU0hseE1GbGJQUmQ2YXMKOUEyczNxK1RJZ2VKZzBxNFIrK3Z1QVlBcG5DRzFIbEpieU9kT3d3aldlUHZIVDhMZTJXN283NEFsNSt6bEFXdQptVm9VbE82WUlxc1h3YUl3QUY4Q0F3RUFBYU5DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZFV2xRdERXbllFVEs2M0xBd2JSRUQ2TTJtM0ZNQTBHQ1NxR1NJYjMKRFFFQkN3VUFBNElCQVFDVjFFOUVucWhUbkNQZVZEQmxXMURXMTBwdzdVMG9sdk5TWjA0cU9RRVkwNE5oZ29tTgprWC9GeDhQenBnT1h4SWlOYlBZYTdIYVVNZ0RPMHJ1bVNPQjc5ZThtbjNIZ055dlEyM3NOUkpsMnlaUUVDKzBXCllJcXhSM2pwMkV1MG40YkxDQzRyM2UweFRITldwbGd6Z1FkcUpNLzg0NmUxRTR0alV5Ry92V09VV3RGSzRjemoKTS85SXJZWnJRVFRVL1pISDVtMmtFYjRUcmYwZ1hyL2E3UmJWUG91Uzk2dmJpdjdoSE12YVptclpzeTN3bDBYYQpFUDdwMERHdWxCdnh1K3BjUkxVdkZMZUdLODFLY3JRZmpFU2ZqSldSWVYwTERGWnQ4YnlMT0J6V2MvU0Ywd0ZoCkt4ekFLWXkvZHhTNksySCtqeFY1amF2cXNTR1dzSGZ6Q0Q2MQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
+                    server                    : "https://8AE853AAF6BD7DFED415A3D30AD938E2.gr7.us-west-2.eks.amazonaws.com"
+                }
+                name   : "kubernetes"
+            }
+        ]
+        contexts       : [
+            [0]: {
+                context: {
+                    cluster: "kubernetes"
+                    user   : "aws"
+                }
+                name   : "aws"
+            }
+        ]
+        current-context: "aws"
+        kind           : "Config"
+        users          : [
+            [0]: {
+                name: "aws"
+                user: {
+                    exec: {
+                        apiVersion: "client.authentication.k8s.io/v1alpha1"
+                        args      : [
+                            [0]: "eks"
+                            [1]: "get-token"
+                            [2]: "--cluster-name"
+                            [3]: "cluster-eksCluster-932639f"
+                        ]
+                        command   : "aws"
+                    }
+                }
+            }
+        ]
+    }
+
+Resources:
+    ~ 1 updated
+    57 unchanged
+
+Duration: 2s
+

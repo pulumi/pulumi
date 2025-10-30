@@ -1,0 +1,19 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA resA <{%bold%}><{%reset%}><{%reset%}> <{%reset%}>cannot ignore changes in added or removed elements of the path: "qux[0]"<{%reset%}>
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA resA <{%bold%}><{%reset%}><{%reset%}> <{%reset%}>cannot ignore changes in added or removed elements of the path: "qux[0]"<{%reset%}>
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 1%}>-foo,qux<{%reset%}><{%reset%}>]; <{%reset%}>cannot ignore changes in added or removed elements of the path: "qux[0]"<{%reset%}>
+ <{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 1%}>-foo,qux<{%reset%}><{%reset%}>]; <{%reset%}>cannot ignore changes in added or removed elements of the path: "qux[0]"<{%reset%}>
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>pkgA:m:typA (resA):<{%reset%}>
+    <{%reset%}>cannot ignore changes in added or removed elements of the path: "qux[0]"<{%reset%}>
+    <{%reset%}>cannot ignore changes in added or removed elements of the path: "qux[0]"<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 updated<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

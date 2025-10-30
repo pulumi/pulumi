@@ -1,0 +1,14 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack test running 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack test <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Outputs:<{%reset%}>
+<{%fg 3%}>  ~ first : <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>step <{%reset%}><{%fg 1%}>1<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>step <{%reset%}><{%fg 2%}>3<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 3%}>  ~ second: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>step <{%reset%}><{%fg 1%}>0<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>step <{%reset%}><{%fg 2%}>3<{%reset%}><{%fg 3%}>"
+<{%reset%}>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

@@ -1,0 +1,17 @@
+View in Browser (Ctrl+O): link
+
+     Type                 Name                  Status     Info
+     pulumi:pulumi:Stack  urlencodedoutput-dev             1 message
+
+Diagnostics:
+  pulumi:pulumi:Stack (urlencodedoutput-dev):
+    Configuration:
+
+Outputs:
+  ~ path: "%2F" => "%2f"
+
+Resources:
+    1 unchanged
+
+Duration: 1s
+
