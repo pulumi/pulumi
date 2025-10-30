@@ -567,7 +567,7 @@ func writeSnapshotStatements(t require.TestingT, snapSpec *SnapshotSpec) func(g 
 
 					if len(r.PropertyDependencies) > 0 {
 						g.writeBlock(
-							"PropertyDeps: map[resource.PropertyKey][]resource.URN{",
+							"PropertyDependencies: map[resource.PropertyKey][]resource.URN{",
 							func(g *generator) {
 								for k, deps := range r.PropertyDependencies {
 									g.writeBlock(
