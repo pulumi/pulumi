@@ -2,7 +2,7 @@ module github.com/pulumi/pulumi/pkg/v3
 
 go 1.24.7
 
-replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
+replace github.com/pulumi/pulumi/sdk/v3 => /Users/bryce/src/pulumi/sdk
 
 replace github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
 
@@ -32,7 +32,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386
 	github.com/pulumi/inflector v0.1.1
-	github.com/pulumi/pulumi/sdk/v3 v3.205.0
+	github.com/pulumi/pulumi/sdk/v3 v3.0.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/sergi/go-diff v1.4.0
 	github.com/spf13/cobra v1.10.1
