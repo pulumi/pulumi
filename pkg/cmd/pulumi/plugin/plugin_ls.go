@@ -44,7 +44,7 @@ func newPluginLsCmd() *cobra.Command {
 				if pluginSpecs, err = getProjectPlugins(); err != nil {
 					return fmt.Errorf("loading project plugins: %w", err)
 				}
-				plugins, err = ResolvePlugins(pluginSpecs)
+				plugins, err = resolvePlugins(pluginSpecs)
 				if err != nil {
 					return fmt.Errorf("loading project plugins: %w", err)
 				}

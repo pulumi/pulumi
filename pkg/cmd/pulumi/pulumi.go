@@ -791,10 +791,17 @@ func checkForOutdatedProviders(ctx context.Context) string {
 		return ""
 	}
 
-	// Get outdated providers from stack state instead of dependency files
-	outdatedProviders, err := getMajorVersionOutdatedProviders(ctx, proj)
+	// Get current backend
+	currentBackend, err := cmdBackend.CurrentBackend(ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, proj, display.Options{Color: cmdutil.GetGlobalColorization()})
 	if err != nil {
-		logging.Infof("outdatedprovider version check: %v", err)
+		logging.Infof("failed to get backend: %v", err)
+		return ""
+	}
+
+	// Get outdated providers from stack state instead of dependency files
+	outdatedProviders, err := getMajorVersionOutdatedProviders(ctx, currentBackend)
+	if err != nil {
+		logging.Infof("outdated provider version check: %v", err)
 		return ""
 	}
 
@@ -811,19 +818,14 @@ func checkForOutdatedProviders(ctx context.Context) string {
 	msg += "Please ensure to follow any release notes or upgrade guides to update your program.\n"
 
 	// Add Neo link for additional help
-	msg += linkToNeoTasks(ctx, proj)
+	msg += linkToNeoTasks(ctx, currentBackend)
 
 	return msg
 }
 
 // getOutdatedProvidersFromStackState inspects the current stack snapshot and returns a list of
 // providers that are outdated by at least one major version.
-func getMajorVersionOutdatedProviders(ctx context.Context, proj *workspace.Project) ([]string, error) {
-	currentBackend, err := cmdBackend.CurrentBackend(ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, proj, display.Options{Color: cmdutil.GetGlobalColorization()})
-	if err != nil {
-		logging.Infof("failed to get backend: %v", err)
-		return nil, err
-	}
+func getMajorVersionOutdatedProviders(ctx context.Context, currentBackend backend.Backend) ([]string, error) {
 
 	s, err := backendState.CurrentStack(ctx, currentBackend)
 	if err != nil || s == nil {
@@ -890,15 +892,13 @@ func getMajorVersionOutdatedProviders(ctx context.Context, proj *workspace.Proje
 	return outdated, nil
 }
 
-func linkToNeoTasks(ctx context.Context, project *workspace.Project) string {
+func linkToNeoTasks(ctx context.Context, currentBackend backend.Backend) string {
 	var msg string
 	// Get current stack reference for Neo link
 	var stackRef string
-	if currentBackend, err := cmdBackend.CurrentBackend(ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, project, display.Options{Color: cmdutil.GetGlobalColorization()}); err == nil {
-		if s, err := backendState.CurrentStack(ctx, currentBackend); err == nil && s != nil {
-			// Get project/stack format (e.g., "test-program-v3/dev")
-			stackRef = string(project.Name) + "/" + s.Ref().Name().String()
-		}
+	if s, err := backendState.CurrentStack(ctx, currentBackend); err == nil && s != nil {
+		// Get project/stack format (e.g., "test-program-v3/dev")
+		stackRef = currentBackend.Name() + "/" + s.Ref().Name().String()
 	}
 	msg = "\n" + colors.SpecAttention + "Need help with provider upgrades?" + colors.Reset + "\n"
 	neoURL := "https://app-guins-review-stack.review-stacks.pulumi-dev.io/pulumi_local/neo/tasks?prompt=upgrade%20provider"
