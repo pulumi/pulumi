@@ -1,0 +1,24 @@
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0_http_/example.com]
+<{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%reset%}>    name   : <{%reset%}><{%reset%}>"testingBase"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    version: <{%reset%}><{%reset%}>"1.0.0"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>    [id=2]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0_http_/example.com::1]
+<{%reset%}><{%reset%}>  pkgExt:m:typA: (same)
+<{%reset%}>    [id=2]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgExt:m:typA::resB]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0::3]
+<{%reset%}><{%reset%}>  pulumi:providers:pkgExt: (same)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0]
+<{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%reset%}>    name   : <{%reset%}><{%reset%}>"testingExt"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    version: <{%reset%}><{%reset%}>"0.5.0"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    2 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

@@ -1,0 +1,29 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA A <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 2%}>+A<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA A <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 2%}>+A<{%reset%}><{%reset%}>]
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA B <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA C <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 1%}>-A<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA C <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 1%}>-A<{%reset%}><{%reset%}>]
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA D <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 1%}>-B<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA D <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 1%}>-B<{%reset%}><{%reset%}>]
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA E <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA F <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 1%}>-A<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> pkgA:m:typA F <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 1%}>-A<{%reset%}><{%reset%}>]
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA G <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 1%}>-B<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> pkgA:m:typA G <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 1%}>-B<{%reset%}><{%reset%}>]
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA H <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA I <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA J <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA K <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 1%}>-A<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> pkgA:m:typA K <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 1%}>-A<{%reset%}><{%reset%}>]
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA L <{%bold%}><{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 6 updated<{%reset%}>
+    6 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

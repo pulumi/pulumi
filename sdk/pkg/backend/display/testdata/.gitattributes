@@ -1,0 +1,2 @@
+# Ensure these files are checked out with the same line endings, as we run tests on their hashes.
+* text eol=lf

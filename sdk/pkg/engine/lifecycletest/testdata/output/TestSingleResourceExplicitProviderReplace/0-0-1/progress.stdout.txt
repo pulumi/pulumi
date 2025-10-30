@@ -1,0 +1,21 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 10%}>++<{%reset%}> pulumi:providers:pkgA provA <{%bold%}><{%fg 10%}>creating replacement<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]
+ <{%fg 10%}>++<{%reset%}> pulumi:providers:pkgA provA <{%fg 10%}>created replacement<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]
+ <{%bold%}><{%fg 13%}>+-<{%reset%}> pulumi:providers:pkgA provA <{%bold%}><{%fg 13%}>replacing<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]
+ <{%fg 13%}>+-<{%reset%}> pulumi:providers:pkgA provA <{%fg 13%}>replaced<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]
+ <{%bold%}><{%fg 10%}>++<{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 10%}>creating replacement<{%reset%}> [diff: <{%fg 3%}>~provider<{%reset%}><{%reset%}>]
+ <{%fg 10%}>++<{%reset%}> pkgA:m:typA resA <{%fg 10%}>created replacement<{%reset%}> [diff: <{%fg 3%}>~provider<{%reset%}><{%reset%}>]
+ <{%bold%}><{%fg 13%}>+-<{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 13%}>replacing<{%reset%}> [diff: <{%fg 3%}>~provider<{%reset%}><{%reset%}>]
+ <{%fg 13%}>+-<{%reset%}> pkgA:m:typA resA <{%fg 13%}>replaced<{%reset%}> [diff: <{%fg 3%}>~provider<{%reset%}><{%reset%}>]
+ <{%bold%}><{%fg 9%}>--<{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 9%}>deleting original<{%reset%}> [diff: <{%fg 3%}>~provider<{%reset%}><{%reset%}>]
+ <{%fg 9%}>--<{%reset%}> pkgA:m:typA resA <{%fg 9%}>deleted original<{%reset%}> [diff: <{%fg 3%}>~provider<{%reset%}><{%reset%}>]
+ <{%bold%}><{%fg 9%}>--<{%reset%}> pulumi:providers:pkgA provA <{%bold%}><{%fg 9%}>deleting original<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]
+ <{%fg 9%}>--<{%reset%}> pulumi:providers:pkgA provA <{%fg 9%}>deleted original<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 13%}>+-2 replaced<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

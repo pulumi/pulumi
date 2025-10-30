@@ -1,0 +1,15 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>link<{%reset%}>
+
+<{%reset%}>Configuration:<{%reset%}>
+
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack test-dev running 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi-python:dynamic:Resource test-x <{%bold%}><{%fg 3%}>updating<{%reset%}> 
+ <{%bold%}><{%fg 9%}>--<{%reset%}> pulumi-python:dynamic:Resource test-r <{%bold%}><{%fg 9%}>deleting original<{%reset%}> 
+ <{%fg 3%}>~ <{%reset%}> pulumi-python:dynamic:Resource test-x <{%fg 1%}>**updating failed**<{%reset%}> 
+ <{%fg 9%}>--<{%reset%}> pulumi-python:dynamic:Resource test-r <{%fg 9%}>deleted original<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack test-dev <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 8s
+

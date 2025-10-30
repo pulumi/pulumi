@@ -1,0 +1,17 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA default_0_17_11 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA default_0_17_11 <{%fg 2%}>created<{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA resA <{%bold%}><{%reset%}><{%reset%}> [diff: <{%fg 3%}>~provider<{%reset%}><{%reset%}>]
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA default_0_17_12 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA default_0_17_12 <{%fg 2%}>created<{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA resB <{%bold%}><{%reset%}><{%reset%}> [diff: <{%fg 3%}>~provider<{%reset%}><{%reset%}>]
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pulumi:providers:pkgA default_0_17_10 <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%fg 1%}>- <{%reset%}> pulumi:providers:pkgA default_0_17_10 <{%fg 1%}>deleted<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    2 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

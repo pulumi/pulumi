@@ -1,0 +1,8 @@
+<{%fg 2%}>+ pulumi:providers:pkgA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:r:typA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:r:typA::resA]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provA]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 2 to create<{%reset%}>

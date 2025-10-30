@@ -1,0 +1,64 @@
+{
+    "sequence": 0,
+    "timestamp": 1677074634,
+    "preludeEvent": {
+        "config": {}
+    }
+}
+{
+    "sequence": 3,
+    "timestamp": 1677074634,
+    "resourcePreEvent": {
+        "metadata": {
+            "op": "update",
+            "urn": "urn:pulumi:dev::pulumi-stack-output-diff::pulumi:pulumi:Stack::pulumi-stack-output-diff-dev",
+            "type": "pulumi:pulumi:Stack",
+            "old": {
+                "type": "pulumi:pulumi:Stack",
+                "urn": "urn:pulumi:dev::pulumi-stack-output-diff::pulumi:pulumi:Stack::pulumi-stack-output-diff-dev",
+                "id": "",
+                "parent": "",
+                "inputs": {},
+                "outputs": {
+                    "vehicles": {
+                        "taxi": "{\"color\":\"yellow\"}"
+                    }
+                },
+                "provider": ""
+            },
+            "new": {
+                "type": "pulumi:pulumi:Stack",
+                "urn": "urn:pulumi:dev::pulumi-stack-output-diff::pulumi:pulumi:Stack::pulumi-stack-output-diff-dev",
+                "id": "",
+                "parent": "",
+                "inputs": {},
+                "outputs": {
+                    "vehicles": {
+                        "taxi": "{\"color\":    \"yellow\"   }"
+                    }
+                },
+                "provider": ""
+            },
+            "logical": true,
+            "provider": ""
+        },
+        "planning": true
+    }
+}
+{
+    "sequence": 21,
+    "timestamp": 1677074635,
+    "summaryEvent": {
+        "maybeCorrupt": false,
+        "durationSeconds": 0,
+        "resourceChanges": {
+            "update": 1
+        },
+        "PolicyPacks": {}
+    }
+}
+{
+    "sequence": 22,
+    "timestamp": 1677074635,
+    "cancelEvent": {}
+}

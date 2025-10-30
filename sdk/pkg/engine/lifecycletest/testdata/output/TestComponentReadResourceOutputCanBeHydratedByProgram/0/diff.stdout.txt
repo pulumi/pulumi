@@ -1,0 +1,13 @@
+<{%fg 2%}>+ pulumi:providers:pkgA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:index:Component: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:index:Component::component]
+<{%reset%}><{%reset%}>    <{%fg 14%}>> pkgA:index:Custom: (read)
+<{%reset%}>        [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Custom::custom]
+<{%reset%}><{%fg 14%}>        foo: <{%reset%}><{%fg 14%}>"bar"<{%reset%}><{%fg 14%}>
+<{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pulumi: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pulumi::default]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
