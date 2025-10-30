@@ -61,11 +61,10 @@ func ShowCmd() *cobra.Command {
 
 func printResourceState(rs *resource.State) {
 	fmt.Println()
-	// print resource name
 	fmt.Printf("ResourceName: %s\n", rs.URN.Name())
-	// print URN
 	fmt.Println(rs.URN)
-	// print resource properties
+
+	// ignore properties starting with __
 	fmt.Println("Properties:")
 	for k, v := range rs.Outputs {
 		fmt.Println("	", k, ": ", v)
