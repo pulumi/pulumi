@@ -1,2 +1,0 @@
-<{%fg 1%}>error: <{%reset%}><{%reset%}>something went wrong<{%reset%}>
-<{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>

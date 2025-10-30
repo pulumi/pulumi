@@ -1,2 +1,0 @@
-<{%fg 3%}>warning: <{%reset%}><{%reset%}>previously-imported resources that still specify an ID may not be replaced; please remove the `import` declaration from your program;
-foo: {bar} => {baz}<{%reset%}>

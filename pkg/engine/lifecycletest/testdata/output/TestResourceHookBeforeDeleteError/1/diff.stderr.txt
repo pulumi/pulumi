@@ -1,2 +1,0 @@
-<{%fg 1%}>error: <{%reset%}><{%reset%}>before hook "myHook" failed: Oh no<{%reset%}>
-<{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>

@@ -1,1 +1,0 @@
-<{%fg 1%}>error: <{%reset%}><{%reset%}>expected resource operations for urn:pulumi:test::test::pkgA:m:typA::resB but none were seen<{%reset%}>

@@ -1,1 +1,0 @@
-<{%fg 1%}>error: <{%reset%}><{%reset%}>resource violates plan: properties changed: +-frob[{baz}]<{%reset%}>
