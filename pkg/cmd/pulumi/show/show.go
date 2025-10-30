@@ -2,7 +2,7 @@ package show
 
 import (
 	"fmt"
-	"path/filepath"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
@@ -64,20 +64,22 @@ func printResourceState(rs *resource.State) {
 	fmt.Printf("ResourceName: %s\n", rs.URN.Name())
 	fmt.Println(rs.URN)
 
-	// ignore properties starting with __
 	fmt.Println("Properties:")
 	for k, v := range rs.Outputs {
+		// ignore properties starting with __
+		if strings.HasPrefix(string(k), "__") {
+			continue
+		}
 		fmt.Println("	", k, ": ", v)
 	}
 	fmt.Println()
 }
 
 func resourcePassesFilters(rs *resource.State, rf *resourceFilters) (bool, error) {
-	resMatched, err := filepath.Match(rf.name, rs.URN.Name())
-	if err != nil {
-		return false, err
+	if !strings.Contains(rs.URN.Name(), rf.name) {
+		return false, nil
 	}
-	return resMatched, nil
+	return true, nil
 }
 
 type resourceFilters struct {
