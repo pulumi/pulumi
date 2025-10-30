@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/approvals"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -288,6 +289,9 @@ type Backend interface {
 	// GetReadOnlyCloudRegistry returns a [registry.Registry] object tied to this
 	// backend. All backends should support GetReadOnlyCloudRegistry.
 	GetReadOnlyCloudRegistry() registry.Registry
+
+	// GetApprovals returns an Approvals service instance, if supported, or a nil instance and false if not supported.
+	GetApprovals() (approvals.Approvals, bool)
 }
 
 // EnvironmentsBackend is an interface that defines an optional capability for a backend to work with environments.

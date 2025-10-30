@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/approvals"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -108,6 +109,7 @@ type MockBackend struct {
 	DownloadTemplateF         func(_ context.Context, orgName, templateSource string) (TarReaderCloser, error)
 	GetCloudRegistryF         func() (CloudRegistry, error)
 	GetReadOnlyCloudRegistryF func() registry.Registry
+	GetApprovalsF             func() (approvals.Approvals, bool)
 }
 
 var _ Backend = (*MockBackend)(nil)
@@ -504,6 +506,13 @@ func (be *MockBackend) GetCloudRegistry() (CloudRegistry, error) {
 func (be *MockBackend) GetReadOnlyCloudRegistry() registry.Registry {
 	if be.GetReadOnlyCloudRegistryF != nil {
 		return be.GetReadOnlyCloudRegistryF()
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) GetApprovals() (approvals.Approvals, bool) {
+	if be.GetApprovalsF != nil {
+		return be.GetApprovalsF()
 	}
 	panic("not implemented")
 }

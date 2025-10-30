@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util/nosleep"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/approvals"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -2437,6 +2438,10 @@ func (b *cloudBackend) GetCloudRegistry() (backend.CloudRegistry, error) {
 
 func (b *cloudBackend) GetReadOnlyCloudRegistry() registry.Registry {
 	return newCloudRegistry(b.client)
+}
+
+func (b *cloudBackend) GetApprovals() (approvals.Approvals, bool) {
+	return approvals.NewApprovals(b.client), true
 }
 
 // downgradeDeploymentVersionIfNeeded downgrades the deployment schema version to 3 if the service does not

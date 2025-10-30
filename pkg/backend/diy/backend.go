@@ -55,6 +55,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/util/nosleep"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/approvals"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
@@ -1528,4 +1529,8 @@ func (b *diyBackend) GetCloudRegistry() (backend.CloudRegistry, error) {
 
 func (b *diyBackend) GetReadOnlyCloudRegistry() registry.Registry {
 	return unauthenticatedregistry.New(b.d, b.Env)
+}
+
+func (b *diyBackend) GetApprovals() (approvals.Approvals, bool) {
+	return nil, false
 }

@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
@@ -27,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/approvals"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -166,14 +168,14 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	}
 
 	// Otherwise, ensure the user wants to proceed.
-	plan, err = confirmBeforeUpdating(ctx, kind, stack.Ref(), op, events, plan, explainer)
+	plan, err = confirmBeforeUpdating(ctx, kind, stack.Ref(), op, events, plan, explainer, stack.Backend())
 	close(eventsChannel)
 	return plan, changes, err
 }
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
 func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRef StackReference, op UpdateOperation,
-	events []engine.Event, plan *deploy.Plan, explainer Explainer,
+	events []engine.Event, plan *deploy.Plan, explainer Explainer, backend Backend,
 	// askOpts is used for testing to control stdin/stdout
 	askOpts ...survey.AskOpt,
 ) (*deploy.Plan, error) {
@@ -207,49 +209,86 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRe
 			previewWarning = colors.SpecWarning + " without a preview" + colors.Bold
 		}
 
-		// Create a prompt. If this is a refresh, we'll add some extra text so it's clear we aren't updating resources.
-		prompt := "\b" + opts.Display.Color.Colorize(
-			colors.SpecPrompt+fmt.Sprintf("Do you want to perform this %s%s?",
-				updateTextMap[kind].previewText, previewWarning)+colors.Reset)
-		if kind == apitype.RefreshUpdate {
-			prompt += "\n" +
-				opts.Display.Color.Colorize(colors.SpecImportant+
-					"No resources will be modified as part of this refresh; just your stack's state will be.\n"+
-					colors.Reset)
+		var usingApprovals bool
+		var approvals approvals.Approvals
+		if opts.Engine.Experimental && backend != nil {
+			a, ok := backend.GetApprovals()
+			usingApprovals = ok && a.IsSupported()
+			approvals = a
 		}
-
-		// Now prompt the user for a yes, no, or details, and then proceed accordingly.
-		allAskOpts := append([]survey.AskOpt{surveyIcons}, askOpts...)
-		if err := survey.AskOne(&survey.Select{
-			Message: prompt,
-			Options: choices,
-			Default: string(no),
-		}, &response, allAskOpts...); err != nil {
-			return nil, fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", kind, err)
-		}
-
-		if response == string(no) {
-			return nil, result.FprintBailf(os.Stdout, "confirmation declined, not proceeding with the %s", kind)
-		}
-
-		if response == string(yes) {
-			// If we're in experimental mode always use the plan
-			if opts.Engine.Experimental {
-				return plan, nil
-			}
-			return nil, nil
-		}
-
-		if response == string(details) {
-			displayOpts := opts.Display
-			displayOpts.TruncateOutput = false // We want to always show the full details
-			diff, err := display.CreateDiff(events, displayOpts)
+		if usingApprovals {
+			qualifiedName := stackRef.FullyQualifiedName().String()
+			initialState := "pending"
+			approvalResponse, err := approvals.CreateApproval(apitype.CreateChangeRequestRequest{
+				EntityType:    "stack",
+				QualifiedName: &qualifiedName,
+				ActionType:    "update",
+				InitialState:  &initialState,
+			})
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to create approval: %w", err)
 			}
-			_, err = os.Stdout.WriteString(diff + "\n")
-			contract.IgnoreError(err)
-			continue
+			fmt.Printf("%sWaiting for approval request: %s%s\n",
+				opts.Display.Color.Colorize(colors.SpecImportant),
+				approvalResponse.ChangeRequestID,
+				opts.Display.Color.Colorize(colors.Reset))
+			fmt.Printf("%sYou can view the approval request at: %s/pulumi/approvals?requestId=%s%s\n\n",
+				opts.Display.Color.Colorize(colors.SpecImportant),
+				backend.URL(),
+				approvalResponse.ChangeRequestID,
+				opts.Display.Color.Colorize(colors.Reset))
+			time.Sleep(5 * time.Second)
+			fmt.Printf("%sApproval granted. Proceeding with %s.%s\n\n",
+				opts.Display.Color.Colorize(colors.SpecImportant),
+				kind,
+				opts.Display.Color.Colorize(colors.Reset))
+			return plan, nil
+		} else {
+
+			// Create a prompt. If this is a refresh, we'll add some extra text so it's clear we aren't updating resources.
+			prompt := "\b" + opts.Display.Color.Colorize(
+				colors.SpecPrompt+fmt.Sprintf("Do you want to perform this %s%s?",
+					updateTextMap[kind].previewText, previewWarning)+colors.Reset)
+			if kind == apitype.RefreshUpdate {
+				prompt += "\n" +
+					opts.Display.Color.Colorize(colors.SpecImportant+
+						"No resources will be modified as part of this refresh; just your stack's state will be.\n"+
+						colors.Reset)
+			}
+
+			// Now prompt the user for a yes, no, or details, and then proceed accordingly.
+			allAskOpts := append([]survey.AskOpt{surveyIcons}, askOpts...)
+			if err := survey.AskOne(&survey.Select{
+				Message: prompt,
+				Options: choices,
+				Default: string(no),
+			}, &response, allAskOpts...); err != nil {
+				return nil, fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", kind, err)
+			}
+
+			if response == string(no) {
+				return nil, result.FprintBailf(os.Stdout, "confirmation declined, not proceeding with the %s", kind)
+			}
+
+			if response == string(yes) {
+				// If we're in experimental mode always use the plan
+				if opts.Engine.Experimental {
+					return plan, nil
+				}
+				return nil, nil
+			}
+
+			if response == string(details) {
+				displayOpts := opts.Display
+				displayOpts.TruncateOutput = false // We want to always show the full details
+				diff, err := display.CreateDiff(events, displayOpts)
+				if err != nil {
+					return nil, err
+				}
+				_, err = os.Stdout.WriteString(diff + "\n")
+				contract.IgnoreError(err)
+				continue
+			}
 		}
 
 		if response == explainChoice {

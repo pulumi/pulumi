@@ -123,7 +123,7 @@ func TestConfirmBeforeUpdating_ExplainerErrorDoesNotCrash(t *testing.T) {
 	go func() {
 		defer close(done)
 		askOpt := survey.WithStdio(console.Tty(), console.Tty(), console.Tty())
-		resultPlan, callErr = confirmBeforeUpdating(ctx, kind, stackRef, op, events, plan, explainer, askOpt)
+		resultPlan, callErr = confirmBeforeUpdating(ctx, kind, stackRef, op, events, plan, explainer, nil, askOpt)
 	}()
 
 	_, err = console.ExpectString("Do you want to perform this update?")
