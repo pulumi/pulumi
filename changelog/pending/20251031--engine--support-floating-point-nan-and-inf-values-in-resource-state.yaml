@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Support floating point NaN and Inf values in resource state
