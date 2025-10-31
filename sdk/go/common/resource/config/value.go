@@ -24,7 +24,7 @@ import (
 type Type int
 
 const (
-	TypeUnknown = iota
+	TypeUnknown	= iota
 	TypeString
 	TypeInt
 	TypeFloat
@@ -33,10 +33,10 @@ const (
 
 // Value is a single config value.
 type Value struct {
-	value  string
-	secure bool
-	object bool
-	typ    Type
+	value	string
+	secure	bool
+	object	bool
+	typ	Type
 }
 
 func NewSecureValue(v string) Value {

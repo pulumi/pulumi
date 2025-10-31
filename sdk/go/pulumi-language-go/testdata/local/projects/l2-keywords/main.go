@@ -8,15 +8,15 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		firstResource, err := keywords.NewSomeResource(ctx, "firstResource", &keywords.SomeResourceArgs{
-			Builtins: pulumi.String("builtins"),
-			Property: pulumi.String("property"),
+			Builtins:	pulumi.String("builtins"),
+			Property:	pulumi.String("property"),
 		})
 		if err != nil {
 			return err
 		}
 		_, err = keywords.NewSomeResource(ctx, "secondResource", &keywords.SomeResourceArgs{
-			Builtins: firstResource.Builtins,
-			Property: firstResource.Property,
+			Builtins:	firstResource.Builtins,
+			Property:	firstResource.Property,
 		})
 		if err != nil {
 			return err

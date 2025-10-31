@@ -22,9 +22,9 @@ import (
 )
 
 type EnvironmentDiagnostic struct {
-	Range   *esc.Range `json:"range,omitempty"`
-	Summary string     `json:"summary,omitempty"`
-	Detail  string     `json:"detail,omitempty"`
+	Range	*esc.Range	`json:"range,omitempty"`
+	Summary	string		`json:"summary,omitempty"`
+	Detail	string		`json:"detail,omitempty"`
 }
 
 type EnvironmentDiagnostics []EnvironmentDiagnostic
@@ -48,6 +48,6 @@ func (err EnvironmentDiagnosticsResponse) Error() string {
 }
 
 type OpenEnvironmentResponse struct {
-	ID          string                  `json:"id"`
-	Diagnostics []EnvironmentDiagnostic `json:"diagnostics,omitempty"`
+	ID		string			`json:"id"`
+	Diagnostics	[]EnvironmentDiagnostic	`json:"diagnostics,omitempty"`
 }

@@ -46,7 +46,7 @@ func main() {
 				}).(pulumi.StringOutput),
 			},
 			MapString2: pulumi.StringMap{
-				"key1": pulumi.String("value1"),
+				"key1":	pulumi.String("value1"),
 				"key2": configgrpc.ToSecretOutput(ctx, configgrpc.ToSecretOutputArgs{
 					String1: pulumi.String("SECRET"),
 				}, nil).ApplyT(func(invoke configgrpc.ToSecretResult) (string, error) {

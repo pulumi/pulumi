@@ -24,22 +24,22 @@ import (
 // Name is an identifier.  It conforms to NameRegexpPattern.
 type Name string
 
-func (nm Name) String() string { return string(nm) }
+func (nm Name) String() string	{ return string(nm) }
 
 // Q turns a Name into a qualified name; this is legal, since Name's is a proper subset of QName's grammar.
-func (nm Name) Q() QName { return QName(nm) }
+func (nm Name) Q() QName	{ return QName(nm) }
 
 var (
-	NameRegexp          = regexp.MustCompile(NameRegexpPattern)
-	nameFirstCharRegexp = regexp.MustCompile("^" + nameFirstCharRegexpPattern + "$")
-	nameRestCharRegexp  = regexp.MustCompile("^" + nameRestCharRegexpPattern + "$")
+	NameRegexp		= regexp.MustCompile(NameRegexpPattern)
+	nameFirstCharRegexp	= regexp.MustCompile("^" + nameFirstCharRegexpPattern + "$")
+	nameRestCharRegexp	= regexp.MustCompile("^" + nameRestCharRegexpPattern + "$")
 )
 
 var NameRegexpPattern = nameFirstCharRegexpPattern + nameRestCharRegexpPattern
 
 const (
-	nameFirstCharRegexpPattern = "[A-Za-z0-9_.-]"
-	nameRestCharRegexpPattern  = "[A-Za-z0-9_.-]*"
+	nameFirstCharRegexpPattern	= "[A-Za-z0-9_.-]"
+	nameRestCharRegexpPattern	= "[A-Za-z0-9_.-]*"
 )
 
 // IsName checks whether a string is a legal Name.
@@ -51,14 +51,14 @@ func IsName(s string) bool {
 // conforms to NameRegexpPattern.  For example, "pulumi/pulumi/stack".
 type QName string
 
-func (nm QName) String() string { return string(nm) }
+func (nm QName) String() string	{ return string(nm) }
 
 // QNameDelimiter is what delimits Namespace and Name parts.
 const QNameDelimiter = "/"
 
 var (
-	QNameRegexp        = regexp.MustCompile(QNameRegexpPattern)
-	QNameRegexpPattern = "(" + NameRegexpPattern + "\\" + QNameDelimiter + ")*" + NameRegexpPattern
+	QNameRegexp		= regexp.MustCompile(QNameRegexpPattern)
+	QNameRegexpPattern	= "(" + NameRegexpPattern + "\\" + QNameDelimiter + ")*" + NameRegexpPattern
 )
 
 // IsQName checks whether a string is a legal QName.
@@ -121,25 +121,25 @@ func (nm QName) Namespace() QName {
 // PackageName is a qualified name referring to an imported package.
 type PackageName QName
 
-func (nm PackageName) String() string { return string(nm) }
+func (nm PackageName) String() string	{ return string(nm) }
 
 // ModuleName is a qualified name referring to an imported module from a package.
 type ModuleName QName
 
-func (nm ModuleName) String() string { return string(nm) }
+func (nm ModuleName) String() string	{ return string(nm) }
 
 // ModuleMemberName is a simple name representing the module member's identifier.
 type ModuleMemberName Name
 
-func (nm ModuleMemberName) String() string { return string(nm) }
+func (nm ModuleMemberName) String() string	{ return string(nm) }
 
 // ClassMemberName is a simple name representing the class member's identifier.
 type ClassMemberName Name
 
-func (nm ClassMemberName) Name() Name     { return Name(nm) }
-func (nm ClassMemberName) String() string { return string(nm) }
+func (nm ClassMemberName) Name() Name		{ return Name(nm) }
+func (nm ClassMemberName) String() string	{ return string(nm) }
 
 // TypeName is a simple name representing the type's name, without any package/module qualifiers.
 type TypeName Name
 
-func (nm TypeName) String() string { return string(nm) }
+func (nm TypeName) String() string	{ return string(nm) }

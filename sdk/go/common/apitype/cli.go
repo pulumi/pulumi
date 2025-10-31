@@ -16,7 +16,7 @@ package apitype
 
 // CLIVersionResponse is the response from the server with information about CLI versions.
 type CLIVersionResponse struct {
-	LatestVersion        string `json:"latestVersion"`
-	OldestWithoutWarning string `json:"oldestWithoutWarning"`
-	LatestDevVersion     string `json:"latestDevVersion"`
+	LatestVersion		string	`json:"latestVersion"`
+	OldestWithoutWarning	string	`json:"oldestWithoutWarning"`
+	LatestDevVersion	string	`json:"latestDevVersion"`
 }

@@ -35,8 +35,8 @@ func LogSink(t testing.TB) diag.Sink {
 		iotest.LogWriterPrefixed(t, "[stderr] "),
 		diag.FormatOptions{
 			// Don't colorize test output.
-			Color: colors.Never,
-			Debug: true,
+			Color:	colors.Never,
+			Debug:	true,
 		},
 	)
 }
@@ -46,8 +46,8 @@ func MockSink(stdout, stderr *bytes.Buffer) diag.Sink {
 		stdout,
 		stderr,
 		diag.FormatOptions{
-			Color: colors.Never,
-			Debug: true,
+			Color:	colors.Never,
+			Debug:	true,
 		},
 	)
 }

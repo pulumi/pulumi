@@ -101,8 +101,8 @@ type UnimplementedMapperServer struct{}
 func (UnimplementedMapperServer) GetMapping(context.Context, *GetMappingRequest) (*GetMappingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMapping not implemented")
 }
-func (UnimplementedMapperServer) mustEmbedUnimplementedMapperServer() {}
-func (UnimplementedMapperServer) testEmbeddedByValue()                {}
+func (UnimplementedMapperServer) mustEmbedUnimplementedMapperServer()	{}
+func (UnimplementedMapperServer) testEmbeddedByValue()			{}
 
 // UnsafeMapperServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to MapperServer will
@@ -131,8 +131,8 @@ func _Mapper_GetMapping_Handler(srv interface{}, ctx context.Context, dec func(i
 		return srv.(MapperServer).GetMapping(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Mapper_GetMapping_FullMethodName,
+		Server:		srv,
+		FullMethod:	Mapper_GetMapping_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MapperServer).GetMapping(ctx, req.(*GetMappingRequest))
@@ -144,14 +144,14 @@ func _Mapper_GetMapping_Handler(srv interface{}, ctx context.Context, dec func(i
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Mapper_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "codegen.Mapper",
-	HandlerType: (*MapperServer)(nil),
+	ServiceName:	"codegen.Mapper",
+	HandlerType:	(*MapperServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GetMapping",
-			Handler:    _Mapper_GetMapping_Handler,
+			MethodName:	"GetMapping",
+			Handler:	_Mapper_GetMapping_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "pulumi/codegen/mapper.proto",
+	Streams:	[]grpc.StreamDesc{},
+	Metadata:	"pulumi/codegen/mapper.proto",
 }

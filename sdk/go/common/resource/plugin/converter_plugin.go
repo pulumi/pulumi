@@ -36,9 +36,9 @@ import (
 
 // converter reflects a converter plugin, loaded dynamically from another process over gRPC.
 type converter struct {
-	name      string
-	plug      *Plugin                   // the actual plugin process wrapper.
-	clientRaw pulumirpc.ConverterClient // the raw provider client; usually unsafe to use directly.
+	name		string
+	plug		*Plugin				// the actual plugin process wrapper.
+	clientRaw	pulumirpc.ConverterClient	// the raw provider client; usually unsafe to use directly.
 }
 
 func NewConverter(ctx *Context, name string, version *semver.Version) (Converter, error) {
@@ -66,9 +66,9 @@ func NewConverter(ctx *Context, name string, version *semver.Version) (Converter
 	contract.Assertf(plug != nil, "unexpected nil converter plugin for %s", name)
 
 	c := &converter{
-		name:      name,
-		plug:      plug,
-		clientRaw: pulumirpc.NewConverterClient(plug.Conn),
+		name:		name,
+		plug:		plug,
+		clientRaw:	pulumirpc.NewConverterClient(plug.Conn),
 	}
 
 	return c, nil
@@ -83,8 +83,8 @@ func converterPluginDialOptions(ctx *Context, name string, path string) []grpc.D
 
 	if ctx.DialOptions != nil {
 		metadata := map[string]any{
-			"mode": "client",
-			"kind": "converter",
+			"mode":	"client",
+			"kind":	"converter",
 		}
 		if name != "" {
 			metadata["name"] = name
@@ -115,8 +115,8 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 	logging.V(7).Infof("%s executing", label)
 
 	resp, err := c.clientRaw.ConvertState(ctx, &pulumirpc.ConvertStateRequest{
-		MapperTarget: req.MapperTarget,
-		Args:         req.Args,
+		MapperTarget:	req.MapperTarget,
+		Args:		req.Args,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -127,14 +127,14 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 	resources := make([]ResourceImport, len(resp.Resources))
 	for i, resource := range resp.Resources {
 		resources[i] = ResourceImport{
-			Type:              resource.Type,
-			Name:              resource.Name,
-			ID:                resource.Id,
-			Version:           resource.Version,
-			PluginDownloadURL: resource.PluginDownloadURL,
-			LogicalName:       resource.LogicalName,
-			IsRemote:          resource.IsRemote,
-			IsComponent:       resource.IsComponent,
+			Type:			resource.Type,
+			Name:			resource.Name,
+			ID:			resource.Id,
+			Version:		resource.Version,
+			PluginDownloadURL:	resource.PluginDownloadURL,
+			LogicalName:		resource.LogicalName,
+			IsRemote:		resource.IsRemote,
+			IsComponent:		resource.IsComponent,
 		}
 	}
 
@@ -146,8 +146,8 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 
 	logging.V(7).Infof("%s success", label)
 	return &ConvertStateResponse{
-		Resources:   resources,
-		Diagnostics: diags,
+		Resources:	resources,
+		Diagnostics:	diags,
 	}, nil
 }
 
@@ -156,12 +156,12 @@ func (c *converter) ConvertProgram(ctx context.Context, req *ConvertProgramReque
 	logging.V(7).Infof("%s executing", label)
 
 	resp, err := c.clientRaw.ConvertProgram(ctx, &pulumirpc.ConvertProgramRequest{
-		SourceDirectory:           req.SourceDirectory,
-		TargetDirectory:           req.TargetDirectory,
-		MapperTarget:              req.MapperTarget,
-		LoaderTarget:              req.LoaderTarget,
-		Args:                      req.Args,
-		GeneratedProjectDirectory: req.GeneratedProjectDirectory,
+		SourceDirectory:		req.SourceDirectory,
+		TargetDirectory:		req.TargetDirectory,
+		MapperTarget:			req.MapperTarget,
+		LoaderTarget:			req.LoaderTarget,
+		Args:				req.Args,
+		GeneratedProjectDirectory:	req.GeneratedProjectDirectory,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

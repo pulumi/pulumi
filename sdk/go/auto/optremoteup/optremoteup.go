@@ -53,11 +53,11 @@ type Option interface {
 // Options is an implementation detail
 type Options struct {
 	// ProgressStreams allows specifying one or more io.Writers to redirect incremental update stdout
-	ProgressStreams []io.Writer
+	ProgressStreams	[]io.Writer
 	// ErrorProgressStreams allows specifying one or more io.Writers to redirect incremental update stderr
-	ErrorProgressStreams []io.Writer
+	ErrorProgressStreams	[]io.Writer
 	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
-	EventStreams []chan<- events.EngineEvent
+	EventStreams	[]chan<- events.EngineEvent
 }
 
 type optionFunc func(*Options)

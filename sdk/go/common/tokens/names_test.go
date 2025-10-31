@@ -24,27 +24,27 @@ func TestIsAsName(t *testing.T) {
 	t.Parallel()
 
 	goodNames := []string{
-		"simple",       // all alpha.
-		"SiMplE",       // mixed-case alpha.
-		"simple0",      // alphanumeric.
-		"SiMpLe0",      // mixed-case alphanumeric.
-		"_",            // permit underscore.
-		"s1MPl3_",      // mixed-case alphanumeric/underscore.
-		"_s1MPl3",      // ditto.
-		"hy-phy",       // permit hyphens.
-		".dotstart",    // start with .
-		"-hyphenstart", // start with -
-		"0num",         // start with numbers
-		"9num",         // start with numbers
+		"simple",	// all alpha.
+		"SiMplE",	// mixed-case alpha.
+		"simple0",	// alphanumeric.
+		"SiMpLe0",	// mixed-case alphanumeric.
+		"_",		// permit underscore.
+		"s1MPl3_",	// mixed-case alphanumeric/underscore.
+		"_s1MPl3",	// ditto.
+		"hy-phy",	// permit hyphens.
+		".dotstart",	// start with .
+		"-hyphenstart",	// start with -
+		"0num",		// start with numbers
+		"9num",		// start with numbers
 	}
 	for _, nm := range goodNames {
 		assert.True(t, IsName(nm), "IsName expected to be true: %v", nm)
 	}
 
 	goodQNames := []string{
-		"namespace/complex",                   // multi-part name.
-		"_naMeSpace0/coMpl3x32",               // multi-part, alphanumeric, etc. name.
-		"n_ameSpace3/moRenam3sp4ce/_Complex5", // even more complex parts.
+		"namespace/complex",			// multi-part name.
+		"_naMeSpace0/coMpl3x32",		// multi-part, alphanumeric, etc. name.
+		"n_ameSpace3/moRenam3sp4ce/_Complex5",	// even more complex parts.
 	}
 	for _, nm := range goodQNames {
 		assert.True(t, IsQName(nm), "IsQName expected to be true: %v", nm)
@@ -52,9 +52,9 @@ func TestIsAsName(t *testing.T) {
 	}
 
 	badNames := []string{
-		"s!mple",                          // bad characters.
-		"namesp@ce/complex",               // ditto.
-		"namespace/morenamespace/compl#x", // ditto.
+		"s!mple",				// bad characters.
+		"namesp@ce/complex",			// ditto.
+		"namespace/morenamespace/compl#x",	// ditto.
 	}
 	for _, nm := range badNames {
 		assert.False(t, IsName(nm), "IsName expected to be false: %v", nm)
@@ -81,8 +81,8 @@ func TestIntoQName(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		input    string
-		expected string
+		input		string
+		expected	string
 	}{
 		{"foo/bar", "foo/bar"},
 		{input: "https:", expected: "https_"},

@@ -25,9 +25,9 @@ import "github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 //   - The ID may be unknown (in which case it will be the Computed property value)
 //   - Otherwise, the ID must be a string.
 type ResourceReference struct {
-	URN            urn.URN
-	ID             Value
-	PackageVersion string
+	URN		urn.URN
+	ID		Value
+	PackageVersion	string
 }
 
 func (ref ResourceReference) IDString() (value string, hasID bool) {

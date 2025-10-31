@@ -27,8 +27,8 @@ import (
 type GrpcServer struct {
 	io.Closer
 
-	cancel chan bool
-	handle rpcutil.ServeHandle
+	cancel	chan bool
+	handle	rpcutil.ServeHandle
 }
 
 // NewServer creates a new GrpcServer wired up to the given services and context.
@@ -37,22 +37,22 @@ func NewServer(ctx *Context, registrations ...func(server *grpc.Server)) (*GrpcS
 
 	// Fire up a gRPC server and start listening for incomings.
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: cancel,
+		Cancel:	cancel,
 		Init: func(srv *grpc.Server) error {
 			for _, registration := range registrations {
 				registration(srv)
 			}
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(ctx.tracingSpan),
+		Options:	rpcutil.OpenTracingServerInterceptorOptions(ctx.tracingSpan),
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	return &GrpcServer{
-		cancel: cancel,
-		handle: handle,
+		cancel:	cancel,
+		handle:	handle,
 	}, nil
 }
 

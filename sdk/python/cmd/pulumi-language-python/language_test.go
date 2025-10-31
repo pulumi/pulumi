@@ -30,7 +30,7 @@ import (
 
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	codegen "github.com/pulumi/pulumi/sdk/v3/pkg/codegen/python"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -101,9 +101,9 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l1-builtin-try":      "Temporarily disabled until pr #18915 is submitted",
-	"l1-builtin-can":      "Temporarily disabled until pr #18916 is submitted",
-	"l3-component-simple": "https://github.com/pulumi/pulumi/issues/19067",
+	"l1-builtin-try":	"Temporarily disabled until pr #18915 is submitted",
+	"l1-builtin-can":	"Temporarily disabled until pr #18916 is submitted",
+	"l3-component-simple":	"https://github.com/pulumi/pulumi/issues/19067",
 }
 
 func TestLanguage(t *testing.T) {
@@ -123,36 +123,36 @@ func TestLanguage(t *testing.T) {
 	// by project type but it will vary over classes-vs-dicts. We could run all combinations but we take some time/risk
 	// tradeoff here only testing the old classes style with pyright.
 	configs := []struct {
-		name        string
-		snapshotDir string
-		useTOML     bool
-		inputTypes  string
-		typechecker string
-		toolchain   string
+		name		string
+		snapshotDir	string
+		useTOML		bool
+		inputTypes	string
+		typechecker	string
+		toolchain	string
 	}{
 		{
-			name:        "default",
-			snapshotDir: "setuppy",
-			useTOML:     false,
-			inputTypes:  "",
-			typechecker: "mypy",
-			toolchain:   "uv",
+			name:		"default",
+			snapshotDir:	"setuppy",
+			useTOML:	false,
+			inputTypes:	"",
+			typechecker:	"mypy",
+			toolchain:	"uv",
 		},
 		{
-			name:        "toml",
-			snapshotDir: "toml",
-			useTOML:     true,
-			inputTypes:  "classes-and-dicts",
-			typechecker: "pyright",
-			toolchain:   "uv",
+			name:		"toml",
+			snapshotDir:	"toml",
+			useTOML:	true,
+			inputTypes:	"classes-and-dicts",
+			typechecker:	"pyright",
+			toolchain:	"uv",
 		},
 		{
-			name:        "classes",
-			snapshotDir: "classes",
-			useTOML:     false,
-			inputTypes:  "classes",
-			typechecker: "pyright",
-			toolchain:   "uv",
+			name:		"classes",
+			snapshotDir:	"classes",
+			useTOML:	false,
+			inputTypes:	"classes",
+			typechecker:	"pyright",
+			toolchain:	"uv",
 		},
 	}
 
@@ -174,7 +174,7 @@ func TestLanguage(t *testing.T) {
 						pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 						return nil
 					},
-					Cancel: cancel,
+					Cancel:	cancel,
 				})
 				require.NoError(t, err)
 
@@ -201,26 +201,26 @@ func TestLanguage(t *testing.T) {
 
 				// Prepare to run the tests
 				prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
-					LanguagePluginName:   "python",
-					LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
-					TemporaryDirectory:   rootDir,
-					SnapshotDirectory:    snapshotDir,
-					CoreSdkDirectory:     "../..",
-					CoreSdkVersion:       sdk.Version.String(),
-					PolicyPackDirectory:  "testdata/policies",
+					LanguagePluginName:	"python",
+					LanguagePluginTarget:	fmt.Sprintf("127.0.0.1:%d", handle.Port),
+					TemporaryDirectory:	rootDir,
+					SnapshotDirectory:	snapshotDir,
+					CoreSdkDirectory:	"../..",
+					CoreSdkVersion:		sdk.Version.String(),
+					PolicyPackDirectory:	"testdata/policies",
 					SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
 						{
-							Path:        "requirements\\.txt",
-							Pattern:     fmt.Sprintf("pulumi-%s-py3-none-any.whl", sdk.Version.String()),
-							Replacement: "pulumi-CORE.VERSION-py3-none-any.whl",
+							Path:		"requirements\\.txt",
+							Pattern:	fmt.Sprintf("pulumi-%s-py3-none-any.whl", sdk.Version.String()),
+							Replacement:	"pulumi-CORE.VERSION-py3-none-any.whl",
 						},
 						{
-							Path:        "requirements\\.txt",
-							Pattern:     rootDir + "/artifacts",
-							Replacement: "ROOT/artifacts",
+							Path:		"requirements\\.txt",
+							Pattern:	rootDir + "/artifacts",
+							Replacement:	"ROOT/artifacts",
 						},
 					},
-					LanguageInfo: languageInfo,
+					LanguageInfo:	languageInfo,
 				})
 				require.NoError(t, err)
 
@@ -238,8 +238,8 @@ func TestLanguage(t *testing.T) {
 						}
 
 						result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
-							Token: prepare.Token,
-							Test:  tt,
+							Token:	prepare.Token,
+							Test:	tt,
 						})
 
 						require.NoError(t, err)

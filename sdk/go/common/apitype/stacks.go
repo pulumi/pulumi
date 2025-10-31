@@ -20,22 +20,22 @@ type StackSummary struct {
 	//
 	// For maintainers of the Pulumi service:
 	// ID corresponds to the Program ID, not the Stack ID inside the Pulumi service.
-	ID string `json:"id"`
+	ID	string	`json:"id"`
 	// OrgName is the organization name the stack is found in.
-	OrgName string `json:"orgName"`
+	OrgName	string	`json:"orgName"`
 	// ProjectName is the name of the project the stack is associated with.
-	ProjectName string `json:"projectName"`
+	ProjectName	string	`json:"projectName"`
 	// StackName is the name of the stack.
-	StackName string `json:"stackName"`
+	StackName	string	`json:"stackName"`
 
 	// LastUpdate is a Unix timestamp of the start time of the stack's last update, as applicable.
-	LastUpdate *int64 `json:"lastUpdate,omitempty"`
+	LastUpdate	*int64	`json:"lastUpdate,omitempty"`
 
 	// ResourceCount is the number of resources associated with this stack, as applicable.
-	ResourceCount *int `json:"resourceCount,omitempty"`
+	ResourceCount	*int	`json:"resourceCount,omitempty"`
 
 	// Links to the stack in the Pulumi Console
-	Links StackLinks `json:"links,omitempty"`
+	Links	StackLinks	`json:"links,omitempty"`
 }
 
 type StackLinks struct {
@@ -44,30 +44,30 @@ type StackLinks struct {
 
 // ListStacksResponse returns a set of stack summaries. This call is designed to be inexpensive.
 type ListStacksResponse struct {
-	Stacks []StackSummary `json:"stacks"`
+	Stacks	[]StackSummary	`json:"stacks"`
 
 	// ContinuationToken is an opaque value used to mark the end of the all stacks. If non-nil,
 	// pass it into a subsequent call in order to get the next batch of results.
 	//
 	// A value of nil means that all stacks have been returned.
-	ContinuationToken *string `json:"continuationToken,omitempty"`
+	ContinuationToken	*string	`json:"continuationToken,omitempty"`
 }
 
 // CreateStackRequest defines the request body for creating a new Stack
 type CreateStackRequest struct {
 	// The rest of the StackIdentifier (e.g. organization, project) is in the URL.
-	StackName string `json:"stackName"`
+	StackName	string	`json:"stackName"`
 
 	// An optional set of tags to apply to the stack.
-	Tags map[StackTagName]string `json:"tags,omitempty"`
+	Tags	map[StackTagName]string	`json:"tags,omitempty"`
 
 	// An optional set of teams to assign to the stack.
-	Teams []string `json:"teams,omitempty"`
+	Teams	[]string	`json:"teams,omitempty"`
 
 	// An optional state to initialize the stack with.
-	State *UntypedDeployment `json:"state,omitempty"`
+	State	*UntypedDeployment	`json:"state,omitempty"`
 
-	Config *StackConfig `json:"config,omitempty"`
+	Config	*StackConfig	`json:"config,omitempty"`
 }
 
 // CreateStackResponse is the response from a create Stack request.
@@ -111,8 +111,8 @@ type DecryptValueResponse struct {
 
 // Log3rdPartyDecryptionEvent defines the request body for logging a 3rd party secrets provider decryption event.
 type Log3rdPartyDecryptionEvent struct {
-	SecretName  string `json:"secretName,omitempty"`
-	CommandName string `json:"commandName,omitempty"`
+	SecretName	string	`json:"secretName,omitempty"`
+	CommandName	string	`json:"commandName,omitempty"`
 }
 
 // BatchDecryptRequest defines the request body for batch decrypting secret values.

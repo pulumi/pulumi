@@ -33,9 +33,9 @@ import (
 
 const (
 	// Verify that this generated code is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
+	_	= protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
+	_	= protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
 // `RuntimeOptionType` is an enum that captures the type of a runtime option.
@@ -43,20 +43,20 @@ type RuntimeOptionPrompt_RuntimeOptionType int32
 
 const (
 	// A string value.
-	RuntimeOptionPrompt_STRING RuntimeOptionPrompt_RuntimeOptionType = 0
+	RuntimeOptionPrompt_STRING	RuntimeOptionPrompt_RuntimeOptionType	= 0
 	// A 32-bit integer value.
-	RuntimeOptionPrompt_INT32 RuntimeOptionPrompt_RuntimeOptionType = 1
+	RuntimeOptionPrompt_INT32	RuntimeOptionPrompt_RuntimeOptionType	= 1
 )
 
 // Enum value maps for RuntimeOptionPrompt_RuntimeOptionType.
 var (
-	RuntimeOptionPrompt_RuntimeOptionType_name = map[int32]string{
-		0: "STRING",
-		1: "INT32",
+	RuntimeOptionPrompt_RuntimeOptionType_name	= map[int32]string{
+		0:	"STRING",
+		1:	"INT32",
 	}
-	RuntimeOptionPrompt_RuntimeOptionType_value = map[string]int32{
-		"STRING": 0,
-		"INT32":  1,
+	RuntimeOptionPrompt_RuntimeOptionType_value	= map[string]int32{
+		"STRING":	0,
+		"INT32":	1,
 	}
 )
 
@@ -90,25 +90,25 @@ func (RuntimeOptionPrompt_RuntimeOptionType) EnumDescriptor() ([]byte, []int) {
 // A `ProgramInfo` struct specifies a Pulumi program, and is built typically based on the location of a `Pulumi.yaml`
 // file and the `runtime`, `main` and other properties within that file.
 type ProgramInfo struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The root of the project containing the program, where the `Pulumi.yaml` file is located. This should be an
 	// absolute path on the filesystem that is accessible to the language host.
-	RootDirectory string `protobuf:"bytes,1,opt,name=root_directory,json=rootDirectory,proto3" json:"root_directory,omitempty"`
+	RootDirectory	string	`protobuf:"bytes,1,opt,name=root_directory,json=rootDirectory,proto3" json:"root_directory,omitempty"`
 	// The directory containing the program to execute (e.g. the location of the `index.ts` for a TypeScript NodeJS
 	// program). This should be an absolute path on the filesystem that is accessible to the language host. If
 	// `ProgramInfo` is being built from a `Pulumi.yaml`, this will typically be the directory portion of the `main`
 	// property in that file.
-	ProgramDirectory string `protobuf:"bytes,2,opt,name=program_directory,json=programDirectory,proto3" json:"program_directory,omitempty"`
+	ProgramDirectory	string	`protobuf:"bytes,2,opt,name=program_directory,json=programDirectory,proto3" json:"program_directory,omitempty"`
 	// The entry point of the program to execute. This should be a relative path from the `program_directory`, and is
 	// often just `.` to indicate the program directory itself, but it can also be a filename inside the directory.. If
 	// `ProgramInfo` is being built from a `Pulumi.yaml`, this will typically be the filename specified `main` property
 	// in that file if it is present, or the aforementioned `.` if not.
-	EntryPoint string `protobuf:"bytes,3,opt,name=entry_point,json=entryPoint,proto3" json:"entry_point,omitempty"`
+	EntryPoint	string	`protobuf:"bytes,3,opt,name=entry_point,json=entryPoint,proto3" json:"entry_point,omitempty"`
 	// A struct capturing any language-specific options. If `ProgramInfo` is being built from a `Pulumi.yaml`, this will
 	// contain the `runtime.options` property from that file.
-	Options       *structpb.Struct `protobuf:"bytes,4,opt,name=options,proto3" json:"options,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Options		*structpb.Struct	`protobuf:"bytes,4,opt,name=options,proto3" json:"options,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *ProgramInfo) Reset() {
@@ -122,7 +122,7 @@ func (x *ProgramInfo) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ProgramInfo) ProtoMessage() {}
+func (*ProgramInfo) ProtoMessage()	{}
 
 func (x *ProgramInfo) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[0]
@@ -171,11 +171,11 @@ func (x *ProgramInfo) GetOptions() *structpb.Struct {
 
 // `AboutRequest` is the type of requests sent as part of an [](pulumirpc.LanguageRuntime.About) call.
 type AboutRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The program to use.
-	Info          *ProgramInfo `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Info		*ProgramInfo	`protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *AboutRequest) Reset() {
@@ -189,7 +189,7 @@ func (x *AboutRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AboutRequest) ProtoMessage() {}
+func (*AboutRequest) ProtoMessage()	{}
 
 func (x *AboutRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[1]
@@ -218,17 +218,17 @@ func (x *AboutRequest) GetInfo() *ProgramInfo {
 // `AboutResponse` is the type of responses sent by an [](pulumirpc.LanguageRuntime.About) call. It contains information
 // about the language runtime being used.
 type AboutResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The primary executable for the runtime of this language. This should be an absolute path. E.g. for NodeJS on a
 	// POSIX system, this might be something like `/usr/bin/node`.
-	Executable string `protobuf:"bytes,1,opt,name=executable,proto3" json:"executable,omitempty"`
+	Executable	string	`protobuf:"bytes,1,opt,name=executable,proto3" json:"executable,omitempty"`
 	// The version of the runtime underpinning the language host. E.g. for a NodeJS host, this might be the version of
 	// `node` being used.
-	Version string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	Version	string	`protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
 	// Other host-specific metadata about the runtime underpinning the language host.
-	Metadata      map[string]string `protobuf:"bytes,3,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Metadata	map[string]string	`protobuf:"bytes,3,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *AboutResponse) Reset() {
@@ -242,7 +242,7 @@ func (x *AboutResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AboutResponse) ProtoMessage() {}
+func (*AboutResponse) ProtoMessage()	{}
 
 func (x *AboutResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[2]
@@ -285,7 +285,7 @@ func (x *AboutResponse) GetMetadata() map[string]string {
 // `GetProgramDependenciesRequest` is the type of requests sent as part of a
 // [](pulumirpc.LanguageRuntime.GetProgramDependencies) call.
 type GetProgramDependenciesRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The project name.
 	//
 	// :::{important}
@@ -294,7 +294,7 @@ type GetProgramDependenciesRequest struct {
 	// :::
 	//
 	// Deprecated: Marked as deprecated in pulumi/language.proto.
-	Project string `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`
+	Project	string	`protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`
 	// The program's working directory.
 	//
 	// :::{important}
@@ -303,7 +303,7 @@ type GetProgramDependenciesRequest struct {
 	// :::
 	//
 	// Deprecated: Marked as deprecated in pulumi/language.proto.
-	Pwd string `protobuf:"bytes,2,opt,name=pwd,proto3" json:"pwd,omitempty"`
+	Pwd	string	`protobuf:"bytes,2,opt,name=pwd,proto3" json:"pwd,omitempty"`
 	// The path to the program.
 	//
 	// :::{important}
@@ -312,13 +312,13 @@ type GetProgramDependenciesRequest struct {
 	// :::
 	//
 	// Deprecated: Marked as deprecated in pulumi/language.proto.
-	Program string `protobuf:"bytes,3,opt,name=program,proto3" json:"program,omitempty"`
+	Program	string	`protobuf:"bytes,3,opt,name=program,proto3" json:"program,omitempty"`
 	// True if transitive dependencies should be included in the response.
-	TransitiveDependencies bool `protobuf:"varint,4,opt,name=transitiveDependencies,proto3" json:"transitiveDependencies,omitempty"`
+	TransitiveDependencies	bool	`protobuf:"varint,4,opt,name=transitiveDependencies,proto3" json:"transitiveDependencies,omitempty"`
 	// The program to use.
-	Info          *ProgramInfo `protobuf:"bytes,5,opt,name=info,proto3" json:"info,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Info		*ProgramInfo	`protobuf:"bytes,5,opt,name=info,proto3" json:"info,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *GetProgramDependenciesRequest) Reset() {
@@ -332,7 +332,7 @@ func (x *GetProgramDependenciesRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetProgramDependenciesRequest) ProtoMessage() {}
+func (*GetProgramDependenciesRequest) ProtoMessage()	{}
 
 func (x *GetProgramDependenciesRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[3]
@@ -393,13 +393,13 @@ func (x *GetProgramDependenciesRequest) GetInfo() *ProgramInfo {
 // (e.g. an NPM package for NodeJS, or a Maven library for Java). It is returned as part of a
 // [](pulumirpc.LanguageRuntime.GetProgramDependenciesResponse).
 type DependencyInfo struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The name of the dependency.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Name	string	`protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// The version of the dependency.
-	Version       string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Version		string	`protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *DependencyInfo) Reset() {
@@ -413,7 +413,7 @@ func (x *DependencyInfo) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DependencyInfo) ProtoMessage() {}
+func (*DependencyInfo) ProtoMessage()	{}
 
 func (x *DependencyInfo) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[4]
@@ -450,11 +450,11 @@ func (x *DependencyInfo) GetVersion() string {
 // [](pulumirpc.LanguageRuntime.GetProgramDependencies) call. It contains information about the dependencies of a
 // program.
 type GetProgramDependenciesResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The dependencies of the program specified by the request.
-	Dependencies  []*DependencyInfo `protobuf:"bytes,1,rep,name=dependencies,proto3" json:"dependencies,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Dependencies	[]*DependencyInfo	`protobuf:"bytes,1,rep,name=dependencies,proto3" json:"dependencies,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *GetProgramDependenciesResponse) Reset() {
@@ -468,7 +468,7 @@ func (x *GetProgramDependenciesResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetProgramDependenciesResponse) ProtoMessage() {}
+func (*GetProgramDependenciesResponse) ProtoMessage()	{}
 
 func (x *GetProgramDependenciesResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[5]
@@ -497,7 +497,7 @@ func (x *GetProgramDependenciesResponse) GetDependencies() []*DependencyInfo {
 // `GetRequiredPluginsRequest` is the type of requests sent as part of a
 // [](pulumirpc.LanguageRuntime.GetRequiredPlugins) call.
 type GetRequiredPluginsRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The project name.
 	//
 	// :::{important}
@@ -506,7 +506,7 @@ type GetRequiredPluginsRequest struct {
 	// :::
 	//
 	// Deprecated: Marked as deprecated in pulumi/language.proto.
-	Project string `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`
+	Project	string	`protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`
 	// The program's working directory.
 	//
 	// :::{important}
@@ -515,7 +515,7 @@ type GetRequiredPluginsRequest struct {
 	// :::
 	//
 	// Deprecated: Marked as deprecated in pulumi/language.proto.
-	Pwd string `protobuf:"bytes,2,opt,name=pwd,proto3" json:"pwd,omitempty"`
+	Pwd	string	`protobuf:"bytes,2,opt,name=pwd,proto3" json:"pwd,omitempty"`
 	// The path to the program.
 	//
 	// :::{important}
@@ -524,11 +524,11 @@ type GetRequiredPluginsRequest struct {
 	// :::
 	//
 	// Deprecated: Marked as deprecated in pulumi/language.proto.
-	Program string `protobuf:"bytes,3,opt,name=program,proto3" json:"program,omitempty"`
+	Program	string	`protobuf:"bytes,3,opt,name=program,proto3" json:"program,omitempty"`
 	// The program to use.
-	Info          *ProgramInfo `protobuf:"bytes,4,opt,name=info,proto3" json:"info,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Info		*ProgramInfo	`protobuf:"bytes,4,opt,name=info,proto3" json:"info,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *GetRequiredPluginsRequest) Reset() {
@@ -542,7 +542,7 @@ func (x *GetRequiredPluginsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetRequiredPluginsRequest) ProtoMessage() {}
+func (*GetRequiredPluginsRequest) ProtoMessage()	{}
 
 func (x *GetRequiredPluginsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[6]
@@ -595,11 +595,11 @@ func (x *GetRequiredPluginsRequest) GetInfo() *ProgramInfo {
 // `GetRequiredPluginsResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.GetRequiredPlugins)
 // call. It contains information about the plugins required by a program.
 type GetRequiredPluginsResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The plugins required by the program specified by the request.
-	Plugins       []*PluginDependency `protobuf:"bytes,1,rep,name=plugins,proto3" json:"plugins,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Plugins		[]*PluginDependency	`protobuf:"bytes,1,rep,name=plugins,proto3" json:"plugins,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *GetRequiredPluginsResponse) Reset() {
@@ -613,7 +613,7 @@ func (x *GetRequiredPluginsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetRequiredPluginsResponse) ProtoMessage() {}
+func (*GetRequiredPluginsResponse) ProtoMessage()	{}
 
 func (x *GetRequiredPluginsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[7]
@@ -642,11 +642,11 @@ func (x *GetRequiredPluginsResponse) GetPlugins() []*PluginDependency {
 // `GetRequiredPackagesRequest` is the type of requests sent as part of a
 // [](pulumirpc.LanguageRuntime.GetRequiredPackages) call.
 type GetRequiredPackagesRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The program to use.
-	Info          *ProgramInfo `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Info		*ProgramInfo	`protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *GetRequiredPackagesRequest) Reset() {
@@ -660,7 +660,7 @@ func (x *GetRequiredPackagesRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetRequiredPackagesRequest) ProtoMessage() {}
+func (*GetRequiredPackagesRequest) ProtoMessage()	{}
 
 func (x *GetRequiredPackagesRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[8]
@@ -689,11 +689,11 @@ func (x *GetRequiredPackagesRequest) GetInfo() *ProgramInfo {
 // `GetRequiredPackagesResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.GetRequiredPackages)
 // call. It contains information about the packages required by a program.
 type GetRequiredPackagesResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The packages required by the program specified by the request.
-	Packages      []*PackageDependency `protobuf:"bytes,1,rep,name=packages,proto3" json:"packages,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Packages	[]*PackageDependency	`protobuf:"bytes,1,rep,name=packages,proto3" json:"packages,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *GetRequiredPackagesResponse) Reset() {
@@ -707,7 +707,7 @@ func (x *GetRequiredPackagesResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetRequiredPackagesResponse) ProtoMessage() {}
+func (*GetRequiredPackagesResponse) ProtoMessage()	{}
 
 func (x *GetRequiredPackagesResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[9]
@@ -735,13 +735,13 @@ func (x *GetRequiredPackagesResponse) GetPackages() []*PackageDependency {
 
 // `RunRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Run) call.
 type RunRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The project name.
-	Project string `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`
+	Project	string	`protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`
 	// The name of the stack being deployed into.
-	Stack string `protobuf:"bytes,2,opt,name=stack,proto3" json:"stack,omitempty"`
+	Stack	string	`protobuf:"bytes,2,opt,name=stack,proto3" json:"stack,omitempty"`
 	// The program's working directory.
-	Pwd string `protobuf:"bytes,3,opt,name=pwd,proto3" json:"pwd,omitempty"`
+	Pwd	string	`protobuf:"bytes,3,opt,name=pwd,proto3" json:"pwd,omitempty"`
 	// The path to the program.
 	//
 	// :::{important}
@@ -750,40 +750,40 @@ type RunRequest struct {
 	// :::
 	//
 	// Deprecated: Marked as deprecated in pulumi/language.proto.
-	Program string `protobuf:"bytes,4,opt,name=program,proto3" json:"program,omitempty"`
+	Program	string	`protobuf:"bytes,4,opt,name=program,proto3" json:"program,omitempty"`
 	// Any arguments to pass to the program.
-	Args []string `protobuf:"bytes,5,rep,name=args,proto3" json:"args,omitempty"`
+	Args	[]string	`protobuf:"bytes,5,rep,name=args,proto3" json:"args,omitempty"`
 	// Configuration variables to apply before running the program.
-	Config map[string]string `protobuf:"bytes,6,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Config	map[string]string	`protobuf:"bytes,6,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// True if we are only doing a dry run (preview).
-	DryRun bool `protobuf:"varint,7,opt,name=dryRun,proto3" json:"dryRun,omitempty"`
+	DryRun	bool	`protobuf:"varint,7,opt,name=dryRun,proto3" json:"dryRun,omitempty"`
 	// The degree of parallelism that should be used for resource operations. A value less than or equal to 1 indicates
 	// serial execution.
-	Parallel int32 `protobuf:"varint,8,opt,name=parallel,proto3" json:"parallel,omitempty"`
+	Parallel	int32	`protobuf:"varint,8,opt,name=parallel,proto3" json:"parallel,omitempty"`
 	// The address of the [](pulumirpc.ResourceMonitor) that the program should connect to send [resource
 	// registrations](resource-registration) and other calls to.
-	MonitorAddress string `protobuf:"bytes,9,opt,name=monitor_address,json=monitorAddress,proto3" json:"monitor_address,omitempty"`
+	MonitorAddress	string	`protobuf:"bytes,9,opt,name=monitor_address,json=monitorAddress,proto3" json:"monitor_address,omitempty"`
 	// This is deprecated, query mode is no longer a supported feature.
 	//
 	// Deprecated: Marked as deprecated in pulumi/language.proto.
-	QueryMode bool `protobuf:"varint,10,opt,name=queryMode,proto3" json:"queryMode,omitempty"`
+	QueryMode	bool	`protobuf:"varint,10,opt,name=queryMode,proto3" json:"queryMode,omitempty"`
 	// A list of configuration keys whose values should be treated as secrets.
-	ConfigSecretKeys []string `protobuf:"bytes,11,rep,name=configSecretKeys,proto3" json:"configSecretKeys,omitempty"`
+	ConfigSecretKeys	[]string	`protobuf:"bytes,11,rep,name=configSecretKeys,proto3" json:"configSecretKeys,omitempty"`
 	// The organization of the stack being deployed into.
-	Organization string `protobuf:"bytes,12,opt,name=organization,proto3" json:"organization,omitempty"`
+	Organization	string	`protobuf:"bytes,12,opt,name=organization,proto3" json:"organization,omitempty"`
 	// This is deprecated, runtimes should look at the string based config as that maintains the full textual data from
 	// the users config file.
 	//
 	// Deprecated: Marked as deprecated in pulumi/language.proto.
-	ConfigPropertyMap *structpb.Struct `protobuf:"bytes,13,opt,name=configPropertyMap,proto3" json:"configPropertyMap,omitempty"`
+	ConfigPropertyMap	*structpb.Struct	`protobuf:"bytes,13,opt,name=configPropertyMap,proto3" json:"configPropertyMap,omitempty"`
 	// The program to use.
-	Info *ProgramInfo `protobuf:"bytes,14,opt,name=info,proto3" json:"info,omitempty"`
+	Info	*ProgramInfo	`protobuf:"bytes,14,opt,name=info,proto3" json:"info,omitempty"`
 	// The target of a codegen.LoaderServer to use for loading schemas.
-	LoaderTarget string `protobuf:"bytes,15,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
+	LoaderTarget	string	`protobuf:"bytes,15,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
 	// True if and only if the host should start the program under a debugger.
-	AttachDebugger bool `protobuf:"varint,16,opt,name=attach_debugger,json=attachDebugger,proto3" json:"attach_debugger,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	AttachDebugger	bool	`protobuf:"varint,16,opt,name=attach_debugger,json=attachDebugger,proto3" json:"attach_debugger,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *RunRequest) Reset() {
@@ -797,7 +797,7 @@ func (x *RunRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RunRequest) ProtoMessage() {}
+func (*RunRequest) ProtoMessage()	{}
 
 func (x *RunRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[10]
@@ -933,15 +933,15 @@ func (x *RunRequest) GetAttachDebugger() bool {
 
 // `RunResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Run) call.
 type RunResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// Information about any unhandled error that occurred during the run.
-	Error string `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Error	string	`protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	// True if an error happened, but it was reported to the user. Work should halt immediately, reporting nothing
 	// further to the user (since this reporting has already happened). This corresponds to a `result.Bail()` value
 	// being raised in the Go application layer.
-	Bail          bool `protobuf:"varint,2,opt,name=bail,proto3" json:"bail,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Bail		bool	`protobuf:"varint,2,opt,name=bail,proto3" json:"bail,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *RunResponse) Reset() {
@@ -955,7 +955,7 @@ func (x *RunResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RunResponse) ProtoMessage() {}
+func (*RunResponse) ProtoMessage()	{}
 
 func (x *RunResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[11]
@@ -991,7 +991,7 @@ func (x *RunResponse) GetBail() bool {
 // `InstallDependenciesRequest` is the type of requests sent as part of an
 // [](pulumirpc.LanguageRuntime.InstallDependencies) call.
 type InstallDependenciesRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The program's working directory.
 	//
 	// :::{important}
@@ -1000,19 +1000,19 @@ type InstallDependenciesRequest struct {
 	// :::
 	//
 	// Deprecated: Marked as deprecated in pulumi/language.proto.
-	Directory string `protobuf:"bytes,1,opt,name=directory,proto3" json:"directory,omitempty"`
+	Directory	string	`protobuf:"bytes,1,opt,name=directory,proto3" json:"directory,omitempty"`
 	// True if we are running in a terminal and may use [ANSI escape
 	// codes](https://en.wikipedia.org/wiki/ANSI_escape_code) in our output.
-	IsTerminal bool `protobuf:"varint,2,opt,name=is_terminal,json=isTerminal,proto3" json:"is_terminal,omitempty"`
+	IsTerminal	bool	`protobuf:"varint,2,opt,name=is_terminal,json=isTerminal,proto3" json:"is_terminal,omitempty"`
 	// The program to use.
-	Info *ProgramInfo `protobuf:"bytes,3,opt,name=info,proto3" json:"info,omitempty"`
+	Info	*ProgramInfo	`protobuf:"bytes,3,opt,name=info,proto3" json:"info,omitempty"`
 	// True if the host should use language-specific version managers, such as `pyenv` or `nvm`, to set up the version
 	// of the language toolchain used.
-	UseLanguageVersionTools bool `protobuf:"varint,4,opt,name=use_language_version_tools,json=useLanguageVersionTools,proto3" json:"use_language_version_tools,omitempty"`
+	UseLanguageVersionTools	bool	`protobuf:"varint,4,opt,name=use_language_version_tools,json=useLanguageVersionTools,proto3" json:"use_language_version_tools,omitempty"`
 	// True if this install is for a plugin, as opposed to a top level Pulumi program.
-	IsPlugin      bool `protobuf:"varint,5,opt,name=is_plugin,json=isPlugin,proto3" json:"is_plugin,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	IsPlugin	bool	`protobuf:"varint,5,opt,name=is_plugin,json=isPlugin,proto3" json:"is_plugin,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *InstallDependenciesRequest) Reset() {
@@ -1026,7 +1026,7 @@ func (x *InstallDependenciesRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*InstallDependenciesRequest) ProtoMessage() {}
+func (*InstallDependenciesRequest) ProtoMessage()	{}
 
 func (x *InstallDependenciesRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[12]
@@ -1084,13 +1084,13 @@ func (x *InstallDependenciesRequest) GetIsPlugin() bool {
 // `InstallDependenciesResponse` is the type of responses streamed by an
 // [](pulumirpc.LanguageRuntime.InstallDependencies) call.
 type InstallDependenciesResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// A line of standard output.
-	Stdout []byte `protobuf:"bytes,1,opt,name=stdout,proto3" json:"stdout,omitempty"`
+	Stdout	[]byte	`protobuf:"bytes,1,opt,name=stdout,proto3" json:"stdout,omitempty"`
 	// A line of standard error.
-	Stderr        []byte `protobuf:"bytes,2,opt,name=stderr,proto3" json:"stderr,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Stderr		[]byte	`protobuf:"bytes,2,opt,name=stderr,proto3" json:"stderr,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *InstallDependenciesResponse) Reset() {
@@ -1104,7 +1104,7 @@ func (x *InstallDependenciesResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*InstallDependenciesResponse) ProtoMessage() {}
+func (*InstallDependenciesResponse) ProtoMessage()	{}
 
 func (x *InstallDependenciesResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[13]
@@ -1140,11 +1140,11 @@ func (x *InstallDependenciesResponse) GetStderr() []byte {
 // `RuntimeOptionsRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.RuntimeOptionsPrompts)
 // call.
 type RuntimeOptionsRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The program to use.
-	Info          *ProgramInfo `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Info		*ProgramInfo	`protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *RuntimeOptionsRequest) Reset() {
@@ -1158,7 +1158,7 @@ func (x *RuntimeOptionsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RuntimeOptionsRequest) ProtoMessage() {}
+func (*RuntimeOptionsRequest) ProtoMessage()	{}
 
 func (x *RuntimeOptionsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[14]
@@ -1187,19 +1187,19 @@ func (x *RuntimeOptionsRequest) GetInfo() *ProgramInfo {
 // `RuntimeOptionPrompt` is a struct that captures information about a runtime option that should be prompted for during
 // `pulumi new`.
 type RuntimeOptionPrompt struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// A unique key that identifies the runtime option.
-	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Key	string	`protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	// A human-readable description of the runtime option.
-	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	Description	string	`protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 	// The type of the runtime option.
-	PromptType RuntimeOptionPrompt_RuntimeOptionType `protobuf:"varint,3,opt,name=promptType,proto3,enum=pulumirpc.RuntimeOptionPrompt_RuntimeOptionType" json:"promptType,omitempty"`
+	PromptType	RuntimeOptionPrompt_RuntimeOptionType	`protobuf:"varint,3,opt,name=promptType,proto3,enum=pulumirpc.RuntimeOptionPrompt_RuntimeOptionType" json:"promptType,omitempty"`
 	// A set of choices for the runtime option that may be displayed as part of the prompting process.
-	Choices []*RuntimeOptionPrompt_RuntimeOptionValue `protobuf:"bytes,4,rep,name=choices,proto3" json:"choices,omitempty"`
+	Choices	[]*RuntimeOptionPrompt_RuntimeOptionValue	`protobuf:"bytes,4,rep,name=choices,proto3" json:"choices,omitempty"`
 	// The default value of the runtime option.
-	Default       *RuntimeOptionPrompt_RuntimeOptionValue `protobuf:"bytes,5,opt,name=default,proto3" json:"default,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Default		*RuntimeOptionPrompt_RuntimeOptionValue	`protobuf:"bytes,5,opt,name=default,proto3" json:"default,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *RuntimeOptionPrompt) Reset() {
@@ -1213,7 +1213,7 @@ func (x *RuntimeOptionPrompt) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RuntimeOptionPrompt) ProtoMessage() {}
+func (*RuntimeOptionPrompt) ProtoMessage()	{}
 
 func (x *RuntimeOptionPrompt) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[15]
@@ -1270,11 +1270,11 @@ func (x *RuntimeOptionPrompt) GetDefault() *RuntimeOptionPrompt_RuntimeOptionVal
 // `RuntimeOptionsResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.RuntimeOptionsPrompts) call.
 // It contains information about additional prompts to ask during `pulumi new`.
 type RuntimeOptionsResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// Prompts to ask the user.
-	Prompts       []*RuntimeOptionPrompt `protobuf:"bytes,1,rep,name=prompts,proto3" json:"prompts,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Prompts		[]*RuntimeOptionPrompt	`protobuf:"bytes,1,rep,name=prompts,proto3" json:"prompts,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *RuntimeOptionsResponse) Reset() {
@@ -1288,7 +1288,7 @@ func (x *RuntimeOptionsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RuntimeOptionsResponse) ProtoMessage() {}
+func (*RuntimeOptionsResponse) ProtoMessage()	{}
 
 func (x *RuntimeOptionsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[16]
@@ -1316,9 +1316,9 @@ func (x *RuntimeOptionsResponse) GetPrompts() []*RuntimeOptionPrompt {
 
 // `RunPluginRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.RunPlugin) call.
 type RunPluginRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The plugin program's working directory.
-	Pwd string `protobuf:"bytes,1,opt,name=pwd,proto3" json:"pwd,omitempty"`
+	Pwd	string	`protobuf:"bytes,1,opt,name=pwd,proto3" json:"pwd,omitempty"`
 	// The path to the plugin program.
 	//
 	// :::{important}
@@ -1327,21 +1327,21 @@ type RunPluginRequest struct {
 	// :::
 	//
 	// Deprecated: Marked as deprecated in pulumi/language.proto.
-	Program string `protobuf:"bytes,2,opt,name=program,proto3" json:"program,omitempty"`
+	Program	string	`protobuf:"bytes,2,opt,name=program,proto3" json:"program,omitempty"`
 	// Any arguments to pass to the plugin program.
-	Args []string `protobuf:"bytes,3,rep,name=args,proto3" json:"args,omitempty"`
+	Args	[]string	`protobuf:"bytes,3,rep,name=args,proto3" json:"args,omitempty"`
 	// Any environment variables to set prior to executing the plugin program.
-	Env []string `protobuf:"bytes,4,rep,name=env,proto3" json:"env,omitempty"`
+	Env	[]string	`protobuf:"bytes,4,rep,name=env,proto3" json:"env,omitempty"`
 	// The [plugin program](pulumirpc.ProgramInfo) to use.
-	Info *ProgramInfo `protobuf:"bytes,5,opt,name=info,proto3" json:"info,omitempty"`
+	Info	*ProgramInfo	`protobuf:"bytes,5,opt,name=info,proto3" json:"info,omitempty"`
 	// The kind of plugin to run (resource/analyzer/etc).
-	Kind string `protobuf:"bytes,6,opt,name=kind,proto3" json:"kind,omitempty"`
+	Kind	string	`protobuf:"bytes,6,opt,name=kind,proto3" json:"kind,omitempty"`
 	// The name of the plugin (for display purposes)
-	Name string `protobuf:"bytes,7,opt,name=name,proto3" json:"name,omitempty"`
+	Name	string	`protobuf:"bytes,7,opt,name=name,proto3" json:"name,omitempty"`
 	// True if a plugin should be started under a debugger.
-	AttachDebugger bool `protobuf:"varint,8,opt,name=attach_debugger,json=attachDebugger,proto3" json:"attach_debugger,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	AttachDebugger	bool	`protobuf:"varint,8,opt,name=attach_debugger,json=attachDebugger,proto3" json:"attach_debugger,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *RunPluginRequest) Reset() {
@@ -1355,7 +1355,7 @@ func (x *RunPluginRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RunPluginRequest) ProtoMessage() {}
+func (*RunPluginRequest) ProtoMessage()	{}
 
 func (x *RunPluginRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[17]
@@ -1433,15 +1433,15 @@ func (x *RunPluginRequest) GetAttachDebugger() bool {
 
 // `RunPluginResponse` is the type of responses streamed by a [](pulumirpc.LanguageRuntime.RunPlugin) call.
 type RunPluginResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// Types that are valid to be assigned to Output:
 	//
 	//	*RunPluginResponse_Stdout
 	//	*RunPluginResponse_Stderr
 	//	*RunPluginResponse_Exitcode
-	Output        isRunPluginResponse_Output `protobuf_oneof:"output"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Output		isRunPluginResponse_Output	`protobuf_oneof:"output"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *RunPluginResponse) Reset() {
@@ -1455,7 +1455,7 @@ func (x *RunPluginResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RunPluginResponse) ProtoMessage() {}
+func (*RunPluginResponse) ProtoMessage()	{}
 
 func (x *RunPluginResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[18]
@@ -1527,24 +1527,24 @@ type RunPluginResponse_Exitcode struct {
 	Exitcode int32 `protobuf:"varint,3,opt,name=exitcode,proto3,oneof"`
 }
 
-func (*RunPluginResponse_Stdout) isRunPluginResponse_Output() {}
+func (*RunPluginResponse_Stdout) isRunPluginResponse_Output()	{}
 
-func (*RunPluginResponse_Stderr) isRunPluginResponse_Output() {}
+func (*RunPluginResponse_Stderr) isRunPluginResponse_Output()	{}
 
-func (*RunPluginResponse_Exitcode) isRunPluginResponse_Output() {}
+func (*RunPluginResponse_Exitcode) isRunPluginResponse_Output()	{}
 
 // `GenerateProgramRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.GenerateProgram)
 // call.
 type GenerateProgramRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The source of the project, represented as a map of file names to [PCL](pcl) source code.
-	Source map[string]string `protobuf:"bytes,1,rep,name=source,proto3" json:"source,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Source	map[string]string	`protobuf:"bytes,1,rep,name=source,proto3" json:"source,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// The target of a codegen.LoaderServer to use for loading schemas.
-	LoaderTarget string `protobuf:"bytes,2,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
+	LoaderTarget	string	`protobuf:"bytes,2,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
 	// True if [PCL binding](pcl-binding) should be strict.
-	Strict        bool `protobuf:"varint,3,opt,name=strict,proto3" json:"strict,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Strict		bool	`protobuf:"varint,3,opt,name=strict,proto3" json:"strict,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *GenerateProgramRequest) Reset() {
@@ -1558,7 +1558,7 @@ func (x *GenerateProgramRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GenerateProgramRequest) ProtoMessage() {}
+func (*GenerateProgramRequest) ProtoMessage()	{}
 
 func (x *GenerateProgramRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[19]
@@ -1600,13 +1600,13 @@ func (x *GenerateProgramRequest) GetStrict() bool {
 
 // `GenerateProgramResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.GenerateProgram) call.
 type GenerateProgramResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// Any diagnostics raised by code generation.
-	Diagnostics []*codegen.Diagnostic `protobuf:"bytes,1,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"`
+	Diagnostics	[]*codegen.Diagnostic	`protobuf:"bytes,1,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"`
 	// The generated program source code, represented as a map of file names to byte contents.
-	Source        map[string][]byte `protobuf:"bytes,2,rep,name=source,proto3" json:"source,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Source		map[string][]byte	`protobuf:"bytes,2,rep,name=source,proto3" json:"source,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *GenerateProgramResponse) Reset() {
@@ -1620,7 +1620,7 @@ func (x *GenerateProgramResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GenerateProgramResponse) ProtoMessage() {}
+func (*GenerateProgramResponse) ProtoMessage()	{}
 
 func (x *GenerateProgramResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[20]
@@ -1655,26 +1655,26 @@ func (x *GenerateProgramResponse) GetSource() map[string][]byte {
 
 // `GenerateProjectRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.GenerateProject) call.
 type GenerateProjectRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The directory containing [PCL](pcl) source code, from which the project should be generated.
-	SourceDirectory string `protobuf:"bytes,1,opt,name=source_directory,json=sourceDirectory,proto3" json:"source_directory,omitempty"`
+	SourceDirectory	string	`protobuf:"bytes,1,opt,name=source_directory,json=sourceDirectory,proto3" json:"source_directory,omitempty"`
 	// The directory in which generated project files should be written. This should be an absolute path on the
 	// filesystem that is accessible to the language host.
-	TargetDirectory string `protobuf:"bytes,2,opt,name=target_directory,json=targetDirectory,proto3" json:"target_directory,omitempty"`
+	TargetDirectory	string	`protobuf:"bytes,2,opt,name=target_directory,json=targetDirectory,proto3" json:"target_directory,omitempty"`
 	// A string containing JSON to be used as the Pulumi project file (that is, as the contents of `Pulumi.yaml`).
-	Project string `protobuf:"bytes,3,opt,name=project,proto3" json:"project,omitempty"`
+	Project	string	`protobuf:"bytes,3,opt,name=project,proto3" json:"project,omitempty"`
 	// True if [PCL binding](pcl-binding) should be strict.
-	Strict bool `protobuf:"varint,4,opt,name=strict,proto3" json:"strict,omitempty"`
+	Strict	bool	`protobuf:"varint,4,opt,name=strict,proto3" json:"strict,omitempty"`
 	// The target of a codegen.LoaderServer to use for loading schemas.
-	LoaderTarget string `protobuf:"bytes,5,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
+	LoaderTarget	string	`protobuf:"bytes,5,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
 	// Local dependencies that the generated project should reference explicitly, instead of e.g. using the language's
 	// package system. This is a map of package names to local paths of language-specific artifacts that should be used.
 	// For instance, in the case of a NodeJS project, this might be a map of NPM package names to local paths to be
 	// used, such as `{ "@pulumi/aws": "/some/path/to/aws.tgz" }` if a local tarball is to be used instead of the
 	// published `@pulumi/aws` package.
-	LocalDependencies map[string]string `protobuf:"bytes,6,rep,name=local_dependencies,json=localDependencies,proto3" json:"local_dependencies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	LocalDependencies	map[string]string	`protobuf:"bytes,6,rep,name=local_dependencies,json=localDependencies,proto3" json:"local_dependencies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *GenerateProjectRequest) Reset() {
@@ -1688,7 +1688,7 @@ func (x *GenerateProjectRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GenerateProjectRequest) ProtoMessage() {}
+func (*GenerateProjectRequest) ProtoMessage()	{}
 
 func (x *GenerateProjectRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[21]
@@ -1751,11 +1751,11 @@ func (x *GenerateProjectRequest) GetLocalDependencies() map[string]string {
 
 // `GenerateProjectResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.GenerateProject) call.
 type GenerateProjectResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// Any diagnostics raised by code generation.
-	Diagnostics   []*codegen.Diagnostic `protobuf:"bytes,1,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Diagnostics	[]*codegen.Diagnostic	`protobuf:"bytes,1,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *GenerateProjectResponse) Reset() {
@@ -1769,7 +1769,7 @@ func (x *GenerateProjectResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GenerateProjectResponse) ProtoMessage() {}
+func (*GenerateProjectResponse) ProtoMessage()	{}
 
 func (x *GenerateProjectResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[22]
@@ -1797,28 +1797,28 @@ func (x *GenerateProjectResponse) GetDiagnostics() []*codegen.Diagnostic {
 
 // `GeneratePackageRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.GeneratePackage) call.
 type GeneratePackageRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The directory to generate the package in. This should be an absolute path on the filesystem that is accessible to
 	// the language host.
-	Directory string `protobuf:"bytes,1,opt,name=directory,proto3" json:"directory,omitempty"`
+	Directory	string	`protobuf:"bytes,1,opt,name=directory,proto3" json:"directory,omitempty"`
 	// A JSON-encoded string containing the schema from which the SDK package should be generated.
-	Schema string `protobuf:"bytes,2,opt,name=schema,proto3" json:"schema,omitempty"`
+	Schema	string	`protobuf:"bytes,2,opt,name=schema,proto3" json:"schema,omitempty"`
 	// Extra files that should be copied as-is to the generated output.
-	ExtraFiles map[string][]byte `protobuf:"bytes,3,rep,name=extra_files,json=extraFiles,proto3" json:"extra_files,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	ExtraFiles	map[string][]byte	`protobuf:"bytes,3,rep,name=extra_files,json=extraFiles,proto3" json:"extra_files,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// The target of a codegen.LoaderServer to use for loading schemas.
-	LoaderTarget string `protobuf:"bytes,4,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
+	LoaderTarget	string	`protobuf:"bytes,4,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
 	// Local dependencies that the generated package should reference explicitly, instead of e.g. using the language's
 	// package system. This is a map of package names to local paths of language-specific artifacts that should be used.
 	// For instance, in the case of a NodeJS package, this might be a map of NPM package names to local paths to be
 	// used, such as `{ "@pulumi/aws": "/some/path/to/aws.tgz" }` if a local tarball is to be used instead of the
 	// published `@pulumi/aws` package.
-	LocalDependencies map[string]string `protobuf:"bytes,5,rep,name=local_dependencies,json=localDependencies,proto3" json:"local_dependencies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	LocalDependencies	map[string]string	`protobuf:"bytes,5,rep,name=local_dependencies,json=localDependencies,proto3" json:"local_dependencies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// If true, generates an SDK appropriate for local usage. This may differ from a standard publishable SDK depending
 	// on the language (e.g. for a NodeJS package that is intended to be imported locally, the language host may choose
 	// not to generate a `package.json`).
-	Local         bool `protobuf:"varint,6,opt,name=local,proto3" json:"local,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Local		bool	`protobuf:"varint,6,opt,name=local,proto3" json:"local,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *GeneratePackageRequest) Reset() {
@@ -1832,7 +1832,7 @@ func (x *GeneratePackageRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GeneratePackageRequest) ProtoMessage() {}
+func (*GeneratePackageRequest) ProtoMessage()	{}
 
 func (x *GeneratePackageRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[23]
@@ -1895,11 +1895,11 @@ func (x *GeneratePackageRequest) GetLocal() bool {
 
 // `GeneratePackageResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.GeneratePackage) call.
 type GeneratePackageResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// Any diagnostics raised by code generation.
-	Diagnostics   []*codegen.Diagnostic `protobuf:"bytes,1,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Diagnostics	[]*codegen.Diagnostic	`protobuf:"bytes,1,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *GeneratePackageResponse) Reset() {
@@ -1913,7 +1913,7 @@ func (x *GeneratePackageResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GeneratePackageResponse) ProtoMessage() {}
+func (*GeneratePackageResponse) ProtoMessage()	{}
 
 func (x *GeneratePackageResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[24]
@@ -1941,15 +1941,15 @@ func (x *GeneratePackageResponse) GetDiagnostics() []*codegen.Diagnostic {
 
 // `PackRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Pack) call.
 type PackRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The directory containing the package to pack. This should be an absolute path on the filesystem that is accessible
 	// to the language host.
-	PackageDirectory string `protobuf:"bytes,1,opt,name=package_directory,json=packageDirectory,proto3" json:"package_directory,omitempty"`
+	PackageDirectory	string	`protobuf:"bytes,1,opt,name=package_directory,json=packageDirectory,proto3" json:"package_directory,omitempty"`
 	// The directory to write the packed artifact to. This should be an absolute path on the filesystem that is
 	// accessible to the language host.
-	DestinationDirectory string `protobuf:"bytes,2,opt,name=destination_directory,json=destinationDirectory,proto3" json:"destination_directory,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	DestinationDirectory	string	`protobuf:"bytes,2,opt,name=destination_directory,json=destinationDirectory,proto3" json:"destination_directory,omitempty"`
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *PackRequest) Reset() {
@@ -1963,7 +1963,7 @@ func (x *PackRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PackRequest) ProtoMessage() {}
+func (*PackRequest) ProtoMessage()	{}
 
 func (x *PackRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[25]
@@ -1998,12 +1998,12 @@ func (x *PackRequest) GetDestinationDirectory() string {
 
 // `PackResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Pack) call.
 type PackResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The path to the packed artifact. This should be an absolute path on the filesystem that is accessible to the
 	// language host.
-	ArtifactPath  string `protobuf:"bytes,1,opt,name=artifact_path,json=artifactPath,proto3" json:"artifact_path,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ArtifactPath	string	`protobuf:"bytes,1,opt,name=artifact_path,json=artifactPath,proto3" json:"artifact_path,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *PackResponse) Reset() {
@@ -2017,7 +2017,7 @@ func (x *PackResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PackResponse) ProtoMessage() {}
+func (*PackResponse) ProtoMessage()	{}
 
 func (x *PackResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[26]
@@ -2045,18 +2045,18 @@ func (x *PackResponse) GetArtifactPath() string {
 
 // `LanguageHandshakeRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Handshake) call.
 type LanguageHandshakeRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The gRPC address of the engine calling the language host.
-	EngineAddress string `protobuf:"bytes,1,opt,name=engine_address,json=engineAddress,proto3" json:"engine_address,omitempty"`
+	EngineAddress	string	`protobuf:"bytes,1,opt,name=engine_address,json=engineAddress,proto3" json:"engine_address,omitempty"`
 	// The optional root directory, where the `PulumiPlugin.yaml` file or language binary is located. This can't be sent
 	// when the engine is attaching to a language via a port number.
-	RootDirectory *string `protobuf:"bytes,2,opt,name=root_directory,json=rootDirectory,proto3,oneof" json:"root_directory,omitempty"`
+	RootDirectory	*string	`protobuf:"bytes,2,opt,name=root_directory,json=rootDirectory,proto3,oneof" json:"root_directory,omitempty"`
 	// The optional absolute path to the directory of the language program to execute. Generally, but not required to
 	// be, underneath the root directory. This can't be sent when the engine is attaching to a language via a port
 	// number.
-	ProgramDirectory *string `protobuf:"bytes,3,opt,name=program_directory,json=programDirectory,proto3,oneof" json:"program_directory,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	ProgramDirectory	*string	`protobuf:"bytes,3,opt,name=program_directory,json=programDirectory,proto3,oneof" json:"program_directory,omitempty"`
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *LanguageHandshakeRequest) Reset() {
@@ -2070,7 +2070,7 @@ func (x *LanguageHandshakeRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*LanguageHandshakeRequest) ProtoMessage() {}
+func (*LanguageHandshakeRequest) ProtoMessage()	{}
 
 func (x *LanguageHandshakeRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[27]
@@ -2112,9 +2112,9 @@ func (x *LanguageHandshakeRequest) GetProgramDirectory() string {
 
 // `LanguageHandshakeResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Handshake) call.
 type LanguageHandshakeResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *LanguageHandshakeResponse) Reset() {
@@ -2128,7 +2128,7 @@ func (x *LanguageHandshakeResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*LanguageHandshakeResponse) ProtoMessage() {}
+func (*LanguageHandshakeResponse) ProtoMessage()	{}
 
 func (x *LanguageHandshakeResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[28]
@@ -2149,17 +2149,17 @@ func (*LanguageHandshakeResponse) Descriptor() ([]byte, []int) {
 
 // `LinkRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Link) call.
 type LinkRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The program to use.
-	Info *ProgramInfo `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
+	Info	*ProgramInfo	`protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
 	// The target of a codegen.LoaderServer to use for loading schemas.
-	LoaderTarget string `protobuf:"bytes,2,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
+	LoaderTarget	string	`protobuf:"bytes,2,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
 	// Local dependencies that should be linked into the program or plugin's language specific project files.
 	// Each dependency has a path to a a language specific artifact. This can be a binary artifact like a
 	// Python wheel or a tar.gz for Node.js, or a source directory.
-	Packages      []*LinkRequest_LinkDependency `protobuf:"bytes,3,rep,name=packages,proto3" json:"packages,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Packages	[]*LinkRequest_LinkDependency	`protobuf:"bytes,3,rep,name=packages,proto3" json:"packages,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *LinkRequest) Reset() {
@@ -2173,7 +2173,7 @@ func (x *LinkRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*LinkRequest) ProtoMessage() {}
+func (*LinkRequest) ProtoMessage()	{}
 
 func (x *LinkRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[29]
@@ -2215,13 +2215,13 @@ func (x *LinkRequest) GetPackages() []*LinkRequest_LinkDependency {
 
 // `LinkResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Link) call.
 type LinkResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The instructions on how to use a linked package in a program or plugin. These instructions are meant
 	// to be displayed to the user. For example when linking a local Python dependency, this might return
 	// `import my_namespace_mypkg as mypkg`.
-	ImportInstructions string `protobuf:"bytes,1,opt,name=import_instructions,json=importInstructions,proto3" json:"import_instructions,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	ImportInstructions	string	`protobuf:"bytes,1,opt,name=import_instructions,json=importInstructions,proto3" json:"import_instructions,omitempty"`
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *LinkResponse) Reset() {
@@ -2235,7 +2235,7 @@ func (x *LinkResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*LinkResponse) ProtoMessage() {}
+func (*LinkResponse) ProtoMessage()	{}
 
 func (x *LinkResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[30]
@@ -2263,17 +2263,17 @@ func (x *LinkResponse) GetImportInstructions() string {
 
 // `RuntimeOptionValue` is a struct that captures the value of a runtime option.
 type RuntimeOptionPrompt_RuntimeOptionValue struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The type of the runtime option.
-	PromptType RuntimeOptionPrompt_RuntimeOptionType `protobuf:"varint,1,opt,name=promptType,proto3,enum=pulumirpc.RuntimeOptionPrompt_RuntimeOptionType" json:"promptType,omitempty"`
+	PromptType	RuntimeOptionPrompt_RuntimeOptionType	`protobuf:"varint,1,opt,name=promptType,proto3,enum=pulumirpc.RuntimeOptionPrompt_RuntimeOptionType" json:"promptType,omitempty"`
 	// The string value of the runtime option, if and only if the type is `STRING`.
-	StringValue string `protobuf:"bytes,2,opt,name=stringValue,proto3" json:"stringValue,omitempty"`
+	StringValue	string	`protobuf:"bytes,2,opt,name=stringValue,proto3" json:"stringValue,omitempty"`
 	// The 32-bit integer value of the runtime option, if and only if the type is `INT32`.
-	Int32Value int32 `protobuf:"varint,3,opt,name=int32Value,proto3" json:"int32Value,omitempty"`
+	Int32Value	int32	`protobuf:"varint,3,opt,name=int32Value,proto3" json:"int32Value,omitempty"`
 	// The display name of the runtime option, to be used in prompts.
-	DisplayName   string `protobuf:"bytes,4,opt,name=displayName,proto3" json:"displayName,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	DisplayName	string	`protobuf:"bytes,4,opt,name=displayName,proto3" json:"displayName,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *RuntimeOptionPrompt_RuntimeOptionValue) Reset() {
@@ -2287,7 +2287,7 @@ func (x *RuntimeOptionPrompt_RuntimeOptionValue) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RuntimeOptionPrompt_RuntimeOptionValue) ProtoMessage() {}
+func (*RuntimeOptionPrompt_RuntimeOptionValue) ProtoMessage()	{}
 
 func (x *RuntimeOptionPrompt_RuntimeOptionValue) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[33]
@@ -2335,11 +2335,11 @@ func (x *RuntimeOptionPrompt_RuntimeOptionValue) GetDisplayName() string {
 }
 
 type LinkRequest_LinkDependency struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Package       *PackageDependency     `protobuf:"bytes,1,opt,name=package,proto3" json:"package,omitempty"`
-	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Package		*PackageDependency	`protobuf:"bytes,1,opt,name=package,proto3" json:"package,omitempty"`
+	Path		string			`protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *LinkRequest_LinkDependency) Reset() {
@@ -2353,7 +2353,7 @@ func (x *LinkRequest_LinkDependency) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*LinkRequest_LinkDependency) ProtoMessage() {}
+func (*LinkRequest_LinkDependency) ProtoMessage()	{}
 
 func (x *LinkRequest_LinkDependency) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_language_proto_msgTypes[39]
@@ -2586,8 +2586,8 @@ const file_pulumi_language_proto_rawDesc = "" +
 	"\x06Cancel\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x00B4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3"
 
 var (
-	file_pulumi_language_proto_rawDescOnce sync.Once
-	file_pulumi_language_proto_rawDescData []byte
+	file_pulumi_language_proto_rawDescOnce	sync.Once
+	file_pulumi_language_proto_rawDescData	[]byte
 )
 
 func file_pulumi_language_proto_rawDescGZIP() []byte {
@@ -2600,126 +2600,126 @@ func file_pulumi_language_proto_rawDescGZIP() []byte {
 var file_pulumi_language_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_pulumi_language_proto_msgTypes = make([]protoimpl.MessageInfo, 40)
 var file_pulumi_language_proto_goTypes = []any{
-	(RuntimeOptionPrompt_RuntimeOptionType)(0),     // 0: pulumirpc.RuntimeOptionPrompt.RuntimeOptionType
-	(*ProgramInfo)(nil),                            // 1: pulumirpc.ProgramInfo
-	(*AboutRequest)(nil),                           // 2: pulumirpc.AboutRequest
-	(*AboutResponse)(nil),                          // 3: pulumirpc.AboutResponse
-	(*GetProgramDependenciesRequest)(nil),          // 4: pulumirpc.GetProgramDependenciesRequest
-	(*DependencyInfo)(nil),                         // 5: pulumirpc.DependencyInfo
-	(*GetProgramDependenciesResponse)(nil),         // 6: pulumirpc.GetProgramDependenciesResponse
-	(*GetRequiredPluginsRequest)(nil),              // 7: pulumirpc.GetRequiredPluginsRequest
-	(*GetRequiredPluginsResponse)(nil),             // 8: pulumirpc.GetRequiredPluginsResponse
-	(*GetRequiredPackagesRequest)(nil),             // 9: pulumirpc.GetRequiredPackagesRequest
-	(*GetRequiredPackagesResponse)(nil),            // 10: pulumirpc.GetRequiredPackagesResponse
-	(*RunRequest)(nil),                             // 11: pulumirpc.RunRequest
-	(*RunResponse)(nil),                            // 12: pulumirpc.RunResponse
-	(*InstallDependenciesRequest)(nil),             // 13: pulumirpc.InstallDependenciesRequest
-	(*InstallDependenciesResponse)(nil),            // 14: pulumirpc.InstallDependenciesResponse
-	(*RuntimeOptionsRequest)(nil),                  // 15: pulumirpc.RuntimeOptionsRequest
-	(*RuntimeOptionPrompt)(nil),                    // 16: pulumirpc.RuntimeOptionPrompt
-	(*RuntimeOptionsResponse)(nil),                 // 17: pulumirpc.RuntimeOptionsResponse
-	(*RunPluginRequest)(nil),                       // 18: pulumirpc.RunPluginRequest
-	(*RunPluginResponse)(nil),                      // 19: pulumirpc.RunPluginResponse
-	(*GenerateProgramRequest)(nil),                 // 20: pulumirpc.GenerateProgramRequest
-	(*GenerateProgramResponse)(nil),                // 21: pulumirpc.GenerateProgramResponse
-	(*GenerateProjectRequest)(nil),                 // 22: pulumirpc.GenerateProjectRequest
-	(*GenerateProjectResponse)(nil),                // 23: pulumirpc.GenerateProjectResponse
-	(*GeneratePackageRequest)(nil),                 // 24: pulumirpc.GeneratePackageRequest
-	(*GeneratePackageResponse)(nil),                // 25: pulumirpc.GeneratePackageResponse
-	(*PackRequest)(nil),                            // 26: pulumirpc.PackRequest
-	(*PackResponse)(nil),                           // 27: pulumirpc.PackResponse
-	(*LanguageHandshakeRequest)(nil),               // 28: pulumirpc.LanguageHandshakeRequest
-	(*LanguageHandshakeResponse)(nil),              // 29: pulumirpc.LanguageHandshakeResponse
-	(*LinkRequest)(nil),                            // 30: pulumirpc.LinkRequest
-	(*LinkResponse)(nil),                           // 31: pulumirpc.LinkResponse
-	nil,                                            // 32: pulumirpc.AboutResponse.MetadataEntry
-	nil,                                            // 33: pulumirpc.RunRequest.ConfigEntry
-	(*RuntimeOptionPrompt_RuntimeOptionValue)(nil), // 34: pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue
-	nil,                                // 35: pulumirpc.GenerateProgramRequest.SourceEntry
-	nil,                                // 36: pulumirpc.GenerateProgramResponse.SourceEntry
-	nil,                                // 37: pulumirpc.GenerateProjectRequest.LocalDependenciesEntry
-	nil,                                // 38: pulumirpc.GeneratePackageRequest.ExtraFilesEntry
-	nil,                                // 39: pulumirpc.GeneratePackageRequest.LocalDependenciesEntry
-	(*LinkRequest_LinkDependency)(nil), // 40: pulumirpc.LinkRequest.LinkDependency
-	(*structpb.Struct)(nil),            // 41: google.protobuf.Struct
-	(*PluginDependency)(nil),           // 42: pulumirpc.PluginDependency
-	(*PackageDependency)(nil),          // 43: pulumirpc.PackageDependency
-	(*codegen.Diagnostic)(nil),         // 44: pulumirpc.codegen.Diagnostic
-	(*emptypb.Empty)(nil),              // 45: google.protobuf.Empty
-	(*PluginInfo)(nil),                 // 46: pulumirpc.PluginInfo
+	(RuntimeOptionPrompt_RuntimeOptionType)(0),	// 0: pulumirpc.RuntimeOptionPrompt.RuntimeOptionType
+	(*ProgramInfo)(nil),				// 1: pulumirpc.ProgramInfo
+	(*AboutRequest)(nil),				// 2: pulumirpc.AboutRequest
+	(*AboutResponse)(nil),				// 3: pulumirpc.AboutResponse
+	(*GetProgramDependenciesRequest)(nil),		// 4: pulumirpc.GetProgramDependenciesRequest
+	(*DependencyInfo)(nil),				// 5: pulumirpc.DependencyInfo
+	(*GetProgramDependenciesResponse)(nil),		// 6: pulumirpc.GetProgramDependenciesResponse
+	(*GetRequiredPluginsRequest)(nil),		// 7: pulumirpc.GetRequiredPluginsRequest
+	(*GetRequiredPluginsResponse)(nil),		// 8: pulumirpc.GetRequiredPluginsResponse
+	(*GetRequiredPackagesRequest)(nil),		// 9: pulumirpc.GetRequiredPackagesRequest
+	(*GetRequiredPackagesResponse)(nil),		// 10: pulumirpc.GetRequiredPackagesResponse
+	(*RunRequest)(nil),				// 11: pulumirpc.RunRequest
+	(*RunResponse)(nil),				// 12: pulumirpc.RunResponse
+	(*InstallDependenciesRequest)(nil),		// 13: pulumirpc.InstallDependenciesRequest
+	(*InstallDependenciesResponse)(nil),		// 14: pulumirpc.InstallDependenciesResponse
+	(*RuntimeOptionsRequest)(nil),			// 15: pulumirpc.RuntimeOptionsRequest
+	(*RuntimeOptionPrompt)(nil),			// 16: pulumirpc.RuntimeOptionPrompt
+	(*RuntimeOptionsResponse)(nil),			// 17: pulumirpc.RuntimeOptionsResponse
+	(*RunPluginRequest)(nil),			// 18: pulumirpc.RunPluginRequest
+	(*RunPluginResponse)(nil),			// 19: pulumirpc.RunPluginResponse
+	(*GenerateProgramRequest)(nil),			// 20: pulumirpc.GenerateProgramRequest
+	(*GenerateProgramResponse)(nil),		// 21: pulumirpc.GenerateProgramResponse
+	(*GenerateProjectRequest)(nil),			// 22: pulumirpc.GenerateProjectRequest
+	(*GenerateProjectResponse)(nil),		// 23: pulumirpc.GenerateProjectResponse
+	(*GeneratePackageRequest)(nil),			// 24: pulumirpc.GeneratePackageRequest
+	(*GeneratePackageResponse)(nil),		// 25: pulumirpc.GeneratePackageResponse
+	(*PackRequest)(nil),				// 26: pulumirpc.PackRequest
+	(*PackResponse)(nil),				// 27: pulumirpc.PackResponse
+	(*LanguageHandshakeRequest)(nil),		// 28: pulumirpc.LanguageHandshakeRequest
+	(*LanguageHandshakeResponse)(nil),		// 29: pulumirpc.LanguageHandshakeResponse
+	(*LinkRequest)(nil),				// 30: pulumirpc.LinkRequest
+	(*LinkResponse)(nil),				// 31: pulumirpc.LinkResponse
+	nil,						// 32: pulumirpc.AboutResponse.MetadataEntry
+	nil,						// 33: pulumirpc.RunRequest.ConfigEntry
+	(*RuntimeOptionPrompt_RuntimeOptionValue)(nil),	// 34: pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue
+	nil,					// 35: pulumirpc.GenerateProgramRequest.SourceEntry
+	nil,					// 36: pulumirpc.GenerateProgramResponse.SourceEntry
+	nil,					// 37: pulumirpc.GenerateProjectRequest.LocalDependenciesEntry
+	nil,					// 38: pulumirpc.GeneratePackageRequest.ExtraFilesEntry
+	nil,					// 39: pulumirpc.GeneratePackageRequest.LocalDependenciesEntry
+	(*LinkRequest_LinkDependency)(nil),	// 40: pulumirpc.LinkRequest.LinkDependency
+	(*structpb.Struct)(nil),		// 41: google.protobuf.Struct
+	(*PluginDependency)(nil),		// 42: pulumirpc.PluginDependency
+	(*PackageDependency)(nil),		// 43: pulumirpc.PackageDependency
+	(*codegen.Diagnostic)(nil),		// 44: pulumirpc.codegen.Diagnostic
+	(*emptypb.Empty)(nil),			// 45: google.protobuf.Empty
+	(*PluginInfo)(nil),			// 46: pulumirpc.PluginInfo
 }
 var file_pulumi_language_proto_depIdxs = []int32{
-	41, // 0: pulumirpc.ProgramInfo.options:type_name -> google.protobuf.Struct
-	1,  // 1: pulumirpc.AboutRequest.info:type_name -> pulumirpc.ProgramInfo
-	32, // 2: pulumirpc.AboutResponse.metadata:type_name -> pulumirpc.AboutResponse.MetadataEntry
-	1,  // 3: pulumirpc.GetProgramDependenciesRequest.info:type_name -> pulumirpc.ProgramInfo
-	5,  // 4: pulumirpc.GetProgramDependenciesResponse.dependencies:type_name -> pulumirpc.DependencyInfo
-	1,  // 5: pulumirpc.GetRequiredPluginsRequest.info:type_name -> pulumirpc.ProgramInfo
-	42, // 6: pulumirpc.GetRequiredPluginsResponse.plugins:type_name -> pulumirpc.PluginDependency
-	1,  // 7: pulumirpc.GetRequiredPackagesRequest.info:type_name -> pulumirpc.ProgramInfo
-	43, // 8: pulumirpc.GetRequiredPackagesResponse.packages:type_name -> pulumirpc.PackageDependency
-	33, // 9: pulumirpc.RunRequest.config:type_name -> pulumirpc.RunRequest.ConfigEntry
-	41, // 10: pulumirpc.RunRequest.configPropertyMap:type_name -> google.protobuf.Struct
-	1,  // 11: pulumirpc.RunRequest.info:type_name -> pulumirpc.ProgramInfo
-	1,  // 12: pulumirpc.InstallDependenciesRequest.info:type_name -> pulumirpc.ProgramInfo
-	1,  // 13: pulumirpc.RuntimeOptionsRequest.info:type_name -> pulumirpc.ProgramInfo
-	0,  // 14: pulumirpc.RuntimeOptionPrompt.promptType:type_name -> pulumirpc.RuntimeOptionPrompt.RuntimeOptionType
-	34, // 15: pulumirpc.RuntimeOptionPrompt.choices:type_name -> pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue
-	34, // 16: pulumirpc.RuntimeOptionPrompt.default:type_name -> pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue
-	16, // 17: pulumirpc.RuntimeOptionsResponse.prompts:type_name -> pulumirpc.RuntimeOptionPrompt
-	1,  // 18: pulumirpc.RunPluginRequest.info:type_name -> pulumirpc.ProgramInfo
-	35, // 19: pulumirpc.GenerateProgramRequest.source:type_name -> pulumirpc.GenerateProgramRequest.SourceEntry
-	44, // 20: pulumirpc.GenerateProgramResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
-	36, // 21: pulumirpc.GenerateProgramResponse.source:type_name -> pulumirpc.GenerateProgramResponse.SourceEntry
-	37, // 22: pulumirpc.GenerateProjectRequest.local_dependencies:type_name -> pulumirpc.GenerateProjectRequest.LocalDependenciesEntry
-	44, // 23: pulumirpc.GenerateProjectResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
-	38, // 24: pulumirpc.GeneratePackageRequest.extra_files:type_name -> pulumirpc.GeneratePackageRequest.ExtraFilesEntry
-	39, // 25: pulumirpc.GeneratePackageRequest.local_dependencies:type_name -> pulumirpc.GeneratePackageRequest.LocalDependenciesEntry
-	44, // 26: pulumirpc.GeneratePackageResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
-	1,  // 27: pulumirpc.LinkRequest.info:type_name -> pulumirpc.ProgramInfo
-	40, // 28: pulumirpc.LinkRequest.packages:type_name -> pulumirpc.LinkRequest.LinkDependency
-	0,  // 29: pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue.promptType:type_name -> pulumirpc.RuntimeOptionPrompt.RuntimeOptionType
-	43, // 30: pulumirpc.LinkRequest.LinkDependency.package:type_name -> pulumirpc.PackageDependency
-	28, // 31: pulumirpc.LanguageRuntime.Handshake:input_type -> pulumirpc.LanguageHandshakeRequest
-	7,  // 32: pulumirpc.LanguageRuntime.GetRequiredPlugins:input_type -> pulumirpc.GetRequiredPluginsRequest
-	9,  // 33: pulumirpc.LanguageRuntime.GetRequiredPackages:input_type -> pulumirpc.GetRequiredPackagesRequest
-	11, // 34: pulumirpc.LanguageRuntime.Run:input_type -> pulumirpc.RunRequest
-	45, // 35: pulumirpc.LanguageRuntime.GetPluginInfo:input_type -> google.protobuf.Empty
-	13, // 36: pulumirpc.LanguageRuntime.InstallDependencies:input_type -> pulumirpc.InstallDependenciesRequest
-	15, // 37: pulumirpc.LanguageRuntime.RuntimeOptionsPrompts:input_type -> pulumirpc.RuntimeOptionsRequest
-	2,  // 38: pulumirpc.LanguageRuntime.About:input_type -> pulumirpc.AboutRequest
-	4,  // 39: pulumirpc.LanguageRuntime.GetProgramDependencies:input_type -> pulumirpc.GetProgramDependenciesRequest
-	18, // 40: pulumirpc.LanguageRuntime.RunPlugin:input_type -> pulumirpc.RunPluginRequest
-	20, // 41: pulumirpc.LanguageRuntime.GenerateProgram:input_type -> pulumirpc.GenerateProgramRequest
-	22, // 42: pulumirpc.LanguageRuntime.GenerateProject:input_type -> pulumirpc.GenerateProjectRequest
-	24, // 43: pulumirpc.LanguageRuntime.GeneratePackage:input_type -> pulumirpc.GeneratePackageRequest
-	26, // 44: pulumirpc.LanguageRuntime.Pack:input_type -> pulumirpc.PackRequest
-	30, // 45: pulumirpc.LanguageRuntime.Link:input_type -> pulumirpc.LinkRequest
-	45, // 46: pulumirpc.LanguageRuntime.Cancel:input_type -> google.protobuf.Empty
-	29, // 47: pulumirpc.LanguageRuntime.Handshake:output_type -> pulumirpc.LanguageHandshakeResponse
-	8,  // 48: pulumirpc.LanguageRuntime.GetRequiredPlugins:output_type -> pulumirpc.GetRequiredPluginsResponse
-	10, // 49: pulumirpc.LanguageRuntime.GetRequiredPackages:output_type -> pulumirpc.GetRequiredPackagesResponse
-	12, // 50: pulumirpc.LanguageRuntime.Run:output_type -> pulumirpc.RunResponse
-	46, // 51: pulumirpc.LanguageRuntime.GetPluginInfo:output_type -> pulumirpc.PluginInfo
-	14, // 52: pulumirpc.LanguageRuntime.InstallDependencies:output_type -> pulumirpc.InstallDependenciesResponse
-	17, // 53: pulumirpc.LanguageRuntime.RuntimeOptionsPrompts:output_type -> pulumirpc.RuntimeOptionsResponse
-	3,  // 54: pulumirpc.LanguageRuntime.About:output_type -> pulumirpc.AboutResponse
-	6,  // 55: pulumirpc.LanguageRuntime.GetProgramDependencies:output_type -> pulumirpc.GetProgramDependenciesResponse
-	19, // 56: pulumirpc.LanguageRuntime.RunPlugin:output_type -> pulumirpc.RunPluginResponse
-	21, // 57: pulumirpc.LanguageRuntime.GenerateProgram:output_type -> pulumirpc.GenerateProgramResponse
-	23, // 58: pulumirpc.LanguageRuntime.GenerateProject:output_type -> pulumirpc.GenerateProjectResponse
-	25, // 59: pulumirpc.LanguageRuntime.GeneratePackage:output_type -> pulumirpc.GeneratePackageResponse
-	27, // 60: pulumirpc.LanguageRuntime.Pack:output_type -> pulumirpc.PackResponse
-	31, // 61: pulumirpc.LanguageRuntime.Link:output_type -> pulumirpc.LinkResponse
-	45, // 62: pulumirpc.LanguageRuntime.Cancel:output_type -> google.protobuf.Empty
-	47, // [47:63] is the sub-list for method output_type
-	31, // [31:47] is the sub-list for method input_type
-	31, // [31:31] is the sub-list for extension type_name
-	31, // [31:31] is the sub-list for extension extendee
-	0,  // [0:31] is the sub-list for field type_name
+	41,	// 0: pulumirpc.ProgramInfo.options:type_name -> google.protobuf.Struct
+	1,	// 1: pulumirpc.AboutRequest.info:type_name -> pulumirpc.ProgramInfo
+	32,	// 2: pulumirpc.AboutResponse.metadata:type_name -> pulumirpc.AboutResponse.MetadataEntry
+	1,	// 3: pulumirpc.GetProgramDependenciesRequest.info:type_name -> pulumirpc.ProgramInfo
+	5,	// 4: pulumirpc.GetProgramDependenciesResponse.dependencies:type_name -> pulumirpc.DependencyInfo
+	1,	// 5: pulumirpc.GetRequiredPluginsRequest.info:type_name -> pulumirpc.ProgramInfo
+	42,	// 6: pulumirpc.GetRequiredPluginsResponse.plugins:type_name -> pulumirpc.PluginDependency
+	1,	// 7: pulumirpc.GetRequiredPackagesRequest.info:type_name -> pulumirpc.ProgramInfo
+	43,	// 8: pulumirpc.GetRequiredPackagesResponse.packages:type_name -> pulumirpc.PackageDependency
+	33,	// 9: pulumirpc.RunRequest.config:type_name -> pulumirpc.RunRequest.ConfigEntry
+	41,	// 10: pulumirpc.RunRequest.configPropertyMap:type_name -> google.protobuf.Struct
+	1,	// 11: pulumirpc.RunRequest.info:type_name -> pulumirpc.ProgramInfo
+	1,	// 12: pulumirpc.InstallDependenciesRequest.info:type_name -> pulumirpc.ProgramInfo
+	1,	// 13: pulumirpc.RuntimeOptionsRequest.info:type_name -> pulumirpc.ProgramInfo
+	0,	// 14: pulumirpc.RuntimeOptionPrompt.promptType:type_name -> pulumirpc.RuntimeOptionPrompt.RuntimeOptionType
+	34,	// 15: pulumirpc.RuntimeOptionPrompt.choices:type_name -> pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue
+	34,	// 16: pulumirpc.RuntimeOptionPrompt.default:type_name -> pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue
+	16,	// 17: pulumirpc.RuntimeOptionsResponse.prompts:type_name -> pulumirpc.RuntimeOptionPrompt
+	1,	// 18: pulumirpc.RunPluginRequest.info:type_name -> pulumirpc.ProgramInfo
+	35,	// 19: pulumirpc.GenerateProgramRequest.source:type_name -> pulumirpc.GenerateProgramRequest.SourceEntry
+	44,	// 20: pulumirpc.GenerateProgramResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
+	36,	// 21: pulumirpc.GenerateProgramResponse.source:type_name -> pulumirpc.GenerateProgramResponse.SourceEntry
+	37,	// 22: pulumirpc.GenerateProjectRequest.local_dependencies:type_name -> pulumirpc.GenerateProjectRequest.LocalDependenciesEntry
+	44,	// 23: pulumirpc.GenerateProjectResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
+	38,	// 24: pulumirpc.GeneratePackageRequest.extra_files:type_name -> pulumirpc.GeneratePackageRequest.ExtraFilesEntry
+	39,	// 25: pulumirpc.GeneratePackageRequest.local_dependencies:type_name -> pulumirpc.GeneratePackageRequest.LocalDependenciesEntry
+	44,	// 26: pulumirpc.GeneratePackageResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
+	1,	// 27: pulumirpc.LinkRequest.info:type_name -> pulumirpc.ProgramInfo
+	40,	// 28: pulumirpc.LinkRequest.packages:type_name -> pulumirpc.LinkRequest.LinkDependency
+	0,	// 29: pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue.promptType:type_name -> pulumirpc.RuntimeOptionPrompt.RuntimeOptionType
+	43,	// 30: pulumirpc.LinkRequest.LinkDependency.package:type_name -> pulumirpc.PackageDependency
+	28,	// 31: pulumirpc.LanguageRuntime.Handshake:input_type -> pulumirpc.LanguageHandshakeRequest
+	7,	// 32: pulumirpc.LanguageRuntime.GetRequiredPlugins:input_type -> pulumirpc.GetRequiredPluginsRequest
+	9,	// 33: pulumirpc.LanguageRuntime.GetRequiredPackages:input_type -> pulumirpc.GetRequiredPackagesRequest
+	11,	// 34: pulumirpc.LanguageRuntime.Run:input_type -> pulumirpc.RunRequest
+	45,	// 35: pulumirpc.LanguageRuntime.GetPluginInfo:input_type -> google.protobuf.Empty
+	13,	// 36: pulumirpc.LanguageRuntime.InstallDependencies:input_type -> pulumirpc.InstallDependenciesRequest
+	15,	// 37: pulumirpc.LanguageRuntime.RuntimeOptionsPrompts:input_type -> pulumirpc.RuntimeOptionsRequest
+	2,	// 38: pulumirpc.LanguageRuntime.About:input_type -> pulumirpc.AboutRequest
+	4,	// 39: pulumirpc.LanguageRuntime.GetProgramDependencies:input_type -> pulumirpc.GetProgramDependenciesRequest
+	18,	// 40: pulumirpc.LanguageRuntime.RunPlugin:input_type -> pulumirpc.RunPluginRequest
+	20,	// 41: pulumirpc.LanguageRuntime.GenerateProgram:input_type -> pulumirpc.GenerateProgramRequest
+	22,	// 42: pulumirpc.LanguageRuntime.GenerateProject:input_type -> pulumirpc.GenerateProjectRequest
+	24,	// 43: pulumirpc.LanguageRuntime.GeneratePackage:input_type -> pulumirpc.GeneratePackageRequest
+	26,	// 44: pulumirpc.LanguageRuntime.Pack:input_type -> pulumirpc.PackRequest
+	30,	// 45: pulumirpc.LanguageRuntime.Link:input_type -> pulumirpc.LinkRequest
+	45,	// 46: pulumirpc.LanguageRuntime.Cancel:input_type -> google.protobuf.Empty
+	29,	// 47: pulumirpc.LanguageRuntime.Handshake:output_type -> pulumirpc.LanguageHandshakeResponse
+	8,	// 48: pulumirpc.LanguageRuntime.GetRequiredPlugins:output_type -> pulumirpc.GetRequiredPluginsResponse
+	10,	// 49: pulumirpc.LanguageRuntime.GetRequiredPackages:output_type -> pulumirpc.GetRequiredPackagesResponse
+	12,	// 50: pulumirpc.LanguageRuntime.Run:output_type -> pulumirpc.RunResponse
+	46,	// 51: pulumirpc.LanguageRuntime.GetPluginInfo:output_type -> pulumirpc.PluginInfo
+	14,	// 52: pulumirpc.LanguageRuntime.InstallDependencies:output_type -> pulumirpc.InstallDependenciesResponse
+	17,	// 53: pulumirpc.LanguageRuntime.RuntimeOptionsPrompts:output_type -> pulumirpc.RuntimeOptionsResponse
+	3,	// 54: pulumirpc.LanguageRuntime.About:output_type -> pulumirpc.AboutResponse
+	6,	// 55: pulumirpc.LanguageRuntime.GetProgramDependencies:output_type -> pulumirpc.GetProgramDependenciesResponse
+	19,	// 56: pulumirpc.LanguageRuntime.RunPlugin:output_type -> pulumirpc.RunPluginResponse
+	21,	// 57: pulumirpc.LanguageRuntime.GenerateProgram:output_type -> pulumirpc.GenerateProgramResponse
+	23,	// 58: pulumirpc.LanguageRuntime.GenerateProject:output_type -> pulumirpc.GenerateProjectResponse
+	25,	// 59: pulumirpc.LanguageRuntime.GeneratePackage:output_type -> pulumirpc.GeneratePackageResponse
+	27,	// 60: pulumirpc.LanguageRuntime.Pack:output_type -> pulumirpc.PackResponse
+	31,	// 61: pulumirpc.LanguageRuntime.Link:output_type -> pulumirpc.LinkResponse
+	45,	// 62: pulumirpc.LanguageRuntime.Cancel:output_type -> google.protobuf.Empty
+	47,	// [47:63] is the sub-list for method output_type
+	31,	// [31:47] is the sub-list for method input_type
+	31,	// [31:31] is the sub-list for extension type_name
+	31,	// [31:31] is the sub-list for extension extendee
+	0,	// [0:31] is the sub-list for field type_name
 }
 
-func init() { file_pulumi_language_proto_init() }
+func init()	{ file_pulumi_language_proto_init() }
 func file_pulumi_language_proto_init() {
 	if File_pulumi_language_proto != nil {
 		return
@@ -2734,17 +2734,17 @@ func file_pulumi_language_proto_init() {
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
-			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_language_proto_rawDesc), len(file_pulumi_language_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   40,
-			NumExtensions: 0,
-			NumServices:   1,
+			GoPackagePath:	reflect.TypeOf(x{}).PkgPath(),
+			RawDescriptor:	unsafe.Slice(unsafe.StringData(file_pulumi_language_proto_rawDesc), len(file_pulumi_language_proto_rawDesc)),
+			NumEnums:	1,
+			NumMessages:	40,
+			NumExtensions:	0,
+			NumServices:	1,
 		},
-		GoTypes:           file_pulumi_language_proto_goTypes,
-		DependencyIndexes: file_pulumi_language_proto_depIdxs,
-		EnumInfos:         file_pulumi_language_proto_enumTypes,
-		MessageInfos:      file_pulumi_language_proto_msgTypes,
+		GoTypes:		file_pulumi_language_proto_goTypes,
+		DependencyIndexes:	file_pulumi_language_proto_depIdxs,
+		EnumInfos:		file_pulumi_language_proto_enumTypes,
+		MessageInfos:		file_pulumi_language_proto_msgTypes,
 	}.Build()
 	File_pulumi_language_proto = out.File
 	file_pulumi_language_proto_goTypes = nil

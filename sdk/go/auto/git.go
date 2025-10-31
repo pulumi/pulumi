@@ -35,8 +35,8 @@ var transportMutex sync.Mutex
 
 func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (string, error) {
 	cloneOptions := &git.CloneOptions{
-		RemoteName: "origin", // be explicit so we can require it in remote refs
-		URL:        repoArgs.URL,
+		RemoteName:	"origin",	// be explicit so we can require it in remote refs
+		URL:		repoArgs.URL,
 	}
 
 	if repoArgs.Shallow {
@@ -80,16 +80,16 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 		// so we are setting this to `git`
 		if authDetails.PersonalAccessToken != "" {
 			cloneOptions.Auth = &http.BasicAuth{
-				Username: "git",
-				Password: repoArgs.Auth.PersonalAccessToken,
+				Username:	"git",
+				Password:	repoArgs.Auth.PersonalAccessToken,
 			}
 		}
 
 		// then we check to see if a username and a password has been specified
 		if authDetails.Password != "" && authDetails.Username != "" {
 			cloneOptions.Auth = &http.BasicAuth{
-				Username: repoArgs.Auth.Username,
-				Password: repoArgs.Auth.Password,
+				Username:	repoArgs.Auth.Username,
+				Password:	repoArgs.Auth.Password,
 			}
 		}
 	}
@@ -103,17 +103,17 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 	if repoArgs.Branch != "" {
 		refName := plumbing.ReferenceName(repoArgs.Branch)
 		switch {
-		case refName.IsRemote(): // e.g., refs/remotes/origin/branch
-			shorter := refName.Short() // this gives "origin/branch"
+		case refName.IsRemote():	// e.g., refs/remotes/origin/branch
+			shorter := refName.Short()	// this gives "origin/branch"
 			parts := strings.SplitN(shorter, "/", 2)
 			if len(parts) == 2 && parts[0] == "origin" {
 				refName = plumbing.NewBranchReferenceName(parts[1])
 			} else {
 				return "", fmt.Errorf("a remote ref must begin with 'refs/remote/origin/', but got %q", repoArgs.Branch)
 			}
-		case refName.IsTag(): // looks like `refs/tags/v1.0.0` -- respect this even though the field is `.Branch`
+		case refName.IsTag():	// looks like `refs/tags/v1.0.0` -- respect this even though the field is `.Branch`
 			// nothing to do
-		case !refName.IsBranch(): // not a remote, not refs/heads/branch; treat as a simple branch name
+		case !refName.IsBranch():	// not a remote, not refs/heads/branch; treat as a simple branch name
 			refName = plumbing.NewBranchReferenceName(repoArgs.Branch)
 		default:
 			// already looks like a full branch name, so use as is
@@ -158,10 +158,10 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 			transportMutex.Lock()
 			defer transportMutex.Unlock()
 			return repo.FetchContext(ctx, &git.FetchOptions{
-				RemoteName: "origin",
-				Auth:       cloneOptions.Auth,
-				Depth:      cloneOptions.Depth,
-				RefSpecs:   []config.RefSpec{config.RefSpec(repoArgs.CommitHash + ":" + repoArgs.CommitHash)},
+				RemoteName:	"origin",
+				Auth:		cloneOptions.Auth,
+				Depth:		cloneOptions.Depth,
+				RefSpecs:	[]config.RefSpec{config.RefSpec(repoArgs.CommitHash + ":" + repoArgs.CommitHash)},
 			})
 		}()
 		if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) && !errors.Is(err, git.ErrExactSHA1NotSupported) {
@@ -176,8 +176,8 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 
 		hash := repoArgs.CommitHash
 		err = w.Checkout(&git.CheckoutOptions{
-			Hash:  plumbing.NewHash(hash),
-			Force: true,
+			Hash:	plumbing.NewHash(hash),
+			Force:	true,
 		})
 		if err != nil {
 			return "", fmt.Errorf("unable to checkout commit: %w", err)

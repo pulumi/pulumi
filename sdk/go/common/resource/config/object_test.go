@@ -81,8 +81,8 @@ func TestDecryptMap(t *testing.T) {
 
 	t.Run("Plaintext values", func(t *testing.T) {
 		input := map[Key]object{
-			MustParseKey("ns:foo"): newObject("bar"),
-			MustParseKey("ns:num"): newObject(int64(42)),
+			MustParseKey("ns:foo"):	newObject("bar"),
+			MustParseKey("ns:num"):	newObject(int64(42)),
 		}
 		result, err := decryptMap(context.Background(), input, nopCrypter{})
 		require.NoError(t, err)
@@ -117,8 +117,8 @@ func TestDecryptMap(t *testing.T) {
 
 	t.Run("mixed values", func(t *testing.T) {
 		input := map[Key]object{
-			MustParseKey("ns:plain"):  newObject("value"),
-			MustParseKey("ns:secret"): newObject(CiphertextSecret{"ciphertext"}),
+			MustParseKey("ns:plain"):	newObject("value"),
+			MustParseKey("ns:secret"):	newObject(CiphertextSecret{"ciphertext"}),
 		}
 		result, err := decryptMap(context.Background(), input, nopCrypter{})
 		require.NoError(t, err)
@@ -129,14 +129,14 @@ func TestDecryptMap(t *testing.T) {
 
 	t.Run("chunking", func(t *testing.T) {
 		origChunkSize := defaultMaxChunkSize
-		defaultMaxChunkSize = 2 // force batching for test
+		defaultMaxChunkSize = 2	// force batching for test
 		defer func() { defaultMaxChunkSize = origChunkSize }()
 
 		input := map[Key]object{
-			MustParseKey("ns:a"): newObject(CiphertextSecret{"s1"}),
-			MustParseKey("ns:b"): newObject(CiphertextSecret{"s2"}),
-			MustParseKey("ns:c"): newObject(CiphertextSecret{"s3"}),
-			MustParseKey("ns:d"): newObject("plain"),
+			MustParseKey("ns:a"):	newObject(CiphertextSecret{"s1"}),
+			MustParseKey("ns:b"):	newObject(CiphertextSecret{"s2"}),
+			MustParseKey("ns:c"):	newObject(CiphertextSecret{"s3"}),
+			MustParseKey("ns:d"):	newObject("plain"),
 		}
 		result, err := decryptMap(context.Background(), input, nopCrypter{})
 		require.NoError(t, err)

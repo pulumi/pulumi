@@ -169,9 +169,9 @@ func collectPluginsFromPackages(
 		}
 
 		result = append(result, workspace.ProjectPlugin{
-			Kind: apitype.ResourcePlugin,
-			Name: name,
-			Path: path,
+			Kind:	apitype.ResourcePlugin,
+			Name:	name,
+			Path:	path,
 		})
 	}
 
@@ -216,20 +216,20 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]any,
 	projectPlugins = append(projectPlugins, pluginsFromPackages...)
 
 	host := &defaultHost{
-		ctx:                     ctx,
-		runtimeOptions:          runtimeOptions,
-		analyzerPlugins:         make(map[tokens.QName]*analyzerPlugin),
-		languagePlugins:         make(map[string]*languagePlugin),
-		resourcePlugins:         make(map[Provider]*resourcePlugin),
-		reportedResourcePlugins: make(map[string]struct{}),
-		languageLoadRequests:    make(chan pluginLoadRequest),
-		loadRequests:            make(chan pluginLoadRequest),
-		disableProviderPreview:  disableProviderPreview,
-		config:                  config,
-		closer:                  new(sync.Once),
-		projectPlugins:          projectPlugins,
-		debugContext:            debugging,
-		projectName:             projectName,
+		ctx:				ctx,
+		runtimeOptions:			runtimeOptions,
+		analyzerPlugins:		make(map[tokens.QName]*analyzerPlugin),
+		languagePlugins:		make(map[string]*languagePlugin),
+		resourcePlugins:		make(map[Provider]*resourcePlugin),
+		reportedResourcePlugins:	make(map[string]struct{}),
+		languageLoadRequests:		make(chan pluginLoadRequest),
+		loadRequests:			make(chan pluginLoadRequest),
+		disableProviderPreview:		disableProviderPreview,
+		config:				config,
+		closer:				new(sync.Once),
+		projectPlugins:			projectPlugins,
+		debugContext:			debugging,
+		projectName:			projectName,
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
@@ -305,69 +305,69 @@ func parsePluginOpts(
 	}
 
 	pluginInfo := workspace.ProjectPlugin{
-		Name:    providerOpts.Name,
-		Path:    path,
-		Kind:    k,
-		Version: v,
+		Name:		providerOpts.Name,
+		Path:		path,
+		Kind:		k,
+		Version:	v,
 	}
 	return pluginInfo, nil
 }
 
 // PolicyAnalyzerOptions includes a bag of options to pass along to a policy analyzer.
 type PolicyAnalyzerOptions struct {
-	Organization     string
-	Project          string
-	Stack            string
-	Config           map[config.Key]string
-	ConfigSecretKeys []config.Key
-	DryRun           bool
-	Tags             map[string]string // Tags for the current stack.
+	Organization		string
+	Project			string
+	Stack			string
+	Config			map[config.Key]string
+	ConfigSecretKeys	[]config.Key
+	DryRun			bool
+	Tags			map[string]string	// Tags for the current stack.
 }
 
 type pluginLoadRequest struct {
-	load   func() error
-	result chan<- error
+	load	func() error
+	result	chan<- error
 }
 
 type defaultHost struct {
-	ctx *Context // the shared context for this host.
+	ctx	*Context	// the shared context for this host.
 
 	// the runtime options for the project, passed to resource providers to support dynamic providers.
-	runtimeOptions          map[string]any
-	analyzerPlugins         map[tokens.QName]*analyzerPlugin // a cache of analyzer plugins and their processes.
-	languagePlugins         map[string]*languagePlugin       // a cache of language plugins and their processes.
-	resourcePlugins         map[Provider]*resourcePlugin     // the set of loaded resource plugins.
-	reportedResourcePlugins map[string]struct{}              // the set of unique resource plugins we'll report.
-	languageLoadRequests    chan pluginLoadRequest           // a channel used to satisfy language load requests.
-	loadRequests            chan pluginLoadRequest           // a channel used to satisfy plugin load requests.
-	server                  *hostServer                      // the server's RPC machinery.
-	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
-	config                  map[config.Key]string            // the configuration map for the stack, if any.
-	projectName             tokens.PackageName               // name of the project
-	debugContext            DebugContext
+	runtimeOptions		map[string]any
+	analyzerPlugins		map[tokens.QName]*analyzerPlugin	// a cache of analyzer plugins and their processes.
+	languagePlugins		map[string]*languagePlugin		// a cache of language plugins and their processes.
+	resourcePlugins		map[Provider]*resourcePlugin		// the set of loaded resource plugins.
+	reportedResourcePlugins	map[string]struct{}			// the set of unique resource plugins we'll report.
+	languageLoadRequests	chan pluginLoadRequest			// a channel used to satisfy language load requests.
+	loadRequests		chan pluginLoadRequest			// a channel used to satisfy plugin load requests.
+	server			*hostServer				// the server's RPC machinery.
+	disableProviderPreview	bool					// true if provider plugins should disable provider preview
+	config			map[config.Key]string			// the configuration map for the stack, if any.
+	projectName		tokens.PackageName			// name of the project
+	debugContext		DebugContext
 
 	// Used to synchronize shutdown with in-progress plugin loads.
-	pluginLock sync.RWMutex
+	pluginLock	sync.RWMutex
 
-	closer         *sync.Once
-	projectPlugins []workspace.ProjectPlugin
+	closer		*sync.Once
+	projectPlugins	[]workspace.ProjectPlugin
 }
 
 var _ Host = (*defaultHost)(nil)
 
 type analyzerPlugin struct {
-	Plugin Analyzer
-	Info   workspace.PluginInfo
+	Plugin	Analyzer
+	Info	workspace.PluginInfo
 }
 
 type languagePlugin struct {
-	Plugin LanguageRuntime
-	Info   workspace.PluginInfo
+	Plugin	LanguageRuntime
+	Info	workspace.PluginInfo
 }
 
 type resourcePlugin struct {
-	Plugin Provider
-	Info   workspace.PluginInfo
+	Plugin	Provider
+	Info	workspace.PluginInfo
 }
 
 func (host *defaultHost) ServerAddr() string {
@@ -413,7 +413,7 @@ func (host *defaultHost) loadPlugin(
 			plugin = p
 			return err
 		},
-		result: result,
+		result:	result,
 	}
 	return plugin, <-result
 }
@@ -518,7 +518,7 @@ func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provi
 						v = info.Version.String()
 					}
 					host.ctx.Diag.Warningf(
-						diag.Message("", /*urn*/
+						diag.Message("",	/*urn*/
 							"resource plugin %s is expected to have version >=%s, but has %s; "+
 								"the wrong version may be on your path, or this may be a bug in the plugin"),
 						info.Name, version.String(), v)
@@ -722,7 +722,7 @@ type Flags int
 
 const (
 	// AnalyzerPlugins is used to only load analyzers.
-	AnalyzerPlugins Flags = 1 << iota
+	AnalyzerPlugins	Flags	= 1 << iota
 	// LanguagePlugins is used to only load language plugins.
 	LanguagePlugins
 	// ResourcePlugins is used to only load resource provider plugins.

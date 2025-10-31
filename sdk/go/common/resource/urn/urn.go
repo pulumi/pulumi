@@ -49,10 +49,10 @@ import (
 type URN string
 
 const (
-	Prefix        = "urn:" + NamespaceID + ":" // the standard URN prefix
-	NamespaceID   = "pulumi"                   // the URN namespace
-	NameDelimiter = "::"                       // the delimiter between URN name elements
-	TypeDelimiter = "$"                        // the delimiter between URN type elements
+	Prefix		= "urn:" + NamespaceID + ":"	// the standard URN prefix
+	NamespaceID	= "pulumi"			// the URN namespace
+	NameDelimiter	= "::"				// the delimiter between URN name elements
+	TypeDelimiter	= "$"				// the delimiter between URN type elements
 )
 
 // Parse attempts to parse a string into a URN returning an error if it's not valid.

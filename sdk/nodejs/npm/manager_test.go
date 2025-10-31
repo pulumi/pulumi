@@ -19,7 +19,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"crypto/sha1" //nolint:gosec // this is what NPM wants
+	"crypto/sha1"	//nolint:gosec // this is what NPM wants
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -42,9 +42,9 @@ import (
 func chdir(t *testing.T, dir string) {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
-	require.NoError(t, os.Chdir(dir)) // Set directory
+	require.NoError(t, os.Chdir(dir))	// Set directory
 	t.Cleanup(func() {
-		require.NoError(t, os.Chdir(cwd)) // Restore directory
+		require.NoError(t, os.Chdir(cwd))	// Restore directory
 		restoredDir, err := os.Getwd()
 		require.NoError(t, err)
 		assert.Equal(t, cwd, restoredDir)
@@ -102,10 +102,10 @@ func TestBunInstall(t *testing.T) {
 func TestResolvePackageManager(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
-		name      string
-		pm        PackageManagerType
-		lockFiles []string
-		expected  string
+		name		string
+		pm		PackageManagerType
+		lockFiles	[]string
+		expected	string
 	}{
 		{"defaults to npm", AutoPackageManager, []string{}, "npm"},
 		{"picks npm", NpmPackageManager, []string{}, "npm"},
@@ -361,8 +361,8 @@ func tarballOf(t testing.TB, pairs ...string) (data []byte, sha string) {
 
 	require.True(t, len(pairs)%2 == 0, "pairs must be a list of path/contents pairs")
 
-	var buff bytes.Buffer // raw .tar.gz bytes
-	hash := sha1.New()    //nolint:gosec // this is what NPM wants
+	var buff bytes.Buffer	// raw .tar.gz bytes
+	hash := sha1.New()	//nolint:gosec // this is what NPM wants
 
 	// Order of which writer wraps which is important here.
 	// .tar.gz means we need .gz to be the innermost writer.
@@ -372,9 +372,9 @@ func tarballOf(t testing.TB, pairs ...string) (data []byte, sha string) {
 	for i := 0; i < len(pairs); i += 2 {
 		path, contents := pairs[i], pairs[i+1]
 		require.NoError(t, tarw.WriteHeader(&tar.Header{
-			Name: path,
-			Mode: 0o600,
-			Size: int64(len(contents)),
+			Name:	path,
+			Mode:	0o600,
+			Size:	int64(len(contents)),
 		}), "WriteHeader(%q)", path)
 		_, err := tarw.Write([]byte(contents))
 		require.NoError(t, err, "WriteContents(%q)", path)

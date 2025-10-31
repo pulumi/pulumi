@@ -34,143 +34,143 @@ func TestParseRegistryURL(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name        string
-		url         string
-		expected    *URLInfo
-		expectError bool
-		errorMsg    string
+		name		string
+		url		string
+		expected	*URLInfo
+		expectError	bool
+		errorMsg	string
 	}{
 		{
-			name: "valid registry URL with version",
-			url:  "registry://templates/test-source/test-publisher/test-template@1.0.0",
+			name:	"valid registry URL with version",
+			url:	"registry://templates/test-source/test-publisher/test-template@1.0.0",
 			expected: &URLInfo{
-				resourceType: "templates",
-				source:       "test-source",
-				publisher:    "test-publisher",
-				name:         "test-template",
-				version:      mustParseVersion("1.0.0"),
+				resourceType:	"templates",
+				source:		"test-source",
+				publisher:	"test-publisher",
+				name:		"test-template",
+				version:	mustParseVersion("1.0.0"),
 			},
-			expectError: false,
+			expectError:	false,
 		},
 		{
-			name: "valid registry URL without version",
-			url:  "registry://templates/test-source/test-publisher/test-template",
+			name:	"valid registry URL without version",
+			url:	"registry://templates/test-source/test-publisher/test-template",
 			expected: &URLInfo{
-				resourceType: "templates",
-				source:       "test-source",
-				publisher:    "test-publisher",
-				name:         "test-template",
-				version:      nil,
+				resourceType:	"templates",
+				source:		"test-source",
+				publisher:	"test-publisher",
+				name:		"test-template",
+				version:	nil,
 			},
-			expectError: false,
+			expectError:	false,
 		},
 		{
-			name: "valid registry URL with latest version",
-			url:  "registry://templates/test-source/test-publisher/test-template@latest",
+			name:	"valid registry URL with latest version",
+			url:	"registry://templates/test-source/test-publisher/test-template@latest",
 			expected: &URLInfo{
-				resourceType: "templates",
-				source:       "test-source",
-				publisher:    "test-publisher",
-				name:         "test-template",
-				version:      nil, // latest is treated as nil version
+				resourceType:	"templates",
+				source:		"test-source",
+				publisher:	"test-publisher",
+				name:		"test-template",
+				version:	nil,	// latest is treated as nil version
 			},
-			expectError: false,
+			expectError:	false,
 		},
 		{
-			name: "valid registry URL with complex version",
-			url:  "registry://templates/my-source/my-publisher/my-template@2.1.0-beta.1",
+			name:	"valid registry URL with complex version",
+			url:	"registry://templates/my-source/my-publisher/my-template@2.1.0-beta.1",
 			expected: &URLInfo{
-				resourceType: "templates",
-				source:       "my-source",
-				publisher:    "my-publisher",
-				name:         "my-template",
-				version:      mustParseVersion("2.1.0-beta.1"),
+				resourceType:	"templates",
+				source:		"my-source",
+				publisher:	"my-publisher",
+				name:		"my-template",
+				version:	mustParseVersion("2.1.0-beta.1"),
 			},
-			expectError: false,
+			expectError:	false,
 		},
 		{
-			name: "valid registry URL with double-encoded name",
-			url:  "registry://templates/test-source/test-publisher/test%252Ftemplate@1.0.0",
+			name:	"valid registry URL with double-encoded name",
+			url:	"registry://templates/test-source/test-publisher/test%252Ftemplate@1.0.0",
 			expected: &URLInfo{
-				resourceType: "templates",
-				source:       "test-source",
-				publisher:    "test-publisher",
-				name:         "test/template",
-				version:      mustParseVersion("1.0.0"),
+				resourceType:	"templates",
+				source:		"test-source",
+				publisher:	"test-publisher",
+				name:		"test/template",
+				version:	mustParseVersion("1.0.0"),
 			},
-			expectError: false,
+			expectError:	false,
 		},
 		{
-			name: "valid registry URL with packages resource type",
-			url:  "registry://packages/test-source/test-publisher/test-package@1.0.0",
+			name:	"valid registry URL with packages resource type",
+			url:	"registry://packages/test-source/test-publisher/test-package@1.0.0",
 			expected: &URLInfo{
-				resourceType: "packages",
-				source:       "test-source",
-				publisher:    "test-publisher",
-				name:         "test-package",
-				version:      mustParseVersion("1.0.0"),
+				resourceType:	"packages",
+				source:		"test-source",
+				publisher:	"test-publisher",
+				name:		"test-package",
+				version:	mustParseVersion("1.0.0"),
 			},
-			expectError: false,
+			expectError:	false,
 		},
 		{
-			name:        "invalid URL format",
-			url:         "not-a-valid-url",
-			expectError: true,
-			errorMsg:    "invalid registry URL",
+			name:		"invalid URL format",
+			url:		"not-a-valid-url",
+			expectError:	true,
+			errorMsg:	"invalid registry URL",
 		},
 		{
-			name:        "wrong scheme",
-			url:         "https://test-host/templates/test-source/test-publisher/test-template@1.0.0",
-			expectError: true,
-			errorMsg:    "invalid registry URL scheme",
+			name:		"wrong scheme",
+			url:		"https://test-host/templates/test-source/test-publisher/test-template@1.0.0",
+			expectError:	true,
+			errorMsg:	"invalid registry URL scheme",
 		},
 		{
-			name:        "missing resource type",
-			url:         "registry:////test-source/test-publisher/test-template@1.0.0",
-			expectError: true,
-			errorMsg:    "invalid registry URL: missing resource type",
+			name:		"missing resource type",
+			url:		"registry:////test-source/test-publisher/test-template@1.0.0",
+			expectError:	true,
+			errorMsg:	"invalid registry URL: missing resource type",
 		},
 		{
-			name:        "missing source",
-			url:         "registry://templates//test-publisher/test-template@1.0.0",
-			expectError: true,
-			errorMsg:    "missing source",
+			name:		"missing source",
+			url:		"registry://templates//test-publisher/test-template@1.0.0",
+			expectError:	true,
+			errorMsg:	"missing source",
 		},
 		{
-			name:        "missing publisher",
-			url:         "registry://templates/test-source//test-template@1.0.0",
-			expectError: true,
-			errorMsg:    "missing publisher",
+			name:		"missing publisher",
+			url:		"registry://templates/test-source//test-template@1.0.0",
+			expectError:	true,
+			errorMsg:	"missing publisher",
 		},
 		{
-			name:        "missing name",
-			url:         "registry://templates/test-source/test-publisher/@1.0.0",
-			expectError: true,
-			errorMsg:    "missing name",
+			name:		"missing name",
+			url:		"registry://templates/test-source/test-publisher/@1.0.0",
+			expectError:	true,
+			errorMsg:	"missing name",
 		},
 		{
-			name:        "missing version",
-			url:         "registry://templates/test-source/test-publisher/test-template@",
-			expectError: true,
-			errorMsg:    "missing version",
+			name:		"missing version",
+			url:		"registry://templates/test-source/test-publisher/test-template@",
+			expectError:	true,
+			errorMsg:	"missing version",
 		},
 		{
-			name:        "too many path segments",
-			url:         "registry://templates/test-source/test-publisher/test-template/extra@1.0.0",
-			expectError: true,
-			errorMsg:    "expected format: registry://templates/source/publisher/name[@version]",
+			name:		"too many path segments",
+			url:		"registry://templates/test-source/test-publisher/test-template/extra@1.0.0",
+			expectError:	true,
+			errorMsg:	"expected format: registry://templates/source/publisher/name[@version]",
 		},
 		{
-			name:        "too few path segments",
-			url:         "registry://templates/test-template@1.0.0",
-			expectError: true,
-			errorMsg:    "expected format: registry://templates/source/publisher/name[@version]",
+			name:		"too few path segments",
+			url:		"registry://templates/test-template@1.0.0",
+			expectError:	true,
+			errorMsg:	"expected format: registry://templates/source/publisher/name[@version]",
 		},
 		{
-			name:        "multiple @ symbols",
-			url:         "registry://templates/test-source/test-publisher/test-template@1.0.0@extra",
-			expectError: true,
-			errorMsg:    "expected format: registry://templates/source/publisher/name[@version]",
+			name:		"multiple @ symbols",
+			url:		"registry://templates/test-source/test-publisher/test-template@1.0.0@extra",
+			expectError:	true,
+			errorMsg:	"expected format: registry://templates/source/publisher/name[@version]",
 		},
 	}
 
@@ -211,11 +211,11 @@ func TestURLInfoString(t *testing.T) {
 		t.Parallel()
 
 		info := &URLInfo{
-			resourceType: "templates",
-			source:       "test-source",
-			publisher:    "test-publisher",
-			name:         "test-template",
-			version:      mustParseVersion("1.0.0"),
+			resourceType:	"templates",
+			source:		"test-source",
+			publisher:	"test-publisher",
+			name:		"test-template",
+			version:	mustParseVersion("1.0.0"),
 		}
 
 		expected := "registry://templates/test-source/test-publisher/test-template@1.0.0"
@@ -226,11 +226,11 @@ func TestURLInfoString(t *testing.T) {
 		t.Parallel()
 
 		info := &URLInfo{
-			resourceType: "templates",
-			source:       "test-source",
-			publisher:    "test-publisher",
-			name:         "test-template",
-			version:      nil,
+			resourceType:	"templates",
+			source:		"test-source",
+			publisher:	"test-publisher",
+			name:		"test-template",
+			version:	nil,
 		}
 
 		expected := "registry://templates/test-source/test-publisher/test-template"
@@ -284,11 +284,11 @@ func TestRegistryURL_RoundTrip(t *testing.T) {
 		t.Parallel()
 
 		info := &URLInfo{
-			resourceType: "templates",
-			source:       "test-source",
-			publisher:    "test-publisher",
-			name:         "test/template",
-			version:      nil,
+			resourceType:	"templates",
+			source:		"test-source",
+			publisher:	"test-publisher",
+			name:		"test/template",
+			version:	nil,
 		}
 
 		result := info.String()
@@ -299,11 +299,11 @@ func TestRegistryURL_RoundTrip(t *testing.T) {
 		t.Parallel()
 
 		info := &URLInfo{
-			resourceType: "templates",
-			source:       "test-source",
-			publisher:    "test-publisher",
-			name:         "test/template",
-			version:      nil,
+			resourceType:	"templates",
+			source:		"test-source",
+			publisher:	"test-publisher",
+			name:		"test/template",
+			version:	nil,
 		}
 
 		urlString := info.String()
@@ -323,134 +323,134 @@ func TestParsePartialRegistryURL(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name        string
-		registryURL string
-		expected    *URLInfo
-		expectError bool
-		errorMsg    string
+		name		string
+		registryURL	string
+		expected	*URLInfo
+		expectError	bool
+		errorMsg	string
 	}{
 		{
-			name:        "bare template name",
-			registryURL: "csharp-documented",
+			name:		"bare template name",
+			registryURL:	"csharp-documented",
 			expected: &URLInfo{
-				resourceType: "templates",
-				source:       "",
-				publisher:    "",
-				name:         "csharp-documented",
-				version:      nil,
+				resourceType:	"templates",
+				source:		"",
+				publisher:	"",
+				name:		"csharp-documented",
+				version:	nil,
 			},
 		},
 		{
-			name:        "bare template name with version",
-			registryURL: "csharp-documented@1.1.0",
+			name:		"bare template name with version",
+			registryURL:	"csharp-documented@1.1.0",
 			expected: &URLInfo{
-				resourceType: "templates",
-				source:       "",
-				publisher:    "",
-				name:         "csharp-documented",
-				version:      mustParseVersion("1.1.0"),
+				resourceType:	"templates",
+				source:		"",
+				publisher:	"",
+				name:		"csharp-documented",
+				version:	mustParseVersion("1.1.0"),
 			},
 		},
 		{
-			name:        "bare template name with latest version",
-			registryURL: "csharp-documented@latest",
+			name:		"bare template name with latest version",
+			registryURL:	"csharp-documented@latest",
 			expected: &URLInfo{
-				resourceType: "templates",
-				source:       "",
-				publisher:    "",
-				name:         "csharp-documented",
-				version:      nil, // latest becomes nil
+				resourceType:	"templates",
+				source:		"",
+				publisher:	"",
+				name:		"csharp-documented",
+				version:	nil,	// latest becomes nil
 			},
 		},
 		{
-			name:        "publisher/name format",
-			registryURL: "pulumi_local/csharp-documented",
+			name:		"publisher/name format",
+			registryURL:	"pulumi_local/csharp-documented",
 			expected: &URLInfo{
-				resourceType: "templates",
-				source:       "",
-				publisher:    "pulumi_local",
-				name:         "csharp-documented",
-				version:      nil,
+				resourceType:	"templates",
+				source:		"",
+				publisher:	"pulumi_local",
+				name:		"csharp-documented",
+				version:	nil,
 			},
 		},
 		{
-			name:        "publisher/name with version",
-			registryURL: "pulumi_local/csharp-documented@1.1.0",
+			name:		"publisher/name with version",
+			registryURL:	"pulumi_local/csharp-documented@1.1.0",
 			expected: &URLInfo{
-				resourceType: "templates",
-				source:       "",
-				publisher:    "pulumi_local",
-				name:         "csharp-documented",
-				version:      mustParseVersion("1.1.0"),
+				resourceType:	"templates",
+				source:		"",
+				publisher:	"pulumi_local",
+				name:		"csharp-documented",
+				version:	mustParseVersion("1.1.0"),
 			},
 		},
 		{
-			name:        "source/publisher/name format",
-			registryURL: "private/pulumi_local/csharp-documented",
+			name:		"source/publisher/name format",
+			registryURL:	"private/pulumi_local/csharp-documented",
 			expected: &URLInfo{
-				resourceType: "templates",
-				source:       "private",
-				publisher:    "pulumi_local",
-				name:         "csharp-documented",
-				version:      nil,
+				resourceType:	"templates",
+				source:		"private",
+				publisher:	"pulumi_local",
+				name:		"csharp-documented",
+				version:	nil,
 			},
 		},
 		{
-			name:        "source/publisher/name with version",
-			registryURL: "private/pulumi_local/csharp-documented@1.1.0",
+			name:		"source/publisher/name with version",
+			registryURL:	"private/pulumi_local/csharp-documented@1.1.0",
 			expected: &URLInfo{
-				resourceType: "templates",
-				source:       "private",
-				publisher:    "pulumi_local",
-				name:         "csharp-documented",
-				version:      mustParseVersion("1.1.0"),
+				resourceType:	"templates",
+				source:		"private",
+				publisher:	"pulumi_local",
+				name:		"csharp-documented",
+				version:	mustParseVersion("1.1.0"),
 			},
 		},
 		{
-			name:        "partial URL with double-encoded name",
-			registryURL: "private/pulumi_local/csharp%252Ddocumented",
+			name:		"partial URL with double-encoded name",
+			registryURL:	"private/pulumi_local/csharp%252Ddocumented",
 			expected: &URLInfo{
-				resourceType: "templates",
-				source:       "private",
-				publisher:    "pulumi_local",
-				name:         "csharp-documented",
-				version:      nil,
+				resourceType:	"templates",
+				source:		"private",
+				publisher:	"pulumi_local",
+				name:		"csharp-documented",
+				version:	nil,
 			},
 		},
 		{
-			name:        "bare template name with encoding",
-			registryURL: "test%252Ftemplate",
+			name:		"bare template name with encoding",
+			registryURL:	"test%252Ftemplate",
 			expected: &URLInfo{
-				resourceType: "templates",
-				source:       "",
-				publisher:    "",
-				name:         "test/template",
-				version:      nil,
+				resourceType:	"templates",
+				source:		"",
+				publisher:	"",
+				name:		"test/template",
+				version:	nil,
 			},
 		},
 		{
-			name:        "too many path segments",
-			registryURL: "a/b/c/d/e",
-			expectError: true,
-			errorMsg:    "too many path segments",
+			name:		"too many path segments",
+			registryURL:	"a/b/c/d/e",
+			expectError:	true,
+			errorMsg:	"too many path segments",
 		},
 		{
-			name:        "empty",
-			registryURL: "",
-			expectError: true,
-			errorMsg:    "missing name",
+			name:		"empty",
+			registryURL:	"",
+			expectError:	true,
+			errorMsg:	"missing name",
 		},
 		{
-			name:        "empty version",
-			registryURL: "template@",
-			expectError: true,
-			errorMsg:    "missing version after @",
+			name:		"empty version",
+			registryURL:	"template@",
+			expectError:	true,
+			errorMsg:	"missing version after @",
 		},
 		{
-			name:        "empty name with version",
-			registryURL: "@1.0.0",
-			expectError: true,
-			errorMsg:    "missing name",
+			name:		"empty name with version",
+			registryURL:	"@1.0.0",
+			expectError:	true,
+			errorMsg:	"missing name",
 		},
 	}
 
@@ -488,8 +488,8 @@ func TestIsRegistryURL(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		input    string
-		expected bool
+		input		string
+		expected	bool
 	}{
 		{"registry://templates/private/pulumi_local/template@latest", true},
 		{"registry://templates/private/pulumi_local/template@1.0.0", true},

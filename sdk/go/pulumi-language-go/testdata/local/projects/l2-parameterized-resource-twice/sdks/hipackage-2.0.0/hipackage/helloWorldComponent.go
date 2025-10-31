@@ -14,7 +14,7 @@ import (
 type HelloWorldComponent struct {
 	pulumi.ResourceState
 
-	ParameterValue pulumi.StringOutput `pulumi:"parameterValue"`
+	ParameterValue	pulumi.StringOutput	`pulumi:"parameterValue"`
 }
 
 // NewHelloWorldComponent registers a new resource with the given unique name, arguments, and options.

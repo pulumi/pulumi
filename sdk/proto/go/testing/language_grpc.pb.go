@@ -33,9 +33,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	LanguageTest_GetLanguageTests_FullMethodName     = "/pulumirpc.testing.LanguageTest/GetLanguageTests"
-	LanguageTest_PrepareLanguageTests_FullMethodName = "/pulumirpc.testing.LanguageTest/PrepareLanguageTests"
-	LanguageTest_RunLanguageTest_FullMethodName      = "/pulumirpc.testing.LanguageTest/RunLanguageTest"
+	LanguageTest_GetLanguageTests_FullMethodName		= "/pulumirpc.testing.LanguageTest/GetLanguageTests"
+	LanguageTest_PrepareLanguageTests_FullMethodName	= "/pulumirpc.testing.LanguageTest/PrepareLanguageTests"
+	LanguageTest_RunLanguageTest_FullMethodName		= "/pulumirpc.testing.LanguageTest/RunLanguageTest"
 )
 
 // LanguageTestClient is the client API for LanguageTest service.
@@ -125,8 +125,8 @@ func (UnimplementedLanguageTestServer) PrepareLanguageTests(context.Context, *Pr
 func (UnimplementedLanguageTestServer) RunLanguageTest(context.Context, *RunLanguageTestRequest) (*RunLanguageTestResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RunLanguageTest not implemented")
 }
-func (UnimplementedLanguageTestServer) mustEmbedUnimplementedLanguageTestServer() {}
-func (UnimplementedLanguageTestServer) testEmbeddedByValue()                      {}
+func (UnimplementedLanguageTestServer) mustEmbedUnimplementedLanguageTestServer()	{}
+func (UnimplementedLanguageTestServer) testEmbeddedByValue()				{}
 
 // UnsafeLanguageTestServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to LanguageTestServer will
@@ -155,8 +155,8 @@ func _LanguageTest_GetLanguageTests_Handler(srv interface{}, ctx context.Context
 		return srv.(LanguageTestServer).GetLanguageTests(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LanguageTest_GetLanguageTests_FullMethodName,
+		Server:		srv,
+		FullMethod:	LanguageTest_GetLanguageTests_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LanguageTestServer).GetLanguageTests(ctx, req.(*GetLanguageTestsRequest))
@@ -173,8 +173,8 @@ func _LanguageTest_PrepareLanguageTests_Handler(srv interface{}, ctx context.Con
 		return srv.(LanguageTestServer).PrepareLanguageTests(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LanguageTest_PrepareLanguageTests_FullMethodName,
+		Server:		srv,
+		FullMethod:	LanguageTest_PrepareLanguageTests_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LanguageTestServer).PrepareLanguageTests(ctx, req.(*PrepareLanguageTestsRequest))
@@ -191,8 +191,8 @@ func _LanguageTest_RunLanguageTest_Handler(srv interface{}, ctx context.Context,
 		return srv.(LanguageTestServer).RunLanguageTest(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LanguageTest_RunLanguageTest_FullMethodName,
+		Server:		srv,
+		FullMethod:	LanguageTest_RunLanguageTest_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LanguageTestServer).RunLanguageTest(ctx, req.(*RunLanguageTestRequest))
@@ -204,22 +204,22 @@ func _LanguageTest_RunLanguageTest_Handler(srv interface{}, ctx context.Context,
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var LanguageTest_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "pulumirpc.testing.LanguageTest",
-	HandlerType: (*LanguageTestServer)(nil),
+	ServiceName:	"pulumirpc.testing.LanguageTest",
+	HandlerType:	(*LanguageTestServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GetLanguageTests",
-			Handler:    _LanguageTest_GetLanguageTests_Handler,
+			MethodName:	"GetLanguageTests",
+			Handler:	_LanguageTest_GetLanguageTests_Handler,
 		},
 		{
-			MethodName: "PrepareLanguageTests",
-			Handler:    _LanguageTest_PrepareLanguageTests_Handler,
+			MethodName:	"PrepareLanguageTests",
+			Handler:	_LanguageTest_PrepareLanguageTests_Handler,
 		},
 		{
-			MethodName: "RunLanguageTest",
-			Handler:    _LanguageTest_RunLanguageTest_Handler,
+			MethodName:	"RunLanguageTest",
+			Handler:	_LanguageTest_RunLanguageTest_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "pulumi/testing/language.proto",
+	Streams:	[]grpc.StreamDesc{},
+	Metadata:	"pulumi/testing/language.proto",
 }

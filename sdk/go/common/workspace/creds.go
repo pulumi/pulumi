@@ -109,33 +109,33 @@ func StoreAccount(key string, account Account, current bool) error {
 // Account holds the information associated with a Pulumi account.
 type Account struct {
 	// The access token for this account.
-	AccessToken string `json:"accessToken,omitempty"`
+	AccessToken	string	`json:"accessToken,omitempty"`
 	// The username for this account.
-	Username string `json:"username,omitempty"`
+	Username	string	`json:"username,omitempty"`
 	// The organizations for this account.
-	Organizations []string `json:"organizations,omitempty"`
+	Organizations	[]string	`json:"organizations,omitempty"`
 	// The last time this token was validated.
-	LastValidatedAt time.Time `json:"lastValidatedAt,omitempty"`
+	LastValidatedAt	time.Time	`json:"lastValidatedAt,omitempty"`
 	// Allow insecure server connections when using SSL.
-	Insecure bool `json:"insecure,omitempty"`
+	Insecure	bool	`json:"insecure,omitempty"`
 	// Information about the token used to authenticate.
-	TokenInformation *TokenInformation `json:"tokenInformation,omitempty"`
+	TokenInformation	*TokenInformation	`json:"tokenInformation,omitempty"`
 }
 
 // Information about the token that was used to authenticate the current user. One (or none) of Team or Organization
 // will be set, but not both.
 type TokenInformation struct {
-	Name         string `json:"name"`                   // The name of the token.
-	Organization string `json:"organization,omitempty"` // If this was an organization token, the organization it was for.
-	Team         string `json:"team,omitempty"`         // If this was a team token, the team it was for.
+	Name		string	`json:"name"`			// The name of the token.
+	Organization	string	`json:"organization,omitempty"`	// If this was an organization token, the organization it was for.
+	Team		string	`json:"team,omitempty"`		// If this was a team token, the team it was for.
 }
 
 // Credentials hold the information necessary for authenticating Pulumi Cloud API requests.  It contains
 // a map from the cloud API URL to the associated access token.
 type Credentials struct {
-	Current      string             `json:"current,omitempty"`      // the currently selected key.
-	AccessTokens map[string]string  `json:"accessTokens,omitempty"` // a map of arbitrary key strings to tokens.
-	Accounts     map[string]Account `json:"accounts,omitempty"`     // a map of arbitrary keys to account info.
+	Current		string			`json:"current,omitempty"`	// the currently selected key.
+	AccessTokens	map[string]string	`json:"accessTokens,omitempty"`	// a map of arbitrary key strings to tokens.
+	Accounts	map[string]Account	`json:"accounts,omitempty"`	// a map of arbitrary keys to account info.
 }
 
 // getCredsFilePath returns the path to the Pulumi credentials file on disk, regardless of
@@ -223,11 +223,11 @@ func StoreCredentials(creds Credentials) error {
 }
 
 type BackendConfig struct {
-	DefaultOrg string `json:"defaultOrg,omitempty"` // The default org for this backend config.
+	DefaultOrg string `json:"defaultOrg,omitempty"`	// The default org for this backend config.
 }
 
 type PulumiConfig struct {
-	BackendConfig map[string]BackendConfig `json:"backends,omitempty"` // a map of arbitrary backends configs.
+	BackendConfig map[string]BackendConfig `json:"backends,omitempty"`	// a map of arbitrary backends configs.
 }
 
 func getConfigFilePath() (string, error) {

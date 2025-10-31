@@ -26,11 +26,11 @@ import (
 // level constructs prefixed by "property.", since most people debugging with property
 // values will not be authors of the property package.
 var (
-	_ fmt.GoStringer = Value{}
-	_ fmt.GoStringer = Map{}
-	_ fmt.GoStringer = Array{}
-	_ fmt.GoStringer = Null
-	_ fmt.GoStringer = Computed
+	_	fmt.GoStringer	= Value{}
+	_	fmt.GoStringer	= Map{}
+	_	fmt.GoStringer	= Array{}
+	_	fmt.GoStringer	= Null
+	_	fmt.GoStringer	= Computed
 )
 
 func (v Value) GoString() string {
@@ -98,6 +98,6 @@ func (a Map) GoString() string {
 	return fmt.Sprintf("property.NewMap(%#v)", a.m)
 }
 
-func (null) GoString() string { return "property.Null" }
+func (null) GoString() string	{ return "property.Null" }
 
-func (computed) GoString() string { return "property.Computed" }
+func (computed) GoString() string	{ return "property.Computed" }

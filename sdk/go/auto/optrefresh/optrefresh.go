@@ -175,45 +175,45 @@ type Option interface {
 type Options struct {
 	// Parallel is the number of resource operations to run in parallel at once
 	// (1 for no parallelism). Defaults to unbounded. (default 2147483647)
-	Parallel int
+	Parallel	int
 	// Message (optional) to associate with the refresh operation
-	Message string
+	Message	string
 	// Return an error if any changes occur during this preview
-	ExpectNoChanges bool
+	ExpectNoChanges	bool
 	// Clear all pending creates, dropping them from the state
-	ClearPendingCreates bool
+	ClearPendingCreates	bool
 	// Specify an exclusive of resource URNs to refresh
-	Target []string
+	Target	[]string
 	// Allows updating of dependent targets discovered but not specified in the Target list
-	TargetDependents bool
+	TargetDependents	bool
 	// Specify an exclusive of resource URNs to ignore
-	Exclude []string
+	Exclude	[]string
 	// Allows ignoring of dependent targets discovered but not specified in the Exclude list
-	ExcludeDependents bool
+	ExcludeDependents	bool
 	// ProgressStreams allows specifying one or more io.Writers to redirect incremental refresh stdout
-	ProgressStreams []io.Writer
+	ProgressStreams	[]io.Writer
 	// ErrorProgressStreams allows specifying one or more io.Writers to redirect incremental refresh stderr
-	ErrorProgressStreams []io.Writer
+	ErrorProgressStreams	[]io.Writer
 	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
-	EventStreams []chan<- events.EngineEvent
+	EventStreams	[]chan<- events.EngineEvent
 	// DebugLogOpts specifies additional settings for debug logging
-	DebugLogOpts debug.LoggingOptions
+	DebugLogOpts	debug.LoggingOptions
 	// UserAgent specifies the agent responsible for the update, stored in backends as "environment.exec.agent"
-	UserAgent string
+	UserAgent	string
 	// Colorize output. Choices are: always, never, raw, auto (default "auto")
-	Color string
+	Color	string
 	// Show config secrets when they appear.
-	ShowSecrets *bool
+	ShowSecrets	*bool
 	// Suppress display of periodic progress dots
-	SuppressProgress bool
+	SuppressProgress	bool
 	// Suppress display of stack outputs (in case they contain sensitive values)
-	SuppressOutputs bool
+	SuppressOutputs	bool
 	// Run using the configuration values in the specified file rather than detecting the file name
-	ConfigFile string
+	ConfigFile	string
 	// When set, display operation as a rich diff showing the overall change
-	Diff bool
+	Diff	bool
 	// When set to true, run the program in the workspace to perform the refresh.
-	RunProgram *bool
+	RunProgram	*bool
 }
 
 type optionFunc func(*Options)

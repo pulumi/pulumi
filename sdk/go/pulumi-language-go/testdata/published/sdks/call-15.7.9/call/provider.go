@@ -16,7 +16,7 @@ import (
 type Provider struct {
 	pulumi.ProviderResourceState
 
-	Value pulumi.StringOutput `pulumi:"value"`
+	Value	pulumi.StringOutput	`pulumi:"value"`
 }
 
 // NewProvider registers a new resource with the given unique name, arguments, and options.

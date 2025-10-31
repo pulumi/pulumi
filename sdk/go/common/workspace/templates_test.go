@@ -30,60 +30,60 @@ import (
 // the compile-time defaults for template repository URLs.
 func TestGetTemplateGitRepository(t *testing.T) {
 	tests := []struct {
-		name            string
-		templateKind    TemplateKind
-		envVar          string
-		envValue        string
-		setEmptyString  bool
-		expectedDefault string
+		name		string
+		templateKind	TemplateKind
+		envVar		string
+		envValue	string
+		setEmptyString	bool
+		expectedDefault	string
 	}{
 		{
-			name:            "PulumiProject without env var",
-			templateKind:    TemplateKindPulumiProject,
-			envVar:          env.TemplateGitRepository.Var().Name(),
-			envValue:        "",
-			setEmptyString:  false,
-			expectedDefault: "https://github.com/pulumi/templates.git",
+			name:			"PulumiProject without env var",
+			templateKind:		TemplateKindPulumiProject,
+			envVar:			env.TemplateGitRepository.Var().Name(),
+			envValue:		"",
+			setEmptyString:		false,
+			expectedDefault:	"https://github.com/pulumi/templates.git",
 		},
 		{
-			name:            "PulumiProject with empty string env var",
-			templateKind:    TemplateKindPulumiProject,
-			envVar:          env.TemplateGitRepository.Var().Name(),
-			envValue:        "",
-			setEmptyString:  true,
-			expectedDefault: "https://github.com/pulumi/templates.git",
+			name:			"PulumiProject with empty string env var",
+			templateKind:		TemplateKindPulumiProject,
+			envVar:			env.TemplateGitRepository.Var().Name(),
+			envValue:		"",
+			setEmptyString:		true,
+			expectedDefault:	"https://github.com/pulumi/templates.git",
 		},
 		{
-			name:            "PulumiProject with env var",
-			templateKind:    TemplateKindPulumiProject,
-			envVar:          env.TemplateGitRepository.Var().Name(),
-			envValue:        "https://github.com/custom/templates.git",
-			setEmptyString:  false,
-			expectedDefault: "https://github.com/custom/templates.git",
+			name:			"PulumiProject with env var",
+			templateKind:		TemplateKindPulumiProject,
+			envVar:			env.TemplateGitRepository.Var().Name(),
+			envValue:		"https://github.com/custom/templates.git",
+			setEmptyString:		false,
+			expectedDefault:	"https://github.com/custom/templates.git",
 		},
 		{
-			name:            "PolicyPack without env var",
-			templateKind:    TemplateKindPolicyPack,
-			envVar:          env.PolicyTemplateGitRepository.Var().Name(),
-			envValue:        "",
-			setEmptyString:  false,
-			expectedDefault: "https://github.com/pulumi/templates-policy.git",
+			name:			"PolicyPack without env var",
+			templateKind:		TemplateKindPolicyPack,
+			envVar:			env.PolicyTemplateGitRepository.Var().Name(),
+			envValue:		"",
+			setEmptyString:		false,
+			expectedDefault:	"https://github.com/pulumi/templates-policy.git",
 		},
 		{
-			name:            "PolicyPack with empty string env var",
-			templateKind:    TemplateKindPolicyPack,
-			envVar:          env.PolicyTemplateGitRepository.Var().Name(),
-			envValue:        "",
-			setEmptyString:  true,
-			expectedDefault: "https://github.com/pulumi/templates-policy.git",
+			name:			"PolicyPack with empty string env var",
+			templateKind:		TemplateKindPolicyPack,
+			envVar:			env.PolicyTemplateGitRepository.Var().Name(),
+			envValue:		"",
+			setEmptyString:		true,
+			expectedDefault:	"https://github.com/pulumi/templates-policy.git",
 		},
 		{
-			name:            "PolicyPack with env var",
-			templateKind:    TemplateKindPolicyPack,
-			envVar:          env.PolicyTemplateGitRepository.Var().Name(),
-			envValue:        "https://github.com/custom/templates-policy.git",
-			setEmptyString:  false,
-			expectedDefault: "https://github.com/custom/templates-policy.git",
+			name:			"PolicyPack with env var",
+			templateKind:		TemplateKindPolicyPack,
+			envVar:			env.PolicyTemplateGitRepository.Var().Name(),
+			envValue:		"https://github.com/custom/templates-policy.git",
+			setEmptyString:		false,
+			expectedDefault:	"https://github.com/custom/templates-policy.git",
 		},
 	}
 
@@ -104,60 +104,60 @@ func TestGetTemplateGitRepository(t *testing.T) {
 // the compile-time defaults for template branch names.
 func TestGetTemplateBranch(t *testing.T) {
 	tests := []struct {
-		name            string
-		templateKind    TemplateKind
-		envVar          string
-		envValue        string
-		setEmptyString  bool
-		expectedDefault string
+		name		string
+		templateKind	TemplateKind
+		envVar		string
+		envValue	string
+		setEmptyString	bool
+		expectedDefault	string
 	}{
 		{
-			name:            "PulumiProject without env var",
-			templateKind:    TemplateKindPulumiProject,
-			envVar:          env.TemplateBranch.Var().Name(),
-			envValue:        "",
-			setEmptyString:  false,
-			expectedDefault: "master",
+			name:			"PulumiProject without env var",
+			templateKind:		TemplateKindPulumiProject,
+			envVar:			env.TemplateBranch.Var().Name(),
+			envValue:		"",
+			setEmptyString:		false,
+			expectedDefault:	"master",
 		},
 		{
-			name:            "PulumiProject with empty string env var",
-			templateKind:    TemplateKindPulumiProject,
-			envVar:          env.TemplateBranch.Var().Name(),
-			envValue:        "",
-			setEmptyString:  true,
-			expectedDefault: "master",
+			name:			"PulumiProject with empty string env var",
+			templateKind:		TemplateKindPulumiProject,
+			envVar:			env.TemplateBranch.Var().Name(),
+			envValue:		"",
+			setEmptyString:		true,
+			expectedDefault:	"master",
 		},
 		{
-			name:            "PulumiProject with env var",
-			templateKind:    TemplateKindPulumiProject,
-			envVar:          env.TemplateBranch.Var().Name(),
-			envValue:        "custom-branch",
-			setEmptyString:  false,
-			expectedDefault: "custom-branch",
+			name:			"PulumiProject with env var",
+			templateKind:		TemplateKindPulumiProject,
+			envVar:			env.TemplateBranch.Var().Name(),
+			envValue:		"custom-branch",
+			setEmptyString:		false,
+			expectedDefault:	"custom-branch",
 		},
 		{
-			name:            "PolicyPack without env var",
-			templateKind:    TemplateKindPolicyPack,
-			envVar:          env.PolicyTemplateBranch.Var().Name(),
-			envValue:        "",
-			setEmptyString:  false,
-			expectedDefault: "master",
+			name:			"PolicyPack without env var",
+			templateKind:		TemplateKindPolicyPack,
+			envVar:			env.PolicyTemplateBranch.Var().Name(),
+			envValue:		"",
+			setEmptyString:		false,
+			expectedDefault:	"master",
 		},
 		{
-			name:            "PolicyPack with empty string env var",
-			templateKind:    TemplateKindPolicyPack,
-			envVar:          env.PolicyTemplateBranch.Var().Name(),
-			envValue:        "",
-			setEmptyString:  true,
-			expectedDefault: "master",
+			name:			"PolicyPack with empty string env var",
+			templateKind:		TemplateKindPolicyPack,
+			envVar:			env.PolicyTemplateBranch.Var().Name(),
+			envValue:		"",
+			setEmptyString:		true,
+			expectedDefault:	"master",
 		},
 		{
-			name:            "PolicyPack with env var",
-			templateKind:    TemplateKindPolicyPack,
-			envVar:          env.PolicyTemplateBranch.Var().Name(),
-			envValue:        "custom-branch",
-			setEmptyString:  false,
-			expectedDefault: "custom-branch",
+			name:			"PolicyPack with env var",
+			templateKind:		TemplateKindPolicyPack,
+			envVar:			env.PolicyTemplateBranch.Var().Name(),
+			envValue:		"custom-branch",
+			setEmptyString:		false,
+			expectedDefault:	"custom-branch",
 		},
 	}
 
@@ -177,16 +177,16 @@ func TestGetTemplateBranch(t *testing.T) {
 //nolint:paralleltest // uses shared state in pulumi dir
 func TestRetrieveNonExistingTemplate(t *testing.T) {
 	tests := []struct {
-		testName     string
-		templateKind TemplateKind
+		testName	string
+		templateKind	TemplateKind
 	}{
 		{
-			testName:     "TemplateKindPulumiProject",
-			templateKind: TemplateKindPulumiProject,
+			testName:	"TemplateKindPulumiProject",
+			templateKind:	TemplateKindPulumiProject,
 		},
 		{
-			testName:     "TemplateKindPolicyPack",
-			templateKind: TemplateKindPolicyPack,
+			testName:	"TemplateKindPolicyPack",
+			templateKind:	TemplateKindPolicyPack,
 		},
 	}
 
@@ -205,11 +205,11 @@ func TestRetrieveNonExistingTemplate(t *testing.T) {
 //nolint:paralleltest // uses shared state in pulumi dir
 func TestRetrieveNonExistingTemplateSimilar(t *testing.T) {
 	tests := []struct {
-		templateName string
-		expected     string
+		templateName	string
+		expected	string
 	}{
 		{
-			templateName: "aws-goo",
+			templateName:	"aws-goo",
 			expected: `template 'aws-goo' not found
 
 Did you mean this?
@@ -217,7 +217,7 @@ Did you mean this?
 `,
 		},
 		{
-			templateName: "aws-xsharp",
+			templateName:	"aws-xsharp",
 			expected: `template 'aws-xsharp' not found
 
 Did you mean this?
@@ -239,19 +239,19 @@ Did you mean this?
 //nolint:paralleltest // uses shared state in pulumi dir
 func TestRetrieveStandardTemplate(t *testing.T) {
 	tests := []struct {
-		testName     string
-		templateKind TemplateKind
-		templateName string
+		testName	string
+		templateKind	TemplateKind
+		templateName	string
 	}{
 		{
-			testName:     "TemplateKindPulumiProject",
-			templateKind: TemplateKindPulumiProject,
-			templateName: "typescript",
+			testName:	"TemplateKindPulumiProject",
+			templateKind:	TemplateKindPulumiProject,
+			templateName:	"typescript",
 		},
 		{
-			testName:     "TemplateKindPolicyPack",
-			templateKind: TemplateKindPolicyPack,
-			templateName: "aws-typescript",
+			testName:	"TemplateKindPolicyPack",
+			templateKind:	TemplateKindPolicyPack,
+			templateName:	"aws-typescript",
 		},
 	}
 
@@ -276,25 +276,25 @@ func TestRetrieveStandardTemplate(t *testing.T) {
 //nolint:paralleltest // uses shared state in pulumi dir
 func TestRetrieveHttpsTemplate(t *testing.T) {
 	tests := []struct {
-		testName        string
-		templateKind    TemplateKind
-		templateURL     string
-		yamlFile        string
-		expectedSubPath []string
+		testName	string
+		templateKind	TemplateKind
+		templateURL	string
+		yamlFile	string
+		expectedSubPath	[]string
 	}{
 		{
-			testName:        "TemplateKindPulumiProject",
-			templateKind:    TemplateKindPulumiProject,
-			templateURL:     "https://github.com/pulumi/pulumi/tree/test-examples/examples/minimal",
-			yamlFile:        "Pulumi.yaml",
-			expectedSubPath: []string{"examples", "minimal"},
+			testName:		"TemplateKindPulumiProject",
+			templateKind:		TemplateKindPulumiProject,
+			templateURL:		"https://github.com/pulumi/pulumi/tree/test-examples/examples/minimal",
+			yamlFile:		"Pulumi.yaml",
+			expectedSubPath:	[]string{"examples", "minimal"},
 		},
 		{
-			testName:        "TemplateKindPolicyPack",
-			templateKind:    TemplateKindPolicyPack,
-			templateURL:     "https://github.com/pulumi/pulumi/tree/test-examples/examples/policy-packs/aws-ts-advanced",
-			yamlFile:        "PulumiPolicy.yaml",
-			expectedSubPath: []string{"examples", "policy-packs", "aws-ts-advanced"},
+			testName:		"TemplateKindPolicyPack",
+			templateKind:		TemplateKindPolicyPack,
+			templateURL:		"https://github.com/pulumi/pulumi/tree/test-examples/examples/policy-packs/aws-ts-advanced",
+			yamlFile:		"PulumiPolicy.yaml",
+			expectedSubPath:	[]string{"examples", "policy-packs", "aws-ts-advanced"},
 		},
 	}
 
@@ -331,19 +331,19 @@ func TestRetrieveHttpsTemplateOffline(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		testName     string
-		templateKind TemplateKind
-		templateURL  string
+		testName	string
+		templateKind	TemplateKind
+		templateURL	string
 	}{
 		{
-			testName:     "TemplateKindPulumiProject",
-			templateKind: TemplateKindPulumiProject,
-			templateURL:  "https://github.com/pulumi/pulumi-aws/tree/master/examples/minimal",
+			testName:	"TemplateKindPulumiProject",
+			templateKind:	TemplateKindPulumiProject,
+			templateURL:	"https://github.com/pulumi/pulumi-aws/tree/master/examples/minimal",
 		},
 		{
-			testName:     "TemplateKindPolicyPack",
-			templateKind: TemplateKindPolicyPack,
-			templateURL:  "https://github.com/pulumi/examples/tree/master/policy-packs/aws-ts-advanced",
+			testName:	"TemplateKindPolicyPack",
+			templateKind:	TemplateKindPolicyPack,
+			templateURL:	"https://github.com/pulumi/examples/tree/master/policy-packs/aws-ts-advanced",
 		},
 	}
 
@@ -360,16 +360,16 @@ func TestRetrieveHttpsTemplateOffline(t *testing.T) {
 //nolint:paralleltest // uses shared state in pulumi dir
 func TestRetrieveFileTemplate(t *testing.T) {
 	tests := []struct {
-		testName     string
-		templateKind TemplateKind
+		testName	string
+		templateKind	TemplateKind
 	}{
 		{
-			testName:     "TemplateKindPulumiProject",
-			templateKind: TemplateKindPulumiProject,
+			testName:	"TemplateKindPulumiProject",
+			templateKind:	TemplateKindPulumiProject,
 		},
 		{
-			testName:     "TemplateKindPolicyPack",
-			templateKind: TemplateKindPolicyPack,
+			testName:	"TemplateKindPolicyPack",
+			templateKind:	TemplateKindPolicyPack,
 		},
 	}
 
@@ -390,18 +390,18 @@ func TestRetrieveFileTemplate(t *testing.T) {
 func TestCopyTemplateFiles(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		testName    string
-		directories []string
-		files       []string
+		testName	string
+		directories	[]string
+		files		[]string
 	}{
 		{
-			testName: "FlatProject",
-			files:    []string{"main.go", "Pulumi.yaml", "Pulumi.dev.yaml"},
+			testName:	"FlatProject",
+			files:		[]string{"main.go", "Pulumi.yaml", "Pulumi.dev.yaml"},
 		},
 		{
-			testName:    "NestedProject",
-			directories: []string{"src"},
-			files:       []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"},
+			testName:	"NestedProject",
+			directories:	[]string{"src"},
+			files:		[]string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"},
 		},
 	}
 

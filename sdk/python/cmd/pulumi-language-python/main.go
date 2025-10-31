@@ -66,40 +66,40 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
-	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	hclsyntax "github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/python"
+	codegen "github.com/pulumi/pulumi/sdk/v3/pkg/codegen/python"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 )
 
 const (
 	// By convention, the executor is the name of the current program (pulumi-language-python) plus this suffix.
-	pythonDefaultExec = "pulumi-language-python-exec" // the exec shim for Pulumi to run Python programs.
+	pythonDefaultExec	= "pulumi-language-python-exec"	// the exec shim for Pulumi to run Python programs.
 
 	// The runtime expects the config object to be saved to this environment variable.
-	pulumiConfigVar = "PULUMI_CONFIG"
+	pulumiConfigVar	= "PULUMI_CONFIG"
 
 	// The runtime expects the array of secret config keys to be saved to this environment variable.
 	//nolint:gosec
-	pulumiConfigSecretKeysVar = "PULUMI_CONFIG_SECRET_KEYS"
+	pulumiConfigSecretKeysVar	= "PULUMI_CONFIG_SECRET_KEYS"
 
 	// A exit-code we recognize when the python process exits.  If we see this error, there's no
 	// need for us to print any additional error messages since the user already got a a good
 	// one they can handle.
-	pythonProcessExitedAfterShowingUserActionableMessage = 32
+	pythonProcessExitedAfterShowingUserActionableMessage	= 32
 
 	// The preferred debug port.  Chosen arbitrarily.
-	preferredDebugPort = 58791
+	preferredDebugPort	= 58791
 )
 
 var (
 	// The minimum python version that Pulumi supports
-	minimumSupportedPythonVersion = semver.MustParse("3.7.0")
+	minimumSupportedPythonVersion	= semver.MustParse("3.7.0")
 	// Any version less then `eolPythonVersion` is EOL.
-	eolPythonVersion = semver.MustParse("3.7.0")
+	eolPythonVersion	= semver.MustParse("3.7.0")
 	// An url to the issue discussing EOL.
-	eolPythonVersionIssue = "https://github.com/pulumi/pulumi/issues/8131"
+	eolPythonVersionIssue	= "https://github.com/pulumi/pulumi/issues/8131"
 )
 
 // Launches the language host RPC endpoint, which in turn fires up an RPC server implementing the
@@ -163,7 +163,7 @@ func main() {
 	cancelChannel := make(chan bool)
 	go func() {
 		<-ctx.Done()
-		cancel() // deregister signal handler
+		cancel()	// deregister signal handler
 		close(cancelChannel)
 	}()
 
@@ -176,13 +176,13 @@ func main() {
 
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: cancelChannel,
+		Cancel:	cancelChannel,
 		Init: func(srv *grpc.Server) error {
 			host := newLanguageHost(pythonExec, engineAddress, tracing, "", "")
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options:	rpcutil.OpenTracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		cmdutil.Exit(fmt.Errorf("could not start language host RPC server: %w", err))
@@ -202,20 +202,20 @@ func main() {
 type pythonLanguageHost struct {
 	pulumirpc.UnsafeLanguageRuntimeServer
 
-	exec          string
-	engineAddress string
-	tracing       string
+	exec		string
+	engineAddress	string
+	tracing		string
 
 	// This is used by conformance testing to set the typechecker to use in ProgramGen.
-	typechecker string
+	typechecker	string
 	// This is used by conformance testing to set the toolchain to use in ProgramGen.
-	toolchain string
+	toolchain	string
 }
 
 func parseOptions(root string, programDir string, options map[string]any) (toolchain.PythonOptions, error) {
 	pythonOptions := toolchain.PythonOptions{
-		Root:       root,
-		ProgramDir: programDir,
+		Root:		root,
+		ProgramDir:	programDir,
 	}
 
 	if virtualenv, ok := options["virtualenv"]; ok {
@@ -264,11 +264,11 @@ func parseOptions(root string, programDir string, options map[string]any) (toolc
 func newLanguageHost(exec, engineAddress, tracing, typechecker, toolchain string,
 ) pulumirpc.LanguageRuntimeServer {
 	return &pythonLanguageHost{
-		exec:          exec,
-		engineAddress: engineAddress,
-		tracing:       tracing,
-		typechecker:   typechecker,
-		toolchain:     toolchain,
+		exec:		exec,
+		engineAddress:	engineAddress,
+		tracing:	tracing,
+		typechecker:	typechecker,
+		toolchain:	toolchain,
 	}
 }
 
@@ -307,7 +307,7 @@ func (host *pythonLanguageHost) GetRequiredPackages(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	if err := tc.EnsureVenv(ctx, req.Info.ProgramDirectory, false, /*useLanguageVersionTools */
+	if err := tc.EnsureVenv(ctx, req.Info.ProgramDirectory, false,	/*useLanguageVersionTools */
 		true /* showOutput */, stdout, stderr); err != nil {
 		return nil, err
 	}
@@ -358,8 +358,8 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 	// to avoid conflicts with the user's environment.
 	venv := filepath.Join(tmp, ".venv")
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-		Toolchain:  toolchain.Uv,
-		Virtualenv: venv,
+		Toolchain:	toolchain.Uv,
+		Virtualenv:	venv,
 	})
 	useUv := err == nil
 	if useUv {
@@ -383,8 +383,8 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 			return nil, fmt.Errorf("create virtual environment using venv: %w\n%s", err, string(out))
 		}
 		tc, err = toolchain.ResolveToolchain(toolchain.PythonOptions{
-			Toolchain:  toolchain.Pip,
-			Virtualenv: venv,
+			Toolchain:	toolchain.Pip,
+			Virtualenv:	venv,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("setup pip toolchain: %w", err)
@@ -471,40 +471,40 @@ func (host *pythonLanguageHost) createEngineWriters(ctx context.Context) (io.Wri
 	engineClient := pulumirpc.NewEngineClient(conn)
 
 	// Create writers that log the output of the install operation as ephemeral messages.
-	streamID := rand.Int31() //nolint:gosec
+	streamID := rand.Int31()	//nolint:gosec
 
 	infoWriter := &logWriter{
-		ctx:          ctx,
-		engineClient: engineClient,
-		streamID:     streamID,
-		severity:     pulumirpc.LogSeverity_INFO,
+		ctx:		ctx,
+		engineClient:	engineClient,
+		streamID:	streamID,
+		severity:	pulumirpc.LogSeverity_INFO,
 	}
 
 	errorWriter := &logWriter{
-		ctx:          ctx,
-		engineClient: engineClient,
-		streamID:     streamID,
-		severity:     pulumirpc.LogSeverity_ERROR,
+		ctx:		ctx,
+		engineClient:	engineClient,
+		streamID:	streamID,
+		severity:	pulumirpc.LogSeverity_ERROR,
 	}
 
 	return infoWriter, errorWriter, nil
 }
 
 type logWriter struct {
-	ctx          context.Context
-	engineClient pulumirpc.EngineClient
-	streamID     int32
-	severity     pulumirpc.LogSeverity
+	ctx		context.Context
+	engineClient	pulumirpc.EngineClient
+	streamID	int32
+	severity	pulumirpc.LogSeverity
 }
 
 func (w *logWriter) Write(p []byte) (n int, err error) {
 	val := string(p)
 	if _, err := w.engineClient.Log(w.ctx, &pulumirpc.LogRequest{
-		Message:   strings.ToValidUTF8(val, "�"),
-		Urn:       "",
-		Ephemeral: true,
-		StreamId:  w.streamID,
-		Severity:  w.severity,
+		Message:	strings.ToValidUTF8(val, "�"),
+		Urn:		"",
+		Ephemeral:	true,
+		StreamId:	w.streamID,
+		Severity:	w.severity,
 	}); err != nil {
 		return 0, err
 	}
@@ -521,10 +521,10 @@ var packagesWithoutPlugins = map[string]struct{}{
 	// back from `python -m pip list` as the underscore variant due to a
 	// behavior change in setuptools where it keeps underscores rather than
 	// replacing them with hyphens.
-	"pulumi-policy":  {},
-	"pulumi_policy":  {},
-	"pulumi-esc-sdk": {},
-	"pulumi_esc_sdk": {},
+	"pulumi-policy":	{},
+	"pulumi_policy":	{},
+	"pulumi-esc-sdk":	{},
+	"pulumi_esc_sdk":	{},
 }
 
 // Returns if pkg is a pulumi package.
@@ -610,9 +610,9 @@ func determinePackageDependency(pkg toolchain.PythonPackage) (*pulumirpc.Package
 
 		if plugin.Parameterization != nil {
 			parameterization = &pulumirpc.PackageParameterization{
-				Name:    plugin.Parameterization.Name,
-				Version: plugin.Parameterization.Version,
-				Value:   plugin.Parameterization.Value,
+				Name:		plugin.Parameterization.Name,
+				Version:	plugin.Parameterization.Version,
+				Value:		plugin.Parameterization.Value,
 			}
 		}
 
@@ -647,11 +647,11 @@ func determinePackageDependency(pkg toolchain.PythonPackage) (*pulumirpc.Package
 	}
 
 	result := &pulumirpc.PackageDependency{
-		Name:             name,
-		Version:          version,
-		Kind:             "resource",
-		Server:           server,
-		Parameterization: parameterization,
+		Name:			name,
+		Version:		version,
+		Kind:			"resource",
+		Server:			server,
+		Parameterization:	parameterization,
 	}
 
 	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %#v", result)
@@ -805,9 +805,9 @@ func debugCommand(ctx context.Context, opts toolchain.PythonOptions) ([]string, 
 }
 
 type debugger struct {
-	Host   string
-	Port   int
-	LogDir string
+	Host	string
+	Port	int
+	LogDir	string
 }
 
 func (c *debugger) Cleanup() {
@@ -819,8 +819,8 @@ func (c *debugger) Cleanup() {
 func (c *debugger) WaitForReady(ctx context.Context, pid int) error {
 	logFile := filepath.Join(c.LogDir, fmt.Sprintf("debugpy.server-%d.log", pid))
 	t, err := tail.File(logFile, tail.Config{
-		Follow: true,
-		Logger: tail.DiscardingLogger,
+		Follow:	true,
+		Logger:	tail.DiscardingLogger,
 	})
 	if err != nil {
 		return err
@@ -868,21 +868,21 @@ func startDebugging(
 
 	// emit a debug configuration
 	debugConfig, err := structpb.NewStruct(map[string]any{
-		"name":    name,
-		"type":    "python",
-		"request": "attach",
+		"name":		name,
+		"type":		"python",
+		"request":	"attach",
 		"connect": map[string]any{
-			"host": dbg.Host,
-			"port": dbg.Port,
+			"host":	dbg.Host,
+			"port":	dbg.Port,
 		},
-		"justMyCode": true,
+		"justMyCode":	true,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to serialize debug configuration: %w", err)
 	}
 	_, err = engineClient.StartDebugging(ctx, &pulumirpc.StartDebuggingRequest{
-		Config:  debugConfig,
-		Message: fmt.Sprintf("on port %d", dbg.Port),
+		Config:		debugConfig,
+		Message:	fmt.Sprintf("on port %d", dbg.Port),
 	})
 	if err != nil {
 		return fmt.Errorf("unable to start debugging: %w", err)
@@ -1264,19 +1264,19 @@ func (host *pythonLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 
 	if !hasToolchain {
 		pipOption := &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
-			PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
-			StringValue: "pip",
-			DisplayName: "pip",
+			PromptType:	pulumirpc.RuntimeOptionPrompt_STRING,
+			StringValue:	"pip",
+			DisplayName:	"pip",
 		}
 		// Pip is always available in a Python installation or virtual environment.
 		choices := []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{pipOption}
 		choices = append(choices, plugin.MakeExecutablePromptChoices("poetry", "uv")...)
 		prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
-			Key:         "toolchain",
-			Description: "The toolchain to use for installing dependencies and running the program",
-			PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
-			Choices:     choices,
-			Default:     pipOption,
+			Key:		"toolchain",
+			Description:	"The toolchain to use for installing dependencies and running the program",
+			PromptType:	pulumirpc.RuntimeOptionPrompt_STRING,
+			Choices:	choices,
+			Default:	pipOption,
 		})
 	}
 
@@ -1284,15 +1284,15 @@ func (host *pythonLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 		// If we are using the pip toolchain, set virtualenv to venv by default.
 		if _, hasVenv := rawOpts["virtualenv"]; !hasVenv {
 			prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
-				Key:         "virtualenv",
-				Description: "The virtualenv to use",
-				PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
+				Key:		"virtualenv",
+				Description:	"The virtualenv to use",
+				PromptType:	pulumirpc.RuntimeOptionPrompt_STRING,
 				Choices: []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
 					{StringValue: "venv", PromptType: pulumirpc.RuntimeOptionPrompt_STRING},
 				},
 				Default: &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
-					PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
-					StringValue: "venv",
+					PromptType:	pulumirpc.RuntimeOptionPrompt_STRING,
+					StringValue:	"venv",
 				},
 			})
 		}
@@ -1327,8 +1327,8 @@ func (host *pythonLanguageHost) About(ctx context.Context,
 	}
 
 	return &pulumirpc.AboutResponse{
-		Executable: info.Executable,
-		Version:    info.Version,
+		Executable:	info.Executable,
+		Version:	info.Version,
 	}, nil
 }
 
@@ -1352,8 +1352,8 @@ func (host *pythonLanguageHost) GetProgramDependencies(
 	dependencies := make([]*pulumirpc.DependencyInfo, len(result))
 	for i, dep := range result {
 		dependencies[i] = &pulumirpc.DependencyInfo{
-			Name:    dep.Name,
-			Version: dep.Version,
+			Name:		dep.Name,
+			Version:	dep.Version,
 		}
 	}
 
@@ -1620,8 +1620,8 @@ func (host *pythonLanguageHost) GenerateProgram(
 	rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticsToRPCDiagnostics(diags)...)
 
 	return &pulumirpc.GenerateProgramResponse{
-		Source:      files,
-		Diagnostics: rpcDiagnostics,
+		Source:		files,
+		Diagnostics:	rpcDiagnostics,
 	}, nil
 }
 
@@ -1687,7 +1687,7 @@ func (host *pythonLanguageHost) Handshake(ctx context.Context,
 	cancelChannel := make(chan bool)
 	go func() {
 		<-ctx.Done()
-		cancel() // deregister the interrupt handler
+		cancel()	// deregister the interrupt handler
 		close(cancelChannel)
 	}()
 	err := rpcutil.Healthcheck(ctx, host.engineAddress, 5*time.Minute, cancel)
@@ -1740,8 +1740,8 @@ func (host *pythonLanguageHost) Link(
 		var param *schema.ParameterizationDescriptor
 		if dep.Package.Parameterization != nil {
 			param = &schema.ParameterizationDescriptor{
-				Name:  dep.Package.Parameterization.Name,
-				Value: dep.Package.Parameterization.Value,
+				Name:	dep.Package.Parameterization.Name,
+				Value:	dep.Package.Parameterization.Value,
 			}
 			if dep.Package.Parameterization.Version != "" {
 				v, err := semver.New(dep.Package.Parameterization.Version)
@@ -1753,10 +1753,10 @@ func (host *pythonLanguageHost) Link(
 			}
 		}
 		packageDesc := &schema.PackageDescriptor{
-			Name:             dep.Package.Name,
-			Version:          version,
-			DownloadURL:      dep.Package.Server,
-			Parameterization: param,
+			Name:			dep.Package.Name,
+			Version:		version,
+			DownloadURL:		dep.Package.Server,
+			Parameterization:	param,
 		}
 
 		pkgRef, err := schema.LoadPackageReferenceV2(ctx, cachedLoader, packageDesc)

@@ -43,29 +43,29 @@ func TestLogFlowArgumentPropagation(t *testing.T) {
 	}), []string{engine})
 
 	assert.Equal(t, buildPluginArguments(pluginArgumentOptions{
-		pluginArgs: []string{engine},
-		logFlow:    true,
-		verbose:    9,
+		pluginArgs:	[]string{engine},
+		logFlow:	true,
+		verbose:	9,
 	}), []string{"-v=9", engine})
 
 	assert.Equal(t, buildPluginArguments(pluginArgumentOptions{
-		pluginArgs:  []string{engine},
-		logFlow:     true,
-		logToStderr: true,
-		verbose:     9,
+		pluginArgs:	[]string{engine},
+		logFlow:	true,
+		logToStderr:	true,
+		verbose:	9,
 	}), []string{"--logtostderr", "-v=9", engine})
 
 	assert.Equal(t, buildPluginArguments(pluginArgumentOptions{
-		pluginArgs:      []string{engine},
-		tracingEndpoint: "127.0.0.1:6007",
+		pluginArgs:		[]string{engine},
+		tracingEndpoint:	"127.0.0.1:6007",
 	}), []string{"--tracing", "127.0.0.1:6007", engine})
 
 	assert.Equal(t, buildPluginArguments(pluginArgumentOptions{
-		pluginArgs:      []string{engine},
-		logFlow:         true,
-		logToStderr:     true,
-		verbose:         9,
-		tracingEndpoint: "127.0.0.1:6007",
+		pluginArgs:		[]string{engine},
+		logFlow:		true,
+		logToStderr:		true,
+		verbose:		9,
+		tracingEndpoint:	"127.0.0.1:6007",
 	}), []string{"--logtostderr", "-v=9", "--tracing", "127.0.0.1:6007", "127.0.0.1:12345"})
 }
 
@@ -116,11 +116,11 @@ func TestHealthCheck(t *testing.T) {
 
 		ready := make(chan struct{})
 		go func() {
-			close(ready) // Signal that server is ready
+			close(ready)	// Signal that server is ready
 			err := server.Serve(listener)
 			require.NoError(t, err)
 		}()
-		<-ready // Wait until the server is ready before continuing
+		<-ready	// Wait until the server is ready before continuing
 
 		port := listener.Addr().(*net.TCPAddr).Port
 
@@ -138,34 +138,34 @@ func TestHealthCheck(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		healthService  bool
-		shutdownServer bool
-		expected       bool
+		name		string
+		healthService	bool
+		shutdownServer	bool
+		expected	bool
 	}{
 		{
-			name:           "Server with health check - running",
-			healthService:  true,
-			shutdownServer: false,
-			expected:       true,
+			name:		"Server with health check - running",
+			healthService:	true,
+			shutdownServer:	false,
+			expected:	true,
 		},
 		{
-			name:           "Server with health check - crashed",
-			healthService:  true,
-			shutdownServer: true,
-			expected:       false,
+			name:		"Server with health check - crashed",
+			healthService:	true,
+			shutdownServer:	true,
+			expected:	false,
 		},
 		{
-			name:           "Server without health check - running",
-			healthService:  false,
-			shutdownServer: false,
-			expected:       true,
+			name:		"Server without health check - running",
+			healthService:	false,
+			shutdownServer:	false,
+			expected:	true,
 		},
 		{
-			name:           "Server without health check - crashed",
-			healthService:  false,
-			shutdownServer: true,
-			expected:       false,
+			name:		"Server without health check - crashed",
+			healthService:	false,
+			shutdownServer:	true,
+			expected:	false,
 		},
 	}
 

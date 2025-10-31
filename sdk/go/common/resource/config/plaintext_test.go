@@ -162,8 +162,8 @@ func TestEncryptMap(t *testing.T) {
 
 	t.Run("Plaintext values", func(t *testing.T) {
 		input := map[Key]Plaintext{
-			MustParseKey("ns:foo"): NewPlaintext("bar"),
-			MustParseKey("ns:num"): NewPlaintext(int64(42)),
+			MustParseKey("ns:foo"):	NewPlaintext("bar"),
+			MustParseKey("ns:num"):	NewPlaintext(int64(42)),
 		}
 		result, err := encryptMap(ctx, input, nopCrypter{})
 		require.NoError(t, err)
@@ -198,8 +198,8 @@ func TestEncryptMap(t *testing.T) {
 
 	t.Run("mixed values", func(t *testing.T) {
 		input := map[Key]Plaintext{
-			MustParseKey("ns:plain"):  NewPlaintext("value"),
-			MustParseKey("ns:secret"): NewPlaintext(PlaintextSecret("Plaintext")),
+			MustParseKey("ns:plain"):	NewPlaintext("value"),
+			MustParseKey("ns:secret"):	NewPlaintext(PlaintextSecret("Plaintext")),
 		}
 		result, err := encryptMap(ctx, input, nopCrypter{})
 		require.NoError(t, err)
@@ -210,14 +210,14 @@ func TestEncryptMap(t *testing.T) {
 
 	t.Run("chunking", func(t *testing.T) {
 		origChunkSize := defaultMaxChunkSize
-		defaultMaxChunkSize = 2 // force batching for test
+		defaultMaxChunkSize = 2	// force batching for test
 		defer func() { defaultMaxChunkSize = origChunkSize }()
 
 		input := map[Key]Plaintext{
-			MustParseKey("ns:a"): NewPlaintext(PlaintextSecret("s1")),
-			MustParseKey("ns:b"): NewPlaintext(PlaintextSecret("s2")),
-			MustParseKey("ns:c"): NewPlaintext(PlaintextSecret("s3")),
-			MustParseKey("ns:d"): NewPlaintext("plain"),
+			MustParseKey("ns:a"):	NewPlaintext(PlaintextSecret("s1")),
+			MustParseKey("ns:b"):	NewPlaintext(PlaintextSecret("s2")),
+			MustParseKey("ns:c"):	NewPlaintext(PlaintextSecret("s3")),
+			MustParseKey("ns:d"):	NewPlaintext("plain"),
 		}
 		result, err := encryptMap(ctx, input, nopCrypter{})
 		require.NoError(t, err)

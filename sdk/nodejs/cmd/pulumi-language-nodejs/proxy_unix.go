@@ -38,16 +38,16 @@ func createPipes() (pipes, error) {
 
 	invokeReqPath, invokeResPath := path.Join(dir, "invoke_req"), path.Join(dir, "invoke_res")
 	return &unixPipes{
-		dir:     dir,
-		reqPath: invokeReqPath,
-		resPath: invokeResPath,
+		dir:		dir,
+		reqPath:	invokeReqPath,
+		resPath:	invokeResPath,
 	}, nil
 }
 
 type unixPipes struct {
-	dir              string
-	reqPath, resPath string
-	reqPipe, resPipe *os.File
+	dir			string
+	reqPath, resPath	string
+	reqPipe, resPipe	*os.File
 }
 
 func (p *unixPipes) directory() string {

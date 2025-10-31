@@ -28,14 +28,14 @@ import (
 // Leave nil for defaults.
 type RetryOpts struct {
 	// These fields map directly to util.Acceptor.
-	Delay    *time.Duration
-	Backoff  *float64
-	MaxDelay *time.Duration
+	Delay		*time.Duration
+	Backoff		*float64
+	MaxDelay	*time.Duration
 
-	MaxRetryCount *int
+	MaxRetryCount	*int
 	// HandshakeTimeoutsOnly indicates whether we should only be retrying timeouts that occur during the TLS handshake.
 	// These timeouts are safe to retry even on POST requests, since we know the actual request hasn't been sent yet.
-	HandshakeTimeoutsOnly bool
+	HandshakeTimeoutsOnly	bool
 }
 
 // DoWithRetry calls client.Do, and in the case of an error, retries the operation again after a slight delay.
@@ -67,9 +67,9 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 
 	acceptor := retry.Acceptor{
 		// If the opts field is nil, retry.Until will provide defaults.
-		Delay:    opts.Delay,
-		Backoff:  opts.Backoff,
-		MaxDelay: opts.MaxDelay,
+		Delay:		opts.Delay,
+		Backoff:	opts.Backoff,
+		MaxDelay:	opts.MaxDelay,
 
 		Accept: func(try int, _ time.Duration) (bool, any, error) {
 			if try > 0 && req.GetBody != nil {

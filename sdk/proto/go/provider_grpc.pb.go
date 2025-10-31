@@ -34,26 +34,26 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ResourceProvider_Handshake_FullMethodName     = "/pulumirpc.ResourceProvider/Handshake"
-	ResourceProvider_Parameterize_FullMethodName  = "/pulumirpc.ResourceProvider/Parameterize"
-	ResourceProvider_GetSchema_FullMethodName     = "/pulumirpc.ResourceProvider/GetSchema"
-	ResourceProvider_CheckConfig_FullMethodName   = "/pulumirpc.ResourceProvider/CheckConfig"
-	ResourceProvider_DiffConfig_FullMethodName    = "/pulumirpc.ResourceProvider/DiffConfig"
-	ResourceProvider_Configure_FullMethodName     = "/pulumirpc.ResourceProvider/Configure"
-	ResourceProvider_Invoke_FullMethodName        = "/pulumirpc.ResourceProvider/Invoke"
-	ResourceProvider_Call_FullMethodName          = "/pulumirpc.ResourceProvider/Call"
-	ResourceProvider_Check_FullMethodName         = "/pulumirpc.ResourceProvider/Check"
-	ResourceProvider_Diff_FullMethodName          = "/pulumirpc.ResourceProvider/Diff"
-	ResourceProvider_Create_FullMethodName        = "/pulumirpc.ResourceProvider/Create"
-	ResourceProvider_Read_FullMethodName          = "/pulumirpc.ResourceProvider/Read"
-	ResourceProvider_Update_FullMethodName        = "/pulumirpc.ResourceProvider/Update"
-	ResourceProvider_Delete_FullMethodName        = "/pulumirpc.ResourceProvider/Delete"
-	ResourceProvider_Construct_FullMethodName     = "/pulumirpc.ResourceProvider/Construct"
-	ResourceProvider_Cancel_FullMethodName        = "/pulumirpc.ResourceProvider/Cancel"
-	ResourceProvider_GetPluginInfo_FullMethodName = "/pulumirpc.ResourceProvider/GetPluginInfo"
-	ResourceProvider_Attach_FullMethodName        = "/pulumirpc.ResourceProvider/Attach"
-	ResourceProvider_GetMapping_FullMethodName    = "/pulumirpc.ResourceProvider/GetMapping"
-	ResourceProvider_GetMappings_FullMethodName   = "/pulumirpc.ResourceProvider/GetMappings"
+	ResourceProvider_Handshake_FullMethodName	= "/pulumirpc.ResourceProvider/Handshake"
+	ResourceProvider_Parameterize_FullMethodName	= "/pulumirpc.ResourceProvider/Parameterize"
+	ResourceProvider_GetSchema_FullMethodName	= "/pulumirpc.ResourceProvider/GetSchema"
+	ResourceProvider_CheckConfig_FullMethodName	= "/pulumirpc.ResourceProvider/CheckConfig"
+	ResourceProvider_DiffConfig_FullMethodName	= "/pulumirpc.ResourceProvider/DiffConfig"
+	ResourceProvider_Configure_FullMethodName	= "/pulumirpc.ResourceProvider/Configure"
+	ResourceProvider_Invoke_FullMethodName		= "/pulumirpc.ResourceProvider/Invoke"
+	ResourceProvider_Call_FullMethodName		= "/pulumirpc.ResourceProvider/Call"
+	ResourceProvider_Check_FullMethodName		= "/pulumirpc.ResourceProvider/Check"
+	ResourceProvider_Diff_FullMethodName		= "/pulumirpc.ResourceProvider/Diff"
+	ResourceProvider_Create_FullMethodName		= "/pulumirpc.ResourceProvider/Create"
+	ResourceProvider_Read_FullMethodName		= "/pulumirpc.ResourceProvider/Read"
+	ResourceProvider_Update_FullMethodName		= "/pulumirpc.ResourceProvider/Update"
+	ResourceProvider_Delete_FullMethodName		= "/pulumirpc.ResourceProvider/Delete"
+	ResourceProvider_Construct_FullMethodName	= "/pulumirpc.ResourceProvider/Construct"
+	ResourceProvider_Cancel_FullMethodName		= "/pulumirpc.ResourceProvider/Cancel"
+	ResourceProvider_GetPluginInfo_FullMethodName	= "/pulumirpc.ResourceProvider/GetPluginInfo"
+	ResourceProvider_Attach_FullMethodName		= "/pulumirpc.ResourceProvider/Attach"
+	ResourceProvider_GetMapping_FullMethodName	= "/pulumirpc.ResourceProvider/GetMapping"
+	ResourceProvider_GetMappings_FullMethodName	= "/pulumirpc.ResourceProvider/GetMappings"
 )
 
 // ResourceProviderClient is the client API for ResourceProvider service.
@@ -734,8 +734,8 @@ func (UnimplementedResourceProviderServer) GetMapping(context.Context, *GetMappi
 func (UnimplementedResourceProviderServer) GetMappings(context.Context, *GetMappingsRequest) (*GetMappingsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMappings not implemented")
 }
-func (UnimplementedResourceProviderServer) mustEmbedUnimplementedResourceProviderServer() {}
-func (UnimplementedResourceProviderServer) testEmbeddedByValue()                          {}
+func (UnimplementedResourceProviderServer) mustEmbedUnimplementedResourceProviderServer()	{}
+func (UnimplementedResourceProviderServer) testEmbeddedByValue()				{}
 
 // UnsafeResourceProviderServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to ResourceProviderServer will
@@ -764,8 +764,8 @@ func _ResourceProvider_Handshake_Handler(srv interface{}, ctx context.Context, d
 		return srv.(ResourceProviderServer).Handshake(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceProvider_Handshake_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceProvider_Handshake_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceProviderServer).Handshake(ctx, req.(*ProviderHandshakeRequest))
@@ -782,8 +782,8 @@ func _ResourceProvider_Parameterize_Handler(srv interface{}, ctx context.Context
 		return srv.(ResourceProviderServer).Parameterize(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceProvider_Parameterize_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceProvider_Parameterize_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceProviderServer).Parameterize(ctx, req.(*ParameterizeRequest))
@@ -800,8 +800,8 @@ func _ResourceProvider_GetSchema_Handler(srv interface{}, ctx context.Context, d
 		return srv.(ResourceProviderServer).GetSchema(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceProvider_GetSchema_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceProvider_GetSchema_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceProviderServer).GetSchema(ctx, req.(*GetSchemaRequest))
@@ -818,8 +818,8 @@ func _ResourceProvider_CheckConfig_Handler(srv interface{}, ctx context.Context,
 		return srv.(ResourceProviderServer).CheckConfig(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceProvider_CheckConfig_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceProvider_CheckConfig_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceProviderServer).CheckConfig(ctx, req.(*CheckRequest))
@@ -836,8 +836,8 @@ func _ResourceProvider_DiffConfig_Handler(srv interface{}, ctx context.Context, 
 		return srv.(ResourceProviderServer).DiffConfig(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceProvider_DiffConfig_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceProvider_DiffConfig_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceProviderServer).DiffConfig(ctx, req.(*DiffRequest))
@@ -854,8 +854,8 @@ func _ResourceProvider_Configure_Handler(srv interface{}, ctx context.Context, d
 		return srv.(ResourceProviderServer).Configure(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceProvider_Configure_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceProvider_Configure_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceProviderServer).Configure(ctx, req.(*ConfigureRequest))
@@ -872,8 +872,8 @@ func _ResourceProvider_Invoke_Handler(srv interface{}, ctx context.Context, dec 
 		return srv.(ResourceProviderServer).Invoke(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceProvider_Invoke_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceProvider_Invoke_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceProviderServer).Invoke(ctx, req.(*InvokeRequest))
@@ -890,8 +890,8 @@ func _ResourceProvider_Call_Handler(srv interface{}, ctx context.Context, dec fu
 		return srv.(ResourceProviderServer).Call(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceProvider_Call_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceProvider_Call_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceProviderServer).Call(ctx, req.(*CallRequest))
@@ -908,8 +908,8 @@ func _ResourceProvider_Check_Handler(srv interface{}, ctx context.Context, dec f
 		return srv.(ResourceProviderServer).Check(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceProvider_Check_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceProvider_Check_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceProviderServer).Check(ctx, req.(*CheckRequest))
@@ -926,8 +926,8 @@ func _ResourceProvider_Diff_Handler(srv interface{}, ctx context.Context, dec fu
 		return srv.(ResourceProviderServer).Diff(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceProvider_Diff_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceProvider_Diff_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceProviderServer).Diff(ctx, req.(*DiffRequest))
@@ -944,8 +944,8 @@ func _ResourceProvider_Create_Handler(srv interface{}, ctx context.Context, dec 
 		return srv.(ResourceProviderServer).Create(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceProvider_Create_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceProvider_Create_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceProviderServer).Create(ctx, req.(*CreateRequest))
@@ -962,8 +962,8 @@ func _ResourceProvider_Read_Handler(srv interface{}, ctx context.Context, dec fu
 		return srv.(ResourceProviderServer).Read(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceProvider_Read_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceProvider_Read_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceProviderServer).Read(ctx, req.(*ReadRequest))
@@ -980,8 +980,8 @@ func _ResourceProvider_Update_Handler(srv interface{}, ctx context.Context, dec 
 		return srv.(ResourceProviderServer).Update(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceProvider_Update_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceProvider_Update_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceProviderServer).Update(ctx, req.(*UpdateRequest))
@@ -998,8 +998,8 @@ func _ResourceProvider_Delete_Handler(srv interface{}, ctx context.Context, dec 
 		return srv.(ResourceProviderServer).Delete(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceProvider_Delete_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceProvider_Delete_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceProviderServer).Delete(ctx, req.(*DeleteRequest))
@@ -1016,8 +1016,8 @@ func _ResourceProvider_Construct_Handler(srv interface{}, ctx context.Context, d
 		return srv.(ResourceProviderServer).Construct(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceProvider_Construct_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceProvider_Construct_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceProviderServer).Construct(ctx, req.(*ConstructRequest))
@@ -1034,8 +1034,8 @@ func _ResourceProvider_Cancel_Handler(srv interface{}, ctx context.Context, dec 
 		return srv.(ResourceProviderServer).Cancel(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceProvider_Cancel_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceProvider_Cancel_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceProviderServer).Cancel(ctx, req.(*emptypb.Empty))
@@ -1052,8 +1052,8 @@ func _ResourceProvider_GetPluginInfo_Handler(srv interface{}, ctx context.Contex
 		return srv.(ResourceProviderServer).GetPluginInfo(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceProvider_GetPluginInfo_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceProvider_GetPluginInfo_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceProviderServer).GetPluginInfo(ctx, req.(*emptypb.Empty))
@@ -1070,8 +1070,8 @@ func _ResourceProvider_Attach_Handler(srv interface{}, ctx context.Context, dec 
 		return srv.(ResourceProviderServer).Attach(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceProvider_Attach_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceProvider_Attach_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceProviderServer).Attach(ctx, req.(*PluginAttach))
@@ -1088,8 +1088,8 @@ func _ResourceProvider_GetMapping_Handler(srv interface{}, ctx context.Context, 
 		return srv.(ResourceProviderServer).GetMapping(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceProvider_GetMapping_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceProvider_GetMapping_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceProviderServer).GetMapping(ctx, req.(*GetMappingRequest))
@@ -1106,8 +1106,8 @@ func _ResourceProvider_GetMappings_Handler(srv interface{}, ctx context.Context,
 		return srv.(ResourceProviderServer).GetMappings(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceProvider_GetMappings_FullMethodName,
+		Server:		srv,
+		FullMethod:	ResourceProvider_GetMappings_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceProviderServer).GetMappings(ctx, req.(*GetMappingsRequest))
@@ -1119,90 +1119,90 @@ func _ResourceProvider_GetMappings_Handler(srv interface{}, ctx context.Context,
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ResourceProvider_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "pulumirpc.ResourceProvider",
-	HandlerType: (*ResourceProviderServer)(nil),
+	ServiceName:	"pulumirpc.ResourceProvider",
+	HandlerType:	(*ResourceProviderServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Handshake",
-			Handler:    _ResourceProvider_Handshake_Handler,
+			MethodName:	"Handshake",
+			Handler:	_ResourceProvider_Handshake_Handler,
 		},
 		{
-			MethodName: "Parameterize",
-			Handler:    _ResourceProvider_Parameterize_Handler,
+			MethodName:	"Parameterize",
+			Handler:	_ResourceProvider_Parameterize_Handler,
 		},
 		{
-			MethodName: "GetSchema",
-			Handler:    _ResourceProvider_GetSchema_Handler,
+			MethodName:	"GetSchema",
+			Handler:	_ResourceProvider_GetSchema_Handler,
 		},
 		{
-			MethodName: "CheckConfig",
-			Handler:    _ResourceProvider_CheckConfig_Handler,
+			MethodName:	"CheckConfig",
+			Handler:	_ResourceProvider_CheckConfig_Handler,
 		},
 		{
-			MethodName: "DiffConfig",
-			Handler:    _ResourceProvider_DiffConfig_Handler,
+			MethodName:	"DiffConfig",
+			Handler:	_ResourceProvider_DiffConfig_Handler,
 		},
 		{
-			MethodName: "Configure",
-			Handler:    _ResourceProvider_Configure_Handler,
+			MethodName:	"Configure",
+			Handler:	_ResourceProvider_Configure_Handler,
 		},
 		{
-			MethodName: "Invoke",
-			Handler:    _ResourceProvider_Invoke_Handler,
+			MethodName:	"Invoke",
+			Handler:	_ResourceProvider_Invoke_Handler,
 		},
 		{
-			MethodName: "Call",
-			Handler:    _ResourceProvider_Call_Handler,
+			MethodName:	"Call",
+			Handler:	_ResourceProvider_Call_Handler,
 		},
 		{
-			MethodName: "Check",
-			Handler:    _ResourceProvider_Check_Handler,
+			MethodName:	"Check",
+			Handler:	_ResourceProvider_Check_Handler,
 		},
 		{
-			MethodName: "Diff",
-			Handler:    _ResourceProvider_Diff_Handler,
+			MethodName:	"Diff",
+			Handler:	_ResourceProvider_Diff_Handler,
 		},
 		{
-			MethodName: "Create",
-			Handler:    _ResourceProvider_Create_Handler,
+			MethodName:	"Create",
+			Handler:	_ResourceProvider_Create_Handler,
 		},
 		{
-			MethodName: "Read",
-			Handler:    _ResourceProvider_Read_Handler,
+			MethodName:	"Read",
+			Handler:	_ResourceProvider_Read_Handler,
 		},
 		{
-			MethodName: "Update",
-			Handler:    _ResourceProvider_Update_Handler,
+			MethodName:	"Update",
+			Handler:	_ResourceProvider_Update_Handler,
 		},
 		{
-			MethodName: "Delete",
-			Handler:    _ResourceProvider_Delete_Handler,
+			MethodName:	"Delete",
+			Handler:	_ResourceProvider_Delete_Handler,
 		},
 		{
-			MethodName: "Construct",
-			Handler:    _ResourceProvider_Construct_Handler,
+			MethodName:	"Construct",
+			Handler:	_ResourceProvider_Construct_Handler,
 		},
 		{
-			MethodName: "Cancel",
-			Handler:    _ResourceProvider_Cancel_Handler,
+			MethodName:	"Cancel",
+			Handler:	_ResourceProvider_Cancel_Handler,
 		},
 		{
-			MethodName: "GetPluginInfo",
-			Handler:    _ResourceProvider_GetPluginInfo_Handler,
+			MethodName:	"GetPluginInfo",
+			Handler:	_ResourceProvider_GetPluginInfo_Handler,
 		},
 		{
-			MethodName: "Attach",
-			Handler:    _ResourceProvider_Attach_Handler,
+			MethodName:	"Attach",
+			Handler:	_ResourceProvider_Attach_Handler,
 		},
 		{
-			MethodName: "GetMapping",
-			Handler:    _ResourceProvider_GetMapping_Handler,
+			MethodName:	"GetMapping",
+			Handler:	_ResourceProvider_GetMapping_Handler,
 		},
 		{
-			MethodName: "GetMappings",
-			Handler:    _ResourceProvider_GetMappings_Handler,
+			MethodName:	"GetMappings",
+			Handler:	_ResourceProvider_GetMappings_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "pulumi/provider.proto",
+	Streams:	[]grpc.StreamDesc{},
+	Metadata:	"pulumi/provider.proto",
 }

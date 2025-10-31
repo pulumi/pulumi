@@ -16,7 +16,7 @@ package internals
 
 import (
 	"context"
-	_ "unsafe" // unsafe is needed to use go:linkname
+	_ "unsafe"	// unsafe is needed to use go:linkname
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -28,10 +28,10 @@ func awaitWithContext(ctx context.Context, o pulumi.Output) (any, bool, bool, []
 //
 // This is a low level API and should be used with care.
 type UnsafeAwaitOutputResult struct {
-	Value        any               // The value of the output. If unknown (in a dry-run), the value will be nil.
-	Known        bool              // True if the value is known.
-	Secret       bool              // True if the value is a secret.
-	Dependencies []pulumi.Resource // The resources that this output depends on.
+	Value		any			// The value of the output. If unknown (in a dry-run), the value will be nil.
+	Known		bool			// True if the value is known.
+	Secret		bool			// True if the value is a secret.
+	Dependencies	[]pulumi.Resource	// The resources that this output depends on.
 }
 
 // UnsafeAwaitOutput blocks until the output is resolved and returns the resolved value and
@@ -42,9 +42,9 @@ func UnsafeAwaitOutput(ctx context.Context, o pulumi.Output) (UnsafeAwaitOutputR
 	value, known, secret, deps, err := awaitWithContext(ctx, o)
 
 	return UnsafeAwaitOutputResult{
-		Value:        value,
-		Known:        known,
-		Secret:       secret,
-		Dependencies: deps,
+		Value:		value,
+		Known:		known,
+		Secret:		secret,
+		Dependencies:	deps,
 	}, err
 }

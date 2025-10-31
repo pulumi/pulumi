@@ -26,8 +26,8 @@ type OutputOrState interface {
 }
 
 var (
-	_ OutputOrState = Output(nil)
-	_ OutputOrState = (*OutputState)(nil)
+	_	OutputOrState	= Output(nil)
+	_	OutputOrState	= (*OutputState)(nil)
 )
 
 // RejectOutput rejects the given output with the given error.

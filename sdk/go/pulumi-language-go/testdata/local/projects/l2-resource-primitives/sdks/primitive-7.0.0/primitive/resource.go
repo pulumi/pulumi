@@ -15,12 +15,12 @@ import (
 type Resource struct {
 	pulumi.CustomResourceState
 
-	Boolean     pulumi.BoolOutput         `pulumi:"boolean"`
-	BooleanMap  pulumi.BoolMapOutput      `pulumi:"booleanMap"`
-	Float       pulumi.Float64Output      `pulumi:"float"`
-	Integer     pulumi.IntOutput          `pulumi:"integer"`
-	NumberArray pulumi.Float64ArrayOutput `pulumi:"numberArray"`
-	String      pulumi.StringOutput       `pulumi:"string"`
+	Boolean		pulumi.BoolOutput		`pulumi:"boolean"`
+	BooleanMap	pulumi.BoolMapOutput		`pulumi:"booleanMap"`
+	Float		pulumi.Float64Output		`pulumi:"float"`
+	Integer		pulumi.IntOutput		`pulumi:"integer"`
+	NumberArray	pulumi.Float64ArrayOutput	`pulumi:"numberArray"`
+	String		pulumi.StringOutput		`pulumi:"string"`
 }
 
 // NewResource registers a new resource with the given unique name, arguments, and options.
@@ -81,22 +81,22 @@ func (ResourceState) ElementType() reflect.Type {
 }
 
 type resourceArgs struct {
-	Boolean     bool            `pulumi:"boolean"`
-	BooleanMap  map[string]bool `pulumi:"booleanMap"`
-	Float       float64         `pulumi:"float"`
-	Integer     int             `pulumi:"integer"`
-	NumberArray []float64       `pulumi:"numberArray"`
-	String      string          `pulumi:"string"`
+	Boolean		bool		`pulumi:"boolean"`
+	BooleanMap	map[string]bool	`pulumi:"booleanMap"`
+	Float		float64		`pulumi:"float"`
+	Integer		int		`pulumi:"integer"`
+	NumberArray	[]float64	`pulumi:"numberArray"`
+	String		string		`pulumi:"string"`
 }
 
 // The set of arguments for constructing a Resource resource.
 type ResourceArgs struct {
-	Boolean     pulumi.BoolInput
-	BooleanMap  pulumi.BoolMapInput
-	Float       pulumi.Float64Input
-	Integer     pulumi.IntInput
-	NumberArray pulumi.Float64ArrayInput
-	String      pulumi.StringInput
+	Boolean		pulumi.BoolInput
+	BooleanMap	pulumi.BoolMapInput
+	Float		pulumi.Float64Input
+	Integer		pulumi.IntInput
+	NumberArray	pulumi.Float64ArrayInput
+	String		pulumi.StringInput
 }
 
 func (ResourceArgs) ElementType() reflect.Type {

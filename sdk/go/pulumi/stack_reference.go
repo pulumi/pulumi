@@ -26,13 +26,13 @@ type StackReference struct {
 	CustomResourceState
 
 	// Name is in the form "Org/Program/Stack"
-	Name StringOutput `pulumi:"name"`
+	Name	StringOutput	`pulumi:"name"`
 	// Outputs resolves with exports from the named stack
-	Outputs MapOutput `pulumi:"outputs"`
+	Outputs	MapOutput	`pulumi:"outputs"`
 
 	// ctx is a reference to the context used to create the stack reference. It must be
 	// valid and non-nil to call `GetOutput`.
-	ctx *Context
+	ctx	*Context
 }
 
 // GetOutput returns a stack output keyed by the given name as an AnyOutput
@@ -74,12 +74,12 @@ type StackReferenceOutputDetails struct {
 	// Output value returned by the StackReference.
 	// This field is nil if the value is a secret
 	// or it does not exist.
-	Value any
+	Value	any
 
 	// Secret output value returned by the StackReference.
 	// This field is nil if the value is not a secret
 	// or it does not exist.
-	SecretValue any
+	SecretValue	any
 }
 
 // GetOutputDetails retrieves a stack output keyed by the given name

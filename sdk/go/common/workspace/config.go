@@ -63,8 +63,8 @@ func missingStackConfigurationKeysError(missingKeys []string, stackName string) 
 }
 
 type (
-	StackName        = string
-	ProjectConfigKey = string
+	StackName		= string
+	ProjectConfigKey	= string
 )
 
 func validateStackConfigValues(

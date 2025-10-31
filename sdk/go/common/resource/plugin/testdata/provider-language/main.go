@@ -45,12 +45,12 @@ func (host *language) GetPluginInfo(ctx context.Context, req *emptypb.Empty) (*p
 func main() {
 	var cancelChannel chan bool
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: cancelChannel,
+		Cancel:	cancelChannel,
 		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterLanguageRuntimeServer(srv, &language{})
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options:	rpcutil.OpenTracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		fmt.Printf("fatal: %v\n", err)

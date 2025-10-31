@@ -20,13 +20,13 @@ import (
 
 // MockSink is a thread safe mock implementation of the Sink interface that just records all the messages.
 type MockSink struct {
-	lock     sync.Mutex
-	Messages map[Severity][]MockMessage
+	lock		sync.Mutex
+	Messages	map[Severity][]MockMessage
 }
 
 type MockMessage struct {
-	Diag *Diag
-	Args []any
+	Diag	*Diag
+	Args	[]any
 }
 
 func (d *MockSink) Logf(sev Severity, dia *Diag, args ...any) {
@@ -38,8 +38,8 @@ func (d *MockSink) Logf(sev Severity, dia *Diag, args ...any) {
 	}
 
 	d.Messages[sev] = append(d.Messages[sev], MockMessage{
-		Diag: dia,
-		Args: args,
+		Diag:	dia,
+		Args:	args,
 	})
 }
 

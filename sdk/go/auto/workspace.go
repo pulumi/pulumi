@@ -167,24 +167,24 @@ type Workspace interface {
 // ConfigValue is a configuration value used by a Pulumi program.
 // Allows differentiating between secret and plaintext values by setting the `Secret` property.
 type ConfigValue struct {
-	Value  string
-	Secret bool
+	Value	string
+	Secret	bool
 }
 
 // ConfigOptions is a configuration option used by a Pulumi program.
 type ConfigOptions struct {
 	// Allows to use the path flag while getting/setting the configuration.
-	Path bool
+	Path	bool
 	// Allows to use the config file flag while getting/setting the configuration.
-	ConfigFile string
+	ConfigFile	string
 }
 
 // GetAllConfigOptions is a configuration option used by a Pulumi program.
 type GetAllConfigOptions struct {
 	// Allows to use the config file flag while getting/setting the configuration.
-	ConfigFile string
+	ConfigFile	string
 	// Allows to show secrets while getting the configuration.
-	ShowSecrets bool
+	ShowSecrets	bool
 }
 
 // ConfigMap is a map of ConfigValue used by Pulumi programs.
@@ -193,28 +193,28 @@ type ConfigMap map[string]ConfigValue
 
 // StackSummary is a description of a stack and its current status.
 type StackSummary struct {
-	Name             string `json:"name"`
-	Current          bool   `json:"current"`
-	LastUpdate       string `json:"lastUpdate,omitempty"`
-	UpdateInProgress bool   `json:"updateInProgress"`
-	ResourceCount    *int   `json:"resourceCount,omitempty"`
-	URL              string `json:"url,omitempty"`
+	Name			string	`json:"name"`
+	Current			bool	`json:"current"`
+	LastUpdate		string	`json:"lastUpdate,omitempty"`
+	UpdateInProgress	bool	`json:"updateInProgress"`
+	ResourceCount		*int	`json:"resourceCount,omitempty"`
+	URL			string	`json:"url,omitempty"`
 }
 
 // Information about the token that was used to authenticate the current user. One (or none) of Team or Organization
 // will be set, but not both.
 type TokenInformation struct {
-	Name         string `json:"name"`                   // The name of the token.
-	Organization string `json:"organization,omitempty"` // If this was an organization token, the organization it was for.
-	Team         string `json:"team,omitempty"`         // If this was a team token, the team it was for.
+	Name		string	`json:"name"`			// The name of the token.
+	Organization	string	`json:"organization,omitempty"`	// If this was an organization token, the organization it was for.
+	Team		string	`json:"team,omitempty"`		// If this was a team token, the team it was for.
 }
 
 // WhoAmIResult contains detailed information about the currently logged-in Pulumi identity.
 type WhoAmIResult struct {
-	User             string            `json:"user"`
-	Organizations    []string          `json:"organizations,omitempty"`
-	URL              string            `json:"url"`
-	TokenInformation *TokenInformation `json:"tokenInformation,omitempty"`
+	User			string			`json:"user"`
+	Organizations		[]string		`json:"organizations,omitempty"`
+	URL			string			`json:"url"`
+	TokenInformation	*TokenInformation	`json:"tokenInformation,omitempty"`
 }
 
 type ChangeSecretsProviderOptions struct {
@@ -225,17 +225,17 @@ type ChangeSecretsProviderOptions struct {
 // InstallOptions are the options that can be passed for the Install command.
 type InstallOptions struct {
 	// Stdout is the optional writer to use for the output during installation.
-	Stdout io.Writer
+	Stdout	io.Writer
 	// Stderr is the optional writer to use for the error output during installation.
-	Stderr io.Writer
+	Stderr	io.Writer
 	// Use language version tools to setup the language runtime before installing the dependencies.
 	// For Python this will use `pyenv` to install the Python version specified in a
 	// `.python-version` file.
-	UseLanguageVersionTools bool
+	UseLanguageVersionTools	bool
 	// Skip installing plugins
-	NoPlugins bool
+	NoPlugins	bool
 	// Skip installing dependencies
-	NoDependencies bool
+	NoDependencies	bool
 	// Reinstall plugins even if they already exist
-	Reinstall bool
+	Reinstall	bool
 }

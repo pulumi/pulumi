@@ -58,11 +58,11 @@ func TestActivateVirtualEnv(t *testing.T) {
 	}
 
 	tests := []struct {
-		input    []string
-		expected []string
+		input		[]string
+		expected	[]string
 	}{
 		{
-			input: []string{"PYTHONHOME=foo", "PATH=bar", "FOO=blah"},
+			input:	[]string{"PYTHONHOME=foo", "PATH=bar", "FOO=blah"},
 			expected: []string{
 				fmt.Sprintf("PATH=%s%sbar", venvBinDir, string(os.PathListSeparator)),
 				"FOO=blah",
@@ -70,7 +70,7 @@ func TestActivateVirtualEnv(t *testing.T) {
 			},
 		},
 		{
-			input: []string{"PYTHONHOME=foo", "FOO=blah"},
+			input:	[]string{"PYTHONHOME=foo", "FOO=blah"},
 			expected: []string{
 				"FOO=blah",
 				"PATH=" + venvBinDir,
@@ -78,7 +78,7 @@ func TestActivateVirtualEnv(t *testing.T) {
 			},
 		},
 		{
-			input: []string{"PythonHome=foo", "Path=bar"},
+			input:	[]string{"PythonHome=foo", "Path=bar"},
 			expected: []string{
 				fmt.Sprintf("Path=%s%sbar", venvBinDir, string(os.PathListSeparator)),
 				"VIRTUAL_ENV=" + venvDir,
@@ -164,37 +164,37 @@ func TestCommandPulumiPythonCommand(t *testing.T) {
 func TestPipLinkPackages(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name                string
-		requirementsContent string
-		packages            map[string]string
-		expectedLines       []string
+		name			string
+		requirementsContent	string
+		packages		map[string]string
+		expectedLines		[]string
 	}{
 		{
-			name:                "replaces existing packages",
-			requirementsContent: "pulumi>=3.0.0\ncat==1.2.3\n",
-			packages:            map[string]string{"pulumi": "/path/to/sdk"},
-			expectedLines:       []string{"cat==1.2.3", "/path/to/sdk", ""},
+			name:			"replaces existing packages",
+			requirementsContent:	"pulumi>=3.0.0\ncat==1.2.3\n",
+			packages:		map[string]string{"pulumi": "/path/to/sdk"},
+			expectedLines:		[]string{"cat==1.2.3", "/path/to/sdk", ""},
 		},
 		{
-			name:                "multiple packages",
-			requirementsContent: "pulumi>=3.0.0\ncat==1.2.3\ndog>=1.20.0",
-			packages:            map[string]string{"pulumi": "/path/to/sdk"},
-			expectedLines:       []string{"cat==1.2.3", "dog>=1.20.0", "/path/to/sdk"},
+			name:			"multiple packages",
+			requirementsContent:	"pulumi>=3.0.0\ncat==1.2.3\ndog>=1.20.0",
+			packages:		map[string]string{"pulumi": "/path/to/sdk"},
+			expectedLines:		[]string{"cat==1.2.3", "dog>=1.20.0", "/path/to/sdk"},
 		},
 		{
-			name:                "empty requirements",
-			requirementsContent: "",
-			packages:            map[string]string{"pulumi": "/path/to/sdk"},
-			expectedLines:       []string{"/path/to/sdk", ""},
+			name:			"empty requirements",
+			requirementsContent:	"",
+			packages:		map[string]string{"pulumi": "/path/to/sdk"},
+			expectedLines:		[]string{"/path/to/sdk", ""},
 		},
 		{
-			name:                "link multiple packages packages",
-			requirementsContent: "cat==1.2.3\n",
+			name:			"link multiple packages packages",
+			requirementsContent:	"cat==1.2.3\n",
 			packages: map[string]string{
-				"pulumi":     "/path/to/sdk",
-				"pulumi-aws": "/path/to/aws-sdk",
+				"pulumi":	"/path/to/sdk",
+				"pulumi-aws":	"/path/to/aws-sdk",
 			},
-			expectedLines: []string{"cat==1.2.3", "/path/to/aws-sdk", "/path/to/sdk", ""},
+			expectedLines:	[]string{"cat==1.2.3", "/path/to/aws-sdk", "/path/to/sdk", ""},
 		},
 	}
 

@@ -27,10 +27,10 @@ import (
 )
 
 var marshalOpts = MarshalOptions{
-	KeepUnknowns:     true,
-	KeepSecrets:      true,
-	KeepResources:    true,
-	KeepOutputValues: true,
+	KeepUnknowns:		true,
+	KeepSecrets:		true,
+	KeepResources:		true,
+	KeepOutputValues:	true,
 }
 
 func TestOutputValueTurnaround(t *testing.T) {
@@ -131,8 +131,8 @@ func TextAssetValueGenerator() *rapid.Generator[*structpb.Value] {
 			Kind: &structpb.Value_StructValue{
 				StructValue: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
-						resource.SigKey:            stringValue(resource.AssetSig),
-						resource.AssetTextProperty: stringValue(rapid.String().Draw(t, "text asset contents")),
+						resource.SigKey:		stringValue(resource.AssetSig),
+						resource.AssetTextProperty:	stringValue(rapid.String().Draw(t, "text asset contents")),
 					},
 				},
 			},
@@ -159,7 +159,7 @@ func LiteralArchiveValueGenerator(maxDepth int) *rapid.Generator[*structpb.Value
 			Kind: &structpb.Value_StructValue{
 				StructValue: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
-						resource.SigKey: stringValue(resource.ArchiveSig),
+						resource.SigKey:	stringValue(resource.ArchiveSig),
 						resource.ArchiveAssetsProperty: {
 							Kind: &structpb.Value_StructValue{
 								StructValue: &structpb.Struct{
@@ -183,8 +183,8 @@ func ArchiveValueGenerator(maxDepth int) *rapid.Generator[*structpb.Value] {
 func ResourceReferenceValueGenerator() *rapid.Generator[*structpb.Value] {
 	return rapid.Custom(func(t *rapid.T) *structpb.Value {
 		fields := map[string]*structpb.Value{
-			resource.SigKey: stringValue(resource.ResourceReferenceSig),
-			"urn":           stringValue(string(resource_testing.URNGenerator().Draw(t, "referenced URN"))),
+			resource.SigKey:	stringValue(resource.ResourceReferenceSig),
+			"urn":			stringValue(string(resource_testing.URNGenerator().Draw(t, "referenced URN"))),
 		}
 
 		id := rapid.OneOf(UnknownValueGenerator(), StringValueGenerator()).Draw(t, "referenced ID")
@@ -288,8 +288,8 @@ func SecretValueGenerator(maxDepth int) *rapid.Generator[*structpb.Value] {
 			Kind: &structpb.Value_StructValue{
 				StructValue: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
-						resource.SigKey: stringValue(resource.SecretSig),
-						"value":         ValueGenerator(maxDepth-1).Draw(t, "secret element"),
+						resource.SigKey:	stringValue(resource.SecretSig),
+						"value":		ValueGenerator(maxDepth-1).Draw(t, "secret element"),
 					},
 				},
 			},

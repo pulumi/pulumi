@@ -16,8 +16,8 @@ import (
 type ComponentCustomRefOutput struct {
 	pulumi.ResourceState
 
-	Ref   CustomOutput        `pulumi:"ref"`
-	Value pulumi.StringOutput `pulumi:"value"`
+	Ref	CustomOutput		`pulumi:"ref"`
+	Value	pulumi.StringOutput	`pulumi:"value"`
 }
 
 // NewComponentCustomRefOutput registers a new resource with the given unique name, arguments, and options.

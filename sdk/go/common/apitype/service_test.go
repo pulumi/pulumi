@@ -35,8 +35,8 @@ func TestCapabilities(t *testing.T) {
 		response := CapabilitiesResponse{
 			Capabilities: []APICapabilityConfig{
 				{
-					Capability:    DeltaCheckpointUploads,
-					Configuration: json.RawMessage(`{}`),
+					Capability:	DeltaCheckpointUploads,
+					Configuration:	json.RawMessage(`{}`),
 				},
 			},
 		}
@@ -51,8 +51,8 @@ func TestCapabilities(t *testing.T) {
 		response := CapabilitiesResponse{
 			Capabilities: []APICapabilityConfig{
 				{
-					Capability:    DeltaCheckpointUploads,
-					Configuration: json.RawMessage(`{"checkpointCutoffSizeBytes": 1024}`),
+					Capability:	DeltaCheckpointUploads,
+					Configuration:	json.RawMessage(`{"checkpointCutoffSizeBytes": 1024}`),
 				},
 			},
 		}
@@ -69,9 +69,9 @@ func TestCapabilities(t *testing.T) {
 		response := CapabilitiesResponse{
 			Capabilities: []APICapabilityConfig{
 				{
-					Capability:    DeltaCheckpointUploadsV2,
-					Version:       2,
-					Configuration: json.RawMessage("{}"),
+					Capability:	DeltaCheckpointUploadsV2,
+					Version:	2,
+					Configuration:	json.RawMessage("{}"),
 				},
 			},
 		}
@@ -86,9 +86,9 @@ func TestCapabilities(t *testing.T) {
 		response := CapabilitiesResponse{
 			Capabilities: []APICapabilityConfig{
 				{
-					Capability:    DeltaCheckpointUploadsV2,
-					Version:       2,
-					Configuration: json.RawMessage(`{"checkpointCutoffSizeBytes": 1024}`),
+					Capability:	DeltaCheckpointUploadsV2,
+					Version:	2,
+					Configuration:	json.RawMessage(`{"checkpointCutoffSizeBytes": 1024}`),
 				},
 			},
 		}
@@ -145,9 +145,9 @@ func TestCapabilities(t *testing.T) {
 		response := CapabilitiesResponse{
 			Capabilities: []APICapabilityConfig{
 				{
-					Capability:    DeploymentSchemaVersion,
-					Version:       1,
-					Configuration: json.RawMessage(`{"version": 4}`),
+					Capability:	DeploymentSchemaVersion,
+					Version:	1,
+					Configuration:	json.RawMessage(`{"version": 4}`),
 				},
 			},
 		}

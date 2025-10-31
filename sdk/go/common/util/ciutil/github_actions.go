@@ -27,8 +27,8 @@ type githubActionsCI struct {
 }
 
 type githubPRHead struct {
-	SHA string `json:"sha"`
-	Ref string `json:"ref"`
+	SHA	string	`json:"sha"`
+	Ref	string	`json:"ref"`
 }
 
 // githubPR represents the `pull_request` payload posted by GitHub to trigger
@@ -42,9 +42,9 @@ type githubPR struct {
 // githubActionsPullRequestEvent represents the webhook payload for a pull_request event.
 // https://help.github.com/en/actions/reference/events-that-trigger-workflows#pull-request-event-pull_request
 type githubActionsPullRequestEvent struct {
-	Action      string   `json:"action"`
-	Number      int64    `json:"number"`
-	PullRequest githubPR `json:"pull_request"`
+	Action		string		`json:"action"`
+	Number		int64		`json:"number"`
+	PullRequest	githubPR	`json:"pull_request"`
 }
 
 // DetectVars detects the GitHub Actions env vars.

@@ -17,15 +17,15 @@ package pulumi
 // ResourceTransformationArgs is the argument bag passed to a resource transformation.
 type ResourceTransformationArgs struct {
 	// The resource instance that is being transformed.
-	Resource Resource
+	Resource	Resource
 	// The type of the resource.
-	Type string
+	Type	string
 	// The name of the resource.
-	Name string
+	Name	string
 	// The original properties passed to the resource constructor.
-	Props Input
+	Props	Input
 	// The original resource options passed to the resource constructor.
-	Opts []ResourceOption
+	Opts	[]ResourceOption
 }
 
 // ResourceTransformationResult is the result that must be returned by a resource transformation
@@ -33,9 +33,9 @@ type ResourceTransformationArgs struct {
 // the originally provided values.
 type ResourceTransformationResult struct {
 	// The new properties to use in place of the original `props`.
-	Props Input
+	Props	Input
 	// The new resource options to use in place of the original `opts`.
-	Opts []ResourceOption
+	Opts	[]ResourceOption
 }
 
 // ResourceTransformation is the callback signature for the `transformations` resource option.  A

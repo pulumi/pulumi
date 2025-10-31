@@ -30,68 +30,68 @@ func TestBuildablePackage(t *testing.T) {
 	}
 	t.Parallel()
 	tests := []struct {
-		name               string
-		content            string
-		setupFunc          func(dir string) error
-		isBuildablePackage bool
-		errContains        string
+		name			string
+		content			string
+		setupFunc		func(dir string) error
+		isBuildablePackage	bool
+		errContains		string
 	}{
 		{
-			name: "valid buildable package",
+			name:	"valid buildable package",
 			content: `
 				[project]
 				name = "bananas"
 				[build-system]
 				requires = ["setuptools", "wheel"]
 				build-backend = "setuptools.build_meta"`,
-			isBuildablePackage: true,
+			isBuildablePackage:	true,
 		},
 		{
-			name: "non-buildable package",
+			name:	"non-buildable package",
 			content: `
 				[project]
 				name = "bananas"`,
-			isBuildablePackage: false,
+			isBuildablePackage:	false,
 		},
 		{
-			name: "no build-backend",
+			name:	"no build-backend",
 			content: `
 				[project]
 				name = "bananas"
 				[build-system]
 				requires = ["hatchling"]`,
-			isBuildablePackage: false,
+			isBuildablePackage:	false,
 		},
 		{
-			name: "no name",
+			name:	"no name",
 			content: `
 				[project]
 				[build-system]
 				requires = ["setuptools"]
 				build-backend = "setuptools.build_meta"`,
-			isBuildablePackage: false,
+			isBuildablePackage:	false,
 		},
 		{
-			name:               "missing pyproject.toml",
-			isBuildablePackage: false,
+			name:			"missing pyproject.toml",
+			isBuildablePackage:	false,
 		},
 		{
-			name: "invalid TOML syntax",
+			name:	"invalid TOML syntax",
 			content: `
 				[project
 				name = "invalid"`,
-			isBuildablePackage: false,
-			errContains:        "unmarshaling pyproject.toml",
+			isBuildablePackage:	false,
+			errContains:		"unmarshaling pyproject.toml",
 		},
 		{
-			name:    "permission denied",
-			content: "something",
+			name:		"permission denied",
+			content:	"something",
 			setupFunc: func(dir string) error {
 				// Make the file unreadable
-				return os.Chmod(filepath.Join(dir, "pyproject.toml"), 0o000) // gosec
+				return os.Chmod(filepath.Join(dir, "pyproject.toml"), 0o000)	// gosec
 			},
-			isBuildablePackage: false,
-			errContains:        "permission denied",
+			isBuildablePackage:	false,
+			errContains:		"permission denied",
 		},
 	}
 

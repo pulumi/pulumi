@@ -15,10 +15,10 @@ import (
 type Resource struct {
 	pulumi.CustomResourceState
 
-	Private     pulumi.StringOutput `pulumi:"private"`
-	PrivateData DataOutput          `pulumi:"privateData"`
-	Public      pulumi.StringOutput `pulumi:"public"`
-	PublicData  DataOutput          `pulumi:"publicData"`
+	Private		pulumi.StringOutput	`pulumi:"private"`
+	PrivateData	DataOutput		`pulumi:"privateData"`
+	Public		pulumi.StringOutput	`pulumi:"public"`
+	PublicData	DataOutput		`pulumi:"publicData"`
 }
 
 // NewResource registers a new resource with the given unique name, arguments, and options.
@@ -84,18 +84,18 @@ func (ResourceState) ElementType() reflect.Type {
 }
 
 type resourceArgs struct {
-	Private     string `pulumi:"private"`
-	PrivateData Data   `pulumi:"privateData"`
-	Public      string `pulumi:"public"`
-	PublicData  Data   `pulumi:"publicData"`
+	Private		string	`pulumi:"private"`
+	PrivateData	Data	`pulumi:"privateData"`
+	Public		string	`pulumi:"public"`
+	PublicData	Data	`pulumi:"publicData"`
 }
 
 // The set of arguments for constructing a Resource resource.
 type ResourceArgs struct {
-	Private     pulumi.StringInput
-	PrivateData DataInput
-	Public      pulumi.StringInput
-	PublicData  DataInput
+	Private		pulumi.StringInput
+	PrivateData	DataInput
+	Public		pulumi.StringInput
+	PublicData	DataInput
 }
 
 func (ResourceArgs) ElementType() reflect.Type {

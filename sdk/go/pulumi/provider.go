@@ -43,15 +43,15 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 ) (*pulumirpc.ConstructResponse, error) {
 	// Configure the RunInfo.
 	runInfo := RunInfo{
-		Project:          req.GetProject(),
-		Stack:            req.GetStack(),
-		Config:           req.GetConfig(),
-		ConfigSecretKeys: req.GetConfigSecretKeys(),
-		Parallel:         req.GetParallel(),
-		DryRun:           req.GetDryRun(),
-		MonitorAddr:      req.GetMonitorEndpoint(),
-		engineConn:       engineConn,
-		Organization:     req.GetOrganization(),
+		Project:		req.GetProject(),
+		Stack:			req.GetStack(),
+		Config:			req.GetConfig(),
+		ConfigSecretKeys:	req.GetConfigSecretKeys(),
+		Parallel:		req.GetParallel(),
+		DryRun:			req.GetDryRun(),
+		MonitorAddr:		req.GetMonitorEndpoint(),
+		engineConn:		engineConn,
+		Organization:		req.GetOrganization(),
 	}
 	pulumiCtx, err := NewContext(ctx, runInfo)
 	if err != nil {
@@ -63,10 +63,10 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	deserializedInputs, err := plugin.UnmarshalProperties(
 		req.GetInputs(),
 		plugin.MarshalOptions{
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepUnknowns:     req.GetDryRun(),
-			KeepOutputValues: true,
+			KeepSecrets:		true,
+			KeepResources:		true,
+			KeepUnknowns:		req.GetDryRun(),
+			KeepOutputValues:	true,
 		},
 	)
 	if err != nil {
@@ -84,8 +84,8 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		}
 
 		inputs[k] = &constructInput{
-			value: value,
-			deps:  deps,
+			value:	value,
+			deps:	deps,
 		}
 	}
 
@@ -137,9 +137,9 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		ro.AdditionalSecretOutputs = append(ro.AdditionalSecretOutputs, req.GetAdditionalSecretOutputs()...)
 		if t := req.CustomTimeouts; t != nil {
 			ro.CustomTimeouts = &CustomTimeouts{
-				Create: t.GetCreate(),
-				Update: t.GetUpdate(),
-				Delete: t.GetDelete(),
+				Create:	t.GetCreate(),
+				Update:	t.GetUpdate(),
+				Delete:	t.GetDelete(),
 			}
 		}
 		if urn := req.DeletedWith; urn != "" {
@@ -203,9 +203,9 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	}
 
 	return &pulumirpc.ConstructResponse{
-		Urn:               string(rpcURN),
-		State:             rpcProps,
-		StateDependencies: rpcPropertyDeps,
+		Urn:			string(rpcURN),
+		State:			rpcProps,
+		StateDependencies:	rpcPropertyDeps,
 	}, nil
 }
 
@@ -223,8 +223,8 @@ func createProviderResource(ctx *Context, ref string) (ProviderResource, error) 
 	// Unmarshal the provider resource as a resource reference so we get back
 	// the intended provider type with its state, if it's been registered.
 	resource, err := unmarshalResourceReference(ctx, resource.ResourceReference{
-		URN: resource.URN(urn),
-		ID:  resource.NewProperty(id),
+		URN:	resource.URN(urn),
+		ID:	resource.NewProperty(id),
 	})
 	if err != nil {
 		return nil, err
@@ -233,8 +233,8 @@ func createProviderResource(ctx *Context, ref string) (ProviderResource, error) 
 }
 
 type constructInput struct {
-	value resource.PropertyValue
-	deps  map[URN]struct{}
+	value	resource.PropertyValue
+	deps	map[URN]struct{}
 }
 
 func (ci constructInput) Dependencies(ctx *Context) []Resource {
@@ -325,9 +325,9 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 		}
 		// Handle this as a secret output.
 		return copyInputTo(ctx, resource.NewProperty(resource.Output{
-			Element: element,
-			Known:   known,
-			Secret:  true,
+			Element:	element,
+			Known:		known,
+			Secret:		true,
 		}), dest)
 	case v.IsComputed():
 		// Handle this as an unknown output.
@@ -585,7 +585,7 @@ func copyToStruct(ctx *Context, v resource.PropertyValue, typ reflect.Type, dest
 		}
 
 		tag := typ.Field(i).Tag.Get("pulumi")
-		tag = strings.Split(tag, ",")[0] // tagName,flag => tagName
+		tag = strings.Split(tag, ",")[0]	// tagName,flag => tagName
 		if tag == "" {
 			continue
 		}
@@ -624,7 +624,7 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]any, args any) error 
 			}
 			field := typ.Field(i)
 			tag, has := field.Tag.Lookup("pulumi")
-			tag = strings.Split(tag, ",")[0] // tagName,flag => tagName
+			tag = strings.Split(tag, ",")[0]	// tagName,flag => tagName
 			if !has || tag != k {
 				continue
 			}
@@ -765,8 +765,8 @@ func newConstructResult(resource ComponentResource) (URNInput, Input, error) {
 
 // callFailure indicates that a call to Call failed; it contains the property and reason for the failure.
 type callFailure struct {
-	Property string
-	Reason   string
+	Property	string
+	Reason		string
 }
 
 type callFunc func(ctx *Context, tok string, args map[string]any) (Input, []any, error)
@@ -777,14 +777,14 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 ) (*pulumirpc.CallResponse, error) {
 	// Configure the RunInfo.
 	runInfo := RunInfo{
-		Project:      req.GetProject(),
-		Stack:        req.GetStack(),
-		Config:       req.GetConfig(),
-		Parallel:     req.GetParallel(),
-		DryRun:       req.GetDryRun(),
-		MonitorAddr:  req.GetMonitorEndpoint(),
-		engineConn:   engineConn,
-		Organization: req.GetOrganization(),
+		Project:	req.GetProject(),
+		Stack:		req.GetStack(),
+		Config:		req.GetConfig(),
+		Parallel:	req.GetParallel(),
+		DryRun:		req.GetDryRun(),
+		MonitorAddr:	req.GetMonitorEndpoint(),
+		engineConn:	engineConn,
+		Organization:	req.GetOrganization(),
 	}
 	pulumiCtx, err := NewContext(ctx, runInfo)
 	if err != nil {
@@ -796,10 +796,10 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 	deserializedArgs, err := plugin.UnmarshalProperties(
 		req.GetArgs(),
 		plugin.MarshalOptions{
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepUnknowns:     req.GetDryRun(),
-			KeepOutputValues: true,
+			KeepSecrets:		true,
+			KeepResources:		true,
+			KeepUnknowns:		req.GetDryRun(),
+			KeepOutputValues:	true,
 		},
 	)
 	if err != nil {
@@ -817,8 +817,8 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 		}
 
 		args[k] = &constructInput{
-			value: value,
-			deps:  deps,
+			value:	value,
+			deps:	deps,
 		}
 	}
 
@@ -874,16 +874,16 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 		for i, v := range failures {
 			failure := v.(callFailure)
 			rpcFailures[i] = &pulumirpc.CheckFailure{
-				Property: failure.Property,
-				Reason:   failure.Reason,
+				Property:	failure.Property,
+				Reason:		failure.Reason,
 			}
 		}
 	}
 
 	return &pulumirpc.CallResponse{
-		Return:             rpcProps,
-		ReturnDependencies: rpcPropertyDeps,
-		Failures:           rpcFailures,
+		Return:			rpcProps,
+		ReturnDependencies:	rpcPropertyDeps,
+		Failures:		rpcFailures,
 	}, nil
 }
 
@@ -966,7 +966,7 @@ func newCallResult(result any) (Input, error) {
 // newCallFailure creates a call failure.
 func newCallFailure(property, reason string) any {
 	return callFailure{
-		Property: property,
-		Reason:   reason,
+		Property:	property,
+		Reason:		reason,
 	}
 }

@@ -22,13 +22,13 @@ func SecretInvoke(ctx *pulumi.Context, args *SecretInvokeArgs, opts ...pulumi.In
 }
 
 type SecretInvokeArgs struct {
-	SecretResponse bool   `pulumi:"secretResponse"`
-	Value          string `pulumi:"value"`
+	SecretResponse	bool	`pulumi:"secretResponse"`
+	Value		string	`pulumi:"value"`
 }
 
 type SecretInvokeResult struct {
-	Response string `pulumi:"response"`
-	Secret   bool   `pulumi:"secret"`
+	Response	string	`pulumi:"response"`
+	Secret		bool	`pulumi:"secret"`
 }
 
 func SecretInvokeOutput(ctx *pulumi.Context, args SecretInvokeOutputArgs, opts ...pulumi.InvokeOption) SecretInvokeResultOutput {
@@ -41,8 +41,8 @@ func SecretInvokeOutput(ctx *pulumi.Context, args SecretInvokeOutputArgs, opts .
 }
 
 type SecretInvokeOutputArgs struct {
-	SecretResponse pulumi.BoolInput   `pulumi:"secretResponse"`
-	Value          pulumi.StringInput `pulumi:"value"`
+	SecretResponse	pulumi.BoolInput	`pulumi:"secretResponse"`
+	Value		pulumi.StringInput	`pulumi:"value"`
 }
 
 func (SecretInvokeOutputArgs) ElementType() reflect.Type {

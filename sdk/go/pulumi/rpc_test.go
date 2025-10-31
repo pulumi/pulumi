@@ -114,59 +114,59 @@ func (rm *testResourceModule) Version() semver.Version {
 }
 
 type test struct {
-	S                              string            `pulumi:"s"`
-	A                              bool              `pulumi:"a"`
-	B                              int               `pulumi:"b"`
-	StringAsset                    Asset             `pulumi:"cStringAsset"`
-	FileAsset                      Asset             `pulumi:"cFileAsset"`
-	RemoteAsset                    Asset             `pulumi:"cRemoteAsset"`
-	AssetArchive                   Archive           `pulumi:"dAssetArchive"`
-	FileArchive                    Archive           `pulumi:"dFileArchive"`
-	RemoteArchive                  Archive           `pulumi:"dRemoteArchive"`
-	E                              any               `pulumi:"e"`
-	Array                          []any             `pulumi:"fArray"`
-	Map                            map[string]any    `pulumi:"fMap"`
-	G                              string            `pulumi:"g"`
-	H                              string            `pulumi:"h"`
-	I                              string            `pulumi:"i"`
-	CustomResource                 CustomResource    `pulumi:"jCustomResource"`
-	ComponentResource              ComponentResource `pulumi:"jComponentResource"`
-	ProviderResource               ProviderResource  `pulumi:"jProviderResource"`
-	PreviewCustomResource          CustomResource    `pulumi:"jPreviewCustomResource"`
-	PreviewProviderResource        ProviderResource  `pulumi:"jPreviewProviderResource"`
-	MissingCustomResource          CustomResource    `pulumi:"kCustomResource"`
-	MissingComponentResource       ComponentResource `pulumi:"kComponentResource"`
-	MissingProviderResource        ProviderResource  `pulumi:"kProviderResource"`
-	MissingPreviewCustomResource   CustomResource    `pulumi:"kPreviewCustomResource"`
-	MissingPreviewProviderResource ProviderResource  `pulumi:"kPreviewProviderResource"`
+	S				string			`pulumi:"s"`
+	A				bool			`pulumi:"a"`
+	B				int			`pulumi:"b"`
+	StringAsset			Asset			`pulumi:"cStringAsset"`
+	FileAsset			Asset			`pulumi:"cFileAsset"`
+	RemoteAsset			Asset			`pulumi:"cRemoteAsset"`
+	AssetArchive			Archive			`pulumi:"dAssetArchive"`
+	FileArchive			Archive			`pulumi:"dFileArchive"`
+	RemoteArchive			Archive			`pulumi:"dRemoteArchive"`
+	E				any			`pulumi:"e"`
+	Array				[]any			`pulumi:"fArray"`
+	Map				map[string]any		`pulumi:"fMap"`
+	G				string			`pulumi:"g"`
+	H				string			`pulumi:"h"`
+	I				string			`pulumi:"i"`
+	CustomResource			CustomResource		`pulumi:"jCustomResource"`
+	ComponentResource		ComponentResource	`pulumi:"jComponentResource"`
+	ProviderResource		ProviderResource	`pulumi:"jProviderResource"`
+	PreviewCustomResource		CustomResource		`pulumi:"jPreviewCustomResource"`
+	PreviewProviderResource		ProviderResource	`pulumi:"jPreviewProviderResource"`
+	MissingCustomResource		CustomResource		`pulumi:"kCustomResource"`
+	MissingComponentResource	ComponentResource	`pulumi:"kComponentResource"`
+	MissingProviderResource		ProviderResource	`pulumi:"kProviderResource"`
+	MissingPreviewCustomResource	CustomResource		`pulumi:"kPreviewCustomResource"`
+	MissingPreviewProviderResource	ProviderResource	`pulumi:"kPreviewProviderResource"`
 }
 
 type testInputs struct {
-	S                              StringInput
-	A                              BoolInput
-	B                              IntInput
-	StringAsset                    AssetInput
-	FileAsset                      AssetInput
-	RemoteAsset                    AssetInput
-	AssetArchive                   ArchiveInput
-	FileArchive                    ArchiveInput
-	RemoteArchive                  ArchiveInput
-	E                              Input
-	Array                          ArrayInput
-	Map                            MapInput
-	G                              StringInput
-	H                              StringInput
-	I                              StringInput
-	CustomResource                 CustomResource
-	ComponentResource              ComponentResource
-	ProviderResource               ProviderResource
-	PreviewCustomResource          CustomResource
-	PreviewProviderResource        ProviderResource
-	MissingCustomResource          CustomResource
-	MissingComponentResource       ComponentResource
-	MissingProviderResource        ProviderResource
-	MissingPreviewCustomResource   CustomResource
-	MissingPreviewProviderResource ProviderResource
+	S				StringInput
+	A				BoolInput
+	B				IntInput
+	StringAsset			AssetInput
+	FileAsset			AssetInput
+	RemoteAsset			AssetInput
+	AssetArchive			ArchiveInput
+	FileArchive			ArchiveInput
+	RemoteArchive			ArchiveInput
+	E				Input
+	Array				ArrayInput
+	Map				MapInput
+	G				StringInput
+	H				StringInput
+	I				StringInput
+	CustomResource			CustomResource
+	ComponentResource		ComponentResource
+	ProviderResource		ProviderResource
+	PreviewCustomResource		CustomResource
+	PreviewProviderResource		ProviderResource
+	MissingCustomResource		CustomResource
+	MissingComponentResource	ComponentResource
+	MissingProviderResource		ProviderResource
+	MissingPreviewCustomResource	CustomResource
+	MissingPreviewProviderResource	ProviderResource
 }
 
 func (testInputs) ElementType() reflect.Type {
@@ -201,38 +201,38 @@ func TestMarshalRoundtrip(t *testing.T) {
 	out2 := ctx.newOutputState(reflect.TypeOf(""))
 	internal.FulfillOutput(out2, nil, false, false, resourcesToInternal(nil), nil)
 	inputs := testInputs{
-		S:           String("a string"),
-		A:           Bool(true),
-		B:           Int(42),
-		StringAsset: NewStringAsset("put a lime in the coconut"),
-		FileAsset:   NewFileAsset("foo.txt"),
-		RemoteAsset: NewRemoteAsset("https://pulumi.com/fake/txt"),
+		S:		String("a string"),
+		A:		Bool(true),
+		B:		Int(42),
+		StringAsset:	NewStringAsset("put a lime in the coconut"),
+		FileAsset:	NewFileAsset("foo.txt"),
+		RemoteAsset:	NewRemoteAsset("https://pulumi.com/fake/txt"),
 		AssetArchive: NewAssetArchive(map[string]any{
-			"subAsset":   NewFileAsset("bar.txt"),
-			"subArchive": NewFileArchive("bar.zip"),
+			"subAsset":	NewFileAsset("bar.txt"),
+			"subArchive":	NewFileArchive("bar.zip"),
 		}),
-		FileArchive:   NewFileArchive("foo.zip"),
-		RemoteArchive: NewRemoteArchive("https://pulumi.com/fake/archive.zip"),
-		E:             out,
-		Array:         Array{Int(0), Float64(1.3), String("x"), Bool(false)},
+		FileArchive:	NewFileArchive("foo.zip"),
+		RemoteArchive:	NewRemoteArchive("https://pulumi.com/fake/archive.zip"),
+		E:		out,
+		Array:		Array{Int(0), Float64(1.3), String("x"), Bool(false)},
 		Map: Map{
-			"x": String("y"),
-			"y": Float64(999.9),
-			"z": Bool(false),
+			"x":	String("y"),
+			"y":	Float64(999.9),
+			"z":	Bool(false),
 		},
-		G:                              StringOutput{out2},
-		H:                              URN("foo"),
-		I:                              StringOutput{},
-		CustomResource:                 newSimpleCustomResource(ctx, URN(customURN), "id"),
-		ComponentResource:              ctx.newDependencyResource(URN(componentURN)),
-		ProviderResource:               newSimpleProviderResource(ctx, URN(providerURN), "id"),
-		PreviewCustomResource:          newSimpleCustomResource(ctx, URN(previewCustomURN), ""),
-		PreviewProviderResource:        newSimpleProviderResource(ctx, URN(previewProviderURN), ""),
-		MissingCustomResource:          newSimpleCustomResource(ctx, URN(missingCustomURN), "id"),
-		MissingComponentResource:       ctx.newDependencyResource(URN(missingComponentURN)),
-		MissingProviderResource:        newSimpleProviderResource(ctx, URN(missingProviderURN), "id"),
-		MissingPreviewCustomResource:   newSimpleCustomResource(ctx, URN(missingPreviewCustomURN), ""),
-		MissingPreviewProviderResource: newSimpleProviderResource(ctx, URN(missingPreviewProviderURN), ""),
+		G:				StringOutput{out2},
+		H:				URN("foo"),
+		I:				StringOutput{},
+		CustomResource:			newSimpleCustomResource(ctx, URN(customURN), "id"),
+		ComponentResource:		ctx.newDependencyResource(URN(componentURN)),
+		ProviderResource:		newSimpleProviderResource(ctx, URN(providerURN), "id"),
+		PreviewCustomResource:		newSimpleCustomResource(ctx, URN(previewCustomURN), ""),
+		PreviewProviderResource:	newSimpleProviderResource(ctx, URN(previewProviderURN), ""),
+		MissingCustomResource:		newSimpleCustomResource(ctx, URN(missingCustomURN), "id"),
+		MissingComponentResource:	ctx.newDependencyResource(URN(missingComponentURN)),
+		MissingProviderResource:	newSimpleProviderResource(ctx, URN(missingProviderURN), "id"),
+		MissingPreviewCustomResource:	newSimpleCustomResource(ctx, URN(missingPreviewCustomURN), ""),
+		MissingPreviewProviderResource:	newSimpleProviderResource(ctx, URN(missingPreviewProviderURN), ""),
 	}
 
 	// Marshal those inputs.
@@ -334,20 +334,20 @@ type nestedTypeInput interface {
 var nestedTypeType = reflect.TypeOf((*nestedType)(nil)).Elem()
 
 type nestedType struct {
-	Foo string `pulumi:"foo"`
-	Bar int    `pulumi:"bar"`
+	Foo	string	`pulumi:"foo"`
+	Bar	int	`pulumi:"bar"`
 }
 
 type nestedTypeInputs struct {
-	Foo StringInput `pulumi:"foo"`
-	Bar IntInput    `pulumi:"bar"`
+	Foo	StringInput	`pulumi:"foo"`
+	Bar	IntInput	`pulumi:"bar"`
 }
 
 func (nestedTypeInputs) ElementType() reflect.Type {
 	return nestedTypeType
 }
 
-func (nestedTypeInputs) isNestedType() {}
+func (nestedTypeInputs) isNestedType()	{}
 
 type nestedTypeOutput struct{ *OutputState }
 
@@ -355,44 +355,44 @@ func (nestedTypeOutput) ElementType() reflect.Type {
 	return nestedTypeType
 }
 
-func (nestedTypeOutput) isNestedType() {}
+func (nestedTypeOutput) isNestedType()	{}
 
 func init() {
 	RegisterOutputType(nestedTypeOutput{})
 }
 
 type testResourceArgs struct {
-	URN URN `pulumi:"urn"`
-	ID  ID  `pulumi:"id"`
+	URN	URN	`pulumi:"urn"`
+	ID	ID	`pulumi:"id"`
 
-	Any     any            `pulumi:"any"`
-	Archive Archive        `pulumi:"archive"`
-	Array   []any          `pulumi:"array"`
-	Asset   Asset          `pulumi:"asset"`
-	Bool    bool           `pulumi:"bool"`
-	Float64 float64        `pulumi:"float64"`
-	Int     int            `pulumi:"int"`
-	Map     map[string]any `pulumi:"map"`
-	String  string         `pulumi:"string"`
+	Any	any		`pulumi:"any"`
+	Archive	Archive		`pulumi:"archive"`
+	Array	[]any		`pulumi:"array"`
+	Asset	Asset		`pulumi:"asset"`
+	Bool	bool		`pulumi:"bool"`
+	Float64	float64		`pulumi:"float64"`
+	Int	int		`pulumi:"int"`
+	Map	map[string]any	`pulumi:"map"`
+	String	string		`pulumi:"string"`
 
-	Nested nestedType `pulumi:"nested"`
+	Nested	nestedType	`pulumi:"nested"`
 }
 
 type testResourceInputs struct {
-	URN URNInput
-	ID  IDInput
+	URN	URNInput
+	ID	IDInput
 
-	Any     Input
-	Archive ArchiveInput
-	Array   ArrayInput
-	Asset   AssetInput
-	Bool    BoolInput
-	Float64 Float64Input
-	Int     IntInput
-	Map     MapInput
-	String  StringInput
+	Any	Input
+	Archive	ArchiveInput
+	Array	ArrayInput
+	Asset	AssetInput
+	Bool	BoolInput
+	Float64	Float64Input
+	Int	IntInput
+	Map	MapInput
+	String	StringInput
 
-	Nested nestedTypeInput
+	Nested	nestedTypeInput
 }
 
 func (*testResourceInputs) ElementType() reflect.Type {
@@ -402,17 +402,17 @@ func (*testResourceInputs) ElementType() reflect.Type {
 type testResource struct {
 	CustomResourceState
 
-	Any     AnyOutput     `pulumi:"any"`
-	Archive ArchiveOutput `pulumi:"archive"`
-	Array   ArrayOutput   `pulumi:"array"`
-	Asset   AssetOutput   `pulumi:"asset"`
-	Bool    BoolOutput    `pulumi:"bool"`
-	Float64 Float64Output `pulumi:"float64"`
-	Int     IntOutput     `pulumi:"int"`
-	Map     MapOutput     `pulumi:"map"`
-	String  StringOutput  `pulumi:"string"`
+	Any	AnyOutput	`pulumi:"any"`
+	Archive	ArchiveOutput	`pulumi:"archive"`
+	Array	ArrayOutput	`pulumi:"array"`
+	Asset	AssetOutput	`pulumi:"asset"`
+	Bool	BoolOutput	`pulumi:"bool"`
+	Float64	Float64Output	`pulumi:"float64"`
+	Int	IntOutput	`pulumi:"int"`
+	Map	MapOutput	`pulumi:"map"`
+	String	StringOutput	`pulumi:"string"`
 
-	Nested nestedTypeOutput `pulumi:"nested"`
+	Nested	nestedTypeOutput	`pulumi:"nested"`
 }
 
 func TestResourceState(t *testing.T) {
@@ -425,19 +425,19 @@ func TestResourceState(t *testing.T) {
 	state := ctx.makeResourceState("", "", &theResource, nil, nil, nil, "", "", nil, nil)
 
 	resolved, _, _, _ := marshalInputs(&testResourceInputs{
-		Any:     String("foo"),
-		Archive: NewRemoteArchive("https://pulumi.com/fake/archive.zip"),
-		Array:   Array{String("foo")},
-		Asset:   NewStringAsset("put a lime in the coconut"),
-		Bool:    Bool(true),
-		Float64: Float64(3.14),
-		Int:     Int(-1),
-		Map:     Map{"foo": String("bar")},
-		String:  String("qux"),
+		Any:		String("foo"),
+		Archive:	NewRemoteArchive("https://pulumi.com/fake/archive.zip"),
+		Array:		Array{String("foo")},
+		Asset:		NewStringAsset("put a lime in the coconut"),
+		Bool:		Bool(true),
+		Float64:	Float64(3.14),
+		Int:		Int(-1),
+		Map:		Map{"foo": String("bar")},
+		String:		String("qux"),
 
 		Nested: nestedTypeInputs{
-			Foo: String("bar"),
-			Bar: Int(42),
+			Foo:	String("bar"),
+			Bar:	Int(42),
 		},
 	})
 	s, err := plugin.MarshalProperties(
@@ -447,34 +447,34 @@ func TestResourceState(t *testing.T) {
 	state.resolve(ctx, nil, nil, "foo", "bar", s, nil, false)
 
 	input := &testResourceInputs{
-		URN:     theResource.URN(),
-		ID:      theResource.ID(),
-		Any:     theResource.Any,
-		Archive: theResource.Archive,
-		Array:   theResource.Array,
-		Asset:   theResource.Asset,
-		Bool:    theResource.Bool,
-		Float64: theResource.Float64,
-		Int:     theResource.Int,
-		Map:     theResource.Map,
-		String:  theResource.String,
-		Nested:  theResource.Nested,
+		URN:		theResource.URN(),
+		ID:		theResource.ID(),
+		Any:		theResource.Any,
+		Archive:	theResource.Archive,
+		Array:		theResource.Array,
+		Asset:		theResource.Asset,
+		Bool:		theResource.Bool,
+		Float64:	theResource.Float64,
+		Int:		theResource.Int,
+		Map:		theResource.Map,
+		String:		theResource.String,
+		Nested:		theResource.Nested,
 	}
 	resolved, pdeps, deps, err := marshalInputs(input)
 	require.NoError(t, err)
 	assert.Equal(t, map[string][]URN{
-		"urn":     {"foo"},
-		"id":      {"foo"},
-		"any":     {"foo"},
-		"archive": {"foo"},
-		"array":   {"foo"},
-		"asset":   {"foo"},
-		"bool":    {"foo"},
-		"float64": {"foo"},
-		"int":     {"foo"},
-		"map":     {"foo"},
-		"string":  {"foo"},
-		"nested":  {"foo"},
+		"urn":		{"foo"},
+		"id":		{"foo"},
+		"any":		{"foo"},
+		"archive":	{"foo"},
+		"array":	{"foo"},
+		"asset":	{"foo"},
+		"bool":		{"foo"},
+		"float64":	{"foo"},
+		"int":		{"foo"},
+		"map":		{"foo"},
+		"string":	{"foo"},
+		"nested":	{"foo"},
 	}, pdeps)
 	assert.Equal(t, []URN{"foo"}, deps)
 
@@ -482,20 +482,20 @@ func TestResourceState(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, secret)
 	assert.Equal(t, map[string]any{
-		"urn":     "foo",
-		"id":      "bar",
-		"any":     "foo",
-		"archive": NewRemoteArchive("https://pulumi.com/fake/archive.zip"),
-		"array":   []any{"foo"},
-		"asset":   NewStringAsset("put a lime in the coconut"),
-		"bool":    true,
-		"float64": 3.14,
-		"int":     -1.0,
-		"map":     map[string]any{"foo": "bar"},
-		"string":  "qux",
+		"urn":		"foo",
+		"id":		"bar",
+		"any":		"foo",
+		"archive":	NewRemoteArchive("https://pulumi.com/fake/archive.zip"),
+		"array":	[]any{"foo"},
+		"asset":	NewStringAsset("put a lime in the coconut"),
+		"bool":		true,
+		"float64":	3.14,
+		"int":		-1.0,
+		"map":		map[string]any{"foo": "bar"},
+		"string":	"qux",
 		"nested": map[string]any{
-			"foo": "bar",
-			"bar": 42.0,
+			"foo":	"bar",
+			"bar":	42.0,
 		},
 	}, res)
 }
@@ -554,28 +554,28 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 	out2 := ctx.newOutputState(reflect.TypeOf(""))
 	internal.FulfillOutput(out2, nil, false, true, resourcesToInternal(nil), nil)
 	inputs := testInputs{
-		S:           String("a string"),
-		A:           Bool(true),
-		B:           Int(42),
-		StringAsset: NewStringAsset("put a lime in the coconut"),
-		FileAsset:   NewFileAsset("foo.txt"),
-		RemoteAsset: NewRemoteAsset("https://pulumi.com/fake/txt"),
+		S:		String("a string"),
+		A:		Bool(true),
+		B:		Int(42),
+		StringAsset:	NewStringAsset("put a lime in the coconut"),
+		FileAsset:	NewFileAsset("foo.txt"),
+		RemoteAsset:	NewRemoteAsset("https://pulumi.com/fake/txt"),
 		AssetArchive: NewAssetArchive(map[string]any{
-			"subAsset":   NewFileAsset("bar.txt"),
-			"subArchive": NewFileArchive("bar.zip"),
+			"subAsset":	NewFileAsset("bar.txt"),
+			"subArchive":	NewFileArchive("bar.zip"),
 		}),
-		FileArchive:   NewFileArchive("foo.zip"),
-		RemoteArchive: NewRemoteArchive("https://pulumi.com/fake/archive.zip"),
-		E:             out,
-		Array:         Array{Int(0), Float64(1.3), String("x"), Bool(false)},
+		FileArchive:	NewFileArchive("foo.zip"),
+		RemoteArchive:	NewRemoteArchive("https://pulumi.com/fake/archive.zip"),
+		E:		out,
+		Array:		Array{Int(0), Float64(1.3), String("x"), Bool(false)},
 		Map: Map{
-			"x": String("y"),
-			"y": Float64(999.9),
-			"z": Bool(false),
+			"x":	String("y"),
+			"y":	Float64(999.9),
+			"z":	Bool(false),
 		},
-		G: StringOutput{out2},
-		H: URN("foo"),
-		I: StringOutput{},
+		G:	StringOutput{out2},
+		H:	URN("foo"),
+		I:	StringOutput{},
 	}
 
 	// Marshal those inputs.
@@ -641,25 +641,25 @@ func TestMapInputMarshalling(t *testing.T) {
 	internal.ResolveOutput(out, "outputty", true, false, resourcesToInternal(nil))
 
 	inputs1 := Map(map[string]Input{
-		"prop": out,
+		"prop":	out,
 		"nested": Map(map[string]Input{
-			"foo": String("foo"),
-			"bar": Int(42),
+			"foo":	String("foo"),
+			"bar":	Int(42),
 		}),
 	})
 
 	inputs2 := UntypedArgs(map[string]any{
-		"prop": "outputty",
+		"prop":	"outputty",
 		"nested": map[string]any{
-			"foo": "foo",
-			"bar": 42,
+			"foo":	"foo",
+			"bar":	42,
 		},
 	})
 
 	cases := []struct {
-		inputs            Input
-		depUrns           []string
-		expectOutputValue bool
+		inputs			Input
+		depUrns			[]string
+		expectOutputValue	bool
 	}{
 		{inputs: inputs1, depUrns: []string{""}, expectOutputValue: true},
 		{inputs: inputs2, depUrns: nil},
@@ -697,56 +697,56 @@ func TestVersionedMap(t *testing.T) {
 	_ = resourceModules.Store("unreleased", &testResourcePackage{version: semver.MustParse("1.0.0-beta1")})
 
 	tests := []struct {
-		name            string
-		pkg             string
-		version         semver.Version
-		expectFound     bool
-		expectedVersion semver.Version
+		name		string
+		pkg		string
+		version		semver.Version
+		expectFound	bool
+		expectedVersion	semver.Version
 	}{
 		{
-			name:        "unknown not found",
-			pkg:         "unknown",
-			version:     semver.Version{},
-			expectFound: false,
+			name:		"unknown not found",
+			pkg:		"unknown",
+			version:	semver.Version{},
+			expectFound:	false,
 		},
 		{
-			name:        "unknown not found",
-			pkg:         "unknown",
-			version:     semver.MustParse("0.0.1"),
-			expectFound: false,
+			name:		"unknown not found",
+			pkg:		"unknown",
+			version:	semver.MustParse("0.0.1"),
+			expectFound:	false,
 		},
 		{
-			name:        "different major version not found",
-			pkg:         "test",
-			version:     semver.MustParse("0.0.1"),
-			expectFound: false,
+			name:		"different major version not found",
+			pkg:		"test",
+			version:	semver.MustParse("0.0.1"),
+			expectFound:	false,
 		},
 		{
-			name:        "different major version not found",
-			pkg:         "test",
-			version:     semver.MustParse("3.0.0"),
-			expectFound: false,
+			name:		"different major version not found",
+			pkg:		"test",
+			version:	semver.MustParse("3.0.0"),
+			expectFound:	false,
 		},
 		{
-			name:            "wildcard returns highest version",
-			pkg:             "test",
-			version:         semver.Version{},
-			expectFound:     true,
-			expectedVersion: semver.MustParse("2.2.0"),
+			name:			"wildcard returns highest version",
+			pkg:			"test",
+			version:		semver.Version{},
+			expectFound:		true,
+			expectedVersion:	semver.MustParse("2.2.0"),
 		},
 		{
-			name:            "major version respected 1.0.0",
-			pkg:             "test",
-			version:         semver.MustParse("1.0.0"),
-			expectFound:     true,
-			expectedVersion: semver.MustParse("1.0.2"),
+			name:			"major version respected 1.0.0",
+			pkg:			"test",
+			version:		semver.MustParse("1.0.0"),
+			expectFound:		true,
+			expectedVersion:	semver.MustParse("1.0.2"),
 		},
 		{
-			name:            "major version respected 2.0.0",
-			pkg:             "test",
-			version:         semver.MustParse("2.0.0"),
-			expectFound:     true,
-			expectedVersion: semver.MustParse("2.2.0"),
+			name:			"major version respected 2.0.0",
+			pkg:			"test",
+			version:		semver.MustParse("2.0.0"),
+			expectFound:		true,
+			expectedVersion:	semver.MustParse("2.2.0"),
 		},
 	}
 
@@ -769,20 +769,20 @@ func TestRegisterResourcePackage(t *testing.T) {
 	pkg := "testPkg"
 
 	tests := []struct {
-		name            string
-		resourcePackage ResourcePackage
+		name		string
+		resourcePackage	ResourcePackage
 	}{
 		{
-			name:            "wildcard version",
-			resourcePackage: &testResourcePackage{},
+			name:			"wildcard version",
+			resourcePackage:	&testResourcePackage{},
 		},
 		{
-			name:            "version",
-			resourcePackage: &testResourcePackage{version: semver.MustParse("1.2.3")},
+			name:			"version",
+			resourcePackage:	&testResourcePackage{version: semver.MustParse("1.2.3")},
 		},
 		{
-			name:            "alpha version",
-			resourcePackage: &testResourcePackage{version: semver.MustParse("1.0.0-alpha1")},
+			name:			"alpha version",
+			resourcePackage:	&testResourcePackage{version: semver.MustParse("1.0.0-alpha1")},
 		},
 	}
 	for _, tt := range tests {
@@ -804,20 +804,20 @@ func TestRegisterResourceModule(t *testing.T) {
 	mod := "testMod"
 
 	tests := []struct {
-		name           string
-		resourceModule ResourceModule
+		name		string
+		resourceModule	ResourceModule
 	}{
 		{
-			name:           "wildcard version",
-			resourceModule: &testResourceModule{},
+			name:		"wildcard version",
+			resourceModule:	&testResourceModule{},
 		},
 		{
-			name:           "version",
-			resourceModule: &testResourceModule{version: semver.MustParse("1.2.3")},
+			name:		"version",
+			resourceModule:	&testResourceModule{version: semver.MustParse("1.2.3")},
 		},
 		{
-			name:           "alpha version",
-			resourceModule: &testResourceModule{version: semver.MustParse("1.0.0-alpha1")},
+			name:		"alpha version",
+			resourceModule:	&testResourceModule{version: semver.MustParse("1.0.0-alpha1")},
 		},
 	}
 	for _, tt := range tests {
@@ -942,8 +942,8 @@ func TestOutputValueMarshalling(t *testing.T) {
 	require.NoError(t, err)
 
 	values := []struct {
-		value    any
-		expected resource.PropertyValue
+		value		any
+		expected	resource.PropertyValue
 	}{
 		{value: nil, expected: resource.NewNullProperty()},
 		{value: 0, expected: resource.NewProperty(0.0)},
@@ -972,9 +972,9 @@ func TestOutputValueMarshalling(t *testing.T) {
 					expectedValue := value.expected
 					if !known || secret || len(deps) > 0 {
 						v := resource.Output{
-							Known:        known,
-							Secret:       secret,
-							Dependencies: deps,
+							Known:		known,
+							Secret:		secret,
+							Dependencies:	deps,
 						}
 						if known {
 							v.Element = value.expected
@@ -1014,8 +1014,8 @@ func (fooArgs) ElementType() reflect.Type {
 }
 
 type TemplateOptions struct {
-	Description       *string                    `pulumi:"description"`
-	TagSpecifications []TemplateTagSpecification `pulumi:"tagSpecifications"`
+	Description		*string				`pulumi:"description"`
+	TagSpecifications	[]TemplateTagSpecification	`pulumi:"tagSpecifications"`
 }
 
 type TemplateOptionsInput interface {
@@ -1026,8 +1026,8 @@ type TemplateOptionsInput interface {
 }
 
 type TemplateOptionsArgs struct {
-	Description       StringPtrInput
-	TagSpecifications TemplateTagSpecificationArrayInput
+	Description		StringPtrInput
+	TagSpecifications	TemplateTagSpecificationArrayInput
 }
 
 func (TemplateOptionsArgs) ElementType() reflect.Type {
@@ -1114,8 +1114,8 @@ func (o TemplateOptionsPtrOutput) ToTemplateOptionsPtrOutputWithContext(ctx cont
 }
 
 type TemplateTagSpecification struct {
-	Name *string           `pulumi:"name"`
-	Tags map[string]string `pulumi:"tags"`
+	Name	*string			`pulumi:"name"`
+	Tags	map[string]string	`pulumi:"tags"`
 }
 
 type TemplateTagSpecificationInput interface {
@@ -1126,8 +1126,8 @@ type TemplateTagSpecificationInput interface {
 }
 
 type TemplateTagSpecificationArgs struct {
-	Name StringPtrInput `pulumi:"name"`
-	Tags StringMapInput `pulumi:"tags"`
+	Name	StringPtrInput	`pulumi:"name"`
+	Tags	StringMapInput	`pulumi:"tags"`
 }
 
 func (TemplateTagSpecificationArgs) ElementType() reflect.Type {
@@ -1240,46 +1240,46 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 
 	templateOptionsPtrOutputType := reflect.TypeOf((*TemplateOptionsPtrOutput)(nil)).Elem()
 	unknownTemplateOptionsPtrOutput := ctx.newOutput(templateOptionsPtrOutputType).(TemplateOptionsPtrOutput)
-	internal.ResolveOutput(unknownTemplateOptionsPtrOutput, nil, false, false, resourcesToInternal(nil)) /*known*/ /*secret*/
+	internal.ResolveOutput(unknownTemplateOptionsPtrOutput, nil, false, false, resourcesToInternal(nil))	/*known*/	/*secret*/
 
 	unknownSecretTemplateOptionsPtrOutput := ctx.newOutput(templateOptionsPtrOutputType).(TemplateOptionsPtrOutput)
-	internal.ResolveOutput(unknownSecretTemplateOptionsPtrOutput, nil, false, true, resourcesToInternal(nil)) /*known*/ /*secret*/
+	internal.ResolveOutput(unknownSecretTemplateOptionsPtrOutput, nil, false, true, resourcesToInternal(nil))	/*known*/	/*secret*/
 
 	stringOutputType := reflect.TypeOf((*StringOutput)(nil)).Elem()
 	unknownStringOutput := ctx.newOutput(stringOutputType).(StringOutput)
-	internal.ResolveOutput(unknownStringOutput, "", false, false, resourcesToInternal(nil)) /*known*/ /*secret*/
+	internal.ResolveOutput(unknownStringOutput, "", false, false, resourcesToInternal(nil))	/*known*/	/*secret*/
 
 	assetOutputType := reflect.TypeOf((*AssetOutput)(nil)).Elem()
 	fileAssetOutput := ctx.newOutput(assetOutputType).(AssetOutput)
-	internal.ResolveOutput(fileAssetOutput, &asset{path: "foo.txt"}, true, false, resourcesToInternal(nil)) /*known*/ /*secret*/
+	internal.ResolveOutput(fileAssetOutput, &asset{path: "foo.txt"}, true, false, resourcesToInternal(nil))	/*known*/	/*secret*/
 	fileAssetSecretOutput := ctx.newOutput(assetOutputType).(AssetOutput)
-	internal.ResolveOutput(fileAssetSecretOutput, &asset{path: "foo.txt"}, true, true, resourcesToInternal(nil)) /*known*/ /*secret*/
+	internal.ResolveOutput(fileAssetSecretOutput, &asset{path: "foo.txt"}, true, true, resourcesToInternal(nil))	/*known*/	/*secret*/
 	fileAssetOutputDeps := ctx.newOutput(assetOutputType).(AssetOutput)
-	internal.ResolveOutput(fileAssetOutputDeps, &asset{path: "foo.txt"}, true, false, resourcesToInternal([]Resource{newSimpleCustomResource(ctx, "fakeURN", "fakeID")})) /*known*/ /*secret*/
+	internal.ResolveOutput(fileAssetOutputDeps, &asset{path: "foo.txt"}, true, false, resourcesToInternal([]Resource{newSimpleCustomResource(ctx, "fakeURN", "fakeID")}))	/*known*/	/*secret*/
 
 	anyOutputType := reflect.TypeOf((*AnyOutput)(nil)).Elem()
 
 	nestedOutput := ctx.newOutput(anyOutputType).(AnyOutput)
-	internal.ResolveOutput(nestedOutput, fileAssetOutput, true, false, resourcesToInternal(nil)) /*known*/ /*secret*/
+	internal.ResolveOutput(nestedOutput, fileAssetOutput, true, false, resourcesToInternal(nil))	/*known*/	/*secret*/
 
 	nestedPtrOutput := ctx.newOutput(anyOutputType).(AnyOutput)
-	internal.ResolveOutput(nestedPtrOutput, &fileAssetOutput, true, false, resourcesToInternal(nil)) /*known*/ /*secret*/
+	internal.ResolveOutput(nestedPtrOutput, &fileAssetOutput, true, false, resourcesToInternal(nil))	/*known*/	/*secret*/
 
 	nestedNestedOutput := ctx.newOutput(anyOutputType).(AnyOutput)
-	internal.ResolveOutput(nestedNestedOutput, nestedOutput, true, false, resourcesToInternal(nil)) /*known*/ /*secret*/
+	internal.ResolveOutput(nestedNestedOutput, nestedOutput, true, false, resourcesToInternal(nil))	/*known*/	/*secret*/
 
 	tests := []struct {
-		name     string
-		input    Input
-		expected resource.PropertyValue
+		name		string
+		input		Input
+		expected	resource.PropertyValue
 	}{
 		{
-			name:     "empty",
-			input:    fooArgs{},
-			expected: resource.NewProperty(resource.PropertyMap{}),
+			name:		"empty",
+			input:		fooArgs{},
+			expected:	resource.NewProperty(resource.PropertyMap{}),
 		},
 		{
-			name: "options empty",
+			name:	"options empty",
 			input: fooArgs{
 				TemplateOptions: TemplateOptionsArgs{},
 			},
@@ -1288,7 +1288,7 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			}),
 		},
 		{
-			name: "options unknown",
+			name:	"options unknown",
 			input: fooArgs{
 				TemplateOptions: unknownTemplateOptionsPtrOutput,
 			},
@@ -1297,7 +1297,7 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			}),
 		},
 		{
-			name: "options unknown secret",
+			name:	"options unknown secret",
 			input: fooArgs{
 				TemplateOptions: unknownSecretTemplateOptionsPtrOutput,
 			},
@@ -1308,7 +1308,7 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			}),
 		},
 		{
-			name: "options plain known description",
+			name:	"options plain known description",
 			input: fooArgs{
 				TemplateOptions: TemplateOptionsArgs{
 					Description: String("hello"),
@@ -1321,7 +1321,7 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			}),
 		},
 		{
-			name: "options plain known secret description",
+			name:	"options plain known secret description",
 			input: fooArgs{
 				TemplateOptions: TemplateOptionsArgs{
 					Description: ToSecret(String("hello")).(StringOutput),
@@ -1330,15 +1330,15 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			expected: resource.NewProperty(resource.PropertyMap{
 				"templateOptions": resource.NewProperty(resource.PropertyMap{
 					"description": resource.NewProperty(resource.Output{
-						Element: resource.NewProperty("hello"),
-						Known:   true,
-						Secret:  true,
+						Element:	resource.NewProperty("hello"),
+						Known:		true,
+						Secret:		true,
 					}),
 				}),
 			}),
 		},
 		{
-			name: "options output known secret description",
+			name:	"options output known secret description",
 			input: fooArgs{
 				TemplateOptions: TemplateOptionsArgs{
 					Description: ToSecret(String("hello")).(StringOutput),
@@ -1349,13 +1349,13 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 					Element: resource.NewProperty(resource.PropertyMap{
 						"description": resource.NewProperty("hello"),
 					}),
-					Known:  true,
-					Secret: true,
+					Known:	true,
+					Secret:	true,
 				}),
 			}),
 		},
 		{
-			name: "options plain unknown description",
+			name:	"options plain unknown description",
 			input: fooArgs{
 				TemplateOptions: TemplateOptionsArgs{
 					Description: unknownStringOutput,
@@ -1368,15 +1368,15 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			}),
 		},
 		{
-			name: "options tag specifications nested unknown",
+			name:	"options tag specifications nested unknown",
 			input: fooArgs{
 				TemplateOptions: TemplateOptionsArgs{
 					TagSpecifications: TemplateTagSpecificationArray{
 						TemplateTagSpecificationArgs{
-							Name: String("hello"),
+							Name:	String("hello"),
 							Tags: StringMap{
-								"first": String("second"),
-								"third": unknownStringOutput,
+								"first":	String("second"),
+								"third":	unknownStringOutput,
 							},
 						},
 					},
@@ -1386,10 +1386,10 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 				"templateOptions": resource.NewProperty(resource.PropertyMap{
 					"tagSpecifications": resource.NewProperty([]resource.PropertyValue{
 						resource.NewProperty(resource.PropertyMap{
-							"name": resource.NewProperty("hello"),
+							"name":	resource.NewProperty("hello"),
 							"tags": resource.NewProperty(resource.PropertyMap{
-								"first": resource.NewProperty("second"),
-								"third": resource.NewProperty(resource.Output{}),
+								"first":	resource.NewProperty("second"),
+								"third":	resource.NewProperty(resource.Output{}),
 							}),
 						}),
 					}),
@@ -1397,7 +1397,7 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			}),
 		},
 		{
-			name: "bucket object with file asset",
+			name:	"bucket object with file asset",
 			input: &BucketObjectArgs{
 				Source: NewFileAsset("foo.txt"),
 			},
@@ -1408,7 +1408,7 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			}),
 		},
 		{
-			name: "bucket object with file archive",
+			name:	"bucket object with file archive",
 			input: &BucketObjectArgs{
 				Source: NewFileArchive("bar.zip"),
 			},
@@ -1419,7 +1419,7 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			}),
 		},
 		{
-			name: "bucket object with file asset output",
+			name:	"bucket object with file asset output",
 			input: &BucketObjectArgs{
 				Source: fileAssetOutput,
 			},
@@ -1430,7 +1430,7 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			}),
 		},
 		{
-			name: "bucket object with file asset secret output",
+			name:	"bucket object with file asset secret output",
 			input: &BucketObjectArgs{
 				Source: fileAssetSecretOutput,
 			},
@@ -1439,13 +1439,13 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 					Element: resource.NewProperty(&rasset.Asset{
 						Path: "foo.txt",
 					}),
-					Known:  true,
-					Secret: true,
+					Known:	true,
+					Secret:	true,
 				}),
 			}),
 		},
 		{
-			name: "bucket object with file asset with deps",
+			name:	"bucket object with file asset with deps",
 			input: &BucketObjectArgs{
 				Source: fileAssetOutputDeps,
 			},
@@ -1454,25 +1454,25 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 					Element: resource.NewProperty(&rasset.Asset{
 						Path: "foo.txt",
 					}),
-					Known:        true,
-					Dependencies: []resource.URN{"fakeURN"},
+					Known:		true,
+					Dependencies:	[]resource.URN{"fakeURN"},
 				}),
 			}),
 		},
 		{
-			name: "resource",
+			name:	"resource",
 			input: &MyResourceArgs{
 				Res: NewResourceInput(newSimpleCustomResource(ctx, "fakeURN", "fakeID")),
 			},
 			expected: resource.NewProperty(resource.PropertyMap{
 				"res": resource.NewProperty(resource.ResourceReference{
-					URN: "fakeURN",
-					ID:  resource.NewProperty("fakeID"),
+					URN:	"fakeURN",
+					ID:	resource.NewProperty("fakeID"),
 				}),
 			}),
 		},
 		{
-			name: "nested output",
+			name:	"nested output",
 			input: &MyNestedOutputArgs{
 				Nested: nestedOutput,
 			},
@@ -1483,7 +1483,7 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			}),
 		},
 		{
-			name: "nested ptr output",
+			name:	"nested ptr output",
 			input: &MyNestedOutputArgs{
 				Nested: nestedPtrOutput,
 			},
@@ -1494,7 +1494,7 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			}),
 		},
 		{
-			name: "nested nested output",
+			name:	"nested nested output",
 			input: &MyNestedOutputArgs{
 				Nested: nestedNestedOutput,
 			},
@@ -1533,9 +1533,9 @@ func (RubberTreeArgs) ElementType() reflect.Type {
 type TreeSize string
 
 const (
-	TreeSizeSmall  = TreeSize("small")
-	TreeSizeMedium = TreeSize("medium")
-	TreeSizeLarge  = TreeSize("large")
+	TreeSizeSmall	= TreeSize("small")
+	TreeSizeMedium	= TreeSize("medium")
+	TreeSizeLarge	= TreeSize("large")
 )
 
 func (TreeSize) ElementType() reflect.Type {
@@ -1743,12 +1743,12 @@ func TestOutputValueMarshallingEnums(t *testing.T) {
 	RegisterOutputType(TreeSizeMapOutput{})
 
 	tests := []struct {
-		name     string
-		input    Input
-		expected resource.PropertyValue
+		name		string
+		input		Input
+		expected	resource.PropertyValue
 	}{
 		{
-			name: "empty",
+			name:	"empty",
 			input: &RubberTreeArgs{
 				Size: TreeSize("medium"),
 			},
@@ -1775,13 +1775,13 @@ func TestMarshalInputsPropertyDependencies(t *testing.T) {
 	t.Parallel()
 
 	pmap, pdeps, deps, err := marshalInputs(testInputs{
-		S: String("a string"),
-		A: Bool(true),
+		S:	String("a string"),
+		A:	Bool(true),
 	})
 	require.NoError(t, err)
 	assert.Equal(t, resource.PropertyMap{
-		"s": resource.NewProperty("a string"),
-		"a": resource.NewProperty(true),
+		"s":	resource.NewProperty("a string"),
+		"a":	resource.NewProperty(true),
 	}, pmap)
 	assert.Nil(t, deps)
 	// Expect a non-empty property deps map, even when there aren't any deps.
@@ -1792,32 +1792,32 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name     string
-		input    resource.PropertyMap
-		expected Map
+		name		string
+		input		resource.PropertyMap
+		expected	Map
 	}{
 		{
-			name:     "empty",
-			input:    resource.PropertyMap{},
-			expected: Map{},
+			name:		"empty",
+			input:		resource.PropertyMap{},
+			expected:	Map{},
 		},
 		{
-			name: "primitive types",
+			name:	"primitive types",
 			input: resource.PropertyMap{
-				"nil":    resource.NewNullProperty(),
-				"bool":   resource.NewProperty(true),
-				"number": resource.NewProperty(42.0),
-				"string": resource.NewProperty("hello"),
+				"nil":		resource.NewNullProperty(),
+				"bool":		resource.NewProperty(true),
+				"number":	resource.NewProperty(42.0),
+				"string":	resource.NewProperty("hello"),
 			},
 			expected: Map{
-				"nil":    nil,
-				"bool":   Bool(true),
-				"number": Float64(42),
-				"string": String("hello"),
+				"nil":		nil,
+				"bool":		Bool(true),
+				"number":	Float64(42),
+				"string":	String("hello"),
 			},
 		},
 		{
-			name: "array",
+			name:	"array",
 			input: resource.PropertyMap{
 				"array": resource.NewProperty([]resource.PropertyValue{
 					resource.NewNullProperty(),
@@ -1836,21 +1836,21 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 			},
 		},
 		{
-			name: "object",
+			name:	"object",
 			input: resource.PropertyMap{
 				"object": resource.NewProperty(resource.PropertyMap{
-					"nil":    resource.NewNullProperty(),
-					"bool":   resource.NewProperty(true),
-					"number": resource.NewProperty(42.0),
-					"string": resource.NewProperty("hello"),
+					"nil":		resource.NewNullProperty(),
+					"bool":		resource.NewProperty(true),
+					"number":	resource.NewProperty(42.0),
+					"string":	resource.NewProperty("hello"),
 				}),
 			},
 			expected: Map{
 				"object": Map{
-					"nil":    nil,
-					"bool":   Bool(true),
-					"number": Float64(42),
-					"string": String("hello"),
+					"nil":		nil,
+					"bool":		Bool(true),
+					"number":	Float64(42),
+					"string":	String("hello"),
 				},
 			},
 		},
@@ -1876,8 +1876,8 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 		require.NoError(t, err)
 
 		actual, err := unmarshalPropertyMap(ctx, resource.PropertyMap{
-			"computed": resource.NewProperty(resource.Computed{}),
-			"unknown":  resource.MakeComputed(resource.NewProperty("")),
+			"computed":	resource.NewProperty(resource.Computed{}),
+			"unknown":	resource.MakeComputed(resource.NewProperty("")),
 		})
 		require.NoError(t, err)
 
@@ -1900,8 +1900,8 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 		require.NoError(t, err)
 
 		actual, err := unmarshalPropertyMap(ctx, resource.PropertyMap{
-			"secret":  resource.MakeSecret(resource.NewProperty("secret string")),
-			"unknown": resource.MakeSecret(resource.MakeComputed(resource.NewProperty(""))),
+			"secret":	resource.MakeSecret(resource.NewProperty("secret string")),
+			"unknown":	resource.MakeSecret(resource.MakeComputed(resource.NewProperty(""))),
 		})
 		require.NoError(t, err)
 
@@ -1928,32 +1928,32 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 
 		actual, err := unmarshalPropertyMap(ctx, resource.PropertyMap{
 			"standard": resource.NewProperty(resource.Output{
-				Element:      resource.NewProperty("a string"),
-				Known:        true,
-				Secret:       false,
-				Dependencies: dependencies,
+				Element:	resource.NewProperty("a string"),
+				Known:		true,
+				Secret:		false,
+				Dependencies:	dependencies,
 			}),
 			"secret": resource.NewProperty(resource.Output{
-				Element:      resource.NewProperty("secret string"),
-				Known:        true,
-				Secret:       true,
-				Dependencies: dependencies,
+				Element:	resource.NewProperty("secret string"),
+				Known:		true,
+				Secret:		true,
+				Dependencies:	dependencies,
 			}),
 			"unknown": resource.NewProperty(resource.Output{
 				Dependencies: dependencies,
 			}),
 			"secret unknown": resource.NewProperty(resource.Output{
-				Dependencies: dependencies,
-				Secret:       true,
+				Dependencies:	dependencies,
+				Secret:		true,
 			}),
 			"nested": resource.NewProperty(resource.Output{
 				Element: resource.NewProperty(resource.Output{
-					Element: resource.NewProperty(42.0),
-					Known:   true,
-					Secret:  true,
+					Element:	resource.NewProperty(42.0),
+					Known:		true,
+					Secret:		true,
 				}),
-				Known:        true,
-				Dependencies: dependencies,
+				Known:		true,
+				Dependencies:	dependencies,
 			}),
 		})
 		require.NoError(t, err)
@@ -2060,16 +2060,16 @@ func TestResourceReferenceDependencies(t *testing.T) {
 	}
 
 	tests := []struct {
-		exclude  bool
-		expected []URN
+		exclude		bool
+		expected	[]URN
 	}{
 		{
-			exclude:  true,
-			expected: nil,
+			exclude:	true,
+			expected:	nil,
 		},
 		{
-			exclude:  false,
-			expected: []URN{custom1URN, custom2URN},
+			exclude:	false,
+			expected:	[]URN{custom1URN, custom2URN},
 		},
 	}
 	for _, tt := range tests {

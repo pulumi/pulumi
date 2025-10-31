@@ -29,16 +29,16 @@ type legacyIntOutput struct{ *internal.OutputState }
 
 var _ internal.Output = legacyIntOutput{}
 
-func (legacyIntOutput) ElementType() reflect.Type { return reflect.TypeOf(int(0)) }
+func (legacyIntOutput) ElementType() reflect.Type	{ return reflect.TypeOf(int(0)) }
 
 // Varying bad implementations of Input[T].
 type (
-	outputNoContext struct{ *internal.OutputState } // doesn't take a context
-	outputNoOutputT struct{ *internal.OutputState } // doesn't produce Output[T]
+	outputNoContext	struct{ *internal.OutputState }	// doesn't take a context
+	outputNoOutputT	struct{ *internal.OutputState }	// doesn't produce Output[T]
 )
 
-func (outputNoContext) ElementType() reflect.Type { return reflect.TypeOf(int(0)) }
-func (outputNoOutputT) ElementType() reflect.Type { return reflect.TypeOf(int(0)) }
+func (outputNoContext) ElementType() reflect.Type	{ return reflect.TypeOf(int(0)) }
+func (outputNoOutputT) ElementType() reflect.Type	{ return reflect.TypeOf(int(0)) }
 
 func (outputNoContext) ToOutput() Output[int] {
 	panic("not implemented")
@@ -52,49 +52,49 @@ func TestInputElementType(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		desc string
-		give reflect.Type
-		want reflect.Type // nil if !ok
+		desc	string
+		give	reflect.Type
+		want	reflect.Type	// nil if !ok
 	}{
 		{
-			desc: "nil",
-			give: nil,
-			want: nil,
+			desc:	"nil",
+			give:	nil,
+			want:	nil,
 		},
 		{
-			desc: "Output",
-			give: reflect.TypeOf(Output[int]{}),
-			want: reflect.TypeOf(int(0)),
+			desc:	"Output",
+			give:	reflect.TypeOf(Output[int]{}),
+			want:	reflect.TypeOf(int(0)),
 		},
 		{
-			desc: "Output complex",
-			give: reflect.TypeOf(Output[[]string]{}),
-			want: reflect.TypeOf([]string{}),
+			desc:	"Output complex",
+			give:	reflect.TypeOf(Output[[]string]{}),
+			want:	reflect.TypeOf([]string{}),
 		},
 		{
-			desc: "ArrayOutput",
-			give: reflect.TypeOf(ArrayOutput[int]{}),
-			want: reflect.TypeOf([]int{}),
+			desc:	"ArrayOutput",
+			give:	reflect.TypeOf(ArrayOutput[int]{}),
+			want:	reflect.TypeOf([]int{}),
 		},
 		{
-			desc: "not an input",
-			give: reflect.TypeOf(42),
-			want: nil,
+			desc:	"not an input",
+			give:	reflect.TypeOf(42),
+			want:	nil,
 		},
 		{
-			desc: "not a pux.Input",
-			give: reflect.TypeOf(legacyIntOutput{}),
-			want: nil,
+			desc:	"not a pux.Input",
+			give:	reflect.TypeOf(legacyIntOutput{}),
+			want:	nil,
 		},
 		{
-			desc: "no context argument",
-			give: reflect.TypeOf(outputNoContext{}),
-			want: nil,
+			desc:	"no context argument",
+			give:	reflect.TypeOf(outputNoContext{}),
+			want:	nil,
 		},
 		{
-			desc: "no Output[T] return",
-			give: reflect.TypeOf(outputNoOutputT{}),
-			want: nil,
+			desc:	"no Output[T] return",
+			give:	reflect.TypeOf(outputNoOutputT{}),
+			want:	nil,
 		},
 	}
 

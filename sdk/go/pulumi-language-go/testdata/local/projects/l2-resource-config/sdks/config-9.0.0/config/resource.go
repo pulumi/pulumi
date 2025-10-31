@@ -15,7 +15,7 @@ import (
 type Resource struct {
 	pulumi.CustomResourceState
 
-	Text pulumi.StringOutput `pulumi:"text"`
+	Text	pulumi.StringOutput	`pulumi:"text"`
 }
 
 // NewResource registers a new resource with the given unique name, arguments, and options.

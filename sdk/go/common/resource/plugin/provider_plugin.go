@@ -78,46 +78,46 @@ const kubernetesProviderType = "pulumi:providers:kubernetes"
 type provider struct {
 	NotForwardCompatibleProvider
 
-	ctx                    *Context                         // a plugin context for caching, etc.
-	pkg                    tokens.Package                   // the Pulumi package containing this provider's resources.
-	plug                   *Plugin                          // the actual plugin process wrapper.
-	clientRaw              pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
-	disableProviderPreview bool                             // true if previews for Create and Update are disabled.
-	legacyPreview          bool                             // enables legacy behavior for unconfigured provider previews.
+	ctx			*Context				// a plugin context for caching, etc.
+	pkg			tokens.Package				// the Pulumi package containing this provider's resources.
+	plug			*Plugin					// the actual plugin process wrapper.
+	clientRaw		pulumirpc.ResourceProviderClient	// the raw provider client; usually unsafe to use directly.
+	disableProviderPreview	bool					// true if previews for Create and Update are disabled.
+	legacyPreview		bool					// enables legacy behavior for unconfigured provider previews.
 
 	// The version to use for the provider if given. Used for Git sources.
-	overrideVersion *semver.Version
+	overrideVersion	*semver.Version
 
 	// Protocol information for the provider.
-	protocol *pluginProtocol
+	protocol	*pluginProtocol
 
 	// The source for the provider's configuration. You should *not* access this field directly when checking
 	// configuration, since some of its fields have been deprecated in favour of handshake. Instead, use the
 	// getPluginConfig method, which will return both the handshake and a pluginConfig consistent with the handshake.
-	configSource *promise.CompletionSource[pluginConfig] // the source for the provider's configuration.
+	configSource	*promise.CompletionSource[pluginConfig]	// the source for the provider's configuration.
 }
 
 type pluginProtocol struct {
 	// True if the provider accepts strongly-typed secrets.
-	acceptSecrets bool
+	acceptSecrets	bool
 
 	// True if the provider accepts strongly-typed resource references.
-	acceptResources bool
+	acceptResources	bool
 
 	// True if this plugin accepts output values.
-	acceptOutputs bool
+	acceptOutputs	bool
 
 	// True if this plugin supports previews for Create and Update.
-	supportsPreview bool
+	supportsPreview	bool
 
 	// True if this plugin supports custom autonaming configuration.
-	supportsAutonamingConfiguration bool
+	supportsAutonamingConfiguration	bool
 }
 
 // pluginConfig holds the configuration of the provider
 // as specified by the Configure call.
 type pluginConfig struct {
-	known bool // true if all configuration values are known.
+	known bool	// true if all configuration values are known.
 }
 
 func (p *provider) getPluginConfig(ctx context.Context) (pluginProtocol, pluginConfig, error) {
@@ -190,13 +190,13 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 			ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
 		) (*ProviderHandshakeResponse, error) {
 			req := &ProviderHandshakeRequest{
-				EngineAddress: host.ServerAddr(),
+				EngineAddress:	host.ServerAddr(),
 				// If we're attaching then we don't know the root or program directory.
-				RootDirectory:               nil,
-				ProgramDirectory:            nil,
-				ConfigureWithUrn:            true,
-				SupportsViews:               true,
-				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
+				RootDirectory:			nil,
+				ProgramDirectory:		nil,
+				ConfigureWithUrn:		true,
+				SupportsViews:			true,
+				SupportsRefreshBeforeUpdate:	supportsRefreshBeforeUpdate,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -210,9 +210,9 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 
 		// Done; store the connection and return the plugin info.
 		plug = &Plugin{
-			Conn: conn,
+			Conn:	conn,
 			// Nothing to kill
-			Kill: func() error { return nil },
+			Kill:	func() error { return nil },
 		}
 	} else {
 		// Load the plugin's path by using the standard workspace logic.
@@ -247,12 +247,12 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 		) (*ProviderHandshakeResponse, error) {
 			dir := filepath.Dir(bin)
 			req := &ProviderHandshakeRequest{
-				EngineAddress:               host.ServerAddr(),
-				RootDirectory:               &dir,
-				ProgramDirectory:            &dir,
-				ConfigureWithUrn:            true,
-				SupportsViews:               true,
-				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
+				EngineAddress:			host.ServerAddr(),
+				RootDirectory:			&dir,
+				ProgramDirectory:		&dir,
+				ConfigureWithUrn:		true,
+				SupportsViews:			true,
+				SupportsRefreshBeforeUpdate:	supportsRefreshBeforeUpdate,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -276,23 +276,23 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 	}
 
 	p := &provider{
-		ctx:                    ctx,
-		pkg:                    pkg,
-		plug:                   plug,
-		clientRaw:              pulumirpc.NewResourceProviderClient(plug.Conn),
-		disableProviderPreview: disableProviderPreview,
-		legacyPreview:          legacyPreview,
-		configSource:           &promise.CompletionSource[pluginConfig]{},
-		overrideVersion:        overrideVersion,
+		ctx:			ctx,
+		pkg:			pkg,
+		plug:			plug,
+		clientRaw:		pulumirpc.NewResourceProviderClient(plug.Conn),
+		disableProviderPreview:	disableProviderPreview,
+		legacyPreview:		legacyPreview,
+		configSource:		&promise.CompletionSource[pluginConfig]{},
+		overrideVersion:	overrideVersion,
 	}
 
 	if handshakeRes != nil {
 		p.protocol = &pluginProtocol{
-			acceptSecrets:                   handshakeRes.AcceptSecrets,
-			acceptResources:                 handshakeRes.AcceptResources,
-			supportsPreview:                 true,
-			acceptOutputs:                   handshakeRes.AcceptOutputs,
-			supportsAutonamingConfiguration: handshakeRes.SupportsAutonamingConfiguration,
+			acceptSecrets:				handshakeRes.AcceptSecrets,
+			acceptResources:			handshakeRes.AcceptResources,
+			supportsPreview:			true,
+			acceptOutputs:				handshakeRes.AcceptOutputs,
+			supportsAutonamingConfiguration:	handshakeRes.SupportsAutonamingConfiguration,
 		}
 	}
 
@@ -316,12 +316,12 @@ func handshake(
 ) (*ProviderHandshakeResponse, error) {
 	client := pulumirpc.NewResourceProviderClient(conn)
 	res, err := client.Handshake(ctx, &pulumirpc.ProviderHandshakeRequest{
-		EngineAddress:               req.EngineAddress,
-		RootDirectory:               req.RootDirectory,
-		ProgramDirectory:            req.ProgramDirectory,
-		ConfigureWithUrn:            req.ConfigureWithUrn,
-		SupportsViews:               req.SupportsViews,
-		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
+		EngineAddress:			req.EngineAddress,
+		RootDirectory:			req.RootDirectory,
+		ProgramDirectory:		req.ProgramDirectory,
+		ConfigureWithUrn:		req.ConfigureWithUrn,
+		SupportsViews:			req.SupportsViews,
+		SupportsRefreshBeforeUpdate:	req.SupportsRefreshBeforeUpdate,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -335,10 +335,10 @@ func handshake(
 
 	logging.V(7).Infof("Handshake: success [%v]", bin)
 	return &ProviderHandshakeResponse{
-		AcceptSecrets:                   res.GetAcceptSecrets(),
-		AcceptResources:                 res.GetAcceptResources(),
-		AcceptOutputs:                   res.GetAcceptOutputs(),
-		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
+		AcceptSecrets:				res.GetAcceptSecrets(),
+		AcceptResources:			res.GetAcceptResources(),
+		AcceptOutputs:				res.GetAcceptOutputs(),
+		SupportsAutonamingConfiguration:	res.GetSupportsAutonamingConfiguration(),
 	}, nil
 }
 
@@ -351,8 +351,8 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 
 	if ctx.DialOptions != nil {
 		metadata := map[string]any{
-			"mode": "client",
-			"kind": "resource",
+			"mode":	"client",
+			"kind":	"resource",
 		}
 		if pkg != "" {
 			metadata["name"] = pkg.String()
@@ -375,12 +375,12 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 	) (*ProviderHandshakeResponse, error) {
 		dir := filepath.Dir(bin)
 		req := &ProviderHandshakeRequest{
-			EngineAddress:               host.ServerAddr(),
-			RootDirectory:               &dir,
-			ProgramDirectory:            &dir,
-			ConfigureWithUrn:            true,
-			SupportsViews:               true,
-			SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
+			EngineAddress:			host.ServerAddr(),
+			RootDirectory:			&dir,
+			ProgramDirectory:		&dir,
+			ConfigureWithUrn:		true,
+			SupportsViews:			true,
+			SupportsRefreshBeforeUpdate:	supportsRefreshBeforeUpdate,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -397,20 +397,20 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 	legacyPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_LEGACY_PROVIDER_PREVIEW"))
 
 	p := &provider{
-		ctx:           ctx,
-		plug:          plug,
-		clientRaw:     pulumirpc.NewResourceProviderClient(plug.Conn),
-		legacyPreview: legacyPreview,
-		configSource:  &promise.CompletionSource[pluginConfig]{},
+		ctx:		ctx,
+		plug:		plug,
+		clientRaw:	pulumirpc.NewResourceProviderClient(plug.Conn),
+		legacyPreview:	legacyPreview,
+		configSource:	&promise.CompletionSource[pluginConfig]{},
 	}
 
 	if handshakeRes != nil {
 		p.protocol = &pluginProtocol{
-			acceptSecrets:                   handshakeRes.AcceptSecrets,
-			acceptResources:                 handshakeRes.AcceptResources,
-			supportsPreview:                 true,
-			acceptOutputs:                   handshakeRes.AcceptOutputs,
-			supportsAutonamingConfiguration: handshakeRes.SupportsAutonamingConfiguration,
+			acceptSecrets:				handshakeRes.AcceptSecrets,
+			acceptResources:			handshakeRes.AcceptResources,
+			supportsPreview:			true,
+			acceptOutputs:				handshakeRes.AcceptOutputs,
+			supportsAutonamingConfiguration:	handshakeRes.SupportsAutonamingConfiguration,
 		}
 	}
 
@@ -428,11 +428,11 @@ func NewProviderWithClient(ctx *Context, pkg tokens.Package, client pulumirpc.Re
 	disableProviderPreview bool,
 ) Provider {
 	return &provider{
-		ctx:                    ctx,
-		pkg:                    pkg,
-		clientRaw:              client,
-		disableProviderPreview: disableProviderPreview,
-		configSource:           &promise.CompletionSource[pluginConfig]{},
+		ctx:			ctx,
+		pkg:			pkg,
+		clientRaw:		client,
+		disableProviderPreview:	disableProviderPreview,
+		configSource:		&promise.CompletionSource[pluginConfig]{},
 	}
 }
 
@@ -440,16 +440,16 @@ func NewProviderWithVersionOverride(ctx *Context, pkg tokens.Package, client pul
 	disableProviderPreview bool, version *semver.Version,
 ) Provider {
 	return &provider{
-		ctx:                    ctx,
-		pkg:                    pkg,
-		clientRaw:              client,
-		disableProviderPreview: disableProviderPreview,
-		configSource:           &promise.CompletionSource[pluginConfig]{},
-		overrideVersion:        version,
+		ctx:			ctx,
+		pkg:			pkg,
+		clientRaw:		client,
+		disableProviderPreview:	disableProviderPreview,
+		configSource:		&promise.CompletionSource[pluginConfig]{},
+		overrideVersion:	version,
 	}
 }
 
-func (p *provider) Pkg() tokens.Package { return p.pkg }
+func (p *provider) Pkg() tokens.Package	{ return p.pkg }
 
 // label returns a base label for tracing functions.
 func (p *provider) label() string {
@@ -490,22 +490,22 @@ func isDiffCheckConfigLogicallyUnimplemented(err *rpcerror.Error, providerType t
 
 func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) (*ProviderHandshakeResponse, error) {
 	res, err := p.clientRaw.Handshake(ctx, &pulumirpc.ProviderHandshakeRequest{
-		EngineAddress:               req.EngineAddress,
-		RootDirectory:               req.RootDirectory,
-		ProgramDirectory:            req.ProgramDirectory,
-		ConfigureWithUrn:            req.ConfigureWithUrn,
-		SupportsViews:               req.SupportsViews,
-		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
+		EngineAddress:			req.EngineAddress,
+		RootDirectory:			req.RootDirectory,
+		ProgramDirectory:		req.ProgramDirectory,
+		ConfigureWithUrn:		req.ConfigureWithUrn,
+		SupportsViews:			req.SupportsViews,
+		SupportsRefreshBeforeUpdate:	req.SupportsRefreshBeforeUpdate,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	return &ProviderHandshakeResponse{
-		AcceptSecrets:                   res.GetAcceptSecrets(),
-		AcceptResources:                 res.GetAcceptResources(),
-		AcceptOutputs:                   res.GetAcceptOutputs(),
-		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
+		AcceptSecrets:				res.GetAcceptSecrets(),
+		AcceptResources:			res.GetAcceptResources(),
+		AcceptOutputs:				res.GetAcceptOutputs(),
+		SupportsAutonamingConfiguration:	res.GetSupportsAutonamingConfiguration(),
 	}, nil
 }
 
@@ -521,9 +521,9 @@ func (p *provider) Parameterize(ctx context.Context, request ParameterizeRequest
 	case *ParameterizeValue:
 		params.Parameters = &pulumirpc.ParameterizeRequest_Value{
 			Value: &pulumirpc.ParameterizeRequest_ParametersValue{
-				Name:    p.Name,
-				Version: p.Version.String(),
-				Value:   p.Value,
+				Name:		p.Name,
+				Version:	p.Version.String(),
+				Value:		p.Value,
 			},
 		}
 	case nil:
@@ -550,9 +550,9 @@ func (p *provider) GetSchema(ctx context.Context, req GetSchemaRequest) (GetSche
 	}
 
 	resp, err := p.clientRaw.GetSchema(p.requestContext(), &pulumirpc.GetSchemaRequest{
-		Version:           req.Version,
-		SubpackageName:    req.SubpackageName,
-		SubpackageVersion: subpackageVersion,
+		Version:		req.Version,
+		SubpackageName:		req.SubpackageName,
+		SubpackageVersion:	subpackageVersion,
 	})
 	if err != nil {
 		return GetSchemaResponse{}, err
@@ -585,29 +585,29 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(req.Olds), len(req.News))
 
 	molds, err := MarshalProperties(req.Olds, MarshalOptions{
-		Label:        label + ".olds",
-		KeepUnknowns: req.AllowUnknowns,
-		PropagateNil: true,
+		Label:		label + ".olds",
+		KeepUnknowns:	req.AllowUnknowns,
+		PropagateNil:	true,
 	})
 	if err != nil {
 		return CheckConfigResponse{}, err
 	}
 
 	mnews, err := MarshalProperties(req.News, MarshalOptions{
-		Label:        label + ".news",
-		KeepUnknowns: req.AllowUnknowns,
-		PropagateNil: true,
+		Label:		label + ".news",
+		KeepUnknowns:	req.AllowUnknowns,
+		PropagateNil:	true,
 	})
 	if err != nil {
 		return CheckConfigResponse{}, err
 	}
 
 	resp, err := p.clientRaw.CheckConfig(p.requestContext(), &pulumirpc.CheckRequest{
-		Urn:  string(req.URN),
-		Name: req.URN.Name(),
-		Type: req.URN.Type().String(),
-		Olds: molds,
-		News: mnews,
+		Urn:	string(req.URN),
+		Name:	req.URN.Name(),
+		Type:	req.URN.Type().String(),
+		Olds:	molds,
+		News:	mnews,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -626,12 +626,12 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 	var inputs resource.PropertyMap
 	if ins := resp.GetInputs(); ins != nil {
 		inputs, err = UnmarshalProperties(ins, MarshalOptions{
-			Label:          label + ".inputs",
-			KeepUnknowns:   req.AllowUnknowns,
-			RejectUnknowns: !req.AllowUnknowns,
-			KeepSecrets:    true,
-			KeepResources:  true,
-			PropagateNil:   true,
+			Label:		label + ".inputs",
+			KeepUnknowns:	req.AllowUnknowns,
+			RejectUnknowns:	!req.AllowUnknowns,
+			KeepSecrets:	true,
+			KeepResources:	true,
+			PropagateNil:	true,
 		})
 		if err != nil {
 			return CheckConfigResponse{}, err
@@ -676,8 +676,8 @@ func decodeDetailedDiff(resp *pulumirpc.DiffResponse) map[string]PropertyDiff {
 			d = DiffUpdate
 		}
 		detailedDiff[k] = PropertyDiff{
-			Kind:      d,
-			InputDiff: v.GetInputDiff(),
+			Kind:		d,
+			InputDiff:	v.GetInputDiff(),
 		}
 	}
 
@@ -697,40 +697,40 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 		label, len(req.OldInputs), len(req.OldOutputs), len(req.NewInputs))
 
 	mOldInputs, err := MarshalProperties(req.OldInputs, MarshalOptions{
-		Label:        label + ".oldInputs",
-		KeepUnknowns: true,
-		PropagateNil: true,
+		Label:		label + ".oldInputs",
+		KeepUnknowns:	true,
+		PropagateNil:	true,
 	})
 	if err != nil {
 		return DiffResult{}, err
 	}
 
 	mOldOutputs, err := MarshalProperties(req.OldOutputs, MarshalOptions{
-		Label:        label + ".oldOutputs",
-		KeepUnknowns: true,
-		PropagateNil: true,
+		Label:		label + ".oldOutputs",
+		KeepUnknowns:	true,
+		PropagateNil:	true,
 	})
 	if err != nil {
 		return DiffResult{}, err
 	}
 
 	mNewInputs, err := MarshalProperties(req.NewInputs, MarshalOptions{
-		Label:        label + ".newInputs",
-		KeepUnknowns: true,
-		PropagateNil: true,
+		Label:		label + ".newInputs",
+		KeepUnknowns:	true,
+		PropagateNil:	true,
 	})
 	if err != nil {
 		return DiffResult{}, err
 	}
 
 	resp, err := p.clientRaw.DiffConfig(p.requestContext(), &pulumirpc.DiffRequest{
-		Urn:           string(req.URN),
-		Name:          req.URN.Name(),
-		Type:          req.URN.Type().String(),
-		OldInputs:     mOldInputs,
-		Olds:          mOldOutputs,
-		News:          mNewInputs,
-		IgnoreChanges: req.IgnoreChanges,
+		Urn:		string(req.URN),
+		Name:		req.URN.Name(),
+		Type:		req.URN.Type().String(),
+		OldInputs:	mOldInputs,
+		Olds:		mOldOutputs,
+		News:		mNewInputs,
+		IgnoreChanges:	req.IgnoreChanges,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -789,12 +789,12 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 		label, changes, replaces, stables, deleteBeforeReplace, diffs)
 
 	return DiffResult{
-		Changes:             DiffChanges(changes),
-		ReplaceKeys:         replaces,
-		StableKeys:          stables,
-		ChangedKeys:         diffs,
-		DetailedDiff:        decodeDetailedDiff(resp),
-		DeleteBeforeReplace: deleteBeforeReplace,
+		Changes:		DiffChanges(changes),
+		ReplaceKeys:		replaces,
+		StableKeys:		stables,
+		ChangedKeys:		diffs,
+		DetailedDiff:		decodeDetailedDiff(resp),
+		DeleteBeforeReplace:	deleteBeforeReplace,
 	}, nil
 }
 
@@ -987,11 +987,11 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 	}
 
 	minputs, err := MarshalProperties(req.Inputs, MarshalOptions{
-		Label:         label + ".inputs",
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
-		PropagateNil:  true,
+		Label:		label + ".inputs",
+		KeepUnknowns:	true,
+		KeepSecrets:	true,
+		KeepResources:	true,
+		PropagateNil:	true,
 	})
 	if err != nil {
 		err := fmt.Errorf("marshaling provider inputs: %w", err)
@@ -1017,16 +1017,16 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 		}
 
 		resp, err := p.clientRaw.Configure(p.requestContext(), &pulumirpc.ConfigureRequest{
-			Urn:                    urn,
-			Name:                   req.Name,
-			Type:                   typ,
-			Id:                     id,
-			AcceptSecrets:          true,
-			AcceptResources:        true,
-			SendsOldInputs:         true,
-			SendsOldInputsToDelete: true,
-			Variables:              config,
-			Args:                   minputs,
+			Urn:			urn,
+			Name:			req.Name,
+			Type:			typ,
+			Id:			id,
+			AcceptSecrets:		true,
+			AcceptResources:	true,
+			SendsOldInputs:		true,
+			SendsOldInputsToDelete:	true,
+			Variables:		config,
+			Args:			minputs,
 		})
 		if err != nil {
 			rpcError := rpcerror.Convert(err)
@@ -1038,11 +1038,11 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 
 		if p.protocol == nil {
 			p.protocol = &pluginProtocol{
-				acceptSecrets:                   resp.GetAcceptSecrets(),
-				acceptResources:                 resp.GetAcceptResources(),
-				supportsPreview:                 resp.GetSupportsPreview(),
-				acceptOutputs:                   resp.GetAcceptOutputs(),
-				supportsAutonamingConfiguration: resp.GetSupportsAutonamingConfiguration(),
+				acceptSecrets:				resp.GetAcceptSecrets(),
+				acceptResources:			resp.GetAcceptResources(),
+				supportsPreview:			resp.GetSupportsPreview(),
+				acceptOutputs:				resp.GetAcceptOutputs(),
+				supportsAutonamingConfiguration:	resp.GetSupportsAutonamingConfiguration(),
 			}
 		}
 
@@ -1080,26 +1080,26 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	}
 
 	molds, err := MarshalProperties(req.Olds, MarshalOptions{
-		Label:         label + ".olds",
-		KeepUnknowns:  req.AllowUnknowns,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
+		Label:		label + ".olds",
+		KeepUnknowns:	req.AllowUnknowns,
+		KeepSecrets:	protocol.acceptSecrets,
+		KeepResources:	protocol.acceptResources,
 		// Technically, olds can be nil and we ought to be able to send it as nil so that provivders could distinguish
 		// between no old state (as in the case of create) vs the old state being empty (an unlikely but possible
 		// scenario for a resource with no set inputs). However, we have been unconditionally forcing this to empty
 		// instead of nil for a long time and at least the NodeJS provider implementation relies on this behavior, so we
 		// must continue to do so for compatibility.
-		PropagateNil: false,
+		PropagateNil:	false,
 	})
 	if err != nil {
 		return CheckResponse{}, err
 	}
 	mnews, err := MarshalProperties(req.News, MarshalOptions{
-		Label:         label + ".news",
-		KeepUnknowns:  req.AllowUnknowns,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:		label + ".news",
+		KeepUnknowns:	req.AllowUnknowns,
+		KeepSecrets:	protocol.acceptSecrets,
+		KeepResources:	protocol.acceptResources,
+		PropagateNil:	true,
 	})
 	if err != nil {
 		return CheckResponse{}, err
@@ -1109,8 +1109,8 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	if req.Autonaming != nil {
 		if protocol.supportsAutonamingConfiguration {
 			autonaming = &pulumirpc.CheckRequest_AutonamingOptions{
-				ProposedName: req.Autonaming.ProposedName,
-				Mode:         pulumirpc.CheckRequest_AutonamingOptions_Mode(req.Autonaming.Mode),
+				ProposedName:	req.Autonaming.ProposedName,
+				Mode:		pulumirpc.CheckRequest_AutonamingOptions_Mode(req.Autonaming.Mode),
 			}
 		} else if req.Autonaming.WarnIfNoSupport {
 			p.ctx.Diag.Warningf(diag.Message(req.URN,
@@ -1121,13 +1121,13 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	}
 
 	resp, err := client.Check(p.requestContext(), &pulumirpc.CheckRequest{
-		Urn:        string(req.URN),
-		Name:       req.URN.Name(),
-		Type:       req.URN.Type().String(),
-		Olds:       molds,
-		News:       mnews,
-		RandomSeed: req.RandomSeed,
-		Autonaming: autonaming,
+		Urn:		string(req.URN),
+		Name:		req.URN.Name(),
+		Type:		req.URN.Type().String(),
+		Olds:		molds,
+		News:		mnews,
+		RandomSeed:	req.RandomSeed,
+		Autonaming:	autonaming,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -1139,12 +1139,12 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	var inputs resource.PropertyMap
 	if ins := resp.GetInputs(); ins != nil {
 		inputs, err = UnmarshalProperties(ins, MarshalOptions{
-			Label:          label + ".inputs",
-			KeepUnknowns:   req.AllowUnknowns,
-			RejectUnknowns: !req.AllowUnknowns,
-			KeepSecrets:    true,
-			KeepResources:  true,
-			PropagateNil:   true,
+			Label:		label + ".inputs",
+			KeepUnknowns:	req.AllowUnknowns,
+			RejectUnknowns:	!req.AllowUnknowns,
+			KeepSecrets:	true,
+			KeepResources:	true,
+			PropagateNil:	true,
 		})
 		if err != nil {
 			return CheckResponse{}, err
@@ -1204,50 +1204,50 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 	}
 
 	mOldInputs, err := MarshalProperties(req.OldInputs, MarshalOptions{
-		Label:              label + ".oldInputs",
-		ElideAssetContents: true,
-		KeepUnknowns:       req.AllowUnknowns,
-		KeepSecrets:        protocol.acceptSecrets,
-		KeepResources:      protocol.acceptResources,
-		PropagateNil:       true,
+		Label:			label + ".oldInputs",
+		ElideAssetContents:	true,
+		KeepUnknowns:		req.AllowUnknowns,
+		KeepSecrets:		protocol.acceptSecrets,
+		KeepResources:		protocol.acceptResources,
+		PropagateNil:		true,
 	})
 	if err != nil {
 		return DiffResult{}, err
 	}
 
 	mOldOutputs, err := MarshalProperties(req.OldOutputs, MarshalOptions{
-		Label:              label + ".oldOutputs",
-		ElideAssetContents: true,
-		KeepUnknowns:       req.AllowUnknowns,
-		KeepSecrets:        protocol.acceptSecrets,
-		KeepResources:      protocol.acceptResources,
-		PropagateNil:       true,
+		Label:			label + ".oldOutputs",
+		ElideAssetContents:	true,
+		KeepUnknowns:		req.AllowUnknowns,
+		KeepSecrets:		protocol.acceptSecrets,
+		KeepResources:		protocol.acceptResources,
+		PropagateNil:		true,
 	})
 	if err != nil {
 		return DiffResult{}, err
 	}
 
 	mNewInputs, err := MarshalProperties(req.NewInputs, MarshalOptions{
-		Label:              label + ".newInputs",
-		ElideAssetContents: true,
-		KeepUnknowns:       req.AllowUnknowns,
-		KeepSecrets:        protocol.acceptSecrets,
-		KeepResources:      protocol.acceptResources,
-		PropagateNil:       true,
+		Label:			label + ".newInputs",
+		ElideAssetContents:	true,
+		KeepUnknowns:		req.AllowUnknowns,
+		KeepSecrets:		protocol.acceptSecrets,
+		KeepResources:		protocol.acceptResources,
+		PropagateNil:		true,
 	})
 	if err != nil {
 		return DiffResult{}, err
 	}
 
 	resp, err := client.Diff(p.requestContext(), &pulumirpc.DiffRequest{
-		Id:            string(req.ID),
-		Urn:           string(req.URN),
-		Name:          req.URN.Name(),
-		Type:          req.URN.Type().String(),
-		OldInputs:     mOldInputs,
-		Olds:          mOldOutputs,
-		News:          mNewInputs,
-		IgnoreChanges: req.IgnoreChanges,
+		Id:		string(req.ID),
+		Urn:		string(req.URN),
+		Name:		req.URN.Name(),
+		Type:		req.URN.Type().String(),
+		OldInputs:	mOldInputs,
+		Olds:		mOldOutputs,
+		News:		mNewInputs,
+		IgnoreChanges:	req.IgnoreChanges,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -1275,12 +1275,12 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		label, changes, replaces, stables, deleteBeforeReplace, diffs, resp.GetDetailedDiff())
 
 	return DiffResult{
-		Changes:             DiffChanges(changes),
-		ReplaceKeys:         replaces,
-		StableKeys:          stables,
-		ChangedKeys:         diffs,
-		DetailedDiff:        decodeDetailedDiff(resp),
-		DeleteBeforeReplace: deleteBeforeReplace,
+		Changes:		DiffChanges(changes),
+		ReplaceKeys:		replaces,
+		StableKeys:		stables,
+		ChangedKeys:		diffs,
+		DetailedDiff:		decodeDetailedDiff(resp),
+		DeleteBeforeReplace:	deleteBeforeReplace,
 	}, nil
 }
 
@@ -1333,11 +1333,11 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	contract.Assertf(pcfg.known, "Create cannot be called if the configuration is unknown")
 
 	mprops, err := MarshalProperties(req.Properties, MarshalOptions{
-		Label:         label + ".inputs",
-		KeepUnknowns:  req.Preview,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:		label + ".inputs",
+		KeepUnknowns:	req.Preview,
+		KeepSecrets:	protocol.acceptSecrets,
+		KeepResources:	protocol.acceptResources,
+		PropagateNil:	true,
 	})
 	if err != nil {
 		return CreateResponse{}, err
@@ -1349,14 +1349,14 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	var resourceError error
 	resourceStatus := resource.StatusOK
 	resp, err := client.Create(p.requestContext(), &pulumirpc.CreateRequest{
-		Urn:                   string(req.URN),
-		Name:                  req.URN.Name(),
-		Type:                  req.URN.Type().String(),
-		Properties:            mprops,
-		Timeout:               req.Timeout,
-		Preview:               req.Preview,
-		ResourceStatusAddress: req.ResourceStatusAddress,
-		ResourceStatusToken:   req.ResourceStatusToken,
+		Urn:			string(req.URN),
+		Name:			req.URN.Name(),
+		Type:			req.URN.Type().String(),
+		Properties:		mprops,
+		Timeout:		req.Timeout,
+		Preview:		req.Preview,
+		ResourceStatusAddress:	req.ResourceStatusAddress,
+		ResourceStatusToken:	req.ResourceStatusToken,
 	})
 	if err != nil {
 		resourceStatus, id, liveObject, _, refreshBeforeUpdate, resourceError = parseError(err)
@@ -1378,12 +1378,12 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	}
 
 	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
-		Label:          label + ".outputs",
-		RejectUnknowns: !req.Preview,
-		KeepUnknowns:   req.Preview,
-		KeepSecrets:    true,
-		KeepResources:  true,
-		PropagateNil:   true,
+		Label:		label + ".outputs",
+		RejectUnknowns:	!req.Preview,
+		KeepUnknowns:	req.Preview,
+		KeepSecrets:	true,
+		KeepResources:	true,
+		PropagateNil:	true,
 	})
 	if err != nil {
 		return CreateResponse{Status: resourceStatus}, err
@@ -1399,10 +1399,10 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	logging.V(7).Infof("%s success: id=%s; #outs=%d", label, id, len(outs))
 
 	return CreateResponse{
-		ID:                  id,
-		Properties:          outs,
-		Status:              resourceStatus,
-		RefreshBeforeUpdate: refreshBeforeUpdate && supportsRefreshBeforeUpdate,
+		ID:			id,
+		Properties:		outs,
+		Status:			resourceStatus,
+		RefreshBeforeUpdate:	refreshBeforeUpdate && supportsRefreshBeforeUpdate,
 	}, resourceError
 }
 
@@ -1431,8 +1431,8 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	// If the provider is not fully configured, return an empty bag.
 	if !pcfg.known {
 		return ReadResponse{ReadResult{
-			Outputs: resource.PropertyMap{},
-			Inputs:  resource.PropertyMap{},
+			Outputs:	resource.PropertyMap{},
+			Inputs:		resource.PropertyMap{},
 		}, resource.StatusUnknown}, nil
 	}
 
@@ -1440,11 +1440,11 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	var minputs *structpb.Struct
 	if req.Inputs != nil {
 		m, err := MarshalProperties(req.Inputs, MarshalOptions{
-			Label:              label,
-			ElideAssetContents: true,
-			KeepSecrets:        protocol.acceptSecrets,
-			KeepResources:      protocol.acceptResources,
-			PropagateNil:       true,
+			Label:			label,
+			ElideAssetContents:	true,
+			KeepSecrets:		protocol.acceptSecrets,
+			KeepResources:		protocol.acceptResources,
+			PropagateNil:		true,
 		})
 		if err != nil {
 			return ReadResponse{Status: resource.StatusUnknown}, err
@@ -1452,21 +1452,21 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		minputs = m
 	}
 	mstate, err := MarshalProperties(req.State, MarshalOptions{
-		Label:              label,
-		ElideAssetContents: true,
-		KeepSecrets:        protocol.acceptSecrets,
-		KeepResources:      protocol.acceptResources,
-		PropagateNil:       true,
+		Label:			label,
+		ElideAssetContents:	true,
+		KeepSecrets:		protocol.acceptSecrets,
+		KeepResources:		protocol.acceptResources,
+		PropagateNil:		true,
 	})
 	if err != nil {
 		return ReadResponse{Status: resource.StatusUnknown}, err
 	}
 
 	oldViews, err := marshalViews(req.OldViews, MarshalOptions{
-		Label:         label,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:		label,
+		KeepSecrets:	protocol.acceptSecrets,
+		KeepResources:	protocol.acceptResources,
+		PropagateNil:	true,
 	})
 	if err != nil {
 		return ReadResponse{Status: resource.StatusUnknown}, err
@@ -1480,15 +1480,15 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	var resourceError error
 	resourceStatus := resource.StatusOK
 	resp, err := client.Read(p.requestContext(), &pulumirpc.ReadRequest{
-		Id:                    string(req.ID),
-		Urn:                   string(req.URN),
-		Name:                  req.URN.Name(),
-		Type:                  req.URN.Type().String(),
-		Properties:            mstate,
-		Inputs:                minputs,
-		ResourceStatusAddress: req.ResourceStatusAddress,
-		ResourceStatusToken:   req.ResourceStatusToken,
-		OldViews:              oldViews,
+		Id:			string(req.ID),
+		Urn:			string(req.URN),
+		Name:			req.URN.Name(),
+		Type:			req.URN.Type().String(),
+		Properties:		mstate,
+		Inputs:			minputs,
+		ResourceStatusAddress:	req.ResourceStatusAddress,
+		ResourceStatusToken:	req.ResourceStatusToken,
+		OldViews:		oldViews,
 	})
 	if err != nil {
 		resourceStatus, readID, liveObject, liveInputs, refreshBeforeUpdate, resourceError = parseError(err)
@@ -1507,11 +1507,11 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 
 	// Finally, unmarshal the resulting state properties and return them.
 	newState, err := UnmarshalProperties(liveObject, MarshalOptions{
-		Label:          label + ".outputs",
-		RejectUnknowns: true,
-		KeepSecrets:    true,
-		KeepResources:  true,
-		PropagateNil:   true,
+		Label:		label + ".outputs",
+		RejectUnknowns:	true,
+		KeepSecrets:	true,
+		KeepResources:	true,
+		PropagateNil:	true,
 	})
 	if err != nil {
 		return ReadResponse{Status: resourceStatus}, err
@@ -1520,11 +1520,11 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	var newInputs resource.PropertyMap
 	if liveInputs != nil {
 		newInputs, err = UnmarshalProperties(liveInputs, MarshalOptions{
-			Label:          label + ".inputs",
-			RejectUnknowns: true,
-			KeepSecrets:    true,
-			KeepResources:  true,
-			PropagateNil:   true,
+			Label:		label + ".inputs",
+			RejectUnknowns:	true,
+			KeepSecrets:	true,
+			KeepResources:	true,
+			PropagateNil:	true,
 		})
 		if err != nil {
 			return ReadResponse{Status: resourceStatus}, err
@@ -1545,10 +1545,10 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 
 	logging.V(7).Infof("%s success; id=%q, #outs=%d, #inputs=%d", label, readID, len(newState), len(newInputs))
 	return ReadResponse{ReadResult{
-		ID:                  readID,
-		Outputs:             newState,
-		Inputs:              newInputs,
-		RefreshBeforeUpdate: refreshBeforeUpdate && supportsRefreshBeforeUpdate,
+		ID:			readID,
+		Outputs:		newState,
+		Inputs:			newInputs,
+		RefreshBeforeUpdate:	refreshBeforeUpdate && supportsRefreshBeforeUpdate,
 	}, resourceStatus}, resourceError
 }
 
@@ -1604,41 +1604,41 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	contract.Assertf(pcfg.known, "Update cannot be called if the configuration is unknown")
 
 	mOldInputs, err := MarshalProperties(req.OldInputs, MarshalOptions{
-		Label:              label + ".oldInputs",
-		ElideAssetContents: true,
-		KeepSecrets:        protocol.acceptSecrets,
-		KeepResources:      protocol.acceptResources,
-		PropagateNil:       true,
+		Label:			label + ".oldInputs",
+		ElideAssetContents:	true,
+		KeepSecrets:		protocol.acceptSecrets,
+		KeepResources:		protocol.acceptResources,
+		PropagateNil:		true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
 	}
 	mOldOutputs, err := MarshalProperties(req.OldOutputs, MarshalOptions{
-		Label:              label + ".oldOutputs",
-		ElideAssetContents: true,
-		KeepSecrets:        protocol.acceptSecrets,
-		KeepResources:      protocol.acceptResources,
-		PropagateNil:       true,
+		Label:			label + ".oldOutputs",
+		ElideAssetContents:	true,
+		KeepSecrets:		protocol.acceptSecrets,
+		KeepResources:		protocol.acceptResources,
+		PropagateNil:		true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
 	}
 	mNewInputs, err := MarshalProperties(req.NewInputs, MarshalOptions{
-		Label:         label + ".newInputs",
-		KeepUnknowns:  req.Preview,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:		label + ".newInputs",
+		KeepUnknowns:	req.Preview,
+		KeepSecrets:	protocol.acceptSecrets,
+		KeepResources:	protocol.acceptResources,
+		PropagateNil:	true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
 	}
 
 	oldViews, err := marshalViews(req.OldViews, MarshalOptions{
-		Label:         label + ".oldViews",
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:		label + ".oldViews",
+		KeepSecrets:	protocol.acceptSecrets,
+		KeepResources:	protocol.acceptResources,
+		PropagateNil:	true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
@@ -1649,19 +1649,19 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	var resourceError error
 	resourceStatus := resource.StatusOK
 	resp, err := client.Update(p.requestContext(), &pulumirpc.UpdateRequest{
-		Id:                    string(req.ID),
-		Urn:                   string(req.URN),
-		Name:                  req.URN.Name(),
-		Type:                  req.URN.Type().String(),
-		Olds:                  mOldOutputs,
-		News:                  mNewInputs,
-		Timeout:               req.Timeout,
-		IgnoreChanges:         req.IgnoreChanges,
-		Preview:               req.Preview,
-		OldInputs:             mOldInputs,
-		ResourceStatusAddress: req.ResourceStatusAddress,
-		ResourceStatusToken:   req.ResourceStatusToken,
-		OldViews:              oldViews,
+		Id:			string(req.ID),
+		Urn:			string(req.URN),
+		Name:			req.URN.Name(),
+		Type:			req.URN.Type().String(),
+		Olds:			mOldOutputs,
+		News:			mNewInputs,
+		Timeout:		req.Timeout,
+		IgnoreChanges:		req.IgnoreChanges,
+		Preview:		req.Preview,
+		OldInputs:		mOldInputs,
+		ResourceStatusAddress:	req.ResourceStatusAddress,
+		ResourceStatusToken:	req.ResourceStatusToken,
+		OldViews:		oldViews,
 	})
 	if err != nil {
 		resourceStatus, _, liveObject, _, refreshBeforeUpdate, resourceError = parseError(err)
@@ -1677,12 +1677,12 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	}
 
 	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
-		Label:          label + ".outputs",
-		RejectUnknowns: !req.Preview,
-		KeepUnknowns:   req.Preview,
-		KeepSecrets:    true,
-		KeepResources:  true,
-		PropagateNil:   true,
+		Label:		label + ".outputs",
+		RejectUnknowns:	!req.Preview,
+		KeepUnknowns:	req.Preview,
+		KeepSecrets:	true,
+		KeepResources:	true,
+		PropagateNil:	true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resourceStatus}, err
@@ -1697,9 +1697,9 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
 
 	return UpdateResponse{
-		Properties:          outs,
-		Status:              resourceStatus,
-		RefreshBeforeUpdate: refreshBeforeUpdate && supportsRefreshBeforeUpdate,
+		Properties:		outs,
+		Status:			resourceStatus,
+		RefreshBeforeUpdate:	refreshBeforeUpdate && supportsRefreshBeforeUpdate,
 	}, resourceError
 }
 
@@ -1731,32 +1731,32 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 	contract.Assertf(pcfg.known, "Delete cannot be called if the configuration is unknown")
 
 	minputs, err := MarshalProperties(req.Inputs, MarshalOptions{
-		Label:              label,
-		ElideAssetContents: true,
-		KeepSecrets:        protocol.acceptSecrets,
-		KeepResources:      protocol.acceptResources,
-		PropagateNil:       true,
+		Label:			label,
+		ElideAssetContents:	true,
+		KeepSecrets:		protocol.acceptSecrets,
+		KeepResources:		protocol.acceptResources,
+		PropagateNil:		true,
 	})
 	if err != nil {
 		return DeleteResponse{}, err
 	}
 
 	moutputs, err := MarshalProperties(req.Outputs, MarshalOptions{
-		Label:              label,
-		ElideAssetContents: true,
-		KeepSecrets:        protocol.acceptSecrets,
-		KeepResources:      protocol.acceptResources,
-		PropagateNil:       true,
+		Label:			label,
+		ElideAssetContents:	true,
+		KeepSecrets:		protocol.acceptSecrets,
+		KeepResources:		protocol.acceptResources,
+		PropagateNil:		true,
 	})
 	if err != nil {
 		return DeleteResponse{}, err
 	}
 
 	oldViews, err := marshalViews(req.OldViews, MarshalOptions{
-		Label:         label + ".oldViews",
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:		label + ".oldViews",
+		KeepSecrets:	protocol.acceptSecrets,
+		KeepResources:	protocol.acceptResources,
+		PropagateNil:	true,
 	})
 	if err != nil {
 		return DeleteResponse{}, err
@@ -1766,16 +1766,16 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 	contract.Assertf(pcfg.known, "Delete cannot be called if the configuration is unknown")
 
 	if _, err := client.Delete(p.requestContext(), &pulumirpc.DeleteRequest{
-		Id:                    string(req.ID),
-		Urn:                   string(req.URN),
-		Name:                  req.URN.Name(),
-		Type:                  req.URN.Type().String(),
-		Properties:            moutputs,
-		Timeout:               req.Timeout,
-		OldInputs:             minputs,
-		ResourceStatusAddress: req.ResourceStatusAddress,
-		ResourceStatusToken:   req.ResourceStatusToken,
-		OldViews:              oldViews,
+		Id:			string(req.ID),
+		Urn:			string(req.URN),
+		Name:			req.URN.Name(),
+		Type:			req.URN.Type().String(),
+		Properties:		moutputs,
+		Timeout:		req.Timeout,
+		OldInputs:		minputs,
+		ResourceStatusAddress:	req.ResourceStatusAddress,
+		ResourceStatusToken:	req.ResourceStatusToken,
+		OldViews:		oldViews,
 	}); err != nil {
 		resourceStatus, rpcErr := resourceStateAndError(err)
 		logging.V(7).Infof("%s failed: %v", label, rpcErr)
@@ -1816,9 +1816,9 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		}
 		resmon := pulumirpc.NewResourceMonitorClient(conn)
 		resp, err := resmon.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-			Type:   string(req.Type),
-			Name:   req.Name,
-			Parent: string(req.Parent),
+			Type:	string(req.Type),
+			Name:	req.Name,
+			Parent:	string(req.Parent),
 		})
 		if err != nil {
 			rpcError := rpcerror.Convert(err)
@@ -1836,14 +1836,14 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 
 	// Marshal the input properties.
 	minputs, err := MarshalProperties(req.Inputs, MarshalOptions{
-		Label:         label + ".inputs",
-		KeepUnknowns:  true,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
+		Label:		label + ".inputs",
+		KeepUnknowns:	true,
+		KeepSecrets:	protocol.acceptSecrets,
+		KeepResources:	protocol.acceptResources,
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
-		KeepOutputValues: protocol.acceptOutputs,
-		PropagateNil:     true,
+		KeepOutputValues:	protocol.acceptOutputs,
+		PropagateNil:		true,
 	})
 	if err != nil {
 		return ConstructResult{}, err
@@ -1894,37 +1894,37 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 	}
 
 	rpcReq := &pulumirpc.ConstructRequest{
-		Project:                 req.Info.Project,
-		Stack:                   req.Info.Stack,
-		Config:                  config,
-		ConfigSecretKeys:        configSecretKeys,
-		DryRun:                  req.Info.DryRun,
-		Parallel:                req.Info.Parallel,
-		MonitorEndpoint:         req.Info.MonitorAddress,
-		Type:                    string(req.Type),
-		Name:                    req.Name,
-		Parent:                  string(req.Parent),
-		Inputs:                  minputs,
-		Protect:                 req.Options.Protect,
-		Providers:               req.Options.Providers,
-		InputDependencies:       inputDependencies,
-		Aliases:                 aliasURNs,
-		Dependencies:            dependencies,
-		AdditionalSecretOutputs: req.Options.AdditionalSecretOutputs,
-		DeletedWith:             string(req.Options.DeletedWith),
-		DeleteBeforeReplace:     req.Options.DeleteBeforeReplace,
-		IgnoreChanges:           req.Options.IgnoreChanges,
-		ReplaceOnChanges:        req.Options.ReplaceOnChanges,
-		RetainOnDelete:          req.Options.RetainOnDelete,
-		AcceptsOutputValues:     true,
-		ResourceHooks:           resourceHook,
-		StackTraceHandle:        req.Info.StackTraceHandle,
+		Project:			req.Info.Project,
+		Stack:				req.Info.Stack,
+		Config:				config,
+		ConfigSecretKeys:		configSecretKeys,
+		DryRun:				req.Info.DryRun,
+		Parallel:			req.Info.Parallel,
+		MonitorEndpoint:		req.Info.MonitorAddress,
+		Type:				string(req.Type),
+		Name:				req.Name,
+		Parent:				string(req.Parent),
+		Inputs:				minputs,
+		Protect:			req.Options.Protect,
+		Providers:			req.Options.Providers,
+		InputDependencies:		inputDependencies,
+		Aliases:			aliasURNs,
+		Dependencies:			dependencies,
+		AdditionalSecretOutputs:	req.Options.AdditionalSecretOutputs,
+		DeletedWith:			string(req.Options.DeletedWith),
+		DeleteBeforeReplace:		req.Options.DeleteBeforeReplace,
+		IgnoreChanges:			req.Options.IgnoreChanges,
+		ReplaceOnChanges:		req.Options.ReplaceOnChanges,
+		RetainOnDelete:			req.Options.RetainOnDelete,
+		AcceptsOutputValues:		true,
+		ResourceHooks:			resourceHook,
+		StackTraceHandle:		req.Info.StackTraceHandle,
 	}
 	if ct := req.Options.CustomTimeouts; ct != nil {
 		rpcReq.CustomTimeouts = &pulumirpc.ConstructRequest_CustomTimeouts{
-			Create: ct.Create,
-			Update: ct.Update,
-			Delete: ct.Delete,
+			Create:	ct.Create,
+			Update:	ct.Update,
+			Delete:	ct.Delete,
 		}
 	}
 
@@ -1934,12 +1934,12 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 	}
 
 	outputs, err := UnmarshalProperties(resp.GetState(), MarshalOptions{
-		Label:            label + ".outputs",
-		KeepUnknowns:     req.Info.DryRun,
-		KeepSecrets:      true,
-		KeepResources:    true,
-		KeepOutputValues: true,
-		PropagateNil:     true,
+		Label:			label + ".outputs",
+		KeepUnknowns:		req.Info.DryRun,
+		KeepSecrets:		true,
+		KeepResources:		true,
+		KeepOutputValues:	true,
+		PropagateNil:		true,
 	})
 	if err != nil {
 		return ConstructResult{}, err
@@ -1956,9 +1956,9 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 
 	logging.V(7).Infof("%s success: #outputs=%d", label, len(outputs))
 	return ConstructResponse{
-		URN:                resource.URN(resp.GetUrn()),
-		Outputs:            outputs,
-		OutputDependencies: outputDependencies,
+		URN:			resource.URN(resp.GetUrn()),
+		Outputs:		outputs,
+		OutputDependencies:	outputDependencies,
 	}, nil
 }
 
@@ -1982,18 +1982,18 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 	}
 
 	margs, err := MarshalProperties(req.Args, MarshalOptions{
-		Label:         label + ".args",
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:		label + ".args",
+		KeepSecrets:	protocol.acceptSecrets,
+		KeepResources:	protocol.acceptResources,
+		PropagateNil:	true,
 	})
 	if err != nil {
 		return InvokeResponse{}, err
 	}
 
 	resp, err := client.Invoke(p.requestContext(), &pulumirpc.InvokeRequest{
-		Tok:  string(req.Tok),
-		Args: margs,
+		Tok:	string(req.Tok),
+		Args:	margs,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -2003,11 +2003,11 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 
 	// Unmarshal any return values.
 	ret, err := UnmarshalProperties(resp.GetReturn(), MarshalOptions{
-		Label:          label + ".returns",
-		RejectUnknowns: true,
-		KeepSecrets:    true,
-		KeepResources:  true,
-		PropagateNil:   true,
+		Label:		label + ".returns",
+		RejectUnknowns:	true,
+		KeepSecrets:	true,
+		KeepResources:	true,
+		PropagateNil:	true,
 	})
 	if err != nil {
 		return InvokeResponse{}, err
@@ -2021,8 +2021,8 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 
 	logging.V(7).Infof("%s success (#ret=%d,#failures=%d) success", label, len(ret), len(failures))
 	return InvokeResponse{
-		Properties: ret,
-		Failures:   failures,
+		Properties:	ret,
+		Failures:	failures,
 	}, nil
 }
 
@@ -2046,14 +2046,14 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 	}
 
 	margs, err := MarshalProperties(req.Args, MarshalOptions{
-		Label:         label + ".args",
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
+		Label:		label + ".args",
+		KeepUnknowns:	true,
+		KeepSecrets:	true,
+		KeepResources:	true,
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
-		KeepOutputValues: protocol.acceptOutputs,
-		PropagateNil:     true,
+		KeepOutputValues:	protocol.acceptOutputs,
+		PropagateNil:		true,
 	})
 	if err != nil {
 		return CallResult{}, err
@@ -2076,17 +2076,17 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 	}
 
 	resp, err := client.Call(p.requestContext(), &pulumirpc.CallRequest{
-		Tok:                 string(req.Tok),
-		Args:                margs,
-		ArgDependencies:     argDependencies,
-		Project:             req.Info.Project,
-		Stack:               req.Info.Stack,
-		Config:              config,
-		DryRun:              req.Info.DryRun,
-		Parallel:            req.Info.Parallel,
-		MonitorEndpoint:     req.Info.MonitorAddress,
-		AcceptsOutputValues: true,
-		StackTraceHandle:    req.Info.StackTraceHandle,
+		Tok:			string(req.Tok),
+		Args:			margs,
+		ArgDependencies:	argDependencies,
+		Project:		req.Info.Project,
+		Stack:			req.Info.Stack,
+		Config:			config,
+		DryRun:			req.Info.DryRun,
+		Parallel:		req.Info.Parallel,
+		MonitorEndpoint:	req.Info.MonitorAddress,
+		AcceptsOutputValues:	true,
+		StackTraceHandle:	req.Info.StackTraceHandle,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -2096,12 +2096,12 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 
 	// Unmarshal any return values.
 	ret, err := UnmarshalProperties(resp.GetReturn(), MarshalOptions{
-		Label:            label + ".returns",
-		KeepUnknowns:     req.Info.DryRun,
-		KeepSecrets:      true,
-		KeepResources:    true,
-		KeepOutputValues: true,
-		PropagateNil:     true,
+		Label:			label + ".returns",
+		KeepUnknowns:		req.Info.DryRun,
+		KeepSecrets:		true,
+		KeepResources:		true,
+		KeepOutputValues:	true,
+		PropagateNil:		true,
 	})
 	if err != nil {
 		return CallResult{}, err
@@ -2160,10 +2160,10 @@ func (p *provider) GetPluginInfo(ctx context.Context) (workspace.PluginInfo, err
 
 	logging.V(7).Infof("%s success (#version=%v) success", label, version)
 	return workspace.PluginInfo{
-		Name:    string(p.pkg),
-		Path:    path,
-		Kind:    apitype.ResourcePlugin,
-		Version: version,
+		Name:		string(p.pkg),
+		Path:		path,
+		Kind:		apitype.ResourcePlugin,
+		Version:	version,
 	}, nil
 }
 
@@ -2346,8 +2346,8 @@ func (p *provider) GetMapping(ctx context.Context, req GetMappingRequest) (GetMa
 	logging.V(7).Infof("%s executing: key=%s, provider=%s", label, req.Key, req.Provider)
 
 	resp, err := p.clientRaw.GetMapping(p.requestContext(), &pulumirpc.GetMappingRequest{
-		Key:      req.Key,
-		Provider: req.Provider,
+		Key:		req.Key,
+		Provider:	req.Provider,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -2364,8 +2364,8 @@ func (p *provider) GetMapping(ctx context.Context, req GetMappingRequest) (GetMa
 
 	logging.V(7).Infof("%s success: data=#%d provider=%s", label, len(resp.Data), resp.Provider)
 	return GetMappingResponse{
-		Data:     resp.Data,
-		Provider: resp.Provider,
+		Data:		resp.Data,
+		Provider:	resp.Provider,
 	}, nil
 }
 
@@ -2424,11 +2424,11 @@ func marshalView(v View, opts MarshalOptions) (*pulumirpc.View, error) {
 	}
 
 	return &pulumirpc.View{
-		Type:       string(v.Type),
-		Name:       v.Name,
-		ParentType: string(v.ParentType),
-		ParentName: v.ParentName,
-		Inputs:     inputs,
-		Outputs:    outputs,
+		Type:		string(v.Type),
+		Name:		v.Name,
+		ParentType:	string(v.ParentType),
+		ParentName:	v.ParentName,
+		Inputs:		inputs,
+		Outputs:	outputs,
 	}, nil
 }

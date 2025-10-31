@@ -55,18 +55,18 @@ import (
 var pulumiOrg = getTestOrg()
 
 const (
-	pName         = "testproj"
-	agent         = "pulumi/pulumi/test"
-	pulumiTestOrg = "moolumi"
+	pName		= "testproj"
+	agent		= "pulumi/pulumi/test"
+	pulumiTestOrg	= "moolumi"
 )
 
 type mockPulumiCommand struct {
-	version      semver.Version
-	stdout       string
-	stderr       string
-	exitCode     int
-	err          error
-	capturedArgs []string
+	version		semver.Version
+	stdout		string
+	stderr		string
+	exitCode	int
+	err		error
+	capturedArgs	[]string
 }
 
 func (m *mockPulumiCommand) Version() semver.Version {
@@ -179,8 +179,8 @@ func TestRemoveWithForce(t *testing.T) {
 			Value: "abc",
 		},
 		"buzz": ConfigValue{
-			Value:  "secret",
-			Secret: true,
+			Value:	"secret",
+			Secret:	true,
 		},
 	}
 
@@ -200,8 +200,8 @@ func TestRemoveWithForce(t *testing.T) {
 
 	// Set environment variables scoped to the workspace.
 	envvars := map[string]string{
-		"foo":    "bar",
-		"barfoo": "foobar",
+		"foo":		"bar",
+		"barfoo":	"foobar",
 	}
 	err = s.Workspace().SetEnvVars(envvars)
 	require.NoError(t, err, "failed to set environment values")
@@ -259,8 +259,8 @@ func TestNewStackLocalSource(t *testing.T) {
 			Value: "abc",
 		},
 		"buzz": ConfigValue{
-			Value:  "secret",
-			Secret: true,
+			Value:	"secret",
+			Secret:	true,
 		},
 	}
 
@@ -286,8 +286,8 @@ func TestNewStackLocalSource(t *testing.T) {
 
 	// Set environment variables scoped to the workspace.
 	envvars := map[string]string{
-		"foo":    "bar",
-		"barfoo": "foobar",
+		"foo":		"bar",
+		"barfoo":	"foobar",
 	}
 	err = s.Workspace().SetEnvVars(envvars)
 	require.NoError(t, err, "failed to set environment values")
@@ -372,8 +372,8 @@ func TestUpsertStackLocalSource(t *testing.T) {
 			Value: "abc",
 		},
 		"buzz": ConfigValue{
-			Value:  "secret",
-			Secret: true,
+			Value:	"secret",
+			Secret:	true,
 		},
 	}
 
@@ -399,8 +399,8 @@ func TestUpsertStackLocalSource(t *testing.T) {
 
 	// Set environment variables scoped to the workspace.
 	envvars := map[string]string{
-		"foo":    "bar",
-		"barfoo": "foobar",
+		"foo":		"bar",
+		"barfoo":	"foobar",
 	}
 	err = s.Workspace().SetEnvVars(envvars)
 	require.NoError(t, err, "failed to set environment values")
@@ -481,13 +481,13 @@ func TestNewStackRemoteSource(t *testing.T) {
 			Value: "abc",
 		},
 		"buzz": ConfigValue{
-			Value:  "secret",
-			Secret: true,
+			Value:	"secret",
+			Secret:	true,
 		},
 	}
 	repo := GitRepo{
-		URL:         "https://github.com/pulumi/test-repo.git",
-		ProjectPath: "goproj",
+		URL:		"https://github.com/pulumi/test-repo.git",
+		ProjectPath:	"goproj",
 	}
 
 	// initialize
@@ -575,13 +575,13 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 			Value: "abc",
 		},
 		"buzz": ConfigValue{
-			Value:  "secret",
-			Secret: true,
+			Value:	"secret",
+			Secret:	true,
 		},
 	}
 	repo := GitRepo{
-		URL:         "https://github.com/pulumi/test-repo.git",
-		ProjectPath: "goproj",
+		URL:		"https://github.com/pulumi/test-repo.git",
+		ProjectPath:	"goproj",
 	}
 
 	// initialize
@@ -669,8 +669,8 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 			Value: "abc",
 		},
 		"buzz": ConfigValue{
-			Value:  "secret",
-			Secret: true,
+			Value:	"secret",
+			Secret:	true,
 		},
 	}
 	binName := "examplesBinary"
@@ -678,8 +678,8 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 		binName = binName + ".exe"
 	}
 	repo := GitRepo{
-		URL:         "https://github.com/pulumi/test-repo.git",
-		ProjectPath: "goproj",
+		URL:		"https://github.com/pulumi/test-repo.git",
+		ProjectPath:	"goproj",
 		Setup: func(ctx context.Context, workspace Workspace) error {
 			cmd := exec.Command("go", "build", "-o", binName, "main.go")
 			cmd.Dir = workspace.WorkDir()
@@ -687,7 +687,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 		},
 	}
 	project := workspace.Project{
-		Name: tokens.PackageName(pName),
+		Name:	tokens.PackageName(pName),
 		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]any{
 			"binary": binName,
 		}),
@@ -778,8 +778,8 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 			Value: "abc",
 		},
 		"buzz": ConfigValue{
-			Value:  "secret",
-			Secret: true,
+			Value:	"secret",
+			Secret:	true,
 		},
 	}
 	binName := "examplesBinary"
@@ -787,8 +787,8 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 		binName = binName + ".exe"
 	}
 	repo := GitRepo{
-		URL:         "https://github.com/pulumi/test-repo.git",
-		ProjectPath: "goproj",
+		URL:		"https://github.com/pulumi/test-repo.git",
+		ProjectPath:	"goproj",
 		Setup: func(ctx context.Context, workspace Workspace) error {
 			cmd := exec.Command("go", "build", "-o", binName, "main.go")
 			cmd.Dir = workspace.WorkDir()
@@ -796,7 +796,7 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 		},
 	}
 	project := workspace.Project{
-		Name: tokens.PackageName(pName),
+		Name:	tokens.PackageName(pName),
 		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]any{
 			"binary": binName,
 		}),
@@ -886,8 +886,8 @@ func TestNewStackInlineSource(t *testing.T) {
 			Value: "abc",
 		},
 		"buzz": ConfigValue{
-			Value:  "secret",
-			Secret: true,
+			Value:	"secret",
+			Secret:	true,
 		},
 	}
 
@@ -1046,8 +1046,8 @@ func TestUpsertStackInlineSourceParallel(t *testing.T) {
 					Value: "abc",
 				},
 				"buzz": ConfigValue{
-					Value:  "secret",
-					Secret: true,
+					Value:	"secret",
+					Secret:	true,
 				},
 			}
 			// initialize or select
@@ -1202,8 +1202,8 @@ func TestErrorProgressStreams(t *testing.T) {
 
 	logLevel := uint(4)
 	debugOptions := debug.LoggingOptions{
-		LogToStdErr: true,
-		LogLevel:    &logLevel,
+		LogToStdErr:	true,
+		LogLevel:	&logLevel,
 	}
 
 	// initialize
@@ -1264,8 +1264,8 @@ func TestProgressStreams(t *testing.T) {
 			Value: "abc",
 		},
 		"buzz": ConfigValue{
-			Value:  "secret",
-			Secret: true,
+			Value:	"secret",
+			Secret:	true,
 		},
 	}
 
@@ -1335,8 +1335,8 @@ func TestImportExportStack(t *testing.T) {
 			Value: "abc",
 		},
 		"buzz": ConfigValue{
-			Value:  "secret",
-			Secret: true,
+			Value:	"secret",
+			Secret:	true,
 		},
 	}
 
@@ -1439,10 +1439,10 @@ func TestGetAllConfigCorrectArgs(t *testing.T) {
 	ctx := context.Background()
 	pDir := filepath.Join(".", "test", "testproj")
 	m := mockPulumiCommand{
-		stdout:   `{"key1": {"Value": "value1", "Secret": false}}`,
-		stderr:   "",
-		exitCode: 0,
-		err:      nil,
+		stdout:		`{"key1": {"Value": "value1", "Secret": false}}`,
+		stderr:		"",
+		exitCode:	0,
+		err:		nil,
 	}
 
 	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
@@ -1903,28 +1903,28 @@ func TestConfigAllWithOptions(t *testing.T) {
 
 	err = s.SetAllConfigWithOptions(ctx, ConfigMap{
 		"key1": ConfigValue{
-			Value:  "value1",
-			Secret: false,
+			Value:	"value1",
+			Secret:	false,
 		},
 		"key2": ConfigValue{
-			Value:  "value2",
-			Secret: true,
+			Value:	"value2",
+			Secret:	true,
 		},
 		"key3.subKey1": ConfigValue{
-			Value:  "value3",
-			Secret: false,
+			Value:	"value3",
+			Secret:	false,
 		},
 		"key3.subKey2": ConfigValue{
-			Value:  "value4",
-			Secret: false,
+			Value:	"value4",
+			Secret:	false,
 		},
 		"key3.subKey3": ConfigValue{
-			Value:  "value5",
-			Secret: false,
+			Value:	"value5",
+			Secret:	false,
 		},
 		"key4.subKey1": ConfigValue{
-			Value:  "value6",
-			Secret: true,
+			Value:	"value6",
+			Secret:	true,
 		},
 	}, &ConfigOptions{Path: true})
 	if err != nil {
@@ -1963,28 +1963,28 @@ func TestConfigAllWithOptions(t *testing.T) {
 
 	err = s.SetAllConfigWithOptions(ctx, ConfigMap{
 		"key5": ConfigValue{
-			Value:  "value7",
-			Secret: false,
+			Value:	"value7",
+			Secret:	false,
 		},
 		"key6": ConfigValue{
-			Value:  "value8",
-			Secret: true,
+			Value:	"value8",
+			Secret:	true,
 		},
 		"key7.subKey1": ConfigValue{
-			Value:  "value9",
-			Secret: false,
+			Value:	"value9",
+			Secret:	false,
 		},
 		"key7.subKey2": ConfigValue{
-			Value:  "value10",
-			Secret: false,
+			Value:	"value10",
+			Secret:	false,
 		},
 		"key7.subKey3": ConfigValue{
-			Value:  "value11",
-			Secret: false,
+			Value:	"value11",
+			Secret:	false,
 		},
 		"key8.subKey1": ConfigValue{
-			Value:  "value12",
-			Secret: true,
+			Value:	"value12",
+			Secret:	true,
 		},
 	}, &ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configJSON)})
 	if err != nil {
@@ -2028,28 +2028,28 @@ func TestConfigAllWithOptions(t *testing.T) {
 
 	err = s.SetAllConfigWithOptions(ctx, ConfigMap{
 		"key9": ConfigValue{
-			Value:  "value13",
-			Secret: false,
+			Value:	"value13",
+			Secret:	false,
 		},
 		"key10": ConfigValue{
-			Value:  "value14",
-			Secret: true,
+			Value:	"value14",
+			Secret:	true,
 		},
 		"key11.subKey1": ConfigValue{
-			Value:  "value15",
-			Secret: false,
+			Value:	"value15",
+			Secret:	false,
 		},
 		"key11.subKey2": ConfigValue{
-			Value:  "value16",
-			Secret: false,
+			Value:	"value16",
+			Secret:	false,
 		},
 		"key11.subKey3": ConfigValue{
-			Value:  "value17",
-			Secret: false,
+			Value:	"value17",
+			Secret:	false,
 		},
 		"key12.subKey1": ConfigValue{
-			Value:  "value18",
-			Secret: true,
+			Value:	"value18",
+			Secret:	true,
 		},
 	}, &ConfigOptions{Path: true, ConfigFile: filepath.Join(".", configYAML)})
 	if err != nil {
@@ -2421,8 +2421,8 @@ func TestStructuredOutput(t *testing.T) {
 			Value: "abc",
 		},
 		"buzz": ConfigValue{
-			Value:  "secret",
-			Secret: true,
+			Value:	"secret",
+			Secret:	true,
 		},
 	}
 
@@ -2448,8 +2448,8 @@ func TestStructuredOutput(t *testing.T) {
 
 	// Set environment variables scoped to the workspace.
 	envvars := map[string]string{
-		"foo":    "bar",
-		"barfoo": "foobar",
+		"foo":		"bar",
+		"barfoo":	"foobar",
 	}
 	err = s.Workspace().SetEnvVars(envvars)
 	require.NoError(t, err, "failed to set environment values")
@@ -2551,9 +2551,9 @@ func TestStackImportResources(t *testing.T) {
 	require.NoError(t, err, "failed to install plugin")
 	resourcesToImport := []*optimport.ImportResource{
 		{
-			Type: "random:index/randomPassword:RandomPassword",
-			ID:   "supersecret",
-			Name: "randomPassword",
+			Type:	"random:index/randomPassword:RandomPassword",
+			ID:	"supersecret",
+			Name:	"randomPassword",
 		},
 	}
 
@@ -2585,8 +2585,8 @@ func TestSupportsStackOutputs(t *testing.T) {
 			Value: "abc",
 		},
 		"buzz": ConfigValue{
-			Value:  "secret",
-			Secret: true,
+			Value:	"secret",
+			Secret:	true,
 		},
 	}
 
@@ -2595,8 +2595,8 @@ func TestSupportsStackOutputs(t *testing.T) {
 		c := config.New(ctx, "")
 
 		nestedObj := pulumi.Map{
-			"not_a_secret": pulumi.String("foo"),
-			"is_a_secret":  pulumi.ToSecret("iamsecret"),
+			"not_a_secret":	pulumi.String("foo"),
+			"is_a_secret":	pulumi.ToSecret("iamsecret"),
 		}
 		ctx.Export("exp_static", pulumi.String("foo"))
 		ctx.Export("exp_cfg", pulumi.String(c.Get("bar")))
@@ -2630,8 +2630,8 @@ func TestSupportsStackOutputs(t *testing.T) {
 		assert.Equal(t, "secret", outputs["exp_secret"].Value)
 		assert.True(t, outputs["exp_secret"].Secret)
 		assert.Equal(t, map[string]any{
-			"is_a_secret":  "iamsecret",
-			"not_a_secret": "foo",
+			"is_a_secret":	"iamsecret",
+			"not_a_secret":	"foo",
 		}, outputs["nested_obj"].Value)
 		assert.True(t, outputs["nested_obj"].Secret)
 	}
@@ -2689,24 +2689,24 @@ func TestShallowClone(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
-		name string
-		repo GitRepo
+		name	string
+		repo	GitRepo
 	}{
 		{
-			name: "no ref provided",
-			repo: GitRepo{},
+			name:	"no ref provided",
+			repo:	GitRepo{},
 		},
 		{
-			name: "branch provided",
-			repo: GitRepo{Branch: "master"},
+			name:	"branch provided",
+			repo:	GitRepo{Branch: "master"},
 		},
 		{
-			name: "commit provided",
-			repo: GitRepo{CommitHash: "028e8c5b3c6b19c3ce3b78ed508618e9cd94df1c"},
+			name:	"commit provided",
+			repo:	GitRepo{CommitHash: "028e8c5b3c6b19c3ce3b78ed508618e9cd94df1c"},
 		},
 		{
-			name: "branch and commit provided",
-			repo: GitRepo{Branch: "master", CommitHash: "028e8c5b3c6b19c3ce3b78ed508618e9cd94df1c"},
+			name:	"branch and commit provided",
+			repo:	GitRepo{Branch: "master", CommitHash: "028e8c5b3c6b19c3ce3b78ed508618e9cd94df1c"},
 		},
 	}
 
@@ -2715,11 +2715,11 @@ func TestShallowClone(t *testing.T) {
 			t.Parallel()
 
 			repo := GitRepo{
-				URL:         "https://github.com/pulumi/test-repo.git",
-				ProjectPath: "goproj",
-				Shallow:     true,
-				Branch:      tt.repo.Branch,
-				CommitHash:  tt.repo.CommitHash,
+				URL:		"https://github.com/pulumi/test-repo.git",
+				ProjectPath:	"goproj",
+				Shallow:	true,
+				Branch:		tt.repo.Branch,
+				CommitHash:	tt.repo.CommitHash,
 			}
 			ws, err := NewLocalWorkspace(ctx, Repo(repo))
 			require.NoError(t, err)
@@ -2890,126 +2890,126 @@ func TestConfigSecretWarnings(t *testing.T) {
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
-		"plainstr1":    ConfigValue{Value: "1"},
-		"plainstr2":    ConfigValue{Value: "2"},
-		"plainstr3":    ConfigValue{Value: "3"},
-		"plainstr4":    ConfigValue{Value: "4"},
-		"plainstr5":    ConfigValue{Value: "5"},
-		"plainstr6":    ConfigValue{Value: "6"},
-		"plainstr7":    ConfigValue{Value: "7"},
-		"plainstr8":    ConfigValue{Value: "8"},
-		"plainstr9":    ConfigValue{Value: "9"},
-		"plainstr10":   ConfigValue{Value: "10"},
-		"plainstr11":   ConfigValue{Value: "11"},
-		"plainstr12":   ConfigValue{Value: "12"},
-		"plainbool1":   ConfigValue{Value: "true"},
-		"plainbool2":   ConfigValue{Value: "true"},
-		"plainbool3":   ConfigValue{Value: "true"},
-		"plainbool4":   ConfigValue{Value: "true"},
-		"plainbool5":   ConfigValue{Value: "true"},
-		"plainbool6":   ConfigValue{Value: "true"},
-		"plainbool7":   ConfigValue{Value: "true"},
-		"plainbool8":   ConfigValue{Value: "true"},
-		"plainbool9":   ConfigValue{Value: "true"},
-		"plainbool10":  ConfigValue{Value: "true"},
-		"plainbool11":  ConfigValue{Value: "true"},
-		"plainbool12":  ConfigValue{Value: "true"},
-		"plainint1":    ConfigValue{Value: "1"},
-		"plainint2":    ConfigValue{Value: "2"},
-		"plainint3":    ConfigValue{Value: "3"},
-		"plainint4":    ConfigValue{Value: "4"},
-		"plainint5":    ConfigValue{Value: "5"},
-		"plainint6":    ConfigValue{Value: "6"},
-		"plainint7":    ConfigValue{Value: "7"},
-		"plainint8":    ConfigValue{Value: "8"},
-		"plainint9":    ConfigValue{Value: "9"},
-		"plainint10":   ConfigValue{Value: "10"},
-		"plainint11":   ConfigValue{Value: "11"},
-		"plainint12":   ConfigValue{Value: "12"},
-		"plainfloat1":  ConfigValue{Value: "1.1"},
-		"plainfloat2":  ConfigValue{Value: "2.2"},
-		"plainfloat3":  ConfigValue{Value: "3.3"},
-		"plainfloat4":  ConfigValue{Value: "4.4"},
-		"plainfloat5":  ConfigValue{Value: "5.5"},
-		"plainfloat6":  ConfigValue{Value: "6.6"},
-		"plainfloat7":  ConfigValue{Value: "7.7"},
-		"plainfloat8":  ConfigValue{Value: "8.8"},
-		"plainfloat9":  ConfigValue{Value: "9.9"},
-		"plainfloat10": ConfigValue{Value: "10.1"},
-		"plainfloat11": ConfigValue{Value: "11.11"},
-		"plainfloat12": ConfigValue{Value: "12.12"},
-		"plainobj1":    ConfigValue{Value: "{}"},
-		"plainobj2":    ConfigValue{Value: "{}"},
-		"plainobj3":    ConfigValue{Value: "{}"},
-		"plainobj4":    ConfigValue{Value: "{}"},
-		"plainobj5":    ConfigValue{Value: "{}"},
-		"plainobj6":    ConfigValue{Value: "{}"},
-		"plainobj7":    ConfigValue{Value: "{}"},
-		"plainobj8":    ConfigValue{Value: "{}"},
-		"plainobj9":    ConfigValue{Value: "{}"},
-		"plainobj10":   ConfigValue{Value: "{}"},
-		"plainobj11":   ConfigValue{Value: "{}"},
-		"plainobj12":   ConfigValue{Value: "{}"},
-		"str1":         ConfigValue{Value: "1", Secret: true},
-		"str2":         ConfigValue{Value: "2", Secret: true},
-		"str3":         ConfigValue{Value: "3", Secret: true},
-		"str4":         ConfigValue{Value: "4", Secret: true},
-		"str5":         ConfigValue{Value: "5", Secret: true},
-		"str6":         ConfigValue{Value: "6", Secret: true},
-		"str7":         ConfigValue{Value: "7", Secret: true},
-		"str8":         ConfigValue{Value: "8", Secret: true},
-		"str9":         ConfigValue{Value: "9", Secret: true},
-		"str10":        ConfigValue{Value: "10", Secret: true},
-		"str11":        ConfigValue{Value: "11", Secret: true},
-		"str12":        ConfigValue{Value: "12", Secret: true},
-		"bool1":        ConfigValue{Value: "true", Secret: true},
-		"bool2":        ConfigValue{Value: "true", Secret: true},
-		"bool3":        ConfigValue{Value: "true", Secret: true},
-		"bool4":        ConfigValue{Value: "true", Secret: true},
-		"bool5":        ConfigValue{Value: "true", Secret: true},
-		"bool6":        ConfigValue{Value: "true", Secret: true},
-		"bool7":        ConfigValue{Value: "true", Secret: true},
-		"bool8":        ConfigValue{Value: "true", Secret: true},
-		"bool9":        ConfigValue{Value: "true", Secret: true},
-		"bool10":       ConfigValue{Value: "true", Secret: true},
-		"bool11":       ConfigValue{Value: "true", Secret: true},
-		"bool12":       ConfigValue{Value: "true", Secret: true},
-		"int1":         ConfigValue{Value: "1", Secret: true},
-		"int2":         ConfigValue{Value: "2", Secret: true},
-		"int3":         ConfigValue{Value: "3", Secret: true},
-		"int4":         ConfigValue{Value: "4", Secret: true},
-		"int5":         ConfigValue{Value: "5", Secret: true},
-		"int6":         ConfigValue{Value: "6", Secret: true},
-		"int7":         ConfigValue{Value: "7", Secret: true},
-		"int8":         ConfigValue{Value: "8", Secret: true},
-		"int9":         ConfigValue{Value: "9", Secret: true},
-		"int10":        ConfigValue{Value: "10", Secret: true},
-		"int11":        ConfigValue{Value: "11", Secret: true},
-		"int12":        ConfigValue{Value: "12", Secret: true},
-		"float1":       ConfigValue{Value: "1.1", Secret: true},
-		"float2":       ConfigValue{Value: "2.2", Secret: true},
-		"float3":       ConfigValue{Value: "3.3", Secret: true},
-		"float4":       ConfigValue{Value: "4.4", Secret: true},
-		"float5":       ConfigValue{Value: "5.5", Secret: true},
-		"float6":       ConfigValue{Value: "6.6", Secret: true},
-		"float7":       ConfigValue{Value: "7.7", Secret: true},
-		"float8":       ConfigValue{Value: "8.8", Secret: true},
-		"float9":       ConfigValue{Value: "9.9", Secret: true},
-		"float10":      ConfigValue{Value: "10.1", Secret: true},
-		"float11":      ConfigValue{Value: "11.11", Secret: true},
-		"float12":      ConfigValue{Value: "12.12", Secret: true},
-		"obj1":         ConfigValue{Value: "{}", Secret: true},
-		"obj2":         ConfigValue{Value: "{}", Secret: true},
-		"obj3":         ConfigValue{Value: "{}", Secret: true},
-		"obj4":         ConfigValue{Value: "{}", Secret: true},
-		"obj5":         ConfigValue{Value: "{}", Secret: true},
-		"obj6":         ConfigValue{Value: "{}", Secret: true},
-		"obj7":         ConfigValue{Value: "{}", Secret: true},
-		"obj8":         ConfigValue{Value: "{}", Secret: true},
-		"obj9":         ConfigValue{Value: "{}", Secret: true},
-		"obj10":        ConfigValue{Value: "{}", Secret: true},
-		"obj11":        ConfigValue{Value: "{}", Secret: true},
-		"obj12":        ConfigValue{Value: "{}", Secret: true},
+		"plainstr1":	ConfigValue{Value: "1"},
+		"plainstr2":	ConfigValue{Value: "2"},
+		"plainstr3":	ConfigValue{Value: "3"},
+		"plainstr4":	ConfigValue{Value: "4"},
+		"plainstr5":	ConfigValue{Value: "5"},
+		"plainstr6":	ConfigValue{Value: "6"},
+		"plainstr7":	ConfigValue{Value: "7"},
+		"plainstr8":	ConfigValue{Value: "8"},
+		"plainstr9":	ConfigValue{Value: "9"},
+		"plainstr10":	ConfigValue{Value: "10"},
+		"plainstr11":	ConfigValue{Value: "11"},
+		"plainstr12":	ConfigValue{Value: "12"},
+		"plainbool1":	ConfigValue{Value: "true"},
+		"plainbool2":	ConfigValue{Value: "true"},
+		"plainbool3":	ConfigValue{Value: "true"},
+		"plainbool4":	ConfigValue{Value: "true"},
+		"plainbool5":	ConfigValue{Value: "true"},
+		"plainbool6":	ConfigValue{Value: "true"},
+		"plainbool7":	ConfigValue{Value: "true"},
+		"plainbool8":	ConfigValue{Value: "true"},
+		"plainbool9":	ConfigValue{Value: "true"},
+		"plainbool10":	ConfigValue{Value: "true"},
+		"plainbool11":	ConfigValue{Value: "true"},
+		"plainbool12":	ConfigValue{Value: "true"},
+		"plainint1":	ConfigValue{Value: "1"},
+		"plainint2":	ConfigValue{Value: "2"},
+		"plainint3":	ConfigValue{Value: "3"},
+		"plainint4":	ConfigValue{Value: "4"},
+		"plainint5":	ConfigValue{Value: "5"},
+		"plainint6":	ConfigValue{Value: "6"},
+		"plainint7":	ConfigValue{Value: "7"},
+		"plainint8":	ConfigValue{Value: "8"},
+		"plainint9":	ConfigValue{Value: "9"},
+		"plainint10":	ConfigValue{Value: "10"},
+		"plainint11":	ConfigValue{Value: "11"},
+		"plainint12":	ConfigValue{Value: "12"},
+		"plainfloat1":	ConfigValue{Value: "1.1"},
+		"plainfloat2":	ConfigValue{Value: "2.2"},
+		"plainfloat3":	ConfigValue{Value: "3.3"},
+		"plainfloat4":	ConfigValue{Value: "4.4"},
+		"plainfloat5":	ConfigValue{Value: "5.5"},
+		"plainfloat6":	ConfigValue{Value: "6.6"},
+		"plainfloat7":	ConfigValue{Value: "7.7"},
+		"plainfloat8":	ConfigValue{Value: "8.8"},
+		"plainfloat9":	ConfigValue{Value: "9.9"},
+		"plainfloat10":	ConfigValue{Value: "10.1"},
+		"plainfloat11":	ConfigValue{Value: "11.11"},
+		"plainfloat12":	ConfigValue{Value: "12.12"},
+		"plainobj1":	ConfigValue{Value: "{}"},
+		"plainobj2":	ConfigValue{Value: "{}"},
+		"plainobj3":	ConfigValue{Value: "{}"},
+		"plainobj4":	ConfigValue{Value: "{}"},
+		"plainobj5":	ConfigValue{Value: "{}"},
+		"plainobj6":	ConfigValue{Value: "{}"},
+		"plainobj7":	ConfigValue{Value: "{}"},
+		"plainobj8":	ConfigValue{Value: "{}"},
+		"plainobj9":	ConfigValue{Value: "{}"},
+		"plainobj10":	ConfigValue{Value: "{}"},
+		"plainobj11":	ConfigValue{Value: "{}"},
+		"plainobj12":	ConfigValue{Value: "{}"},
+		"str1":		ConfigValue{Value: "1", Secret: true},
+		"str2":		ConfigValue{Value: "2", Secret: true},
+		"str3":		ConfigValue{Value: "3", Secret: true},
+		"str4":		ConfigValue{Value: "4", Secret: true},
+		"str5":		ConfigValue{Value: "5", Secret: true},
+		"str6":		ConfigValue{Value: "6", Secret: true},
+		"str7":		ConfigValue{Value: "7", Secret: true},
+		"str8":		ConfigValue{Value: "8", Secret: true},
+		"str9":		ConfigValue{Value: "9", Secret: true},
+		"str10":	ConfigValue{Value: "10", Secret: true},
+		"str11":	ConfigValue{Value: "11", Secret: true},
+		"str12":	ConfigValue{Value: "12", Secret: true},
+		"bool1":	ConfigValue{Value: "true", Secret: true},
+		"bool2":	ConfigValue{Value: "true", Secret: true},
+		"bool3":	ConfigValue{Value: "true", Secret: true},
+		"bool4":	ConfigValue{Value: "true", Secret: true},
+		"bool5":	ConfigValue{Value: "true", Secret: true},
+		"bool6":	ConfigValue{Value: "true", Secret: true},
+		"bool7":	ConfigValue{Value: "true", Secret: true},
+		"bool8":	ConfigValue{Value: "true", Secret: true},
+		"bool9":	ConfigValue{Value: "true", Secret: true},
+		"bool10":	ConfigValue{Value: "true", Secret: true},
+		"bool11":	ConfigValue{Value: "true", Secret: true},
+		"bool12":	ConfigValue{Value: "true", Secret: true},
+		"int1":		ConfigValue{Value: "1", Secret: true},
+		"int2":		ConfigValue{Value: "2", Secret: true},
+		"int3":		ConfigValue{Value: "3", Secret: true},
+		"int4":		ConfigValue{Value: "4", Secret: true},
+		"int5":		ConfigValue{Value: "5", Secret: true},
+		"int6":		ConfigValue{Value: "6", Secret: true},
+		"int7":		ConfigValue{Value: "7", Secret: true},
+		"int8":		ConfigValue{Value: "8", Secret: true},
+		"int9":		ConfigValue{Value: "9", Secret: true},
+		"int10":	ConfigValue{Value: "10", Secret: true},
+		"int11":	ConfigValue{Value: "11", Secret: true},
+		"int12":	ConfigValue{Value: "12", Secret: true},
+		"float1":	ConfigValue{Value: "1.1", Secret: true},
+		"float2":	ConfigValue{Value: "2.2", Secret: true},
+		"float3":	ConfigValue{Value: "3.3", Secret: true},
+		"float4":	ConfigValue{Value: "4.4", Secret: true},
+		"float5":	ConfigValue{Value: "5.5", Secret: true},
+		"float6":	ConfigValue{Value: "6.6", Secret: true},
+		"float7":	ConfigValue{Value: "7.7", Secret: true},
+		"float8":	ConfigValue{Value: "8.8", Secret: true},
+		"float9":	ConfigValue{Value: "9.9", Secret: true},
+		"float10":	ConfigValue{Value: "10.1", Secret: true},
+		"float11":	ConfigValue{Value: "11.11", Secret: true},
+		"float12":	ConfigValue{Value: "12.12", Secret: true},
+		"obj1":		ConfigValue{Value: "{}", Secret: true},
+		"obj2":		ConfigValue{Value: "{}", Secret: true},
+		"obj3":		ConfigValue{Value: "{}", Secret: true},
+		"obj4":		ConfigValue{Value: "{}", Secret: true},
+		"obj5":		ConfigValue{Value: "{}", Secret: true},
+		"obj6":		ConfigValue{Value: "{}", Secret: true},
+		"obj7":		ConfigValue{Value: "{}", Secret: true},
+		"obj8":		ConfigValue{Value: "{}", Secret: true},
+		"obj9":		ConfigValue{Value: "{}", Secret: true},
+		"obj10":	ConfigValue{Value: "{}", Secret: true},
+		"obj11":	ConfigValue{Value: "{}", Secret: true},
+		"obj12":	ConfigValue{Value: "{}", Secret: true},
 	}
 
 	// initialize
@@ -3361,9 +3361,9 @@ func TestListStacks(t *testing.T) {
 				  {"name": "testorg1/testproj1/teststack2",
 				   "current": false,
 				   "url": "https://app.pulumi.com/testorg1/testproj1/teststack2"}]`,
-		stderr:   "",
-		exitCode: 0,
-		err:      nil,
+		stderr:		"",
+		exitCode:	0,
+		err:		nil,
 	}
 
 	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
@@ -3394,9 +3394,9 @@ func TestListStacksCorrectArgs(t *testing.T) {
 				{"name": "testorg1/testproj1/teststack2",
 				"current": false,
 				"url": "https://app.pulumi.com/testorg1/testproj1/teststack2"}]`,
-		stderr:   "",
-		exitCode: 0,
-		err:      nil,
+		stderr:		"",
+		exitCode:	0,
+		err:		nil,
 	}
 
 	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
@@ -3421,9 +3421,9 @@ func TestListAllStacks(t *testing.T) {
 				  {"name": "testorg1/testproj2/teststack2",
 				   "current": false,
 				   "url": "https://app.pulumi.com/testorg1/testproj2/teststack2"}]`,
-		stderr:   "",
-		exitCode: 0,
-		err:      nil,
+		stderr:		"",
+		exitCode:	0,
+		err:		nil,
 	}
 
 	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
@@ -3454,9 +3454,9 @@ func TestListStacksAllCorrectArgs(t *testing.T) {
 				{"name": "testorg1/testproj1/teststack2",
 				"current": false,
 				"url": "https://app.pulumi.com/testorg1/testproj1/teststack2"}]`,
-		stderr:   "",
-		exitCode: 0,
-		err:      nil,
+		stderr:		"",
+		exitCode:	0,
+		err:		nil,
 	}
 
 	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
@@ -3481,8 +3481,8 @@ func TestInstallWithOptions(t *testing.T) {
 
 	// Run with options
 	err = workspace.Install(ctx, &InstallOptions{
-		Stdout: stdout,
-		Stderr: stderr,
+		Stdout:	stdout,
+		Stderr:	stderr,
 	})
 
 	require.NoError(t, err)
@@ -3538,10 +3538,10 @@ func TestInstallOptions(t *testing.T) {
 	require.Equal(t, []string{"install", "--reinstall"}, m.capturedArgs)
 
 	err = workspace.Install(ctx, &InstallOptions{
-		UseLanguageVersionTools: true,
-		NoDependencies:          true,
-		NoPlugins:               true,
-		Reinstall:               true,
+		UseLanguageVersionTools:	true,
+		NoDependencies:			true,
+		NoPlugins:			true,
+		Reinstall:			true,
 	})
 	require.NoError(t, err)
 	require.Equal(t, []string{
@@ -3596,46 +3596,46 @@ func BenchmarkBulkSetConfigMixed(b *testing.B) {
 	}
 
 	cfg := ConfigMap{
-		"one":        ConfigValue{Value: "one", Secret: true},
-		"two":        ConfigValue{Value: "two"},
-		"three":      ConfigValue{Value: "three", Secret: true},
-		"four":       ConfigValue{Value: "four"},
-		"five":       ConfigValue{Value: "five", Secret: true},
-		"six":        ConfigValue{Value: "six"},
-		"seven":      ConfigValue{Value: "seven", Secret: true},
-		"eight":      ConfigValue{Value: "eight"},
-		"nine":       ConfigValue{Value: "nine", Secret: true},
-		"ten":        ConfigValue{Value: "ten"},
-		"eleven":     ConfigValue{Value: "one", Secret: true},
-		"twelve":     ConfigValue{Value: "two"},
-		"thirteen":   ConfigValue{Value: "three", Secret: true},
-		"fourteen":   ConfigValue{Value: "four"},
-		"fifteen":    ConfigValue{Value: "five", Secret: true},
-		"sixteen":    ConfigValue{Value: "six"},
-		"seventeen":  ConfigValue{Value: "seven", Secret: true},
-		"eighteen":   ConfigValue{Value: "eight"},
-		"nineteen":   ConfigValue{Value: "nine", Secret: true},
-		"twenty":     ConfigValue{Value: "ten"},
-		"one1":       ConfigValue{Value: "one", Secret: true},
-		"two1":       ConfigValue{Value: "two"},
-		"three1":     ConfigValue{Value: "three", Secret: true},
-		"four1":      ConfigValue{Value: "four"},
-		"five1":      ConfigValue{Value: "five", Secret: true},
-		"six1":       ConfigValue{Value: "six"},
-		"seven1":     ConfigValue{Value: "seven", Secret: true},
-		"eight1":     ConfigValue{Value: "eight"},
-		"nine1":      ConfigValue{Value: "nine", Secret: true},
-		"ten1":       ConfigValue{Value: "ten"},
-		"eleven1":    ConfigValue{Value: "one", Secret: true},
-		"twelve1":    ConfigValue{Value: "two"},
-		"thirteen1":  ConfigValue{Value: "three", Secret: true},
-		"fourteen1":  ConfigValue{Value: "four"},
-		"fifteen1":   ConfigValue{Value: "five", Secret: true},
-		"sixteen1":   ConfigValue{Value: "six"},
-		"seventeen1": ConfigValue{Value: "seven", Secret: true},
-		"eighteen1":  ConfigValue{Value: "eight"},
-		"nineteen1":  ConfigValue{Value: "nine", Secret: true},
-		"twenty1":    ConfigValue{Value: "ten"},
+		"one":		ConfigValue{Value: "one", Secret: true},
+		"two":		ConfigValue{Value: "two"},
+		"three":	ConfigValue{Value: "three", Secret: true},
+		"four":		ConfigValue{Value: "four"},
+		"five":		ConfigValue{Value: "five", Secret: true},
+		"six":		ConfigValue{Value: "six"},
+		"seven":	ConfigValue{Value: "seven", Secret: true},
+		"eight":	ConfigValue{Value: "eight"},
+		"nine":		ConfigValue{Value: "nine", Secret: true},
+		"ten":		ConfigValue{Value: "ten"},
+		"eleven":	ConfigValue{Value: "one", Secret: true},
+		"twelve":	ConfigValue{Value: "two"},
+		"thirteen":	ConfigValue{Value: "three", Secret: true},
+		"fourteen":	ConfigValue{Value: "four"},
+		"fifteen":	ConfigValue{Value: "five", Secret: true},
+		"sixteen":	ConfigValue{Value: "six"},
+		"seventeen":	ConfigValue{Value: "seven", Secret: true},
+		"eighteen":	ConfigValue{Value: "eight"},
+		"nineteen":	ConfigValue{Value: "nine", Secret: true},
+		"twenty":	ConfigValue{Value: "ten"},
+		"one1":		ConfigValue{Value: "one", Secret: true},
+		"two1":		ConfigValue{Value: "two"},
+		"three1":	ConfigValue{Value: "three", Secret: true},
+		"four1":	ConfigValue{Value: "four"},
+		"five1":	ConfigValue{Value: "five", Secret: true},
+		"six1":		ConfigValue{Value: "six"},
+		"seven1":	ConfigValue{Value: "seven", Secret: true},
+		"eight1":	ConfigValue{Value: "eight"},
+		"nine1":	ConfigValue{Value: "nine", Secret: true},
+		"ten1":		ConfigValue{Value: "ten"},
+		"eleven1":	ConfigValue{Value: "one", Secret: true},
+		"twelve1":	ConfigValue{Value: "two"},
+		"thirteen1":	ConfigValue{Value: "three", Secret: true},
+		"fourteen1":	ConfigValue{Value: "four"},
+		"fifteen1":	ConfigValue{Value: "five", Secret: true},
+		"sixteen1":	ConfigValue{Value: "six"},
+		"seventeen1":	ConfigValue{Value: "seven", Secret: true},
+		"eighteen1":	ConfigValue{Value: "eight"},
+		"nineteen1":	ConfigValue{Value: "nine", Secret: true},
+		"twenty1":	ConfigValue{Value: "ten"},
 	}
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -3663,46 +3663,46 @@ func BenchmarkBulkSetConfigPlain(b *testing.B) {
 	}
 
 	cfg := ConfigMap{
-		"one":        ConfigValue{Value: "one"},
-		"two":        ConfigValue{Value: "two"},
-		"three":      ConfigValue{Value: "three"},
-		"four":       ConfigValue{Value: "four"},
-		"five":       ConfigValue{Value: "five"},
-		"six":        ConfigValue{Value: "six"},
-		"seven":      ConfigValue{Value: "seven"},
-		"eight":      ConfigValue{Value: "eight"},
-		"nine":       ConfigValue{Value: "nine"},
-		"ten":        ConfigValue{Value: "ten"},
-		"eleven":     ConfigValue{Value: "one"},
-		"twelve":     ConfigValue{Value: "two"},
-		"thirteen":   ConfigValue{Value: "three"},
-		"fourteen":   ConfigValue{Value: "four"},
-		"fifteen":    ConfigValue{Value: "five"},
-		"sixteen":    ConfigValue{Value: "six"},
-		"seventeen":  ConfigValue{Value: "seven"},
-		"eighteen":   ConfigValue{Value: "eight"},
-		"nineteen":   ConfigValue{Value: "nine"},
-		"twenty":     ConfigValue{Value: "ten"},
-		"one1":       ConfigValue{Value: "one"},
-		"two1":       ConfigValue{Value: "two"},
-		"three1":     ConfigValue{Value: "three"},
-		"four1":      ConfigValue{Value: "four"},
-		"five1":      ConfigValue{Value: "five"},
-		"six1":       ConfigValue{Value: "six"},
-		"seven1":     ConfigValue{Value: "seven"},
-		"eight1":     ConfigValue{Value: "eight"},
-		"nine1":      ConfigValue{Value: "nine"},
-		"ten1":       ConfigValue{Value: "ten"},
-		"eleven1":    ConfigValue{Value: "one"},
-		"twelve1":    ConfigValue{Value: "two"},
-		"thirteen1":  ConfigValue{Value: "three"},
-		"fourteen1":  ConfigValue{Value: "four"},
-		"fifteen1":   ConfigValue{Value: "five"},
-		"sixteen1":   ConfigValue{Value: "six"},
-		"seventeen1": ConfigValue{Value: "seven"},
-		"eighteen1":  ConfigValue{Value: "eight"},
-		"nineteen1":  ConfigValue{Value: "nine"},
-		"twenty1":    ConfigValue{Value: "ten"},
+		"one":		ConfigValue{Value: "one"},
+		"two":		ConfigValue{Value: "two"},
+		"three":	ConfigValue{Value: "three"},
+		"four":		ConfigValue{Value: "four"},
+		"five":		ConfigValue{Value: "five"},
+		"six":		ConfigValue{Value: "six"},
+		"seven":	ConfigValue{Value: "seven"},
+		"eight":	ConfigValue{Value: "eight"},
+		"nine":		ConfigValue{Value: "nine"},
+		"ten":		ConfigValue{Value: "ten"},
+		"eleven":	ConfigValue{Value: "one"},
+		"twelve":	ConfigValue{Value: "two"},
+		"thirteen":	ConfigValue{Value: "three"},
+		"fourteen":	ConfigValue{Value: "four"},
+		"fifteen":	ConfigValue{Value: "five"},
+		"sixteen":	ConfigValue{Value: "six"},
+		"seventeen":	ConfigValue{Value: "seven"},
+		"eighteen":	ConfigValue{Value: "eight"},
+		"nineteen":	ConfigValue{Value: "nine"},
+		"twenty":	ConfigValue{Value: "ten"},
+		"one1":		ConfigValue{Value: "one"},
+		"two1":		ConfigValue{Value: "two"},
+		"three1":	ConfigValue{Value: "three"},
+		"four1":	ConfigValue{Value: "four"},
+		"five1":	ConfigValue{Value: "five"},
+		"six1":		ConfigValue{Value: "six"},
+		"seven1":	ConfigValue{Value: "seven"},
+		"eight1":	ConfigValue{Value: "eight"},
+		"nine1":	ConfigValue{Value: "nine"},
+		"ten1":		ConfigValue{Value: "ten"},
+		"eleven1":	ConfigValue{Value: "one"},
+		"twelve1":	ConfigValue{Value: "two"},
+		"thirteen1":	ConfigValue{Value: "three"},
+		"fourteen1":	ConfigValue{Value: "four"},
+		"fifteen1":	ConfigValue{Value: "five"},
+		"sixteen1":	ConfigValue{Value: "six"},
+		"seventeen1":	ConfigValue{Value: "seven"},
+		"eighteen1":	ConfigValue{Value: "eight"},
+		"nineteen1":	ConfigValue{Value: "nine"},
+		"twenty1":	ConfigValue{Value: "ten"},
 	}
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -3730,46 +3730,46 @@ func BenchmarkBulkSetConfigSecret(b *testing.B) {
 	}
 
 	cfg := ConfigMap{
-		"one":        ConfigValue{Value: "one", Secret: true},
-		"two":        ConfigValue{Value: "two", Secret: true},
-		"three":      ConfigValue{Value: "three", Secret: true},
-		"four":       ConfigValue{Value: "four", Secret: true},
-		"five":       ConfigValue{Value: "five", Secret: true},
-		"six":        ConfigValue{Value: "six", Secret: true},
-		"seven":      ConfigValue{Value: "seven", Secret: true},
-		"eight":      ConfigValue{Value: "eight", Secret: true},
-		"nine":       ConfigValue{Value: "nine", Secret: true},
-		"ten":        ConfigValue{Value: "ten", Secret: true},
-		"eleven":     ConfigValue{Value: "one", Secret: true},
-		"twelve":     ConfigValue{Value: "two", Secret: true},
-		"thirteen":   ConfigValue{Value: "three", Secret: true},
-		"fourteen":   ConfigValue{Value: "four", Secret: true},
-		"fifteen":    ConfigValue{Value: "five", Secret: true},
-		"sixteen":    ConfigValue{Value: "six", Secret: true},
-		"seventeen":  ConfigValue{Value: "seven", Secret: true},
-		"eighteen":   ConfigValue{Value: "eight", Secret: true},
-		"nineteen":   ConfigValue{Value: "nine", Secret: true},
-		"1twenty":    ConfigValue{Value: "ten", Secret: true},
-		"one1":       ConfigValue{Value: "one", Secret: true},
-		"two1":       ConfigValue{Value: "two", Secret: true},
-		"three1":     ConfigValue{Value: "three", Secret: true},
-		"four1":      ConfigValue{Value: "four", Secret: true},
-		"five1":      ConfigValue{Value: "five", Secret: true},
-		"six1":       ConfigValue{Value: "six", Secret: true},
-		"seven1":     ConfigValue{Value: "seven", Secret: true},
-		"eight1":     ConfigValue{Value: "eight", Secret: true},
-		"nine1":      ConfigValue{Value: "nine", Secret: true},
-		"ten1":       ConfigValue{Value: "ten", Secret: true},
-		"eleven1":    ConfigValue{Value: "one", Secret: true},
-		"twelve1":    ConfigValue{Value: "two", Secret: true},
-		"thirteen1":  ConfigValue{Value: "three", Secret: true},
-		"fourteen1":  ConfigValue{Value: "four", Secret: true},
-		"fifteen1":   ConfigValue{Value: "five", Secret: true},
-		"sixteen1":   ConfigValue{Value: "six", Secret: true},
-		"seventeen1": ConfigValue{Value: "seven", Secret: true},
-		"eighteen1":  ConfigValue{Value: "eight", Secret: true},
-		"nineteen1":  ConfigValue{Value: "nine", Secret: true},
-		"twenty1":    ConfigValue{Value: "ten", Secret: true},
+		"one":		ConfigValue{Value: "one", Secret: true},
+		"two":		ConfigValue{Value: "two", Secret: true},
+		"three":	ConfigValue{Value: "three", Secret: true},
+		"four":		ConfigValue{Value: "four", Secret: true},
+		"five":		ConfigValue{Value: "five", Secret: true},
+		"six":		ConfigValue{Value: "six", Secret: true},
+		"seven":	ConfigValue{Value: "seven", Secret: true},
+		"eight":	ConfigValue{Value: "eight", Secret: true},
+		"nine":		ConfigValue{Value: "nine", Secret: true},
+		"ten":		ConfigValue{Value: "ten", Secret: true},
+		"eleven":	ConfigValue{Value: "one", Secret: true},
+		"twelve":	ConfigValue{Value: "two", Secret: true},
+		"thirteen":	ConfigValue{Value: "three", Secret: true},
+		"fourteen":	ConfigValue{Value: "four", Secret: true},
+		"fifteen":	ConfigValue{Value: "five", Secret: true},
+		"sixteen":	ConfigValue{Value: "six", Secret: true},
+		"seventeen":	ConfigValue{Value: "seven", Secret: true},
+		"eighteen":	ConfigValue{Value: "eight", Secret: true},
+		"nineteen":	ConfigValue{Value: "nine", Secret: true},
+		"1twenty":	ConfigValue{Value: "ten", Secret: true},
+		"one1":		ConfigValue{Value: "one", Secret: true},
+		"two1":		ConfigValue{Value: "two", Secret: true},
+		"three1":	ConfigValue{Value: "three", Secret: true},
+		"four1":	ConfigValue{Value: "four", Secret: true},
+		"five1":	ConfigValue{Value: "five", Secret: true},
+		"six1":		ConfigValue{Value: "six", Secret: true},
+		"seven1":	ConfigValue{Value: "seven", Secret: true},
+		"eight1":	ConfigValue{Value: "eight", Secret: true},
+		"nine1":	ConfigValue{Value: "nine", Secret: true},
+		"ten1":		ConfigValue{Value: "ten", Secret: true},
+		"eleven1":	ConfigValue{Value: "one", Secret: true},
+		"twelve1":	ConfigValue{Value: "two", Secret: true},
+		"thirteen1":	ConfigValue{Value: "three", Secret: true},
+		"fourteen1":	ConfigValue{Value: "four", Secret: true},
+		"fifteen1":	ConfigValue{Value: "five", Secret: true},
+		"sixteen1":	ConfigValue{Value: "six", Secret: true},
+		"seventeen1":	ConfigValue{Value: "seven", Secret: true},
+		"eighteen1":	ConfigValue{Value: "eight", Secret: true},
+		"nineteen1":	ConfigValue{Value: "nine", Secret: true},
+		"twenty1":	ConfigValue{Value: "ten", Secret: true},
 	}
 
 	err = s.SetAllConfig(ctx, cfg)

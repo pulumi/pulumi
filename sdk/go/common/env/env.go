@@ -28,7 +28,7 @@ type Env = env.Env
 
 type MapStore = env.MapStore
 
-func NewEnv(s env.Store) env.Env { return env.NewEnv(s) }
+func NewEnv(s env.Store) env.Env	{ return env.NewEnv(s) }
 
 // Global is the environment defined by environmental variables.
 func Global() env.Env {
@@ -152,27 +152,27 @@ var EnableStreamingJSONPreview = env.Bool("ENABLE_STREAMING_JSON_PREVIEW",
 
 // Environment variables that affect the DIY backend.
 var (
-	DIYBackendNoLegacyWarning = env.Bool("DIY_BACKEND_NO_LEGACY_WARNING",
+	DIYBackendNoLegacyWarning	= env.Bool("DIY_BACKEND_NO_LEGACY_WARNING",
 		"Disables the warning about legacy stack files mixed with project-scoped stack files.",
 		env.Alternative("SELF_MANAGED_STATE_NO_LEGACY_WARNING"))
 
-	DIYBackendLegacyLayout = env.Bool("DIY_BACKEND_LEGACY_LAYOUT",
+	DIYBackendLegacyLayout	= env.Bool("DIY_BACKEND_LEGACY_LAYOUT",
 		"Uses the legacy layout for new buckets, which currently default to project-scoped stacks.",
 		env.Alternative("SELF_MANAGED_STATE_LEGACY_LAYOUT"))
 
-	DIYBackendGzip = env.Bool("DIY_BACKEND_GZIP",
+	DIYBackendGzip	= env.Bool("DIY_BACKEND_GZIP",
 		"Enables gzip compression when writing state files.",
 		env.Alternative("SELF_MANAGED_STATE_GZIP"))
 
-	DIYBackendRetainCheckpoints = env.Bool("DIY_BACKEND_RETAIN_CHECKPOINTS",
+	DIYBackendRetainCheckpoints	= env.Bool("DIY_BACKEND_RETAIN_CHECKPOINTS",
 		"If set every checkpoint will be duplicated to a timestamped file.",
 		env.Alternative("RETAIN_CHECKPOINTS"))
 
-	DIYBackendDisableCheckpointBackups = env.Bool("DIY_BACKEND_DISABLE_CHECKPOINT_BACKUPS",
+	DIYBackendDisableCheckpointBackups	= env.Bool("DIY_BACKEND_DISABLE_CHECKPOINT_BACKUPS",
 		"If set checkpoint backups will not be written the to the backup folder.",
 		env.Alternative("DISABLE_CHECKPOINT_BACKUPS"))
 
-	DIYBackendParallel = env.Int("DIY_BACKEND_PARALLEL",
+	DIYBackendParallel	= env.Int("DIY_BACKEND_PARALLEL",
 		"Number of parallel operations when fetching stacks and resources from the DIY backend.")
 )
 
@@ -198,29 +198,29 @@ var DisableRegistryResolve = env.Bool("DISABLE_REGISTRY_RESOLVE", "Use the Pulum
 var (
 	// TemplatePath is a path to the folder where templates are stored.
 	// It is used in sandboxed environments where the classic template folder may not be writable.
-	TemplatePath = env.String("TEMPLATE_PATH", "Path to a writable template cache directory.")
+	TemplatePath	= env.String("TEMPLATE_PATH", "Path to a writable template cache directory.")
 
 	// PolicyTemplatePath is a path to the folder where policy templates are stored.
 	// It is used in sandboxed environments where the classic policy template folder may not be writable.
-	PolicyTemplatePath = env.String("POLICY_TEMPLATE_PATH", "Path to a writable policy template cache directory.")
+	PolicyTemplatePath	= env.String("POLICY_TEMPLATE_PATH", "Path to a writable policy template cache directory.")
 
 	// TemplateGitRepository is the Git URL for Pulumi program templates.
 	// If set, it overrides the compile-time default pulumiTemplateGitRepository.
-	TemplateGitRepository = env.String("TEMPLATE_GIT_REPOSITORY",
+	TemplateGitRepository	= env.String("TEMPLATE_GIT_REPOSITORY",
 		"Git URL for Pulumi program templates (overrides default).")
 
 	// TemplateBranch is the branch name for the template repository.
 	// If set, it overrides the compile-time default pulumiTemplateBranch.
-	TemplateBranch = env.String("TEMPLATE_BRANCH", "Branch name for Pulumi program templates repository.")
+	TemplateBranch	= env.String("TEMPLATE_BRANCH", "Branch name for Pulumi program templates repository.")
 
 	// PolicyTemplateGitRepository is the Git URL for Pulumi Policy Pack templates.
 	// If set, it overrides the compile-time default pulumiPolicyTemplateGitRepository.
-	PolicyTemplateGitRepository = env.String("POLICY_TEMPLATE_GIT_REPOSITORY",
+	PolicyTemplateGitRepository	= env.String("POLICY_TEMPLATE_GIT_REPOSITORY",
 		"Git URL for Pulumi Policy Pack templates (overrides default).")
 
 	// PolicyTemplateBranch is the branch name for the policy pack template repository.
 	// If set, it overrides the compile-time default pulumiPolicyTemplateBranch.
-	PolicyTemplateBranch = env.String("POLICY_TEMPLATE_BRANCH", "Branch name for Pulumi Policy Pack templates repository.")
+	PolicyTemplateBranch	= env.String("POLICY_TEMPLATE_BRANCH", "Branch name for Pulumi Policy Pack templates repository.")
 )
 
 var EnableJournaling = env.Bool("ENABLE_JOURNALING",

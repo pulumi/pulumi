@@ -32,23 +32,23 @@ type StartPackagePublishRequest struct {
 // It returns presigned URLs to upload package artifacts.
 type StartPackagePublishResponse struct {
 	// OperationID is the ID uniquely identifying the publishing operation.
-	OperationID string `json:"operationID"`
+	OperationID	string	`json:"operationID"`
 
 	// UploadUrls is a collection of URLs for uploading package artifacts.
-	UploadURLs PackageUpload `json:"uploadURLs"`
+	UploadURLs	PackageUpload	`json:"uploadURLs"`
 
 	// RequiredHeaders represents headers that the CLI must set in order
 	// for the uploads to succeed.
-	RequiredHeaders map[string]string `json:"requiredHeaders,omitempty"`
+	RequiredHeaders	map[string]string	`json:"requiredHeaders,omitempty"`
 }
 
 type PackageUpload struct {
 	// Schema is the URL for uploading the schema file.
-	Schema string `json:"schema"`
+	Schema	string	`json:"schema"`
 	// Index is the URL for uploading the README file.
-	Index string `json:"index"`
+	Index	string	`json:"index"`
 	// InstallationConfiguration is the URL for uploading the installation docs.
-	InstallationConfiguration string `json:"installationConfiguration"`
+	InstallationConfiguration	string	`json:"installationConfiguration"`
 }
 
 // CompletePackagePublishRequest defines the request body for completing a package
@@ -62,96 +62,96 @@ type CompletePackagePublishRequest struct {
 type PackagePublishOp struct {
 	// Source is the source of the package. Typically this is 'pulumi' for packages published to the Pulumi Registry.
 	// Packages loaded from other registries (e.g. 'opentofu') will point to the origin of the package.
-	Source string
+	Source	string
 	// Publisher is the organization that is publishing the package.
-	Publisher string
+	Publisher	string
 	// Name is the URL-safe name of the package.
-	Name string
+	Name	string
 	// Version is the semantic version of the package that should get published.
-	Version semver.Version
+	Version	semver.Version
 	// Schema is a reader containing the JSON schema of the package.
-	Schema io.Reader
+	Schema	io.Reader
 	// Readme is a reader containing the markdown content of the package's README.
-	Readme io.Reader
+	Readme	io.Reader
 	// InstallDocs is a reader containing the markdown content of the package's installation documentation.
 	// This is optional, and if omitted, the package will not have installation documentation.
-	InstallDocs io.Reader
+	InstallDocs	io.Reader
 }
 
 type ListPackagesResponse struct {
-	Packages          []PackageMetadata `json:"packages"`
-	ContinuationToken *string           `json:"continuationToken,omitempty"`
+	Packages		[]PackageMetadata	`json:"packages"`
+	ContinuationToken	*string			`json:"continuationToken,omitempty"`
 }
 
 type PackageMetadata struct {
 	// The name of the package.
-	Name string `json:"name"`
+	Name	string	`json:"name"`
 	// The publisher of the package.
-	Publisher string `json:"publisher"`
+	Publisher	string	`json:"publisher"`
 	// The source of the package.
-	Source string `json:"source"`
+	Source	string	`json:"source"`
 	// The version of the package in semver format.
-	Version semver.Version `json:"version"`
+	Version	semver.Version	`json:"version"`
 	// The title/display name of the package.
-	Title string `json:"title,omitempty"`
+	Title	string	`json:"title,omitempty"`
 	// The description of the package.
-	Description string `json:"description,omitempty"`
+	Description	string	`json:"description,omitempty"`
 	// The URL of the logo for the package.
-	LogoURL string `json:"logoUrl,omitempty"`
+	LogoURL	string	`json:"logoUrl,omitempty"`
 	// The URL of the repository the package is hosted in.
-	RepoURL string `json:"repoUrl,omitempty"`
+	RepoURL	string	`json:"repoUrl,omitempty"`
 	// The category of the package.
-	Category string `json:"category,omitempty"`
+	Category	string	`json:"category,omitempty"`
 	// Whether the package is featured.
-	IsFeatured bool `json:"isFeatured"`
+	IsFeatured	bool	`json:"isFeatured"`
 	// The package types, e.g. "native", "component", "bridged"
-	PackageTypes []PackageType `json:"packageTypes,omitempty"`
+	PackageTypes	[]PackageType	`json:"packageTypes,omitempty"`
 	// The maturity level of the package, e.g. "ga", "public_preview"
-	PackageStatus PackageStatus `json:"packageStatus"`
+	PackageStatus	PackageStatus	`json:"packageStatus"`
 	// The URL of the readme for the package.
-	ReadmeURL string `json:"readmeURL"`
+	ReadmeURL	string	`json:"readmeURL"`
 	// The URL of the schema for the package.
-	SchemaURL string `json:"schemaURL"`
+	SchemaURL	string	`json:"schemaURL"`
 	// The URL to download the plugin at, as found in the schema.
-	PluginDownloadURL string `json:"pluginDownloadURL,omitempty"`
+	PluginDownloadURL	string	`json:"pluginDownloadURL,omitempty"`
 	// The date and time the package version was created.
-	CreatedAt time.Time `json:"createdAt"`
+	CreatedAt	time.Time	`json:"createdAt"`
 	// The visibility of the package.
-	Visibility Visibility `json:"visibility"`
+	Visibility	Visibility	`json:"visibility"`
 	// The parameterization of the provider, if any.
-	Parameterization *PackageParameterization `json:"parameterization,omitempty"`
+	Parameterization	*PackageParameterization	`json:"parameterization,omitempty"`
 }
 
 type PackageParameterization struct {
-	BaseProvider ArtifactVersionNameSpec `json:"baseProvider"`
-	Parameter    []byte                  `json:"parameter"`
+	BaseProvider	ArtifactVersionNameSpec	`json:"baseProvider"`
+	Parameter	[]byte			`json:"parameter"`
 }
 
 // ArtifactVersionNameSpec represents an arbitrary artifact version name for
 // serialization.
 type ArtifactVersionNameSpec struct {
-	Name      string         `json:"name"`
-	Publisher string         `json:"publisher"`
-	Source    string         `json:"source"`
-	Version   semver.Version `json:"version"`
+	Name		string		`json:"name"`
+	Publisher	string		`json:"publisher"`
+	Source		string		`json:"source"`
+	Version		semver.Version	`json:"version"`
 }
 
 type PackageType string
 
 const (
 	// A package that offers native resources.
-	PackageTypeNative PackageType = "native"
+	PackageTypeNative	PackageType	= "native"
 	// A package that offers component resources.
-	PackageTypeComponent PackageType = "component"
+	PackageTypeComponent	PackageType	= "component"
 	// A package that is bridged from a different ecosystem (e.g. OpenTofu).
-	PackageTypeBridged PackageType = "bridged"
+	PackageTypeBridged	PackageType	= "bridged"
 )
 
 type PackageStatus struct{ status string }
 
 var (
-	PackageStatusGA            = PackageStatus{"ga"}
-	PackageStatusPublicPreview = PackageStatus{"public_preview"}
+	PackageStatusGA			= PackageStatus{"ga"}
+	PackageStatusPublicPreview	= PackageStatus{"public_preview"}
 )
 
 func (ps PackageStatus) String() string {
@@ -183,8 +183,8 @@ func (ps *PackageStatus) UnmarshalJSON(data []byte) error {
 type Visibility struct{ status string }
 
 var (
-	VisibilityPublic  = Visibility{"public"}
-	VisibilityPrivate = Visibility{"private"}
+	VisibilityPublic	= Visibility{"public"}
+	VisibilityPrivate	= Visibility{"private"}
 )
 
 func (v Visibility) String() string {

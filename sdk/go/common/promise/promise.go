@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	statusUninitialized int32 = iota
+	statusUninitialized	int32	= iota
 	statusPending
 	statusFulfilled
 	statusRejected
@@ -32,11 +32,11 @@ const (
 // Promise is a promise that can be resolved with a value of type T or rejected with an error. It is safe to call Result
 // on it multiple times from multiple goroutines. This is much more permissive than channels.
 type Promise[T any] struct {
-	done   chan struct{}
-	mutex  sync.Mutex
-	status atomic.Int32
-	result T
-	err    error
+	done	chan struct{}
+	mutex	sync.Mutex
+	status	atomic.Int32
+	result	T
+	err	error
 }
 
 // Result waits for the promise to be resolved and returns the result.
@@ -84,8 +84,8 @@ func (p *Promise[T]) TryResult() (T, error, bool) {
 // Reject multiple times concurrently, the first will apply and all others will return that they couldn't set the
 // promise.
 type CompletionSource[T any] struct {
-	init    sync.Once
-	promise *Promise[T]
+	init	sync.Once
+	promise	*Promise[T]
 }
 
 func (ps *CompletionSource[T]) Promise() *Promise[T] {

@@ -38,54 +38,54 @@ func TestParseRunParams(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		desc    string
-		give    []string
-		want    runParams
-		wantErr string // non-empty if we expect an error
+		desc	string
+		give	[]string
+		want	runParams
+		wantErr	string	// non-empty if we expect an error
 	}{
 		{
 			desc: "no arguments",
 		},
 		{
-			desc: "no options",
-			give: []string{"localhost:1234"},
+			desc:	"no options",
+			give:	[]string{"localhost:1234"},
 			want: runParams{
 				engineAddress: "localhost:1234",
 			},
 		},
 		{
-			desc: "tracing",
-			give: []string{"-tracing", "foo.trace", "localhost:1234"},
+			desc:	"tracing",
+			give:	[]string{"-tracing", "foo.trace", "localhost:1234"},
 			want: runParams{
-				tracing:       "foo.trace",
-				engineAddress: "localhost:1234",
+				tracing:	"foo.trace",
+				engineAddress:	"localhost:1234",
 			},
 		},
 		{
-			desc: "binary",
-			give: []string{"-binary", "foo", "localhost:1234"},
-			want: runParams{
-				engineAddress: "localhost:1234",
-			},
-		},
-		{
-			desc: "buildTarget",
-			give: []string{"-buildTarget", "foo", "localhost:1234"},
+			desc:	"binary",
+			give:	[]string{"-binary", "foo", "localhost:1234"},
 			want: runParams{
 				engineAddress: "localhost:1234",
 			},
 		},
 		{
-			desc: "root",
-			give: []string{"-root", "path/to/root", "localhost:1234"},
+			desc:	"buildTarget",
+			give:	[]string{"-buildTarget", "foo", "localhost:1234"},
 			want: runParams{
 				engineAddress: "localhost:1234",
 			},
 		},
 		{
-			desc:    "unknown option",
-			give:    []string{"-unknown-option", "bar", "localhost:1234"},
-			wantErr: "flag provided but not defined: -unknown-option",
+			desc:	"root",
+			give:	[]string{"-root", "path/to/root", "localhost:1234"},
+			want: runParams{
+				engineAddress: "localhost:1234",
+			},
+		},
+		{
+			desc:		"unknown option",
+			give:		[]string{"-unknown-option", "bar", "localhost:1234"},
+			wantErr:	"flag provided but not defined: -unknown-option",
 		},
 	}
 
@@ -116,174 +116,174 @@ func TestGetPackage(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		Name          string
-		Mod           *modInfo
-		Expected      *pulumirpc.PackageDependency
-		ExpectedError string
-		JSON          *plugin.PulumiPluginJSON
-		JSONPath      string
+		Name		string
+		Mod		*modInfo
+		Expected	*pulumirpc.PackageDependency
+		ExpectedError	string
+		JSON		*plugin.PulumiPluginJSON
+		JSONPath	string
 	}{
 		{
-			Name: "valid-pulumi-mod",
+			Name:	"valid-pulumi-mod",
 			Mod: &modInfo{
-				Path:    "github.com/pulumi/pulumi-aws/sdk",
-				Version: "v1.29.0",
+				Path:		"github.com/pulumi/pulumi-aws/sdk",
+				Version:	"v1.29.0",
 			},
 			Expected: &pulumirpc.PackageDependency{
-				Name:    "aws",
-				Version: "v1.29.0",
+				Name:		"aws",
+				Version:	"v1.29.0",
 			},
 		},
 		{
-			Name: "pulumi-pseduo-version-plugin",
+			Name:	"pulumi-pseduo-version-plugin",
 			Mod: &modInfo{
-				Path:    "github.com/pulumi/pulumi-aws/sdk",
-				Version: "v1.29.1-0.20200403140640-efb5e2a48a86",
+				Path:		"github.com/pulumi/pulumi-aws/sdk",
+				Version:	"v1.29.1-0.20200403140640-efb5e2a48a86",
 			},
 			Expected: &pulumirpc.PackageDependency{
-				Name:    "aws",
-				Version: "v1.29.0",
+				Name:		"aws",
+				Version:	"v1.29.0",
 			},
 		},
 		{
-			Name: "non-pulumi-mod",
+			Name:	"non-pulumi-mod",
 			Mod: &modInfo{
-				Path:    "github.com/moolumi/pulumi-aws/sdk",
-				Version: "v1.29.0",
+				Path:		"github.com/moolumi/pulumi-aws/sdk",
+				Version:	"v1.29.0",
 			},
-			ExpectedError: "module is not a pulumi provider",
+			ExpectedError:	"module is not a pulumi provider",
 		},
 		{
-			Name: "invalid-version-module",
+			Name:	"invalid-version-module",
 			Mod: &modInfo{
-				Path:    "github.com/pulumi/pulumi-aws/sdk",
-				Version: "42-42-42",
+				Path:		"github.com/pulumi/pulumi-aws/sdk",
+				Version:	"42-42-42",
 			},
-			ExpectedError: "module does not have semver compatible version",
+			ExpectedError:	"module does not have semver compatible version",
 		},
 		{
-			Name: "pulumi-pulumi-mod",
+			Name:	"pulumi-pulumi-mod",
 			Mod: &modInfo{
-				Path:    "github.com/pulumi/pulumi/sdk",
-				Version: "v1.14.0",
+				Path:		"github.com/pulumi/pulumi/sdk",
+				Version:	"v1.14.0",
 			},
-			ExpectedError: "module is not a pulumi provider",
+			ExpectedError:	"module is not a pulumi provider",
 		},
 		{
-			Name: "beta-pulumi-module",
+			Name:	"beta-pulumi-module",
 			Mod: &modInfo{
-				Path:    "github.com/pulumi/pulumi-aws/sdk",
-				Version: "v2.0.0-beta.1",
+				Path:		"github.com/pulumi/pulumi-aws/sdk",
+				Version:	"v2.0.0-beta.1",
 			},
 			Expected: &pulumirpc.PackageDependency{
-				Name:    "aws",
-				Version: "v2.0.0-beta.1",
+				Name:		"aws",
+				Version:	"v2.0.0-beta.1",
 			},
 		},
 		{
-			Name: "non-zero-patch-module", Mod: &modInfo{
-				Path:    "github.com/pulumi/pulumi-kubernetes/sdk",
-				Version: "v1.5.8",
+			Name:	"non-zero-patch-module", Mod: &modInfo{
+				Path:		"github.com/pulumi/pulumi-kubernetes/sdk",
+				Version:	"v1.5.8",
 			},
 			Expected: &pulumirpc.PackageDependency{
-				Name:    "kubernetes",
-				Version: "v1.5.8",
+				Name:		"kubernetes",
+				Version:	"v1.5.8",
 			},
 		},
 		{
-			Name: "pulumiplugin",
+			Name:	"pulumiplugin",
 			Mod: &modInfo{
-				Path:    "github.com/me/myself/i",
-				Version: "invalid-Version",
+				Path:		"github.com/me/myself/i",
+				Version:	"invalid-Version",
 			},
 			Expected: &pulumirpc.PackageDependency{
-				Name:    "thing1",
-				Version: "v1.2.3",
-				Server:  "myserver.com",
+				Name:		"thing1",
+				Version:	"v1.2.3",
+				Server:		"myserver.com",
 			},
 			JSON: &plugin.PulumiPluginJSON{
-				Resource: true,
-				Name:     "thing1",
-				Version:  "v1.2.3",
-				Server:   "myserver.com",
+				Resource:	true,
+				Name:		"thing1",
+				Version:	"v1.2.3",
+				Server:		"myserver.com",
 			},
 		},
 		{
-			Name:          "non-resource",
-			Mod:           &modInfo{},
-			ExpectedError: "module is not a pulumi provider",
+			Name:		"non-resource",
+			Mod:		&modInfo{},
+			ExpectedError:	"module is not a pulumi provider",
 			JSON: &plugin.PulumiPluginJSON{
 				Resource: false,
 			},
 		},
 		{
-			Name: "missing-pulumiplugin",
+			Name:	"missing-pulumiplugin",
 			Mod: &modInfo{
 				Dir: "/not/real",
 			},
-			ExpectedError: "module is not a pulumi provider",
+			ExpectedError:	"module is not a pulumi provider",
 			JSON: &plugin.PulumiPluginJSON{
-				Name:    "thing2",
-				Version: "v1.2.3",
+				Name:		"thing2",
+				Version:	"v1.2.3",
 			},
 		},
 		{
-			Name: "pulumiplugin-go-lookup",
+			Name:	"pulumiplugin-go-lookup",
 			Mod: &modInfo{
-				Path:    "github.com/me/myself",
-				Version: "v1.2.3",
+				Path:		"github.com/me/myself",
+				Version:	"v1.2.3",
 			},
 			JSON: &plugin.PulumiPluginJSON{
-				Name:     "name",
-				Resource: true,
+				Name:		"name",
+				Resource:	true,
 			},
-			JSONPath: "go",
+			JSONPath:	"go",
 			Expected: &pulumirpc.PackageDependency{
-				Name:    "name",
-				Version: "v1.2.3",
+				Name:		"name",
+				Version:	"v1.2.3",
 			},
 		},
 		{
-			Name: "pulumiplugin-go-name-lookup",
+			Name:	"pulumiplugin-go-name-lookup",
 			Mod: &modInfo{
-				Path:    "github.com/me/myself",
-				Version: "v1.2.3",
+				Path:		"github.com/me/myself",
+				Version:	"v1.2.3",
 			},
 			JSON: &plugin.PulumiPluginJSON{
-				Name:     "name",
-				Resource: true,
+				Name:		"name",
+				Resource:	true,
 			},
-			JSONPath: filepath.Join("go", "name"),
+			JSONPath:	filepath.Join("go", "name"),
 			Expected: &pulumirpc.PackageDependency{
-				Name:    "name",
-				Version: "v1.2.3",
+				Name:		"name",
+				Version:	"v1.2.3",
 			},
 		},
 		{
-			Name: "pulumiplugin-nested-too-deep",
+			Name:	"pulumiplugin-nested-too-deep",
 			Mod: &modInfo{
-				Path:    "path.com/here",
-				Version: "v0.0",
+				Path:		"path.com/here",
+				Version:	"v0.0",
 			},
-			JSONPath: filepath.Join("go", "valid", "invalid"),
+			JSONPath:	filepath.Join("go", "valid", "invalid"),
 			JSON: &plugin.PulumiPluginJSON{
-				Name:     "name",
-				Resource: true,
+				Name:		"name",
+				Resource:	true,
 			},
-			ExpectedError: "module is not a pulumi provider",
+			ExpectedError:	"module is not a pulumi provider",
 		},
 		{
-			Name: "nested-wrong-folder",
+			Name:	"nested-wrong-folder",
 			Mod: &modInfo{
-				Path:    "path.com/here",
-				Version: "v0.0",
+				Path:		"path.com/here",
+				Version:	"v0.0",
 			},
-			JSONPath: filepath.Join("invalid", "valid"),
+			JSONPath:	filepath.Join("invalid", "valid"),
 			JSON: &plugin.PulumiPluginJSON{
-				Name:     "name",
-				Resource: true,
+				Name:		"name",
+				Resource:	true,
 			},
-			ExpectedError: "module is not a pulumi provider",
+			ExpectedError:	"module is not a pulumi provider",
 		},
 	}
 
@@ -421,9 +421,9 @@ func testPluginsAndDependencies(t *testing.T, progDir string) {
 
 		res, err := host.GetRequiredPackages(ctx, &pulumirpc.GetRequiredPackagesRequest{
 			Info: &pulumirpc.ProgramInfo{
-				RootDirectory:    progDir,
-				ProgramDirectory: progDir,
-				EntryPoint:       ".",
+				RootDirectory:		progDir,
+				ProgramDirectory:	progDir,
+				EntryPoint:		".",
 			},
 		})
 		require.NoError(t, err)
@@ -442,26 +442,26 @@ func testPluginsAndDependencies(t *testing.T, progDir string) {
 		defer cancel()
 
 		res, err := host.GetProgramDependencies(ctx, &pulumirpc.GetProgramDependenciesRequest{
-			Project:                "deprecated",
-			Pwd:                    progDir,
-			TransitiveDependencies: true,
+			Project:		"deprecated",
+			Pwd:			progDir,
+			TransitiveDependencies:	true,
 			Info: &pulumirpc.ProgramInfo{
-				RootDirectory:    progDir,
-				ProgramDirectory: progDir,
-				EntryPoint:       ".",
+				RootDirectory:		progDir,
+				ProgramDirectory:	progDir,
+				EntryPoint:		".",
 			},
 		})
 		require.NoError(t, err)
 
-		gotDeps := make(map[string]string) // name => version
+		gotDeps := make(map[string]string)	// name => version
 		for _, dep := range res.Dependencies {
 			gotDeps[dep.Name] = dep.Version
 		}
 
 		assert.Equal(t, map[string]string{
-			"github.com/pulumi/go-dependency-testdata/plugin":          "v1.2.3",
-			"github.com/pulumi/go-dependency-testdata/dep":             "v1.6.0",
-			"github.com/pulumi/go-dependency-testdata/indirect-dep/v2": "v2.1.0",
+			"github.com/pulumi/go-dependency-testdata/plugin":		"v1.2.3",
+			"github.com/pulumi/go-dependency-testdata/dep":			"v1.6.0",
+			"github.com/pulumi/go-dependency-testdata/indirect-dep/v2":	"v2.1.0",
 		}, gotDeps)
 	})
 }

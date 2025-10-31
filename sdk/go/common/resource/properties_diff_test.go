@@ -218,15 +218,15 @@ func TestObjectPropertyValueDiffs(t *testing.T) {
 	// all updates:
 	{
 		obj1 := PropertyMap{
-			PropertyKey("prop-a"): NewProperty(true),
-			PropertyKey("prop-b"): NewProperty("bbb"),
+			PropertyKey("prop-a"):	NewProperty(true),
+			PropertyKey("prop-b"):	NewProperty("bbb"),
 			PropertyKey("prop-c"): NewProperty(PropertyMap{
 				PropertyKey("inner-prop-a"): NewProperty(673.0),
 			}),
 		}
 		obj2 := PropertyMap{
-			PropertyKey("prop-a"): NewProperty(false),
-			PropertyKey("prop-b"): NewProperty(89.0),
+			PropertyKey("prop-a"):	NewProperty(false),
+			PropertyKey("prop-b"):	NewProperty(89.0),
 			PropertyKey("prop-c"): NewProperty(PropertyMap{
 				PropertyKey("inner-prop-a"): NewProperty(672.0),
 			}),
@@ -268,20 +268,20 @@ func TestObjectPropertyValueDiffs(t *testing.T) {
 	// add two (1 missing key, 1 null), update one, keep two, delete two (1 missing key, 1 null).
 	{
 		obj1 := PropertyMap{
-			PropertyKey("prop-a-2"): NewNullProperty(),
-			PropertyKey("prop-b"):   NewProperty("bbb"),
-			PropertyKey("prop-c-1"): NewProperty(6767.0),
-			PropertyKey("prop-c-2"): NewNullProperty(),
-			PropertyKey("prop-d-1"): NewProperty(true),
-			PropertyKey("prop-d-2"): NewProperty(false),
+			PropertyKey("prop-a-2"):	NewNullProperty(),
+			PropertyKey("prop-b"):		NewProperty("bbb"),
+			PropertyKey("prop-c-1"):	NewProperty(6767.0),
+			PropertyKey("prop-c-2"):	NewNullProperty(),
+			PropertyKey("prop-d-1"):	NewProperty(true),
+			PropertyKey("prop-d-2"):	NewProperty(false),
 		}
 		obj2 := PropertyMap{
-			PropertyKey("prop-a-1"): NewProperty("a fresh value"),
-			PropertyKey("prop-a-2"): NewProperty("a non-nil value"),
-			PropertyKey("prop-b"):   NewProperty(89.0),
-			PropertyKey("prop-c-1"): NewProperty(6767.0),
-			PropertyKey("prop-c-2"): NewNullProperty(),
-			PropertyKey("prop-d-2"): NewNullProperty(),
+			PropertyKey("prop-a-1"):	NewProperty("a fresh value"),
+			PropertyKey("prop-a-2"):	NewProperty("a non-nil value"),
+			PropertyKey("prop-b"):		NewProperty(89.0),
+			PropertyKey("prop-c-1"):	NewProperty(6767.0),
+			PropertyKey("prop-c-2"):	NewNullProperty(),
+			PropertyKey("prop-d-2"):	NewNullProperty(),
 		}
 		assertDeepEqualsIffEmptyDiff(t, NewPropertyValue(obj1), NewPropertyValue(obj2))
 		d4 := obj1.Diff(obj2)

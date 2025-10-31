@@ -47,12 +47,12 @@ func New(opts *Opts) Mapper {
 
 // Opts controls the way mapping occurs; for default behavior, simply pass an empty struct.
 type Opts struct {
-	Tags               []string // the tag names to recognize (`json` and `pulumi` if unspecified).
-	OptionalTags       []string // the tags to interpret to mean "optional" (`optional` if unspecified).
-	SkipTags           []string // the tags to interpret to mean "skip" (`skip` if unspecified).
-	CustomDecoders     Decoders // custom decoders.
-	IgnoreMissing      bool     // ignore missing required fields.
-	IgnoreUnrecognized bool     // ignore unrecognized fields.
+	Tags			[]string	// the tag names to recognize (`json` and `pulumi` if unspecified).
+	OptionalTags		[]string	// the tags to interpret to mean "optional" (`optional` if unspecified).
+	SkipTags		[]string	// the tags to interpret to mean "skip" (`skip` if unspecified).
+	CustomDecoders		Decoders	// custom decoders.
+	IgnoreMissing		bool		// ignore missing required fields.
+	IgnoreUnrecognized	bool		// ignore unrecognized fields.
 }
 
 type mapper struct {
@@ -68,8 +68,8 @@ func Map(obj map[string]any, target any) MappingError {
 // ignores any missing required fields in the payload in addition to any unrecognized fields.
 func MapI(obj map[string]any, target any) MappingError {
 	return New(&Opts{
-		IgnoreMissing:      true,
-		IgnoreUnrecognized: true,
+		IgnoreMissing:		true,
+		IgnoreUnrecognized:	true,
 	}).Decode(obj, target)
 }
 
@@ -137,10 +137,10 @@ func (md *mapper) defaultTags() (tags []string, optionalTags []string, skipTags 
 
 // structFieldTags includes a field's information plus any parsed tags.
 type structFieldTags struct {
-	Info     reflect.StructField // the struct field info.
-	Optional bool                // true if this can be missing.
-	Skip     bool                // true to skip a field.
-	Key      string              // the JSON key name.
+	Info		reflect.StructField	// the struct field info.
+	Optional	bool			// true if this can be missing.
+	Skip		bool			// true to skip a field.
+	Key		string			// the JSON key name.
 }
 
 // structFieldsTags digs into a type to fetch all fields, including embedded structs, plus any associated tags.
@@ -153,9 +153,9 @@ func (md *mapper) structFieldsTags(t reflect.Type) []structFieldTags {
 	for _, fldinfo := range structFields(t) {
 		for _, tagname := range tags {
 			if tag := fldinfo.Tag.Get(tagname); tag != "" {
-				var key string    // the JSON key name.
-				var optional bool // true if this can be missing.
-				var skip bool     // true if we should skip auto-marshaling.
+				var key string		// the JSON key name.
+				var optional bool	// true if this can be missing.
+				var skip bool		// true if we should skip auto-marshaling.
 
 				// Decode the tag.
 				tagparts := strings.Split(tag, ",")
@@ -163,7 +163,7 @@ func (md *mapper) structFieldsTags(t reflect.Type) []structFieldTags {
 					"Expected >0 tagparts on field %v.%v; got %v", t.Name(), fldinfo.Name, len(tagparts))
 				key = tagparts[0]
 				if key == "-" {
-					skip = true // a name of "-" means skip
+					skip = true	// a name of "-" means skip
 				}
 				for _, part := range tagparts[1:] {
 					var match bool
@@ -187,10 +187,10 @@ func (md *mapper) structFieldsTags(t reflect.Type) []structFieldTags {
 				}
 
 				fldtags = append(fldtags, structFieldTags{
-					Key:      key,
-					Optional: optional,
-					Skip:     skip,
-					Info:     fldinfo,
+					Key:		key,
+					Optional:	optional,
+					Skip:		skip,
+					Info:		fldinfo,
 				})
 			}
 		}

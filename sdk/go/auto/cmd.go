@@ -52,13 +52,13 @@ type PulumiCommand interface {
 
 type PulumiCommandOptions struct {
 	// Version is the version to install or validate.
-	Version semver.Version
+	Version	semver.Version
 	// Root sets the directory where the CLI should be installed to, or from
 	// where the CLI should be retrieved.
-	Root string
+	Root	string
 	// SkipVersionCheck is used to disable the validation of the found Pulumi
 	// binary.
-	SkipVersionCheck bool
+	SkipVersionCheck	bool
 }
 
 // withDefaults returns a new copy of the options with default values set.
@@ -66,9 +66,9 @@ type PulumiCommandOptions struct {
 // defaults to $HOME/.pulumi/versions/$VERSION.
 func (opts *PulumiCommandOptions) withDefaults() (*PulumiCommandOptions, error) {
 	newOpts := &PulumiCommandOptions{
-		Version:          opts.Version,
-		Root:             opts.Root,
-		SkipVersionCheck: opts.SkipVersionCheck,
+		Version:		opts.Version,
+		Root:			opts.Root,
+		SkipVersionCheck:	opts.SkipVersionCheck,
 	}
 	if newOpts.Version.EQ(semver.Version{}) {
 		newOpts.Version = sdk.Version
@@ -86,8 +86,8 @@ func (opts *PulumiCommandOptions) withDefaults() (*PulumiCommandOptions, error) 
 }
 
 type pulumiCommand struct {
-	version semver.Version
-	command string
+	version	semver.Version
+	command	string
 }
 
 // NewPulumiCommand creates a Pulumi instance that uses the installation in
@@ -129,8 +129,8 @@ func NewPulumiCommand(opts *PulumiCommandOptions) (PulumiCommand, error) {
 	}
 
 	return pulumiCommand{
-		version: version,
-		command: command,
+		version:	version,
+		command:	command,
 	}, nil
 }
 
@@ -277,7 +277,7 @@ func (p pulumiCommand) Run(ctx context.Context,
 	// all commands should be run in non-interactive mode.
 	// this causes commands to fail rather than prompting for input (and thus hanging indefinitely)
 	args = withNonInteractiveArg(args)
-	cmd := exec.CommandContext(ctx, p.command, args...) //nolint:gosec
+	cmd := exec.CommandContext(ctx, p.command, args...)	//nolint:gosec
 	cmd.Dir = workdir
 	env := append(os.Environ(), additionalEnv...)
 	env = append(env, "PULUMI_AUTOMATION_API=true")
@@ -371,10 +371,10 @@ func parseAndValidatePulumiVersion(minVersion semver.Version, currentVersion str
 		return version, nil
 	}
 	if minVersion.Major < version.Major {
-		return semver.Version{}, fmt.Errorf("Major version mismatch. You are using Pulumi CLI version %s with Automation SDK v%v. Please update the SDK.", currentVersion, minVersion.Major) //nolint
+		return semver.Version{}, fmt.Errorf("Major version mismatch. You are using Pulumi CLI version %s with Automation SDK v%v. Please update the SDK.", currentVersion, minVersion.Major)	//nolint
 	}
 	if minVersion.GT(version) {
-		return semver.Version{}, fmt.Errorf("Minimum version requirement failed. The minimum CLI version requirement is %s, your current CLI version is %s. Please update the Pulumi CLI.", minimumVersion, currentVersion) //nolint
+		return semver.Version{}, fmt.Errorf("Minimum version requirement failed. The minimum CLI version requirement is %s, your current CLI version is %s. Please update the Pulumi CLI.", minimumVersion, currentVersion)	//nolint
 	}
 	return version, nil
 }

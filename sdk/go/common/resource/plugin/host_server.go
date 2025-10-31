@@ -30,35 +30,35 @@ import (
 
 // hostServer is the server side of the host RPC machinery.
 type hostServer struct {
-	pulumirpc.UnsafeEngineServer // opt out of forward compat
+	pulumirpc.UnsafeEngineServer	// opt out of forward compat
 
-	host   Host         // the host for this RPC server.
-	ctx    *Context     // the associated plugin context.
-	addr   string       // the address the host is listening on.
-	cancel chan bool    // a channel that can cancel the server.
-	done   <-chan error // a channel that resolves when the server completes.
+	host	Host		// the host for this RPC server.
+	ctx	*Context	// the associated plugin context.
+	addr	string		// the address the host is listening on.
+	cancel	chan bool	// a channel that can cancel the server.
+	done	<-chan error	// a channel that resolves when the server completes.
 
 	// hostServer contains little bits of state that can't be saved in the language host.
-	rootUrn atomic.Value // a root resource URN that has been saved via SetRootResource
+	rootUrn	atomic.Value	// a root resource URN that has been saved via SetRootResource
 }
 
 // newHostServer creates a new host server wired up to the given host and context.
 func newHostServer(host Host, ctx *Context) (*hostServer, error) {
 	// New up an engine RPC server.
 	engine := &hostServer{
-		host:   host,
-		ctx:    ctx,
-		cancel: make(chan bool),
+		host:	host,
+		ctx:	ctx,
+		cancel:	make(chan bool),
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: engine.cancel,
+		Cancel:	engine.cancel,
 		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterEngineServer(srv, engine)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(ctx.tracingSpan),
+		Options:	rpcutil.OpenTracingServerInterceptorOptions(ctx.tracingSpan),
 	})
 	if err != nil {
 		return nil, err

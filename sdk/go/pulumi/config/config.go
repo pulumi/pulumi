@@ -24,8 +24,8 @@ import (
 // config with the fully qualified name all of the time (e.g., a bag whose namespace is "p" automatically translates
 // attempted reads of keys "k" into "p:k").  This is optional but can save on some boilerplate when accessing config.
 type Config struct {
-	ctx       *pulumi.Context
-	namespace string
+	ctx		*pulumi.Context
+	namespace	string
 }
 
 // New creates a new config bag with the given context and namespace.

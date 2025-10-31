@@ -19,8 +19,8 @@ func main() {
 			"dryrun", version, policyx.EnforcementLevelAdvisory,
 			[]policyx.Policy{
 				policyx.NewResourceValidationPolicy("dry", policyx.ResourceValidationPolicyArgs{
-					Description:      "Verifies properties are true on dryrun",
-					EnforcementLevel: policyx.EnforcementLevelMandatory,
+					Description:		"Verifies properties are true on dryrun",
+					EnforcementLevel:	policyx.EnforcementLevelMandatory,
 					ValidateResource: func(ctx context.Context, args policyx.ResourceValidationArgs) error {
 						if args.Resource.Type != "simple:index:Resource" {
 							return nil

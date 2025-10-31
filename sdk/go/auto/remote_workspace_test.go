@@ -32,8 +32,8 @@ import (
 )
 
 const (
-	remoteTestRepo       = "https://github.com/pulumi/test-repo.git"
-	remoteTestRepoBranch = "refs/heads/master"
+	remoteTestRepo		= "https://github.com/pulumi/test-repo.git"
+	remoteTestRepoBranch	= "refs/heads/master"
 )
 
 func testRemoteStackGitSourceErrors(t *testing.T, fn func(ctx context.Context, stackName string, repo GitRepo,
@@ -44,111 +44,111 @@ func testRemoteStackGitSourceErrors(t *testing.T, fn func(ctx context.Context, s
 	const stack = "owner/project/stack"
 
 	tests := map[string]struct {
-		stack           string
-		repo            GitRepo
-		executorImage   *ExecutorImage
-		err             string
-		inheritSettings bool
+		stack		string
+		repo		GitRepo
+		executorImage	*ExecutorImage
+		err		string
+		inheritSettings	bool
 	}{
 		"stack empty": {
-			stack: "",
-			err:   `stack name "" must be fully qualified`,
+			stack:	"",
+			err:	`stack name "" must be fully qualified`,
 		},
 		"stack just name": {
-			stack: "name",
-			err:   `stack name "name" must be fully qualified`,
+			stack:	"name",
+			err:	`stack name "name" must be fully qualified`,
 		},
 		"stack just name & owner": {
-			stack: "owner/name",
-			err:   `stack name "owner/name" must be fully qualified`,
+			stack:	"owner/name",
+			err:	`stack name "owner/name" must be fully qualified`,
 		},
 		"stack just sep": {
-			stack: "/",
-			err:   `stack name "/" must be fully qualified`,
+			stack:	"/",
+			err:	`stack name "/" must be fully qualified`,
 		},
 		"stack just two seps": {
-			stack: "//",
-			err:   `stack name "//" must be fully qualified`,
+			stack:	"//",
+			err:	`stack name "//" must be fully qualified`,
 		},
 		"stack just three seps": {
-			stack: "///",
-			err:   `stack name "///" must be fully qualified`,
+			stack:	"///",
+			err:	`stack name "///" must be fully qualified`,
 		},
 		"stack invalid": {
-			stack: "owner/project/stack/wat",
-			err:   `stack name "owner/project/stack/wat" must be fully qualified`,
+			stack:	"owner/project/stack/wat",
+			err:	`stack name "owner/project/stack/wat" must be fully qualified`,
 		},
 		"repo setup": {
-			stack:           stack,
-			repo:            GitRepo{Setup: func(context.Context, Workspace) error { return nil }},
-			inheritSettings: true,
-			err:             "repo.Setup cannot be used with remote workspaces",
+			stack:			stack,
+			repo:			GitRepo{Setup: func(context.Context, Workspace) error { return nil }},
+			inheritSettings:	true,
+			err:			"repo.Setup cannot be used with remote workspaces",
 		},
 		"no url": {
-			stack: stack,
-			repo:  GitRepo{},
-			err:   "repo.URL is required if RemoteInheritSettings(true) is not set",
+			stack:	stack,
+			repo:	GitRepo{},
+			err:	"repo.URL is required if RemoteInheritSettings(true) is not set",
 		},
 		"no branch or commit": {
-			stack: stack,
-			repo:  GitRepo{URL: remoteTestRepo},
-			err:   "either repo.Branch or repo.CommitHash is required if RemoteInheritSettings(true) is not set",
+			stack:	stack,
+			repo:	GitRepo{URL: remoteTestRepo},
+			err:	"either repo.Branch or repo.CommitHash is required if RemoteInheritSettings(true) is not set",
 		},
 		"both branch and commit": {
-			stack: stack,
-			repo:  GitRepo{URL: remoteTestRepo, Branch: "branch", CommitHash: "commit"},
-			err:   "repo.Branch and repo.CommitHash cannot both be specified",
+			stack:	stack,
+			repo:	GitRepo{URL: remoteTestRepo, Branch: "branch", CommitHash: "commit"},
+			err:	"repo.Branch and repo.CommitHash cannot both be specified",
 		},
 		"both ssh private key and path": {
-			stack: stack,
+			stack:	stack,
 			repo: GitRepo{
-				URL:    remoteTestRepo,
-				Branch: "branch",
-				Auth:   &GitAuth{SSHPrivateKey: "key", SSHPrivateKeyPath: "path"},
+				URL:	remoteTestRepo,
+				Branch:	"branch",
+				Auth:	&GitAuth{SSHPrivateKey: "key", SSHPrivateKeyPath: "path"},
 			},
-			err: "repo.Auth.SSHPrivateKey and repo.Auth.SSHPrivateKeyPath cannot both be specified",
+			err:	"repo.Auth.SSHPrivateKey and repo.Auth.SSHPrivateKeyPath cannot both be specified",
 		},
 		"executor creds with no image": {
-			stack: stack,
+			stack:	stack,
 			repo: GitRepo{
-				URL:    remoteTestRepo,
-				Branch: "branch",
+				URL:	remoteTestRepo,
+				Branch:	"branch",
 			},
 			executorImage: &ExecutorImage{
 				Credentials: &DockerImageCredentials{
-					Username: "user",
-					Password: "password",
+					Username:	"user",
+					Password:	"password",
 				},
 			},
-			err: "executorImage.Image cannot be empty",
+			err:	"executorImage.Image cannot be empty",
 		},
 		"executor image with username and no password": {
-			stack: stack,
+			stack:	stack,
 			repo: GitRepo{
-				URL:    remoteTestRepo,
-				Branch: "branch",
+				URL:	remoteTestRepo,
+				Branch:	"branch",
 			},
 			executorImage: &ExecutorImage{
-				Image: "image",
+				Image:	"image",
 				Credentials: &DockerImageCredentials{
 					Username: "username",
 				},
 			},
-			err: "executorImage.Credentials.Password cannot be empty",
+			err:	"executorImage.Credentials.Password cannot be empty",
 		},
 		"executor image with password and no username": {
-			stack: stack,
+			stack:	stack,
 			repo: GitRepo{
-				URL:    remoteTestRepo,
-				Branch: "branch",
+				URL:	remoteTestRepo,
+				Branch:	"branch",
 			},
 			executorImage: &ExecutorImage{
-				Image: "image",
+				Image:	"image",
 				Credentials: &DockerImageCredentials{
 					Password: "password",
 				},
 			},
-			err: "executorImage.Credentials.Username cannot be empty",
+			err:	"executorImage.Credentials.Username cannot be empty",
 		},
 	}
 
@@ -200,8 +200,8 @@ func testRemoteStackGitSource(
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	repo := GitRepo{
-		URL:         remoteTestRepo,
-		ProjectPath: "goproj",
+		URL:		remoteTestRepo,
+		ProjectPath:	"goproj",
 	}
 	var executorImage *ExecutorImage
 	if useCommitHash {
@@ -320,9 +320,9 @@ func TestIsFullyQualifiedStackName(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		input    string
-		expected bool
+		name		string
+		input		string
+		expected	bool
 	}{
 		{name: "fully qualified", input: "owner/project/stack", expected: true},
 		{name: "empty", input: "", expected: false},

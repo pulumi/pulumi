@@ -31,46 +31,46 @@ import (
 
 // MarshalOptions controls the marshaling of RPC structures.
 type MarshalOptions struct {
-	Label                 string // an optional label for debugging.
-	SkipNulls             bool   // true to skip nulls altogether in the resulting map.
-	KeepUnknowns          bool   // true if we are keeping unknown values (otherwise we skip them).
-	RejectUnknowns        bool   // true if we should return errors on unknown values. Takes precedence over KeepUnknowns.
-	ElideAssetContents    bool   // true if we are eliding the contents of assets.
-	ComputeAssetHashes    bool   // true if we are computing missing asset hashes on the fly.
-	KeepSecrets           bool   // true if we are keeping secrets (otherwise we replace them with their underlying value).
-	RejectAssets          bool   // true if we should return errors on Asset and Archive values.
-	KeepResources         bool   // true if we are keeping resoures (otherwise we return raw urn).
-	SkipInternalKeys      bool   // true to skip internal property keys (keys that start with "__") in the resulting map.
-	KeepOutputValues      bool   // true if we are keeping output values.
-	UpgradeToOutputValues bool   // true if secrets and unknowns should be upgraded to output values.
-	WorkingDirectory      string // the optional working directory to use when serializing assets & archives.
+	Label			string	// an optional label for debugging.
+	SkipNulls		bool	// true to skip nulls altogether in the resulting map.
+	KeepUnknowns		bool	// true if we are keeping unknown values (otherwise we skip them).
+	RejectUnknowns		bool	// true if we should return errors on unknown values. Takes precedence over KeepUnknowns.
+	ElideAssetContents	bool	// true if we are eliding the contents of assets.
+	ComputeAssetHashes	bool	// true if we are computing missing asset hashes on the fly.
+	KeepSecrets		bool	// true if we are keeping secrets (otherwise we replace them with their underlying value).
+	RejectAssets		bool	// true if we should return errors on Asset and Archive values.
+	KeepResources		bool	// true if we are keeping resoures (otherwise we return raw urn).
+	SkipInternalKeys	bool	// true to skip internal property keys (keys that start with "__") in the resulting map.
+	KeepOutputValues	bool	// true if we are keeping output values.
+	UpgradeToOutputValues	bool	// true if secrets and unknowns should be upgraded to output values.
+	WorkingDirectory	string	// the optional working directory to use when serializing assets & archives.
 
 	// true if a nil input should result in a nil output, false if it should result in an empty struct/map.
-	PropagateNil bool
+	PropagateNil	bool
 }
 
 const (
 	// UnknownBoolValue is a sentinel indicating that a bool property's value is not known, because it depends on
 	// a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
-	UnknownBoolValue = "1c4a061d-8072-4f0a-a4cb-0ff528b18fe7"
+	UnknownBoolValue	= "1c4a061d-8072-4f0a-a4cb-0ff528b18fe7"
 	// UnknownNumberValue is a sentinel indicating that a number property's value is not known, because it depends on
 	// a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
-	UnknownNumberValue = "3eeb2bf0-c639-47a8-9e75-3b44932eb421"
+	UnknownNumberValue	= "3eeb2bf0-c639-47a8-9e75-3b44932eb421"
 	// UnknownStringValue is a sentinel indicating that a string property's value is not known, because it depends on
 	// a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
-	UnknownStringValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+	UnknownStringValue	= "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 	// UnknownArrayValue is a sentinel indicating that an array property's value is not known, because it depends on
 	// a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
-	UnknownArrayValue = "6a19a0b0-7e62-4c92-b797-7f8e31da9cc2"
+	UnknownArrayValue	= "6a19a0b0-7e62-4c92-b797-7f8e31da9cc2"
 	// UnknownAssetValue is a sentinel indicating that an asset property's value is not known, because it depends on
 	// a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
-	UnknownAssetValue = "030794c1-ac77-496b-92df-f27374a8bd58"
+	UnknownAssetValue	= "030794c1-ac77-496b-92df-f27374a8bd58"
 	// UnknownArchiveValue is a sentinel indicating that an archive property's value is not known, because it depends
 	// on a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
-	UnknownArchiveValue = "e48ece36-62e2-4504-bad9-02848725956a"
+	UnknownArchiveValue	= "e48ece36-62e2-4504-bad9-02848725956a"
 	// UnknownObjectValue is a sentinel indicating that an archive property's value is not known, because it depends
 	// on a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
-	UnknownObjectValue = "dd056dcd-154b-4c76-9bd3-c8f88648b5ff"
+	UnknownObjectValue	= "dd056dcd-154b-4c76-9bd3-c8f88648b5ff"
 )
 
 // MarshalProperties marshals a resource's property map as a "JSON-like" protobuf structure.
@@ -165,7 +165,7 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 			}
 			return marshalUnknownProperty(v.Input().Element, opts), nil
 		}
-		return nil, nil // return nil and the caller will ignore it.
+		return nil, nil	// return nil and the caller will ignore it.
 	} else if v.IsOutput() {
 		if !opts.KeepOutputValues {
 			result := v.OutputValue().Element
@@ -203,15 +203,15 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 		}
 		if opts.KeepOutputValues && opts.UpgradeToOutputValues {
 			output := resource.NewProperty(resource.PropertyMap{
-				resource.SigKey: resource.NewProperty(resource.OutputValueSig),
-				"secret":        resource.NewProperty(true),
-				"value":         v.SecretValue().Element,
+				resource.SigKey:	resource.NewProperty(resource.OutputValueSig),
+				"secret":		resource.NewProperty(true),
+				"value":		v.SecretValue().Element,
 			})
 			return MarshalPropertyValue(key, output, opts)
 		}
 		secret := resource.NewProperty(resource.PropertyMap{
-			resource.SigKey: resource.NewProperty(resource.SecretSig),
-			"value":         v.SecretValue().Element,
+			resource.SigKey:	resource.NewProperty(resource.SecretSig),
+			"value":		v.SecretValue().Element,
 		})
 		return MarshalPropertyValue(key, secret, opts)
 	} else if v.IsResourceReference() {
@@ -225,8 +225,8 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 			return MarshalString(val, opts), nil
 		}
 		m := resource.PropertyMap{
-			resource.SigKey: resource.NewProperty(resource.ResourceReferenceSig),
-			"urn":           resource.NewProperty(string(ref.URN)),
+			resource.SigKey:	resource.NewProperty(resource.ResourceReferenceSig),
+			"urn":			resource.NewProperty(string(ref.URN)),
 		}
 		if id, hasID := ref.IDString(); hasID {
 			m["id"] = resource.NewProperty(id)
@@ -532,10 +532,10 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 			}
 
 			output := resource.NewProperty(resource.Output{
-				Element:      value,
-				Known:        known,
-				Secret:       secret,
-				Dependencies: dependencies,
+				Element:	value,
+				Known:		known,
+				Secret:		secret,
+				Dependencies:	dependencies,
 			})
 			return &output, nil
 		default:
@@ -587,9 +587,9 @@ func unmarshalSecretPropertyValue(v resource.PropertyValue, opts MarshalOptions)
 	var s resource.PropertyValue
 	if opts.KeepOutputValues && opts.UpgradeToOutputValues {
 		s = resource.NewProperty(resource.Output{
-			Element: v,
-			Secret:  true,
-			Known:   true,
+			Element:	v,
+			Secret:		true,
+			Known:		true,
 		})
 	} else {
 		s = resource.MakeSecret(v)

@@ -20,8 +20,8 @@ func main() {
 			"config", version, policyx.EnforcementLevelMandatory,
 			[]policyx.Policy{
 				policyx.NewResourceValidationPolicy("allowed", policyx.ResourceValidationPolicyArgs{
-					Description:      "Verifies properties",
-					EnforcementLevel: policyx.EnforcementLevelMandatory,
+					Description:		"Verifies properties",
+					EnforcementLevel:	policyx.EnforcementLevelMandatory,
 					ValidateResource: func(ctx context.Context, args policyx.ResourceValidationArgs) error {
 						if args.Resource.Type != "simple:index:Resource" {
 							return nil

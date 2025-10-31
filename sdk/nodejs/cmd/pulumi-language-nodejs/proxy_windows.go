@@ -52,16 +52,16 @@ func createPipes() (pipes, error) {
 		return nil, err
 	}
 	return &windowsPipes{
-		dir:         dir,
-		reqListener: reqListener,
-		resListener: resListener,
+		dir:		dir,
+		reqListener:	reqListener,
+		resListener:	resListener,
 	}, nil
 }
 
 type windowsPipes struct {
-	dir                      string
-	reqListener, resListener net.Listener
-	reqConn, resConn         net.Conn
+	dir				string
+	reqListener, resListener	net.Listener
+	reqConn, resConn		net.Conn
 }
 
 func (p *windowsPipes) directory() string {

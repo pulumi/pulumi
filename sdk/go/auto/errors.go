@@ -21,10 +21,10 @@ import (
 )
 
 type autoError struct {
-	stdout string
-	stderr string
-	code   int
-	err    error
+	stdout	string
+	stderr	string
+	code	int
+	err	error
 }
 
 func newAutoError(err error, stdout, stderr string, code int) autoError {

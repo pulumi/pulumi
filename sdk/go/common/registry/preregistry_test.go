@@ -20,8 +20,8 @@ func TestIsPreRegistryPackage(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		name     string
-		expected bool
+		name		string
+		expected	bool
 	}{
 		// Pre-registry packages
 		{"aws", true},

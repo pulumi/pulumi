@@ -48,8 +48,8 @@ func TestProjectRuntimeInfoRoundtripYAML(t *testing.T) {
 		assert.Nil(t, riRountrip.Options())
 
 		ri = NewProjectRuntimeInfo("nodejs", map[string]any{
-			"typescript":   true,
-			"stringOption": "hello",
+			"typescript":	true,
+			"stringOption":	"hello",
 		})
 		byts, err = marshal(ri)
 		require.NoError(t, err)
@@ -89,8 +89,8 @@ func TestProjectValidationSucceedsForObjectConfigType(t *testing.T) {
 	config := make(map[string]ProjectConfigType)
 	objectType := "object"
 	config["example"] = ProjectConfigType{
-		Type:    &objectType,
-		Default: map[string]any{"hello": "world"},
+		Type:		&objectType,
+		Default:	map[string]any{"hello": "world"},
 	}
 
 	project.Config = config
@@ -104,9 +104,9 @@ func TestProjectValidationFailsForIncorrectDefaultValueType(t *testing.T) {
 	invalidConfig := make(map[string]ProjectConfigType)
 	integerType := "integer"
 	invalidConfig["instanceSize"] = ProjectConfigType{
-		Type:    &integerType,
-		Items:   nil,
-		Default: "hello",
+		Type:		&integerType,
+		Items:		nil,
+		Default:	"hello",
 	}
 
 	project.Config = invalidConfig
@@ -122,14 +122,14 @@ func TestProjectValidationFailsForIncorrectDefaultValueType(t *testing.T) {
 	arrayType := "array"
 	invalidConfigWithArray := make(map[string]ProjectConfigType)
 	invalidConfigWithArray["values"] = ProjectConfigType{
-		Type: &arrayType,
+		Type:	&arrayType,
 		Items: &ProjectConfigItemsType{
-			Type: "array",
+			Type:	"array",
 			Items: &ProjectConfigItemsType{
 				Type: "string",
 			},
 		},
-		Default: invalidValues,
+		Default:	invalidValues,
 	}
 	project.Config = invalidConfigWithArray
 	err = project.Validate()
@@ -143,9 +143,9 @@ func TestProjectValidationSucceedsForCorrectDefaultValueType(t *testing.T) {
 	integerType := "integer"
 	validConfig := make(map[string]ProjectConfigType)
 	validConfig["instanceSize"] = ProjectConfigType{
-		Type:    &integerType,
-		Items:   nil,
-		Default: 1,
+		Type:		&integerType,
+		Items:		nil,
+		Default:	1,
 	}
 
 	project.Config = validConfig
@@ -165,14 +165,14 @@ func TestProjectValidationSucceedsForCorrectDefaultValueType(t *testing.T) {
 	arrayType := "array"
 	validConfigWithArray := make(map[string]ProjectConfigType)
 	validConfigWithArray["values"] = ProjectConfigType{
-		Type: &arrayType,
+		Type:	&arrayType,
 		Items: &ProjectConfigItemsType{
-			Type: "array",
+			Type:	"array",
 			Items: &ProjectConfigItemsType{
 				Type: "string",
 			},
 		},
-		Default: validValuesArray,
+		Default:	validValuesArray,
 	}
 	project.Config = validConfigWithArray
 	err = project.Validate()
@@ -1274,18 +1274,18 @@ config:
       baz: 42`
 
 	env := esc.NewValue(map[string]esc.Value{
-		"test:boolean": esc.NewValue(false),
-		"test:number":  esc.NewValue(json.Number("42")),
-		"test:string":  esc.NewValue("esc"),
-		"test:array":   esc.NewValue([]esc.Value{esc.NewValue("second"), esc.NewValue("first")}),
-		"test:secret":  esc.NewSecret("hunter2"),
+		"test:boolean":	esc.NewValue(false),
+		"test:number":	esc.NewValue(json.Number("42")),
+		"test:string":	esc.NewValue("esc"),
+		"test:array":	esc.NewValue([]esc.Value{esc.NewValue("second"), esc.NewValue("first")}),
+		"test:secret":	esc.NewSecret("hunter2"),
 		"test:object": esc.NewValue(map[string]esc.Value{
-			"boolean": esc.NewValue(true),
-			"number":  esc.NewValue(json.Number("42")),
-			"string":  esc.NewValue("esc"),
-			"array":   esc.NewValue([]esc.Value{esc.NewValue("first"), esc.NewValue("second")}),
-			"object":  esc.NewValue(map[string]esc.Value{"foo": esc.NewValue("bar")}),
-			"foo":     esc.NewValue("qux"),
+			"boolean":	esc.NewValue(true),
+			"number":	esc.NewValue(json.Number("42")),
+			"string":	esc.NewValue("esc"),
+			"array":	esc.NewValue([]esc.Value{esc.NewValue("first"), esc.NewValue("second")}),
+			"object":	esc.NewValue(map[string]esc.Value{"foo": esc.NewValue("bar")}),
+			"foo":		esc.NewValue("qux"),
 		}),
 	})
 
@@ -1315,12 +1315,12 @@ config:
 	require.NoError(t, err)
 
 	expected := map[config.Key]string{
-		config.MustMakeKey("test", "array"):   "[\"first\",\"second\"]",
-		config.MustMakeKey("test", "boolean"): "true",
-		config.MustMakeKey("test", "number"):  "42",
-		config.MustMakeKey("test", "object"):  "{\"array\":[\"first\",\"second\"],\"boolean\":true,\"foo\":\"bar\",\"number\":42,\"object\":{\"baz\":42,\"foo\":\"bar\"},\"string\":\"esc\"}",
-		config.MustMakeKey("test", "string"):  "foo",
-		config.MustMakeKey("test", "secret"):  "hunter2",
+		config.MustMakeKey("test", "array"):	"[\"first\",\"second\"]",
+		config.MustMakeKey("test", "boolean"):	"true",
+		config.MustMakeKey("test", "number"):	"42",
+		config.MustMakeKey("test", "object"):	"{\"array\":[\"first\",\"second\"],\"boolean\":true,\"foo\":\"bar\",\"number\":42,\"object\":{\"baz\":42,\"foo\":\"bar\"},\"string\":\"esc\"}",
+		config.MustMakeKey("test", "string"):	"foo",
+		config.MustMakeKey("test", "secret"):	"hunter2",
 	}
 	assert.Equal(t, expected, m)
 }
@@ -1392,14 +1392,14 @@ func TestProjectSaveLoadRoundtrip(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		project Project
+		name	string
+		project	Project
 	}{
 		{
-			name: "Numeric name",
+			name:	"Numeric name",
 			project: Project{
-				Name:    "1234",
-				Runtime: NewProjectRuntimeInfo("python", nil),
+				Name:		"1234",
+				Runtime:	NewProjectRuntimeInfo("python", nil),
 			},
 		},
 	}
@@ -1432,20 +1432,20 @@ func TestProjectEditRoundtrip(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		yaml     string
-		edit     func(*Project)
-		expected string
+		name		string
+		yaml		string
+		edit		func(*Project)
+		expected	string
 	}{
 		{
-			name:     "Change name",
-			yaml:     "name: test\nruntime: python\n",
-			edit:     func(proj *Project) { proj.Name = "new" },
-			expected: "name: new\nruntime: python\n",
+			name:		"Change name",
+			yaml:		"name: test\nruntime: python\n",
+			edit:		func(proj *Project) { proj.Name = "new" },
+			expected:	"name: new\nruntime: python\n",
 		},
 		{
-			name: "Add runtime option",
-			yaml: "name: test\nruntime: python\n",
+			name:	"Add runtime option",
+			yaml:	"name: test\nruntime: python\n",
 			edit: func(proj *Project) {
 				proj.Runtime = NewProjectRuntimeInfo(
 					proj.Runtime.Name(),
@@ -1453,7 +1453,7 @@ func TestProjectEditRoundtrip(t *testing.T) {
 						"setting": "test",
 					})
 			},
-			expected: "name: test\nruntime:\n  name: python\n  options:\n    setting: test\n",
+			expected:	"name: test\nruntime:\n  name: python\n  options:\n    setting: test\n",
 		},
 	}
 
@@ -1959,14 +1959,14 @@ func TestPackageValueSerialization(t *testing.T) {
 
 		// Test both simple string and complex object packages in the same Project
 		proj := &Project{
-			Name:    "test-project",
-			Runtime: NewProjectRuntimeInfo("nodejs", nil),
+			Name:		"test-project",
+			Runtime:	NewProjectRuntimeInfo("nodejs", nil),
 			Packages: map[string]packageValue{
-				"simple": {value: "github.com/example/simple-package"},
+				"simple":	{value: "github.com/example/simple-package"},
 				"complex": {value: PackageSpec{
-					Source:     "github.com/example/complex-package",
-					Version:    "1.0.0",
-					Parameters: []string{"arg1", "arg2"},
+					Source:		"github.com/example/complex-package",
+					Version:	"1.0.0",
+					Parameters:	[]string{"arg1", "arg2"},
 				}},
 			},
 		}
@@ -2005,14 +2005,14 @@ func TestPackageValueSerialization(t *testing.T) {
 
 		// Test both simple string and complex object packages in the same Project
 		proj := &Project{
-			Name:    "test-project",
-			Runtime: NewProjectRuntimeInfo("nodejs", nil),
+			Name:		"test-project",
+			Runtime:	NewProjectRuntimeInfo("nodejs", nil),
 			Packages: map[string]packageValue{
-				"simple": {value: "github.com/example/simple-package"},
+				"simple":	{value: "github.com/example/simple-package"},
 				"complex": {value: PackageSpec{
-					Source:     "github.com/example/complex-package",
-					Version:    "1.0.0",
-					Parameters: []string{"arg1", "arg2"},
+					Source:		"github.com/example/complex-package",
+					Version:	"1.0.0",
+					Parameters:	[]string{"arg1", "arg2"},
 				}},
 			},
 		}
@@ -2067,32 +2067,32 @@ func TestGetPackageSpecs(t *testing.T) {
 
 	// Test with nil packages
 	proj := &Project{
-		Name:     "test-project",
-		Runtime:  NewProjectRuntimeInfo("nodejs", nil),
-		Packages: nil,
+		Name:		"test-project",
+		Runtime:	NewProjectRuntimeInfo("nodejs", nil),
+		Packages:	nil,
 	}
 	specs := proj.GetPackageSpecs()
 	assert.Nil(t, specs)
 
 	// Test with empty packages
 	proj = &Project{
-		Name:     "test-project",
-		Runtime:  NewProjectRuntimeInfo("nodejs", nil),
-		Packages: map[string]packageValue{},
+		Name:		"test-project",
+		Runtime:	NewProjectRuntimeInfo("nodejs", nil),
+		Packages:	map[string]packageValue{},
 	}
 	specs = proj.GetPackageSpecs()
 	assert.Empty(t, specs)
 
 	// Test with mixed packages
 	proj = &Project{
-		Name:    "test-project",
-		Runtime: NewProjectRuntimeInfo("nodejs", nil),
+		Name:		"test-project",
+		Runtime:	NewProjectRuntimeInfo("nodejs", nil),
 		Packages: map[string]packageValue{
-			"str": {value: "github.com/example/string-package@0.1.2"},
+			"str":	{value: "github.com/example/string-package@0.1.2"},
 			"obj": {value: PackageSpec{
-				Source:     "github.com/example/object-package",
-				Version:    "1.2.3",
-				Parameters: []string{"--arg1", "--arg2"},
+				Source:		"github.com/example/object-package",
+				Version:	"1.2.3",
+				Parameters:	[]string{"--arg1", "--arg2"},
 			}},
 		},
 	}
@@ -2116,7 +2116,7 @@ func TestAddPackage(t *testing.T) {
 		t.Parallel()
 
 		proj := &Project{
-			Name: "test-project",
+			Name:	"test-project",
 			Runtime: ProjectRuntimeInfo{
 				name: "nodejs",
 			},
@@ -2142,15 +2142,15 @@ func TestAddPackage(t *testing.T) {
 		t.Parallel()
 
 		proj := &Project{
-			Name: "test-project",
+			Name:	"test-project",
 			Runtime: ProjectRuntimeInfo{
 				name: "nodejs",
 			},
 		}
 
 		proj.AddPackage("versioned-package", PackageSpec{
-			Source:  "github.com/org/versioned-package",
-			Version: "v1.2.3",
+			Source:		"github.com/org/versioned-package",
+			Version:	"v1.2.3",
 		})
 
 		specs := proj.GetPackageSpecs()
@@ -2169,15 +2169,15 @@ func TestAddPackage(t *testing.T) {
 		t.Parallel()
 
 		proj := &Project{
-			Name: "test-project",
+			Name:	"test-project",
 			Runtime: ProjectRuntimeInfo{
 				name: "nodejs",
 			},
 		}
 
 		proj.AddPackage("param-package", PackageSpec{
-			Source:     "github.com/org/param-package",
-			Parameters: []string{"param1", "param2"},
+			Source:		"github.com/org/param-package",
+			Parameters:	[]string{"param1", "param2"},
 		})
 
 		specs := proj.GetPackageSpecs()
@@ -2196,14 +2196,14 @@ func TestAddPackage(t *testing.T) {
 		t.Parallel()
 
 		proj := &Project{
-			Name: "test-project",
+			Name:	"test-project",
 			Runtime: ProjectRuntimeInfo{
 				name: "nodejs",
 			},
 			Packages: map[string]packageValue{
 				"existing-package": {value: PackageSpec{
-					Source:  "github.com/org/existing-package",
-					Version: "v1.0.0",
+					Source:		"github.com/org/existing-package",
+					Version:	"v1.0.0",
 				}},
 			},
 		}
@@ -2232,7 +2232,7 @@ func TestAddPackage(t *testing.T) {
 		t.Parallel()
 
 		proj := &Project{
-			Name: "test-project",
+			Name:	"test-project",
 			Runtime: ProjectRuntimeInfo{
 				name: "nodejs",
 			},
@@ -2243,8 +2243,8 @@ func TestAddPackage(t *testing.T) {
 
 		// Replace the existing package with a new version
 		proj.AddPackage("existing-package", PackageSpec{
-			Source:  "github.com/org/existing-package",
-			Version: "v2.0.0",
+			Source:		"github.com/org/existing-package",
+			Version:	"v2.0.0",
 		})
 
 		specs := proj.GetPackageSpecs()
@@ -2262,24 +2262,24 @@ func TestAddPackage(t *testing.T) {
 		t.Parallel()
 
 		proj := &Project{
-			Name: "test-project",
+			Name:	"test-project",
 			Runtime: ProjectRuntimeInfo{
 				name: "nodejs",
 			},
 			Packages: map[string]packageValue{
-				"string-package": {value: "github.com/org/string-package@v1.0.0"},
+				"string-package":	{value: "github.com/org/string-package@v1.0.0"},
 				"spec-package": {value: PackageSpec{
-					Source:     "github.com/org/spec-package",
-					Version:    "v1.0.0",
-					Parameters: []string{"--param"},
+					Source:		"github.com/org/spec-package",
+					Version:	"v1.0.0",
+					Parameters:	[]string{"--param"},
 				}},
 			},
 		}
 
 		// Adding a new simple package should default to string format when there's a mix
 		proj.AddPackage("new-package", PackageSpec{
-			Source:  "github.com/org/new-package",
-			Version: "v1.2.3",
+			Source:		"github.com/org/new-package",
+			Version:	"v1.2.3",
 		})
 
 		specs := proj.GetPackageSpecs()
@@ -2297,29 +2297,29 @@ func TestAddPackage(t *testing.T) {
 		t.Parallel()
 
 		proj := &Project{
-			Name: "test-project",
+			Name:	"test-project",
 			Runtime: ProjectRuntimeInfo{
 				name: "nodejs",
 			},
 			Packages: map[string]packageValue{
-				"string-package": {value: "github.com/org/string-package@v1.0.0"},
+				"string-package":	{value: "github.com/org/string-package@v1.0.0"},
 				"spec-package": {value: PackageSpec{
-					Source:  "github.com/org/spec-package",
-					Version: "v1.0.0",
+					Source:		"github.com/org/spec-package",
+					Version:	"v1.0.0",
 				}},
 			},
 		}
 
 		// Replace the string package with a new version (should stay as string)
 		proj.AddPackage("string-package", PackageSpec{
-			Source:  "github.com/org/string-package",
-			Version: "v2.0.0",
+			Source:		"github.com/org/string-package",
+			Version:	"v2.0.0",
 		})
 
 		// Replace the spec package with a new version (should stay as spec)
 		proj.AddPackage("spec-package", PackageSpec{
-			Source:  "github.com/org/spec-package",
-			Version: "v2.0.0",
+			Source:		"github.com/org/spec-package",
+			Version:	"v2.0.0",
 		})
 
 		specs := proj.GetPackageSpecs()
@@ -2343,7 +2343,7 @@ func TestAddPackage(t *testing.T) {
 		t.Parallel()
 
 		proj := &Project{
-			Name: "test-project",
+			Name:	"test-project",
 			Runtime: ProjectRuntimeInfo{
 				name: "nodejs",
 			},
@@ -2354,9 +2354,9 @@ func TestAddPackage(t *testing.T) {
 
 		// Add parameters to an existing string package - should convert to PackageSpec
 		proj.AddPackage("string-package", PackageSpec{
-			Source:     "github.com/org/string-package",
-			Version:    "v1.0.0",
-			Parameters: []string{"--new-param"},
+			Source:		"github.com/org/string-package",
+			Version:	"v1.0.0",
+			Parameters:	[]string{"--new-param"},
 		})
 
 		specs := proj.GetPackageSpecs()

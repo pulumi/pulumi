@@ -31,22 +31,22 @@ import (
 func TestSanitizeArchivePath(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		testName   string
-		dir        string
-		fileName   string
-		shouldFail bool
+		testName	string
+		dir		string
+		fileName	string
+		shouldFail	bool
 	}{
 		{
-			testName:   "valid_path",
-			dir:        "foo",
-			fileName:   "bar",
-			shouldFail: false,
+			testName:	"valid_path",
+			dir:		"foo",
+			fileName:	"bar",
+			shouldFail:	false,
 		},
 		{
-			testName:   "invalid_path",
-			dir:        "foo",
-			fileName:   "../../../../../../../../../../tmp/bar",
-			shouldFail: true,
+			testName:	"invalid_path",
+			dir:		"foo",
+			fileName:	"../../../../../../../../../../tmp/bar",
+			shouldFail:	true,
 		},
 	}
 
@@ -66,49 +66,49 @@ func TestSanitizeArchivePath(t *testing.T) {
 func TestIsZipArchiveURL(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		testName    string
-		templateURL string
-		expected    bool
+		testName	string
+		templateURL	string
+		expected	bool
 	}{
 		{
-			testName:    "http_zip_archive_url",
-			templateURL: "http://example.com/foo.zip",
-			expected:    true,
+			testName:	"http_zip_archive_url",
+			templateURL:	"http://example.com/foo.zip",
+			expected:	true,
 		},
 		{
-			testName:    "https_zip_archive_url",
-			templateURL: "https://localhost:3001/www-ai/api/project/foo.zip",
-			expected:    true,
+			testName:	"https_zip_archive_url",
+			templateURL:	"https://localhost:3001/www-ai/api/project/foo.zip",
+			expected:	true,
 		},
 		{
-			testName:    "http_zip_archive_url_with_query",
-			templateURL: "http://example.com/foo.zip?foo=bar",
-			expected:    true,
+			testName:	"http_zip_archive_url_with_query",
+			templateURL:	"http://example.com/foo.zip?foo=bar",
+			expected:	true,
 		},
 		{
-			testName:    "http_zip_archive_url_with_fragment",
-			templateURL: "http://example.com/foo.zip#foo",
-			expected:    true,
+			testName:	"http_zip_archive_url_with_fragment",
+			templateURL:	"http://example.com/foo.zip#foo",
+			expected:	true,
 		},
 		{
-			testName:    "http_zip_archive_url_with_query_and_fragment",
-			templateURL: "http://example.com/foo.zip?foo=bar#foo",
-			expected:    true,
+			testName:	"http_zip_archive_url_with_query_and_fragment",
+			templateURL:	"http://example.com/foo.zip?foo=bar#foo",
+			expected:	true,
 		},
 		{
-			testName:    "git_ssh_url",
-			templateURL: "ssh://github.com/pulumi/templates/archive/master.git",
-			expected:    false,
+			testName:	"git_ssh_url",
+			templateURL:	"ssh://github.com/pulumi/templates/archive/master.git",
+			expected:	false,
 		},
 		{
-			testName:    "git_https_url",
-			templateURL: "https://github.com/pulumi/templates/archive/master",
-			expected:    false,
+			testName:	"git_https_url",
+			templateURL:	"https://github.com/pulumi/templates/archive/master",
+			expected:	false,
 		},
 		{
-			testName:    "git_ssh_url",
-			templateURL: "git@gitlab.com:group/project.git",
-			expected:    false,
+			testName:	"git_ssh_url",
+			templateURL:	"git@gitlab.com:group/project.git",
+			expected:	false,
 		},
 	}
 
@@ -147,8 +147,8 @@ func TestRetrieveZIPTemplates_FailsOnInvalidURLs(t *testing.T) {
 func TestRetrieveZIPTemplates_FailsWhenPulumiYAMLIsMissing(t *testing.T) {
 	// Arrange.
 	cases := map[string][]string{
-		"empty.zip":          {},
-		"no-pulumi-yaml.zip": {"foo", "bar/baz"},
+		"empty.zip":		{},
+		"no-pulumi-yaml.zip":	{"foo", "bar/baz"},
 	}
 
 	server := newTestServer(t, cases)
@@ -166,11 +166,11 @@ func TestRetrieveZIPTemplates_FailsWhenPulumiYAMLIsMissing(t *testing.T) {
 func TestRetrieveZIPTemplates_SucceedsWhenPulumiYAMLIsPresent(t *testing.T) {
 	// Arrange.
 	cases := map[string][]string{
-		"just-pulumi-yaml.zip":                    {"Pulumi.yaml"},
-		"pulumi-yaml-and-flat-files.zip":          {"Pulumi.yaml", "foo"},
-		"pulumi-yaml-and-nested-files.zip":        {"Pulumi.yaml", "bar/baz"},
-		"pulumi-yaml-and-mixture.zip":             {"Pulumi.yaml", "foo", "bar/baz"},
-		"pulumi-yaml-at-top-level-and-nested.zip": {"Pulumi.yaml", "foo", "bar/Pulumi.yaml"},
+		"just-pulumi-yaml.zip":				{"Pulumi.yaml"},
+		"pulumi-yaml-and-flat-files.zip":		{"Pulumi.yaml", "foo"},
+		"pulumi-yaml-and-nested-files.zip":		{"Pulumi.yaml", "bar/baz"},
+		"pulumi-yaml-and-mixture.zip":			{"Pulumi.yaml", "foo", "bar/baz"},
+		"pulumi-yaml-at-top-level-and-nested.zip":	{"Pulumi.yaml", "foo", "bar/Pulumi.yaml"},
 	}
 
 	server := newTestServer(t, cases)

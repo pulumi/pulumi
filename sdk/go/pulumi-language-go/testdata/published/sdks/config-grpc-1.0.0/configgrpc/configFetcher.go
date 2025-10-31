@@ -14,7 +14,7 @@ import (
 type ConfigFetcher struct {
 	pulumi.CustomResourceState
 
-	Config pulumi.StringOutput `pulumi:"config"`
+	Config	pulumi.StringOutput	`pulumi:"config"`
 }
 
 // NewConfigFetcher registers a new resource with the given unique name, arguments, and options.

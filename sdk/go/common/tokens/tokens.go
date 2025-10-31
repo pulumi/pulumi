@@ -58,13 +58,13 @@ import (
 // Notice that a recursive parsing process is required to extract elements from a <DecoratedType> token.
 type Token string
 
-const TokenDelimiter string = ":" // the character delimiting portions of a qualified token.
+const TokenDelimiter string = ":"	// the character delimiting portions of a qualified token.
 
-func (tok Token) Delimiters() int       { return strings.Count(string(tok), TokenDelimiter) }
-func (tok Token) HasModule() bool       { return tok.Delimiters() > 0 }
-func (tok Token) HasModuleMember() bool { return tok.Delimiters() > 1 }
-func (tok Token) Simple() bool          { return tok.Delimiters() == 0 }
-func (tok Token) String() string        { return string(tok) }
+func (tok Token) Delimiters() int	{ return strings.Count(string(tok), TokenDelimiter) }
+func (tok Token) HasModule() bool	{ return tok.Delimiters() > 0 }
+func (tok Token) HasModuleMember() bool	{ return tok.Delimiters() > 1 }
+func (tok Token) Simple() bool		{ return tok.Delimiters() == 0 }
+func (tok Token) String() string	{ return string(tok) }
 
 // delimiter returns the Nth index of a delimiter, as specified by the argument.
 func (tok Token) delimiter(n int) int {
@@ -98,7 +98,7 @@ func (tok Token) Name() Name {
 // Package extracts the package from the token, assuming one exists.
 func (tok Token) Package() Package {
 	if t := Type(tok); t.Primitive() {
-		return "" // decorated and primitive types are built-in (and hence have no package).
+		return ""	// decorated and primitive types are built-in (and hence have no package).
 	}
 	if tok.HasModule() {
 		return Package(tok[:tok.delimiter(1)])
@@ -141,7 +141,7 @@ func (tok Package) Name() PackageName {
 	return PackageName(tok)
 }
 
-func (tok Package) String() string { return string(tok) }
+func (tok Package) String() string	{ return string(tok) }
 
 // Module is a token representing a module.  It uses the following subset of the token grammar:
 //
@@ -167,7 +167,7 @@ func (tok Module) Name() ModuleName {
 	return ModuleName(tok[t.delimiter(1)+1:])
 }
 
-func (tok Module) String() string { return string(tok) }
+func (tok Module) String() string	{ return string(tok) }
 
 // ModuleMember is a token representing a module's member.  It uses the following grammar.  Note that this is not
 // ambiguous because member names cannot contain slashes, and so the "last" slash in a name delimits the member:
@@ -204,7 +204,7 @@ func (tok ModuleMember) Name() ModuleMemberName {
 	return ModuleMemberName(tok[t.delimiter(2)+1:])
 }
 
-func (tok ModuleMember) String() string { return string(tok) }
+func (tok ModuleMember) String() string	{ return string(tok) }
 
 // Type is a token representing a type.  It is either a primitive type name, reference to a module class, or decorated:
 //
@@ -252,7 +252,7 @@ func (tok Type) Primitive() bool {
 	return !Token(tok).HasModule()
 }
 
-func (tok Type) String() string { return string(tok) }
+func (tok Type) String() string	{ return string(tok) }
 
 func camelCase(s string) string {
 	if len(s) == 0 {

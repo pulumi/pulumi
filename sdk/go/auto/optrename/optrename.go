@@ -49,13 +49,13 @@ type Option interface {
 // Options is an implementation detail
 type Options struct {
 	// The new name for the stack.
-	StackName string
+	StackName	string
 	// ProgressStreams allows specifying one or more io.Writers to redirect incremental refresh stdout
-	ProgressStreams []io.Writer
+	ProgressStreams	[]io.Writer
 	// ErrorProgressStreams allows specifying one or more io.Writers to redirect incremental refresh stderr
-	ErrorProgressStreams []io.Writer
+	ErrorProgressStreams	[]io.Writer
 	// Show config secrets when they appear.
-	ShowSecrets *bool
+	ShowSecrets	*bool
 }
 
 type optionFunc func(*Options)

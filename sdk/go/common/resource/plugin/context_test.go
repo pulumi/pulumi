@@ -29,13 +29,13 @@ func TestContextRequest_race(t *testing.T) {
 
 	ctx, err := NewContext(
 		context.Background(),
-		diagtest.LogSink(t), // The diagnostics sink to use for messages.
-		diagtest.LogSink(t), // The diagnostics sink to use for status messages.
-		nil,                 // the host that can be used to fetch providers.
-		nil,                 // configSource
-		t.TempDir(),         // the working directory to spawn all plugins in.
-		nil,                 // runtimeOptions
-		false,               // disableProviderPreview
+		diagtest.LogSink(t),	// The diagnostics sink to use for messages.
+		diagtest.LogSink(t),	// The diagnostics sink to use for status messages.
+		nil,			// the host that can be used to fetch providers.
+		nil,			// configSource
+		t.TempDir(),		// the working directory to spawn all plugins in.
+		nil,			// runtimeOptions
+		false,			// disableProviderPreview
 		mocktracer.New().StartSpan("root"),
 	)
 	require.NoError(t, err)

@@ -47,19 +47,19 @@ import (
 
 // analyzer reflects an analyzer plugin, loaded dynamically for a single suite of checks.
 type analyzer struct {
-	ctx     *Context
-	name    tokens.QName
-	plug    *Plugin
-	client  pulumirpc.AnalyzerClient
-	version string
+	ctx	*Context
+	name	tokens.QName
+	plug	*Plugin
+	client	pulumirpc.AnalyzerClient
+	version	string
 
 	// The description from the policy pack's PulumiPolicy.yaml file (if present).
-	description string
+	description	string
 
 	// Cached result of the first call to GetAnalyzerInfo, which will be returned from subsequent calls.
-	info *AnalyzerInfo
+	info	*AnalyzerInfo
 	// Cached map of policy name to severity for quick lookup by policy name.
-	policyNameToSeverity map[string]apitype.PolicySeverity
+	policyNameToSeverity	map[string]apitype.PolicySeverity
 }
 
 var _ Analyzer = (*analyzer)(nil)
@@ -72,8 +72,8 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 		ctx.baseContext,
 		ctx.Diag,
 		workspace.PluginSpec{
-			Name: strings.ReplaceAll(string(name), tokens.QNameDelimiter, "_"),
-			Kind: apitype.AnalyzerPlugin,
+			Name:	strings.ReplaceAll(string(name), tokens.QNameDelimiter, "_"),
+			Kind:	apitype.AnalyzerPlugin,
 		},
 		host.GetProjectPlugins())
 	if err != nil {
@@ -84,7 +84,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	dialOpts := rpcutil.OpenTracingInterceptorDialOptions()
 
 	plug, _, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
-		apitype.AnalyzerPlugin, []string{host.ServerAddr(), ctx.Pwd}, nil, /*env*/
+		apitype.AnalyzerPlugin, []string{host.ServerAddr(), ctx.Pwd}, nil,	/*env*/
 		testConnection, dialOpts, host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))
 	if err != nil {
 		return nil, err
@@ -92,10 +92,10 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	contract.Assertf(plug != nil, "unexpected nil analyzer plugin for %s", name)
 
 	return &analyzer{
-		ctx:    ctx,
-		name:   name,
-		plug:   plug,
-		client: pulumirpc.NewAnalyzerClient(plug.Conn),
+		ctx:	ctx,
+		name:	name,
+		plug:	plug,
+		client:	pulumirpc.NewAnalyzerClient(plug.Conn),
 	}, nil
 }
 
@@ -121,9 +121,9 @@ func NewPolicyAnalyzer(
 		client := pulumirpc.NewAnalyzerClient(conn)
 
 		req := pulumirpc.AnalyzerHandshakeRequest{
-			EngineAddress:    host.ServerAddr(),
-			RootDirectory:    &dir,
-			ProgramDirectory: &dir,
+			EngineAddress:		host.ServerAddr(),
+			RootDirectory:		&dir,
+			ProgramDirectory:	&dir,
 		}
 
 		res, err := client.Handshake(ctx, &req)
@@ -247,11 +247,11 @@ func NewPolicyAnalyzer(
 	// example when running `pulumi policy publish`, we are not running in the context of a project or stack.
 	if opts != nil {
 		req := &pulumirpc.AnalyzerStackConfigureRequest{
-			Stack:        opts.Stack,
-			Project:      opts.Project,
-			Organization: opts.Organization,
-			Tags:         opts.Tags,
-			DryRun:       opts.DryRun,
+			Stack:		opts.Stack,
+			Project:	opts.Project,
+			Organization:	opts.Organization,
+			Tags:		opts.Tags,
+			DryRun:		opts.DryRun,
 		}
 		mconfig := make(map[string]string, len(opts.Config))
 		for k, v := range opts.Config {
@@ -286,24 +286,24 @@ func NewPolicyAnalyzer(
 	}
 
 	return &analyzer{
-		ctx:         ctx,
-		name:        name,
-		plug:        plug,
-		client:      client,
-		version:     proj.Version,
-		description: description,
+		ctx:		ctx,
+		name:		name,
+		plug:		plug,
+		client:		client,
+		version:	proj.Version,
+		description:	description,
 	}, nil
 }
 
 func NewAnalyzerWithClient(ctx *Context, name tokens.QName, client pulumirpc.AnalyzerClient) Analyzer {
 	return &analyzer{
-		ctx:    ctx,
-		name:   name,
-		client: client,
+		ctx:	ctx,
+		name:	name,
+		client:	client,
 	}
 }
 
-func (a *analyzer) Name() tokens.QName { return a.name }
+func (a *analyzer) Name() tokens.QName	{ return a.name }
 
 // label returns a base label for tracing functions.
 func (a *analyzer) label() string {
@@ -335,12 +335,12 @@ func (a *analyzer) Analyze(r AnalyzerResource) (AnalyzeResponse, error) {
 	}
 
 	resp, err := a.client.Analyze(a.requestContext(), &pulumirpc.AnalyzeRequest{
-		Urn:        string(urn),
-		Type:       string(t),
-		Name:       name,
-		Properties: mprops,
-		Options:    marshalResourceOptions(r.Options),
-		Provider:   provider,
+		Urn:		string(urn),
+		Type:		string(t),
+		Name:		name,
+		Properties:	mprops,
+		Options:	marshalResourceOptions(r.Options),
+		Provider:	provider,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -356,8 +356,8 @@ func (a *analyzer) Analyze(r AnalyzerResource) (AnalyzeResponse, error) {
 		return AnalyzeResponse{}, fmt.Errorf("converting analysis results: %w", err)
 	}
 	return AnalyzeResponse{
-		Diagnostics:   diags,
-		NotApplicable: convertNotApplicable(resp.GetNotApplicable()),
+		Diagnostics:	diags,
+		NotApplicable:	convertNotApplicable(resp.GetNotApplicable()),
 	}, nil
 }
 
@@ -395,15 +395,15 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) (AnalyzeRespo
 		}
 
 		protoResources[idx] = &pulumirpc.AnalyzerResource{
-			Urn:                  string(resource.URN),
-			Type:                 string(resource.Type),
-			Name:                 resource.Name,
-			Properties:           props,
-			Options:              marshalResourceOptions(resource.Options),
-			Provider:             provider,
-			Parent:               string(resource.Parent),
-			Dependencies:         convertURNs(resource.Dependencies),
-			PropertyDependencies: propertyDeps,
+			Urn:			string(resource.URN),
+			Type:			string(resource.Type),
+			Name:			resource.Name,
+			Properties:		props,
+			Options:		marshalResourceOptions(resource.Options),
+			Provider:		provider,
+			Parent:			string(resource.Parent),
+			Dependencies:		convertURNs(resource.Dependencies),
+			PropertyDependencies:	propertyDeps,
 		}
 	}
 
@@ -432,8 +432,8 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) (AnalyzeRespo
 		return AnalyzeResponse{}, fmt.Errorf("converting analysis results: %w", err)
 	}
 	return AnalyzeResponse{
-		Diagnostics:   diags,
-		NotApplicable: convertNotApplicable(resp.GetNotApplicable()),
+		Diagnostics:	diags,
+		NotApplicable:	convertNotApplicable(resp.GetNotApplicable()),
 	}, nil
 }
 
@@ -455,12 +455,12 @@ func (a *analyzer) Remediate(r AnalyzerResource) (RemediateResponse, error) {
 	}
 
 	resp, err := a.client.Remediate(a.requestContext(), &pulumirpc.AnalyzeRequest{
-		Urn:        string(urn),
-		Type:       string(t),
-		Name:       name,
-		Properties: mprops,
-		Options:    marshalResourceOptions(r.Options),
-		Provider:   provider,
+		Urn:		string(urn),
+		Type:		string(t),
+		Name:		name,
+		Properties:	mprops,
+		Options:	marshalResourceOptions(r.Options),
+		Provider:	provider,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -491,19 +491,19 @@ func (a *analyzer) Remediate(r AnalyzerResource) (RemediateResponse, error) {
 		}
 
 		results[i] = Remediation{
-			PolicyName:        r.GetPolicyName(),
-			Description:       r.GetDescription(),
-			PolicyPackName:    r.GetPolicyPackName(),
-			PolicyPackVersion: policyPackVersion,
-			Properties:        tprops,
-			Diagnostic:        r.GetDiagnostic(),
+			PolicyName:		r.GetPolicyName(),
+			Description:		r.GetDescription(),
+			PolicyPackName:		r.GetPolicyPackName(),
+			PolicyPackVersion:	policyPackVersion,
+			Properties:		tprops,
+			Diagnostic:		r.GetDiagnostic(),
 		}
 	}
 
 	logging.V(7).Infof("%s success: #remediations=%d", label, len(results))
 	return RemediateResponse{
-		Remediations:  results,
-		NotApplicable: convertNotApplicable(resp.GetNotApplicable()),
+		Remediations:	results,
+		NotApplicable:	convertNotApplicable(resp.GetNotApplicable()),
 	}, nil
 }
 
@@ -543,24 +543,24 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 				schema.Properties = map[string]JSONSchema{}
 			}
 			schema.Properties["enforcementLevel"] = JSONSchema{
-				"type": "string",
-				"enum": []string{"advisory", "mandatory", "remediate", "disabled"},
+				"type":	"string",
+				"enum":	[]string{"advisory", "mandatory", "remediate", "disabled"},
 			}
 		}
 
 		policies[i] = AnalyzerPolicyInfo{
-			Name:             p.GetName(),
-			DisplayName:      p.GetDisplayName(),
-			Description:      p.GetDescription(),
-			EnforcementLevel: enforcementLevel,
-			Message:          p.GetMessage(),
-			ConfigSchema:     schema,
-			Type:             convertPolicyType(p.PolicyType),
-			Severity:         convertSeverity(p.GetSeverity()),
-			Framework:        convertComplianceFramework(p.GetFramework()),
-			Tags:             p.GetTags(),
-			RemediationSteps: p.GetRemediationSteps(),
-			URL:              p.GetUrl(),
+			Name:			p.GetName(),
+			DisplayName:		p.GetDisplayName(),
+			Description:		p.GetDescription(),
+			EnforcementLevel:	enforcementLevel,
+			Message:		p.GetMessage(),
+			ConfigSchema:		schema,
+			Type:			convertPolicyType(p.PolicyType),
+			Severity:		convertSeverity(p.GetSeverity()),
+			Framework:		convertComplianceFramework(p.GetFramework()),
+			Tags:			p.GetTags(),
+			RemediationSteps:	p.GetRemediationSteps(),
+			URL:			p.GetUrl(),
 		}
 	}
 	sort.Slice(policies, func(i, j int) bool {
@@ -588,17 +588,17 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 
 	// Cache the result for subsequent calls.
 	info := AnalyzerInfo{
-		Name:           resp.GetName(),
-		DisplayName:    resp.GetDisplayName(),
-		Version:        version,
-		SupportsConfig: resp.GetSupportsConfig(),
-		Policies:       policies,
-		InitialConfig:  initialConfig,
-		Description:    description,
-		Readme:         resp.GetReadme(),
-		Provider:       resp.GetProvider(),
-		Tags:           resp.GetTags(),
-		Repository:     resp.GetRepository(),
+		Name:		resp.GetName(),
+		DisplayName:	resp.GetDisplayName(),
+		Version:	version,
+		SupportsConfig:	resp.GetSupportsConfig(),
+		Policies:	policies,
+		InitialConfig:	initialConfig,
+		Description:	description,
+		Readme:		resp.GetReadme(),
+		Provider:	resp.GetProvider(),
+		Tags:		resp.GetTags(),
+		Repository:	resp.GetRepository(),
 	}
 	a.info = &info
 	return info, nil
@@ -630,10 +630,10 @@ func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 	}
 
 	return workspace.PluginInfo{
-		Name:    string(a.name),
-		Path:    path,
-		Kind:    apitype.AnalyzerPlugin,
-		Version: version,
+		Name:		string(a.name),
+		Path:		path,
+		Kind:		apitype.AnalyzerPlugin,
+		Version:	version,
 	}, nil
 }
 
@@ -659,8 +659,8 @@ func (a *analyzer) Configure(policyConfig map[string]AnalyzerPolicyConfig) error
 		}
 
 		c[k] = &pulumirpc.PolicyConfig{
-			EnforcementLevel: marshalEnforcementLevel(v.EnforcementLevel),
-			Properties:       props,
+			EnforcementLevel:	marshalEnforcementLevel(v.EnforcementLevel),
+			Properties:		props,
 		}
 	}
 
@@ -743,8 +743,8 @@ func analyzerPluginDialOptions(ctx *Context, name string) []grpc.DialOption {
 
 	if ctx.DialOptions != nil {
 		metadata := map[string]any{
-			"mode": "client",
-			"kind": "analyzer",
+			"mode":	"client",
+			"kind":	"analyzer",
 		}
 		if name != "" {
 			metadata["name"] = name
@@ -767,18 +767,18 @@ func marshalResourceOptions(opts AnalyzerResourceOptions) *pulumirpc.AnalyzerRes
 	}
 
 	result := &pulumirpc.AnalyzerResourceOptions{
-		Protect:                    opts.Protect,
-		IgnoreChanges:              opts.IgnoreChanges,
-		DeleteBeforeReplace:        deleteBeforeReplace,
-		DeleteBeforeReplaceDefined: opts.DeleteBeforeReplace != nil,
-		AdditionalSecretOutputs:    secs,
-		Aliases:                    convertAliases(opts.Aliases, opts.AliasURNs),
+		Protect:			opts.Protect,
+		IgnoreChanges:			opts.IgnoreChanges,
+		DeleteBeforeReplace:		deleteBeforeReplace,
+		DeleteBeforeReplaceDefined:	opts.DeleteBeforeReplace != nil,
+		AdditionalSecretOutputs:	secs,
+		Aliases:			convertAliases(opts.Aliases, opts.AliasURNs),
 		CustomTimeouts: &pulumirpc.AnalyzerResourceOptions_CustomTimeouts{
-			Create: opts.CustomTimeouts.Create,
-			Update: opts.CustomTimeouts.Update,
-			Delete: opts.CustomTimeouts.Delete,
+			Create:	opts.CustomTimeouts.Create,
+			Update:	opts.CustomTimeouts.Update,
+			Delete:	opts.CustomTimeouts.Delete,
 		},
-		Parent: string(opts.Parent),
+		Parent:	string(opts.Parent),
 	}
 	return result
 }
@@ -795,10 +795,10 @@ func marshalProvider(provider *AnalyzerProviderResource) (*pulumirpc.AnalyzerPro
 	}
 
 	return &pulumirpc.AnalyzerProviderResource{
-		Urn:        string(provider.URN),
-		Type:       string(provider.Type),
-		Name:       provider.Name,
-		Properties: props,
+		Urn:		string(provider.URN),
+		Type:		string(provider.Type),
+		Name:		provider.Name,
+		Properties:	props,
 	}, nil
 }
 
@@ -897,8 +897,8 @@ func convertConfigSchema(schema *pulumirpc.PolicyConfigSchema) *AnalyzerPolicyCo
 	}
 
 	return &AnalyzerPolicyConfigSchema{
-		Properties: props,
-		Required:   schema.GetRequired(),
+		Properties:	props,
+		Required:	schema.GetRequired(),
 	}
 }
 
@@ -908,10 +908,10 @@ func convertComplianceFramework(framework *pulumirpc.PolicyComplianceFramework) 
 	}
 
 	return &AnalyzerPolicyComplianceFramework{
-		Name:          framework.GetName(),
-		Version:       framework.GetVersion(),
-		Reference:     framework.GetReference(),
-		Specification: framework.GetSpecification(),
+		Name:		framework.GetName(),
+		Version:	framework.GetVersion(),
+		Reference:	framework.GetReference(),
+		Specification:	framework.GetSpecification(),
 	}
 }
 
@@ -938,14 +938,14 @@ func (a *analyzer) convertDiagnostics(protoDiagnostics []*pulumirpc.AnalyzeDiagn
 		}
 
 		diagnostics[idx] = AnalyzeDiagnostic{
-			PolicyName:        protoD.PolicyName,
-			PolicyPackName:    protoD.PolicyPackName,
-			PolicyPackVersion: policyPackVersion,
-			Description:       protoD.Description,
-			Message:           protoD.Message,
-			EnforcementLevel:  enforcementLevel,
-			URN:               resource.URN(protoD.Urn),
-			Severity:          severity,
+			PolicyName:		protoD.PolicyName,
+			PolicyPackName:		protoD.PolicyPackName,
+			PolicyPackVersion:	policyPackVersion,
+			Description:		protoD.Description,
+			Message:		protoD.Message,
+			EnforcementLevel:	enforcementLevel,
+			URN:			resource.URN(protoD.Urn),
+			Severity:		severity,
 		}
 	}
 
@@ -960,8 +960,8 @@ func convertPolicyConfig(config map[string]*pulumirpc.PolicyConfig) (map[string]
 			return nil, err
 		}
 		result[k] = AnalyzerPolicyConfig{
-			EnforcementLevel: enforcementLevel,
-			Properties:       v.GetProperties().AsMap(),
+			EnforcementLevel:	enforcementLevel,
+			Properties:		v.GetProperties().AsMap(),
 		}
 	}
 	return result, nil
@@ -970,8 +970,8 @@ func convertPolicyConfig(config map[string]*pulumirpc.PolicyConfig) (map[string]
 func convertNotApplicable(protoNotApplicable []*pulumirpc.PolicyNotApplicable) []PolicyNotApplicable {
 	return slice.Map(protoNotApplicable, func(p *pulumirpc.PolicyNotApplicable) PolicyNotApplicable {
 		return PolicyNotApplicable{
-			PolicyName: p.PolicyName,
-			Reason:     p.Reason,
+			PolicyName:	p.PolicyName,
+			Reason:		p.Reason,
 		}
 	})
 }

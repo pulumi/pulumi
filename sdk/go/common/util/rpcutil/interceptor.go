@@ -91,8 +91,8 @@ func OpenTracingInterceptorDialOptions(opts ...otgrpc.Option) []grpc.DialOption 
 // Wraps an opentracing.Tracer to reparent orphan traces with a given
 // default parent span.
 type reparentingTracer struct {
-	parentSpanContext opentracing.SpanContext
-	underlying        opentracing.Tracer
+	parentSpanContext	opentracing.SpanContext
+	underlying		opentracing.Tracer
 }
 
 func (t *reparentingTracer) StartSpan(operationName string, opts ...opentracing.StartSpanOption) opentracing.Span {

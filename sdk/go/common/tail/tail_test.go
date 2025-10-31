@@ -219,7 +219,7 @@ func TestOver4096ByteLineWithSetMaxLineSize(t *testing.T) {
 func TestReOpenWithCursor(t *testing.T) {
 	t.Parallel()
 
-	delay := 300 * time.Millisecond // account for POLL_DURATION
+	delay := 300 * time.Millisecond	// account for POLL_DURATION
 	tailTest, cleanup := NewTailTest("reopen-cursor", t)
 	defer cleanup()
 	tailTest.CreateFile("test.txt", "hello\nworld\n")
@@ -393,8 +393,8 @@ func TestTell(t *testing.T) {
 	defer cleanup()
 	tailTest.CreateFile("test.txt", "hello\nworld\nagain\nmore\n")
 	config := Config{
-		Follow:   false,
-		Location: &SeekInfo{0, io.SeekStart},
+		Follow:		false,
+		Location:	&SeekInfo{0, io.SeekStart},
 	}
 	tail := tailTest.StartTail("test.txt", config)
 	// read one line
@@ -409,8 +409,8 @@ func TestTell(t *testing.T) {
 	require.NoError(t, tail.Stop())
 
 	config = Config{
-		Follow:   false,
-		Location: &SeekInfo{offset, io.SeekStart},
+		Follow:		false,
+		Location:	&SeekInfo{offset, io.SeekStart},
 	}
 	tail = tailTest.StartTail("test.txt", config)
 	for l := range tail.Lines {
@@ -499,7 +499,7 @@ func reOpen(t *testing.T, poll bool) {
 	var delay time.Duration
 	if poll {
 		name = "reopen-polling"
-		delay = 300 * time.Millisecond // account for POLL_DURATION
+		delay = 300 * time.Millisecond	// account for POLL_DURATION
 	} else {
 		name = "reopen-inotify"
 		delay = 100 * time.Millisecond
@@ -553,7 +553,7 @@ func TestInotify_WaitForCreateThenMove(t *testing.T) {
 
 	tailTest, cleanup := NewTailTest("wait-for-create-then-reopen", t)
 	defer cleanup()
-	os.Remove(tailTest.path + "/test.txt") // Make sure the file does NOT exist.
+	os.Remove(tailTest.path + "/test.txt")	// Make sure the file does NOT exist.
 
 	tail := tailTest.StartTail(
 		"test.txt",
@@ -585,8 +585,8 @@ func TestIncompleteLines(t *testing.T) {
 	defer cleanup()
 	filename := "test.txt"
 	config := Config{
-		Follow:        true,
-		CompleteLines: true,
+		Follow:		true,
+		CompleteLines:	true,
 	}
 	tail := tailTest.StartTail(filename, config)
 	go func() {
@@ -616,9 +616,9 @@ func TestIncompleteLongLines(t *testing.T) {
 	defer cleanup()
 	filename := "test.txt"
 	config := Config{
-		Follow:        true,
-		MaxLineSize:   3,
-		CompleteLines: true,
+		Follow:		true,
+		MaxLineSize:	3,
+		CompleteLines:	true,
 	}
 	tail := tailTest.StartTail(filename, config)
 	go func() {
@@ -646,8 +646,8 @@ func TestIncompleteLinesWithReopens(t *testing.T) {
 	defer cleanup()
 	filename := "test.txt"
 	config := Config{
-		Follow:        true,
-		CompleteLines: true,
+		Follow:		true,
+		CompleteLines:	true,
 	}
 	tail := tailTest.StartTail(filename, config)
 	go func() {
@@ -674,8 +674,8 @@ func TestIncompleteLinesWithoutFollow(t *testing.T) {
 	defer cleanup()
 	filename := "test.txt"
 	config := Config{
-		Follow:        false,
-		CompleteLines: true,
+		Follow:		false,
+		CompleteLines:	true,
 	}
 	tail := tailTest.StartTail(filename, config)
 	go func() {
@@ -729,9 +729,9 @@ func reSeek(t *testing.T, poll bool) {
 // Test library
 
 type TailTest struct {
-	Name string
-	path string
-	done chan struct{}
+	Name	string
+	path	string
+	done	chan struct{}
 	*testing.T
 }
 

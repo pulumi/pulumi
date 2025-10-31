@@ -34,10 +34,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Engine_Log_FullMethodName             = "/pulumirpc.Engine/Log"
-	Engine_GetRootResource_FullMethodName = "/pulumirpc.Engine/GetRootResource"
-	Engine_SetRootResource_FullMethodName = "/pulumirpc.Engine/SetRootResource"
-	Engine_StartDebugging_FullMethodName  = "/pulumirpc.Engine/StartDebugging"
+	Engine_Log_FullMethodName		= "/pulumirpc.Engine/Log"
+	Engine_GetRootResource_FullMethodName	= "/pulumirpc.Engine/GetRootResource"
+	Engine_SetRootResource_FullMethodName	= "/pulumirpc.Engine/SetRootResource"
+	Engine_StartDebugging_FullMethodName	= "/pulumirpc.Engine/StartDebugging"
 )
 
 // EngineClient is the client API for Engine service.
@@ -148,8 +148,8 @@ func (UnimplementedEngineServer) SetRootResource(context.Context, *SetRootResour
 func (UnimplementedEngineServer) StartDebugging(context.Context, *StartDebuggingRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StartDebugging not implemented")
 }
-func (UnimplementedEngineServer) mustEmbedUnimplementedEngineServer() {}
-func (UnimplementedEngineServer) testEmbeddedByValue()                {}
+func (UnimplementedEngineServer) mustEmbedUnimplementedEngineServer()	{}
+func (UnimplementedEngineServer) testEmbeddedByValue()			{}
 
 // UnsafeEngineServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to EngineServer will
@@ -178,8 +178,8 @@ func _Engine_Log_Handler(srv interface{}, ctx context.Context, dec func(interfac
 		return srv.(EngineServer).Log(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Engine_Log_FullMethodName,
+		Server:		srv,
+		FullMethod:	Engine_Log_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EngineServer).Log(ctx, req.(*LogRequest))
@@ -196,8 +196,8 @@ func _Engine_GetRootResource_Handler(srv interface{}, ctx context.Context, dec f
 		return srv.(EngineServer).GetRootResource(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Engine_GetRootResource_FullMethodName,
+		Server:		srv,
+		FullMethod:	Engine_GetRootResource_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EngineServer).GetRootResource(ctx, req.(*GetRootResourceRequest))
@@ -214,8 +214,8 @@ func _Engine_SetRootResource_Handler(srv interface{}, ctx context.Context, dec f
 		return srv.(EngineServer).SetRootResource(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Engine_SetRootResource_FullMethodName,
+		Server:		srv,
+		FullMethod:	Engine_SetRootResource_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EngineServer).SetRootResource(ctx, req.(*SetRootResourceRequest))
@@ -232,8 +232,8 @@ func _Engine_StartDebugging_Handler(srv interface{}, ctx context.Context, dec fu
 		return srv.(EngineServer).StartDebugging(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Engine_StartDebugging_FullMethodName,
+		Server:		srv,
+		FullMethod:	Engine_StartDebugging_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EngineServer).StartDebugging(ctx, req.(*StartDebuggingRequest))
@@ -245,26 +245,26 @@ func _Engine_StartDebugging_Handler(srv interface{}, ctx context.Context, dec fu
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Engine_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "pulumirpc.Engine",
-	HandlerType: (*EngineServer)(nil),
+	ServiceName:	"pulumirpc.Engine",
+	HandlerType:	(*EngineServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Log",
-			Handler:    _Engine_Log_Handler,
+			MethodName:	"Log",
+			Handler:	_Engine_Log_Handler,
 		},
 		{
-			MethodName: "GetRootResource",
-			Handler:    _Engine_GetRootResource_Handler,
+			MethodName:	"GetRootResource",
+			Handler:	_Engine_GetRootResource_Handler,
 		},
 		{
-			MethodName: "SetRootResource",
-			Handler:    _Engine_SetRootResource_Handler,
+			MethodName:	"SetRootResource",
+			Handler:	_Engine_SetRootResource_Handler,
 		},
 		{
-			MethodName: "StartDebugging",
-			Handler:    _Engine_StartDebugging_Handler,
+			MethodName:	"StartDebugging",
+			Handler:	_Engine_StartDebugging_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "pulumi/engine.proto",
+	Streams:	[]grpc.StreamDesc{},
+	Metadata:	"pulumi/engine.proto",
 }

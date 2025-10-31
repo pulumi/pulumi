@@ -31,11 +31,11 @@ func TestProviderServer_Configure_variables(t *testing.T) {
 	provider := stubProvider{
 		ConfigureFunc: func(pm resource.PropertyMap) error {
 			assert.Equal(t, map[string]any{
-				"foo": "bar",
-				"baz": 42.0,
+				"foo":	"bar",
+				"baz":	42.0,
 				"qux": map[string]any{
-					"a": "str",
-					"b": true,
+					"a":	"str",
+					"b":	true,
 				},
 			}, pm.Mappable())
 			return nil
@@ -46,9 +46,9 @@ func TestProviderServer_Configure_variables(t *testing.T) {
 	ctx := context.Background()
 	_, err := srv.Configure(ctx, &pulumirpc.ConfigureRequest{
 		Variables: map[string]string{
-			"ns:foo": `"bar"`,
-			"ns:baz": "42",
-			"ns:qux": `{"a": "str", "b": true}`,
+			"ns:foo":	`"bar"`,
+			"ns:baz":	"42",
+			"ns:qux":	`{"a": "str", "b": true}`,
 		},
 	})
 	require.NoError(t, err)
@@ -59,12 +59,12 @@ func TestProviderServer_Configure_variables(t *testing.T) {
 type stubProvider struct {
 	Provider
 
-	ReadFunc func(
+	ReadFunc	func(
 		urn resource.URN, id resource.ID,
 		inputs, state resource.PropertyMap,
 	) (ReadResult, resource.Status, error)
 
-	ConfigureFunc func(resource.PropertyMap) error
+	ConfigureFunc	func(resource.PropertyMap) error
 }
 
 func (p *stubProvider) Configure(ctx context.Context, req ConfigureRequest) (ConfigureResponse, error) {
@@ -79,8 +79,8 @@ func (p *stubProvider) Read(ctx context.Context, req ReadRequest) (ReadResponse,
 	if p.ReadFunc != nil {
 		props, status, err := p.ReadFunc(req.URN, req.ID, req.Inputs, req.State)
 		return ReadResponse{
-			ReadResult: props,
-			Status:     status,
+			ReadResult:	props,
+			Status:		status,
 		}, err
 	}
 	return p.Provider.Read(ctx, req)
@@ -96,7 +96,7 @@ func TestProviderServer_Read_respects_ID(t *testing.T) {
 			inputs, state resource.PropertyMap,
 		) (ReadResult, resource.Status, error) {
 			return ReadResult{
-				ID: resource.ID("none"),
+				ID:	resource.ID("none"),
 				Outputs: resource.NewPropertyMapFromMap(map[string]any{
 					"result": resource.NewProperty(&resource.Secret{
 						Element: resource.NewProperty(string(id)),
@@ -108,8 +108,8 @@ func TestProviderServer_Read_respects_ID(t *testing.T) {
 	secret := "supersecretpassword"
 	srv := NewProviderServer(&provider)
 	resp, err := srv.Read(ctx, &pulumirpc.ReadRequest{
-		Urn: "urn:pulumi:v2::re::random:index/randomPassword:RandomPassword::newPassword",
-		Id:  secret,
+		Urn:	"urn:pulumi:v2::re::random:index/randomPassword:RandomPassword::newPassword",
+		Id:	secret,
 	})
 	require.NoError(t, err)
 	require.NotEqual(t, secret, resp.Id)

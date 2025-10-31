@@ -30,17 +30,17 @@ import (
 
 const (
 	// Verify that this generated code is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
+	_	= protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
+	_	= protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
 // PluginInfo is meta-information about a plugin that is used by the system.
 type PluginInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Version       string                 `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"` // the semver for this plugin.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Version		string			`protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`	// the semver for this plugin.
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *PluginInfo) Reset() {
@@ -54,7 +54,7 @@ func (x *PluginInfo) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PluginInfo) ProtoMessage() {}
+func (*PluginInfo) ProtoMessage()	{}
 
 func (x *PluginInfo) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_plugin_proto_msgTypes[0]
@@ -82,16 +82,16 @@ func (x *PluginInfo) GetVersion() string {
 
 // PluginDependency is information about a plugin that a program may depend upon.
 type PluginDependency struct {
-	state   protoimpl.MessageState `protogen:"open.v1"`
-	Name    string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`       // the name of the plugin.
-	Kind    string                 `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`       // the kind of plugin (e.g., language, etc).
-	Version string                 `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"` // the semver for this plugin.
-	Server  string                 `protobuf:"bytes,4,opt,name=server,proto3" json:"server,omitempty"`   // the URL of a server that can be used to download this plugin, if needed.
+	state	protoimpl.MessageState	`protogen:"open.v1"`
+	Name	string			`protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`		// the name of the plugin.
+	Kind	string			`protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`		// the kind of plugin (e.g., language, etc).
+	Version	string			`protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`	// the semver for this plugin.
+	Server	string			`protobuf:"bytes,4,opt,name=server,proto3" json:"server,omitempty"`	// the URL of a server that can be used to download this plugin, if needed.
 	// a map of the checksums for the plugin, will be empty from old language runtimes. The keys should match
 	// the os and architecture names used in pulumi releases, e.g. "darwin-amd64", "windows-arm64".
-	Checksums     map[string][]byte `protobuf:"bytes,5,rep,name=checksums,proto3" json:"checksums,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Checksums	map[string][]byte	`protobuf:"bytes,5,rep,name=checksums,proto3" json:"checksums,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *PluginDependency) Reset() {
@@ -105,7 +105,7 @@ func (x *PluginDependency) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PluginDependency) ProtoMessage() {}
+func (*PluginDependency) ProtoMessage()	{}
 
 func (x *PluginDependency) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_plugin_proto_msgTypes[1]
@@ -165,10 +165,10 @@ func (x *PluginDependency) GetChecksums() map[string][]byte {
 // But when debugging it can be useful to have an already running provider that the engine instead attaches
 // to, this message is used so the provider can still be passed the engine address to communicate with.
 type PluginAttach struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Address       string                 `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"` // the grpc address for the engine
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Address		string			`protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`	// the grpc address for the engine
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *PluginAttach) Reset() {
@@ -182,7 +182,7 @@ func (x *PluginAttach) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PluginAttach) ProtoMessage() {}
+func (*PluginAttach) ProtoMessage()	{}
 
 func (x *PluginAttach) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_plugin_proto_msgTypes[2]
@@ -209,12 +209,12 @@ func (x *PluginAttach) GetAddress() string {
 }
 
 type PackageParameterization struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`       // the parameterized package name.
-	Version       string                 `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"` // the parameterized package version.
-	Value         []byte                 `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`     // the parameter value for the parameterized package.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Name		string			`protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`		// the parameterized package name.
+	Version		string			`protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`	// the parameterized package version.
+	Value		[]byte			`protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`	// the parameter value for the parameterized package.
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *PackageParameterization) Reset() {
@@ -228,7 +228,7 @@ func (x *PackageParameterization) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PackageParameterization) ProtoMessage() {}
+func (*PackageParameterization) ProtoMessage()	{}
 
 func (x *PackageParameterization) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_plugin_proto_msgTypes[3]
@@ -270,18 +270,18 @@ func (x *PackageParameterization) GetValue() []byte {
 
 // PackageDependency is information about a package that a program may depend upon.
 type PackageDependency struct {
-	state   protoimpl.MessageState `protogen:"open.v1"`
-	Name    string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`       // the name of the plugin.
-	Kind    string                 `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`       // the kind of plugin (e.g., language, etc).
-	Version string                 `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"` // the semver for this plugin.
-	Server  string                 `protobuf:"bytes,4,opt,name=server,proto3" json:"server,omitempty"`   // the URL of a server that can be used to download this plugin, if needed.
+	state	protoimpl.MessageState	`protogen:"open.v1"`
+	Name	string			`protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`		// the name of the plugin.
+	Kind	string			`protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`		// the kind of plugin (e.g., language, etc).
+	Version	string			`protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`	// the semver for this plugin.
+	Server	string			`protobuf:"bytes,4,opt,name=server,proto3" json:"server,omitempty"`	// the URL of a server that can be used to download this plugin, if needed.
 	// a map of the checksums for the plugin, will be empty from old language runtimes. The keys should match
 	// the os and architecture names used in pulumi releases, e.g. "darwin-amd64", "windows-arm64".
-	Checksums map[string][]byte `protobuf:"bytes,5,rep,name=checksums,proto3" json:"checksums,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Checksums	map[string][]byte	`protobuf:"bytes,5,rep,name=checksums,proto3" json:"checksums,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// The optional parameterization for this package.
-	Parameterization *PackageParameterization `protobuf:"bytes,6,opt,name=parameterization,proto3" json:"parameterization,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	Parameterization	*PackageParameterization	`protobuf:"bytes,6,opt,name=parameterization,proto3" json:"parameterization,omitempty"`
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *PackageDependency) Reset() {
@@ -295,7 +295,7 @@ func (x *PackageDependency) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PackageDependency) ProtoMessage() {}
+func (*PackageDependency) ProtoMessage()	{}
 
 func (x *PackageDependency) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_plugin_proto_msgTypes[4]
@@ -391,8 +391,8 @@ const file_pulumi_plugin_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01B4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3"
 
 var (
-	file_pulumi_plugin_proto_rawDescOnce sync.Once
-	file_pulumi_plugin_proto_rawDescData []byte
+	file_pulumi_plugin_proto_rawDescOnce	sync.Once
+	file_pulumi_plugin_proto_rawDescData	[]byte
 )
 
 func file_pulumi_plugin_proto_rawDescGZIP() []byte {
@@ -404,26 +404,26 @@ func file_pulumi_plugin_proto_rawDescGZIP() []byte {
 
 var file_pulumi_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_pulumi_plugin_proto_goTypes = []any{
-	(*PluginInfo)(nil),              // 0: pulumirpc.PluginInfo
-	(*PluginDependency)(nil),        // 1: pulumirpc.PluginDependency
-	(*PluginAttach)(nil),            // 2: pulumirpc.PluginAttach
-	(*PackageParameterization)(nil), // 3: pulumirpc.PackageParameterization
-	(*PackageDependency)(nil),       // 4: pulumirpc.PackageDependency
-	nil,                             // 5: pulumirpc.PluginDependency.ChecksumsEntry
-	nil,                             // 6: pulumirpc.PackageDependency.ChecksumsEntry
+	(*PluginInfo)(nil),			// 0: pulumirpc.PluginInfo
+	(*PluginDependency)(nil),		// 1: pulumirpc.PluginDependency
+	(*PluginAttach)(nil),			// 2: pulumirpc.PluginAttach
+	(*PackageParameterization)(nil),	// 3: pulumirpc.PackageParameterization
+	(*PackageDependency)(nil),		// 4: pulumirpc.PackageDependency
+	nil,					// 5: pulumirpc.PluginDependency.ChecksumsEntry
+	nil,					// 6: pulumirpc.PackageDependency.ChecksumsEntry
 }
 var file_pulumi_plugin_proto_depIdxs = []int32{
-	5, // 0: pulumirpc.PluginDependency.checksums:type_name -> pulumirpc.PluginDependency.ChecksumsEntry
-	6, // 1: pulumirpc.PackageDependency.checksums:type_name -> pulumirpc.PackageDependency.ChecksumsEntry
-	3, // 2: pulumirpc.PackageDependency.parameterization:type_name -> pulumirpc.PackageParameterization
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	5,	// 0: pulumirpc.PluginDependency.checksums:type_name -> pulumirpc.PluginDependency.ChecksumsEntry
+	6,	// 1: pulumirpc.PackageDependency.checksums:type_name -> pulumirpc.PackageDependency.ChecksumsEntry
+	3,	// 2: pulumirpc.PackageDependency.parameterization:type_name -> pulumirpc.PackageParameterization
+	3,	// [3:3] is the sub-list for method output_type
+	3,	// [3:3] is the sub-list for method input_type
+	3,	// [3:3] is the sub-list for extension type_name
+	3,	// [3:3] is the sub-list for extension extendee
+	0,	// [0:3] is the sub-list for field type_name
 }
 
-func init() { file_pulumi_plugin_proto_init() }
+func init()	{ file_pulumi_plugin_proto_init() }
 func file_pulumi_plugin_proto_init() {
 	if File_pulumi_plugin_proto != nil {
 		return
@@ -431,16 +431,16 @@ func file_pulumi_plugin_proto_init() {
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
-			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_plugin_proto_rawDesc), len(file_pulumi_plugin_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   7,
-			NumExtensions: 0,
-			NumServices:   0,
+			GoPackagePath:	reflect.TypeOf(x{}).PkgPath(),
+			RawDescriptor:	unsafe.Slice(unsafe.StringData(file_pulumi_plugin_proto_rawDesc), len(file_pulumi_plugin_proto_rawDesc)),
+			NumEnums:	0,
+			NumMessages:	7,
+			NumExtensions:	0,
+			NumServices:	0,
 		},
-		GoTypes:           file_pulumi_plugin_proto_goTypes,
-		DependencyIndexes: file_pulumi_plugin_proto_depIdxs,
-		MessageInfos:      file_pulumi_plugin_proto_msgTypes,
+		GoTypes:		file_pulumi_plugin_proto_goTypes,
+		DependencyIndexes:	file_pulumi_plugin_proto_depIdxs,
+		MessageInfos:		file_pulumi_plugin_proto_msgTypes,
 	}.Build()
 	File_pulumi_plugin_proto = out.File
 	file_pulumi_plugin_proto_goTypes = nil

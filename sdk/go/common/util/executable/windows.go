@@ -26,8 +26,8 @@ import (
 )
 
 var (
-	kernel32       = windows.NewLazySystemDLL("kernel32.dll")
-	getBinaryTypeW = kernel32.NewProc("GetBinaryTypeW")
+	kernel32	= windows.NewLazySystemDLL("kernel32.dll")
+	getBinaryTypeW	= kernel32.NewProc("GetBinaryTypeW")
 )
 
 func IsExecutable(path string) (bool, error) {

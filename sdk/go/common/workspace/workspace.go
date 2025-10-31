@@ -31,19 +31,19 @@ import (
 
 // W offers functionality for interacting with Pulumi workspaces.
 type W interface {
-	Settings() *Settings // returns a mutable pointer to the optional workspace settings info.
-	Save() error         // saves any modifications to the workspace.
+	Settings() *Settings	// returns a mutable pointer to the optional workspace settings info.
+	Save() error		// saves any modifications to the workspace.
 }
 
 type projectWorkspace struct {
-	name     tokens.PackageName // the package this workspace is associated with.
-	project  string             // the path to the Pulumi.[yaml|json] file for this project.
-	settings *Settings          // settings for this workspace.
+	name		tokens.PackageName	// the package this workspace is associated with.
+	project		string			// the path to the Pulumi.[yaml|json] file for this project.
+	settings	*Settings		// settings for this workspace.
 }
 
 var (
-	cache      = make(map[string]W)
-	cacheMutex sync.RWMutex
+	cache		= make(map[string]W)
+	cacheMutex	sync.RWMutex
 )
 
 func loadFromCache(key string) (W, bool) {
@@ -99,8 +99,8 @@ func NewFrom(dir string) (W, error) {
 	}
 
 	w := &projectWorkspace{
-		name:    proj.Name,
-		project: path,
+		name:		proj.Name,
+		project:	path,
 	}
 
 	err = w.readSettings()

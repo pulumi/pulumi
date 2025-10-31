@@ -200,7 +200,7 @@ func checkFiles(t *testing.T, prefixPathInsideTar, path string, expected []fileC
 }
 
 type fileContents struct {
-	name         string
-	contents     []byte
-	shouldRetain bool
+	name		string
+	contents	[]byte
+	shouldRetain	bool
 }

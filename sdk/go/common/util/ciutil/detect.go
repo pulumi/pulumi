@@ -30,117 +30,117 @@ var detectors = []system{
 	// CI system that we may detect.
 	genericCICI{
 		baseCI: baseCI{
-			Name:            SystemName(os.Getenv("PULUMI_CI_SYSTEM")),
-			EnvVarsToDetect: []string{"PULUMI_CI_SYSTEM"},
+			Name:			SystemName(os.Getenv("PULUMI_CI_SYSTEM")),
+			EnvVarsToDetect:	[]string{"PULUMI_CI_SYSTEM"},
 		},
 	},
 
 	// Supported CI systems, in alphabetical order. We expect (rather, support) exactly one of these matching, so their
 	// order should not really matter.
 	baseCI{
-		Name:            AppVeyor,
-		EnvVarsToDetect: []string{"APPVEYOR"},
+		Name:			AppVeyor,
+		EnvVarsToDetect:	[]string{"APPVEYOR"},
 	},
 	baseCI{
-		Name:            AWSCodeBuild,
-		EnvVarsToDetect: []string{"CODEBUILD_BUILD_ARN"},
+		Name:			AWSCodeBuild,
+		EnvVarsToDetect:	[]string{"CODEBUILD_BUILD_ARN"},
 	},
 	baseCI{
-		Name:            AtlassianBamboo,
-		EnvVarsToDetect: []string{"bamboo_planKey"},
+		Name:			AtlassianBamboo,
+		EnvVarsToDetect:	[]string{"bamboo_planKey"},
 	},
 	bitbucketPipelinesCI{
 		baseCI: baseCI{
-			Name:            AtlassianBitbucketPipelines,
-			EnvVarsToDetect: []string{"BITBUCKET_COMMIT"},
+			Name:			AtlassianBitbucketPipelines,
+			EnvVarsToDetect:	[]string{"BITBUCKET_COMMIT"},
 		},
 	},
 	azurePipelinesCI{
 		baseCI: baseCI{
-			Name:            AzurePipelines,
-			EnvVarsToDetect: []string{"TF_BUILD"},
+			Name:			AzurePipelines,
+			EnvVarsToDetect:	[]string{"TF_BUILD"},
 		},
 	},
 	buildkiteCI{
 		baseCI: baseCI{
-			Name:            Buildkite,
-			EnvVarsToDetect: []string{"BUILDKITE"},
+			Name:			Buildkite,
+			EnvVarsToDetect:	[]string{"BUILDKITE"},
 		},
 	},
 	circleCICI{
 		baseCI: baseCI{
-			Name:            CircleCI,
-			EnvVarsToDetect: []string{"CIRCLECI"},
+			Name:			CircleCI,
+			EnvVarsToDetect:	[]string{"CIRCLECI"},
 		},
 	},
 	codefreshCI{
 		baseCI: baseCI{
-			Name:            Codefresh,
-			EnvVarsToDetect: []string{"CF_BUILD_URL"},
+			Name:			Codefresh,
+			EnvVarsToDetect:	[]string{"CF_BUILD_URL"},
 		},
 	},
 	baseCI{
-		Name:              Codeship,
-		EnvValuesToDetect: map[string]string{"CI_NAME": "codeship"},
+		Name:			Codeship,
+		EnvValuesToDetect:	map[string]string{"CI_NAME": "codeship"},
 	},
 	baseCI{
-		Name:            Drone,
-		EnvVarsToDetect: []string{"DRONE"},
+		Name:			Drone,
+		EnvVarsToDetect:	[]string{"DRONE"},
 	},
 
 	githubActionsCI{
 		baseCI{
-			Name:            GitHubActions,
-			EnvVarsToDetect: []string{"GITHUB_ACTIONS"},
+			Name:			GitHubActions,
+			EnvVarsToDetect:	[]string{"GITHUB_ACTIONS"},
 		},
 	},
 	gitlabCI{
 		baseCI: baseCI{
-			Name:            GitLab,
-			EnvVarsToDetect: []string{"GITLAB_CI"},
+			Name:			GitLab,
+			EnvVarsToDetect:	[]string{"GITLAB_CI"},
 		},
 	},
 	baseCI{
-		Name:            GoCD,
-		EnvVarsToDetect: []string{"GO_PIPELINE_LABEL"},
+		Name:			GoCD,
+		EnvVarsToDetect:	[]string{"GO_PIPELINE_LABEL"},
 	},
 	baseCI{
-		Name:            Hudson,
-		EnvVarsToDetect: []string{"HUDSON_URL"},
+		Name:			Hudson,
+		EnvVarsToDetect:	[]string{"HUDSON_URL"},
 	},
 	jenkinsCI{
 		baseCI: baseCI{
-			Name:            Jenkins,
-			EnvVarsToDetect: []string{"JENKINS_URL"},
+			Name:			Jenkins,
+			EnvVarsToDetect:	[]string{"JENKINS_URL"},
 		},
 	},
 	baseCI{
-		Name:            MagnumCI,
-		EnvVarsToDetect: []string{"MAGNUM"},
+		Name:			MagnumCI,
+		EnvVarsToDetect:	[]string{"MAGNUM"},
 	},
 	baseCI{
-		Name:            Semaphore,
-		EnvVarsToDetect: []string{"SEMAPHORE"},
+		Name:			Semaphore,
+		EnvVarsToDetect:	[]string{"SEMAPHORE"},
 	},
 	baseCI{
-		Name: Spacelift,
+		Name:	Spacelift,
 		EnvVarsToDetect: []string{
 			"SPACELIFT_MAX_REQUESTS_BURST", "TF_VAR_spacelift_run_trigger", "SPACELIFT_STORE_HOOKS_ENV_VARS",
 			"TF_VAR_spacelift_commit_branch", "SPACELIFT_WORKER_TRACING_ENABLED",
 		},
 	},
 	baseCI{
-		Name:            TaskCluster,
-		EnvVarsToDetect: []string{"TASK_ID", "RUN_ID"},
+		Name:			TaskCluster,
+		EnvVarsToDetect:	[]string{"TASK_ID", "RUN_ID"},
 	},
 	baseCI{
-		Name:            TeamCity,
-		EnvVarsToDetect: []string{"TEAMCITY_VERSION"},
+		Name:			TeamCity,
+		EnvVarsToDetect:	[]string{"TEAMCITY_VERSION"},
 	},
 	travisCI{
 		baseCI: baseCI{
-			Name:            Travis,
-			EnvVarsToDetect: []string{"TRAVIS"},
+			Name:			Travis,
+			EnvVarsToDetect:	[]string{"TRAVIS"},
 		},
 	},
 }

@@ -30,19 +30,19 @@ import (
 
 const (
 	// Verify that this generated code is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
+	_	= protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
+	_	= protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
 // A SourcePosition represents a position in a source file.
 type SourcePosition struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Uri           string                 `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty"`        // The URI of the file. Currently only the file scheme with an absolute path is supported.
-	Line          int32                  `protobuf:"varint,2,opt,name=line,proto3" json:"line,omitempty"`     // The line in the file
-	Column        int32                  `protobuf:"varint,3,opt,name=column,proto3" json:"column,omitempty"` // The column in the line
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Uri		string			`protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty"`		// The URI of the file. Currently only the file scheme with an absolute path is supported.
+	Line		int32			`protobuf:"varint,2,opt,name=line,proto3" json:"line,omitempty"`	// The line in the file
+	Column		int32			`protobuf:"varint,3,opt,name=column,proto3" json:"column,omitempty"`	// The column in the line
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *SourcePosition) Reset() {
@@ -56,7 +56,7 @@ func (x *SourcePosition) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SourcePosition) ProtoMessage() {}
+func (*SourcePosition) ProtoMessage()	{}
 
 func (x *SourcePosition) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_source_proto_msgTypes[0]
@@ -98,10 +98,10 @@ func (x *SourcePosition) GetColumn() int32 {
 
 // A StackFrame represents a single stack frame.
 type StackFrame struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Pc            *SourcePosition        `protobuf:"bytes,1,opt,name=pc,proto3" json:"pc,omitempty"` // The position of the frame's program counter. Optional.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Pc		*SourcePosition		`protobuf:"bytes,1,opt,name=pc,proto3" json:"pc,omitempty"`	// The position of the frame's program counter. Optional.
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *StackFrame) Reset() {
@@ -115,7 +115,7 @@ func (x *StackFrame) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*StackFrame) ProtoMessage() {}
+func (*StackFrame) ProtoMessage()	{}
 
 func (x *StackFrame) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_source_proto_msgTypes[1]
@@ -143,10 +143,10 @@ func (x *StackFrame) GetPc() *SourcePosition {
 
 // A StackTrace represents the frames on the stack at the point of an RPC call.
 type StackTrace struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Frames        []*StackFrame          `protobuf:"bytes,1,rep,name=frames,proto3" json:"frames,omitempty"` // The frames on the stack.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	Frames		[]*StackFrame		`protobuf:"bytes,1,rep,name=frames,proto3" json:"frames,omitempty"`	// The frames on the stack.
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *StackTrace) Reset() {
@@ -160,7 +160,7 @@ func (x *StackTrace) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*StackTrace) ProtoMessage() {}
+func (*StackTrace) ProtoMessage()	{}
 
 func (x *StackTrace) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_source_proto_msgTypes[2]
@@ -203,8 +203,8 @@ const file_pulumi_source_proto_rawDesc = "" +
 	"\x06frames\x18\x01 \x03(\v2\x15.pulumirpc.StackFrameR\x06framesB4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3"
 
 var (
-	file_pulumi_source_proto_rawDescOnce sync.Once
-	file_pulumi_source_proto_rawDescData []byte
+	file_pulumi_source_proto_rawDescOnce	sync.Once
+	file_pulumi_source_proto_rawDescData	[]byte
 )
 
 func file_pulumi_source_proto_rawDescGZIP() []byte {
@@ -216,21 +216,21 @@ func file_pulumi_source_proto_rawDescGZIP() []byte {
 
 var file_pulumi_source_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_pulumi_source_proto_goTypes = []any{
-	(*SourcePosition)(nil), // 0: pulumirpc.SourcePosition
-	(*StackFrame)(nil),     // 1: pulumirpc.StackFrame
-	(*StackTrace)(nil),     // 2: pulumirpc.StackTrace
+	(*SourcePosition)(nil),	// 0: pulumirpc.SourcePosition
+	(*StackFrame)(nil),	// 1: pulumirpc.StackFrame
+	(*StackTrace)(nil),	// 2: pulumirpc.StackTrace
 }
 var file_pulumi_source_proto_depIdxs = []int32{
-	0, // 0: pulumirpc.StackFrame.pc:type_name -> pulumirpc.SourcePosition
-	1, // 1: pulumirpc.StackTrace.frames:type_name -> pulumirpc.StackFrame
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	0,	// 0: pulumirpc.StackFrame.pc:type_name -> pulumirpc.SourcePosition
+	1,	// 1: pulumirpc.StackTrace.frames:type_name -> pulumirpc.StackFrame
+	2,	// [2:2] is the sub-list for method output_type
+	2,	// [2:2] is the sub-list for method input_type
+	2,	// [2:2] is the sub-list for extension type_name
+	2,	// [2:2] is the sub-list for extension extendee
+	0,	// [0:2] is the sub-list for field type_name
 }
 
-func init() { file_pulumi_source_proto_init() }
+func init()	{ file_pulumi_source_proto_init() }
 func file_pulumi_source_proto_init() {
 	if File_pulumi_source_proto != nil {
 		return
@@ -238,16 +238,16 @@ func file_pulumi_source_proto_init() {
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
-			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_source_proto_rawDesc), len(file_pulumi_source_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   3,
-			NumExtensions: 0,
-			NumServices:   0,
+			GoPackagePath:	reflect.TypeOf(x{}).PkgPath(),
+			RawDescriptor:	unsafe.Slice(unsafe.StringData(file_pulumi_source_proto_rawDesc), len(file_pulumi_source_proto_rawDesc)),
+			NumEnums:	0,
+			NumMessages:	3,
+			NumExtensions:	0,
+			NumServices:	0,
 		},
-		GoTypes:           file_pulumi_source_proto_goTypes,
-		DependencyIndexes: file_pulumi_source_proto_depIdxs,
-		MessageInfos:      file_pulumi_source_proto_msgTypes,
+		GoTypes:		file_pulumi_source_proto_goTypes,
+		DependencyIndexes:	file_pulumi_source_proto_depIdxs,
+		MessageInfos:		file_pulumi_source_proto_msgTypes,
 	}.Build()
 	File_pulumi_source_proto = out.File
 	file_pulumi_source_proto_goTypes = nil

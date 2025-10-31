@@ -15,8 +15,8 @@ import (
 type SomeResource struct {
 	pulumi.CustomResourceState
 
-	Builtins pulumi.StringOutput `pulumi:"builtins"`
-	Property pulumi.StringOutput `pulumi:"property"`
+	Builtins	pulumi.StringOutput	`pulumi:"builtins"`
+	Property	pulumi.StringOutput	`pulumi:"property"`
 }
 
 // NewSomeResource registers a new resource with the given unique name, arguments, and options.
@@ -65,14 +65,14 @@ func (SomeResourceState) ElementType() reflect.Type {
 }
 
 type someResourceArgs struct {
-	Builtins string `pulumi:"builtins"`
-	Property string `pulumi:"property"`
+	Builtins	string	`pulumi:"builtins"`
+	Property	string	`pulumi:"property"`
 }
 
 // The set of arguments for constructing a SomeResource resource.
 type SomeResourceArgs struct {
-	Builtins pulumi.StringInput
-	Property pulumi.StringInput
+	Builtins	pulumi.StringInput
+	Property	pulumi.StringInput
 }
 
 func (SomeResourceArgs) ElementType() reflect.Type {

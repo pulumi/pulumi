@@ -139,8 +139,8 @@ func servePipes(ctx context.Context, pipes pipes, target pulumirpc.ResourceMonit
 					}
 
 					res.Failures = append(res.Failures, &pulumirpc.CheckFailure{
-						Property: "",
-						Reason:   err.Error(),
+						Property:	"",
+						Reason:		err.Error(),
 					})
 				}
 
@@ -186,7 +186,7 @@ func servePipes(ctx context.Context, pipes pipes, target pulumirpc.ResourceMonit
 type monitorProxy struct {
 	pulumirpc.UnsafeResourceMonitorServer
 
-	target pulumirpc.ResourceMonitorClient
+	target	pulumirpc.ResourceMonitorClient
 }
 
 func (p *monitorProxy) Invoke(

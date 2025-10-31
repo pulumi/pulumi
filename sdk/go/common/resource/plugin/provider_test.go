@@ -26,23 +26,23 @@ import (
 func TestNewDetailedDiff(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		name     string
-		diff     *resource.ObjectDiff
-		expected map[string]PropertyDiff
+		name		string
+		diff		*resource.ObjectDiff
+		expected	map[string]PropertyDiff
 	}{
 		{
-			name: "updates",
+			name:	"updates",
 			diff: resource.NewPropertyMapFromMap(map[string]any{
-				"a": 1,
+				"a":	1,
 				"b": map[string]any{
-					"c": 2,
-					"d": 3,
+					"c":	2,
+					"d":	3,
 				},
 			}).Diff(resource.NewPropertyMapFromMap(map[string]any{
-				"a": -1,
+				"a":	-1,
 				"b": map[string]any{
-					"c": -2,
-					"d": 3,
+					"c":	-2,
+					"d":	3,
 				},
 			})),
 			expected: map[string]PropertyDiff{
@@ -55,14 +55,14 @@ func TestNewDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			name: "adds and deletes",
+			name:	"adds and deletes",
 			diff: resource.NewPropertyMapFromMap(map[string]any{
 				"b": map[string]any{
-					"c": 2,
-					"d": 3,
+					"c":	2,
+					"d":	3,
 				},
 			}).Diff(resource.NewPropertyMapFromMap(map[string]any{
-				"a": 1,
+				"a":	1,
 				"b": map[string]any{
 					"d": 3,
 				},
@@ -77,11 +77,11 @@ func TestNewDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			name: "arrays",
+			name:	"arrays",
 			diff: resource.NewPropertyMapFromMap(map[string]any{
 				"a": []any{
 					map[string]any{
-						"a": 1,
+						"a":	1,
 						"b": []any{
 							2,
 							3,
@@ -92,7 +92,7 @@ func TestNewDetailedDiff(t *testing.T) {
 				map[string]any{
 					"a": []any{
 						map[string]any{
-							"a": -1,
+							"a":	-1,
 							"b": []any{
 								2,
 							},
@@ -113,9 +113,9 @@ func TestNewDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			name:     "nil diff",
-			diff:     nil,
-			expected: map[string]PropertyDiff{},
+			name:		"nil diff",
+			diff:		nil,
+			expected:	map[string]PropertyDiff{},
 		},
 	}
 
@@ -138,10 +138,10 @@ func TestNewDetailedDiffFromObjectDiff(t *testing.T) {
 	t.Parallel()
 
 	cases := map[string]struct {
-		diff          *resource.ObjectDiff
-		inputDiff     bool
-		expected      map[string]PropertyDiff
-		expectedPaths map[string]resource.PropertyPath
+		diff		*resource.ObjectDiff
+		inputDiff	bool
+		expected	map[string]PropertyDiff
+		expectedPaths	map[string]resource.PropertyPath
 	}{
 		"simple add": {
 			diff: &resource.ObjectDiff{
@@ -190,21 +190,21 @@ func TestNewDetailedDiffFromObjectDiff(t *testing.T) {
 			diff: &resource.ObjectDiff{
 				Updates: map[resource.PropertyKey]resource.ValueDiff{
 					"a": *resource.NewProperty(resource.PropertyMap{
-						"b.c":          resource.NewPropertyValue(1),
-						`"quoted key"`: resource.NewPropertyValue(2),
+						"b.c":		resource.NewPropertyValue(1),
+						`"quoted key"`:	resource.NewPropertyValue(2),
 					}).Diff(resource.NewProperty(resource.PropertyMap{
-						"b.c":          resource.NewPropertyValue(2),
-						`"quoted key"`: resource.NewPropertyValue(3),
+						"b.c":		resource.NewPropertyValue(2),
+						`"quoted key"`:	resource.NewPropertyValue(3),
 					})),
 				},
 			},
 			expected: map[string]PropertyDiff{
-				`a["\"quoted key\""]`: {Kind: DiffUpdate},
-				`a["b.c"]`:            {Kind: DiffUpdate},
+				`a["\"quoted key\""]`:	{Kind: DiffUpdate},
+				`a["b.c"]`:		{Kind: DiffUpdate},
 			},
 			expectedPaths: map[string]resource.PropertyPath{
-				`a["\"quoted key\""]`: {"a", `"quoted key"`},
-				`a["b.c"]`:            {"a", "b.c"},
+				`a["\"quoted key\""]`:	{"a", `"quoted key"`},
+				`a["b.c"]`:		{"a", "b.c"},
 			},
 		},
 	}

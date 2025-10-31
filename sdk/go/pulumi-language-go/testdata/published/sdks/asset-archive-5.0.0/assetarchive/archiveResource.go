@@ -15,7 +15,7 @@ import (
 type ArchiveResource struct {
 	pulumi.CustomResourceState
 
-	Value pulumi.ArchiveOutput `pulumi:"value"`
+	Value	pulumi.ArchiveOutput	`pulumi:"value"`
 }
 
 // NewArchiveResource registers a new resource with the given unique name, arguments, and options.

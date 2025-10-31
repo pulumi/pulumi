@@ -42,10 +42,10 @@ func TestResolvePackageFromName(t *testing.T) {
 				assert.Equal(t, "pulumi", publisher)
 				assert.Equal(t, "awsx", name)
 				return apitype.PackageMetadata{
-					Source:    source,
-					Publisher: publisher,
-					Name:      name,
-					Version:   semver.MustParse("1.0.0"),
+					Source:		source,
+					Publisher:	publisher,
+					Name:		name,
+					Version:	semver.MustParse("1.0.0"),
 				}, nil
 			},
 		}
@@ -66,10 +66,10 @@ func TestResolvePackageFromName(t *testing.T) {
 			) (apitype.PackageMetadata, error) {
 				assert.Equal(t, &desiredVersion, version)
 				return apitype.PackageMetadata{
-					Source:    source,
-					Publisher: publisher,
-					Name:      name,
-					Version:   desiredVersion,
+					Source:		source,
+					Publisher:	publisher,
+					Name:		name,
+					Version:	desiredVersion,
 				}, nil
 			},
 		}
@@ -112,8 +112,8 @@ func TestResolvePackageFromName(t *testing.T) {
 	t.Run("three-part/other-errors", func(t *testing.T) {
 		t.Parallel()
 		testCases := []struct {
-			name string
-			err  error
+			name	string
+			err	error
 		}{
 			{"unauthorized", ErrUnauthorized},
 			{"forbidden", ErrForbidden},
@@ -147,9 +147,9 @@ func TestResolvePackageFromName(t *testing.T) {
 			) (apitype.PackageMetadata, error) {
 				if source == "private" {
 					return apitype.PackageMetadata{
-						Source:    "private",
-						Publisher: publisher,
-						Name:      name,
+						Source:		"private",
+						Publisher:	publisher,
+						Name:		name,
 					}, nil
 				}
 				// Should not reach pulumi since private succeeded
@@ -176,9 +176,9 @@ func TestResolvePackageFromName(t *testing.T) {
 				}
 				if source == "pulumi" {
 					return apitype.PackageMetadata{
-						Source:    "pulumi",
-						Publisher: publisher,
-						Name:      name,
+						Source:		"pulumi",
+						Publisher:	publisher,
+						Name:		name,
 					}, nil
 				}
 				return apitype.PackageMetadata{}, ErrNotFound
@@ -224,9 +224,9 @@ func TestResolvePackageFromName(t *testing.T) {
 						}
 						if source == "pulumi" {
 							return apitype.PackageMetadata{
-								Source:    "pulumi",
-								Publisher: publisher,
-								Name:      name,
+								Source:		"pulumi",
+								Publisher:	publisher,
+								Name:		name,
 							}, nil
 						}
 						return apitype.PackageMetadata{}, ErrNotFound
@@ -297,10 +297,10 @@ func TestResolvePackageFromName(t *testing.T) {
 				if source == "pulumi" {
 					assert.Equal(t, &desiredVersion, version)
 					return apitype.PackageMetadata{
-						Source:    "pulumi",
-						Publisher: publisher,
-						Name:      name,
-						Version:   desiredVersion,
+						Source:		"pulumi",
+						Publisher:	publisher,
+						Name:		name,
+						Version:	desiredVersion,
 					}, nil
 				}
 				return apitype.PackageMetadata{}, ErrNotFound
@@ -321,19 +321,19 @@ func TestResolvePackageFromName(t *testing.T) {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
 					// Return private match first
 					if !yield(apitype.PackageMetadata{
-						Source:    "private",
-						Publisher: "myorg",
-						Name:      "aws",
-						Version:   semver.MustParse("1.0.0"),
+						Source:		"private",
+						Publisher:	"myorg",
+						Name:		"aws",
+						Version:	semver.MustParse("1.0.0"),
 					}, nil) {
 						return
 					}
 					// Also return pulumi match, but private should take precedence
 					yield(apitype.PackageMetadata{
-						Source:    "pulumi",
-						Publisher: "pulumi",
-						Name:      "aws",
-						Version:   semver.MustParse("2.0.0"),
+						Source:		"pulumi",
+						Publisher:	"pulumi",
+						Name:		"aws",
+						Version:	semver.MustParse("2.0.0"),
 					}, nil)
 				}
 			},
@@ -353,10 +353,10 @@ func TestResolvePackageFromName(t *testing.T) {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
 					// No private match, only pulumi/pulumi
 					yield(apitype.PackageMetadata{
-						Source:    "pulumi",
-						Publisher: "pulumi",
-						Name:      "aws",
-						Version:   semver.MustParse("2.0.0"),
+						Source:		"pulumi",
+						Publisher:	"pulumi",
+						Name:		"aws",
+						Version:	semver.MustParse("2.0.0"),
 					}, nil)
 				}
 			},
@@ -376,18 +376,18 @@ func TestResolvePackageFromName(t *testing.T) {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
 					// Return some suggestions but no exact matches
 					if !yield(apitype.PackageMetadata{
-						Source:    "community",
-						Publisher: "thirdparty",
-						Name:      "aws",
-						Version:   semver.MustParse("1.0.0"),
+						Source:		"community",
+						Publisher:	"thirdparty",
+						Name:		"aws",
+						Version:	semver.MustParse("1.0.0"),
 					}, nil) {
 						return
 					}
 					yield(apitype.PackageMetadata{
-						Source:    "github",
-						Publisher: "someuser",
-						Name:      "aws",
-						Version:   semver.MustParse("0.5.0"),
+						Source:		"github",
+						Publisher:	"someuser",
+						Name:		"aws",
+						Version:	semver.MustParse("0.5.0"),
 					}, nil)
 				}
 			},
@@ -412,10 +412,10 @@ func TestResolvePackageFromName(t *testing.T) {
 			listPackages: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
 					yield(apitype.PackageMetadata{
-						Source:    "pulumi",
-						Publisher: "pulumi",
-						Name:      "aws",
-						Version:   semver.MustParse("2.0.0"), // Different version
+						Source:		"pulumi",
+						Publisher:	"pulumi",
+						Name:		"aws",
+						Version:	semver.MustParse("2.0.0"),	// Different version
 					}, nil)
 				}
 			},
@@ -427,10 +427,10 @@ func TestResolvePackageFromName(t *testing.T) {
 				assert.Equal(t, "aws", name)
 				assert.Equal(t, &desiredVersion, version)
 				return apitype.PackageMetadata{
-					Source:    source,
-					Publisher: publisher,
-					Name:      name,
-					Version:   desiredVersion,
+					Source:		source,
+					Publisher:	publisher,
+					Name:		name,
+					Version:	desiredVersion,
 				}, nil
 			},
 		}
@@ -447,10 +447,10 @@ func TestResolvePackageFromName(t *testing.T) {
 			listPackages: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
 					yield(apitype.PackageMetadata{
-						Source:    "pulumi",
-						Publisher: "pulumi",
-						Name:      "aws",
-						Version:   semver.MustParse("2.0.0"),
+						Source:		"pulumi",
+						Publisher:	"pulumi",
+						Name:		"aws",
+						Version:	semver.MustParse("2.0.0"),
 					}, nil)
 				}
 			},
@@ -494,23 +494,23 @@ func TestResolvePackageFromName(t *testing.T) {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
 					// Return multiple non-matching packages
 					if !yield(apitype.PackageMetadata{
-						Source:    "community",
-						Publisher: "org1",
-						Name:      "aws",
+						Source:		"community",
+						Publisher:	"org1",
+						Name:		"aws",
 					}, nil) {
 						return
 					}
 					if !yield(apitype.PackageMetadata{
-						Source:    "github",
-						Publisher: "org2",
-						Name:      "aws",
+						Source:		"github",
+						Publisher:	"org2",
+						Name:		"aws",
 					}, nil) {
 						return
 					}
 					yield(apitype.PackageMetadata{
-						Source:    "custom",
-						Publisher: "org3",
-						Name:      "aws",
+						Source:		"custom",
+						Publisher:	"org3",
+						Name:		"aws",
 					}, nil)
 				}
 			},
@@ -534,16 +534,16 @@ func TestResolvePackageFromName(t *testing.T) {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
 					// Return multiple non-matching packages
 					if !yield(apitype.PackageMetadata{
-						Source:    "private",
-						Publisher: "org1",
-						Name:      "aws",
+						Source:		"private",
+						Publisher:	"org1",
+						Name:		"aws",
 					}, nil) {
 						return
 					}
 					if !yield(apitype.PackageMetadata{
-						Source:    "private",
-						Publisher: "org2",
-						Name:      "aws",
+						Source:		"private",
+						Publisher:	"org2",
+						Name:		"aws",
 					}, nil) {
 						return
 					}
@@ -555,14 +555,14 @@ func TestResolvePackageFromName(t *testing.T) {
 		assert.ErrorContains(t, err, `"aws" is ambiguous, it matches both private/org1/aws and private/org2/aws`)
 		assert.Equal(t, []apitype.PackageMetadata{
 			{
-				Source:    "private",
-				Publisher: "org1",
-				Name:      "aws",
+				Source:		"private",
+				Publisher:	"org1",
+				Name:		"aws",
 			},
 			{
-				Source:    "private",
-				Publisher: "org2",
-				Name:      "aws",
+				Source:		"private",
+				Publisher:	"org2",
+				Name:		"aws",
 			},
 		}, GetSuggestedPackages(err))
 	})
@@ -574,24 +574,24 @@ func TestResolvePackageFromName(t *testing.T) {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
 					// Return multiple non-matching packages
 					if !yield(apitype.PackageMetadata{
-						Source:    "private",
-						Publisher: "org1",
-						Name:      "aws",
+						Source:		"private",
+						Publisher:	"org1",
+						Name:		"aws",
 					}, nil) {
 						return
 					}
 					if !yield(apitype.PackageMetadata{
-						Source:    "private",
-						Publisher: "org2",
-						Name:      "aws",
+						Source:		"private",
+						Publisher:	"org2",
+						Name:		"aws",
 					}, nil) {
 						return
 					}
 
 					if !yield(apitype.PackageMetadata{
-						Source:    "private",
-						Publisher: "org3",
-						Name:      "aws",
+						Source:		"private",
+						Publisher:	"org3",
+						Name:		"aws",
 					}, nil) {
 						return
 					}
@@ -603,19 +603,19 @@ func TestResolvePackageFromName(t *testing.T) {
 		assert.ErrorContains(t, err, `"aws" is ambiguous, it matches both private/org1/aws and 2 other package`)
 		assert.Equal(t, []apitype.PackageMetadata{
 			{
-				Source:    "private",
-				Publisher: "org1",
-				Name:      "aws",
+				Source:		"private",
+				Publisher:	"org1",
+				Name:		"aws",
 			},
 			{
-				Source:    "private",
-				Publisher: "org2",
-				Name:      "aws",
+				Source:		"private",
+				Publisher:	"org2",
+				Name:		"aws",
 			},
 			{
-				Source:    "private",
-				Publisher: "org3",
-				Name:      "aws",
+				Source:		"private",
+				Publisher:	"org3",
+				Name:		"aws",
 			},
 		}, GetSuggestedPackages(err))
 	})
@@ -669,10 +669,10 @@ func TestResolvePackageFromName(t *testing.T) {
 			) (apitype.PackageMetadata, error) {
 				assert.Nil(t, version)
 				return apitype.PackageMetadata{
-					Source:    source,
-					Publisher: publisher,
-					Name:      name,
-					Version:   semver.MustParse("1.0.0"), // Latest version
+					Source:		source,
+					Publisher:	publisher,
+					Name:		name,
+					Version:	semver.MustParse("1.0.0"),	// Latest version
 				}, nil
 			},
 		}
@@ -688,10 +688,10 @@ func TestResolvePackageFromName(t *testing.T) {
 			listPackages: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
 					yield(apitype.PackageMetadata{
-						Source:    "pulumi",
-						Publisher: "pulumi",
-						Name:      "aws",
-						Version:   semver.MustParse("2.0.0"), // Should be returned as-is
+						Source:		"pulumi",
+						Publisher:	"pulumi",
+						Name:		"aws",
+						Version:	semver.MustParse("2.0.0"),	// Should be returned as-is
 					}, nil)
 				}
 			},

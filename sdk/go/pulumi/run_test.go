@@ -53,12 +53,12 @@ func WrapResourceMonitorClient(
 
 type testMonitor struct {
 	// Actually an "Invoke" by provider parlance, but is named so to be consistent with the interface.
-	CallF func(args MockCallArgs) (resource.PropertyMap, error)
+	CallF	func(args MockCallArgs) (resource.PropertyMap, error)
 	// Actually an "Call" by provider parlance, but is named so to be consistent with the interface.
-	MethodCallF               func(args MockCallArgs) (resource.PropertyMap, error)
-	NewResourceF              func(args MockResourceArgs) (string, resource.PropertyMap, error)
-	RegisterResourceOutputsF  func() (*emptypb.Empty, error)
-	SignalAndWaitForShutdownF func() (*emptypb.Empty, error)
+	MethodCallF			func(args MockCallArgs) (resource.PropertyMap, error)
+	NewResourceF			func(args MockResourceArgs) (string, resource.PropertyMap, error)
+	RegisterResourceOutputsF	func() (*emptypb.Empty, error)
+	SignalAndWaitForShutdownF	func() (*emptypb.Empty, error)
 }
 
 func (m *testMonitor) Call(args MockCallArgs) (resource.PropertyMap, error) {
@@ -99,21 +99,21 @@ func (m *testMonitor) SignalAndWaitForShutdown() (*emptypb.Empty, error) {
 type testResource2 struct {
 	CustomResourceState
 
-	Foo StringOutput `pulumi:"foo"`
+	Foo	StringOutput	`pulumi:"foo"`
 }
 
 type testResource2Args struct {
-	Foo  string `pulumi:"foo"`
-	Bar  string `pulumi:"bar"`
-	Baz  string `pulumi:"baz"`
-	Bang string `pulumi:"bang"`
+	Foo	string	`pulumi:"foo"`
+	Bar	string	`pulumi:"bar"`
+	Baz	string	`pulumi:"baz"`
+	Bang	string	`pulumi:"bang"`
 }
 
 type testResource2Inputs struct {
-	Foo  StringInput
-	Bar  StringInput
-	Baz  StringInput
-	Bang StringInput
+	Foo	StringInput
+	Bar	StringInput
+	Baz	StringInput
+	Bang	StringInput
 }
 
 func (*testResource2Inputs) ElementType() reflect.Type {
@@ -123,17 +123,17 @@ func (*testResource2Inputs) ElementType() reflect.Type {
 type testResource3 struct {
 	CustomResourceState
 
-	Outputs MapOutput `pulumi:""`
+	Outputs	MapOutput	`pulumi:""`
 }
 
 type invokeArgs struct {
-	Bang string `pulumi:"bang"`
-	Bar  string `pulumi:"bar"`
+	Bang	string	`pulumi:"bang"`
+	Bar	string	`pulumi:"bar"`
 }
 
 type invokeResult struct {
-	Foo string `pulumi:"foo"`
-	Baz string `pulumi:"baz"`
+	Foo	string	`pulumi:"foo"`
+	Baz	string	`pulumi:"baz"`
 }
 
 func TestRegisterResource(t *testing.T) {
@@ -145,10 +145,10 @@ func TestRegisterResource(t *testing.T) {
 			case "test:resource:type":
 				assert.Equal(t, "resA", args.Name)
 				assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]any{
-					"foo":  "oof",
-					"bar":  "rab",
-					"baz":  "zab",
-					"bang": "gnab",
+					"foo":	"oof",
+					"bar":	"rab",
+					"baz":	"zab",
+					"bang":	"gnab",
 				})))
 				assert.Equal(t, "", args.Provider)
 				assert.Equal(t, "", args.ID)
@@ -157,18 +157,18 @@ func TestRegisterResource(t *testing.T) {
 			case "test:resource:complextype":
 				assert.Equal(t, "resB", args.Name)
 				assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]any{
-					"foo":  "oof",
-					"bar":  "rab",
-					"baz":  "zab",
-					"bang": "gnab",
+					"foo":	"oof",
+					"bar":	"rab",
+					"baz":	"zab",
+					"bang":	"gnab",
 				})))
 				assert.Equal(t, "", args.Provider)
 				assert.Equal(t, "", args.ID)
 
 				return "someID", resource.PropertyMap{
-					"foo":    resource.NewProperty("qux"),
-					"secret": resource.MakeSecret(resource.NewProperty("shh")),
-					"output": resource.MakeOutput(resource.NewProperty("known unknown")),
+					"foo":		resource.NewProperty("qux"),
+					"secret":	resource.MakeSecret(resource.NewProperty("shh")),
+					"output":	resource.MakeOutput(resource.NewProperty("known unknown")),
 				}, nil
 			default:
 				assert.Fail(t, "Expected a valid resource type, got %v", args.TypeToken)
@@ -181,10 +181,10 @@ func TestRegisterResource(t *testing.T) {
 		// Test struct-tag-based marshaling.
 		var res testResource2
 		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
-			Foo:  String("oof"),
-			Bar:  String("rab"),
-			Baz:  String("zab"),
-			Bang: String("gnab"),
+			Foo:	String("oof"),
+			Bar:	String("rab"),
+			Baz:	String("zab"),
+			Bang:	String("gnab"),
 		}, &res)
 		require.NoError(t, err)
 
@@ -212,10 +212,10 @@ func TestRegisterResource(t *testing.T) {
 		// Test map marshaling.
 		var res2 testResource3
 		err = ctx.RegisterResource("test:resource:type", "resA", Map{
-			"foo":  String("oof"),
-			"bar":  String("rab"),
-			"baz":  String("zab"),
-			"bang": String("gnab"),
+			"foo":	String("oof"),
+			"bar":	String("rab"),
+			"baz":	String("zab"),
+			"bang":	String("gnab"),
 		}, &res2)
 		require.NoError(t, err)
 		require.NotNil(t, res2.rawOutputs)
@@ -244,10 +244,10 @@ func TestRegisterResource(t *testing.T) {
 		// Test raw access to property values:
 		var res3 testResource3
 		err = ctx.RegisterResource("test:resource:complextype", "resB", Map{
-			"foo":  String("oof"),
-			"bar":  String("rab"),
-			"baz":  String("zab"),
-			"bang": String("gnab"),
+			"foo":	String("oof"),
+			"bar":	String("rab"),
+			"baz":	String("zab"),
+			"bang":	String("gnab"),
 		}, &res3)
 		require.NoError(t, err)
 		require.NotNil(t, res3.rawOutputs)
@@ -366,12 +366,12 @@ func TestInvoke(t *testing.T) {
 		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			assert.Equal(t, "test:index:func", args.Token)
 			assert.True(t, args.Args.DeepEquals(resource.NewPropertyMapFromMap(map[string]any{
-				"bang": "gnab",
-				"bar":  "rab",
+				"bang":	"gnab",
+				"bar":	"rab",
 			})))
 			return resource.NewPropertyMapFromMap(map[string]any{
-				"foo": "oof",
-				"baz": "zab",
+				"foo":	"oof",
+				"baz":	"zab",
 			}), nil
 		},
 	}
@@ -380,8 +380,8 @@ func TestInvoke(t *testing.T) {
 		// Test struct unmarshaling.
 		var result invokeResult
 		err := ctx.Invoke("test:index:func", &invokeArgs{
-			Bang: "gnab",
-			Bar:  "rab",
+			Bang:	"gnab",
+			Bar:	"rab",
 		}, &result)
 		require.NoError(t, err)
 		assert.Equal(t, "oof", result.Foo)
@@ -390,8 +390,8 @@ func TestInvoke(t *testing.T) {
 		// Test map unmarshaling.
 		var result2 map[string]any
 		err = ctx.Invoke("test:index:func", &invokeArgs{
-			Bang: "gnab",
-			Bar:  "rab",
+			Bang:	"gnab",
+			Bar:	"rab",
 		}, &result2)
 		require.NoError(t, err)
 		assert.Equal(t, "oof", result2["foo"].(string))
@@ -500,7 +500,7 @@ func (o testInstanceResourceOutput) ToTestInstanceResourceOutputWithContext(
 type testMyCustomResource struct {
 	CustomResourceState
 
-	Instance testInstanceResourceOutput `pulumi:"instance"`
+	Instance	testInstanceResourceOutput	`pulumi:"instance"`
 }
 
 type testMyCustomResourceArgs struct {
@@ -586,7 +586,7 @@ func (testMyRemoteComponentInputs) ElementType() reflect.Type {
 type testMyRemoteComponent struct {
 	ResourceState
 
-	Outprop StringOutput `pulumi:"outprop"`
+	Outprop	StringOutput	`pulumi:"outprop"`
 }
 
 func TestRemoteComponent(t *testing.T) {
@@ -600,8 +600,8 @@ func TestRemoteComponent(t *testing.T) {
 			case "pkg:index:MyRemoteComponent":
 				outprop := resource.NewProperty("output: " + args.Inputs["inprop"].StringValue())
 				return args.Name + "_id", resource.PropertyMap{
-					"inprop":  args.Inputs["inprop"],
-					"outprop": outprop,
+					"inprop":	args.Inputs["inprop"],
+					"outprop":	outprop,
 				}, nil
 			default:
 				return "", nil, fmt.Errorf("unknown resource %s", args.TypeToken)
@@ -747,8 +747,8 @@ func TestWaitOrphanedAnyApply(t *testing.T) {
 		require.NoError(t, err)
 
 		Any(map[string]Output{
-			"urn": res.URN(),
-			"id":  res.ID(),
+			"urn":	res.URN(),
+			"id":	res.ID(),
 		}).ApplyT(func(v any) int {
 			m := v.(map[string]Output)
 			m["urn"].ApplyT(func(urn URN) int {
@@ -821,8 +821,8 @@ func TestWaitOrphanedContextAnyApply(t *testing.T) {
 		require.NoError(t, err)
 
 		Any(map[string]Output{
-			"urn": res.URN(),
-			"id":  res.ID(),
+			"urn":	res.URN(),
+			"id":	res.ID(),
 		}).ApplyT(func(v any) int {
 			m := v.(map[string]Output)
 			m["urn"].ApplyT(func(urn URN) int {
@@ -1109,7 +1109,7 @@ func (testResource4Inputs) ElementType() reflect.Type {
 type testResource4 struct {
 	ResourceState
 
-	Outprop StringOutput `pulumi:"outprop"`
+	Outprop	StringOutput	`pulumi:"outprop"`
 }
 
 func TestResourceInput(t *testing.T) {

@@ -61,10 +61,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
-	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	codegen "github.com/pulumi/pulumi/sdk/v3/pkg/codegen/go"
+	hclsyntax "github.com/pulumi/pulumi/sdk/v3/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/pkg/codegen/schema"
 )
 
 // The preferred debug port.  Chosen arbitrarily.
@@ -82,10 +82,10 @@ func compileProgram(
 	stdout, stderr io.Writer,
 ) (string, error) {
 	if _, err := engineClient.Log(ctx, &pulumirpc.LogRequest{
-		Severity:  pulumirpc.LogSeverity_INFO,
-		Urn:       "",
-		Message:   "Compiling the program ...",
-		Ephemeral: true,
+		Severity:	pulumirpc.LogSeverity_INFO,
+		Urn:		"",
+		Message:	"Compiling the program ...",
+		Ephemeral:	true,
 	}); err != nil {
 		logging.V(6).Infof("Failed to log message: %v", err)
 	}
@@ -133,10 +133,10 @@ func compileProgram(
 		return "", errors.New("go program is not executable, does your program have a 'main' package?")
 	}
 	if _, err := engineClient.Log(ctx, &pulumirpc.LogRequest{
-		Severity:  pulumirpc.LogSeverity_INFO,
-		Urn:       "",
-		Message:   "Finished compiling",
-		Ephemeral: true,
+		Severity:	pulumirpc.LogSeverity_INFO,
+		Urn:		"",
+		Message:	"Finished compiling",
+		Ephemeral:	true,
 	}); err != nil {
 		logging.V(6).Infof("Failed to log message: %v", err)
 	}
@@ -146,8 +146,8 @@ func compileProgram(
 
 // runParams defines the command line arguments accepted by this program.
 type runParams struct {
-	tracing       string
-	engineAddress string
+	tracing		string
+	engineAddress	string
 }
 
 // parseRunParams parses the given arguments into a runParams structure,
@@ -197,8 +197,8 @@ func main() {
 }
 
 type mainCmd struct {
-	Stdout io.Writer              // == os.Stdout
-	Getwd  func() (string, error) // == os.Getwd
+	Stdout	io.Writer		// == os.Stdout
+	Getwd	func() (string, error)	// == os.Getwd
 }
 
 func (cmd *mainCmd) init() {
@@ -223,7 +223,7 @@ func (cmd *mainCmd) Run(p *runParams) error {
 	cancelChannel := make(chan bool)
 	go func() {
 		<-ctx.Done()
-		cancel() // deregister handler so we don't catch another interrupt
+		cancel()	// deregister handler so we don't catch another interrupt
 		close(cancelChannel)
 	}()
 	if p.engineAddress != "" {
@@ -236,13 +236,13 @@ func (cmd *mainCmd) Run(p *runParams) error {
 
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: cancelChannel,
+		Cancel:	cancelChannel,
 		Init: func(srv *grpc.Server) error {
 			host := newLanguageHost(p.engineAddress, cwd, p.tracing)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options:	rpcutil.OpenTracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		return fmt.Errorf("could not start language host RPC server: %w", err)
@@ -261,18 +261,18 @@ func (cmd *mainCmd) Run(p *runParams) error {
 
 // goLanguageHost implements the LanguageRuntimeServer interface for use as an API endpoint.
 type goLanguageHost struct {
-	pulumirpc.UnsafeLanguageRuntimeServer // opt out of forward compat
+	pulumirpc.UnsafeLanguageRuntimeServer	// opt out of forward compat
 
-	cwd           string
-	engineAddress string
-	tracing       string
+	cwd		string
+	engineAddress	string
+	tracing		string
 }
 
 type goOptions struct {
 	// Look on path for a binary executable with this name.
-	binary string
+	binary	string
 	// Path to use to output the compiled Pulumi Go program.
-	buildTarget string
+	buildTarget	string
 }
 
 func parseOptions(root string, options map[string]any) (goOptions, error) {
@@ -302,9 +302,9 @@ func parseOptions(root string, options map[string]any) (goOptions, error) {
 
 func newLanguageHost(engineAddress, cwd, tracing string) pulumirpc.LanguageRuntimeServer {
 	return &goLanguageHost{
-		engineAddress: engineAddress,
-		cwd:           cwd,
-		tracing:       tracing,
+		engineAddress:	engineAddress,
+		cwd:		cwd,
+		tracing:	tracing,
 	}
 }
 
@@ -332,13 +332,13 @@ func (host *goLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Closer
 // we'll need to add a new struct type instead of re-using this.
 type modInfo struct {
 	// Path is the module import path.
-	Path string
+	Path	string
 
 	// Version of the module.
-	Version string
+	Version	string
 
 	// Dir is the directory holding the source code of the module, if any.
-	Dir string
+	Dir	string
 }
 
 // findModuleSources finds the source code roots for the given modules.
@@ -407,7 +407,7 @@ func findModuleSources(ctx context.Context, gobin, rootModuleDir string, moduleP
 	// Find these modules in the vendor directory.
 	vendorDir := filepath.Join(rootModuleDir, "vendor")
 	if _, err := os.Stat(vendorDir); err == nil {
-		newModules := modules[:0] // in-place filter
+		newModules := modules[:0]	// in-place filter
 		for _, module := range modules {
 			if module.Dir == "" {
 				vendoredModule := filepath.Join(vendorDir, module.Path)
@@ -428,10 +428,10 @@ func findModuleSources(ctx context.Context, gobin, rootModuleDir string, moduleP
 	// We're not in vendor mode, so we can download modules and fill in missing directories.
 	var (
 		// Import paths of modules with no Dir field.
-		missingDirs []string
+		missingDirs	[]string
 
 		// Map from module path to index in modules.
-		moduleIndex = make(map[string]int, len(modules))
+		moduleIndex	= make(map[string]int, len(modules))
 	)
 	for i, module := range modules {
 		moduleIndex[module.Path] = i
@@ -462,7 +462,7 @@ func findModuleSources(ctx context.Context, gobin, rootModuleDir string, moduleP
 
 	// Any other modules with no Dir field can be discarded;
 	// we tried our best to find their source.
-	newModules := modules[:0] // in-place filter
+	newModules := modules[:0]	// in-place filter
 	for _, module := range modules {
 		if module.Dir != "" {
 			newModules = append(newModules, module)
@@ -662,19 +662,19 @@ func (m *modInfo) getPackage(moduleRoot string) (*pulumirpc.PackageDependency, e
 		server = pulumiPlugin.Server
 		if pulumiPlugin.Parameterization != nil {
 			parameterization = &pulumirpc.PackageParameterization{
-				Name:    pulumiPlugin.Parameterization.Name,
-				Version: pulumiPlugin.Parameterization.Version,
-				Value:   pulumiPlugin.Parameterization.Value,
+				Name:		pulumiPlugin.Parameterization.Name,
+				Version:	pulumiPlugin.Parameterization.Version,
+				Value:		pulumiPlugin.Parameterization.Value,
 			}
 		}
 	}
 
 	plugin := &pulumirpc.PackageDependency{
-		Name:             name,
-		Version:          version,
-		Kind:             "resource",
-		Server:           server,
-		Parameterization: parameterization,
+		Name:			name,
+		Version:		version,
+		Kind:			"resource",
+		Server:			server,
+		Parameterization:	parameterization,
 	}
 
 	return plugin, nil
@@ -818,17 +818,17 @@ func runCmdStatus(runF func() error) (int, error) {
 }
 
 type debugger struct {
-	Host    string
-	Port    int64
-	LogDest string
+	Host	string
+	Port	int64
+	LogDest	string
 }
 
 // WaitForReady waits for Delve to be ready to accept connections.
 // Returns an error if the context is canceled or the log file is unable to be tailed.
 func (c *debugger) WaitForReady(ctx context.Context) error {
 	t, err := tail.File(c.LogDest, tail.Config{
-		Follow: true,
-		Logger: tail.DiscardingLogger,
+		Follow:	true,
+		Logger:	tail.DiscardingLogger,
 	})
 	if err != nil {
 		return err
@@ -897,19 +897,19 @@ func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, db
 	}
 
 	debugConfig, err := structpb.NewStruct(map[string]any{
-		"name":    name,
-		"type":    "go",
-		"request": "attach",
-		"mode":    "remote",
-		"host":    dbg.Host,
-		"port":    dbg.Port,
+		"name":		name,
+		"type":		"go",
+		"request":	"attach",
+		"mode":		"remote",
+		"host":		dbg.Host,
+		"port":		dbg.Port,
 	})
 	if err != nil {
 		return err
 	}
 	_, err = engineClient.StartDebugging(ctx, &pulumirpc.StartDebuggingRequest{
-		Config:  debugConfig,
-		Message: "on port " + strconv.FormatInt(dbg.Port, 10),
+		Config:		debugConfig,
+		Message:	"on port " + strconv.FormatInt(dbg.Port, 10),
 	})
 	if err != nil {
 		return fmt.Errorf("unable to start debugging: %w", err)
@@ -1196,8 +1196,8 @@ func (host *goLanguageHost) About(ctx context.Context, req *pulumirpc.AboutReque
 	}
 
 	return &pulumirpc.AboutResponse{
-		Executable: goexe,
-		Version:    version,
+		Executable:	goexe,
+		Version:	version,
 	}, nil
 }
 
@@ -1228,8 +1228,8 @@ func (host *goLanguageHost) GetProgramDependencies(
 				version = ""
 			}
 			datum := pulumirpc.DependencyInfo{
-				Name:    d.Mod.Path,
-				Version: version,
+				Name:		d.Mod.Path,
+				Version:	version,
 			}
 			result = append(result, &datum)
 		}
@@ -1404,8 +1404,8 @@ func (host *goLanguageHost) GenerateProgram(
 	rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticsToRPCDiagnostics(diags)...)
 
 	return &pulumirpc.GenerateProgramResponse{
-		Source:      files,
-		Diagnostics: rpcDiagnostics,
+		Source:		files,
+		Diagnostics:	rpcDiagnostics,
 	}, nil
 }
 
@@ -1503,7 +1503,7 @@ func (host *goLanguageHost) Handshake(
 	cancelChannel := make(chan bool)
 	go func() {
 		<-ctx.Done()
-		cancel() // deregister handler so we don't catch another interrupt
+		cancel()	// deregister handler so we don't catch another interrupt
 		close(cancelChannel)
 	}()
 	err := rpcutil.Healthcheck(ctx, host.engineAddress, 5*time.Minute, cancel)

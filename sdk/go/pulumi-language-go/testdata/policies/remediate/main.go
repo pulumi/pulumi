@@ -20,7 +20,7 @@ func main() {
 			"remediate", version, policyx.EnforcementLevelAdvisory,
 			[]policyx.Policy{
 				policyx.NewResourceRemediationPolicy("fixup", policyx.ResourceRemediationPolicyArgs{
-					Description: "Sets property to config",
+					Description:	"Sets property to config",
 					RemediateResource: func(ctx context.Context, args policyx.ResourceRemediationArgs) (*property.Map, error) {
 						if args.Resource.Type != "simple:index:Resource" {
 							return nil, nil

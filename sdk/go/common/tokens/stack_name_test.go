@@ -49,42 +49,42 @@ func TestParseStackName_RejectsInvalidInput(t *testing.T) {
 
 	// Arrange.
 	tests := []struct {
-		desc  string
-		input string
-		err   string
+		desc	string
+		input	string
+		err	string
 	}{
 		{
-			desc:  "stack name empty",
-			input: "",
-			err:   "a stack name may not be empty",
+			desc:	"stack name empty",
+			input:	"",
+			err:	"a stack name may not be empty",
 		},
 		{
-			desc: "stack name too long",
+			desc:	"stack name too long",
 			input: "this-stack-name-is-just-too-long-for-the-service-to-handle-and-should-be-rejected-by-the-service-" +
 				"because-it-is-just-too-long-for-the-service-to-handle-and-should-be-rejected-by-the-service",
-			err: "a stack name cannot exceed 100 characters",
+			err:	"a stack name cannot exceed 100 characters",
 		},
 		{
-			desc:  "invalid start to stack name",
-			input: "!my stack!",
+			desc:	"invalid start to stack name",
+			input:	"!my stack!",
 			err: "a stack name may only contain alphanumeric, hyphens, underscores, " +
 				"or periods: invalid character '!' at position 0",
 		},
 		{
-			desc:  "invalid rest of stack name",
-			input: "my bad",
+			desc:	"invalid rest of stack name",
+			input:	"my bad",
 			err: "a stack name may only contain alphanumeric, hyphens, underscores, " +
 				"or periods: invalid character ' ' at position 2",
 		},
 		{
-			desc:  "invalid end of stack name",
-			input: "mybad%",
+			desc:	"invalid end of stack name",
+			input:	"mybad%",
 			err: "a stack name may only contain alphanumeric, hyphens, underscores, " +
 				"or periods: invalid character '%' at position 5",
 		},
 		{
-			desc:  "invalid slash in stack name",
-			input: "foo/bar",
+			desc:	"invalid slash in stack name",
+			input:	"foo/bar",
 			err: "a stack name may only contain alphanumeric, hyphens, underscores, " +
 				"or periods: invalid character '/' at position 3",
 		},

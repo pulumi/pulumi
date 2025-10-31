@@ -19,7 +19,7 @@ package resource
 type Status int
 
 const (
-	StatusOK Status = iota
+	StatusOK	Status	= iota
 	StatusPartialFailure
 	StatusUnknown
 )

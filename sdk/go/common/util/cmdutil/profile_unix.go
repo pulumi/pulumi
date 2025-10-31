@@ -51,13 +51,13 @@ func InitPprofServer(ctx context.Context) {
 
 		serverErr := make(chan error, 1)
 		go func() {
-			serverErr <- http.Serve(listener, mux) //nolint:gosec // G114
+			serverErr <- http.Serve(listener, mux)	//nolint:gosec // G114
 		}()
 
 		u := fmt.Sprintf("http://localhost:%d/debug/pprof/", listener.Addr().(*net.TCPAddr).Port)
 		// Don't use logging.V here, we always want to create & write a log file here.
 		logging.Infof("pprof server running on %s", u)
-		logging.Flush() // Immediately flush after logging the URL so we don't have to wait for the periodic flush.
+		logging.Flush()	// Immediately flush after logging the URL so we don't have to wait for the periodic flush.
 
 		select {
 		case <-ctx.Done():

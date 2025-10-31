@@ -32,34 +32,34 @@ import (
 
 const (
 	// Verify that this generated code is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
+	_	= protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
+	_	= protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
 // LogSeverity is the severity level of a log message.  Errors are fatal; all others are informational.
 type LogSeverity int32
 
 const (
-	LogSeverity_DEBUG   LogSeverity = 0 // a debug-level message not displayed to end-users (the default).
-	LogSeverity_INFO    LogSeverity = 1 // an informational message printed to output during resource operations.
-	LogSeverity_WARNING LogSeverity = 2 // a warning to indicate that something went wrong.
-	LogSeverity_ERROR   LogSeverity = 3 // a fatal error indicating that the tool should stop processing subsequent resource operations.
+	LogSeverity_DEBUG	LogSeverity	= 0	// a debug-level message not displayed to end-users (the default).
+	LogSeverity_INFO	LogSeverity	= 1	// an informational message printed to output during resource operations.
+	LogSeverity_WARNING	LogSeverity	= 2	// a warning to indicate that something went wrong.
+	LogSeverity_ERROR	LogSeverity	= 3	// a fatal error indicating that the tool should stop processing subsequent resource operations.
 )
 
 // Enum value maps for LogSeverity.
 var (
-	LogSeverity_name = map[int32]string{
-		0: "DEBUG",
-		1: "INFO",
-		2: "WARNING",
-		3: "ERROR",
+	LogSeverity_name	= map[int32]string{
+		0:	"DEBUG",
+		1:	"INFO",
+		2:	"WARNING",
+		3:	"ERROR",
 	}
-	LogSeverity_value = map[string]int32{
-		"DEBUG":   0,
-		"INFO":    1,
-		"WARNING": 2,
-		"ERROR":   3,
+	LogSeverity_value	= map[string]int32{
+		"DEBUG":	0,
+		"INFO":		1,
+		"WARNING":	2,
+		"ERROR":	3,
 	}
 )
 
@@ -91,13 +91,13 @@ func (LogSeverity) EnumDescriptor() ([]byte, []int) {
 }
 
 type LogRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// the logging level of this message.
-	Severity LogSeverity `protobuf:"varint,1,opt,name=severity,proto3,enum=pulumirpc.LogSeverity" json:"severity,omitempty"`
+	Severity	LogSeverity	`protobuf:"varint,1,opt,name=severity,proto3,enum=pulumirpc.LogSeverity" json:"severity,omitempty"`
 	// the contents of the logged message.
-	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	Message	string	`protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 	// the (optional) resource urn this log is associated with.
-	Urn string `protobuf:"bytes,3,opt,name=urn,proto3" json:"urn,omitempty"`
+	Urn	string	`protobuf:"bytes,3,opt,name=urn,proto3" json:"urn,omitempty"`
 	// the (optional) stream id that a stream of log messages can be associated with. This allows
 	// clients to not have to buffer a large set of log messages that they all want to be
 	// conceptually connected.  Instead the messages can be sent as chunks (with the same stream id)
@@ -105,11 +105,11 @@ type LogRequest struct {
 	// into one total log message.
 	//
 	// 0/not-given means: do not associate with any stream.
-	StreamId int32 `protobuf:"varint,4,opt,name=streamId,proto3" json:"streamId,omitempty"`
+	StreamId	int32	`protobuf:"varint,4,opt,name=streamId,proto3" json:"streamId,omitempty"`
 	// Optional value indicating whether this is a status message.
-	Ephemeral     bool `protobuf:"varint,5,opt,name=ephemeral,proto3" json:"ephemeral,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Ephemeral	bool	`protobuf:"varint,5,opt,name=ephemeral,proto3" json:"ephemeral,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *LogRequest) Reset() {
@@ -123,7 +123,7 @@ func (x *LogRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*LogRequest) ProtoMessage() {}
+func (*LogRequest) ProtoMessage()	{}
 
 func (x *LogRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_engine_proto_msgTypes[0]
@@ -178,9 +178,9 @@ func (x *LogRequest) GetEphemeral() bool {
 }
 
 type GetRootResourceRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *GetRootResourceRequest) Reset() {
@@ -194,7 +194,7 @@ func (x *GetRootResourceRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetRootResourceRequest) ProtoMessage() {}
+func (*GetRootResourceRequest) ProtoMessage()	{}
 
 func (x *GetRootResourceRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_engine_proto_msgTypes[1]
@@ -214,11 +214,11 @@ func (*GetRootResourceRequest) Descriptor() ([]byte, []int) {
 }
 
 type GetRootResourceResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// the URN of the root resource, or the empty string if one was not set.
-	Urn           string `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Urn		string	`protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *GetRootResourceResponse) Reset() {
@@ -232,7 +232,7 @@ func (x *GetRootResourceResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetRootResourceResponse) ProtoMessage() {}
+func (*GetRootResourceResponse) ProtoMessage()	{}
 
 func (x *GetRootResourceResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_engine_proto_msgTypes[2]
@@ -259,11 +259,11 @@ func (x *GetRootResourceResponse) GetUrn() string {
 }
 
 type SetRootResourceRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// the URN of the root resource, or the empty string.
-	Urn           string `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Urn		string	`protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *SetRootResourceRequest) Reset() {
@@ -277,7 +277,7 @@ func (x *SetRootResourceRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SetRootResourceRequest) ProtoMessage() {}
+func (*SetRootResourceRequest) ProtoMessage()	{}
 
 func (x *SetRootResourceRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_engine_proto_msgTypes[3]
@@ -304,9 +304,9 @@ func (x *SetRootResourceRequest) GetUrn() string {
 }
 
 type SetRootResourceResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state		protoimpl.MessageState	`protogen:"open.v1"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *SetRootResourceResponse) Reset() {
@@ -320,7 +320,7 @@ func (x *SetRootResourceResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SetRootResourceResponse) ProtoMessage() {}
+func (*SetRootResourceResponse) ProtoMessage()	{}
 
 func (x *SetRootResourceResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_engine_proto_msgTypes[4]
@@ -340,13 +340,13 @@ func (*SetRootResourceResponse) Descriptor() ([]byte, []int) {
 }
 
 type StartDebuggingRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// the debug configuration parameters.  These are meant to be in the right format for the DAP protocol to consume.
-	Config *structpb.Struct `protobuf:"bytes,1,opt,name=config,proto3" json:"config,omitempty"`
+	Config	*structpb.Struct	`protobuf:"bytes,1,opt,name=config,proto3" json:"config,omitempty"`
 	// the string to display to the user with instructions on how to connect to the debugger.
-	Message       string `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Message		string	`protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *StartDebuggingRequest) Reset() {
@@ -360,7 +360,7 @@ func (x *StartDebuggingRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*StartDebuggingRequest) ProtoMessage() {}
+func (*StartDebuggingRequest) ProtoMessage()	{}
 
 func (x *StartDebuggingRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_engine_proto_msgTypes[5]
@@ -426,8 +426,8 @@ const file_pulumi_engine_proto_rawDesc = "" +
 	"\x0eStartDebugging\x12 .pulumirpc.StartDebuggingRequest\x1a\x16.google.protobuf.Empty\"\x00B4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3"
 
 var (
-	file_pulumi_engine_proto_rawDescOnce sync.Once
-	file_pulumi_engine_proto_rawDescData []byte
+	file_pulumi_engine_proto_rawDescOnce	sync.Once
+	file_pulumi_engine_proto_rawDescData	[]byte
 )
 
 func file_pulumi_engine_proto_rawDescGZIP() []byte {
@@ -440,35 +440,35 @@ func file_pulumi_engine_proto_rawDescGZIP() []byte {
 var file_pulumi_engine_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_pulumi_engine_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_pulumi_engine_proto_goTypes = []any{
-	(LogSeverity)(0),                // 0: pulumirpc.LogSeverity
-	(*LogRequest)(nil),              // 1: pulumirpc.LogRequest
-	(*GetRootResourceRequest)(nil),  // 2: pulumirpc.GetRootResourceRequest
-	(*GetRootResourceResponse)(nil), // 3: pulumirpc.GetRootResourceResponse
-	(*SetRootResourceRequest)(nil),  // 4: pulumirpc.SetRootResourceRequest
-	(*SetRootResourceResponse)(nil), // 5: pulumirpc.SetRootResourceResponse
-	(*StartDebuggingRequest)(nil),   // 6: pulumirpc.StartDebuggingRequest
-	(*structpb.Struct)(nil),         // 7: google.protobuf.Struct
-	(*emptypb.Empty)(nil),           // 8: google.protobuf.Empty
+	(LogSeverity)(0),			// 0: pulumirpc.LogSeverity
+	(*LogRequest)(nil),			// 1: pulumirpc.LogRequest
+	(*GetRootResourceRequest)(nil),		// 2: pulumirpc.GetRootResourceRequest
+	(*GetRootResourceResponse)(nil),	// 3: pulumirpc.GetRootResourceResponse
+	(*SetRootResourceRequest)(nil),		// 4: pulumirpc.SetRootResourceRequest
+	(*SetRootResourceResponse)(nil),	// 5: pulumirpc.SetRootResourceResponse
+	(*StartDebuggingRequest)(nil),		// 6: pulumirpc.StartDebuggingRequest
+	(*structpb.Struct)(nil),		// 7: google.protobuf.Struct
+	(*emptypb.Empty)(nil),			// 8: google.protobuf.Empty
 }
 var file_pulumi_engine_proto_depIdxs = []int32{
-	0, // 0: pulumirpc.LogRequest.severity:type_name -> pulumirpc.LogSeverity
-	7, // 1: pulumirpc.StartDebuggingRequest.config:type_name -> google.protobuf.Struct
-	1, // 2: pulumirpc.Engine.Log:input_type -> pulumirpc.LogRequest
-	2, // 3: pulumirpc.Engine.GetRootResource:input_type -> pulumirpc.GetRootResourceRequest
-	4, // 4: pulumirpc.Engine.SetRootResource:input_type -> pulumirpc.SetRootResourceRequest
-	6, // 5: pulumirpc.Engine.StartDebugging:input_type -> pulumirpc.StartDebuggingRequest
-	8, // 6: pulumirpc.Engine.Log:output_type -> google.protobuf.Empty
-	3, // 7: pulumirpc.Engine.GetRootResource:output_type -> pulumirpc.GetRootResourceResponse
-	5, // 8: pulumirpc.Engine.SetRootResource:output_type -> pulumirpc.SetRootResourceResponse
-	8, // 9: pulumirpc.Engine.StartDebugging:output_type -> google.protobuf.Empty
-	6, // [6:10] is the sub-list for method output_type
-	2, // [2:6] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	0,	// 0: pulumirpc.LogRequest.severity:type_name -> pulumirpc.LogSeverity
+	7,	// 1: pulumirpc.StartDebuggingRequest.config:type_name -> google.protobuf.Struct
+	1,	// 2: pulumirpc.Engine.Log:input_type -> pulumirpc.LogRequest
+	2,	// 3: pulumirpc.Engine.GetRootResource:input_type -> pulumirpc.GetRootResourceRequest
+	4,	// 4: pulumirpc.Engine.SetRootResource:input_type -> pulumirpc.SetRootResourceRequest
+	6,	// 5: pulumirpc.Engine.StartDebugging:input_type -> pulumirpc.StartDebuggingRequest
+	8,	// 6: pulumirpc.Engine.Log:output_type -> google.protobuf.Empty
+	3,	// 7: pulumirpc.Engine.GetRootResource:output_type -> pulumirpc.GetRootResourceResponse
+	5,	// 8: pulumirpc.Engine.SetRootResource:output_type -> pulumirpc.SetRootResourceResponse
+	8,	// 9: pulumirpc.Engine.StartDebugging:output_type -> google.protobuf.Empty
+	6,	// [6:10] is the sub-list for method output_type
+	2,	// [2:6] is the sub-list for method input_type
+	2,	// [2:2] is the sub-list for extension type_name
+	2,	// [2:2] is the sub-list for extension extendee
+	0,	// [0:2] is the sub-list for field type_name
 }
 
-func init() { file_pulumi_engine_proto_init() }
+func init()	{ file_pulumi_engine_proto_init() }
 func file_pulumi_engine_proto_init() {
 	if File_pulumi_engine_proto != nil {
 		return
@@ -476,17 +476,17 @@ func file_pulumi_engine_proto_init() {
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
-			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_engine_proto_rawDesc), len(file_pulumi_engine_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   6,
-			NumExtensions: 0,
-			NumServices:   1,
+			GoPackagePath:	reflect.TypeOf(x{}).PkgPath(),
+			RawDescriptor:	unsafe.Slice(unsafe.StringData(file_pulumi_engine_proto_rawDesc), len(file_pulumi_engine_proto_rawDesc)),
+			NumEnums:	1,
+			NumMessages:	6,
+			NumExtensions:	0,
+			NumServices:	1,
 		},
-		GoTypes:           file_pulumi_engine_proto_goTypes,
-		DependencyIndexes: file_pulumi_engine_proto_depIdxs,
-		EnumInfos:         file_pulumi_engine_proto_enumTypes,
-		MessageInfos:      file_pulumi_engine_proto_msgTypes,
+		GoTypes:		file_pulumi_engine_proto_goTypes,
+		DependencyIndexes:	file_pulumi_engine_proto_depIdxs,
+		EnumInfos:		file_pulumi_engine_proto_enumTypes,
+		MessageInfos:		file_pulumi_engine_proto_msgTypes,
 	}.Build()
 	File_pulumi_engine_proto = out.File
 	file_pulumi_engine_proto_goTypes = nil

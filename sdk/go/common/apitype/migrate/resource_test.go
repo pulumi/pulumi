@@ -27,11 +27,11 @@ func TestV1ToV2(t *testing.T) {
 	t.Parallel()
 
 	v1 := apitype.ResourceV1{
-		URN:    resource.URN("foo"),
-		Custom: true,
-		Delete: true,
-		ID:     resource.ID("bar"),
-		Type:   tokens.Type("special"),
+		URN:	resource.URN("foo"),
+		Custom:	true,
+		Delete:	true,
+		ID:	resource.ID("bar"),
+		Type:	tokens.Type("special"),
 		Inputs: map[string]any{
 			"foo_in": "baz",
 		},
@@ -41,8 +41,8 @@ func TestV1ToV2(t *testing.T) {
 		Outputs: map[string]any{
 			"foo_out": "out",
 		},
-		Parent:  resource.URN("parent"),
-		Protect: true,
+		Parent:		resource.URN("parent"),
+		Protect:	true,
 		Dependencies: []resource.URN{
 			resource.URN("dep1"),
 			resource.URN("dep2"),
@@ -75,26 +75,26 @@ func TestV2ToV3(t *testing.T) {
 	t.Parallel()
 
 	v2 := apitype.ResourceV2{
-		URN:    resource.URN("foo"),
-		Custom: true,
-		Delete: true,
-		ID:     resource.ID("bar"),
-		Type:   tokens.Type("special"),
+		URN:	resource.URN("foo"),
+		Custom:	true,
+		Delete:	true,
+		ID:	resource.ID("bar"),
+		Type:	tokens.Type("special"),
 		Inputs: map[string]any{
 			"foo_in": "baz",
 		},
 		Outputs: map[string]any{
 			"foo_out": "out",
 		},
-		Parent:   resource.URN("parent"),
-		Protect:  true,
-		External: false,
+		Parent:		resource.URN("parent"),
+		Protect:	true,
+		External:	false,
 		Dependencies: []resource.URN{
 			resource.URN("dep1"),
 			resource.URN("dep2"),
 		},
-		Provider:   "provider",
-		InitErrors: []string{"error"},
+		Provider:	"provider",
+		InitErrors:	[]string{"error"},
 	}
 
 	v3 := UpToResourceV3(v2)

@@ -26,9 +26,9 @@ import (
 // these race conditions instead. Use sparingly and document why it is
 // used.
 type WorkGroup struct {
-	mutex   sync.Mutex
-	cond    *sync.Cond
-	counter int
+	mutex	sync.Mutex
+	cond	*sync.Cond
+	counter	int
 }
 
 func (wg *WorkGroup) Wait() {

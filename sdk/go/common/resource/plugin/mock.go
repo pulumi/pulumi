@@ -25,22 +25,22 @@ import (
 )
 
 type MockHost struct {
-	ServerAddrF         func() string
-	LogF                func(sev diag.Severity, urn resource.URN, msg string, streamID int32)
-	LogStatusF          func(sev diag.Severity, urn resource.URN, msg string, streamID int32)
-	AnalyzerF           func(nm tokens.QName) (Analyzer, error)
-	PolicyAnalyzerF     func(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error)
-	ListAnalyzersF      func() []Analyzer
-	ProviderF           func(descriptor workspace.PackageDescriptor) (Provider, error)
-	CloseProviderF      func(provider Provider) error
-	LanguageRuntimeF    func(runtime string, info ProgramInfo) (LanguageRuntime, error)
-	EnsurePluginsF      func(plugins []workspace.PluginSpec, kinds Flags) error
-	ResolvePluginF      func(spec workspace.PluginSpec) (*workspace.PluginInfo, error)
-	GetProjectPluginsF  func() []workspace.ProjectPlugin
-	SignalCancellationF func() error
-	CloseF              func() error
-	StartDebuggingF     func(info DebuggingInfo) error
-	AttachDebuggerF     func(spec DebugSpec) bool
+	ServerAddrF		func() string
+	LogF			func(sev diag.Severity, urn resource.URN, msg string, streamID int32)
+	LogStatusF		func(sev diag.Severity, urn resource.URN, msg string, streamID int32)
+	AnalyzerF		func(nm tokens.QName) (Analyzer, error)
+	PolicyAnalyzerF		func(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error)
+	ListAnalyzersF		func() []Analyzer
+	ProviderF		func(descriptor workspace.PackageDescriptor) (Provider, error)
+	CloseProviderF		func(provider Provider) error
+	LanguageRuntimeF	func(runtime string, info ProgramInfo) (LanguageRuntime, error)
+	EnsurePluginsF		func(plugins []workspace.PluginSpec, kinds Flags) error
+	ResolvePluginF		func(spec workspace.PluginSpec) (*workspace.PluginInfo, error)
+	GetProjectPluginsF	func() []workspace.ProjectPlugin
+	SignalCancellationF	func() error
+	CloseF			func() error
+	StartDebuggingF		func(info DebuggingInfo) error
+	AttachDebuggerF		func(spec DebugSpec) bool
 }
 
 var _ Host = (*MockHost)(nil)
@@ -160,27 +160,27 @@ func (m *MockHost) AttachDebugger(spec DebugSpec) bool {
 type MockProvider struct {
 	NotForwardCompatibleProvider
 
-	CloseF              func() error
-	PkgF                func() tokens.Package
-	HandshakeF          func(context.Context, ProviderHandshakeRequest) (*ProviderHandshakeResponse, error)
-	ParameterizeF       func(context.Context, ParameterizeRequest) (ParameterizeResponse, error)
-	GetSchemaF          func(context.Context, GetSchemaRequest) (GetSchemaResponse, error)
-	CheckConfigF        func(context.Context, CheckConfigRequest) (CheckConfigResponse, error)
-	DiffConfigF         func(context.Context, DiffConfigRequest) (DiffConfigResponse, error)
-	ConfigureF          func(context.Context, ConfigureRequest) (ConfigureResponse, error)
-	CheckF              func(context.Context, CheckRequest) (CheckResponse, error)
-	DiffF               func(context.Context, DiffRequest) (DiffResponse, error)
-	CreateF             func(context.Context, CreateRequest) (CreateResponse, error)
-	ReadF               func(context.Context, ReadRequest) (ReadResponse, error)
-	UpdateF             func(context.Context, UpdateRequest) (UpdateResponse, error)
-	DeleteF             func(context.Context, DeleteRequest) (DeleteResponse, error)
-	ConstructF          func(context.Context, ConstructRequest) (ConstructResponse, error)
-	InvokeF             func(context.Context, InvokeRequest) (InvokeResponse, error)
-	CallF               func(context.Context, CallRequest) (CallResponse, error)
-	GetPluginInfoF      func(context.Context) (workspace.PluginInfo, error)
-	SignalCancellationF func(context.Context) error
-	GetMappingF         func(context.Context, GetMappingRequest) (GetMappingResponse, error)
-	GetMappingsF        func(context.Context, GetMappingsRequest) (GetMappingsResponse, error)
+	CloseF			func() error
+	PkgF			func() tokens.Package
+	HandshakeF		func(context.Context, ProviderHandshakeRequest) (*ProviderHandshakeResponse, error)
+	ParameterizeF		func(context.Context, ParameterizeRequest) (ParameterizeResponse, error)
+	GetSchemaF		func(context.Context, GetSchemaRequest) (GetSchemaResponse, error)
+	CheckConfigF		func(context.Context, CheckConfigRequest) (CheckConfigResponse, error)
+	DiffConfigF		func(context.Context, DiffConfigRequest) (DiffConfigResponse, error)
+	ConfigureF		func(context.Context, ConfigureRequest) (ConfigureResponse, error)
+	CheckF			func(context.Context, CheckRequest) (CheckResponse, error)
+	DiffF			func(context.Context, DiffRequest) (DiffResponse, error)
+	CreateF			func(context.Context, CreateRequest) (CreateResponse, error)
+	ReadF			func(context.Context, ReadRequest) (ReadResponse, error)
+	UpdateF			func(context.Context, UpdateRequest) (UpdateResponse, error)
+	DeleteF			func(context.Context, DeleteRequest) (DeleteResponse, error)
+	ConstructF		func(context.Context, ConstructRequest) (ConstructResponse, error)
+	InvokeF			func(context.Context, InvokeRequest) (InvokeResponse, error)
+	CallF			func(context.Context, CallRequest) (CallResponse, error)
+	GetPluginInfoF		func(context.Context) (workspace.PluginInfo, error)
+	SignalCancellationF	func(context.Context) error
+	GetMappingF		func(context.Context, GetMappingRequest) (GetMappingResponse, error)
+	GetMappingsF		func(context.Context, GetMappingsRequest) (GetMappingsResponse, error)
 }
 
 var _ Provider = (*MockProvider)(nil)

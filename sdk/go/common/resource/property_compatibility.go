@@ -63,9 +63,9 @@ func ToResourcePropertyValue(v property.Value) PropertyValue {
 	case v.IsResourceReference():
 		ref := v.AsResourceReference()
 		r = NewProperty(ResourceReference{
-			URN:            ref.URN,
-			ID:             ToResourcePropertyValue(ref.ID),
-			PackageVersion: ref.PackageVersion,
+			URN:		ref.URN,
+			ID:		ToResourcePropertyValue(ref.ID),
+			PackageVersion:	ref.PackageVersion,
 		})
 	case v.IsNull():
 		r = NewNullProperty()
@@ -74,10 +74,10 @@ func ToResourcePropertyValue(v property.Value) PropertyValue {
 	switch {
 	case len(v.Dependencies()) > 0 || (v.Secret() && v.IsComputed()):
 		r = NewProperty(Output{
-			Element:      r,
-			Known:        !v.IsComputed(),
-			Secret:       v.Secret(),
-			Dependencies: v.Dependencies(),
+			Element:	r,
+			Known:		!v.IsComputed(),
+			Secret:		v.Secret(),
+			Dependencies:	v.Dependencies(),
 		})
 	case v.Secret():
 		r = MakeSecret(r)
@@ -134,9 +134,9 @@ func FromResourcePropertyValue(v PropertyValue) property.Value {
 		r := v.ResourceReferenceValue()
 
 		return property.New(property.ResourceReference{
-			URN:            r.URN,
-			ID:             FromResourcePropertyValue(r.ID),
-			PackageVersion: r.PackageVersion,
+			URN:		r.URN,
+			ID:		FromResourcePropertyValue(r.ID),
+			PackageVersion:	r.PackageVersion,
 		})
 	case v.IsNull():
 		return property.Value{}

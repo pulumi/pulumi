@@ -45,17 +45,17 @@ type Sink interface {
 type Severity string
 
 const (
-	Debug   Severity = "debug"
-	Info    Severity = "info"
-	Infoerr Severity = "info#err"
-	Warning Severity = "warning"
-	Error   Severity = "error"
+	Debug	Severity	= "debug"
+	Info	Severity	= "info"
+	Infoerr	Severity	= "info#err"
+	Warning	Severity	= "warning"
+	Error	Severity	= "error"
 )
 
 // FormatOptions controls the output style and content.
 type FormatOptions struct {
-	Color colors.Colorization // how output should be colorized.
-	Debug bool                // if true, debugging will be output to stdout.
+	Color	colors.Colorization	// how output should be colorized.
+	Debug	bool			// if true, debugging will be output to stdout.
 }
 
 // DefaultSink returns a default sink that simply logs output to stderr/stdout.
@@ -91,11 +91,11 @@ func DefaultSink(stdout io.Writer, stderr io.Writer, opts FormatOptions) Sink {
 	}
 
 	return newDefaultSink(opts, map[Severity]io.Writer{
-		Debug:   debug,
-		Info:    stdout,
-		Infoerr: stderr,
-		Error:   stderr,
-		Warning: stderr,
+		Debug:		debug,
+		Info:		stdout,
+		Infoerr:	stderr,
+		Error:		stderr,
+		Warning:	stderr,
 	})
 }
 
@@ -107,8 +107,8 @@ func newDefaultSink(opts FormatOptions, writers map[Severity]io.Writer) *default
 	contract.Assertf(writers[Warning] != nil, "Writer for %v must be set", Warning)
 	contract.Assertf(opts.Color != "", "FormatOptions.Color must be set")
 	return &defaultSink{
-		opts:    opts,
-		writers: writers,
+		opts:		opts,
+		writers:	writers,
 	}
 }
 
@@ -116,8 +116,8 @@ const DefaultSinkIDPrefix = "PU"
 
 // defaultSink is the default sink which logs output to stderr/stdout.
 type defaultSink struct {
-	opts    FormatOptions          // a set of options that control output style and content.
-	writers map[Severity]io.Writer // the writers to use for each kind of diagnostic severity.
+	opts	FormatOptions		// a set of options that control output style and content.
+	writers	map[Severity]io.Writer	// the writers to use for each kind of diagnostic severity.
 }
 
 func (d *defaultSink) Logf(sev Severity, diag *Diag, args ...any) {
@@ -235,7 +235,7 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...any) (string, 
 type syncWriter struct {
 	io.Writer
 
-	mu *sync.Mutex
+	mu	*sync.Mutex
 }
 
 func (w *syncWriter) Write(p []byte) (int, error) {

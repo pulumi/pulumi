@@ -27,16 +27,16 @@ import (
 // necessary information for the analyzer to start up.
 type HandshakeRequest struct {
 	// The engine that is running the analyzer.
-	Engine pulumix.Engine
+	Engine	pulumix.Engine
 	// A *root directory* where the analyzer's binary, `PulumiPolicy.yaml`, or other identifying source code is located.
 	// In the event that the analyzer is *not* being booted by the engine (e.g. in the case that the engine has been
 	// asked to attach to an existing running analyzer instance via a host/port number), this field will be empty.
-	RootDirectory *string
+	RootDirectory	*string
 	// A *program directory* in which the analyzer should execute. This is generally a subdirectory of the root
 	// directory, though this is not required. In the event that the analyzer is *not* being booted by the engine (e.g.
 	// in the case that the engine has been asked to attach to an existing running analyzer instance via a host/port
 	// number), this field will be empty.
-	ProgramDirectory *string
+	ProgramDirectory	*string
 }
 
 // HandshakeResponse is sent by the analyzer to the engine in response to a HandshakeRequest. Currently, it is empty,
@@ -45,9 +45,9 @@ type HandshakeResponse struct{}
 // PolicyConfig provides configuration for a policy.
 type PolicyConfig struct {
 	// Enforcement level of the policy.
-	EnforcementLevel EnforcementLevel
+	EnforcementLevel	EnforcementLevel
 	// Configuration properties of the policy.
-	Properties map[string]any
+	Properties	map[string]any
 }
 
 // ConfigureRequest provides configuration information to the analyzer.
@@ -67,9 +67,9 @@ type PolicyPack interface {
 }
 
 type policyPack struct {
-	name     string
-	version  semver.Version
-	policies []Policy
+	name		string
+	version		semver.Version
+	policies	[]Policy
 }
 
 var policyPackNameRE = regexp.MustCompile(`^[a-zA-Z0-9-_.]{1,100}$`)
@@ -106,15 +106,15 @@ func NewPolicyPack(
 	}
 
 	return &policyPack{
-		name:     name,
-		version:  version,
-		policies: policies,
+		name:		name,
+		version:	version,
+		policies:	policies,
 	}, nil
 }
 
-func (p *policyPack) Name() string { return p.name }
+func (p *policyPack) Name() string	{ return p.name }
 
-func (p *policyPack) Version() semver.Version { return p.version }
+func (p *policyPack) Version() semver.Version	{ return p.version }
 
 func (p *policyPack) Policies() []Policy {
 	return p.policies

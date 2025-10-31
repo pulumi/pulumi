@@ -23,14 +23,14 @@ import (
 )
 
 type bag struct {
-	Bool     bool
-	BoolP    *bool
-	String   string
-	StringP  *string
-	Float64  float64
-	Float64P *float64
-	Strings  []string
-	StringsP *[]string
+	Bool		bool
+	BoolP		*bool
+	String		string
+	StringP		*string
+	Float64		float64
+	Float64P	*float64
+	Strings		[]string
+	StringsP	*[]string
 }
 
 func TestFieldMapper(t *testing.T) {
@@ -38,10 +38,10 @@ func TestFieldMapper(t *testing.T) {
 
 	md := New(nil)
 	tree := map[string]any{
-		"b":  true,
-		"s":  "hello",
-		"f":  float64(3.14159265359),
-		"ss": []string{"a", "b", "c"},
+		"b":	true,
+		"s":	"hello",
+		"f":	float64(3.14159265359),
+		"ss":	[]string{"a", "b", "c"},
 	}
 
 	// Try some simple primitive decodes.
@@ -104,11 +104,11 @@ func TestFieldMapper(t *testing.T) {
 }
 
 type bagtag struct {
-	String        string         `pulumi:"s"`
-	StringSkip    string         `pulumi:"sc,skip"`
-	StringOpt     string         `pulumi:"so,optional"`
-	StringSkipOpt string         `pulumi:"sco,skip,optional"`
-	MapOpt        map[string]any `pulumi:"mo,optional"`
+	String		string		`pulumi:"s"`
+	StringSkip	string		`pulumi:"sc,skip"`
+	StringOpt	string		`pulumi:"so,optional"`
+	StringSkipOpt	string		`pulumi:"sco,skip,optional"`
+	MapOpt		map[string]any	`pulumi:"mo,optional"`
 }
 
 type AnInterface interface {
@@ -118,11 +118,11 @@ type AnInterface interface {
 func TestMapperEncode(t *testing.T) {
 	t.Parallel()
 	bag := bagtag{
-		String:    "something",
-		StringOpt: "ohmv",
+		String:		"something",
+		StringOpt:	"ohmv",
 		MapOpt: map[string]any{
-			"a": "something",
-			"b": nil,
+			"a":	"something",
+			"b":	nil,
 		},
 	}
 
@@ -162,13 +162,13 @@ func TestMapperEncodeValue(t *testing.T) {
 	t.Parallel()
 	strdata := "something"
 	bag := bagtag{
-		String:    "something",
-		StringOpt: "ohmv",
+		String:		"something",
+		StringOpt:	"ohmv",
 	}
 	slice := []string{"something"}
 	mapdata := map[string]any{
-		"a": "something",
-		"b": nil,
+		"a":	"something",
+		"b":	nil,
 	}
 	anyType := reflect.TypeOf((*any)(nil)).Elem()
 	assert.Equal(t, reflect.Interface, anyType.Kind())
@@ -249,13 +249,13 @@ func TestMapperDecode(t *testing.T) {
 	// First, test the fully populated case.
 	var b1 bagtag
 	err = md.Decode(map[string]any{
-		"s":   "something",
-		"sc":  "nothing",
-		"so":  "ohmy",
-		"sco": "ohmynada",
+		"s":	"something",
+		"sc":	"nothing",
+		"so":	"ohmy",
+		"sco":	"ohmynada",
 		"mo": map[string]any{
-			"a": "something",
-			"b": nil,
+			"a":	"something",
+			"b":	nil,
 		},
 	}, &b1)
 	require.NoError(t, err)
@@ -268,8 +268,8 @@ func TestMapperDecode(t *testing.T) {
 	// Now let optional fields go missing.
 	var b2 bagtag
 	err = md.Decode(map[string]any{
-		"s":  "something",
-		"sc": "nothing",
+		"s":	"something",
+		"sc":	"nothing",
 	}, &b2)
 	require.NoError(t, err)
 	assert.Equal(t, "something", b2.String)
@@ -280,8 +280,8 @@ func TestMapperDecode(t *testing.T) {
 	// Try some error conditions; first, wrong type:
 	var b3 bagtag
 	err = md.Decode(map[string]any{
-		"s":  true,
-		"sc": "",
+		"s":	true,
+		"sc":	"",
 	}, &b3)
 	assert.EqualError(t, err, "1 failures decoding:\n"+
 		"\ts: Field 's' on 'mapper.bagtag' must be a 'string'; got 'bool' instead")
@@ -296,10 +296,10 @@ func TestMapperDecode(t *testing.T) {
 }
 
 type bog struct {
-	Boggy    bogger     `pulumi:"boggy"`
-	BoggyP   *bogger    `pulumi:"boggyp"`
-	Boggers  []bogger   `pulumi:"boggers"`
-	BoggersP *[]*bogger `pulumi:"boggersp"`
+	Boggy		bogger		`pulumi:"boggy"`
+	BoggyP		*bogger		`pulumi:"boggyp"`
+	Boggers		[]bogger	`pulumi:"boggers"`
+	BoggersP	*[]*bogger	`pulumi:"boggersp"`
 }
 
 type bogger struct {
@@ -314,8 +314,8 @@ func TestNestedMapper(t *testing.T) {
 	// Test one level deep nesting (fields, arrays, pointers).
 	var b bog
 	err := md.Decode(map[string]any{
-		"boggy":  map[string]any{"num": float64(99)},
-		"boggyp": map[string]any{"num": float64(180)},
+		"boggy":	map[string]any{"num": float64(99)},
+		"boggyp":	map[string]any{"num": float64(180)},
 		"boggers": []map[string]any{
 			{"num": float64(1)},
 			{"num": float64(2)},
@@ -346,8 +346,8 @@ func TestNestedMapper(t *testing.T) {
 }
 
 type boggerdybogger struct {
-	Bogs  map[string]bog   `pulumi:"bogs"`
-	BogsP *map[string]*bog `pulumi:"bogsp"`
+	Bogs	map[string]bog		`pulumi:"bogs"`
+	BogsP	*map[string]*bog	`pulumi:"bogsp"`
 }
 
 func TestMultiplyNestedMapper(t *testing.T) {
@@ -360,8 +360,8 @@ func TestMultiplyNestedMapper(t *testing.T) {
 	err := md.Decode(map[string]any{
 		"bogs": map[string]any{
 			"a": map[string]any{
-				"boggy":  map[string]any{"num": float64(99)},
-				"boggyp": map[string]any{"num": float64(180)},
+				"boggy":	map[string]any{"num": float64(99)},
+				"boggyp":	map[string]any{"num": float64(180)},
 				"boggers": []map[string]any{
 					{"num": float64(1)},
 					{"num": float64(2)},
@@ -376,8 +376,8 @@ func TestMultiplyNestedMapper(t *testing.T) {
 		},
 		"bogsp": map[string]any{
 			"z": map[string]any{
-				"boggy":  map[string]any{"num": float64(188)},
-				"boggyp": map[string]any{"num": float64(360)},
+				"boggy":	map[string]any{"num": float64(188)},
+				"boggyp":	map[string]any{"num": float64(360)},
 				"boggers": []map[string]any{
 					{"num": float64(2)},
 					{"num": float64(4)},
@@ -433,8 +433,8 @@ func TestMultiplyNestedMapper(t *testing.T) {
 }
 
 type hasmap struct {
-	Entries  map[string]mapentry  `pulumi:"entries"`
-	EntriesP map[string]*mapentry `pulumi:"entriesp"`
+	Entries		map[string]mapentry	`pulumi:"entries"`
+	EntriesP	map[string]*mapentry	`pulumi:"entriesp"`
 }
 
 type mapentry struct {
@@ -450,12 +450,12 @@ func TestMapMapper(t *testing.T) {
 	var hm hasmap
 	err := md.Decode(map[string]any{
 		"entries": map[string]any{
-			"a": map[string]any{"title": "first"},
-			"b": map[string]any{"title": "second"},
+			"a":	map[string]any{"title": "first"},
+			"b":	map[string]any{"title": "second"},
 		},
 		"entriesp": map[string]any{
-			"x": map[string]any{"title": "firstp"},
-			"y": map[string]any{"title": "secondp"},
+			"x":	map[string]any{"title": "firstp"},
+			"y":	map[string]any{"title": "secondp"},
 		},
 	}, &hm)
 	require.NoError(t, err)
@@ -470,8 +470,8 @@ func TestMapMapper(t *testing.T) {
 }
 
 type wrap struct {
-	C  customStruct    `pulumi:"c"`
-	CI customInterface `pulumi:"ci"`
+	C	customStruct	`pulumi:"c"`
+	CI	customInterface	`pulumi:"ci"`
 }
 
 type customInterface interface {
@@ -480,32 +480,32 @@ type customInterface interface {
 }
 
 type customStruct struct {
-	X float64 `pulumi:"x"`
-	Y float64 `pulumi:"y"`
+	X	float64	`pulumi:"x"`
+	Y	float64	`pulumi:"y"`
 }
 
-func (s *customStruct) GetX() float64 { return s.X }
-func (s *customStruct) GetY() float64 { return s.Y }
+func (s *customStruct) GetX() float64	{ return s.X }
+func (s *customStruct) GetY() float64	{ return s.Y }
 
 func TestCustomMapper(t *testing.T) {
 	t.Parallel()
 
 	md := New(&Opts{
 		CustomDecoders: Decoders{
-			reflect.TypeOf((*customInterface)(nil)).Elem(): decodeCustomInterface,
-			reflect.TypeOf(customStruct{}):                 decodeCustomStruct,
+			reflect.TypeOf((*customInterface)(nil)).Elem():	decodeCustomInterface,
+			reflect.TypeOf(customStruct{}):			decodeCustomStruct,
 		},
 	})
 
 	var w wrap
 	err := md.Decode(map[string]any{
 		"c": map[string]any{
-			"x": float64(-99.2),
-			"y": float64(127.127),
+			"x":	float64(-99.2),
+			"y":	float64(127.127),
 		},
 		"ci": map[string]any{
-			"x": float64(42.6),
-			"y": float64(247.9),
+			"x":	float64(42.6),
+			"y":	float64(247.9),
 		},
 	}, &w)
 	require.NoError(t, err)
@@ -543,14 +543,14 @@ type outer struct {
 }
 
 type inner struct {
-	A string   `pulumi:"a"`
-	B *string  `pulumi:"b,optional"`
-	C *string  `pulumi:"c,optional"`
-	D float64  `pulumi:"d"`
-	E *float64 `pulumi:"e,optional"`
-	F *float64 `pulumi:"f,optional"`
-	G *inner   `pulumi:"g,optional"`
-	H *[]inner `pulumi:"h,optional"`
+	A	string		`pulumi:"a"`
+	B	*string		`pulumi:"b,optional"`
+	C	*string		`pulumi:"c,optional"`
+	D	float64		`pulumi:"d"`
+	E	*float64	`pulumi:"e,optional"`
+	F	*float64	`pulumi:"f,optional"`
+	G	*inner		`pulumi:"g,optional"`
+	H	*[]inner	`pulumi:"h,optional"`
 }
 
 func TestBasicUnmap(t *testing.T) {
@@ -567,42 +567,42 @@ func TestBasicUnmap(t *testing.T) {
 	o := outer{
 		Inners: &[]inner{
 			{
-				A: "v1",
-				B: &v2,
-				C: nil,
-				D: float64(4),
-				E: &v5,
-				F: nil,
+				A:	"v1",
+				B:	&v2,
+				C:	nil,
+				D:	float64(4),
+				E:	&v5,
+				F:	nil,
 				G: &inner{
-					A: "i1v1",
-					B: &i1v2,
-					C: nil,
-					D: float64(14),
-					E: &i1v5,
-					F: nil,
-					G: nil,
-					H: nil,
+					A:	"i1v1",
+					B:	&i1v2,
+					C:	nil,
+					D:	float64(14),
+					E:	&i1v5,
+					F:	nil,
+					G:	nil,
+					H:	nil,
 				},
 				H: &[]inner{
 					{
-						A: "i2v1",
-						B: &i2v2,
-						C: nil,
-						D: float64(24),
-						E: &i2v5,
-						F: nil,
-						G: nil,
-						H: nil,
+						A:	"i2v1",
+						B:	&i2v2,
+						C:	nil,
+						D:	float64(24),
+						E:	&i2v5,
+						F:	nil,
+						G:	nil,
+						H:	nil,
 					},
 					{
-						A: "i3v1",
-						B: &i3v2,
-						C: nil,
-						D: float64(34),
-						E: &i3v5,
-						F: nil,
-						G: nil,
-						H: nil,
+						A:	"i3v1",
+						B:	&i3v2,
+						C:	nil,
+						D:	float64(34),
+						E:	&i3v5,
+						F:	nil,
+						G:	nil,
+						H:	nil,
 					},
 				},
 			},

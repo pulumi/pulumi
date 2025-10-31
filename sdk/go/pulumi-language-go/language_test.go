@@ -97,20 +97,20 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l1-config-types": "fails to compile",
-	"l1-proxy-index":  "fails to compile",
-	"l2-proxy-index":  "fails to compile",
-	"l1-builtin-try":  "pulumi#18506 Support try in Go program generation",
-	"l1-builtin-can":  "pulumi#18570 Support can in Go program generation",
+	"l1-config-types":	"fails to compile",
+	"l1-proxy-index":	"fails to compile",
+	"l2-proxy-index":	"fails to compile",
+	"l1-builtin-try":	"pulumi#18506 Support try in Go program generation",
+	"l1-builtin-can":	"pulumi#18570 Support can in Go program generation",
 
 	// pulumi/pulumi#18345
-	"l1-keyword-overlap":                  "outputs are not cast correctly from pcl to their pulumi types",                                                 //nolint:lll
-	"l2-plain":                            "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal",       //nolint:lll
-	"l2-map-keys":                         "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal",       //nolint:lll
-	"l2-component-program-resource-ref":   "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement", //nolint:lll
-	"l2-component-component-resource-ref": "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement", //nolint:lll
-	"l2-component-call-simple":            "pulumi#18202: syntax error: unexpected / in parameter list; possibly missing comma or )",                       //nolint:lll
-	"l2-resource-invoke-dynamic-function": "pulumi#18423: pulumi.Interface{} unexpected {, expected )",                                                     //nolint:lll
+	"l1-keyword-overlap":			"outputs are not cast correctly from pcl to their pulumi types",							//nolint:lll
+	"l2-plain":				"cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal",		//nolint:lll
+	"l2-map-keys":				"cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal",		//nolint:lll
+	"l2-component-program-resource-ref":	"pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement",	//nolint:lll
+	"l2-component-component-resource-ref":	"pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement",	//nolint:lll
+	"l2-component-call-simple":		"pulumi#18202: syntax error: unexpected / in parameter list; possibly missing comma or )",				//nolint:lll
+	"l2-resource-invoke-dynamic-function":	"pulumi#18423: pulumi.Interface{} unexpected {, expected )",								//nolint:lll
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.
@@ -162,7 +162,7 @@ func TestLanguage(t *testing.T) {
 					pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 					return nil
 				},
-				Cancel: cancel,
+				Cancel:	cancel,
 			})
 			require.NoError(t, err)
 
@@ -178,22 +178,22 @@ func TestLanguage(t *testing.T) {
 
 			// Prepare to run the tests
 			prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
-				LanguagePluginName:   "go",
-				LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
-				TemporaryDirectory:   rootDir,
-				SnapshotDirectory:    snapshotDir,
-				CoreSdkDirectory:     "../..",
-				CoreSdkVersion:       sdk.Version.String(),
-				PolicyPackDirectory:  "./testdata/policies",
-				Local:                local,
+				LanguagePluginName:	"go",
+				LanguagePluginTarget:	fmt.Sprintf("127.0.0.1:%d", handle.Port),
+				TemporaryDirectory:	rootDir,
+				SnapshotDirectory:	snapshotDir,
+				CoreSdkDirectory:	"../..",
+				CoreSdkVersion:		sdk.Version.String(),
+				PolicyPackDirectory:	"./testdata/policies",
+				Local:			local,
 				SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
 					{
-						Path:        "(.+/)?go\\.mod",
-						Pattern:     rootDir + "/",
-						Replacement: "/ROOT/",
+						Path:		"(.+/)?go\\.mod",
+						Pattern:	rootDir + "/",
+						Replacement:	"/ROOT/",
 					},
 				},
-				ProgramOverrides: programOverrides,
+				ProgramOverrides:	programOverrides,
 			})
 			require.NoError(t, err)
 
@@ -215,8 +215,8 @@ func TestLanguage(t *testing.T) {
 					}
 
 					result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
-						Token: prepare.Token,
-						Test:  tt,
+						Token:	prepare.Token,
+						Test:	tt,
 					})
 
 					require.NoError(t, err)

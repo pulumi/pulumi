@@ -14,13 +14,13 @@ import (
 var _ = internal.GetEnvOrDefault
 
 type Data struct {
-	BoolArray []bool            `pulumi:"boolArray"`
-	Boolean   bool              `pulumi:"boolean"`
-	Float     float64           `pulumi:"float"`
-	InnerData InnerData         `pulumi:"innerData"`
-	Integer   int               `pulumi:"integer"`
-	String    string            `pulumi:"string"`
-	StringMap map[string]string `pulumi:"stringMap"`
+	BoolArray	[]bool			`pulumi:"boolArray"`
+	Boolean		bool			`pulumi:"boolean"`
+	Float		float64			`pulumi:"float"`
+	InnerData	InnerData		`pulumi:"innerData"`
+	Integer		int			`pulumi:"integer"`
+	String		string			`pulumi:"string"`
+	StringMap	map[string]string	`pulumi:"stringMap"`
 }
 
 // DataInput is an input type that accepts DataArgs and DataOutput values.
@@ -35,13 +35,13 @@ type DataInput interface {
 }
 
 type DataArgs struct {
-	BoolArray pulumi.BoolArrayInput `pulumi:"boolArray"`
-	Boolean   pulumi.BoolInput      `pulumi:"boolean"`
-	Float     pulumi.Float64Input   `pulumi:"float"`
-	InnerData InnerDataInput        `pulumi:"innerData"`
-	Integer   pulumi.IntInput       `pulumi:"integer"`
-	String    pulumi.StringInput    `pulumi:"string"`
-	StringMap pulumi.StringMapInput `pulumi:"stringMap"`
+	BoolArray	pulumi.BoolArrayInput	`pulumi:"boolArray"`
+	Boolean		pulumi.BoolInput	`pulumi:"boolean"`
+	Float		pulumi.Float64Input	`pulumi:"float"`
+	InnerData	InnerDataInput		`pulumi:"innerData"`
+	Integer		pulumi.IntInput		`pulumi:"integer"`
+	String		pulumi.StringInput	`pulumi:"string"`
+	StringMap	pulumi.StringMapInput	`pulumi:"stringMap"`
 }
 
 func (DataArgs) ElementType() reflect.Type {
@@ -99,12 +99,12 @@ func (o DataOutput) StringMap() pulumi.StringMapOutput {
 }
 
 type InnerData struct {
-	BoolArray []bool            `pulumi:"boolArray"`
-	Boolean   bool              `pulumi:"boolean"`
-	Float     float64           `pulumi:"float"`
-	Integer   int               `pulumi:"integer"`
-	String    string            `pulumi:"string"`
-	StringMap map[string]string `pulumi:"stringMap"`
+	BoolArray	[]bool			`pulumi:"boolArray"`
+	Boolean		bool			`pulumi:"boolean"`
+	Float		float64			`pulumi:"float"`
+	Integer		int			`pulumi:"integer"`
+	String		string			`pulumi:"string"`
+	StringMap	map[string]string	`pulumi:"stringMap"`
 }
 
 // InnerDataInput is an input type that accepts InnerDataArgs and InnerDataOutput values.
@@ -119,12 +119,12 @@ type InnerDataInput interface {
 }
 
 type InnerDataArgs struct {
-	BoolArray pulumi.BoolArrayInput `pulumi:"boolArray"`
-	Boolean   pulumi.BoolInput      `pulumi:"boolean"`
-	Float     pulumi.Float64Input   `pulumi:"float"`
-	Integer   pulumi.IntInput       `pulumi:"integer"`
-	String    pulumi.StringInput    `pulumi:"string"`
-	StringMap pulumi.StringMapInput `pulumi:"stringMap"`
+	BoolArray	pulumi.BoolArrayInput	`pulumi:"boolArray"`
+	Boolean		pulumi.BoolInput	`pulumi:"boolean"`
+	Float		pulumi.Float64Input	`pulumi:"float"`
+	Integer		pulumi.IntInput		`pulumi:"integer"`
+	String		pulumi.StringInput	`pulumi:"string"`
+	StringMap	pulumi.StringMapInput	`pulumi:"stringMap"`
 }
 
 func (InnerDataArgs) ElementType() reflect.Type {

@@ -16,7 +16,7 @@ import (
 type Component struct {
 	pulumi.ResourceState
 
-	PropertyDeps pulumi.StringArrayMapOutput `pulumi:"propertyDeps"`
+	PropertyDeps	pulumi.StringArrayMapOutput	`pulumi:"propertyDeps"`
 }
 
 // NewComponent registers a new resource with the given unique name, arguments, and options.
@@ -45,16 +45,16 @@ func NewComponent(ctx *pulumi.Context,
 }
 
 type componentArgs struct {
-	Resource     *Custom            `pulumi:"resource"`
-	ResourceList []*Custom          `pulumi:"resourceList"`
-	ResourceMap  map[string]*Custom `pulumi:"resourceMap"`
+	Resource	*Custom			`pulumi:"resource"`
+	ResourceList	[]*Custom		`pulumi:"resourceList"`
+	ResourceMap	map[string]*Custom	`pulumi:"resourceMap"`
 }
 
 // The set of arguments for constructing a Component resource.
 type ComponentArgs struct {
-	Resource     *Custom
-	ResourceList []*Custom
-	ResourceMap  map[string]*Custom
+	Resource	*Custom
+	ResourceList	[]*Custom
+	ResourceMap	map[string]*Custom
 }
 
 func (ComponentArgs) ElementType() reflect.Type {
@@ -71,16 +71,16 @@ func (r *Component) Refs(ctx *pulumi.Context, args *ComponentRefsArgs) (Componen
 }
 
 type componentRefsArgs struct {
-	Resource     *Custom            `pulumi:"resource"`
-	ResourceList []*Custom          `pulumi:"resourceList"`
-	ResourceMap  map[string]*Custom `pulumi:"resourceMap"`
+	Resource	*Custom			`pulumi:"resource"`
+	ResourceList	[]*Custom		`pulumi:"resourceList"`
+	ResourceMap	map[string]*Custom	`pulumi:"resourceMap"`
 }
 
 // The set of arguments for the Refs method of the Component resource.
 type ComponentRefsArgs struct {
-	Resource     *Custom
-	ResourceList []CustomInput
-	ResourceMap  map[string]CustomInput
+	Resource	*Custom
+	ResourceList	[]CustomInput
+	ResourceMap	map[string]CustomInput
 }
 
 func (ComponentRefsArgs) ElementType() reflect.Type {

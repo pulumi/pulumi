@@ -29,17 +29,17 @@ type logWriter struct {
 	//
 	// We're not storing testing.TB directly to ensure that
 	// we don't accidentally use other log methods.
-	t interface {
+	t	interface {
 		Logf(string, ...any)
 		Helper()
 	}
 
-	prefix string
+	prefix	string
 
 	// Holds buffered text for the next write or flush
 	// if we haven't yet seen a newline.
-	buff bytes.Buffer
-	mu   sync.Mutex // guards buff
+	buff	bytes.Buffer
+	mu	sync.Mutex	// guards buff
 }
 
 var _ io.Writer = (*logWriter)(nil)
@@ -69,7 +69,7 @@ func (w *logWriter) Write(bs []byte) (int, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	w.t.Helper() // so that the log message points to the caller
+	w.t.Helper()	// so that the log message points to the caller
 
 	// t.Logf adds a newline so we should not write bs as-is.
 	// Instead, we'll call t.Log one line at a time.

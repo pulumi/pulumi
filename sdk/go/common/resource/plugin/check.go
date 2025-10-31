@@ -29,8 +29,8 @@ func NewCheckResponse(err error) *pulumirpc.CheckResponse {
 				switch f := failure.(type) {
 				case mapper.FieldError:
 					failures = append(failures, &pulumirpc.CheckFailure{
-						Property: f.Field(),
-						Reason:   f.Reason(),
+						Property:	f.Field(),
+						Reason:		f.Reason(),
 					})
 				default:
 					failures = append(failures, &pulumirpc.CheckFailure{Reason: f.Error()})

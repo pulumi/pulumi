@@ -33,11 +33,11 @@ import (
 )
 
 type providerServer struct {
-	pulumirpc.UnsafeResourceProviderServer // opt out of forward compat
+	pulumirpc.UnsafeResourceProviderServer	// opt out of forward compat
 
-	provider      Provider
-	keepSecrets   bool
-	keepResources bool
+	provider	Provider
+	keepSecrets	bool
+	keepResources	bool
 }
 
 func NewProviderServer(provider Provider) pulumirpc.ResourceProviderServer {
@@ -46,22 +46,22 @@ func NewProviderServer(provider Provider) pulumirpc.ResourceProviderServer {
 
 func (p *providerServer) unmarshalOptions(label string, keepOutputValues bool) MarshalOptions {
 	return MarshalOptions{
-		Label:            label,
-		KeepUnknowns:     true,
-		KeepSecrets:      true,
-		KeepResources:    true,
-		KeepOutputValues: keepOutputValues,
-		PropagateNil:     true,
+		Label:			label,
+		KeepUnknowns:		true,
+		KeepSecrets:		true,
+		KeepResources:		true,
+		KeepOutputValues:	keepOutputValues,
+		PropagateNil:		true,
 	}
 }
 
 func (p *providerServer) marshalOptions(label string) MarshalOptions {
 	return MarshalOptions{
-		Label:         label,
-		KeepUnknowns:  true,
-		KeepSecrets:   p.keepSecrets,
-		KeepResources: p.keepResources,
-		PropagateNil:  true,
+		Label:		label,
+		KeepUnknowns:	true,
+		KeepSecrets:	p.keepSecrets,
+		KeepResources:	p.keepResources,
+		PropagateNil:	true,
 	}
 }
 
@@ -119,18 +119,18 @@ func (p *providerServer) marshalDiff(diff DiffResult) (*pulumirpc.DiffResponse, 
 			}
 
 			detailedDiff[path] = &pulumirpc.PropertyDiff{
-				Kind:      kind,
-				InputDiff: diff.InputDiff,
+				Kind:		kind,
+				InputDiff:	diff.InputDiff,
 			}
 		}
 	}
 
 	return &pulumirpc.DiffResponse{
-		Replaces:            replaces,
-		DeleteBeforeReplace: diff.DeleteBeforeReplace,
-		Changes:             changes,
-		Diffs:               diffs,
-		DetailedDiff:        detailedDiff,
+		Replaces:		replaces,
+		DeleteBeforeReplace:	diff.DeleteBeforeReplace,
+		Changes:		changes,
+		Diffs:			diffs,
+		DetailedDiff:		detailedDiff,
 	}, nil
 }
 
@@ -139,12 +139,12 @@ func (p *providerServer) Handshake(
 	req *pulumirpc.ProviderHandshakeRequest,
 ) (*pulumirpc.ProviderHandshakeResponse, error) {
 	res, err := p.provider.Handshake(ctx, ProviderHandshakeRequest{
-		EngineAddress:               req.EngineAddress,
-		RootDirectory:               req.RootDirectory,
-		ProgramDirectory:            req.ProgramDirectory,
-		ConfigureWithUrn:            req.ConfigureWithUrn,
-		SupportsViews:               req.SupportsViews,
-		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
+		EngineAddress:			req.EngineAddress,
+		RootDirectory:			req.RootDirectory,
+		ProgramDirectory:		req.ProgramDirectory,
+		ConfigureWithUrn:		req.ConfigureWithUrn,
+		SupportsViews:			req.SupportsViews,
+		SupportsRefreshBeforeUpdate:	req.SupportsRefreshBeforeUpdate,
 	})
 	if err != nil {
 		return nil, err
@@ -153,12 +153,12 @@ func (p *providerServer) Handshake(
 	return &pulumirpc.ProviderHandshakeResponse{
 		// providerServer can shim support for all these features, so we always set them to true. Note that we do the same
 		// in Configure.
-		AcceptSecrets:   true,
-		AcceptResources: true,
-		AcceptOutputs:   true,
+		AcceptSecrets:		true,
+		AcceptResources:	true,
+		AcceptOutputs:		true,
 
 		// For features we don't shim, we just pass through the response from the provider as expected.
-		SupportsAutonamingConfiguration: res.SupportsAutonamingConfiguration,
+		SupportsAutonamingConfiguration:	res.SupportsAutonamingConfiguration,
 	}, nil
 }
 
@@ -175,9 +175,9 @@ func (p *providerServer) Parameterize(
 			return nil, err
 		}
 		params = &ParameterizeValue{
-			Name:    p.Value.GetName(),
-			Version: version,
-			Value:   p.Value.Value,
+			Name:		p.Value.GetName(),
+			Version:	version,
+			Value:		p.Value.Value,
 		}
 	}
 	resp, err := p.provider.Parameterize(ctx, ParameterizeRequest{Parameters: params})
@@ -185,8 +185,8 @@ func (p *providerServer) Parameterize(
 		return nil, err
 	}
 	return &pulumirpc.ParameterizeResponse{
-		Name:    resp.Name,
-		Version: resp.Version.String(),
+		Name:		resp.Name,
+		Version:	resp.Version.String(),
 	}, nil
 }
 
@@ -203,9 +203,9 @@ func (p *providerServer) GetSchema(ctx context.Context,
 	}
 
 	schema, err := p.provider.GetSchema(ctx, GetSchemaRequest{
-		Version:           req.Version,
-		SubpackageName:    req.SubpackageName,
-		SubpackageVersion: subpackageVersion,
+		Version:		req.Version,
+		SubpackageName:		req.SubpackageName,
+		SubpackageVersion:	subpackageVersion,
 	})
 	if err != nil {
 		return nil, err
@@ -272,12 +272,12 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 	}
 
 	resp, err := p.provider.CheckConfig(ctx, CheckConfigRequest{
-		URN:           urn,
-		Name:          req.Name,
-		Type:          tokens.Type(req.Type),
-		Olds:          state,
-		News:          inputs,
-		AllowUnknowns: true,
+		URN:		urn,
+		Name:		req.Name,
+		Type:		tokens.Type(req.Type),
+		Olds:		state,
+		News:		inputs,
+		AllowUnknowns:	true,
 	})
 	if err != nil {
 		return nil, p.checkNYI("CheckConfig", err)
@@ -332,14 +332,14 @@ func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequ
 	}
 
 	diff, err := p.provider.DiffConfig(ctx, DiffConfigRequest{
-		URN:           urn,
-		Name:          req.Name,
-		Type:          tokens.Type(req.Type),
-		OldInputs:     oldInputs,
-		OldOutputs:    oldOutputs,
-		NewInputs:     newInputs,
-		AllowUnknowns: true,
-		IgnoreChanges: req.GetIgnoreChanges(),
+		URN:		urn,
+		Name:		req.Name,
+		Type:		tokens.Type(req.Type),
+		OldInputs:	oldInputs,
+		OldOutputs:	oldOutputs,
+		NewInputs:	newInputs,
+		AllowUnknowns:	true,
+		IgnoreChanges:	req.GetIgnoreChanges(),
 	})
 	if err != nil {
 		return nil, p.checkNYI("DiffConfig", err)
@@ -392,11 +392,11 @@ func (p *providerServer) Configure(ctx context.Context,
 	}
 
 	_, err := p.provider.Configure(ctx, ConfigureRequest{
-		URN:    urn,
-		Name:   req.Name,
-		Type:   typ,
-		ID:     id,
-		Inputs: inputs,
+		URN:	urn,
+		Name:	req.Name,
+		Type:	typ,
+		ID:	id,
+		Inputs:	inputs,
 	})
 	if err != nil {
 		return nil, err
@@ -407,10 +407,10 @@ func (p *providerServer) Configure(ctx context.Context,
 	return &pulumirpc.ConfigureResponse{
 		// providerServer can shim support for all these features, so we always set them to true. Note that we do the same
 		// in Handshake (though Handshake implies SupportsPreview, so we don't shim that there).
-		AcceptSecrets:   true,
-		SupportsPreview: true,
-		AcceptResources: true,
-		AcceptOutputs:   true,
+		AcceptSecrets:		true,
+		SupportsPreview:	true,
+		AcceptResources:	true,
+		AcceptOutputs:		true,
 	}, nil
 }
 
@@ -444,20 +444,20 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 	var autonaming *AutonamingOptions
 	if req.Autonaming != nil {
 		autonaming = &AutonamingOptions{
-			ProposedName: req.Autonaming.ProposedName,
-			Mode:         AutonamingMode(req.Autonaming.Mode),
+			ProposedName:	req.Autonaming.ProposedName,
+			Mode:		AutonamingMode(req.Autonaming.Mode),
 		}
 	}
 
 	resp, err := p.provider.Check(ctx, CheckRequest{
-		URN:           urn,
-		Name:          req.Name,
-		Type:          tokens.Type(req.Type),
-		Olds:          state,
-		News:          inputs,
-		AllowUnknowns: true,
-		RandomSeed:    req.RandomSeed,
-		Autonaming:    autonaming,
+		URN:		urn,
+		Name:		req.Name,
+		Type:		tokens.Type(req.Type),
+		Olds:		state,
+		News:		inputs,
+		AllowUnknowns:	true,
+		RandomSeed:	req.RandomSeed,
+		Autonaming:	autonaming,
 	})
 	if err != nil {
 		return nil, err
@@ -512,15 +512,15 @@ func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (
 	}
 
 	diff, err := p.provider.Diff(ctx, DiffRequest{
-		URN:           urn,
-		Name:          req.Name,
-		Type:          tokens.Type(req.Type),
-		ID:            id,
-		OldInputs:     oldInputs,
-		OldOutputs:    oldOutputs,
-		NewInputs:     newInputs,
-		AllowUnknowns: true,
-		IgnoreChanges: req.GetIgnoreChanges(),
+		URN:		urn,
+		Name:		req.Name,
+		Type:		tokens.Type(req.Type),
+		ID:		id,
+		OldInputs:	oldInputs,
+		OldOutputs:	oldOutputs,
+		NewInputs:	newInputs,
+		AllowUnknowns:	true,
+		IgnoreChanges:	req.GetIgnoreChanges(),
 	})
 	if err != nil {
 		return nil, err
@@ -551,14 +551,14 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 	}
 
 	resp, err := p.provider.Create(ctx, CreateRequest{
-		URN:                   urn,
-		Name:                  req.Name,
-		Type:                  tokens.Type(req.Type),
-		Properties:            inputs,
-		Timeout:               req.GetTimeout(),
-		Preview:               req.GetPreview(),
-		ResourceStatusAddress: req.GetResourceStatusAddress(),
-		ResourceStatusToken:   req.GetResourceStatusToken(),
+		URN:			urn,
+		Name:			req.Name,
+		Type:			tokens.Type(req.Type),
+		Properties:		inputs,
+		Timeout:		req.GetTimeout(),
+		Preview:		req.GetPreview(),
+		ResourceStatusAddress:	req.GetResourceStatusAddress(),
+		ResourceStatusToken:	req.GetResourceStatusToken(),
 	})
 	if err != nil {
 		return nil, err
@@ -570,9 +570,9 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 	}
 
 	return &pulumirpc.CreateResponse{
-		Id:                  string(resp.ID),
-		Properties:          rpcState,
-		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
+		Id:			string(resp.ID),
+		Properties:		rpcState,
+		RefreshBeforeUpdate:	resp.RefreshBeforeUpdate,
 	}, nil
 }
 
@@ -609,15 +609,15 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 	}
 
 	resp, err := p.provider.Read(ctx, ReadRequest{
-		URN:                   urn,
-		Name:                  req.Name,
-		Type:                  tokens.Type(req.Type),
-		ID:                    requestID,
-		Inputs:                inputs,
-		State:                 state,
-		ResourceStatusAddress: req.GetResourceStatusAddress(),
-		ResourceStatusToken:   req.GetResourceStatusToken(),
-		OldViews:              oldViews,
+		URN:			urn,
+		Name:			req.Name,
+		Type:			tokens.Type(req.Type),
+		ID:			requestID,
+		Inputs:			inputs,
+		State:			state,
+		ResourceStatusAddress:	req.GetResourceStatusAddress(),
+		ResourceStatusToken:	req.GetResourceStatusToken(),
+		OldViews:		oldViews,
 	})
 	if err != nil {
 		return nil, err
@@ -634,10 +634,10 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 	}
 
 	return &pulumirpc.ReadResponse{
-		Id:                  string(resp.ID),
-		Properties:          rpcState,
-		Inputs:              rpcInputs,
-		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
+		Id:			string(resp.ID),
+		Properties:		rpcState,
+		Inputs:			rpcInputs,
+		RefreshBeforeUpdate:	resp.RefreshBeforeUpdate,
 	}, nil
 }
 
@@ -683,19 +683,19 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 	}
 
 	resp, err := p.provider.Update(ctx, UpdateRequest{
-		URN:                   urn,
-		Name:                  req.Name,
-		Type:                  tokens.Type(req.Type),
-		ID:                    id,
-		OldInputs:             oldInputs,
-		OldOutputs:            oldOutputs,
-		NewInputs:             newInputs,
-		Timeout:               req.GetTimeout(),
-		IgnoreChanges:         req.GetIgnoreChanges(),
-		Preview:               req.GetPreview(),
-		ResourceStatusAddress: req.GetResourceStatusAddress(),
-		ResourceStatusToken:   req.GetResourceStatusToken(),
-		OldViews:              oldViews,
+		URN:			urn,
+		Name:			req.Name,
+		Type:			tokens.Type(req.Type),
+		ID:			id,
+		OldInputs:		oldInputs,
+		OldOutputs:		oldOutputs,
+		NewInputs:		newInputs,
+		Timeout:		req.GetTimeout(),
+		IgnoreChanges:		req.GetIgnoreChanges(),
+		Preview:		req.GetPreview(),
+		ResourceStatusAddress:	req.GetResourceStatusAddress(),
+		ResourceStatusToken:	req.GetResourceStatusToken(),
+		OldViews:		oldViews,
 	})
 	if err != nil {
 		return nil, err
@@ -707,8 +707,8 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 	}
 
 	return &pulumirpc.UpdateResponse{
-		Properties:          rpcState,
-		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
+		Properties:		rpcState,
+		RefreshBeforeUpdate:	resp.RefreshBeforeUpdate,
 	}, nil
 }
 
@@ -745,16 +745,16 @@ func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteReques
 	}
 
 	if _, err = p.provider.Delete(ctx, DeleteRequest{
-		URN:                   urn,
-		Name:                  req.Name,
-		Type:                  tokens.Type(req.Type),
-		ID:                    id,
-		Inputs:                inputs,
-		Outputs:               outputs,
-		Timeout:               req.GetTimeout(),
-		ResourceStatusAddress: req.GetResourceStatusAddress(),
-		ResourceStatusToken:   req.GetResourceStatusToken(),
-		OldViews:              oldViews,
+		URN:			urn,
+		Name:			req.Name,
+		Type:			tokens.Type(req.Type),
+		ID:			id,
+		Inputs:			inputs,
+		Outputs:		outputs,
+		Timeout:		req.GetTimeout(),
+		ResourceStatusAddress:	req.GetResourceStatusAddress(),
+		ResourceStatusToken:	req.GetResourceStatusToken(),
+		OldViews:		oldViews,
 	}); err != nil {
 		return nil, err
 	}
@@ -791,14 +791,14 @@ func (p *providerServer) Construct(ctx context.Context,
 	}
 
 	info := ConstructInfo{
-		Project:          req.GetProject(),
-		Stack:            req.GetStack(),
-		Config:           cfg,
-		ConfigSecretKeys: cfgSecretKeys,
-		DryRun:           req.GetDryRun(),
-		Parallel:         req.GetParallel(),
-		MonitorAddress:   req.GetMonitorEndpoint(),
-		StackTraceHandle: req.GetStackTraceHandle(),
+		Project:		req.GetProject(),
+		Stack:			req.GetStack(),
+		Config:			cfg,
+		ConfigSecretKeys:	cfgSecretKeys,
+		DryRun:			req.GetDryRun(),
+		Parallel:		req.GetParallel(),
+		MonitorAddress:		req.GetMonitorEndpoint(),
+		StackTraceHandle:	req.GetStackTraceHandle(),
 	}
 
 	aliases := make([]resource.Alias, len(req.GetAliases()))
@@ -831,22 +831,22 @@ func (p *providerServer) Construct(ctx context.Context,
 	}
 
 	options := ConstructOptions{
-		Aliases:              aliases,
-		Dependencies:         dependencies,
-		Protect:              req.Protect,
-		Providers:            req.GetProviders(),
-		PropertyDependencies: propertyDependencies,
-		ResourceHooks:        hooks,
-		DeletedWith:          resource.URN(req.DeletedWith),
+		Aliases:		aliases,
+		Dependencies:		dependencies,
+		Protect:		req.Protect,
+		Providers:		req.GetProviders(),
+		PropertyDependencies:	propertyDependencies,
+		ResourceHooks:		hooks,
+		DeletedWith:		resource.URN(req.DeletedWith),
 	}
 
 	resp, err := p.provider.Construct(ctx, ConstructRequest{
-		Info:    info,
-		Type:    typ,
-		Name:    name,
-		Parent:  parent,
-		Inputs:  inputs,
-		Options: options,
+		Info:		info,
+		Type:		typ,
+		Name:		name,
+		Parent:		parent,
+		Inputs:		inputs,
+		Options:	options,
 	})
 	if err != nil {
 		return nil, rpcerror.WrapDetailedError(err)
@@ -869,9 +869,9 @@ func (p *providerServer) Construct(ctx context.Context,
 	}
 
 	return &pulumirpc.ConstructResponse{
-		Urn:               string(resp.URN),
-		State:             outputs,
-		StateDependencies: outputDependencies,
+		Urn:			string(resp.URN),
+		State:			outputs,
+		StateDependencies:	outputDependencies,
 	}, nil
 }
 
@@ -882,8 +882,8 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 	}
 
 	resp, err := p.provider.Invoke(ctx, InvokeRequest{
-		Tok:  tokens.ModuleMember(req.GetTok()),
-		Args: args,
+		Tok:	tokens.ModuleMember(req.GetTok()),
+		Args:	args,
 	})
 	if err != nil {
 		return nil, err
@@ -900,8 +900,8 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 	}
 
 	return &pulumirpc.InvokeResponse{
-		Return:   rpcResult,
-		Failures: rpcFailures,
+		Return:		rpcResult,
+		Failures:	rpcFailures,
 	}, nil
 }
 
@@ -920,13 +920,13 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 		cfg[configKey] = v
 	}
 	info := CallInfo{
-		Project:          req.GetProject(),
-		Stack:            req.GetStack(),
-		Config:           cfg,
-		DryRun:           req.GetDryRun(),
-		Parallel:         req.GetParallel(),
-		MonitorAddress:   req.GetMonitorEndpoint(),
-		StackTraceHandle: req.GetStackTraceHandle(),
+		Project:		req.GetProject(),
+		Stack:			req.GetStack(),
+		Config:			cfg,
+		DryRun:			req.GetDryRun(),
+		Parallel:		req.GetParallel(),
+		MonitorAddress:		req.GetMonitorEndpoint(),
+		StackTraceHandle:	req.GetStackTraceHandle(),
 	}
 	argDependencies := map[resource.PropertyKey][]resource.URN{}
 	for name, deps := range req.GetArgDependencies() {
@@ -941,10 +941,10 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 	}
 
 	result, err := p.provider.Call(ctx, CallRequest{
-		Tok:     tokens.ModuleMember(req.GetTok()),
-		Args:    args,
-		Info:    info,
-		Options: options,
+		Tok:		tokens.ModuleMember(req.GetTok()),
+		Args:		args,
+		Info:		info,
+		Options:	options,
 	})
 	if err != nil {
 		err = rpcerror.WrapDetailedError(err)
@@ -973,9 +973,9 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 	}
 
 	return &pulumirpc.CallResponse{
-		Return:             rpcResult,
-		ReturnDependencies: returnDependencies,
-		Failures:           rpcFailures,
+		Return:			rpcResult,
+		ReturnDependencies:	returnDependencies,
+		Failures:		rpcFailures,
 	}, nil
 }
 
@@ -983,8 +983,8 @@ func (p *providerServer) GetMapping(ctx context.Context,
 	req *pulumirpc.GetMappingRequest,
 ) (*pulumirpc.GetMappingResponse, error) {
 	resp, err := p.provider.GetMapping(ctx, GetMappingRequest{
-		Key:      req.Key,
-		Provider: req.Provider,
+		Key:		req.Key,
+		Provider:	req.Provider,
 	})
 	if err != nil {
 		return nil, err
@@ -1032,11 +1032,11 @@ func unmarshalView(v *pulumirpc.View, opts MarshalOptions) (View, error) {
 	}
 
 	return View{
-		Type:       tokens.Type(v.Type),
-		Name:       v.Name,
-		ParentType: tokens.Type(v.ParentType),
-		ParentName: v.ParentName,
-		Inputs:     inputs,
-		Outputs:    outputs,
+		Type:		tokens.Type(v.Type),
+		Name:		v.Name,
+		ParentType:	tokens.Type(v.ParentType),
+		ParentName:	v.ParentName,
+		Inputs:		inputs,
+		Outputs:	outputs,
 	}, nil
 }

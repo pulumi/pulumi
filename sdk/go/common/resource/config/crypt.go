@@ -59,8 +59,8 @@ type Crypter interface {
 type nopCrypter struct{}
 
 var (
-	NopDecrypter Decrypter = nopCrypter{}
-	NopEncrypter Encrypter = nopCrypter{}
+	NopDecrypter	Decrypter	= nopCrypter{}
+	NopEncrypter	Encrypter	= nopCrypter{}
 )
 
 func (nopCrypter) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
@@ -345,18 +345,18 @@ func (c *base64Crypter) BatchDecrypt(ctx context.Context, ciphertexts []string) 
 // populated after encryption operations. Decrypt operations will populate the cache if the ciphertext is not
 // already present. Caching is safe for concurrent use.
 type CiphertextToPlaintextCachedCrypter struct {
-	encrypter                  Encrypter
-	decrypter                  Decrypter
-	ciphertextToPlaintextCache sync.Map
+	encrypter			Encrypter
+	decrypter			Decrypter
+	ciphertextToPlaintextCache	sync.Map
 }
 
 func NewCiphertextToPlaintextCachedCrypter(
 	encrypter Encrypter, decrypter Decrypter,
 ) *CiphertextToPlaintextCachedCrypter {
 	return &CiphertextToPlaintextCachedCrypter{
-		encrypter:                  encrypter,
-		decrypter:                  decrypter,
-		ciphertextToPlaintextCache: sync.Map{},
+		encrypter:			encrypter,
+		decrypter:			decrypter,
+		ciphertextToPlaintextCache:	sync.Map{},
 	}
 }
 

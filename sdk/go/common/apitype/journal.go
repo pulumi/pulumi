@@ -22,14 +22,14 @@ import (
 type JournalEntryKind int
 
 const (
-	JournalEntryKindBegin            JournalEntryKind = 0
-	JournalEntryKindSuccess          JournalEntryKind = 1
-	JournalEntryKindFailure          JournalEntryKind = 2
-	JournalEntryKindRefreshSuccess   JournalEntryKind = 3
-	JournalEntryKindOutputs          JournalEntryKind = 4
-	JournalEntryKindWrite            JournalEntryKind = 5
-	JournalEntryKindSecretsManager   JournalEntryKind = 6
-	JournalEntryKindRebuiltBaseState JournalEntryKind = 7
+	JournalEntryKindBegin			JournalEntryKind	= 0
+	JournalEntryKindSuccess			JournalEntryKind	= 1
+	JournalEntryKindFailure			JournalEntryKind	= 2
+	JournalEntryKindRefreshSuccess		JournalEntryKind	= 3
+	JournalEntryKindOutputs			JournalEntryKind	= 4
+	JournalEntryKindWrite			JournalEntryKind	= 5
+	JournalEntryKindSecretsManager		JournalEntryKind	= 6
+	JournalEntryKindRebuiltBaseState	JournalEntryKind	= 7
 )
 
 func (k JournalEntryKind) String() string {
@@ -57,36 +57,36 @@ func (k JournalEntryKind) String() string {
 
 type JournalEntry struct {
 	// Version of the journal entry format.
-	Version int `json:"version"`
+	Version	int	`json:"version"`
 	// Kind of journal entry.
-	Kind JournalEntryKind `json:"kind"`
+	Kind	JournalEntryKind	`json:"kind"`
 	// Sequence ID of the operation.
-	SequenceID int64 `json:"sequenceID"`
+	SequenceID	int64	`json:"sequenceID"`
 	// ID of the operation this journal entry is associated with.
-	OperationID int64 `json:"operationID"`
+	OperationID	int64	`json:"operationID"`
 	// ID for the delete Operation that this journal entry is associated with.
-	RemoveOld *int64 `json:"removeOld"`
+	RemoveOld	*int64	`json:"removeOld"`
 	// ID for the delete Operation that this journal entry is associated with.
-	RemoveNew *int64 `json:"removeNew"`
+	RemoveNew	*int64	`json:"removeNew"`
 	// PendingReplacementOld is the index of the resource that's to be marked as pending replacement
-	PendingReplacementOld *int64 `json:"pendingReplacementOld,omitempty"`
+	PendingReplacementOld	*int64	`json:"pendingReplacementOld,omitempty"`
 	// PendingReplacementNew is the operation ID of the new resource to be marked as pending replacement
-	PendingReplacementNew *int64 `json:"pendingReplacementNew,omitempty"`
+	PendingReplacementNew	*int64	`json:"pendingReplacementNew,omitempty"`
 	// DeleteOld is the index of the resource that's to be marked as deleted.
-	DeleteOld *int64 `json:"deleteOld,omitempty"`
+	DeleteOld	*int64	`json:"deleteOld,omitempty"`
 	// DeleteNew is the operation ID of the new resource to be marked as deleted.
-	DeleteNew *int64 `json:"deleteNew,omitempty"`
+	DeleteNew	*int64	`json:"deleteNew,omitempty"`
 	// The resource state associated with this journal entry.
-	State *ResourceV3 `json:"state,omitempty"`
+	State	*ResourceV3	`json:"state,omitempty"`
 	// The operation associated with this journal entry, if any.
-	Operation *OperationV2 `json:"operation,omitempty"`
+	Operation	*OperationV2	`json:"operation,omitempty"`
 	// If true, this journal entry is part of a refresh operation.
-	IsRefresh bool `json:"isRefresh,omitempty"`
+	IsRefresh	bool	`json:"isRefresh,omitempty"`
 	// The secrets manager associated with this journal entry, if any.
-	SecretsProvider *SecretsProvidersV1 `json:"secretsProvider,omitempty"`
+	SecretsProvider	*SecretsProvidersV1	`json:"secretsProvider,omitempty"`
 
 	// NewSnapshot is the new snapshot that this journal entry is associated with.
-	NewSnapshot *DeploymentV3 `json:"newSnapshot,omitempty"`
+	NewSnapshot	*DeploymentV3	`json:"newSnapshot,omitempty"`
 }
 
 func (e JournalEntry) String() string {

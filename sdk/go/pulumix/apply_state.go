@@ -43,21 +43,21 @@ import (
 //		st.finish(f(a, b, c, ...))
 //	}
 type applyNState[O any] struct {
-	ok   bool
-	zero O
+	ok	bool
+	zero	O
 
-	known       bool
-	secret      bool
-	deps        []internal.Resource
-	outputState *internal.OutputState
+	known		bool
+	secret		bool
+	deps		[]internal.Resource
+	outputState	*internal.OutputState
 }
 
 func newApplyNState[O any](outputState *internal.OutputState) applyNState[O] {
 	return applyNState[O]{
-		ok:          true,
-		known:       true,
-		secret:      false,
-		outputState: outputState,
+		ok:		true,
+		known:		true,
+		secret:		false,
+		outputState:	outputState,
 	}
 }
 

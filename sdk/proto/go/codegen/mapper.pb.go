@@ -30,24 +30,24 @@ import (
 
 const (
 	// Verify that this generated code is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
+	_	= protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
-	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
+	_	= protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
 // `GetMappingRequest` is the type of requests sent as part of a [](codegen.Mapper.GetMapping) call.
 type GetMappingRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The name of the source provider (e.g. the Terraform provider name if a Terraform program is being converted) for
 	// which a mapping into Pulumi should be returned.
-	Provider string `protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
+	Provider	string	`protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
 	// The name of the Pulumi plugin that is expected to provide the mapping. If left empty, will be defaulted to the
 	// source provider name.
-	PulumiProvider string `protobuf:"bytes,2,opt,name=pulumi_provider,json=pulumiProvider,proto3" json:"pulumi_provider,omitempty"`
+	PulumiProvider	string	`protobuf:"bytes,2,opt,name=pulumi_provider,json=pulumiProvider,proto3" json:"pulumi_provider,omitempty"`
 	// An optional parameterization that should be used on the named plugin before asking it for mappings.
-	ParameterizationHint *MapperParameterizationHint `protobuf:"bytes,3,opt,name=parameterization_hint,json=parameterizationHint,proto3" json:"parameterization_hint,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	ParameterizationHint	*MapperParameterizationHint	`protobuf:"bytes,3,opt,name=parameterization_hint,json=parameterizationHint,proto3" json:"parameterization_hint,omitempty"`
+	unknownFields		protoimpl.UnknownFields
+	sizeCache		protoimpl.SizeCache
 }
 
 func (x *GetMappingRequest) Reset() {
@@ -61,7 +61,7 @@ func (x *GetMappingRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetMappingRequest) ProtoMessage() {}
+func (*GetMappingRequest) ProtoMessage()	{}
 
 func (x *GetMappingRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_codegen_mapper_proto_msgTypes[0]
@@ -106,15 +106,15 @@ func (x *GetMappingRequest) GetParameterizationHint() *MapperParameterizationHin
 // dynamically bridged Terraform provider, callers may wish to express that a mapping is most likely offered by the
 // "terraform-provider" plugin, but only when it is parameterized with the appropriate Terraform provider information.
 type MapperParameterizationHint struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// The package name expected once parameterization has been applied.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Name	string	`protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// The package version expected once parameterization has been applied.
-	Version string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	Version	string	`protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
 	// The parameter value to send to the provider plugin as part of parameterization.
-	Value         []byte `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Value		[]byte	`protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *MapperParameterizationHint) Reset() {
@@ -128,7 +128,7 @@ func (x *MapperParameterizationHint) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*MapperParameterizationHint) ProtoMessage() {}
+func (*MapperParameterizationHint) ProtoMessage()	{}
 
 func (x *MapperParameterizationHint) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_codegen_mapper_proto_msgTypes[1]
@@ -170,13 +170,13 @@ func (x *MapperParameterizationHint) GetValue() []byte {
 
 // `GetMappingResponse` is the type of responses sent by [](codegen.Mapper.GetMapping) calls.
 type GetMappingResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
+	state	protoimpl.MessageState	`protogen:"open.v1"`
 	// Conversion-plugin-specific mapping data. For a Terraform conversion, for instance, this is expected to be a piece
 	// of data that maps Terraform names (e.g. resource types) to Pulumi names (e.g. Pulumi resource types). In many
 	// cases this byte array will be a string of encoded JSON, but no specific format is required.
-	Data          []byte `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Data		[]byte	`protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
+	unknownFields	protoimpl.UnknownFields
+	sizeCache	protoimpl.SizeCache
 }
 
 func (x *GetMappingResponse) Reset() {
@@ -190,7 +190,7 @@ func (x *GetMappingResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetMappingResponse) ProtoMessage() {}
+func (*GetMappingResponse) ProtoMessage()	{}
 
 func (x *GetMappingResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_codegen_mapper_proto_msgTypes[2]
@@ -236,8 +236,8 @@ const file_pulumi_codegen_mapper_proto_rawDesc = "" +
 	"GetMapping\x12\x1a.codegen.GetMappingRequest\x1a\x1b.codegen.GetMappingResponse\"\x00B2Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3"
 
 var (
-	file_pulumi_codegen_mapper_proto_rawDescOnce sync.Once
-	file_pulumi_codegen_mapper_proto_rawDescData []byte
+	file_pulumi_codegen_mapper_proto_rawDescOnce	sync.Once
+	file_pulumi_codegen_mapper_proto_rawDescData	[]byte
 )
 
 func file_pulumi_codegen_mapper_proto_rawDescGZIP() []byte {
@@ -249,22 +249,22 @@ func file_pulumi_codegen_mapper_proto_rawDescGZIP() []byte {
 
 var file_pulumi_codegen_mapper_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_pulumi_codegen_mapper_proto_goTypes = []any{
-	(*GetMappingRequest)(nil),          // 0: codegen.GetMappingRequest
-	(*MapperParameterizationHint)(nil), // 1: codegen.MapperParameterizationHint
-	(*GetMappingResponse)(nil),         // 2: codegen.GetMappingResponse
+	(*GetMappingRequest)(nil),		// 0: codegen.GetMappingRequest
+	(*MapperParameterizationHint)(nil),	// 1: codegen.MapperParameterizationHint
+	(*GetMappingResponse)(nil),		// 2: codegen.GetMappingResponse
 }
 var file_pulumi_codegen_mapper_proto_depIdxs = []int32{
-	1, // 0: codegen.GetMappingRequest.parameterization_hint:type_name -> codegen.MapperParameterizationHint
-	0, // 1: codegen.Mapper.GetMapping:input_type -> codegen.GetMappingRequest
-	2, // 2: codegen.Mapper.GetMapping:output_type -> codegen.GetMappingResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	1,	// 0: codegen.GetMappingRequest.parameterization_hint:type_name -> codegen.MapperParameterizationHint
+	0,	// 1: codegen.Mapper.GetMapping:input_type -> codegen.GetMappingRequest
+	2,	// 2: codegen.Mapper.GetMapping:output_type -> codegen.GetMappingResponse
+	2,	// [2:3] is the sub-list for method output_type
+	1,	// [1:2] is the sub-list for method input_type
+	1,	// [1:1] is the sub-list for extension type_name
+	1,	// [1:1] is the sub-list for extension extendee
+	0,	// [0:1] is the sub-list for field type_name
 }
 
-func init() { file_pulumi_codegen_mapper_proto_init() }
+func init()	{ file_pulumi_codegen_mapper_proto_init() }
 func file_pulumi_codegen_mapper_proto_init() {
 	if File_pulumi_codegen_mapper_proto != nil {
 		return
@@ -272,16 +272,16 @@ func file_pulumi_codegen_mapper_proto_init() {
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
-			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_codegen_mapper_proto_rawDesc), len(file_pulumi_codegen_mapper_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   3,
-			NumExtensions: 0,
-			NumServices:   1,
+			GoPackagePath:	reflect.TypeOf(x{}).PkgPath(),
+			RawDescriptor:	unsafe.Slice(unsafe.StringData(file_pulumi_codegen_mapper_proto_rawDesc), len(file_pulumi_codegen_mapper_proto_rawDesc)),
+			NumEnums:	0,
+			NumMessages:	3,
+			NumExtensions:	0,
+			NumServices:	1,
 		},
-		GoTypes:           file_pulumi_codegen_mapper_proto_goTypes,
-		DependencyIndexes: file_pulumi_codegen_mapper_proto_depIdxs,
-		MessageInfos:      file_pulumi_codegen_mapper_proto_msgTypes,
+		GoTypes:		file_pulumi_codegen_mapper_proto_goTypes,
+		DependencyIndexes:	file_pulumi_codegen_mapper_proto_depIdxs,
+		MessageInfos:		file_pulumi_codegen_mapper_proto_msgTypes,
 	}.Build()
 	File_pulumi_codegen_mapper_proto = out.File
 	file_pulumi_codegen_mapper_proto_goTypes = nil

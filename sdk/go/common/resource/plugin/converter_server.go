@@ -23,9 +23,9 @@ import (
 )
 
 type converterServer struct {
-	pulumirpc.UnsafeConverterServer // opt out of forward compat
+	pulumirpc.UnsafeConverterServer	// opt out of forward compat
 
-	converter Converter
+	converter	Converter
 }
 
 func NewConverterServer(converter Converter) pulumirpc.ConverterServer {
@@ -36,8 +36,8 @@ func (c *converterServer) ConvertState(ctx context.Context,
 	req *pulumirpc.ConvertStateRequest,
 ) (*pulumirpc.ConvertStateResponse, error) {
 	resp, err := c.converter.ConvertState(ctx, &ConvertStateRequest{
-		MapperTarget: req.MapperTarget,
-		Args:         req.Args,
+		MapperTarget:	req.MapperTarget,
+		Args:		req.Args,
 	})
 	if err != nil {
 		return nil, err
@@ -46,14 +46,14 @@ func (c *converterServer) ConvertState(ctx context.Context,
 	resources := make([]*pulumirpc.ResourceImport, len(resp.Resources))
 	for i, resource := range resp.Resources {
 		resources[i] = &pulumirpc.ResourceImport{
-			Type:              resource.Type,
-			Name:              resource.Name,
-			Id:                resource.ID,
-			Version:           resource.Version,
-			PluginDownloadURL: resource.PluginDownloadURL,
-			LogicalName:       resource.LogicalName,
-			IsRemote:          resource.IsRemote,
-			IsComponent:       resource.IsComponent,
+			Type:			resource.Type,
+			Name:			resource.Name,
+			Id:			resource.ID,
+			Version:		resource.Version,
+			PluginDownloadURL:	resource.PluginDownloadURL,
+			LogicalName:		resource.LogicalName,
+			IsRemote:		resource.IsRemote,
+			IsComponent:		resource.IsComponent,
 		}
 	}
 
@@ -64,8 +64,8 @@ func (c *converterServer) ConvertState(ctx context.Context,
 	}
 
 	rpcResp := &pulumirpc.ConvertStateResponse{
-		Resources:   resources,
-		Diagnostics: diags,
+		Resources:	resources,
+		Diagnostics:	diags,
 	}
 	return rpcResp, nil
 }
@@ -74,12 +74,12 @@ func (c *converterServer) ConvertProgram(ctx context.Context,
 	req *pulumirpc.ConvertProgramRequest,
 ) (*pulumirpc.ConvertProgramResponse, error) {
 	resp, err := c.converter.ConvertProgram(ctx, &ConvertProgramRequest{
-		SourceDirectory:           req.SourceDirectory,
-		TargetDirectory:           req.TargetDirectory,
-		MapperTarget:              req.MapperTarget,
-		LoaderTarget:              req.LoaderTarget,
-		Args:                      req.Args,
-		GeneratedProjectDirectory: req.GeneratedProjectDirectory,
+		SourceDirectory:		req.SourceDirectory,
+		TargetDirectory:		req.TargetDirectory,
+		MapperTarget:			req.MapperTarget,
+		LoaderTarget:			req.LoaderTarget,
+		Args:				req.Args,
+		GeneratedProjectDirectory:	req.GeneratedProjectDirectory,
 	})
 	if err != nil {
 		return nil, err

@@ -29,58 +29,58 @@ import (
 
 type GetSchemaRequest struct {
 	// Version is the version of the schema to return. If omitted, the latest version of the schema should be returned.
-	Version int32
+	Version	int32
 	// Subpackage name to get the schema for.
-	SubpackageName string
+	SubpackageName	string
 	// Subpackage version to get the schema for.
-	SubpackageVersion *semver.Version
+	SubpackageVersion	*semver.Version
 }
 
 // The type of requests sent as part of a Handshake call.
 type ProviderHandshakeRequest struct {
 	// The gRPC address of the engine handshaking with the provider. At a minimum, this address will expose an instance of
 	// the Engine service.
-	EngineAddress string
+	EngineAddress	string
 
 	// A *root directory* where the provider's binary, `PulumiPlugin.yaml`, or other identifying source code is located.
 	// In the event that the provider is *not* being booted by the engine (e.g. in the case that the engine has been asked
 	// to attach to an existing running provider instance via a host/port number), this field will be empty.
-	RootDirectory *string
+	RootDirectory	*string
 
 	// A *program directory* in which the provider should execute. This is generally a subdirectory of the root directory,
 	// though this is not required. In the event that the provider is *not* being booted by the engine (e.g. in the case
 	// that the engine has been asked to attach to an existing running provider instance via a host/port number), this
 	// field will be empty.
-	ProgramDirectory *string
+	ProgramDirectory	*string
 
 	// If true the engine will send URN, Name, Type and ID to the provider as part of the configuration.
-	ConfigureWithUrn bool
+	ConfigureWithUrn	bool
 
 	// If true the engine supports views and can send an address of the resource status service that
 	// can be used to create or update view resources.
-	SupportsViews bool
+	SupportsViews	bool
 
 	// If true the engine supports letting the provider mark resource states as requiring refresh before update.
-	SupportsRefreshBeforeUpdate bool
+	SupportsRefreshBeforeUpdate	bool
 }
 
 // The type of responses sent as part of a Handshake call.
 type ProviderHandshakeResponse struct {
 	// True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
 	// values to the provider.
-	AcceptSecrets bool
+	AcceptSecrets	bool
 
 	// True if and only if the provider supports strongly typed resources. If true, the caller should pass resources as
 	// strongly typed values to the provider.
-	AcceptResources bool
+	AcceptResources	bool
 
 	// True if and only if the provider supports output values as inputs. If true, the engine should pass output values
 	// to the provider where possible.
-	AcceptOutputs bool
+	AcceptOutputs	bool
 
 	// True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
 	// user.
-	SupportsAutonamingConfiguration bool
+	SupportsAutonamingConfiguration	bool
 }
 
 // ParameterizeParameters can either be of concrete type ParameterizeArgs or ParameterizeValue, for when parameterizing
@@ -94,26 +94,26 @@ type ParameterizeParameters interface {
 
 type (
 	// ParameterizeArgs is used when parameterizing a provider from command line arguments.
-	ParameterizeArgs struct {
+	ParameterizeArgs	struct {
 		// The arguments passed on the command line following the provider name.
 		Args []string
 	}
 
 	// ParameterizeValue is used when parameterizing a provider from within a Pulumi program.
-	ParameterizeValue struct {
+	ParameterizeValue	struct {
 		// The name of the parameterization.
-		Name string
+		Name	string
 		// The version of the parameterization.
-		Version semver.Version
+		Version	semver.Version
 		// The binary parameterization value as returned from a previous parameterization call.
 		// This can be any data the provider needs to parameterize itself - such as the data needed to turn resource
 		// requests into API calls.
-		Value []byte
+		Value	[]byte
 	}
 )
 
 // isParameterizeParameters is a no-op method that marks ParameterizeArgs as implementing ParameterizeParameters.
-func (*ParameterizeArgs) isParameterizeParameters() {}
+func (*ParameterizeArgs) isParameterizeParameters()	{}
 
 // Empty returns true if the parameterization is empty or nil.
 func (p *ParameterizeArgs) Empty() bool {
@@ -121,7 +121,7 @@ func (p *ParameterizeArgs) Empty() bool {
 }
 
 // isParameterizeParameters is a no-op method that marks ParameterizeValue as implementing ParameterizeParameters.
-func (*ParameterizeValue) isParameterizeParameters() {}
+func (*ParameterizeValue) isParameterizeParameters()	{}
 
 // Empty returns true if the parameterization is empty or nil.
 func (p *ParameterizeValue) Empty() bool {
@@ -138,11 +138,11 @@ type ParameterizeRequest struct {
 type ParameterizeResponse struct {
 	// The name of the parameterization. This must be unique in the context of a program.
 	// If the request parameter was a ParameterizeValue, then this field must match the input name.
-	Name string
+	Name	string
 	// The version of the parameterization. This is required to be set by the provider. It does not have to match the
 	// version of the provider itself, but can be used however the provider sees fit. If the request parameter was a
 	// ParameterizeValue, then this field must match the input version.
-	Version semver.Version
+	Version	semver.Version
 }
 
 // GetSchemaResponse is the response to a GetSchema call.
@@ -152,25 +152,25 @@ type GetSchemaResponse struct {
 }
 
 type CheckConfigRequest struct {
-	URN           resource.URN
-	Name          string
-	Type          tokens.Type
-	Olds, News    resource.PropertyMap
-	AllowUnknowns bool
+	URN		resource.URN
+	Name		string
+	Type		tokens.Type
+	Olds, News	resource.PropertyMap
+	AllowUnknowns	bool
 }
 
 type CheckConfigResponse struct {
-	Properties resource.PropertyMap
-	Failures   []CheckFailure
+	Properties	resource.PropertyMap
+	Failures	[]CheckFailure
 }
 
 type DiffConfigRequest struct {
-	URN                              resource.URN
-	Name                             string
-	Type                             tokens.Type
-	OldInputs, OldOutputs, NewInputs resource.PropertyMap
-	AllowUnknowns                    bool
-	IgnoreChanges                    []string
+	URN					resource.URN
+	Name					string
+	Type					tokens.Type
+	OldInputs, OldOutputs, NewInputs	resource.PropertyMap
+	AllowUnknowns				bool
+	IgnoreChanges				[]string
 }
 
 type DiffConfigResponse = DiffResult
@@ -178,20 +178,20 @@ type DiffConfigResponse = DiffResult
 type ConfigureRequest struct {
 	// The URN of the provider being configured. N.B. This will be null if configure_with_urn was false in
 	// Handshake.
-	URN *resource.URN
+	URN	*resource.URN
 	// The name of the provider being configured. This must match the name specified by the `urn` field, and
 	// is passed so that providers do not have to implement URN parsing in order to extract the name of the
 	// provider.  N.B. This will be null if configure_with_urn was false in Handshake.
-	Name *string
+	Name	*string
 	// The type of the provider being configured. This must match the type specified by the `urn` field, and
 	// is passed so that providers do not have to implement URN parsing in order to extract the type of the
 	// provider. N.B. This will be null if configure_with_urn was false in Handshake.
-	Type *tokens.Type
+	Type	*tokens.Type
 	// The ID of the provider being configured. N.B. This will be null if configure_with_urn was false in
 	// Handshake.
-	ID *resource.ID
+	ID	*resource.ID
 	// A map of input properties for the provider.
-	Inputs resource.PropertyMap
+	Inputs	resource.PropertyMap
 }
 
 type ConfigureResponse struct{}
@@ -201,133 +201,133 @@ type AutonamingMode int32
 
 const (
 	// Propose: The provider may use the proposed name as a suggestion but is free to modify it.
-	AutonamingModePropose AutonamingMode = iota
+	AutonamingModePropose	AutonamingMode	= iota
 	// Enforce: The provider must use exactly the proposed name or return an error.
-	AutonamingModeEnforce = 1
+	AutonamingModeEnforce	= 1
 	// Disabled: The provider should disable automatic naming and return an error if no explicit name is provided
 	// by user's program.
-	AutonamingModeDisabled = 2
+	AutonamingModeDisabled	= 2
 )
 
 // Configuration for automatic resource naming behavior. This structure contains fields that control how the provider
 // handles resource names, including proposed names and naming modes.
 type AutonamingOptions struct {
 	// ProposedName is the name that the provider should use for the resource.
-	ProposedName string
+	ProposedName	string
 	// Mode is the mode that controls how the provider handles the proposed name.
-	Mode AutonamingMode
+	Mode	AutonamingMode
 	// WarnIfNoSupport indicates whether the provider plugin should log a warning if the provider does not support
 	// autonaming configuration.
-	WarnIfNoSupport bool
+	WarnIfNoSupport	bool
 }
 
 type CheckRequest struct {
-	URN  resource.URN
-	Name string
-	Type tokens.Type
+	URN	resource.URN
+	Name	string
+	Type	tokens.Type
 	// TODO Change to (State, Input)
-	Olds, News    resource.PropertyMap
-	AllowUnknowns bool
-	RandomSeed    []byte
-	Autonaming    *AutonamingOptions
+	Olds, News	resource.PropertyMap
+	AllowUnknowns	bool
+	RandomSeed	[]byte
+	Autonaming	*AutonamingOptions
 }
 
 type CheckResponse struct {
-	Properties resource.PropertyMap
-	Failures   []CheckFailure
+	Properties	resource.PropertyMap
+	Failures	[]CheckFailure
 }
 
 type DiffRequest struct {
-	URN  resource.URN
-	Name string
-	Type tokens.Type
-	ID   resource.ID
+	URN	resource.URN
+	Name	string
+	Type	tokens.Type
+	ID	resource.ID
 	// TODO Change to (OldInputs, OldState, NewInputs)
-	OldInputs, OldOutputs, NewInputs resource.PropertyMap
-	AllowUnknowns                    bool
-	IgnoreChanges                    []string
+	OldInputs, OldOutputs, NewInputs	resource.PropertyMap
+	AllowUnknowns				bool
+	IgnoreChanges				[]string
 }
 
 type DiffResponse = DiffResult
 
 type CreateRequest struct {
-	URN        resource.URN
-	Name       string
-	Type       tokens.Type
-	Properties resource.PropertyMap
-	Timeout    float64
-	Preview    bool
+	URN		resource.URN
+	Name		string
+	Type		tokens.Type
+	Properties	resource.PropertyMap
+	Timeout		float64
+	Preview		bool
 	// The gRPC address of the ResourceStatus service which can be used to create view resources.
-	ResourceStatusAddress string
+	ResourceStatusAddress	string
 	// The ResourceStatus service token to pass when calling methods on the service.
-	ResourceStatusToken string
+	ResourceStatusToken	string
 }
 
 type CreateResponse struct {
-	ID         resource.ID
-	Properties resource.PropertyMap
-	Status     resource.Status
+	ID		resource.ID
+	Properties	resource.PropertyMap
+	Status		resource.Status
 	// Indicates that this resource should always be refreshed prior to updates.
-	RefreshBeforeUpdate bool
+	RefreshBeforeUpdate	bool
 }
 
 type ReadRequest struct {
-	URN           resource.URN
-	Name          string
-	Type          tokens.Type
-	ID            resource.ID
-	Inputs, State resource.PropertyMap
+	URN		resource.URN
+	Name		string
+	Type		tokens.Type
+	ID		resource.ID
+	Inputs, State	resource.PropertyMap
 	// The gRPC address of the ResourceStatus service which can be used to read view resources.
-	ResourceStatusAddress string
+	ResourceStatusAddress	string
 	// The ResourceStatus service token to pass when calling methods on the service.
-	ResourceStatusToken string
+	ResourceStatusToken	string
 	// The old views for the resource being read. These will only be populated when the Read call is being made as part
 	// of a refresh operation.
-	OldViews []View
+	OldViews	[]View
 }
 
 type ReadResponse struct {
 	ReadResult
-	Status resource.Status
+	Status	resource.Status
 }
 
 type UpdateRequest struct {
-	URN                              resource.URN
-	Name                             string
-	Type                             tokens.Type
-	ID                               resource.ID
-	OldInputs, OldOutputs, NewInputs resource.PropertyMap
-	Timeout                          float64
-	IgnoreChanges                    []string
-	Preview                          bool
+	URN					resource.URN
+	Name					string
+	Type					tokens.Type
+	ID					resource.ID
+	OldInputs, OldOutputs, NewInputs	resource.PropertyMap
+	Timeout					float64
+	IgnoreChanges				[]string
+	Preview					bool
 	// The gRPC address of the ResourceStatus service which can be used to update view resources.
-	ResourceStatusAddress string
+	ResourceStatusAddress	string
 	// The ResourceStatus service token to pass when calling methods on the service.
-	ResourceStatusToken string
+	ResourceStatusToken	string
 	// The old views for the resource being updated.
-	OldViews []View
+	OldViews	[]View
 }
 
 type UpdateResponse struct {
-	Properties resource.PropertyMap
-	Status     resource.Status
+	Properties	resource.PropertyMap
+	Status		resource.Status
 	// Indicates that this resource should always be refreshed prior to updates.
-	RefreshBeforeUpdate bool
+	RefreshBeforeUpdate	bool
 }
 
 type DeleteRequest struct {
-	URN             resource.URN
-	Name            string
-	Type            tokens.Type
-	ID              resource.ID
-	Inputs, Outputs resource.PropertyMap
-	Timeout         float64
+	URN		resource.URN
+	Name		string
+	Type		tokens.Type
+	ID		resource.ID
+	Inputs, Outputs	resource.PropertyMap
+	Timeout		float64
 	// The gRPC address of the ResourceStatus service which can be used to delete view resources.
-	ResourceStatusAddress string
+	ResourceStatusAddress	string
 	// The ResourceStatus service token to pass when calling methods on the service.
-	ResourceStatusToken string
+	ResourceStatusToken	string
 	// The old views of the resource being deleted.
-	OldViews []View
+	OldViews	[]View
 }
 
 type DeleteResponse struct {
@@ -335,31 +335,31 @@ type DeleteResponse struct {
 }
 
 type ConstructRequest struct {
-	Info    ConstructInfo
-	Type    tokens.Type
-	Name    string
-	Parent  resource.URN
-	Inputs  resource.PropertyMap
-	Options ConstructOptions
+	Info	ConstructInfo
+	Type	tokens.Type
+	Name	string
+	Parent	resource.URN
+	Inputs	resource.PropertyMap
+	Options	ConstructOptions
 }
 
 type ConstructResponse = ConstructResult
 
 type InvokeRequest struct {
-	Tok  tokens.ModuleMember
-	Args resource.PropertyMap
+	Tok	tokens.ModuleMember
+	Args	resource.PropertyMap
 }
 
 type InvokeResponse struct {
-	Properties resource.PropertyMap
-	Failures   []CheckFailure
+	Properties	resource.PropertyMap
+	Failures	[]CheckFailure
 }
 
 type CallRequest struct {
-	Tok     tokens.ModuleMember
-	Args    resource.PropertyMap
-	Info    CallInfo
-	Options CallOptions
+	Tok	tokens.ModuleMember
+	Args	resource.PropertyMap
+	Info	CallInfo
+	Options	CallOptions
 }
 
 type CallResponse = CallResult
@@ -369,8 +369,8 @@ type GetMappingRequest struct {
 }
 
 type GetMappingResponse struct {
-	Data     []byte
-	Provider string
+	Data		[]byte
+	Provider	string
 }
 
 type GetMappingsRequest struct {
@@ -489,8 +489,8 @@ type GrpcProvider interface {
 
 // CheckFailure indicates that a call to check failed; it contains the property and reason for the failure.
 type CheckFailure struct {
-	Property resource.PropertyKey // the property that failed checking.
-	Reason   string               // the reason the property failed to check.
+	Property	resource.PropertyKey	// the property that failed checking.
+	Reason		string			// the reason the property failed to check.
 }
 
 // ErrNotYetImplemented may be returned from a provider for optional methods that are not yet implemented.
@@ -501,11 +501,11 @@ type DiffChanges int
 
 const (
 	// DiffUnknown indicates the provider didn't offer information about the changes (legacy behavior).
-	DiffUnknown DiffChanges = 0
+	DiffUnknown	DiffChanges	= 0
 	// DiffNone indicates the provider performed a diff and concluded that no update is needed.
-	DiffNone DiffChanges = 1
+	DiffNone	DiffChanges	= 1
 	// DiffSome indicates the provider performed a diff and concluded that an update or replacement is needed.
-	DiffSome DiffChanges = 2
+	DiffSome	DiffChanges	= 2
 )
 
 // DiffKind represents the kind of diff that applies to a particular property.
@@ -594,42 +594,42 @@ func (d DiffKind) Invert() DiffKind {
 
 const (
 	// DiffAdd indicates that the property was added.
-	DiffAdd DiffKind = 0
+	DiffAdd	DiffKind	= 0
 	// DiffAddReplace indicates that the property was added and requires that the resource be replaced.
-	DiffAddReplace DiffKind = 1
+	DiffAddReplace	DiffKind	= 1
 	// DiffDelete indicates that the property was deleted.
-	DiffDelete DiffKind = 2
+	DiffDelete	DiffKind	= 2
 	// DiffDeleteReplace indicates that the property was added and requires that the resource be replaced.
-	DiffDeleteReplace DiffKind = 3
+	DiffDeleteReplace	DiffKind	= 3
 	// DiffUpdate indicates that the property was updated.
-	DiffUpdate DiffKind = 4
+	DiffUpdate	DiffKind	= 4
 	// DiffUpdateReplace indicates that the property was updated and requires that the resource be replaced.
-	DiffUpdateReplace DiffKind = 5
+	DiffUpdateReplace	DiffKind	= 5
 )
 
 // PropertyDiff records the difference between a single property's old and new values.
 type PropertyDiff struct {
-	Kind      DiffKind // The kind of diff.
-	InputDiff bool     // True if this is a diff between old and new inputs rather than old state and new inputs.
+	Kind		DiffKind	// The kind of diff.
+	InputDiff	bool		// True if this is a diff between old and new inputs rather than old state and new inputs.
 }
 
 // ToReplace converts the kind of a PropertyDiff into the equivalent replacement if it not already
 // a replacement.
 func (p PropertyDiff) ToReplace() PropertyDiff {
 	return PropertyDiff{
-		InputDiff: p.InputDiff,
-		Kind:      p.Kind.AsReplace(),
+		InputDiff:	p.InputDiff,
+		Kind:		p.Kind.AsReplace(),
 	}
 }
 
 // DiffResult indicates whether an operation should replace or update an existing resource.
 type DiffResult struct {
-	Changes             DiffChanges             // true if this diff represents a changed resource.
-	ReplaceKeys         []resource.PropertyKey  // an optional list of replacement keys.
-	StableKeys          []resource.PropertyKey  // an optional list of property keys that are stable.
-	ChangedKeys         []resource.PropertyKey  // an optional list of keys that changed.
-	DetailedDiff        map[string]PropertyDiff // an optional structured diff
-	DeleteBeforeReplace bool                    // if true, this resource must be deleted before recreating it.
+	Changes			DiffChanges		// true if this diff represents a changed resource.
+	ReplaceKeys		[]resource.PropertyKey	// an optional list of replacement keys.
+	StableKeys		[]resource.PropertyKey	// an optional list of property keys that are stable.
+	ChangedKeys		[]resource.PropertyKey	// an optional list of keys that changed.
+	DetailedDiff		map[string]PropertyDiff	// an optional structured diff
+	DeleteBeforeReplace	bool			// if true, this resource must be deleted before recreating it.
 }
 
 // NewDetailedDiffFromObjectDiff computes the detailed diff of Updated, Added and Deleted keys.
@@ -717,18 +717,18 @@ func (r DiffResult) Invert() DiffResult {
 	detailedDiff := make(map[string]PropertyDiff)
 	for k, v := range r.DetailedDiff {
 		detailedDiff[k] = PropertyDiff{
-			Kind:      v.Kind.Invert(),
-			InputDiff: v.InputDiff,
+			Kind:		v.Kind.Invert(),
+			InputDiff:	v.InputDiff,
 		}
 	}
 
 	return DiffResult{
-		Changes:             r.Changes,
-		ReplaceKeys:         r.ReplaceKeys,
-		StableKeys:          r.StableKeys,
-		ChangedKeys:         r.ChangedKeys,
-		DeleteBeforeReplace: r.DeleteBeforeReplace,
-		DetailedDiff:        detailedDiff,
+		Changes:		r.Changes,
+		ReplaceKeys:		r.ReplaceKeys,
+		StableKeys:		r.StableKeys,
+		ChangedKeys:		r.ChangedKeys,
+		DeleteBeforeReplace:	r.DeleteBeforeReplace,
+		DetailedDiff:		detailedDiff,
 	}
 }
 
@@ -751,109 +751,109 @@ func (e DiffUnavailableError) Error() string {
 type ReadResult struct {
 	// This is the ID for the resource. This ID will always be populated and will ensure we get the most up-to-date
 	// resource ID.
-	ID resource.ID
+	ID	resource.ID
 	// Inputs contains the new inputs for the resource, if any. If this field is nil, the provider does not support
 	// returning inputs from a call to Read and the old inputs (if any) should be preserved.
-	Inputs resource.PropertyMap
+	Inputs	resource.PropertyMap
 	// Outputs contains the new outputs/state for the resource, if any. If this field is nil, the resource does not
 	// exist.
-	Outputs resource.PropertyMap
+	Outputs	resource.PropertyMap
 	// Indicates that this resource should always be refreshed prior to updates.
-	RefreshBeforeUpdate bool
+	RefreshBeforeUpdate	bool
 }
 
 // ConstructInfo contains all of the information required to register resources as part of a call to Construct.
 type ConstructInfo struct {
-	Project          string                // the project name housing the program being run.
-	Stack            string                // the stack name being evaluated.
-	Config           map[config.Key]string // the configuration variables to apply before running.
-	ConfigSecretKeys []config.Key          // the configuration keys that have secret values.
-	DryRun           bool                  // true if we are performing a dry-run (preview).
-	Parallel         int32                 // the degree of parallelism for resource operations (<=1 for serial).
-	MonitorAddress   string                // the RPC address to the host resource monitor.
+	Project			string			// the project name housing the program being run.
+	Stack			string			// the stack name being evaluated.
+	Config			map[config.Key]string	// the configuration variables to apply before running.
+	ConfigSecretKeys	[]config.Key		// the configuration keys that have secret values.
+	DryRun			bool			// true if we are performing a dry-run (preview).
+	Parallel		int32			// the degree of parallelism for resource operations (<=1 for serial).
+	MonitorAddress		string			// the RPC address to the host resource monitor.
 
 	// A handle to the stack trace that originated the Construct. Used to stitch together stack traces across plugins.
-	StackTraceHandle string
+	StackTraceHandle	string
 }
 
 // ConstructOptions captures options for a call to Construct.
 type ConstructOptions struct {
 	// Aliases is the set of aliases for the component.
-	Aliases []resource.Alias
+	Aliases	[]resource.Alias
 
 	// Dependencies is the list of resources this component depends on.
-	Dependencies []resource.URN
+	Dependencies	[]resource.URN
 
 	// Protect is true if the component is protected.
-	Protect *bool
+	Protect	*bool
 
 	// Providers is a map from package name to provider reference.
-	Providers map[string]string
+	Providers	map[string]string
 
 	// PropertyDependencies is a map from property name to a list of resources that property depends on.
-	PropertyDependencies map[resource.PropertyKey][]resource.URN
+	PropertyDependencies	map[resource.PropertyKey][]resource.URN
 
 	// AdditionalSecretOutputs lists extra output properties
 	// that should be treated as secrets.
-	AdditionalSecretOutputs []string
+	AdditionalSecretOutputs	[]string
 
 	// CustomTimeouts overrides default timeouts for resource operations.
-	CustomTimeouts *CustomTimeouts
+	CustomTimeouts	*CustomTimeouts
 
 	// DeletedWith specifies that if the given resource is deleted,
 	// it will also delete this resource.
-	DeletedWith resource.URN
+	DeletedWith	resource.URN
 
 	// DeleteBeforeReplace specifies that replacements of this resource
 	// should delete the old resource before creating the new resource.
-	DeleteBeforeReplace *bool
+	DeleteBeforeReplace	*bool
 
 	// IgnoreChanges lists properties that should be ignored
 	// when determining whether the resource should has changed.
-	IgnoreChanges []string
+	IgnoreChanges	[]string
 
 	// ReplaceOnChanges lists properties changing which should cause
 	// the resource to be replaced.
-	ReplaceOnChanges []string
+	ReplaceOnChanges	[]string
 
 	// RetainOnDelete is true if deletion of the resource should not
 	// delete the resource in the provider.
-	RetainOnDelete *bool
+	RetainOnDelete	*bool
 
 	// ResourceHooks specifies hooks to be executed before and after
 	// resource operations.
-	ResourceHooks map[resource.HookType][]string
+	ResourceHooks	map[resource.HookType][]string
 }
 
 // CustomTimeouts overrides default timeouts for resource operations.
 // Timeout values are strings in the format accepted by time.ParseDuration.
 type CustomTimeouts struct {
-	Create string
-	Update string
-	Delete string
+	Create	string
+	Update	string
+	Delete	string
 }
 
 // ConstructResult is the result of a call to Construct.
 type ConstructResult struct {
 	// The URN of the constructed component resource.
-	URN resource.URN
+	URN	resource.URN
 	// The output properties of the component resource.
-	Outputs resource.PropertyMap
+	Outputs	resource.PropertyMap
 	// The resources that each output property depends on.
-	OutputDependencies map[resource.PropertyKey][]resource.URN
+	OutputDependencies	map[resource.PropertyKey][]resource.URN
 }
 
 // CallInfo contains all of the information required to register resources as part of a call to Construct.
 type CallInfo struct {
-	Project        string                // the project name housing the program being run.
-	Stack          string                // the stack name being evaluated.
-	Config         map[config.Key]string // the configuration variables to apply before running.
-	DryRun         bool                  // true if we are performing a dry-run (preview).
-	Parallel       int32                 // the degree of parallelism for resource operations (<=1 for serial).
-	MonitorAddress string                // the RPC address to the host resource monitor.
+	Project		string			// the project name housing the program being run.
+	Stack		string			// the stack name being evaluated.
+	Config		map[config.Key]string	// the configuration variables to apply before running.
+	DryRun		bool			// true if we are performing a dry-run (preview).
+	Parallel	int32			// the degree of parallelism for resource operations (<=1 for serial).
+	MonitorAddress	string			// the RPC address to the host resource monitor.
 
 	// A handle to the stack trace that originated the Call. Used to stitch together stack traces across plugins.
-	StackTraceHandle string
+	StackTraceHandle	string
 }
 
 // CallOptions captures options for a call to Call.
@@ -867,30 +867,30 @@ type CallResult struct {
 	// The returned values, if the call was successful.
 	// In the case of a scalar/non-map result, a single key with any name can be used to return the
 	// value.
-	Return resource.PropertyMap
+	Return	resource.PropertyMap
 	// A map from return value keys to the dependencies of the return value.
-	ReturnDependencies map[resource.PropertyKey][]resource.URN
+	ReturnDependencies	map[resource.PropertyKey][]resource.URN
 	// The failures if any arguments didn't pass verification.
-	Failures []CheckFailure
+	Failures	[]CheckFailure
 }
 
 // View represents the state of a view resource.
 type View struct {
 	// The type of the view resource.
-	Type tokens.Type
+	Type	tokens.Type
 
 	// The name of the view resource.
-	Name string
+	Name	string
 
 	// An optional type of the parent view resource.
-	ParentType tokens.Type
+	ParentType	tokens.Type
 
 	// An optional name of the parent view resource.
-	ParentName string
+	ParentName	string
 
 	// The view resource's inputs.
-	Inputs resource.PropertyMap
+	Inputs	resource.PropertyMap
 
 	// The view resource's outputs.
-	Outputs resource.PropertyMap
+	Outputs	resource.PropertyMap
 }

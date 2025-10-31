@@ -34,8 +34,8 @@ func TestBasicOutputs(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
-		Project: "proj",
-		Stack:   "stack",
+		Project:	"proj",
+		Stack:		"stack",
 	})
 	require.NoError(t, err)
 
