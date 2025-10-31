@@ -448,8 +448,10 @@ type RegisterResourceRequest struct {
 	SupportsResultReporting bool            `protobuf:"varint,32,opt,name=supportsResultReporting,proto3" json:"supportsResultReporting,omitempty"` // true if the request is from an SDK that supports the result field in the response.
 	PackageRef              string          `protobuf:"bytes,33,opt,name=packageRef,proto3" json:"packageRef,omitempty"`                            // a reference from RegisterPackageRequest.
 	// The resource hooks that should run at certain points in the resource's lifecycle.
-	Hooks         *RegisterResourceRequest_ResourceHooksBinding `protobuf:"bytes,34,opt,name=hooks,proto3,oneof" json:"hooks,omitempty"`
-	HideDiffs     []string                                      `protobuf:"bytes,37,rep,name=hideDiffs,proto3" json:"hideDiffs,omitempty"`
+	Hooks     *RegisterResourceRequest_ResourceHooksBinding `protobuf:"bytes,34,opt,name=hooks,proto3,oneof" json:"hooks,omitempty"`
+	HideDiffs []string                                      `protobuf:"bytes,37,rep,name=hideDiffs,proto3" json:"hideDiffs,omitempty"`
+	// If true this resource will be deleted at the end of the deployment.
+	Ephemeral     bool `protobuf:"varint,38,opt,name=ephemeral,proto3" json:"ephemeral,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -741,6 +743,13 @@ func (x *RegisterResourceRequest) GetHideDiffs() []string {
 		return x.HideDiffs
 	}
 	return nil
+}
+
+func (x *RegisterResourceRequest) GetEphemeral() bool {
+	if x != nil {
+		return x.Ephemeral
+	}
+	return false
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the
@@ -2352,7 +2361,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x03urn\x18\x01 \x01(\tR\x03urn\x127\n" +
 	"\n" +
 	"properties\x18\x02 \x01(\v2\x17.google.protobuf.StructR\n" +
-	"properties\"\x93\x13\n" +
+	"properties\"\xb1\x13\n" +
 	"\x17RegisterResourceRequest\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -2399,7 +2408,8 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"packageRef\x18! \x01(\tR\n" +
 	"packageRef\x12R\n" +
 	"\x05hooks\x18\" \x01(\v27.pulumirpc.RegisterResourceRequest.ResourceHooksBindingH\x02R\x05hooks\x88\x01\x01\x12\x1c\n" +
-	"\thideDiffs\x18% \x03(\tR\thideDiffs\x1a*\n" +
+	"\thideDiffs\x18% \x03(\tR\thideDiffs\x12\x1c\n" +
+	"\tephemeral\x18& \x01(\bR\tephemeral\x1a*\n" +
 	"\x14PropertyDependencies\x12\x12\n" +
 	"\x04urns\x18\x01 \x03(\tR\x04urns\x1aX\n" +
 	"\x0eCustomTimeouts\x12\x16\n" +

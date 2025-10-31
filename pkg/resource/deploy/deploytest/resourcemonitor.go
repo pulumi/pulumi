@@ -314,6 +314,8 @@ type ResourceOptions struct {
 
 	SupportsResultReporting bool
 	PackageRef              string
+
+	Ephemeral bool
 }
 
 func (rm *ResourceMonitor) unmarshalProperties(props *structpb.Struct) (resource.PropertyMap, error) {
@@ -453,6 +455,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		SupportsResultReporting:    opts.SupportsResultReporting,
 		PackageRef:                 opts.PackageRef,
 		Hooks:                      resourceHooks,
+		Ephemeral:                  opts.Ephemeral,
 	}
 
 	ctx := context.Background()

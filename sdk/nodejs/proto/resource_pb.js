@@ -1846,7 +1846,8 @@ transformsList: jspb.Message.toObjectList(msg.getTransformsList(),
 supportsresultreporting: jspb.Message.getBooleanFieldWithDefault(msg, 32, false),
 packageref: jspb.Message.getFieldWithDefault(msg, 33, ""),
 hooks: (f = msg.getHooks()) && proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.toObject(includeInstance, f),
-hidediffsList: (f = jspb.Message.getRepeatedField(msg, 37)) == null ? undefined : f
+hidediffsList: (f = jspb.Message.getRepeatedField(msg, 37)) == null ? undefined : f,
+ephemeral: jspb.Message.getBooleanFieldWithDefault(msg, 38, false)
   };
 
   if (includeInstance) {
@@ -2043,6 +2044,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 37:
       var value = /** @type {string} */ (reader.readString());
       msg.addHidediffs(value);
+      break;
+    case 38:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setEphemeral(value);
       break;
     default:
       reader.skipField();
@@ -2327,6 +2332,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   if (f.length > 0) {
     writer.writeRepeatedString(
       37,
+      f
+    );
+  }
+  f = message.getEphemeral();
+  if (f) {
+    writer.writeBool(
+      38,
       f
     );
   }
@@ -4043,6 +4055,24 @@ proto.pulumirpc.RegisterResourceRequest.prototype.addHidediffs = function(value,
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.clearHidediffsList = function() {
   return this.setHidediffsList([]);
+};
+
+
+/**
+ * optional bool ephemeral = 38;
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getEphemeral = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 38, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setEphemeral = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 38, value);
 };
 
 

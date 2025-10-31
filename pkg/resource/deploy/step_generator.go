@@ -666,6 +666,17 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		modifiedAt = old.Modified
 	}
 
+	// If our parent is ephemeral, then we must be too.
+	if goal.Parent != "" {
+		parentGoal, ok := sg.deployment.goals.Load(goal.Parent)
+		if !ok {
+			contract.Failf("could not find parent goal for %v", goal.Parent)
+		}
+		if parentGoal.Ephemeral {
+			goal.Ephemeral = true
+		}
+	}
+
 	// Produce a new state object that we'll build up as operations are performed.  Ultimately, this is what will
 	// get serialized into the checkpoint file.
 	var protectState bool
@@ -677,6 +688,32 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		retainOnDelete = *goal.RetainOnDelete
 	}
 
+	var dependencies []resource.URN
+	var propertyDependencies map[resource.PropertyKey][]resource.URN
+	// Filter the dependencies and property dependencies to only include non-ephemeral resources.
+	filter := func(deps []resource.URN) []resource.URN {
+		if deps == nil || goal.Ephemeral {
+			return deps
+		}
+		result := make([]resource.URN, 0, len(deps))
+		for _, d := range deps {
+			goal, ok := sg.deployment.goals.Load(d)
+			if !ok || goal.Ephemeral {
+				continue
+			}
+			result = append(result, d)
+		}
+		return result
+	}
+	if goal.Dependencies != nil {
+		dependencies = filter(goal.Dependencies)
+	}
+	if goal.PropertyDependencies != nil {
+		propertyDependencies = make(map[resource.PropertyKey][]resource.URN)
+		for k, deps := range goal.PropertyDependencies {
+			propertyDependencies[k] = filter(deps)
+		}
+	}
 	// Carry the refreshBeforeUpdate flag forward if present in the old state.
 	var refreshBeforeUpdate bool
 	if old != nil {
@@ -694,10 +731,10 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		Protect:                 protectState,
 		Taint:                   false,
 		External:                false,
-		Dependencies:            goal.Dependencies,
+		Dependencies:            dependencies,
 		InitErrors:              goal.InitErrors,
 		Provider:                goal.Provider,
-		PropertyDependencies:    goal.PropertyDependencies,
+		PropertyDependencies:    propertyDependencies,
 		PendingReplacement:      false,
 		AdditionalSecretOutputs: goal.AdditionalSecretOutputs,
 		Aliases:                 aliasUrns,
@@ -1603,7 +1640,15 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 
 	sg.creates[urn] = true
 	logging.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.Inputs)
-	return []Step{NewCreateStep(sg.deployment, event, new)}, false, nil
+	steps := []Step{NewCreateStep(sg.deployment, event, new)}
+
+	if event.Goal().Ephemeral {
+		// If we're creating an ephemeral resource, we also need to flag the resource as to be deleted
+		// at the end of the deployment.
+		sg.toDelete = append(sg.toDelete, new)
+	}
+
+	return steps, false, nil
 }
 
 func (sg *stepGenerator) generateStepsFromDiff(
@@ -2396,7 +2441,10 @@ func (sg *stepGenerator) determineForbiddenResourcesToDeleteFromExcludes(
 // step. This includes the new resource states to be deleted (if running in destroy mode), and all the old resource
 // states from the previous snapshot. It also handles filling in aliases for all refreshed resources.
 func (sg *stepGenerator) getDepgraphForScheduling() *graph.DependencyGraph {
-	allResources := append(sg.toDelete, sg.deployment.prev.Resources...)
+	allResources := sg.toDelete
+	if sg.deployment.prev != nil {
+		allResources = append(allResources, sg.deployment.prev.Resources...)
+	}
 	dg := graph.NewDependencyGraph(allResources)
 	for old, new := range sg.refreshStates {
 		dg.Alias(new, old)

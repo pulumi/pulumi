@@ -47,6 +47,9 @@ type Goal struct {
 	SourcePosition string                // If set, the source location of the resource registration
 	StackTrace     []StackFrame          // If set, the stack trace at time of registration
 	ResourceHooks  map[HookType][]string // The resource hooks attached to the resource, by type.
+
+	// If set the resource is ephemeral and should be deleted at the end of the deployment.
+	Ephemeral bool
 }
 
 // NewGoal is used to construct Goal values. The dataflow for Goal is rather sensitive, so all fields are required.
@@ -122,6 +125,9 @@ type NewGoal struct {
 
 	// If set, the list of property paths to hide the diff output of.
 	HideDiff []PropertyPath // required
+
+	// If set the resource is ephemeral and should be deleted at the end of the deployment.
+	Ephemeral bool // required
 }
 
 // Make consumes the NewGoal to create a *Goal.
@@ -154,5 +160,6 @@ func (g NewGoal) Make() *Goal {
 		SourcePosition:          g.SourcePosition,
 		StackTrace:              g.StackTrace,
 		ResourceHooks:           g.ResourceHooks,
+		Ephemeral:               g.Ephemeral,
 	}
 }

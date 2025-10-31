@@ -445,7 +445,7 @@ func (ex *deploymentExecutor) performPostSteps(
 	}()
 
 	prev := ex.deployment.prev
-	if prev == nil || len(prev.Resources) == 0 {
+	if (prev == nil || len(prev.Resources) == 0) && len(ex.stepGen.toDelete) == 0 {
 		return nil
 	}
 

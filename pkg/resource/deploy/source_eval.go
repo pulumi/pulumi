@@ -505,6 +505,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 			SourcePosition:          "",
 			StackTrace:              nil,
 			ResourceHooks:           nil,
+			Ephemeral:               false,
 		}.Make(),
 		done: done,
 	}
@@ -2508,10 +2509,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
 			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v, deletedWith=%v, resourceHooks=%v, "+
-			"hideDiffs=%v",
+			"hideDiffs=%v, ephemeral=%v",
 		t, name, custom, len(props), parent, protect, providerRef, rawDependencies, opts.DeleteBeforeReplace, ignoreChanges,
 		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith, resourceHooks,
-		hiddenDiffs)
+		hiddenDiffs, req.Ephemeral)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
 	var result *RegisterResult
@@ -2673,6 +2674,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			SourcePosition:          sourcePosition,
 			StackTrace:              stackTrace,
 			ResourceHooks:           resourceHooks,
+			Ephemeral:               req.Ephemeral,
 		}.Make()
 		if goal.Parent != "" {
 			rm.resGoalsLock.Lock()
