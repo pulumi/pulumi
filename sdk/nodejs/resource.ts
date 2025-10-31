@@ -1425,7 +1425,18 @@ export class ComponentResource<TData = any> extends Resource {
         remote: boolean = false,
         packageRef?: Promise<string | undefined>,
     ) {
-        super(type, name, /*custom:*/ false, args, opts, remote, false, packageRef);
+        // If the PULUMI_NODEJS_SKIP_COMPONENT_INPUTS environment variable is set,
+        // we skip sending the inputs to the engine.
+        super(
+            type,
+            name,
+            /*custom:*/ false,
+            process.env.PULUMI_NODEJS_SKIP_COMPONENT_INPUTS ? {} : args,
+            opts,
+            remote,
+            false,
+            packageRef,
+        );
         this.__remote = remote;
         this.__registered = remote || !!opts?.urn;
         this.__data =
