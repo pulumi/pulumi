@@ -5,10 +5,7 @@
 /* eslint-disable */
 
 import * as jspb from "google-protobuf";
-import * as pulumi_codegen_hcl_pb from "./codegen/hcl_pb";
-import * as pulumi_plugin_pb from "./plugin_pb";
 import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
-import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 
 export class EventRequest extends jspb.Message { 
     getEvent(): string;

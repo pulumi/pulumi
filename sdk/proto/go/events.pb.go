@@ -21,11 +21,9 @@
 package pulumirpc
 
 import (
-	_ "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
-	_ "google.golang.org/protobuf/types/known/structpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -88,7 +86,7 @@ var File_pulumi_events_proto protoreflect.FileDescriptor
 
 const file_pulumi_events_proto_rawDesc = "" +
 	"\n" +
-	"\x13pulumi/events.proto\x12\tpulumirpc\x1a\x18pulumi/codegen/hcl.proto\x1a\x13pulumi/plugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"$\n" +
+	"\x13pulumi/events.proto\x12\tpulumirpc\x1a\x1bgoogle/protobuf/empty.proto\"$\n" +
 	"\fEventRequest\x12\x14\n" +
 	"\x05event\x18\x01 \x01(\tR\x05event2M\n" +
 	"\x06Events\x12C\n" +
@@ -126,7 +124,6 @@ func file_pulumi_events_proto_init() {
 	if File_pulumi_events_proto != nil {
 		return
 	}
-	file_pulumi_plugin_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
