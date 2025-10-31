@@ -6,10 +6,7 @@
 
 import * as grpc from "@grpc/grpc-js";
 import * as pulumi_events_pb from "./events_pb";
-import * as pulumi_codegen_hcl_pb from "./codegen/hcl_pb";
-import * as pulumi_plugin_pb from "./plugin_pb";
 import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
-import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 
 interface IEventsService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {
     streamEvents: IEventsService_IStreamEvents;
