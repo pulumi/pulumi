@@ -1427,8 +1427,7 @@ export class ComponentResource<TData = any> extends Resource {
     ) {
         // If the PULUMI_NODEJS_SKIP_COMPONENT_INPUTS environment variable is set,
         // we skip sending the inputs to the engine.
-        const cargs = process.env.PULUMI_NODEJS_SKIP_COMPONENT_INPUTS ? {} : args;
-        super(type, name, /*custom:*/ false, cargs, opts, remote, false, packageRef);
+        super(type, name, /*custom:*/ false, process.env.PULUMI_NODEJS_SKIP_COMPONENT_INPUTS ? {} : args, opts, remote, false, packageRef);
         this.__remote = remote;
         this.__registered = remote || !!opts?.urn;
         this.__data =
