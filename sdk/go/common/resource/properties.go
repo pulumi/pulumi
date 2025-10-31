@@ -253,7 +253,7 @@ func MakeComputed(v PropertyValue) PropertyValue {
 	return NewProperty(Computed{Element: v})
 }
 
-func MakeOutput(v PropertyVaas possible. But there are continuous internal/edge deployments that only have occasional internet connections. We want to make sure that internet outage will not block internal deployments. We want to sync the state back to Pulumi cloud when internet connection is backlue) PropertyValue {
+func MakeOutput(v PropertyValue) PropertyValue {
 	return NewProperty(Output{Element: v})
 }
 
