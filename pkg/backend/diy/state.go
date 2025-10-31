@@ -262,7 +262,7 @@ func (b *diyBackend) saveStack(
 	contract.Requiref(ref != nil, "ref", "ref was nil")
 	chk, err := stack.SerializeCheckpoint(ref.FullyQualifiedName(), snap, false /* showSecrets */)
 	if err != nil {
-		return "", fmt.Errorf("serializaing checkpoint: %w", err)
+		return "", fmt.Errorf("serializing checkpoint: %w", err)
 	}
 
 	backup, file, err := b.saveCheckpoint(ctx, ref, chk)
