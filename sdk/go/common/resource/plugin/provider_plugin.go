@@ -197,7 +197,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 				ConfigureWithUrn:            true,
 				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
-				InvokeWithDryRun:            true,
+				InvokeWithPreview:           true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -254,6 +254,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 				ConfigureWithUrn:            true,
 				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
+				InvokeWithPreview:           true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -323,6 +324,7 @@ func handshake(
 		ConfigureWithUrn:            req.ConfigureWithUrn,
 		SupportsViews:               req.SupportsViews,
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
+		InvokeWithPreview:           req.InvokeWithPreview,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -382,6 +384,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			ConfigureWithUrn:            true,
 			SupportsViews:               true,
 			SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
+			InvokeWithPreview:           true,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -497,6 +500,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		ConfigureWithUrn:            req.ConfigureWithUrn,
 		SupportsViews:               req.SupportsViews,
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
+		InvokeWithPreview:           req.InvokeWithPreview,
 	})
 	if err != nil {
 		return nil, err
@@ -1993,9 +1997,9 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 	}
 
 	resp, err := client.Invoke(p.requestContext(), &pulumirpc.InvokeRequest{
-		Tok:    string(req.Tok),
-		Args:   margs,
-		DryRun: req.DryRun,
+		Tok:     string(req.Tok),
+		Args:    margs,
+		Preview: req.Preview,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

@@ -145,6 +145,7 @@ func (p *providerServer) Handshake(
 		ConfigureWithUrn:            req.ConfigureWithUrn,
 		SupportsViews:               req.SupportsViews,
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
+		InvokeWithPreview:           req.InvokeWithPreview,
 	})
 	if err != nil {
 		return nil, err
@@ -882,9 +883,9 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 	}
 
 	resp, err := p.provider.Invoke(ctx, InvokeRequest{
-		Tok:    tokens.ModuleMember(req.GetTok()),
-		Args:   args,
-		DryRun: req.GetDryRun(),
+		Tok:     tokens.ModuleMember(req.GetTok()),
+		Args:    args,
+		Preview: req.GetPreview(),
 	})
 	if err != nil {
 		return nil, err

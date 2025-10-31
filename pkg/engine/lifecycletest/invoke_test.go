@@ -32,18 +32,18 @@ import (
 func TestDryRunInvoke(t *testing.T) {
 	t.Parallel()
 
-	expectDryRun := true
+	expectPreview := true
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				HandshakeF: func(
 					ctx context.Context, req plugin.ProviderHandshakeRequest,
 				) (*plugin.ProviderHandshakeResponse, error) {
-					assert.True(t, req.InvokeWithDryRun, "expected engine to advertise invoke_with_dry_run support")
+					assert.True(t, req.InvokeWithPreview, "expected engine to advertise invoke_with_preview support")
 					return &plugin.ProviderHandshakeResponse{}, nil
 				},
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-					assert.Equal(t, expectDryRun, req.DryRun)
+					assert.Equal(t, expectPreview, req.Preview)
 					return plugin.InvokeResponse{
 						Properties: resource.PropertyMap{
 							"result": resource.NewProperty("invoked"),
@@ -68,7 +68,7 @@ func TestDryRunInvoke(t *testing.T) {
 	_, err := lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, true, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
-	expectDryRun = false
+	expectPreview = false
 	_, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 }
