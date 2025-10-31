@@ -15,6 +15,7 @@
 package display
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -200,20 +201,15 @@ func startEventLogger(
 			}
 
 			for e := range events {
-				apiEvent, err := ConvertEngineEvent(e.Event, false)
+				var buf bytes.Buffer
+				encoder := json.NewEncoder(&buf)
+				encoder.SetEscapeHTML(false)
+				err := logJSONEvent(encoder, e, opts)
 				if err != nil {
 					logging.V(7).Infof("failed to convert event: %v", err)
 				} else {
-					apiEvent.Sequence = e.Sequence
-					apiEvent.Timestamp = e.Timestamp
-
-					marshaledEvent, err := json.Marshal(apiEvent)
-					if err != nil {
-						logging.V(7).Infof("failed to marshal event: %v", err)
-						continue
-					}
 					err = stream.Send(&pulumirpc.EventRequest{
-						Event: string(marshaledEvent),
+						Event: buf.String(),
 					})
 					if err != nil {
 						logging.V(7).Infof("failed to send event: %v", err)

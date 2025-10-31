@@ -1904,24 +1904,30 @@ func tailLogs(command string, receivers []chan<- events.EngineEvent, version sem
 		return t, nil
 	} else {
 		host := newEventsServer(receivers)
+		cancel := make(chan bool)
 		handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 			Init: func(srv *grpc.Server) error {
 				pulumirpc.RegisterEventsServer(srv, host)
 				return nil
 			},
+			Cancel:  cancel,
 			Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
 		})
 		if err != nil {
 			return nil, err
 		}
 		return &eventsWatcher{
-			port: handle.Port,
+			port:   handle.Port,
+			cancel: cancel,
+			done:   handle.Done,
 		}, nil
 	}
 }
 
 type eventsWatcher struct {
-	port int
+	port   int
+	cancel chan bool
+	done   <-chan error
 }
 
 func (ew *eventsWatcher) Filename() string {
@@ -1929,7 +1935,11 @@ func (ew *eventsWatcher) Filename() string {
 }
 
 func (ew *eventsWatcher) Close() {
-	// We don't need to do anything for the gRPC server here.
+	ew.cancel <- true
+	close(ew.cancel)
+	if ew.done != nil {
+		<-ew.done
+	}
 }
 
 type eventsServer struct {
