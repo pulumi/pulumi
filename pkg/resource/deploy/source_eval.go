@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1142,8 +1142,9 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 	// Do the invoke and then return the arguments.
 	logging.V(5).Infof("ResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
 	resp, err := prov.Invoke(ctx, plugin.InvokeRequest{
-		Tok:  tok,
-		Args: args,
+		Tok:     tok,
+		Args:    args,
+		Preview: rm.opts.DryRun,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("invocation of %v returned an error: %w", tok, err)
