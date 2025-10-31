@@ -20,8 +20,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 
 	fxs "github.com/pgavlin/fx/v2/slices"
@@ -56,6 +58,10 @@ const (
 	// is not known.) This allows us to persist engine events and resource states that
 	// indicate a value will changed... but is unknown what it will change to.
 	computedValuePlaceholder = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+
+	// floatSignature is the signature used to identify serialized float values. This isn't used in the grpc wire
+	// protocol (it supports full float values natively) but is needed for JSON serialization.
+	floatSignature = "8ad145fe-0d11-4827-bfd7-1abcbf086f5c"
 
 	// Feature names for deployment features.
 	refreshBeforeUpdateFeature = "refreshBeforeUpdate"
@@ -633,6 +639,17 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 		return &secret, nil
 	}
 
+	// Floats need special handling for Inf and NaN.
+	if prop.IsNumber() && (math.IsNaN(prop.NumberValue()) || math.IsInf(prop.NumberValue(), 0)) {
+		// We just save this as hexadecimal strings to preserve precision.
+		bits := math.Float64bits(prop.NumberValue())
+		hex := fmt.Sprintf("%016x", bits)
+		return map[string]any{
+			resource.SigKey: floatSignature,
+			"value":         hex,
+		}, nil
+	}
+
 	// All others are returned as-is.
 	return prop.V, nil
 }
@@ -883,6 +900,19 @@ func DeserializePropertyValue(v any, dec config.Decrypter,
 						return resource.MakeCustomResourceReference(urn, resource.ID(id), packageVersion), nil
 					}
 					return resource.MakeComponentResourceReference(urn, packageVersion), nil
+				case floatSignature:
+					hex, ok := objmap["value"].(string)
+					if !ok {
+						return resource.PropertyValue{},
+							errors.New("malformed float value: missing or non-string 'value' field")
+					}
+					bits, err := strconv.ParseUint(hex, 16, 64)
+					if err != nil {
+						return resource.PropertyValue{},
+							fmt.Errorf("malformed float value: unable to parse 'value' field: %w", err)
+					}
+					floatVal := math.Float64frombits(bits)
+					return resource.NewProperty(floatVal), nil
 				default:
 					return resource.PropertyValue{}, fmt.Errorf("unrecognized signature '%v' in property map", sig)
 				}
