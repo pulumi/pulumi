@@ -111,6 +111,10 @@ from .stack_reference import (
     StackReferenceOutputDetails,
 )
 
+from .stash import (
+    Stash,
+)
+
 from .type_token import get_type_token, type_token
 
 from ._types import (
@@ -196,6 +200,8 @@ __all__ = [
     # stack_reference
     "StackReference",
     "StackReferenceOutputDetails",
+    # stash
+    "Stash",
     # type_token
     "get_type_token",
     "type_token",

@@ -1,4 +1,4 @@
-// Copyright 2022-2024, Pulumi Corporation.
+// Copyright 2022-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,38 @@ func newPulumiPackage() *Package {
 		Version:     "1.0.0",
 		Description: "mock pulumi package",
 		Resources: map[string]ResourceSpec{
+			"pulumi:pulumi:Stash": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"value": {
+							Description: "The stashed value.",
+							TypeSpec: TypeSpec{
+								Ref: "pulumi.json#/Any",
+							},
+						},
+					},
+					Required: []string{
+						"value",
+					},
+				},
+				InputProperties: map[string]PropertySpec{
+					"value": {
+						Description: "The value to stash.",
+						TypeSpec: TypeSpec{
+							Ref: "pulumi.json#/Any",
+						},
+					},
+					"passthrough": {
+						Description: "If true the input value is propagated as the output value without stashing.",
+						TypeSpec: TypeSpec{
+							Type: "boolean",
+						},
+					},
+				},
+				RequiredInputs: []string{
+					"value",
+				},
+			},
 			"pulumi:pulumi:StackReference": {
 				ObjectTypeSpec: ObjectTypeSpec{
 					Properties: map[string]PropertySpec{
