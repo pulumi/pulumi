@@ -1,0 +1,3119 @@
+{
+    "check": {
+        "exprs": {
+            "emptyDelim": {
+                "range": {
+                    "environment": "builtin-split",
+                    "begin": {
+                        "line": 16,
+                        "column": 5,
+                        "byte": 293
+                    },
+                    "end": {
+                        "line": 18,
+                        "column": 14,
+                        "byte": 328
+                    }
+                },
+                "schema": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::split",
+                    "nameRange": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 16,
+                            "column": 5,
+                            "byte": 293
+                        },
+                        "end": {
+                            "line": 16,
+                            "column": 14,
+                            "byte": 302
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-split",
+                            "begin": {
+                                "line": 17,
+                                "column": 7,
+                                "byte": 310
+                            },
+                            "end": {
+                                "line": 18,
+                                "column": 14,
+                                "byte": 328
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 9,
+                                        "byte": 312
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 9,
+                                        "byte": 312
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": ""
+                                },
+                                "literal": ""
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 18,
+                                        "column": 9,
+                                        "byte": 323
+                                    },
+                                    "end": {
+                                        "line": 18,
+                                        "column": 14,
+                                        "byte": 328
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "hello"
+                                },
+                                "literal": "hello"
+                            }
+                        ]
+                    }
+                }
+            },
+            "emptyString": {
+                "range": {
+                    "environment": "builtin-split",
+                    "begin": {
+                        "line": 34,
+                        "column": 5,
+                        "byte": 583
+                    },
+                    "end": {
+                        "line": 36,
+                        "column": 9,
+                        "byte": 614
+                    }
+                },
+                "schema": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::split",
+                    "nameRange": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 34,
+                            "column": 5,
+                            "byte": 583
+                        },
+                        "end": {
+                            "line": 34,
+                            "column": 14,
+                            "byte": 592
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-split",
+                            "begin": {
+                                "line": 35,
+                                "column": 7,
+                                "byte": 600
+                            },
+                            "end": {
+                                "line": 36,
+                                "column": 9,
+                                "byte": 614
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 35,
+                                        "column": 9,
+                                        "byte": 602
+                                    },
+                                    "end": {
+                                        "line": 35,
+                                        "column": 10,
+                                        "byte": 603
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": ","
+                                },
+                                "literal": ","
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 36,
+                                        "column": 9,
+                                        "byte": 614
+                                    },
+                                    "end": {
+                                        "line": 36,
+                                        "column": 9,
+                                        "byte": 614
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": ""
+                                },
+                                "literal": ""
+                            }
+                        ]
+                    }
+                }
+            },
+            "fruits": {
+                "range": {
+                    "environment": "builtin-split",
+                    "begin": {
+                        "line": 4,
+                        "column": 5,
+                        "byte": 66
+                    },
+                    "end": {
+                        "line": 6,
+                        "column": 30,
+                        "byte": 119
+                    }
+                },
+                "schema": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::split",
+                    "nameRange": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 4,
+                            "column": 5,
+                            "byte": 66
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 14,
+                            "byte": 75
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-split",
+                            "begin": {
+                                "line": 5,
+                                "column": 7,
+                                "byte": 83
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 30,
+                                "byte": 119
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 9,
+                                        "byte": 85
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 11,
+                                        "byte": 87
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": ", "
+                                },
+                                "literal": ", "
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 6,
+                                        "column": 9,
+                                        "byte": 98
+                                    },
+                                    "end": {
+                                        "line": 6,
+                                        "column": 30,
+                                        "byte": 119
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "apple, orange, banana"
+                                },
+                                "literal": "apple, orange, banana"
+                            }
+                        ]
+                    }
+                }
+            },
+            "multiChar": {
+                "range": {
+                    "environment": "builtin-split",
+                    "begin": {
+                        "line": 28,
+                        "column": 5,
+                        "byte": 487
+                    },
+                    "end": {
+                        "line": 30,
+                        "column": 24,
+                        "byte": 534
+                    }
+                },
+                "schema": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::split",
+                    "nameRange": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 28,
+                            "column": 5,
+                            "byte": 487
+                        },
+                        "end": {
+                            "line": 28,
+                            "column": 14,
+                            "byte": 496
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-split",
+                            "begin": {
+                                "line": 29,
+                                "column": 7,
+                                "byte": 504
+                            },
+                            "end": {
+                                "line": 30,
+                                "column": 24,
+                                "byte": 534
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 29,
+                                        "column": 9,
+                                        "byte": 506
+                                    },
+                                    "end": {
+                                        "line": 29,
+                                        "column": 11,
+                                        "byte": 508
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "::"
+                                },
+                                "literal": "::"
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 30,
+                                        "column": 9,
+                                        "byte": 519
+                                    },
+                                    "end": {
+                                        "line": 30,
+                                        "column": 24,
+                                        "byte": 534
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "one::two::three"
+                                },
+                                "literal": "one::two::three"
+                            }
+                        ]
+                    }
+                }
+            },
+            "noDelim": {
+                "range": {
+                    "environment": "builtin-split",
+                    "begin": {
+                        "line": 22,
+                        "column": 5,
+                        "byte": 390
+                    },
+                    "end": {
+                        "line": 24,
+                        "column": 15,
+                        "byte": 427
+                    }
+                },
+                "schema": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::split",
+                    "nameRange": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 22,
+                            "column": 5,
+                            "byte": 390
+                        },
+                        "end": {
+                            "line": 22,
+                            "column": 14,
+                            "byte": 399
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-split",
+                            "begin": {
+                                "line": 23,
+                                "column": 7,
+                                "byte": 407
+                            },
+                            "end": {
+                                "line": 24,
+                                "column": 15,
+                                "byte": 427
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 23,
+                                        "column": 9,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 23,
+                                        "column": 10,
+                                        "byte": 410
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": ","
+                                },
+                                "literal": ","
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 24,
+                                        "column": 9,
+                                        "byte": 421
+                                    },
+                                    "end": {
+                                        "line": 24,
+                                        "column": 15,
+                                        "byte": 427
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "single"
+                                },
+                                "literal": "single"
+                            }
+                        ]
+                    }
+                }
+            },
+            "singleChar": {
+                "range": {
+                    "environment": "builtin-split",
+                    "begin": {
+                        "line": 10,
+                        "column": 5,
+                        "byte": 171
+                    },
+                    "end": {
+                        "line": 12,
+                        "column": 16,
+                        "byte": 209
+                    }
+                },
+                "schema": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::split",
+                    "nameRange": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 10,
+                            "column": 5,
+                            "byte": 171
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 14,
+                            "byte": 180
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-split",
+                            "begin": {
+                                "line": 11,
+                                "column": 7,
+                                "byte": 188
+                            },
+                            "end": {
+                                "line": 12,
+                                "column": 16,
+                                "byte": 209
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 11,
+                                        "column": 9,
+                                        "byte": 190
+                                    },
+                                    "end": {
+                                        "line": 11,
+                                        "column": 10,
+                                        "byte": 191
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": ","
+                                },
+                                "literal": ","
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 9,
+                                        "byte": 202
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 16,
+                                        "byte": 209
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "a,b,c,d"
+                                },
+                                "literal": "a,b,c,d"
+                            }
+                        ]
+                    }
+                }
+            },
+            "whitespace": {
+                "range": {
+                    "environment": "builtin-split",
+                    "begin": {
+                        "line": 40,
+                        "column": 5,
+                        "byte": 662
+                    },
+                    "end": {
+                        "line": 42,
+                        "column": 28,
+                        "byte": 712
+                    }
+                },
+                "schema": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::split",
+                    "nameRange": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 40,
+                            "column": 5,
+                            "byte": 662
+                        },
+                        "end": {
+                            "line": 40,
+                            "column": 14,
+                            "byte": 671
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-split",
+                            "begin": {
+                                "line": 41,
+                                "column": 7,
+                                "byte": 679
+                            },
+                            "end": {
+                                "line": 42,
+                                "column": 28,
+                                "byte": 712
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 41,
+                                        "column": 9,
+                                        "byte": 681
+                                    },
+                                    "end": {
+                                        "line": 41,
+                                        "column": 10,
+                                        "byte": 682
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": " "
+                                },
+                                "literal": " "
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 42,
+                                        "column": 9,
+                                        "byte": 693
+                                    },
+                                    "end": {
+                                        "line": 42,
+                                        "column": 28,
+                                        "byte": 712
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "hello world foo bar"
+                                },
+                                "literal": "hello world foo bar"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "properties": {
+            "emptyDelim": {
+                "value": [
+                    {
+                        "value": "h",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 16,
+                                    "column": 5,
+                                    "byte": 293
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 14,
+                                    "byte": 328
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "e",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 16,
+                                    "column": 5,
+                                    "byte": 293
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 14,
+                                    "byte": 328
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "l",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 16,
+                                    "column": 5,
+                                    "byte": 293
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 14,
+                                    "byte": 328
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "l",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 16,
+                                    "column": 5,
+                                    "byte": 293
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 14,
+                                    "byte": 328
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "o",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 16,
+                                    "column": 5,
+                                    "byte": 293
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 14,
+                                    "byte": 328
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 16,
+                            "column": 5,
+                            "byte": 293
+                        },
+                        "end": {
+                            "line": 18,
+                            "column": 14,
+                            "byte": 328
+                        }
+                    }
+                }
+            },
+            "emptyString": {
+                "value": [
+                    {
+                        "value": "",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 34,
+                                    "column": 5,
+                                    "byte": 583
+                                },
+                                "end": {
+                                    "line": 36,
+                                    "column": 9,
+                                    "byte": 614
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 34,
+                            "column": 5,
+                            "byte": 583
+                        },
+                        "end": {
+                            "line": 36,
+                            "column": 9,
+                            "byte": 614
+                        }
+                    }
+                }
+            },
+            "fruits": {
+                "value": [
+                    {
+                        "value": "apple",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 5,
+                                    "byte": 66
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 30,
+                                    "byte": 119
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "orange",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 5,
+                                    "byte": 66
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 30,
+                                    "byte": 119
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "banana",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 5,
+                                    "byte": 66
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 30,
+                                    "byte": 119
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 4,
+                            "column": 5,
+                            "byte": 66
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 30,
+                            "byte": 119
+                        }
+                    }
+                }
+            },
+            "multiChar": {
+                "value": [
+                    {
+                        "value": "one",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 28,
+                                    "column": 5,
+                                    "byte": 487
+                                },
+                                "end": {
+                                    "line": 30,
+                                    "column": 24,
+                                    "byte": 534
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "two",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 28,
+                                    "column": 5,
+                                    "byte": 487
+                                },
+                                "end": {
+                                    "line": 30,
+                                    "column": 24,
+                                    "byte": 534
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "three",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 28,
+                                    "column": 5,
+                                    "byte": 487
+                                },
+                                "end": {
+                                    "line": 30,
+                                    "column": 24,
+                                    "byte": 534
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 28,
+                            "column": 5,
+                            "byte": 487
+                        },
+                        "end": {
+                            "line": 30,
+                            "column": 24,
+                            "byte": 534
+                        }
+                    }
+                }
+            },
+            "noDelim": {
+                "value": [
+                    {
+                        "value": "single",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 22,
+                                    "column": 5,
+                                    "byte": 390
+                                },
+                                "end": {
+                                    "line": 24,
+                                    "column": 15,
+                                    "byte": 427
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 22,
+                            "column": 5,
+                            "byte": 390
+                        },
+                        "end": {
+                            "line": 24,
+                            "column": 15,
+                            "byte": 427
+                        }
+                    }
+                }
+            },
+            "singleChar": {
+                "value": [
+                    {
+                        "value": "a",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 5,
+                                    "byte": 171
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 16,
+                                    "byte": 209
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "b",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 5,
+                                    "byte": 171
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 16,
+                                    "byte": 209
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "c",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 5,
+                                    "byte": 171
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 16,
+                                    "byte": 209
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "d",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 5,
+                                    "byte": 171
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 16,
+                                    "byte": 209
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 10,
+                            "column": 5,
+                            "byte": 171
+                        },
+                        "end": {
+                            "line": 12,
+                            "column": 16,
+                            "byte": 209
+                        }
+                    }
+                }
+            },
+            "whitespace": {
+                "value": [
+                    {
+                        "value": "hello",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 40,
+                                    "column": 5,
+                                    "byte": 662
+                                },
+                                "end": {
+                                    "line": 42,
+                                    "column": 28,
+                                    "byte": 712
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "world",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 40,
+                                    "column": 5,
+                                    "byte": 662
+                                },
+                                "end": {
+                                    "line": 42,
+                                    "column": 28,
+                                    "byte": 712
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "foo",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 40,
+                                    "column": 5,
+                                    "byte": 662
+                                },
+                                "end": {
+                                    "line": 42,
+                                    "column": 28,
+                                    "byte": 712
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 40,
+                                    "column": 5,
+                                    "byte": 662
+                                },
+                                "end": {
+                                    "line": 42,
+                                    "column": 28,
+                                    "byte": 712
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 40,
+                            "column": 5,
+                            "byte": 662
+                        },
+                        "end": {
+                            "line": 42,
+                            "column": 28,
+                            "byte": 712
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "emptyDelim": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "emptyString": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "fruits": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "multiChar": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "noDelim": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "singleChar": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "whitespace": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                }
+            },
+            "type": "object",
+            "required": [
+                "emptyDelim",
+                "emptyString",
+                "fruits",
+                "multiChar",
+                "noDelim",
+                "singleChar",
+                "whitespace"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-split",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-split",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "builtin-split",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-split",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-split",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-split",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-split"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-split"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "emptyDelim": [
+            "h",
+            "e",
+            "l",
+            "l",
+            "o"
+        ],
+        "emptyString": [
+            ""
+        ],
+        "fruits": [
+            "apple",
+            "orange",
+            "banana"
+        ],
+        "multiChar": [
+            "one",
+            "two",
+            "three"
+        ],
+        "noDelim": [
+            "single"
+        ],
+        "singleChar": [
+            "a",
+            "b",
+            "c",
+            "d"
+        ],
+        "whitespace": [
+            "hello",
+            "world",
+            "foo",
+            "bar"
+        ]
+    },
+    "eval": {
+        "exprs": {
+            "emptyDelim": {
+                "range": {
+                    "environment": "builtin-split",
+                    "begin": {
+                        "line": 16,
+                        "column": 5,
+                        "byte": 293
+                    },
+                    "end": {
+                        "line": 18,
+                        "column": 14,
+                        "byte": 328
+                    }
+                },
+                "schema": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::split",
+                    "nameRange": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 16,
+                            "column": 5,
+                            "byte": 293
+                        },
+                        "end": {
+                            "line": 16,
+                            "column": 14,
+                            "byte": 302
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-split",
+                            "begin": {
+                                "line": 17,
+                                "column": 7,
+                                "byte": 310
+                            },
+                            "end": {
+                                "line": 18,
+                                "column": 14,
+                                "byte": 328
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 9,
+                                        "byte": 312
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 9,
+                                        "byte": 312
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": ""
+                                },
+                                "literal": ""
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 18,
+                                        "column": 9,
+                                        "byte": 323
+                                    },
+                                    "end": {
+                                        "line": 18,
+                                        "column": 14,
+                                        "byte": 328
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "hello"
+                                },
+                                "literal": "hello"
+                            }
+                        ]
+                    }
+                }
+            },
+            "emptyString": {
+                "range": {
+                    "environment": "builtin-split",
+                    "begin": {
+                        "line": 34,
+                        "column": 5,
+                        "byte": 583
+                    },
+                    "end": {
+                        "line": 36,
+                        "column": 9,
+                        "byte": 614
+                    }
+                },
+                "schema": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::split",
+                    "nameRange": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 34,
+                            "column": 5,
+                            "byte": 583
+                        },
+                        "end": {
+                            "line": 34,
+                            "column": 14,
+                            "byte": 592
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-split",
+                            "begin": {
+                                "line": 35,
+                                "column": 7,
+                                "byte": 600
+                            },
+                            "end": {
+                                "line": 36,
+                                "column": 9,
+                                "byte": 614
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 35,
+                                        "column": 9,
+                                        "byte": 602
+                                    },
+                                    "end": {
+                                        "line": 35,
+                                        "column": 10,
+                                        "byte": 603
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": ","
+                                },
+                                "literal": ","
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 36,
+                                        "column": 9,
+                                        "byte": 614
+                                    },
+                                    "end": {
+                                        "line": 36,
+                                        "column": 9,
+                                        "byte": 614
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": ""
+                                },
+                                "literal": ""
+                            }
+                        ]
+                    }
+                }
+            },
+            "fruits": {
+                "range": {
+                    "environment": "builtin-split",
+                    "begin": {
+                        "line": 4,
+                        "column": 5,
+                        "byte": 66
+                    },
+                    "end": {
+                        "line": 6,
+                        "column": 30,
+                        "byte": 119
+                    }
+                },
+                "schema": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::split",
+                    "nameRange": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 4,
+                            "column": 5,
+                            "byte": 66
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 14,
+                            "byte": 75
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-split",
+                            "begin": {
+                                "line": 5,
+                                "column": 7,
+                                "byte": 83
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 30,
+                                "byte": 119
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 9,
+                                        "byte": 85
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 11,
+                                        "byte": 87
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": ", "
+                                },
+                                "literal": ", "
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 6,
+                                        "column": 9,
+                                        "byte": 98
+                                    },
+                                    "end": {
+                                        "line": 6,
+                                        "column": 30,
+                                        "byte": 119
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "apple, orange, banana"
+                                },
+                                "literal": "apple, orange, banana"
+                            }
+                        ]
+                    }
+                }
+            },
+            "multiChar": {
+                "range": {
+                    "environment": "builtin-split",
+                    "begin": {
+                        "line": 28,
+                        "column": 5,
+                        "byte": 487
+                    },
+                    "end": {
+                        "line": 30,
+                        "column": 24,
+                        "byte": 534
+                    }
+                },
+                "schema": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::split",
+                    "nameRange": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 28,
+                            "column": 5,
+                            "byte": 487
+                        },
+                        "end": {
+                            "line": 28,
+                            "column": 14,
+                            "byte": 496
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-split",
+                            "begin": {
+                                "line": 29,
+                                "column": 7,
+                                "byte": 504
+                            },
+                            "end": {
+                                "line": 30,
+                                "column": 24,
+                                "byte": 534
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 29,
+                                        "column": 9,
+                                        "byte": 506
+                                    },
+                                    "end": {
+                                        "line": 29,
+                                        "column": 11,
+                                        "byte": 508
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "::"
+                                },
+                                "literal": "::"
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 30,
+                                        "column": 9,
+                                        "byte": 519
+                                    },
+                                    "end": {
+                                        "line": 30,
+                                        "column": 24,
+                                        "byte": 534
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "one::two::three"
+                                },
+                                "literal": "one::two::three"
+                            }
+                        ]
+                    }
+                }
+            },
+            "noDelim": {
+                "range": {
+                    "environment": "builtin-split",
+                    "begin": {
+                        "line": 22,
+                        "column": 5,
+                        "byte": 390
+                    },
+                    "end": {
+                        "line": 24,
+                        "column": 15,
+                        "byte": 427
+                    }
+                },
+                "schema": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::split",
+                    "nameRange": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 22,
+                            "column": 5,
+                            "byte": 390
+                        },
+                        "end": {
+                            "line": 22,
+                            "column": 14,
+                            "byte": 399
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-split",
+                            "begin": {
+                                "line": 23,
+                                "column": 7,
+                                "byte": 407
+                            },
+                            "end": {
+                                "line": 24,
+                                "column": 15,
+                                "byte": 427
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 23,
+                                        "column": 9,
+                                        "byte": 409
+                                    },
+                                    "end": {
+                                        "line": 23,
+                                        "column": 10,
+                                        "byte": 410
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": ","
+                                },
+                                "literal": ","
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 24,
+                                        "column": 9,
+                                        "byte": 421
+                                    },
+                                    "end": {
+                                        "line": 24,
+                                        "column": 15,
+                                        "byte": 427
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "single"
+                                },
+                                "literal": "single"
+                            }
+                        ]
+                    }
+                }
+            },
+            "singleChar": {
+                "range": {
+                    "environment": "builtin-split",
+                    "begin": {
+                        "line": 10,
+                        "column": 5,
+                        "byte": 171
+                    },
+                    "end": {
+                        "line": 12,
+                        "column": 16,
+                        "byte": 209
+                    }
+                },
+                "schema": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::split",
+                    "nameRange": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 10,
+                            "column": 5,
+                            "byte": 171
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 14,
+                            "byte": 180
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-split",
+                            "begin": {
+                                "line": 11,
+                                "column": 7,
+                                "byte": 188
+                            },
+                            "end": {
+                                "line": 12,
+                                "column": 16,
+                                "byte": 209
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 11,
+                                        "column": 9,
+                                        "byte": 190
+                                    },
+                                    "end": {
+                                        "line": 11,
+                                        "column": 10,
+                                        "byte": 191
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": ","
+                                },
+                                "literal": ","
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 9,
+                                        "byte": 202
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 16,
+                                        "byte": 209
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "a,b,c,d"
+                                },
+                                "literal": "a,b,c,d"
+                            }
+                        ]
+                    }
+                }
+            },
+            "whitespace": {
+                "range": {
+                    "environment": "builtin-split",
+                    "begin": {
+                        "line": 40,
+                        "column": 5,
+                        "byte": 662
+                    },
+                    "end": {
+                        "line": 42,
+                        "column": 28,
+                        "byte": 712
+                    }
+                },
+                "schema": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::split",
+                    "nameRange": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 40,
+                            "column": 5,
+                            "byte": 662
+                        },
+                        "end": {
+                            "line": 40,
+                            "column": 14,
+                            "byte": 671
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-split",
+                            "begin": {
+                                "line": 41,
+                                "column": 7,
+                                "byte": 679
+                            },
+                            "end": {
+                                "line": 42,
+                                "column": 28,
+                                "byte": 712
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 41,
+                                        "column": 9,
+                                        "byte": 681
+                                    },
+                                    "end": {
+                                        "line": 41,
+                                        "column": 10,
+                                        "byte": 682
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": " "
+                                },
+                                "literal": " "
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 42,
+                                        "column": 9,
+                                        "byte": 693
+                                    },
+                                    "end": {
+                                        "line": 42,
+                                        "column": 28,
+                                        "byte": 712
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "hello world foo bar"
+                                },
+                                "literal": "hello world foo bar"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "properties": {
+            "emptyDelim": {
+                "value": [
+                    {
+                        "value": "h",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 16,
+                                    "column": 5,
+                                    "byte": 293
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 14,
+                                    "byte": 328
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "e",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 16,
+                                    "column": 5,
+                                    "byte": 293
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 14,
+                                    "byte": 328
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "l",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 16,
+                                    "column": 5,
+                                    "byte": 293
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 14,
+                                    "byte": 328
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "l",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 16,
+                                    "column": 5,
+                                    "byte": 293
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 14,
+                                    "byte": 328
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "o",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 16,
+                                    "column": 5,
+                                    "byte": 293
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 14,
+                                    "byte": 328
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 16,
+                            "column": 5,
+                            "byte": 293
+                        },
+                        "end": {
+                            "line": 18,
+                            "column": 14,
+                            "byte": 328
+                        }
+                    }
+                }
+            },
+            "emptyString": {
+                "value": [
+                    {
+                        "value": "",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 34,
+                                    "column": 5,
+                                    "byte": 583
+                                },
+                                "end": {
+                                    "line": 36,
+                                    "column": 9,
+                                    "byte": 614
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 34,
+                            "column": 5,
+                            "byte": 583
+                        },
+                        "end": {
+                            "line": 36,
+                            "column": 9,
+                            "byte": 614
+                        }
+                    }
+                }
+            },
+            "fruits": {
+                "value": [
+                    {
+                        "value": "apple",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 5,
+                                    "byte": 66
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 30,
+                                    "byte": 119
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "orange",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 5,
+                                    "byte": 66
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 30,
+                                    "byte": 119
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "banana",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 5,
+                                    "byte": 66
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 30,
+                                    "byte": 119
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 4,
+                            "column": 5,
+                            "byte": 66
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 30,
+                            "byte": 119
+                        }
+                    }
+                }
+            },
+            "multiChar": {
+                "value": [
+                    {
+                        "value": "one",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 28,
+                                    "column": 5,
+                                    "byte": 487
+                                },
+                                "end": {
+                                    "line": 30,
+                                    "column": 24,
+                                    "byte": 534
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "two",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 28,
+                                    "column": 5,
+                                    "byte": 487
+                                },
+                                "end": {
+                                    "line": 30,
+                                    "column": 24,
+                                    "byte": 534
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "three",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 28,
+                                    "column": 5,
+                                    "byte": 487
+                                },
+                                "end": {
+                                    "line": 30,
+                                    "column": 24,
+                                    "byte": 534
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 28,
+                            "column": 5,
+                            "byte": 487
+                        },
+                        "end": {
+                            "line": 30,
+                            "column": 24,
+                            "byte": 534
+                        }
+                    }
+                }
+            },
+            "noDelim": {
+                "value": [
+                    {
+                        "value": "single",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 22,
+                                    "column": 5,
+                                    "byte": 390
+                                },
+                                "end": {
+                                    "line": 24,
+                                    "column": 15,
+                                    "byte": 427
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 22,
+                            "column": 5,
+                            "byte": 390
+                        },
+                        "end": {
+                            "line": 24,
+                            "column": 15,
+                            "byte": 427
+                        }
+                    }
+                }
+            },
+            "singleChar": {
+                "value": [
+                    {
+                        "value": "a",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 5,
+                                    "byte": 171
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 16,
+                                    "byte": 209
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "b",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 5,
+                                    "byte": 171
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 16,
+                                    "byte": 209
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "c",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 5,
+                                    "byte": 171
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 16,
+                                    "byte": 209
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "d",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 5,
+                                    "byte": 171
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 16,
+                                    "byte": 209
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 10,
+                            "column": 5,
+                            "byte": 171
+                        },
+                        "end": {
+                            "line": 12,
+                            "column": 16,
+                            "byte": 209
+                        }
+                    }
+                }
+            },
+            "whitespace": {
+                "value": [
+                    {
+                        "value": "hello",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 40,
+                                    "column": 5,
+                                    "byte": 662
+                                },
+                                "end": {
+                                    "line": 42,
+                                    "column": 28,
+                                    "byte": 712
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "world",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 40,
+                                    "column": 5,
+                                    "byte": 662
+                                },
+                                "end": {
+                                    "line": 42,
+                                    "column": 28,
+                                    "byte": 712
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "foo",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 40,
+                                    "column": 5,
+                                    "byte": 662
+                                },
+                                "end": {
+                                    "line": 42,
+                                    "column": 28,
+                                    "byte": 712
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split",
+                                "begin": {
+                                    "line": 40,
+                                    "column": 5,
+                                    "byte": 662
+                                },
+                                "end": {
+                                    "line": 42,
+                                    "column": 28,
+                                    "byte": 712
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split",
+                        "begin": {
+                            "line": 40,
+                            "column": 5,
+                            "byte": 662
+                        },
+                        "end": {
+                            "line": 42,
+                            "column": 28,
+                            "byte": 712
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "emptyDelim": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "emptyString": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "fruits": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "multiChar": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "noDelim": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "singleChar": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "whitespace": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                }
+            },
+            "type": "object",
+            "required": [
+                "emptyDelim",
+                "emptyString",
+                "fruits",
+                "multiChar",
+                "noDelim",
+                "singleChar",
+                "whitespace"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-split",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-split",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "builtin-split",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-split",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-split",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-split",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-split",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-split"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-split"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "emptyDelim": [
+            "h",
+            "e",
+            "l",
+            "l",
+            "o"
+        ],
+        "emptyString": [
+            ""
+        ],
+        "fruits": [
+            "apple",
+            "orange",
+            "banana"
+        ],
+        "multiChar": [
+            "one",
+            "two",
+            "three"
+        ],
+        "noDelim": [
+            "single"
+        ],
+        "singleChar": [
+            "a",
+            "b",
+            "c",
+            "d"
+        ],
+        "whitespace": [
+            "hello",
+            "world",
+            "foo",
+            "bar"
+        ]
+    },
+    "evalJSONRevealed": {
+        "emptyDelim": [
+            "h",
+            "e",
+            "l",
+            "l",
+            "o"
+        ],
+        "emptyString": [
+            ""
+        ],
+        "fruits": [
+            "apple",
+            "orange",
+            "banana"
+        ],
+        "multiChar": [
+            "one",
+            "two",
+            "three"
+        ],
+        "noDelim": [
+            "single"
+        ],
+        "singleChar": [
+            "a",
+            "b",
+            "c",
+            "d"
+        ],
+        "whitespace": [
+            "hello",
+            "world",
+            "foo",
+            "bar"
+        ]
+    }
+}

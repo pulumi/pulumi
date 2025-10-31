@@ -341,6 +341,13 @@ func declare[Expr exprNode](e *evalContext, path string, x Expr, base *value) *e
 			values:    declare(e, "", x.Values, nil),
 		}
 		return newExpr(path, repr, schema.String().Schema(), base)
+	case *ast.SplitExpr:
+		repr := &splitExpr{
+			node:      x,
+			delimiter: declare(e, "", x.Delimiter, nil),
+			string:    declare(e, "", x.String, nil),
+		}
+		return newExpr(path, repr, schema.Array().Items(schema.String()).Schema(), base)
 	case *ast.OpenExpr:
 		repr := &openExpr{
 			node:        x,
@@ -599,6 +606,8 @@ func (e *evalContext) evaluateExpr(x *expr, accept *schema.Schema) *value {
 		val = e.evaluateBuiltinFromJSON(x, repr)
 	case *joinExpr:
 		val = e.evaluateBuiltinJoin(x, repr)
+	case *splitExpr:
+		val = e.evaluateBuiltinSplit(x, repr)
 	case *openExpr:
 		val = e.evaluateBuiltinOpen(x, repr)
 	case *rotateExpr:
@@ -1267,6 +1276,29 @@ func (e *evalContext) evaluateBuiltinJoin(x *expr, repr *joinExpr) *value {
 			values[i] = v.repr.(string)
 		}
 		v.repr = strings.Join(values, delim.repr.(string))
+	}
+	return v
+}
+
+// evaluateBuiltinSplit evaluates a call to the fn::split builtin.
+func (e *evalContext) evaluateBuiltinSplit(x *expr, repr *splitExpr) *value {
+	v := &value{def: x, schema: x.schema}
+
+	delim, delimOk := e.evaluateTypedExpr(repr.delimiter, schema.String().Schema())
+	str, strOk := e.evaluateTypedExpr(repr.string, schema.String().Schema())
+	if !delimOk || !strOk {
+		v.unknown = true
+		return v
+	}
+
+	v.combine(delim, str)
+	if !v.unknown {
+		parts := strings.Split(str.repr.(string), delim.repr.(string))
+		result := make([]*value, len(parts))
+		for i, part := range parts {
+			result[i] = &value{def: x, schema: schema.String().Schema(), repr: part}
+		}
+		v.repr = result
 	}
 	return v
 }

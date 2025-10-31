@@ -193,6 +193,17 @@ func (x *expr) export(environment string) esc.Expr {
 				List:  []esc.Expr{repr.delimiter.export(environment), repr.values.export(environment)},
 			},
 		}
+	case *splitExpr:
+		argRange := convertRange(repr.node.Args().Syntax().Syntax().Range(), environment)
+		ex.Builtin = &esc.BuiltinExpr{
+			Name:      repr.node.Name().Value,
+			NameRange: convertRange(repr.node.Name().Syntax().Syntax().Range(), environment),
+			ArgSchema: schema.Tuple(schema.String(), schema.String()).Schema(),
+			Arg: esc.Expr{
+				Range: argRange,
+				List:  []esc.Expr{repr.delimiter.export(environment), repr.string.export(environment)},
+			},
+		}
 	case *openExpr:
 		name := repr.node.Name().Value
 		if name == "fn::open" {
@@ -480,6 +491,18 @@ type joinExpr struct {
 }
 
 func (x *joinExpr) syntax() ast.Expr {
+	return x.node
+}
+
+// splitExpr represents a call to the fn::split builtin.
+type splitExpr struct {
+	node *ast.SplitExpr
+
+	delimiter *expr
+	string    *expr
+}
+
+func (x *splitExpr) syntax() ast.Expr {
 	return x.node
 }
 

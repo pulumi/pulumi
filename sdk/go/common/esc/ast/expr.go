@@ -574,6 +574,31 @@ func Concat(arrays *ArrayExpr) *ConcatExpr {
 	}
 }
 
+// SplitExpr splits a string on a delimiter into an array of strings.
+type SplitExpr struct {
+	builtinNode
+
+	Delimiter Expr
+	String    Expr
+}
+
+func SplitSyntax(node *syntax.ObjectNode, name *StringExpr, args, delimiter, str Expr) *SplitExpr {
+	return &SplitExpr{
+		builtinNode: builtin(node, name, args),
+		Delimiter:   delimiter,
+		String:      str,
+	}
+}
+
+func Split(delimiter Expr, str Expr) *SplitExpr {
+	name := String("fn::split")
+	return &SplitExpr{
+		builtinNode: builtin(nil, name, Array(delimiter, str)),
+		Delimiter:   delimiter,
+		String:      str,
+	}
+}
+
 type SecretExpr struct {
 	builtinNode
 
@@ -676,6 +701,8 @@ func tryParseFunction(node *syntax.ObjectNode) (Expr, syntax.Diagnostics, bool) 
 		parse = parseRotate
 	case "fn::secret":
 		parse = parseSecret
+	case "fn::split":
+		parse = parseSplit
 	case "fn::toBase64":
 		parse = parseToBase64
 	case "fn::toJSON":
@@ -867,6 +894,16 @@ func parseJoin(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, synt
 	}
 
 	return JoinSyntax(node, name, list, list.Elements[0], list.Elements[1]), nil
+}
+
+func parseSplit(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics) {
+	list, ok := args.(*ArrayExpr)
+	if !ok || len(list.Elements) != 2 {
+		diags := syntax.Diagnostics{ExprError(args, "the argument to fn::split must be a two-valued list")}
+		return SplitSyntax(node, name, args, nil, nil), diags
+	}
+
+	return SplitSyntax(node, name, list, list.Elements[0], list.Elements[1]), nil
 }
 
 func parseToJSON(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics) {
