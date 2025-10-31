@@ -61,7 +61,7 @@ type ConflictingUpdateError struct {
 
 func (c ConflictingUpdateError) Error() string {
 	return fmt.Sprintf("%s\nTo learn more about possible reasons and resolution, visit "+
-		"https://www.pulumi.com/docs/troubleshooting/#conflict", c.Err)
+		"https://www.pulumi.com/docs/support/troubleshooting/common-issues/update-conflicts/", c.Err)
 }
 
 // MissingEnvVarForNonInteractiveError represents a situation where the CLI is run in
