@@ -3836,7 +3836,8 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 	}
 }
 
-func extractModulePath(extPkg schema.PackageReference) string {
+// ExtractModulePath creates a go module path for a given package.
+func ExtractModulePath(extPkg schema.PackageReference) string {
 	var vPath string
 	version := extPkg.Version()
 	name := extPkg.Name()
@@ -3869,7 +3870,7 @@ func extractModulePath(extPkg schema.PackageReference) string {
 }
 
 func extractImportBasePath(extPkg schema.PackageReference) string {
-	modpath := extractModulePath(extPkg)
+	modpath := ExtractModulePath(extPkg)
 	name := extPkg.Name()
 
 	// Support pack sdks write a go mod inside the go folder. Old legacy sdks would manually write a go.mod in the sdk
@@ -5145,7 +5146,7 @@ func GeneratePackage(tool string,
 
 	// create a go.mod file with references to local dependencies
 	if pkg.SupportPack {
-		modulePath := extractModulePath(pkg.Reference())
+		modulePath := ExtractModulePath(pkg.Reference())
 		if langInfo, found := pkg.Language["go"]; found {
 			goInfo, ok := langInfo.(GoPackageInfo)
 			if ok && goInfo.ModulePath != "" {

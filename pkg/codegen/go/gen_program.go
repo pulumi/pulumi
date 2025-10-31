@@ -614,7 +614,7 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 		if p.Version != nil && p.Version.Major > 1 {
 			vPath = fmt.Sprintf("/v%d", p.Version.Major)
 		}
-		packageName := extractModulePath(p.Reference())
+		packageName := ExtractModulePath(p.Reference())
 		if langInfo, found := p.Language["go"]; found {
 			goInfo, ok := langInfo.(GoPackageInfo)
 			if ok && goInfo.ImportBasePath != "" {
