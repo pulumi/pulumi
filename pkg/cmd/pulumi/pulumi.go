@@ -895,9 +895,11 @@ func linkToNeoTasks(ctx context.Context, currentBackend backend.Backend) string 
 	stack, err := backendState.CurrentStack(ctx, currentBackend)
 	if err != nil {
 		logging.V(3).Infof("Could not get current stack: ", err)
+		return ""
 	}
 	if stack == nil {
 		logging.V(3).Infof("No stack found")
+		return ""
 	}
 	var stackRef string
 	if projectName, has := stack.Ref().Project(); has && projectName != "" {
