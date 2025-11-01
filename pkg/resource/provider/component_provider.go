@@ -136,7 +136,7 @@ func (p *componentProvider) Call(ctx context.Context,
 // creation error or an initialization error). Since Cancel is advisory and non-blocking, it is up
 // to the host to decide how long to wait after Cancel is called before (e.g.)
 // hard-closing any gRPC connection.
-func (p *componentProvider) Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+func (p *componentProvider) Cancel(context.Context, *pulumirpc.CancelRequest) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
 }
 

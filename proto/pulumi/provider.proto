@@ -194,11 +194,14 @@ service ResourceProvider {
     rpc Construct(ConstructRequest) returns (ConstructResponse) {}
 
     // Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
+    // Called by the engine in two scenarios:
+    // 1. User cancellation (e.g., Ctrl+C during an update)
+    // 2. Normal shutdown (after all operations complete, before closing connection)
     // Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a
     // creation error or an initialization error). Since Cancel is advisory and non-blocking, it is up
     // to the host to decide how long to wait after Cancel is called before (e.g.)
     // hard-closing any gRPC connection.
-    rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+    rpc Cancel(CancelRequest) returns (google.protobuf.Empty) {}
 
     // GetPluginInfo returns generic information about this plugin, like its version.
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
@@ -1201,3 +1204,7 @@ message View {
     // The view resource's outputs.
     google.protobuf.Struct outputs = 6;
 }
+
+// `CancelRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Cancel) call.
+// Currently empty but allows future extension without breaking changes.
+message CancelRequest {}

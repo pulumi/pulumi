@@ -807,6 +807,7 @@ type stubClient struct {
 	GetPluginInfoF func() (*pulumirpc.PluginInfo, error)
 	ReadF          func(*pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error)
 	UpdateF        func(*pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error)
+	CancelF        func(*pulumirpc.CancelRequest) (*emptypb.Empty, error)
 }
 
 func (c *stubClient) DiffConfig(
@@ -907,6 +908,44 @@ func (c *stubClient) Update(
 		return f(req)
 	}
 	return c.ResourceProviderClient.Update(ctx, req, opts...)
+}
+
+func (c *stubClient) Cancel(
+	ctx context.Context,
+	req *pulumirpc.CancelRequest,
+	opts ...grpc.CallOption,
+) (*emptypb.Empty, error) {
+	// Check if context is already cancelled or has a deadline that's already passed
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
+	if f := c.CancelF; f != nil {
+		// For stubClient, we need to simulate context checking behavior by spawning the call
+		// in a goroutine and checking the context periodically
+		result := make(chan struct {
+			*emptypb.Empty
+			error
+		}, 1)
+		go func() {
+			resp, err := f(req)
+			result <- struct {
+				*emptypb.Empty
+				error
+			}{resp, err}
+		}()
+
+		// Wait for either the result or context cancellation
+		select {
+		case res := <-result:
+			return res.Empty, res.error
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+	return c.ResourceProviderClient.Cancel(ctx, req, opts...)
 }
 
 // Test for https://github.com/pulumi/pulumi/issues/14529, ensure a kubernetes DiffConfig error is ignored
