@@ -1047,11 +1047,9 @@ func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 	assert.Contains(t, stdout.String(), `
 Available Templates:
 `)
-	// Check that our org based templates are there
-	assert.Contains(t, stdout.String(), `
-  template-1                         Describe 1
-  template-2                         Describe 2
-`)
+	// Check that our registry based templates are there with [Private Registry] prefix
+	assert.Contains(t, stdout.String(), "template-1                         [Private Registry] Describe 1")
+	assert.Contains(t, stdout.String(), "template-2                         [Private Registry] Describe 2")
 
 	// Check that normal templates are there
 	assertTemplateContains(t, stdout.String(), `
