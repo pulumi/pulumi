@@ -1266,7 +1266,11 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// Component, provider, and pending-replace resources never change with a refresh; just return the current state.
 	if !s.old.Custom || providers.IsProviderType(s.old.Type) || s.old.PendingReplacement {
 		if s.cts != nil {
-			s.cts.MustFulfill(nil)
+			// for persisted refreshes, we need to make a copy of the state, and pretend we
+			// refreshed using that new state. This ensures that further steps will see the
+			// new state correctly.
+			s.new = s.old.Copy()
+			s.cts.MustFulfill(s.new)
 		}
 		return resource.StatusOK, nil, nil
 	}

@@ -5,12 +5,8 @@
 <{%reset%}>    [id=2]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test-stack::test-project::pkg-uIE2:mod-h2P2:type-uMz9::stuck]
 <{%reset%}><{%reset%}>    [provider=urn:pulumi:test-stack::test-project::pulumi:providers:pkg-uIE2::res-bBb4::id-a7183fY4ConD]
-<{%reset%}><{%reset%}><{%reset%}>  pkg-uIE2:mod-h2P2:type-uMz9: (same)
-<{%reset%}>    [id=2]
-<{%reset%}><{%reset%}>    [urn=urn:pulumi:test-stack::test-project::pkg-uIE2:mod-h2P2:type-uMz9::stuck]
-<{%reset%}><{%reset%}>    [provider=urn:pulumi:test-stack::test-project::pulumi:providers:pkg-uIE2::res-bBb4::id-a7183fY4ConD]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 3%}>~ 1 updated<{%reset%}>
-    2 unchanged
+    1 unchanged
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
