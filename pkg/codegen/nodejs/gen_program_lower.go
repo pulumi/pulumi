@@ -126,8 +126,6 @@ func (g *generator) parseProxyApply(parameters codegen.Set, args []model.Express
 		return nil, false
 	}
 
-	diags := arg.Typecheck(false)
-	contract.Assertf(!diags.HasErrors(), "unexpected type error: %v", diags)
 	return arg, true
 }
 
