@@ -507,6 +507,9 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 			case "deletedWith":
 				t = model.DynamicType
 				resourceOptions.DeletedWith = item.Value
+			case "replaceWith":
+				t = model.NewListType(model.DynamicType)
+				resourceOptions.ReplaceWith = item.Value
 			case "import":
 				t = model.StringType
 				resourceOptions.ImportID = item.Value

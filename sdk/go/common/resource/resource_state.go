@@ -58,6 +58,7 @@ type State struct {
 	ImportID                ID                    // the resource's import id, if this was an imported resource.
 	RetainOnDelete          bool                  // if set to True, the providers Delete method will not be called for this resource.
 	DeletedWith             URN                   // If set, the providers Delete method will not be called for this resource if specified resource is being deleted as well.
+	ReplaceWith             []URN                 // If set, the URNs of the resources whose replaces will also trigger a replace of this resource.
 	Created                 *time.Time            // If set, the time when the state was initially added to the state file. (i.e. Create, Import)
 	Modified                *time.Time            // If set, the time when the state was last modified in the state file.
 	SourcePosition          string                // If set, the source location of the resource registration
@@ -106,6 +107,7 @@ func (s *State) Copy() *State {
 		ImportID:                s.ImportID,
 		RetainOnDelete:          s.RetainOnDelete,
 		DeletedWith:             s.DeletedWith,
+		ReplaceWith:             s.ReplaceWith,
 		Created:                 s.Created,
 		Modified:                s.Modified,
 		SourcePosition:          s.SourcePosition,
@@ -202,6 +204,9 @@ type NewState struct {
 	// If set, the providers Delete method will not be called for this resource if specified resource is being deleted as well.
 	DeletedWith URN // required
 
+	// If set, the URNs of the resources whose replaces will also replace this resource.
+	ReplaceWith []URN // required
+
 	// If set, the time when the state was initially added to the state file. (i.e. Create, Import)
 	Created *time.Time // required
 
@@ -266,6 +271,7 @@ func (s NewState) Make() *State {
 		ImportID:                s.ImportID,
 		RetainOnDelete:          s.RetainOnDelete,
 		DeletedWith:             s.DeletedWith,
+		ReplaceWith:             s.ReplaceWith,
 		Created:                 s.Created,
 		Modified:                s.Modified,
 		SourcePosition:          s.SourcePosition,
@@ -309,6 +315,11 @@ const (
 	// resource will be "deleted with" another. The resource being depended on is
 	// one whose deletion subsumes the deletion of the dependent resource.
 	ResourceDeletedWith StateDependencyType = "deleted-with"
+	// ResourceReplaceWith is the type of dependency relationships where a
+	// resource will be also be replaced any time one of the given resources is replaced.
+	// The resources being depended on are the ones whose replacement triggers the
+	// replacement of the dependent resource.
+	ResourceReplaceWith StateDependencyType = "replace-with"
 )
 
 // GetAllDependencies returns a resource's provider and all of its dependencies.
@@ -335,6 +346,11 @@ func (s *State) GetAllDependencies() (string, []StateDependency) {
 	}
 	if s.DeletedWith != "" {
 		allDeps = append(allDeps, StateDependency{Type: ResourceDeletedWith, URN: s.DeletedWith})
+	}
+	for _, dep := range s.ReplaceWith {
+		if dep != "" {
+			allDeps = append(allDeps, StateDependency{Type: ResourceReplaceWith, URN: dep})
+		}
 	}
 	return s.Provider, allDeps
 }
