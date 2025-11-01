@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: "Ignore registry backed templates for DIY backends"
