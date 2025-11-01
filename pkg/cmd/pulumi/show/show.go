@@ -70,9 +70,39 @@ func printResourceState(rs *resource.State) {
 		if strings.HasPrefix(string(k), "__") {
 			continue
 		}
-		fmt.Println("	", k, ": ", v)
+		fmt.Println("	", k, ": ", renderPropertyVal(v, "	"))
 	}
 	fmt.Println()
+}
+
+func renderPropertyVal(rsp resource.PropertyValue, currIdent string) string {
+	if rsp.IsObject() {
+
+		newIdent := currIdent + "    "
+		var res string
+		objMap := rsp.ObjectValue()
+		for k, v := range objMap {
+			res += "\n" + newIdent + string(k) + ": " + renderPropertyVal(v, newIdent)
+		}
+		return res
+
+	}
+	if rsp.IsArray() {
+		res := "\n" + currIdent
+		for _, v := range rsp.ArrayValue() {
+			newIdent := currIdent + "    "
+			if v.IsObject() {
+				return renderPropertyVal(v, newIdent)
+			}
+			if v.IsArray() {
+				return renderPropertyVal(v, newIdent)
+			}
+			res += v.String()
+
+		}
+		return res
+	}
+	return rsp.String()
 }
 
 func resourcePassesFilters(rs *resource.State, rf *resourceFilters) (bool, error) {
