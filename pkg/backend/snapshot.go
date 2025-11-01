@@ -534,7 +534,7 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		viewStep, isViewStep := step.(*deploy.ViewStep)
 		if (isViewStep && viewStep.Persisted()) || (isRefreshStep && refreshStep.Persisted()) {
 			rsm.manager.isRefresh = true
-			if successful {
+			if successful && step.Old() != nil && !step.Old().PendingReplacement {
 				rsm.manager.markDone(step.Old())
 				if step.New() != nil {
 					rsm.manager.markNew(step.New())
