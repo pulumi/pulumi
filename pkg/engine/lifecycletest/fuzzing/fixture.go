@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
@@ -60,6 +61,26 @@ var defaultFixtureOptions = FixtureOptions{
 	PlanSpecOptions:     defaultPlanSpecOptions,
 }
 
+func generateAndWriteRepro(
+	t *rapid.T,
+	stackSpec StackSpecOptions,
+	snapSpec *SnapshotSpec,
+	programSpec *ProgramSpec,
+	providerSpec *ProviderSpec,
+	planSpec *PlanSpec,
+) string {
+	reproTest := GenerateReproTest(t, stackSpec, snapSpec, programSpec, providerSpec, planSpec)
+	reproFile, reproErr := writeReproTest(reproTest)
+
+	var reproMessage string
+	if reproErr != nil {
+		reproMessage = fmt.Sprintf("Error writing reproduction test case:\n\n%v", reproErr)
+	} else {
+		reproMessage = "Reproduction test case was written to " + reproFile
+	}
+	return reproMessage
+}
+
 // Given a set of options, returns a Rapid property test function that generates and tests fixtures according to that
 // configuration.
 func GeneratedFixture(fo FixtureOptions) func(t *rapid.T) {
@@ -85,18 +106,10 @@ func GeneratedFixture(fo FixtureOptions) func(t *rapid.T) {
 		}
 		project := p.GetProject()
 
-		failWithSIE := func(err error) {
+		failWithError := func(err error) {
 			// Try to generate code for a reproducing test. If we fail, we'll still report the snapshot integrity error and
 			// just inform the user that we couldn't write a reproduction for some reason.
-			reproTest := GenerateReproTest(t, fo.StackSpecOptions, snapSpec, progSpec, provSpec, planSpec)
-			reproFile, reproErr := writeReproTest(reproTest)
-
-			var reproMessage string
-			if reproErr != nil {
-				reproMessage = fmt.Sprintf("Error writing reproduction test case:\n\n%v", reproErr)
-			} else {
-				reproMessage = "Reproduction test case was written to " + reproFile
-			}
+			reproMessage := generateAndWriteRepro(t, fo.StackSpecOptions, snapSpec, progSpec, provSpec, planSpec)
 
 			// To aid in debugging further, we'll color any URNs in the snapshot integrity error message using a regular
 			// expression. This is probably not perfect, but in practice it's really helpful.
@@ -127,14 +140,18 @@ func GeneratedFixture(fo FixtureOptions) func(t *rapid.T) {
 			// execution. We thus only fail if we encounter an actual snapshot integrity error.
 			outSnap, err := op.RunStep(project, p.GetTarget(t, inSnap), opOpts, false, p.BackendClient, nil, "0")
 			if _, isSIE := deploy.AsSnapshotIntegrityError(err); isSIE {
-				failWithSIE(err)
+				failWithError(err)
 			}
 
 			// If for some reason the operation does not return an error, but the resulting snapshot is invalid, we'll fail in
 			// the same manner.
 			outSnapErr := outSnap.VerifyIntegrity()
 			if _, isSIE := deploy.AsSnapshotIntegrityError(outSnapErr); isSIE {
-				failWithSIE(outSnapErr)
+				failWithError(outSnapErr)
+			}
+
+			if err != nil && strings.Contains(err.Error(), "actual and expected resources differ") {
+				failWithError(err)
 			}
 
 			// In all other cases, we expect errors to be "expected", or "bails" in our terminology.
@@ -143,16 +160,8 @@ func GeneratedFixture(fo FixtureOptions) func(t *rapid.T) {
 		}()
 		select {
 		case <-time.After(20 * time.Second):
-			reproTest := GenerateReproTest(t, fo.StackSpecOptions, snapSpec, progSpec, provSpec, planSpec)
-			reproFile, reproErr := writeReproTest(reproTest)
-
-			var reproMessage string
-			if reproErr != nil {
-				reproMessage = fmt.Sprintf("Error writing reproduction test case:\n\n%v", reproErr)
-			} else {
-				reproMessage = "Reproduction test case was written to " + reproFile
-			}
-			assert.Failf(t, "test timed out after 20 seconds\n%s", reproMessage)
+			reproMessage := generateAndWriteRepro(t, fo.StackSpecOptions, snapSpec, progSpec, provSpec, planSpec)
+			assert.Failf(t, "test timed out after 20 seconds", reproMessage)
 		case <-done:
 			// Test completed within the timeout.
 		}
