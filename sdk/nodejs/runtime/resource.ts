@@ -616,7 +616,9 @@ export function registerResource(
                 req.setSupportspartialvalues(true);
                 req.setRemote(remote);
                 req.setReplaceonchangesList(opts.replaceOnChanges || []);
-                req.setReplacementTrigger(resop.replacementTrigger || "");
+                if (resop.replacementTrigger !== undefined) {
+                    req.setReplacementTrigger(gstruct.Value.fromJavaScript(resop.replacementTrigger));
+                }
                 req.setPlugindownloadurl(opts.pluginDownloadURL || "");
                 if (opts.retainOnDelete !== undefined) {
                     req.setRetainondelete(opts.retainOnDelete);

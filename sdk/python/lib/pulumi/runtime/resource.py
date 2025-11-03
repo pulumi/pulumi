@@ -102,7 +102,7 @@ class ResourceResolverOperations(NamedTuple):
     if specified resource is being deleted as well.
     """
 
-    replacement_trigger: Optional[str]
+    replacement_trigger: Optional[Any]
     """
     If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
     """
@@ -248,7 +248,7 @@ async def prepare_resource(
         dependencies |= urns
         property_dependencies[key] = list(urns)
 
-    replacement_trigger: Optional[str] = ""
+    replacement_trigger: Optional[Any] = None
     if opts is not None and opts.replacement_trigger is not None:
         replacement_trigger = await Output.from_input(opts.replacement_trigger).future()
 
