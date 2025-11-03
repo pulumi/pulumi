@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 )
 
 // recordEngineEvents will record the events with the Pulumi Service, enabling things like viewing
@@ -192,23 +193,31 @@ func (b *cloudBackend) getSnapshot(ctx context.Context,
 		return nil, err
 	}
 
-	snapshot, err := stack.DeserializeUntypedDeployment(ctx, untypedDeployment, secretsProvider)
+	snap, err := stack.DeserializeUntypedDeployment(ctx, untypedDeployment, secretsProvider)
 	if err != nil {
 		return nil, err
 	}
 
 	// Ensure the snapshot passes verification before returning it, to catch bugs early.
 	if !backend.DisableIntegrityChecking {
-		if err := snapshot.VerifyIntegrity(); err != nil {
-			if sie, ok := deploy.AsSnapshotIntegrityError(err); ok {
-				return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", sie.ForRead(snapshot))
+		if err := snap.VerifyIntegrity(); err != nil {
+			if sie, ok := snapshot.AsSnapshotIntegrityError(err); ok {
+				var metadata *apitype.SnapshotIntegrityErrorMetadataV1
+				if snap.Metadata.IntegrityErrorMetadata != nil {
+					metadata = &apitype.SnapshotIntegrityErrorMetadataV1{
+						Version: snap.Metadata.IntegrityErrorMetadata.Version,
+						Command: snap.Metadata.IntegrityErrorMetadata.Command,
+						Error:   snap.Metadata.IntegrityErrorMetadata.Error,
+					}
+				}
+				return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", sie.ForReadWithMetadata(metadata))
 			}
 
 			return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", err)
 		}
 	}
 
-	return snapshot, nil
+	return snap, nil
 }
 
 func (b *cloudBackend) getTarget(ctx context.Context, secretsProvider secrets.Provider, stackRef backend.StackReference,

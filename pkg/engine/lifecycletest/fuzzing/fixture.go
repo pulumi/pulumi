@@ -22,8 +22,8 @@ import (
 	"time"
 
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -139,14 +139,14 @@ func GeneratedFixture(fo FixtureOptions) func(t *rapid.T) {
 			// Operations may fail for legitimate reasons -- e.g. we have configured a provider operation to fail, aborting
 			// execution. We thus only fail if we encounter an actual snapshot integrity error.
 			outSnap, err := op.RunStep(project, p.GetTarget(t, inSnap), opOpts, false, p.BackendClient, nil, "0")
-			if _, isSIE := deploy.AsSnapshotIntegrityError(err); isSIE {
+			if _, isSIE := snapshot.AsSnapshotIntegrityError(err); isSIE {
 				failWithError(err)
 			}
 
 			// If for some reason the operation does not return an error, but the resulting snapshot is invalid, we'll fail in
 			// the same manner.
 			outSnapErr := outSnap.VerifyIntegrity()
-			if _, isSIE := deploy.AsSnapshotIntegrityError(outSnapErr); isSIE {
+			if _, isSIE := snapshot.AsSnapshotIntegrityError(outSnapErr); isSIE {
 				failWithError(outSnapErr)
 			}
 

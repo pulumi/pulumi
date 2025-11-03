@@ -129,23 +129,31 @@ func (b *diyBackend) getSnapshot(ctx context.Context,
 	}
 
 	// Materialize an actual snapshot object.
-	snapshot, err := stack.DeserializeCheckpoint(ctx, secretsProvider, checkpoint)
+	snap, err := stack.DeserializeCheckpoint(ctx, secretsProvider, checkpoint)
 	if err != nil {
 		return nil, err
 	}
 
 	// Ensure the snapshot passes verification before returning it, to catch bugs early.
 	if !backend.DisableIntegrityChecking {
-		if err := snapshot.VerifyIntegrity(); err != nil {
-			if sie, ok := deploy.AsSnapshotIntegrityError(err); ok {
-				return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", sie.ForRead(snapshot))
+		if err := snap.VerifyIntegrity(); err != nil {
+			if sie, ok := snapshot.AsSnapshotIntegrityError(err); ok {
+				var metadata *apitype.SnapshotIntegrityErrorMetadataV1
+				if snap.Metadata.IntegrityErrorMetadata != nil {
+					metadata = &apitype.SnapshotIntegrityErrorMetadataV1{
+						Version: snap.Metadata.IntegrityErrorMetadata.Version,
+						Command: snap.Metadata.IntegrityErrorMetadata.Command,
+						Error:   snap.Metadata.IntegrityErrorMetadata.Error,
+					}
+				}
+				return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", sie.ForReadWithMetadata(metadata))
 			}
 
 			return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", err)
 		}
 	}
 
-	return snapshot, nil
+	return snap, nil
 }
 
 // getCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace,

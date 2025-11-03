@@ -15,6 +15,7 @@
 package snapshot
 
 import (
+	"errors"
 	"fmt"
 	"runtime/debug"
 
@@ -217,25 +218,38 @@ func (s *SnapshotIntegrityError) Unwrap() error {
 	return s.Err
 }
 
-// // Returns a copy of the given snapshot integrity error with the operation set to
-// // SnapshotIntegrityRead and metadata set to the given snapshot's integrity error
-// // metadata.
-// func (s *SnapshotIntegrityError) ForRead(snap *DeploymentV3) *SnapshotIntegrityError {
-// 	return &SnapshotIntegrityError{
-// 		Err:      s.Err,
-// 		Op:       SnapshotIntegrityRead,
-// 		Stack:    s.Stack,
-// 		Metadata: snap.Metadata.IntegrityErrorMetadata,
-// 	}
-// }
+// Returns a copy of the given snapshot integrity error with the operation set to
+// SnapshotIntegrityRead and metadata set to the given snapshot's integrity error
+// metadata.
+func (s *SnapshotIntegrityError) ForRead(snap *apitype.DeploymentV3) *SnapshotIntegrityError {
+	return &SnapshotIntegrityError{
+		Err:      s.Err,
+		Op:       SnapshotIntegrityRead,
+		Stack:    s.Stack,
+		Metadata: snap.Metadata.IntegrityErrorMetadata,
+	}
+}
 
-// // Returns a tuple in which the second element is true if and only if any error
-// // in the given error's tree is a SnapshotIntegrityError. In that case, the
-// // first element will be the first SnapshotIntegrityError in the tree. In the
-// // event that there is no such SnapshotIntegrityError, the first element will be
-// // nil.
-// func AsSnapshotIntegrityError(err error) (*SnapshotIntegrityError, bool) {
-// 	var sie *SnapshotIntegrityError
-// 	ok := errors.As(err, &sie)
-// 	return sie, ok
-// }
+// ForReadWithMetadata returns a copy of the given snapshot integrity error with the operation set to
+// SnapshotIntegrityRead and the provided metadata.
+func (s *SnapshotIntegrityError) ForReadWithMetadata(
+	metadata *apitype.SnapshotIntegrityErrorMetadataV1,
+) *SnapshotIntegrityError {
+	return &SnapshotIntegrityError{
+		Err:      s.Err,
+		Op:       SnapshotIntegrityRead,
+		Stack:    s.Stack,
+		Metadata: metadata,
+	}
+}
+
+// Returns a tuple in which the second element is true if and only if any error
+// in the given error's tree is a SnapshotIntegrityError. In that case, the
+// first element will be the first SnapshotIntegrityError in the tree. In the
+// event that there is no such SnapshotIntegrityError, the first element will be
+// nil.
+func AsSnapshotIntegrityError(err error) (*SnapshotIntegrityError, bool) {
+	var sie *SnapshotIntegrityError
+	ok := errors.As(err, &sie)
+	return sie, ok
+}
