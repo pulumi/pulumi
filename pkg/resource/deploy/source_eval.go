@@ -2532,8 +2532,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			"providers=%v, replaceOnChanges=%v, replacementTrigger=%v, retainOnDelete=%v, deletedWith=%v, resourceHooks=%v, "+
 			"hideDiffs=%v",
 		t, name, custom, len(props), parent, protect, providerRef, rawDependencies, opts.DeleteBeforeReplace, ignoreChanges,
-		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, replacementTrigger, retainOnDelete, deletedWith, resourceHooks,
-		hiddenDiffs)
+		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, replacementTrigger, retainOnDelete, deletedWith,
+		resourceHooks, hiddenDiffs)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
 	var result *RegisterResult

@@ -292,6 +292,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		IgnoreChanges:           nil,
 		HideDiff:                nil,
 		ReplaceOnChanges:        nil,
+		ReplacementTrigger:      resource.NewNullProperty(),
 		RefreshBeforeUpdate:     false,
 		ViewOf:                  "",
 		ResourceHooks:           nil,
@@ -1005,6 +1006,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 					IgnoreChanges:           goal.IgnoreChanges,
 					HideDiff:                goal.HideDiff,
 					ReplaceOnChanges:        goal.ReplaceOnChanges,
+					ReplacementTrigger:      resource.NewNullProperty(),
 					RefreshBeforeUpdate:     new.RefreshBeforeUpdate,
 					ViewOf:                  "",
 					ResourceHooks:           goal.ResourceHooks,
@@ -1617,7 +1619,8 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	// even need to bother doing a diff in this case because we know this replacement. Note that we treat Null
 	// as a special case for "no trigger", that is if Trigger goes from Null to anything, or from anything to
 	// Null it does not cause a replace.
-	triggerReplace := !new.ReplacementTrigger.IsNull() && !old.ReplacementTrigger.IsNull() && !new.ReplacementTrigger.DeepEquals(old.ReplacementTrigger)
+	triggerReplace := !new.ReplacementTrigger.IsNull() && !old.ReplacementTrigger.IsNull() &&
+		!new.ReplacementTrigger.DeepEquals(old.ReplacementTrigger)
 	// TODO: THIS IS INTERESTING!!! We don't really want DeepEquals here because we could have unknowns so we
 	// actually have a tri-state here, of (equal, not-equal, unknown). If equal that's easy, we're not doing a
 	// replace, likewise if not-equal we _are_ doing a replace, but the unknown state is tricky because it
@@ -2607,11 +2610,6 @@ func (sg *stepGenerator) diff(
 		return plugin.DiffResult{}, nil, err
 	} else if providerChanged {
 		return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"provider"}}, nil, nil
-	}
-
-	if old != nil && old.ReplacementTrigger != new.ReplacementTrigger {
-		logging.V(7).Infof("ReplacementTrigger changed for '%v': old=%q, new=%q", urn, old.ReplacementTrigger, new.ReplacementTrigger)
-		return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"__replacementTriggered"}}, nil, nil
 	}
 
 	// Apply legacy diffing behavior if requested. In this mode, if the provider-calculated inputs for a resource did
