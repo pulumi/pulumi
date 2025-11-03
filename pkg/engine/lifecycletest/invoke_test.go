@@ -29,7 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
-func TestDryRunInvoke(t *testing.T) {
+func TestPreviewInvoke(t *testing.T) {
 	t.Parallel()
 
 	expectPreview := true
