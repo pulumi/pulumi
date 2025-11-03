@@ -179,7 +179,7 @@ interface ResourceResolverOperation {
     /**
      * If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
      */
-    replacementTrigger: string | undefined;
+    replacementTrigger: any | undefined;
 }
 
 /**

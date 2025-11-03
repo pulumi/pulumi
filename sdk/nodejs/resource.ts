@@ -789,7 +789,7 @@ export interface ResourceOptions {
     /**
      * If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
      */
-    replacementTrigger?: Input<string>;
+    replacementTrigger?: Input<any>;
 
     /**
      * An optional version, corresponding to the version of the provider plugin that should be used when operating on
