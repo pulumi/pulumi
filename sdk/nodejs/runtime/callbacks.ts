@@ -41,7 +41,14 @@ import {
 import { InvokeOptions, InvokeTransform, InvokeTransformArgs } from "../invoke";
 
 import { hookBindingFromProto, mapAliasesForRequest, prepareHooks } from "./resource";
-import { deserializeProperties, deserializeProperty, serializeProperties, unknownValue, isRpcSecret, unwrapRpcSecret } from "./rpc";
+import {
+    deserializeProperties,
+    deserializeProperty,
+    serializeProperties,
+    unknownValue,
+    isRpcSecret,
+    unwrapRpcSecret,
+} from "./rpc";
 import { debuggablePromise } from "./debuggable";
 import { rpcKeepAlive } from "./settings";
 import { Http2Server, Http2Session } from "http2";
@@ -272,7 +279,9 @@ export class CallbackServer implements ICallbackServer {
             ropts.provider = opts.getProvider() !== "" ? new DependencyProviderResource(opts.getProvider()) : undefined;
             ropts.replaceOnChanges = opts.getReplaceOnChangesList();
             const replacementTrigger = opts.getReplacementTrigger();
-            ropts.replacementTrigger = replacementTrigger ? deserializeProperty(replacementTrigger.toJavaScript()) : undefined;
+            ropts.replacementTrigger = replacementTrigger
+                ? deserializeProperty(replacementTrigger.toJavaScript())
+                : undefined;
             ropts.retainOnDelete = opts.getRetainOnDelete();
             ropts.version = opts.getVersion() !== "" ? opts.getVersion() : undefined;
 
