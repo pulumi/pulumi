@@ -289,7 +289,7 @@ type ResourceOptions struct {
 	PluginChecksums         map[string][]byte
 	IgnoreChanges           []string
 	ReplaceOnChanges        []string
-	ReplacementTrigger      string
+	ReplacementTrigger      resource.PropertyValue
 	AliasURNs               []resource.URN
 	Aliases                 []*pulumirpc.Alias
 	ImportID                resource.ID
@@ -354,6 +354,16 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		KeepSecrets:      rm.supportsSecrets,
 		KeepResources:    rm.supportsResourceReferences,
 		KeepOutputValues: opts.Remote,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// marshal trigger
+	trigger, err := plugin.MarshalPropertyValue("replacementTrigger", opts.ReplacementTrigger, plugin.MarshalOptions{
+		KeepUnknowns:  true,
+		KeepSecrets:   rm.supportsSecrets,
+		KeepResources: rm.supportsResourceReferences,
 	})
 	if err != nil {
 		return nil, err
@@ -438,7 +448,6 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		SupportsPartialValues:      supportsPartialValues,
 		Remote:                     opts.Remote,
 		ReplaceOnChanges:           opts.ReplaceOnChanges,
-		ReplacementTrigger:         opts.ReplacementTrigger,
 		Providers:                  opts.Providers,
 		PluginDownloadURL:          opts.PluginDownloadURL,
 		PluginChecksums:            opts.PluginChecksums,
@@ -446,6 +455,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		AdditionalSecretOutputs:    additionalSecretOutputs,
 		Aliases:                    opts.Aliases,
 		DeletedWith:                string(opts.DeletedWith),
+		ReplacementTrigger:         trigger,
 		AliasSpecs:                 opts.AliasSpecs,
 		SourcePosition:             sourcePosition,
 		StackTrace:                 stackTrace,

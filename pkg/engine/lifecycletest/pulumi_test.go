@@ -1866,7 +1866,7 @@ func TestReplacementTrigger(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:             resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
-			ReplacementTrigger: "first",
+			ReplacementTrigger: resource.NewStringProperty("first"),
 		})
 
 		require.NoError(t, err)
@@ -1901,7 +1901,7 @@ func TestReplacementTrigger(t *testing.T) {
 	programF = deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:             resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
-			ReplacementTrigger: "second",
+			ReplacementTrigger: resource.NewStringProperty("second"),
 		})
 
 		require.NoError(t, err)
@@ -1913,19 +1913,14 @@ func TestReplacementTrigger(t *testing.T) {
 
 	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
-			keys := []resource.PropertyKey{}
 			operations := []display.StepOp{}
 
 			for _, e := range events {
 				if e.Type == ResourcePreEvent && e.Payload().(ResourcePreEventPayload).Metadata.URN.Name() == "resA" {
-					keys = append(keys, e.Payload().(ResourcePreEventPayload).Metadata.Keys...)
 					operations = append(operations, e.Payload().(ResourcePreEventPayload).Metadata.Op)
 				}
 			}
 
-			assert.Contains(t, keys, resource.PropertyKey("__replacementTriggered"))
-
-			t.Logf("operations: %+v", operations)
 			assert.Contains(t, operations, deploy.OpReplace)
 			return nil
 		},

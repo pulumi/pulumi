@@ -113,6 +113,7 @@ func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
 		IgnoreChanges:           s.IgnoreChanges,
 		HideDiff:                s.HideDiff,
 		ReplaceOnChanges:        s.ReplaceOnChanges,
+		ReplacementTrigger:      s.ReplacementTrigger,
 		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,
 		ViewOf:                  s.ViewOf,
 		ResourceHooks:           s.ResourceHooks,

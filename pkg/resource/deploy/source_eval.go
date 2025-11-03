@@ -499,7 +499,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 			ID:                      "",
 			CustomTimeouts:          nil,
 			ReplaceOnChanges:        nil,
-			ReplacementTrigger:      "",
+			ReplacementTrigger:      resource.NewNullProperty(),
 			RetainOnDelete:          nil,
 			HideDiff:                nil,
 			DeletedWith:             "",
@@ -2452,7 +2452,24 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		hiddenDiffs = append(hiddenDiffs, path)
 	}
 	replaceOnChanges := opts.ReplaceOnChanges
-	replacementTrigger := opts.GetReplacementTrigger()
+
+	replacementTrigger := resource.NewNullProperty()
+	if req.GetReplacementTrigger() != nil {
+		t, err := plugin.UnmarshalPropertyValue(
+			"replacementTrigger", req.GetReplacementTrigger(), plugin.MarshalOptions{
+				Label:              label,
+				KeepUnknowns:       true,
+				ComputeAssetHashes: true,
+				KeepSecrets:        true,
+				KeepResources:      true,
+				KeepOutputValues:   true,
+			})
+		if err != nil {
+			return nil, err
+		}
+		replacementTrigger = *t
+	}
+
 	retainOnDelete := opts.RetainOnDelete
 	deletedWith, err := resource.ParseOptionalURN(opts.GetDeletedWith())
 	if err != nil {

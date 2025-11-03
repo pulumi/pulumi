@@ -40,7 +40,7 @@ type Goal struct {
 	CustomTimeouts          CustomTimeouts        // an optional config object for resource options
 	ReplaceOnChanges        []string              // a list of property paths that if changed should force a replacement.
 	// if set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
-	ReplacementTrigger string
+	ReplacementTrigger PropertyValue
 	// if set to True, the providers Delete method will not be called for this resource.
 	RetainOnDelete *bool
 	// if set, the providers Delete method will not be called for this resource
@@ -106,7 +106,7 @@ type NewGoal struct {
 	ReplaceOnChanges []string // required
 
 	// if set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
-	ReplacementTrigger string // required
+	ReplacementTrigger PropertyValue // required
 
 	// if set to True, the providers Delete method will not be called for this resource.
 	// required

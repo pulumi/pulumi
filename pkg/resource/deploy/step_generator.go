@@ -1613,25 +1613,47 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	prov plugin.Provider, goal *resource.Goal, randomSeed []byte,
 	autonaming *plugin.AutonamingOptions,
 ) ([]Step, bool, error) {
-	diff, pcs, err := sg.diff(
-		event, goal, autonaming, randomSeed,
-		urn, old, new, oldInputs, inputs, prov)
-	if pcs != nil {
-		return []Step{
-			NewDiffStep(sg.deployment, pcs, old, new, goal.IgnoreChanges),
-		}, true, nil
+	// We might be triggering a replace if we have an old state and it's trigger value is different, we don't
+	// even need to bother doing a diff in this case because we know this replacement. Note that we treat Null
+	// as a special case for "no trigger", that is if Trigger goes from Null to anything, or from anything to
+	// Null it does not cause a replace.
+	triggerReplace := !new.ReplacementTrigger.IsNull() && !old.ReplacementTrigger.IsNull() && !new.ReplacementTrigger.DeepEquals(old.ReplacementTrigger)
+	// TODO: THIS IS INTERESTING!!! We don't really want DeepEquals here because we could have unknowns so we
+	// actually have a tri-state here, of (equal, not-equal, unknown). If equal that's easy, we're not doing a
+	// replace, likewise if not-equal we _are_ doing a replace, but the unknown state is tricky because it
+	// means we _might_ be doing a replace! That results in a maybe_replace_maybe_update step which we don't
+	// currently have. This is _very_ similar to our loop support (index resource option) where we would end
+	// up with things like maybe_delete_maybe_update. For now we just handle this the same as
+	// replaceOnChanges, i.e. unknown means assume a replace.
+
+	var diff plugin.DiffResult
+	var pcs *promise.CompletionSource[plugin.DiffResult]
+	var err error
+	if triggerReplace {
+		// Return that there is a diff, but don't fill in any details.
+		diff = plugin.DiffResult{Changes: plugin.DiffSome}
+	} else {
+		diff, pcs, err = sg.diff(
+			event, goal, autonaming, randomSeed,
+			urn, old, new, oldInputs, inputs, prov)
+		if pcs != nil {
+			return []Step{
+				NewDiffStep(sg.deployment, pcs, old, new, goal.IgnoreChanges),
+			}, true, nil
+		}
 	}
 
 	updateSteps, err := sg.continueStepsFromDiff(&continueDiffResourceEvent{
-		evt:        event,
-		err:        err,
-		diff:       diff,
-		urn:        urn,
-		old:        old,
-		new:        new,
-		provider:   prov,
-		autonaming: autonaming,
-		randomSeed: randomSeed,
+		evt:            event,
+		err:            err,
+		diff:           diff,
+		triggerReplace: triggerReplace,
+		urn:            urn,
+		old:            old,
+		new:            new,
+		provider:       prov,
+		autonaming:     autonaming,
+		randomSeed:     randomSeed,
 	})
 	if err != nil {
 		return nil, false, err
@@ -1677,6 +1699,10 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 	old := diffEvent.Old()
 	new := diffEvent.New()
 	diff := diffEvent.Diff()
+	triggerReplace := false
+	if ce, ok := diffEvent.(*continueDiffResourceEvent); ok {
+		triggerReplace = ce.triggerReplace
+	}
 	prov := diffEvent.Provider()
 	randomSeed := diffEvent.RandomSeed()
 	autonaming := diffEvent.Autonaming()
@@ -1742,7 +1768,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 
 	// If there were changes check for a replacement vs. an in-place update.
 	if diff.Changes == plugin.DiffSome || old.PendingReplacement {
-		if diff.Replace() || old.PendingReplacement {
+		if diff.Replace() || triggerReplace || old.PendingReplacement {
 			// If this resource is protected we can't replace it because that entails a delete
 			// Note that we do allow unprotecting and replacing to happen in a single update
 			// cycle, we don't look at old.Protect here.
