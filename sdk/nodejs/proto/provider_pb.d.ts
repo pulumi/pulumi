@@ -28,6 +28,8 @@ export class ProviderHandshakeRequest extends jspb.Message {
     setSupportsViews(value: boolean): ProviderHandshakeRequest;
     getSupportsRefreshBeforeUpdate(): boolean;
     setSupportsRefreshBeforeUpdate(value: boolean): ProviderHandshakeRequest;
+    getInvokeWithPreview(): boolean;
+    setInvokeWithPreview(value: boolean): ProviderHandshakeRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeRequest.AsObject;
@@ -47,6 +49,7 @@ export namespace ProviderHandshakeRequest {
         configureWithUrn: boolean,
         supportsViews: boolean,
         supportsRefreshBeforeUpdate: boolean,
+        invokeWithPreview: boolean,
     }
 }
 
@@ -389,6 +392,8 @@ export class InvokeRequest extends jspb.Message {
     clearArgs(): void;
     getArgs(): google_protobuf_struct_pb.Struct | undefined;
     setArgs(value?: google_protobuf_struct_pb.Struct): InvokeRequest;
+    getPreview(): boolean;
+    setPreview(value: boolean): InvokeRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): InvokeRequest.AsObject;
@@ -404,6 +409,7 @@ export namespace InvokeRequest {
     export type AsObject = {
         tok: string,
         args?: google_protobuf_struct_pb.Struct.AsObject,
+        preview: boolean,
     }
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -232,8 +232,10 @@ type ProviderHandshakeRequest struct {
 	SupportsViews bool `protobuf:"varint,5,opt,name=supports_views,json=supportsViews,proto3" json:"supports_views,omitempty"`
 	// If true the engine supports letting the provider mark resource states as requiring refresh before update.
 	SupportsRefreshBeforeUpdate bool `protobuf:"varint,6,opt,name=supports_refresh_before_update,json=supportsRefreshBeforeUpdate,proto3" json:"supports_refresh_before_update,omitempty"`
-	unknownFields               protoimpl.UnknownFields
-	sizeCache                   protoimpl.SizeCache
+	// If true the engine will send `preview` to `Invoke` methods to let them know if the current operation is a preview or up.
+	InvokeWithPreview bool `protobuf:"varint,7,opt,name=invoke_with_preview,json=invokeWithPreview,proto3" json:"invoke_with_preview,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *ProviderHandshakeRequest) Reset() {
@@ -304,6 +306,13 @@ func (x *ProviderHandshakeRequest) GetSupportsViews() bool {
 func (x *ProviderHandshakeRequest) GetSupportsRefreshBeforeUpdate() bool {
 	if x != nil {
 		return x.SupportsRefreshBeforeUpdate
+	}
+	return false
+}
+
+func (x *ProviderHandshakeRequest) GetInvokeWithPreview() bool {
+	if x != nil {
+		return x.InvokeWithPreview
 	}
 	return false
 }
@@ -964,9 +973,12 @@ func (x *ConfigureErrorMissingKeys) GetMissingKeys() []*ConfigureErrorMissingKey
 }
 
 type InvokeRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tok           string                 `protobuf:"bytes,1,opt,name=tok,proto3" json:"tok,omitempty"`   // the function token to invoke.
-	Args          *structpb.Struct       `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"` // the arguments for the function invocation.
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Tok   string                 `protobuf:"bytes,1,opt,name=tok,proto3" json:"tok,omitempty"`   // the function token to invoke.
+	Args  *structpb.Struct       `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"` // the arguments for the function invocation.
+	// This is only set if `HandshakeRequest.invoke_with_preview` was true. If this is true then the engine is currently
+	// running a preview deployment.
+	Preview       bool `protobuf:"varint,7,opt,name=preview,proto3" json:"preview,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1013,6 +1025,13 @@ func (x *InvokeRequest) GetArgs() *structpb.Struct {
 		return x.Args
 	}
 	return nil
+}
+
+func (x *InvokeRequest) GetPreview() bool {
+	if x != nil {
+		return x.Preview
+	}
+	return false
 }
 
 type InvokeResponse struct {
@@ -3857,14 +3876,15 @@ var File_pulumi_provider_proto protoreflect.FileDescriptor
 
 const file_pulumi_provider_proto_rawDesc = "" +
 	"\n" +
-	"\x15pulumi/provider.proto\x12\tpulumirpc\x1a\x13pulumi/plugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xe2\x02\n" +
+	"\x15pulumi/provider.proto\x12\tpulumirpc\x1a\x13pulumi/plugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x92\x03\n" +
 	"\x18ProviderHandshakeRequest\x12%\n" +
 	"\x0eengine_address\x18\x01 \x01(\tR\rengineAddress\x12*\n" +
 	"\x0eroot_directory\x18\x02 \x01(\tH\x00R\rrootDirectory\x88\x01\x01\x120\n" +
 	"\x11program_directory\x18\x03 \x01(\tH\x01R\x10programDirectory\x88\x01\x01\x12,\n" +
 	"\x12configure_with_urn\x18\x04 \x01(\bR\x10configureWithUrn\x12%\n" +
 	"\x0esupports_views\x18\x05 \x01(\bR\rsupportsViews\x12C\n" +
-	"\x1esupports_refresh_before_update\x18\x06 \x01(\bR\x1bsupportsRefreshBeforeUpdateB\x11\n" +
+	"\x1esupports_refresh_before_update\x18\x06 \x01(\bR\x1bsupportsRefreshBeforeUpdate\x12.\n" +
+	"\x13invoke_with_preview\x18\a \x01(\bR\x11invokeWithPreviewB\x11\n" +
 	"\x0f_root_directoryB\x14\n" +
 	"\x12_program_directory\"\xe0\x01\n" +
 	"\x19ProviderHandshakeResponse\x12%\n" +
@@ -3922,10 +3942,11 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\n" +
 	"MissingKey\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x02 \x01(\tR\vdescription\"\x8b\x01\n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\"\xa5\x01\n" +
 	"\rInvokeRequest\x12\x10\n" +
 	"\x03tok\x18\x01 \x01(\tR\x03tok\x12+\n" +
-	"\x04args\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x04argsJ\x04\b\x03\x10\aR\bproviderR\aversionR\x0facceptResourcesR\x11pluginDownloadURL\"v\n" +
+	"\x04args\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x04args\x12\x18\n" +
+	"\apreview\x18\a \x01(\bR\apreviewJ\x04\b\x03\x10\aR\bproviderR\aversionR\x0facceptResourcesR\x11pluginDownloadURL\"v\n" +
 	"\x0eInvokeResponse\x12/\n" +
 	"\x06return\x18\x01 \x01(\v2\x17.google.protobuf.StructR\x06return\x123\n" +
 	"\bfailures\x18\x02 \x03(\v2\x17.pulumirpc.CheckFailureR\bfailures\"\xdc\x06\n" +
