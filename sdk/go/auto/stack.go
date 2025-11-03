@@ -340,7 +340,6 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	if err != nil {
 		return res, fmt.Errorf("failed to tail logs: %w", err)
 	}
-	defer t.Close()
 	args = append(args, "--event-log", t.Filename())
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(
@@ -350,6 +349,7 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 		args...,
 	)
 	if err != nil {
+		t.Close()
 		return res, newAutoError(fmt.Errorf("failed to run preview: %w", err), stdout, stderr, code)
 	}
 
@@ -672,7 +672,6 @@ func (s *Stack) PreviewRefresh(ctx context.Context, opts ...optrefresh.Option) (
 	if err != nil {
 		return res, fmt.Errorf("failed to tail logs: %w", err)
 	}
-	defer t.Close()
 	args = append(args, "--event-log", t.Filename())
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(
@@ -682,6 +681,7 @@ func (s *Stack) PreviewRefresh(ctx context.Context, opts ...optrefresh.Option) (
 		args...,
 	)
 	if err != nil {
+		t.Close()
 		return res, newAutoError(fmt.Errorf("failed to preview refresh: %w", err), stdout, stderr, code)
 	}
 
@@ -898,7 +898,6 @@ func (s *Stack) PreviewDestroy(ctx context.Context, opts ...optdestroy.Option) (
 	if err != nil {
 		return res, fmt.Errorf("failed to tail logs: %w", err)
 	}
-	defer t.Close()
 	args = append(args, "--event-log", t.Filename())
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(
@@ -908,6 +907,7 @@ func (s *Stack) PreviewDestroy(ctx context.Context, opts ...optdestroy.Option) (
 		args...,
 	)
 	if err != nil {
+		t.Close()
 		return res, newAutoError(fmt.Errorf("failed to preview destroy: %w", err), stdout, stderr, code)
 	}
 
