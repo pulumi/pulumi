@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: protobuf
+  description: Pass a `preview` flag to invokes so they can tell if they're being called during a preview
