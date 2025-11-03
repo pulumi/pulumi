@@ -559,6 +559,16 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
 
         hooks = await _prepare_resource_hooks(opts.hooks, resource_name)
 
+        replacement_trigger = None
+        if opts.replacement_trigger is not None:
+            from .. import output as output_mod
+            from .rpc import python_value_to_proto_value
+
+            resolved = await output_mod.Output.from_input(
+                opts.replacement_trigger
+            ).future()
+            replacement_trigger = python_value_to_proto_value(resolved)
+
         result = resource_pb2.TransformResourceOptions(
             aliases=aliases or None,
             custom_timeouts=custom_timeouts,
@@ -567,6 +577,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             replace_on_changes=replace_on_changes,
             additional_secret_outputs=additional_secret_outputs,
             hooks=hooks,
+            replacement_trigger=replacement_trigger,
         )
 
         if opts.import_ is not None:
@@ -579,8 +590,6 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             result.protect = opts.protect
         if opts.retain_on_delete:
             result.retain_on_delete = opts.retain_on_delete
-        if opts.replacement_trigger:
-            result.replacement_trigger = await Output.from_input(opts.replacement_trigger).future()
         if opts.version:
             result.version = opts.version
         if opts.provider is not None:

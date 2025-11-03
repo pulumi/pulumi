@@ -1067,7 +1067,11 @@ def register_resource(
                 supportsPartialValues=True,
                 remote=remote,
                 replaceOnChanges=replace_on_changes or [],
-                replacementTrigger=resolver.replacement_trigger or "",
+                replacement_trigger=rpc.python_value_to_proto_value(
+                    resolver.replacement_trigger
+                )
+                if resolver.replacement_trigger
+                else None,
                 retainOnDelete=opts.retain_on_delete,
                 deletedWith=resolver.deleted_with_urn or "",
                 sourcePosition=source_position,

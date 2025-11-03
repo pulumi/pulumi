@@ -700,7 +700,11 @@ class ResourceOptions:
         dest.replace_on_changes = _merge_lists(
             dest.replace_on_changes, source.replace_on_changes
         )
-        dest.replacement_trigger = dest.replacement_trigger if source.replacement_trigger is None else source.replacement_trigger
+        dest.replacement_trigger = (
+            dest.replacement_trigger
+            if source.replacement_trigger is None
+            else source.replacement_trigger
+        )
         dest.aliases = _merge_lists(dest.aliases, source.aliases)
         dest.additional_secret_outputs = _merge_lists(
             dest.additional_secret_outputs, source.additional_secret_outputs

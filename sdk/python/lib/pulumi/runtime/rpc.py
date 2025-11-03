@@ -43,6 +43,35 @@ from .. import urn as urn_util
 from . import known_types, settings
 from .resource_cycle_breaker import declare_dependency
 
+
+def python_value_to_proto_value(py: Any) -> struct_pb2.Value:
+    """
+    Converts a plain Python value to a Protobuf `Value`.
+    """
+    v = struct_pb2.Value()
+    if py is None:
+        v.null_value = struct_pb2.NULL_VALUE
+    elif isinstance(py, bool):
+        v.bool_value = py
+    elif isinstance(py, (int, float)):
+        v.number_value = float(py)
+    elif isinstance(py, str):
+        v.string_value = py
+    elif isinstance(py, (list, tuple)):
+        lv = struct_pb2.ListValue()
+        for item in py:
+            lv.values.append(python_value_to_proto_value(item))
+        v.list_value.CopyFrom(lv)
+    elif isinstance(py, dict):
+        sv = struct_pb2.Struct()
+        for k, val in py.items():
+            sv.fields[k].CopyFrom(python_value_to_proto_value(val))
+        v.struct_value.CopyFrom(sv)
+    else:
+        v.string_value = str(py)
+    return v
+
+
 if TYPE_CHECKING:
     from ..asset import (
         AssetArchive,
