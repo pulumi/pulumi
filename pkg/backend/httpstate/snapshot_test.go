@@ -208,7 +208,11 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 		}, false /*showSecrets*/)
 	require.NoError(t, err)
 
-	err = persister.Save(deploymentV3, version, features)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
 	require.NoError(t, err)
 
 	handleLastRequestAsRegular()
@@ -230,7 +234,11 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 			},
 		}, false /*showSecrets*/)
 	require.NoError(t, err)
-	err = persister.Save(deploymentV3, version, features)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
 	require.NoError(t, err)
 
 	handleLastRequestAsRegular()
@@ -258,7 +266,11 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 		}, false /*showSecrets*/)
 	require.NoError(t, err)
 
-	err = persister.Save(deploymentV3, version, features)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
 	require.NoError(t, err)
 
 	handleLastRequestAsVerbatim()
@@ -278,7 +290,11 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 			},
 		}, false /*showSecrets*/)
 	require.NoError(t, err)
-	err = persister.Save(deploymentV3, version, features)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
 	require.NoError(t, err)
 
 	handleLastRequestAsDelta()
@@ -304,7 +320,11 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 		}, false /*showSecrets*/)
 	require.NoError(t, err)
 
-	err = persister.Save(deploymentV3, version, features)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
 	require.NoError(t, err)
 
 	handleLastRequestAsVerbatim()
@@ -331,7 +351,11 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 		}, false /*showSecrets*/)
 	require.NoError(t, err)
 
-	err = persister.Save(deploymentV3, version, features)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
 	require.NoError(t, err)
 
 	handleLastRequestAsDelta()
@@ -361,7 +385,11 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 			},
 		}, false /*showSecrets*/)
 	require.NoError(t, err)
-	err = persister.Save(deploymentV3, version, features)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
 	require.NoError(t, err)
 
 	handleLastRequestAsRegular()
@@ -383,7 +411,11 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 			},
 		}, false /*showSecrets*/)
 	require.NoError(t, err)
-	err = persister.Save(deploymentV3, version, features)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
 	require.NoError(t, err)
 
 	handleLastRequestAsRegular()
@@ -410,7 +442,11 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 			},
 		}, false /*showSecrets*/)
 	require.NoError(t, err)
-	err = persister.Save(deploymentV3, version, features)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
 	require.NoError(t, err)
 
 	handleLastRequestAsVerbatim()
@@ -434,7 +470,11 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 			},
 		}, false /*showSecrets*/)
 	require.NoError(t, err)
-	err = persister.Save(deploymentV3, version, features)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
 	require.NoError(t, err)
 
 	handleLastRequestAsDelta()
@@ -460,7 +500,11 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 		}, false /*showSecrets*/)
 	require.NoError(t, err)
 
-	err = persister.Save(deploymentV3, version, features)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
 	require.NoError(t, err)
 
 	handleLastRequestAsVerbatim()
@@ -485,7 +529,11 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 			},
 		}, false /*showSecrets*/)
 	require.NoError(t, err)
-	err = persister.Save(deploymentV3, version, features)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
 	require.NoError(t, err)
 
 	handleLastRequestAsDelta()
@@ -660,7 +708,11 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 			},
 		}, false /*showSecrets*/)
 	require.NoError(t, err)
-	err = persister.Save(deploymentV3, version, features)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
 	require.NoError(t, err)
 
 	req1 := lastRequestAsVerbatim()
@@ -690,7 +742,11 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 			},
 		}, false /*showSecrets*/)
 	require.NoError(t, err)
-	err = persister.Save(deploymentV3, version, features)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
 	require.NoError(t, err)
 
 	req2 := lastRequestAsDelta()
@@ -717,7 +773,11 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 			},
 		}, false /*showSecrets*/)
 	require.NoError(t, err)
-	err = persister.Save(deploymentV3, version, features)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
 	require.NoError(t, err)
 
 	req3 := lastRequestAsDelta()
@@ -744,7 +804,11 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 			},
 		}, false /*showSecrets*/)
 	require.NoError(t, err)
-	err = persister.Save(deploymentV3, version, features)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
 	require.NoError(t, err)
 
 	req4 := lastRequestAsDelta()

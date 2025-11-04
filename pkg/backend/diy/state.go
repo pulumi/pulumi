@@ -266,11 +266,12 @@ func (b *diyBackend) saveCheckpoint(
 
 func (b *diyBackend) saveStack(
 	ctx context.Context,
-	ref *diyBackendReference, snap *apitype.DeploymentV3,
-	version int, features []string,
+	ref *diyBackendReference,
+	deployment apitype.TypedDeployment,
 ) (string, error) {
 	contract.Requiref(ref != nil, "ref", "ref was nil")
-	chk, err := stack.DeploymentV3ToCheckpoint(ref.FullyQualifiedName(), snap, version, features)
+	chk, err := stack.DeploymentV3ToCheckpoint(
+		ref.FullyQualifiedName(), deployment.Deployment, deployment.Version, deployment.Features)
 	if err != nil {
 		return "", fmt.Errorf("serializing checkpoint: %w", err)
 	}
@@ -284,7 +285,7 @@ func (b *diyBackend) saveStack(
 		// Finally, *after* writing the checkpoint, check the integrity.  This is done afterwards so that we write
 		// out the checkpoint file since it may contain resource state updates.  But we will warn the user that the
 		// file is already written and might be bad.
-		if verifyerr := snapshot.VerifyIntegrity(snap); verifyerr != nil {
+		if verifyerr := snapshot.VerifyIntegrity(deployment.Deployment); verifyerr != nil {
 			return "", fmt.Errorf(
 				"%s: snapshot integrity failure; it was already written, but is invalid (backup available at %s): %w",
 				file, backup, verifyerr)

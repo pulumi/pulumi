@@ -223,8 +223,8 @@ func (r *JournalReplayer) Add(entry apitype.JournalEntry) {
 	case apitype.JournalEntryKindRebuiltBaseState:
 		// We need to build the snapshot from the current state here and discard the
 		// current journal entries. This happens after a refresh operation.
-		deployment, _, _ := r.GenerateDeployment()
-		r.base = deployment
+		deployment := r.GenerateDeployment()
+		r.base = deployment.Deployment
 		r.toRemove = make(map[int64]struct{})
 		r.toDeleteInSnapshot = make(map[int64]struct{})
 		r.toReplaceInSnapshot = make(map[int64]*apitype.ResourceV3)
@@ -289,7 +289,7 @@ func undangleParentResources(undeleted map[resource.URN]bool, resources []apityp
 	}
 }
 
-func (r *JournalReplayer) GenerateDeployment() (*apitype.DeploymentV3, int, []string) {
+func (r *JournalReplayer) GenerateDeployment() apitype.TypedDeployment {
 	features := make(map[string]bool)
 	removeIndices := make(map[int64]struct{})
 	for k := range r.toRemove {
@@ -378,12 +378,16 @@ func (r *JournalReplayer) GenerateDeployment() (*apitype.DeploymentV3, int, []st
 		version = apitype.DeploymentSchemaVersionLatest
 	}
 
-	return deployment, version, maputil.SortedKeys(features)
+	return apitype.TypedDeployment{
+		Deployment: deployment,
+		Version:    version,
+		Features:   maputil.SortedKeys(features),
+	}
 }
 
 // snap produces a new Snapshot given the base snapshot and a list of resources that the current
 // plan has created.
-func (sj *SnapshotJournaler) snap(ctx context.Context) (*apitype.DeploymentV3, int, []string) {
+func (sj *SnapshotJournaler) snap(ctx context.Context) apitype.TypedDeployment {
 	// At this point we have two resource DAGs. One of these is the base DAG for this plan; the other is the current DAG
 	// for this plan. Any resource r may be present in both DAGs. In order to produce a snapshot, we need to merge these
 	// DAGs such that all resource dependencies are correctly preserved. Conceptually, the merge proceeds as follows:
@@ -431,9 +435,7 @@ func (sj *SnapshotJournaler) snap(ctx context.Context) (*apitype.DeploymentV3, i
 		}
 	}
 
-	deploymentV3, version, features := replayer.GenerateDeployment()
-
-	return deploymentV3, version, features
+	return replayer.GenerateDeployment()
 }
 
 // saveSnapshot persists the current snapshot. If integrity checking is enabled,
@@ -442,8 +444,9 @@ func (sj *SnapshotJournaler) snap(ctx context.Context) (*apitype.DeploymentV3, i
 // written, in order to aid debugging should future operations fail with an
 // error.
 func (sj *SnapshotJournaler) saveSnapshot(ctx context.Context) error {
-	snap, version, features := sj.snap(ctx)
-	snap, err := snap.NormalizeURNReferences()
+	deployment := sj.snap(ctx)
+	var err error
+	deployment.Deployment, err = deployment.Deployment.NormalizeURNReferences()
 	if err != nil {
 		return fmt.Errorf("failed to normalize URN references: %w", err)
 	}
@@ -461,18 +464,18 @@ func (sj *SnapshotJournaler) saveSnapshot(ctx context.Context) error {
 	//
 	// Metadata will be cleared out by a successful operation (even if integrity
 	// checking is being enforced).
-	integrityError := snapshot.VerifyIntegrity(snap)
+	integrityError := snapshot.VerifyIntegrity(deployment.Deployment)
 	if integrityError == nil {
-		snap.Metadata.IntegrityErrorMetadata = nil
+		deployment.Deployment.Metadata.IntegrityErrorMetadata = nil
 	} else {
-		snap.Metadata.IntegrityErrorMetadata = &apitype.SnapshotIntegrityErrorMetadataV1{
-			Version: strconv.FormatInt(int64(version), 10),
+		deployment.Deployment.Metadata.IntegrityErrorMetadata = &apitype.SnapshotIntegrityErrorMetadataV1{
+			Version: strconv.FormatInt(int64(deployment.Version), 10),
 			Command: strings.Join(os.Args, " "),
 			Error:   integrityError.Error(),
 		}
 	}
 	persister := sj.persister
-	if err := persister.Save(snap, version, features); err != nil {
+	if err := persister.Save(deployment); err != nil {
 		return fmt.Errorf("failed to save snapshot: %w", err)
 	}
 	if !DisableIntegrityChecking && integrityError != nil {

@@ -26,11 +26,11 @@ type ValidatingPersister struct {
 	ErrorFunc func(error)
 }
 
-func (p *ValidatingPersister) Save(snap *apitype.DeploymentV3, version int, features []string) error {
+func (p *ValidatingPersister) Save(deployment apitype.TypedDeployment) error {
 	if p.ErrorFunc != nil {
-		p.ErrorFunc(snapshot.VerifyIntegrity(snap))
+		p.ErrorFunc(snapshot.VerifyIntegrity(deployment.Deployment))
 	}
 
-	p.Snap = snap
+	p.Snap = deployment.Deployment
 	return nil
 }

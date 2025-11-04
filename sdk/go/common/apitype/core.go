@@ -332,6 +332,18 @@ type UntypedDeployment struct {
 	Deployment json.RawMessage `json:"deployment,omitempty"`
 }
 
+// TypedDeployment contains an inner, typed deployment structure.
+type TypedDeployment struct {
+	// Version indicates the schema of the encoded deployment.
+	Version int `json:"version,omitempty"`
+	// Features contains an optional list of features used by this deployment. The CLI will error when reading a
+	// Deployment that uses a feature that is not supported by that version of the CLI. This is only looked at
+	// when `Version` is 4 or greater.
+	Features []string `json:"features,omitempty"`
+	// The typed Pulumi deployment.
+	Deployment *DeploymentV3 `json:"deployment,omitempty"`
+}
+
 // ResourceV1 describes a Cloud resource constructed by Pulumi.
 type ResourceV1 struct {
 	// URN uniquely identifying this resource.

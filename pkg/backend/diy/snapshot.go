@@ -31,8 +31,8 @@ type diySnapshotPersister struct {
 	backend *diyBackend
 }
 
-func (sp *diySnapshotPersister) Save(snapshot *apitype.DeploymentV3, version int, features []string) error {
-	_, err := sp.backend.saveStack(sp.ctx, sp.ref, snapshot, version, features)
+func (sp *diySnapshotPersister) Save(deployment apitype.TypedDeployment) error {
+	_, err := sp.backend.saveStack(sp.ctx, sp.ref, deployment)
 	return err
 }
 

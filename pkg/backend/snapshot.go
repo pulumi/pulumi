@@ -53,7 +53,7 @@ type SnapshotPersister interface {
 	// Note that we can't just take a `VersionedDeployment` here, as the patch snapshot
 	// updater for the cloud backend needs the deserialized snapshot object to perform
 	// its update.
-	Save(snapshot *apitype.DeploymentV3, version int, features []string) error
+	Save(deployment apitype.TypedDeployment) error
 }
 
 // SnapshotManager is an implementation of engine.SnapshotManager that inspects steps and performs
@@ -733,18 +733,22 @@ func (sm *SnapshotManager) Snap() *deploy.Snapshot {
 	return deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata)
 }
 
-func (sm *SnapshotManager) Deployment() (*apitype.DeploymentV3, int, []string, error) {
+func (sm *SnapshotManager) Deployment() (apitype.TypedDeployment, error) {
 	snap, err := sm.Snap().NormalizeURNReferences()
 	if err != nil {
-		return nil, 0, nil, fmt.Errorf("failed to normalize URN references: %w", err)
+		return apitype.TypedDeployment{}, fmt.Errorf("failed to normalize URN references: %w", err)
 	}
 
 	deploymentV3, version, features, err := stack.SerializeDeploymentWithMetadata(
 		context.TODO(), snap, false /*showSecrets*/)
 	if err != nil {
-		return nil, 0, nil, fmt.Errorf("failed to serialize snapshot: %w", err)
+		return apitype.TypedDeployment{}, fmt.Errorf("failed to serialize snapshot: %w", err)
 	}
-	return deploymentV3, version, features, nil
+	return apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	}, nil
 }
 
 // saveSnapshot persists the current snapshot. If integrity checking is enabled,
@@ -753,7 +757,7 @@ func (sm *SnapshotManager) Deployment() (*apitype.DeploymentV3, int, []string, e
 // written, in order to aid debugging should future operations fail with an
 // error.
 func (sm *SnapshotManager) saveSnapshot() error {
-	deploymentV3, version, features, err := sm.Deployment()
+	deployment, err := sm.Deployment()
 	if err != nil {
 		return err
 	}
@@ -771,18 +775,18 @@ func (sm *SnapshotManager) saveSnapshot() error {
 	//
 	// Metadata will be cleared out by a successful operation (even if integrity
 	// checking is being enforced).
-	integrityError := snapshot.VerifyIntegrity(deploymentV3)
+	integrityError := snapshot.VerifyIntegrity(deployment.Deployment)
 	if integrityError == nil {
-		deploymentV3.Metadata.IntegrityErrorMetadata = nil
+		deployment.Deployment.Metadata.IntegrityErrorMetadata = nil
 	} else {
-		deploymentV3.Metadata.IntegrityErrorMetadata = &apitype.SnapshotIntegrityErrorMetadataV1{
-			Version: strconv.FormatInt(int64(version), 10),
+		deployment.Deployment.Metadata.IntegrityErrorMetadata = &apitype.SnapshotIntegrityErrorMetadataV1{
+			Version: strconv.FormatInt(int64(deployment.Version), 10),
 			Command: strings.Join(os.Args, " "),
 			Error:   integrityError.Error(),
 		}
 	}
 
-	if err := sm.persister.Save(deploymentV3, version, features); err != nil {
+	if err := sm.persister.Save(deployment); err != nil {
 		return fmt.Errorf("failed to save snapshot: %w", err)
 	}
 	if !DisableIntegrityChecking && integrityError != nil {

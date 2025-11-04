@@ -44,8 +44,8 @@ type MockStackPersister struct {
 	SavedSnapshots []*apitype.DeploymentV3
 }
 
-func (m *MockStackPersister) Save(snap *apitype.DeploymentV3, _ int, _ []string) error {
-	m.SavedSnapshots = append(m.SavedSnapshots, snap)
+func (m *MockStackPersister) Save(deployment apitype.TypedDeployment) error {
+	m.SavedSnapshots = append(m.SavedSnapshots, deployment.Deployment)
 	return nil
 }
 
