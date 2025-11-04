@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -149,7 +150,7 @@ func configureCopilotOptions(copilotEnabledFlag bool, cmd *cobra.Command, displa
 
 func handleRefreshFlag(variable declared.Value) string {
 	if value, present := variable.Underlying(); present {
-		switch value {
+		switch strings.ToLower(value) {
 		case "true", "1":
 			return "true"
 		case "false", "0":
