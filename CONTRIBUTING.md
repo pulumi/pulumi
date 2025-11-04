@@ -54,6 +54,21 @@ $ make changelog
 ````
 …and follow the prompts on screen.
 
+### Pull Request Descriptions
+
+Write clear, informative PR descriptions that help reviewers understand your changes and provide effective feedback. A good PR description serves as documentation for your changes and helps maintainers understand the impact and context.
+
+**Important**: We use squash merge, so your PR description will become the git commit message. Write it accordingly.
+
+The PR description should include:
+
+- **What**: A clear summary of what changes are being made (often the PR title is sufficient)
+- **Why**: The motivation, context, or problem being solved
+- **How**: Optionally a brief explanation of the approach taken (if not obvious). For detailed implementation explanations, consider adding comments in the code instead.
+- **References**: Links to related issues, RFCs, or previous PRs
+
+For PR titles, follow the same guidelines as [changelog messages](#changelog-messages). Use the active imperative form and be descriptive about what the change accomplishes.
+
 ### Changelog messages
 
 Changelog notes are written in the active imperative form.  They should not end with a period.  The simple rule is to pretend the message starts with "This change will ..."
