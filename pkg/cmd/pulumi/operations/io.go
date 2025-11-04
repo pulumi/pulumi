@@ -148,7 +148,7 @@ func configureCopilotOptions(copilotEnabledFlag bool, cmd *cobra.Command, displa
 	displayOpts.CopilotSummaryMaxLen = env.CopilotSummaryMaxLen.Value()
 }
 
-func handleRefreshFlag(variable declared.Value) string {
+func handleBoolFlag(variable declared.Value) string {
 	if value, present := variable.Underlying(); present {
 		switch strings.ToLower(value) {
 		case "true", "1":
