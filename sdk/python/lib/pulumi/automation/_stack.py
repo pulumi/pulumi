@@ -292,28 +292,23 @@ class Stack:
         except (ValueError, TypeError):
             ver = VersionInfo(3, 0, 0)
 
-        # 3.206 added support for streaming events over gRPC
         use_grpc = ver > VersionInfo(3, 205, 0)
 
         if use_grpc:
-            # Create gRPC server for events
             server = grpc.server(
                 futures.ThreadPoolExecutor(max_workers=4),
                 options=_GRPC_CHANNEL_OPTIONS,
             )
 
-            # Add the events service
             servicer = _EventsServicer(on_event)
             events_pb2_grpc.add_EventsServicer_to_server(servicer, server)
 
-            # Bind to a dynamic port
             port = server.add_insecure_port("127.0.0.1:0")
             server.start()
 
             log_file = f"tcp://127.0.0.1:{port}"
             return (log_file, None, None, None, server)
         else:
-            # Use file-based event log
             log_file, temp_dir = _create_log_file(command)
             stop_event = threading.Event()
             log_watcher_thread = threading.Thread(
