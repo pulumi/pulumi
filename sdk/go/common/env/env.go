@@ -129,7 +129,7 @@ var DisableSecretCache = env.Bool("DISABLE_SECRET_CACHE",
 var ParallelDiff = env.Bool("PARALLEL_DIFF",
 	"Enable running diff calculations in parallel.")
 
-var Refresh = env.String("REFRESH",
+var Refresh = env.String("OPTION_REFRESH",
 	"Run refresh as part of the [preview, update, destroy] operations. This is the same as passing --refresh")
 
 var RunProgram = env.Bool("RUN_PROGRAM",
