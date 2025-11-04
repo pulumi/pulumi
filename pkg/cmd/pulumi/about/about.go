@@ -486,7 +486,7 @@ func formatEnvironmentVariables(vars []declared.Var) {
 		Rows:    []cmdutil.TableRow{},
 	}
 
-	for _, v := range declared.Variables() {
+	for _, v := range vars {
 		if _, present := v.Value.Underlying(); present {
 			table.Rows = append(table.Rows, cmdutil.TableRow{
 				Columns: []string{v.Name(), v.Value.String()},
