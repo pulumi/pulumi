@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -30,7 +29,7 @@ import (
 
 // UnknownID is a distinguished token used to indicate that a provider's ID is not known (e.g. because we are
 // performing a preview).
-const UnknownID = plugin.UnknownStringValue
+const UnknownID = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 
 // UnconfiguredID is a distinguished token used to indicate that a provider doesn't yet have an ID because it hasn't
 // been configured yet. This should never be returned back to SDKs by the engine but is used for internal tracking so we

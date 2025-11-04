@@ -48,6 +48,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -363,7 +364,7 @@ type defaultProviders struct {
 
 	// A map of ProviderRequest strings to provider references, used to keep track of the set of default providers that
 	// have already been loaded.
-	providers map[string]providers.Reference
+	providers map[string]sdkproviders.Reference
 	config    plugin.ConfigSource
 
 	requests        chan defaultProviderRequest
@@ -372,7 +373,7 @@ type defaultProviders struct {
 }
 
 type defaultProviderResponse struct {
-	ref providers.Reference
+	ref sdkproviders.Reference
 	err error
 }
 
@@ -482,7 +483,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	done := make(chan *RegisterResult)
 	event := &registerResourceEvent{
 		goal: resource.NewGoal{
-			Type:                    providers.MakeProviderType(req.Package()),
+			Type:                    sdkproviders.MakeProviderType(req.Package()),
 			Name:                    req.DefaultName(),
 			Custom:                  true,
 			Properties:              inputs,
@@ -518,18 +519,18 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 //
 // Note that this function must not be called from two goroutines concurrently; it is the responsibility of d.serve()
 // to ensure this.
-func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (providers.Reference, error) {
+func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (sdkproviders.Reference, error) {
 	logging.V(5).Infof("handling default provider request for package %s", req)
 
 	req = d.normalizeProviderRequest(req)
 
 	denyCreation, err := d.shouldDenyRequest(req)
 	if err != nil {
-		return providers.Reference{}, err
+		return sdkproviders.Reference{}, err
 	}
 	if denyCreation {
 		logging.V(5).Infof("denied default provider request for package %s", req)
-		return providers.NewDenyDefaultProvider(string(req.Package().Name())), nil
+		return sdkproviders.NewDenyDefaultProvider(string(req.Package().Name())), nil
 	}
 
 	// Have we loaded this provider before? Use the existing reference, if so.
@@ -545,13 +546,13 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 
 	event, done, err := d.newRegisterDefaultProviderEvent(req)
 	if err != nil {
-		return providers.Reference{}, err
+		return sdkproviders.Reference{}, err
 	}
 
 	select {
 	case d.providerRegChan <- event:
 	case <-d.cancel:
-		return providers.Reference{}, context.Canceled
+		return sdkproviders.Reference{}, context.Canceled
 	}
 
 	logging.V(5).Infof("waiting for default provider for package %s", req)
@@ -560,7 +561,7 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 	select {
 	case result = <-done:
 	case <-d.cancel:
-		return providers.Reference{}, context.Canceled
+		return sdkproviders.Reference{}, context.Canceled
 	}
 
 	logging.V(5).Infof("registered default provider for package %s: %s", req, result.State.URN)
@@ -568,7 +569,7 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 	id := result.State.ID
 	contract.Assertf(id != "", "default provider for package %s has no ID", req)
 
-	ref, err = providers.NewReference(result.State.URN, id)
+	ref, err = sdkproviders.NewReference(result.State.URN, id)
 	contract.Assertf(err == nil, "could not create provider reference with URN %s and ID %s", result.State.URN, id)
 	d.providers[req.String()] = ref
 
@@ -639,12 +640,12 @@ func (d *defaultProviders) serve() {
 }
 
 // getDefaultProviderRef fetches the provider reference for the default provider for a particular package.
-func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) (providers.Reference, error) {
+func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) (sdkproviders.Reference, error) {
 	response := make(chan defaultProviderResponse)
 	select {
 	case d.requests <- defaultProviderRequest{req: req, response: response}:
 	case <-d.cancel:
-		return providers.Reference{}, context.Canceled
+		return sdkproviders.Reference{}, context.Canceled
 	}
 	res := <-response
 	return res.ref, res.err
@@ -759,7 +760,7 @@ func newResourceMonitor(
 	// Create a new default provider manager.
 	d := &defaultProviders{
 		defaultProviderInfo: src.defaultProviderInfo,
-		providers:           make(map[string]providers.Reference),
+		providers:           make(map[string]sdkproviders.Reference),
 		config:              src.runinfo.Target,
 		requests:            make(chan defaultProviderRequest),
 		providerRegChan:     regChan,
@@ -908,18 +909,18 @@ func sourceEvalServeOptions(ctx *plugin.Context, tracingSpan opentracing.Span, l
 // to the default provider for the indicated package.
 func (rm *resmon) getProviderReference(defaultProviders *defaultProviders, req providers.ProviderRequest,
 	rawProviderRef string,
-) (providers.Reference, error) {
+) (sdkproviders.Reference, error) {
 	if rawProviderRef != "" {
-		ref, err := providers.ParseReference(rawProviderRef)
+		ref, err := sdkproviders.ParseReference(rawProviderRef)
 		if err != nil {
-			return providers.Reference{}, fmt.Errorf("could not parse provider reference: %w", err)
+			return sdkproviders.Reference{}, fmt.Errorf("could not parse provider reference: %w", err)
 		}
 		return ref, nil
 	}
 
 	ref, err := defaultProviders.getDefaultProviderRef(req)
 	if err != nil {
-		return providers.Reference{}, err
+		return sdkproviders.Reference{}, err
 	}
 	return ref, nil
 }
@@ -935,7 +936,7 @@ func (rm *resmon) getProviderFromSource(
 	providerRef, err := rm.getProviderReference(defaultProviders, req, rawProviderRef)
 	if err != nil {
 		return nil, fmt.Errorf("getProviderFromSource: %w", err)
-	} else if providers.IsDenyDefaultsProvider(providerRef) {
+	} else if sdkproviders.IsDenyDefaultsProvider(providerRef) {
 		msg := diag.GetDefaultProviderDenied("Invoke").Message
 		return nil, fmt.Errorf(msg, req.Package(), token)
 	}
@@ -1193,7 +1194,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	var providerReq providers.ProviderRequest
 	var rawProviderRef string
 	var err error
-	if providers.IsProviderType(tokens.Type(tok)) {
+	if sdkproviders.IsProviderType(tokens.Type(tok)) {
 		parts := strings.Split(tok.Name().String(), "/")
 		if len(parts) != 2 {
 			return nil, fmt.Errorf("invalid provider method token %v", tok)
@@ -1379,7 +1380,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	}
 
 	provider := req.GetProvider()
-	if !providers.IsProviderType(t) && provider == "" {
+	if !sdkproviders.IsProviderType(t) && provider == "" {
 		providerReq, err := parseProviderRequest(
 			t.Package(), req.GetVersion(),
 			req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
@@ -1399,7 +1400,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		ref, provErr := rm.defaultProviders.getDefaultProviderRef(providerReq)
 		if provErr != nil {
 			return nil, provErr
-		} else if providers.IsDenyDefaultsProvider(ref) {
+		} else if sdkproviders.IsDenyDefaultsProvider(ref) {
 			msg := diag.GetDefaultProviderDenied("Read").Message
 			return nil, fmt.Errorf(msg, req.GetType(), t)
 		}
@@ -2281,10 +2282,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}()
 
-	var providerRef providers.Reference
+	var providerRef sdkproviders.Reference
 	var providerRefs map[string]string
 
-	if custom && !providers.IsProviderType(t) || remote {
+	if custom && !sdkproviders.IsProviderType(t) || remote {
 		providerReq, err := parseProviderRequest(
 			t.Package(), opts.GetVersion(),
 			opts.GetPluginDownloadUrl(), opts.GetPluginChecksums(), nil)
@@ -2389,7 +2390,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		rawPropertyDependencies[key] = deps.ToSlice()
 	}
 
-	if providers.IsProviderType(t) {
+	if sdkproviders.IsProviderType(t) {
 		if opts.GetVersion() != "" {
 			version, err := semver.Parse(opts.GetVersion())
 			if err != nil {
@@ -2427,7 +2428,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 		// Make sure that an explicit provider which doesn't specify its plugin gets the
 		// same plugin as the default provider for the package.
-		defaultProvider, ok := rm.defaultProviders.defaultProviderInfo[providers.GetProviderPackage(t)]
+		defaultProvider, ok := rm.defaultProviders.defaultProviderInfo[sdkproviders.GetProviderPackage(t)]
 		if ok && opts.GetVersion() == "" && opts.GetPluginDownloadUrl() == "" {
 			if defaultProvider.Version != nil {
 				providers.SetProviderVersion(props, defaultProvider.Version)
@@ -2520,7 +2521,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	var outputDeps map[string]*pulumirpc.RegisterResourceResponse_PropertyDependencies
 	if remote {
 		provider, ok := rm.providers.GetProvider(providerRef)
-		if providers.IsDenyDefaultsProvider(providerRef) {
+		if sdkproviders.IsDenyDefaultsProvider(providerRef) {
 			msg := diag.GetDefaultProviderDenied("").Message
 			return nil, fmt.Errorf(msg, t.Package().String(), t.String())
 		}
@@ -2817,7 +2818,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	// Assert that we never leak the unconfigured provider ID to the language host.
 	contract.Assertf(
-		!providers.IsProviderType(result.State.Type) || result.State.ID != providers.UnconfiguredID,
+		!sdkproviders.IsProviderType(result.State.Type) || result.State.ID != providers.UnconfiguredID,
 		"provider resource %s has unconfigured ID", result.State.URN)
 
 	reason := pulumirpc.Result_SUCCESS

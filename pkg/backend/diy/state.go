@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 
 	"gocloud.dev/blob"
@@ -128,23 +129,31 @@ func (b *diyBackend) getSnapshot(ctx context.Context,
 	}
 
 	// Materialize an actual snapshot object.
-	snapshot, err := stack.DeserializeCheckpoint(ctx, secretsProvider, checkpoint)
+	snap, err := stack.DeserializeCheckpoint(ctx, secretsProvider, checkpoint)
 	if err != nil {
 		return nil, err
 	}
 
 	// Ensure the snapshot passes verification before returning it, to catch bugs early.
 	if !backend.DisableIntegrityChecking {
-		if err := snapshot.VerifyIntegrity(); err != nil {
-			if sie, ok := deploy.AsSnapshotIntegrityError(err); ok {
-				return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", sie.ForRead(snapshot))
+		if err := snap.VerifyIntegrity(); err != nil {
+			if sie, ok := snapshot.AsSnapshotIntegrityError(err); ok {
+				var metadata *apitype.SnapshotIntegrityErrorMetadataV1
+				if snap.Metadata.IntegrityErrorMetadata != nil {
+					metadata = &apitype.SnapshotIntegrityErrorMetadataV1{
+						Version: snap.Metadata.IntegrityErrorMetadata.Version,
+						Command: snap.Metadata.IntegrityErrorMetadata.Command,
+						Error:   snap.Metadata.IntegrityErrorMetadata.Error,
+					}
+				}
+				return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", sie.ForReadWithMetadata(metadata))
 			}
 
 			return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", err)
 		}
 	}
 
-	return snapshot, nil
+	return snap, nil
 }
 
 // getCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace,
@@ -257,10 +266,12 @@ func (b *diyBackend) saveCheckpoint(
 
 func (b *diyBackend) saveStack(
 	ctx context.Context,
-	ref *diyBackendReference, snap *deploy.Snapshot,
+	ref *diyBackendReference,
+	deployment apitype.TypedDeployment,
 ) (string, error) {
 	contract.Requiref(ref != nil, "ref", "ref was nil")
-	chk, err := stack.SerializeCheckpoint(ref.FullyQualifiedName(), snap, false /* showSecrets */)
+	chk, err := stack.DeploymentV3ToCheckpoint(
+		ref.FullyQualifiedName(), deployment.Deployment, deployment.Version, deployment.Features)
 	if err != nil {
 		return "", fmt.Errorf("serializing checkpoint: %w", err)
 	}
@@ -274,7 +285,7 @@ func (b *diyBackend) saveStack(
 		// Finally, *after* writing the checkpoint, check the integrity.  This is done afterwards so that we write
 		// out the checkpoint file since it may contain resource state updates.  But we will warn the user that the
 		// file is already written and might be bad.
-		if verifyerr := snap.VerifyIntegrity(); verifyerr != nil {
+		if verifyerr := snapshot.VerifyIntegrity(deployment.Deployment); verifyerr != nil {
 			return "", fmt.Errorf(
 				"%s: snapshot integrity failure; it was already written, but is invalid (backup available at %s): %w",
 				file, backup, verifyerr)

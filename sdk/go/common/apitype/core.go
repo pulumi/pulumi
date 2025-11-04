@@ -29,13 +29,17 @@
 package apitype
 
 import (
+	"crypto/sha256"
 	_ "embed" // for embedded schemas
 	"encoding/json"
+	"fmt"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 //go:embed deployments.json
@@ -161,6 +165,102 @@ type DeploymentV3 struct {
 	Metadata SnapshotMetadataV1 `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 }
 
+func (snap *DeploymentV3) ToUntypedDeployment(version int, features []string) (*UntypedDeployment, error) {
+	if snap == nil {
+		return &UntypedDeployment{}, nil
+	}
+	jsonDeployment, err := json.Marshal(snap)
+	if err != nil {
+		return &UntypedDeployment{}, err
+	}
+	return &UntypedDeployment{
+		Version:    version,
+		Features:   features,
+		Deployment: jsonDeployment,
+	}, nil
+}
+
+// NormalizeURNReferences fixes up all URN references in a snapshot to use the new URNs instead of potentially-aliased
+// URNs.  This will affect resources that are "old", and which would be expected to be updated to refer to the new names
+// later in the deployment.  But until they are, we still want to ensure that any serialization of the snapshot uses URN
+// references which do not need to be indirected through any alias lookups, and which instead refer directly to the URN
+// of a resource in the resources map.
+func (snap *DeploymentV3) NormalizeURNReferences() (*DeploymentV3, error) {
+	if snap == nil {
+		return nil, nil
+	}
+	aliased := make(map[resource.URN]resource.URN)
+	for _, res := range snap.Resources {
+		for _, alias := range res.Aliases {
+			// For ease of implementation, some SDKs may end up creating the same alias to the
+			// same resource multiple times.  That's fine, only error if we see the same alias,
+			// but it maps to *different* resources.
+			if otherURN, has := aliased[alias]; has && otherURN != res.URN {
+				return nil, fmt.Errorf("two resources ('%s' and '%s') have the same alias: '%s'", otherURN, res.URN, alias)
+			}
+			aliased[alias] = res.URN
+		}
+		// If our parent has changed URN, then we need to update our URN as well.
+		if parent, has := aliased[res.Parent]; has {
+			if parent != "" && parent.QualifiedType() != resource.RootStackType {
+				aliased[res.URN] = resource.NewURN(
+					res.URN.Stack(), res.URN.Project(),
+					parent.QualifiedType(), res.URN.Type(),
+					res.URN.Name())
+			}
+		}
+	}
+
+	fixURN := func(urn resource.URN) resource.URN {
+		if newURN, has := aliased[urn]; has {
+			// TODO: should this recur to see if newUrn is similarly aliased?
+			return newURN
+		}
+		return urn
+	}
+
+	fixProvider := func(provider string) string {
+		if provider == "" {
+			return provider
+		}
+		ref, err := providers.ParseReference(provider)
+		contract.AssertNoErrorf(err, "malformed provider reference: %s", provider)
+		newURN := fixURN(ref.URN())
+		ref, err = providers.NewReference(newURN, ref.ID())
+		contract.AssertNoErrorf(err, "could not create provider reference with URN %s and ID %s", newURN, ref.ID())
+		return ref.String()
+	}
+
+	for i := range snap.Resources {
+		res := &snap.Resources[i]
+
+		res.URN = fixURN(res.URN)
+		res.Parent = fixURN(res.Parent)
+		res.Provider = fixProvider(res.Provider)
+
+		// Rewrite the resource's dependencies.
+		for j, dep := range res.Dependencies {
+			res.Dependencies[j] = fixURN(dep)
+		}
+
+		// Rewrite the resource's property dependencies.
+		for key, deps := range res.PropertyDependencies {
+			for j, dep := range deps {
+				res.PropertyDependencies[key][j] = fixURN(dep)
+			}
+		}
+
+		res.DeletedWith = fixURN(res.DeletedWith)
+		res.ViewOf = fixURN(res.ViewOf)
+		// Remove all "Aliases" from the state. Once URN normalisation is done we don't want to write aliases out.
+		if len(res.Aliases) > 0 {
+			snap.Resources[i].Aliases = nil
+		}
+	}
+
+	return snap, nil
+}
+
 type SecretsProvidersV1 struct {
 	Type  string          `json:"type"`
 	State json.RawMessage `json:"state,omitempty"`
@@ -230,6 +330,18 @@ type UntypedDeployment struct {
 	// permit round-tripping of stack contents when an older client is talking to a newer server.  If we unmarshaled
 	// the contents, and then remarshaled them, we could end up losing important information.
 	Deployment json.RawMessage `json:"deployment,omitempty"`
+}
+
+// TypedDeployment contains an inner, typed deployment structure.
+type TypedDeployment struct {
+	// Version indicates the schema of the encoded deployment.
+	Version int `json:"version,omitempty"`
+	// Features contains an optional list of features used by this deployment. The CLI will error when reading a
+	// Deployment that uses a feature that is not supported by that version of the CLI. This is only looked at
+	// when `Version` is 4 or greater.
+	Features []string `json:"features,omitempty"`
+	// The typed Pulumi deployment.
+	Deployment *DeploymentV3 `json:"deployment,omitempty"`
 }
 
 // ResourceV1 describes a Cloud resource constructed by Pulumi.
@@ -400,6 +512,13 @@ type ManifestV1 struct {
 	Version string `json:"version" yaml:"version"`
 	// Plugins contains the binary version info of plug-ins used.
 	Plugins []PluginInfoV1 `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+}
+
+func (m ManifestV1) NewMagic() string {
+	if m.Version == "" {
+		return ""
+	}
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(m.Version)))
 }
 
 // PluginInfoV1 captures the version and information about a plugin.

@@ -152,6 +152,29 @@ func SerializeCheckpoint(stack tokens.QName, snap *deploy.Snapshot,
 	}, nil
 }
 
+func DeploymentV3ToCheckpoint(
+	stack tokens.QName,
+	deployment *apitype.DeploymentV3,
+	version int,
+	features []string,
+) (*apitype.VersionedCheckpoint, error) {
+	chk := apitype.CheckpointV3{
+		Stack:  stack,
+		Latest: deployment,
+	}
+
+	b, err := encoding.JSON.Marshal(chk)
+	if err != nil {
+		return nil, fmt.Errorf("marshalling checkpoint: %w", err)
+	}
+
+	return &apitype.VersionedCheckpoint{
+		Version:    version,
+		Features:   features,
+		Checkpoint: json.RawMessage(b),
+	}, nil
+}
+
 // DeserializeCheckpoint takes a serialized deployment record and returns its associated snapshot. Returns nil
 // if there have been no deployments performed on this checkpoint.
 func DeserializeCheckpoint(
