@@ -34,4 +34,7 @@ const (
 
 	// a randomly assigned archive type signature.
 	ArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7"
+
+	// The unique callback signature.
+	Callback = "ac2144317797f64bc24328bcead1cbdb"
 )

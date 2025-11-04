@@ -894,7 +894,7 @@ func TestDependsOnComponent(t *testing.T) {
 		state := ctx.makeResourceState("", "", res, nil, nil, nil, "", "", nil, nil)
 		state.resolve(ctx, nil, nil, name, "", &structpb.Struct{}, nil, false)
 
-		inputs, err := ctx.prepareResourceInputs(res, Map{}, "", opts, state, false, custom)
+		inputs, err := ctx.prepareResourceInputs(res, Map{}, "", opts, state, false, custom, nil)
 		require.NoError(t, err)
 
 		return res, inputs.deps

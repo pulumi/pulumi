@@ -43,6 +43,12 @@ builds:
   main: ./
   tool: ../../../../scripts/go-wrapper.sh
 - <<: *pulumibin
+  id: pulumi-resource-inline
+  binary: pulumi-resource-inline
+  dir: providers/pulumi-resource-inline
+  main: ./
+  tool: ../../scripts/go-wrapper.sh
+- <<: *pulumibin
   id: pulumi-display-wasm
   binary: pulumi-display
   dir: pkg

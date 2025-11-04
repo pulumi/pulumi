@@ -197,3 +197,35 @@ func TestConstructComponentConfigureProviderGo(t *testing.T) {
 	})
 	integration.ProgramTest(t, &opts)
 }
+
+// Tests inline provider in Go.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestInlineProviderGo(t *testing.T) {
+	var randomResult string
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("inline", "go"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			randomResult = stack.Outputs["random_result"].(string)
+			assert.NotEmpty(t, randomResult)
+		},
+		EditDirs: []integration.EditDir{{
+			Dir:      filepath.Join("inline", "go", "step1"),
+			Additive: true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				assert.Equal(t, randomResult, stack.Outputs["random_result"].(string))
+
+				// Ensure there are no diagnostic events other than debug.
+				for _, event := range stack.Events {
+					if event.DiagnosticEvent != nil {
+						assert.Equal(t, "debug", event.DiagnosticEvent.Severity,
+							"unexpected diagnostic event: %#v", event.DiagnosticEvent)
+					}
+				}
+			},
+		}},
+	})
+}

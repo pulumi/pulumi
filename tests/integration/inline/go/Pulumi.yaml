@@ -1,0 +1,3 @@
+name: inline_go
+description: A program that creates an inline provider in go
+runtime: go

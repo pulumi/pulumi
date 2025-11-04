@@ -538,6 +538,10 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 				Dependencies: dependencies,
 			})
 			return &output, nil
+		case resource.CallbackSig:
+			// TODO handle this for real
+			m := resource.NewProperty(obj)
+			return &m, nil
 		default:
 			return nil, fmt.Errorf("unrecognized signature '%v' in property map for %q", sig, key)
 		}

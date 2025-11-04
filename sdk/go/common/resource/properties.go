@@ -671,6 +671,9 @@ const ResourceReferenceSig = sig.ResourceReference
 // OutputValueSig is the unique output value signature.
 const OutputValueSig = sig.OutputValue
 
+// CallbackSig is the unique callback signature.
+const CallbackSig = sig.Callback
+
 // IsInternalPropertyKey returns true if the given property key is an internal key that should not be displayed to
 // users.
 func IsInternalPropertyKey(key PropertyKey) bool {

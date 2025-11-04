@@ -883,6 +883,9 @@ func DeserializePropertyValue(v any, dec config.Decrypter,
 						return resource.MakeCustomResourceReference(urn, resource.ID(id), packageVersion), nil
 					}
 					return resource.MakeComponentResourceReference(urn, packageVersion), nil
+				case resource.CallbackSig:
+					// TODO handle for real
+					return resource.NewProperty(obj), nil
 				default:
 					return resource.PropertyValue{}, fmt.Errorf("unrecognized signature '%v' in property map", sig)
 				}

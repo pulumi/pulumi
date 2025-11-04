@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/sig"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -41,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/inline"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"golang.org/x/exp/maps"
 	"google.golang.org/grpc"
@@ -570,28 +572,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 		return rpcRes, nil
 	}
 
-	err := func() error {
-		ctx.state.callbacksLock.Lock()
-		defer ctx.state.callbacksLock.Unlock()
-		if ctx.state.callbacks == nil {
-			c, err := newCallbackServer()
-			if err != nil {
-				return fmt.Errorf("creating callback server: %w", err)
-			}
-			ctx.state.callbacks = c
-		}
-		return nil
-	}()
-	if err != nil {
-		return nil, err
-	}
-
-	cb, err := ctx.state.callbacks.RegisterCallback(callback)
-	if err != nil {
-		return nil, fmt.Errorf("registering callback: %w", err)
-	}
-
-	return cb, nil
+	return ctx.registerCallback(callback)
 }
 
 // registerTransform starts up a callback server if not already running and registers the given transform.
@@ -688,6 +669,322 @@ func (ctx *Context) registerInvokeTransform(t InvokeTransform) (*pulumirpc.Callb
 		return rpcRes, nil
 	}
 
+	return ctx.registerCallback(callback)
+}
+
+type inlineProvider struct {
+	plugin.UnimplementedProvider
+
+	provider inline.Provider
+}
+
+func newInlineProvider(p inline.Provider) plugin.Provider {
+	return &inlineProvider{
+		provider: p,
+	}
+}
+
+func newInlineProviderServer(p inline.Provider) pulumirpc.ResourceProviderServer {
+	server := plugin.NewProviderServer(newInlineProvider(p))
+	server.Configure(context.Background(), &pulumirpc.ConfigureRequest{
+		AcceptSecrets:   true,
+		AcceptResources: true,
+	})
+	return server
+}
+
+var _ plugin.Provider = (*inlineProvider)(nil)
+
+func (p *inlineProvider) Pkg() tokens.Package {
+	return "inline"
+}
+
+func (p *inlineProvider) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+	return p.provider.Diff(ctx, req)
+}
+
+func (p *inlineProvider) Create(ctx context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+	return p.provider.Create(ctx, req)
+}
+
+func (p *inlineProvider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+	return p.provider.Read(ctx, req)
+}
+
+func (p *inlineProvider) Update(ctx context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+	return p.provider.Update(ctx, req)
+}
+
+func (p *inlineProvider) Delete(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+	return p.provider.Delete(ctx, req)
+}
+
+func (ctx *Context) registerInlineProviderCreateCallback(
+	provider pulumirpc.ResourceProviderServer,
+) (*pulumirpc.Callback, error) {
+	// Wrap the transform in a callback function.
+	callback := func(innerCtx context.Context, req []byte) (proto.Message, error) {
+		var rpcReq pulumirpc.CreateRequest
+		if err := proto.Unmarshal(req, &rpcReq); err != nil {
+			return nil, fmt.Errorf("unmarshaling request: %w", err)
+		}
+		return provider.Create(innerCtx, &rpcReq)
+	}
+
+	return ctx.registerCallback(callback)
+}
+
+// func (ctx *Context) registerInlineProviderCreateCallback(
+// 	function func(context.Context, plugin.CreateRequest) (plugin.CreateResponse, error),
+// ) (*pulumirpc.Callback, error) {
+// 	// Wrap the transform in a callback function.
+// 	callback := func(innerCtx context.Context, req []byte) (proto.Message, error) {
+// 		var rpcReq pulumirpc.CreateRequest
+// 		if err := proto.Unmarshal(req, &rpcReq); err != nil {
+// 			return nil, fmt.Errorf("unmarshaling request: %w", err)
+// 		}
+
+// 		// Unmarshal the resource inputs.
+// 		inputs, err := plugin.UnmarshalProperties(rpcReq.Properties, plugin.MarshalOptions{
+// 			KeepUnknowns:     true,
+// 			KeepSecrets:      true,
+// 			KeepResources:    true,
+// 			KeepOutputValues: true,
+// 		})
+// 		if err != nil {
+// 			return nil, fmt.Errorf("unmarshaling inline provider inputs: %w", err)
+// 		}
+
+// 		innerReq := plugin.CreateRequest{
+// 			URN:        resource.URN(rpcReq.Urn),
+// 			Name:       rpcReq.Name,
+// 			Type:       tokens.Type(rpcReq.Type),
+// 			Properties: inputs,
+// 			Timeout:    rpcReq.Timeout,
+// 			Preview:    rpcReq.Preview,
+// 		}
+
+// 		res, err := function(innerCtx, innerReq)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		// Marshal the resource outputs.
+// 		outputs, err := plugin.MarshalProperties(res.Properties, plugin.MarshalOptions{
+// 			KeepUnknowns:     true,
+// 			KeepSecrets:      true,
+// 			KeepResources:    true,
+// 			KeepOutputValues: true,
+// 		})
+// 		if err != nil {
+// 			return nil, fmt.Errorf("marshaling inline provider outputs: %w", err)
+// 		}
+
+// 		// TODO handle res.Status
+
+// 		rpcRes := &pulumirpc.CreateResponse{
+// 			Id:         string(res.ID),
+// 			Properties: outputs,
+// 		}
+
+// 		return rpcRes, nil
+// 	}
+
+// 	return ctx.registerCallback(callback)
+// }
+
+func (ctx *Context) registerInlineProviderReadCallback(
+	provider pulumirpc.ResourceProviderServer,
+) (*pulumirpc.Callback, error) {
+	// Wrap the transform in a callback function.
+	callback := func(innerCtx context.Context, req []byte) (proto.Message, error) {
+		var rpcReq pulumirpc.ReadRequest
+		if err := proto.Unmarshal(req, &rpcReq); err != nil {
+			return nil, fmt.Errorf("unmarshaling request: %w", err)
+		}
+		return provider.Read(innerCtx, &rpcReq)
+	}
+
+	return ctx.registerCallback(callback)
+}
+
+// func (ctx *Context) registerInlineProviderReadCallback(
+// 	function func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error),
+// ) (*pulumirpc.Callback, error) {
+// 	// Wrap the transform in a callback function.
+// 	callback := func(innerCtx context.Context, req []byte) (proto.Message, error) {
+// 		var rpcReq pulumirpc.ReadRequest
+// 		if err := proto.Unmarshal(req, &rpcReq); err != nil {
+// 			return nil, fmt.Errorf("unmarshaling request: %w", err)
+// 		}
+
+// 		state, err := plugin.UnmarshalProperties(rpcReq.Properties, plugin.MarshalOptions{
+// 			KeepUnknowns:     true,
+// 			KeepSecrets:      true,
+// 			KeepResources:    true,
+// 			KeepOutputValues: true,
+// 		})
+// 		if err != nil {
+// 			return nil, fmt.Errorf("unmarshaling inline provider state: %w", err)
+// 		}
+
+// 		inputs, err := plugin.UnmarshalProperties(rpcReq.Inputs, plugin.MarshalOptions{
+// 			KeepUnknowns:     true,
+// 			KeepSecrets:      true,
+// 			KeepResources:    true,
+// 			KeepOutputValues: true,
+// 		})
+// 		if err != nil {
+// 			return nil, fmt.Errorf("unmarshaling inline provider inputs: %w", err)
+// 		}
+
+// 		innerReq := plugin.ReadRequest{
+// 			URN:    resource.URN(rpcReq.Urn),
+// 			Name:   rpcReq.Name,
+// 			Type:   tokens.Type(rpcReq.Type),
+// 			ID:     resource.ID(rpcReq.Id),
+// 			State:  state,
+// 			Inputs: inputs,
+// 		}
+
+// 		res, err := function(innerCtx, innerReq)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		outputs, err := plugin.MarshalProperties(res.Outputs, plugin.MarshalOptions{
+// 			KeepUnknowns:     true,
+// 			KeepSecrets:      true,
+// 			KeepResources:    true,
+// 			KeepOutputValues: true,
+// 		})
+// 		if err != nil {
+// 			return nil, fmt.Errorf("marshaling inline provider outputs: %w", err)
+// 		}
+
+// 		resInputs, err := plugin.MarshalProperties(res.Inputs, plugin.MarshalOptions{
+// 			KeepUnknowns:     true,
+// 			KeepSecrets:      true,
+// 			KeepResources:    true,
+// 			KeepOutputValues: true,
+// 		})
+// 		if err != nil {
+// 			return nil, fmt.Errorf("marshaling inline provider inputs: %w", err)
+// 		}
+
+// 		// TODO handle res.Status
+
+// 		rpcRes := &pulumirpc.ReadResponse{
+// 			Id:         string(res.ID),
+// 			Properties: outputs,
+// 			Inputs:     resInputs,
+// 		}
+
+// 		return rpcRes, nil
+// 	}
+
+// 	return ctx.registerCallback(callback)
+// }
+
+func (ctx *Context) registerInlineProviderDiffCallback(
+	provider pulumirpc.ResourceProviderServer,
+) (*pulumirpc.Callback, error) {
+	// Wrap the transform in a callback function.
+	callback := func(innerCtx context.Context, req []byte) (proto.Message, error) {
+		var rpcReq pulumirpc.DiffRequest
+		if err := proto.Unmarshal(req, &rpcReq); err != nil {
+			return nil, fmt.Errorf("unmarshaling request: %w", err)
+		}
+		return provider.Diff(innerCtx, &rpcReq)
+	}
+
+	return ctx.registerCallback(callback)
+}
+
+func (ctx *Context) registerInlineProviderUpdateCallback(
+	provider pulumirpc.ResourceProviderServer,
+) (*pulumirpc.Callback, error) {
+	// Wrap the transform in a callback function.
+	callback := func(innerCtx context.Context, req []byte) (proto.Message, error) {
+		var rpcReq pulumirpc.UpdateRequest
+		if err := proto.Unmarshal(req, &rpcReq); err != nil {
+			return nil, fmt.Errorf("unmarshaling request: %w", err)
+		}
+		return provider.Update(innerCtx, &rpcReq)
+	}
+
+	return ctx.registerCallback(callback)
+}
+
+func (ctx *Context) registerInlineProviderDeleteCallback(
+	provider pulumirpc.ResourceProviderServer,
+) (*pulumirpc.Callback, error) {
+	// Wrap the transform in a callback function.
+	callback := func(innerCtx context.Context, req []byte) (proto.Message, error) {
+		var rpcReq pulumirpc.DeleteRequest
+		if err := proto.Unmarshal(req, &rpcReq); err != nil {
+			return nil, fmt.Errorf("unmarshaling request: %w", err)
+		}
+		return provider.Delete(innerCtx, &rpcReq)
+	}
+
+	return ctx.registerCallback(callback)
+}
+
+// func (ctx *Context) registerInlineProviderDeleteCallback(
+// 	function func(context.Context, plugin.DeleteRequest) (plugin.DeleteResponse, error),
+// ) (*pulumirpc.Callback, error) {
+// 	// Wrap the transform in a callback function.
+// 	callback := func(innerCtx context.Context, req []byte) (proto.Message, error) {
+// 		var rpcReq pulumirpc.DeleteRequest
+// 		if err := proto.Unmarshal(req, &rpcReq); err != nil {
+// 			return nil, fmt.Errorf("unmarshaling request: %w", err)
+// 		}
+
+// 		properties, err := plugin.UnmarshalProperties(rpcReq.Properties, plugin.MarshalOptions{
+// 			KeepUnknowns:     true,
+// 			KeepSecrets:      true,
+// 			KeepResources:    true,
+// 			KeepOutputValues: true,
+// 		})
+// 		if err != nil {
+// 			return nil, fmt.Errorf("unmarshaling inline provider properties: %w", err)
+// 		}
+
+// 		oldInputs, err := plugin.UnmarshalProperties(rpcReq.OldInputs, plugin.MarshalOptions{
+// 			KeepUnknowns:     true,
+// 			KeepSecrets:      true,
+// 			KeepResources:    true,
+// 			KeepOutputValues: true,
+// 		})
+// 		if err != nil {
+// 			return nil, fmt.Errorf("unmarshaling inline provider old inputs: %w", err)
+// 		}
+
+// 		innerReq := plugin.DeleteRequest{
+// 			URN:     resource.URN(rpcReq.Urn),
+// 			Name:    rpcReq.Name,
+// 			Type:    tokens.Type(rpcReq.Type),
+// 			ID:      resource.ID(rpcReq.Id),
+// 			Inputs:  oldInputs,
+// 			Outputs: properties,
+// 		}
+
+// 		_, err = function(innerCtx, innerReq)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		// TODO handle res.Status
+
+// 		return &emptypb.Empty{}, nil
+// 	}
+
+// 	return ctx.registerCallback(callback)
+// }
+
+// registerTransform starts up a callback server if not already running and registers the given callback.
+func (ctx *Context) registerCallback(callback callbackFunction) (*pulumirpc.Callback, error) {
 	err := func() error {
 		ctx.state.callbacksLock.Lock()
 		defer ctx.state.callbacksLock.Unlock()
@@ -1393,7 +1690,8 @@ func (ctx *Context) readPackageResource(
 		}
 
 		// Prepare the inputs for an impending operation.
-		inputs, err = ctx.prepareResourceInputs(resource, props, t, options, res, false /* remote */, true /* custom */)
+		inputs, err = ctx.prepareResourceInputs(
+			resource, props, t, options, res, false /* remote */, true /* custom */, nil /* additionalProps */)
 		if err != nil {
 			return
 		}
@@ -1563,6 +1861,14 @@ func (ctx *Context) registerResourceHook(f ResourceHookFunction) (*pulumirpc.Cal
 func (ctx *Context) registerResource(
 	t, name string, props Input, resource Resource, remote bool, packageRef string, opts ...ResourceOption,
 ) error {
+	return ctx.registerResourceWithAdditionalProps(t, name, props, resource, remote, packageRef,
+		nil /* additionalProps */, opts...)
+}
+
+func (ctx *Context) registerResourceWithAdditionalProps(
+	t, name string, props Input, resource Resource, remote bool, packageRef string,
+	additionalProps resource.PropertyMap, opts ...ResourceOption,
+) error {
 	if t == "" {
 		return errors.New("resource type argument cannot be empty")
 	} else if name == "" {
@@ -1703,7 +2009,7 @@ func (ctx *Context) registerResource(
 		}
 
 		// Prepare the inputs for an impending operation.
-		inputs, err = ctx.prepareResourceInputs(resource, props, t, options, resState, remote, custom)
+		inputs, err = ctx.prepareResourceInputs(resource, props, t, options, resState, remote, custom, additionalProps)
 		if err != nil {
 			return
 		}
@@ -1859,6 +2165,86 @@ func (ctx *Context) RegisterPackageRemoteComponentResource(
 	t, name string, props Input, resource ComponentResource, packageRef string, opts ...ResourceOption,
 ) error {
 	return ctx.registerResource(t, name, props, resource, true /*remote*/, packageRef, opts...)
+}
+
+func (ctx *Context) RegisterInlineResource(
+	provider inline.Provider, name string, props Input, resource Resource, opts ...ResourceOption,
+) error {
+	module, typ := "index", "Resource"
+	if provider.Module != "" {
+		module = provider.Module
+	}
+	if provider.Type != "" {
+		typ = provider.Type
+	}
+	t := fmt.Sprintf("inline:%s:%s", module, typ)
+
+	additionalInputs, err := ctx.marshalInlineProvider(provider)
+	if err != nil {
+		return err
+	}
+
+	return ctx.registerResourceWithAdditionalProps(
+		t, name, props, resource, false /*remote*/, "" /* packageRe∂f */, additionalInputs, opts...)
+}
+
+func (ctx *Context) marshalInlineProvider(provider inline.Provider) (resource.PropertyMap, error) {
+	if provider.Create == nil {
+		return nil, errors.New("inline provider must have a Create function")
+	}
+
+	result := resource.PropertyMap{}
+
+	// TODO proper marshaling of callback values
+	insertCallbackValue := func(key resource.PropertyKey, cb *pulumirpc.Callback) {
+		result[key] = resource.NewObjectProperty(resource.PropertyMap{
+			sig.Key:  resource.NewProperty(sig.Callback),
+			"target": resource.NewProperty(cb.Target),
+			"token":  resource.NewProperty(cb.Token),
+		})
+	}
+
+	server := newInlineProviderServer(provider)
+
+	createCallback, err := ctx.registerInlineProviderCreateCallback(server)
+	if err != nil {
+		return nil, fmt.Errorf("registering inline provider create callback: %w", err)
+	}
+	insertCallbackValue("__provider_create", createCallback)
+
+	if provider.Read != nil {
+		readCallback, err := ctx.registerInlineProviderReadCallback(server)
+		if err != nil {
+			return nil, fmt.Errorf("registering inline provider read callback: %w", err)
+		}
+		insertCallbackValue("__provider_read", readCallback)
+	}
+
+	if provider.Diff != nil {
+		diffCallback, err := ctx.registerInlineProviderDiffCallback(server)
+		if err != nil {
+			return nil, fmt.Errorf("registering inline provider diff callback: %w", err)
+		}
+		insertCallbackValue("__provider_diff", diffCallback)
+	}
+
+	if provider.Update != nil {
+		updateCallback, err := ctx.registerInlineProviderUpdateCallback(server)
+		if err != nil {
+			return nil, fmt.Errorf("registering inline provider update callback: %w", err)
+		}
+		insertCallbackValue("__provider_update", updateCallback)
+	}
+
+	if provider.Delete != nil {
+		deleteCallback, err := ctx.registerInlineProviderDeleteCallback(server)
+		if err != nil {
+			return nil, fmt.Errorf("registering inline provider delete callback: %w", err)
+		}
+		insertCallbackValue("__provider_delete", deleteCallback)
+	}
+
+	return result, nil
 }
 
 func (ctx *Context) RegisterPackage(
@@ -2419,7 +2805,7 @@ func (ctx *Context) mapAliases(aliases []Alias,
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.
 func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, opts *resourceOptions,
-	state *resourceState, remote, custom bool,
+	state *resourceState, remote, custom bool, additionalProps resource.PropertyMap,
 ) (*resourceInputs, error) {
 	// Get the parent and dependency URNs from the options.  If there wasn't an explicit parent, and a root stack resource
 	// exists, we will automatically parent to that.
@@ -2439,6 +2825,10 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 	})
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)
+	}
+
+	for k, v := range additionalProps {
+		resolvedProps[k] = v
 	}
 
 	// Marshal all properties for the RPC call.
