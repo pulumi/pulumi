@@ -1510,7 +1510,7 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 
 		mprops, err := plugin.MarshalProperties(props, mopts)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("marshaling transform properties: %w", err)
 		}
 
 		request, err := proto.Marshal(&pulumirpc.TransformRequest{
@@ -1522,7 +1522,7 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 			Options:    opts,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("marshaling request: %w", err)
+			return nil, nil, fmt.Errorf("marshaling transform request: %w", err)
 		}
 
 		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
@@ -1530,14 +1530,14 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 			Request: request,
 		})
 		if err != nil {
-			logging.V(5).Infof("Transform callback error: %v", err)
+			logging.V(5).Infof("transform callback error: %v", err)
 			return nil, nil, err
 		}
 
 		var response pulumirpc.TransformResponse
 		err = proto.Unmarshal(resp.Response, &response)
 		if err != nil {
-			return nil, nil, fmt.Errorf("unmarshaling response: %w", err)
+			return nil, nil, fmt.Errorf("unmarshaling transform response: %w", err)
 		}
 
 		newOpts := opts
@@ -1549,7 +1549,7 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 		if response.Properties != nil {
 			newProps, err = plugin.UnmarshalProperties(response.Properties, mopts)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, fmt.Errorf("unmarshalling transform properties: %w", err)
 			}
 		}
 
@@ -2121,7 +2121,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			WorkingDirectory:      rm.workingDirectory,
 		})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal properties: %w", err)
 	}
 
 	// Before we pass the props to the transform function we need to ensure that they correctly carry any dependency
@@ -2220,7 +2220,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return nil
 	}()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("collect resource transforms: %w", err)
 	}
 	// Lookup our parents transformations and add those to the list of transforms to run.
 	err = func() error {
@@ -2240,7 +2240,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return nil
 	}()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("collect parent transforms: %w", err)
 	}
 	// Then lock the stack transformations and collect all of those
 	func() {
@@ -2256,7 +2256,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	for _, transform := range transforms {
 		newProps, newOpts, err := transform(ctx, name, string(t), custom, parent, props, opts)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("invoke transform: %w", err)
 		}
 		props = newProps
 		opts = newOpts
@@ -2289,7 +2289,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			t.Package(), opts.GetVersion(),
 			opts.GetPluginDownloadUrl(), opts.GetPluginChecksums(), nil)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("parse provider request: %w", err)
 		}
 
 		packageRef := req.GetPackageRef()
