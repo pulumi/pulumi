@@ -62,10 +62,10 @@ Write clear, informative PR descriptions that help reviewers understand your cha
 
 The PR description should include:
 
-- **What**: A clear summary of what changes are being made (often the PR title is sufficient)
-- **Why**: The motivation, context, or problem being solved
-- **How**: Optionally a brief explanation of the approach taken (if not obvious). For detailed implementation explanations, consider adding comments in the code instead.
-- **References**: Links to related issues, RFCs, or previous PRs
+- What: A clear summary of what changes are being made (often the PR title is sufficient)
+- **Why: The motivation, context, or problem being solved. This is the most important part of the description.**
+- How: Optionally a brief explanation of the approach taken (if not obvious). For detailed implementation explanations, consider adding comments in the code instead.
+- References: Links to related issues, RFCs, or previous PRs
 
 For PR titles, follow the same guidelines as [changelog messages](#changelog-messages). Use the active imperative form and be descriptive about what the change accomplishes.
 
