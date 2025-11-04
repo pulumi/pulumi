@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/about
+  description: Include PULUMI_* environment variables in the `pulumi about` output
