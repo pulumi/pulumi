@@ -34,7 +34,6 @@ dev = [
     'pyright==1.1.404',
     'pytest~=8.4.0',
     'pytest-timeout',
-    'pytest-xdist',
     'types-pyyaml',
     'types-protobuf',
     'pytest-asyncio~=1.2.0',
