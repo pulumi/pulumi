@@ -81,6 +81,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -917,4 +918,39 @@ func isDevVersion(s semver.Version) bool {
 
 	devRegex := regexp.MustCompile(`\d*-g[0-9a-f]*$`)
 	return !s.Pre[0].IsNum && devRegex.MatchString(s.Pre[0].VersionStr)
+}
+
+func DeclareEnvironmentVariables(cmd *cobra.Command) {
+	cmd.PersistentFlags().VisitAll(exposeFlagAsEnvironmentVariable)
+	cmd.Flags().VisitAll(exposeFlagAsEnvironmentVariable)
+
+	for _, command := range cmd.Commands() {
+		DeclareEnvironmentVariables(command)
+	}
+}
+
+var seenVariables = map[string]declared.Value{}
+
+func exposeFlagAsEnvironmentVariable(f *pflag.Flag) {
+	if _, ok := seenVariables[f.Name]; ok {
+		return
+	}
+
+	name := "OPTION_" + strings.ToUpper(strings.ReplaceAll(f.Name, "-", "_"))
+	var env declared.Value
+
+	switch f.Value.Type() {
+	case "int", "int32":
+		env = declared.Int(name, "TODO")
+	case "bool":
+		env = declared.Bool(name, "TODO")
+	default:
+		env = declared.String(name, "TODO")
+	}
+
+	if value, present := env.Underlying(); present && !f.Changed {
+		f.Value.Set(value)
+	}
+
+	seenVariables[f.Name] = env
 }

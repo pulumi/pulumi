@@ -15,12 +15,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/blang/semver"
+	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -875,5 +877,18 @@ func TestDiffVersions(t *testing.T) {
 
 			require.Equal(t, c.minorDiff, minorDiff)
 		})
+	}
+}
+
+func TestDeclareEnvironmentVariables(t *testing.T) {
+	t.Parallel()
+
+	cmd, cleanup := NewPulumiCmd()
+	defer cleanup()
+
+	DeclareEnvironmentVariables(cmd)
+
+	for _, v := range declared.Variables() {
+		fmt.Println(v.Name(), v.Value.String())
 	}
 }
