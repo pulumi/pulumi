@@ -143,7 +143,7 @@ export class Stack {
             const eventsService = new EventsServer(onEvent);
             eventsServer.addService(eventsrpc.EventsService, eventsService);
             const port: number = await new Promise<number>((resolve, reject) => {
-                eventsServer!.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+                eventsServer.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
                     if (err) {
                         reject(err);
                     } else {
