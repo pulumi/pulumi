@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/journal"
+	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
@@ -57,6 +58,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -1642,15 +1644,24 @@ func (b *cloudBackend) runEngineAction(
 	// We only need a snapshot manager if we're doing an update.
 	var combinedManager *engine.CombinedManager
 	var snapshotManager *backend.SnapshotManager
+	var snapshotJournaler *backend.SnapshotJournaler
 	var validationErrs []error
+	journalPersister := &backend.ValidatingPersister{
+		ErrorFunc: func(err error) {
+			if err != nil {
+				validationErrs = append(validationErrs,
+					fmt.Errorf("journal snapshot validation error: %w", err))
+			}
+		},
+	}
 	if kind != apitype.PreviewUpdate && !dryRun {
 		// Note that we intentionally only accept version 1 of the journal here.  If we ever want to evolve the API,
 		// we can send a newer version than 1, and switch out the API completely on the server side, while the client
 		// will continue working with the non-journaling snapshotter. This will be slower but won't be a breaking change
 		// for older clients.
 		if journalVersion == 1 && env.EnableJournaling.Value() {
-			journal := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
-			journalManager, err := engine.NewJournalSnapshotManager(journal, u.Target.Snapshot, op.SecretsManager)
+			snapshotJournaler := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
+			journalManager, err := engine.NewJournalSnapshotManager(snapshotJournaler, u.Target.Snapshot, op.SecretsManager)
 			if err != nil {
 				validationErrs = append(validationErrs, err)
 			}
@@ -1661,9 +1672,18 @@ func (b *cloudBackend) runEngineAction(
 			}
 		} else {
 			persister := b.newSnapshotPersister(ctx, update, tokenSource)
+			snapshotJournaler, err = backend.NewSnapshotJournaler(
+				ctx, journalPersister, op.SecretsManager, backend_secrets.DefaultProvider, u.Target.Snapshot)
+			if err != nil {
+				validationErrs = append(validationErrs, err)
+			}
+			journalManager, err := engine.NewJournalSnapshotManager(snapshotJournaler, u.Target.Snapshot, op.SecretsManager)
+			if err != nil {
+				validationErrs = append(validationErrs, err)
+			}
 			snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
 			combinedManager = &engine.CombinedManager{
-				Managers:          []engine.SnapshotManager{snapshotManager},
+				Managers:          []engine.SnapshotManager{snapshotManager, journalManager},
 				CollectErrorsOnly: []bool{false, true},
 			}
 		}
@@ -1678,13 +1698,23 @@ func (b *cloudBackend) runEngineAction(
 		Events:        engineEvents,
 		BackendClient: httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
 		FinalizeUpdateFunc: func() {
-			if snapshotManager == nil {
+			if snapshotManager == nil || journalPersister == nil {
 				return
 			}
 			err := errors.Join(validationErrs...)
 			err = errors.Join(err, combinedManager.Close())
 			err = errors.Join(err, errors.Join(combinedManager.Errors()...))
 			snapshotManagerClosed = true
+			deployment, snapErr := snapshotManager.Deployment()
+			if snapErr != nil {
+				err = errors.Join(err, fmt.Errorf("retrieving deployment for final snapshot: %w", snapErr))
+			}
+			err = errors.Join(err, snapshot.AssertEqual(deployment.Deployment, journalPersister.Snap))
+			if snapshotJournaler != nil {
+				for _, e := range snapshotJournaler.Errors() {
+					err = errors.Join(err, e)
+				}
+			}
 			if err != nil {
 				engineEvents <- engine.NewEvent(engine.ErrorEventPayload{
 					Error: fmt.Sprintf("snapshot mismatch: %s", err),

@@ -16,6 +16,7 @@ package engine
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 )
@@ -27,6 +28,14 @@ type CombinedManager struct {
 	Managers          []SnapshotManager
 	CollectErrorsOnly []bool
 	errors            []error
+	errorMutex        sync.Mutex
+}
+
+func (c *CombinedManager) appendError(err error) {
+	c.errorMutex.Lock()
+	defer c.errorMutex.Unlock()
+
+	c.errors = append(c.errors, err)
 }
 
 func (c *CombinedManager) Write(base *deploy.Snapshot) error {
@@ -34,7 +43,7 @@ func (c *CombinedManager) Write(base *deploy.Snapshot) error {
 	for i, m := range c.Managers {
 		if err := m.Write(base); err != nil {
 			if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
-				c.errors = append(c.errors, err)
+				c.appendError(err)
 			} else {
 				errs = append(errs, err)
 			}
@@ -48,7 +57,7 @@ func (c *CombinedManager) RebuiltBaseState() error {
 	for i, m := range c.Managers {
 		if err := m.RebuiltBaseState(); err != nil {
 			if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
-				c.errors = append(c.errors, err)
+				c.appendError(err)
 			} else {
 				errs = append(errs, err)
 			}
@@ -66,7 +75,7 @@ func (c *CombinedManager) BeginMutation(step deploy.Step) (SnapshotMutation, err
 		mutation, err := m.BeginMutation(step)
 		if err != nil {
 			if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
-				c.errors = append(c.errors, err)
+				c.appendError(err)
 			} else {
 				errs = append(errs, err)
 			}
@@ -87,7 +96,7 @@ func (c *CombinedManager) RegisterResourceOutputs(step deploy.Step) error {
 		err := m.RegisterResourceOutputs(step)
 		if err != nil {
 			if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
-				c.errors = append(c.errors, err)
+				c.appendError(err)
 			} else {
 				errs = append(errs, err)
 			}
@@ -102,7 +111,7 @@ func (c *CombinedManager) Close() error {
 		err := m.Close()
 		if err != nil {
 			if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
-				c.errors = append(c.errors, err)
+				c.appendError(err)
 			} else {
 				errs = append(errs, err)
 			}
@@ -112,6 +121,8 @@ func (c *CombinedManager) Close() error {
 }
 
 func (c *CombinedManager) Errors() []error {
+	c.errorMutex.Lock()
+	defer c.errorMutex.Unlock()
 	return c.errors
 }
 
@@ -126,7 +137,7 @@ func (c *CombinedMutation) End(step deploy.Step, success bool) error {
 	for i, m := range c.Mutations {
 		err := m.End(step, success)
 		if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
-			c.manager.errors = append(c.manager.errors, err)
+			c.manager.appendError(err)
 		} else {
 			errs = append(errs, err)
 		}
