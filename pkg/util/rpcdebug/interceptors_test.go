@@ -16,9 +16,11 @@ package rpcdebug
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -66,9 +68,37 @@ func TestClientInterceptorCatchesErrors(t *testing.T) {
 	log, err := os.ReadFile(logFile)
 	require.NoError(t, err)
 
-	assert.JSONEq(t, `{
-		"method": "/pulumirpc.ResourceProvider/Configure",
-		"request": {"variables": {"x": "y"}},
-		"errors": ["oops"]
-	}`, string(log))
+	logContents := string(log)
+
+	entries := strings.Split(logContents, "\n")
+
+	var requestLog debugInterceptorLogEntry
+	var requestLogData map[string]map[string]string
+	err = json.Unmarshal([]byte(entries[0]), &requestLog)
+	require.NoError(t, err)
+	err = json.Unmarshal(requestLog.Request, &requestLogData)
+	require.NoError(t, err)
+
+	var responseLog debugInterceptorLogEntry
+	var responseLogData map[string]map[string]string
+	err = json.Unmarshal([]byte(entries[1]), &responseLog)
+	require.NoError(t, err)
+	err = json.Unmarshal(responseLog.Request, &responseLogData)
+	require.NoError(t, err)
+
+	assert.Equal(t, "/pulumirpc.ResourceProvider/Configure", requestLog.Method)
+	assert.Equal(t, map[string]string{"x": "y"}, requestLogData["variables"])
+	assert.Equal(t, "request_started", requestLog.Progress)
+	assert.NotZero(t, requestLog.Timestamp, "request log should have a timestamp")
+	assert.Zero(t, requestLog.Duration, "request log should not have a duration")
+
+	assert.Equal(t, "/pulumirpc.ResourceProvider/Configure", responseLog.Method)
+	assert.Equal(t, map[string]string{"x": "y"}, responseLogData["variables"])
+	assert.Equal(t, "response_completed", responseLog.Progress)
+	assert.Equal(t, []string{"oops"}, responseLog.Errors)
+	assert.NotZero(t, responseLog.Timestamp, "response log should have a timestamp")
+	assert.NotZero(t, responseLog.Duration, "response log should have a duration")
+
+	assert.True(t, responseLog.Timestamp.After(requestLog.Timestamp),
+		"response log timestamp should be after request log timestamp")
 }
