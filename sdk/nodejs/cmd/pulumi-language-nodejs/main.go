@@ -2055,7 +2055,14 @@ func (host *nodeLanguageHost) Link(
 		if err != nil {
 			return nil, err
 		}
-		packageName, err := getNodeJSPkgName(pkgRef)
+		pkg, err := pkgRef.Definition()
+		if err != nil {
+			return nil, err
+		}
+		if err := pkg.ImportLanguages(map[string]schema.Language{"nodejs": codegen.Importer}); err != nil {
+			return nil, err
+		}
+		packageName, err := getNodeJSPkgName(pkg)
 		if err != nil {
 			return nil, err
 		}
@@ -2080,18 +2087,16 @@ func (host *nodeLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*
 	return &emptypb.Empty{}, nil
 }
 
-func getNodeJSPkgName(pkgRef schema.PackageReference) (string, error) {
-	info, err := pkgRef.Language("nodejs")
-	if err != nil {
-		return "", err
+func getNodeJSPkgName(pkg *schema.Package) (string, error) {
+	if info, ok := pkg.Language["go"]; ok {
+		if info, ok := info.(nodejs.NodePackageInfo); ok && info.PackageName != "" {
+			return info.PackageName, nil
+		}
 	}
 
-	if info, ok := info.(nodejs.NodePackageInfo); ok && info.PackageName != "" {
-		return info.PackageName, nil
+	if pkg.Namespace != "" {
+		return "@" + pkg.Namespace + "/" + pkg.Name, nil
 	}
 
-	if pkgRef.Namespace() != "" {
-		return "@" + pkgRef.Namespace() + "/" + pkgRef.Name(), nil
-	}
-	return "@pulumi/" + pkgRef.Name(), nil
+	return "@pulumi/" + pkg.Name, nil
 }

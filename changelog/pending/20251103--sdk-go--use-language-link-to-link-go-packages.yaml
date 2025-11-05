@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/go
+  description: Use Language.Link to link Go packages
