@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/go
-  description: Get event log over gRPC instead of trying to read it from a text file

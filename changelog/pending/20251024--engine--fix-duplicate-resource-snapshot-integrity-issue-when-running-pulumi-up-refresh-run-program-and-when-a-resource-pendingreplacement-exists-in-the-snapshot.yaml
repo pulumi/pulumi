@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix duplicate resource snapshot integrity issue, when running `pulumi up --refresh --run-program` and when a resource `PendingReplacement` exists in the snapshot

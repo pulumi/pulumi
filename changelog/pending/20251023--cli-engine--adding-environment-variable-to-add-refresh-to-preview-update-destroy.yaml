@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/engine
-  description: Add environment variable to add --refresh to preview,update,destroy
