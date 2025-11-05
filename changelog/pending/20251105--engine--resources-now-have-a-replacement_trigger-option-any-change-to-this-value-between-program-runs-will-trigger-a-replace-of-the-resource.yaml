@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: engine
-  description: Resources now have a `replacement_trigger` option. Any change to this value between program runs will trigger a replace of the resource.
+  description: Add a `replacement_trigger` resource option. Any change to this value between program runs will trigger a replace of the resource
