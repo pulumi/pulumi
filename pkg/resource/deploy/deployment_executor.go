@@ -468,7 +468,9 @@ func (ex *deploymentExecutor) performPostSteps(
 		ex.stepExec.SignalCompletion()
 		signaled = true
 		ex.stepExec.WaitForCompletion()
-		ex.rebuildBaseState(resourceToStep)
+		if len(resourceToStep) > 0 {
+			ex.rebuildBaseState(resourceToStep)
+		}
 	} else {
 		// At this point we have generated the set of resources above that we would normally want to
 		// delete.  However, if the user provided -target's we will only actually delete the specific
