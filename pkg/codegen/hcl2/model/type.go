@@ -33,8 +33,28 @@ const (
 	SafeConversion   ConversionKind = 2
 )
 
+func (k ConversionKind) GoString() string {
+	switch k {
+	case NoConversion:
+		return "model.NoConversion"
+	case UnsafeConversion:
+		return "model.UnsafeConversion"
+	case SafeConversion:
+		return "model.SafeConversion"
+	default:
+		return fmt.Sprintf("model.ConversionKind(%d)", int(k))
+	}
+}
+
 func (k ConversionKind) Exists() bool {
-	return k > NoConversion && k <= SafeConversion
+	switch k {
+	case UnsafeConversion, SafeConversion:
+		return true
+	case NoConversion:
+		return false
+	default:
+		panic("invalid conversion kind " + k.GoString())
+	}
 }
 
 // Type represents a datatype in the Pulumi Schema. Types created by this package are identical if they are
@@ -146,6 +166,11 @@ func conversionFrom(dest, src Type, unifying bool, seen map[Type]struct{},
 	if cache != nil {
 		cache.Store(src, cacheEntry{kind, diags})
 	}
+
+	contract.Assertf(
+		kind.Exists() || diags != nil,
+		"%T:%v => %T:%v returns no explanation for %#v", dest, dest, src, src, kind,
+	)
 	return kind, diags
 }
 

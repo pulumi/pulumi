@@ -127,8 +127,8 @@ func (t *MapType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}
 			conversionKind := SafeConversion
 			var diags lazyDiagnostics
 			for _, src := range src.Properties {
-				if ck, _ := t.ElementType.conversionFrom(src, unifying, seen); ck < conversionKind {
-					conversionKind = ck
+				if ck, why := t.ElementType.conversionFrom(src, unifying, seen); ck < conversionKind {
+					conversionKind, diags = ck, why
 					if conversionKind == NoConversion {
 						break
 					}

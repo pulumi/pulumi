@@ -1646,19 +1646,39 @@ func liftValueToOutput(value model.Expression) (model.Expression, model.Type) {
 	switch expr := value.(type) {
 	case *model.TupleConsExpression:
 		// if the value is a tuple, then lift each element to Output[T] as well
+		// Create a new tuple instead of mutating the original
+		liftedExprs := make([]model.Expression, len(expr.Expressions))
 		for i, elem := range expr.Expressions {
 			lifted, _ := liftValueToOutput(elem)
-			expr.Expressions[i] = lifted
+			liftedExprs[i] = lifted
 		}
+		newTuple := &model.TupleConsExpression{
+			Syntax:      expr.Syntax,
+			Tokens:      expr.Tokens,
+			Expressions: liftedExprs,
+		}
+		// Typecheck the new tuple to set its type
+		_ = newTuple.Typecheck(false)
+		value = newTuple
 	case *model.ObjectConsExpression:
 		// if the value is a map, then lift each value to Output[T] as well
+		// Create a new object instead of mutating the original
+		liftedItems := make([]model.ObjectConsItem, len(expr.Items))
 		for i, item := range expr.Items {
 			lifted, _ := liftValueToOutput(item.Value)
-			expr.Items[i] = model.ObjectConsItem{
+			liftedItems[i] = model.ObjectConsItem{
 				Key:   item.Key,
 				Value: lifted,
 			}
 		}
+		newObj := &model.ObjectConsExpression{
+			Syntax: expr.Syntax,
+			Tokens: expr.Tokens,
+			Items:  liftedItems,
+		}
+		// Typecheck the new object to set its type
+		_ = newObj.Typecheck(false)
+		value = newObj
 	}
 
 	return pcl.NewConvertCall(value, destType), destType
