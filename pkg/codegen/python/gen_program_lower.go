@@ -52,7 +52,14 @@ func (g *generator) parseProxyApply(parameters codegen.Set, args []model.Express
 		if !isParameterReference(parameters, then.Collection) {
 			return nil, false
 		}
-		then.Collection = arg
+		// Create a new IndexExpression instead of mutating the original
+		newIndex := &model.IndexExpression{
+			Collection: arg,
+			Key:        then.Key,
+		}
+		// Typecheck to set the type
+		_ = newIndex.Typecheck(false)
+		return newIndex, true
 	case *model.ScopeTraversalExpression:
 		if !isParameterReference(parameters, then) {
 			return nil, false
@@ -60,17 +67,31 @@ func (g *generator) parseProxyApply(parameters codegen.Set, args []model.Express
 
 		switch arg := arg.(type) {
 		case *model.RelativeTraversalExpression:
-			arg.Traversal = append(arg.Traversal, then.Traversal[1:]...)
-			arg.Parts = append(arg.Parts, then.Parts...)
+			// Create a new RelativeTraversalExpression instead of mutating
+			newTraversal := &model.RelativeTraversalExpression{
+				Source:    arg.Source,
+				Traversal: append(arg.Traversal, then.Traversal[1:]...),
+				Parts:     append(arg.Parts, then.Parts...),
+			}
+			// Typecheck to set the type
+			_ = newTraversal.Typecheck(false)
+			return newTraversal, true
 		case *model.ScopeTraversalExpression:
-			arg.Traversal = append(arg.Traversal, then.Traversal[1:]...)
-			arg.Parts = append(arg.Parts, then.Parts...)
+			// Create a new ScopeTraversalExpression instead of mutating
+			newTraversal := &model.ScopeTraversalExpression{
+				RootName:  arg.RootName,
+				Traversal: append(arg.Traversal, then.Traversal[1:]...),
+				Parts:     append(arg.Parts, then.Parts...),
+			}
+			// Typecheck to set the type
+			_ = newTraversal.Typecheck(false)
+			return newTraversal, true
 		}
 	default:
 		return nil, false
 	}
 
-	return arg, true
+	return nil, false
 }
 
 // lowerProxyApplies lowers certain calls to the apply intrinsic into proxied property accesses. Concretely, this
