@@ -1721,6 +1721,9 @@ func (host *pythonLanguageHost) Link(
 	cachedLoader := schema.NewCachedLoader(loader)
 
 	instructions := "You can import the SDK in your Python code with:\n\n"
+	if len(req.Packages) > 1 {
+		instructions = "You can import the SDKs in your Python code with:\n\n"
+	}
 
 	// Map of python package names to paths
 	packages := map[string]string{}

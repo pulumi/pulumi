@@ -985,7 +985,7 @@ func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
 		} else {
 			p, ok := g.packages[pkg]
 			if ok {
-				importBasePath = extractImportBasePath(p.Reference())
+				importBasePath = ExtractImportBasePath(p.Reference())
 			}
 		}
 
