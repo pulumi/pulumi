@@ -22,7 +22,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -41,8 +40,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	"gopkg.in/yaml.v2"
 )
 
@@ -235,16 +232,10 @@ type LinkPackageContext struct {
 // LinkPackage links a locally generated SDK to an existing project.
 // Currently Java is not supported and will print instructions for manual linking.
 func LinkPackage(ctx *LinkPackageContext) error {
-	switch ctx.Language {
-	case "dotnet":
-		return linkDotnetPackage(ctx)
-	case "java":
-		return printJavaLinkInstructions(ctx)
-	case "yaml":
+	if ctx.Language == "yaml" {
 		return nil // Nothing to do for YAML
-	default:
-		return linkPackage(ctx)
 	}
+	return linkPackage(ctx)
 }
 
 // linkPackage links a locally generated SDK into a project using `Language.Link`.
@@ -302,79 +293,6 @@ func linkPackage(ctx *LinkPackageContext) error {
 	}
 
 	fmt.Fprintln(ctx.Writer, instructions)
-	return nil
-}
-
-// csharpPackageName converts a package name to a C#-friendly package name.
-// for example "aws-api-gateway" becomes "AwsApiGateway".
-func csharpPackageName(pkgName string) string {
-	title := cases.Title(language.English)
-	parts := strings.Split(pkgName, "-")
-	for i, part := range parts {
-		parts[i] = title.String(part)
-	}
-	return strings.Join(parts, "")
-}
-
-// linkDotnetPackage links a locally generated SDK to an existing .NET project.
-// Also prints instructions for modifying the csproj file for DefaultItemExcludes cleanup.
-func linkDotnetPackage(ctx *LinkPackageContext) error {
-	fmt.Fprintf(ctx.Writer, "Successfully generated a .NET SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
-	fmt.Fprintf(ctx.Writer, "\n")
-
-	relOut, err := filepath.Rel(ctx.Root, ctx.Out)
-	if err != nil {
-		return err
-	}
-
-	cmd := exec.Command("dotnet", "add", "reference", relOut)
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("dotnet error: %w", err)
-	}
-
-	namespace := "Pulumi"
-	if ctx.Pkg.Namespace != "" {
-		namespace = ctx.Pkg.Namespace
-	}
-
-	fmt.Fprintf(ctx.Writer, "You also need to add the following to your .csproj file of the program:\n")
-	fmt.Fprintf(ctx.Writer, "\n")
-	fmt.Fprintf(ctx.Writer, "  <DefaultItemExcludes>$(DefaultItemExcludes);sdks/**/*.cs</DefaultItemExcludes>\n")
-	fmt.Fprintf(ctx.Writer, "\n")
-	fmt.Fprintf(ctx.Writer, "You can then use the SDK in your .NET code with:\n")
-	fmt.Fprintf(ctx.Writer, "\n")
-	fmt.Fprintf(ctx.Writer, "  using %s.%s;\n", csharpPackageName(namespace), csharpPackageName(ctx.Pkg.Name))
-	fmt.Fprintf(ctx.Writer, "\n")
-	return nil
-}
-
-// Prints instructions for linking a locally generated SDK to an existing Java
-// project, in the absence of us attempting to perform this linking automatically.
-func printJavaLinkInstructions(ctx *LinkPackageContext) error {
-	fmt.Fprintf(ctx.Writer, "Successfully generated a Java SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
-	fmt.Fprintf(ctx.Writer, "\n")
-	fmt.Fprintf(ctx.Writer, "To use this SDK in your Java project, complete the following steps:\n")
-	fmt.Fprintf(ctx.Writer, "1. Copy the contents of the generated SDK to your Java project:\n")
-	fmt.Fprintf(ctx.Writer, "     cp -r %s/src/* %s/src\n", ctx.Out, ctx.Root)
-	fmt.Fprintf(ctx.Writer, "\n")
-	fmt.Fprintf(ctx.Writer, "2. Add the SDK's dependencies to your Java project's build configuration.\n")
-	fmt.Fprintf(ctx.Writer, "   If you are using Maven, add the following dependencies to your pom.xml:\n")
-	fmt.Fprintf(ctx.Writer, "\n")
-	fmt.Fprintf(ctx.Writer, "     <dependencies>\n")
-	fmt.Fprintf(ctx.Writer, "         <dependency>\n")
-	fmt.Fprintf(ctx.Writer, "             <groupId>com.google.code.findbugs</groupId>\n")
-	fmt.Fprintf(ctx.Writer, "             <artifactId>jsr305</artifactId>\n")
-	fmt.Fprintf(ctx.Writer, "             <version>3.0.2</version>\n")
-	fmt.Fprintf(ctx.Writer, "         </dependency>\n")
-	fmt.Fprintf(ctx.Writer, "         <dependency>\n")
-	fmt.Fprintf(ctx.Writer, "             <groupId>com.google.code.gson</groupId>\n")
-	fmt.Fprintf(ctx.Writer, "             <artifactId>gson</artifactId>\n")
-	fmt.Fprintf(ctx.Writer, "             <version>2.8.9</version>\n")
-	fmt.Fprintf(ctx.Writer, "         </dependency>\n")
-	fmt.Fprintf(ctx.Writer, "     </dependencies>\n")
-	fmt.Fprintf(ctx.Writer, "\n")
 	return nil
 }
 
