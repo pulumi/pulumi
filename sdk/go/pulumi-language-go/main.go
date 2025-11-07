@@ -1527,9 +1527,9 @@ func (host *goLanguageHost) Link(
 	defer loader.Close()
 	cachedLoader := schema.NewCachedLoader(loader)
 
-	instructions := "Import the packages with:\n\n  import (\n"
-	if len(req.Packages) > 0 {
-		instructions = "Import the packages with:\n\n  import (\n"
+	instructions := "You can import the SDK in your Go code with:\n\n  import (\n"
+	if len(req.Packages) > 1 {
+		instructions = "You can import the SDKs in your Go code with:\n\n  import (\n"
 	}
 
 	// Map of moduleName to replacement paths
@@ -1605,7 +1605,7 @@ func (host *goLanguageHost) Link(
 		if !strings.HasPrefix(dep.Path, start) {
 			modules[modulePath] = start + dep.Path
 		}
-		instructions += fmt.Sprintf("    \"%s\"\n", modulePath)
+		instructions += fmt.Sprintf("    \"%s\"\n", codegen.ExtractImportBasePath(pkg.Reference()))
 	}
 	instructions += "  )\n"
 
