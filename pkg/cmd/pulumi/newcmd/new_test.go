@@ -1004,12 +1004,12 @@ func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 		ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
 			return func(yield func(apitype.TemplateMetadata, error) bool) {
 				if !yield(apitype.TemplateMetadata{
-					Name: "template-1", Description: ref("Describe 1"),
+					Name: "template-1", Description: ref("Describe 1"), Publisher: "Some org",
 				}, nil) {
 					return
 				}
 				if !yield(apitype.TemplateMetadata{
-					Name: "template-2", Description: ref("Describe 2"),
+					Name: "template-2", Description: ref("Describe 2"), RepoSlug: ref("some-org/repo"),
 				}, nil) {
 					return
 				}
@@ -1047,9 +1047,9 @@ func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 	assert.Contains(t, stdout.String(), `
 Available Templates:
 `)
-	// Check that our registry based templates are there with [Private Registry] prefix
-	assert.Contains(t, stdout.String(), "template-1                         [Private Registry] Describe 1")
-	assert.Contains(t, stdout.String(), "template-2                         [Private Registry] Describe 2")
+	// Check that our registry based templates are there with the appropriate disambiguation prefix.
+	assert.Contains(t, stdout.String(), "template-1                         [Some org] Describe 1")
+	assert.Contains(t, stdout.String(), "template-2                         [some-org/repo] Describe 2")
 
 	// Check that normal templates are there
 	assertTemplateContains(t, stdout.String(), `
