@@ -187,8 +187,17 @@ func (r registryTemplate) Name() string {
 }
 
 func (r registryTemplate) Description() string {
+	// To help with disambiguation we show the "origin" of templates. For VCS backed templates we show the repo slug.
+	// For registry backed templates we show the publisher (= organisation name).
+	//
+	// Note that the default templates from https://github.com/pulumi/templates are not included here, and these
+	// are shown without extra annotation.
 	var parts []string
-	parts = append(parts, "[Private Registry]")
+	if r.t.RepoSlug != nil {
+		parts = append(parts, fmt.Sprintf("[%s]", *r.t.RepoSlug))
+	} else if r.GetPublisher() != "" {
+		parts = append(parts, fmt.Sprintf("[%s]", r.GetPublisher()))
+	}
 	if r.t.Description != nil {
 		parts = append(parts, *r.t.Description)
 	}

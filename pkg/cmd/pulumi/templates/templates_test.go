@@ -72,7 +72,7 @@ func TestFilterOnName(t *testing.T) {
 		if disableRegistryResolve {
 			assert.Equal(t, "", template[0].Description())
 		} else {
-			assert.Equal(t, "[Private Registry]", template[0].Description())
+			assert.Equal(t, "[publisher1]", template[0].Description())
 		}
 		assert.Nil(t, template[0].Error())
 	}
@@ -701,6 +701,7 @@ func TestVCSBasedTemplateNameFilter(t *testing.T) {
 					Source:      "github",
 					Description: ref("This is from GH"),
 					Publisher:   "pulumi-org",
+					RepoSlug:    ref("gh-org/repo"),
 				}, nil) {
 					return
 				}
@@ -708,6 +709,7 @@ func TestVCSBasedTemplateNameFilter(t *testing.T) {
 					Name:      "gl-org/repo/name",
 					Source:    "gitlab",
 					Publisher: "pulumi-org",
+					RepoSlug:  ref("gl-org/repo"),
 				}, nil) {
 					return
 				}
@@ -740,9 +742,9 @@ func TestVCSBasedTemplateNameFilter(t *testing.T) {
 	require.Len(t, templates, 2)
 
 	assert.Equal(t, "target", templates[0].Name())
-	assert.Equal(t, "[Private Registry] This is from GH", templates[0].Description())
+	assert.Equal(t, "[gh-org/repo] This is from GH", templates[0].Description())
 	assert.Equal(t, "target", templates[1].Name())
-	assert.Equal(t, "[Private Registry] This is from the registry", templates[1].Description())
+	assert.Equal(t, "[pulumi-org] This is from the registry", templates[1].Description())
 }
 
 func templateRepository(repo workspace.TemplateRepository, err error) getWorkspaceTemplateFunc {
@@ -781,9 +783,11 @@ func TestRegistryTemplateResolution(t *testing.T) {
 					Publisher: "different-org",
 				}, nil)
 				yield(apitype.TemplateMetadata{
-					Name:      "gh-org/repo/target",
-					Source:    "github",
-					Publisher: "pulumi-org",
+					Name:        "gh-org/repo/target",
+					Source:      "github",
+					Publisher:   "pulumi-org",
+					RepoSlug:    ref("gh-org/repo"),
+					Description: ref("A template from VCS"),
 				}, nil)
 				yield(apitype.TemplateMetadata{
 					Name:        "whatever-template",
@@ -813,34 +817,35 @@ func TestRegistryTemplateResolution(t *testing.T) {
 			templateURL:  "registry://templates/private/pulumi_local/csharp-documented",
 			shouldMatch:  true,
 			expectedName: "csharp-documented",
-			description:  "A C# template",
+			description:  "[pulumi_local] A C# template",
 		},
 		{
 			name:         "registry URL with version",
 			templateURL:  "registry://templates/private/pulumi_local/csharp-documented@latest",
 			shouldMatch:  true,
 			expectedName: "csharp-documented",
-			description:  "A C# template",
+			description:  "[pulumi_local] A C# template",
 		},
 		{
 			name:         "partial URL format",
 			templateURL:  "private/pulumi_local/csharp-documented",
 			shouldMatch:  true,
 			expectedName: "csharp-documented",
-			description:  "A C# template",
+			description:  "[pulumi_local] A C# template",
 		},
 		{
 			name:         "partial URL with version",
 			templateURL:  "private/pulumi_local/csharp-documented@latest",
 			shouldMatch:  true,
 			expectedName: "csharp-documented",
-			description:  "A C# template",
+			description:  "[pulumi_local] A C# template",
 		},
 		{
 			name:         "VCS template display name matching",
 			templateURL:  "target",
 			shouldMatch:  true,
 			expectedName: "target",
+			description:  "[gh-org/repo] A template from VCS",
 		},
 		{
 			name:                "wrong resource type does not match",
@@ -853,7 +858,7 @@ func TestRegistryTemplateResolution(t *testing.T) {
 			templateURL:  "whatever-template",
 			shouldMatch:  true,
 			expectedName: "whatever-template",
-			description:  "A template with special chars",
+			description:  "[test-org] A template with special chars",
 		},
 		{
 			name:        "nonexistent template returns not found",
@@ -922,7 +927,7 @@ func TestRegistryTemplateResolution(t *testing.T) {
 				require.Len(t, templates, 1)
 				assert.Equal(t, tc.expectedName, templates[0].Name())
 				if tc.description != "" {
-					assert.Equal(t, "[Private Registry] "+tc.description, templates[0].Description())
+					assert.Equal(t, tc.description, templates[0].Description())
 				}
 			} else {
 				require.Error(t, err)
