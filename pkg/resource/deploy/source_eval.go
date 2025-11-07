@@ -149,11 +149,6 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 	// Keep track of any config keys that have secure values.
 	configSecretKeys := src.runinfo.Target.Config.SecureKeys()
 
-	configMap, err := src.runinfo.Target.Config.AsDecryptedPropertyMap(ctx, src.runinfo.Target.Decrypter)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert config to map: %w", err)
-	}
-
 	// First, fire up a resource monitor that will watch for and record resource creation.
 	regChan := make(chan *registerResourceEvent)
 	regOutChan := make(chan *registerResourceOutputsEvent)
@@ -199,7 +194,7 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
 	// and we will pump them through the channel.  If the Run call ultimately fails, we need to propagate the error.
-	iter.forkRun(config, configSecretKeys, configMap)
+	iter.forkRun(config, configSecretKeys)
 
 	// Finally, return the fresh iterator that the caller can use to take things from here.
 	return iter, nil
@@ -277,7 +272,6 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 func (iter *evalSourceIterator) forkRun(
 	config map[config.Key]string,
 	configSecretKeys []config.Key,
-	configPropertyMap resource.PropertyMap,
 ) {
 	// Fire up the goroutine to make the RPC invocation against the language runtime.  As this executes, calls
 	// to queue things up in the resource channel will occur, and we will serve them concurrently.
@@ -303,20 +297,19 @@ func (iter *evalSourceIterator) forkRun(
 
 			// Now run the actual program.
 			progerr, bail, err := langhost.Run(plugin.RunInfo{
-				MonitorAddress:    iter.mon.Address(),
-				Stack:             iter.src.runinfo.Target.Name.String(),
-				Project:           string(iter.src.runinfo.Proj.Name),
-				Pwd:               iter.src.runinfo.Pwd,
-				Args:              iter.src.runinfo.Args,
-				Config:            config,
-				ConfigSecretKeys:  configSecretKeys,
-				ConfigPropertyMap: configPropertyMap,
-				DryRun:            iter.src.opts.DryRun,
-				Parallel:          iter.src.opts.Parallel,
-				Organization:      string(iter.src.runinfo.Target.Organization),
-				Info:              programInfo,
-				LoaderAddress:     iter.loaderServer.Addr(),
-				AttachDebugger:    iter.src.plugctx.Host.AttachDebugger(plugin.DebugSpec{Type: plugin.DebugTypeProgram}),
+				MonitorAddress:   iter.mon.Address(),
+				Stack:            iter.src.runinfo.Target.Name.String(),
+				Project:          string(iter.src.runinfo.Proj.Name),
+				Pwd:              iter.src.runinfo.Pwd,
+				Args:             iter.src.runinfo.Args,
+				Config:           config,
+				ConfigSecretKeys: configSecretKeys,
+				DryRun:           iter.src.opts.DryRun,
+				Parallel:         iter.src.opts.Parallel,
+				Organization:     string(iter.src.runinfo.Target.Organization),
+				Info:             programInfo,
+				LoaderAddress:    iter.loaderServer.Addr(),
+				AttachDebugger:   iter.src.plugctx.Host.AttachDebugger(plugin.DebugSpec{Type: plugin.DebugTypeProgram}),
 			})
 
 			// Check if we were asked to Bail.  This a special random constant used for that
