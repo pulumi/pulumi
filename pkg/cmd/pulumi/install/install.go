@@ -20,6 +20,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
@@ -31,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/spf13/cobra"
 
@@ -120,9 +123,17 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 					// Cloud registry is linked to a backend, but we don't have
 					// one available in a plugin. Use the unauthenticated
 					// registry.
+
 					reg := unauthenticatedregistry.New(cmdutil.Diag(), env.Global())
 
-					if err := installPackagesFromProject(pctx, proj, cwd, reg); err != nil {
+					if err := walkLocalPackagesFromProject[workspace.BaseProject](pctx, proj, installPackageDependency(reg), nil,
+						func(path string) (workspace.BaseProject, error) {
+							p, err := workspace.LoadProject(path)
+							if err != nil {
+								return nil, err
+							}
+							return p, nil
+						}); err != nil {
 						return fmt.Errorf("installing `packages` from PulumiPlugin.yaml: %w", err)
 					}
 
@@ -138,7 +149,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			span := opentracing.SpanFromContext(ctx)
 			projinfo := &engine.Projinfo{Proj: proj, Root: root}
-			pwd, main, pctx, err := engine.ProjectInfoContext(
+			_, _, pctx, err := engine.ProjectInfoContext(
 				projinfo,
 				nil,
 				cmdutil.Diag(),
@@ -154,53 +165,26 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			defer pctx.Close()
 
-			// Process packages section from Pulumi.yaml. Do so before installing language-specific dependencies,
-			// so that the SDKs folder is present and references to it from package.json etc are valid.
-			if err := installPackagesFromProject(pctx, proj, root,
-				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global()),
-			); err != nil {
-				return fmt.Errorf("installing `packages` from Pulumi.yaml: %w", err)
-			}
+			registry := cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global())
 
-			// First make sure the language plugin is present.  We need this to load the required resource plugins.
-			// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-			runtime := proj.Runtime
-			programInfo := plugin.NewProgramInfo(pctx.Root, pwd, main, runtime.Options())
-			lang, err := pctx.Host.LanguageRuntime(runtime.Name(), programInfo)
-			if err != nil {
-				return fmt.Errorf("load language plugin %s: %w", runtime.Name(), err)
-			}
-
-			if !noDependencies {
-				err = pkgCmdUtil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
-					Info:                    programInfo,
-					UseLanguageVersionTools: useLanguageVersionTools,
-					IsPlugin:                false,
-				})
-				if err != nil {
-					return fmt.Errorf("installing dependencies: %w", err)
+			var hasDisplayedInstallingPackages atomic.Bool
+			return walkLocalPackagesFromProject(pctx, proj, func(
+				pctx *plugin.Context, proj workspace.BaseProject, pkgName string, packageSpec workspace.PackageSpec,
+			) error {
+				// Print that we are installing packages, if we have not printed it before.
+				if !hasDisplayedInstallingPackages.Swap(true) {
+					fmt.Println("Installing packages...")
 				}
-			}
-
-			if !noPlugins {
-				// Compute the set of plugins the current project needs.
-				packages, err := lang.GetRequiredPackages(programInfo)
+				fmt.Printf("Installing package '%s'...\n", pkgName)
+				err := installPackageDependency(registry)(pctx, proj, pkgName, packageSpec)
 				if err != nil {
 					return err
 				}
-
-				pluginSet := engine.NewPluginSet()
-				for _, pkg := range packages {
-					pluginSet.Add(pkg.PluginSpec)
-				}
-
-				if err = engine.EnsurePluginsAreInstalled(ctx, nil, pctx.Diag, pluginSet,
-					pctx.Host.GetProjectPlugins(), reinstall, true); err != nil {
-					return err
-				}
-			}
-
-			return nil
+				fmt.Printf("Package '%s' installed successfully\n", pkgName)
+				return nil
+			}, func(pctx *plugin.Context, proj *workspace.Project) error {
+				return installForProject(pctx, proj, noDependencies, useLanguageVersionTools, noPlugins, reinstall)
+			}, workspace.LoadProject)
 		},
 	}
 
@@ -216,38 +200,182 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 	return cmd
 }
 
-// installPackagesFromProject processes packages specified in the Pulumi.yaml file
-// and installs them using similar logic to the 'pulumi package add' command
-func installPackagesFromProject(
-	pctx *plugin.Context, proj workspace.BaseProject, root string, registry registry.Registry,
+func installForProject(
+	pctx *plugin.Context, proj *workspace.Project,
+	noDependencies, useLanguageVersionTools, noPlugins, reinstall bool,
 ) error {
-	pkgs := proj.GetPackageSpecs()
-	if len(pkgs) == 0 {
-		return nil
+	// First make sure the language plugin is present.  We need this to load the required resource plugins.
+	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
+	runtime := proj.RuntimeInfo()
+	projinfo := &engine.Projinfo{Proj: proj, Root: pctx.Root}
+	pwd, main, err := projinfo.GetPwdMain()
+	if err != nil {
+		return err
 	}
 
-	fmt.Println("Installing packages...")
+	programInfo := plugin.NewProgramInfo(pctx.Root, pwd, main, runtime.Options())
+	lang, err := pctx.Host.LanguageRuntime(runtime.Name(), programInfo)
+	if err != nil {
+		return fmt.Errorf("load language plugin %s: %w", runtime.Name(), err)
+	}
 
-	for name, packageSpec := range pkgs {
-		fmt.Printf("Installing package '%s'...\n", name)
-
-		installSource := packageSpec.Source
-		if !plugin.IsLocalPluginPath(pctx.Base(), installSource) && packageSpec.Version != "" {
-			installSource = fmt.Sprintf("%s@%s", installSource, packageSpec.Version)
-		}
-
-		parameters := &plugin.ParameterizeArgs{Args: packageSpec.Parameters}
-		_, _, diags, err := packages.InstallPackage(
-			proj, pctx, proj.RuntimeInfo().Name(), root, installSource, parameters, registry)
-		cmdDiag.PrintDiagnostics(pctx.Diag, diags)
+	if !noDependencies {
+		err = pkgCmdUtil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
+			Info:                    programInfo,
+			UseLanguageVersionTools: useLanguageVersionTools,
+			IsPlugin:                false,
+		})
 		if err != nil {
-			return fmt.Errorf("failed to install package '%s': %w", name, err)
+			return fmt.Errorf("installing dependencies: %w", err)
+		}
+	}
+
+	if !noPlugins {
+		// Compute the set of plugins the current project needs.
+		packages, err := lang.GetRequiredPackages(programInfo)
+		if err != nil {
+			return err
 		}
 
-		fmt.Printf("Package '%s' installed successfully\n", name)
+		pluginSet := engine.NewPluginSet()
+		for _, pkg := range packages {
+			pluginSet.Add(pkg.PluginSpec)
+		}
+
+		if err = engine.EnsurePluginsAreInstalled(pctx.Request(), nil, pctx.Diag, pluginSet,
+			pctx.Host.GetProjectPlugins(), reinstall, true); err != nil {
+			return err
+		}
 	}
 
 	return nil
+}
+
+func installPackageDependency(
+	registry registry.Registry,
+) func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
+	return func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
+		// Process packages section from Pulumi.yaml. Do so before installing language-specific dependencies,
+		// so that the SDKs folder is present and references to it from package.json etc are valid.
+		parameters := &plugin.ParameterizeArgs{Args: pkgSpec.Parameters}
+		_, _, diags, err := packages.InstallPackage(
+			proj, pctx, proj.RuntimeInfo().Name(),
+			pctx.Root, pkgSpec.Source, parameters, registry)
+		cmdDiag.PrintDiagnostics(pctx.Diag, diags)
+		return err
+	}
+}
+
+// Recursively walk packages and plugin dependencies from a project.
+//
+// WARNING: walk *may* be called in parallel, and will be called in parallel when
+// possible.
+//
+// walkLocalPackagesFromProject holds as invariant that:
+//   - walk will only be called once per package.
+//   - walk will only be called on a package X after all packages that X depends on have
+//     been walked.
+func walkLocalPackagesFromProject[P workspace.BaseProject](
+	pctx *plugin.Context, proj P,
+	walkPackage func(
+		pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec,
+	) error,
+	walkProject func(pctx *plugin.Context, proj P) error,
+	loadProject func(path string) (P, error), // workspace.LoadProject
+) error {
+	// walkGroup is used to bound invocations of walk.
+	walkGroup, waitCtx := errgroup.WithContext(pctx.Request())
+	walkGroup.SetLimit(4)    // TODO: What parallelism limit do we want to use
+	var seenSources sync.Map // map[string]struct{}
+	pctx = pctx.WithCancelChannel(waitCtx.Done())
+
+	var doWalk func(proj P, root string) error
+	doWalk = func(proj P, root string) error {
+		pkgs := proj.GetPackageSpecs()
+
+		pctx := func(v *plugin.Context) *plugin.Context {
+			cp := *v
+			cp.Root = root
+			cp.Pwd = ""
+			return &cp
+		}(pctx)
+
+		var localGroup sync.WaitGroup
+		walkErrors := make(chan error)
+		defer close(walkErrors)
+		var localWalkErrors []error
+		go func() {
+			for err := range walkErrors {
+				localWalkErrors = append(localWalkErrors, err)
+			}
+		}()
+
+		for name, packageSpec := range pkgs {
+			waitGroupGo(&localGroup, func() {
+				installSource := packageSpec.Source
+				isLocal := plugin.IsLocalPluginPath(pctx.Base(), installSource)
+				if !isLocal && packageSpec.Version != "" {
+					installSource = fmt.Sprintf("%s@%s", installSource, packageSpec.Version)
+				}
+				if isLocal {
+					key := filepath.Clean(installSource)
+					_, alreadyInstalled := seenSources.LoadOrStore(key, struct{}{})
+					if alreadyInstalled {
+						return
+					}
+					pulumiYamlPath, err := workspace.DetectProjectPathFrom(installSource)
+					if err != nil {
+						walkErrors <- fmt.Errorf("unable to find project at '%s': %w", installSource, err)
+						return
+					}
+					localProj, err := loadProject(pulumiYamlPath)
+					if err != nil {
+						walkErrors <- fmt.Errorf("unable to load %s: %w", installSource, err)
+						return
+					}
+					// DetectProjectPathFrom returns the path to the Pulumi.yaml file,
+					// but doWalk expects the directory containing it.
+					err = doWalk(localProj, filepath.Dir(pulumiYamlPath))
+					if err != nil {
+						walkErrors <- err
+						return
+					}
+				}
+
+				localGroup.Add(1)
+				walkGroup.Go(func() error {
+					defer localGroup.Done()
+					if err := walkPackage(pctx, proj, name, packageSpec); err != nil {
+						walkErrors <- err
+					}
+					return nil
+				})
+			})
+		}
+
+		localGroup.Wait()
+		if err := errors.Join(localWalkErrors...); err != nil {
+			return err
+		}
+		if walkProject == nil {
+			return nil
+		}
+		return walkProject(pctx, proj)
+	}
+
+	return errors.Join(
+		doWalk(proj, pctx.Root), // First, do the work
+		walkGroup.Wait(),        // Second, make sure we are done
+	)
+}
+
+// A copy of [sync.WaitGroup]'s Go method, added in Go 1.25.0.
+func waitGroupGo(wg *sync.WaitGroup, f func()) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		f()
+	}()
 }
 
 func shouldInstallPolicyPackDependencies() (bool, error) {
