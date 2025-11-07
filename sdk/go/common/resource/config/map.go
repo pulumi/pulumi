@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // Map is a bag of config stored in the settings file.
@@ -123,26 +124,26 @@ func (m Map) HasSecureValue() bool {
 }
 
 // AsDecryptedPropertyMap returns the config as a property map, with secret values decrypted.
-func (m Map) AsDecryptedPropertyMap(ctx context.Context, decrypter Decrypter) (resource.PropertyMap, error) {
+func (m Map) AsDecryptedPropertyMap(ctx context.Context, decrypter Decrypter) (property.Map, error) {
 	objectMap := map[Key]object{}
 	for k, v := range m {
 		obj, err := v.coerceObject()
 		if err != nil {
-			return nil, err
+			return property.Map{}, err
 		}
 		objectMap[k] = obj
 	}
 
 	plaintextMap, err := decryptMap(ctx, objectMap, decrypter)
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
 
-	result := resource.PropertyMap{}
+	result := map[string]property.Value{}
 	for k, pt := range plaintextMap {
-		result[resource.PropertyKey(k.String())] = pt.PropertyValue()
+		result[k.String()] = pt.PropertyValue()
 	}
-	return result, nil
+	return property.NewMap(result), nil
 }
 
 // Get gets the value for a given key. If path is true, the key's name portion is treated as a path.
