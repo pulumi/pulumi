@@ -2574,6 +2574,66 @@ func TestRefreshRunProgramReplacedResource(t *testing.T) {
 func TestRefreshDeleteParent(t *testing.T) {
 	t.Parallel()
 
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					if req.Name == "resA" {
+						return plugin.ReadResponse{
+							ReadResult: plugin.ReadResult{},
+							Status:     resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  resource.PropertyMap{},
+							Outputs: resource.PropertyMap{},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programExecutions := 0
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		programExecutions++
+
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Parent: resp.URN,
+		})
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 3)
+
+	snap, err = lt.TestOp(Refresh).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2)
+}
+
+func TestRefreshV2Targeted(t *testing.T) {
+	t.Parallel()
+
 	p := &lt.TestPlan{
 		Project: "test-project",
 		Stack:   "test-stack",
