@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
@@ -66,7 +67,7 @@ var names = NameTable{
 	logicalURN:  logicalName,
 }
 
-func renderExpr(t *testing.T, x model.Expression) resource.PropertyValue {
+func renderExpr(t *testing.T, x model.Expression) property.Value {
 	switch x := x.(type) {
 	case *model.LiteralValueExpression:
 		return renderLiteralValue(t, x)
@@ -82,26 +83,26 @@ func renderExpr(t *testing.T, x model.Expression) resource.PropertyValue {
 		return renderFunctionCall(t, x)
 	default:
 		assert.Failf(t, "", "unexpected expression of type %T", x)
-		return resource.NewNullProperty()
+		return property.New(property.Null)
 	}
 }
 
-func renderLiteralValue(t *testing.T, x *model.LiteralValueExpression) resource.PropertyValue {
+func renderLiteralValue(t *testing.T, x *model.LiteralValueExpression) property.Value {
 	switch x.Value.Type() {
 	case cty.Bool:
-		return resource.NewProperty(x.Value.True())
+		return property.New(x.Value.True())
 	case cty.Number:
 		f, _ := x.Value.AsBigFloat().Float64()
-		return resource.NewProperty(f)
+		return property.New(f)
 	case cty.String:
-		return resource.NewProperty(x.Value.AsString())
+		return property.New(x.Value.AsString())
 	default:
 		assert.Failf(t, "", "unexpected literal of type %v", x.Value.Type())
-		return resource.NewNullProperty()
+		return property.New(property.Null)
 	}
 }
 
-func renderTemplate(t *testing.T, x *model.TemplateExpression) resource.PropertyValue {
+func renderTemplate(t *testing.T, x *model.TemplateExpression) property.Value {
 	if len(x.Parts) == 1 {
 		return renderLiteralValue(t, x.Parts[0].(*model.LiteralValueExpression))
 	}
@@ -109,71 +110,71 @@ func renderTemplate(t *testing.T, x *model.TemplateExpression) resource.Property
 	for _, p := range x.Parts {
 		b += p.(*model.LiteralValueExpression).Value.AsString()
 	}
-	return resource.NewProperty(b)
+	return property.New(b)
 }
 
-func renderObjectCons(t *testing.T, x *model.ObjectConsExpression) resource.PropertyValue {
-	obj := resource.PropertyMap{}
+func renderObjectCons(t *testing.T, x *model.ObjectConsExpression) property.Value {
+	obj := map[string]property.Value{}
 	for _, item := range x.Items {
 		kv := renderExpr(t, item.Key)
 		if !assert.True(t, kv.IsString()) {
 			continue
 		}
-		obj[resource.PropertyKey(kv.StringValue())] = renderExpr(t, item.Value)
+		obj[kv.AsString()] = renderExpr(t, item.Value)
 	}
-	return resource.NewProperty(obj)
+	return property.New(obj)
 }
 
-func renderScopeTraversal(t *testing.T, x *model.ScopeTraversalExpression) resource.PropertyValue {
+func renderScopeTraversal(t *testing.T, x *model.ScopeTraversalExpression) property.Value {
 	require.Len(t, x.Traversal, 1)
 
 	switch x.RootName {
 	case "parent":
-		return resource.NewProperty(string(parentURN))
+		return property.New(string(parentURN))
 	case "provider":
-		return resource.NewProperty(string(providerURN))
+		return property.New(string(providerURN))
 	default:
-		return resource.NewProperty(x.RootName)
+		return property.New(x.RootName)
 	}
 }
 
-func renderTupleCons(t *testing.T, x *model.TupleConsExpression) resource.PropertyValue {
-	arr := make([]resource.PropertyValue, len(x.Expressions))
+func renderTupleCons(t *testing.T, x *model.TupleConsExpression) property.Value {
+	arr := make([]property.Value, len(x.Expressions))
 	for i, x := range x.Expressions {
 		arr[i] = renderExpr(t, x)
 	}
-	return resource.NewProperty(arr)
+	return property.New(arr)
 }
 
-func renderFunctionCall(t *testing.T, x *model.FunctionCallExpression) resource.PropertyValue {
+func renderFunctionCall(t *testing.T, x *model.FunctionCallExpression) property.Value {
 	switch x.Name {
 	case "fileArchive":
 		require.Len(t, x.Args, 1)
 		expr := renderExpr(t, x.Args[0])
 		if !assert.True(t, expr.IsString()) {
-			return resource.NewNullProperty()
+			return property.New(property.Null)
 		}
-		return resource.NewProperty(expr.StringValue())
+		return expr
 	case "fileAsset":
 		require.Len(t, x.Args, 1)
 		expr := renderExpr(t, x.Args[0])
 		if !assert.True(t, expr.IsString()) {
-			return resource.NewNullProperty()
+			return property.New(property.Null)
 		}
-		return resource.NewProperty(expr.StringValue())
+		return expr
 	case "secret":
 		require.Len(t, x.Args, 1)
-		return resource.MakeSecret(renderExpr(t, x.Args[0]))
+		return renderExpr(t, x.Args[0]).WithSecret(true)
 	default:
 		assert.Failf(t, "", "unexpected call to %v", x.Name)
-		return resource.NewNullProperty()
+		return property.New(property.Null)
 	}
 }
 
 func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
-	inputs := resource.PropertyMap{}
+	inputs := map[string]property.Value{}
 	for _, attr := range r.Inputs {
-		inputs[resource.PropertyKey(attr.Name)] = renderExpr(t, attr.Value)
+		inputs[attr.Name] = renderExpr(t, attr.Value)
 	}
 
 	protect := false
@@ -192,27 +193,27 @@ func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
 		if r.Options.Parent != nil {
 			v := renderExpr(t, r.Options.Parent)
 			if assert.True(t, v.IsString()) {
-				parent = resource.URN(v.StringValue())
+				parent = resource.URN(v.AsString())
 			}
 		}
 		if r.Options.Provider != nil {
 			v := renderExpr(t, r.Options.Provider)
 			if assert.True(t, v.IsString()) {
-				providerRef = v.StringValue() + "::id"
+				providerRef = v.AsString() + "::id"
 			}
 		}
 		if r.Options.ImportID != nil {
 			v := renderExpr(t, r.Options.ImportID)
 			if assert.True(t, v.IsString()) {
-				importID = resource.ID(v.StringValue())
+				importID = resource.ID(v.AsString())
 			}
 		}
 		if r.Options.IgnoreChanges != nil {
 			v := renderExpr(t, r.Options.IgnoreChanges)
 			if assert.True(t, v.IsArray()) {
-				for _, item := range v.ArrayValue() {
+				for _, item := range v.AsArray().All {
 					if assert.True(t, item.IsString()) {
-						ignoreChanges = append(ignoreChanges, item.StringValue())
+						ignoreChanges = append(ignoreChanges, item.AsString())
 					}
 				}
 			}
@@ -230,7 +231,7 @@ func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
 		Type:          token,
 		URN:           resource.NewURN("stack", "project", parentType, token, r.LogicalName()),
 		Custom:        true,
-		Inputs:        inputs,
+		Inputs:        resource.ToResourcePropertyMap(property.NewMap(inputs)),
 		Parent:        parent,
 		Provider:      providerRef,
 		Protect:       protect,
@@ -951,19 +952,19 @@ func makeOptionalType(t schema.Type) schema.Type {
 	return &schema.OptionalType{ElementType: t}
 }
 
-func makeObject(input map[string]resource.PropertyValue) resource.PropertyValue {
-	properties := make(resource.PropertyMap)
+func makeObject(input map[string]property.Value) property.Value {
+	properties := make(map[string]property.Value)
 	for key, value := range input {
-		properties[resource.PropertyKey(key)] = value
+		properties[key] = value
 	}
 
-	return resource.NewProperty(properties)
+	return property.New(properties)
 }
 
 func TestStructuralTypeChecks(t *testing.T) {
 	t.Run("String", func(t *testing.T) {
 		t.Parallel()
-		value := resource.NewProperty("foo")
+		value := property.New("foo")
 		assert.True(t, valueStructurallyTypedAs(value, schema.StringType))
 		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.StringType)))
 		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.StringType, schema.NumberType)))
@@ -976,7 +977,7 @@ func TestStructuralTypeChecks(t *testing.T) {
 
 	t.Run("Bool", func(t *testing.T) {
 		t.Parallel()
-		value := resource.NewProperty(true)
+		value := property.New(true)
 		assert.True(t, valueStructurallyTypedAs(value, schema.BoolType))
 		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.BoolType)))
 		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.BoolType, schema.NumberType)))
@@ -989,7 +990,7 @@ func TestStructuralTypeChecks(t *testing.T) {
 
 	t.Run("Number", func(t *testing.T) {
 		t.Parallel()
-		value := resource.NewProperty(42.0)
+		value := property.New(42.0)
 		assert.True(t, valueStructurallyTypedAs(value, schema.NumberType))
 		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.NumberType)))
 		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.NumberType, schema.StringType)))
@@ -1002,9 +1003,9 @@ func TestStructuralTypeChecks(t *testing.T) {
 
 	t.Run("Array", func(t *testing.T) {
 		t.Parallel()
-		value := resource.NewProperty([]resource.PropertyValue{
-			resource.NewProperty("foo"),
-			resource.NewProperty("bar"),
+		value := property.New([]property.Value{
+			property.New("foo"),
+			property.New("bar"),
 		})
 
 		assert.True(t, valueStructurallyTypedAs(value, makeArrayType(schema.StringType)))
@@ -1027,9 +1028,9 @@ func TestStructuralTypeChecks(t *testing.T) {
 
 	t.Run("ArrayMixedTypes", func(t *testing.T) {
 		t.Parallel()
-		value := resource.NewProperty([]resource.PropertyValue{
-			resource.NewProperty("foo"),
-			resource.NewProperty(42.0),
+		value := property.New([]property.Value{
+			property.New("foo"),
+			property.New(42.0),
 		})
 
 		// base case: value of type array[union[string, number]]
@@ -1045,9 +1046,9 @@ func TestStructuralTypeChecks(t *testing.T) {
 	t.Run("Object", func(t *testing.T) {
 		t.Parallel()
 
-		value := makeObject(map[string]resource.PropertyValue{
-			"foo": resource.NewProperty("foo"),
-			"bar": resource.NewProperty(42.0),
+		value := makeObject(map[string]property.Value{
+			"foo": property.New("foo"),
+			"bar": property.New(42.0),
 		})
 
 		assert.True(t, valueStructurallyTypedAs(value, makeObjectType(
@@ -1060,8 +1061,8 @@ func TestStructuralTypeChecks(t *testing.T) {
 			makeProperty("bar", schema.StringType),
 		)))
 
-		anotherValue := makeObject(map[string]resource.PropertyValue{
-			"a": resource.NewProperty("A"),
+		anotherValue := makeObject(map[string]property.Value{
+			"a": property.New("A"),
 		})
 
 		// property "a" is missing from the type
@@ -1069,8 +1070,8 @@ func TestStructuralTypeChecks(t *testing.T) {
 			makeProperty("b", schema.StringType),
 		)))
 
-		objectA := makeObject(map[string]resource.PropertyValue{
-			"foo": resource.NewProperty("foo"),
+		objectA := makeObject(map[string]property.Value{
+			"foo": property.New("foo"),
 		})
 
 		objectATypeWithRequiredPropertyBar := makeObjectType(
@@ -1100,8 +1101,8 @@ func TestStructuralTypeChecks(t *testing.T) {
 			))
 
 		// fits the second object of the union
-		complexFittingValue := makeObject(map[string]resource.PropertyValue{
-			"foo": resource.NewProperty(100.0),
+		complexFittingValue := makeObject(map[string]property.Value{
+			"foo": property.New(100.0),
 		})
 
 		assert.True(t, valueStructurallyTypedAs(complexFittingValue, complexUnionOfObjects))
@@ -1110,7 +1111,7 @@ func TestStructuralTypeChecks(t *testing.T) {
 
 func TestReduceUnionTypeEliminatesUnionsBasicCase(t *testing.T) {
 	t.Parallel()
-	value := resource.NewProperty("hello")
+	value := property.New("hello")
 	unionTypeA := makeUnionType(schema.StringType, schema.NumberType)
 	unionTypeB := makeUnionType(schema.BoolType, schema.StringType)
 	reducedA := reduceUnionType(unionTypeA, value)
@@ -1121,7 +1122,7 @@ func TestReduceUnionTypeEliminatesUnionsBasicCase(t *testing.T) {
 
 func TestReduceUnionTypeEliminatesUnionsRecursively(t *testing.T) {
 	t.Parallel()
-	value := resource.NewProperty("hello")
+	value := property.New("hello")
 	unionType := makeUnionType(
 		makeUnionType(schema.NumberType, schema.BoolType),
 		makeUnionType(
@@ -1137,9 +1138,9 @@ func TestReduceUnionTypeWorksWithArrayOfUnions(t *testing.T) {
 	t.Parallel()
 
 	// array[union[string, number]]
-	mixedTypeArray := resource.NewProperty([]resource.PropertyValue{
-		resource.NewProperty("hello"),
-		resource.NewProperty(42.0),
+	mixedTypeArray := property.New([]property.Value{
+		property.New("hello"),
+		property.New(42.0),
 	})
 
 	// union[array[union[string, number]]]

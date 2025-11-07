@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -200,7 +201,8 @@ func GenerateHCL2Definition(
 	importStateContext := filterReferences(name, importState)
 	for _, p := range r.InputProperties {
 		input := state.Inputs[resource.PropertyKey(p.Name)]
-		x, err := generatePropertyValue(p, input, importStateContext, onReferenceFound)
+		inputV := resource.FromResourcePropertyValue(input)
+		x, err := generatePropertyValue(p, inputV, importStateContext, onReferenceFound)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -534,15 +536,15 @@ func zeroValue(t schema.Type) model.Expression {
 	}
 	switch t {
 	case schema.BoolType:
-		x, err := generateValue(t, resource.NewProperty(false), emptyImportState, onReferenceAdded)
+		x, err := generateValue(t, property.New(false), emptyImportState, onReferenceAdded)
 		contract.IgnoreError(err)
 		return x
 	case schema.IntType, schema.NumberType:
-		x, err := generateValue(t, resource.NewProperty(0.0), emptyImportState, onReferenceAdded)
+		x, err := generateValue(t, property.New(0.0), emptyImportState, onReferenceAdded)
 		contract.IgnoreError(err)
 		return x
 	case schema.StringType:
-		x, err := generateValue(t, resource.NewProperty(""), emptyImportState, onReferenceAdded)
+		x, err := generateValue(t, property.New(""), emptyImportState, onReferenceAdded)
 		contract.IgnoreError(err)
 		return x
 	case schema.ArchiveType, schema.AssetType:
@@ -560,11 +562,11 @@ func zeroValue(t schema.Type) model.Expression {
 // required, no value is generated (i.e. this function returns nil).
 func generatePropertyValue(
 	property *schema.Property,
-	value resource.PropertyValue,
+	value property.Value,
 	importState ImportState,
 	onReferenceFound func(string),
 ) (model.Expression, error) {
-	if !value.HasValue() {
+	if value.IsComputed() || value.IsNull() {
 		if !property.IsRequired() {
 			return nil, nil
 		}
@@ -575,13 +577,13 @@ func generatePropertyValue(
 }
 
 // valueStructurallyTypedAs returns true if the given value is structurally typed as the given schema type.
-func valueStructurallyTypedAs(value resource.PropertyValue, schemaType schema.Type) bool {
+func valueStructurallyTypedAs(value property.Value, schemaType schema.Type) bool {
 	if union, ok := schemaType.(*schema.UnionType); ok {
 		schemaType = reduceUnionType(union, value)
 	}
 
 	switch {
-	case value.IsObject():
+	case value.IsMap():
 		switch arg := schemaType.(type) {
 		case *schema.ObjectType:
 			schemaProperties := make(map[string]schema.Type)
@@ -589,10 +591,10 @@ func valueStructurallyTypedAs(value resource.PropertyValue, schemaType schema.Ty
 				schemaProperties[schemaProperty.Name] = schemaProperty.Type
 			}
 
-			objectProperties := value.ObjectValue()
+			objectProperties := value.AsMap()
 			// check that each property is present in the schema and that the value is structurally typed as well
-			for propertyKey, propertyValue := range objectProperties {
-				propertyValueSchema, ok := arg.Property(string(propertyKey))
+			for propertyKey, propertyValue := range objectProperties.All {
+				propertyValueSchema, ok := arg.Property(propertyKey)
 				if !ok {
 					// unknown property
 					return false
@@ -606,7 +608,7 @@ func valueStructurallyTypedAs(value resource.PropertyValue, schemaType schema.Ty
 			// check that all required properties from the schema are present in the object properties
 			for _, schemaProperty := range arg.Properties {
 				if schemaProperty.IsRequired() {
-					if _, ok := objectProperties[resource.PropertyKey(schemaProperty.Name)]; !ok {
+					if _, ok := objectProperties.GetOk(schemaProperty.Name); !ok {
 						// the required property was not present in the object
 						return false
 					}
@@ -677,7 +679,7 @@ func valueStructurallyTypedAs(value resource.PropertyValue, schemaType schema.Ty
 		// basic case: check that each element in the array is structurally typed as the element type of the schenma array
 		switch arg := schemaType.(type) {
 		case *schema.ArrayType:
-			for _, element := range value.ArrayValue() {
+			for _, element := range value.AsArray().All {
 				if !valueStructurallyTypedAs(element, arg.ElementType) {
 					return false
 				}
@@ -701,9 +703,9 @@ func valueStructurallyTypedAs(value resource.PropertyValue, schemaType schema.Ty
 // reduceUnionType reduces the given union type to a simpler type that potentially matches the value.
 // When the value type is primitive, choose the first element type of the union elements that is of the same type.
 // When the value is an object, use the discriminator to choose the element type.
-func reduceUnionType(schemaUnion *schema.UnionType, value resource.PropertyValue) schema.Type {
+func reduceUnionType(schemaUnion *schema.UnionType, value property.Value) schema.Type {
 	switch {
-	case value.IsObject():
+	case value.IsMap():
 		// return the first element type that matches structurally fits the value
 		findBestFitType := func() schema.Type {
 			for _, t := range schemaUnion.ElementTypes {
@@ -721,8 +723,8 @@ func reduceUnionType(schemaUnion *schema.UnionType, value resource.PropertyValue
 			return findBestFitType()
 		}
 
-		obj := value.ObjectValue()
-		discriminatorValue, ok := obj[resource.PropertyKey(schemaUnion.Discriminator)]
+		obj := value.AsMap()
+		discriminatorValue, ok := obj.GetOk(schemaUnion.Discriminator)
 		if !ok {
 			// discriminator property is not present
 			// return the first type that fits the value
@@ -735,7 +737,7 @@ func reduceUnionType(schemaUnion *schema.UnionType, value resource.PropertyValue
 			return findBestFitType()
 		}
 
-		correspondingTypeToken, ok := schemaUnion.Mapping[discriminatorValue.StringValue()]
+		correspondingTypeToken, ok := schemaUnion.Mapping[discriminatorValue.AsString()]
 		if !ok {
 			// discriminator property value is not a key in the union mapping,
 			return findBestFitType()
@@ -785,7 +787,7 @@ func reduceUnionType(schemaUnion *schema.UnionType, value resource.PropertyValue
 // given value.
 func generateValue(
 	typ schema.Type,
-	value resource.PropertyValue,
+	value property.Value,
 	importState ImportState,
 	onReferenceFound func(string),
 ) (model.Expression, error) {
@@ -804,9 +806,9 @@ func generateValue(
 			elementType = typ.ElementType
 		}
 
-		arr := value.ArrayValue()
-		exprs := make([]model.Expression, len(arr))
-		for i, v := range arr {
+		arr := value.AsArray()
+		exprs := make([]model.Expression, arr.Len())
+		for i, v := range arr.All {
 			x, err := generateValue(elementType, v, importState, onReferenceFound)
 			if err != nil {
 				return nil, err
@@ -821,24 +823,24 @@ func generateValue(
 		return nil, errors.New("NYI: assets")
 	case value.IsBool():
 		return &model.LiteralValueExpression{
-			Value: cty.BoolVal(value.BoolValue()),
+			Value: cty.BoolVal(value.AsBool()),
 		}, nil
-	case value.IsComputed() || value.IsOutput():
+	case value.IsComputed():
 		return nil, errors.New("cannot define computed values")
 	case value.IsNull():
 		return model.VariableReference(Null), nil
 	case value.IsNumber():
 		return &model.LiteralValueExpression{
-			Value: cty.NumberFloatVal(value.NumberValue()),
+			Value: cty.NumberFloatVal(value.AsNumber()),
 		}, nil
-	case value.IsObject():
-		obj := value.ObjectValue()
-		items := slice.Prealloc[model.ObjectConsItem](len(obj))
+	case value.IsMap():
+		obj := value.AsMap()
+		items := slice.Prealloc[model.ObjectConsItem](obj.Len())
 
 		switch arg := typ.(type) {
 		case *schema.ObjectType:
 			for _, p := range arg.Properties {
-				x, err := generatePropertyValue(p, obj[resource.PropertyKey(p.Name)], importState, onReferenceFound)
+				x, err := generatePropertyValue(p, obj.Get(p.Name), importState, onReferenceFound)
 				if err != nil {
 					return nil, err
 				}
@@ -858,19 +860,19 @@ func generateValue(
 				elementType = mapType.ElementType
 			}
 
-			for _, k := range obj.StableKeys() {
+			for k, v := range obj.AllStable {
 				// Ignore internal properties.
-				if strings.HasPrefix(string(k), "__") {
+				if strings.HasPrefix(k, "__") {
 					continue
 				}
 
-				x, err := generateValue(elementType, obj[k], importState, onReferenceFound)
+				x, err := generateValue(elementType, v, importState, onReferenceFound)
 				if err != nil {
 					return nil, err
 				}
 
 				// Always quote the key in case it includes invalid identifier characters (like '/' or ':')
-				propKey := fmt.Sprintf("%q", string(k))
+				propKey := fmt.Sprintf("%q", k)
 
 				items = append(items, model.ObjectConsItem{
 					Key: &model.LiteralValueExpression{
@@ -884,8 +886,8 @@ func generateValue(
 			Tokens: syntax.NewObjectConsTokens(len(items)),
 			Items:  items,
 		}, nil
-	case value.IsSecret():
-		arg, err := generateValue(typ, value.SecretValue().Element, importState, onReferenceFound)
+	case value.Secret():
+		arg, err := generateValue(typ, value.WithSecret(false), importState, onReferenceFound)
 		if err != nil {
 			return nil, err
 		}
@@ -904,7 +906,7 @@ func generateValue(
 		x := &model.TemplateExpression{
 			Parts: []model.Expression{
 				&model.LiteralValueExpression{
-					Value: cty.StringVal(value.StringValue()),
+					Value: cty.StringVal(value.AsString()),
 				},
 			},
 		}
@@ -921,7 +923,7 @@ func generateValue(
 			}, nil
 		default:
 			for _, pathedValue := range importState.PathedLiteralValues {
-				if pathedValue.Value == value.StringValue() {
+				if pathedValue.Value == value.AsString() {
 					onReferenceFound(pathedValue.Root)
 					return pathedValue.ExpressionReference, nil
 				}
