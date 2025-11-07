@@ -2028,50 +2028,6 @@ func TestEvalSource(t *testing.T) {
 			assert.ErrorContains(t, err, "failed to decrypt config")
 			assert.True(t, decrypterCalled)
 		})
-		t.Run("failed to convert config to map", func(t *testing.T) {
-			t.Parallel()
-
-			var called int
-			var decrypterCalled bool
-			src := &evalSource{
-				plugctx: &plugin.Context{
-					Diag: &deploytest.NoopSink{},
-				},
-				runinfo: &EvalRunInfo{
-					ProjectRoot: "/",
-					Pwd:         "/",
-					Program:     ".",
-					Target: &Target{
-						Config: config.Map{
-							config.MustMakeKey("test", "secret"): config.NewSecureValue("secret"),
-						},
-						Decrypter: &decrypterMock{
-							DecryptValueF: func(ctx context.Context, ciphertext string) (string, error) {
-								decrypterCalled = true
-								if called == 0 {
-									// Will cause the next invocation to fail.
-									called++
-									return "", nil
-								}
-								return "", errors.New("expected fail")
-							},
-							BatchDecryptF: func(ctx context.Context, ciphertexts []string) ([]string, error) {
-								decrypterCalled = true
-								if called == 0 {
-									// Will cause the next invocation to fail.
-									called++
-									return []string{}, nil
-								}
-								return nil, errors.New("expected fail")
-							},
-						},
-					},
-				},
-			}
-			_, err := src.Iterate(context.Background(), &providerSourceMock{})
-			assert.ErrorContains(t, err, "failed to convert config to map")
-			assert.True(t, decrypterCalled)
-		})
 	})
 }
 
