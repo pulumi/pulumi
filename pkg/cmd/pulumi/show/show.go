@@ -104,7 +104,9 @@ func ShowCmd() *cobra.Command {
 	return cmd
 }
 
-// render resource properties , properties can be nested Arrays
+// render resource properties , properties can be nested Arrays or maps
+// we recursively render property values.
+
 func renderPropertyVal(rsp resource.PropertyValue, currIdent string) string {
 	if rsp.IsObject() {
 		newIdent := currIdent + "    "
