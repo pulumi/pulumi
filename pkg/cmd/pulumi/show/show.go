@@ -127,16 +127,15 @@ func renderPropertyVal(rsp resource.PropertyValue, currIdent string) string {
 			if v.IsArray() {
 				return renderPropertyVal(v, newIdent)
 			}
-			res += "- " + TrimBrackets(v.String())
+			res += "- " + trimBrackets(v.String())
 		}
 		return res
 	}
 
-	return TrimBrackets(rsp.String())
+	return trimBrackets(rsp.String())
 }
 
-// remove brackets from property strings
-func TrimBrackets(propertyVal string) string {
+func trimBrackets(propertyVal string) string {
 	var trimmedPropertyStr string
 	trimmedPropertyStr = strings.TrimPrefix(propertyVal, "{")
 	trimmedPropertyStr = strings.TrimSuffix(trimmedPropertyStr, "}")
