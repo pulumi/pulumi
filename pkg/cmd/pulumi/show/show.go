@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
@@ -31,6 +32,7 @@ import (
 func ShowCmd() *cobra.Command {
 	var stackName string
 	var name string
+	var keysOnly bool
 	cmd := &cobra.Command{
 		Use:   "show",
 		Short: "Show resources in the stack",
@@ -53,38 +55,56 @@ func ShowCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			resources := ss.Resources
-			for _, r := range resources {
-				if strings.Contains(r.URN.Name(), name) {
-					printResourceState(r)
+			printResourceState := func(rs *resource.State) {
+				fmt.Println()
+
+				name := colors.Always.Colorize(colors.Bold+"Name: "+colors.Reset) + rs.URN.Name()
+				fmt.Println(name)
+				urn := colors.Always.Colorize(colors.Bold+"URN: "+colors.Reset) + string(rs.URN)
+				fmt.Println(urn)
+				properties := colors.Always.Colorize(colors.Bold + "Properties: " + colors.Reset)
+				fmt.Printf("%s", properties)
+
+				resourcePropertiesString := ""
+				if keysOnly {
+					for k := range rs.Outputs {
+						if strings.HasPrefix(string(k), "__") {
+							continue
+						}
+						resourcePropertiesString += " " + string(k) + ","
+					}
+					resourcePropertiesString = strings.TrimSuffix(resourcePropertiesString, ",")
 				} else {
-					continue
+					resourcePropertiesString += "\n"
+					for k, v := range rs.Outputs {
+						if strings.HasPrefix(string(k), "__") {
+							continue
+						}
+						resourcePropertiesString += "    " + string(k) + ": " + renderPropertyVal(v, "    ") + "\n"
+					}
+				}
+				fmt.Println(resourcePropertiesString)
+				fmt.Println()
+			}
+
+			resources := ss.Resources
+			for _, res := range resources {
+				if strings.Contains(res.URN.Name(), name) {
+					printResourceState(res)
 				}
 			}
+
 			return nil
 		},
 	}
 	cmd.PersistentFlags().StringVar(&stackName, "stack", "", "the stack for which resources will be shown")
 	cmd.PersistentFlags().StringVar(&name, "name", "", "filter resources by name")
+	cmd.PersistentFlags().BoolVar(&keysOnly, "keys-only", false, "only show property keys")
 
 	return cmd
 }
 
-func printResourceState(rs *resource.State) {
-	fmt.Println()
-	fmt.Printf("ResourceName: %s\n", rs.URN.Name())
-	fmt.Println(rs.URN)
-
-	fmt.Println("Properties:")
-	for k, v := range rs.Outputs {
-		if strings.HasPrefix(string(k), "__") {
-			continue
-		}
-		fmt.Println("	", k, ": ", renderPropertyVal(v, "	"))
-	}
-	fmt.Println()
-}
-
+// render resource properties , properties can be nested Arrays
 func renderPropertyVal(rsp resource.PropertyValue, currIdent string) string {
 	if rsp.IsObject() {
 		newIdent := currIdent + "    "
@@ -105,9 +125,18 @@ func renderPropertyVal(rsp resource.PropertyValue, currIdent string) string {
 			if v.IsArray() {
 				return renderPropertyVal(v, newIdent)
 			}
-			res += v.String()
+			res += "- " + TrimBrackets(v.String())
 		}
 		return res
 	}
-	return rsp.String()
+
+	return TrimBrackets(rsp.String())
+}
+
+// remove brackets from property strings
+func TrimBrackets(propertyVal string) string {
+	var trimmedPropertyStr string
+	trimmedPropertyStr = strings.TrimPrefix(propertyVal, "{")
+	trimmedPropertyStr = strings.TrimSuffix(trimmedPropertyStr, "}")
+	return trimmedPropertyStr
 }
