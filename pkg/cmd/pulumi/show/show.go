@@ -118,7 +118,7 @@ func renderPropertyVal(rsp resource.PropertyValue, currIdent string) string {
 		return res
 	}
 	if rsp.IsArray() {
-		res := "\n" + currIdent
+		var res string
 		for _, v := range rsp.ArrayValue() {
 			newIdent := currIdent + "    "
 			if v.IsObject() {
@@ -127,7 +127,7 @@ func renderPropertyVal(rsp resource.PropertyValue, currIdent string) string {
 			if v.IsArray() {
 				return renderPropertyVal(v, newIdent)
 			}
-			res += "- " + trimBrackets(v.String())
+			res += "\n" + newIdent + "- " + trimBrackets(v.String())
 		}
 		return res
 	}
