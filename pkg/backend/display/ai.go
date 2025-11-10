@@ -44,7 +44,6 @@ func neoDelimiterEmoji() string {
 }
 
 // RenderNeoErrorSummary renders a Neo error summary to the console.
-// Name kept for backwards compatibility.
 func RenderNeoErrorSummary(summary *NeoErrorSummaryMetadata, err error, opts Options, permalink string) {
 	out := opts.Stdout
 	if out == nil {
