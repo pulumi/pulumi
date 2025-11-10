@@ -38,7 +38,7 @@ func ExplainFailureLink(permalink string) string {
 
 // neoDelimiterEmoji provides an end of line delimiter for Neo diagnostics header.
 // Either an emoji or a colon is displayed, rendering a colon next to an emoji looks cluttered.
-// Exposed here for testing. Name kept for backwards compatibility.
+// Exposed here for testing.
 func neoDelimiterEmoji() string {
 	return cmdutil.EmojiOr(" ✨", ":")
 }
