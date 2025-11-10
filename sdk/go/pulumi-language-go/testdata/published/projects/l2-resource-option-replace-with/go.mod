@@ -1,4 +1,4 @@
-module l2-resource-option-deleted-with
+module l2-resource-option-replace-with
 
 go 1.23
 
