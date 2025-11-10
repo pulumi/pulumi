@@ -15,6 +15,8 @@
 package migrate
 
 import (
+	"time"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
@@ -65,8 +67,8 @@ func UpToResourceV3(v2 apitype.ResourceV2) apitype.ResourceV3 {
 	v3.Dependencies = v2.Dependencies
 	v3.InitErrors = v2.InitErrors
 	v3.Provider = v2.Provider
-	v3.Created = nil
-	v3.Modified = nil
+	v3.Created = time.Time{}
+	v3.Modified = time.Time{}
 
 	// v3.PropertyDependencies tracks dependencies on a per-input-property basis. We conservatively assume that all
 	// properties depend on all of the resource's dependencies.
