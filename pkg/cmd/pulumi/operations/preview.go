@@ -286,8 +286,8 @@ func NewPreviewCmd() *cobra.Command {
 	var excludeDependents bool
 	var attachDebugger []string
 
-	// Flags for Copilot.
-	var copilotEnabled bool
+	// Flags for Neo.
+	var neoEnabled bool
 
 	use, cmdArgs := "preview", cmdutil.NoArgs
 	if deployment.RemoteSupported() {
@@ -384,7 +384,7 @@ func NewPreviewCmd() *cobra.Command {
 				displayOpts.SuppressPermalink = true
 			}
 
-			configureCopilotOptions(copilotEnabled, cmd, &displayOpts, isDIYBackend)
+			configureNeoOptions(neoEnabled, cmd, &displayOpts, isDIYBackend)
 
 			if err := validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
 				return err
@@ -687,9 +687,16 @@ func NewPreviewCmd() *cobra.Command {
 	cmd.Flag("attach-debugger").NoOptDefVal = "program"
 
 	cmd.PersistentFlags().BoolVar(
-		&copilotEnabled, "copilot", false,
-		"Enable Pulumi Copilot's assistance for improved CLI experience and insights."+
+		&neoEnabled, "neo", false,
+		"Enable Pulumi Neo's assistance for improved CLI experience and insights "+
+			"(can also be set with PULUMI_NEO environment variable)")
+
+	// Keep --copilot flag for backwards compatibility, but hide it
+	cmd.PersistentFlags().BoolVar(
+		&neoEnabled, "copilot", false,
+		"[DEPRECATED] Use --neo instead. Enable Pulumi Neo's assistance for improved CLI experience and insights "+
 			"(can also be set with PULUMI_COPILOT environment variable)")
+	_ = cmd.PersistentFlags().MarkHidden("copilot")
 
 	// Remote flags
 	remoteArgs.ApplyFlags(cmd)

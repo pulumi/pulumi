@@ -121,31 +121,33 @@ func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
 	return false, nil
 }
 
-// configureCopilotOptions configures display options related to Copilot features based on the command line flags and
-// environment variables.
-func configureCopilotOptions(copilotEnabledFlag bool, cmd *cobra.Command, displayOpts *display.Options,
+// configureNeoOptions configures display options related to Neo features based on the command line
+// flags and environment variables. Both --neo and --copilot flags are supported for backwards compatibility.
+func configureNeoOptions(neoEnabledFlag bool, cmd *cobra.Command, displayOpts *display.Options,
 	isDIYBackend bool,
 ) {
-	// Handle copilot-summary flag and environment variable If flag is explicitly set (via command line), use that value
-	// Otherwise fall back to environment variable, then default to false
-	var showCopilotFeatures bool
-	if cmd.Flags().Changed("copilot") {
-		showCopilotFeatures = copilotEnabledFlag
+	// Handle neo/copilot flag and environment variable. If either flag is explicitly set (via command line),
+	// use that value. Otherwise fall back to environment variable, then default to false.
+	var showNeoFeatures bool
+	if cmd.Flags().Changed("neo") {
+		showNeoFeatures = neoEnabledFlag
+	} else if cmd.Flags().Changed("copilot") {
+		showNeoFeatures = neoEnabledFlag
 	} else {
-		showCopilotFeatures = env.CopilotEnabled.Value()
+		showNeoFeatures = env.NeoEnabled.Value()
 	}
-	logging.V(7).Infof("copilot flag=%v, PULUMI_COPILOT=%v, using value=%v",
-		copilotEnabledFlag, env.CopilotEnabled.Value(), showCopilotFeatures)
+	logging.V(7).Infof("neo flag=%v, PULUMI_NEO=%v, using value=%v",
+		neoEnabledFlag, env.NeoEnabled.Value(), showNeoFeatures)
 
-	// Do not enable any copilot features if we are using a DIY backend
-	if showCopilotFeatures && isDIYBackend {
-		logging.Warningf("Copilot features are not available with DIY backends.")
+	// Do not enable any Neo features if we are using a DIY backend
+	if showNeoFeatures && isDIYBackend {
+		logging.Warningf("Neo features are not available with DIY backends.")
 		return
 	}
 
-	displayOpts.ShowCopilotFeatures = showCopilotFeatures
-	displayOpts.CopilotSummaryModel = env.CopilotSummaryModel.Value()
-	displayOpts.CopilotSummaryMaxLen = env.CopilotSummaryMaxLen.Value()
+	displayOpts.ShowNeoFeatures = showNeoFeatures
+	displayOpts.NeoSummaryModel = env.NeoSummaryModel.Value()
+	displayOpts.NeoSummaryMaxLen = env.NeoSummaryMaxLen.Value()
 }
 
 func handleBoolFlag(variable utilenv.Value) string {

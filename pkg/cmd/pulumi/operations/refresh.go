@@ -82,8 +82,8 @@ func NewRefreshCmd() *cobra.Command {
 	var clearPendingCreates bool
 	var importPendingCreates *[]string
 
-	// Flags for Copilot.
-	var copilotEnabled bool
+	// Flags for Neo.
+	var neoEnabled bool
 
 	use, cmdArgs := "refresh", cmdutil.NoArgs
 	if deployment.RemoteSupported() {
@@ -184,7 +184,7 @@ func NewRefreshCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			configureCopilotOptions(copilotEnabled, cmd, &opts.Display, isDIYBackend)
+			configureNeoOptions(neoEnabled, cmd, &opts.Display, isDIYBackend)
 
 			s, err := cmdStack.RequireStack(
 				ctx,
@@ -411,9 +411,16 @@ func NewRefreshCmd() *cobra.Command {
 		"A list of form [[URN ID]...] describing the provider IDs of pending creates")
 
 	cmd.PersistentFlags().BoolVar(
-		&copilotEnabled, "copilot", false,
-		"Enable Pulumi Copilot's assistance for improved CLI experience and insights."+
+		&neoEnabled, "neo", false,
+		"Enable Pulumi Neo's assistance for improved CLI experience and insights "+
+			"(can also be set with PULUMI_NEO environment variable)")
+
+	// Keep --copilot flag for backwards compatibility, but hide it
+	cmd.PersistentFlags().BoolVar(
+		&neoEnabled, "copilot", false,
+		"[DEPRECATED] Use --neo instead. Enable Pulumi Neo's assistance for improved CLI experience and insights "+
 			"(can also be set with PULUMI_COPILOT environment variable)")
+	_ = cmd.PersistentFlags().MarkHidden("copilot")
 
 	// Currently, we can't mix `--target` and `--exclude`.
 	cmd.MarkFlagsMutuallyExclusive("target", "exclude")
