@@ -24,6 +24,7 @@ import (
 	"github.com/jonboulle/clockwork"
 	"github.com/pulumi/pulumi/pkg/v3/channel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -218,6 +219,22 @@ func (b *cloudBackend) getSnapshot(ctx context.Context,
 	}
 
 	return snap, nil
+}
+
+func (b *cloudBackend) getSnapshotStackOutputs(ctx context.Context,
+	secretsProvider secrets.Provider, stackRef backend.StackReference,
+) (resource.PropertyMap, error) {
+	untypedDeployment, err := b.exportDeployment(ctx, stackRef, nil /* get latest */)
+	if err != nil {
+		return nil, err
+	}
+
+	deployment, err := stack.UnmarshalUntypedDeployment(ctx, untypedDeployment)
+	if err != nil {
+		return nil, err
+	}
+
+	return stack.DeserializeStackOutputs(ctx, *deployment, secretsProvider)
 }
 
 func (b *cloudBackend) getTarget(ctx context.Context, secretsProvider secrets.Provider, stackRef backend.StackReference,

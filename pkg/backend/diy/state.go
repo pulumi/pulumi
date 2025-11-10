@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 
@@ -154,6 +155,21 @@ func (b *diyBackend) getSnapshot(ctx context.Context,
 	}
 
 	return snap, nil
+}
+
+func (b *diyBackend) getSnapshotStackOutputs(ctx context.Context,
+	secretsProvider secrets.Provider, ref *diyBackendReference,
+) (resource.PropertyMap, error) {
+	contract.Requiref(ref != nil, "ref", "must not be nil")
+
+	checkpoint, _, _, err := b.getCheckpoint(ctx, ref)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load checkpoint: %w", err)
+	}
+	if checkpoint == nil || checkpoint.Latest == nil {
+		return nil, nil
+	}
+	return stack.DeserializeStackOutputs(ctx, *checkpoint.Latest, secretsProvider)
 }
 
 // getCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace,

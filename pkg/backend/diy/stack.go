@@ -20,6 +20,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -37,6 +38,9 @@ type diyStack struct {
 	// a snapshot representing the latest deployment state, allocated on first use. It's valid for the
 	// snapshot itself to be nil.
 	snapshot atomic.Pointer[*deploy.Snapshot]
+	// snapshotStackOutputs contains the stack outputs of the latest deployment snapshot, allocated on first use.
+	// It's valid for the outputs property map itself to be nil.
+	snapshotStackOutputs atomic.Pointer[resource.PropertyMap]
 	// a pointer to the backend this stack belongs to.
 	b *diyBackend
 }
@@ -75,6 +79,23 @@ func (s *diyStack) Snapshot(ctx context.Context, secretsProvider secrets.Provide
 	s.snapshot.Store(&snap)
 	return snap, nil
 }
+
+func (s *diyStack) SnapshotStackOutputs(
+	ctx context.Context, secretsProvider secrets.Provider,
+) (resource.PropertyMap, error) {
+	if v := s.snapshotStackOutputs.Load(); v != nil {
+		return *v, nil
+	}
+
+	outputs, err := s.b.getSnapshotStackOutputs(ctx, secretsProvider, s.ref)
+	if err != nil {
+		return nil, err
+	}
+
+	s.snapshotStackOutputs.Store(&outputs)
+	return outputs, nil
+}
+
 func (s *diyStack) Backend() backend.Backend              { return s.b }
 func (s *diyStack) Tags() map[apitype.StackTagName]string { return nil }
 
