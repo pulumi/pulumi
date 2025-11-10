@@ -32,7 +32,7 @@ import (
 func ShowCmd() *cobra.Command {
 	var stackName string
 	var name string
-	var keysOnly bool
+	var pOpts printOptions
 	cmd := &cobra.Command{
 		Use:   "show",
 		Short: "Show resources in the stack",
@@ -55,42 +55,11 @@ func ShowCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			printResourceState := func(rs *resource.State) {
-				fmt.Println()
-
-				name := colors.Always.Colorize(colors.Bold+"Name: "+colors.Reset) + rs.URN.Name()
-				fmt.Println(name)
-				urn := colors.Always.Colorize(colors.Bold+"URN: "+colors.Reset) + string(rs.URN)
-				fmt.Println(urn)
-				properties := colors.Always.Colorize(colors.Bold + "Properties: " + colors.Reset)
-				fmt.Printf("%s", properties)
-
-				resourcePropertiesString := ""
-				if keysOnly {
-					for k := range rs.Outputs {
-						if strings.HasPrefix(string(k), "__") {
-							continue
-						}
-						resourcePropertiesString += " " + string(k) + ","
-					}
-					resourcePropertiesString = strings.TrimSuffix(resourcePropertiesString, ",")
-				} else {
-					resourcePropertiesString += "\n"
-					for k, v := range rs.Outputs {
-						if strings.HasPrefix(string(k), "__") {
-							continue
-						}
-						resourcePropertiesString += "    " + string(k) + ": " + renderPropertyVal(v, "    ") + "\n"
-					}
-				}
-				fmt.Println(resourcePropertiesString)
-				fmt.Println()
-			}
 
 			resources := ss.Resources
 			for _, res := range resources {
 				if strings.Contains(res.URN.Name(), name) {
-					printResourceState(res)
+					printResourceState(res, pOpts)
 				}
 			}
 
@@ -99,9 +68,45 @@ func ShowCmd() *cobra.Command {
 	}
 	cmd.PersistentFlags().StringVar(&stackName, "stack", "", "the stack for which resources will be shown")
 	cmd.PersistentFlags().StringVar(&name, "name", "", "filter resources by name")
-	cmd.PersistentFlags().BoolVar(&keysOnly, "keys-only", false, "only show property keys")
+	cmd.PersistentFlags().BoolVar(&pOpts.keysOnly, "keys-only", false, "only show property keys")
 
 	return cmd
+}
+
+type printOptions struct {
+	keysOnly bool
+}
+
+func printResourceState(rs *resource.State, pOpts printOptions) {
+	fmt.Println()
+
+	name := colors.Always.Colorize(colors.Bold+"Name: "+colors.Reset) + rs.URN.Name()
+	fmt.Println(name)
+	urn := colors.Always.Colorize(colors.Bold+"URN: "+colors.Reset) + string(rs.URN)
+	fmt.Println(urn)
+	properties := colors.Always.Colorize(colors.Bold + "Properties: " + colors.Reset)
+	fmt.Printf("%s", properties)
+
+	resourcePropertiesString := ""
+	if pOpts.keysOnly {
+		for k := range rs.Outputs {
+			if strings.HasPrefix(string(k), "__") {
+				continue
+			}
+			resourcePropertiesString += " " + string(k) + ","
+		}
+		resourcePropertiesString = strings.TrimSuffix(resourcePropertiesString, ",")
+	} else {
+		resourcePropertiesString += "\n"
+		for k, v := range rs.Outputs {
+			if strings.HasPrefix(string(k), "__") {
+				continue
+			}
+			resourcePropertiesString += "    " + string(k) + ": " + renderPropertyVal(v, "    ") + "\n"
+		}
+	}
+	fmt.Println(resourcePropertiesString)
+	fmt.Println()
 }
 
 // render resource properties , properties can be nested Arrays or maps
