@@ -787,7 +787,7 @@ func NewUpCmd() *cobra.Command {
 		&neoEnabled, "copilot", false,
 		"[DEPRECATED] Use --neo instead. Enable Pulumi Neo's assistance for improved CLI experience and insights "+
 			"(can also be set with PULUMI_COPILOT environment variable)")
-	_ = cmd.PersistentFlags().MarkHidden("copilot")
+	_ = cmd.PersistentFlags().MarkDeprecated("copilot", "please use --neo instead")
 
 	// Currently, we can't mix `--target` and `--exclude`.
 	cmd.MarkFlagsMutuallyExclusive("target", "exclude")
