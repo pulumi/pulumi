@@ -1616,7 +1616,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	autonaming *plugin.AutonamingOptions,
 ) ([]Step, bool, error) {
 	// We might be triggering a replace if we have an old state and it's trigger value is different, we don't
-	// even need to bother doing a diff in this case because we know this replacement. Note that we treat Null
+	// even need to bother doing a diff in this case because we know this is a replacement. Note that we treat Null
 	// as a special case for "no trigger", that is if Trigger goes from Null to anything, or from anything to
 	// Null it does not cause a replace.
 	triggerReplace := !new.ReplacementTrigger.IsNull() && !old.ReplacementTrigger.IsNull() &&
