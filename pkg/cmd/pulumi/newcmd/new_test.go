@@ -1247,10 +1247,11 @@ func assertTemplateContains(t *testing.T, actual, expected string) {
 	}
 }
 
-//nolint:paralleltest // mocks backendInstance
 func TestNoPromptWithYes(t *testing.T) {
+	t.Parallel()
 	for _, interactive := range []bool{true, false} {
 		t.Run(fmt.Sprintf("interactive=%t", interactive), func(t *testing.T) {
+			t.Parallel()
 			args := newArgs{
 				interactive: interactive,
 				yes:         true,
