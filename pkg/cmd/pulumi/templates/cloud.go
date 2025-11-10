@@ -209,11 +209,10 @@ func (r registryTemplate) DisplayName() string {
 }
 
 func (r registryTemplate) Description() string {
-	var parts []string
 	if r.t.Description != nil {
-		parts = append(parts, *r.t.Description)
+		return *r.t.Description
 	}
-	return strings.Join(parts, " ")
+	return ""
 }
 
 func (r registryTemplate) Error() error { return nil }
