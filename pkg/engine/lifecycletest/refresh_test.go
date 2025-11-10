@@ -2749,7 +2749,6 @@ func TestRefreshV2Targeted(t *testing.T) {
 		UpdateOptions: engine.UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
 				"urn:pulumi:test-stack::test-project::pkgB:index:Component::compA",
-				"urn:pulumi:test-stack::test-project::pkgB:index:Component$pulumi:providers:pkgC::provC",
 			}),
 		},
 	}
