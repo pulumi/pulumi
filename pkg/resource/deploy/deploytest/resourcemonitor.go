@@ -359,14 +359,13 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		return nil, err
 	}
 
-	// marshal trigger
 	trigger, err := plugin.MarshalPropertyValue("replacementTrigger", opts.ReplacementTrigger, plugin.MarshalOptions{
 		KeepUnknowns:  true,
 		KeepSecrets:   rm.supportsSecrets,
 		KeepResources: rm.supportsResourceReferences,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshaling replacement trigger: %w", err)
 	}
 
 	// marshal dependencies

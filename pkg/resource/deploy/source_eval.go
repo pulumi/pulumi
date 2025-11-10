@@ -2465,7 +2465,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				KeepOutputValues:   true,
 			})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unmarshaling replacement trigger: %w", err)
 		}
 		replacementTrigger = *t
 	}
