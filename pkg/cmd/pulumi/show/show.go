@@ -29,7 +29,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func ShowCmd() *cobra.Command {
+func NewShowCmd() *cobra.Command {
 	var stackName string
 	var name string
 	var pOpts printOptions
