@@ -1633,7 +1633,9 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	var pcs *promise.CompletionSource[plugin.DiffResult]
 	var err error
 	if triggerReplace {
-		// Return that there is a diff, but don't fill in any details.
+		// Return that there is a diff, but don't fill in any details. We later
+		// explicitly check for the presence of a `triggerReplace` instance, so all
+		// we need to know is that there is some type of change.
 		diff = plugin.DiffResult{Changes: plugin.DiffSome}
 	} else {
 		diff, pcs, err = sg.diff(
