@@ -1247,7 +1247,6 @@ func assertTemplateContains(t *testing.T, actual, expected string) {
 	}
 }
 
-//nolint:paralleltest
 func TestNoPromptWithYes(t *testing.T) {
 	t.Parallel()
 	for _, interactive := range []bool{true, false} {
