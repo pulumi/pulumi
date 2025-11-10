@@ -633,7 +633,7 @@ func AssertDisplay(t TB, events []engine.Event, path string) {
 		Stdout:               &stdout,
 		Stderr:               &stderr,
 		DeterministicOutput:  true,
-		ShowLinkToCopilot:    false,
+		ShowLinkToNeo:        false,
 	})
 
 	for _, e := range expectedEvents {
@@ -682,7 +682,7 @@ func AssertDisplay(t TB, events []engine.Event, path string) {
 			Stdout:               &stdout,
 			Stderr:               &stderr,
 			DeterministicOutput:  true,
-			ShowLinkToCopilot:    false,
+			ShowLinkToNeo:        false,
 		}, false)
 
 	for _, e := range expectedEvents {

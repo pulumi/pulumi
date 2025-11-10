@@ -82,8 +82,8 @@ func NewDestroyCmd() *cobra.Command {
 	var excludeProtected bool
 	var continueOnError bool
 
-	// Flags for Copilot.
-	var copilotEnabled bool
+	// Flags for Neo.
+	var neoEnabled bool
 
 	use, cmdArgs := "destroy", cmdutil.NoArgs
 	if deployment.RemoteSupported() {
@@ -192,7 +192,7 @@ func NewDestroyCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			configureCopilotOptions(copilotEnabled, cmd, &opts.Display, isDIYBackend)
+			configureNeoOptions(neoEnabled, cmd, &opts.Display, isDIYBackend)
 
 			s, err := cmdStack.RequireStack(
 				ctx,
@@ -448,9 +448,16 @@ func NewDestroyCmd() *cobra.Command {
 		"Automatically approve and perform the destroy after previewing it")
 
 	cmd.PersistentFlags().BoolVar(
-		&copilotEnabled, "copilot", false,
-		"Enable Pulumi Copilot's assistance for improved CLI experience and insights."+
+		&neoEnabled, "neo", false,
+		"Enable Pulumi Neo's assistance for improved CLI experience and insights "+
+			"(can also be set with PULUMI_NEO environment variable)")
+
+	// Keep --copilot flag for backwards compatibility, but hide it
+	cmd.PersistentFlags().BoolVar(
+		&neoEnabled, "copilot", false,
+		"[DEPRECATED] Use --neo instead. Enable Pulumi Neo's assistance for improved CLI experience and insights "+
 			"(can also be set with PULUMI_COPILOT environment variable)")
+	_ = cmd.PersistentFlags().MarkDeprecated("copilot", "please use --neo instead")
 
 	// Remote flags
 	remoteArgs.ApplyFlags(cmd)

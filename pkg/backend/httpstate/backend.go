@@ -196,8 +196,8 @@ type cloudBackend struct {
 	capabilities *promise.Promise[apitype.Capabilities]
 
 	// The current project, if any.
-	currentProject                  *workspace.Project
-	copilotEnabledForCurrentProject *bool
+	currentProject              *workspace.Project
+	neoEnabledForCurrentProject *bool
 }
 
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
@@ -612,7 +612,7 @@ func (b *cloudBackend) URL() string {
 
 func (b *cloudBackend) SetCurrentProject(project *workspace.Project) {
 	b.currentProject = project
-	b.copilotEnabledForCurrentProject = nil
+	b.neoEnabledForCurrentProject = nil
 }
 
 func (b *cloudBackend) CurrentUser() (string, []string, *workspace.TokenInformation, error) {
@@ -1170,10 +1170,10 @@ func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 }
 
 // IsExplainPreviewEnabled implements the "explainer" interface.
-// Checks that the backend supports the CopilotExplainPreview capability and that Copilot is enabled
+// Checks that the backend supports the NeoExplainPreview capability and that Neo is enabled
 // for the organization.
 func (b *cloudBackend) IsExplainPreviewEnabled(ctx context.Context, opts display.Options) bool {
-	if b.copilotEnabledForCurrentProject == nil || !*b.copilotEnabledForCurrentProject {
+	if b.neoEnabledForCurrentProject == nil || !*b.neoEnabledForCurrentProject {
 		return false
 	}
 
@@ -1185,24 +1185,24 @@ func (b *cloudBackend) IsExplainPreviewEnabled(ctx context.Context, opts display
 	return true
 }
 
-func (b *cloudBackend) isCopilotFeaturesEnabled(opts display.Options) bool {
-	// Have copilot features been requested by specifying the --copilot flag to the cli
-	if !opts.ShowCopilotFeatures {
+func (b *cloudBackend) isNeoFeaturesEnabled(opts display.Options) bool {
+	// Have Neo features been requested by specifying the --neo flag to the cli
+	if !opts.ShowNeoFeatures {
 		return false
 	}
 
-	// Is copilot enabled this project in Pulumi Cloud
-	if b.copilotEnabledForCurrentProject == nil {
+	// Is Neo enabled for this project in Pulumi Cloud
+	if b.neoEnabledForCurrentProject == nil {
 		logging.V(3).Info(
-			"error: copilotEnabledForCurrentProject has not been set. only available after an update has been started.")
+			"error: neoEnabledForCurrentProject has not been set. only available after an update has been started.")
 		return false
 	}
 
-	return *b.copilotEnabledForCurrentProject
+	return *b.neoEnabledForCurrentProject
 }
 
 // explain takes engine events, renders them out to a buffer as something similar to what the user sees
-// in the CLI, and then explains the output with Copilot.
+// in the CLI, and then explains the output with Neo.
 func (b *cloudBackend) Explain(
 	ctx context.Context,
 	stackRef backend.StackReference,
@@ -1232,13 +1232,13 @@ func (b *cloudBackend) Explain(
 	}
 
 	displayOpts := op.Opts.Display
-	display.RenderCopilotThinking(displayOpts)
+	display.RenderNeoThinking(displayOpts)
 	orgID := stackID.Owner
-	summary, err := b.client.ExplainPreviewWithCopilot(ctx, orgID, string(kind), output)
+	summary, err := b.client.ExplainPreviewWithNeo(ctx, orgID, string(kind), output)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			// Format a better error message for the user
-			return "", fmt.Errorf("request to %s timed out after %s", b.client.URL(), client.CopilotRequestTimeout.String())
+			return "", fmt.Errorf("request to %s timed out after %s", b.client.URL(), client.NeoRequestTimeout.String())
 		}
 		return "", err
 	}
@@ -1247,7 +1247,7 @@ func (b *cloudBackend) Explain(
 		summary = "No summary available"
 	}
 
-	formattedSummary := display.FormatCopilotSummary(summary, displayOpts)
+	formattedSummary := display.FormatNeoSummary(summary, displayOpts)
 
 	return formattedSummary, nil
 }
@@ -1372,16 +1372,16 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 
 	permalink := b.getPermalink(update, updateMeta.version, dryRun)
 	if renderer.OutputIncludesFailure() {
-		summary, err := b.summarizeErrorWithCopilot(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
+		summary, err := b.summarizeErrorWithNeo(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
 		// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
 		// if we can't generate a summary.
-		display.RenderCopilotErrorSummary(summary, err, op.Opts.Display, permalink)
+		display.RenderNeoErrorSummary(summary, err, op.Opts.Display, permalink)
 	}
 }
 
-func (b *cloudBackend) summarizeErrorWithCopilot(
+func (b *cloudBackend) summarizeErrorWithNeo(
 	ctx context.Context, pulumiOutput string, stackRef backend.StackReference, opts display.Options,
-) (*display.CopilotErrorSummaryMetadata, error) {
+) (*display.NeoErrorSummaryMetadata, error) {
 	if len(pulumiOutput) == 0 {
 		return nil, nil
 	}
@@ -1392,10 +1392,10 @@ func (b *cloudBackend) summarizeErrorWithCopilot(
 	}
 	orgName := stackID.Owner
 
-	model := opts.CopilotSummaryModel
-	maxSummaryLen := opts.CopilotSummaryMaxLen
+	model := opts.NeoSummaryModel
+	maxSummaryLen := opts.NeoSummaryMaxLen
 
-	summary, err := b.client.SummarizeErrorWithCopilot(ctx, orgName, pulumiOutput, model, maxSummaryLen)
+	summary, err := b.client.SummarizeErrorWithNeo(ctx, orgName, pulumiOutput, model, maxSummaryLen)
 	if err != nil {
 		return nil, err
 	}
@@ -1405,7 +1405,7 @@ func (b *cloudBackend) summarizeErrorWithCopilot(
 		return nil, nil
 	}
 
-	return &display.CopilotErrorSummaryMetadata{
+	return &display.NeoErrorSummaryMetadata{
 		Summary: summary,
 	}, nil
 }
@@ -1479,25 +1479,25 @@ func (b *cloudBackend) createAndStartUpdate(
 	if err != nil {
 		userName = "unknown"
 	}
-	// Check if the user's org (stack's owner) has Copilot enabled. If not, we don't show the link to Copilot.
-	isCopilotEnabled := updateDetails.IsCopilotIntegrationEnabled
-	b.copilotEnabledForCurrentProject = &isCopilotEnabled
-	copilotEnabledValueString := "is"
+	// Check if the user's org (stack's owner) has Neo enabled. If not, we don't show the link to Neo.
+	isNeoEnabled := updateDetails.IsNeoIntegrationEnabled
+	b.neoEnabledForCurrentProject = &isNeoEnabled
+	neoEnabledValueString := "is"
 	continuationString := ""
-	if isCopilotEnabled {
-		if env.SuppressCopilotLink.Value() {
-			// Copilot is enabled in user's org, but the environment variable to suppress the link to Copilot is set.
-			op.Opts.Display.ShowLinkToCopilot = false
-			continuationString = " but the environment variable PULUMI_SUPPRESS_COPILOT_LINK" +
-				" suppresses the link to Copilot in diagnostics"
+	if isNeoEnabled {
+		if env.SuppressNeoLink.Value() {
+			// Neo is enabled in user's org, but the environment variable to suppress the link to Neo is set.
+			op.Opts.Display.ShowLinkToNeo = false
+			continuationString = " but the environment variable PULUMI_SUPPRESS_NEO_LINK" +
+				" suppresses the link to Neo in diagnostics"
 		}
 	} else {
-		op.Opts.Display.ShowLinkToCopilot = false
-		op.Opts.Display.ShowCopilotFeatures = false
-		copilotEnabledValueString = "is not"
+		op.Opts.Display.ShowLinkToNeo = false
+		op.Opts.Display.ShowNeoFeatures = false
+		neoEnabledValueString = "is not"
 	}
-	logging.V(7).Infof("Copilot in org '%s' %s enabled for user '%s'%s",
-		stackID.Owner, copilotEnabledValueString, userName, continuationString)
+	logging.V(7).Infof("Neo in org '%s' %s enabled for user '%s'%s",
+		stackID.Owner, neoEnabledValueString, userName, continuationString)
 
 	return update, updateMetadata{
 		version:        version,
@@ -1535,7 +1535,7 @@ func (b *cloudBackend) apply(
 		return nil, nil, err
 	}
 
-	if b.isCopilotFeaturesEnabled(op.Opts.Display) {
+	if b.isNeoFeaturesEnabled(op.Opts.Display) {
 		if !b.Capabilities(ctx).CopilotSummarizeErrorV1 {
 			logging.V(7).Infof("CopilotSummarizeErrorV1 is not supported by the backend")
 		} else {
@@ -1553,7 +1553,7 @@ func (b *cloudBackend) apply(
 					if originalEvents != nil {
 						originalEvents <- e
 					}
-					// Do not send internal events to the copilot summary as they are not displayed to the user either.
+					// Do not send internal events to the neo summary as they are not displayed to the user either.
 					// We can skip Ephemeral events as well as we want to display the "final" output.
 					if e.Internal() || e.Ephemeral() {
 						continue

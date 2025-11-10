@@ -45,7 +45,7 @@ func defaultOpts() Options {
 		ShowSameResources:    true,
 		ShowReads:            true,
 		DeterministicOutput:  true,
-		ShowLinkToCopilot:    false,
+		ShowLinkToNeo:        false,
 		RenderOnDirty:        true,
 	}
 }

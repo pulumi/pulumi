@@ -49,7 +49,7 @@ import (
 
 const (
 	// 20s before we give up on a copilot request
-	CopilotRequestTimeout = 20 * time.Second
+	NeoRequestTimeout = 20 * time.Second
 )
 
 // TemplatePublishOperationID uniquely identifies a template publish operation.
@@ -739,9 +739,9 @@ func (pc *Client) ImportStackDeployment(ctx context.Context, stack StackIdentifi
 }
 
 type CreateUpdateDetails struct {
-	Messages                    []apitype.Message
-	RequiredPolicies            []apitype.RequiredPolicy
-	IsCopilotIntegrationEnabled bool
+	Messages                []apitype.Message
+	RequiredPolicies        []apitype.RequiredPolicy
+	IsNeoIntegrationEnabled bool
 }
 
 // CreateUpdate creates a new update for the indicated stack with the given kind and assorted options. If the update
@@ -816,9 +816,9 @@ func (pc *Client) CreateUpdate(
 			UpdateKind:      kind,
 			UpdateID:        updateResponse.UpdateID,
 		}, CreateUpdateDetails{
-			Messages:                    updateResponse.Messages,
-			RequiredPolicies:            updateResponse.RequiredPolicies,
-			IsCopilotIntegrationEnabled: updateResponse.AISettings.CopilotIsEnabled,
+			Messages:                updateResponse.Messages,
+			RequiredPolicies:        updateResponse.RequiredPolicies,
+			IsNeoIntegrationEnabled: updateResponse.AISettings.CopilotIsEnabled,
 		}, nil
 }
 
@@ -1500,8 +1500,8 @@ func (pc *Client) SubmitAIPrompt(ctx context.Context, requestBody any) (*http.Re
 	return res, err
 }
 
-// SummarizeErrorWithCopilot summarizes Pulumi Update output using the Copilot API
-func (pc *Client) SummarizeErrorWithCopilot(
+// SummarizeErrorWithNeo summarizes Pulumi Update output using the Copilot API
+func (pc *Client) SummarizeErrorWithNeo(
 	ctx context.Context,
 	orgID string,
 	content string,
@@ -1512,7 +1512,7 @@ func (pc *Client) SummarizeErrorWithCopilot(
 	return pc.callCopilot(ctx, request)
 }
 
-func (pc *Client) ExplainPreviewWithCopilot(
+func (pc *Client) ExplainPreviewWithNeo(
 	ctx context.Context,
 	orgID string,
 	kind string,
@@ -1528,7 +1528,7 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody any) (string, err
 		return "", fmt.Errorf("preparing request: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, CopilotRequestTimeout)
+	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
 	defer cancel()
 
 	url := pc.apiURL + "/api/ai/chat/preview"
