@@ -382,10 +382,15 @@ func (op TestOp) runWithContext(
 	errs = append(errs, journaler.Errors()...)
 
 	// Verify the saved snapshot from SnapshotManger is the same(ish) as that from the Journal
-	errs = append(errs, snapshot.AssertEqual(serializedSnap, persister.Snap))
+	snapErr := snapshot.AssertEqual(serializedSnap, persister.Snap)
+	if snapErr != nil {
+		errs = append(errs, fmt.Errorf("snapshot manager resources differ: %w", snapErr))
+	}
 
 	journalErr := snapshot.AssertEqual(serializedSnap, journalPersister.Snap)
-	errs = append(errs, journalErr)
+	if journalErr != nil {
+		errs = append(errs, fmt.Errorf("journal resources differ: %w", journalErr))
+	}
 
 	if journalErr != nil {
 		opts.T.Log("original base snapshot:")
