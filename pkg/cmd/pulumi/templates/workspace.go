@@ -115,6 +115,7 @@ type workspaceTemplate struct {
 }
 
 func (t workspaceTemplate) Name() string                                             { return t.t.Name }
+func (t workspaceTemplate) DisplayName() string                                      { return t.t.Name }
 func (t workspaceTemplate) Description() string                                      { return t.t.Description }
 func (t workspaceTemplate) Error() error                                             { return t.t.Error }
 func (t workspaceTemplate) Download(ctx context.Context) (workspace.Template, error) { return t.t, nil }

@@ -67,8 +67,8 @@ func templatesToOptionArrayAndMap(templates []cmdTemplates.Template) ([]string, 
 	// Find the longest name length. Used to add padding between the name and description.
 	maxNameLength := 0
 	for _, template := range templates {
-		if len(template.Name()) > maxNameLength {
-			maxNameLength = len(template.Name())
+		if len(template.DisplayName()) > maxNameLength {
+			maxNameLength = len(template.DisplayName())
 		}
 	}
 
@@ -83,7 +83,7 @@ func templatesToOptionArrayAndMap(templates []cmdTemplates.Template) ([]string, 
 		if template.Error() != nil {
 			desc = BrokenTemplateDescription
 		}
-		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name(), desc)
+		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.DisplayName(), desc)
 
 		nameToTemplateMap[option] = template
 		if template.Error() != nil {
