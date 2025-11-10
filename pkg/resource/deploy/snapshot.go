@@ -709,14 +709,14 @@ func (snap *Snapshot) VerifyIntegrity() error {
 					if _, has := urns[dep.URN]; !has {
 						for _, other := range snap.Resources[i+1:] {
 							if other.URN == dep.URN {
-								return SnapshotIntegrityErrorf(
+								return snapshot.SnapshotIntegrityErrorf(
 									"resource %s is specified as being replaced with %s, which comes after it",
 									urn, dep.URN,
 								)
 							}
 						}
 
-						return SnapshotIntegrityErrorf(
+						return snapshot.SnapshotIntegrityErrorf(
 							"resource %s is specified as being replaced with %s, which is missing",
 							urn, dep.URN,
 						)
