@@ -246,7 +246,6 @@ func (r *JournalReplayer) Add(entry apitype.JournalEntry) {
 // Note that this function assumes that resources are in reverse-dependency order.
 func rebuildDependencies(resources []apitype.ResourceV3) {
 	referenceable := make(map[resource.URN]bool)
-	undeleted := make(map[resource.URN]bool)
 	for i := range resources {
 		newDeps := []resource.URN{}
 		newPropDeps := make(map[resource.PropertyKey][]resource.URN)
@@ -272,12 +271,9 @@ func rebuildDependencies(resources []apitype.ResourceV3) {
 			resources[i].PropertyDependencies = newPropDeps
 		}
 		referenceable[resources[i].URN] = true
-		if !resources[i].Delete {
-			undeleted[resources[i].URN] = true
-		}
 	}
 
-	undangleParentResources(undeleted, resources)
+	undangleParentResources(referenceable, resources)
 }
 
 func undangleParentResources(undeleted map[resource.URN]bool, resources []apitype.ResourceV3) {

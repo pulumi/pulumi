@@ -290,7 +290,6 @@ func FilterRefreshDeletes(
 ) {
 	availableParents := map[resource.URN]resource.URN{}
 	referenceable := make(map[resource.URN]bool)
-	undeleted := make(map[resource.URN]bool)
 	for i, res := range resources {
 		newDeps := []resource.URN{}
 		newPropDeps := map[resource.PropertyKey][]resource.URN{}
@@ -310,9 +309,7 @@ func FilterRefreshDeletes(
 					// Since existing must obey a topological sort, we have already addressed
 					// r.Parent. Since we know that it doesn't dangle, and that r.Parent no longer
 					// exists, we set r.Parent as r.Parent.Parent.
-					if _, ok := undeleted[res.URN]; !ok {
-						newParent = availableParents[res.Parent]
-					}
+					newParent = availableParents[res.Parent]
 					availableParents[res.URN] = newParent
 					newParent = dep.URN
 					filtered = true
@@ -339,9 +336,6 @@ func FilterRefreshDeletes(
 		}
 
 		referenceable[res.URN] = true
-		if !res.Delete {
-			undeleted[res.URN] = true
-		}
 
 		if !filtered {
 			continue
