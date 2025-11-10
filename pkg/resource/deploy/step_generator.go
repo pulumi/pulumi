@@ -1621,13 +1621,6 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	// Null it does not cause a replace.
 	triggerReplace := !new.ReplacementTrigger.IsNull() && !old.ReplacementTrigger.IsNull() &&
 		!new.ReplacementTrigger.DeepEquals(old.ReplacementTrigger)
-	// TODO: THIS IS INTERESTING!!! We don't really want DeepEquals here because we could have unknowns so we
-	// actually have a tri-state here, of (equal, not-equal, unknown). If equal that's easy, we're not doing a
-	// replace, likewise if not-equal we _are_ doing a replace, but the unknown state is tricky because it
-	// means we _might_ be doing a replace! That results in a maybe_replace_maybe_update step which we don't
-	// currently have. This is _very_ similar to our loop support (index resource option) where we would end
-	// up with things like maybe_delete_maybe_update. For now we just handle this the same as
-	// replaceOnChanges, i.e. unknown means assume a replace.
 
 	var diff plugin.DiffResult
 	var pcs *promise.CompletionSource[plugin.DiffResult]
