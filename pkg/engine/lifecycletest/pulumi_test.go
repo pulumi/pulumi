@@ -1863,10 +1863,11 @@ func TestReplacementTrigger(t *testing.T) {
 		}),
 	}
 
+	value := resource.NewPropertyValue("first")
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:             resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
-			ReplacementTrigger: resource.NewPropertyValue("first"),
+			ReplacementTrigger: value,
 		})
 
 		require.NoError(t, err)
@@ -1899,15 +1900,7 @@ func TestReplacementTrigger(t *testing.T) {
 	assert.Equal(t, 2, len(snap.Resources))
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 
-	programF = deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs:             resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
-			ReplacementTrigger: resource.NewPropertyValue("second"),
-		})
-
-		require.NoError(t, err)
-		return nil
-	})
+	value = resource.NewPropertyValue("second")
 
 	hostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p.Options.HostF = hostF
