@@ -87,7 +87,7 @@ type SnapshotManager struct {
 	cancel           chan bool                // A channel used to request cancellation of any new mutation requests.
 	done             <-chan error             // A channel that sends a single result when the manager has shut down.
 
-	isRefresh bool // Whether or not the snapshot is part of a refresh
+	needsRebuildDependencies bool // Whether or not the snapshot is part of a refresh
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
@@ -226,7 +226,7 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 		old.External, new.External)
 
 	if sameStep, isSameStep := step.(*deploy.SameStep); isSameStep {
-		contract.Assertf(!sameStep.IsSkippedCreate(), "create cannot be skipped for SameStep")
+		contract.Assertf(!sameStep.IsSkipped(), "create cannot be skipped for SameStep")
 	}
 
 	// If the URN of this resource has changed, we must write the checkpoint. This should only be possible when a
@@ -355,16 +355,16 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 
 		ssm.manager.markOperationComplete(step.New())
 		if successful {
-			ssm.manager.markDone(step.Old())
-
 			// In the case of a 'resource create' in a program that wasn't specified by the user in the
 			// --target list, we *never* want to write this to the checkpoint.  We treat it as if it
 			// doesn't exist at all.  That way when the program runs the next time, we'll actually
 			// create it.
-			if isSameStep && sameStep.IsSkippedCreate() {
+			if isSameStep && sameStep.IsSkipped() {
+				ssm.manager.needsRebuildDependencies = true
 				return false
 			}
 
+			ssm.manager.markDone(step.Old())
 			ssm.manager.markNew(step.New())
 
 			// Note that "Same" steps only consider input and provider diffs, so it is possible to see a same step for a
@@ -555,7 +555,7 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		refreshStep, isRefreshStep := step.(*deploy.RefreshStep)
 		viewStep, isViewStep := step.(*deploy.ViewStep)
 		if (isViewStep && viewStep.Persisted()) || (isRefreshStep && refreshStep.Persisted()) {
-			rsm.manager.isRefresh = true
+			rsm.manager.needsRebuildDependencies = true
 			if successful && step.Old() != nil {
 				rsm.manager.markDone(step.Old())
 				if step.New() != nil {
@@ -700,7 +700,7 @@ func (sm *SnapshotManager) Snap() *deploy.Snapshot {
 	}
 
 	// Filter any refresh deletes
-	if sm.isRefresh {
+	if sm.needsRebuildDependencies {
 		engine.FilterRefreshDeletes(resources)
 	}
 

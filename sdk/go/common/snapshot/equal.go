@@ -105,16 +105,23 @@ func AssertEqual(expected, actual *apitype.DeploymentV3) error {
 					newPropDeps[k] = v
 				}
 			}
+			fmt.Println("assigning mr - newPropDeps:", newPropDeps)
 			mr.PropertyDependencies = newPropDeps
 		}
-		// Normalize empty Outputs and Inputs.  Since we're serializing and deserializing
-		// this in the journal, we lose some information compared to the regular
-		// snapshotting algorithm.
+		// Normalize empty Outputs, Inputs, Dependencies and PropertyDependencies.  Since we're
+		// serializing and deserializing this in the journal, we lose some information compared to the
+		// regular snapshotting algorithm.
 		if len(mr.Outputs) == 0 {
 			mr.Outputs = make(map[string]any)
 		}
 		if len(mr.Inputs) == 0 {
 			mr.Inputs = make(map[string]any)
+		}
+		if len(mr.PropertyDependencies) == 0 {
+			mr.PropertyDependencies = nil
+		}
+		if len(mr.Dependencies) == 0 {
+			mr.Dependencies = nil
 		}
 		resourcesMap[mr.URN] = append(resourcesMap[mr.URN], mr)
 	}
@@ -128,19 +135,26 @@ func AssertEqual(expected, actual *apitype.DeploymentV3) error {
 					newPropDeps[k] = v
 				}
 			}
+			fmt.Println("assigning jr - newPropDeps:", newPropDeps)
 			jr.PropertyDependencies = newPropDeps
 		}
 
 		found := false
 		var diffStr string
-		// Normalize empty Outputs and Inputs.  Since we're serializing and deserializing
-		// this in the journal, we lose some information compared to the regular
-		// snapshotting algorithm.
+		// Normalize empty Outputs, Inputs, Dependencies and PropertyDependencies.  Since we're
+		// serializing and deserializing this in the journal, we lose some information compared to the
+		// regular snapshotting algorithm.
 		if len(jr.Outputs) == 0 {
 			jr.Outputs = make(map[string]any)
 		}
 		if len(jr.Inputs) == 0 {
 			jr.Inputs = make(map[string]any)
+		}
+		if len(jr.PropertyDependencies) == 0 {
+			jr.PropertyDependencies = nil
+		}
+		if len(jr.Dependencies) == 0 {
+			jr.Dependencies = nil
 		}
 		for _, mr := range resourcesMap[jr.URN] {
 			if diff := deep.Equal(jr, mr); diff != nil {

@@ -45,7 +45,7 @@ type JournalEntries []TestJournalEntry
 func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 	// Build up a list of current resources by replaying the journal.
 	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
-	isRefresh := false
+	needsRebuildDependencies := false
 	ops, doneOps := []resource.Operation{}, make(map[*resource.State]bool)
 	for _, e := range entries {
 		logging.V(7).Infof("%v %v (%v)", e.Step.Op(), e.Step.URN(), e.Kind)
@@ -84,9 +84,11 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 			switch e.Step.Op() {
 			case deploy.OpSame:
 				step, ok := e.Step.(*deploy.SameStep)
-				if !ok || !step.IsSkippedCreate() {
+				if !ok || !step.IsSkipped() {
 					resources = append(resources, e.Step.New())
 					dones[e.Step.Old()] = true
+				} else {
+					needsRebuildDependencies = true
 				}
 			case deploy.OpUpdate:
 				resources = append(resources, e.Step.New())
@@ -115,7 +117,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 				refreshStep, isRefreshStep := e.Step.(*deploy.RefreshStep)
 				viewStep, isViewStep := e.Step.(*deploy.ViewStep)
 				if (isViewStep && viewStep.Persisted()) || (isRefreshStep && refreshStep.Persisted()) {
-					isRefresh = true
+					needsRebuildDependencies = true
 					if e.Step.New() != nil {
 						resources = append(resources, e.Step.New())
 					}
@@ -147,7 +149,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 		}
 	}
 
-	if isRefresh {
+	if needsRebuildDependencies {
 		FilterRefreshDeletes(filteredResources)
 	}
 
@@ -312,7 +314,6 @@ func FilterRefreshDeletes(
 					// exists, we set r.Parent as r.Parent.Parent.
 					newParent = availableParents[res.Parent]
 					availableParents[res.URN] = newParent
-					newParent = dep.URN
 					filtered = true
 				}
 			case resource.ResourceDependency:

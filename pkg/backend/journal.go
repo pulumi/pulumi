@@ -90,7 +90,7 @@ func SerializeJournalEntry(
 		PendingReplacementNew: je.PendingReplacementNew,
 		DeleteOld:             je.DeleteOld,
 		DeleteNew:             je.DeleteNew,
-		IsRefresh:             je.IsRefresh,
+		RebuildDependencies:   je.RebuildDependencies,
 		NewSnapshot:           snapshot,
 	}
 
@@ -116,8 +116,9 @@ type JournalReplayer struct {
 	// incompleteOps tracks operations that have begun but not yet completed.
 	incompleteOps map[int64]apitype.JournalEntry
 
-	// hasRefresh indicates whether any of the journal entries were part of a refresh operation.
-	hasRefresh bool
+	// needsRebuildDependencies indicates whether any of the journal entries make a dependency rebuild
+	// necessary.
+	needsRebuildDependencies bool
 
 	// index is the current index in the new resource list.
 	index int64
@@ -175,12 +176,12 @@ func (r *JournalReplayer) Add(entry apitype.JournalEntry) {
 			r.newResources[r.operationIDToResourceIndex[*entry.PendingReplacementNew]].PendingReplacement = true
 		}
 
-		if entry.IsRefresh {
-			r.hasRefresh = true
+		if entry.RebuildDependencies {
+			r.needsRebuildDependencies = true
 		}
 	case apitype.JournalEntryKindRefreshSuccess:
 		delete(r.incompleteOps, entry.OperationID)
-		r.hasRefresh = true
+		r.needsRebuildDependencies = true
 		if entry.RemoveOld != nil {
 			if entry.State == nil {
 				r.toDeleteInSnapshot[*entry.RemoveOld] = struct{}{}
@@ -358,7 +359,7 @@ func (r *JournalReplayer) GenerateDeployment() apitype.TypedDeployment {
 		}
 	}
 
-	if r.hasRefresh {
+	if r.needsRebuildDependencies {
 		// Rebuild dependencies if we had a refresh, as refreshes may delete resources,
 		// which may cause other resources to have dangling dependencies.
 		rebuildDependencies(resources)

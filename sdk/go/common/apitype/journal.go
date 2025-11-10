@@ -81,7 +81,7 @@ type JournalEntry struct {
 	// The operation associated with this journal entry, if any.
 	Operation *OperationV2 `json:"operation,omitempty"`
 	// If true, this journal entry is part of a refresh operation.
-	IsRefresh bool `json:"isRefresh,omitempty"`
+	RebuildDependencies bool `json:"isRefresh,omitempty"`
 	// The secrets manager associated with this journal entry, if any.
 	SecretsProvider *SecretsProvidersV1 `json:"secretsProvider,omitempty"`
 
@@ -117,7 +117,7 @@ func (e JournalEntry) String() string {
 	if e.Operation != nil {
 		fmt.Fprintf(&sb, ", operation(%v)", e.Operation.Type)
 	}
-	if e.IsRefresh {
+	if e.RebuildDependencies {
 		fmt.Fprintf(&sb, ", isRefresh")
 	}
 	if e.SecretsProvider != nil {

@@ -82,12 +82,36 @@ type SameStep struct {
 	old        *resource.State       // the state of the resource before this step.
 	new        *resource.State       // the state of the resource after this step.
 
-	// If this is a same-step for a resource being created but which was not --target'ed by the user
-	// (and thus was skipped).
-	skippedCreate bool
+	// If this is a same-step for a non-targeted resource being created or that is a dependency
+	// of a targeted resource (and thus was skipped).
+	skipped bool
 }
 
 var _ Step = (*SameStep)(nil)
+
+func NewSkippedSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *resource.State) Step {
+	contract.Requiref(old != new, "old and new", "must not be the same")
+
+	contract.Requiref(old != nil, "old", "must not be nil")
+	contract.Requiref(old.URN != "", "old", "must have a URN")
+	contract.Requiref(old.ID != "" || !old.Custom, "old", "must have an ID if it is custom")
+	contract.Requiref(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type),
+		"old", "must have or be a provider if it is a custom resource")
+
+	contract.Requiref(new != nil, "new", "must not be nil")
+	contract.Requiref(new.URN != "", "new", "must have a URN")
+	contract.Requiref(new.ID == "", "new", "must not have an ID")
+	contract.Requiref(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type),
+		"new", "must have or be a provider if it is a custom resource")
+
+	return &SameStep{
+		deployment: deployment,
+		reg:        reg,
+		old:        old,
+		new:        new,
+		skipped:    true,
+	}
+}
 
 func NewSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *resource.State) Step {
 	contract.Requiref(old != new, "old and new", "must not be the same")
@@ -129,11 +153,11 @@ func NewSkippedCreateStep(deployment *Deployment, reg RegisterResourceEvent, new
 	// If we don't have an old state make the old state here a direct copy of the new state
 	old := new.Copy()
 	return &SameStep{
-		deployment:    deployment,
-		reg:           reg,
-		old:           old,
-		new:           new,
-		skippedCreate: true,
+		deployment: deployment,
+		reg:        reg,
+		old:        old,
+		new:        new,
+		skipped:    true,
 	}
 }
 
@@ -157,7 +181,7 @@ func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 	// If the resource is a provider, ensure that it is present in the registry under the appropriate URNs.
 	// We can only do this if the provider is actually a same, not a skipped create.
-	if providers.IsProviderType(s.new.Type) && !s.skippedCreate {
+	if providers.IsProviderType(s.new.Type) && !s.skipped {
 		if s.Deployment() != nil {
 			// We need to use the new state here (so that URN and ID are correct), but we want to use the old
 			// inputs. This ensures that providers that report changed inputs as NO_DIFF consistently see the
@@ -189,8 +213,8 @@ func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	return resource.StatusOK, complete, nil
 }
 
-func (s *SameStep) IsSkippedCreate() bool {
-	return s.skippedCreate
+func (s *SameStep) IsSkipped() bool {
+	return s.skipped
 }
 
 func (s *SameStep) Fail() {

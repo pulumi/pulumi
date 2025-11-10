@@ -427,7 +427,7 @@ func (sg *stepGenerator) validateSteps(steps []Step) ([]Step, error) {
 
 		// If this step is a skipped create (which under the hood is a SameStep), we don't need to error out, since its
 		// execution won't result in any updates to dependencies which don't exist.
-		if sameStep, ok := step.(*SameStep); ok && sameStep.Op() == OpSame && sameStep.IsSkippedCreate() {
+		if sameStep, ok := step.(*SameStep); ok && sameStep.Op() == OpSame && sameStep.IsSkipped() {
 			continue
 		}
 
@@ -2159,7 +2159,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 				if !sg.isOperatedOn(res.URN) {
 					new := res.Copy()
 					new.ID = ""
-					sameSteps = append(sameSteps, NewSameStep(sg.deployment, nil, res, new))
+					sameSteps = append(sameSteps, NewSkippedSameStep(sg.deployment, nil, res, new))
 				}
 			}
 		}

@@ -156,7 +156,7 @@ type JournalEntry struct {
 	// If true, this journal entry can be elided and does not need to be written immediately.
 	ElideWrite bool
 	// If true, this journal entry is part of a refresh operation.
-	IsRefresh bool
+	RebuildDependencies bool
 	// SecretsManager is the secrets manager associated with the operation
 	SecretsManager secrets.Manager
 
@@ -360,7 +360,7 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 		old.External, new.External)
 
 	if sameStep, isSameStep := step.(*deploy.SameStep); isSameStep {
-		contract.Assertf(!sameStep.IsSkippedCreate(), "create cannot be skipped for SameStep")
+		contract.Assertf(!sameStep.IsSkipped(), "create cannot be skipped for SameStep")
 	}
 
 	// If the URN of this resource has changed, we must write the checkpoint. This should only be possible when a
@@ -502,7 +502,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 	journalEntry := ssm.manager.newJournalEntry(kind, ssm.operationID)
 
 	sameStep, isSameStep := step.(*deploy.SameStep)
-	if !isSameStep || !sameStep.IsSkippedCreate() {
+	if !isSameStep || !sameStep.IsSkipped() {
 		journalEntry.State = step.New().Copy()
 		ssm.manager.newResources.Store(step.New(), ssm.operationID)
 		if old := step.Old(); old != nil {
@@ -510,8 +510,12 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 		}
 	}
 
-	if successful && isSameStep && (sameStep.IsSkippedCreate() || !ssm.mustWrite(sameStep)) {
+	if successful && isSameStep && (sameStep.IsSkipped() || !ssm.mustWrite(sameStep)) {
 		journalEntry.ElideWrite = true
+	}
+
+	if isSameStep && sameStep.IsSkipped() {
+		journalEntry.RebuildDependencies = true
 	}
 
 	return ssm.manager.addJournalEntry(journalEntry)
@@ -728,7 +732,7 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		journalEntry.Kind = JournalEntrySuccess
 	}
 
-	journalEntry.IsRefresh = true
+	journalEntry.RebuildDependencies = true
 
 	if old := step.Old(); old != nil {
 		journalEntry.RemoveOld, journalEntry.RemoveNew = rsm.manager.findResourceInNewOrOld(old)
