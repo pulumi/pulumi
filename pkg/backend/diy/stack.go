@@ -76,8 +76,10 @@ func (s *diyStack) Snapshot(ctx context.Context, secretsProvider secrets.Provide
 		return nil, err
 	}
 
-	s.snapshot.Store(&snap)
-	return snap, nil
+	if s.snapshot.CompareAndSwap(nil, &snap) {
+		return snap, nil
+	}
+	return *s.snapshot.Load(), nil
 }
 
 func (s *diyStack) SnapshotStackOutputs(
@@ -92,8 +94,10 @@ func (s *diyStack) SnapshotStackOutputs(
 		return nil, err
 	}
 
-	s.snapshotStackOutputs.Store(&outputs)
-	return outputs, nil
+	if s.snapshotStackOutputs.CompareAndSwap(nil, &outputs) {
+		return outputs, nil
+	}
+	return *s.snapshotStackOutputs.Load(), nil
 }
 
 func (s *diyStack) Backend() backend.Backend              { return s.b }
