@@ -1032,7 +1032,10 @@ def register_resource(
                     "The Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI."
                 )
 
-            if resolver.replace_with_urns and not await settings.monitor_supports_replace_with():
+            if (
+                resolver.replace_with_urns
+                and not await settings.monitor_supports_replace_with()
+            ):
                 raise Exception(
                     "The Pulumi CLI does not support the ReplaceWith option. Please update the Pulumi CLI."
                 )

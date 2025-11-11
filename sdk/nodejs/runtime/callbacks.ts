@@ -329,7 +329,9 @@ export class CallbackServer implements ICallbackServer {
                         opts.setDeletedWith(await result.opts.deletedWith.urn.promise());
                     }
                     if (result.opts.replaceWith !== undefined) {
-                        opts.setReplaceWithList(await Promise.all(result.opts.replaceWith.map(async (dep) => await dep.urn.promise())));
+                        opts.setReplaceWithList(
+                            await Promise.all(result.opts.replaceWith.map(async (dep) => await dep.urn.promise())),
+                        );
                     }
                     if (result.opts.dependsOn !== undefined) {
                         const resolvedDeps = await output(result.opts.dependsOn).promise();
