@@ -340,6 +340,10 @@ async def monitor_supports_deleted_with() -> bool:
     return await monitor_supports_feature("deletedWith")
 
 
+async def monitor_supports_replace_with() -> bool:
+    return await monitor_supports_feature("replaceWith")
+
+
 async def monitor_supports_alias_specs() -> bool:
     return await monitor_supports_feature("aliasSpecs")
 
@@ -412,6 +416,7 @@ async def _load_monitor_feature_support():
         monitor_supports_feature("resourceReferences"),
         monitor_supports_feature("outputValues"),
         monitor_supports_feature("deletedWith"),
+        monitor_supports_feature("replaceWith"),
         monitor_supports_feature("aliasSpecs"),
         monitor_supports_feature("transforms"),
         monitor_supports_feature("invokeTransforms"),

@@ -148,6 +148,7 @@ message RegisterResourceRequest {
     optional bool retainOnDelete = 25;                          // if true the engine will not call the resource providers delete method for this resource.
     repeated Alias aliases = 26;                                // a list of additional aliases that should be considered the same.
     string deletedWith = 27;                                    // if set the engine will not call the resource providers delete method for this resource when specified resource is deleted.
+    repeated string replace_with = 38;                          // if set the engine will replace this resource when any of the specified resources are replaced.
 
     // Indicates that alias specs are specified correctly according to the spec.
     // Older versions of the Node.js SDK did not send alias specs correctly.
@@ -273,6 +274,7 @@ message TransformResourceOptions {
     RegisterResourceRequest.ResourceHooksBinding hooks = 16;
     string import = 17;
     repeated string hide_diff = 18;
+    repeated string replace_with = 19;
 }
 
 message TransformRequest {

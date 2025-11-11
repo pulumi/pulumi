@@ -1255,6 +1255,10 @@ export class ConstructRequest extends jspb.Message {
     setResourceHooks(value?: ConstructRequest.ResourceHooksBinding): ConstructRequest;
     getStackTraceHandle(): string;
     setStackTraceHandle(value: string): ConstructRequest;
+    clearReplaceWithList(): void;
+    getReplaceWithList(): Array<string>;
+    setReplaceWithList(value: Array<string>): ConstructRequest;
+    addReplaceWith(value: string, index?: number): string;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConstructRequest.AsObject;
@@ -1298,6 +1302,7 @@ export namespace ConstructRequest {
         acceptsOutputValues: boolean,
         resourceHooks?: ConstructRequest.ResourceHooksBinding.AsObject,
         stackTraceHandle: string,
+        replaceWithList: Array<string>,
     }
 
 

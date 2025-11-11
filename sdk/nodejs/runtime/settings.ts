@@ -149,6 +149,7 @@ export function resetOptions(
     store.supportsResourceReferences = false;
     store.supportsOutputValues = false;
     store.supportsDeletedWith = false;
+    store.supportsReplaceWith = false;
     store.supportsAliasSpecs = false;
     store.supportsTransforms = false;
     store.supportsInvokeTransforms = false;
@@ -249,6 +250,7 @@ export async function awaitFeatureSupport(): Promise<void> {
             resourceReferences,
             outputValues,
             deletedWith,
+            replaceWith,
             aliasSpecs,
             transforms,
             invokeTransforms,
@@ -260,6 +262,7 @@ export async function awaitFeatureSupport(): Promise<void> {
                 "resourceReferences",
                 "outputValues",
                 "deletedWith",
+                "replaceWith",
                 "aliasSpecs",
                 "transforms",
                 "invokeTransforms",
@@ -272,6 +275,7 @@ export async function awaitFeatureSupport(): Promise<void> {
         store.supportsResourceReferences = resourceReferences;
         store.supportsOutputValues = outputValues;
         store.supportsDeletedWith = deletedWith;
+        store.supportsReplaceWith = replaceWith;
         store.supportsAliasSpecs = aliasSpecs;
         store.supportsTransforms = transforms;
         store.supportsInvokeTransforms = invokeTransforms;

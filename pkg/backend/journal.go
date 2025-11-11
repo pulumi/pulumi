@@ -261,6 +261,11 @@ func rebuildDependencies(resources []apitype.ResourceV3) {
 				}
 			}
 		}
+		for i, r := range resources[i].ReplaceWith {
+			if !referenceable[r] {
+				resources[i].ReplaceWith = append(resources[i].ReplaceWith, "")
+			}
+		}
 		if !referenceable[resources[i].DeletedWith] {
 			resources[i].DeletedWith = ""
 		}

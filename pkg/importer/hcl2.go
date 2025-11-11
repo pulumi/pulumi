@@ -336,6 +336,21 @@ func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[s
 		}
 		resourceOptions = appendResourceOption(resourceOptions, "deletedWith", newVariableReference(name))
 	}
+	if len(state.ReplaceWith) > 0 {
+		newReplaceWith := make([]model.Expression, len(state.ReplaceWith))
+		for i, replaceWith := range state.ReplaceWith {
+			name, ok := names[replaceWith]
+			if !ok {
+				return nil, fmt.Errorf("no name for replaceWith %v", replaceWith)
+			}
+
+			newReplaceWith[i] = newVariableReference(name)
+		}
+		resourceOptions = appendResourceOption(resourceOptions, "replaceWith", &model.TupleConsExpression{
+			Tokens:      syntax.NewTupleConsTokens(len(newReplaceWith)),
+			Expressions: newReplaceWith,
+		})
+	}
 	if state.ImportID != "" {
 		// Using the name import to match the name used in the SDKs,
 		// see https://www.pulumi.com/docs/iac/concepts/options/import/

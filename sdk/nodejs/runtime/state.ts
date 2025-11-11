@@ -156,6 +156,12 @@ export interface Store {
 
     /**
      * Tells us if the resource monitor we are connected to is able to support
+     * the `replaceWith` resource option across its RPC interface.
+     */
+    supportsReplaceWith: boolean;
+
+    /**
+     * Tells us if the resource monitor we are connected to is able to support
      * alias specs across its RPC interface. When it does, we marshal aliases in
      * a special way.
      */
@@ -245,6 +251,7 @@ export class LocalStore implements Store {
     supportsResourceReferences = false;
     supportsOutputValues = false;
     supportsDeletedWith = false;
+    supportsReplaceWith = false;
     supportsAliasSpecs = false;
     supportsTransforms = false;
     supportsInvokeTransforms = false;
