@@ -570,6 +570,11 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             setattr(result, "import", opts.import_)
         if opts.deleted_with is not None:
             result.deleted_with = cast(str, await opts.deleted_with.urn.future())
+        if opts.replace_with:
+            for dependency in opts.replace_with:
+                urn = await dependency.urn.future()
+                if urn:
+                    result.replace_with.append(cast(str, urn))
         if opts.plugin_download_url:
             result.plugin_download_url = opts.plugin_download_url
         if opts.protect is not None:

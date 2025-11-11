@@ -2448,7 +2448,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 	replaceOnChanges := opts.ReplaceOnChanges
 	retainOnDelete := opts.RetainOnDelete
-	replaceWith := make([]resource.URN, len(opts.GetReplaceWith()))
+	replaceWith := []resource.URN{}
 	for _, v := range opts.GetReplaceWith() {
 		replaceWith = append(replaceWith, resource.URN(v))
 	}

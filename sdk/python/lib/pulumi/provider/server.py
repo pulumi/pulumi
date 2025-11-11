@@ -250,6 +250,12 @@ class ProviderServicer(ResourceProviderServicer):
         if request.deletedWith != "":
             deleted_with = _create_provider_resource(request.deletedWith)
 
+        replace_with: Optional[list[pulumi.Resource]] = None
+        if request.replace_with:
+            replace_with = [
+                _create_provider_resource(urn) for urn in request.replace_with
+            ]
+
         custom_timeouts = None
         if request.customTimeouts:
             pulumi.resource.CustomTimeouts(
@@ -274,6 +280,7 @@ class ProviderServicer(ResourceProviderServicer):
             replace_on_changes=list(request.replaceOnChanges),
             retain_on_delete=request.retainOnDelete,
             deleted_with=deleted_with,
+            replace_with=replace_with,
             hooks=resource_hooks,
         )
 

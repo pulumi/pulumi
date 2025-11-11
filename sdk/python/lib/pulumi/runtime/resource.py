@@ -102,6 +102,11 @@ class ResourceResolverOperations(NamedTuple):
     if specified resource is being deleted as well.
     """
 
+    replace_with_urns: list[str]
+    """
+    URNs of resources whose replacement should trigger a replace of this resource.
+    """
+
     supports_alias_specs: bool
     """
     Returns whether the resource monitor supports alias specs which allows sending full alias specifications
@@ -249,6 +254,15 @@ async def prepare_resource(
     if opts is not None and opts.deleted_with is not None:
         deleted_with_urn = await opts.deleted_with.urn.future()
 
+    replace_with_urns: list[str] = []
+    if opts is not None and opts.replace_with:
+        for dependency in opts.replace_with:
+            if dependency is None:
+                continue
+            urn = await dependency.urn.future()
+            if urn:
+                replace_with_urns.append(urn)
+
     return ResourceResolverOperations(
         parent_urn,
         serialized_props,
@@ -258,6 +272,7 @@ async def prepare_resource(
         property_dependencies,
         aliases,
         deleted_with_urn,
+        replace_with_urns,
         supports_alias_specs,
     )
 
@@ -1017,6 +1032,11 @@ def register_resource(
                     "The Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI."
                 )
 
+            if resolver.replace_with_urns and not await settings.monitor_supports_replace_with():
+                raise Exception(
+                    "The Pulumi CLI does not support the ReplaceWith option. Please update the Pulumi CLI."
+                )
+
             accept_resources = os.getenv(
                 "PULUMI_DISABLE_RESOURCE_REFERENCES", ""
             ).upper() not in {"TRUE", "1"}
@@ -1059,6 +1079,7 @@ def register_resource(
                 replaceOnChanges=replace_on_changes or [],
                 retainOnDelete=opts.retain_on_delete,
                 deletedWith=resolver.deleted_with_urn or "",
+                replace_with=resolver.replace_with_urns or [],
                 sourcePosition=source_position,
                 stackTrace=stack_trace,
                 transforms=callbacks,

@@ -1165,7 +1165,7 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 		appendOption("DeletedWith", opts.DeletedWith, model.DynamicType)
 	}
 	if opts.ReplaceWith != nil {
-		appendOption("ReplaceWith", opts.ReplaceWith, model.NewListType(model.DynamicType))
+		appendOption("ReplaceWith", opts.ReplaceWith, model.NewListType(resourceType))
 	}
 	if opts.ImportID != nil {
 		appendOption("Import", opts.ImportID, model.StringType)

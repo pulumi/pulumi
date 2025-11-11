@@ -20,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/require"
 )
@@ -81,7 +82,7 @@ func init() {
 						"expected replaceWith resource to use default provider",
 					)
 					require.Equal(
-						l, targetResource.URN, replaceWith.ReplaceWith,
+						l, []resource.URN{targetResource.URN}, replaceWith.ReplaceWith,
 						"expected replaceWith resource to be replaced with target resource",
 					)
 

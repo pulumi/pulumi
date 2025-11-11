@@ -264,6 +264,7 @@ export class CallbackServer implements ICallbackServer {
             ropts.hooks = hookBindingFromProto(opts.getHooks());
             ropts.deletedWith =
                 opts.getDeletedWith() !== "" ? new DependencyResource(opts.getDeletedWith()) : undefined;
+            ropts.replaceWith = opts.getReplaceWithList().map((dep) => new DependencyResource(dep));
             ropts.dependsOn = opts.getDependsOnList().map((dep) => new DependencyResource(dep));
             ropts.ignoreChanges = opts.getIgnoreChangesList();
             ropts.parent = request.getParent() !== "" ? new DependencyResource(request.getParent()) : undefined;
@@ -326,6 +327,9 @@ export class CallbackServer implements ICallbackServer {
                     }
                     if (result.opts.deletedWith !== undefined) {
                         opts.setDeletedWith(await result.opts.deletedWith.urn.promise());
+                    }
+                    if (result.opts.replaceWith !== undefined) {
+                        opts.setReplaceWithList(await Promise.all(result.opts.replaceWith.map(async (dep) => await dep.urn.promise())));
                     }
                     if (result.opts.dependsOn !== undefined) {
                         const resolvedDeps = await output(result.opts.dependsOn).promise();
