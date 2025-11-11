@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix snapshot integrity error that could happen in targeted pulumi up's
