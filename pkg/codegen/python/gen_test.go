@@ -409,3 +409,165 @@ func TestPythonRequiresNotProvided(t *testing.T) {
 	observed := *schema.Project.RequiresPython
 	assert.Equal(t, expected, observed, "Expected version %s but observed version %s", expected, observed)
 }
+
+func TestEnsureValidPulumiVersion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		requires   map[string]string
+		err        string
+		expectDeps map[string]string
+	}{
+		{
+			name: "missing pulumi dependency",
+			requires: map[string]string{
+				"requests": ">=2.0.0",
+			},
+			expectDeps: map[string]string{
+				"pulumi":   ">=3.165.0,<4.0.0",
+				"requests": ">=2.0.0",
+			},
+		},
+		{
+			name: "valid >= version specifier",
+			requires: map[string]string{
+				"pulumi": ">=3.165.0,<4.0.0",
+			},
+			expectDeps: map[string]string{
+				"pulumi": ">=3.165.0,<4.0.0",
+			},
+		},
+		{
+			name: "valid ~= version specifier",
+			requires: map[string]string{
+				"pulumi": "~=3.165.0",
+			},
+			expectDeps: map[string]string{
+				"pulumi": "~=3.165.0",
+			},
+		},
+		{
+			name: "valid == version specifier",
+			requires: map[string]string{
+				"pulumi": "==3.165.0",
+			},
+			expectDeps: map[string]string{
+				"pulumi": "==3.165.0",
+			},
+		},
+		{
+			name: "valid > version specifier",
+			requires: map[string]string{
+				"pulumi": ">3.165.0",
+			},
+			expectDeps: map[string]string{
+				"pulumi": ">3.165.0",
+			},
+		},
+		{
+			name: "valid >= version specifier without upper bound",
+			requires: map[string]string{
+				"pulumi": ">=3.200.0",
+			},
+			expectDeps: map[string]string{
+				"pulumi": ">=3.200.0",
+			},
+		},
+		{
+			name: "valid combined specifier with multiple constraints",
+			requires: map[string]string{
+				"pulumi": ">=3.165.0,!=3.170.0,<4.0.0",
+			},
+			expectDeps: map[string]string{
+				"pulumi": ">=3.165.0,!=3.170.0,<4.0.0",
+			},
+		},
+		{
+			name: "valid <= version specifier (upper bound only)",
+			requires: map[string]string{
+				"pulumi": "<=4.0.0",
+			},
+			err: "minimum required pulumi version is 0.17.28. Specify a lower bound that matches that",
+		},
+		{
+			name: "valid != version specifier (exclusion only)",
+			requires: map[string]string{
+				"pulumi": "!=3.165.0",
+			},
+			err: "minimum required pulumi version is 0.17.28. Specify a lower bound that matches that",
+		},
+		{
+			name: "valid < version specifier",
+			requires: map[string]string{
+				"pulumi": "<4.0.0",
+			},
+			err: "minimum required pulumi version is 0.17.28. Specify a lower bound that matches that",
+		},
+		{
+			name: "valid with spaces in specifier",
+			requires: map[string]string{
+				"pulumi": ">= 3.165.0, < 4.0.0",
+			},
+			expectDeps: map[string]string{
+				"pulumi": ">= 3.165.0, < 4.0.0",
+			},
+		},
+		{
+			name: "invalid version specifier - single version",
+			requires: map[string]string{
+				"pulumi": "3.165.0",
+			},
+			err: "invalid requirement specifier",
+		},
+		{
+			name: "version below minimum",
+			requires: map[string]string{
+				"pulumi": ">=0.16.0,<1.0.0",
+			},
+			err: "version \"0.16.0\" must be at least 0.17.28",
+		},
+		{
+			name: "version below minimum with ~=",
+			requires: map[string]string{
+				"pulumi": "~=0.16.0",
+			},
+			err: "version \"0.16.0\" must be at least 0.17.28",
+		},
+		{
+			name: "version below minimum with ==",
+			requires: map[string]string{
+				"pulumi": "==0.16.0",
+			},
+			err: "version \"0.16.0\" must be at least 0.17.28",
+		},
+		{
+			name: "preserves other dependencies",
+			requires: map[string]string{
+				"pulumi":   "~=3.165.0",
+				"requests": ">=2.0.0",
+				"boto3":    ">=1.0.0",
+			},
+			expectDeps: map[string]string{
+				"pulumi":   "~=3.165.0",
+				"requests": ">=2.0.0",
+				"boto3":    ">=1.0.0",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			result, err := ensureValidPulumiVersion(false, tt.requires)
+
+			if tt.err != "" {
+				assert.ErrorContains(t, err, tt.err)
+			} else {
+				assert.NoError(t, err)
+				require.EqualValues(t, tt.expectDeps, result)
+			}
+		})
+	}
+}

@@ -2221,11 +2221,12 @@ func (mod *modContext) collectImportsForResource(properties []*schema.Property, 
 }
 
 var (
-	requirementRegex = regexp.MustCompile(`^>=([^,]+),<[^,]+$`)
-	pep440AlphaRegex = regexp.MustCompile(`^(\d+\.\d+\.\d)+a(\d+)$`)
-	pep440BetaRegex  = regexp.MustCompile(`^(\d+\.\d+\.\d+)b(\d+)$`)
-	pep440RCRegex    = regexp.MustCompile(`^(\d+\.\d+\.\d+)rc(\d+)$`)
-	pep440DevRegex   = regexp.MustCompile(`^(\d+\.\d+\.\d+)\.dev(\d+)$`)
+	// Match PEP 440 version specifiers: extracts operator and version from patterns like ">=1.0", "~=2.0", "==3.0"
+	pep440SpecifierRegex = regexp.MustCompile(`(~=|==|!=|<=|>=|<|>)\s*([a-zA-Z0-9_.+!-]+)`)
+	pep440AlphaRegex     = regexp.MustCompile(`^(\d+\.\d+\.\d)+a(\d+)$`)
+	pep440BetaRegex      = regexp.MustCompile(`^(\d+\.\d+\.\d+)b(\d+)$`)
+	pep440RCRegex        = regexp.MustCompile(`^(\d+\.\d+\.\d+)rc(\d+)$`)
+	pep440DevRegex       = regexp.MustCompile(`^(\d+\.\d+\.\d+)\.dev(\d+)$`)
 )
 
 var oldestAllowedPulumi = semver.Version{
@@ -3451,6 +3452,49 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package, dependencies 
 // Require the SDK to fall within the same major version.
 var MinimumValidSDKVersion = ">=3.165.0,<4.0.0"
 
+// validatePulumiVersionSpecifier validates a PEP 440 version
+// specifier string and ensures that any versions hav a lower-bound
+// operator that meet the minimum version requirement.
+func validatePulumiVersionSpecifier(specifier string) error {
+	// Parse as generic PEP 440 specifier
+	matches := pep440SpecifierRegex.FindAllStringSubmatch(specifier, -1)
+	if len(matches) == 0 {
+		return fmt.Errorf("invalid requirement specifier %q; expected a PEP 440 version specifier", specifier)
+	}
+
+	validatedLowerBound := false
+	for _, match := range matches {
+		if len(match) != 3 {
+			continue
+		}
+		operator := match[1]
+		version := match[2]
+
+		parsedVersion, err := pep440VersionToSemver(version)
+		if err != nil {
+			return fmt.Errorf("invalid version %q in specifier: %w", version, err)
+		}
+
+		if operator == ">=" || operator == "==" || operator == "~=" {
+			if parsedVersion.LT(oldestAllowedPulumi) {
+				return fmt.Errorf("version %q must be at least %v", version, oldestAllowedPulumi)
+			}
+			validatedLowerBound = true
+		} else if operator == ">" {
+			if parsedVersion.LTE(oldestAllowedPulumi) {
+				return fmt.Errorf("version %q must be at least %v", version, oldestAllowedPulumi)
+			}
+			validatedLowerBound = true
+		}
+	}
+
+	if !validatedLowerBound {
+		return fmt.Errorf("minimum required pulumi version is %v. Specify a lower bound that matches that", oldestAllowedPulumi)
+	}
+
+	return nil
+}
+
 // ensureValidPulumiVersion ensures that the Pulumi SDK has an entry.
 // It accepts a list of dependencies
 // as provided in the package schema, and validates whether
@@ -3476,23 +3520,12 @@ func ensureValidPulumiVersion(parameterized bool, requires map[string]string) (m
 	if pulumiDep, ok := requires["pulumi"]; !ok {
 		deps["pulumi"] = MinimumValidSDKVersion
 	} else {
-		// Since a value was provided, we check to make sure it's
-		// within an acceptable version range.
-		// We expect a specific pattern of ">=version,<version" here.
-		matches := requirementRegex.FindStringSubmatch(pulumiDep)
-		if len(matches) != 2 {
-			return nil, fmt.Errorf("invalid requirement specifier \"%s\"; expected \">=version1,<version2\"", pulumiDep)
+		// Since a value was provided, we check to make sure it's within an acceptable version range.
+		// We accept any PEP 440 version specifier.
+		if err := validatePulumiVersionSpecifier(pulumiDep); err != nil {
+			return nil, err
 		}
-
-		lowerBound, err := pep440VersionToSemver(matches[1])
-		if err != nil {
-			return nil, fmt.Errorf("invalid version for lower bound: %w", err)
-		}
-		if lowerBound.LT(oldestAllowedPulumi) {
-			return nil, fmt.Errorf("lower version bound must be at least %v", oldestAllowedPulumi)
-		}
-		// The provided Pulumi version is valid, so we're copy it into
-		// the new map.
+		// The provided Pulumi version is valid, so we copy it into the new map.
 		deps["pulumi"] = pulumiDep
 	}
 
