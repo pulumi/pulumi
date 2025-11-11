@@ -42,6 +42,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+const maxInstallConcurrency = 4
+
 func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var reinstall bool
 	var noPlugins, noDependencies bool
@@ -283,21 +285,46 @@ func walkLocalPackagesFromProject[P workspace.BaseProject](
 	loadProject func(path string) (P, error), // workspace.LoadProject
 ) error {
 	// walkGroup is used to bound invocations of walkProject and walkPackage.
-	walkGroup, ctx := newDepWorkPool(pctx.Base(), 4) // TODO: What parallelism limit do we want to use
+	walkGroup, ctx := newDepWorkPool(pctx.Base(), maxInstallConcurrency)
 	seenProjects := map[string]*sync.WaitGroup{}
 	seenPackages := map[string]*sync.WaitGroup{}
 	pctx = pctx.WithCancelChannel(ctx.Done())
 
-	var doWalk func(proj P, root string) (*sync.WaitGroup, error)
-	doWalk = func(proj P, root string) (*sync.WaitGroup, error) {
-		_, ok := seenProjects[filepath.Clean(root)]
-		if ok {
-			return nil, fmt.Errorf("cyclic dependency detected on %s", root)
+	type stackLink struct {
+		prev  *stackLink
+		value string
+	}
+
+	var doWalk func(proj P, root string, callStack *stackLink) (*sync.WaitGroup, error)
+	doWalk = func(proj P, root string, callStack *stackLink) (*sync.WaitGroup, error) {
+		// Use absolute path for comparison to handle relative vs absolute path issues
+		absRoot, err := filepath.Abs(root)
+		if err != nil {
+			return nil, fmt.Errorf("unable to get absolute path for %s: %w", root, err)
+		}
+		cleanRoot := filepath.Clean(absRoot)
+
+		// Check for cycle: is this project in the current call stack?
+		for s := callStack; s != nil; s = s.prev {
+			if s.value == cleanRoot {
+				return nil, fmt.Errorf("cyclic dependency detected on %s", root)
+			}
+		}
+
+		// Check if already processed/processing: return existing WaitGroup
+		if wg, ok := seenProjects[cleanRoot]; ok {
+			return wg, nil
+		}
+
+		// Add to current stack for cycle detection
+		callStack = &stackLink{
+			prev:  callStack,
+			value: cleanRoot,
 		}
 
 		project := new(sync.WaitGroup)
 		project.Add(1)
-		seenProjects[filepath.Clean(root)] = project
+		seenProjects[cleanRoot] = project
 
 		dependenciesWg := new(sync.WaitGroup)
 
@@ -317,7 +344,20 @@ func walkLocalPackagesFromProject[P workspace.BaseProject](
 			if !isLocal && packageSpec.Version != "" {
 				installSource = fmt.Sprintf("%s@%s", installSource, packageSpec.Version)
 			}
-			pkwgWg, ok := seenPackages[filepath.Clean(installSource)]
+
+			// Normalize path for local packages to handle relative vs absolute paths
+			var packageKey string
+			if isLocal {
+				absSource, err := filepath.Abs(installSource)
+				if err != nil {
+					return nil, fmt.Errorf("unable to get absolute path for %s: %w", installSource, err)
+				}
+				packageKey = filepath.Clean(absSource)
+			} else {
+				packageKey = filepath.Clean(installSource)
+			}
+
+			pkwgWg, ok := seenPackages[packageKey]
 			if ok {
 				dependenciesWg.Add(1)
 				go func() {
@@ -328,7 +368,7 @@ func walkLocalPackagesFromProject[P workspace.BaseProject](
 			}
 			pkgWg := new(sync.WaitGroup)
 			pkgWg.Add(1)
-			seenPackages[filepath.Clean(installSource)] = pkgWg
+			seenPackages[packageKey] = pkgWg
 
 			pkgDepsWg := new(sync.WaitGroup)
 			if isLocal {
@@ -343,7 +383,7 @@ func walkLocalPackagesFromProject[P workspace.BaseProject](
 				}
 				// DetectProjectPathFrom returns the path to the Pulumi.yaml file,
 				// but doWalk expects the directory containing it.
-				pkgDepsWg, err = doWalk(localProj, filepath.Dir(pulumiYamlPath))
+				pkgDepsWg, err = doWalk(localProj, filepath.Dir(pulumiYamlPath), callStack)
 				if err != nil {
 					return nil, err
 				}
@@ -370,7 +410,7 @@ func walkLocalPackagesFromProject[P workspace.BaseProject](
 		return project, nil
 	}
 
-	_, err := doWalk(proj, pctx.Root)
+	_, err := doWalk(proj, pctx.Root, nil)
 	return errors.Join(err, walkGroup.Wait())
 }
 

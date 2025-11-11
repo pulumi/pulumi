@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -72,23 +73,25 @@ func newMockProject(name string, packages map[string]workspace.PackageSpec) *moc
 
 // callTracker tracks calls to walkPackage and walkProject for testing
 type callTracker struct {
-	mu         sync.Mutex
-	packages   []string
-	projects   []string
-	packageErr error
-	projectErr error
+	mu       sync.Mutex
+	packages []string
+	projects []string
 }
 
-func (ct *callTracker) recordPackage(pkgName string) {
+func (ct *callTracker) walkPackage(
+	pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec,
+) error {
 	ct.mu.Lock()
 	defer ct.mu.Unlock()
 	ct.packages = append(ct.packages, pkgName)
+	return nil
 }
 
-func (ct *callTracker) recordProject(projName string) {
+func (ct *callTracker) walkProject(pctx *plugin.Context, proj *mockProject) error {
 	ct.mu.Lock()
 	defer ct.mu.Unlock()
-	ct.projects = append(ct.projects, projName)
+	ct.projects = append(ct.projects, proj.name)
+	return nil
 }
 
 func (ct *callTracker) getPackageCalls() []string {
@@ -142,13 +145,13 @@ func (r *mockProjectRegistry) add(name string, proj *mockProject) string {
 
 	// Create a directory for this project
 	projDir := filepath.Join(r.tempDir, name)
-	err := os.MkdirAll(projDir, 0755)
+	err := os.MkdirAll(projDir, 0o755)
 	require.NoError(r.t, err)
 
 	// Create a minimal Pulumi.yaml file
 	pulumiYaml := filepath.Join(projDir, "Pulumi.yaml")
 	content := fmt.Sprintf("name: %s\nruntime: nodejs\n", proj.name)
-	err = os.WriteFile(pulumiYaml, []byte(content), 0644)
+	err = os.WriteFile(pulumiYaml, []byte(content), 0o600)
 	require.NoError(r.t, err)
 
 	r.projects[pulumiYaml] = proj
@@ -165,9 +168,9 @@ func (r *mockProjectRegistry) loadProject(path string) (*mockProject, error) {
 	return proj, nil
 }
 
-func newTestPluginContext(t *testing.T) *plugin.Context {
+func newTestPluginContext(t *testing.T, root string) *plugin.Context {
 	ctx := context.Background()
-	pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, "", nil, false, nil)
+	pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, root, nil, false, nil)
 	require.NoError(t, err)
 	return pctx
 }
@@ -175,7 +178,6 @@ func newTestPluginContext(t *testing.T) *plugin.Context {
 func TestWalkLocalPackagesFromProject_SinglePackage(t *testing.T) {
 	t.Parallel()
 
-	pctx := newTestPluginContext(t)
 	registry := newMockProjectRegistry(t)
 	tracker := &callTracker{}
 
@@ -187,18 +189,11 @@ func TestWalkLocalPackagesFromProject_SinglePackage(t *testing.T) {
 	proj := newMockProject("root", map[string]workspace.PackageSpec{
 		"pkg-a": {Source: pkgAPath},
 	})
+	rootPath := registry.add("root", proj)
 
-	walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
-		tracker.recordPackage(pkgName)
-		return nil
-	}
+	pctx := newTestPluginContext(t, rootPath)
 
-	walkProject := func(pctx *plugin.Context, proj *mockProject) error {
-		tracker.recordProject(proj.name)
-		return nil
-	}
-
-	err := walkLocalPackagesFromProject(pctx, proj, walkPackage, walkProject, registry.loadProject)
+	err := walkLocalPackagesFromProject(pctx, proj, tracker.walkPackage, tracker.walkProject, registry.loadProject)
 	require.NoError(t, err)
 
 	// Verify walkPackage was called exactly once
@@ -210,7 +205,6 @@ func TestWalkLocalPackagesFromProject_SinglePackage(t *testing.T) {
 func TestWalkLocalPackagesFromProject_MultipleIndependentPackages(t *testing.T) {
 	t.Parallel()
 
-	pctx := newTestPluginContext(t)
 	registry := newMockProjectRegistry(t)
 	tracker := &callTracker{}
 
@@ -228,30 +222,23 @@ func TestWalkLocalPackagesFromProject_MultipleIndependentPackages(t *testing.T) 
 		"pkg-b": {Source: pkgBPath},
 		"pkg-c": {Source: pkgCPath},
 	})
+	rootPath := registry.add("root", proj)
 
-	walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
-		tracker.recordPackage(pkgName)
-		return nil
-	}
+	pctx := newTestPluginContext(t, rootPath)
 
-	walkProject := func(pctx *plugin.Context, proj *mockProject) error {
-		tracker.recordProject(proj.name)
-		return nil
-	}
-
-	err := walkLocalPackagesFromProject(pctx, proj, walkPackage, walkProject, registry.loadProject)
+	err := walkLocalPackagesFromProject(pctx, proj, tracker.walkPackage, tracker.walkProject, registry.loadProject)
 	require.NoError(t, err)
 
 	// Verify each package was called exactly once
 	pkgCalls := tracker.getPackageCalls()
-	assert.Len(t, pkgCalls, 3)
+	require.Len(t, pkgCalls, 3)
 	assert.Contains(t, pkgCalls, "pkg-a")
 	assert.Contains(t, pkgCalls, "pkg-b")
 	assert.Contains(t, pkgCalls, "pkg-c")
 
 	// Verify walkProject was called for all projects
 	projCalls := tracker.getProjectCalls()
-	assert.Len(t, projCalls, 4)
+	require.Len(t, projCalls, 4)
 	assert.Contains(t, projCalls, "pkg-a")
 	assert.Contains(t, projCalls, "pkg-b")
 	assert.Contains(t, projCalls, "pkg-c")
@@ -261,7 +248,6 @@ func TestWalkLocalPackagesFromProject_MultipleIndependentPackages(t *testing.T) 
 func TestWalkLocalPackagesFromProject_LinearDependencyChain(t *testing.T) {
 	t.Parallel()
 
-	pctx := newTestPluginContext(t)
 	registry := newMockProjectRegistry(t)
 	tracker := &callTracker{}
 
@@ -278,19 +264,11 @@ func TestWalkLocalPackagesFromProject_LinearDependencyChain(t *testing.T) {
 	projA := newMockProject("pkg-a", map[string]workspace.PackageSpec{
 		"pkg-b": {Source: pkgBPath},
 	})
-	registry.add("pkg-a", projA)
+	pkgAPath := registry.add("pkg-a", projA)
 
-	walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
-		tracker.recordPackage(pkgName)
-		return nil
-	}
+	pctx := newTestPluginContext(t, pkgAPath)
 
-	walkProject := func(pctx *plugin.Context, proj *mockProject) error {
-		tracker.recordProject(proj.name)
-		return nil
-	}
-
-	err := walkLocalPackagesFromProject(pctx, projA, walkPackage, walkProject, registry.loadProject)
+	err := walkLocalPackagesFromProject(pctx, projA, tracker.walkPackage, tracker.walkProject, registry.loadProject)
 	require.NoError(t, err)
 
 	// Verify each package was called exactly once
@@ -322,7 +300,6 @@ func TestWalkLocalPackagesFromProject_LinearDependencyChain(t *testing.T) {
 func TestWalkLocalPackagesFromProject_DiamondDependency(t *testing.T) {
 	t.Parallel()
 
-	pctx := newTestPluginContext(t)
 	registry := newMockProjectRegistry(t)
 	tracker := &callTracker{}
 
@@ -345,19 +322,11 @@ func TestWalkLocalPackagesFromProject_DiamondDependency(t *testing.T) {
 		"pkg-b": {Source: pkgBPath},
 		"pkg-c": {Source: pkgCPath},
 	})
-	registry.add("pkg-a", projA)
+	pkgAPath := registry.add("pkg-a", projA)
 
-	walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
-		tracker.recordPackage(pkgName)
-		return nil
-	}
+	pctx := newTestPluginContext(t, pkgAPath)
 
-	walkProject := func(pctx *plugin.Context, proj *mockProject) error {
-		tracker.recordProject(proj.name)
-		return nil
-	}
-
-	err := walkLocalPackagesFromProject(pctx, projA, walkPackage, walkProject, registry.loadProject)
+	err := walkLocalPackagesFromProject(pctx, projA, tracker.walkPackage, tracker.walkProject, registry.loadProject)
 	require.NoError(t, err)
 
 	// CRITICAL: pkg-d must be walked exactly once (deduplication test)
@@ -397,7 +366,6 @@ func TestWalkLocalPackagesFromProject_DiamondDependency(t *testing.T) {
 func TestWalkLocalPackagesFromProject_MixedLocalAndRemote(t *testing.T) {
 	t.Parallel()
 
-	pctx := newTestPluginContext(t)
 	registry := newMockProjectRegistry(t)
 	tracker := &callTracker{}
 
@@ -410,29 +378,22 @@ func TestWalkLocalPackagesFromProject_MixedLocalAndRemote(t *testing.T) {
 		"local-pkg":  {Source: pkgAPath},
 		"remote-pkg": {Source: "pulumi/aws", Version: "6.0.0"},
 	})
+	rootPath := registry.add("root", proj)
 
-	walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
-		tracker.recordPackage(pkgName)
-		return nil
-	}
+	pctx := newTestPluginContext(t, rootPath)
 
-	walkProject := func(pctx *plugin.Context, proj *mockProject) error {
-		tracker.recordProject(proj.name)
-		return nil
-	}
-
-	err := walkLocalPackagesFromProject(pctx, proj, walkPackage, walkProject, registry.loadProject)
+	err := walkLocalPackagesFromProject(pctx, proj, tracker.walkPackage, tracker.walkProject, registry.loadProject)
 	require.NoError(t, err)
 
 	// Verify both packages were walked
 	pkgCalls := tracker.getPackageCalls()
-	assert.Len(t, pkgCalls, 2)
+	require.Len(t, pkgCalls, 2)
 	assert.Contains(t, pkgCalls, "local-pkg")
 	assert.Contains(t, pkgCalls, "remote-pkg")
 
 	// Verify walkProject was called for root and local package
 	projCalls := tracker.getProjectCalls()
-	assert.Len(t, projCalls, 2)
+	require.Len(t, projCalls, 2)
 	assert.Contains(t, projCalls, "pkg-a")
 	assert.Contains(t, projCalls, "root")
 }
@@ -443,7 +404,7 @@ func TestWalkLocalPackagesFromProject_ErrorPropagation(t *testing.T) {
 	t.Run("loadProject error", func(t *testing.T) {
 		t.Parallel()
 
-		pctx := newTestPluginContext(t)
+		pctx := newTestPluginContext(t, "")
 		registry := newMockProjectRegistry(t)
 		tracker := &callTracker{}
 
@@ -461,12 +422,7 @@ func TestWalkLocalPackagesFromProject_ErrorPropagation(t *testing.T) {
 			return nil, loadProjectErr
 		}
 
-		walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
-			tracker.recordPackage(pkgName)
-			return nil
-		}
-
-		err := walkLocalPackagesFromProject(pctx, proj, walkPackage, nil, loadProject)
+		err := walkLocalPackagesFromProject(pctx, proj, tracker.walkPackage, nil, loadProject)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to load project")
 
@@ -477,7 +433,7 @@ func TestWalkLocalPackagesFromProject_ErrorPropagation(t *testing.T) {
 	t.Run("walkPackage error", func(t *testing.T) {
 		t.Parallel()
 
-		pctx := newTestPluginContext(t)
+		pctx := newTestPluginContext(t, "")
 		registry := newMockProjectRegistry(t)
 
 		pkgA := newMockProject("pkg-a", nil)
@@ -499,7 +455,7 @@ func TestWalkLocalPackagesFromProject_ErrorPropagation(t *testing.T) {
 	t.Run("walkProject error", func(t *testing.T) {
 		t.Parallel()
 
-		pctx := newTestPluginContext(t)
+		pctx := newTestPluginContext(t, "")
 		registry := newMockProjectRegistry(t)
 		tracker := &callTracker{}
 
@@ -510,17 +466,12 @@ func TestWalkLocalPackagesFromProject_ErrorPropagation(t *testing.T) {
 			"pkg-a": {Source: pkgAPath},
 		})
 
-		walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
-			tracker.recordPackage(pkgName)
-			return nil
-		}
-
 		walkProjectErr := errors.New("failed to walk project")
 		walkProject := func(pctx *plugin.Context, proj *mockProject) error {
 			return walkProjectErr
 		}
 
-		err := walkLocalPackagesFromProject(pctx, proj, walkPackage, walkProject, registry.loadProject)
+		err := walkLocalPackagesFromProject(pctx, proj, tracker.walkPackage, walkProject, registry.loadProject)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to walk project")
 
@@ -531,7 +482,7 @@ func TestWalkLocalPackagesFromProject_ErrorPropagation(t *testing.T) {
 	t.Run("multiple errors", func(t *testing.T) {
 		t.Parallel()
 
-		pctx := newTestPluginContext(t)
+		pctx := newTestPluginContext(t, "")
 		registry := newMockProjectRegistry(t)
 
 		pkgA := newMockProject("pkg-a", nil)
@@ -544,11 +495,13 @@ func TestWalkLocalPackagesFromProject_ErrorPropagation(t *testing.T) {
 			"pkg-b": {Source: pkgBPath},
 		})
 
-		walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
+		walkPackageErr := func(
+			pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec,
+		) error {
 			return fmt.Errorf("failed to walk %s", pkgName)
 		}
 
-		err := walkLocalPackagesFromProject(pctx, proj, walkPackage, nil, registry.loadProject)
+		err := walkLocalPackagesFromProject(pctx, proj, walkPackageErr, nil, registry.loadProject)
 		require.Error(t, err)
 		// At least one error should be present (both packages fail, but due to parallel execution
 		// and map iteration order being random, we may get one or both errors)
@@ -562,7 +515,7 @@ func TestWalkLocalPackagesFromProject_ErrorPropagation(t *testing.T) {
 func TestWalkLocalPackagesFromProject_NilWalkProject(t *testing.T) {
 	t.Parallel()
 
-	pctx := newTestPluginContext(t)
+	pctx := newTestPluginContext(t, "")
 	registry := newMockProjectRegistry(t)
 	tracker := &callTracker{}
 
@@ -573,13 +526,8 @@ func TestWalkLocalPackagesFromProject_NilWalkProject(t *testing.T) {
 		"pkg-a": {Source: pkgAPath},
 	})
 
-	walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
-		tracker.recordPackage(pkgName)
-		return nil
-	}
-
 	// Pass nil for walkProject
-	err := walkLocalPackagesFromProject(pctx, proj, walkPackage, nil, registry.loadProject)
+	err := walkLocalPackagesFromProject(pctx, proj, tracker.walkPackage, nil, registry.loadProject)
 	require.NoError(t, err)
 
 	// Verify walkPackage was still called
@@ -591,25 +539,17 @@ func TestWalkLocalPackagesFromProject_NilWalkProject(t *testing.T) {
 func TestWalkLocalPackagesFromProject_EmptyProject(t *testing.T) {
 	t.Parallel()
 
-	pctx := newTestPluginContext(t)
+	pctx := newTestPluginContext(t, "")
 	tracker := &callTracker{}
 
 	// Create a project with no packages
 	proj := newMockProject("root", nil)
 
-	walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
-		tracker.recordPackage(pkgName)
-		return nil
-	}
-
-	walkProject := func(pctx *plugin.Context, proj *mockProject) error {
-		tracker.recordProject(proj.name)
-		return nil
-	}
-
-	err := walkLocalPackagesFromProject(pctx, proj, walkPackage, walkProject, func(path string) (*mockProject, error) {
+	loadProject := func(path string) (*mockProject, error) {
 		return nil, errors.New("should not be called")
-	})
+	}
+
+	err := walkLocalPackagesFromProject(pctx, proj, tracker.walkPackage, tracker.walkProject, loadProject)
 	require.NoError(t, err)
 
 	// Verify no packages were walked
@@ -620,9 +560,7 @@ func TestWalkLocalPackagesFromProject_EmptyProject(t *testing.T) {
 
 func TestWalkLocalPackagesFromProject_CircularDependency(t *testing.T) {
 	t.Parallel()
-	t.Skip("TODO: Deadlock detection")
 
-	pctx := newTestPluginContext(t)
 	registry := newMockProjectRegistry(t)
 	tracker := &callTracker{}
 
@@ -638,72 +576,137 @@ func TestWalkLocalPackagesFromProject_CircularDependency(t *testing.T) {
 	projA.AddPackage("pkg-b", workspace.PackageSpec{Source: pkgBPath})
 	projB.AddPackage("pkg-a", workspace.PackageSpec{Source: pkgAPath})
 
-	walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
-		tracker.recordPackage(pkgName)
-		return nil
-	}
+	pctx := newTestPluginContext(t, pkgAPath)
 
-	walkProject := func(pctx *plugin.Context, proj *mockProject) error {
-		tracker.recordProject(proj.name)
-		return nil
-	}
-
-	err := walkLocalPackagesFromProject(pctx, projA, walkPackage, walkProject, registry.loadProject)
-	require.NoError(t, err)
-
-	// Verify each package was walked exactly once (deduplication prevents infinite loop)
-	assert.Equal(t, 1, tracker.getPackageCallCount("pkg-a"), "pkg-a must be walked exactly once")
-	assert.Equal(t, 1, tracker.getPackageCallCount("pkg-b"), "pkg-b must be walked exactly once")
+	err := walkLocalPackagesFromProject(pctx, projA, tracker.walkPackage, tracker.walkProject, registry.loadProject)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cyclic dependency detected")
 }
 
+// TestWalkLocalPackagesFromProject_ConcurrencyLimit checks that
+// walkLocalPackagesFromProject will saturate to the concurrency limit, but not above it.
+//
+// Unfortunately, the test is non-deterministic for detecting over-saturation. That is
+// inherent in this kind of test, since we can't wait for over-saturation (otherwise
+// working implementation would never return).
 func TestWalkLocalPackagesFromProject_ConcurrencyLimit(t *testing.T) {
 	t.Parallel()
 
-	pctx := newTestPluginContext(t)
+	/*
+		Package dependency structure (10 packages total):
+
+		           root
+		          /    \
+		         A      B
+		       / | \ \ / | \ \
+		      A1 A2 A3 A4 B1 B2 B3 B4
+
+		This creates a dependency tree where:
+		- root depends on A and B
+		- A depends on A1, A2, A3, A4
+		- B depends on B1, B2, B3, B4
+		- Total of 10 non-root packages to install
+	*/
+
 	registry := newMockProjectRegistry(t)
+	pctx := newTestPluginContext(t, "")
 
-	// Create a project with many packages to test concurrency limit
-	packages := make(map[string]workspace.PackageSpec)
-	for i := range 10 {
-		pkgName := fmt.Sprintf("pkg-%d", i)
-
-		// Register mock projects
-		mockProj := newMockProject(pkgName, nil)
-		pkgPath := registry.add(pkgName, mockProj)
-		packages[pkgName] = workspace.PackageSpec{Source: pkgPath}
+	// Create leaf packages (A1-A4, B1-B4)
+	leafPackages := []string{"A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4"}
+	for _, name := range leafPackages {
+		proj := newMockProject(name, nil)
+		registry.add(name, proj)
 	}
 
-	proj := newMockProject("root", packages)
+	// Create package A with dependencies on A1-A4
+	pkgA := newMockProject("A", map[string]workspace.PackageSpec{
+		"A1": {Source: registry.tempDir + "/A1"},
+		"A2": {Source: registry.tempDir + "/A2"},
+		"A3": {Source: registry.tempDir + "/A3"},
+		"A4": {Source: registry.tempDir + "/A4"},
+	})
+	pkgAPath := registry.add("A", pkgA)
 
-	// Track concurrent executions
-	var currentConcurrency int32
-	var maxConcurrency int32
-	var mu sync.Mutex
+	// Create package B with dependencies on B1-B4
+	pkgB := newMockProject("B", map[string]workspace.PackageSpec{
+		"B1": {Source: registry.tempDir + "/B1"},
+		"B2": {Source: registry.tempDir + "/B2"},
+		"B3": {Source: registry.tempDir + "/B3"},
+		"B4": {Source: registry.tempDir + "/B4"},
+	})
+	pkgBPath := registry.add("B", pkgB)
 
-	walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
-		// Increment current concurrency
-		mu.Lock()
-		currentConcurrency++
-		if currentConcurrency > maxConcurrency {
-			maxConcurrency = currentConcurrency
+	// Create root with dependencies on A and B
+	root := newMockProject("root", map[string]workspace.PackageSpec{
+		"A": {Source: pkgAPath},
+		"B": {Source: pkgBPath},
+	})
+	rootPath := registry.add("root", root)
+
+	pctx = newTestPluginContext(t, rootPath)
+
+	phases := []*struct {
+		maxConcurency                atomic.Int32
+		expectedMaxConcurrency       int
+		done, decr                   chan struct{}
+		saturatedIncr, saturatedDecr sync.WaitGroup
+	}{
+		{expectedMaxConcurrency: 4, done: make(chan struct{}), decr: make(chan struct{})},
+		{expectedMaxConcurrency: 4, done: make(chan struct{}), decr: make(chan struct{})},
+		{expectedMaxConcurrency: 2, done: make(chan struct{}), decr: make(chan struct{})},
+	}
+	for _, p := range phases {
+		p.saturatedIncr.Add(p.expectedMaxConcurrency)
+		p.saturatedDecr.Add(p.expectedMaxConcurrency)
+	}
+	var phaseNumber atomic.Int32
+	var currentConcurency atomic.Int32
+	walkPackage := func(*plugin.Context, workspace.BaseProject, string, workspace.PackageSpec) error {
+		// Set the max concurrency for the phase
+		phase := phases[phaseNumber.Load()]
+		maxConcurrency := &phase.maxConcurency
+		for newMax := currentConcurency.Add(1); ; {
+			currentMax := maxConcurrency.Load()
+			if currentMax >= newMax {
+				break
+			}
+			if currentMax < newMax && maxConcurrency.CompareAndSwap(currentMax, newMax) {
+				break
+			}
 		}
-		mu.Unlock()
 
-		// Simulate some work
-		// (In real tests we'd use channels for synchronization, but here we're just checking the limit)
+		phase.saturatedIncr.Done()
+		t.Log("First block")
+		<-phase.done
 
-		// Decrement current concurrency
-		mu.Lock()
-		currentConcurrency--
-		mu.Unlock()
+		// Decrement the concurrency for the phase
+		currentConcurency.Add(-1)
+		phase.saturatedDecr.Done()
+		t.Log("Second block")
+		<-phase.decr
 
 		return nil
 	}
 
-	err := walkLocalPackagesFromProject(pctx, proj, walkPackage, nil, registry.loadProject)
-	require.NoError(t, err)
+	done := make(chan struct{})
+	go func() { // walkLocalPackagesFromProject is sync, so it must run in the background
+		err := walkLocalPackagesFromProject(pctx, root, walkPackage, nil, registry.loadProject)
+		require.NoError(t, err)
+		close(done)
+	}()
 
-	// Verify we never exceeded the limit of 4 concurrent operations
-	// Note: This test is not perfectly deterministic, but should catch obvious violations
-	assert.LessOrEqual(t, maxConcurrency, int32(4), "should not exceed concurrency limit of 4")
+	for i, phase := range phases {
+		t.Run(fmt.Sprintf("phase-%d", i+1), func(t *testing.T) {
+			t.Log("Waiting")
+			phase.saturatedIncr.Wait()
+			t.Log("Done Waiting")
+			assert.Equal(t, phase.expectedMaxConcurrency, int(phase.maxConcurency.Load()))
+			close(phase.done)
+			t.Log("Part one done")
+			phase.saturatedDecr.Wait()
+			phaseNumber.Add(1)
+			close(phase.decr)
+		})
+	}
+	<-done // Check that walkLocalPackagesFromProject has returned
 }
