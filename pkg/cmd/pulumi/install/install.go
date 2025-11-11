@@ -33,14 +33,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"golang.org/x/sync/errgroup"
-
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
@@ -283,99 +282,96 @@ func walkLocalPackagesFromProject[P workspace.BaseProject](
 	walkProject func(pctx *plugin.Context, proj P) error,
 	loadProject func(path string) (P, error), // workspace.LoadProject
 ) error {
-	// walkGroup is used to bound invocations of walk.
-	walkGroup, waitCtx := errgroup.WithContext(pctx.Request())
-	walkGroup.SetLimit(4)    // TODO: What parallelism limit do we want to use
-	var seenSources sync.Map // map[string]struct{}
-	pctx = pctx.WithCancelChannel(waitCtx.Done())
+	// walkGroup is used to bound invocations of walkProject and walkPackage.
+	walkGroup, ctx := newDepWorkPool(pctx.Base(), 4) // TODO: What parallelism limit do we want to use
+	seenProjects := map[string]*sync.WaitGroup{}
+	seenPackages := map[string]*sync.WaitGroup{}
+	pctx = pctx.WithCancelChannel(ctx.Done())
 
-	var doWalk func(proj P, root string) error
-	doWalk = func(proj P, root string) error {
-		pkgs := proj.GetPackageSpecs()
+	var doWalk func(proj P, root string) (*sync.WaitGroup, error)
+	doWalk = func(proj P, root string) (*sync.WaitGroup, error) {
+		_, ok := seenProjects[filepath.Clean(root)]
+		if ok {
+			return nil, fmt.Errorf("cyclic dependency detected on %s", root)
+		}
+
+		project := new(sync.WaitGroup)
+		project.Add(1)
+		seenProjects[filepath.Clean(root)] = project
+
+		dependenciesWg := new(sync.WaitGroup)
 
 		pctx := func(v *plugin.Context) *plugin.Context {
-			cp := *v
-			cp.Root = root
-			cp.Pwd = ""
-			return &cp
+			pctx, err := plugin.NewContextWithRoot(
+				pctx.Base(), pctx.Diag, pctx.StatusDiag,
+				pctx.Host, "", root, nil, false, nil, nil, nil, nil, nil)
+			contract.AssertNoErrorf(err, "plugin.NewContextWithRoot can only error with a non-nil host")
+			return pctx
 		}(pctx)
 
-		var localGroup sync.WaitGroup
-		walkErrors := make(chan error)
-		defer close(walkErrors)
-		var localWalkErrors []error
-		go func() {
-			for err := range walkErrors {
-				localWalkErrors = append(localWalkErrors, err)
+		var didError atomic.Bool
+
+		for name, packageSpec := range proj.GetPackageSpecs() {
+			installSource := packageSpec.Source
+			isLocal := plugin.IsLocalPluginPath(pctx.Base(), installSource)
+			if !isLocal && packageSpec.Version != "" {
+				installSource = fmt.Sprintf("%s@%s", installSource, packageSpec.Version)
 			}
-		}()
+			pkwgWg, ok := seenPackages[filepath.Clean(installSource)]
+			if ok {
+				dependenciesWg.Add(1)
+				go func() {
+					pkwgWg.Wait()
+					dependenciesWg.Done()
+				}()
+				continue
+			}
+			pkgWg := new(sync.WaitGroup)
+			pkgWg.Add(1)
+			seenPackages[filepath.Clean(installSource)] = pkgWg
 
-		for name, packageSpec := range pkgs {
-			waitGroupGo(&localGroup, func() {
-				installSource := packageSpec.Source
-				isLocal := plugin.IsLocalPluginPath(pctx.Base(), installSource)
-				if !isLocal && packageSpec.Version != "" {
-					installSource = fmt.Sprintf("%s@%s", installSource, packageSpec.Version)
+			pkgDepsWg := new(sync.WaitGroup)
+			if isLocal {
+				// Make sure we don't install the same dependency twice
+				pulumiYamlPath, err := workspace.DetectProjectPathFrom(installSource)
+				if err != nil {
+					return nil, fmt.Errorf("unable to find project at '%s': %w", installSource, err)
 				}
-				if isLocal {
-					key := filepath.Clean(installSource)
-					_, alreadyInstalled := seenSources.LoadOrStore(key, struct{}{})
-					if alreadyInstalled {
-						return
-					}
-					pulumiYamlPath, err := workspace.DetectProjectPathFrom(installSource)
-					if err != nil {
-						walkErrors <- fmt.Errorf("unable to find project at '%s': %w", installSource, err)
-						return
-					}
-					localProj, err := loadProject(pulumiYamlPath)
-					if err != nil {
-						walkErrors <- fmt.Errorf("unable to load %s: %w", installSource, err)
-						return
-					}
-					// DetectProjectPathFrom returns the path to the Pulumi.yaml file,
-					// but doWalk expects the directory containing it.
-					err = doWalk(localProj, filepath.Dir(pulumiYamlPath))
-					if err != nil {
-						walkErrors <- err
-						return
-					}
+				localProj, err := loadProject(pulumiYamlPath)
+				if err != nil {
+					return nil, fmt.Errorf("unable to load %s: %w", installSource, err)
 				}
+				// DetectProjectPathFrom returns the path to the Pulumi.yaml file,
+				// but doWalk expects the directory containing it.
+				pkgDepsWg, err = doWalk(localProj, filepath.Dir(pulumiYamlPath))
+				if err != nil {
+					return nil, err
+				}
+			}
 
-				localGroup.Add(1)
-				walkGroup.Go(func() error {
-					defer localGroup.Done()
-					if err := walkPackage(pctx, proj, name, packageSpec); err != nil {
-						walkErrors <- err
-					}
-					return nil
-				})
-			})
+			dependenciesWg.Add(1)
+			walkGroup.Go(func() error {
+				defer dependenciesWg.Done()
+				defer pkgWg.Done()
+				err := walkPackage(pctx, proj, name, packageSpec)
+				didError.CompareAndSwap(false, err != nil)
+				return err
+			}, pkgDepsWg)
 		}
 
-		localGroup.Wait()
-		if err := errors.Join(localWalkErrors...); err != nil {
-			return err
-		}
-		if walkProject == nil {
-			return nil
-		}
-		return walkProject(pctx, proj)
+		walkGroup.Go(func() error {
+			defer project.Done()
+			if didError.Load() || walkProject == nil {
+				return nil
+			}
+			return walkProject(pctx, proj)
+		}, dependenciesWg)
+
+		return project, nil
 	}
 
-	return errors.Join(
-		doWalk(proj, pctx.Root), // First, do the work
-		walkGroup.Wait(),        // Second, make sure we are done
-	)
-}
-
-// A copy of [sync.WaitGroup]'s Go method, added in Go 1.25.0.
-func waitGroupGo(wg *sync.WaitGroup, f func()) {
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		f()
-	}()
+	_, err := doWalk(proj, pctx.Root)
+	return errors.Join(err, walkGroup.Wait())
 }
 
 func shouldInstallPolicyPackDependencies() (bool, error) {

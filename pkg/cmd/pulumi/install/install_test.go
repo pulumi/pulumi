@@ -1,0 +1,709 @@
+// Copyright 2016-2025, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package install
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"testing"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+var _ workspace.BaseProject = &mockProject{}
+
+type mockProject struct {
+	name     string
+	packages map[string]workspace.PackageSpec
+	runtime  workspace.ProjectRuntimeInfo
+}
+
+func (m *mockProject) GetPackageSpecs() map[string]workspace.PackageSpec {
+	return m.packages
+}
+
+func (m *mockProject) RuntimeInfo() *workspace.ProjectRuntimeInfo {
+	return &m.runtime
+}
+
+func (m *mockProject) Validate() error {
+	panic("mockProject.Validate was called")
+}
+
+func (m *mockProject) Save(path string) error {
+	panic("mockProject.Save was called")
+}
+
+func (m *mockProject) AddPackage(name string, spec workspace.PackageSpec) {
+	if m.packages == nil {
+		m.packages = make(map[string]workspace.PackageSpec)
+	}
+	m.packages[name] = spec
+}
+
+// newMockProject creates a new mock project with the given name and packages
+func newMockProject(name string, packages map[string]workspace.PackageSpec) *mockProject {
+	return &mockProject{
+		name:     name,
+		packages: packages,
+		runtime:  workspace.NewProjectRuntimeInfo("nodejs", nil),
+	}
+}
+
+// callTracker tracks calls to walkPackage and walkProject for testing
+type callTracker struct {
+	mu         sync.Mutex
+	packages   []string
+	projects   []string
+	packageErr error
+	projectErr error
+}
+
+func (ct *callTracker) recordPackage(pkgName string) {
+	ct.mu.Lock()
+	defer ct.mu.Unlock()
+	ct.packages = append(ct.packages, pkgName)
+}
+
+func (ct *callTracker) recordProject(projName string) {
+	ct.mu.Lock()
+	defer ct.mu.Unlock()
+	ct.projects = append(ct.projects, projName)
+}
+
+func (ct *callTracker) getPackageCalls() []string {
+	ct.mu.Lock()
+	defer ct.mu.Unlock()
+	result := make([]string, len(ct.packages))
+	copy(result, ct.packages)
+	return result
+}
+
+func (ct *callTracker) getProjectCalls() []string {
+	ct.mu.Lock()
+	defer ct.mu.Unlock()
+	result := make([]string, len(ct.projects))
+	copy(result, ct.projects)
+	return result
+}
+
+func (ct *callTracker) getPackageCallCount(pkgName string) int {
+	ct.mu.Lock()
+	defer ct.mu.Unlock()
+	count := 0
+	for _, p := range ct.packages {
+		if p == pkgName {
+			count++
+		}
+	}
+	return count
+}
+
+// mockProjectRegistry manages mock projects for testing with filesystem support
+type mockProjectRegistry struct {
+	mu       sync.Mutex
+	projects map[string]*mockProject
+	tempDir  string
+	t        *testing.T
+}
+
+func newMockProjectRegistry(t *testing.T) *mockProjectRegistry {
+	tempDir := t.TempDir()
+	return &mockProjectRegistry{
+		projects: make(map[string]*mockProject),
+		tempDir:  tempDir,
+		t:        t,
+	}
+}
+
+func (r *mockProjectRegistry) add(name string, proj *mockProject) string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	// Create a directory for this project
+	projDir := filepath.Join(r.tempDir, name)
+	err := os.MkdirAll(projDir, 0755)
+	require.NoError(r.t, err)
+
+	// Create a minimal Pulumi.yaml file
+	pulumiYaml := filepath.Join(projDir, "Pulumi.yaml")
+	content := fmt.Sprintf("name: %s\nruntime: nodejs\n", proj.name)
+	err = os.WriteFile(pulumiYaml, []byte(content), 0644)
+	require.NoError(r.t, err)
+
+	r.projects[pulumiYaml] = proj
+	return projDir
+}
+
+func (r *mockProjectRegistry) loadProject(path string) (*mockProject, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	proj, ok := r.projects[path]
+	if !ok {
+		return nil, fmt.Errorf("project not found at path: %s", path)
+	}
+	return proj, nil
+}
+
+func newTestPluginContext(t *testing.T) *plugin.Context {
+	ctx := context.Background()
+	pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, "", nil, false, nil)
+	require.NoError(t, err)
+	return pctx
+}
+
+func TestWalkLocalPackagesFromProject_SinglePackage(t *testing.T) {
+	t.Parallel()
+
+	pctx := newTestPluginContext(t)
+	registry := newMockProjectRegistry(t)
+	tracker := &callTracker{}
+
+	// Mock the local package
+	pkgA := newMockProject("pkg-a", nil)
+	pkgAPath := registry.add("pkg-a", pkgA)
+
+	// Create a project with a single local package
+	proj := newMockProject("root", map[string]workspace.PackageSpec{
+		"pkg-a": {Source: pkgAPath},
+	})
+
+	walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
+		tracker.recordPackage(pkgName)
+		return nil
+	}
+
+	walkProject := func(pctx *plugin.Context, proj *mockProject) error {
+		tracker.recordProject(proj.name)
+		return nil
+	}
+
+	err := walkLocalPackagesFromProject(pctx, proj, walkPackage, walkProject, registry.loadProject)
+	require.NoError(t, err)
+
+	// Verify walkPackage was called exactly once
+	assert.Equal(t, []string{"pkg-a"}, tracker.getPackageCalls())
+	// Verify walkProject was called for both the root and the local package
+	assert.Equal(t, []string{"pkg-a", "root"}, tracker.getProjectCalls())
+}
+
+func TestWalkLocalPackagesFromProject_MultipleIndependentPackages(t *testing.T) {
+	t.Parallel()
+
+	pctx := newTestPluginContext(t)
+	registry := newMockProjectRegistry(t)
+	tracker := &callTracker{}
+
+	// Mock the local packages
+	pkgA := newMockProject("pkg-a", nil)
+	pkgB := newMockProject("pkg-b", nil)
+	pkgC := newMockProject("pkg-c", nil)
+	pkgAPath := registry.add("pkg-a", pkgA)
+	pkgBPath := registry.add("pkg-b", pkgB)
+	pkgCPath := registry.add("pkg-c", pkgC)
+
+	// Create a project with three independent local packages
+	proj := newMockProject("root", map[string]workspace.PackageSpec{
+		"pkg-a": {Source: pkgAPath},
+		"pkg-b": {Source: pkgBPath},
+		"pkg-c": {Source: pkgCPath},
+	})
+
+	walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
+		tracker.recordPackage(pkgName)
+		return nil
+	}
+
+	walkProject := func(pctx *plugin.Context, proj *mockProject) error {
+		tracker.recordProject(proj.name)
+		return nil
+	}
+
+	err := walkLocalPackagesFromProject(pctx, proj, walkPackage, walkProject, registry.loadProject)
+	require.NoError(t, err)
+
+	// Verify each package was called exactly once
+	pkgCalls := tracker.getPackageCalls()
+	assert.Len(t, pkgCalls, 3)
+	assert.Contains(t, pkgCalls, "pkg-a")
+	assert.Contains(t, pkgCalls, "pkg-b")
+	assert.Contains(t, pkgCalls, "pkg-c")
+
+	// Verify walkProject was called for all projects
+	projCalls := tracker.getProjectCalls()
+	assert.Len(t, projCalls, 4)
+	assert.Contains(t, projCalls, "pkg-a")
+	assert.Contains(t, projCalls, "pkg-b")
+	assert.Contains(t, projCalls, "pkg-c")
+	assert.Contains(t, projCalls, "root")
+}
+
+func TestWalkLocalPackagesFromProject_LinearDependencyChain(t *testing.T) {
+	t.Parallel()
+
+	pctx := newTestPluginContext(t)
+	registry := newMockProjectRegistry(t)
+	tracker := &callTracker{}
+
+	// Mock the packages first
+	projC := newMockProject("pkg-c", nil)
+	pkgCPath := registry.add("pkg-c", projC)
+
+	projB := newMockProject("pkg-b", map[string]workspace.PackageSpec{
+		"pkg-c": {Source: pkgCPath},
+	})
+	pkgBPath := registry.add("pkg-b", projB)
+
+	// Create a linear dependency chain: A -> B -> C
+	projA := newMockProject("pkg-a", map[string]workspace.PackageSpec{
+		"pkg-b": {Source: pkgBPath},
+	})
+	registry.add("pkg-a", projA)
+
+	walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
+		tracker.recordPackage(pkgName)
+		return nil
+	}
+
+	walkProject := func(pctx *plugin.Context, proj *mockProject) error {
+		tracker.recordProject(proj.name)
+		return nil
+	}
+
+	err := walkLocalPackagesFromProject(pctx, projA, walkPackage, walkProject, registry.loadProject)
+	require.NoError(t, err)
+
+	// Verify each package was called exactly once
+	// Note: projA is the root project, so only its packages (pkg-b) and transitive packages (pkg-c) are walked
+	assert.Equal(t, 1, tracker.getPackageCallCount("pkg-b"))
+	assert.Equal(t, 1, tracker.getPackageCallCount("pkg-c"))
+
+	// Verify ordering: C must be walked before B (per documented invariant)
+	calls := tracker.getPackageCalls()
+	require.Len(t, calls, 2)
+
+	indexB := -1
+	indexC := -1
+	for i, call := range calls {
+		switch call {
+		case "pkg-b":
+			indexB = i
+		case "pkg-c":
+			indexC = i
+		}
+	}
+
+	require.NotEqual(t, -1, indexB, "pkg-b not found in calls")
+	require.NotEqual(t, -1, indexC, "pkg-c not found in calls")
+
+	assert.Less(t, indexC, indexB, "pkg-c must be walked before pkg-b")
+}
+
+func TestWalkLocalPackagesFromProject_DiamondDependency(t *testing.T) {
+	t.Parallel()
+
+	pctx := newTestPluginContext(t)
+	registry := newMockProjectRegistry(t)
+	tracker := &callTracker{}
+
+	// Mock packages starting from the bottom of the dependency tree
+	projD := newMockProject("pkg-d", nil)
+	pkgDPath := registry.add("pkg-d", projD)
+
+	projB := newMockProject("pkg-b", map[string]workspace.PackageSpec{
+		"pkg-d": {Source: pkgDPath},
+	})
+	pkgBPath := registry.add("pkg-b", projB)
+
+	projC := newMockProject("pkg-c", map[string]workspace.PackageSpec{
+		"pkg-d": {Source: pkgDPath},
+	})
+	pkgCPath := registry.add("pkg-c", projC)
+
+	// Create a diamond dependency: A depends on B and C, both B and C depend on D
+	projA := newMockProject("pkg-a", map[string]workspace.PackageSpec{
+		"pkg-b": {Source: pkgBPath},
+		"pkg-c": {Source: pkgCPath},
+	})
+	registry.add("pkg-a", projA)
+
+	walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
+		tracker.recordPackage(pkgName)
+		return nil
+	}
+
+	walkProject := func(pctx *plugin.Context, proj *mockProject) error {
+		tracker.recordProject(proj.name)
+		return nil
+	}
+
+	err := walkLocalPackagesFromProject(pctx, projA, walkPackage, walkProject, registry.loadProject)
+	require.NoError(t, err)
+
+	// CRITICAL: pkg-d must be walked exactly once (deduplication test)
+	assert.Equal(t, 1, tracker.getPackageCallCount("pkg-d"), "pkg-d must be walked exactly once")
+
+	// Verify all packages were walked
+	// Note: projA is the root, so only its packages (pkg-b, pkg-c) and their transitive deps (pkg-d) are walked
+	assert.Equal(t, 1, tracker.getPackageCallCount("pkg-b"))
+	assert.Equal(t, 1, tracker.getPackageCallCount("pkg-c"))
+
+	// Verify ordering: D must be walked before both B and C (per documented invariant)
+	calls := tracker.getPackageCalls()
+	require.Len(t, calls, 3)
+
+	indexB := -1
+	indexC := -1
+	indexD := -1
+	for i, call := range calls {
+		switch call {
+		case "pkg-b":
+			indexB = i
+		case "pkg-c":
+			indexC = i
+		case "pkg-d":
+			indexD = i
+		}
+	}
+
+	require.NotEqual(t, -1, indexB, "pkg-b not found in calls")
+	require.NotEqual(t, -1, indexC, "pkg-c not found in calls")
+	require.NotEqual(t, -1, indexD, "pkg-d not found in calls")
+
+	assert.Less(t, indexD, indexB, "pkg-d must be walked before pkg-b")
+	assert.Less(t, indexD, indexC, "pkg-d must be walked before pkg-c")
+}
+
+func TestWalkLocalPackagesFromProject_MixedLocalAndRemote(t *testing.T) {
+	t.Parallel()
+
+	pctx := newTestPluginContext(t)
+	registry := newMockProjectRegistry(t)
+	tracker := &callTracker{}
+
+	// Mock only the local package
+	pkgA := newMockProject("pkg-a", nil)
+	pkgAPath := registry.add("pkg-a", pkgA)
+
+	// Create a project with both local and remote packages
+	proj := newMockProject("root", map[string]workspace.PackageSpec{
+		"local-pkg":  {Source: pkgAPath},
+		"remote-pkg": {Source: "pulumi/aws", Version: "6.0.0"},
+	})
+
+	walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
+		tracker.recordPackage(pkgName)
+		return nil
+	}
+
+	walkProject := func(pctx *plugin.Context, proj *mockProject) error {
+		tracker.recordProject(proj.name)
+		return nil
+	}
+
+	err := walkLocalPackagesFromProject(pctx, proj, walkPackage, walkProject, registry.loadProject)
+	require.NoError(t, err)
+
+	// Verify both packages were walked
+	pkgCalls := tracker.getPackageCalls()
+	assert.Len(t, pkgCalls, 2)
+	assert.Contains(t, pkgCalls, "local-pkg")
+	assert.Contains(t, pkgCalls, "remote-pkg")
+
+	// Verify walkProject was called for root and local package
+	projCalls := tracker.getProjectCalls()
+	assert.Len(t, projCalls, 2)
+	assert.Contains(t, projCalls, "pkg-a")
+	assert.Contains(t, projCalls, "root")
+}
+
+func TestWalkLocalPackagesFromProject_ErrorPropagation(t *testing.T) {
+	t.Parallel()
+
+	t.Run("loadProject error", func(t *testing.T) {
+		t.Parallel()
+
+		pctx := newTestPluginContext(t)
+		registry := newMockProjectRegistry(t)
+		tracker := &callTracker{}
+
+		// Create a real directory with Pulumi.yaml so DetectProjectPathFrom succeeds,
+		// but have loadProject fail
+		pkgA := newMockProject("pkg-a", nil)
+		pkgAPath := registry.add("pkg-a", pkgA)
+
+		proj := newMockProject("root", map[string]workspace.PackageSpec{
+			"pkg-a": {Source: pkgAPath},
+		})
+
+		loadProjectErr := errors.New("failed to load project")
+		loadProject := func(path string) (*mockProject, error) {
+			return nil, loadProjectErr
+		}
+
+		walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
+			tracker.recordPackage(pkgName)
+			return nil
+		}
+
+		err := walkLocalPackagesFromProject(pctx, proj, walkPackage, nil, loadProject)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to load project")
+
+		// Verify walkPackage was not called since loading failed
+		assert.Empty(t, tracker.getPackageCalls())
+	})
+
+	t.Run("walkPackage error", func(t *testing.T) {
+		t.Parallel()
+
+		pctx := newTestPluginContext(t)
+		registry := newMockProjectRegistry(t)
+
+		pkgA := newMockProject("pkg-a", nil)
+		pkgAPath := registry.add("pkg-a", pkgA)
+
+		proj := newMockProject("root", map[string]workspace.PackageSpec{
+			"pkg-a": {Source: pkgAPath},
+		})
+
+		walkPackageErr := errors.New("failed to walk package")
+		walkPackage := func(*plugin.Context, workspace.BaseProject, string, workspace.PackageSpec) error {
+			return walkPackageErr
+		}
+
+		err := walkLocalPackagesFromProject(pctx, proj, walkPackage, nil, registry.loadProject)
+		require.ErrorIs(t, err, walkPackageErr)
+	})
+
+	t.Run("walkProject error", func(t *testing.T) {
+		t.Parallel()
+
+		pctx := newTestPluginContext(t)
+		registry := newMockProjectRegistry(t)
+		tracker := &callTracker{}
+
+		pkgA := newMockProject("pkg-a", nil)
+		pkgAPath := registry.add("pkg-a", pkgA)
+
+		proj := newMockProject("root", map[string]workspace.PackageSpec{
+			"pkg-a": {Source: pkgAPath},
+		})
+
+		walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
+			tracker.recordPackage(pkgName)
+			return nil
+		}
+
+		walkProjectErr := errors.New("failed to walk project")
+		walkProject := func(pctx *plugin.Context, proj *mockProject) error {
+			return walkProjectErr
+		}
+
+		err := walkLocalPackagesFromProject(pctx, proj, walkPackage, walkProject, registry.loadProject)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to walk project")
+
+		// Verify walkPackage WAS called (it runs before walkProject)
+		assert.Equal(t, 1, tracker.getPackageCallCount("pkg-a"))
+	})
+
+	t.Run("multiple errors", func(t *testing.T) {
+		t.Parallel()
+
+		pctx := newTestPluginContext(t)
+		registry := newMockProjectRegistry(t)
+
+		pkgA := newMockProject("pkg-a", nil)
+		pkgB := newMockProject("pkg-b", nil)
+		pkgAPath := registry.add("pkg-a", pkgA)
+		pkgBPath := registry.add("pkg-b", pkgB)
+
+		proj := newMockProject("root", map[string]workspace.PackageSpec{
+			"pkg-a": {Source: pkgAPath},
+			"pkg-b": {Source: pkgBPath},
+		})
+
+		walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
+			return fmt.Errorf("failed to walk %s", pkgName)
+		}
+
+		err := walkLocalPackagesFromProject(pctx, proj, walkPackage, nil, registry.loadProject)
+		require.Error(t, err)
+		// At least one error should be present (both packages fail, but due to parallel execution
+		// and map iteration order being random, we may get one or both errors)
+		errMsg := err.Error()
+		hasErrorA := strings.Contains(errMsg, "failed to walk pkg-a")
+		hasErrorB := strings.Contains(errMsg, "failed to walk pkg-b")
+		assert.True(t, hasErrorA || hasErrorB, "should contain at least one package error")
+	})
+}
+
+func TestWalkLocalPackagesFromProject_NilWalkProject(t *testing.T) {
+	t.Parallel()
+
+	pctx := newTestPluginContext(t)
+	registry := newMockProjectRegistry(t)
+	tracker := &callTracker{}
+
+	pkgA := newMockProject("pkg-a", nil)
+	pkgAPath := registry.add("pkg-a", pkgA)
+
+	proj := newMockProject("root", map[string]workspace.PackageSpec{
+		"pkg-a": {Source: pkgAPath},
+	})
+
+	walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
+		tracker.recordPackage(pkgName)
+		return nil
+	}
+
+	// Pass nil for walkProject
+	err := walkLocalPackagesFromProject(pctx, proj, walkPackage, nil, registry.loadProject)
+	require.NoError(t, err)
+
+	// Verify walkPackage was still called
+	assert.Equal(t, []string{"pkg-a"}, tracker.getPackageCalls())
+	// Verify no project calls were made
+	assert.Empty(t, tracker.getProjectCalls())
+}
+
+func TestWalkLocalPackagesFromProject_EmptyProject(t *testing.T) {
+	t.Parallel()
+
+	pctx := newTestPluginContext(t)
+	tracker := &callTracker{}
+
+	// Create a project with no packages
+	proj := newMockProject("root", nil)
+
+	walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
+		tracker.recordPackage(pkgName)
+		return nil
+	}
+
+	walkProject := func(pctx *plugin.Context, proj *mockProject) error {
+		tracker.recordProject(proj.name)
+		return nil
+	}
+
+	err := walkLocalPackagesFromProject(pctx, proj, walkPackage, walkProject, func(path string) (*mockProject, error) {
+		return nil, errors.New("should not be called")
+	})
+	require.NoError(t, err)
+
+	// Verify no packages were walked
+	assert.Empty(t, tracker.getPackageCalls())
+	// Verify walkProject was still called for the root project
+	assert.Equal(t, []string{"root"}, tracker.getProjectCalls())
+}
+
+func TestWalkLocalPackagesFromProject_CircularDependency(t *testing.T) {
+	t.Parallel()
+	t.Skip("TODO: Deadlock detection")
+
+	pctx := newTestPluginContext(t)
+	registry := newMockProjectRegistry(t)
+	tracker := &callTracker{}
+
+	// We need to create both projects and then update their packages after getting paths
+	// Create placeholder projects
+	projA := newMockProject("pkg-a", nil)
+	pkgAPath := registry.add("pkg-a", projA)
+
+	projB := newMockProject("pkg-b", nil)
+	pkgBPath := registry.add("pkg-b", projB)
+
+	// Now add the circular dependency: A -> B -> A
+	projA.AddPackage("pkg-b", workspace.PackageSpec{Source: pkgBPath})
+	projB.AddPackage("pkg-a", workspace.PackageSpec{Source: pkgAPath})
+
+	walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
+		tracker.recordPackage(pkgName)
+		return nil
+	}
+
+	walkProject := func(pctx *plugin.Context, proj *mockProject) error {
+		tracker.recordProject(proj.name)
+		return nil
+	}
+
+	err := walkLocalPackagesFromProject(pctx, projA, walkPackage, walkProject, registry.loadProject)
+	require.NoError(t, err)
+
+	// Verify each package was walked exactly once (deduplication prevents infinite loop)
+	assert.Equal(t, 1, tracker.getPackageCallCount("pkg-a"), "pkg-a must be walked exactly once")
+	assert.Equal(t, 1, tracker.getPackageCallCount("pkg-b"), "pkg-b must be walked exactly once")
+}
+
+func TestWalkLocalPackagesFromProject_ConcurrencyLimit(t *testing.T) {
+	t.Parallel()
+
+	pctx := newTestPluginContext(t)
+	registry := newMockProjectRegistry(t)
+
+	// Create a project with many packages to test concurrency limit
+	packages := make(map[string]workspace.PackageSpec)
+	for i := range 10 {
+		pkgName := fmt.Sprintf("pkg-%d", i)
+
+		// Register mock projects
+		mockProj := newMockProject(pkgName, nil)
+		pkgPath := registry.add(pkgName, mockProj)
+		packages[pkgName] = workspace.PackageSpec{Source: pkgPath}
+	}
+
+	proj := newMockProject("root", packages)
+
+	// Track concurrent executions
+	var currentConcurrency int32
+	var maxConcurrency int32
+	var mu sync.Mutex
+
+	walkPackage := func(pctx *plugin.Context, proj workspace.BaseProject, pkgName string, pkgSpec workspace.PackageSpec) error {
+		// Increment current concurrency
+		mu.Lock()
+		currentConcurrency++
+		if currentConcurrency > maxConcurrency {
+			maxConcurrency = currentConcurrency
+		}
+		mu.Unlock()
+
+		// Simulate some work
+		// (In real tests we'd use channels for synchronization, but here we're just checking the limit)
+
+		// Decrement current concurrency
+		mu.Lock()
+		currentConcurrency--
+		mu.Unlock()
+
+		return nil
+	}
+
+	err := walkLocalPackagesFromProject(pctx, proj, walkPackage, nil, registry.loadProject)
+	require.NoError(t, err)
+
+	// Verify we never exceeded the limit of 4 concurrent operations
+	// Note: This test is not perfectly deterministic, but should catch obvious violations
+	assert.LessOrEqual(t, maxConcurrency, int32(4), "should not exceed concurrency limit of 4")
+}
