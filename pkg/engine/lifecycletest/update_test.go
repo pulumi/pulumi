@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/stretchr/testify/require"
 )
 
@@ -77,6 +78,10 @@ func TestChildMarkedAsDelete(t *testing.T) {
 		},
 	}
 
-	_, err := lt.TestOp(engine.Update).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+	snap, err := lt.TestOp(engine.Update).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2)
+	require.Equal(t, urn.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[0].URN)
+	require.Equal(t, urn.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::childA"), snap.Resources[1].URN)
+	require.Equal(t, urn.URN(""), snap.Resources[1].Parent)
 }
