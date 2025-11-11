@@ -264,7 +264,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 	return urn, true, true
 }
 
-func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]string, bool, error) {
+func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]string, error) {
 	urnToReference := map[resource.URN]string{}
 
 	// Determine which default providers are not present in the state. If all default providers are accounted for,
@@ -295,12 +295,12 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 
 		if imp.Type.Package() == "" {
-			return nil, false, errors.New("incorrect package type specified")
+			return nil, errors.New("incorrect package type specified")
 		}
 
 		pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(imp.Type, imp.Version)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
 		req := providers.NewProviderRequest(
 			pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
@@ -321,7 +321,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		defaultProviders[urn] = struct{}{}
 	}
 	if len(defaultProviderRequests) == 0 {
-		return urnToReference, true, nil
+		return urnToReference, nil
 	}
 
 	steps := make([]Step, len(defaultProviderRequests))
@@ -330,7 +330,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 	})
 	for idx, req := range defaultProviderRequests {
 		if req.Package() == "" {
-			return nil, false, errors.New("incorrect package type specified")
+			return nil, errors.New("incorrect package type specified")
 		}
 
 		typ, name := sdkproviders.MakeProviderType(req.Package()), req.DefaultName()
@@ -339,7 +339,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		// Fetch, prepare, and check the configuration for this provider.
 		inputs, err := i.deployment.target.GetPackageConfig(req.Package())
 		if err != nil {
-			return nil, false, fmt.Errorf("failed to fetch provider config: %w", err)
+			return nil, fmt.Errorf("failed to fetch provider config: %w", err)
 		}
 
 		// Calculate the inputs for the provider using the ambient config.
@@ -361,7 +361,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			News: inputs,
 		})
 		if err != nil {
-			return nil, false, fmt.Errorf("failed to validate provider config: %w", err)
+			return nil, fmt.Errorf("failed to validate provider config: %w", err)
 		}
 		state := resource.NewState{
 			Type:                    typ,
@@ -399,8 +399,10 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			ResourceHooks:           nil,
 		}.Make()
 		// TODO(seqnum) should default providers be created with 1? When do they ever get recreated/replaced?
+		fmt.Println("issuing check errors", resp.Failures)
 		if issueCheckErrors(i.deployment, state, urn, resp.Failures) {
-			return nil, false, errors.New("provider check failed")
+			fmt.Println("provider check had failures")
+			return nil, errors.New("provider check failed")
 		}
 
 		// Set a dummy goal so the resource is tracked as managed.
@@ -410,7 +412,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 
 	// Issue the create steps.
 	if !i.executeParallel(ctx, steps...) {
-		return nil, false, i.executor.Errored()
+		return nil, i.executor.Errored()
 	}
 
 	// Update the URN to reference map.
@@ -421,7 +423,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		urnToReference[res.URN] = ref.String()
 	}
 
-	return urnToReference, true, nil
+	return urnToReference, nil
 }
 
 func (i *importer) importResources(ctx context.Context) error {
@@ -436,8 +438,8 @@ func (i *importer) importResources(ctx context.Context) error {
 		return i.executor.Errored()
 	}
 
-	urnToReference, ok, err := i.registerProviders(ctx)
-	if !ok {
+	urnToReference, err := i.registerProviders(ctx)
+	if err != nil {
 		return err
 	}
 
@@ -584,9 +586,13 @@ func (i *importer) importResources(ctx context.Context) error {
 		}
 	}
 
+	if i.executor.Errored() != nil {
+		return i.executor.Errored()
+	}
+
 	if createdStack {
 		return i.executor.ExecuteRegisterResourceOutputs(noopOutputsEvent(stackURN))
 	}
 
-	return i.executor.Errored()
+	return nil
 }
