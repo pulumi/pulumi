@@ -468,9 +468,7 @@ func (ex *deploymentExecutor) performPostSteps(
 		ex.stepExec.SignalCompletion()
 		signaled = true
 		ex.stepExec.WaitForCompletion()
-		if len(resourceToStep) > 0 {
-			ex.rebuildBaseState(resourceToStep)
-		}
+		ex.rebuildBaseState(resourceToStep)
 	} else {
 		// At this point we have generated the set of resources above that we would normally want to
 		// delete.  However, if the user provided -target's we will only actually delete the specific
@@ -942,7 +940,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 		}
 	}
 
-	undangleParentResources(olds, resources)
+	undangleParentResources(referenceable, resources)
 
 	ex.deployment.prev.Resources = resources
 	ex.deployment.depGraph = graph.NewDependencyGraph(resources)
@@ -950,7 +948,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 	ex.deployment.oldViews = oldViews
 }
 
-func undangleParentResources(undeleted map[resource.URN]*resource.State, resources []*resource.State) {
+func undangleParentResources(undeleted map[resource.URN]bool, resources []*resource.State) {
 	// Since a refresh may delete arbitrary resources, we need to handle the case where
 	// the parent of a still existing resource is deleted.
 	//

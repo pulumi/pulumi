@@ -290,7 +290,6 @@ func FilterRefreshDeletes(
 ) {
 	availableParents := map[resource.URN]resource.URN{}
 	referenceable := make(map[resource.URN]bool)
-
 	for i, res := range resources {
 		newDeps := []resource.URN{}
 		newPropDeps := map[resource.PropertyKey][]resource.URN{}
