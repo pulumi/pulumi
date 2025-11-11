@@ -104,6 +104,7 @@ func NewEvalSource(
 	defaultProviderInfo map[tokens.Package]workspace.PackageDescriptor,
 	resourceHooks *ResourceHooks,
 	opts EvalSourceOptions,
+	panicErrs chan<- error,
 ) Source {
 	return &evalSource{
 		plugctx:             plugctx,
@@ -111,6 +112,7 @@ func NewEvalSource(
 		defaultProviderInfo: defaultProviderInfo,
 		resourceHooks:       resourceHooks,
 		opts:                opts,
+		panicErrs:           panicErrs,
 	}
 }
 
@@ -120,6 +122,8 @@ type evalSource struct {
 	defaultProviderInfo map[tokens.Package]workspace.PackageDescriptor // the default provider versions for this source.
 	resourceHooks       *ResourceHooks                                 // the resource hook registry.
 	opts                EvalSourceOptions                              // options for the evaluation source.
+	// channel for reporting panics from goroutines
+	panicErrs chan<- error
 }
 
 func (src *evalSource) Close() error {
@@ -190,6 +194,7 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 		regReadChan:     regReadChan,
 		finChan:         finChan,
 		programComplete: programComplete,
+		panicErrs:       src.panicErrs,
 	}
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
@@ -212,6 +217,7 @@ type evalSourceIterator struct {
 	programComplete *promise.CompletionSource[struct{}] // the completion source to record program completion.
 	done            bool                                // set to true when the evaluation is done.
 	aborted         bool                                // set to true when the iterator is aborted.
+	panicErrs       chan<- error                        // the channel to send panics to.
 }
 
 func (iter *evalSourceIterator) Cancel(ctx context.Context) error {
@@ -275,7 +281,7 @@ func (iter *evalSourceIterator) forkRun(
 ) {
 	// Fire up the goroutine to make the RPC invocation against the language runtime.  As this executes, calls
 	// to queue things up in the resource channel will occur, and we will serve them concurrently.
-	go func() {
+	go PanicRecovery(iter.panicErrs, func() {
 		// Next, launch the language plugin.
 		run := func() error {
 			defer contract.IgnoreClose(iter.loaderServer)
@@ -344,7 +350,7 @@ func (iter *evalSourceIterator) forkRun(
 		// `SignalAndWaitForShutdown`, but old SDKs signal completion here when
 		// they exit.
 		iter.finChan <- err
-	}()
+	})
 }
 
 // defaultProviders manages the registration of default providers. The default provider for a package is the provider
