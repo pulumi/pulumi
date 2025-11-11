@@ -700,7 +700,7 @@ func TestWalkLocalPackagesFromProject_ConcurrencyLimit(t *testing.T) {
 		close(done)
 	}()
 
-	for i, phase := range phases {
+	for i, phase := range phases { //nolint:paralleltest // Test phases must run in order
 		t.Run(fmt.Sprintf("phase-%d", i+1), func(t *testing.T) {
 			phase.saturatedIncr.Wait()
 			assert.Equal(t, phase.expectedMaxConcurrency, int(phase.maxConcurency.Load()))
