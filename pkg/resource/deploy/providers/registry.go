@@ -442,9 +442,11 @@ func (r *Registry) deleteProvider(ref providers.Reference) (plugin.Provider, boo
 
 	provider, ok := r.providers[ref]
 	if !ok {
+		logging.V(7).Infof("deleteProvider(%v): false", ref)
 		return nil, false
 	}
 	delete(r.providers, ref)
+	logging.V(7).Infof("deleteProvider(%v): true", ref)
 	return provider, true
 }
 
