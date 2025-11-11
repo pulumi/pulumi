@@ -400,7 +400,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}.Make()
 		// TODO(seqnum) should default providers be created with 1? When do they ever get recreated/replaced?
 		if issueCheckErrors(i.deployment, state, urn, resp.Failures) {
-			return nil, false, nil
+			return nil, false, errors.New("provider check failed")
 		}
 
 		// Set a dummy goal so the resource is tracked as managed.
@@ -410,7 +410,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 
 	// Issue the create steps.
 	if !i.executeParallel(ctx, steps...) {
-		return nil, false, nil
+		return nil, false, i.executor.Errored()
 	}
 
 	// Update the URN to reference map.
@@ -428,12 +428,12 @@ func (i *importer) importResources(ctx context.Context) error {
 	contract.Assertf(len(i.deployment.imports) != 0, "no resources to import")
 
 	if !i.registerExistingResources(ctx) {
-		return nil
+		return errors.New("failed to register existing resources")
 	}
 
 	stackURN, createdStack, ok := i.getOrCreateStackResource(ctx)
 	if !ok {
-		return nil
+		return errors.New("failed to get or create stack resource")
 	}
 
 	urnToReference, ok, err := i.registerProviders(ctx)
@@ -580,7 +580,7 @@ func (i *importer) importResources(ctx context.Context) error {
 		}
 
 		if !i.executeParallel(ctx, parallelSteps...) {
-			return nil
+			break
 		}
 	}
 
@@ -588,5 +588,5 @@ func (i *importer) importResources(ctx context.Context) error {
 		return i.executor.ExecuteRegisterResourceOutputs(noopOutputsEvent(stackURN))
 	}
 
-	return nil
+	return i.executor.Errored()
 }
