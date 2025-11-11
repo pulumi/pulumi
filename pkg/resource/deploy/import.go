@@ -428,12 +428,12 @@ func (i *importer) importResources(ctx context.Context) error {
 	contract.Assertf(len(i.deployment.imports) != 0, "no resources to import")
 
 	if !i.registerExistingResources(ctx) {
-		return errors.New("failed to register existing resources")
+		return i.executor.Errored()
 	}
 
 	stackURN, createdStack, ok := i.getOrCreateStackResource(ctx)
 	if !ok {
-		return errors.New("failed to get or create stack resource")
+		return i.executor.Errored()
 	}
 
 	urnToReference, ok, err := i.registerProviders(ctx)
