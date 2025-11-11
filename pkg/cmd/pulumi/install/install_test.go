@@ -600,12 +600,15 @@ func TestWalkLocalPackagesFromProject_ConcurrencyLimit(t *testing.T) {
 		         A      B
 		       / | \ \ / | \ \
 		      A1 A2 A3 A4 B1 B2 B3 B4
+		              \ X /
+		               \ /
 
 		This creates a dependency tree where:
 		- root depends on A and B
-		- A depends on A1, A2, A3, A4
-		- B depends on B1, B2, B3, B4
+		- A depends on A1, A2, A3, A4, B1 (shared: A4, B1)
+		- B depends on B2, B3, B4, A4, B1 (shared: A4, B1)
 		- Total of 10 non-root packages to install
+		- A4 and B1 are shared dependencies (diamond pattern)
 	*/
 
 	registry := newMockProjectRegistry(t)
@@ -618,21 +621,23 @@ func TestWalkLocalPackagesFromProject_ConcurrencyLimit(t *testing.T) {
 		registry.add(name, proj)
 	}
 
-	// Create package A with dependencies on A1-A4
+	// Create package A with dependencies on A1-A4 and B1 (shared)
 	pkgA := newMockProject("A", map[string]workspace.PackageSpec{
 		"A1": {Source: registry.tempDir + "/A1"},
 		"A2": {Source: registry.tempDir + "/A2"},
 		"A3": {Source: registry.tempDir + "/A3"},
 		"A4": {Source: registry.tempDir + "/A4"},
+		"B1": {Source: registry.tempDir + "/B1"},
 	})
 	pkgAPath := registry.add("A", pkgA)
 
-	// Create package B with dependencies on B1-B4
+	// Create package B with dependencies on B1-B4 and A4 (shared)
 	pkgB := newMockProject("B", map[string]workspace.PackageSpec{
 		"B1": {Source: registry.tempDir + "/B1"},
 		"B2": {Source: registry.tempDir + "/B2"},
 		"B3": {Source: registry.tempDir + "/B3"},
 		"B4": {Source: registry.tempDir + "/B4"},
+		"A4": {Source: registry.tempDir + "/A4"},
 	})
 	pkgBPath := registry.add("B", pkgB)
 
@@ -651,11 +656,13 @@ func TestWalkLocalPackagesFromProject_ConcurrencyLimit(t *testing.T) {
 		done, decr                   chan struct{}
 		saturatedIncr, saturatedDecr sync.WaitGroup
 	}{
-		{expectedMaxConcurrency: 4, done: make(chan struct{}), decr: make(chan struct{})},
-		{expectedMaxConcurrency: 4, done: make(chan struct{}), decr: make(chan struct{})},
-		{expectedMaxConcurrency: 2, done: make(chan struct{}), decr: make(chan struct{})},
+		{expectedMaxConcurrency: 4}, // The first 4 packages
+		{expectedMaxConcurrency: 4}, // The next 4 packages
+		{expectedMaxConcurrency: 2}, // The last 2 packages
 	}
 	for _, p := range phases {
+		p.done = make(chan struct{})
+		p.decr = make(chan struct{})
 		p.saturatedIncr.Add(p.expectedMaxConcurrency)
 		p.saturatedDecr.Add(p.expectedMaxConcurrency)
 	}
@@ -676,13 +683,11 @@ func TestWalkLocalPackagesFromProject_ConcurrencyLimit(t *testing.T) {
 		}
 
 		phase.saturatedIncr.Done()
-		t.Log("First block")
 		<-phase.done
 
 		// Decrement the concurrency for the phase
 		currentConcurency.Add(-1)
 		phase.saturatedDecr.Done()
-		t.Log("Second block")
 		<-phase.decr
 
 		return nil
@@ -697,12 +702,9 @@ func TestWalkLocalPackagesFromProject_ConcurrencyLimit(t *testing.T) {
 
 	for i, phase := range phases {
 		t.Run(fmt.Sprintf("phase-%d", i+1), func(t *testing.T) {
-			t.Log("Waiting")
 			phase.saturatedIncr.Wait()
-			t.Log("Done Waiting")
 			assert.Equal(t, phase.expectedMaxConcurrency, int(phase.maxConcurency.Load()))
 			close(phase.done)
-			t.Log("Part one done")
 			phase.saturatedDecr.Wait()
 			phaseNumber.Add(1)
 			close(phase.decr)
