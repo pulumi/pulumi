@@ -30,13 +30,11 @@ import * as plugproto from "../../proto/plugin_pb";
 import * as provrpc from "../../proto/provider_grpc_pb";
 import * as provproto from "../../proto/provider_pb";
 import * as statusproto from "../../proto/status_pb";
+import { grpcChannelOptions } from "../../runtime";
 
 const requireFromString = require("require-from-string");
 
 const providerKey: string = "__provider";
-
-// maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-const maxRPCMessageSize: number = 1024 * 1024 * 400;
 
 // We track all uncaught errors here.  If we have any, we will make sure we always have a non-0 exit
 // code.
@@ -482,7 +480,7 @@ export async function main(args: string[]) {
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
     const server = new grpc.Server({
-        "grpc.max_receive_message_length": maxRPCMessageSize,
+        ...grpcChannelOptions,
     });
     const resourceProvider = new ResourceProviderService();
     server.addService(provrpc.ResourceProviderService, resourceProvider);

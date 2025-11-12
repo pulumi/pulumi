@@ -22,6 +22,7 @@ import * as grpc from "@grpc/grpc-js";
 
 import * as gempty from "google-protobuf/google/protobuf/empty_pb";
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
+import { grpcChannelOptions } from "../../../runtime";
 
 const enginerpc = require("../../../proto/engine_grpc_pb.js");
 const engineproto = require("../../../proto/engine_pb.js");
@@ -2131,7 +2132,7 @@ async function createMockEngineAsync(
 ) {
     // The resource monitor is hosted in the current process so it can record state, etc.
     const server = new grpc.Server({
-        "grpc.max_receive_message_length": runtime.maxRPCMessageSize,
+        ...grpcChannelOptions,
     });
     server.addService(resrpc.ResourceMonitorService, {
         supportsFeature: supportsFeatureCallback,

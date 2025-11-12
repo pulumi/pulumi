@@ -614,7 +614,7 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 		if p.Version != nil && p.Version.Major > 1 {
 			vPath = fmt.Sprintf("/v%d", p.Version.Major)
 		}
-		packageName := extractModulePath(p.Reference())
+		packageName := ExtractModulePath(p.Reference())
 		if langInfo, found := p.Language["go"]; found {
 			goInfo, ok := langInfo.(GoPackageInfo)
 			if ok && goInfo.ImportBasePath != "" {
@@ -985,7 +985,7 @@ func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
 		} else {
 			p, ok := g.packages[pkg]
 			if ok {
-				importBasePath = extractImportBasePath(p.Reference())
+				importBasePath = ExtractImportBasePath(p.Reference())
 			}
 		}
 
@@ -1163,6 +1163,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	}
 	if opts.DeletedWith != nil {
 		appendOption("DeletedWith", opts.DeletedWith, model.DynamicType)
+	}
+	if opts.ReplaceWith != nil {
+		appendOption("ReplaceWith", opts.ReplaceWith, model.NewListType(resourceType))
 	}
 	if opts.ReplacementTrigger != nil {
 		destType := model.NewOutputType(model.DynamicType)
@@ -1650,19 +1653,39 @@ func liftValueToOutput(value model.Expression) (model.Expression, model.Type) {
 	switch expr := value.(type) {
 	case *model.TupleConsExpression:
 		// if the value is a tuple, then lift each element to Output[T] as well
+		// Create a new tuple instead of mutating the original
+		liftedExprs := make([]model.Expression, len(expr.Expressions))
 		for i, elem := range expr.Expressions {
 			lifted, _ := liftValueToOutput(elem)
-			expr.Expressions[i] = lifted
+			liftedExprs[i] = lifted
 		}
+		newTuple := &model.TupleConsExpression{
+			Syntax:      expr.Syntax,
+			Tokens:      expr.Tokens,
+			Expressions: liftedExprs,
+		}
+		// Typecheck the new tuple to set its type
+		_ = newTuple.Typecheck(false)
+		value = newTuple
 	case *model.ObjectConsExpression:
 		// if the value is a map, then lift each value to Output[T] as well
+		// Create a new object instead of mutating the original
+		liftedItems := make([]model.ObjectConsItem, len(expr.Items))
 		for i, item := range expr.Items {
 			lifted, _ := liftValueToOutput(item.Value)
-			expr.Items[i] = model.ObjectConsItem{
+			liftedItems[i] = model.ObjectConsItem{
 				Key:   item.Key,
 				Value: lifted,
 			}
 		}
+		newObj := &model.ObjectConsExpression{
+			Syntax: expr.Syntax,
+			Tokens: expr.Tokens,
+			Items:  liftedItems,
+		}
+		// Typecheck the new object to set its type
+		_ = newObj.Typecheck(false)
+		value = newObj
 	}
 
 	return pcl.NewConvertCall(value, destType), destType

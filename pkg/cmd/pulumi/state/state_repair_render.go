@@ -149,6 +149,8 @@ func renderStateRepairOperations(
 					b.WriteString("[property dependency: " + string(d.Key) + "]")
 				case resource.ResourceDeletedWith:
 					b.WriteString("[deleted with]")
+				case resource.ResourceReplaceWith:
+					b.WriteString("[replace with]")
 				}
 				b.WriteString("\n")
 			}

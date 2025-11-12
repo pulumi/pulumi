@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix parenting of resources in some cases in `refresh --run-program`

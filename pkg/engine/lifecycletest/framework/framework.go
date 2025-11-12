@@ -43,7 +43,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
@@ -52,10 +51,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -235,6 +236,8 @@ func (op TestOp) runWithContext(
 	var persister *backend.ValidatingPersister
 	var journalPersister *backend.ValidatingPersister
 	var journaler *backend.SnapshotJournaler
+	secretsManager := b64.NewBase64SecretsManager()
+	secretsProvider := stack.Base64SecretsProvider{}
 	if !dryRun {
 		journal = engine.NewTestJournal()
 		persister = &backend.ValidatingPersister{
@@ -251,8 +254,6 @@ func (op TestOp) runWithContext(
 				}
 			},
 		}
-		secretsManager := b64.NewBase64SecretsManager()
-		secretsProvider := stack.Base64SecretsProvider{}
 
 		var err error
 		journaler, err = backend.NewSnapshotJournaler(
@@ -366,13 +367,30 @@ func (op TestOp) runWithContext(
 		}
 	}
 
+	var serializedSnap *apitype.DeploymentV3
+	if snap != nil {
+		// The test jounrnaler doesn't support secrets managers, so we need to add it to
+		// the snapshot here before serializing it.
+		snap.SecretsManager = secretsManager
+		serializedSnap, _, _, err = stack.SerializeDeploymentWithMetadata(
+			context.TODO(), snap, false)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("could not serialize snapshot: %w", err))
+		}
+	}
+
 	errs = append(errs, journaler.Errors()...)
 
 	// Verify the saved snapshot from SnapshotManger is the same(ish) as that from the Journal
-	errs = append(errs, snap.AssertEqual(persister.Snap))
+	snapErr := snapshot.AssertEqual(serializedSnap, persister.Snap)
+	if snapErr != nil {
+		errs = append(errs, fmt.Errorf("snapshot manager resources differ: %w", snapErr))
+	}
 
-	journalErr := journalPersister.Snap.AssertEqual(snap)
-	errs = append(errs, journalErr)
+	journalErr := snapshot.AssertEqual(serializedSnap, journalPersister.Snap)
+	if journalErr != nil {
+		errs = append(errs, fmt.Errorf("journal resources differ: %w", journalErr))
+	}
 
 	if journalErr != nil {
 		opts.T.Log("original base snapshot:")
@@ -615,7 +633,7 @@ func AssertDisplay(t TB, events []engine.Event, path string) {
 		Stdout:               &stdout,
 		Stderr:               &stderr,
 		DeterministicOutput:  true,
-		ShowLinkToCopilot:    false,
+		ShowLinkToNeo:        false,
 	})
 
 	for _, e := range expectedEvents {
@@ -664,7 +682,7 @@ func AssertDisplay(t TB, events []engine.Event, path string) {
 			Stdout:               &stdout,
 			Stderr:               &stderr,
 			DeterministicOutput:  true,
-			ShowLinkToCopilot:    false,
+			ShowLinkToNeo:        false,
 		}, false)
 
 	for _, e := range expectedEvents {

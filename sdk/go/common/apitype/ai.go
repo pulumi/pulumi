@@ -16,7 +16,7 @@ package apitype
 
 import "encoding/json"
 
-// Base request type for Copilot requests
+// Base request type for Neo requests.
 
 type CopilotRequest struct {
 	Query string       `json:"query"`
@@ -36,7 +36,7 @@ type CopilotCloudContext struct {
 	URL   string `json:"url"`   // The URL the user is viewing. Mock value often used.
 }
 
-// CopilotSkill is the Copilot "direct skill call" to be used in the request
+// CopilotSkill is the Neo "direct skill call" to be used in the request.
 type CopilotSkill string
 
 const (

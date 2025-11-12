@@ -46,6 +46,7 @@ def clean_up_env_vars():
 
 
 @pulumi.runtime.test
+@pytest.mark.asyncio
 def test_depends_on_accepts_outputs(dep_tracker):
     dep1 = MockResource(name="dep1")
     dep2 = MockResource(name="dep2")
@@ -66,6 +67,7 @@ def test_depends_on_accepts_outputs(dep_tracker):
 
 
 @pulumi.runtime.test
+@pytest.mark.asyncio
 def test_depends_on_outputs_works_in_presence_of_unknowns(dep_tracker_preview):
     dep1 = MockResource(name="dep1")
     dep2 = MockResource(name="dep2")
@@ -84,6 +86,7 @@ def test_depends_on_outputs_works_in_presence_of_unknowns(dep_tracker_preview):
 
 
 @pulumi.runtime.test
+@pytest.mark.asyncio
 def test_depends_on_respects_top_level_implicit_dependencies(dep_tracker):
     dep1 = MockResource(name="dep1")
     dep2 = MockResource(name="dep2")
@@ -124,6 +127,7 @@ def depends_on_variations(dep: pulumi.Resource) -> List[pulumi.ResourceOptions]:
 
 
 @pulumi.runtime.test
+@pytest.mark.asyncio
 def test_depends_on_typing_variations(dep_tracker) -> None:
     dep: pulumi.Resource = MockResource(name="dep1")
 

@@ -1,5 +1,46 @@
 # Changelog
 
+## 3.206.0 (2025-11-05)
+
+
+### Features
+
+- [protobuf] Pass a `preview` flag to invokes so they can tell if they're being called during a preview
+  [#20827](https://github.com/pulumi/pulumi/pull/20827)
+
+- [cli/about] Include PULUMI_* environment variables in the `pulumi about` output
+  [#20855](https://github.com/pulumi/pulumi/pull/20855)
+
+- [auto/go] Get event log over gRPC instead of trying to read it from a text file
+  [#20822](https://github.com/pulumi/pulumi/pull/20822)
+
+- [auto/nodejs] Get event log over gRPC instead of trying to read it from a text file
+  [#20824](https://github.com/pulumi/pulumi/pull/20824)
+
+- [auto/python] Get event log over gRPC instead of trying to read it from a text file
+  [#20833](https://github.com/pulumi/pulumi/pull/20833)
+
+- [cli/engine] Add environment variable to add --refresh to preview,update,destroy
+  [#20797](https://github.com/pulumi/pulumi/pull/20797)
+
+- [sdk/nodejs] Add PULUMI_NODEJS_SKIP_COMPONENT_INPUTS environment variable to skip the new feature of sending component inputs to the engine for diffing and state storage
+  [#20842](https://github.com/pulumi/pulumi/pull/20842)
+
+
+### Bug Fixes
+
+- [engine] Fix duplicate resource snapshot integrity issue, when running `pulumi up --refresh --run-program` and when a resource `PendingReplacement` exists in the snapshot
+  [#20812](https://github.com/pulumi/pulumi/pull/20812)
+
+- [engine] Support floating point NaN and Inf values in resource state
+  [#20843](https://github.com/pulumi/pulumi/pull/20843)
+
+
+### Miscellaneous
+
+- [sdk/go] Use Language.Link to link Go packages
+  [#20811](https://github.com/pulumi/pulumi/pull/20811)
+
 ## 3.205.0 (2025-10-28)
 
 

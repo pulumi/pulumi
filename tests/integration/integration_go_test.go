@@ -1270,6 +1270,7 @@ func appendLines(name string, lines []string) error {
 
 //nolint:paralleltest // mutates environment
 func TestPackageAddGo(t *testing.T) {
+	// xx move this
 	e := ptesting.NewEnvironment(t)
 
 	var err error

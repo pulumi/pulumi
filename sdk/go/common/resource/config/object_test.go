@@ -19,7 +19,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,7 +33,7 @@ func TestEmptyObject(t *testing.T) {
 	crypter := nopCrypter{}
 	v, err := o.toDecryptedPropertyValue(context.Background(), crypter)
 	require.NoError(t, err)
-	assert.Equal(t, resource.NewNullProperty(), v)
+	assert.Equal(t, property.Value{}, v)
 }
 
 func TestMarshallingRoundtrip(t *testing.T) {

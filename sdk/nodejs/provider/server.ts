@@ -746,7 +746,7 @@ export async function main(provider: Provider, args: string[]) {
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
     const server = new grpc.Server({
-        "grpc.max_receive_message_length": settings.maxRPCMessageSize,
+        ...settings.grpcChannelOptions,
     });
 
     // The program receives a single optional argument: the address of the RPC endpoint for the engine.  It

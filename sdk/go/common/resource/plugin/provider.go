@@ -62,6 +62,10 @@ type ProviderHandshakeRequest struct {
 
 	// If true the engine supports letting the provider mark resource states as requiring refresh before update.
 	SupportsRefreshBeforeUpdate bool
+
+	// If true the engine will send `Preview` to `Invoke` methods to let them know if the current operation is a preview
+	// or up.
+	InvokeWithPreview bool
 }
 
 // The type of responses sent as part of a Handshake call.
@@ -346,8 +350,9 @@ type ConstructRequest struct {
 type ConstructResponse = ConstructResult
 
 type InvokeRequest struct {
-	Tok  tokens.ModuleMember
-	Args resource.PropertyMap
+	Tok     tokens.ModuleMember
+	Args    resource.PropertyMap
+	Preview bool
 }
 
 type InvokeResponse struct {
@@ -803,6 +808,10 @@ type ConstructOptions struct {
 	// DeletedWith specifies that if the given resource is deleted,
 	// it will also delete this resource.
 	DeletedWith resource.URN
+
+	// ReplaceWith specifies that if any of the given resources are replaced,
+	// this resource will also be replaced.
+	ReplaceWith []resource.URN
 
 	// DeleteBeforeReplace specifies that replacements of this resource
 	// should delete the old resource before creating the new resource.

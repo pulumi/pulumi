@@ -33,11 +33,11 @@ import (
 	"github.com/acarl005/stripansi"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -2809,23 +2809,6 @@ func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
 	require.Contains(t, stdout, "0.0.0-xb39e20e4e33600e33073ccb2df0ddb46388641dc")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
-}
-
-func TestPackageAddWithPublisherSetNodeJS(t *testing.T) {
-	t.Parallel()
-
-	e := ptesting.NewEnvironment(t)
-	defer e.DeleteIfNotFailed()
-
-	e.ImportDirectory("packageadd-namespace")
-	e.CWD = filepath.Join(e.RootPath, "nodejs")
-	stdout, _ := e.RunCommand("pulumi", "package", "add", "../provider/schema.json")
-	require.Contains(t, stdout,
-		"You can import the SDK in your TypeScript code with:\n\n  import * as mypkg from \"@my-namespace/mypkg\"")
-
-	// Make sure the SDK was generated in the expected directory
-	_, err := os.Stat(filepath.Join(e.CWD, "sdks", "my-namespace-mypkg", "index.ts"))
-	require.NoError(t, err)
 }
 
 // Tests that we can get the schema for a Node.js component provider using component_provider_host.

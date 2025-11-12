@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -133,7 +134,7 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 
 			// If this is a provider we need to note we've seen it so we can build the Version and PluginDownloadURL of
 			// any resources that use it.
-			if providers.IsProviderType(urn.Type()) {
+			if sdkproviders.IsProviderType(urn.Type()) {
 				providerInputs[urn] = preEvent.Metadata.Res.Inputs
 			}
 
@@ -151,7 +152,7 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 
 			// We can't actually import providers yet, just skip them. We'll only error if anything
 			// actually tries to use it.
-			if providers.IsProviderType(urn.Type()) {
+			if sdkproviders.IsProviderType(urn.Type()) {
 				continue
 			}
 
@@ -174,14 +175,14 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 
 			var provider, version, pluginDownloadURL string
 			if new.Provider != "" {
-				ref, err := providers.ParseReference(new.Provider)
+				ref, err := sdkproviders.ParseReference(new.Provider)
 				if err != nil {
 					return importFile{}, fmt.Errorf("could not parse provider reference: %w", err)
 				}
 
 				// If we're trying to create this provider in the same deployment and it's not a default provider then
 				// we need to error, the import system can't yet "import" providers.
-				if !providers.IsDefaultProvider(ref.URN()) {
+				if !sdkproviders.IsDefaultProvider(ref.URN()) {
 					if _, has := importSet[ref.URN()]; has {
 						return importFile{}, fmt.Errorf("cannot import resource %q with a new explicit provider %q", new.URN, ref.URN())
 					}
@@ -285,8 +286,8 @@ func NewPreviewCmd() *cobra.Command {
 	var excludeDependents bool
 	var attachDebugger []string
 
-	// Flags for Copilot.
-	var copilotEnabled bool
+	// Flags for Neo.
+	var neoEnabled bool
 
 	use, cmdArgs := "preview", cmdutil.NoArgs
 	if deployment.RemoteSupported() {
@@ -383,7 +384,7 @@ func NewPreviewCmd() *cobra.Command {
 				displayOpts.SuppressPermalink = true
 			}
 
-			configureCopilotOptions(copilotEnabled, cmd, &displayOpts, isDIYBackend)
+			configureNeoOptions(neoEnabled, cmd, &displayOpts, isDIYBackend)
 
 			if err := validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
 				return err
@@ -643,7 +644,7 @@ func NewPreviewCmd() *cobra.Command {
 		&parallel, "parallel", "p", defaultParallel(),
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().StringVarP(
-		&refresh, "refresh", "r", "",
+		&refresh, "refresh", "r", handleBoolFlag(env.Refresh),
 		"Refresh the state of the stack's resources before this update")
 	cmd.PersistentFlags().Lookup("refresh").NoOptDefVal = "true"
 	cmd.PersistentFlags().BoolVar(
@@ -686,9 +687,16 @@ func NewPreviewCmd() *cobra.Command {
 	cmd.Flag("attach-debugger").NoOptDefVal = "program"
 
 	cmd.PersistentFlags().BoolVar(
-		&copilotEnabled, "copilot", false,
-		"Enable Pulumi Copilot's assistance for improved CLI experience and insights."+
+		&neoEnabled, "neo", false,
+		"Enable Pulumi Neo's assistance for improved CLI experience and insights "+
+			"(can also be set with PULUMI_NEO environment variable)")
+
+	// Keep --copilot flag for backwards compatibility, but hide it
+	cmd.PersistentFlags().BoolVar(
+		&neoEnabled, "copilot", false,
+		"[DEPRECATED] Use --neo instead. Enable Pulumi Neo's assistance for improved CLI experience and insights "+
 			"(can also be set with PULUMI_COPILOT environment variable)")
+	_ = cmd.PersistentFlags().MarkDeprecated("copilot", "please use --neo instead")
 
 	// Remote flags
 	remoteArgs.ApplyFlags(cmd)

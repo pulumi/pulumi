@@ -21,8 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -35,12 +34,12 @@ type cloudSnapshotPersister struct {
 	deploymentDiffState *deploymentDiffState
 }
 
-func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
+func (persister *cloudSnapshotPersister) Save(deployment apitype.TypedDeployment) error {
 	ctx := persister.context
 
 	// Diff capability can be nil because of feature flagging.
 	if persister.deploymentDiffState == nil {
-		untypedDeployment, err := stack.SerializeUntypedDeployment(ctx, snapshot, nil /*opts*/)
+		untypedDeployment, err := deployment.Deployment.ToUntypedDeployment(deployment.Version, deployment.Features)
 		if err != nil {
 			return fmt.Errorf("serializing deployment: %w", err)
 		}
@@ -52,27 +51,24 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 			persister.context, persister.update, untypedDeployment, persister.tokenSource)
 	}
 
-	deploymentV3, version, features, err := stack.SerializeDeploymentWithMetadata(ctx, snapshot, false /*showSecrets*/)
-	if err != nil {
-		return fmt.Errorf("serializing deployment: %w", err)
-	}
-
-	version, features = persister.backend.downgradeDeploymentVersionIfNeeded(ctx, version, features)
+	version, features := persister.backend.downgradeDeploymentVersionIfNeeded(
+		ctx, deployment.Version, deployment.Features)
 
 	differ := persister.deploymentDiffState
 
-	deployment, err := differ.MarshalDeployment(deploymentV3, version, features)
+	marshaledDeployment, err := differ.MarshalDeployment(deployment.Deployment, version, features)
 	if err != nil {
 		return err
 	}
 
 	// If there is no baseline to diff against, or diff is predicted to be inefficient, use saveFull.
-	if !differ.ShouldDiff(deployment) {
-		if err := persister.saveFullVerbatim(ctx, differ, deployment.raw, version, persister.tokenSource); err != nil {
+	if !differ.ShouldDiff(marshaledDeployment) {
+		if err := persister.saveFullVerbatim(
+			ctx, differ, marshaledDeployment.raw, version, persister.tokenSource); err != nil {
 			return err
 		}
 	} else { // Otherwise can use saveDiff.
-		diff, err := differ.Diff(ctx, deployment)
+		diff, err := differ.Diff(ctx, marshaledDeployment)
 		if err != nil {
 			return err
 		}
@@ -83,13 +79,13 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 					"PatchUpdateCheckpoint: %v", err)
 			}
 			if err := persister.saveFullVerbatim(
-				ctx, differ, deployment.raw, version, persister.tokenSource); err != nil {
+				ctx, differ, marshaledDeployment.raw, version, persister.tokenSource); err != nil {
 				return err
 			}
 		}
 	}
 
-	return persister.deploymentDiffState.Saved(ctx, deployment)
+	return persister.deploymentDiffState.Saved(ctx, marshaledDeployment)
 }
 
 func (persister *cloudSnapshotPersister) saveDiff(ctx context.Context,

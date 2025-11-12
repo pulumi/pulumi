@@ -296,6 +296,7 @@ type ResourceOptions struct {
 	CustomTimeouts          *resource.CustomTimeouts
 	RetainOnDelete          *bool
 	DeletedWith             resource.URN
+	ReplaceWith             []resource.URN
 	SupportsPartialValues   *bool
 	Remote                  bool
 	Providers               map[string]string
@@ -413,6 +414,11 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		additionalSecretOutputs[i] = string(v)
 	}
 
+	replaceWith := make([]string, len(opts.ReplaceWith))
+	for i, v := range opts.ReplaceWith {
+		replaceWith[i] = string(v)
+	}
+
 	sourcePosition, stackTrace, err := marshalSourceInfo(opts.SourcePosition, opts.StackTrace)
 	if err != nil {
 		return nil, err
@@ -454,6 +460,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		AdditionalSecretOutputs:    additionalSecretOutputs,
 		Aliases:                    opts.Aliases,
 		DeletedWith:                string(opts.DeletedWith),
+		ReplaceWith:                replaceWith,
 		ReplacementTrigger:         trigger,
 		AliasSpecs:                 opts.AliasSpecs,
 		SourcePosition:             sourcePosition,

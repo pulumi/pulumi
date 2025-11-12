@@ -1392,7 +1392,7 @@ func (mod *modContext) functionReturnType(fun *schema.Function) string {
 		}
 
 		// otherwise, the object type is a reference to an output type
-		return mod.typeString(fun.ReturnType, "Outputs", false, false, true)
+		return mod.typeString(fun.ReturnType, "Outputs", false, false, false)
 	}
 
 	return ""
@@ -1412,10 +1412,6 @@ func runtimeInvokeFunction(fun *schema.Function) string {
 		return "Invoke"
 	// If the function has an object return type, it is a normal invoke function.
 	case *schema.ObjectType:
-		return "Invoke"
-	// If the function has an object return type, it is also a normal invoke function.
-	// because the deserialization can handle it
-	case *schema.MapType:
 		return "Invoke"
 	default:
 		// Anything else needs to be handled by InvokeSingle

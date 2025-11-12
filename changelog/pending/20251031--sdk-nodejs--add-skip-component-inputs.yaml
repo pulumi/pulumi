@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/nodejs
-  description: Add PULUMI_NODEJS_SKIP_COMPONENT_INPUTS environment variable to skip the new feature of sending component inputs to the engine for diffing and state storage

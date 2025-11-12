@@ -1545,23 +1545,6 @@ func TestPackageAddPython(t *testing.T) {
 	}
 }
 
-func TestPackageAddWithPublisherSetPython(t *testing.T) {
-	t.Parallel()
-
-	e := ptesting.NewEnvironment(t)
-	defer e.DeleteIfNotFailed()
-
-	e.ImportDirectory("packageadd-namespace")
-	e.CWD = filepath.Join(e.RootPath, "python")
-	stdout, _ := e.RunCommand("pulumi", "package", "add", "../provider/schema.json")
-	require.Contains(t, stdout,
-		"You can import the SDK in your Python code with:\n\n  import my_namespace_mypkg as mypkg")
-
-	// Make sure the SDK was generated in the expected directory
-	_, err := os.Stat(filepath.Join(e.CWD, "sdks", "my-namespace-mypkg", "my_namespace_mypkg"))
-	require.NoError(t, err)
-}
-
 //nolint:paralleltest // mutates environment
 func TestConvertTerraformProviderPython(t *testing.T) {
 	e := ptesting.NewEnvironment(t)

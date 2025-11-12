@@ -26,7 +26,9 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -1517,53 +1519,129 @@ func (host *goLanguageHost) Handshake(
 func (host *goLanguageHost) Link(
 	ctx context.Context, req *pulumirpc.LinkRequest,
 ) (*pulumirpc.LinkResponse, error) {
-	// Find the go.mod in the program directory, and add a replace statement to point to the given local dependency.
-	// Currently this _only_ supports "pulumi" for the core SDK.
-
-	path := filepath.Join(req.Info.ProgramDirectory, "go.mod")
-	stat, err := os.Stat(path)
+	logging.V(5).Infof("Linking %+v in %s", req.Packages, req.Info.RootDirectory)
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
-		return nil, fmt.Errorf("stat go.mod: %w", err)
+		return nil, err
+	}
+	defer loader.Close()
+	cachedLoader := schema.NewCachedLoader(loader)
+
+	instructions := "You can import the SDK in your Go code with:\n\n  import (\n"
+	if len(req.Packages) > 1 {
+		instructions = "You can import the SDKs in your Go code with:\n\n  import (\n"
 	}
 
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read go.mod: %w", err)
-	}
-	mod, err := modfile.Parse(path, data, nil)
-	if err != nil {
-		return nil, fmt.Errorf("parse go.mod: %w", err)
-	}
-
-	// Find the path to the core SDK
-	core := ""
+	// Map of moduleName to replacement paths
+	modules := map[string]string{}
 	for _, dep := range req.Packages {
-		if dep.Package.Name == "pulumi" {
-			core = dep.Path
-			break
+		if dep.Package.Name == "pulumi" { // TODO: should this just be github.com/pulumi/pulumi/sdk/v3?
+			modules["github.com/pulumi/pulumi/sdk/v3"] = dep.Path
+			continue
+		}
+
+		var version *semver.Version
+		v, err := semver.New(dep.Package.Version)
+		if err != nil {
+			logging.V(5).Infof("Invalid version %s for package %s", dep.Package.Version, dep.Package.Name)
+		} else {
+			version = v
+		}
+		var param *schema.ParameterizationDescriptor
+		if dep.Package.Parameterization != nil {
+			param = &schema.ParameterizationDescriptor{
+				Name:  dep.Package.Parameterization.Name,
+				Value: dep.Package.Parameterization.Value,
+			}
+			if dep.Package.Parameterization.Version != "" {
+				v, err := semver.New(dep.Package.Parameterization.Version)
+				if err != nil {
+					logging.V(5).Infof("Invalid version %s for package %s", dep.Package.Version, dep.Package.Name)
+				} else {
+					param.Version = *v
+				}
+			}
+		}
+		packageDesc := &schema.PackageDescriptor{
+			Name:             dep.Package.Name,
+			Version:          version,
+			DownloadURL:      dep.Package.Server,
+			Parameterization: param,
+		}
+
+		pkgRef, err := schema.LoadPackageReferenceV2(ctx, cachedLoader, packageDesc)
+		if err != nil {
+			return nil, err
+		}
+		pkg, err := pkgRef.Definition()
+		if err != nil {
+			return nil, err
+		}
+		if err := pkg.ImportLanguages(map[string]schema.Language{"go": codegen.Importer}); err != nil {
+			return nil, err
+		}
+		var modulePath string
+		if info, ok := pkg.Language["go"]; ok {
+			if info, ok := info.(codegen.GoPackageInfo); ok {
+				modulePath = info.ModulePath
+				if modulePath == "" {
+					if info.ImportBasePath != "" {
+						modulePath = path.Dir(info.ImportBasePath)
+					}
+				}
+			}
+		}
+		if modulePath == "" {
+			modulePath = codegen.ExtractModulePath(pkg.Reference())
+		}
+
+		modules[modulePath] = dep.Path
+		// The relative path used in the replace directive must start with `./` or `.\`.
+		// https://go.dev/ref/mod#go-mod-file-replace
+		start := "./"
+		if runtime.GOOS == "windows" {
+			start = ".\\"
+		}
+		if !strings.HasPrefix(dep.Path, start) {
+			modules[modulePath] = start + dep.Path
+		}
+		instructions += fmt.Sprintf("    \"%s\"\n", codegen.ExtractImportBasePath(pkg.Reference()))
+	}
+	instructions += "  )\n"
+
+	gomodFilepath := filepath.Join(req.Info.ProgramDirectory, "go.mod")
+	stat, err := os.Stat(gomodFilepath)
+	if err != nil {
+		return nil, fmt.Errorf("stat %s: %w", gomodFilepath, err)
+	}
+	gomodFileContent, err := os.ReadFile(gomodFilepath)
+	if err != nil {
+		return nil, fmt.Errorf("reading go.mod: %w", err)
+	}
+	gomod, err := modfile.Parse(gomodFilepath, gomodFileContent, nil)
+	if err != nil {
+		return nil, fmt.Errorf("go.mod parse: %w", err)
+	}
+
+	for modulePath, path := range modules {
+		err = gomod.AddReplace(modulePath, "", path, "")
+		if err != nil {
+			return nil, fmt.Errorf("could not add replace statement: %w", err)
 		}
 	}
-	if core == "" {
-		// TODO: support other local dependencies.
-		return nil, status.Errorf(codes.InvalidArgument, "no local dependency for 'pulumi' found")
+
+	data, err := gomod.Format()
+	if err != nil {
+		return nil, fmt.Errorf("formatting go.mod: %w", err)
+	}
+	err = os.WriteFile(gomodFilepath, data, stat.Mode().Perm())
+	if err != nil {
+		return nil, fmt.Errorf("writing go.mod: %w", err)
 	}
 
-	err = mod.AddReplace("github.com/pulumi/pulumi/sdk/v3", "", core, "")
-	if err != nil {
-		return nil, fmt.Errorf("add replace: %w", err)
-	}
-
-	// Write the modified go.mod back to disk.
-	data, err = mod.Format()
-	if err != nil {
-		return nil, fmt.Errorf("format go.mod: %w", err)
-	}
-	err = os.WriteFile(path, data, stat.Mode().Perm())
-	if err != nil {
-		return nil, fmt.Errorf("write go.mod: %w", err)
-	}
-
-	return &pulumirpc.LinkResponse{}, nil
+	return &pulumirpc.LinkResponse{
+		ImportInstructions: instructions,
+	}, nil
 }
 
 func (host *goLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {

@@ -245,6 +245,10 @@ export class RegisterResourceRequest extends jspb.Message {
     addAliases(value?: pulumi_alias_pb.Alias, index?: number): pulumi_alias_pb.Alias;
     getDeletedwith(): string;
     setDeletedwith(value: string): RegisterResourceRequest;
+    clearReplaceWithList(): void;
+    getReplaceWithList(): Array<string>;
+    setReplaceWithList(value: Array<string>): RegisterResourceRequest;
+    addReplaceWith(value: string, index?: number): string;
 
     hasReplacementTrigger(): boolean;
     clearReplacementTrigger(): void;
@@ -325,6 +329,7 @@ export namespace RegisterResourceRequest {
         retainondelete?: boolean,
         aliasesList: Array<pulumi_alias_pb.Alias.AsObject>,
         deletedwith: string,
+        replaceWithList: Array<string>,
         replacementTrigger?: google_protobuf_struct_pb.Value.AsObject,
         aliasspecs: boolean,
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
@@ -744,6 +749,10 @@ export class TransformResourceOptions extends jspb.Message {
     getHideDiffList(): Array<string>;
     setHideDiffList(value: Array<string>): TransformResourceOptions;
     addHideDiff(value: string, index?: number): string;
+    clearReplaceWithList(): void;
+    getReplaceWithList(): Array<string>;
+    setReplaceWithList(value: Array<string>): TransformResourceOptions;
+    addReplaceWith(value: string, index?: number): string;
 
     hasReplacementTrigger(): boolean;
     clearReplacementTrigger(): void;
@@ -782,6 +791,7 @@ export namespace TransformResourceOptions {
         hooks?: RegisterResourceRequest.ResourceHooksBinding.AsObject,
         pb_import: string,
         hideDiffList: Array<string>,
+        replaceWithList: Array<string>,
         replacementTrigger?: google_protobuf_struct_pb.Value.AsObject,
     }
 }

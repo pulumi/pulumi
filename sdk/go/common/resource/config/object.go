@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 var errSecureReprReserved = errors.New(`maps with the single key "secure" are reserved`)
@@ -549,10 +550,10 @@ func isSecureValue(v any) (bool, CiphertextSecret) {
 	return false, CiphertextSecret{}
 }
 
-func (c object) toDecryptedPropertyValue(ctx context.Context, decrypter Decrypter) (resource.PropertyValue, error) {
+func (c object) toDecryptedPropertyValue(ctx context.Context, decrypter Decrypter) (property.Value, error) {
 	plaintext, err := c.decrypt(ctx, nil, decrypter)
 	if err != nil {
-		return resource.PropertyValue{}, err
+		return property.Value{}, err
 	}
 	return plaintext.PropertyValue(), nil
 }

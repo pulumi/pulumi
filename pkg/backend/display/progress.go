@@ -820,11 +820,11 @@ func (display *ProgressDisplay) printDiagnostics() {
 		}
 	}
 
-	// Print a link to Copilot to explain the failure.
-	// "ShowCopilotFeatures" renders the link if it is enabled so don't render it here.
-	showCopilotLink := display.opts.ShowLinkToCopilot && !display.opts.ShowCopilotFeatures
+	// Print a link to Neo to explain the failure.
+	// "ShowNeoFeatures" renders the link if it is enabled so don't render it here.
+	showNeoLink := display.opts.ShowLinkToNeo && !display.opts.ShowNeoFeatures
 	// Check for SuppressPermalink ensures we don't print the link for DIY backends
-	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && showCopilotLink {
+	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && showNeoLink {
 		display.println("    " +
 			colors.SpecCreateReplacement + "[Pulumi Neo]" + colors.Reset + " Would you like help with these diagnostics?")
 		display.println("    " +

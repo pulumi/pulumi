@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from pulumi import Config
+from pulumi.config import Config
 from pulumi.runtime.config import set_all_config
 
 

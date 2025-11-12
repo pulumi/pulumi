@@ -857,6 +857,11 @@ export interface ResourceOptions {
     deletedWith?: Resource;
 
     /**
+     * If set, the URNs of the resources whose replaces will also replace this resource.
+     */
+    replaceWith?: Resource[];
+
+    /**
      * Optional resource hooks to bind to this resource. The hooks will be
      * invoked during certain step of the lifecycle of the resource.
      */

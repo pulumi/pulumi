@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -51,6 +52,8 @@ type Stack interface {
 	SaveRemoteConfig(ctx context.Context, projectStack *workspace.ProjectStack) error
 	// Snapshot returns the latest deployment snapshot.
 	Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
+	// SnapshotStackOutputs returns the stack outputs of the latest deployment snapshot.
+	SnapshotStackOutputs(ctx context.Context, secretsProvider secrets.Provider) (resource.PropertyMap, error)
 	// Backend returns the backend this stack belongs to.
 	Backend() Backend
 	// Tags return the stack's existing tags.

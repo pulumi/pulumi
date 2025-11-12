@@ -101,9 +101,8 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l1-builtin-try":      "Temporarily disabled until pr #18915 is submitted",
-	"l1-builtin-can":      "Temporarily disabled until pr #18916 is submitted",
-	"l3-component-simple": "https://github.com/pulumi/pulumi/issues/19067",
+	"l1-builtin-try": "Temporarily disabled until pr #18915 is submitted",
+	"l1-builtin-can": "Temporarily disabled until pr #18916 is submitted",
 }
 
 func TestLanguage(t *testing.T) {
@@ -231,6 +230,10 @@ func TestLanguage(t *testing.T) {
 						// We can skip the l1- local tests without any SDK there's nothing new being tested here.
 						if local && strings.HasPrefix(tt, "l1-") {
 							t.Skip("Skipping l1- tests in local mode")
+						}
+
+						if config.typechecker == "pyright" && tt == "l3-component-simple" {
+							t.Skip("Skipping l3-component-simple test with pyright due to issues with optional properties")
 						}
 
 						if expected, ok := expectedFailures[tt]; ok {

@@ -927,7 +927,7 @@ func TestIsExplainPreviewEnabled(t *testing.T) {
 
 	enabled := true
 	b := &cloudBackend{
-		copilotEnabledForCurrentProject: &enabled,
+		neoEnabledForCurrentProject: &enabled,
 		capabilities: promise.Run(func() (apitype.Capabilities, error) {
 			return apitype.Capabilities{CopilotExplainPreviewV1: true}, nil
 		}),

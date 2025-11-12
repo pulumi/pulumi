@@ -1721,6 +1721,9 @@ func (host *pythonLanguageHost) Link(
 	cachedLoader := schema.NewCachedLoader(loader)
 
 	instructions := "You can import the SDK in your Python code with:\n\n"
+	if len(req.Packages) > 1 {
+		instructions = "You can import the SDKs in your Python code with:\n\n"
+	}
 
 	// Map of python package names to paths
 	packages := map[string]string{}
@@ -1763,21 +1766,24 @@ func (host *pythonLanguageHost) Link(
 		if err != nil {
 			return nil, err
 		}
-
-		info, err := pkgRef.Language("python")
+		pkg, err := pkgRef.Definition()
 		if err != nil {
 			return nil, err
 		}
-		pyInfo, ok := info.(python.PackageInfo)
+		if err := pkg.ImportLanguages(map[string]schema.Language{"python": codegen.Importer}); err != nil {
+			return nil, err
+		}
 		var importName string
 		var packageName string
-		if ok && pyInfo.PackageName != "" {
-			importName = pyInfo.PackageName
-			packageName = pyInfo.PackageName
-		} else {
+		if info, ok := pkg.Language["go"]; ok {
+			if info, ok := info.(codegen.PackageInfo); ok && info.PackageName != "" {
+				importName = info.PackageName
+				packageName = info.PackageName
+			}
+		}
+		if importName == "" {
 			importName = strings.ReplaceAll(pkgRef.Name(), "-", "_")
 		}
-
 		if packageName == "" {
 			packageName = python.PyPack(pkgRef.Namespace(), pkgRef.Name())
 		}

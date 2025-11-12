@@ -433,6 +433,7 @@ type RegisterResourceRequest struct {
 	RetainOnDelete             *bool                                                    `protobuf:"varint,25,opt,name=retainOnDelete,proto3,oneof" json:"retainOnDelete,omitempty"`                                                                               // if true the engine will not call the resource providers delete method for this resource.
 	Aliases                    []*Alias                                                 `protobuf:"bytes,26,rep,name=aliases,proto3" json:"aliases,omitempty"`                                                                                                    // a list of additional aliases that should be considered the same.
 	DeletedWith                string                                                   `protobuf:"bytes,27,opt,name=deletedWith,proto3" json:"deletedWith,omitempty"`                                                                                            // if set the engine will not call the resource providers delete method for this resource when specified resource is deleted.
+	ReplaceWith                []string                                                 `protobuf:"bytes,38,rep,name=replace_with,json=replaceWith,proto3" json:"replace_with,omitempty"`                                                                         // if set the engine will replace this resource when any of the specified resources are replaced.
 	ReplacementTrigger         *structpb.Value                                          `protobuf:"bytes,39,opt,name=replacement_trigger,json=replacementTrigger,proto3" json:"replacement_trigger,omitempty"`                                                    // if set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
 	// Indicates that alias specs are specified correctly according to the spec.
 	// Older versions of the Node.js SDK did not send alias specs correctly.
@@ -679,6 +680,13 @@ func (x *RegisterResourceRequest) GetDeletedWith() string {
 		return x.DeletedWith
 	}
 	return ""
+}
+
+func (x *RegisterResourceRequest) GetReplaceWith() []string {
+	if x != nil {
+		return x.ReplaceWith
+	}
+	return nil
 }
 
 func (x *RegisterResourceRequest) GetReplacementTrigger() *structpb.Value {
@@ -1167,6 +1175,7 @@ type TransformResourceOptions struct {
 	Hooks                   *RegisterResourceRequest_ResourceHooksBinding `protobuf:"bytes,16,opt,name=hooks,proto3" json:"hooks,omitempty"`
 	Import                  string                                        `protobuf:"bytes,17,opt,name=import,proto3" json:"import,omitempty"`
 	HideDiff                []string                                      `protobuf:"bytes,18,rep,name=hide_diff,json=hideDiff,proto3" json:"hide_diff,omitempty"`
+	ReplaceWith             []string                                      `protobuf:"bytes,19,rep,name=replace_with,json=replaceWith,proto3" json:"replace_with,omitempty"`
 	ReplacementTrigger      *structpb.Value                               `protobuf:"bytes,20,opt,name=replacement_trigger,json=replacementTrigger,proto3" json:"replacement_trigger,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
@@ -1324,6 +1333,13 @@ func (x *TransformResourceOptions) GetImport() string {
 func (x *TransformResourceOptions) GetHideDiff() []string {
 	if x != nil {
 		return x.HideDiff
+	}
+	return nil
+}
+
+func (x *TransformResourceOptions) GetReplaceWith() []string {
+	if x != nil {
+		return x.ReplaceWith
 	}
 	return nil
 }
@@ -2368,7 +2384,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x03urn\x18\x01 \x01(\tR\x03urn\x127\n" +
 	"\n" +
 	"properties\x18\x02 \x01(\v2\x17.google.protobuf.StructR\n" +
-	"properties\"\xdc\x13\n" +
+	"properties\"\xff\x13\n" +
 	"\x17RegisterResourceRequest\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -2398,7 +2414,8 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x0fpluginChecksums\x18\x1e \x03(\v27.pulumirpc.RegisterResourceRequest.PluginChecksumsEntryR\x0fpluginChecksums\x12+\n" +
 	"\x0eretainOnDelete\x18\x19 \x01(\bH\x01R\x0eretainOnDelete\x88\x01\x01\x12*\n" +
 	"\aaliases\x18\x1a \x03(\v2\x10.pulumirpc.AliasR\aaliases\x12 \n" +
-	"\vdeletedWith\x18\x1b \x01(\tR\vdeletedWith\x12G\n" +
+	"\vdeletedWith\x18\x1b \x01(\tR\vdeletedWith\x12!\n" +
+	"\freplace_with\x18& \x03(\tR\vreplaceWith\x12G\n" +
 	"\x13replacement_trigger\x18' \x01(\v2\x16.google.protobuf.ValueR\x12replacementTrigger\x12\x1e\n" +
 	"\n" +
 	"aliasSpecs\x18\x1c \x01(\bR\n" +
@@ -2504,7 +2521,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01J\x04\b\x06\x10\aJ\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
 	"J\x04\b\n" +
-	"\x10\vJ\x04\b\v\x10\fJ\x04\b\f\x10\rJ\x04\b\x0e\x10\x0fR\aprojectR\x05stackR\x06configR\x10configSecretKeysR\x06dryRunR\bparallelR\x0fmonitorEndpointR\forganization\"\xa3\t\n" +
+	"\x10\vJ\x04\b\v\x10\fJ\x04\b\f\x10\rJ\x04\b\x0e\x10\x0fR\aprojectR\x05stackR\x06configR\x10configSecretKeysR\x06dryRunR\bparallelR\x0fmonitorEndpointR\forganization\"\xc6\t\n" +
 	"\x18TransformResourceOptions\x12\x1d\n" +
 	"\n" +
 	"depends_on\x18\x01 \x03(\tR\tdependsOn\x12\x1d\n" +
@@ -2525,7 +2542,8 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x10plugin_checksums\x18\x0f \x03(\v28.pulumirpc.TransformResourceOptions.PluginChecksumsEntryR\x0fpluginChecksums\x12M\n" +
 	"\x05hooks\x18\x10 \x01(\v27.pulumirpc.RegisterResourceRequest.ResourceHooksBindingR\x05hooks\x12\x16\n" +
 	"\x06import\x18\x11 \x01(\tR\x06import\x12\x1b\n" +
-	"\thide_diff\x18\x12 \x03(\tR\bhideDiff\x12G\n" +
+	"\thide_diff\x18\x12 \x03(\tR\bhideDiff\x12!\n" +
+	"\freplace_with\x18\x13 \x03(\tR\vreplaceWith\x12G\n" +
 	"\x13replacement_trigger\x18\x14 \x01(\v2\x16.google.protobuf.ValueR\x12replacementTrigger\x1a<\n" +
 	"\x0eProvidersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +

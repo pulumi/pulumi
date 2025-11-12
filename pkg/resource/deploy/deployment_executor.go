@@ -21,9 +21,9 @@ import (
 	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -884,7 +884,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 
 		if new == nil {
 			contract.Assertf(old.Custom || old.ViewOf != "", "expected custom or view resource")
-			contract.Assertf(!providers.IsProviderType(old.Type), "expected non-provider resource")
+			contract.Assertf(!sdkproviders.IsProviderType(old.Type), "expected non-provider resource")
 			continue
 		}
 
@@ -909,6 +909,10 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 			case resource.ResourceDeletedWith:
 				if !referenceable[dep.URN] {
 					new.DeletedWith = ""
+				}
+			case resource.ResourceReplaceWith:
+				if !referenceable[dep.URN] {
+					new.ReplaceWith = nil
 				}
 			}
 		}
@@ -940,7 +944,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 		}
 	}
 
-	undangleParentResources(olds, resources)
+	undangleParentResources(referenceable, resources)
 
 	ex.deployment.prev.Resources = resources
 	ex.deployment.depGraph = graph.NewDependencyGraph(resources)
@@ -948,7 +952,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 	ex.deployment.oldViews = oldViews
 }
 
-func undangleParentResources(undeleted map[resource.URN]*resource.State, resources []*resource.State) {
+func undangleParentResources(undeleted map[resource.URN]bool, resources []*resource.State) {
 	// Since a refresh may delete arbitrary resources, we need to handle the case where
 	// the parent of a still existing resource is deleted.
 	//

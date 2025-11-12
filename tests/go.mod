@@ -25,7 +25,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
 	github.com/pulumi/pulumi/pkg/v3 v3.156.0
-	github.com/pulumi/pulumi/sdk/v3 v3.205.0
+	github.com/pulumi/pulumi/sdk/v3 v3.206.0
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.37.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.37.0
@@ -113,7 +113,7 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
-	github.com/go-test/deep v1.0.3 // indirect
+	github.com/go-test/deep v1.1.1 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
