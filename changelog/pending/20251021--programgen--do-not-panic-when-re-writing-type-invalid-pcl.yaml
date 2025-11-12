@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen
-  description: Do not panic when re-writing type-invalid PCL

@@ -1,5 +1,50 @@
 # Changelog
 
+## 3.207.0 (2025-11-12)
+
+
+### Features
+
+- [cli] Log gRPC requests before invoking them in gRPC debug interceptor
+  [#20817](https://github.com/pulumi/pulumi/pull/20817)
+
+- [engine] Add `ReplaceWith` resource option to allow one resource's replace operations to trigger another's
+  [#20693](https://github.com/pulumi/pulumi/pull/20693)
+
+- [sdkgen/python] Allow all PEP440 version specifiers to be used
+
+
+### Bug Fixes
+
+- [cli/import] Return errors when an import fails
+  [#20904](https://github.com/pulumi/pulumi/pull/20904)
+
+- [engine] Fix parenting of resources in some cases in `refresh --run-program`
+  [#20894](https://github.com/pulumi/pulumi/pull/20894)
+
+- [engine] Fix StackReference secrets performance
+  [#20908](https://github.com/pulumi/pulumi/pull/20908)
+
+- [programgen] Do not panic when re-writing type-invalid PCL
+  [#20770](https://github.com/pulumi/pulumi/pull/20770)
+
+- [sdk/go] Fix import path in instructions when linking a package in Go
+  [#20888](https://github.com/pulumi/pulumi/pull/20888)
+
+- [sdk/nodejs] Fix closure serialization on Node.js v25.2.0
+  [#20913](https://github.com/pulumi/pulumi/pull/20913)
+
+- [sdk/{nodejs,python}] Avoid cancellations due to do slow processing of requests
+
+- [sdk/python] Avoid cancellations due to do slow processing of requests in the callbacks server
+  [#20917](https://github.com/pulumi/pulumi/pull/20917)
+
+
+### Miscellaneous
+
+- [engine] Stop sending ConfigPropertyMap as part of RunRequest
+  [#20887](https://github.com/pulumi/pulumi/pull/20887)
+
 ## 3.206.0 (2025-11-05)
 
 

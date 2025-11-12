@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: Avoid cancellations due to do slow processing of requests in the callbacks server
