@@ -34,7 +34,7 @@ from pulumi.runtime.proto import (
     provider_pb2,
     resource_pb2_grpc,
 )
-from pulumi.runtime.settings import _GRPC_CHANNEL_OPTIONS
+from pulumi.runtime._grpc_settings import _GRPC_CHANNEL_OPTIONS
 
 # gRPC by default logs exceptions to the root `logging` logger. We don't
 # want this because it spews garbage to stderr and messes up our beautiful

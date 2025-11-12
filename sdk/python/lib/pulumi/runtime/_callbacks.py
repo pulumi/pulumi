@@ -46,7 +46,7 @@ from .rpc import (
     serialize_properties,
     unwrap_rpc_secret,
 )
-from .settings import _GRPC_CHANNEL_OPTIONS
+from ._grpc_settings import _GRPC_CHANNEL_OPTIONS
 
 if TYPE_CHECKING:
     from ..resource import (

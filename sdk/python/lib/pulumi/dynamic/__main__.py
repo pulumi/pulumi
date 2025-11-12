@@ -25,7 +25,7 @@ from google.protobuf import empty_pb2
 from pulumi.metadata import get_project
 from pulumi.runtime._serialization import _deserialize
 from pulumi.runtime import configure, proto, rpc, Settings
-from pulumi.runtime.settings import _GRPC_CHANNEL_OPTIONS
+from pulumi.runtime._grpc_settings import _GRPC_CHANNEL_OPTIONS
 from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
 from pulumi.dynamic import ResourceProvider, ConfigureRequest, Config
 
