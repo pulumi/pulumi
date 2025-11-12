@@ -16,6 +16,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -652,7 +653,7 @@ func TestIncompleteLinesWithReopens(t *testing.T) {
 	go func() {
 		tailTest.CreateFile(filename, "hello world\nhi")
 		require.Eventually(t, func() bool {
-			return tailTest.matchCount > 0
+			return tailTest.matchCount.Load() > 0
 		}, 500*time.Millisecond, 50*time.Millisecond)
 		tailTest.TruncateFile(filename, "rewriting\n")
 	}()
@@ -736,14 +737,14 @@ type TailTest struct {
 	path string
 	done chan struct{}
 	*testing.T
-	matchCount int // number of lines that's matched
+	matchCount atomic.Int32 // number of lines that's matched
 }
 
 func NewTailTest(name string, t *testing.T) (*TailTest, func()) {
 	testdir, err := os.MkdirTemp(os.TempDir(), "tail-test-"+name)
 	require.NoError(t, err)
 
-	return &TailTest{name, testdir, make(chan struct{}), t, 0}, func() {
+	return &TailTest{name, testdir, make(chan struct{}), t, atomic.Int32{}}, func() {
 		if err := os.RemoveAll(testdir); err != nil {
 			t.Logf("failed to remove test directory: %v", testdir)
 		}
@@ -877,7 +878,7 @@ func (t *TailTest) readLines(tail *Tail, lines []string, useCursor bool, expecte
 						"expecting <<%s>>>, but got <<<%s>>>",
 					line, tailedLine.Text)
 			}
-			t.matchCount++
+			t.matchCount.Add(1)
 			cursor++
 			break
 		}
