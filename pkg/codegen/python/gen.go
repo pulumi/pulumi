@@ -3453,7 +3453,7 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package, dependencies 
 var MinimumValidSDKVersion = ">=3.165.0,<4.0.0"
 
 // validatePulumiVersionSpecifier validates a PEP 440 version
-// specifier string and ensures that any versions hav a lower-bound
+// specifier string and ensures that any versions have a lower-bound
 // operator that meet the minimum version requirement.
 func validatePulumiVersionSpecifier(specifier string) error {
 	// Parse as generic PEP 440 specifier
@@ -3475,21 +3475,23 @@ func validatePulumiVersionSpecifier(specifier string) error {
 			return fmt.Errorf("invalid version %q in specifier: %w", version, err)
 		}
 
-		if operator == ">=" || operator == "==" || operator == "~=" {
+		switch operator {
+		case ">=", "==", "~=":
 			if parsedVersion.LT(oldestAllowedPulumi) {
-				return fmt.Errorf("version %q must be at least %v", version, oldestAllowedPulumi)
+				return fmt.Errorf("lower bound must be at least %v", oldestAllowedPulumi)
 			}
 			validatedLowerBound = true
-		} else if operator == ">" {
+		case ">":
 			if parsedVersion.LTE(oldestAllowedPulumi) {
-				return fmt.Errorf("version %q must be at least %v", version, oldestAllowedPulumi)
+				return fmt.Errorf("lower bound must be at least %v", oldestAllowedPulumi)
 			}
 			validatedLowerBound = true
 		}
 	}
 
 	if !validatedLowerBound {
-		return fmt.Errorf("minimum required pulumi version is %v. Specify a lower bound that matches that", oldestAllowedPulumi)
+		return fmt.Errorf(
+			"minimum required pulumi version is %v. Specify a lower bound that matches that", oldestAllowedPulumi)
 	}
 
 	return nil

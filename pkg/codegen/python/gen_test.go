@@ -525,21 +525,21 @@ func TestEnsureValidPulumiVersion(t *testing.T) {
 			requires: map[string]string{
 				"pulumi": ">=0.16.0,<1.0.0",
 			},
-			err: "version \"0.16.0\" must be at least 0.17.28",
+			err: "lower bound must be at least 0.17.28",
 		},
 		{
 			name: "version below minimum with ~=",
 			requires: map[string]string{
 				"pulumi": "~=0.16.0",
 			},
-			err: "version \"0.16.0\" must be at least 0.17.28",
+			err: "lower bound must be at least 0.17.28",
 		},
 		{
 			name: "version below minimum with ==",
 			requires: map[string]string{
 				"pulumi": "==0.16.0",
 			},
-			err: "version \"0.16.0\" must be at least 0.17.28",
+			err: "lower bound must be at least 0.17.28",
 		},
 		{
 			name: "preserves other dependencies",
@@ -563,9 +563,9 @@ func TestEnsureValidPulumiVersion(t *testing.T) {
 			result, err := ensureValidPulumiVersion(false, tt.requires)
 
 			if tt.err != "" {
-				assert.ErrorContains(t, err, tt.err)
+				require.ErrorContains(t, err, tt.err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.EqualValues(t, tt.expectDeps, result)
 			}
 		})
