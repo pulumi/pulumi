@@ -31,15 +31,11 @@ from .._utils import contextproperty
 from ..errors import RunError
 from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc
 from ._callbacks import _CallbackServicer
+from ._grpc_settings import _GRPC_CHANNEL_OPTIONS
 from .rpc_manager import RPCManager
 
 if TYPE_CHECKING:
     from ..resource import Resource
-
-# _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-_MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
-_GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
-
 
 # excessive_debug_output enables, well, pretty excessive debug output pertaining to resources and properties.
 excessive_debug_output = False

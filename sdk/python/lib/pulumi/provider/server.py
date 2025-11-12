@@ -48,16 +48,13 @@ import pulumi
 import pulumi.resource
 import pulumi.runtime.config
 import pulumi.runtime.settings
+from pulumi.runtime._grpc_settings import _GRPC_CHANNEL_OPTIONS
 from pulumi.errors import (
     InputPropertiesError,
     InputPropertyError,
     InputPropertyErrorDetails,
     RunError,
 )
-
-# _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-_MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
-_GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
 
 
 class ComponentInitError(Exception):
