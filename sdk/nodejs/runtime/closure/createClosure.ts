@@ -367,9 +367,11 @@ export async function createClosureInfoAsync(
 
         for (let current = global; current; current = Object.getPrototypeOf(current)) {
             for (const key of Object.getOwnPropertyNames(current)) {
-                // "GLOBAL" and "root" are deprecated and give warnings if you try to access them.  So
-                // just skip them.
-                if (key !== "GLOBAL" && key !== "root") {
+                // "GLOBAL" and "root" are deprecated and give warnings if you try to access them.
+                // "localStorage" throws when webstorage is enabled but the `--localstorage-file`
+                // option is not provided, which happens by default on Node.js v25.2.0 and later.
+                // So just skip them.
+                if (key !== "GLOBAL" && key !== "root" && key !== "localStorage") {
                     await addGlobalInfoAsync(key);
                 }
             }
