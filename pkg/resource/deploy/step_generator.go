@@ -298,7 +298,31 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		ViewOf:                  "",
 		ResourceHooks:           nil,
 	}.Make()
-	old, hasOld := sg.deployment.Olds()[urn]
+
+	// If the parent was aliased, we need to make sure we take that into account for resource
+	// reads. Otherwise we might loose track of an old resource in the snapshot, and just create
+	// a new one on read, leading to duplicate resources after the aliases are resolved later.
+	var childAlias resource.URN
+	if parent != "" {
+		if parentAlias, has := sg.aliases[parent]; has {
+			childAlias = sg.inheritedChildAlias(event.Type(), event.Name(), parent.Name(), parentAlias)
+			logging.V(7).Infof("Generated inherited alias for Read resource %s: %v", urn, childAlias)
+		}
+	}
+
+	var old *resource.State
+	var hasOld bool
+	for _, urnOrAlias := range append([]resource.URN{urn}, childAlias) {
+		old, hasOld = sg.deployment.Olds()[urnOrAlias]
+		if hasOld {
+			if urnOrAlias != urn {
+				sg.aliased[urnOrAlias] = urn
+				sg.aliases[urn] = urnOrAlias
+				logging.V(7).Infof("Matched Read resource %s via alias %v to old resource %v", urn, urnOrAlias, old.URN)
+			}
+			break
+		}
+	}
 
 	if newState.ID == "" {
 		return nil, fmt.Errorf("Expected an ID for %v", urn)
