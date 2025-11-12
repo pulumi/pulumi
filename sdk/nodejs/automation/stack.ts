@@ -28,7 +28,7 @@ import { ConfigMap, ConfigValue } from "./config";
 import { StackNotFoundError } from "./errors";
 import { EngineEvent, SummaryEvent } from "./events";
 import { LocalWorkspace } from "./localWorkspace";
-import { LanguageServer, maxRPCMessageSize } from "./server";
+import { LanguageServer } from "./server";
 import { TagMap } from "./tag";
 import { Deployment, PulumiFn, Workspace } from "./workspace";
 
@@ -36,6 +36,7 @@ import { Empty } from "google-protobuf/google/protobuf/empty_pb";
 import * as eventsrpc from "../proto/events_grpc_pb";
 import * as events from "../proto/events_pb";
 import * as langrpc from "../proto/language_grpc_pb";
+import { grpcChannelOptions } from "../runtime";
 
 /**
  * {@link Stack} is an isolated, independently configurable instance of a Pulumi
@@ -138,7 +139,7 @@ export class Stack {
         const ver = semver.parse(pulumiVersion) ?? semver.parse("3.0.0")!;
         if (semver.gt(ver, "3.205.0")) {
             const eventsServer = new grpc.Server({
-                "grpc.max_receive_message_length": maxRPCMessageSize,
+                ...grpcChannelOptions,
             });
             const eventsService = new EventsServer(onEvent);
             eventsServer.addService(eventsrpc.EventsService, eventsService);
@@ -281,7 +282,7 @@ Event: ${line}\n${e.toString()}`);
         if (program) {
             kind = execKind.inline;
             const server = new grpc.Server({
-                "grpc.max_receive_message_length": maxRPCMessageSize,
+                ...grpcChannelOptions,
             });
             const languageServer = new LanguageServer(program);
             server.addService(langrpc.LanguageRuntimeService, languageServer);
@@ -435,7 +436,7 @@ Event: ${line}\n${e.toString()}`);
         if (program) {
             kind = execKind.inline;
             const server = new grpc.Server({
-                "grpc.max_receive_message_length": maxRPCMessageSize,
+                ...grpcChannelOptions,
             });
             const languageServer = new LanguageServer(program);
             server.addService(langrpc.LanguageRuntimeService, languageServer);
@@ -594,7 +595,7 @@ Event: ${line}\n${e.toString()}`);
 
             kind = execKind.inline;
             const server = new grpc.Server({
-                "grpc.max_receive_message_length": maxRPCMessageSize,
+                ...grpcChannelOptions,
             });
             const languageServer = new LanguageServer(this.workspace.program);
             server.addService(langrpc.LanguageRuntimeService, languageServer);
@@ -817,7 +818,7 @@ Event: ${line}\n${e.toString()}`);
 
             kind = execKind.inline;
             const server = new grpc.Server({
-                "grpc.max_receive_message_length": maxRPCMessageSize,
+                ...grpcChannelOptions,
             });
             const languageServer = new LanguageServer(this.workspace.program);
             server.addService(langrpc.LanguageRuntimeService, languageServer);
@@ -934,7 +935,7 @@ Event: ${line}\n${e.toString()}`);
 
             kind = execKind.inline;
             const server = new grpc.Server({
-                "grpc.max_receive_message_length": maxRPCMessageSize,
+                ...grpcChannelOptions,
             });
             const languageServer = new LanguageServer(this.workspace.program);
             server.addService(langrpc.LanguageRuntimeService, languageServer);

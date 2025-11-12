@@ -25,15 +25,12 @@ from google.protobuf import empty_pb2
 from pulumi.metadata import get_project
 from pulumi.runtime._serialization import _deserialize
 from pulumi.runtime import configure, proto, rpc, Settings
+from pulumi.runtime.settings import _GRPC_CHANNEL_OPTIONS
 from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
 from pulumi.dynamic import ResourceProvider, ConfigureRequest, Config
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 PROVIDER_KEY = "__provider"
-
-# _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-_MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
-_GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
 
 
 _PROVIDER_CACHE: dict[str, ResourceProvider] = {}

@@ -34,15 +34,12 @@ from pulumi.runtime.proto import (
     provider_pb2,
     resource_pb2_grpc,
 )
+from pulumi.runtime.settings import _GRPC_CHANNEL_OPTIONS
 
 # gRPC by default logs exceptions to the root `logging` logger. We don't
 # want this because it spews garbage to stderr and messes up our beautiful
 # test output. Just turn it off.
 logging.disable(level=logging.CRITICAL)
-
-# _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-_MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
-_GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
 
 
 class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
