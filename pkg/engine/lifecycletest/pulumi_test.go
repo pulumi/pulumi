@@ -56,6 +56,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -1025,14 +1026,14 @@ func TestStackReference(t *testing.T) {
 	})
 	p := &lt.TestPlan{
 		BackendClient: &deploytest.BackendClient{
-			GetStackOutputsF: func(ctx context.Context, name string, _ func(error) error) (resource.PropertyMap, error) {
+			GetStackOutputsF: func(ctx context.Context, name string, _ func(error) error) (property.Map, error) {
 				switch name {
 				case "other":
-					return resource.NewPropertyMapFromMap(map[string]any{
-						"foo": "bar",
+					return property.NewMap(map[string]property.Value{
+						"foo": property.New("bar"),
 					}), nil
 				default:
-					return nil, fmt.Errorf("unknown stack \"%s\"", name)
+					return property.Map{}, fmt.Errorf("unknown stack \"%s\"", name)
 				}
 			},
 		},
@@ -1181,14 +1182,14 @@ func TestStackReferenceRegister(t *testing.T) {
 
 	p := &lt.TestPlan{
 		BackendClient: &deploytest.BackendClient{
-			GetStackOutputsF: func(ctx context.Context, name string, _ func(error) error) (resource.PropertyMap, error) {
+			GetStackOutputsF: func(ctx context.Context, name string, _ func(error) error) (property.Map, error) {
 				switch name {
 				case "other":
-					return resource.NewPropertyMapFromMap(map[string]any{
-						"foo": "bar",
+					return property.NewMap(map[string]property.Value{
+						"foo": property.New("bar"),
 					}), nil
 				default:
-					return nil, fmt.Errorf("unknown stack \"%s\"", name)
+					return property.Map{}, fmt.Errorf("unknown stack \"%s\"", name)
 				}
 			},
 		},

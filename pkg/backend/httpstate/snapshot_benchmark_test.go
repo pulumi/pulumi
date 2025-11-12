@@ -56,6 +56,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/require"
@@ -69,15 +70,15 @@ func (snapshotBackendClient) GetStackOutputs(
 	ctx context.Context,
 	name string,
 	onDecryptError func(error) error,
-) (resource.PropertyMap, error) {
-	return resource.PropertyMap{}, nil
+) (property.Map, error) {
+	return property.Map{}, nil
 }
 
 func (snapshotBackendClient) GetStackResourceOutputs(
 	ctx context.Context,
 	stackName string,
-) (resource.PropertyMap, error) {
-	return resource.PropertyMap{}, nil
+) (property.Map, error) {
+	return property.Map{}, nil
 }
 
 // The snapshotBenchProvider implements plugin.Provider by mapping resource URNs to preloaded data. This allows test

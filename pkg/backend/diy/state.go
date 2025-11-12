@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
@@ -159,17 +160,21 @@ func (b *diyBackend) getSnapshot(ctx context.Context,
 
 func (b *diyBackend) getSnapshotStackOutputs(ctx context.Context,
 	secretsProvider secrets.Provider, ref *diyBackendReference,
-) (resource.PropertyMap, error) {
+) (property.Map, error) {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
 	checkpoint, _, _, err := b.getCheckpoint(ctx, ref)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load checkpoint: %w", err)
+		return property.Map{}, fmt.Errorf("failed to load checkpoint: %w", err)
 	}
 	if checkpoint == nil || checkpoint.Latest == nil {
-		return nil, nil
+		return property.Map{}, nil
 	}
-	return stack.DeserializeStackOutputs(ctx, *checkpoint.Latest, secretsProvider)
+	outputs, err := stack.DeserializeStackOutputs(ctx, *checkpoint.Latest, secretsProvider)
+	if err != nil {
+		return property.Map{}, err
+	}
+	return resource.FromResourcePropertyMap(outputs), nil
 }
 
 // getCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace,

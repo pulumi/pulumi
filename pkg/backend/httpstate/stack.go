@@ -27,12 +27,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // Stack is a cloud stack.  This simply adds some cloud-specific properties atop the standard backend stack interface.
@@ -114,7 +114,7 @@ type cloudStack struct {
 	snapshot atomic.Pointer[*deploy.Snapshot]
 	// snapshotStackOutputs contains the stack outputs of the latest deployment snapshot, allocated on first use.
 	// It's valid for the outputs property map itself to be nil.
-	snapshotStackOutputs atomic.Pointer[resource.PropertyMap]
+	snapshotStackOutputs atomic.Pointer[property.Map]
 	// b is a pointer to the backend that this stack belongs to.
 	b *cloudBackend
 	// tags contains metadata tags describing additional, extensible properties about this stack.
@@ -238,14 +238,14 @@ func (s *cloudStack) Snapshot(ctx context.Context, secretsProvider secrets.Provi
 
 func (s *cloudStack) SnapshotStackOutputs(
 	ctx context.Context, secretsProvider secrets.Provider,
-) (resource.PropertyMap, error) {
+) (property.Map, error) {
 	if v := s.snapshotStackOutputs.Load(); v != nil {
 		return *v, nil
 	}
 
 	outputs, err := s.b.getSnapshotStackOutputs(ctx, secretsProvider, s.ref)
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
 
 	if s.snapshotStackOutputs.CompareAndSwap(nil, &outputs) {
