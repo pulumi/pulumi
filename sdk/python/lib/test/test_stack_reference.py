@@ -21,6 +21,7 @@ from pulumi.runtime import mocks
 from pulumi import StackReference, StackReferenceOutputDetails
 
 
+@pulumi.runtime.test
 @pytest.mark.asyncio
 async def test_stack_reference_output_details(simple_mock):
     ref = StackReference("ref")
