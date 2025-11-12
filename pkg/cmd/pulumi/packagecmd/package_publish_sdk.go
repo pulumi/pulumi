@@ -15,6 +15,7 @@
 package packagecmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -65,23 +66,38 @@ func newPackagePublishSdkCmd() *cobra.Command {
 	return cmd
 }
 
-// getLatestNPMVersion queries npm for the latest published version of a package
-func getLatestNPMVersion(npm, pkgName string) (semver.Version, error) {
+// determineNPMTagForStableVersion determines if we should tag this version as a backport, rather than as latest.
+func determineNPMTagForStableVersion(npm, pkgName, currentVersion string) (string, error) {
+	// Parse the current version first
+	currentVer, err := semver.ParseTolerant(strings.TrimSpace(currentVersion))
+	if err != nil {
+		return "", fmt.Errorf("failed to parse current version %q: %w", currentVersion, err)
+	}
+
 	infoCmd := exec.Command(npm, "info", pkgName, "version")
-	infoCmd.Stderr = os.Stderr
+
+	// Capture stderr to check for "package not found" errors
+	var stderr bytes.Buffer
+	infoCmd.Stderr = &stderr
+
 	output, err := infoCmd.Output()
+
 	if err != nil {
-		return semver.Version{}, fmt.Errorf("failed to get latest version from npm: %w", err)
+		// If this is a new package, it won't exist on the registry yet and return a 404.
+		// We want to be able to push that and label it as latest.
+		if string(output) == "" && strings.Contains(stderr.String(), "404") {
+			return "latest", nil
+		}
+		return "", fmt.Errorf("failed to get latest version from npm: %w", err)
 	}
-	versionStr := strings.TrimSpace(string(output))
-	if versionStr == "" {
-		return semver.Version{}, fmt.Errorf("no version found for package %s", pkgName)
-	}
-	version, err := semver.ParseTolerant(versionStr)
+	latestVer, err := semver.ParseTolerant(string(output))
 	if err != nil {
-		return semver.Version{}, fmt.Errorf("failed to parse version %q: %w", versionStr, err)
+		return "", fmt.Errorf("failed to parse latest version %q from npm: %w", string(output), err)
 	}
-	return version, nil
+	if latestVer.GT(currentVer) {
+		return "backport", nil
+	}
+	return "latest", nil
 }
 
 func publishToNPM(path string) error {
@@ -140,15 +156,11 @@ func publishToNPM(path string) error {
 	case strings.Contains(pkgInfo.Version, "-rc"):
 		npmTag = "rc"
 	default:
-		latestNPMVersion, err := getLatestNPMVersion(npm, pkgInfo.Name)
+		// For stable versions, determine tag by comparing with npm
+		var err error
+		npmTag, err = determineNPMTagForStableVersion(npm, pkgInfo.Name, pkgInfo.Version)
 		if err != nil {
-			return fmt.Errorf("getting latest version from NPM")
-		}
-		pkgInfoVersion, err := semver.ParseTolerant(pkgInfo.Version)
-		if latestNPMVersion.GT(pkgInfoVersion) {
-			npmTag = "backport"
-		} else {
-			npmTag = "latest"
+			return fmt.Errorf("determining npm tag: %w", err)
 		}
 	}
 
