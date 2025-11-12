@@ -1033,11 +1033,7 @@ func NewImportCmd() *cobra.Command {
 				}
 			}
 
-			if err != nil {
-				return err
-			}
-
-			return nil
+			return err
 		},
 	}
 
