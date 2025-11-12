@@ -18,6 +18,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"iter"
 	"slices"
@@ -30,10 +31,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -638,6 +641,23 @@ func (ms *MockStack) Snapshot(ctx context.Context, secretsProvider secrets.Provi
 		return ms.SnapshotF(ctx, secretsProvider)
 	}
 	panic("not implemented: MockStack.Snapshot")
+}
+
+func (ms *MockStack) SnapshotStackOutputs(
+	ctx context.Context, secretsProvider secrets.Provider,
+) (resource.PropertyMap, error) {
+	snapshot, err := ms.Snapshot(ctx, secretsProvider)
+	if err != nil {
+		return nil, err
+	}
+	res, err := stack.GetRootStackResource(snapshot)
+	if err != nil {
+		return nil, fmt.Errorf("getting root stack resources: %w", err)
+	}
+	if res == nil {
+		return resource.PropertyMap{}, nil
+	}
+	return res.Outputs, nil
 }
 
 func (ms *MockStack) Tags() map[apitype.StackTagName]string {

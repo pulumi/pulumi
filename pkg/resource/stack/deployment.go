@@ -370,6 +370,43 @@ func DeserializeUntypedDeployment(
 	return DeserializeDeploymentV3(ctx, *v3deployment, secretsProv)
 }
 
+// DeserializeStackOutputs deserializes the stack outputs from a deployment.
+// It returns nil if the root stack resource was not found.
+func DeserializeStackOutputs(
+	ctx context.Context,
+	deployment apitype.DeploymentV3,
+	secretsProv secrets.Provider,
+) (resource.PropertyMap, error) {
+	// Find the root stack resource in the deployment.
+	var stackResource *apitype.ResourceV3
+	for i := range deployment.Resources {
+		res := &deployment.Resources[i]
+		if res.Type == resource.RootStackType && res.Parent == "" {
+			stackResource = res
+			break
+		}
+	}
+	if stackResource == nil {
+		return nil, nil
+	}
+
+	_, dec, completeBatch, err := initializeSecretsManagerAndDecrypter(deployment, secretsProv)
+	if err != nil {
+		return nil, err
+	}
+
+	outputs, err := DeserializeProperties(stackResource.Outputs, dec)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := completeBatch(ctx); err != nil {
+		return nil, err
+	}
+
+	return outputs, nil
+}
+
 // DeserializeDeploymentV3 deserializes a typed DeploymentV3 into a `deploy.Snapshot`.
 func DeserializeDeploymentV3(
 	ctx context.Context,
@@ -382,31 +419,9 @@ func DeserializeDeploymentV3(
 		return nil, err
 	}
 
-	var secretsManager secrets.Manager
-	if deployment.SecretsProviders != nil && deployment.SecretsProviders.Type != "" {
-		if secretsProv == nil {
-			return nil, errors.New("deployment uses a SecretsProvider but no SecretsProvider was provided")
-		}
-
-		sm, err := secretsProv.OfType(deployment.SecretsProviders.Type, deployment.SecretsProviders.State)
-		if err != nil {
-			return nil, err
-		}
-		secretsManager = sm
-	}
-
-	var dec config.Decrypter
-	var completeBatch CompleteCrypterBatch
-	if secretsManager != nil {
-		if batchingSecretsManager, ok := secretsManager.(BatchingSecretsManager); ok {
-			// If the secrets manager supports batching, start a batch operation.
-			dec, completeBatch = batchingSecretsManager.BeginBatchDecryption()
-		} else {
-			dec = secretsManager.Decrypter()
-		}
-	} else {
-		// We'll attempt to continue without a decrypter, but fail if we encounter encrypted secrets.
-		dec = config.NewErrorCrypter("snapshot contains encrypted secrets but no secrets manager could be found")
+	secretsManager, dec, completeBatch, err := initializeSecretsManagerAndDecrypter(deployment, secretsProv)
+	if err != nil {
+		return nil, err
 	}
 
 	// For every serialized resource vertex, create a ResourceDeployment out of it.
@@ -428,11 +443,8 @@ func DeserializeDeploymentV3(
 		ops = append(ops, desop)
 	}
 
-	if completeBatch != nil {
-		// If we started a batch operation, complete it.
-		if err := completeBatch(ctx); err != nil {
-			return nil, err
-		}
+	if err := completeBatch(ctx); err != nil {
+		return nil, err
 	}
 
 	metadata := deploy.SnapshotMetadata{}
@@ -445,6 +457,42 @@ func DeserializeDeploymentV3(
 	}
 
 	return deploy.NewSnapshot(*manifest, secretsManager, resources, ops, metadata), nil
+}
+
+// initializeSecretsManagerAndDecrypter initializes the secrets manager and decrypter for a deployment.
+// It returns the secrets manager, decrypter, and a completeBatch function that must be called when done.
+func initializeSecretsManagerAndDecrypter(
+	deployment apitype.DeploymentV3,
+	secretsProv secrets.Provider,
+) (secrets.Manager, config.Decrypter, CompleteCrypterBatch, error) {
+	var secretsManager secrets.Manager
+	if deployment.SecretsProviders != nil && deployment.SecretsProviders.Type != "" {
+		if secretsProv == nil {
+			return nil, nil, nil, errors.New("deployment uses a SecretsProvider but no SecretsProvider was provided")
+		}
+
+		sm, err := secretsProv.OfType(deployment.SecretsProviders.Type, deployment.SecretsProviders.State)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		secretsManager = sm
+	}
+
+	var dec config.Decrypter
+	var completeBatch CompleteCrypterBatch = func(context.Context) error { return nil }
+	if secretsManager != nil {
+		if batchingSecretsManager, ok := secretsManager.(BatchingSecretsManager); ok {
+			// If the secrets manager supports batching, start a batch operation.
+			dec, completeBatch = batchingSecretsManager.BeginBatchDecryption()
+		} else {
+			dec = secretsManager.Decrypter()
+		}
+	} else {
+		// We'll attempt to continue without a decrypter, but fail if we encounter encrypted secrets.
+		dec = config.NewErrorCrypter("snapshot contains encrypted secrets but no secrets manager could be found")
+	}
+
+	return secretsManager, dec, completeBatch, nil
 }
 
 // SerializeResource turns a resource into a structure suitable for serialization.
