@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/import
-  description: Return errors when an import fails

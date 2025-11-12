@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: engine
-  description: Add `ReplaceWith` resource option to allow one resource's replace operations to trigger another's
