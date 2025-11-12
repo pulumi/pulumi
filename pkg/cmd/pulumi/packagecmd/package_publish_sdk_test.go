@@ -134,7 +134,6 @@ func TestDetermineNPMTagForStableVersion_Logic(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -184,6 +183,7 @@ func TestDetermineNPMTagForStableVersion_Logic(t *testing.T) {
 // TestDetermineNPMTagForStableVersion_Integration tests the actual function
 // This requires npm to be available and will make real network calls
 func TestDetermineNPMTagForStableVersion_Integration(t *testing.T) {
+	t.Parallel()
 	t.Skip("Integration test - requires npm and network access")
 
 	// Test with a real package that exists

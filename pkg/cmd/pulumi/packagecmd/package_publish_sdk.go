@@ -81,7 +81,6 @@ func determineNPMTagForStableVersion(npm, pkgName, currentVersion string) (strin
 	infoCmd.Stderr = &stderr
 
 	output, err := infoCmd.Output()
-
 	if err != nil {
 		// If this is a new package, it won't exist on the registry yet and return a 404.
 		// We want to be able to push that and label it as latest.
