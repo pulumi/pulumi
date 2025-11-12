@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -62,6 +63,25 @@ func newPackagePublishSdkCmd() *cobra.Command {
 	Example: ./sdk/nodejs
 	`)
 	return cmd
+}
+
+// getLatestNPMVersion queries npm for the latest published version of a package
+func getLatestNPMVersion(npm, pkgName string) (semver.Version, error) {
+	infoCmd := exec.Command(npm, "info", pkgName, "version")
+	infoCmd.Stderr = os.Stderr
+	output, err := infoCmd.Output()
+	if err != nil {
+		return semver.Version{}, fmt.Errorf("failed to get latest version from npm: %w", err)
+	}
+	versionStr := strings.TrimSpace(string(output))
+	if versionStr == "" {
+		return semver.Version{}, fmt.Errorf("no version found for package %s", pkgName)
+	}
+	version, err := semver.ParseTolerant(versionStr)
+	if err != nil {
+		return semver.Version{}, fmt.Errorf("failed to parse version %q: %w", versionStr, err)
+	}
+	return version, nil
 }
 
 func publishToNPM(path string) error {
@@ -120,7 +140,16 @@ func publishToNPM(path string) error {
 	case strings.Contains(pkgInfo.Version, "-rc"):
 		npmTag = "rc"
 	default:
-		npmTag = "latest"
+		latestNPMVersion, err := getLatestNPMVersion(npm, pkgInfo.Name)
+		if err != nil {
+			return fmt.Errorf("getting latest version from NPM")
+		}
+		pkgInfoVersion, err := semver.ParseTolerant(pkgInfo.Version)
+		if latestNPMVersion.GT(pkgInfoVersion) {
+			npmTag = "backport"
+		} else {
+			npmTag = "latest"
+		}
 	}
 
 	pkgNameWithVersion := pkgInfo.Name + "@" + pkgInfo.Version
