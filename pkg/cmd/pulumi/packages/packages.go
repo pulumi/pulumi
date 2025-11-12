@@ -83,6 +83,8 @@ func InstallPackage(proj workspace.BaseProject, pctx *plugin.Context, language, 
 	}
 
 	out := filepath.Join(root, "sdks")
+	fmt.Printf("Successfully generated an SDK for the %s package at %s\n", pkg.Name, out)
+
 	err = os.MkdirAll(out, 0o755)
 	if err != nil {
 		return nil, nil, diags, fmt.Errorf("failed to create directory for SDK: %w", err)
@@ -107,14 +109,13 @@ func InstallPackage(proj workspace.BaseProject, pctx *plugin.Context, language, 
 	}
 
 	// Link the package to the project
-	if err := LinkPackage(&LinkPackageContext{
+	if err := LinkPackages(&LinkPackagesContext{
 		Writer:        os.Stdout,
 		Project:       proj,
 		Language:      language,
 		Root:          root,
-		Pkg:           pkg,
+		Packages:      []PackageToLink{{Pkg: pkg, Out: out}},
 		PluginContext: pctx,
-		Out:           out,
 		Install:       true,
 	}); err != nil {
 		return nil, nil, diags, err
@@ -201,19 +202,23 @@ func GenSDK(language, out string, pkg *schema.Package, overlays string, local bo
 	return generatePackage(root, pkg, extraFiles)
 }
 
-type LinkPackageContext struct {
+type PackageToLink struct {
+	// The output directory where the SDK package to be linked is located.
+	Out string
+	Pkg *schema.Package
+}
+
+type LinkPackagesContext struct {
 	// The project into which the SDK package is being linked.
 	Project workspace.BaseProject
 	// The programming language of the SDK package being linked.
 	Language string
 	// The root directory of the project to which the SDK package is being linked.
 	Root string
-	// The schema of the Pulumi package from which the SDK being linked was generated.
-	Pkg *schema.Package
+	// The packages to link to the project.
+	Packages []PackageToLink
 	// A plugin context to load languages and providers.
 	PluginContext *plugin.Context
-	// The output directory where the SDK package to be linked is located.
-	Out string
 	// True if the linked SDK package should be installed into the project it is being added to. If this is false, the
 	// package will be linked (e.g. an entry added to package.json), but not installed (e.g. its contents unpacked into
 	// node_modules).
@@ -221,9 +226,9 @@ type LinkPackageContext struct {
 	Writer  io.Writer
 }
 
-// LinkPackage links a locally generated SDK to an existing project.
+// LinkPackages links a locally generated SDK to an existing project.
 // Currently Java is not supported and will print instructions for manual linking.
-func LinkPackage(ctx *LinkPackageContext) error {
+func LinkPackages(ctx *LinkPackagesContext) error {
 	if ctx.Language == "yaml" {
 		return nil // Nothing to do for YAML
 	}
@@ -231,9 +236,7 @@ func LinkPackage(ctx *LinkPackageContext) error {
 }
 
 // linkPackage links a locally generated SDK into a project using `Language.Link`.
-func linkPackage(ctx *LinkPackageContext) error {
-	fmt.Fprintf(ctx.Writer, "Successfully generated an SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
-	fmt.Fprintf(ctx.Writer, "\n")
+func linkPackage(ctx *LinkPackagesContext) error {
 	root, err := filepath.Abs(ctx.Root)
 	if err != nil {
 		return err
@@ -244,13 +247,13 @@ func linkPackage(ctx *LinkPackageContext) error {
 		return err
 	}
 
-	// Pre-load the schema into the cached loader. This allows the loader to respond to GetSchema requests for file
+	// Pre-load the schemas into the cached loader. This allows the loader to respond to GetSchema requests for file
 	// based schemas.
-	loader := schema.NewCachedLoaderWithEntries(
-		schema.NewPluginLoader(ctx.PluginContext.Host),
-		map[string]schema.PackageReference{
-			ctx.Pkg.Identity(): ctx.Pkg.Reference(),
-		})
+	entries := make(map[string]schema.PackageReference, len(ctx.Packages))
+	for _, pkg := range ctx.Packages {
+		entries[pkg.Pkg.Identity()] = pkg.Pkg.Reference()
+	}
+	loader := schema.NewCachedLoaderWithEntries(schema.NewPluginLoader(ctx.PluginContext.Host), entries)
 	loaderServer := schema.NewLoaderServer(loader)
 	grpcServer, err := plugin.NewServer(ctx.PluginContext, schema.LoaderRegistration(loaderServer))
 	if err != nil {
@@ -258,23 +261,25 @@ func linkPackage(ctx *LinkPackageContext) error {
 	}
 	defer contract.IgnoreClose(grpcServer)
 
-	out, err := filepath.Abs(ctx.Out)
-	if err != nil {
-		return err
+	deps := make([]workspace.LinkablePackageDescriptor, 0, len(ctx.Packages))
+	for _, packageToLink := range ctx.Packages {
+		out, err := filepath.Abs(packageToLink.Out)
+		if err != nil {
+			return err
+		}
+		packagePath, err := filepath.Rel(root, out)
+		if err != nil {
+			return err
+		}
+		packageDescriptor, err := packageToLink.Pkg.Descriptor(ctx.PluginContext.Base())
+		if err != nil {
+			return fmt.Errorf("getting package descriptor: %w", err)
+		}
+		deps = append(deps, workspace.LinkablePackageDescriptor{
+			Path:       packagePath,
+			Descriptor: packageDescriptor,
+		})
 	}
-	packagePath, err := filepath.Rel(root, out)
-	if err != nil {
-		return err
-	}
-	packageDescriptor, err := ctx.Pkg.Descriptor(ctx.PluginContext.Base())
-	if err != nil {
-		return fmt.Errorf("getting package descriptor: %w", err)
-	}
-	deps := []workspace.LinkablePackageDescriptor{{
-		Path:       packagePath,
-		Descriptor: packageDescriptor,
-	}}
-
 	instructions, err := languagePlugin.Link(programInfo, deps, grpcServer.Addr())
 	if err != nil {
 		return fmt.Errorf("linking package: %w", err)
