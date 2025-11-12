@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -223,18 +224,23 @@ func (b *cloudBackend) getSnapshot(ctx context.Context,
 
 func (b *cloudBackend) getSnapshotStackOutputs(ctx context.Context,
 	secretsProvider secrets.Provider, stackRef backend.StackReference,
-) (resource.PropertyMap, error) {
+) (property.Map, error) {
 	untypedDeployment, err := b.exportDeployment(ctx, stackRef, nil /* get latest */)
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
 
 	deployment, err := stack.UnmarshalUntypedDeployment(ctx, untypedDeployment)
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
 
-	return stack.DeserializeStackOutputs(ctx, *deployment, secretsProvider)
+	outputs, err := stack.DeserializeStackOutputs(ctx, *deployment, secretsProvider)
+	if err != nil {
+		return property.Map{}, err
+	}
+
+	return resource.FromResourcePropertyMap(outputs), nil
 }
 
 func (b *cloudBackend) getTarget(ctx context.Context, secretsProvider secrets.Provider, stackRef backend.StackReference,
