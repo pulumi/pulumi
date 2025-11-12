@@ -1766,6 +1766,7 @@ func (ctx *Context) registerResource(
 				PluginDownloadURL:          inputs.pluginDownloadURL,
 				Remote:                     remote,
 				ReplaceOnChanges:           inputs.replaceOnChanges,
+				ReplacementTrigger:         inputs.replacementTrigger,
 				RetainOnDelete:             inputs.retainOnDelete,
 				DeletedWith:                inputs.deletedWith,
 				HideDiffs:                  inputs.hideDiffs,
@@ -2242,6 +2243,7 @@ type resourceInputs struct {
 	retainOnDelete          *bool
 	deletedWith             string
 	hideDiffs               []string
+	replacementTrigger      *structpb.Value
 }
 
 func (ctx *Context) resolveAliasParent(alias Alias, spec *pulumirpc.Alias_Spec) error {
@@ -2470,14 +2472,54 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		}
 	}
 
-	// Merge all dependencies with what we got earlier from property marshaling, and remove duplicates.
-	var deps []string
-	depSet := map[URN]struct{}{}
-	for _, dep := range append(resOpts.depURNs, rpcDeps...) {
-		if _, ok := depSet[dep]; !ok {
-			deps = append(deps, string(dep))
-			depSet[dep] = struct{}{}
+	var replacementTriggerDeps []URN
+	var replacementTriggerValue *structpb.Value
+	if opts.ReplacementTrigger != nil {
+		rtValue, rtDepResources, err := marshalInput(opts.ReplacementTrigger, anyType)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling replacementTrigger option: %w", err)
 		}
+
+		if len(rtDepResources) > 0 {
+			depMap, err := expandDependencies(context.TODO(), rtDepResources)
+			if err != nil {
+				return nil, fmt.Errorf("expanding replacementTrigger dependencies: %w", err)
+			}
+			replacementTriggerDeps = maps.Keys(depMap)
+		}
+
+		if !rtValue.IsNull() {
+			marshaled, err := plugin.MarshalPropertyValue(
+				resource.PropertyKey("replacementTrigger"),
+				rtValue,
+				plugin.MarshalOptions{
+					KeepUnknowns:     true,
+					KeepSecrets:      true,
+					KeepResources:    ctx.state.keepResources,
+					KeepOutputValues: remote && ctx.state.keepOutputValues,
+				},
+			)
+			if err != nil {
+				return nil, fmt.Errorf("marshaling replacementTrigger option: %w", err)
+			}
+			replacementTriggerValue = marshaled
+		}
+	}
+
+	// Merge all dependencies with what we got earlier from property marshaling, and remove duplicates.
+	allDepURNs := make([]URN, 0, len(resOpts.depURNs)+len(rpcDeps)+len(replacementTriggerDeps))
+	allDepURNs = append(allDepURNs, resOpts.depURNs...)
+	allDepURNs = append(allDepURNs, rpcDeps...)
+	allDepURNs = append(allDepURNs, replacementTriggerDeps...)
+
+	depSet := map[URN]struct{}{}
+	for _, dep := range allDepURNs {
+		depSet[dep] = struct{}{}
+	}
+
+	deps := make([]string, 0, len(depSet))
+	for dep := range depSet {
+		deps = append(deps, string(dep))
 	}
 	sort.Strings(deps)
 
@@ -2516,6 +2558,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		replaceOnChanges:        resOpts.replaceOnChanges,
 		retainOnDelete:          opts.RetainOnDelete,
 		deletedWith:             string(deletedWithURN),
+		replacementTrigger:      replacementTriggerValue,
 	}, nil
 }
 

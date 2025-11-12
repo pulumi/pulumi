@@ -928,6 +928,9 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	if opts.DeletedWith != nil {
 		appendOption("deletedWith", opts.DeletedWith)
 	}
+	if opts.ReplacementTrigger != nil {
+		appendOption("replacementTrigger", opts.ReplacementTrigger)
+	}
 	if opts.ImportID != nil {
 		appendOption("import", opts.ImportID)
 	}
