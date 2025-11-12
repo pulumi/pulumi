@@ -29,14 +29,12 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode"
 
 	"github.com/BurntSushi/toml"
-	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -2220,21 +2218,6 @@ func (mod *modContext) collectImportsForResource(properties []*schema.Property, 
 	})
 }
 
-var (
-	// Match PEP 440 version specifiers: extracts operator and version from patterns like ">=1.0", "~=2.0", "==3.0"
-	pep440SpecifierRegex = regexp.MustCompile(`(~=|==|!=|<=|>=|<|>)\s*([a-zA-Z0-9_.+!-]+)`)
-	pep440AlphaRegex     = regexp.MustCompile(`^(\d+\.\d+\.\d)+a(\d+)$`)
-	pep440BetaRegex      = regexp.MustCompile(`^(\d+\.\d+\.\d+)b(\d+)$`)
-	pep440RCRegex        = regexp.MustCompile(`^(\d+\.\d+\.\d+)rc(\d+)$`)
-	pep440DevRegex       = regexp.MustCompile(`^(\d+\.\d+\.\d+)\.dev(\d+)$`)
-)
-
-var oldestAllowedPulumi = semver.Version{
-	Major: 0,
-	Minor: 17,
-	Patch: 28,
-}
-
 func sanitizePackageDescription(description string) string {
 	lines := strings.SplitN(description, "\n", 2)
 	if len(lines) > 0 {
@@ -2395,25 +2378,6 @@ func minimumPythonVersion(info PackageInfo) (string, error) {
 		return info.PythonRequires, nil
 	}
 	return "", errNoMinimumPythonVersion
-}
-
-func pep440VersionToSemver(v string) (semver.Version, error) {
-	switch {
-	case pep440AlphaRegex.MatchString(v):
-		parts := pep440AlphaRegex.FindStringSubmatch(v)
-		v = parts[1] + "-alpha." + parts[2]
-	case pep440BetaRegex.MatchString(v):
-		parts := pep440BetaRegex.FindStringSubmatch(v)
-		v = parts[1] + "-beta." + parts[2]
-	case pep440RCRegex.MatchString(v):
-		parts := pep440RCRegex.FindStringSubmatch(v)
-		v = parts[1] + "-rc." + parts[2]
-	case pep440DevRegex.MatchString(v):
-		parts := pep440DevRegex.FindStringSubmatch(v)
-		v = parts[1] + "-dev." + parts[2]
-	}
-
-	return semver.ParseTolerant(v)
 }
 
 // genInitDocstring emits the docstring for the __init__ method of the given resource type.
@@ -3452,51 +3416,6 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package, dependencies 
 // Require the SDK to fall within the same major version.
 var MinimumValidSDKVersion = ">=3.165.0,<4.0.0"
 
-// validatePulumiVersionSpecifier validates a PEP 440 version
-// specifier string and ensures that any versions have a lower-bound
-// operator that meet the minimum version requirement.
-func validatePulumiVersionSpecifier(specifier string) error {
-	// Parse as generic PEP 440 specifier
-	matches := pep440SpecifierRegex.FindAllStringSubmatch(specifier, -1)
-	if len(matches) == 0 {
-		return fmt.Errorf("invalid requirement specifier %q; expected a PEP 440 version specifier", specifier)
-	}
-
-	validatedLowerBound := false
-	for _, match := range matches {
-		if len(match) != 3 {
-			continue
-		}
-		operator := match[1]
-		version := match[2]
-
-		parsedVersion, err := pep440VersionToSemver(version)
-		if err != nil {
-			return fmt.Errorf("invalid version %q in specifier: %w", version, err)
-		}
-
-		switch operator {
-		case ">=", "==", "~=":
-			if parsedVersion.LT(oldestAllowedPulumi) {
-				return fmt.Errorf("lower bound must be at least %v", oldestAllowedPulumi)
-			}
-			validatedLowerBound = true
-		case ">":
-			if parsedVersion.LTE(oldestAllowedPulumi) {
-				return fmt.Errorf("lower bound must be at least %v", oldestAllowedPulumi)
-			}
-			validatedLowerBound = true
-		}
-	}
-
-	if !validatedLowerBound {
-		return fmt.Errorf(
-			"minimum required pulumi version is %v. Specify a lower bound that matches that", oldestAllowedPulumi)
-	}
-
-	return nil
-}
-
 // ensureValidPulumiVersion ensures that the Pulumi SDK has an entry.
 // It accepts a list of dependencies
 // as provided in the package schema, and validates whether
@@ -3517,17 +3436,9 @@ func ensureValidPulumiVersion(parameterized bool, requires map[string]string) (m
 		}
 		return result, nil
 	}
-	// If the pulumi dep is missing, we require it to fall within
-	// our major version constraint.
 	if pulumiDep, ok := requires["pulumi"]; !ok {
 		deps["pulumi"] = MinimumValidSDKVersion
 	} else {
-		// Since a value was provided, we check to make sure it's within an acceptable version range.
-		// We accept any PEP 440 version specifier.
-		if err := validatePulumiVersionSpecifier(pulumiDep); err != nil {
-			return nil, err
-		}
-		// The provided Pulumi version is valid, so we copy it into the new map.
 		deps["pulumi"] = pulumiDep
 	}
 
