@@ -94,3 +94,31 @@ func TestStringArrayEnvironmentVariables(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"foo", "bar", "baz"}, targets)
 }
+
+func TestStringSliceEnvironmentVariables(t *testing.T) {
+	t.Setenv("PULUMI_OPTION_MAPPINGS", "foo,bar,baz")
+
+	cmd, cleanup := NewPulumiCmd()
+	defer cleanup()
+
+	convert, _, err := cmd.Find([]string{"convert"})
+	require.NoError(t, err)
+
+	mappings, err := convert.PersistentFlags().GetStringSlice("mappings")
+	require.NoError(t, err)
+	require.Equal(t, []string{"foo", "bar", "baz"}, mappings)
+}
+
+func TestStringSliceNoSplitOnComma(t *testing.T) {
+	t.Setenv("PULUMI_OPTION_PLAINTEXT", "\"a=foo,bar,baz\"")
+
+	cmd, cleanup := NewPulumiCmd()
+	defer cleanup()
+
+	config, _, err := cmd.Find([]string{"config", "set-all"})
+	require.NoError(t, err)
+
+	plaintext, err := config.PersistentFlags().GetStringArray("plaintext")
+	require.NoError(t, err)
+	require.Equal(t, []string{"a=foo,bar,baz"}, plaintext)
+}

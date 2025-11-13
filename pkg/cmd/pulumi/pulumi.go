@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -963,8 +964,13 @@ func declareFlagsAsEnvironmentVariables(cmd *cobra.Command) {
 				_ = f.Value.Set("false")
 			}
 		case "stringArray", "stringSlice":
-			for _, v := range strings.Split(value, ",") {
-				_ = f.Value.Set(strings.TrimSpace(v))
+			csv, err := parseArrayAsCSV(value)
+			if err != nil {
+				csv = []string{value}
+			}
+
+			for _, v := range csv {
+				_ = f.Value.Set(v)
 			}
 		case "string", "int":
 			_ = f.Value.Set(value)
@@ -984,4 +990,13 @@ func declareFlagsAsEnvironmentVariables(cmd *cobra.Command) {
 	for _, command := range cmd.Commands() {
 		declareFlagsAsEnvironmentVariables(command)
 	}
+}
+
+func parseArrayAsCSV(val string) ([]string, error) {
+	if val == "" {
+		return []string{}, nil
+	}
+	stringReader := strings.NewReader(val)
+	csvReader := csv.NewReader(stringReader)
+	return csvReader.Read()
 }
