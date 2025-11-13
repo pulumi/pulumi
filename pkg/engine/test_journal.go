@@ -252,6 +252,10 @@ func (j *TestJournal) Write(base *deploy.Snapshot) error {
 	return nil
 }
 
+func (j *TestJournal) RebuiltBaseState() error {
+	return nil
+}
+
 // NewTestJournal creates a new TestJournal that is used in tests to record journal entries for
 // deployment steps. These journal entries are used to reconstruct the snapshot at the end of
 // the test. This is used in lifecycletests to check that the snapshot manager and the testjournal
@@ -286,11 +290,11 @@ func FilterRefreshDeletes(
 ) {
 	availableParents := map[resource.URN]resource.URN{}
 	referenceable := make(map[resource.URN]bool)
-
 	for i, res := range resources {
 		newDeps := []resource.URN{}
 		newPropDeps := map[resource.PropertyKey][]resource.URN{}
 		newDeletedWith := resource.URN("")
+		newReplaceWith := []resource.URN{}
 		newParent := resource.URN("")
 		filtered := false
 
@@ -329,6 +333,12 @@ func FilterRefreshDeletes(
 				} else {
 					filtered = true
 				}
+			case resource.ResourceReplaceWith:
+				if referenceable[dep.URN] {
+					newReplaceWith = append(newReplaceWith, dep.URN)
+				} else {
+					filtered = true
+				}
 			}
 		}
 
@@ -343,6 +353,7 @@ func FilterRefreshDeletes(
 		newRes.Dependencies = newDeps
 		newRes.PropertyDependencies = newPropDeps
 		newRes.DeletedWith = newDeletedWith
+		newRes.ReplaceWith = newReplaceWith
 		newRes.Parent = newParent
 		resources[i] = newRes
 	}

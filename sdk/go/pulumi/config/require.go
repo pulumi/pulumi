@@ -25,7 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-func failf(format string, a ...interface{}) {
+func failf(format string, a ...any) {
 	panic(fmt.Errorf(format, a...))
 }
 
@@ -50,7 +50,7 @@ func Require(ctx *pulumi.Context, key string) string {
 	return requireConfig(ctx, key, false, "RequireSecret", "Require")
 }
 
-func requireObject(ctx *pulumi.Context, key string, secret bool, output interface{}, use, insteadOf string) {
+func requireObject(ctx *pulumi.Context, key string, secret bool, output any, use, insteadOf string) {
 	v := requireConfig(ctx, key, secret, use, insteadOf)
 	if err := json.Unmarshal([]byte(v), output); err != nil {
 		failf("unable to unmarshall required configuration variable '%s'; %s", key, err)
@@ -59,7 +59,7 @@ func requireObject(ctx *pulumi.Context, key string, secret bool, output interfac
 
 // RequireObject loads an optional configuration value by its key into the output variable,
 // or panics if unable to do so.
-func RequireObject(ctx *pulumi.Context, key string, output interface{}) {
+func RequireObject(ctx *pulumi.Context, key string, output any) {
 	requireObject(ctx, key, false, output, "RequireSecretObject", "RequireObject")
 }
 
@@ -113,7 +113,7 @@ func RequireSecret(ctx *pulumi.Context, key string) pulumi.StringOutput {
 
 // RequireSecretObject loads an optional configuration value by its key into the output variable,
 // returning it wrapped in a secret Output, or panics if unable to do so.
-func RequireSecretObject(ctx *pulumi.Context, key string, output interface{}) pulumi.Output {
+func RequireSecretObject(ctx *pulumi.Context, key string, output any) pulumi.Output {
 	requireObject(ctx, key, true, output, "", "")
 	return pulumi.ToSecret(output)
 }

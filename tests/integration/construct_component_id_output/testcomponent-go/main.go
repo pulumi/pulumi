@@ -24,7 +24,7 @@ type Resource struct {
 }
 
 type resourceArgs struct {
-	Echo interface{} `pulumi:"echo"`
+	Echo any `pulumi:"echo"`
 }
 
 type ResourceArgs struct {
@@ -70,7 +70,7 @@ func NewComponent(ctx *pulumi.Context, name string, args *ComponentArgs,
 		return nil, err
 	}
 
-	component.Id = pulumi.All(res.ID(), args.Id).ApplyT(func(resolvedArgs []interface{}) (string, error) {
+	component.Id = pulumi.All(res.ID(), args.Id).ApplyT(func(resolvedArgs []any) (string, error) {
 		resourceId := resolvedArgs[0].(pulumi.ID)
 		argsId := resolvedArgs[1].(string)
 		return fmt.Sprintf("%s-%s", resourceId, argsId), nil

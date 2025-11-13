@@ -28,17 +28,17 @@ import (
 // Sink facilitates pluggable diagnostics messages.
 type Sink interface {
 	// Logf issues a log message.
-	Logf(sev Severity, diag *Diag, args ...interface{})
+	Logf(sev Severity, diag *Diag, args ...any)
 	// Debugf issues a debugging message.
-	Debugf(diag *Diag, args ...interface{})
+	Debugf(diag *Diag, args ...any)
 	// Infof issues an informational message (to stdout).
-	Infof(diag *Diag, args ...interface{})
+	Infof(diag *Diag, args ...any)
 	// Infoerrf issues an informational message (to stderr).
-	Infoerrf(diag *Diag, args ...interface{})
+	Infoerrf(diag *Diag, args ...any)
 	// Errorf issues a new error diagnostic.
-	Errorf(diag *Diag, args ...interface{})
+	Errorf(diag *Diag, args ...any)
 	// Warningf issues a new warning diagnostic.
-	Warningf(diag *Diag, args ...interface{})
+	Warningf(diag *Diag, args ...any)
 }
 
 // Severity dictates the kind of diagnostic.
@@ -120,7 +120,7 @@ type defaultSink struct {
 	writers map[Severity]io.Writer // the writers to use for each kind of diagnostic severity.
 }
 
-func (d *defaultSink) Logf(sev Severity, diag *Diag, args ...interface{}) {
+func (d *defaultSink) Logf(sev Severity, diag *Diag, args ...any) {
 	switch sev {
 	case Debug:
 		d.Debugf(diag, args...)
@@ -137,12 +137,12 @@ func (d *defaultSink) Logf(sev Severity, diag *Diag, args ...interface{}) {
 	}
 }
 
-func (d *defaultSink) createMessage(sev Severity, diag *Diag, args ...interface{}) string {
+func (d *defaultSink) createMessage(sev Severity, diag *Diag, args ...any) string {
 	prefix, msg := d.Stringify(sev, diag, args...)
 	return prefix + msg
 }
 
-func (d *defaultSink) Debugf(diag *Diag, args ...interface{}) {
+func (d *defaultSink) Debugf(diag *Diag, args ...any) {
 	// For debug messages, write both to the glogger and a stream, if there is one.
 	logging.V(3).Infof(diag.Message, args...)
 	msg := d.createMessage(Debug, diag, args...)
@@ -152,7 +152,7 @@ func (d *defaultSink) Debugf(diag *Diag, args ...interface{}) {
 	d.print(Debug, msg)
 }
 
-func (d *defaultSink) Infof(diag *Diag, args ...interface{}) {
+func (d *defaultSink) Infof(diag *Diag, args ...any) {
 	msg := d.createMessage(Info, diag, args...)
 	if logging.V(5) {
 		logging.V(5).Infof("defaultSink::Info(%v)", msg[:len(msg)-1])
@@ -160,7 +160,7 @@ func (d *defaultSink) Infof(diag *Diag, args ...interface{}) {
 	d.print(Info, msg)
 }
 
-func (d *defaultSink) Infoerrf(diag *Diag, args ...interface{}) {
+func (d *defaultSink) Infoerrf(diag *Diag, args ...any) {
 	msg := d.createMessage(Info /* not Infoerr, just "info: "*/, diag, args...)
 	if logging.V(5) {
 		logging.V(5).Infof("defaultSink::Infoerr(%v)", msg[:len(msg)-1])
@@ -168,7 +168,7 @@ func (d *defaultSink) Infoerrf(diag *Diag, args ...interface{}) {
 	d.print(Infoerr, msg)
 }
 
-func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
+func (d *defaultSink) Errorf(diag *Diag, args ...any) {
 	msg := d.createMessage(Error, diag, args...)
 	if logging.V(5) {
 		logging.V(5).Infof("defaultSink::Error(%v)", msg[:len(msg)-1])
@@ -176,7 +176,7 @@ func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
 	d.print(Error, msg)
 }
 
-func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
+func (d *defaultSink) Warningf(diag *Diag, args ...any) {
 	msg := d.createMessage(Warning, diag, args...)
 	if logging.V(5) {
 		logging.V(5).Infof("defaultSink::Warning(%v)", msg[:len(msg)-1])
@@ -188,7 +188,7 @@ func (d *defaultSink) print(sev Severity, msg string) {
 	fmt.Fprint(d.writers[sev], msg)
 }
 
-func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) (string, string) {
+func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...any) (string, string) {
 	var prefix bytes.Buffer
 	if sev != Info && sev != Infoerr {
 		// Unless it's an ordinary stdout message, prepend the message category's prefix (error/warning).

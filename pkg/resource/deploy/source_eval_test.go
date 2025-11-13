@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -203,11 +204,13 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 					ImportID:                "",
 					RetainOnDelete:          false,
 					DeletedWith:             "",
+					ReplaceWith:             nil,
 					Created:                 nil,
 					Modified:                nil,
 					SourcePosition:          "",
 					StackTrace:              nil,
 					IgnoreChanges:           nil,
+					HideDiff:                nil,
 					ReplaceOnChanges:        nil,
 					RefreshBeforeUpdate:     false,
 					ViewOf:                  "",
@@ -228,25 +231,25 @@ func newTestPluginContext(t testing.TB, program deploytest.ProgramFunc) (*plugin
 }
 
 type testProviderSource struct {
-	providers map[providers.Reference]plugin.Provider
+	providers map[sdkproviders.Reference]plugin.Provider
 	m         sync.RWMutex
 	// If nil, do not return a default provider. Otherwise, return this default provider
 	defaultProvider plugin.Provider
 }
 
-func (s *testProviderSource) registerProvider(ref providers.Reference, provider plugin.Provider) {
+func (s *testProviderSource) registerProvider(ref sdkproviders.Reference, provider plugin.Provider) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
 	s.providers[ref] = provider
 }
 
-func (s *testProviderSource) GetProvider(ref providers.Reference) (plugin.Provider, bool) {
+func (s *testProviderSource) GetProvider(ref sdkproviders.Reference) (plugin.Provider, bool) {
 	s.m.RLock()
 	defer s.m.RUnlock()
 
 	provider, ok := s.providers[ref]
-	if !ok && s.defaultProvider != nil && providers.IsDefaultProvider(ref.URN()) {
+	if !ok && s.defaultProvider != nil && sdkproviders.IsDefaultProvider(ref.URN()) {
 		return s.defaultProvider, true
 	}
 	return provider, ok
@@ -257,7 +260,7 @@ func newProviderEvent(pkg, name string, inputs resource.PropertyMap, parent reso
 		inputs = resource.PropertyMap{}
 	}
 	goal := &resource.Goal{
-		Type:       providers.MakeProviderType(tokens.Package(pkg)),
+		Type:       sdkproviders.MakeProviderType(tokens.Package(pkg)),
 		ID:         "id",
 		Name:       name,
 		Custom:     true,
@@ -308,16 +311,16 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 	}
 
 	newProviderURN := func(pkg tokens.Package, name string, parent resource.URN) resource.URN {
-		return newURN(providers.MakeProviderType(pkg), name, parent)
+		return newURN(sdkproviders.MakeProviderType(pkg), name, parent)
 	}
 
 	componentURN := newURN("component", "component", "")
 
-	providerARef, err := providers.NewReference(newProviderURN("pkgA", "providerA", ""), "id1")
+	providerARef, err := sdkproviders.NewReference(newProviderURN("pkgA", "providerA", ""), "id1")
 	require.NoError(t, err)
-	providerBRef, err := providers.NewReference(newProviderURN("pkgA", "providerB", componentURN), "id2")
+	providerBRef, err := sdkproviders.NewReference(newProviderURN("pkgA", "providerB", componentURN), "id2")
 	require.NoError(t, err)
-	providerCRef, err := providers.NewReference(newProviderURN("pkgC", "providerC", ""), "id1")
+	providerCRef, err := sdkproviders.NewReference(newProviderURN("pkgC", "providerC", ""), "id1")
 	require.NoError(t, err)
 
 	steps := []RegisterResourceEvent{
@@ -344,7 +347,9 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				CustomTimeouts:          nil,
 				ReplaceOnChanges:        nil,
 				RetainOnDelete:          nil,
+				HideDiff:                nil,
 				DeletedWith:             "",
+				ReplaceWith:             nil,
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
@@ -370,8 +375,10 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				ID:                      "",
 				CustomTimeouts:          nil,
 				ReplaceOnChanges:        nil,
+				HideDiff:                nil,
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
+				ReplaceWith:             nil,
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
@@ -398,6 +405,8 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				ReplaceOnChanges:        nil,
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
+				ReplaceWith:             nil,
+				HideDiff:                nil,
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
@@ -427,7 +436,9 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				CustomTimeouts:          nil,
 				ReplaceOnChanges:        nil,
 				RetainOnDelete:          nil,
+				HideDiff:                nil,
 				DeletedWith:             "",
+				ReplaceWith:             nil,
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
@@ -451,9 +462,11 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				Aliases:                 nil,
 				ID:                      "",
 				CustomTimeouts:          nil,
+				HideDiff:                nil,
 				ReplaceOnChanges:        nil,
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
+				ReplaceWith:             nil,
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
@@ -486,7 +499,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		reg := event.(RegisterResourceEvent)
 
 		goal := reg.Goal()
-		if providers.IsProviderType(goal.Type) {
+		if sdkproviders.IsProviderType(goal.Type) {
 			assert.NotEqual(t, "default", goal.Name)
 		}
 		urn := newURN(goal.Type, goal.Name, goal.Parent)
@@ -522,9 +535,11 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				ImportID:                "",
 				RetainOnDelete:          false,
 				DeletedWith:             "",
+				ReplaceWith:             nil,
 				Created:                 nil,
 				Modified:                nil,
 				SourcePosition:          "",
+				HideDiff:                nil,
 				StackTrace:              nil,
 				IgnoreChanges:           nil,
 				ReplaceOnChanges:        nil,
@@ -582,8 +597,10 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				ID:                      "",
 				CustomTimeouts:          nil,
 				ReplaceOnChanges:        nil,
+				HideDiff:                nil,
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
+				ReplaceWith:             nil,
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
@@ -607,10 +624,12 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				AdditionalSecretOutputs: nil,
 				Aliases:                 nil,
 				ID:                      "",
+				HideDiff:                nil,
 				CustomTimeouts:          nil,
 				ReplaceOnChanges:        nil,
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
+				ReplaceWith:             nil,
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
@@ -633,10 +652,12 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				AdditionalSecretOutputs: nil,
 				Aliases:                 nil,
 				ID:                      "",
+				HideDiff:                nil,
 				CustomTimeouts:          nil,
 				ReplaceOnChanges:        nil,
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
+				ReplaceWith:             nil,
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
@@ -658,12 +679,14 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				DeleteBeforeReplace:     nil,
 				IgnoreChanges:           nil,
 				AdditionalSecretOutputs: nil,
+				HideDiff:                nil,
 				Aliases:                 nil,
 				ID:                      "",
 				CustomTimeouts:          nil,
 				ReplaceOnChanges:        nil,
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
+				ReplaceWith:             nil,
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
@@ -682,6 +705,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				InitErrors:              []string{},
 				PropertyDependencies:    nil,
 				DeleteBeforeReplace:     nil,
+				HideDiff:                nil,
 				IgnoreChanges:           nil,
 				AdditionalSecretOutputs: nil,
 				Aliases:                 nil,
@@ -690,6 +714,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				ReplaceOnChanges:        nil,
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
+				ReplaceWith:             nil,
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
@@ -728,9 +753,9 @@ func TestRegisterDefaultProviders(t *testing.T) {
 			id = "id"
 		}
 
-		if providers.IsProviderType(goal.Type) {
+		if sdkproviders.IsProviderType(goal.Type) {
 			assert.Equal(t, "default", goal.Name)
-			ref, err := providers.NewReference(urn, id)
+			ref, err := sdkproviders.NewReference(urn, id)
 			require.NoError(t, err)
 			_, ok := defaults[ref.String()]
 			assert.False(t, ok)
@@ -769,8 +794,10 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				ImportID:                "",
 				RetainOnDelete:          false,
 				DeletedWith:             "",
+				HideDiff:                nil,
 				Created:                 nil,
 				Modified:                nil,
+				ReplaceWith:             nil,
 				SourcePosition:          "",
 				StackTrace:              nil,
 				IgnoreChanges:           nil,
@@ -807,14 +834,14 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	}
 
 	newProviderURN := func(pkg tokens.Package, name string, parent resource.URN) resource.URN {
-		return newURN(providers.MakeProviderType(pkg), name, parent)
+		return newURN(sdkproviders.MakeProviderType(pkg), name, parent)
 	}
 
-	providerARef, err := providers.NewReference(newProviderURN("pkgA", "providerA", ""), "id1")
+	providerARef, err := sdkproviders.NewReference(newProviderURN("pkgA", "providerA", ""), "id1")
 	require.NoError(t, err)
-	providerBRef, err := providers.NewReference(newProviderURN("pkgA", "providerB", ""), "id2")
+	providerBRef, err := sdkproviders.NewReference(newProviderURN("pkgA", "providerB", ""), "id2")
 	require.NoError(t, err)
-	providerCRef, err := providers.NewReference(newProviderURN("pkgC", "providerC", ""), "id1")
+	providerCRef, err := sdkproviders.NewReference(newProviderURN("pkgC", "providerC", ""), "id1")
 	require.NoError(t, err)
 
 	invokes := int32(0)
@@ -826,7 +853,7 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	}
 
 	providerSource := &testProviderSource{
-		providers: map[providers.Reference]plugin.Provider{
+		providers: map[sdkproviders.Reference]plugin.Provider{
 			providerARef: noopProvider,
 			providerBRef: noopProvider,
 			providerCRef: noopProvider,
@@ -894,7 +921,9 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 				ImportID:                "",
 				RetainOnDelete:          false,
 				DeletedWith:             "",
+				ReplaceWith:             nil,
 				Created:                 nil,
+				HideDiff:                nil,
 				Modified:                nil,
 				SourcePosition:          "",
 				StackTrace:              nil,
@@ -963,7 +992,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 	ctx, err := newTestPluginContext(t, program)
 	require.NoError(t, err)
 
-	providerSource := &testProviderSource{providers: make(map[providers.Reference]plugin.Provider)}
+	providerSource := &testProviderSource{providers: make(map[sdkproviders.Reference]plugin.Provider)}
 
 	iter, err := NewEvalSource(ctx, runInfo, nil, nil, EvalSourceOptions{}).Iterate(context.Background(), providerSource)
 	require.NoError(t, err)
@@ -982,9 +1011,9 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 			goal := e.Goal()
 			urn, id := newURN(goal.Type, goal.Name, goal.Parent), resource.ID("id")
 
-			assert.True(t, providers.IsProviderType(goal.Type))
+			assert.True(t, sdkproviders.IsProviderType(goal.Type))
 			assert.Equal(t, "default", goal.Name)
-			ref, err := providers.NewReference(urn, id)
+			ref, err := sdkproviders.NewReference(urn, id)
 			require.NoError(t, err)
 			_, ok := providerSource.GetProvider(ref)
 			assert.False(t, ok)
@@ -1019,8 +1048,10 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 					ImportID:                "",
 					RetainOnDelete:          false,
 					DeletedWith:             "",
+					ReplaceWith:             nil,
 					Created:                 nil,
 					Modified:                nil,
+					HideDiff:                nil,
 					SourcePosition:          "",
 					StackTrace:              nil,
 					IgnoreChanges:           nil,
@@ -1058,10 +1089,12 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 					ImportID:                "",
 					RetainOnDelete:          false,
 					DeletedWith:             "",
+					ReplaceWith:             nil,
 					Created:                 nil,
 					Modified:                nil,
 					SourcePosition:          "",
 					StackTrace:              nil,
+					HideDiff:                nil,
 					IgnoreChanges:           nil,
 					ReplaceOnChanges:        nil,
 					RefreshBeforeUpdate:     false,
@@ -1106,7 +1139,6 @@ func TestDisableDefaultProviders(t *testing.T) {
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, tt := range cases {
-		tt := tt
 		var name []string
 		if tt.disableDefault {
 			name = append(name, "disableDefault")
@@ -1144,12 +1176,12 @@ func TestDisableDefaultProviders(t *testing.T) {
 			}
 
 			newProviderURN := func(pkg tokens.Package, name string, parent resource.URN) resource.URN {
-				return newURN(providers.MakeProviderType(pkg), name, parent)
+				return newURN(sdkproviders.MakeProviderType(pkg), name, parent)
 			}
 
-			providerARef, err := providers.NewReference(newProviderURN("pkgA", "providerA", ""), "id1")
+			providerARef, err := sdkproviders.NewReference(newProviderURN("pkgA", "providerA", ""), "id1")
 			require.NoError(t, err)
-			providerBRef, err := providers.NewReference(newProviderURN("pkgB", "providerB", ""), "id2")
+			providerBRef, err := sdkproviders.NewReference(newProviderURN("pkgB", "providerB", ""), "id2")
 			require.NoError(t, err)
 
 			expectedReads, expectedInvokes, expectedRegisters := 3, 3, 1
@@ -1172,7 +1204,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 			}
 
 			providerSource := &testProviderSource{
-				providers: map[providers.Reference]plugin.Provider{
+				providers: map[sdkproviders.Reference]plugin.Provider{
 					providerARef: noopProvider,
 					providerBRef: noopProvider,
 				},
@@ -1246,9 +1278,11 @@ func TestDisableDefaultProviders(t *testing.T) {
 							ImportID:                "",
 							RetainOnDelete:          false,
 							DeletedWith:             "",
+							ReplaceWith:             nil,
 							Created:                 nil,
 							Modified:                nil,
 							SourcePosition:          "",
+							HideDiff:                nil,
 							StackTrace:              nil,
 							IgnoreChanges:           nil,
 							ReplaceOnChanges:        nil,
@@ -1284,10 +1318,12 @@ func TestDisableDefaultProviders(t *testing.T) {
 							ImportID:                "",
 							RetainOnDelete:          false,
 							DeletedWith:             "",
+							ReplaceWith:             nil,
 							Created:                 nil,
 							Modified:                nil,
 							SourcePosition:          "",
 							StackTrace:              nil,
+							HideDiff:                nil,
 							IgnoreChanges:           nil,
 							ReplaceOnChanges:        nil,
 							RefreshBeforeUpdate:     false,
@@ -1456,7 +1492,6 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -1488,6 +1523,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 					nilIfEmpty(&req.Options.Dependencies)
 					nilIfEmpty(&req.Options.PropertyDependencies)
 					nilIfEmpty(&req.Options.Providers)
+					nilIfEmpty(&req.Options.ReplaceWith)
 
 					got = req.Options
 					return plugin.ConstructResponse{
@@ -1588,7 +1624,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 // 	ctx, err := newTestPluginContext(program)
 // 	require.NoError(t, err)
 
-// 	providerSource := &testProviderSource{providers: make(map[providers.Reference]plugin.Provider)}
+// 	providerSource := &testProviderSource{providers: make(map[sdkproviders.Reference]plugin.Provider)}
 
 // 	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
 // 	require.NoError(t, err)
@@ -1606,10 +1642,10 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 // 			goal := e.Goal()
 // 			urn, id := newURN(goal.Type, goal.Name, goal.Parent), resource.ID("id")
 
-// 			assert.True(t, providers.IsProviderType(goal.Type))
+// 			assert.True(t, sdkproviders.IsProviderType(goal.Type))
 // 			// The name of the provider resource is derived from the version requested.
 // 			assert.Equal(t, "default_0_18_0", goal.Name)
-// 			ref, err := providers.NewReference(urn, id)
+// 			ref, err := sdkproviders.NewReference(urn, id)
 // 			require.NoError(t, err)
 // 			_, ok := providerSource.GetProvider(ref)
 // 			assert.False(t, ok)
@@ -1678,7 +1714,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 // 	ctx, err := newTestPluginContext(program)
 // 	require.NoError(t, err)
 
-// 	providerSource := &testProviderSource{providers: make(map[providers.Reference]plugin.Provider)}
+// 	providerSource := &testProviderSource{providers: make(map[sdkproviders.Reference]plugin.Provider)}
 
 // 	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
 // 	require.NoError(t, err)
@@ -1696,7 +1732,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 // 			goal := e.Goal()
 // 			urn, id := newURN(goal.Type, goal.Name, goal.Parent), resource.ID("id")
 
-// 			if providers.IsProviderType(goal.Type) {
+// 			if sdkproviders.IsProviderType(goal.Type) {
 // 				switch goal.Name {
 // 				case "default_0_18_1":
 // 					assert.False(t, registered181)
@@ -1706,7 +1742,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 // 					registered182 = true
 // 				}
 
-// 				ref, err := providers.NewReference(urn, id)
+// 				ref, err := sdkproviders.NewReference(urn, id)
 // 				require.NoError(t, err)
 // 				_, ok := providerSource.GetProvider(ref)
 // 				assert.False(t, ok)
@@ -1845,7 +1881,6 @@ func TestRequestFromNodeJS(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			actual := requestFromNodeJS(tt.ctx)
@@ -1920,7 +1955,6 @@ func TestTransformAliasForNodeJSCompat(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			actual := transformAliasForNodeJSCompat(tt.input)
@@ -1933,7 +1967,7 @@ type providerSourceMock struct {
 	Provider plugin.Provider
 }
 
-func (ps *providerSourceMock) GetProvider(ref providers.Reference) (plugin.Provider, bool) {
+func (ps *providerSourceMock) GetProvider(ref sdkproviders.Reference) (plugin.Provider, bool) {
 	return ps.Provider, ps.Provider != nil
 }
 
@@ -2011,50 +2045,6 @@ func TestEvalSource(t *testing.T) {
 			}
 			_, err := src.Iterate(context.Background(), &providerSourceMock{})
 			assert.ErrorContains(t, err, "failed to decrypt config")
-			assert.True(t, decrypterCalled)
-		})
-		t.Run("failed to convert config to map", func(t *testing.T) {
-			t.Parallel()
-
-			var called int
-			var decrypterCalled bool
-			src := &evalSource{
-				plugctx: &plugin.Context{
-					Diag: &deploytest.NoopSink{},
-				},
-				runinfo: &EvalRunInfo{
-					ProjectRoot: "/",
-					Pwd:         "/",
-					Program:     ".",
-					Target: &Target{
-						Config: config.Map{
-							config.MustMakeKey("test", "secret"): config.NewSecureValue("secret"),
-						},
-						Decrypter: &decrypterMock{
-							DecryptValueF: func(ctx context.Context, ciphertext string) (string, error) {
-								decrypterCalled = true
-								if called == 0 {
-									// Will cause the next invocation to fail.
-									called++
-									return "", nil
-								}
-								return "", errors.New("expected fail")
-							},
-							BatchDecryptF: func(ctx context.Context, ciphertexts []string) ([]string, error) {
-								decrypterCalled = true
-								if called == 0 {
-									// Will cause the next invocation to fail.
-									called++
-									return []string{}, nil
-								}
-								return nil, errors.New("expected fail")
-							},
-						},
-					},
-				},
-			}
-			_, err := src.Iterate(context.Background(), &providerSourceMock{})
-			assert.ErrorContains(t, err, "failed to convert config to map")
 			assert.True(t, decrypterCalled)
 		})
 	})
@@ -2211,7 +2201,6 @@ func TestParseSourcePosition(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			s := &sourcePositions{
@@ -2741,7 +2730,7 @@ func TestCall(t *testing.T) {
 							"test": resource.NewProperty("test-value"),
 						},
 						req.Args)
-					require.Equal(t, 1, len(req.Options.ArgDependencies))
+					require.Len(t, req.Options.ArgDependencies, 1)
 					assert.ElementsMatch(t,
 						[]resource.URN{
 							"urn:pulumi:stack::project::type::dep1",
@@ -2932,7 +2921,7 @@ func TestCall(t *testing.T) {
 		})
 		require.NoError(t, err)
 		assert.Equal(t,
-			map[string]interface{}{
+			map[string]any{
 				"result": float64(100),
 			}, res.Return.AsMap())
 		assert.Equal(t,
@@ -3192,7 +3181,7 @@ func TestRegisterResource(t *testing.T) {
 			Version: "improper-version",
 			Custom:  true,
 		}
-		require.False(t, providers.IsProviderType(tokens.Type(req.GetType())))
+		require.False(t, sdkproviders.IsProviderType(tokens.Type(req.GetType())))
 		_, err := rm.RegisterResource(context.Background(), req)
 		assert.ErrorContains(t, err, "No Major.Minor.Patch elements found")
 	})
@@ -3211,7 +3200,7 @@ func TestRegisterResource(t *testing.T) {
 			Version: "improper-version",
 			Custom:  true,
 		}
-		require.True(t, providers.IsProviderType(tokens.Type(req.GetType())))
+		require.True(t, sdkproviders.IsProviderType(tokens.Type(req.GetType())))
 		_, err := rm.RegisterResource(context.Background(), req)
 		assert.ErrorContains(t, err, "passed invalid version")
 	})
@@ -3253,7 +3242,7 @@ func TestRegisterResource(t *testing.T) {
 			requests := make(chan defaultProviderRequest, 1)
 			go func() {
 				evt := <-requests
-				ref, err := providers.NewReference(
+				ref, err := sdkproviders.NewReference(
 					"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
 					"b2562429-e255-4b8f-904b-2bd239301ff2")
 				require.NoError(t, err)
@@ -3287,7 +3276,7 @@ func TestRegisterResource(t *testing.T) {
 			requests := make(chan defaultProviderRequest, 1)
 			go func() {
 				evt := <-requests
-				ref, err := providers.NewReference(
+				ref, err := sdkproviders.NewReference(
 					"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
 					"denydefaultprovider")
 				require.NoError(t, err)
@@ -3325,7 +3314,7 @@ func TestRegisterResource(t *testing.T) {
 			requests := make(chan defaultProviderRequest, 1)
 			go func() {
 				evt := <-requests
-				ref, err := providers.NewReference(
+				ref, err := sdkproviders.NewReference(
 					"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
 					"b2562429-e255-4b8f-904b-2bd239301ff2")
 				require.NoError(t, err)
@@ -3361,7 +3350,7 @@ func TestRegisterResource(t *testing.T) {
 		requests := make(chan defaultProviderRequest, 1)
 		go func() {
 			evt := <-requests
-			ref, err := providers.NewReference(
+			ref, err := sdkproviders.NewReference(
 				"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
 				"b2562429-e255-4b8f-904b-2bd239301ff2")
 			require.NoError(t, err)
@@ -3575,7 +3564,7 @@ func TestValidationFailures(t *testing.T) {
 		requests := make(chan defaultProviderRequest, 1)
 		go func() {
 			evt := <-requests
-			ref, err := providers.NewReference(
+			ref, err := sdkproviders.NewReference(
 				"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
 				"b2562429-e255-4b8f-904b-2bd239301ff2")
 			require.NoError(t, err)
@@ -3715,7 +3704,6 @@ func TestDowngradeOutputValues(t *testing.T) {
 	}
 
 	for _, tt := range cases {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			actual := downgradeOutputValues(tt.input)

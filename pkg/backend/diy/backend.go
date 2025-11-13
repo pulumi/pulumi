@@ -466,7 +466,6 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 
 	var upgraded atomic.Int64 // number of stacks successfully upgraded
 	for idx, old := range olds {
-		idx, old := idx, old
 		pool.Enqueue(func() error {
 			project := projects[idx]
 			if project == "" {
@@ -698,33 +697,6 @@ func (b *diyBackend) DoesProjectExist(ctx context.Context, _ string, projectName
 	return projStore.ProjectExists(ctx, projectName)
 }
 
-// Confirm the specified stack's project doesn't contradict the meta.yaml of the current project.
-// If the CWD is not in a Pulumi project, does not contradict.
-// If the project name in Pulumi.yaml is "foo", a stack with a name of bar/foo should not work.
-func currentProjectContradictsWorkspace(stack *diyBackendReference) bool {
-	contract.Requiref(stack != nil, "stack", "is nil")
-
-	if stack.project == "" {
-		return false
-	}
-
-	projPath, err := workspace.DetectProjectPath()
-	if err != nil {
-		return false
-	}
-
-	if projPath == "" {
-		return false
-	}
-
-	proj, err := workspace.LoadProject(projPath)
-	if err != nil {
-		return false
-	}
-
-	return proj.Name.String() != stack.project.String()
-}
-
 func (b *diyBackend) CreateStack(
 	ctx context.Context,
 	stackRef backend.StackReference,
@@ -739,6 +711,10 @@ func (b *diyBackend) CreateStack(
 		return nil, backend.ErrConfigNotSupported
 	}
 
+	if err := backend.CurrentProjectContradictsWorkspace(b.currentProject.Load(), stackRef); err != nil {
+		return nil, err
+	}
+
 	diyStackRef, err := b.getReference(stackRef)
 	if err != nil {
 		return nil, err
@@ -750,10 +726,6 @@ func (b *diyBackend) CreateStack(
 	}
 	defer b.Unlock(ctx, stackRef)
 
-	if currentProjectContradictsWorkspace(diyStackRef) {
-		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", diyStackRef.project)
-	}
-
 	stackName := diyStackRef.FullyQualifiedName()
 	if stackName == "" {
 		return nil, errors.New("invalid empty stack name")
@@ -763,7 +735,7 @@ func (b *diyBackend) CreateStack(
 		return nil, &backenderr.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
-	_, err = b.saveStack(ctx, diyStackRef, nil)
+	_, err = b.saveStack(ctx, diyStackRef, apitype.TypedDeployment{})
 	if err != nil {
 		return nil, err
 	}
@@ -840,7 +812,6 @@ func (b *diyBackend) ListStacks(
 
 	// Enqueue work for each stack
 	for i, stackRef := range filteredStacks {
-		i, stackRef := i, stackRef // https://golang.org/doc/faq#closures_and_goroutines
 		pool.Enqueue(func() error {
 			// TODO: Improve getCheckpoint to return errCheckpointNotFound directly when the checkpoint doesn't exist,
 			// instead of having to call stackExists separately.
@@ -1151,8 +1122,8 @@ func (b *diyBackend) apply(
 		return nil, nil, err
 	}
 
-	if currentProjectContradictsWorkspace(diyStackRef) {
-		return nil, nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", diyStackRef.project)
+	if err := backend.CurrentProjectContradictsWorkspace(b.currentProject.Load(), stackRef); err != nil {
+		return nil, nil, err
 	}
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)

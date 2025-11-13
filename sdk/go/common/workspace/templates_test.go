@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,9 +21,158 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// TestGetTemplateGitRepository tests that environment variables correctly override
+// the compile-time defaults for template repository URLs.
+func TestGetTemplateGitRepository(t *testing.T) {
+	tests := []struct {
+		name            string
+		templateKind    TemplateKind
+		envVar          string
+		envValue        string
+		setEmptyString  bool
+		expectedDefault string
+	}{
+		{
+			name:            "PulumiProject without env var",
+			templateKind:    TemplateKindPulumiProject,
+			envVar:          env.TemplateGitRepository.Var().Name(),
+			envValue:        "",
+			setEmptyString:  false,
+			expectedDefault: "https://github.com/pulumi/templates.git",
+		},
+		{
+			name:            "PulumiProject with empty string env var",
+			templateKind:    TemplateKindPulumiProject,
+			envVar:          env.TemplateGitRepository.Var().Name(),
+			envValue:        "",
+			setEmptyString:  true,
+			expectedDefault: "https://github.com/pulumi/templates.git",
+		},
+		{
+			name:            "PulumiProject with env var",
+			templateKind:    TemplateKindPulumiProject,
+			envVar:          env.TemplateGitRepository.Var().Name(),
+			envValue:        "https://github.com/custom/templates.git",
+			setEmptyString:  false,
+			expectedDefault: "https://github.com/custom/templates.git",
+		},
+		{
+			name:            "PolicyPack without env var",
+			templateKind:    TemplateKindPolicyPack,
+			envVar:          env.PolicyTemplateGitRepository.Var().Name(),
+			envValue:        "",
+			setEmptyString:  false,
+			expectedDefault: "https://github.com/pulumi/templates-policy.git",
+		},
+		{
+			name:            "PolicyPack with empty string env var",
+			templateKind:    TemplateKindPolicyPack,
+			envVar:          env.PolicyTemplateGitRepository.Var().Name(),
+			envValue:        "",
+			setEmptyString:  true,
+			expectedDefault: "https://github.com/pulumi/templates-policy.git",
+		},
+		{
+			name:            "PolicyPack with env var",
+			templateKind:    TemplateKindPolicyPack,
+			envVar:          env.PolicyTemplateGitRepository.Var().Name(),
+			envValue:        "https://github.com/custom/templates-policy.git",
+			setEmptyString:  false,
+			expectedDefault: "https://github.com/custom/templates-policy.git",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set up environment variable if specified
+			if tt.envValue != "" || tt.setEmptyString {
+				t.Setenv(tt.envVar, tt.envValue)
+			}
+
+			result := getTemplateGitRepository(tt.templateKind)
+			assert.Equal(t, tt.expectedDefault, result)
+		})
+	}
+}
+
+// TestGetTemplateBranch tests that environment variables correctly override
+// the compile-time defaults for template branch names.
+func TestGetTemplateBranch(t *testing.T) {
+	tests := []struct {
+		name            string
+		templateKind    TemplateKind
+		envVar          string
+		envValue        string
+		setEmptyString  bool
+		expectedDefault string
+	}{
+		{
+			name:            "PulumiProject without env var",
+			templateKind:    TemplateKindPulumiProject,
+			envVar:          env.TemplateBranch.Var().Name(),
+			envValue:        "",
+			setEmptyString:  false,
+			expectedDefault: "master",
+		},
+		{
+			name:            "PulumiProject with empty string env var",
+			templateKind:    TemplateKindPulumiProject,
+			envVar:          env.TemplateBranch.Var().Name(),
+			envValue:        "",
+			setEmptyString:  true,
+			expectedDefault: "master",
+		},
+		{
+			name:            "PulumiProject with env var",
+			templateKind:    TemplateKindPulumiProject,
+			envVar:          env.TemplateBranch.Var().Name(),
+			envValue:        "custom-branch",
+			setEmptyString:  false,
+			expectedDefault: "custom-branch",
+		},
+		{
+			name:            "PolicyPack without env var",
+			templateKind:    TemplateKindPolicyPack,
+			envVar:          env.PolicyTemplateBranch.Var().Name(),
+			envValue:        "",
+			setEmptyString:  false,
+			expectedDefault: "master",
+		},
+		{
+			name:            "PolicyPack with empty string env var",
+			templateKind:    TemplateKindPolicyPack,
+			envVar:          env.PolicyTemplateBranch.Var().Name(),
+			envValue:        "",
+			setEmptyString:  true,
+			expectedDefault: "master",
+		},
+		{
+			name:            "PolicyPack with env var",
+			templateKind:    TemplateKindPolicyPack,
+			envVar:          env.PolicyTemplateBranch.Var().Name(),
+			envValue:        "custom-branch",
+			setEmptyString:  false,
+			expectedDefault: "custom-branch",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set up environment variable if specified
+			if tt.envValue != "" || tt.setEmptyString {
+				t.Setenv(tt.envVar, tt.envValue)
+			}
+
+			result := getTemplateBranch(tt.templateKind)
+			assert.Equal(t, tt.expectedDefault, result)
+		})
+	}
+}
 
 //nolint:paralleltest // uses shared state in pulumi dir
 func TestRetrieveNonExistingTemplate(t *testing.T) {
@@ -43,7 +192,6 @@ func TestRetrieveNonExistingTemplate(t *testing.T) {
 
 	templateName := "not-the-template-that-exists-in-pulumi-repo-nor-on-disk"
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			t.Parallel()
 
@@ -80,7 +228,6 @@ Did you mean this?
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.templateName, func(t *testing.T) {
 			_, err := RetrieveTemplates(context.Background(), tt.templateName, false, TemplateKindPulumiProject)
 			assert.ErrorAs(t, err, &TemplateNotFoundError{})
@@ -109,7 +256,6 @@ func TestRetrieveStandardTemplate(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			repository, err := RetrieveTemplates(context.Background(), tt.templateName, false, tt.templateKind)
 			require.NoError(t, err)
@@ -153,7 +299,6 @@ func TestRetrieveHttpsTemplate(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			repository, err := RetrieveTemplates(context.Background(), tt.templateURL, false, tt.templateKind)
 			require.NoError(t, err)
@@ -203,7 +348,6 @@ func TestRetrieveHttpsTemplateOffline(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			t.Parallel()
 
@@ -230,7 +374,6 @@ func TestRetrieveFileTemplate(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			repository, err := RetrieveTemplates(context.Background(), ".", false, tt.templateKind)
 			require.NoError(t, err)
@@ -288,7 +431,6 @@ func TestCopyTemplateFiles(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run("Copy "+tt.testName+": force=false", func(t *testing.T) {
 			testDataDir := "CopyTemplateFilesTestData-Copy"
 
@@ -305,7 +447,6 @@ func TestCopyTemplateFiles(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run("Copy "+tt.testName+": force=true", func(t *testing.T) {
 			testDataDir := "CopyTemplateFilesTestData-CopyForce"
 
@@ -322,7 +463,6 @@ func TestCopyTemplateFiles(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run("Overwrite "+tt.testName+": force=false", func(t *testing.T) {
 			testDataDir := "CopyTemplateFilesTestData-Overwrite"
 
@@ -342,7 +482,6 @@ func TestCopyTemplateFiles(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run("Overwrite "+tt.testName+": force=true", func(t *testing.T) {
 			testDataDir := "CopyTemplateFilesTestData-OverwriteForce"
 

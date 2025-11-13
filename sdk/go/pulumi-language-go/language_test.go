@@ -20,6 +20,7 @@ import (
 	"io"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
@@ -109,8 +110,7 @@ var expectedFailures = map[string]string{
 	"l2-component-program-resource-ref":   "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement", //nolint:lll
 	"l2-component-component-resource-ref": "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement", //nolint:lll
 	"l2-component-call-simple":            "pulumi#18202: syntax error: unexpected / in parameter list; possibly missing comma or )",                       //nolint:lll
-	"l2-invoke-scalar":                    "not implemented yet: #19388",
-	"l2-resource-invoke-dynamic-function": "pulumi#18423: pulumi.Interface{} unexpected {, expected )", //nolint:lll
+	"l2-resource-invoke-dynamic-function": "pulumi#18423: pulumi.Interface{} unexpected {, expected )",                                                     //nolint:lll
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.
@@ -152,70 +152,87 @@ func TestLanguage(t *testing.T) {
 	tests, err := engine.GetLanguageTests(t.Context(), &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
 
-	cancel := make(chan bool)
-
-	// Run the language plugin
-	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(engineAddress, "", "")
-			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
-			return nil
-		},
-		Cancel: cancel,
-	})
-	require.NoError(t, err)
-
-	// Create a temp project dir for the test to run in
-	rootDir := t.TempDir()
-
-	snapshotDir := "./testdata/"
-
-	// Prepare to run the tests
-	prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
-		LanguagePluginName:   "go",
-		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
-		TemporaryDirectory:   rootDir,
-		SnapshotDirectory:    snapshotDir,
-		CoreSdkDirectory:     "../..",
-		CoreSdkVersion:       sdk.Version.String(),
-		PolicyPackDirectory:  "./testdata/policies",
-		SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
-			{
-				Path:        "go\\.mod",
-				Pattern:     rootDir + "/artifacts",
-				Replacement: "/ROOT/artifacts",
-			},
-		},
-		ProgramOverrides: programOverrides,
-	})
-	require.NoError(t, err)
-
-	for _, tt := range tests.Tests {
-		tt := tt
-		t.Run(tt, func(t *testing.T) {
-			t.Parallel()
-
-			if expected, ok := expectedFailures[tt]; ok {
-				t.Skipf("Skipping known failure: %s", expected)
-			}
-
-			result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
-				Token: prepare.Token,
-				Test:  tt,
+	for _, local := range []bool{false, true} {
+		t.Run(fmt.Sprintf("local=%v", local), func(t *testing.T) {
+			cancel := make(chan bool)
+			// Run the language plugin
+			handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+				Init: func(srv *grpc.Server) error {
+					host := newLanguageHost(engineAddress, "", "")
+					pulumirpc.RegisterLanguageRuntimeServer(srv, host)
+					return nil
+				},
+				Cancel: cancel,
 			})
-
 			require.NoError(t, err)
-			for _, msg := range result.Messages {
-				t.Log(msg)
+
+			// Create a temp project dir for the test to run in
+			rootDir := t.TempDir()
+
+			snapshotDir := "./testdata"
+			if local {
+				snapshotDir += "/local"
+			} else {
+				snapshotDir += "/published"
 			}
-			ptesting.LogTruncated(t, "stdout", result.Stdout)
-			ptesting.LogTruncated(t, "stderr", result.Stderr)
-			assert.True(t, result.Success)
+
+			// Prepare to run the tests
+			prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
+				LanguagePluginName:   "go",
+				LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
+				TemporaryDirectory:   rootDir,
+				SnapshotDirectory:    snapshotDir,
+				CoreSdkDirectory:     "../..",
+				CoreSdkVersion:       sdk.Version.String(),
+				PolicyPackDirectory:  "./testdata/policies",
+				Local:                local,
+				SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
+					{
+						Path:        "(.+/)?go\\.mod",
+						Pattern:     rootDir + "/",
+						Replacement: "/ROOT/",
+					},
+				},
+				ProgramOverrides: programOverrides,
+			})
+			require.NoError(t, err)
+
+			for _, tt := range tests.Tests {
+				t.Run(tt, func(t *testing.T) {
+					t.Parallel()
+
+					// We can skip the l1- local tests without any SDK there's nothing new being tested here.
+					if local && strings.HasPrefix(tt, "l1-") {
+						t.Skip("Skipping l1- tests in local mode")
+					}
+
+					if expected, ok := expectedFailures[tt]; ok {
+						t.Skipf("Skipping known failure: %s", expected)
+					}
+
+					if _, has := programOverrides[tt]; local && has {
+						t.Skip("Skipping override tests in local mode")
+					}
+
+					result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
+						Token: prepare.Token,
+						Test:  tt,
+					})
+
+					require.NoError(t, err)
+					for _, msg := range result.Messages {
+						t.Log(msg)
+					}
+					ptesting.LogTruncated(t, "stdout", result.Stdout)
+					ptesting.LogTruncated(t, "stderr", result.Stderr)
+					assert.True(t, result.Success)
+				})
+			}
+
+			t.Cleanup(func() {
+				close(cancel)
+				require.NoError(t, <-handle.Done)
+			})
 		})
 	}
-
-	t.Cleanup(func() {
-		close(cancel)
-		require.NoError(t, <-handle.Done)
-	})
 }

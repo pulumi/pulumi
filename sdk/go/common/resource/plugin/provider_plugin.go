@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -167,7 +167,7 @@ func GetProviderAttachPort(pkg tokens.Package) (*int, error) {
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
-	options map[string]interface{}, disableProviderPreview bool, jsonConfig string,
+	options map[string]any, disableProviderPreview bool, jsonConfig string,
 	projectName tokens.PackageName,
 ) (Provider, error) {
 	// See if this is a provider we just want to attach to
@@ -197,6 +197,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 				ConfigureWithUrn:            true,
 				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
+				InvokeWithPreview:           true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -253,6 +254,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 				ConfigureWithUrn:            true,
 				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
+				InvokeWithPreview:           true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -322,6 +324,7 @@ func handshake(
 		ConfigureWithUrn:            req.ConfigureWithUrn,
 		SupportsViews:               req.SupportsViews,
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
+		InvokeWithPreview:           req.InvokeWithPreview,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -350,7 +353,7 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 	)
 
 	if ctx.DialOptions != nil {
-		metadata := map[string]interface{}{
+		metadata := map[string]any{
 			"mode": "client",
 			"kind": "resource",
 		}
@@ -381,6 +384,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			ConfigureWithUrn:            true,
 			SupportsViews:               true,
 			SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
+			InvokeWithPreview:           true,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -496,6 +500,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		ConfigureWithUrn:            req.ConfigureWithUrn,
 		SupportsViews:               req.SupportsViews,
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
+		InvokeWithPreview:           req.InvokeWithPreview,
 	})
 	if err != nil {
 		return nil, err
@@ -829,7 +834,7 @@ func annotateSecrets(outs, ins resource.PropertyMap) {
 	}
 }
 
-func removeSecrets(v resource.PropertyValue) interface{} {
+func removeSecrets(v resource.PropertyValue) any {
 	switch {
 	case v.IsNull():
 		return nil
@@ -840,7 +845,7 @@ func removeSecrets(v resource.PropertyValue) interface{} {
 	case v.IsString():
 		return v.StringValue()
 	case v.IsArray():
-		arr := []interface{}{}
+		arr := []any{}
 		for _, v := range v.ArrayValue() {
 			arr = append(arr, removeSecrets(v))
 		}
@@ -857,7 +862,7 @@ func removeSecrets(v resource.PropertyValue) interface{} {
 		return removeSecrets(v.SecretValue().Element)
 	default:
 		contract.Assertf(v.IsObject(), "v is not Object '%v' instead", v.TypeString())
-		obj := map[string]interface{}{}
+		obj := map[string]any{}
 		for k, v := range v.ObjectValue() {
 			obj[string(k)] = removeSecrets(v)
 		}
@@ -1881,6 +1886,12 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		configSecretKeys = append(configSecretKeys, k.String())
 	}
 
+	// Marshal the replace with.
+	replaceWithURNs := make([]string, len(req.Options.ReplaceWith))
+	for i, urn := range req.Options.ReplaceWith {
+		replaceWithURNs[i] = string(urn)
+	}
+
 	// Marshal the resource hook bindings.
 	var resourceHook *pulumirpc.ConstructRequest_ResourceHooksBinding
 	if len(req.Options.ResourceHooks) > 0 {
@@ -1912,6 +1923,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		Dependencies:            dependencies,
 		AdditionalSecretOutputs: req.Options.AdditionalSecretOutputs,
 		DeletedWith:             string(req.Options.DeletedWith),
+		ReplaceWith:             replaceWithURNs,
 		DeleteBeforeReplace:     req.Options.DeleteBeforeReplace,
 		IgnoreChanges:           req.Options.IgnoreChanges,
 		ReplaceOnChanges:        req.Options.ReplaceOnChanges,
@@ -1992,8 +2004,9 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 	}
 
 	resp, err := client.Invoke(p.requestContext(), &pulumirpc.InvokeRequest{
-		Tok:  string(req.Tok),
-		Args: margs,
+		Tok:     string(req.Tok),
+		Args:    margs,
+		Preview: req.Preview,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -2319,7 +2332,7 @@ func decorateSpanWithType(span opentracing.Span, urn string) {
 	}
 }
 
-func decorateProviderSpans(span opentracing.Span, method string, req, resp interface{}, grpcError error) {
+func decorateProviderSpans(span opentracing.Span, method string, req, resp any, grpcError error) {
 	if req == nil {
 		return
 	}

@@ -98,7 +98,7 @@ func (s *Source) addErrorOnEmpty(err error) {
 
 func (s *Source) lockOpen(action string) {
 	s.m.Lock()
-	contract.Assertf(!s.closed, "Attempted to act on closed source: "+action)
+	contract.Assertf(!s.closed, "%s", "Attempted to act on closed source: "+action)
 }
 
 // Close cleans up the [Source] and any associated templates.
@@ -119,11 +119,13 @@ func (s *Source) Close() error {
 	return errors.Join(errs...)
 }
 
+// A template entry to show in the chooser.
 type Template interface {
 	Name() string
+	DisplayName() string
 	Description() string
-	ProjectDescription() string
 	Error() error
+	// Download the template and return an instantiable [workspace.Template] for this template.
 	Download(ctx context.Context) (workspace.Template, error)
 }
 

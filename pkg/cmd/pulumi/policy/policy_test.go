@@ -21,7 +21,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,18 +32,6 @@ func skipIfShortOrNoPulumiAccessToken(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipped in short test run")
 	}
-}
-
-func chdir(t *testing.T, dir string) {
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	require.NoError(t, os.Chdir(dir)) // Set directory
-	t.Cleanup(func() {
-		require.NoError(t, os.Chdir(cwd)) // Restore directory
-		restoredDir, err := os.Getwd()
-		require.NoError(t, err)
-		assert.Equal(t, cwd, restoredDir)
-	})
 }
 
 func tempProjectDir(t *testing.T) string {

@@ -46,7 +46,7 @@ func init() {
 
 					explicitProvider := RequireSingleNamedResource(l, snap.Resources, "prov")
 					require.Equal(l, "pulumi:providers:config", explicitProvider.Type.String(), "expected explicit provider resource")
-					expectedOutputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+					expectedOutputs := resource.NewPropertyMapFromMap(map[string]any{
 						"name":              "my config",
 						"pluginDownloadURL": "not the same as the pulumi resource option",
 						"version":           "9.0.0",
@@ -54,7 +54,7 @@ func init() {
 					expectedInputs := deepcopy.Copy(expectedOutputs).(resource.PropertyMap)
 					// inputs should also have the __internal key
 					expectedInputs[resource.PropertyKey("__internal")] = resource.NewProperty(
-						resource.NewPropertyMapFromMap(map[string]interface{}{
+						resource.NewPropertyMapFromMap(map[string]any{
 							"pluginDownloadURL": "http://example.com",
 						}))
 					require.Equal(l, expectedInputs, explicitProvider.Inputs)
@@ -62,14 +62,14 @@ func init() {
 
 					defaultProvider := RequireSingleNamedResource(l, snap.Resources, "default_9_0_0_http_/example.com")
 					require.Equal(l, "pulumi:providers:config", defaultProvider.Type.String(), "expected default provider resource")
-					expectedOutputs = resource.NewPropertyMapFromMap(map[string]interface{}{
+					expectedOutputs = resource.NewPropertyMapFromMap(map[string]any{
 						"version": "9.0.0",
 						"name":    "hello",
 					})
 					expectedInputs = deepcopy.Copy(expectedOutputs).(resource.PropertyMap)
 					// inputs should also have the __internal key
 					expectedInputs[resource.PropertyKey("__internal")] = resource.NewProperty(
-						resource.NewPropertyMapFromMap(map[string]interface{}{
+						resource.NewPropertyMapFromMap(map[string]any{
 							"pluginDownloadURL": "http://example.com",
 						}))
 					require.Equal(l, expectedInputs, defaultProvider.Inputs)

@@ -39,8 +39,8 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
@@ -76,7 +76,7 @@ func (s *traceSample) key() string {
 func findGRPCPayloads(t *appdash.Trace) []string {
 	return fx.ToSlice(fx.FMap(fx.IterSlice(t.Annotations), func(a appdash.Annotation) (string, bool) {
 		if a.Key == "Msg" {
-			var msg map[string]interface{}
+			var msg map[string]any
 			if err := json.Unmarshal(a.Value, &msg); err == nil {
 				if req, ok := msg["gRPC request"]; ok {
 					s, _ := req.(string)

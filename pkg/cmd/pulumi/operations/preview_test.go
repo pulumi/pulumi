@@ -22,7 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
@@ -89,7 +89,7 @@ func addDefaultProvider(t *testing.T, typ tokens.Type, events chan<- engine.Even
 	pkg := typ.Package()
 	if pkg != "" {
 		state := makeStateMetadata(t, "default_1_2_3", providers.MakeProviderType(pkg), true, stateOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{
 				"version": "1.2.3",
 			}),
 		})
@@ -148,7 +148,6 @@ func TestBuildImportFile_SingleResource(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -307,7 +306,7 @@ func TestBuildImportFile_ExistingProvider(t *testing.T) {
 
 	// And then same a provider resource
 	providerState := makeStateMetadata(t, "prov", "pulumi:providers:pkg", true, stateOptions{
-		Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+		Inputs: resource.NewPropertyMapFromMap(map[string]any{
 			"version": "3.2.1",
 		}),
 	})

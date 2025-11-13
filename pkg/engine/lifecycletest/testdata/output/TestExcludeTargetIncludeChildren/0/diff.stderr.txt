@@ -1,2 +1,0 @@
-<{%fg 1%}>error: <{%reset%}><{%reset%}>post-step event returned an error: failed to verify snapshot: child resource urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB refers to missing parent urn:pulumi:test::test::pkgA:m:typA::resA<{%reset%}>
-<{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>

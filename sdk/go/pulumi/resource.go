@@ -437,6 +437,9 @@ type ResourceOptions struct {
 	// IgnoreChanges lists properties changes to which should be ignored.
 	IgnoreChanges []string
 
+	// HideDiffs lists property paths which shouldn't be displayed during diffs.
+	HideDiffs []string
+
 	// Import specifies that the provider for this resource
 	// should import its state from a cloud resource with the given ID.
 	Import IDInput
@@ -493,6 +496,10 @@ type ResourceOptions struct {
 	// also deletes this resource.
 	DeletedWith Resource
 
+	// ReplaceWith holds a list of container resources that, if replaced,
+	// also trigger a replace of this resource.
+	ReplaceWith []Resource
+
 	// Hooks are the optional resource hooks to bind to this resource. The hooks
 	// will be invoked during the lifecycle of the resource.
 	Hooks *ResourceHookBinding
@@ -518,6 +525,7 @@ type resourceOptions struct {
 	DeleteBeforeReplace     *bool
 	DependsOn               []dependencySet
 	IgnoreChanges           []string
+	HideDiffs               []string
 	Import                  IDInput
 	Parent                  Resource
 	Protect                 *bool
@@ -531,6 +539,7 @@ type resourceOptions struct {
 	PluginDownloadURL       string
 	RetainOnDelete          *bool
 	DeletedWith             Resource
+	ReplaceWith             []Resource
 	Parameterization        []byte
 	Hooks                   *ResourceHookBinding
 }
@@ -583,6 +592,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		DependsOn:               dependsOn,
 		DependsOnInputs:         dependsOnInputs,
 		IgnoreChanges:           ro.IgnoreChanges,
+		HideDiffs:               ro.HideDiffs,
 		Import:                  ro.Import,
 		Parent:                  ro.Parent,
 		Protect:                 flatten(ro.Protect),
@@ -596,6 +606,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		PluginDownloadURL:       ro.PluginDownloadURL,
 		RetainOnDelete:          flatten(ro.RetainOnDelete),
 		DeletedWith:             ro.DeletedWith,
+		ReplaceWith:             ro.ReplaceWith,
 		Hooks:                   ro.Hooks,
 	}
 }
@@ -872,6 +883,13 @@ func IgnoreChanges(o []string) ResourceOption {
 	})
 }
 
+// Hide the diffs for a set of property paths.
+func HideDiffs(paths []string) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.HideDiffs = append(ro.HideDiffs, paths...)
+	})
+}
+
 // Import, when provided with a resource ID, indicates that this resource's provider should import its state from
 // the cloud resource with the given ID. The inputs to the resource's constructor must align with the resource's
 // current state. Once a resource has been imported, the import property must be removed from the resource's
@@ -1082,6 +1100,14 @@ func RetainOnDelete(b bool) ResourceOption {
 func DeletedWith(r Resource) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.DeletedWith = r
+	})
+}
+
+// If set, the providers Replace method will not be called for this resource if
+// any of the specified resources is replaced.
+func ReplaceWith(r []Resource) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.ReplaceWith = r
 	})
 }
 

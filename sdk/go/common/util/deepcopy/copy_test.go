@@ -25,7 +25,7 @@ import (
 func TestDeepCopy(t *testing.T) {
 	t.Parallel()
 
-	cases := []interface{}{
+	cases := []any{
 		bool(false),
 		bool(true),
 		int(-42),
@@ -68,8 +68,8 @@ func TestDeepCopy(t *testing.T) {
 				"alpha": "beta",
 			},
 		},
-		map[string]interface{}{
-			"foo": map[string]interface{}{
+		map[string]any{
+			"foo": map[string]any{
 				"bar": "baz",
 			},
 			"bar": []int{42},
@@ -77,7 +77,6 @@ func TestDeepCopy(t *testing.T) {
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for i, c := range cases {
-		i, c := i, c
 		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
 			t.Parallel()
 			assert.EqualValues(t, c, Copy(c))

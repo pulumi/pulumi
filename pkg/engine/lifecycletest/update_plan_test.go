@@ -78,14 +78,14 @@ func TestPlannedUpdate(t *testing.T) {
 	project := p.GetProject()
 
 	// Generate a plan.
-	computed := interface{}(resource.Computed{Element: resource.NewProperty("")})
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	computed := any(resource.Computed{Element: resource.NewProperty("")})
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
-		"baz": map[string]interface{}{
+		"baz": map[string]any{
 			"a": 42,
 			"b": computed,
 		},
-		"qux": []interface{}{
+		"qux": []any{
 			computed,
 			24,
 		},
@@ -96,8 +96,8 @@ func TestPlannedUpdate(t *testing.T) {
 
 	// Attempt to run an update using the plan.
 	expectError = true
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
-		"qux": []interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
+		"qux": []any{
 			"alpha",
 			24,
 		},
@@ -118,13 +118,13 @@ func TestPlannedUpdate(t *testing.T) {
 
 	// Attempt to run an update using the plan.
 	expectError = false
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
-		"baz": map[string]interface{}{
+		"baz": map[string]any{
 			"a": 42,
 			"b": "alpha",
 		},
-		"qux": []interface{}{
+		"qux": []any{
 			"beta",
 			24,
 		},
@@ -137,13 +137,13 @@ func TestPlannedUpdate(t *testing.T) {
 	// Check the resource's state.
 	require.Len(t, snap.Resources, 2)
 
-	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
+	expected := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
-		"baz": map[string]interface{}{
+		"baz": map[string]any{
 			"a": 42,
 			"b": "alpha",
 		},
-		"qux": []interface{}{
+		"qux": []any{
 			"beta",
 			24,
 		},
@@ -169,7 +169,7 @@ func TestUnplannedCreate(t *testing.T) {
 		}),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 	createResource := false
@@ -231,7 +231,7 @@ func TestUnplannedDelete(t *testing.T) {
 		}),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 	createAllResources := true
@@ -304,7 +304,7 @@ func TestExpectedDelete(t *testing.T) {
 		}),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 	createAllResources := true
@@ -384,7 +384,7 @@ func TestExpectedCreate(t *testing.T) {
 		}),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 	createAllResources := false
@@ -458,7 +458,7 @@ func TestPropertySetChange(t *testing.T) {
 		}),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins := resource.NewPropertyMapFromMap(map[string]any{
 		"foo":  "bar",
 		"frob": "baz",
 	})
@@ -493,7 +493,7 @@ func TestPropertySetChange(t *testing.T) {
 	require.NoError(t, err)
 
 	// Now change the runtime to not return property "frob", this should error
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 	expectError = true
@@ -523,7 +523,7 @@ func TestExpectedUnneededCreate(t *testing.T) {
 		}),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -586,7 +586,7 @@ func TestExpectedUnneededDelete(t *testing.T) {
 		}),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 	createResource := true
@@ -670,7 +670,7 @@ func TestResoucesWithSames(t *testing.T) {
 
 		if createB {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-				Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				Inputs: resource.NewPropertyMapFromMap(map[string]any{
 					"X": "Y",
 				}),
 			})
@@ -693,8 +693,8 @@ func TestResoucesWithSames(t *testing.T) {
 	// Generate a plan to create A
 	createA = true
 	createB = false
-	computed := interface{}(resource.Computed{Element: resource.NewProperty("")})
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	computed := any(resource.Computed{Element: resource.NewProperty("")})
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 		"zed": computed,
 	})
@@ -710,7 +710,7 @@ func TestResoucesWithSames(t *testing.T) {
 	// Check the resource's state.
 	require.Len(t, snap.Resources, 2)
 
-	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
+	expected := resource.NewPropertyMapFromMap(map[string]any{
 		"X": "Y",
 	})
 	assert.Equal(t, expected, snap.Resources[1].Outputs)
@@ -718,7 +718,7 @@ func TestResoucesWithSames(t *testing.T) {
 	// Attempt to run an update with the plan on the stack that creates A and sames B
 	createA = true
 	createB = true
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 		"zed": 24,
 	})
@@ -729,12 +729,12 @@ func TestResoucesWithSames(t *testing.T) {
 	// Check the resource's state.
 	require.Len(t, snap.Resources, 3)
 
-	expected = resource.NewPropertyMapFromMap(map[string]interface{}{
+	expected = resource.NewPropertyMapFromMap(map[string]any{
 		"X": "Y",
 	})
 	assert.Equal(t, expected, snap.Resources[2].Outputs)
 
-	expected = resource.NewPropertyMapFromMap(map[string]interface{}{
+	expected = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 		"zed": 24,
 	})
@@ -786,14 +786,14 @@ func TestPlannedPreviews(t *testing.T) {
 	project := p.GetProject()
 
 	// Generate a plan.
-	computed := interface{}(resource.Computed{Element: resource.NewProperty("")})
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	computed := any(resource.Computed{Element: resource.NewProperty("")})
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
-		"baz": map[string]interface{}{
+		"baz": map[string]any{
 			"a": 42,
 			"b": computed,
 		},
-		"qux": []interface{}{
+		"qux": []any{
 			computed,
 			24,
 		},
@@ -804,8 +804,8 @@ func TestPlannedPreviews(t *testing.T) {
 
 	// Attempt to run a new preview using the plan, given we've changed the property set this should fail
 	expectError = true
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
-		"qux": []interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
+		"qux": []any{
 			"alpha",
 			24,
 		},
@@ -819,13 +819,13 @@ func TestPlannedPreviews(t *testing.T) {
 
 	// Attempt to run an preview using the plan, such that the property set is now valid
 	expectError = false
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
-		"baz": map[string]interface{}{
+		"baz": map[string]any{
 			"a": 42,
 			"b": computed,
 		},
-		"qux": []interface{}{
+		"qux": []any{
 			"beta",
 			24,
 		},
@@ -881,7 +881,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 	project := p.GetProject()
 
 	// Set initial data for foo and zed
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 		"zed": 24,
 	})
@@ -889,7 +889,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 	require.NoError(t, err)
 
 	// Generate a plan that we want to change foo
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "baz",
 		"zed": 24,
 	})
@@ -897,7 +897,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 	require.NoError(t, err)
 
 	// Change zed in the stack
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 		"zed": 26,
 	})
@@ -906,7 +906,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 
 	// Attempt to run an update using the plan but where we haven't updated our program for the change of zed
 	expectError = true
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "baz",
 		"zed": 24,
 	})
@@ -920,7 +920,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 	// Check the resource's state we shouldn't of changed anything because the update failed
 	require.Len(t, snap.Resources, 2)
 
-	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
+	expected := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 		"zed": 26,
 	})
@@ -944,7 +944,7 @@ func TestPlannedOutputChanges(t *testing.T) {
 		}),
 	}
 
-	outs := resource.NewPropertyMapFromMap(map[string]interface{}{
+	outs := resource.NewPropertyMapFromMap(map[string]any{
 		"foo":  "bar",
 		"frob": "baz",
 	})
@@ -974,7 +974,7 @@ func TestPlannedOutputChanges(t *testing.T) {
 	require.NoError(t, err)
 
 	// Now change the runtime to not return property "frob", this should error
-	outs = resource.NewPropertyMapFromMap(map[string]interface{}{
+	outs = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 	p.Options.Plan = plan.Clone()
@@ -990,12 +990,12 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 
 	// This tests that plans are working on the program inputs, not the provider outputs
 
-	createOutputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+	createOutputs := resource.NewPropertyMapFromMap(map[string]any{
 		"foo":  "bar",
 		"frob": "baz",
 		"baz":  24,
 	})
-	updateOutputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+	updateOutputs := resource.NewPropertyMapFromMap(map[string]any{
 		"foo":  "bar",
 		"frob": "newBazzer",
 		"baz":  24,
@@ -1021,7 +1021,7 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 		}),
 	}
 
-	inputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+	inputs := resource.NewPropertyMapFromMap(map[string]any{
 		"foo":  "bar",
 		"frob": "baz",
 	})
@@ -1062,7 +1062,7 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 	require.NoError(t, err)
 
 	// Make a plan to change resA
-	inputs = resource.NewPropertyMapFromMap(map[string]interface{}{
+	inputs = resource.NewPropertyMapFromMap(map[string]any{
 		"foo":  "bar",
 		"frob": "newBazzer",
 	})
@@ -1073,7 +1073,7 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 
 	// Test the plan fails if we don't pass newBazzer
 	expectError = true
-	inputs = resource.NewPropertyMapFromMap(map[string]interface{}{
+	inputs = resource.NewPropertyMapFromMap(map[string]any{
 		"foo":  "bar",
 		"frob": "differentBazzer",
 	})
@@ -1087,7 +1087,7 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 
 	// Check the plan succeeds if we do pass newBazzer
 	expectError = false
-	inputs = resource.NewPropertyMapFromMap(map[string]interface{}{
+	inputs = resource.NewPropertyMapFromMap(map[string]any{
 		"foo":  "bar",
 		"frob": "newBazzer",
 	})
@@ -1118,7 +1118,7 @@ func TestAliasWithPlans(t *testing.T) {
 
 	resourceName := "resA"
 	var aliases []resource.URN
-	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins := resource.NewPropertyMapFromMap(map[string]any{
 		"foo":  "bar",
 		"frob": "baz",
 	})
@@ -1212,37 +1212,37 @@ func TestComputedCanBeDropped(t *testing.T) {
 	project := p.GetProject()
 
 	// The three property sets we'll use in this test
-	computed := interface{}(resource.Computed{Element: resource.NewProperty("")})
-	computedPropertySet := resource.NewPropertyMapFromMap(map[string]interface{}{
+	computed := any(resource.Computed{Element: resource.NewProperty("")})
+	computedPropertySet := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
-		"baz": map[string]interface{}{
+		"baz": map[string]any{
 			"a": 42,
 			"b": computed,
 		},
-		"qux": []interface{}{
+		"qux": []any{
 			computed,
 			24,
 		},
 		"zed": computed,
 	})
-	fullPropertySet := resource.NewPropertyMapFromMap(map[string]interface{}{
+	fullPropertySet := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
-		"baz": map[string]interface{}{
+		"baz": map[string]any{
 			"a": 42,
 			"b": "alpha",
 		},
-		"qux": []interface{}{
+		"qux": []any{
 			"beta",
 			24,
 		},
 		"zed": "grr",
 	})
-	partialPropertySet := resource.NewPropertyMapFromMap(map[string]interface{}{
+	partialPropertySet := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
-		"baz": map[string]interface{}{
+		"baz": map[string]any{
 			"a": 42,
 		},
-		"qux": []interface{}{
+		"qux": []any{
 			nil, // computed values that resolve to undef don't get dropped from arrays, they just become null
 			24,
 		},
@@ -1342,7 +1342,7 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 
 		if err == nil {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-				Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				Inputs: resource.NewPropertyMapFromMap(map[string]any{
 					"other": resp.Outputs["name"].StringValue(),
 				}),
 			})
@@ -1368,8 +1368,8 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 	project := p.GetProject()
 
 	// Generate a plan.
-	computed := interface{}(resource.Computed{Element: resource.NewProperty("")})
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	computed := any(resource.Computed{Element: resource.NewProperty("")})
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 		"zed": computed,
 	})
@@ -1379,7 +1379,7 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 	// Attempt to run an update using the plan.
 	// This should fail because of the non-determinism
 	expectError = true
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 		"zed": "baz",
 	})
@@ -1455,7 +1455,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 
 	// Generate a plan with bad inputs
 	expectError = true
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bad",
 	})
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
@@ -1466,7 +1466,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 
 	// Generate a plan with good inputs
 	expectError = false
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "good",
 	})
 	plan, err = lt.TestOp(Update).PlanStep(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil, "1")
@@ -1476,7 +1476,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 
 	// Try and run against the plan with inputs that will fail Check
 	expectError = true
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bad",
 	})
 	p.Options.Plan = plan.Clone()
@@ -1573,7 +1573,7 @@ func TestProviderDeterministicPreview(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 
@@ -1613,7 +1613,7 @@ func TestProviderDeterministicPreview(t *testing.T) {
 	assert.Equal(t, expectedName, snap.Resources[1].Outputs["name"])
 
 	// Run a new update which will cause a replace and check we get a new name
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "baz",
 	})
 	p.Options.Plan = nil
@@ -1681,7 +1681,7 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 	project := p.GetProject()
 
 	// Create an initial ResA and resB
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 		"zed": "baz",
 	})
@@ -1690,7 +1690,7 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 	require.NoError(t, err)
 
 	// Update the input and mark it as a replace, check that both A and B are marked as replacements
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "frob",
 		"zed": "baz",
 	})
@@ -1710,8 +1710,8 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 	require.NotNil(t, plan)
 	require.NoError(t, err)
 
-	assert.Equal(t, 3, len(plan.ResourcePlans["urn:pulumi:test::test::pkgA:m:typA::resA"].Ops))
-	assert.Equal(t, 3, len(plan.ResourcePlans["urn:pulumi:test::test::pkgA:m:typB::resB"].Ops))
+	require.Len(t, plan.ResourcePlans["urn:pulumi:test::test::pkgA:m:typA::resA"].Ops, 3)
+	require.Len(t, plan.ResourcePlans["urn:pulumi:test::test::pkgA:m:typB::resB"].Ops, 3)
 
 	// Now try and run with the plan
 	p.Options.Plan = plan.Clone()

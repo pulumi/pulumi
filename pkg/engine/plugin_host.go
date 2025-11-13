@@ -66,7 +66,7 @@ func langRuntimePluginDialOptions(ctx *plugin.Context, address string) []grpc.Di
 	)
 
 	if ctx.DialOptions != nil {
-		metadata := map[string]interface{}{
+		metadata := map[string]any{
 			"mode": "client",
 			"kind": "language",
 		}

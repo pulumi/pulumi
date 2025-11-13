@@ -22,10 +22,10 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -97,14 +97,12 @@ func NewSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *re
 	contract.Requiref(old.ID != "" || !old.Custom, "old", "must have an ID if it is custom")
 	contract.Requiref(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type),
 		"old", "must have or be a provider if it is a custom resource")
-	contract.Requiref(!old.Delete, "old", "must not be marked for deletion")
 
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
 	contract.Requiref(new.ID == "", "new", "must not have an ID")
 	contract.Requiref(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type),
 		"new", "must have or be a provider if it is a custom resource")
-	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
 
 	return &SameStep{
 		deployment: deployment,
@@ -1267,12 +1265,22 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 	// Component, provider, and pending-replace resources never change with a refresh; just return the current state.
 	if !s.old.Custom || providers.IsProviderType(s.old.Type) || s.old.PendingReplacement {
+		if s.cts != nil {
+			// for persisted refreshes, we need to make a copy of the state, and pretend we
+			// refreshed using that new state. This ensures that further steps will see the
+			// new state correctly.
+			s.new = s.old.Copy()
+			s.cts.MustFulfill(s.new)
+		}
 		return resource.StatusOK, nil, nil
 	}
 
 	// For a custom resource, fetch the resource's provider and read the resource's current state.
 	prov, err := getProvider(s, s.provider)
 	if err != nil {
+		if s.cts != nil {
+			s.cts.MustReject(err)
+		}
 		return resource.StatusOK, nil, err
 	}
 
@@ -1280,6 +1288,9 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
 		s.URN(), true /*refresh*/, s.Persisted() /* persisted */)
 	if err != nil {
+		if s.cts != nil {
+			s.cts.MustReject(err)
+		}
 		return resource.StatusOK, nil, err
 	}
 
@@ -1297,6 +1308,9 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	})
 	if err != nil {
 		if refreshed.Status != resource.StatusPartialFailure {
+			if s.cts != nil {
+				s.cts.MustReject(err)
+			}
 			return refreshed.Status, nil, err
 		}
 		if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
@@ -1409,6 +1423,9 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 				prov, s.deployment.opts.DryRun, s.old.IgnoreChanges,
 			)
 			if err != nil {
+				if s.cts != nil {
+					s.cts.MustReject(err)
+				}
 				return refreshed.Status, nil, err
 			}
 
@@ -1625,7 +1642,11 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 			}
 		}
 		if read.Outputs == nil {
-			return rst, nil, fmt.Errorf("resource '%v' does not exist", s.new.ID)
+			resourceID := s.new.ID
+			if resourceID == "" {
+				resourceID = s.new.ImportID
+			}
+			return rst, nil, fmt.Errorf("resource '%v' does not exist", resourceID)
 		}
 		if read.Inputs == nil {
 			return resource.StatusOK, nil,
@@ -1673,11 +1694,13 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		ImportID:                s.new.ImportID,
 		RetainOnDelete:          s.new.RetainOnDelete,
 		DeletedWith:             s.new.DeletedWith,
+		ReplaceWith:             s.new.ReplaceWith,
 		Created:                 nil,
 		Modified:                nil,
 		SourcePosition:          s.new.SourcePosition,
 		StackTrace:              s.new.StackTrace,
 		IgnoreChanges:           s.new.IgnoreChanges,
+		HideDiff:                s.new.HideDiff,
 		ReplaceOnChanges:        s.new.ReplaceOnChanges,
 		RefreshBeforeUpdate:     s.new.RefreshBeforeUpdate,
 		ViewOf:                  s.new.ViewOf,

@@ -29,6 +29,7 @@ import (
 	"pgregory.net/rapid"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -54,37 +55,37 @@ func TestDeploymentSerialization(t *testing.T) {
 		Custom: true,
 		Delete: false,
 		ID:     resource.ID("test-resource-x"),
-		Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+		Inputs: resource.NewPropertyMapFromMap(map[string]any{
 			"in-nil":         nil,
 			"in-bool":        true,
 			"in-float64":     float64(1.5),
 			"in-string":      "lumilumilo",
-			"in-array":       []interface{}{"a", true, float64(32)},
-			"in-empty-array": []interface{}{},
-			"in-map": map[string]interface{}{
+			"in-array":       []any{"a", true, float64(32)},
+			"in-empty-array": []any{},
+			"in-map": map[string]any{
 				"a": true,
 				"b": float64(88),
 				"c": "c-see-saw",
 				"d": "d-dee-daw",
 			},
-			"in-empty-map":                            map[string]interface{}{},
+			"in-empty-map":                            map[string]any{},
 			"in-component-resource-reference":         resource.MakeComponentResourceReference("urn", "1.2.3").V,
 			"in-custom-resource-reference":            resource.MakeCustomResourceReference("urn2", "id", "2.3.4").V,
 			"in-custom-resource-reference-unknown-id": resource.MakeCustomResourceReference("urn3", "", "3.4.5").V,
 		}),
-		Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+		Outputs: resource.NewPropertyMapFromMap(map[string]any{
 			"out-nil":         nil,
 			"out-bool":        false,
 			"out-float64":     float64(76),
 			"out-string":      "loyolumiloom",
-			"out-array":       []interface{}{false, "zzxx"},
-			"out-empty-array": []interface{}{},
-			"out-map": map[string]interface{}{
+			"out-array":       []any{false, "zzxx"},
+			"out-empty-array": []any{},
+			"out-map": map[string]any{
 				"x": false,
 				"y": "z-zee-zaw",
 				"z": float64(999.9),
 			},
-			"out-empty-map": map[string]interface{}{},
+			"out-empty-map": map[string]any{},
 		}),
 		Parent:   "",
 		Protect:  false,
@@ -104,9 +105,11 @@ func TestDeploymentSerialization(t *testing.T) {
 		ImportID:                "",
 		RetainOnDelete:          false,
 		DeletedWith:             "",
+		ReplaceWith:             nil,
 		Created:                 nil,
 		Modified:                nil,
 		SourcePosition:          "",
+		HideDiff:                nil,
 		StackTrace:              nil,
 		IgnoreChanges:           nil,
 		ReplaceOnChanges:        nil,
@@ -125,7 +128,7 @@ func TestDeploymentSerialization(t *testing.T) {
 	require.NotNil(t, dep.ID)
 	assert.Equal(t, resource.ID("test-resource-x"), dep.ID)
 	assert.Equal(t, tokens.Type("Test"), dep.Type)
-	assert.Equal(t, 2, len(dep.Dependencies))
+	require.Len(t, dep.Dependencies, 2)
 	assert.Equal(t, resource.URN("foo:bar:baz"), dep.Dependencies[0])
 	assert.Equal(t, resource.URN("foo:bar:boo"), dep.Dependencies[1])
 	assert.Equal(t, map[resource.HookType][]string{
@@ -143,15 +146,15 @@ func TestDeploymentSerialization(t *testing.T) {
 	require.NotNil(t, dep.Inputs["in-string"])
 	assert.Equal(t, "lumilumilo", dep.Inputs["in-string"].(string))
 	require.NotNil(t, dep.Inputs["in-array"])
-	assert.Equal(t, 3, len(dep.Inputs["in-array"].([]interface{})))
-	assert.Equal(t, "a", dep.Inputs["in-array"].([]interface{})[0])
-	assert.Equal(t, true, dep.Inputs["in-array"].([]interface{})[1])
-	assert.Equal(t, float64(32), dep.Inputs["in-array"].([]interface{})[2])
+	require.Len(t, dep.Inputs["in-array"].([]any), 3)
+	assert.Equal(t, "a", dep.Inputs["in-array"].([]any)[0])
+	assert.Equal(t, true, dep.Inputs["in-array"].([]any)[1])
+	assert.Equal(t, float64(32), dep.Inputs["in-array"].([]any)[2])
 	require.NotNil(t, dep.Inputs["in-empty-array"])
-	assert.Empty(t, dep.Inputs["in-empty-array"].([]interface{}))
+	assert.Empty(t, dep.Inputs["in-empty-array"].([]any))
 	require.NotNil(t, dep.Inputs["in-map"])
-	inmap := dep.Inputs["in-map"].(map[string]interface{})
-	assert.Equal(t, 4, len(inmap))
+	inmap := dep.Inputs["in-map"].(map[string]any)
+	require.Len(t, inmap, 4)
 	require.NotNil(t, inmap["a"])
 	assert.Equal(t, true, inmap["a"].(bool))
 	require.NotNil(t, inmap["b"])
@@ -161,19 +164,19 @@ func TestDeploymentSerialization(t *testing.T) {
 	require.NotNil(t, inmap["d"])
 	assert.Equal(t, "d-dee-daw", inmap["d"].(string))
 	require.NotNil(t, dep.Inputs["in-empty-map"])
-	assert.Empty(t, dep.Inputs["in-empty-map"].(map[string]interface{}))
-	assert.Equal(t, map[string]interface{}{
+	assert.Empty(t, dep.Inputs["in-empty-map"].(map[string]any))
+	assert.Equal(t, map[string]any{
 		resource.SigKey:  resource.ResourceReferenceSig,
 		"urn":            "urn",
 		"packageVersion": "1.2.3",
 	}, dep.Inputs["in-component-resource-reference"])
-	assert.Equal(t, map[string]interface{}{
+	assert.Equal(t, map[string]any{
 		resource.SigKey:  resource.ResourceReferenceSig,
 		"urn":            "urn2",
 		"id":             "id",
 		"packageVersion": "2.3.4",
 	}, dep.Inputs["in-custom-resource-reference"])
-	assert.Equal(t, map[string]interface{}{
+	assert.Equal(t, map[string]any{
 		resource.SigKey:  resource.ResourceReferenceSig,
 		"urn":            "urn3",
 		"id":             "",
@@ -190,14 +193,14 @@ func TestDeploymentSerialization(t *testing.T) {
 	require.NotNil(t, dep.Outputs["out-string"])
 	assert.Equal(t, "loyolumiloom", dep.Outputs["out-string"].(string))
 	require.NotNil(t, dep.Outputs["out-array"])
-	assert.Equal(t, 2, len(dep.Outputs["out-array"].([]interface{})))
-	assert.Equal(t, false, dep.Outputs["out-array"].([]interface{})[0])
-	assert.Equal(t, "zzxx", dep.Outputs["out-array"].([]interface{})[1])
+	require.Len(t, dep.Outputs["out-array"].([]any), 2)
+	assert.Equal(t, false, dep.Outputs["out-array"].([]any)[0])
+	assert.Equal(t, "zzxx", dep.Outputs["out-array"].([]any)[1])
 	require.NotNil(t, dep.Outputs["out-empty-array"])
-	assert.Empty(t, dep.Outputs["out-empty-array"].([]interface{}))
+	assert.Empty(t, dep.Outputs["out-empty-array"].([]any))
 	require.NotNil(t, dep.Outputs["out-map"])
-	outmap := dep.Outputs["out-map"].(map[string]interface{})
-	assert.Equal(t, 3, len(outmap))
+	outmap := dep.Outputs["out-map"].(map[string]any)
+	require.Len(t, outmap, 3)
 	require.NotNil(t, outmap["x"])
 	assert.Equal(t, false, outmap["x"].(bool))
 	require.NotNil(t, outmap["y"])
@@ -205,7 +208,7 @@ func TestDeploymentSerialization(t *testing.T) {
 	require.NotNil(t, outmap["z"])
 	assert.Equal(t, float64(999.9), outmap["z"].(float64))
 	require.NotNil(t, dep.Outputs["out-empty-map"])
-	assert.Empty(t, dep.Outputs["out-empty-map"].(map[string]interface{}))
+	assert.Empty(t, dep.Outputs["out-empty-map"].(map[string]any))
 }
 
 // TestSerializeDeploymentWithMetadata tests that the appropriate version and features are used when
@@ -390,7 +393,7 @@ func TestDeserializeUntypedDeploymentFeatures(t *testing.T) {
 func TestUnsupportedSecret(t *testing.T) {
 	t.Parallel()
 
-	rawProp := map[string]interface{}{
+	rawProp := map[string]any{
 		resource.SigKey: resource.SecretSig,
 	}
 	_, err := DeserializePropertyValue(rawProp, config.NewPanicCrypter())
@@ -400,7 +403,7 @@ func TestUnsupportedSecret(t *testing.T) {
 func TestUnknownSig(t *testing.T) {
 	t.Parallel()
 
-	rawProp := map[string]interface{}{
+	rawProp := map[string]any{
 		resource.SigKey: "foobar",
 	}
 	_, err := DeserializePropertyValue(rawProp, config.NewPanicCrypter())
@@ -414,23 +417,23 @@ func TestDeserializeResourceReferencePropertyValueID(t *testing.T) {
 	t.Parallel()
 
 	// Serialize replicates Pulumi 2.18.0's buggy resource reference serializer. We round-trip the value through JSON
-	// in order to convert the ID property value into a plain map[string]interface{}.
-	serialize := func(v resource.PropertyValue) interface{} {
+	// in order to convert the ID property value into a plain map[string]any.
+	serialize := func(v resource.PropertyValue) any {
 		ref := v.ResourceReferenceValue()
-		bytes, err := json.Marshal(map[string]interface{}{
+		bytes, err := json.Marshal(map[string]any{
 			resource.SigKey:  resource.ResourceReferenceSig,
 			"urn":            ref.URN,
 			"id":             ref.ID,
 			"packageVersion": ref.PackageVersion,
 		})
 		contract.IgnoreError(err)
-		var sv interface{}
+		var sv any
 		err = json.Unmarshal(bytes, &sv)
 		contract.IgnoreError(err)
 		return sv
 	}
 
-	serialized := map[string]interface{}{
+	serialized := map[string]any{
 		"component-resource":         serialize(resource.MakeComponentResourceReference("urn", "1.2.3")),
 		"custom-resource":            serialize(resource.MakeCustomResourceReference("urn2", "id", "2.3.4")),
 		"custom-resource-unknown-id": serialize(resource.MakeCustomResourceReference("urn3", "", "3.4.5")),
@@ -439,7 +442,7 @@ func TestDeserializeResourceReferencePropertyValueID(t *testing.T) {
 	deserialized, err := DeserializePropertyValue(serialized, config.NewPanicCrypter())
 	require.NoError(t, err)
 
-	assert.Equal(t, resource.NewPropertyValue(map[string]interface{}{
+	assert.Equal(t, resource.NewPropertyValue(map[string]any{
 		"component-resource":         resource.MakeComponentResourceReference("urn", "1.2.3").V,
 		"custom-resource":            resource.MakeCustomResourceReference("urn2", "id", "2.3.4").V,
 		"custom-resource-unknown-id": resource.MakeCustomResourceReference("urn3", "", "3.4.5").V,
@@ -458,7 +461,7 @@ func TestCustomSerialization(t *testing.T) {
 	output := resource.Output{Element: strProp}
 	secret := &resource.Secret{Element: strProp}
 
-	propMap := resource.NewPropertyMapFromMap(map[string]interface{}{
+	propMap := resource.NewPropertyMapFromMap(map[string]any{
 		// Primitive types
 		"nil":     nil,
 		"bool":    true,
@@ -469,16 +472,16 @@ func TestCustomSerialization(t *testing.T) {
 		"string":  "string literal",
 
 		// Data structures
-		"array":       []interface{}{"a", true, float64(32)},
-		"array-empty": []interface{}{},
+		"array":       []any{"a", true, float64(32)},
+		"array-empty": []any{},
 
-		"map": map[string]interface{}{
+		"map": map[string]any{
 			"a": true,
 			"b": float64(88),
 			"c": "c-see-saw",
 			"d": "d-dee-daw",
 		},
-		"map-empty": map[string]interface{}{},
+		"map-empty": map[string]any{},
 
 		// Specialized resource types
 		"asset-text": textAsset,
@@ -664,8 +667,8 @@ func TestDeserializeMissingSecretsManager(t *testing.T) {
 			{
 				URN:  resource.URN(urn),
 				Type: "pkg:index:type",
-				Outputs: map[string]interface{}{
-					"secret": map[string]interface{}{
+				Outputs: map[string]any{
+					"secret": map[string]any{
 						"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
 						"ciphertext":                       "v1:xRi3+sQJSJHR8sha:RM8BfzSAJI84QMl+zLGjzPvwSqV6zOSdd/I/V34h",
 					},
@@ -749,7 +752,7 @@ func TestDeserializePropertyValue(t *testing.T) {
 	})
 }
 
-func wireValue(v resource.PropertyValue) (interface{}, error) {
+func wireValue(v resource.PropertyValue) (any, error) {
 	object, err := SerializePropertyValue(context.Background(), v, config.NopEncrypter, false)
 	if err != nil {
 		return nil, err
@@ -760,7 +763,7 @@ func wireValue(v resource.PropertyValue) (interface{}, error) {
 		return nil, err
 	}
 
-	var wireObject interface{}
+	var wireObject any
 	err = json.Unmarshal(wire, &wireObject)
 	if err != nil {
 		return nil, err
@@ -825,7 +828,7 @@ func TestRoundTripPropertyValue(t *testing.T) {
 
 // UnknownObjectGenerator generates the unknown object value.
 func UnknownObjectGenerator() *rapid.Generator[any] {
-	return rapid.Custom(func(t *rapid.T) interface{} {
+	return rapid.Custom(func(t *rapid.T) any {
 		return rapid.Just(computedValuePlaceholder).Draw(t, "unknowns")
 	})
 }
@@ -854,7 +857,7 @@ func StringObjectGenerator() *rapid.Generator[string] {
 // TextAssetObjectGenerator generates textual asset object values.
 func TextAssetObjectGenerator() *rapid.Generator[map[string]any] {
 	return rapid.Custom(func(t *rapid.T) map[string]any {
-		return map[string]interface{}{
+		return map[string]any{
 			resource.SigKey:            resource.AssetSig,
 			resource.AssetTextProperty: rapid.String().Draw(t, "text asset contents"),
 		}
@@ -868,7 +871,7 @@ func AssetObjectGenerator() *rapid.Generator[map[string]any] {
 
 // LiteralArchiveObjectGenerator generates archive object values with literal archive contents.
 func LiteralArchiveObjectGenerator(maxDepth int) *rapid.Generator[map[string]any] {
-	return rapid.Custom(func(t *rapid.T) map[string]interface{} {
+	return rapid.Custom(func(t *rapid.T) map[string]any {
 		var contentsGenerator *rapid.Generator[map[string]any]
 		if maxDepth > 0 {
 			contentsGenerator = rapid.MapOfN(
@@ -878,10 +881,10 @@ func LiteralArchiveObjectGenerator(maxDepth int) *rapid.Generator[map[string]any
 					ArchiveObjectGenerator(maxDepth-1).AsAny(),
 				), 0, 16)
 		} else {
-			contentsGenerator = rapid.Just(map[string]interface{}{})
+			contentsGenerator = rapid.Just(map[string]any{})
 		}
 
-		return map[string]interface{}{
+		return map[string]any{
 			resource.SigKey:                resource.ArchiveSig,
 			resource.ArchiveAssetsProperty: contentsGenerator.Draw(t, "literal archive contents"),
 		}
@@ -895,8 +898,8 @@ func ArchiveObjectGenerator(maxDepth int) *rapid.Generator[map[string]any] {
 
 // ResourceReferenceObjectGenerator generates resource reference object values.
 func ResourceReferenceObjectGenerator() *rapid.Generator[any] {
-	return rapid.Custom(func(t *rapid.T) interface{} {
-		fields := map[string]interface{}{
+	return rapid.Custom(func(t *rapid.T) any {
+		fields := map[string]any{
 			resource.SigKey:  resource.ResourceReferenceSig,
 			"urn":            string(resource_testing.URNGenerator().Draw(t, "referenced URN")),
 			"packageVersion": resource_testing.SemverStringGenerator().Draw(t, "package version"),
@@ -938,7 +941,7 @@ func SecretObjectGenerator(maxDepth int) *rapid.Generator[map[string]any] {
 		bytes, err := json.Marshal(value)
 		require.NoError(t, err)
 
-		return map[string]interface{}{
+		return map[string]any{
 			resource.SigKey: resource.SecretSig,
 			"plaintext":     string(bytes),
 		}
@@ -974,7 +977,7 @@ func TestSecretInputRoundTrip(t *testing.T) {
 	res := &resource.State{
 		URN:  "urn:pulumi:stack::project::pkg:index:type::name",
 		Type: "pkg:index:type",
-		Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+		Inputs: resource.NewPropertyMapFromMap(map[string]any{
 			"normal": "hello",
 			"secret": resource.MakeSecret(resource.NewProperty("there")),
 		}),
@@ -987,8 +990,112 @@ func TestSecretInputRoundTrip(t *testing.T) {
 
 	deserialized, err := DeserializeResource(serialized, sm.Decrypter())
 	require.NoError(t, err)
-	require.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+	require.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 		"normal": "hello",
 		"secret": resource.MakeSecret(resource.NewProperty("there")),
 	}), deserialized.Inputs)
+}
+
+// Tests that when a deployment has no root stack resource, DeserializeStackOutputs returns nil outputs.
+func TestDeserializeStackOutputs_NoRootStackResource_ReturnsNil(t *testing.T) {
+	t.Parallel()
+
+	deployment := apitype.DeploymentV3{}
+
+	outputs, err := DeserializeStackOutputs(t.Context(), deployment, b64.Base64SecretsProvider)
+	require.NoError(t, err)
+	require.Nil(t, outputs)
+}
+
+// Tests that when there are secrets in the deployment, but not in the stack outputs, no decrypt calls are made
+// when calling DeserializeStackOutputs.
+func TestDeserializeStackOutputs_SecretsInSnapshotButNotInStackOutputs_NoDecryptCalls(t *testing.T) {
+	t.Parallel()
+
+	urn := "urn:pulumi:urn:pulumi:test_stack::test_project::pkg:index:type::name"
+	deployment := apitype.DeploymentV3{
+		Resources: []apitype.ResourceV3{
+			{
+				URN:  resource.URN(urn),
+				Type: "pkg:index:type",
+				Outputs: map[string]any{
+					"secret": map[string]any{
+						"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+						"ciphertext":                       "v1:xRi3+sQJSJHR8sha:RM8BfzSAJI84QMl+zLGjzPvwSqV6zOSdd/I/V34h",
+					},
+				},
+			},
+			{
+				URN:  resource.DefaultRootStackURN("test_stack", "test_project"),
+				Type: resource.RootStackType,
+				Outputs: map[string]any{
+					"foo":   42.0,
+					"hello": "world",
+				},
+			},
+		},
+	}
+
+	provider := (&secrets.MockProvider{}).Add(
+		"mock", func(_ json.RawMessage) (secrets.Manager, error) {
+			return &secrets.MockSecretsManager{
+				TypeF: func() string { return "mock" },
+				DecrypterF: func() config.Decrypter {
+					return &secrets.MockDecrypter{
+						DecryptValueF: func(_ string) string {
+							panic("should not be called")
+						},
+						BatchDecryptF: func(_ []string) []string {
+							panic("should not be called")
+						},
+					}
+				},
+			}, nil
+		},
+	)
+
+	outputs, err := DeserializeStackOutputs(t.Context(), deployment, provider)
+	require.NoError(t, err)
+	assert.Equal(t, resource.PropertyMap{
+		"foo":   resource.NewProperty(42.0),
+		"hello": resource.NewProperty("world"),
+	}, outputs)
+}
+
+// Test that DeserializeStackOutputs correctly decrypts secrets found in the stack outputs.
+func TestDeserializeStackOutputs_SecretsInStackOutputs_Decrypted(t *testing.T) {
+	t.Parallel()
+
+	manager, err := b64.Base64SecretsProvider.OfType("b64", nil)
+	require.NoError(t, err)
+	ciphertext, err := manager.Encrypter().EncryptValue(t.Context(), "\"super secret\"")
+	require.NoError(t, err)
+
+	deployment := apitype.DeploymentV3{
+		Resources: []apitype.ResourceV3{
+			{
+				URN:  resource.DefaultRootStackURN("test_stack", "test_project"),
+				Type: resource.RootStackType,
+				Outputs: map[string]any{
+					"foo":   42.0,
+					"hello": "world",
+					"secret": map[string]any{
+						"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+						"ciphertext":                       ciphertext,
+					},
+				},
+			},
+		},
+		SecretsProviders: &apitype.SecretsProvidersV1{
+			Type: "b64",
+		},
+	}
+
+	outputs, err := DeserializeStackOutputs(t.Context(), deployment, b64.Base64SecretsProvider)
+	require.NoError(t, err)
+	assert.Equal(t, resource.PropertyMap{
+		"foo":    resource.NewProperty(42.0),
+		"hello":  resource.NewProperty("world"),
+		"secret": resource.MakeSecret(resource.NewProperty("super secret")),
+	}, outputs)
 }

@@ -40,7 +40,6 @@ func TestValidateStackTag(t *testing.T) {
 		}
 
 		for _, name := range names {
-			name := name
 			//nolint:paralleltest // golangci-lint v2 upgrade
 			t.Run(name, func(t *testing.T) {
 				tags := map[apitype.StackTagName]string{
@@ -65,7 +64,6 @@ func TestValidateStackTag(t *testing.T) {
 		}
 
 		for _, name := range names {
-			name := name
 			t.Run(name, func(t *testing.T) {
 				t.Parallel()
 

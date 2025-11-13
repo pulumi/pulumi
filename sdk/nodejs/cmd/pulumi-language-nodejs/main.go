@@ -75,7 +75,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -117,7 +119,13 @@ func main() {
 		"[obsolete] Path to tsconfig.json to use")
 	flag.String("nodeargs", "", "[obsolete] Arguments for the Node process")
 	flag.String("packagemanager", "", "[obsolete] Packagemanager to use (auto, npm, yarn, pnpm or bun)")
+	showVersion := flag.Bool("version", false, "Print the current plugin version and exit")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(version.Version)
+		os.Exit(0)
+	}
 
 	args := flag.Args()
 	logging.InitLogging(false, 0, false)
@@ -236,7 +244,7 @@ type nodeOptions struct {
 	packagemanager npm.PackageManagerType
 }
 
-func parseOptions(options map[string]interface{}) (nodeOptions, error) {
+func parseOptions(options map[string]any) (nodeOptions, error) {
 	// typescript defaults to true
 	nodeOptions := nodeOptions{
 		typescript: true,
@@ -799,6 +807,9 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 	var errResult string
 	// #nosec G204
 	cmd := exec.CommandContext(ctx, nodeBin, nodeargs...)
+
+	logging.V(5).Infof("Constructed NodeJS command to run: %s", cmd)
+
 	// Copy cmd.Stdout to os.Stdout. Nodejs sometimes changes the blocking mode of its stdout/stderr,
 	// so it's unsafe to assign cmd.Stdout directly to os.Stdout. See the description of
 	// `runWithOutput` for more details.
@@ -1489,11 +1500,6 @@ func (host *nodeLanguageHost) RunPlugin(
 		return err
 	}
 
-	if logging.V(5) {
-		commandStr := strings.Join(req.Args, " ")
-		logging.V(5).Infoln("Language host launching process: ", nodeBin, commandStr)
-	}
-
 	opts, err := parseOptions(req.Info.Options.AsMap())
 	if err != nil {
 		return err
@@ -1600,6 +1606,8 @@ func (host *nodeLanguageHost) RunPlugin(
 	}
 	cmd.Env = env
 	cmd.Stdout, cmd.Stderr = stdout, stderr
+
+	logging.V(5).Infof("Constructed NodeJS command to run: %s", cmd)
 
 	run := func() error {
 		if err := cmd.Start(); err != nil {
@@ -1799,12 +1807,12 @@ func (host *nodeLanguageHost) GeneratePackage(
 	}, nil
 }
 
-func readPackageJSON(packageJSONPath string) (map[string]interface{}, error) {
+func readPackageJSON(packageJSONPath string) (map[string]any, error) {
 	packageJSONData, err := os.ReadFile(packageJSONPath)
 	if err != nil {
 		return nil, fmt.Errorf("read package.json: %w", err)
 	}
-	var packageJSON map[string]interface{}
+	var packageJSON map[string]any
 	err = json.Unmarshal(packageJSONData, &packageJSON)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal package.json: %w", err)
@@ -2030,10 +2038,126 @@ func (o *oomSniffer) Scan(r io.Reader) {
 func (host *nodeLanguageHost) Link(
 	ctx context.Context, req *pulumirpc.LinkRequest,
 ) (*pulumirpc.LinkResponse, error) {
-	// The NodeJS language host does not support linking, so we return an empty response.
-	return &pulumirpc.LinkResponse{}, nil
+	logging.V(5).Infof("Linking %+v in %s", req.Packages, req.Info.RootDirectory)
+	opts, err := parseOptions(req.Info.Options.AsMap())
+	if err != nil {
+		return nil, err
+	}
+
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
+	if err != nil {
+		return nil, err
+	}
+	defer loader.Close()
+	cachedLoader := schema.NewCachedLoader(loader)
+
+	pm, err := npm.ResolvePackageManager(opts.packagemanager, req.Info.ProgramDirectory)
+	if err != nil {
+		return nil, err
+	}
+
+	// Detect whether this is a typescript project, either run through our builtin ts-node, meaning the typescript
+	// runtime option is true, or if there is a tsconfig.json
+	isTypeScript := opts.typescript || opts.tsconfigpath != ""
+	if !isTypeScript {
+		if _, err := fsutil.Searchup(req.Info.ProgramDirectory, "tsconfig.json"); err == nil {
+			isTypeScript = true
+		}
+	}
+	// We'll use module syntax (import, export) it is a typescript project, or package.json["type"] is set to "module".
+	usesModuleSyntax := isTypeScript
+	if !usesModuleSyntax {
+		if p, err := fsutil.Searchup(req.Info.ProgramDirectory, "package.json"); err == nil {
+			if data, err := readPackageJSON(p); err == nil {
+				if typ, ok := data["type"]; ok {
+					if typeS, ok := typ.(string); ok && typeS == "module" {
+						usesModuleSyntax = true
+					}
+				}
+			}
+		}
+	}
+
+	instructions := "You can import the SDK in your JavaScript code with:\n\n"
+	if isTypeScript {
+		instructions = "You can import the SDK in your TypeScript code with:\n\n"
+	}
+
+	for _, dep := range req.Packages {
+		var version *semver.Version
+		v, err := semver.New(dep.Package.Version)
+		if err != nil {
+			logging.V(5).Infof("Invalid version %s for package %s", dep.Package.Version, dep.Package.Name)
+		} else {
+			version = v
+		}
+		var param *schema.ParameterizationDescriptor
+		if dep.Package.Parameterization != nil {
+			param = &schema.ParameterizationDescriptor{
+				Name:  dep.Package.Parameterization.Name,
+				Value: dep.Package.Parameterization.Value,
+			}
+			if dep.Package.Parameterization.Version != "" {
+				v, err := semver.New(dep.Package.Parameterization.Version)
+				if err != nil {
+					logging.V(5).Infof("Invalid version %s for package %s", dep.Package.Version, dep.Package.Name)
+				} else {
+					param.Version = *v
+				}
+			}
+		}
+		packageDesc := &schema.PackageDescriptor{
+			Name:             dep.Package.Name,
+			Version:          version,
+			DownloadURL:      dep.Package.Server,
+			Parameterization: param,
+		}
+		pkgRef, err := schema.LoadPackageReferenceV2(ctx, cachedLoader, packageDesc)
+		if err != nil {
+			return nil, err
+		}
+		pkg, err := pkgRef.Definition()
+		if err != nil {
+			return nil, err
+		}
+		if err := pkg.ImportLanguages(map[string]schema.Language{"nodejs": codegen.Importer}); err != nil {
+			return nil, err
+		}
+		packageName, err := getNodeJSPkgName(pkg)
+		if err != nil {
+			return nil, err
+		}
+		if err := pm.Link(ctx, req.Info.ProgramDirectory, packageName, dep.Path); err != nil {
+			return nil, err
+		}
+
+		importName := cgstrings.Camel(pkgRef.Name())
+		if usesModuleSyntax {
+			instructions += fmt.Sprintf("  import * as %s from \"%s\";\n", importName, packageName)
+		} else {
+			instructions += fmt.Sprintf("  const %s = require(\"%s\");\n", importName, packageName)
+		}
+	}
+
+	return &pulumirpc.LinkResponse{
+		ImportInstructions: instructions,
+	}, nil
 }
 
 func (host *nodeLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
+}
+
+func getNodeJSPkgName(pkg *schema.Package) (string, error) {
+	if info, ok := pkg.Language["go"]; ok {
+		if info, ok := info.(nodejs.NodePackageInfo); ok && info.PackageName != "" {
+			return info.PackageName, nil
+		}
+	}
+
+	if pkg.Namespace != "" {
+		return "@" + pkg.Namespace + "/" + pkg.Name, nil
+	}
+
+	return "@pulumi/" + pkg.Name, nil
 }

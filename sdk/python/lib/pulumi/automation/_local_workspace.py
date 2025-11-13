@@ -18,7 +18,8 @@ import json
 import os
 import tempfile
 from datetime import datetime
-from typing import TYPE_CHECKING, Callable, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
+from collections.abc import Callable
 from collections.abc import Mapping
 
 import yaml
@@ -357,6 +358,10 @@ class LocalWorkspace(Workspace):
             secret_arg = "--secret" if value.secret else "--plaintext"
             args.extend([secret_arg, f"{key}={value.value}"])
 
+        self._run_pulumi_cmd_sync(args)
+
+    def set_all_config_json(self, stack_name: str, config_json: str) -> None:
+        args = ["config", "set-all", "--stack", stack_name, "--json", config_json]
         self._run_pulumi_cmd_sync(args)
 
     def remove_config(self, stack_name: str, key: str, *, path: bool = False) -> None:

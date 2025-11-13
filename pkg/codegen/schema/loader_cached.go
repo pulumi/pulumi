@@ -28,6 +28,14 @@ func NewCachedLoader(loader ReferenceLoader) ReferenceLoader {
 	}
 }
 
+// NewCachedLoaderWithEntries creates a new cached loader with the passed in entries pre-loaded.
+func NewCachedLoaderWithEntries(loader ReferenceLoader, entries map[string]PackageReference) ReferenceLoader {
+	return &cachedLoader{
+		loader:  loader,
+		entries: entries,
+	}
+}
+
 type cachedLoader struct {
 	loader ReferenceLoader
 

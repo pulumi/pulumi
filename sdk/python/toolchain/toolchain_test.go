@@ -42,7 +42,6 @@ func TestValidateVenv(t *testing.T) {
 			Toolchain: Poetry,
 		},
 	} {
-		opts := opts
 		t.Run("Doesnt-exist-"+Name(opts.Toolchain), func(t *testing.T) {
 			t.Parallel()
 			opts := copyOptions(opts)
@@ -88,7 +87,6 @@ func TestCommand(t *testing.T) {
 			Toolchain: Poetry,
 		},
 	} {
-		opts := opts
 		t.Run("empty/"+Name(opts.Toolchain), func(t *testing.T) {
 			opts := copyOptions(opts)
 			opts.Root = t.TempDir()
@@ -183,8 +181,6 @@ func TestListPackages(t *testing.T) {
 			expectedPackages: []string{},
 		},
 	} {
-		test := test
-
 		t.Run("empty/"+Name(test.opts.Toolchain), func(t *testing.T) {
 			t.Parallel()
 			opts := copyOptions(test.opts)
@@ -265,7 +261,6 @@ func TestAbout(t *testing.T) {
 			Toolchain: Poetry,
 		},
 	} {
-		opts := opts
 		t.Run(Name(opts.Toolchain), func(t *testing.T) {
 			t.Parallel()
 			opts := copyOptions(opts)
@@ -406,7 +401,7 @@ func writePyprojectForUv(t *testing.T, root string) {
 [project]
 name = "list-packages-test"
 version = "0.0.1"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = []
 `)
 	err = f.Close()
@@ -433,7 +428,7 @@ package-mode = false
 packages = [{include = "test_pulumi_venv"}]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 `)
 	err = f.Close()
 	require.NoError(t, err)

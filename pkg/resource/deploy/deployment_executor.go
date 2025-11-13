@@ -21,9 +21,9 @@ import (
 	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -490,6 +490,9 @@ func (ex *deploymentExecutor) performPostSteps(
 		// Then schedule the deletions
 		deleteChains := ex.stepGen.ScheduleDeletes(deleteSteps)
 
+		dg := ex.deployment.depGraph
+		deleteGraph := graph.NewDependencyGraph(ex.stepGen.toDelete)
+
 		// ScheduleDeletes gives us a list of lists of steps. Each list of steps can safely be executed
 		// in parallel, but each list must execute completes before the next list can safely begin
 		// executing.
@@ -512,8 +515,14 @@ func (ex *deploymentExecutor) performPostSteps(
 					continue
 				}
 				for _, r := range []*resource.State{step.Res(), step.Old()} {
-					if r != nil && ex.deployment.depGraph.Contains(r) {
-						deps := ex.deployment.depGraph.TransitiveDependenciesOf(r)
+					if r != nil && dg.Contains(r) {
+						deps := dg.TransitiveDependenciesOf(r)
+						erroredDeps = erroredDeps.Union(deps)
+					} else if r != nil && deleteGraph.Contains(r) {
+						// For destroyV2, we might have resources in the delete graph that
+						// aren't in the main dep graph. This happens if there is a previous
+						// same step for the resource.
+						deps := deleteGraph.TransitiveDependenciesOf(r)
 						erroredDeps = erroredDeps.Union(deps)
 					}
 				}
@@ -806,6 +815,11 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, refreshBeforeUp
 
 	ex.rebuildBaseState(resourceToStep)
 
+	err := ex.deployment.events.OnRebuiltBaseState()
+	if err != nil {
+		return err
+	}
+
 	// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
 	// cancellation from internally-initiated cancellation.
 	canceled := callerCtx.Err() != nil
@@ -870,7 +884,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 
 		if new == nil {
 			contract.Assertf(old.Custom || old.ViewOf != "", "expected custom or view resource")
-			contract.Assertf(!providers.IsProviderType(old.Type), "expected non-provider resource")
+			contract.Assertf(!sdkproviders.IsProviderType(old.Type), "expected non-provider resource")
 			continue
 		}
 
@@ -895,6 +909,10 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 			case resource.ResourceDeletedWith:
 				if !referenceable[dep.URN] {
 					new.DeletedWith = ""
+				}
+			case resource.ResourceReplaceWith:
+				if !referenceable[dep.URN] {
+					new.ReplaceWith = nil
 				}
 			}
 		}
@@ -926,7 +944,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 		}
 	}
 
-	undangleParentResources(olds, resources)
+	undangleParentResources(referenceable, resources)
 
 	ex.deployment.prev.Resources = resources
 	ex.deployment.depGraph = graph.NewDependencyGraph(resources)
@@ -934,7 +952,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 	ex.deployment.oldViews = oldViews
 }
 
-func undangleParentResources(undeleted map[resource.URN]*resource.State, resources []*resource.State) {
+func undangleParentResources(undeleted map[resource.URN]bool, resources []*resource.State) {
 	// Since a refresh may delete arbitrary resources, we need to handle the case where
 	// the parent of a still existing resource is deleted.
 	//

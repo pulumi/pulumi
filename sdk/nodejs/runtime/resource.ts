@@ -175,6 +175,12 @@ interface ResourceResolverOperation {
      * resource if the URN specified is being deleted as well.
      */
     deletedWithURN: URN | undefined;
+
+    /**
+     * If set, contains the resources whose replacement should trigger a replace
+     * of this resource.
+     */
+    replaceWithResources: Resource[] | undefined;
 }
 
 /**
@@ -615,7 +621,28 @@ export function registerResource(
                 if (opts.retainOnDelete !== undefined) {
                     req.setRetainondelete(opts.retainOnDelete);
                 }
+                if (opts.hideDiffs !== undefined) {
+                    req.setHidediffsList(opts.hideDiffs);
+                }
                 req.setDeletedwith(resop.deletedWithURN || "");
+                const replaceWithURNs: string[] = [];
+                const replaceWithResources = resop.replaceWithResources ?? [];
+                for (const dependency of replaceWithResources) {
+                    const urn = await dependency.urn.promise();
+                    if (urn) {
+                        replaceWithURNs.push(urn);
+                    }
+                }
+                if (replaceWithURNs.length > 0) {
+                    if (!getStore().supportsReplaceWith) {
+                        throw new Error(
+                            "The Pulumi CLI does not support the ReplaceWith option. Please update the Pulumi CLI.",
+                        );
+                    }
+                    req.setReplaceWithList(replaceWithURNs);
+                } else {
+                    req.setReplaceWithList([]);
+                }
                 req.setAliasspecs(true);
                 req.setSourceposition(marshalSourcePosition(sourcePosition));
                 req.setStacktrace(marshalStackTrace(stackTrace));
@@ -879,7 +906,11 @@ export async function prepareResource(
     /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
 
     // Before we can proceed, all our dependencies must be finished.
+    const replaceWithDependencies = await gatherExplicitDependencies(opts.replaceWith);
     const explicitDirectDependencies = new Set(await gatherExplicitDependencies(opts.dependsOn));
+    for (const dependency of replaceWithDependencies) {
+        explicitDirectDependencies.add(dependency);
+    }
 
     // Serialize out all our props to their final values.  In doing so, we'll also collect all
     // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
@@ -989,6 +1020,8 @@ export async function prepareResource(
     }
 
     const deletedWithURN = opts?.deletedWith ? await opts.deletedWith.urn.promise() : undefined;
+    const replaceWithResources =
+        replaceWithDependencies.length > 0 ? Array.from(new Set(replaceWithDependencies)) : undefined;
 
     return {
         resolveURN: resolveURN,
@@ -1004,6 +1037,7 @@ export async function prepareResource(
         import: importID,
         monitorSupportsStructuredAliases,
         deletedWithURN,
+        replaceWithResources,
     };
 }
 

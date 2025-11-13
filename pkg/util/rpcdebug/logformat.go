@@ -16,15 +16,20 @@ package rpcdebug
 
 import (
 	"encoding/json"
+	"time"
 )
 
 // JSON format for tracking gRPC conversations. Normal methods have
-// one entry for each req-resp conversation, streaming methods have
+// two entries for each request-response interaction. Streaming methods have
 // one entry per each request or response over the stream.
 type debugInterceptorLogEntry struct {
 	Method   string          `json:"method"`
 	Request  json.RawMessage `json:"request,omitempty"`
 	Response json.RawMessage `json:"response,omitempty"`
 	Errors   []string        `json:"errors,omitempty"`
-	Metadata interface{}     `json:"metadata,omitempty"`
+	Metadata any             `json:"metadata,omitempty"`
+	// Indicates the state of RPC methods, can be "request_started" or "response_completed"
+	Progress  string        `json:"progress,omitempty"`
+	Timestamp time.Time     `json:"timestamp"`
+	Duration  time.Duration `json:"duration,omitempty"`
 }

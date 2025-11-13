@@ -113,7 +113,7 @@ type PackageSpec struct {
 // This is a private implementation type that handles the dual-format parsing
 type packageValue struct {
 	// The underlying value, either a string or a PackageSpec
-	value interface{}
+	value any
 }
 
 // Spec returns the package as a PackageSpec if it's a PackageSpec,
@@ -162,7 +162,7 @@ func (pv packageValue) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface
-func (pv *packageValue) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (pv *packageValue) UnmarshalYAML(unmarshal func(any) error) error {
 	// First try to unmarshal as a string
 	var s string
 	if err := unmarshal(&s); err == nil {
@@ -181,7 +181,7 @@ func (pv *packageValue) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 // MarshalYAML implements the yaml.Marshaler interface
-func (pv packageValue) MarshalYAML() (interface{}, error) {
+func (pv packageValue) MarshalYAML() (any, error) {
 	return pv.value, nil
 }
 
@@ -200,8 +200,8 @@ type ProjectConfigType struct {
 	Type        *string                 `json:"type,omitempty" yaml:"type,omitempty"`
 	Description string                  `json:"description,omitempty" yaml:"description,omitempty"`
 	Items       *ProjectConfigItemsType `json:"items,omitempty" yaml:"items,omitempty"`
-	Default     interface{}             `json:"default,omitempty" yaml:"default,omitempty"`
-	Value       interface{}             `json:"value,omitempty" yaml:"value,omitempty"`
+	Default     any                     `json:"default,omitempty" yaml:"default,omitempty"`
+	Value       any                     `json:"value,omitempty" yaml:"value,omitempty"`
 	Secret      bool                    `json:"secret,omitempty" yaml:"secret,omitempty"`
 }
 
@@ -218,6 +218,16 @@ func (configType *ProjectConfigType) TypeName() string {
 	}
 
 	return ""
+}
+
+// BaseProject is the base interface for project types. Projects have runtime
+// information (the language and its options) and packages.
+type BaseProject interface {
+	Validate() error
+	Save(path string) error
+	RuntimeInfo() *ProjectRuntimeInfo
+	AddPackage(name string, spec PackageSpec)
+	GetPackageSpecs() map[string]PackageSpec
 }
 
 // Project is a Pulumi project manifest.
@@ -266,14 +276,20 @@ type Project struct {
 	Plugins *Plugins `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 
 	// Handle additional keys, albeit in a way that will remove comments and trivia.
-	AdditionalKeys map[string]interface{} `yaml:",inline"`
+	AdditionalKeys map[string]any `yaml:",inline"`
 
 	// The original byte representation of the file, used to attempt trivia-preserving edits
 	raw []byte
 }
 
+var _ BaseProject = (*Project)(nil)
+
 func (proj Project) RawValue() []byte {
 	return proj.raw
+}
+
+func (proj Project) RuntimeInfo() *ProjectRuntimeInfo {
+	return &proj.Runtime
 }
 
 // GetPackageSpecs returns a map of package names to their corresponding PackageSpecs
@@ -290,8 +306,12 @@ func (proj *Project) GetPackageSpecs() map[string]PackageSpec {
 }
 
 func (proj *Project) AddPackage(name string, spec PackageSpec) {
-	if proj.Packages == nil {
-		proj.Packages = make(map[string]packageValue)
+	addPackageToMap(&proj.Packages, name, spec)
+}
+
+func addPackageToMap(packages *map[string]packageValue, name string, spec PackageSpec) {
+	if *packages == nil {
+		*packages = make(map[string]packageValue)
 	}
 
 	// We default to using the simple string format, but if the package
@@ -303,16 +323,16 @@ func (proj *Project) AddPackage(name string, spec PackageSpec) {
 	if len(spec.Parameters) > 0 {
 		// Simple string format does not support parameters
 		useStringFormat = false
-	} else if existingSpec, ok := proj.Packages[name]; ok {
+	} else if existingSpec, ok := (*packages)[name]; ok {
 		if _, ok := existingSpec.value.(PackageSpec); ok {
 			// If the existing spec is a PackageSpec, keep its format
 			useStringFormat = false
 		}
-	} else if len(proj.Packages) > 0 {
+	} else if len(*packages) > 0 {
 		// Check if all existing packages are PackageSpec
 		// If all packages are already using the PackageSpec format, maintain consistency
 		allPackageSpecs := true
-		for _, existingPackage := range proj.Packages {
+		for _, existingPackage := range *packages {
 			if _, ok := existingPackage.value.(PackageSpec); !ok {
 				allPackageSpecs = false
 				break
@@ -329,13 +349,13 @@ func (proj *Project) AddPackage(name string, spec PackageSpec) {
 		if spec.Version != "" {
 			specString = fmt.Sprintf("%s@%s", spec.Source, spec.Version)
 		}
-		proj.Packages[name] = packageValue{value: specString}
+		(*packages)[name] = packageValue{value: specString}
 	} else {
-		proj.Packages[name] = packageValue{value: spec}
+		(*packages)[name] = packageValue{value: spec}
 	}
 }
 
-func isPrimitiveValue(value interface{}) bool {
+func isPrimitiveValue(value any) bool {
 	switch value.(type) {
 	case string, int, bool:
 		return true
@@ -344,8 +364,8 @@ func isPrimitiveValue(value interface{}) bool {
 	}
 }
 
-func isArray(value interface{}) bool {
-	_, ok := value.([]interface{})
+func isArray(value any) bool {
+	_, ok := value.([]any)
 	return ok
 }
 
@@ -353,7 +373,7 @@ func isArray(value interface{}) bool {
 // to declare a path to the stack configuration directory. If that is the case, we rewrite it
 // such that the value in config: {value} is moved to stackConfigDir: {value}.
 // if the user defines both values as strings, we error out.
-func RewriteConfigPathIntoStackConfigDir(project map[string]interface{}) (map[string]interface{}, error) {
+func RewriteConfigPathIntoStackConfigDir(project map[string]any) (map[string]any, error) {
 	config, hasConfig := project["config"]
 	_, hasStackConfigDir := project["stackConfigDir"]
 
@@ -391,7 +411,7 @@ func RewriteConfigPathIntoStackConfigDir(project map[string]interface{}) (map[st
 //
 // Note that short-hand values without namespaces (project config) are turned into a type
 // where as short-hand values with namespaces (such as aws:region) are turned into a value.
-func RewriteShorthandConfigValues(project map[string]interface{}) map[string]interface{} {
+func RewriteShorthandConfigValues(project map[string]any) map[string]any {
 	configMap, foundConfig := project["config"]
 	projectName := project["name"].(string)
 	if !foundConfig {
@@ -399,7 +419,7 @@ func RewriteShorthandConfigValues(project map[string]interface{}) map[string]int
 		return project
 	}
 
-	config, ok := configMap.(map[string]interface{})
+	config, ok := configMap.(map[string]any)
 
 	if !ok {
 		return project
@@ -407,7 +427,7 @@ func RewriteShorthandConfigValues(project map[string]interface{}) map[string]int
 
 	for key, value := range config {
 		if isPrimitiveValue(value) || isArray(value) {
-			configTypeDefinition := make(map[string]interface{})
+			configTypeDefinition := make(map[string]any)
 			if configKeyIsNamespacedByProject(projectName, key) {
 				// then this is a project namespaced config _type_ with a default value
 				configTypeDefinition["default"] = value
@@ -424,12 +444,12 @@ func RewriteShorthandConfigValues(project map[string]interface{}) map[string]int
 	return project
 }
 
-// Cast any map[interface{}] from the yaml decoder to map[string]
-func SimplifyMarshalledValue(raw interface{}) (interface{}, error) {
-	var cast func(value interface{}) (interface{}, error)
-	cast = func(value interface{}) (interface{}, error) {
-		if objMap, ok := value.(map[interface{}]interface{}); ok {
-			strMap := make(map[string]interface{})
+// Cast any map[any] from the yaml decoder to map[string]
+func SimplifyMarshalledValue(raw any) (any, error) {
+	var cast func(value any) (any, error)
+	cast = func(value any) (any, error) {
+		if objMap, ok := value.(map[any]any); ok {
+			strMap := make(map[string]any)
 			for key, value := range objMap {
 				if strKey, ok := key.(string); ok {
 					innerValue, err := cast(value)
@@ -442,8 +462,8 @@ func SimplifyMarshalledValue(raw interface{}) (interface{}, error) {
 				}
 			}
 			return strMap, nil
-		} else if objArray, ok := value.([]interface{}); ok {
-			strArray := make([]interface{}, len(objArray))
+		} else if objArray, ok := value.([]any); ok {
+			strArray := make([]any, len(objArray))
 			for key, value := range objArray {
 				innerValue, err := cast(value)
 				if err != nil {
@@ -459,22 +479,22 @@ func SimplifyMarshalledValue(raw interface{}) (interface{}, error) {
 	return cast(raw)
 }
 
-func SimplifyMarshalledProject(raw interface{}) (map[string]interface{}, error) {
+func SimplifyMarshalledProject(raw any) (map[string]any, error) {
 	result, err := SimplifyMarshalledValue(raw)
 	if err != nil {
 		return nil, err
 	}
 
 	var ok bool
-	var obj map[string]interface{}
-	if obj, ok = result.(map[string]interface{}); !ok {
+	var obj map[string]any
+	if obj, ok = result.(map[string]any); !ok {
 		return nil, fmt.Errorf("expected project to be an object, was '%T'", result)
 	}
 
 	return obj, nil
 }
 
-func ValidateProject(raw interface{}) error {
+func ValidateProject(raw any) error {
 	project, err := SimplifyMarshalledProject(raw)
 	if err != nil {
 		return err
@@ -526,7 +546,7 @@ func ValidateProject(raw interface{}) error {
 	var appendError func(err *jsonschema.ValidationError)
 	appendError = func(err *jsonschema.ValidationError) {
 		if err.InstanceLocation != "" && err.Message != "" {
-			errorf := func(path, message string, args ...interface{}) error {
+			errorf := func(path, message string, args ...any) error {
 				contract.Requiref(path != "", "path", "path must not be empty")
 				return fmt.Errorf("%s: %s", path, fmt.Sprintf(message, args...))
 			}
@@ -577,7 +597,7 @@ const maxValidationAttributeDistance = 2
 // (and be the first alphabetically).
 func findClosestKey(
 	needle string,
-	haystack map[string]interface{},
+	haystack map[string]any,
 	maxDistance int,
 ) string {
 	match := ""
@@ -613,7 +633,7 @@ func findClosestKey(
 // getSchemaPathAttributes walks the given path into the project schema and
 // returns a list of attributes that can be subsequently traversed at the end of
 // that path.
-func getSchemaPathAttributes(path string) map[string]interface{} {
+func getSchemaPathAttributes(path string) map[string]any {
 	elements := strings.Split(path, "/")
 	isNumber := regexp.MustCompile(`^\d+$`)
 
@@ -663,7 +683,7 @@ func getSchemaPathAttributes(path string) map[string]interface{} {
 		curr = curr.Ref
 	}
 
-	knownProperties := make(map[string]interface{})
+	knownProperties := make(map[string]any)
 	for k, v := range curr.Properties {
 		knownProperties[k] = v
 	}
@@ -690,7 +710,7 @@ func InferFullTypeName(typeName string, itemsType *ProjectConfigItemsType) strin
 // ValidateConfig validates the config value against its config type definition.
 // We use this to validate the default config values alongside their type definition but
 // also to validate config values coming from individual stacks.
-func ValidateConfigValue(typeName string, itemsType *ProjectConfigItemsType, value interface{}) bool {
+func ValidateConfigValue(typeName string, itemsType *ProjectConfigItemsType, value any) bool {
 	if typeName == stringTypeName {
 		_, ok := value.(string)
 		return ok
@@ -730,11 +750,11 @@ func ValidateConfigValue(typeName string, itemsType *ProjectConfigItemsType, val
 
 	if typeName == objectTypeName {
 		// validate that the item is a map
-		_, ok := value.(map[string]interface{})
+		_, ok := value.(map[string]any)
 		return ok
 	}
 
-	items, isArray := value.([]interface{})
+	items, isArray := value.([]any)
 
 	if !isArray || itemsType == nil {
 		return false
@@ -870,6 +890,39 @@ func (proj *PolicyPackProject) Save(path string) error {
 type PluginProject struct {
 	// Runtime is a required runtime that executes code.
 	Runtime ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`
+	// Packages is a map of package dependencies that can be either strings or PackageSpecs
+	Packages map[string]packageValue `json:"packages,omitempty" yaml:"packages,omitempty"`
+}
+
+var _ BaseProject = (*PluginProject)(nil)
+
+func (proj *PluginProject) AddPackage(name string, spec PackageSpec) {
+	addPackageToMap(&proj.Packages, name, spec)
+}
+
+func (proj *PluginProject) Save(path string) error {
+	contract.Requiref(path != "", "path", "must not be empty")
+	contract.Requiref(proj != nil, "proj", "must not be nil")
+	contract.Requiref(proj.Validate() == nil, "proj", "Validate()")
+	return save(path, proj, false /*mkDirAll*/)
+}
+
+func (proj *PluginProject) RuntimeInfo() *ProjectRuntimeInfo {
+	return &proj.Runtime
+}
+
+// GetPackageSpecs returns a map of package names to their corresponding PackageSpecs
+func (proj *PluginProject) GetPackageSpecs() map[string]PackageSpec {
+	if proj.Packages == nil {
+		return nil
+	}
+
+	result := make(map[string]PackageSpec)
+	for name, packageValue := range proj.Packages {
+		result[name] = packageValue.Spec()
+	}
+
+	return result
 }
 
 func (proj *PluginProject) Validate() error {
@@ -1146,7 +1199,7 @@ func (ps *ProjectStack) Save(path string) error {
 
 type ProjectRuntimeInfo struct {
 	name    string
-	options map[string]interface{}
+	options map[string]any
 }
 
 type ProjectStackDeployment struct {
@@ -1159,7 +1212,7 @@ func (psd *ProjectStackDeployment) Save(path string) error {
 	return save(path, psd, true /*mkDirAll*/)
 }
 
-func NewProjectRuntimeInfo(name string, options map[string]interface{}) ProjectRuntimeInfo {
+func NewProjectRuntimeInfo(name string, options map[string]any) ProjectRuntimeInfo {
 	return ProjectRuntimeInfo{
 		name:    name,
 		options: options,
@@ -1170,23 +1223,23 @@ func (info *ProjectRuntimeInfo) Name() string {
 	return info.name
 }
 
-func (info *ProjectRuntimeInfo) Options() map[string]interface{} {
+func (info *ProjectRuntimeInfo) Options() map[string]any {
 	return info.options
 }
 
-func (info *ProjectRuntimeInfo) SetOption(key string, value interface{}) {
+func (info *ProjectRuntimeInfo) SetOption(key string, value any) {
 	if info.options == nil {
-		info.options = make(map[string]interface{})
+		info.options = make(map[string]any)
 	}
 	info.options[key] = value
 }
 
-func (info ProjectRuntimeInfo) MarshalYAML() (interface{}, error) {
+func (info ProjectRuntimeInfo) MarshalYAML() (any, error) {
 	if len(info.options) == 0 {
 		return info.name, nil
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"name":    info.name,
 		"options": info.options,
 	}, nil
@@ -1197,7 +1250,7 @@ func (info ProjectRuntimeInfo) MarshalJSON() ([]byte, error) {
 		return json.Marshal(info.name)
 	}
 
-	return json.Marshal(map[string]interface{}{
+	return json.Marshal(map[string]any{
 		"name":    info.name,
 		"options": info.options,
 	})
@@ -1209,8 +1262,8 @@ func (info *ProjectRuntimeInfo) UnmarshalJSON(data []byte) error {
 	}
 
 	var payload struct {
-		Name    string                 `json:"name"`
-		Options map[string]interface{} `json:"options"`
+		Name    string         `json:"name"`
+		Options map[string]any `json:"options"`
 	}
 
 	if err := json.Unmarshal(data, &payload); err == nil {
@@ -1222,14 +1275,14 @@ func (info *ProjectRuntimeInfo) UnmarshalJSON(data []byte) error {
 	return errors.New("runtime section must be a string or an object with name and options attributes")
 }
 
-func (info *ProjectRuntimeInfo) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (info *ProjectRuntimeInfo) UnmarshalYAML(unmarshal func(any) error) error {
 	if err := unmarshal(&info.name); err == nil {
 		return nil
 	}
 
 	var payload struct {
-		Name    string                 `yaml:"name"`
-		Options map[string]interface{} `yaml:"options"`
+		Name    string         `yaml:"name"`
+		Options map[string]any `yaml:"options"`
 	}
 
 	if err := unmarshal(&payload); err == nil {
@@ -1251,7 +1304,7 @@ func marshallerForPath(path string) (encoding.Marshaler, error) {
 	return m, nil
 }
 
-func save(path string, value interface{}, mkDirAll bool) error {
+func save(path string, value any, mkDirAll bool) error {
 	contract.Requiref(path != "", "path", "must not be empty")
 	contract.Requiref(value != nil, "value", "must not be nil")
 

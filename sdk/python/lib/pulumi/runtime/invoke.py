@@ -129,12 +129,17 @@ def invoke_single(
     opts: Optional[InvokeOptions] = None,
     typ: Optional[type] = None,
     package_ref: Optional[Awaitable[Optional[str]]] = None,
-) -> Any:
+) -> InvokeResult:
     """
     Similar to `invoke`, but extracts a singular value from the result (eg { "foo": "bar" } => "bar").
     """
     result = invoke(tok, props, opts, typ, package_ref)
-    return _extract_single_value(result)
+    return InvokeResult(
+        _extract_single_value(result.value),
+        result.is_secret,
+        result.is_known,
+        result.dependencies,
+    )
 
 
 def invoke_output(
@@ -582,4 +587,4 @@ def _extract_single_value(out: Any) -> Any:
     if not isinstance(out, dict):
         return out
 
-    return out[list(out.keys())[0]]
+    return list(out.values())[0]

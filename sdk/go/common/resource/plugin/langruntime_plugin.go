@@ -193,7 +193,7 @@ func langRuntimePluginDialOptions(ctx *Context, runtime string) []grpc.DialOptio
 	)
 
 	if ctx.DialOptions != nil {
-		metadata := map[string]interface{}{
+		metadata := map[string]any{
 			"mode": "client",
 			"kind": "language",
 		}
@@ -206,7 +206,7 @@ func langRuntimePluginDialOptions(ctx *Context, runtime string) []grpc.DialOptio
 	return dialOpts
 }
 
-func buildArgsForNewPlugin(host Host, root string, options map[string]interface{}) ([]string, error) {
+func buildArgsForNewPlugin(host Host, root string, options map[string]any) ([]string, error) {
 	root, err := filepath.Abs(root)
 	if err != nil {
 		return nil, err
@@ -390,11 +390,6 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 	for i, k := range info.ConfigSecretKeys {
 		configSecretKeys[i] = k.String()
 	}
-	configPropertyMap, err := MarshalProperties(info.ConfigPropertyMap,
-		MarshalOptions{RejectUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
-	if err != nil {
-		return "", false, err
-	}
 
 	minfo, err := info.Info.Marshal()
 	if err != nil {
@@ -402,22 +397,21 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 	}
 
 	resp, err := h.client.Run(h.ctx.Request(), &pulumirpc.RunRequest{
-		MonitorAddress:    info.MonitorAddress,
-		Pwd:               info.Pwd,
-		Program:           info.Info.EntryPoint(),
-		Args:              info.Args,
-		Project:           info.Project,
-		Stack:             info.Stack,
-		Config:            config,
-		ConfigSecretKeys:  configSecretKeys,
-		ConfigPropertyMap: configPropertyMap,
-		DryRun:            info.DryRun,
-		QueryMode:         info.QueryMode,
-		Parallel:          info.Parallel,
-		Organization:      info.Organization,
-		Info:              minfo,
-		LoaderTarget:      info.LoaderAddress,
-		AttachDebugger:    info.AttachDebugger,
+		MonitorAddress:   info.MonitorAddress,
+		Pwd:              info.Pwd,
+		Program:          info.Info.EntryPoint(),
+		Args:             info.Args,
+		Project:          info.Project,
+		Stack:            info.Stack,
+		Config:           config,
+		ConfigSecretKeys: configSecretKeys,
+		DryRun:           info.DryRun,
+		QueryMode:        info.QueryMode,
+		Parallel:         info.Parallel,
+		Organization:     info.Organization,
+		Info:             minfo,
+		LoaderTarget:     info.LoaderAddress,
+		AttachDebugger:   info.AttachDebugger,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -889,28 +883,57 @@ func languageHandshake(
 }
 
 func (h *langhost) Link(
-	info ProgramInfo, localDependencies map[string]string,
-) error {
-	label := fmt.Sprintf("langhost[%v].Link(%v, %v)", h.runtime, info, localDependencies)
+	info ProgramInfo, deps []workspace.LinkablePackageDescriptor, loaderTarget string,
+) (string, error) {
+	label := fmt.Sprintf("langhost[%v].Link(%v, %v)", h.runtime, info, deps)
 	logging.V(7).Infof("%s executing", label)
 
 	minfo, err := info.Marshal()
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	_, err = h.client.Link(h.ctx.Request(), &pulumirpc.LinkRequest{
-		Info:              minfo,
-		LocalDependencies: localDependencies,
+	packages := []*pulumirpc.LinkRequest_LinkDependency{}
+	for _, dep := range deps {
+		version := ""
+		if dep.Descriptor.Version != nil {
+			version = dep.Descriptor.Version.String()
+		}
+
+		var parameterization *pulumirpc.PackageParameterization
+		if dep.Descriptor.Parameterization != nil {
+			parameterization = &pulumirpc.PackageParameterization{
+				Name:    dep.Descriptor.Parameterization.Name,
+				Version: dep.Descriptor.Parameterization.Version.String(),
+				Value:   dep.Descriptor.Parameterization.Value,
+			}
+		}
+
+		packages = append(packages, &pulumirpc.LinkRequest_LinkDependency{
+			Path: dep.Path,
+			Package: &pulumirpc.PackageDependency{
+				Name:             dep.Descriptor.Name,
+				Version:          version,
+				Server:           dep.Descriptor.PluginDownloadURL,
+				Kind:             string(dep.Descriptor.Kind),
+				Parameterization: parameterization,
+			},
+		})
+	}
+
+	res, err := h.client.Link(h.ctx.Request(), &pulumirpc.LinkRequest{
+		Info:         minfo,
+		Packages:     packages,
+		LoaderTarget: loaderTarget,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
-		return rpcError
+		return "", rpcError
 	}
 
 	logging.V(7).Infof("%s success", label)
-	return nil
+	return res.ImportInstructions, nil
 }
 
 func (h *langhost) Cancel() error {

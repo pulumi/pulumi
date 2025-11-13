@@ -21,8 +21,8 @@ import (
 	"strings"
 
 	"github.com/mitchellh/copystructure"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"pgregory.net/rapid"
@@ -47,6 +47,7 @@ type ResourceSpec struct {
 	Dependencies         []resource.URN
 	PropertyDependencies map[resource.PropertyKey][]resource.URN
 	DeletedWith          resource.URN
+	ReplaceWith          []resource.URN
 	Aliases              []resource.URN
 
 	// A set of tags associated with the resource. These have no bearing on any tests but are included to aid in debugging
@@ -418,7 +419,11 @@ func GeneratedResourceSpec(
 
 		typ := GeneratedResourceType(pkg).Draw(t, "ResourceSpec.Type")
 		name := GeneratedResourceName.Draw(t, "ResourceSpec.Name")
-		id := GeneratedResourceID.Draw(t, "ResourceSpec.ID")
+		custom := rso.Custom.Draw(t, "ResourceSpec.Custom")
+		id := resource.ID("")
+		if custom {
+			id = GeneratedResourceID.Draw(t, "ResourceSpec.ID")
+		}
 
 		r := &ResourceSpec{
 			Project: tokens.PackageName(sso.Project),
@@ -427,7 +432,7 @@ func GeneratedResourceSpec(
 			Name:    name,
 			ID:      id,
 
-			Custom:             rso.Custom.Draw(t, "ResourceSpec.Custom"),
+			Custom:             custom,
 			Delete:             false,
 			Protect:            rso.Protect.Draw(t, "ResourceSpec.Protect"),
 			PendingReplacement: rso.PendingReplacement.Draw(t, "ResourceSpec.PendingReplacement"),

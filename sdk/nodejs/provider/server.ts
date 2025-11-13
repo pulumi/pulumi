@@ -365,8 +365,7 @@ class Server implements grpc.UntypedServiceImplementation {
 
     public async construct(call: any, callback: any): Promise<void> {
         // Setup a new async state store for this run
-        const store = new localState.LocalStore();
-        return localState.asyncLocalStorage.run(store, async () => {
+        return localState.withLocalStorage(async () => {
             const callbackId = Symbol("id");
             this._callbacks.set(callbackId, callback);
             try {
@@ -458,8 +457,7 @@ class Server implements grpc.UntypedServiceImplementation {
 
     public async call(call: any, callback: any): Promise<void> {
         // Setup a new async state store for this run
-        const store = new localState.LocalStore();
-        return localState.asyncLocalStorage.run(store, async () => {
+        return localState.withLocalStorage(async () => {
             const callbackId = Symbol("id");
             this._callbacks.set(callbackId, callback);
             try {
@@ -748,7 +746,7 @@ export async function main(provider: Provider, args: string[]) {
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
     const server = new grpc.Server({
-        "grpc.max_receive_message_length": settings.maxRPCMessageSize,
+        ...settings.grpcChannelOptions,
     });
 
     // The program receives a single optional argument: the address of the RPC endpoint for the engine.  It

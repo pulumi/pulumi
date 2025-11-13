@@ -31,7 +31,7 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -317,9 +317,9 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 
 	const resType = "pkgA:index:typ"
 
-	inputsA := resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"})
+	inputsA := resource.NewPropertyMapFromMap(map[string]any{"A": "foo"})
 	dbrValue, dbrA := true, (*bool)(nil)
-	inputsB := resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"})
+	inputsB := resource.NewPropertyMapFromMap(map[string]any{"A": "foo"})
 
 	var provURN, urnA, urnB resource.URN
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -539,8 +539,8 @@ func TestDependencyChangeDBR(t *testing.T) {
 
 	const resType = "pkgA:index:typ"
 
-	inputsA := resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"})
-	inputsB := resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"})
+	inputsA := resource.NewPropertyMapFromMap(map[string]any{"A": "foo"})
+	inputsB := resource.NewPropertyMapFromMap(map[string]any{"A": "foo"})
 
 	var urnA, urnB resource.URN
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -650,8 +650,8 @@ func TestDBRProtect(t *testing.T) {
 
 	const resType = "pkgA:index:typ"
 
-	inputsA := resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"})
-	inputsB := resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"})
+	inputsA := resource.NewPropertyMapFromMap(map[string]any{"A": "foo"})
+	inputsB := resource.NewPropertyMapFromMap(map[string]any{"A": "foo"})
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		respA, err := monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
@@ -891,12 +891,12 @@ func TestDBRParallel(t *testing.T) {
 			// First update just create the two resources.
 			program = func(monitor *deploytest.ResourceMonitor) error {
 				respA, err := monitor.RegisterResource("pkgA:index:typ", "resA", true, deploytest.ResourceOptions{
-					Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"}),
+					Inputs: resource.NewPropertyMapFromMap(map[string]any{"A": "foo"}),
 				})
 				require.NoError(t, err)
 
 				_, err = monitor.RegisterResource("pkgA:index:typ", "resB", true, deploytest.ResourceOptions{
-					Inputs:       resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"}),
+					Inputs:       resource.NewPropertyMapFromMap(map[string]any{"A": "foo"}),
 					Dependencies: []resource.URN{respA.URN},
 					PropertyDeps: map[resource.PropertyKey][]resource.URN{"A": {respA.URN}},
 				})
@@ -915,7 +915,7 @@ func TestDBRParallel(t *testing.T) {
 
 				go func() {
 					_, err := monitor.RegisterResource("pkgA:index:typ", "resA", true, deploytest.ResourceOptions{
-						Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{"A": "bar"}),
+						Inputs: resource.NewPropertyMapFromMap(map[string]any{"A": "bar"}),
 					})
 					require.NoError(t, err)
 					wg.Done()
@@ -923,7 +923,7 @@ func TestDBRParallel(t *testing.T) {
 
 				go func() {
 					_, err = monitor.RegisterResource("pkgA:index:typ", "resB", true, deploytest.ResourceOptions{
-						Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{"A": "bar"}),
+						Inputs: resource.NewPropertyMapFromMap(map[string]any{"A": "bar"}),
 					})
 					require.NoError(t, err)
 					wg.Done()

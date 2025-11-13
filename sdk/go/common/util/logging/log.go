@@ -61,7 +61,7 @@ type VerboseLogger glog.Verbose
 
 // Info is equivalent to the global Info function, guarded by the value of v.
 // See the documentation of V for usage.
-func (v VerboseLogger) Info(args ...interface{}) {
+func (v VerboseLogger) Info(args ...any) {
 	if v {
 		glog.Verbose(v).InfoDepth(1, FilterString(fmt.Sprint(args...)))
 	}
@@ -69,7 +69,7 @@ func (v VerboseLogger) Info(args ...interface{}) {
 
 // Infoln is equivalent to the global Infoln function, guarded by the value of v.
 // See the documentation of V for usage.
-func (v VerboseLogger) Infoln(args ...interface{}) {
+func (v VerboseLogger) Infoln(args ...any) {
 	if v {
 		glog.Verbose(v).Infoln(FilterString(fmt.Sprint(args...)))
 	}
@@ -77,7 +77,7 @@ func (v VerboseLogger) Infoln(args ...interface{}) {
 
 // Infof is equivalent to the global Infof function, guarded by the value of v.
 // See the documentation of V for usage.
-func (v VerboseLogger) Infof(format string, args ...interface{}) {
+func (v VerboseLogger) Infof(format string, args ...any) {
 	if v {
 		glog.Verbose(v).InfoDepthf(1, "%s", FilterString(fmt.Sprintf(format, args...)))
 	}
@@ -88,15 +88,15 @@ func V(level glog.Level) VerboseLogger {
 	return VerboseLogger(glog.V(level))
 }
 
-func Errorf(format string, args ...interface{}) {
+func Errorf(format string, args ...any) {
 	glog.ErrorDepthf(1, "%s", FilterString(fmt.Sprintf(format, args...)))
 }
 
-func Infof(format string, args ...interface{}) {
+func Infof(format string, args ...any) {
 	glog.InfoDepthf(1, "%s", FilterString(fmt.Sprintf(format, args...)))
 }
 
-func Warningf(format string, args ...interface{}) {
+func Warningf(format string, args ...any) {
 	glog.WarningDepthf(1, "%s", FilterString(fmt.Sprintf(format, args...)))
 }
 

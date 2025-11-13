@@ -18,12 +18,14 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 )
 
 // pnpm is an alternative package manager for Node.js.
@@ -69,6 +71,47 @@ func (pnpm *pnpmManager) installCmd(ctx context.Context, production bool) *exec.
 
 	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
 	return exec.CommandContext(ctx, pnpm.executable, args...)
+}
+
+func (pnpm *pnpmManager) Link(ctx context.Context, dir, packageName, path string) error {
+	packageSpecifier := getLinkPackageProperty(packageName, path)
+	cmd := exec.CommandContext(ctx, "pnpm", "pkg", "set", packageSpecifier)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("error executing pnpm command %s: %w, output: %s", cmd.String(), err, out)
+	}
+
+	// Local SDKs have a postInstall script that needs to run. By default pnpm does not run these scripts. We have to
+	// add the package to the `onlyBuiltDependencies` setting to allow this.
+	// https://pnpm.io/next/settings#onlybuiltdependencies
+	cmd = exec.CommandContext(ctx, "pnpm", "config", "get", "onlyBuiltDependencies", "--json")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("error running %s: %w, output: %s", cmd.String(), err, out)
+	}
+	out = bytes.TrimSpace(out)
+	var dependencies []string
+	if len(out) > 0 && string(out) != "undefined\n" {
+		if err := json.Unmarshal(out, &dependencies); err != nil {
+			dependencies = []string{}
+		}
+	}
+	if !slices.Contains(dependencies, packageName) {
+		dependencies = append(dependencies, packageName)
+	}
+	jsonData, err := json.Marshal(dependencies)
+	if err != nil {
+		return fmt.Errorf("error marshaling dependencies to JSON: %w", err)
+	}
+	//nolint:gosec // json data is escaped
+	cmd = exec.CommandContext(ctx, "pnpm", "config", "set", "onlyBuiltDependencies", string(jsonData),
+		"--location", "project", "--json")
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("error running %s: %w, output: %s", cmd.String(), err, out)
+	}
+	return nil
 }
 
 func (pnpm *pnpmManager) Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {

@@ -31,9 +31,10 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	pkgproviders "github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -1368,7 +1369,7 @@ func TestPluginDownloadURLDefaultProvider(t *testing.T) {
 	foundDefaultProvider := false
 	for _, r := range snapshot.Resources {
 		if providers.IsDefaultProvider(r.URN) {
-			actualURL, err := providers.GetProviderDownloadURL(r.Inputs)
+			actualURL, err := pkgproviders.GetProviderDownloadURL(r.Inputs)
 			require.NoError(t, err)
 			assert.Equal(t, url, actualURL)
 			foundDefaultProvider = true
@@ -1441,7 +1442,6 @@ func TestMultipleResourceDenyDefaultProviderLifecycle(t *testing.T) {
 		},
 	}
 	for _, tt := range cases {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1578,7 +1578,6 @@ func TestProviderVersionAssignment(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			programF := deploytest.NewLanguageRuntimeF(c.prog, c.packages...)
@@ -2247,7 +2246,7 @@ func TestInternalKey(t *testing.T) {
 			return &deploytest.Provider{
 				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
 					news := req.News.Copy()
-					news["__internal"] = resource.NewProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+					news["__internal"] = resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 						"some": "internal data",
 					}))
 					return plugin.CheckConfigResponse{

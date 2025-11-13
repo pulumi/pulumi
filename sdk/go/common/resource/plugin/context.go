@@ -43,7 +43,7 @@ type Context struct {
 
 	// If non-nil, configures custom gRPC client options. Receives pluginInfo which is a JSON-serializable bit of
 	// metadata describing the plugin.
-	DialOptions func(pluginInfo interface{}) []grpc.DialOption
+	DialOptions func(pluginInfo any) []grpc.DialOption
 
 	DebugTraceMutex *sync.Mutex // used internally to syncronize debug tracing
 
@@ -59,7 +59,7 @@ type Context struct {
 // that when the context's resources are reclaimed, so too are the
 // host's.
 func NewContext(ctx context.Context, d, statusD diag.Sink, host Host, _ ConfigSource,
-	pwd string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
+	pwd string, runtimeOptions map[string]any, disableProviderPreview bool,
 	parentSpan opentracing.Span,
 ) (*Context, error) {
 	// TODO: really this ought to just take plugins *workspace.Plugins and packages map[string]workspace.PackageSpec
@@ -82,7 +82,7 @@ func NewContext(ctx context.Context, d, statusD diag.Sink, host Host, _ ConfigSo
 
 // NewContextWithRoot is a variation of NewContext that also sets known project Root. Additionally accepts Plugins
 func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
-	pwd, root string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
+	pwd, root string, runtimeOptions map[string]any, disableProviderPreview bool,
 	parentSpan opentracing.Span, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
 	config map[config.Key]string, debugging DebugContext,
 ) (*Context, error) {

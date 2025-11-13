@@ -233,7 +233,6 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -289,7 +288,6 @@ func TestGenerateName(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got, hasRandom := generateName(tt.pattern, urn, randomSeed)

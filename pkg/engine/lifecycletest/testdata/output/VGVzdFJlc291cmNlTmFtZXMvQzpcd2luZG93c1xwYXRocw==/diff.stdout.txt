@@ -2,7 +2,7 @@
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::C:\windows\paths]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::C:\windows\paths]
-<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::C:\windows\paths::a3e75ebd-56ef-4b1a-aebc-ab9c1fcc9eff]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::C:\windows\paths::2]
 <{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typB: (create)
 <{%fg 2%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typB::C:\windows\paths]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>

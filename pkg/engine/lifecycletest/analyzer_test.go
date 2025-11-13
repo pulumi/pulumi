@@ -85,7 +85,7 @@ func TestSimpleAnalyzer(t *testing.T) {
 			}, opts.Config)
 
 			return &deploytest.Analyzer{}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -134,6 +134,7 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 							Name:             "always-fails",
 							Description:      "a policy that always fails",
 							EnforcementLevel: apitype.Mandatory,
+							Severity:         apitype.PolicySeverityHigh,
 						},
 					},
 				},
@@ -156,7 +157,7 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 					}}}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -201,6 +202,7 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 		assert.Equal(t, "analyzerA", violationPayload.PolicyPackName)
 		assert.Contains(t, violationPayload.Message, "a policy failed")
 		assert.Equal(t, apitype.Mandatory, violationPayload.EnforcementLevel)
+		assert.Equal(t, apitype.PolicySeverityHigh, violationPayload.Severity)
 
 		require.Len(t, summaryEvents, 2)
 
@@ -256,7 +258,7 @@ func TestSimpleAnalyzeStackFailure(t *testing.T) {
 					}}}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -377,7 +379,7 @@ func TestResourceRemediation(t *testing.T) {
 					}}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -471,12 +473,12 @@ func TestResourceRemediation(t *testing.T) {
 	// Expect no error, valid snapshot, two resources:
 	assert.Nil(t, err)
 	require.NotNil(t, snap)
-	assert.Equal(t, 2, len(snap.Resources)) // stack plus pkA:m:typA
+	require.Len(t, snap.Resources, 2) // stack plus pkA:m:typA
 
 	// Ensure the rewritten properties have been applied to the inputs:
 	r := snap.Resources[1]
 	assert.Equal(t, "pkgA:m:typA", string(r.Type))
-	assert.Equal(t, 3, len(r.Inputs))
+	require.Len(t, r.Inputs, 3)
 	assert.Equal(t, "foo", r.Inputs["a"].StringValue())
 	assert.Equal(t, true, r.Inputs["fff"].BoolValue())
 	assert.Equal(t, "bar", r.Inputs["z"].StringValue())
@@ -503,7 +505,7 @@ func TestRemediationDiagnostic(t *testing.T) {
 					}}}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -529,7 +531,7 @@ func TestRemediationDiagnostic(t *testing.T) {
 	// Expect no error, valid snapshot, two resources:
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	assert.Equal(t, 2, len(snap.Resources)) // stack plus pkA:m:typA
+	require.Len(t, snap.Resources, 2) // stack plus pkA:m:typA
 }
 
 // TestRemediateFailure tests the case where a remediation fails to execute. In this case, the whole
@@ -547,7 +549,7 @@ func TestRemediateFailure(t *testing.T) {
 					return plugin.RemediateResponse{}, errors.New("this remediation failed")
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -594,7 +596,7 @@ func TestSimpleAnalyzeResourceFailureRemediateDowngradedToMandatory(t *testing.T
 					}}}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -659,7 +661,7 @@ func TestSimpleAnalyzeStackFailureRemediateDowngradedToMandatory(t *testing.T) {
 					}}}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -717,7 +719,7 @@ func TestAnalyzerCancellation(t *testing.T) {
 					return nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -745,4 +747,244 @@ func TestAnalyzerCancellation(t *testing.T) {
 
 	assert.ErrorContains(t, err, "BAIL: canceled")
 	assert.True(t, gracefulShutdown)
+}
+
+func TestSimpleAnalyzeResourceMultipleViolations(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.PluginLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+			policies := []plugin.AnalyzerPolicyInfo{
+				{
+					Name:             "always-fails-advisory-unspecified",
+					Description:      "a policy that always fails unspecified",
+					EnforcementLevel: apitype.Advisory,
+				},
+				{
+					Name:             "always-fails-advisory-low",
+					Description:      "a policy that always fails low",
+					EnforcementLevel: apitype.Advisory,
+					Severity:         apitype.PolicySeverityLow,
+				},
+				{
+					Name:             "always-fails-advisory-medium",
+					Description:      "a policy that always fails medium",
+					EnforcementLevel: apitype.Advisory,
+					Severity:         apitype.PolicySeverityMedium,
+				},
+				{
+					Name:             "always-fails-advisory-high",
+					Description:      "a policy that always fails high",
+					EnforcementLevel: apitype.Advisory,
+					Severity:         apitype.PolicySeverityHigh,
+				},
+				{
+					Name:             "always-fails-advisory-critical",
+					Description:      "a policy that always fails critical",
+					EnforcementLevel: apitype.Advisory,
+					Severity:         apitype.PolicySeverityCritical,
+				},
+				{
+					Name:             "always-fails-unspecified",
+					Description:      "a policy that always fails unspecified",
+					EnforcementLevel: apitype.Mandatory,
+				},
+				{
+					Name:             "always-fails-low",
+					Description:      "a policy that always fails low",
+					EnforcementLevel: apitype.Mandatory,
+					Severity:         apitype.PolicySeverityLow,
+				},
+				{
+					Name:             "always-fails-medium",
+					Description:      "a policy that always fails medium",
+					EnforcementLevel: apitype.Mandatory,
+					Severity:         apitype.PolicySeverityMedium,
+				},
+				{
+					Name:             "always-fails-high",
+					Description:      "a policy that always fails high",
+					EnforcementLevel: apitype.Mandatory,
+					Severity:         apitype.PolicySeverityHigh,
+				},
+				{
+					Name:             "always-fails-critical",
+					Description:      "a policy that always fails critical",
+					EnforcementLevel: apitype.Mandatory,
+					Severity:         apitype.PolicySeverityCritical,
+				},
+			}
+			return &deploytest.Analyzer{
+				Info: plugin.AnalyzerInfo{
+					Name:     "analyzerA",
+					Version:  "1.0.0",
+					Policies: policies,
+				},
+				AnalyzeF: func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
+					if r.Type != "pkgA:m:typA" {
+						return plugin.AnalyzeResponse{
+							NotApplicable: []plugin.PolicyNotApplicable{
+								{PolicyName: "always-fails", Reason: "not the right resource type"},
+							},
+						}, nil
+					}
+
+					var diagnostics []plugin.AnalyzeDiagnostic
+					for _, p := range policies {
+						diagnostics = append(diagnostics, plugin.AnalyzeDiagnostic{
+							PolicyName:        p.Name,
+							PolicyPackName:    "analyzerA",
+							PolicyPackVersion: "1.0.0",
+							Description:       p.Description,
+							Message:           "a policy failed",
+							EnforcementLevel:  p.EnforcementLevel,
+							Severity:          p.Severity,
+							URN:               r.URN,
+						})
+					}
+
+					return plugin.AnalyzeResponse{Diagnostics: diagnostics}, nil
+				},
+			}, nil
+		}, deploytest.WithGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.Error(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T: t,
+			UpdateOptions: UpdateOptions{
+				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "1.0.0", nil)},
+			},
+			HostF: hostF,
+		},
+	}
+
+	project := p.GetProject()
+	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Error(t, err)
+
+	// Test data contains golden files for expected sorted output.
+}
+
+// TestSimpleAnalyzeResourceFailureSeverityOverride tests that a policy diagnostic's severity
+// can be overridden as part of the diagnostic.
+func TestSimpleAnalyzeResourceFailureSeverityOverride(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.PluginLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+			return &deploytest.Analyzer{
+				Info: plugin.AnalyzerInfo{
+					Name: "analyzerA",
+					Policies: []plugin.AnalyzerPolicyInfo{
+						{
+							Name:             "always-fails",
+							Description:      "a policy that always fails",
+							EnforcementLevel: apitype.Mandatory,
+							Severity:         apitype.PolicySeverityMedium,
+						},
+					},
+				},
+				AnalyzeF: func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
+					if r.Type != "pkgA:m:typA" {
+						return plugin.AnalyzeResponse{
+							NotApplicable: []plugin.PolicyNotApplicable{
+								{PolicyName: "always-fails", Reason: "not the right resource type"},
+							},
+						}, nil
+					}
+
+					return plugin.AnalyzeResponse{Diagnostics: []plugin.AnalyzeDiagnostic{{
+						PolicyName:       "always-fails",
+						PolicyPackName:   "analyzerA",
+						Description:      "a policy that always fails",
+						Message:          "a policy failed",
+						EnforcementLevel: apitype.Mandatory,
+						URN:              r.URN,
+						Severity:         apitype.PolicySeverityCritical,
+					}}}, nil
+				},
+			}, nil
+		}, deploytest.WithGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.Error(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T: t,
+			UpdateOptions: UpdateOptions{
+				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
+			},
+			HostF: hostF,
+		},
+	}
+
+	expectedResourceURN := p.NewURN("pkgA:m:typA", "resA", "")
+	expectedProviderURN := p.NewURN("pulumi:providers:pkgA", "default", "")
+
+	validate := func(project workspace.Project, target deploy.Target, entries JournalEntries,
+		events []Event, err error,
+	) error {
+		var violationEvents []Event
+		var summaryEvents []Event
+		for _, e := range events {
+			switch e.Type { //nolint:exhaustive
+			case PolicyViolationEvent:
+				violationEvents = append(violationEvents, e)
+			case PolicyAnalyzeSummaryEvent:
+				summaryEvents = append(summaryEvents, e)
+			}
+		}
+
+		require.Len(t, violationEvents, 1)
+		require.IsType(t, PolicyViolationEventPayload{}, violationEvents[0].Payload())
+		violationPayload := violationEvents[0].Payload().(PolicyViolationEventPayload)
+		assert.Equal(t, expectedResourceURN, violationPayload.ResourceURN)
+		assert.Equal(t, "always-fails", violationPayload.PolicyName)
+		assert.Equal(t, "analyzerA", violationPayload.PolicyPackName)
+		assert.Contains(t, violationPayload.Message, "a policy failed")
+		assert.Equal(t, apitype.Mandatory, violationPayload.EnforcementLevel)
+		assert.Equal(t, apitype.PolicySeverityCritical, violationPayload.Severity)
+
+		require.Len(t, summaryEvents, 2)
+
+		require.IsType(t, PolicyAnalyzeSummaryEventPayload{}, summaryEvents[0].Payload())
+		summaryPayload0 := summaryEvents[0].Payload().(PolicyAnalyzeSummaryEventPayload)
+		assert.Equal(t, expectedProviderURN, summaryPayload0.ResourceURN)
+		assert.Equal(t, "analyzerA", summaryPayload0.PolicyPackName)
+		assert.Empty(t, summaryPayload0.Passed)
+		assert.Empty(t, summaryPayload0.Failed)
+
+		require.IsType(t, PolicyAnalyzeSummaryEventPayload{}, summaryEvents[1].Payload())
+		summaryPayload1 := summaryEvents[1].Payload().(PolicyAnalyzeSummaryEventPayload)
+		assert.Equal(t, expectedResourceURN, summaryPayload1.ResourceURN)
+		assert.Equal(t, "analyzerA", summaryPayload1.PolicyPackName)
+		assert.Empty(t, summaryPayload1.Passed)
+		assert.Equal(t, []string{"always-fails"}, summaryPayload1.Failed)
+
+		return err
+	}
+
+	project := p.GetProject()
+	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
+	assert.Error(t, err)
 }

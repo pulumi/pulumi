@@ -95,7 +95,7 @@ func TestAssetSerialize(t *testing.T) {
 		assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", emptyDes.Hash)
 
 		// now a map of nested assets and/or archives.
-		arch, err := rarchive.FromAssets(map[string]interface{}{"foo": asset})
+		arch, err := rarchive.FromAssets(map[string]any{"foo": asset})
 		require.NoError(t, err)
 		switch runtime.Version() {
 		case go19Version:
@@ -109,7 +109,7 @@ func TestAssetSerialize(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, isarch)
 		assert.True(t, archDes.IsAssets())
-		assert.Equal(t, 1, len(archDes.Assets))
+		require.Len(t, archDes.Assets, 1)
 		assert.True(t, archDes.Assets["foo"].(*rasset.Asset).IsText())
 		assert.Equal(t, text, archDes.Assets["foo"].(*rasset.Asset).Text)
 		switch runtime.Version() {
@@ -138,7 +138,7 @@ func TestAssetSerialize(t *testing.T) {
 		assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", assetDes.Hash)
 		assert.Equal(t, AssetSig, assetDes.Sig)
 
-		arch, err := rarchive.FromAssets(map[string]interface{}{"foo": asset})
+		arch, err := rarchive.FromAssets(map[string]any{"foo": asset})
 		require.NoError(t, err)
 		switch runtime.Version() {
 		case go19Version:
@@ -152,7 +152,7 @@ func TestAssetSerialize(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, isarch)
 		assert.True(t, archDes.IsAssets())
-		assert.Equal(t, 1, len(archDes.Assets))
+		require.Len(t, archDes.Assets, 1)
 		assert.True(t, archDes.Assets["foo"].(*rasset.Asset).IsPath())
 		assert.Equal(t, file, archDes.Assets["foo"].(*rasset.Asset).Path)
 		switch runtime.Version() {
@@ -180,7 +180,7 @@ func TestAssetSerialize(t *testing.T) {
 		assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", assetDes.Hash)
 		assert.Equal(t, AssetSig, assetDes.Sig)
 
-		arch, err := rarchive.FromAssets(map[string]interface{}{"foo": asset})
+		arch, err := rarchive.FromAssets(map[string]any{"foo": asset})
 		require.NoError(t, err)
 		switch runtime.Version() {
 		case go19Version:
@@ -194,7 +194,7 @@ func TestAssetSerialize(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, isarch)
 		assert.True(t, archDes.IsAssets())
-		assert.Equal(t, 1, len(archDes.Assets))
+		require.Len(t, archDes.Assets, 1)
 		assert.True(t, archDes.Assets["foo"].(*rasset.Asset).IsURI())
 		assert.Equal(t, url, archDes.Assets["foo"].(*rasset.Asset).URI)
 		switch runtime.Version() {
@@ -346,7 +346,7 @@ func TestArchiveSerialize(t *testing.T) {
 	t.Run("assets archive", func(t *testing.T) {
 		t.Parallel()
 
-		archive, err := rarchive.FromAssets(map[string]interface{}{})
+		archive, err := rarchive.FromAssets(map[string]any{})
 		require.NoError(t, err)
 		assert.True(t, archive.IsAssets())
 		assert.Equal(t, "5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef", archive.Hash)
@@ -373,7 +373,7 @@ func TestArchiveSerialize(t *testing.T) {
 		// Check that an assets archive with it's assets removed shows as "no content".
 		asset, err := rasset.FromText("hello world")
 		require.NoError(t, err)
-		archive, err := rarchive.FromAssets(map[string]interface{}{"foo": asset})
+		archive, err := rarchive.FromAssets(map[string]any{"foo": asset})
 		require.NoError(t, err)
 		archive.Assets = nil
 		assert.False(t, archive.IsAssets())
@@ -560,7 +560,7 @@ func TestNestedArchive(t *testing.T) {
 	require.NoError(t, err)
 	textAsset, err := rasset.FromText("hello world")
 	require.NoError(t, err)
-	arch, err := rarchive.FromAssets(map[string]interface{}{
+	arch, err := rarchive.FromAssets(map[string]any{
 		"./foo":    innerArch,
 		"fake.txt": textAsset,
 	})
@@ -600,7 +600,7 @@ func TestFileReferencedThroughMultiplePaths(t *testing.T) {
 	require.NoError(t, err)
 	innerArch, err := rarchive.FromPath(filepath.Join(dirName, "./foo/bar"))
 	require.NoError(t, err)
-	arch, err := rarchive.FromAssets(map[string]interface{}{
+	arch, err := rarchive.FromAssets(map[string]any{
 		"./foo":     outerArch,
 		"./foo/bar": innerArch,
 	})

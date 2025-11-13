@@ -28,6 +28,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -55,7 +56,7 @@ func TestStackCommands(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "init", "foo")
 
 		stacks, current := integration.GetStacks(e)
-		assert.Equal(t, 1, len(stacks))
+		require.Len(t, stacks, 1)
 		require.NotNil(t, current)
 		if current == nil {
 			t.Logf("stacks: %v, current: %v", stacks, current)
@@ -138,7 +139,7 @@ func TestStackCommands(t *testing.T) {
 			assert.Equal(t, "second", *current)
 		}
 
-		assert.Equal(t, 3, len(stacks))
+		require.Len(t, stacks, 3)
 		assert.Contains(t, stacks, "first")
 		assert.Contains(t, stacks, "second")
 		assert.Contains(t, stacks, "third")
@@ -183,17 +184,17 @@ func TestStackCommands(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "init", "majula")
 		e.RunCommand("pulumi", "stack", "init", "lothric")
 		stacks, _ := integration.GetStacks(e)
-		assert.Equal(t, 3, len(stacks))
+		require.Len(t, stacks, 3)
 
 		e.RunCommand("pulumi", "stack", "rm", "majula", "--yes")
 		stacks, _ = integration.GetStacks(e)
-		assert.Equal(t, 2, len(stacks))
+		require.Len(t, stacks, 2)
 		assert.Contains(t, stacks, "blighttown")
 		assert.Contains(t, stacks, "lothric")
 
 		e.RunCommand("pulumi", "stack", "rm", "lothric", "--yes")
 		stacks, _ = integration.GetStacks(e)
-		assert.Equal(t, 1, len(stacks))
+		require.Len(t, stacks, 1)
 		assert.Contains(t, stacks, "blighttown")
 
 		e.RunCommand("pulumi", "stack", "rm", "blighttown", "--yes")
@@ -228,7 +229,7 @@ func TestStackCommands(t *testing.T) {
 				e.SetBackend(e.LocalURL())
 				e.RunCommand("pulumi", "stack", "init", "the-abyss")
 				stacks, _ := integration.GetStacks(e)
-				assert.Equal(t, 1, len(stacks))
+				require.Len(t, stacks, 1)
 
 				stackFile := path.Join(e.RootPath, "stack.json")
 				e.RunCommand("pulumi", "stack", "export", "--file", "stack.json")
@@ -280,7 +281,7 @@ func TestStackCommands(t *testing.T) {
 		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "correct horse battery staple")
 		snap, err := stack.DeserializeUntypedDeployment(
 			context.Background(),
-			&deployment, stack.DefaultSecretsProvider)
+			&deployment, secrets.DefaultProvider)
 		require.NoError(t, err)
 		// Let's say that the the CLI crashed during the deletion of the last resource and we've now got
 		// invalid resources in the snapshot.
@@ -348,7 +349,7 @@ func TestStackBackups(t *testing.T) {
 		require.NoError(t, err, "getting the files in backup directory")
 		files = filterOutAttrsFiles(files)
 		fileNames := getFileNames(files)
-		assert.Equal(t, 1, len(files), "Files: %s", strings.Join(fileNames, ", "))
+		require.Len(t, files, 1, "Files: %s", strings.Join(fileNames, ", "))
 		fileName := files[0].Name()
 
 		// Verify the backup file.
@@ -364,7 +365,7 @@ func TestStackBackups(t *testing.T) {
 		require.NoError(t, err, "getting the files in backup directory")
 		files = filterOutAttrsFiles(files)
 		fileNames = getFileNames(files)
-		assert.Equal(t, 2, len(files), "Files: %s", strings.Join(fileNames, ", "))
+		require.Len(t, files, 2, "Files: %s", strings.Join(fileNames, ", "))
 
 		// Verify the new backup file.
 		for _, file := range files {
@@ -758,11 +759,11 @@ func TestLocalStateGzip(t *testing.T) { //nolint:paralleltest
 
 	// Check stack history is still good even with mixed gzip / json files
 	rawHistory, _ := e.RunCommand("pulumi", "stack", "history", "--json")
-	var history []interface{}
+	var history []any
 	if err := json.Unmarshal([]byte(rawHistory), &history); err != nil {
 		t.Fatalf("Can't unmarshall history json")
 	}
-	assert.Equal(t, 6, len(history), "Stack history doesn't match reality")
+	require.Len(t, history, 6, "Stack history doesn't match reality")
 }
 
 func getFileNames(infos []os.DirEntry) []string {
@@ -789,7 +790,7 @@ func assertBackupStackFile(t *testing.T, stackName string, file os.DirEntry, bef
 	require.NoError(t, err)
 	assert.True(t, fi.Size() > 0)
 	split := strings.Split(file.Name(), ".")
-	assert.Equal(t, 3, len(split), "Split: %s", strings.Join(split, ", "))
+	require.Len(t, split, 3, "Split: %s", strings.Join(split, ", "))
 	assert.Equal(t, stackName, split[0])
 	parsedTime, err := strconv.ParseInt(split[1], 10, 64)
 	require.NoError(t, err, "parsing the time in the stack backup filename")

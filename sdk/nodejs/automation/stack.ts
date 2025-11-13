@@ -28,11 +28,15 @@ import { ConfigMap, ConfigValue } from "./config";
 import { StackNotFoundError } from "./errors";
 import { EngineEvent, SummaryEvent } from "./events";
 import { LocalWorkspace } from "./localWorkspace";
-import { LanguageServer, maxRPCMessageSize } from "./server";
+import { LanguageServer } from "./server";
 import { TagMap } from "./tag";
 import { Deployment, PulumiFn, Workspace } from "./workspace";
 
+import { Empty } from "google-protobuf/google/protobuf/empty_pb";
+import * as eventsrpc from "../proto/events_grpc_pb";
+import * as events from "../proto/events_pb";
 import * as langrpc from "../proto/language_grpc_pb";
+import { grpcChannelOptions } from "../runtime";
 
 /**
  * {@link Stack} is an isolated, independently configurable instance of a Pulumi
@@ -124,6 +128,36 @@ export class Stack {
                 return this;
             default:
                 throw new Error(`unexpected Stack creation mode: ${mode}`);
+        }
+    }
+
+    private async setupEventLog(
+        command: string,
+        onEvent: (event: EngineEvent) => void,
+        pulumiVersion: string,
+    ): Promise<{ logFile: string; logPromise: Promise<ReadlineResult> | undefined; server?: grpc.Server }> {
+        const ver = semver.parse(pulumiVersion) ?? semver.parse("3.0.0")!;
+        if (semver.gt(ver, "3.205.0")) {
+            const eventsServer = new grpc.Server({
+                ...grpcChannelOptions,
+            });
+            const eventsService = new EventsServer(onEvent);
+            eventsServer.addService(eventsrpc.EventsService, eventsService);
+            const port: number = await new Promise<number>((resolve, reject) => {
+                eventsServer.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(p);
+                    }
+                });
+            });
+            const file = `tcp://127.0.0.1:${port}`;
+            return { logFile: file, logPromise: undefined, server: eventsServer };
+        } else {
+            const file = createLogFile(command);
+            const logPromise = this.readLines(file, onEvent);
+            return { logFile: file, logPromise: logPromise };
         }
     }
 
@@ -248,7 +282,7 @@ Event: ${line}\n${e.toString()}`);
         if (program) {
             kind = execKind.inline;
             const server = new grpc.Server({
-                "grpc.max_receive_message_length": maxRPCMessageSize,
+                ...grpcChannelOptions,
             });
             const languageServer = new LanguageServer(program);
             server.addService(langrpc.LanguageRuntimeService, languageServer);
@@ -272,15 +306,15 @@ Event: ${line}\n${e.toString()}`);
 
         let logPromise: Promise<ReadlineResult> | undefined;
         let logFile: string | undefined;
+        let eventsServer: grpc.Server | undefined;
         // Set up event log tailing
         if (opts?.onEvent) {
-            const onEvent = opts.onEvent;
-            logFile = createLogFile("up");
+            ({
+                logFile,
+                logPromise,
+                server: eventsServer,
+            } = await this.setupEventLog("up", opts.onEvent, this.workspace.pulumiVersion));
             args.push("--event-log", logFile);
-
-            logPromise = this.readLines(logFile, (event) => {
-                onEvent(event);
-            });
         }
 
         let upResult: CommandResult;
@@ -291,7 +325,7 @@ Event: ${line}\n${e.toString()}`);
             throw e;
         } finally {
             onExit(didError);
-            await cleanUp(logFile, await logPromise);
+            await cleanUp(logFile, await logPromise, eventsServer);
         }
 
         // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
@@ -402,7 +436,7 @@ Event: ${line}\n${e.toString()}`);
         if (program) {
             kind = execKind.inline;
             const server = new grpc.Server({
-                "grpc.max_receive_message_length": maxRPCMessageSize,
+                ...grpcChannelOptions,
             });
             const languageServer = new LanguageServer(program);
             server.addService(langrpc.LanguageRuntimeService, languageServer);
@@ -424,19 +458,22 @@ Event: ${line}\n${e.toString()}`);
 
         args.push("--exec-kind", kind);
 
-        // Set up event log tailing
-        const logFile = createLogFile("preview");
-        args.push("--event-log", logFile);
         let summaryEvent: SummaryEvent | undefined;
-        const logPromise = this.readLines(logFile, (event) => {
+        const onEvent = (event: EngineEvent) => {
             if (event.summaryEvent) {
                 summaryEvent = event.summaryEvent;
             }
             if (opts?.onEvent) {
-                const onEvent = opts.onEvent;
-                onEvent(event);
+                opts.onEvent(event);
             }
-        });
+        };
+
+        const {
+            logFile,
+            logPromise,
+            server: eventsServer,
+        } = await this.setupEventLog("preview", onEvent, this.workspace.pulumiVersion);
+        args.push("--event-log", logFile);
 
         let previewResult: CommandResult;
         try {
@@ -446,7 +483,7 @@ Event: ${line}\n${e.toString()}`);
             throw e;
         } finally {
             onExit(didError);
-            await cleanUp(logFile, await logPromise);
+            await cleanUp(logFile, await logPromise, eventsServer);
         }
 
         if (!summaryEvent) {
@@ -536,15 +573,15 @@ Event: ${line}\n${e.toString()}`);
 
         let logPromise: Promise<ReadlineResult> | undefined;
         let logFile: string | undefined;
+        let eventsServer: grpc.Server | undefined;
         // Set up event log tailing
         if (opts?.onEvent) {
-            const onEvent = opts.onEvent;
-            logFile = createLogFile("refresh");
+            ({
+                logFile,
+                logPromise,
+                server: eventsServer,
+            } = await this.setupEventLog("refresh", opts.onEvent, this.workspace.pulumiVersion));
             args.push("--event-log", logFile);
-
-            logPromise = this.readLines(logFile, (event) => {
-                onEvent(event);
-            });
         }
 
         let onExit = (hasError: boolean) => {
@@ -558,7 +595,7 @@ Event: ${line}\n${e.toString()}`);
 
             kind = execKind.inline;
             const server = new grpc.Server({
-                "grpc.max_receive_message_length": maxRPCMessageSize,
+                ...grpcChannelOptions,
             });
             const languageServer = new LanguageServer(this.workspace.program);
             server.addService(langrpc.LanguageRuntimeService, languageServer);
@@ -587,7 +624,7 @@ Event: ${line}\n${e.toString()}`);
             throw e;
         } finally {
             onExit(didError);
-            await cleanUp(logFile, await logPromise);
+            await cleanUp(logFile, await logPromise, eventsServer);
         }
 
         // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
@@ -654,19 +691,22 @@ Event: ${line}\n${e.toString()}`);
 
         args.push("--exec-kind", execKind.local);
 
-        const logFile = createLogFile("refresh");
-        args.push("--event-log", logFile);
-
         let summaryEvent: SummaryEvent | undefined;
-        const logPromise = this.readLines(logFile, (event) => {
+        const onEvent = (event: EngineEvent) => {
             if (event.summaryEvent) {
                 summaryEvent = event.summaryEvent;
             }
             if (opts?.onEvent) {
-                const onEvent = opts.onEvent;
-                onEvent(event);
+                opts.onEvent(event);
             }
-        });
+        };
+
+        const { logFile, logPromise, server } = await this.setupEventLog(
+            "preview-refresh",
+            onEvent,
+            this.workspace.pulumiVersion,
+        );
+        args.push("--event-log", logFile);
 
         let previewResult: CommandResult;
         try {
@@ -674,7 +714,7 @@ Event: ${line}\n${e.toString()}`);
         } catch (e) {
             throw e;
         } finally {
-            await cleanUp(logFile, await logPromise);
+            await cleanUp(logFile, await logPromise, server);
         }
 
         if (!summaryEvent) {
@@ -756,15 +796,15 @@ Event: ${line}\n${e.toString()}`);
 
         let logPromise: Promise<ReadlineResult> | undefined;
         let logFile: string | undefined;
+        let eventsServer: grpc.Server | undefined;
         // Set up event log tailing
         if (opts?.onEvent) {
-            const onEvent = opts.onEvent;
-            logFile = createLogFile("destroy");
+            ({
+                logFile,
+                logPromise,
+                server: eventsServer,
+            } = await this.setupEventLog("destroy", opts.onEvent, this.workspace.pulumiVersion));
             args.push("--event-log", logFile);
-
-            logPromise = this.readLines(logFile, (event) => {
-                onEvent(event);
-            });
         }
 
         let onExit = (hasError: boolean) => {
@@ -778,7 +818,7 @@ Event: ${line}\n${e.toString()}`);
 
             kind = execKind.inline;
             const server = new grpc.Server({
-                "grpc.max_receive_message_length": maxRPCMessageSize,
+                ...grpcChannelOptions,
             });
             const languageServer = new LanguageServer(this.workspace.program);
             server.addService(langrpc.LanguageRuntimeService, languageServer);
@@ -807,7 +847,7 @@ Event: ${line}\n${e.toString()}`);
             throw e;
         } finally {
             onExit(didError);
-            await cleanUp(logFile, await logPromise);
+            await cleanUp(logFile, await logPromise, eventsServer);
         }
 
         // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
@@ -895,7 +935,7 @@ Event: ${line}\n${e.toString()}`);
 
             kind = execKind.inline;
             const server = new grpc.Server({
-                "grpc.max_receive_message_length": maxRPCMessageSize,
+                ...grpcChannelOptions,
             });
             const languageServer = new LanguageServer(this.workspace.program);
             server.addService(langrpc.LanguageRuntimeService, languageServer);
@@ -916,19 +956,22 @@ Event: ${line}\n${e.toString()}`);
         }
         args.push("--exec-kind", kind);
 
-        const logFile = createLogFile("destroy");
-        args.push("--event-log", logFile);
-
         let summaryEvent: SummaryEvent | undefined;
-        const logPromise = this.readLines(logFile, (event) => {
+        const onEvent = (event: EngineEvent) => {
             if (event.summaryEvent) {
                 summaryEvent = event.summaryEvent;
             }
             if (opts?.onEvent) {
-                const onEvent = opts.onEvent;
-                onEvent(event);
+                opts.onEvent(event);
             }
-        });
+        };
+
+        const {
+            logFile,
+            logPromise,
+            server: eventsServer,
+        } = await this.setupEventLog("preview-destroy", onEvent, this.workspace.pulumiVersion);
+        args.push("--event-log", logFile);
 
         let previewResult: CommandResult;
         try {
@@ -938,7 +981,7 @@ Event: ${line}\n${e.toString()}`);
             throw e;
         } finally {
             onExit(didError);
-            await cleanUp(logFile, await logPromise);
+            await cleanUp(logFile, await logPromise, eventsServer);
         }
 
         if (!summaryEvent) {
@@ -1144,6 +1187,17 @@ Event: ${line}\n${e.toString()}`);
      */
     async setAllConfig(config: ConfigMap, path?: boolean): Promise<void> {
         return this.workspace.setAllConfig(this.name, config, path);
+    }
+
+    /**
+     * Sets all config values from a JSON string for the stack in the associated workspace.
+     * The JSON string should be in the format produced by "pulumi config --json".
+     *
+     * @param configJson
+     *  A JSON string containing the configuration values to set
+     */
+    async setAllConfigJson(configJson: string): Promise<void> {
+        return this.workspace.setAllConfigJson(this.name, configJson);
     }
 
     /**
@@ -2184,6 +2238,38 @@ export interface ImportOptions extends GlobalOpts {
     onOutput?: (out: string) => void;
 }
 
+class EventsServer implements eventsrpc.IEventsServer {
+    [method: string]: grpc.UntypedHandleCall;
+
+    constructor(private onEvent: any) {
+        this.onEvent = onEvent;
+    }
+
+    streamEvents(
+        call: grpc.ServerReadableStream<events.EventRequest, Empty>,
+        callback: grpc.sendUnaryData<Empty>,
+    ): void {
+        call.on("data", (request: events.EventRequest) => {
+            const eventStr = request.getEvent();
+            try {
+                const event: EngineEvent = JSON.parse(eventStr);
+                this.onEvent(event);
+            } catch (e) {
+                log.warn(`Failed to parse engine event: ${e.toString()}`);
+            }
+        });
+
+        call.on("end", () => {
+            callback(null, new Empty());
+        });
+
+        call.on("error", (err: Error) => {
+            log.warn(`Error in event stream: ${err.toString()}`);
+            callback(err, null);
+        });
+    }
+}
+
 const execKind = {
     local: "auto.local",
     inline: "auto.inline",
@@ -2199,12 +2285,15 @@ const createLogFile = (command: string) => {
     return logFile;
 };
 
-const cleanUp = async (logFile?: string, rl?: ReadlineResult) => {
+const cleanUp = async (logFile?: string, rl?: ReadlineResult, server?: grpc.Server) => {
     if (rl) {
         // stop tailing
         await rl.tail.quit();
         // close the readline interface
         rl.rl.close();
+    }
+    if (server) {
+        server.forceShutdown();
     }
     if (logFile) {
         // remove the logfile

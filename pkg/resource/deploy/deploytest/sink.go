@@ -19,23 +19,23 @@ import (
 )
 
 type NoopSink struct {
-	LogfF func(sev diag.Severity, diag *diag.Diag, args ...interface{})
+	LogfF func(sev diag.Severity, diag *diag.Diag, args ...any)
 }
 
 var _ diag.Sink = (*NoopSink)(nil)
 
-func (s *NoopSink) Logf(sev diag.Severity, diag *diag.Diag, args ...interface{}) {
+func (s *NoopSink) Logf(sev diag.Severity, diag *diag.Diag, args ...any) {
 	if s.LogfF != nil {
 		s.LogfF(sev, diag, args)
 	}
 }
 
-func (s *NoopSink) Debugf(diag *diag.Diag, args ...interface{}) {}
+func (s *NoopSink) Debugf(diag *diag.Diag, args ...any) {}
 
-func (s *NoopSink) Infof(diag *diag.Diag, args ...interface{}) {}
+func (s *NoopSink) Infof(diag *diag.Diag, args ...any) {}
 
-func (s *NoopSink) Infoerrf(diag *diag.Diag, args ...interface{}) {}
+func (s *NoopSink) Infoerrf(diag *diag.Diag, args ...any) {}
 
-func (s *NoopSink) Errorf(diag *diag.Diag, args ...interface{}) {}
+func (s *NoopSink) Errorf(diag *diag.Diag, args ...any) {}
 
-func (s *NoopSink) Warningf(diag *diag.Diag, args ...interface{}) {}
+func (s *NoopSink) Warningf(diag *diag.Diag, args ...any) {}

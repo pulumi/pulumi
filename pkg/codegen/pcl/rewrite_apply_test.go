@@ -190,7 +190,6 @@ func TestApplyRewriter(t *testing.T) {
 	}))
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.input, func(t *testing.T) {
 			t.Parallel()
 
@@ -234,4 +233,32 @@ func TestApplyRewriter(t *testing.T) {
 		output := fmt.Sprintf("%v", expr)
 		assert.Equal(t, expectedOutput, output)
 	})
+}
+
+func TestRewriteInvalidTraversal(t *testing.T) {
+	t.Parallel()
+
+	resourceType := model.NewObjectType(map[string]model.Type{
+		"objectOutput": model.NewOutputType(model.NewObjectType(map[string]model.Type{
+			"someProperty": model.StringType,
+		})),
+	})
+
+	scope := model.NewRootScope(syntax.None)
+	scope.Define("resource", &model.Variable{
+		Name:         "resource",
+		VariableType: resourceType,
+	})
+	functions := pulumiBuiltins(bindOptions{})
+	scope.DefineFunction("toJSON", functions["toJSON"])
+
+	expr, diags := model.BindExpressionText(`resource.objectOutput.doesNotExist`, scope, hcl.InitialPos)
+	require.True(t, diags.HasErrors())
+
+	expr, diags = RewriteApplies(expr, nameInfo(0), true)
+	require.Empty(t, diags)
+	assert.Equal(t,
+		"__apply(resource.objectOutput, eval(objectOutput, objectOutput.doesNotExist))",
+		fmt.Sprintf("%v", expr),
+	)
 }

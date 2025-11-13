@@ -56,7 +56,6 @@ func TestRelPathToRelImport(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range pathTests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
@@ -348,16 +347,9 @@ func TestCalculateDeps(t *testing.T) {
 			{"pulumi", ">=3.0.0,<3.50.0"},
 			{"semver>=2.8.1"},
 		},
-	}, {
-		// Test 4: If you provide an illegal pulumi version, we expect an error.
-		inputDeps: map[string]string{
-			"pulumi": ">=0.16.0,<4.0.0",
-		},
-		expectedErr: fmt.Errorf("lower version bound must be at least %v", oldestAllowedPulumi),
 	}}
 
 	for i, tc := range cases {
-		tc := tc
 		name := fmt.Sprintf("CalculateDeps #%d", i+1)
 		t.Run(name, func(tt *testing.T) {
 			tt.Parallel()
@@ -378,7 +370,7 @@ func TestPythonRequiresSuccessful(t *testing.T) {
 	t.Parallel()
 	expected := "3.1"
 	pkg := schema.Package{
-		Language: map[string]interface{}{
+		Language: map[string]any{
 			"python": PackageInfo{
 				PythonRequires: expected,
 			},
@@ -398,7 +390,7 @@ func TestPythonRequiresNotProvided(t *testing.T) {
 	t.Parallel()
 	expected := defaultMinPythonVersion
 	pkg := schema.Package{
-		Language: map[string]interface{}{
+		Language: map[string]any{
 			"python": PackageInfo{
 				// Don't set PythonRequires
 			},

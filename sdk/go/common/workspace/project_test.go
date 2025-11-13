@@ -36,7 +36,7 @@ import (
 func TestProjectRuntimeInfoRoundtripYAML(t *testing.T) {
 	t.Parallel()
 
-	doTest := func(marshal func(interface{}) ([]byte, error), unmarshal func([]byte, interface{}) error) {
+	doTest := func(marshal func(any) ([]byte, error), unmarshal func([]byte, any) error) {
 		ri := NewProjectRuntimeInfo("nodejs", nil)
 		byts, err := marshal(ri)
 		require.NoError(t, err)
@@ -47,7 +47,7 @@ func TestProjectRuntimeInfoRoundtripYAML(t *testing.T) {
 		assert.Equal(t, "nodejs", riRountrip.Name())
 		assert.Nil(t, riRountrip.Options())
 
-		ri = NewProjectRuntimeInfo("nodejs", map[string]interface{}{
+		ri = NewProjectRuntimeInfo("nodejs", map[string]any{
 			"typescript":   true,
 			"stringOption": "hello",
 		})
@@ -90,7 +90,7 @@ func TestProjectValidationSucceedsForObjectConfigType(t *testing.T) {
 	objectType := "object"
 	config["example"] = ProjectConfigType{
 		Type:    &objectType,
-		Default: map[string]interface{}{"hello": "world"},
+		Default: map[string]any{"hello": "world"},
 	}
 
 	project.Config = config
@@ -114,7 +114,7 @@ func TestProjectValidationFailsForIncorrectDefaultValueType(t *testing.T) {
 	assert.ErrorContains(t, err,
 		"The default value specified for configuration key 'instanceSize' is not of the expected type 'integer'")
 
-	invalidValues := make([]interface{}, 0)
+	invalidValues := make([]any, 0)
 	invalidValues = append(invalidValues, "hello")
 	// default value here has type array<string>
 	// config type specified is array<array<string>>
@@ -153,10 +153,10 @@ func TestProjectValidationSucceedsForCorrectDefaultValueType(t *testing.T) {
 	require.NoError(t, err, "There should be no validation error")
 
 	// validValues = ["hello"]
-	validValues := make([]interface{}, 0)
+	validValues := make([]any, 0)
 	validValues = append(validValues, "hello")
 	// validValuesArray = [["hello"]]
-	validValuesArray := make([]interface{}, 0)
+	validValuesArray := make([]any, 0)
 	validValuesArray = append(validValuesArray, validValues)
 
 	// default value here has type array<array<string>>
@@ -496,7 +496,7 @@ config:
 
 	project, err := loadProjectFromText(t, projectContent)
 	require.NoError(t, err, "Should be able to load the project")
-	assert.Equal(t, 9, len(project.Config), "There are 9 config type definition")
+	require.Len(t, project.Config, 9, "There are 9 config type definition")
 	// full integer config schema
 	integerSchemFull, ok := project.Config["integerSchemaFull"]
 	assert.True(t, ok, "should be able to read integerSchemaFull")
@@ -546,7 +546,7 @@ config:
 	assert.False(t, simpleArrayOfStrings.Secret)
 	require.NotNil(t, simpleArrayOfStrings.Items)
 	assert.Equal(t, "string", simpleArrayOfStrings.Items.Type)
-	arrayValues := simpleArrayOfStrings.Default.([]interface{})
+	arrayValues := simpleArrayOfStrings.Default.([]any)
 	assert.Equal(t, "hello", arrayValues[0])
 
 	arrayOfArrays, ok := project.Config["arrayOfArrays"]
@@ -577,14 +577,14 @@ func getConfigValue(t *testing.T, stackConfig config.Map, key string) string {
 	return value
 }
 
-func getConfigValueUnmarshalled(t *testing.T, stackConfig config.Map, key string) interface{} {
+func getConfigValueUnmarshalled(t *testing.T, stackConfig config.Map, key string) any {
 	parsedKey, err := config.ParseKey(key)
 	require.NoErrorf(t, err, "There should be no error parsing the config key '%v'", key)
 	configValue, foundValue := stackConfig[parsedKey]
 	assert.Truef(t, foundValue, "Couldn't find a value for config key %v", key)
 	valueJSON, valueError := configValue.Value(config.NopDecrypter)
 	require.NoErrorf(t, valueError, "Error while getting the value for key %v", key)
-	var value interface{}
+	var value any
 	err = json.Unmarshal([]byte(valueJSON), &value)
 	require.NoErrorf(t, err, "Error while unmarshalling value for key %v", key)
 	return value
@@ -622,7 +622,7 @@ config:
 		config.NewPanicCrypter())
 	require.NoError(t, configError, "Config override should be valid")
 
-	assert.Equal(t, 3, len(stack.Config), "Stack config now has three values")
+	require.Len(t, stack.Config, 3, "Stack config now has three values")
 	// value of instanceSize is overwritten from the stack
 	assert.Equal(t, "t4.large", getConfigValue(t, stack.Config, "test:instanceSize"))
 	// instanceCount and protect are inherited from the project
@@ -661,13 +661,13 @@ config:
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
 	require.NoError(t, configError, "Config override should be valid")
-	assert.Equal(t, 3, len(stack.Config), "Stack config now has three values")
+	require.Len(t, stack.Config, 3, "Stack config now has three values")
 	// value of instanceSize is overwritten from the stack
 	assert.Equal(t, "t4.large", getConfigValue(t, stack.Config, "test:instanceSize"))
 	// aws:region is namespaced and is inherited from the project
 	assert.Equal(t, "us-west-1", getConfigValue(t, stack.Config, "aws:region"))
 	assert.Equal(t, "[\"*\"]", getConfigValue(t, stack.Config, "pulumi:disable-default-providers"))
-	assert.Equal(t, []interface{}{"*"}, getConfigValueUnmarshalled(t, stack.Config, "pulumi:disable-default-providers"))
+	assert.Equal(t, []any{"*"}, getConfigValueUnmarshalled(t, stack.Config, "pulumi:disable-default-providers"))
 }
 
 func TestLoadingStackConfigWithoutNamespacingTheProject(t *testing.T) {
@@ -701,7 +701,7 @@ config:
 		config.NewPanicCrypter())
 	require.NoError(t, configError, "Config override should be valid")
 
-	assert.Equal(t, 2, len(stack.Config), "Stack config now has three values")
+	require.Len(t, stack.Config, 2, "Stack config now has three values")
 	// value of instanceSize is overwritten from the stack
 	assert.Equal(t, "t4.large", getConfigValue(t, stack.Config, "test:instanceSize"))
 	// aws:region is namespaced and is inherited from the project
@@ -739,7 +739,7 @@ config:
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
 	require.NoError(t, configError, "Config override should be valid")
-	assert.Equal(t, 2, len(stack.Config), "Stack config now has three values")
+	require.Len(t, stack.Config, 2, "Stack config now has three values")
 	// value of instanceSize is overwritten from the stack
 	assert.Equal(t, "9999", getConfigValue(t, stack.Config, "test:instanceSize"))
 	assert.Equal(t, "42", getConfigValue(t, stack.Config, "aws:region"))
@@ -777,7 +777,7 @@ config:
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
 	require.NoError(t, configError, "Config override should be valid")
-	assert.Equal(t, 3, len(stack.Config), "Stack config now has three values")
+	require.Len(t, stack.Config, 3, "Stack config now has three values")
 	// value of instanceSize is overwritten from the stack
 	assert.Equal(t, "t3.micro", getConfigValue(t, stack.Config, "test:instanceSize"))
 	assert.Equal(t, "us-west-1", getConfigValue(t, stack.Config, "test:region"))
@@ -813,7 +813,7 @@ config:
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
 	require.NoError(t, configError, "Config override should be valid")
-	assert.Equal(t, 2, len(stack.Config), "Stack config now has three values")
+	require.Len(t, stack.Config, 2, "Stack config now has three values")
 	// value of instanceSize is overwritten from the stack
 	assert.Equal(t, "42", getConfigValue(t, stack.Config, "test:instanceSize"))
 	assert.Equal(t, "true", getConfigValue(t, stack.Config, "test:createVpc"))
@@ -917,7 +917,7 @@ config:
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
 	require.NoError(t, configError, "Config override should be valid")
-	assert.Equal(t, 3, len(stack.Config), "Stack config now has three values")
+	require.Len(t, stack.Config, 3, "Stack config now has three values")
 	// value of instanceSize is overwritten from the stack
 	assert.Equal(t, "{\"hello\":\"world\"}", getConfigValue(t, stack.Config, "test:instanceSize"))
 	assert.Equal(t, "{\"region\":\"us-west-1\"}", getConfigValue(t, stack.Config, "aws:config"))
@@ -1000,7 +1000,7 @@ config:
 	assert.Nil(t, projectError, "There is no error")
 	require.NotNil(t, project, "The project can be loaded correctly")
 	assert.Equal(t, "./some/other/path", project.StackConfigDir)
-	assert.Equal(t, 1, len(project.Config), "there is one config value")
+	require.Len(t, project.Config, 1, "there is one config value")
 }
 
 func TestStackConfigIntegerTypeIsCorrectlyValidated(t *testing.T) {
@@ -1405,7 +1405,6 @@ func TestProjectSaveLoadRoundtrip(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1450,7 +1449,7 @@ func TestProjectEditRoundtrip(t *testing.T) {
 			edit: func(proj *Project) {
 				proj.Runtime = NewProjectRuntimeInfo(
 					proj.Runtime.Name(),
-					map[string]interface{}{
+					map[string]any{
 						"setting": "test",
 					})
 			},
@@ -1459,7 +1458,6 @@ func TestProjectEditRoundtrip(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1949,7 +1947,7 @@ config:
 		config.NewPanicCrypter())
 	require.NoError(t, configError, "Config override should be valid")
 
-	assert.Equal(t, 1, len(stack.Config), "Stack config now has three values")
+	require.Len(t, stack.Config, 1, "Stack config now has three values")
 	assert.Equal(t, "18446744073709551615", getConfigValue(t, stack.Config, "test:instanceSize"))
 }
 
@@ -1991,7 +1989,7 @@ func TestPackageValueSerialization(t *testing.T) {
 
 		// Verify packages were correctly deserialized
 		specs := newProj.GetPackageSpecs()
-		assert.Equal(t, 2, len(specs))
+		require.Len(t, specs, 2)
 
 		assert.Equal(t, "github.com/example/simple-package", specs["simple"].Source)
 		assert.Empty(t, specs["simple"].Version)
@@ -2041,7 +2039,7 @@ func TestPackageValueSerialization(t *testing.T) {
 
 		// Verify packages were correctly deserialized
 		specs := newProj.GetPackageSpecs()
-		assert.Equal(t, 2, len(specs))
+		require.Len(t, specs, 2)
 
 		assert.Equal(t, "github.com/example/simple-package", specs["simple"].Source)
 		assert.Empty(t, specs["simple"].Version)
@@ -2099,7 +2097,7 @@ func TestGetPackageSpecs(t *testing.T) {
 		},
 	}
 	specs = proj.GetPackageSpecs()
-	assert.Equal(t, 2, len(specs))
+	require.Len(t, specs, 2)
 
 	assert.Equal(t, "github.com/example/string-package", specs["str"].Source)
 	assert.Equal(t, "0.1.2", specs["str"].Version)

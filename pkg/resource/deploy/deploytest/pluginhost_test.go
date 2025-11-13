@@ -105,7 +105,6 @@ func TestHostEngine(t *testing.T) {
 
 			for _, ephemeral := range []bool{true, false} {
 				for _, tt := range tests {
-					tt := tt
 					tt.req.Ephemeral = ephemeral
 					t.Run(tt.name, func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
 						output, err := hostEngine.Log(context.Background(), tt.req)
@@ -211,7 +210,7 @@ func TestPluginHostProvider(t *testing.T) {
 				host := &pluginHost{
 					closed: true,
 					sink: &NoopSink{
-						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...interface{}) {
+						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...any) {
 							called = true
 						},
 					},
@@ -225,7 +224,7 @@ func TestPluginHostProvider(t *testing.T) {
 				host := &pluginHost{
 					closed: true,
 					statusSink: &NoopSink{
-						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...interface{}) {
+						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...any) {
 							called = true
 						},
 					},
@@ -241,7 +240,7 @@ func TestPluginHostProvider(t *testing.T) {
 				var called bool
 				host := &pluginHost{
 					sink: &NoopSink{
-						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...interface{}) {
+						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...any) {
 							called = true
 						},
 					},
@@ -254,7 +253,7 @@ func TestPluginHostProvider(t *testing.T) {
 				var called bool
 				host := &pluginHost{
 					statusSink: &NoopSink{
-						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...interface{}) {
+						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...any) {
 							called = true
 						},
 					},

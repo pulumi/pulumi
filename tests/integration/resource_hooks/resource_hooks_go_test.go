@@ -86,3 +86,22 @@ func TestGoResourceHooksTransform(t *testing.T) {
 		},
 	})
 }
+
+// Test that hooks receives secrets as secret outputs
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestGoResourceHooksSecrets(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: "go_secret",
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			requirePrinted(t, stack, "info", "hook called")
+		},
+	})
+}

@@ -32,15 +32,15 @@ func TestNewDetailedDiff(t *testing.T) {
 	}{
 		{
 			name: "updates",
-			diff: resource.NewPropertyMapFromMap(map[string]interface{}{
+			diff: resource.NewPropertyMapFromMap(map[string]any{
 				"a": 1,
-				"b": map[string]interface{}{
+				"b": map[string]any{
 					"c": 2,
 					"d": 3,
 				},
-			}).Diff(resource.NewPropertyMapFromMap(map[string]interface{}{
+			}).Diff(resource.NewPropertyMapFromMap(map[string]any{
 				"a": -1,
-				"b": map[string]interface{}{
+				"b": map[string]any{
 					"c": -2,
 					"d": 3,
 				},
@@ -56,14 +56,14 @@ func TestNewDetailedDiff(t *testing.T) {
 		},
 		{
 			name: "adds and deletes",
-			diff: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"b": map[string]interface{}{
+			diff: resource.NewPropertyMapFromMap(map[string]any{
+				"b": map[string]any{
 					"c": 2,
 					"d": 3,
 				},
-			}).Diff(resource.NewPropertyMapFromMap(map[string]interface{}{
+			}).Diff(resource.NewPropertyMapFromMap(map[string]any{
 				"a": 1,
-				"b": map[string]interface{}{
+				"b": map[string]any{
 					"d": 3,
 				},
 			})),
@@ -78,22 +78,22 @@ func TestNewDetailedDiff(t *testing.T) {
 		},
 		{
 			name: "arrays",
-			diff: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"a": []interface{}{
-					map[string]interface{}{
+			diff: resource.NewPropertyMapFromMap(map[string]any{
+				"a": []any{
+					map[string]any{
 						"a": 1,
-						"b": []interface{}{
+						"b": []any{
 							2,
 							3,
 						},
 					},
 				},
 			}).Diff(resource.NewPropertyMapFromMap(
-				map[string]interface{}{
-					"a": []interface{}{
-						map[string]interface{}{
+				map[string]any{
+					"a": []any{
+						map[string]any{
 							"a": -1,
-							"b": []interface{}{
+							"b": []any{
 								2,
 							},
 						},
@@ -120,7 +120,6 @@ func TestNewDetailedDiff(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -211,7 +210,6 @@ func TestNewDetailedDiffFromObjectDiff(t *testing.T) {
 	}
 
 	for name, tt := range cases {
-		tt := tt
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 

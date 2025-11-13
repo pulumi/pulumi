@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 var errSecureReprReserved = errors.New(`maps with the single key "secure" are reserved`)
@@ -69,6 +70,46 @@ func (c object) Secure() bool {
 	}
 }
 
+func decryptMap(ctx context.Context, objectMap map[Key]object, decrypter Decrypter) (map[Key]Plaintext, error) {
+	// Collect all secure values
+	var refs []containerRef
+	var ctChunks [][]string
+	collectCiphertextSecrets(objectMap, &refs, &ctChunks)
+
+	// Decrypt objects in batches
+	offset := 0
+	for _, ctChunk := range ctChunks {
+		if len(ctChunk) == 0 {
+			continue
+		}
+		decryptedChunk, err := decrypter.BatchDecrypt(ctx, ctChunk)
+		if err != nil {
+			return nil, err
+		}
+		// Assign decrypted values back into original structure
+		// We are accepting that a Ciphertext Secret now has a Plaintext value
+		// TODO: https://github.com/pulumi/pulumi/issues/20663
+		// Prefer using a caching decrypter to avoid mixing plaintext and ciphertext
+		for i, decrypted := range decryptedChunk {
+			refs[offset+i].setObject(newObject(CiphertextSecret{decrypted}))
+		}
+		offset += len(ctChunk)
+	}
+
+	// Marshal each top-level object back into a Plaintext value.
+	// Note that at this point, all Ciphertext Secrets have been decrypted.
+	// So we can use the NopDecrypter here.
+	result := map[Key]Plaintext{}
+	for k, obj := range objectMap {
+		pt, err := obj.decrypt(ctx, nil, NopDecrypter)
+		if err != nil {
+			return nil, err
+		}
+		result[k] = pt
+	}
+	return result, nil
+}
+
 // Decrypt decrypts any ciphertexts within the object and returns appropriately-shaped Plaintext values.
 func (c object) Decrypt(ctx context.Context, decrypter Decrypter) (Plaintext, error) {
 	return c.decrypt(ctx, nil, decrypter)
@@ -87,11 +128,11 @@ func (c object) decrypt(ctx context.Context, path resource.PropertyPath, decrypt
 	case string:
 		return NewPlaintext(v), nil
 	case CiphertextSecret:
-		plaintext, err := v.Decrypt(ctx, decrypter)
+		decrypted, err := v.Decrypt(ctx, decrypter)
 		if err != nil {
 			return Plaintext{}, fmt.Errorf("%v: %w", path, err)
 		}
-		return NewPlaintext(plaintext), nil
+		return NewPlaintext(decrypted), nil
 	case []object:
 		vs := make([]Plaintext, len(v))
 		for i, v := range v {
@@ -309,44 +350,28 @@ func (c *object) Set(prefix, path resource.PropertyPath, new object) error {
 	}
 }
 
-// SecureValues returns the plaintext values for any secure strings contained in the receiver.
-func (c object) SecureValues(dec Decrypter) ([]string, error) {
+// EncryptedValues returns the ciphertext values for any secure strings contained in the receiver.
+func (c object) EncryptedValues(valuesChunks *[][]string) {
 	switch v := c.value.(type) {
 	case []object:
-		var values []string
 		for _, v := range v {
-			vs, err := v.SecureValues(dec)
-			if err != nil {
-				return nil, err
-			}
-			values = append(values, vs...)
+			v.EncryptedValues(valuesChunks)
 		}
-		return values, nil
 	case map[string]object:
-		var values []string
 		for _, v := range v {
-			vs, err := v.SecureValues(dec)
-			if err != nil {
-				return nil, err
-			}
-			values = append(values, vs...)
+			v.EncryptedValues(valuesChunks)
 		}
-		return values, nil
 	case CiphertextSecret:
-		plaintext, err := v.Decrypt(context.TODO(), dec)
-		if err != nil {
-			return nil, err
-		}
-		return []string{string(plaintext)}, nil
+		addStringToChunks(valuesChunks, v.value, defaultMaxChunkSize)
 	default:
-		return nil, nil
+		return
 	}
 }
 
 // marshalValue converts the receiver into a Value.
 func (c object) marshalValue() (v Value, err error) {
 	v.value, v.secure, v.object, err = c.MarshalString()
-	return
+	return v, err
 }
 
 // marshalObjectValue converts the receiver into a shape that is compatible with Value.ToObject().
@@ -525,10 +550,10 @@ func isSecureValue(v any) (bool, CiphertextSecret) {
 	return false, CiphertextSecret{}
 }
 
-func (c object) toDecryptedPropertyValue(ctx context.Context, decrypter Decrypter) (resource.PropertyValue, error) {
-	plaintext, err := c.Decrypt(ctx, decrypter)
+func (c object) toDecryptedPropertyValue(ctx context.Context, decrypter Decrypter) (property.Value, error) {
+	plaintext, err := c.decrypt(ctx, nil, decrypter)
 	if err != nil {
-		return resource.PropertyValue{}, err
+		return property.Value{}, err
 	}
 	return plaintext.PropertyValue(), nil
 }

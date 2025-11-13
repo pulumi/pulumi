@@ -14,13 +14,9 @@ class MyMocks(mocks.Mocks):
         return {}, None
 
 
-class TestMonitor(mocks.MockMonitor):
-    pass
-
-
 @pytest.fixture
 def setup_mocks():
-    monitor = TestMonitor(MyMocks())
+    monitor = mocks.MockMonitor(MyMocks())
     mocks.set_mocks(MyMocks(), monitor=monitor)
     try:
         yield monitor
@@ -29,7 +25,7 @@ def setup_mocks():
 
 
 @pulumi.runtime.test
-async def test_mock_registered_resources(setup_mocks: TestMonitor):
+async def test_mock_registered_resources(setup_mocks: mocks.MockMonitor):
     class Component(pulumi.ComponentResource):
         def __init__(self, name: str, opts: Optional[pulumi.ResourceOptions] = None):
             super().__init__(name, "test:index:Component", opts)

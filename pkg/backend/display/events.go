@@ -106,6 +106,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			PolicyPackVersion:    p.PolicyPackVersion,
 			PolicyPackVersionTag: p.PolicyPackVersion,
 			EnforcementLevel:     string(p.EnforcementLevel),
+			Severity:             string(p.Severity),
 		}
 
 	case engine.PolicyRemediationEvent:
@@ -359,6 +360,7 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
 		Inputs:         inputs,
 		Outputs:        outputs,
 		InitErrors:     md.InitErrors,
+		HideDiffs:      md.HideDiffs,
 	}
 }
 
@@ -403,6 +405,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			PolicyPackName:    p.PolicyPackName,
 			PolicyPackVersion: p.PolicyPackVersion,
 			EnforcementLevel:  apitype.EnforcementLevel(p.EnforcementLevel),
+			Severity:          apitype.PolicySeverity(p.Severity),
 		})
 
 	case apiEvent.PolicyRemediationEvent != nil:
@@ -626,5 +629,6 @@ func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engi
 		Inputs:         inputs,
 		Outputs:        outputs,
 		InitErrors:     md.InitErrors,
+		HideDiffs:      md.HideDiffs,
 	}
 }

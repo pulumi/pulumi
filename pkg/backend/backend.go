@@ -37,7 +37,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // StackReference is an opaque type that refers to a stack managed by a backend.  The CLI uses the ParseStackReference
@@ -58,6 +60,26 @@ type StackReference interface {
 
 	// Fully qualified name of the stack, including any organization, project, or other information.
 	FullyQualifiedName() tokens.QName
+}
+
+// Confirm the specified stack's project doesn't contradict the name of the current project.
+func CurrentProjectContradictsWorkspace(proj *workspace.Project, stack StackReference) error {
+	contract.Requiref(stack != nil, "stack", "is nil")
+
+	if proj == nil {
+		return nil
+	}
+
+	project, has := stack.Project()
+	if !has {
+		return nil
+	}
+
+	if string(proj.Name) != string(project) {
+		return fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", project)
+	}
+
+	return nil
 }
 
 // PolicyPackReference is an opaque type that refers to a PolicyPack managed by a backend. The CLI
@@ -372,67 +394,67 @@ func (c *backendClient) GetStackOutputs(
 	ctx context.Context,
 	name string,
 	onDecryptError func(err error) error,
-) (resource.PropertyMap, error) {
+) (property.Map, error) {
 	ref, err := c.backend.ParseStackReference(name)
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
 	s, err := c.backend.GetStack(ctx, ref)
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
 	if s == nil {
-		return nil, fmt.Errorf("unknown stack %q", name)
+		return property.Map{}, fmt.Errorf("unknown stack %q", name)
 	}
 
 	secretsProvider := newErrorCatchingSecretsProvider(c.secretsProvider, onDecryptError)
 	snap, err := s.Snapshot(ctx, secretsProvider)
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
 
 	res, err := stack.GetRootStackResource(snap)
 	if err != nil {
-		return nil, fmt.Errorf("getting root stack resources: %w", err)
+		return property.Map{}, fmt.Errorf("getting root stack resources: %w", err)
 	}
 
 	if res == nil {
-		return resource.PropertyMap{}, nil
+		return property.Map{}, nil
 	}
-	return res.Outputs, nil
+	return resource.FromResourcePropertyMap(res.Outputs), nil
 }
 
 func (c *backendClient) GetStackResourceOutputs(
 	ctx context.Context, name string,
-) (resource.PropertyMap, error) {
+) (property.Map, error) {
 	ref, err := c.backend.ParseStackReference(name)
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
 	s, err := c.backend.GetStack(ctx, ref)
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
 	if s == nil {
-		return nil, fmt.Errorf("unknown stack %q", name)
+		return property.Map{}, fmt.Errorf("unknown stack %q", name)
 	}
 	snap, err := s.Snapshot(ctx, c.secretsProvider)
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
-	pm := resource.PropertyMap{}
+	pm := map[string]property.Value{}
 	for _, r := range snap.Resources {
 		if r.Delete {
 			continue
 		}
 
-		resc := resource.PropertyMap{
-			resource.PropertyKey("type"):    resource.NewProperty(string(r.Type)),
-			resource.PropertyKey("outputs"): resource.NewProperty(r.Outputs),
+		resc := map[string]property.Value{
+			"type":    property.New(string(r.Type)),
+			"outputs": property.New(resource.FromResourcePropertyMap(r.Outputs)),
 		}
-		pm[resource.PropertyKey(r.URN)] = resource.NewProperty(resc)
+		pm[string(r.URN)] = property.New(resc)
 	}
-	return pm, nil
+	return property.NewMap(pm), nil
 }
 
 // ErrTeamsNotSupported is returned by backends

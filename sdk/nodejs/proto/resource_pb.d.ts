@@ -245,6 +245,10 @@ export class RegisterResourceRequest extends jspb.Message {
     addAliases(value?: pulumi_alias_pb.Alias, index?: number): pulumi_alias_pb.Alias;
     getDeletedwith(): string;
     setDeletedwith(value: string): RegisterResourceRequest;
+    clearReplaceWithList(): void;
+    getReplaceWithList(): Array<string>;
+    setReplaceWithList(value: Array<string>): RegisterResourceRequest;
+    addReplaceWith(value: string, index?: number): string;
     getAliasspecs(): boolean;
     setAliasspecs(value: boolean): RegisterResourceRequest;
 
@@ -272,6 +276,10 @@ export class RegisterResourceRequest extends jspb.Message {
     clearHooks(): void;
     getHooks(): RegisterResourceRequest.ResourceHooksBinding | undefined;
     setHooks(value?: RegisterResourceRequest.ResourceHooksBinding): RegisterResourceRequest;
+    clearHidediffsList(): void;
+    getHidediffsList(): Array<string>;
+    setHidediffsList(value: Array<string>): RegisterResourceRequest;
+    addHidediffs(value: string, index?: number): string;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
@@ -316,6 +324,7 @@ export namespace RegisterResourceRequest {
         retainondelete?: boolean,
         aliasesList: Array<pulumi_alias_pb.Alias.AsObject>,
         deletedwith: string,
+        replaceWithList: Array<string>,
         aliasspecs: boolean,
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
         stacktrace?: pulumi_source_pb.StackTrace.AsObject,
@@ -324,6 +333,7 @@ export namespace RegisterResourceRequest {
         supportsresultreporting: boolean,
         packageref: string,
         hooks?: RegisterResourceRequest.ResourceHooksBinding.AsObject,
+        hidediffsList: Array<string>,
     }
 
 
@@ -729,6 +739,14 @@ export class TransformResourceOptions extends jspb.Message {
     setHooks(value?: RegisterResourceRequest.ResourceHooksBinding): TransformResourceOptions;
     getImport(): string;
     setImport(value: string): TransformResourceOptions;
+    clearHideDiffList(): void;
+    getHideDiffList(): Array<string>;
+    setHideDiffList(value: Array<string>): TransformResourceOptions;
+    addHideDiff(value: string, index?: number): string;
+    clearReplaceWithList(): void;
+    getReplaceWithList(): Array<string>;
+    setReplaceWithList(value: Array<string>): TransformResourceOptions;
+    addReplaceWith(value: string, index?: number): string;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): TransformResourceOptions.AsObject;
@@ -761,6 +779,8 @@ export namespace TransformResourceOptions {
         pluginChecksumsMap: Array<[string, Uint8Array | string]>,
         hooks?: RegisterResourceRequest.ResourceHooksBinding.AsObject,
         pb_import: string,
+        hideDiffList: Array<string>,
+        replaceWithList: Array<string>,
     }
 }
 

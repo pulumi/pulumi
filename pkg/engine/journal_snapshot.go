@@ -16,11 +16,13 @@ package engine
 
 import (
 	"reflect"
+	"sync"
 	"sync/atomic"
 
 	"golang.org/x/exp/slices"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -31,18 +33,9 @@ import (
 // is responsible for recording and storing the operations, and constructing a snapshot/storing them
 // for later replaying.
 type Journal interface {
-	// BeginOperation begins a new operation in the journal. This should be called before any
-	// mutation is performed on the snapshot. The journal entry should contain the operation ID,
-	// which is used to correlate the begin and end operations in the journal.
-	BeginOperation(entry JournalEntry) error
-	// EndOperation ends an operation in the journal. This should be called after the mutation is
-	// performed on the snapshot. The journal entry should contain the operation ID, which is used
-	// to correlate the begin and end operations in the journal.
-	EndOperation(entry JournalEntry) error
-	// Write updates the base snapshot for this journal. This is used e.g. when providers have
-	// been updated, and we can't simply reuse the base snapshot from the previous plan. This
-	// needs to be called before any other mutation requests.
-	Write(newBase *deploy.Snapshot) error
+	// AddJournalEntry adds a new journal entry to the journal. The entry itself is expected to
+	// contain all the information necessary to replay the operation.
+	AddJournalEntry(entry JournalEntry) error
 	// Close closes the journal, flushing any pending operations.
 	Close() error
 }
@@ -80,6 +73,16 @@ type JournalSnapshotManager struct {
 
 	// A counter to generate unique IDs for each journal entry.
 	sequenceIDCounter atomic.Int64
+
+	// validationM synchronizes access to the snapshot manager's validation state. Do not use directly; use the
+	// [JournalSnapshotManager.validate] method.
+	validationM sync.Mutex
+
+	// hasNewResources is true if any journal operation has changed a new resource.
+	hasNewResources bool
+
+	// Tracks whether or not a terminal RebuiltBaseState event has been sent.
+	hasTerminalRebuiltBaseState bool
 }
 
 var _ SnapshotManager = (*JournalSnapshotManager)(nil)
@@ -91,12 +94,14 @@ func (sm *JournalSnapshotManager) Close() error {
 type JournalEntryKind int
 
 const (
-	JournalEntryBegin          JournalEntryKind = 0
-	JournalEntrySuccess        JournalEntryKind = 1
-	JournalEntryFailure        JournalEntryKind = 2
-	JournalEntryRefreshSuccess JournalEntryKind = 3
-	JournalEntryOutputs        JournalEntryKind = 4
-	JournalEntryWrite          JournalEntryKind = 5
+	JournalEntryBegin            JournalEntryKind = 0
+	JournalEntrySuccess          JournalEntryKind = 1
+	JournalEntryFailure          JournalEntryKind = 2
+	JournalEntryRefreshSuccess   JournalEntryKind = 3
+	JournalEntryOutputs          JournalEntryKind = 4
+	JournalEntryWrite            JournalEntryKind = 5
+	JournalEntrySecretsManager   JournalEntryKind = 6
+	JournalEntryRebuiltBaseState JournalEntryKind = 7
 )
 
 func (k JournalEntryKind) String() string {
@@ -113,6 +118,10 @@ func (k JournalEntryKind) String() string {
 		return "Outputs"
 	case JournalEntryWrite:
 		return "Write"
+	case JournalEntrySecretsManager:
+		return "SecretsManager"
+	case JournalEntryRebuiltBaseState:
+		return "RebuiltBaseState"
 	default:
 		return "Unknown"
 	}
@@ -148,9 +157,15 @@ type JournalEntry struct {
 	ElideWrite bool
 	// If true, this journal entry is part of a refresh operation.
 	IsRefresh bool
+	// SecretsManager is the secrets manager associated with the operation
+	SecretsManager secrets.Manager
 
 	// The new snapshot if this journal entry is part of a rebase operation.
 	NewSnapshot *deploy.Snapshot
+}
+
+func hasNewResource(entry JournalEntry) bool {
+	return entry.State == nil && entry.Kind == JournalEntrySuccess
 }
 
 func (sm *JournalSnapshotManager) newJournalEntry(kind JournalEntryKind, operationID int64) JournalEntry {
@@ -160,6 +175,26 @@ func (sm *JournalSnapshotManager) newJournalEntry(kind JournalEntryKind, operati
 		OperationID: operationID,
 		SequenceID:  sequenceID,
 	}
+}
+
+func (sm *JournalSnapshotManager) validate(fn func()) {
+	sm.validationM.Lock()
+	defer sm.validationM.Unlock()
+	fn()
+}
+
+func (sm *JournalSnapshotManager) addJournalEntry(entry JournalEntry) error {
+	sm.validate(func() {
+		contract.Assertf(
+			!sm.hasTerminalRebuiltBaseState,
+			"cannot add additional entries; already sent RebuiltBaseState with new resources",
+		)
+		if hasNewResource(entry) {
+			sm.hasNewResources = true
+		}
+	})
+
+	return sm.journal.AddJournalEntry(entry)
 }
 
 // RegisterResourceOutputs handles the registering of outputs on a Step that has already
@@ -176,7 +211,15 @@ func (sm *JournalSnapshotManager) RegisterResourceOutputs(step deploy.Step) erro
 	// is not a really a separate step, but the step we're getting here has already been executed.
 	// We need to replace the resource that step already added, hence step.New() below.
 	journalEntry.RemoveOld, journalEntry.RemoveNew = sm.findResourceInNewOrOld(step.New())
-	return sm.journal.EndOperation(journalEntry)
+	return sm.addJournalEntry(journalEntry)
+}
+
+// RegisterSecretsManager records the secrets manager used for this deployment.
+func (sm *JournalSnapshotManager) RegisterSecretsManager(secretsManager secrets.Manager) error {
+	journalEntry := sm.newJournalEntry(JournalEntrySecretsManager, 0)
+	journalEntry.SecretsManager = secretsManager
+	journalEntry.ElideWrite = true
+	return sm.addJournalEntry(journalEntry)
 }
 
 // findResourceInOldOrNew looks for a resource in either the base snapshot, or in the list of new
@@ -200,6 +243,7 @@ func (sm *JournalSnapshotManager) findResourceInNewOrOld(toFind *resource.State)
 			}
 		}
 	}
+
 	rm, ok := sm.newResources.Load(toFind)
 	contract.Assertf(ok, "could not find resource in snapshot or new resources %v", toFind)
 	return nil, &rm
@@ -248,7 +292,37 @@ func (sm *JournalSnapshotManager) Write(base *deploy.Snapshot) error {
 		return nil
 	}
 	sm.baseSnapshot = base
-	return sm.journal.Write(base)
+
+	snapCopy := &deploy.Snapshot{
+		Manifest:          base.Manifest,
+		SecretsManager:    base.SecretsManager,
+		Resources:         make([]*resource.State, 0, len(base.Resources)),
+		PendingOperations: make([]resource.Operation, 0, len(base.PendingOperations)),
+		Metadata:          base.Metadata,
+	}
+
+	// Copy the resources from the base snapshot to the new snapshot.
+	for _, res := range base.Resources {
+		snapCopy.Resources = append(snapCopy.Resources, res.Copy())
+	}
+	// Copy the pending operations from the base snapshot to the new snapshot.
+	for _, op := range base.PendingOperations {
+		snapCopy.PendingOperations = append(snapCopy.PendingOperations, op.Copy())
+	}
+
+	je := sm.newJournalEntry(JournalEntryWrite, 0)
+	je.NewSnapshot = snapCopy
+	return sm.addJournalEntry(je)
+}
+
+func (sm *JournalSnapshotManager) RebuiltBaseState() error {
+	// If any new resources have been added, this RebuiltBaseState entry must be the last in the journal.
+	sm.validate(func() {
+		if sm.hasNewResources {
+			sm.hasTerminalRebuiltBaseState = true
+		}
+	})
+	return sm.addJournalEntry(sm.newJournalEntry(JournalEntryRebuiltBaseState, 0))
 }
 
 // All SnapshotMutation implementations in this file follow the same basic formula:
@@ -343,6 +417,18 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 		return true
 	}
 
+	// If the ReplaceWith attribute of this resource has changed, we must write the checkpoint.
+	if len(old.ReplaceWith) != len(new.ReplaceWith) {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of ReplaceWith")
+		return true
+	}
+	for i, replaceWith := range old.ReplaceWith {
+		if replaceWith != new.ReplaceWith[i] {
+			logging.V(9).Infof("SnapshotManager: mustWrite() true because of ReplaceWith")
+			return true
+		}
+	}
+
 	// If the protection attribute of this resource has changed, we must write the checkpoint.
 	if old.Protect != new.Protect {
 		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Protect")
@@ -397,7 +483,7 @@ func (sm *JournalSnapshotManager) doSame(step deploy.Step, operationID int64) (S
 	logging.V(9).Infof("SnapshotManager.doSame(%s)", step.URN())
 	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
 	journalEntry.ElideWrite = true
-	err := sm.journal.BeginOperation(journalEntry)
+	err := sm.addJournalEntry(journalEntry)
 	if err != nil {
 		return nil, err
 	}
@@ -428,7 +514,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 		journalEntry.ElideWrite = true
 	}
 
-	return ssm.manager.journal.EndOperation(journalEntry)
+	return ssm.manager.addJournalEntry(journalEntry)
 }
 
 func (sm *JournalSnapshotManager) doCreate(step deploy.Step, operationID int64) (SnapshotMutation, error) {
@@ -437,7 +523,7 @@ func (sm *JournalSnapshotManager) doCreate(step deploy.Step, operationID int64) 
 
 	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
 	journalEntry.Operation = &op
-	err := sm.journal.BeginOperation(journalEntry)
+	err := sm.addJournalEntry(journalEntry)
 	if err != nil {
 		return nil, err
 	}
@@ -471,7 +557,7 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 		journalEntry.DeleteOld, journalEntry.DeleteNew = csm.manager.findResourceInNewOrOld(step.Old())
 	}
 
-	return csm.manager.journal.EndOperation(journalEntry)
+	return csm.manager.addJournalEntry(journalEntry)
 }
 
 func (sm *JournalSnapshotManager) doUpdate(step deploy.Step, operationID int64) (SnapshotMutation, error) {
@@ -479,7 +565,7 @@ func (sm *JournalSnapshotManager) doUpdate(step deploy.Step, operationID int64) 
 	op := resource.NewOperation(step.New(), resource.OperationTypeUpdating)
 	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
 	journalEntry.Operation = &op
-	err := sm.journal.BeginOperation(journalEntry)
+	err := sm.addJournalEntry(journalEntry)
 	if err != nil {
 		return nil, err
 	}
@@ -505,7 +591,7 @@ func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error 
 	}
 	journalEntry.State = step.New().Copy()
 	usm.manager.newResources.Store(step.New(), usm.operationID)
-	return usm.manager.journal.EndOperation(journalEntry)
+	return usm.manager.addJournalEntry(journalEntry)
 }
 
 func (sm *JournalSnapshotManager) doDelete(step deploy.Step, operationID int64) (SnapshotMutation, error) {
@@ -514,7 +600,7 @@ func (sm *JournalSnapshotManager) doDelete(step deploy.Step, operationID int64) 
 	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
 	journalEntry.Operation = &op
 
-	err := sm.journal.BeginOperation(journalEntry)
+	err := sm.addJournalEntry(journalEntry)
 	if err != nil {
 		return nil, err
 	}
@@ -549,7 +635,7 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 			journalEntry.RemoveOld, journalEntry.RemoveNew = dsm.manager.findResourceInNewOrOld(step.Old())
 		}
 	}
-	return dsm.manager.journal.EndOperation(journalEntry)
+	return dsm.manager.addJournalEntry(journalEntry)
 }
 
 func (sm *JournalSnapshotManager) doReplace(step deploy.Step, operationID int64) (SnapshotMutation, error) {
@@ -572,7 +658,7 @@ func (sm *JournalSnapshotManager) doRead(step deploy.Step, operationID int64) (S
 	op := resource.NewOperation(step.New(), resource.OperationTypeReading)
 	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
 	journalEntry.Operation = &op
-	err := sm.journal.BeginOperation(journalEntry)
+	err := sm.addJournalEntry(journalEntry)
 	if err != nil {
 		return nil, err
 	}
@@ -597,14 +683,14 @@ func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
 	if old := step.Old(); old != nil && rsm.manager.baseSnapshot != nil {
 		journalEntry.RemoveOld, journalEntry.RemoveNew = rsm.manager.findResourceInNewOrOld(step.Old())
 	}
-	return rsm.manager.journal.EndOperation(journalEntry)
+	return rsm.manager.addJournalEntry(journalEntry)
 }
 
 func (sm *JournalSnapshotManager) doRefresh(step deploy.Step, operationID int64) (SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doRefresh(%s)", step.URN())
 	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
 
-	err := sm.journal.BeginOperation(journalEntry)
+	err := sm.addJournalEntry(journalEntry)
 	if err != nil {
 		return nil, err
 	}
@@ -633,7 +719,7 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 
 	refreshStep, isRefreshStep := step.(*deploy.RefreshStep)
 	viewStep, isViewStep := step.(*deploy.ViewStep)
-	if (isRefreshStep && refreshStep.Persisted()) || (isViewStep && viewStep.Persisted()) && successful {
+	if ((isRefreshStep && refreshStep.Persisted()) || (isViewStep && viewStep.Persisted())) && successful {
 		// We're treating persisted refreshes and slightly different than non-persisted ones.
 		// Persisted refreshes are just a delete and create of the resource, and the new resource
 		// can be appended at the end of the base snapshot.  Meanwhile for "non-persisted" refreshes
@@ -648,7 +734,7 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		journalEntry.RemoveOld, journalEntry.RemoveNew = rsm.manager.findResourceInNewOrOld(old)
 	}
 
-	return rsm.manager.journal.EndOperation(journalEntry)
+	return rsm.manager.addJournalEntry(journalEntry)
 }
 
 func (sm *JournalSnapshotManager) doRemovePendingReplace(
@@ -656,7 +742,7 @@ func (sm *JournalSnapshotManager) doRemovePendingReplace(
 ) (SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doRemovePendingReplace(%s)", step.URN())
 	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
-	err := sm.journal.BeginOperation(journalEntry)
+	err := sm.addJournalEntry(journalEntry)
 	if err != nil {
 		return nil, err
 	}
@@ -676,7 +762,7 @@ func (rsm *removePendingReplaceSnapshotMutation) End(step deploy.Step, successfu
 	if step.Old() != nil {
 		journalEntry.RemoveOld, journalEntry.RemoveNew = rsm.manager.findResourceInNewOrOld(step.Old())
 	}
-	return rsm.manager.journal.EndOperation(journalEntry)
+	return rsm.manager.addJournalEntry(journalEntry)
 }
 
 func (sm *JournalSnapshotManager) doImport(step deploy.Step, operationID int64) (SnapshotMutation, error) {
@@ -684,7 +770,7 @@ func (sm *JournalSnapshotManager) doImport(step deploy.Step, operationID int64) 
 	op := resource.NewOperation(step.New(), resource.OperationTypeImporting)
 	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
 	journalEntry.Operation = &op
-	err := sm.journal.BeginOperation(journalEntry)
+	err := sm.addJournalEntry(journalEntry)
 	if err != nil {
 		return nil, err
 	}
@@ -714,7 +800,7 @@ func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error 
 		journalEntry.DeleteOld, journalEntry.DeleteNew = ism.manager.findResourceInNewOrOld(importStep.Original())
 	}
 	ism.manager.newResources.Store(step.New(), ism.operationID)
-	return ism.manager.journal.EndOperation(journalEntry)
+	return ism.manager.addJournalEntry(journalEntry)
 }
 
 // NewJournalSnapshotManager creates a new SnapshotManager for the given stack name, using the
@@ -726,11 +812,14 @@ func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error 
 func NewJournalSnapshotManager(
 	journal Journal,
 	baseSnap *deploy.Snapshot,
-) *JournalSnapshotManager {
+	sm secrets.Manager,
+) (*JournalSnapshotManager, error) {
 	manager := &JournalSnapshotManager{
 		journal:      journal,
 		baseSnapshot: baseSnap,
 	}
 
-	return manager
+	err := manager.RegisterSecretsManager(sm)
+
+	return manager, err
 }

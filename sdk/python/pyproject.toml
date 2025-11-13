@@ -4,24 +4,24 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pulumi"
-version = "3.199.0"
+version = "3.208.0"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 description = "Pulumi's Python SDK"
 readme = "README.md"
 classifiers = [
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
 ]
 dependencies = [
     'protobuf~=5.29.5',
-    'grpcio~=1.71',
-    'dill~=0.3',
+    'grpcio>=1.75.1,<2',
+    'dill~=0.4',
     'semver~=3.0',
     'pyyaml~=6.0',
     'debugpy~=1.8.7',
@@ -32,14 +32,15 @@ dependencies = [
 dev = [
     'mypy==1.17.1',
     'pyright==1.1.404',
-    'pytest~=7.4.4',
+    'pytest~=8.4.0',
     'pytest-timeout',
+    'pytest-xdist',
     'types-pyyaml',
     'types-protobuf',
-    'pytest-asyncio',
+    'pytest-asyncio~=1.2.0',
     'coverage>=6.0.2',
     'wheel',
-    'ruff==0.12.10',
+    'ruff==0.13.2',
     "build>=1.2.2.post1",
     "twine>=6.0.1",
     "types-grpcio>=1.0.0.20250703",
@@ -72,7 +73,7 @@ include = ["lib/test_types"]
 strict = ["lib/test_types"]
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py310"
 
 include = [
     "lib/pulumi/**.py",
@@ -123,7 +124,7 @@ quote-style = "double"
 
 [tool.mypy]
 # The minimum Python version we support
-python_version = "3.9"
+python_version = "3.10"
 
 [[tool.mypy.overrides]]
 module = [

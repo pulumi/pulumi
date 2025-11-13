@@ -30,23 +30,23 @@ func TestRenderCopilotErrorSummary(t *testing.T) {
 	summary := "This is a test summary"
 	buf := new(bytes.Buffer)
 	opts := Options{
-		Stdout:            buf,
-		Color:             colors.Never,
-		ShowLinkToCopilot: true,
+		Stdout:        buf,
+		Color:         colors.Never,
+		ShowLinkToNeo: true,
 	}
 
 	// Render to buffer
-	RenderCopilotErrorSummary(&CopilotErrorSummaryMetadata{
+	RenderNeoErrorSummary(&NeoErrorSummaryMetadata{
 		Summary: summary,
 	}, nil, opts, "http://foo.bar/baz")
 
-	expectedCopilotSummary := fmt.Sprintf(`Copilot Diagnostics%s
+	expectedCopilotSummary := fmt.Sprintf(`Neo Diagnostics%s
   This is a test summary
 
   Would you like additional help with this update?
   http://foo.bar/baz?explainFailure
 
-`, copilotDelimiterEmoji())
+`, neoDelimiterEmoji())
 	assert.Equal(t, expectedCopilotSummary, buf.String())
 }
 
@@ -59,12 +59,12 @@ func TestRenderCopilotErrorSummaryError(t *testing.T) {
 		Color:  colors.Never,
 	}
 
-	RenderCopilotErrorSummary(nil, errors.New("test error"), opts, "http://foo.bar/baz")
+	RenderNeoErrorSummary(nil, errors.New("test error"), opts, "http://foo.bar/baz")
 
-	expectedCopilotSummaryWithError := fmt.Sprintf(`Copilot Diagnostics%s
+	expectedCopilotSummaryWithError := fmt.Sprintf(`Neo Diagnostics%s
   error summarizing update output: test error
 
-`, copilotDelimiterEmoji())
+`, neoDelimiterEmoji())
 	assert.Equal(t, expectedCopilotSummaryWithError, buf.String())
 }
 
@@ -77,7 +77,7 @@ func TestRenderCopilotErrorSummaryNoSummaryOrError(t *testing.T) {
 		Color:  colors.Never,
 	}
 
-	RenderCopilotErrorSummary(nil, nil, opts, "http://foo.bar/baz")
+	RenderNeoErrorSummary(nil, nil, opts, "http://foo.bar/baz")
 
 	assert.Equal(t, "", buf.String())
 }
@@ -93,14 +93,14 @@ func TestRenderCopilotErrorSummaryWithError(t *testing.T) {
 		Color:  colors.Never,
 	}
 
-	RenderCopilotErrorSummary(&CopilotErrorSummaryMetadata{
+	RenderNeoErrorSummary(&NeoErrorSummaryMetadata{
 		Summary: summary,
 	}, errors.New("test error"), opts, "http://foo.bar/baz")
 
-	expectedCopilotSummaryWithErrorAndSummary := fmt.Sprintf(`Copilot Diagnostics%s
+	expectedCopilotSummaryWithErrorAndSummary := fmt.Sprintf(`Neo Diagnostics%s
   error summarizing update output: test error
 
-`, copilotDelimiterEmoji())
+`, neoDelimiterEmoji())
 	assert.Equal(t, expectedCopilotSummaryWithErrorAndSummary, buf.String())
 }
 

@@ -650,7 +650,6 @@ func TestProvider_ConstructOptions(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -680,6 +679,7 @@ func TestProvider_ConstructOptions(t *testing.T) {
 					nilIfEmpty(&req.ConfigSecretKeys)
 					nilIfEmpty(&req.Dependencies)
 					nilIfEmpty(&req.InputDependencies)
+					nilIfEmpty(&req.ReplaceWith)
 
 					got = req
 					return &pulumirpc.ConstructResponse{

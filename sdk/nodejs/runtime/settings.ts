@@ -26,13 +26,24 @@ import * as resrpc from "../proto/resource_grpc_pb";
 import * as resproto from "../proto/resource_pb";
 import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
 
+/*
+  Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb).
+ */
+const maxRPCMessageSize: number = 1024 * 1024 * 400;
+/*
+  This is the time a message can be received by the GRPC server and wait in the queue without being handled. If there is
+  blocking happening in the pulumi program, and/or there are a lot of requests and other tasks to process by the event
+  loop, this can take longer than the default 30 seconds. Requests that take longer end up being cancelled, causing the
+  operation to fail.
+*/
+const serverMaxUnrequestedTimeInServer = 30 * 60; // half an hour in seconds
 /**
- * Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb).
- *
  * @internal
  */
-export const maxRPCMessageSize: number = 1024 * 1024 * 400;
-const grpcChannelOptions = { "grpc.max_receive_message_length": maxRPCMessageSize };
+export const grpcChannelOptions = {
+    "grpc.max_receive_message_length": maxRPCMessageSize,
+    "grpc.server_max_unrequested_time_in_server": serverMaxUnrequestedTimeInServer,
+};
 
 /**
  * excessiveDebugOutput enables, well, pretty excessive debug output pertaining
@@ -149,6 +160,7 @@ export function resetOptions(
     store.supportsResourceReferences = false;
     store.supportsOutputValues = false;
     store.supportsDeletedWith = false;
+    store.supportsReplaceWith = false;
     store.supportsAliasSpecs = false;
     store.supportsTransforms = false;
     store.supportsInvokeTransforms = false;
@@ -249,6 +261,7 @@ export async function awaitFeatureSupport(): Promise<void> {
             resourceReferences,
             outputValues,
             deletedWith,
+            replaceWith,
             aliasSpecs,
             transforms,
             invokeTransforms,
@@ -260,6 +273,7 @@ export async function awaitFeatureSupport(): Promise<void> {
                 "resourceReferences",
                 "outputValues",
                 "deletedWith",
+                "replaceWith",
                 "aliasSpecs",
                 "transforms",
                 "invokeTransforms",
@@ -272,6 +286,7 @@ export async function awaitFeatureSupport(): Promise<void> {
         store.supportsResourceReferences = resourceReferences;
         store.supportsOutputValues = outputValues;
         store.supportsDeletedWith = deletedWith;
+        store.supportsReplaceWith = replaceWith;
         store.supportsAliasSpecs = aliasSpecs;
         store.supportsTransforms = transforms;
         store.supportsInvokeTransforms = invokeTransforms;

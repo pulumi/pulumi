@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // PlaintextType describes the allowed types for a Plaintext.
@@ -101,41 +102,98 @@ func (c Plaintext) GoValue() any {
 	}
 }
 
-// PropertyValue converts a plaintext value into a resource.PropertyValue.
-func (c Plaintext) PropertyValue() resource.PropertyValue {
-	var prop resource.PropertyValue
+// PropertyValue converts a plaintext value into a property.Value.
+func (c Plaintext) PropertyValue() property.Value {
+	var prop property.Value
 	switch v := c.Value().(type) {
 	case bool:
-		prop = resource.NewProperty(v)
+		prop = property.New(v)
 	case int64:
-		prop = resource.NewProperty(float64(v))
+		prop = property.New(float64(v))
 	case uint64:
-		prop = resource.NewProperty(float64(v))
+		prop = property.New(float64(v))
 	case float64:
-		prop = resource.NewProperty(v)
+		prop = property.New(v)
 	case string:
-		prop = resource.NewProperty(v)
+		prop = property.New(v)
 	case PlaintextSecret:
-		prop = resource.MakeSecret(resource.NewProperty(string(v)))
+		prop = property.New(string(v)).WithSecret(true)
 	case []Plaintext:
-		vs := make([]resource.PropertyValue, len(v))
+		vs := make([]property.Value, len(v))
 		for i, v := range v {
 			vs[i] = v.PropertyValue()
 		}
-		prop = resource.NewProperty(vs)
+		prop = property.New(vs)
 	case map[string]Plaintext:
-		vs := make(resource.PropertyMap, len(v))
+		vs := make(map[string]property.Value, len(v))
 		for k, v := range v {
-			vs[resource.PropertyKey(k)] = v.PropertyValue()
+			vs[k] = v.PropertyValue()
 		}
-		prop = resource.NewProperty(vs)
+		prop = property.New(vs)
 	case nil:
-		prop = resource.NewNullProperty()
+		prop = property.New(property.Null)
 	default:
 		contract.Failf("unexpected value of type %T", v)
-		return resource.PropertyValue{}
+		return property.Value{}
 	}
 	return prop
+}
+
+func encryptMap(ctx context.Context, plaintextMap map[Key]Plaintext, encrypter Encrypter) (map[Key]object, error) {
+	// Collect all secure values
+	var refs []containerRef
+	var ptChunks [][]string
+	collectPlaintextSecrets(plaintextMap, &refs, &ptChunks)
+
+	// Encrypt objects in batches
+	offset := 0
+	for _, ptChunk := range ptChunks {
+		if len(ptChunk) == 0 {
+			continue
+		}
+		encryptedChunk, err := encrypter.BatchEncrypt(ctx, ptChunk)
+		if err != nil {
+			return nil, err
+		}
+		// Assign encrypted values back into original structure
+		// We are accepting that a Plaintext Secret now has a ciphertext value
+		// TODO: https://github.com/pulumi/pulumi/issues/20663
+		// Prefer using a caching encrypter to avoid mixing plaintext and ciphertext
+		for i, encrypted := range encryptedChunk {
+			refs[offset+i].setPlaintext(NewPlaintext(PlaintextSecret(encrypted)))
+		}
+		offset += len(ptChunk)
+	}
+
+	// Marshal each top-level object back into an object value.
+	// Note that at this point, all Plaintext Secrets have been encrypted.
+	// So we can use the NopEncrypter here.
+	result := map[Key]object{}
+	for k, pt := range plaintextMap {
+		obj, err := pt.encrypt(ctx, nil, NopEncrypter)
+		if err != nil {
+			return nil, err
+		}
+		result[k] = obj
+	}
+	return result, nil
+}
+
+func EncryptMap(ctx context.Context, plaintextMap map[Key]Plaintext, encrypter Encrypter) (map[Key]Value, error) {
+	objectMap, err := encryptMap(ctx, plaintextMap, encrypter)
+	if err != nil {
+		return nil, err
+	}
+
+	result := Map{}
+	for k, obj := range objectMap {
+		v, err := obj.marshalValue()
+		if err != nil {
+			return nil, err
+		}
+		result[k] = v
+	}
+	return result, nil
 }
 
 // Encrypt converts the receiver as a Value. All secure strings in the result are encrypted using encrypter.

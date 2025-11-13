@@ -33,11 +33,11 @@ import (
 	"github.com/acarl005/stripansi"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -106,7 +106,7 @@ func TestEngineEvents(t *testing.T) {
 				}
 			}
 
-			assert.Equal(t, 3, len(preEventResourceTypes))
+			require.Len(t, preEventResourceTypes, 3)
 			assert.Contains(t, preEventResourceTypes, "pulumi:pulumi:Stack")
 			assert.Contains(t, preEventResourceTypes, "pulumi-nodejs:dynamic:Resource")
 			assert.Contains(t, preEventResourceTypes, "pulumi:providers:pulumi-nodejs")
@@ -218,15 +218,14 @@ func TestStackOutputsNodeJS(t *testing.T) {
 			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
 			fmt.Printf("Deployment: %v", stackInfo.Deployment)
 			require.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 1, len(stackInfo.Deployment.Resources)) {
-				stackRes := stackInfo.Deployment.Resources[0]
-				require.NotNil(t, stackRes)
-				assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-				assert.Empty(t, stackRes.Inputs)
-				assert.Equal(t, 2, len(stackRes.Outputs))
-				assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
-				assert.Equal(t, float64(42), stackRes.Outputs["foo"])
-			}
+			require.Len(t, stackInfo.Deployment.Resources, 1)
+			stackRes := stackInfo.Deployment.Resources[0]
+			require.NotNil(t, stackRes)
+			assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
+			assert.Empty(t, stackRes.Inputs)
+			require.Len(t, stackRes.Outputs, 2)
+			assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
+			assert.Equal(t, float64(42), stackRes.Outputs["foo"])
 		},
 	})
 }
@@ -239,7 +238,7 @@ func TestStackOutputsProgramErrorNodeJS(t *testing.T) {
 	d := filepath.Join("stack_outputs_program_error", "nodejs")
 
 	validateOutputs := func(
-		expected map[string]interface{},
+		expected map[string]any,
 	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
@@ -250,7 +249,7 @@ func TestStackOutputsProgramErrorNodeJS(t *testing.T) {
 		Dir:          filepath.Join(d, "step1"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
-		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+		ExtraRuntimeValidation: validateOutputs(map[string]any{
 			"xyz": "ABC",
 			"foo": float64(42),
 		}),
@@ -261,7 +260,7 @@ func TestStackOutputsProgramErrorNodeJS(t *testing.T) {
 				ExpectFailure: true,
 				// A program error in TypeScript means we won't get any new stack outputs from the module exports,
 				// so we expect the values to remain the same.
-				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+				ExtraRuntimeValidation: validateOutputs(map[string]any{
 					"xyz": "ABC",
 					"foo": float64(42),
 				}),
@@ -278,7 +277,7 @@ func TestStackOutputsResourceErrorNodeJS(t *testing.T) {
 	d := filepath.Join("stack_outputs_resource_error", "nodejs")
 
 	validateOutputs := func(
-		expected map[string]interface{},
+		expected map[string]any,
 	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
@@ -292,7 +291,7 @@ func TestStackOutputsResourceErrorNodeJS(t *testing.T) {
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
 		Quick: true,
-		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+		ExtraRuntimeValidation: validateOutputs(map[string]any{
 			"xyz": "ABC",
 			"foo": float64(42),
 		}),
@@ -303,7 +302,7 @@ func TestStackOutputsResourceErrorNodeJS(t *testing.T) {
 				ExpectFailure: true,
 				// Expect the values to remain the same because the deployment ends before RegisterResourceOutputs is
 				// called for the stack.
-				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+				ExtraRuntimeValidation: validateOutputs(map[string]any{
 					"xyz": "ABC",
 					"foo": float64(42),
 				}),
@@ -313,7 +312,7 @@ func TestStackOutputsResourceErrorNodeJS(t *testing.T) {
 				Additive:      true,
 				ExpectFailure: true,
 				// Expect the values to be updated.
-				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+				ExtraRuntimeValidation: validateOutputs(map[string]any{
 					"xyz": "DEF",
 					"foo": float64(1),
 				}),
@@ -401,34 +400,33 @@ func TestStackParenting(t *testing.T) {
 			// with the caveat, of course, that A and F will share a common parent, the implicit stack.
 
 			require.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 9, len(stackInfo.Deployment.Resources)) {
-				stackRes := stackInfo.Deployment.Resources[0]
-				require.NotNil(t, stackRes)
-				assert.Equal(t, resource.RootStackType, stackRes.Type)
-				assert.Equal(t, "", string(stackRes.Parent))
+			require.Len(t, stackInfo.Deployment.Resources, 9)
+			stackRes := stackInfo.Deployment.Resources[0]
+			require.NotNil(t, stackRes)
+			assert.Equal(t, resource.RootStackType, stackRes.Type)
+			assert.Equal(t, "", string(stackRes.Parent))
 
-				urns := make(map[string]resource.URN)
-				for _, res := range stackInfo.Deployment.Resources[1:] {
-					require.NotNil(t, res)
+			urns := make(map[string]resource.URN)
+			for _, res := range stackInfo.Deployment.Resources[1:] {
+				require.NotNil(t, res)
 
-					urns[res.URN.Name()] = res.URN
-					switch res.URN.Name() {
-					case "a", "f":
-						assert.NotEqual(t, "", res.Parent)
-						assert.Equal(t, stackRes.URN, res.Parent)
-					case "b", "c":
-						assert.Equal(t, urns["a"], res.Parent)
-					case "d", "e":
-						assert.Equal(t, urns["c"], res.Parent)
-					case "g":
-						assert.Equal(t, urns["f"], res.Parent)
-					case "default":
-						// Default providers should have the stack as a parent, but auto-parenting has been
-						// disabled so they won't have a parent for now.
-						assert.Equal(t, resource.URN(""), res.Parent)
-					default:
-						t.Fatalf("unexpected name %s", res.URN.Name())
-					}
+				urns[res.URN.Name()] = res.URN
+				switch res.URN.Name() {
+				case "a", "f":
+					assert.NotEqual(t, "", res.Parent)
+					assert.Equal(t, stackRes.URN, res.Parent)
+				case "b", "c":
+					assert.Equal(t, urns["a"], res.Parent)
+				case "d", "e":
+					assert.Equal(t, urns["c"], res.Parent)
+				case "g":
+					assert.Equal(t, urns["f"], res.Parent)
+				case "default":
+					// Default providers should have the stack as a parent, but auto-parenting has been
+					// disabled so they won't have a parent for now.
+					assert.Equal(t, resource.URN(""), res.Parent)
+				default:
+					t.Fatalf("unexpected name %s", res.URN.Name())
 				}
 			}
 		},
@@ -469,7 +467,7 @@ func TestStackDependencyGraph(t *testing.T) {
 				} else if strings.Contains(urn, "dynamic:Resource::second") {
 					// The second resource uses an Output property of the first resource, so it
 					// depends directly on first.
-					assert.Equal(t, 1, len(res.Dependencies))
+					require.Len(t, res.Dependencies, 1)
 					assert.True(t, strings.Contains(string(res.Dependencies[0]), "dynamic:Resource::first"))
 					sawSecond = true
 				}
@@ -774,22 +772,22 @@ func TestResourceWithSecretSerializationNodejs(t *testing.T) {
 			//      additionalSecretOutputs.
 			//   3. One named `withoutSecret` which should not be a secret.
 			// We serialize both of the these as POJO objects, so they appear as maps in the output.
-			withSecretProps, ok := stackInfo.Outputs["withSecret"].(map[string]interface{})
+			withSecretProps, ok := stackInfo.Outputs["withSecret"].(map[string]any)
 			assert.Truef(t, ok, "POJO output was not serialized as a map")
 
-			withSecretAdditionalProps, ok := stackInfo.Outputs["withSecretAdditional"].(map[string]interface{})
+			withSecretAdditionalProps, ok := stackInfo.Outputs["withSecretAdditional"].(map[string]any)
 			assert.Truef(t, ok, "POJO output was not serialized as a map")
 
-			withoutSecretProps, ok := stackInfo.Outputs["withoutSecret"].(map[string]interface{})
+			withoutSecretProps, ok := stackInfo.Outputs["withoutSecret"].(map[string]any)
 			assert.Truef(t, ok, "POJO output was not serialized as a map")
 
 			// The secret prop should have been serialized as a secret
-			secretPropValue, ok := withSecretProps["prefix"].(map[string]interface{})
+			secretPropValue, ok := withSecretProps["prefix"].(map[string]any)
 			assert.Truef(t, ok, "secret output was not serialized as a secret")
 			assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
 
 			// The other secret prop should have been serialized as a secret
-			secretAdditionalPropValue, ok := withSecretAdditionalProps["prefix"].(map[string]interface{})
+			secretAdditionalPropValue, ok := withSecretAdditionalProps["prefix"].(map[string]any)
 			assert.Truef(t, ok, "secret output was not serialized as a secret")
 			assert.Equal(t, resource.SecretSig, secretAdditionalPropValue[resource.SigKey].(string))
 
@@ -824,7 +822,7 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 			_, err := passphrase.NewPromptingPassphraseSecretsManagerFromState(secretsProvider.State)
 			require.NoError(t, err)
 
-			out, ok := stackInfo.Outputs["out"].(map[string]interface{})
+			out, ok := stackInfo.Outputs["out"].(map[string]any)
 			assert.True(t, ok)
 
 			_, ok = out["ciphertext"]
@@ -886,7 +884,7 @@ func TestCloudSecretProvider(t *testing.T) {
 			_, err := cloud.NewCloudSecretsManagerFromState(secretsProvider.State)
 			require.NoError(t, err)
 
-			out, ok := stackInfo.Outputs["out"].(map[string]interface{})
+			out, ok := stackInfo.Outputs["out"].(map[string]any)
 			assert.True(t, ok)
 
 			_, ok = out["ciphertext"]
@@ -972,12 +970,11 @@ func TestConstructSlowNode(t *testing.T) {
 		NoParallel:     true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			require.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
-				stackRes := stackInfo.Deployment.Resources[0]
-				require.NotNil(t, stackRes)
-				assert.Equal(t, resource.RootStackType, stackRes.Type)
-				assert.Equal(t, "", string(stackRes.Parent))
-			}
+			require.Len(t, stackInfo.Deployment.Resources, 5)
+			stackRes := stackInfo.Deployment.Resources[0]
+			require.NotNil(t, stackRes)
+			assert.Equal(t, resource.RootStackType, stackRes.Type)
+			assert.Equal(t, "", string(stackRes.Parent))
 		},
 	}
 	integration.ProgramTest(t, opts)
@@ -1010,7 +1007,6 @@ func TestConstructPlainNode(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -1065,7 +1061,6 @@ func TestConstructMethodsNode(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProvider := integration.LocalDependency{
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
@@ -1125,7 +1120,6 @@ func TestConstructProviderNode(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProvider := integration.LocalDependency{
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
@@ -1153,7 +1147,7 @@ func TestGetResourceNode(t *testing.T) {
 			require.NotNil(t, stack.Outputs)
 			assert.Equal(t, "foo", stack.Outputs["foo"])
 
-			out, ok := stack.Outputs["secret"].(map[string]interface{})
+			out, ok := stack.Outputs["secret"].(map[string]any)
 			assert.True(t, ok)
 
 			_, ok = out["ciphertext"]
@@ -1789,7 +1783,6 @@ func TestTranspileOnly(t *testing.T) {
 	t.Parallel()
 
 	for _, test := range []string{"tsconfig-no-check", "swc"} {
-		test := test
 		t.Run(test, func(t *testing.T) {
 			t.Parallel()
 			dir := filepath.Join("nodejs", test)
@@ -1973,7 +1966,7 @@ func TestUnsafeSnapshotManagerRetainsResourcesOnError(t *testing.T) {
 				// - 1000 resources(via a for loop)
 				// - NOT a resource that failed to be created dependent on the `base` resource output
 				require.NotNil(t, stackInfo.Deployment)
-				assert.Equal(t, 3+1000, len(stackInfo.Deployment.Resources))
+				require.Len(t, stackInfo.Deployment.Resources, 3+1000)
 			},
 		})
 	})
@@ -1998,7 +1991,7 @@ func TestUnsafeSnapshotManagerRetainsResourcesOnError(t *testing.T) {
 				// - 1000 resources(via a for loop)
 				// - NOT a resource that failed to be created dependent on the `base` resource output
 				require.NotNil(t, stackInfo.Deployment)
-				assert.Equal(t, 3+1000, len(stackInfo.Deployment.Resources))
+				require.Len(t, stackInfo.Deployment.Resources, 3+1000)
 			},
 		})
 	})
@@ -2152,8 +2145,8 @@ func TestUndefinedStackOutputNode(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, nil, stack.Outputs["nil"])
-			assert.Equal(t, []interface{}{0.0, nil, nil}, stack.Outputs["list"])
-			assert.Equal(t, map[string]interface{}{
+			assert.Equal(t, []any{0.0, nil, nil}, stack.Outputs["list"])
+			assert.Equal(t, map[string]any{
 				"nil2":    nil,
 				"number2": 0.0,
 			}, stack.Outputs["map"])
@@ -2372,12 +2365,12 @@ func TestParameterizedNode(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			var pkgJSON map[string]interface{}
+			var pkgJSON map[string]any
 			err = json.Unmarshal(data, &pkgJSON)
 			if err != nil {
 				return err
 			}
-			deps := pkgJSON["dependencies"].(map[string]interface{})
+			deps := pkgJSON["dependencies"].(map[string]any)
 			deps["@pulumi/pulumi"] = "file:" + coreSDK
 			data, err = json.MarshalIndent(pkgJSON, "", "  ")
 			if err != nil {
@@ -2402,12 +2395,14 @@ func TestParameterizedNode(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // mutates environment
 func TestPackageAddNode(t *testing.T) {
-	e := ptesting.NewEnvironment(t)
+	t.Parallel()
 
-	for _, packageManager := range []string{"npm", "yarn", "pnpm"} {
+	for _, packageManager := range []string{"npm", "yarn", "pnpm", "bun"} {
 		t.Run(packageManager, func(t *testing.T) {
+			t.Parallel()
+			e := ptesting.NewEnvironment(t)
+
 			var err error
 			templatePath, err := filepath.Abs("nodejs/packageadd_" + packageManager)
 			require.NoError(t, err)
@@ -2425,13 +2420,25 @@ func TestPackageAddNode(t *testing.T) {
 			require.NoError(t, err)
 
 			dependencies, ok := packagesJSON["dependencies"].(map[string]any)
-			assert.True(t, ok)
+			require.True(t, ok)
 			cf, ok := dependencies["@pulumi/random"]
-			assert.True(t, ok)
+			require.True(t, ok)
 			cf, ok = cf.(string)
-			assert.True(t, ok)
+			require.True(t, ok)
 
-			assert.Equal(t, "file:sdks/random", filepath.ToSlash(cf.(string)))
+			require.Equal(t, "file:sdks/random", filepath.ToSlash(cf.(string)))
+
+			require.FileExists(t, filepath.Join(e.CWD, "sdks", "random", ".gitignore"))
+			b, err := os.ReadFile(filepath.Join(e.CWD, "sdks", "random", ".gitignore"))
+			require.NoError(t, err)
+			require.Equal(t, "node_modules/\nbin/\n", string(b))
+
+			stackName := ptesting.RandomStackName()
+			e.RunCommand("pulumi", "login", "--local")
+			e.RunCommand("pulumi", "stack", "init", stackName)
+			e.RunCommand("pulumi", "stack", "select", stackName)
+			e.RunCommand("pulumi", "up", "--skip-preview")
+			e.RunCommand("pulumi", "destroy", "--skip-preview")
 		})
 	}
 }
@@ -2582,7 +2589,6 @@ func TestAutonaming(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		orderedConfig := []integration.ConfigValue{}
 		for k, v := range tc.config {
 			orderedConfig = append(orderedConfig, integration.ConfigValue{Key: k, Value: v, Path: true})
@@ -2805,29 +2811,6 @@ func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
 
-func TestPackageAddWithPublisherSetNodeJS(t *testing.T) {
-	t.Parallel()
-
-	e := ptesting.NewEnvironment(t)
-	defer e.DeleteIfNotFailed()
-
-	e.ImportDirectory("packageadd-namespace")
-	e.CWD = filepath.Join(e.RootPath, "nodejs")
-	stdout, _ := e.RunCommand("pulumi", "package", "add", "../provider/schema.json")
-	require.Contains(t, stdout,
-		"You can then import the SDK in your TypeScript code with:\n\n  import * as mypkg from \"@my-namespace/mypkg\"")
-
-	yamlContent, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi.yaml"))
-	require.NoError(t, err)
-	yamlString := string(yamlContent)
-	require.Contains(t, yamlString, "packages:")
-	require.Contains(t, yamlString, "mypkg: ../provider")
-
-	// Make sure the SDK was generated in the expected directory
-	_, err = os.Stat(filepath.Join(e.CWD, "sdks", "my-namespace-mypkg", "index.ts"))
-	require.NoError(t, err)
-}
-
 // Tests that we can get the schema for a Node.js component provider using component_provider_host.
 func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	t.Parallel()
@@ -2845,7 +2828,7 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	e.CWD = t.TempDir()
 	stdout, stderr := e.RunCommand("pulumi", "package", "get-schema", e.RootPath)
 	require.Empty(t, stderr)
-	var schema map[string]interface{}
+	var schema map[string]any
 	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
 	require.Equal(t, "nodejs-component-provider", schema["name"].(string))
 	require.Equal(t, "0.0.0", schema["version"].(string))
@@ -2902,9 +2885,9 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 		"required": ["aBooleanOutput", "aComplexTypeOutput", "aNumberOutput", "aResourceOutput", "aString"]
 	}
 	`
-	expected := make(map[string]interface{})
-	resources := schema["resources"].(map[string]interface{})
-	component := resources["nodejs-component-provider:index:MyComponent"].(map[string]interface{})
+	expected := make(map[string]any)
+	resources := schema["resources"].(map[string]any)
+	component := resources["nodejs-component-provider:index:MyComponent"].(map[string]any)
 	require.NoError(t, json.Unmarshal([]byte(expectedJSON), &expected))
 	require.Equal(t, expected, component)
 
@@ -2934,8 +2917,8 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 			"required": ["aNumber"]
 		}
 	}`
-	expectedTypes := make(map[string]interface{})
-	types := schema["types"].(map[string]interface{})
+	expectedTypes := make(map[string]any)
+	types := schema["types"].(map[string]any)
 	require.NoError(t, json.Unmarshal([]byte(expectedTypesJSON), &expectedTypes))
 	require.Equal(t, expectedTypes, types)
 }
@@ -2953,6 +2936,11 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 					providerPath := filepath.Join(info.Root, "..", "provider")
 					installNodejsProviderDependencies(t, providerPath)
 
+					cmd := exec.Command("pulumi", "package", "add", providerPath)
+					cmd.Dir = info.Root
+					out, err := cmd.CombinedOutput()
+					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
+
 					if runtime != "yaml" {
 						cmd := exec.Command("pulumi", "install")
 						cmd.Dir = info.Root
@@ -2960,10 +2948,6 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 						require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
 					}
 
-					cmd := exec.Command("pulumi", "package", "add", providerPath)
-					cmd.Dir = info.Root
-					out, err := cmd.CombinedOutput()
-					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
 					return nil
 				},
 				Dir:             filepath.Join("component_provider", "nodejs", "component-provider-host"),
@@ -2985,18 +2969,18 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 					require.Equal(t, float64(246), stack.Outputs["aNumberOutput"].(float64))
 					require.Equal(t, "Hello, Bonnie!", stack.Outputs["anOptionalStringOutput"].(string))
 					require.Equal(t, false, stack.Outputs["aBooleanOutput"].(bool))
-					aComplexTypeOutput := stack.Outputs["aComplexTypeOutput"].(map[string]interface{})
+					aComplexTypeOutput := stack.Outputs["aComplexTypeOutput"].(map[string]any)
 					require.Contains(t, stack.Outputs["aResourceOutputUrn"], "RandomPet::comp-pet")
 					require.Equal(t, "hello", stack.Outputs["aString"].(string))
 					if runtime == "python" {
 						// The output is stored in the stack as a plain object,
 						// but that means for Python the keys are snake_case.
 						require.Equal(t, float64(14), aComplexTypeOutput["a_number"].(float64))
-						nestedComplexType := aComplexTypeOutput["nested_complex_type"].(map[string]interface{})
+						nestedComplexType := aComplexTypeOutput["nested_complex_type"].(map[string]any)
 						require.Equal(t, float64(18), nestedComplexType["a_number"].(float64))
 					} else {
 						require.Equal(t, float64(14), aComplexTypeOutput["aNumber"].(float64))
-						nestedComplexType := aComplexTypeOutput["nestedComplexType"].(map[string]interface{})
+						nestedComplexType := aComplexTypeOutput["nestedComplexType"].(map[string]any)
 						require.Equal(t, float64(18), nestedComplexType["aNumber"].(float64))
 					}
 				},
@@ -3086,7 +3070,6 @@ func TestNodePackageAddTSC(t *testing.T) {
 			e.CWD = provider
 			installNodejsProviderDependencies(t, provider)
 			e.CWD = program
-			e.RunCommand("pulumi", "install")
 			// `bin` has a fake `tsc` executable that exits with an error code. If we
 			// execute this instead of the tsc that ships with the package, the
 			// installation will fail.
@@ -3094,6 +3077,7 @@ func TestNodePackageAddTSC(t *testing.T) {
 			e.SetEnvVars(fmt.Sprintf("PATH=%s:%s", bin, path))
 
 			e.RunCommand("pulumi", "package", "add", provider)
+			e.RunCommand("pulumi", "install")
 
 			stackName := ptesting.RandomStackName()
 			e.RunCommand("pulumi", "login", "--local")

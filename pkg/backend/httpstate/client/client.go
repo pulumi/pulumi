@@ -40,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -48,7 +49,7 @@ import (
 
 const (
 	// 20s before we give up on a copilot request
-	CopilotRequestTimeout = 20 * time.Second
+	NeoRequestTimeout = 20 * time.Second
 )
 
 // TemplatePublishOperationID uniquely identifies a template publish operation.
@@ -161,7 +162,7 @@ func (pc *Client) do(ctx context.Context, req *http.Request) (*http.Response, er
 
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. If a response object is provided, the server's response is deserialized into that object.
-func (pc *Client) restCall(ctx context.Context, method, path string, queryObj, reqObj, respObj interface{}) error {
+func (pc *Client) restCall(ctx context.Context, method, path string, queryObj, reqObj, respObj any) error {
 	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken,
 		httpCallOptions{})
 }
@@ -178,7 +179,7 @@ func (pc *Client) restCallWithOptions(
 // updateRESTCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. The call is authorized with the indicated update token. If a response object is provided, the server's
 // response is deserialized into that object.
-func (pc *Client) updateRESTCall(ctx context.Context, method, path string, queryObj, reqObj, respObj interface{},
+func (pc *Client) updateRESTCall(ctx context.Context, method, path string, queryObj, reqObj, respObj any,
 	token updateToken, httpOptions httpCallOptions,
 ) error {
 	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, token, httpOptions)
@@ -738,9 +739,9 @@ func (pc *Client) ImportStackDeployment(ctx context.Context, stack StackIdentifi
 }
 
 type CreateUpdateDetails struct {
-	Messages                    []apitype.Message
-	RequiredPolicies            []apitype.RequiredPolicy
-	IsCopilotIntegrationEnabled bool
+	Messages                []apitype.Message
+	RequiredPolicies        []apitype.RequiredPolicy
+	IsNeoIntegrationEnabled bool
 }
 
 // CreateUpdate creates a new update for the indicated stack with the given kind and assorted options. If the update
@@ -815,9 +816,9 @@ func (pc *Client) CreateUpdate(
 			UpdateKind:      kind,
 			UpdateID:        updateResponse.UpdateID,
 		}, CreateUpdateDetails{
-			Messages:                    updateResponse.Messages,
-			RequiredPolicies:            updateResponse.RequiredPolicies,
-			IsCopilotIntegrationEnabled: updateResponse.AISettings.CopilotIsEnabled,
+			Messages:                updateResponse.Messages,
+			RequiredPolicies:        updateResponse.RequiredPolicies,
+			IsNeoIntegrationEnabled: updateResponse.AISettings.CopilotIsEnabled,
 		}, nil
 }
 
@@ -834,22 +835,26 @@ func (pc *Client) RenameStack(ctx context.Context, currentID, newID StackIdentif
 // to authenticate operations on the update if any. Replaces the stack's tags with the updated set.
 func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 	tags map[apitype.StackTagName]string,
-) (int, string, error) {
+) (int, string, int64, error) {
 	// Validate names and tags.
 	if err := validation.ValidateStackTags(tags); err != nil {
-		return 0, "", fmt.Errorf("validating stack properties: %w", err)
+		return 0, "", 0, fmt.Errorf("validating stack properties: %w", err)
 	}
 
 	req := apitype.StartUpdateRequest{
 		Tags: tags,
 	}
 
-	var resp apitype.StartUpdateResponse
-	if err := pc.restCall(ctx, "POST", getUpdatePath(update), nil, req, &resp); err != nil {
-		return 0, "", err
+	if env.EnableJournaling.Value() {
+		req.JournalVersion = 1
 	}
 
-	return resp.Version, resp.Token, nil
+	var resp apitype.StartUpdateResponse
+	if err := pc.restCall(ctx, "POST", getUpdatePath(update), nil, req, &resp); err != nil {
+		return 0, "", 0, err
+	}
+
+	return resp.Version, resp.Token, resp.JournalVersion, nil
 }
 
 // ListPolicyGroups lists all `PolicyGroups` the organization has in the Pulumi service.
@@ -882,6 +887,7 @@ func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string, inContTok
 // the Policy Pack, it returns the version of the pack.
 func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	analyzerInfo plugin.AnalyzerInfo, dirArchive io.Reader,
+	metadata map[string]string,
 ) (string, error) {
 	//
 	// Step 1: Send POST containing policy metadata to service. This begins process of creating
@@ -924,6 +930,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		Provider:    analyzerInfo.Provider,
 		Tags:        analyzerInfo.Tags,
 		Repository:  analyzerInfo.Repository,
+		Metadata:    metadata,
 	}
 
 	// Print a publishing message. We have to handle the case where an older version of pulumi/policy
@@ -1229,6 +1236,26 @@ func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateI
 		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
 }
 
+// SaveJournalEntry sends a single journal entry to the service. When we get a success response,
+// the journal entry is guaranteed to be stored safely.
+func (pc *Client) SaveJournalEntry(ctx context.Context, update UpdateIdentifier,
+	entry apitype.JournalEntry, token UpdateTokenSource,
+) error {
+	return pc.SaveJournalEntries(ctx, update, []apitype.JournalEntry{entry}, token)
+}
+
+// SaveJournalEntries sends a single journal entry to the service. When we get a success response,
+// all journal entries are guaranteed to be stored safely.
+func (pc *Client) SaveJournalEntries(ctx context.Context, update UpdateIdentifier,
+	entries []apitype.JournalEntry, token UpdateTokenSource,
+) error {
+	req := apitype.JournalEntries{
+		Entries: entries,
+	}
+	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "journalentries"), nil, req, nil,
+		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
+}
+
 // CancelUpdate cancels the indicated update.
 func (pc *Client) CancelUpdate(ctx context.Context, update UpdateIdentifier) error {
 	// It is safe to retry this PATCH operation, because it is logically idempotent.
@@ -1455,7 +1482,7 @@ func is404(err error) bool {
 }
 
 // SubmitAIPrompt sends the user's prompt to the Pulumi Service and streams back the response.
-func (pc *Client) SubmitAIPrompt(ctx context.Context, requestBody interface{}) (*http.Response, error) {
+func (pc *Client) SubmitAIPrompt(ctx context.Context, requestBody any) (*http.Response, error) {
 	url, err := url.Parse(pc.apiURL + getAIPromptPath())
 	if err != nil {
 		return nil, err
@@ -1473,8 +1500,8 @@ func (pc *Client) SubmitAIPrompt(ctx context.Context, requestBody interface{}) (
 	return res, err
 }
 
-// SummarizeErrorWithCopilot summarizes Pulumi Update output using the Copilot API
-func (pc *Client) SummarizeErrorWithCopilot(
+// SummarizeErrorWithNeo summarizes Pulumi Update output using the Copilot API
+func (pc *Client) SummarizeErrorWithNeo(
 	ctx context.Context,
 	orgID string,
 	content string,
@@ -1485,7 +1512,7 @@ func (pc *Client) SummarizeErrorWithCopilot(
 	return pc.callCopilot(ctx, request)
 }
 
-func (pc *Client) ExplainPreviewWithCopilot(
+func (pc *Client) ExplainPreviewWithNeo(
 	ctx context.Context,
 	orgID string,
 	kind string,
@@ -1495,13 +1522,13 @@ func (pc *Client) ExplainPreviewWithCopilot(
 	return pc.callCopilot(ctx, request)
 }
 
-func (pc *Client) callCopilot(ctx context.Context, requestBody interface{}) (string, error) {
+func (pc *Client) callCopilot(ctx context.Context, requestBody any) (string, error) {
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
 		return "", fmt.Errorf("preparing request: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, CopilotRequestTimeout)
+	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
 	defer cancel()
 
 	url := pc.apiURL + "/api/ai/chat/preview"

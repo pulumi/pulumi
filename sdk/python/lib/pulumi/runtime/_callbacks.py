@@ -17,14 +17,14 @@ from __future__ import annotations
 import asyncio
 import traceback
 import uuid
+from collections.abc import Awaitable, Callable, Mapping
 from typing import (
     TYPE_CHECKING,
-    Callable,
+    Any,
     Optional,
     Union,
     cast,
 )
-from collections.abc import Awaitable, Mapping
 
 import grpc
 from google.protobuf.message import Message
@@ -40,7 +40,13 @@ from .proto import (
     resource_pb2,
     resource_pb2_grpc,
 )
-from .rpc import deserialize_properties, serialize_properties
+from .rpc import (
+    deserialize_properties,
+    is_rpc_secret,
+    serialize_properties,
+    unwrap_rpc_secret,
+)
+from ._grpc_settings import _GRPC_CHANNEL_OPTIONS
 
 if TYPE_CHECKING:
     from ..resource import (
@@ -50,10 +56,6 @@ if TYPE_CHECKING:
     )
     from ..resource_hooks import ResourceHook
 
-
-# _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-_MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
-_GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
 
 # Workaround for https://github.com/grpc/grpc/issues/38679,
 # https://github.com/grpc/grpc/issues/22365#issuecomment-2254278769
@@ -296,33 +298,53 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
                 from ..resource_hooks import ResourceHookArgs
 
                 new_inputs = (
-                    deserialize_properties(
-                        request.new_inputs,
-                        keep_unknowns=True,
+                    outputtify_secrets(
+                        cast(
+                            dict[str, Any],
+                            deserialize_properties(
+                                request.new_inputs,
+                                keep_unknowns=True,
+                            ),
+                        )
                     )
                     if request.new_inputs
                     else None
                 )
                 old_inputs = (
-                    deserialize_properties(
-                        request.old_inputs,
-                        keep_unknowns=True,
+                    outputtify_secrets(
+                        cast(
+                            dict[str, Any],
+                            deserialize_properties(
+                                request.old_inputs,
+                                keep_unknowns=True,
+                            ),
+                        )
                     )
                     if request.old_inputs
                     else None
                 )
                 new_outputs = (
-                    deserialize_properties(
-                        request.new_outputs,
-                        keep_unknowns=True,
+                    outputtify_secrets(
+                        cast(
+                            dict[str, Any],
+                            deserialize_properties(
+                                request.new_outputs,
+                                keep_unknowns=True,
+                            ),
+                        )
                     )
                     if request.new_outputs
                     else None
                 )
                 old_outputs = (
-                    deserialize_properties(
-                        request.old_outputs,
-                        keep_unknowns=True,
+                    outputtify_secrets(
+                        cast(
+                            dict[str, Any],
+                            deserialize_properties(
+                                request.old_outputs,
+                                keep_unknowns=True,
+                            ),
+                        )
                     )
                     if request.old_outputs
                     else None
@@ -545,6 +567,11 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             setattr(result, "import", opts.import_)
         if opts.deleted_with is not None:
             result.deleted_with = cast(str, await opts.deleted_with.urn.future())
+        if opts.replace_with:
+            for dependency in opts.replace_with:
+                urn = await dependency.urn.future()
+                if urn:
+                    result.replace_with.append(cast(str, urn))
         if opts.plugin_download_url:
             result.plugin_download_url = opts.plugin_download_url
         if opts.protect is not None:
@@ -609,3 +636,13 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             result.provider = await _create_provider_ref(opts.provider)
 
         return result
+
+
+def outputtify_secrets(props: dict[str, Any]) -> dict[str, Any]:
+    from ..output import Output
+
+    for k, v in props.items():
+        if is_rpc_secret(v):
+            props[k] = Output.secret(unwrap_rpc_secret(v))
+
+    return props

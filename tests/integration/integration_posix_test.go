@@ -34,7 +34,6 @@ import (
 func TestCancelSignal(t *testing.T) {
 	t.Parallel()
 	for _, sig := range []syscall.Signal{syscall.SIGTERM, syscall.SIGINT} {
-		sig := sig
 		t.Run(sig.String(), func(t *testing.T) {
 			t.Parallel()
 			e := ptesting.NewEnvironment(t)

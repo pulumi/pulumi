@@ -24,7 +24,7 @@ import (
 
 // MakeJSONString turns the given value into a JSON string. If multiline is true, the JSON will be formatted with
 // indentation and a trailing newline.
-func MakeJSONString(v interface{}, multiline bool) (string, error) {
+func MakeJSONString(v any, multiline bool) (string, error) {
 	var out bytes.Buffer
 
 	// json.Marshal escapes HTML characters, which we don't want,
@@ -52,12 +52,12 @@ func MakeJSONString(v interface{}, multiline bool) (string, error) {
 }
 
 // PrintJSON simply prints out some object, formatted as JSON, using standard indentation.
-func PrintJSON(v interface{}) error {
+func PrintJSON(v any) error {
 	return FprintJSON(os.Stdout, v)
 }
 
 // FprintJSON simply prints out some object, formatted as JSON, using standard indentation.
-func FprintJSON(w io.Writer, v interface{}) error {
+func FprintJSON(w io.Writer, v any) error {
 	jsonStr, err := MakeJSONString(v, true /* multi line */)
 	if err != nil {
 		return err

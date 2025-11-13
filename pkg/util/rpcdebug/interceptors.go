@@ -23,6 +23,7 @@ import (
 	"os"
 	"reflect"
 	"sync"
+	"time"
 
 	"google.golang.org/grpc"
 
@@ -44,7 +45,7 @@ type DebugInterceptorOptions struct {
 }
 
 type LogOptions struct {
-	Metadata interface{}
+	Metadata any
 }
 
 var interceptors gsync.Map[string, *DebugInterceptor]
@@ -92,16 +93,20 @@ func (i *DebugInterceptor) DialOptions(opts LogOptions) []grpc.DialOption {
 // To enable, call InitDebugInterceptors first in your process main to
 // configure the location of the Go file.
 func (i *DebugInterceptor) DebugServerInterceptor(opts LogOptions) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{},
+	return func(ctx context.Context, req any,
 		info *grpc.UnaryServerInfo, handler grpc.UnaryHandler,
-	) (interface{}, error) {
+	) (any, error) {
 		log := debugInterceptorLogEntry{
 			Method:   info.FullMethod,
 			Metadata: opts.Metadata,
 		}
 		i.trackRequest(&log, req)
+		if err := i.record(log); err != nil {
+			return nil, fmt.Errorf("failed to record GRPC debug log request: %w", err)
+		}
 		resp, err := handler(ctx, req)
 		i.trackResponse(&log, resp)
+		i.trackResponseCompleted(&log)
 		if e := i.record(log); e != nil {
 			return resp, e
 		}
@@ -111,7 +116,7 @@ func (i *DebugInterceptor) DebugServerInterceptor(opts LogOptions) grpc.UnarySer
 
 // Like debugServerInterceptor but for streaming calls.
 func (i *DebugInterceptor) DebugStreamServerInterceptor(opts LogOptions) grpc.StreamServerInterceptor {
-	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		ssWrapped := &debugServerStream{
 			interceptor:       i,
 			method:            info.FullMethod,
@@ -125,7 +130,7 @@ func (i *DebugInterceptor) DebugStreamServerInterceptor(opts LogOptions) grpc.St
 
 // Like debugServerInterceptor but for GRPC client connections.
 func (i *DebugInterceptor) DebugClientInterceptor(opts LogOptions) grpc.UnaryClientInterceptor {
-	return func(ctx context.Context, method string, req, reply interface{},
+	return func(ctx context.Context, method string, req, reply any,
 		cc *grpc.ClientConn, invoker grpc.UnaryInvoker, gopts ...grpc.CallOption,
 	) error {
 		// Ignoring weird entries with empty method and nil req and reply.
@@ -134,16 +139,22 @@ func (i *DebugInterceptor) DebugClientInterceptor(opts LogOptions) grpc.UnaryCli
 		}
 
 		log := debugInterceptorLogEntry{
-			Method:   method,
-			Metadata: opts.Metadata,
+			Method:    method,
+			Metadata:  opts.Metadata,
+			Timestamp: time.Now(),
 		}
 		i.trackRequest(&log, req)
+		if err := i.record(log); err != nil {
+			return fmt.Errorf("failed to record GRPC debug log request: %w", err)
+		}
 		err := invoker(ctx, method, req, reply, cc, gopts...)
 		if err != nil {
 			i.track(&log, err)
 		} else {
 			i.trackResponse(&log, reply)
 		}
+
+		i.trackResponseCompleted(&log)
 		if e := i.record(log); e != nil {
 			return e
 		}
@@ -175,12 +186,12 @@ func (i *DebugInterceptor) record(log debugInterceptorLogEntry) error {
 
 	f, err := os.OpenFile(i.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
-		return fmt.Errorf("Failed to append GRPC debug logs to file %s: %w", i.logFile, err)
+		return fmt.Errorf("failed to append GRPC debug logs to file %s: %w", i.logFile, err)
 	}
 	defer f.Close()
 
 	if err := json.NewEncoder(f).Encode(log); err != nil {
-		return fmt.Errorf("Failed to encode GRPC debug logs: %w", err)
+		return fmt.Errorf("failed to encode GRPC debug logs: %w", err)
 	}
 	return nil
 }
@@ -189,16 +200,17 @@ func (*DebugInterceptor) track(log *debugInterceptorLogEntry, err error) {
 	log.Errors = append(log.Errors, err.Error())
 }
 
-func (i *DebugInterceptor) trackRequest(log *debugInterceptorLogEntry, req interface{}) {
+func (i *DebugInterceptor) trackRequest(log *debugInterceptorLogEntry, req any) {
 	j, err := i.transcode(req)
 	if err != nil {
 		i.track(log, err)
 	} else {
 		log.Request = j
+		log.Progress = "request_started"
 	}
 }
 
-func (i *DebugInterceptor) trackResponse(log *debugInterceptorLogEntry, resp interface{}) {
+func (i *DebugInterceptor) trackResponse(log *debugInterceptorLogEntry, resp any) {
 	j, err := i.transcode(resp)
 	if err != nil {
 		i.track(log, err)
@@ -207,7 +219,15 @@ func (i *DebugInterceptor) trackResponse(log *debugInterceptorLogEntry, resp int
 	}
 }
 
-func (*DebugInterceptor) transcode(obj interface{}) (json.RawMessage, error) {
+func (i *DebugInterceptor) trackResponseCompleted(log *debugInterceptorLogEntry) {
+	now := time.Now()
+	duration := now.Sub(log.Timestamp)
+	log.Progress = "response_completed"
+	log.Duration = duration
+	log.Timestamp = now
+}
+
+func (*DebugInterceptor) transcode(obj any) (json.RawMessage, error) {
 	if obj == nil {
 		return json.RawMessage("null"), nil
 	}
@@ -231,14 +251,15 @@ type debugServerStream struct {
 	innerServerStream grpc.ServerStream
 	interceptor       *DebugInterceptor
 	method            string
-	metadata          interface{}
+	metadata          any
 }
 
 func (dss *debugServerStream) errorEntry(err error) debugInterceptorLogEntry {
 	return debugInterceptorLogEntry{
-		Metadata: dss.metadata,
-		Method:   dss.method,
-		Errors:   []string{err.Error()},
+		Metadata:  dss.metadata,
+		Method:    dss.method,
+		Errors:    []string{err.Error()},
+		Timestamp: time.Now(),
 	}
 }
 
@@ -258,7 +279,7 @@ func (dss *debugServerStream) Context() context.Context {
 	return dss.innerServerStream.Context()
 }
 
-func (dss *debugServerStream) SendMsg(m interface{}) error {
+func (dss *debugServerStream) SendMsg(m any) error {
 	err := dss.innerServerStream.SendMsg(m)
 	if err != nil {
 		if e := dss.interceptor.record(dss.errorEntry(err)); e != nil {
@@ -272,9 +293,10 @@ func (dss *debugServerStream) SendMsg(m interface{}) error {
 			}
 		} else {
 			if e := dss.interceptor.record(debugInterceptorLogEntry{
-				Metadata: dss.metadata,
-				Method:   dss.method,
-				Request:  req,
+				Metadata:  dss.metadata,
+				Method:    dss.method,
+				Request:   req,
+				Timestamp: time.Now(),
 			}); e != nil {
 				return e
 			}
@@ -283,7 +305,7 @@ func (dss *debugServerStream) SendMsg(m interface{}) error {
 	return err
 }
 
-func (dss *debugServerStream) RecvMsg(m interface{}) error {
+func (dss *debugServerStream) RecvMsg(m any) error {
 	err := dss.innerServerStream.RecvMsg(m)
 	if err == io.EOF {
 		return err
@@ -299,9 +321,10 @@ func (dss *debugServerStream) RecvMsg(m interface{}) error {
 			}
 		} else {
 			if e := dss.interceptor.record(debugInterceptorLogEntry{
-				Method:   dss.method,
-				Metadata: dss.metadata,
-				Response: resp,
+				Method:    dss.method,
+				Metadata:  dss.metadata,
+				Response:  resp,
+				Timestamp: time.Now(),
 			}); e != nil {
 				return e
 			}
@@ -317,14 +340,15 @@ type debugClientStream struct {
 	innerClientStream grpc.ClientStream
 	interceptor       *DebugInterceptor
 	method            string
-	metadata          interface{}
+	metadata          any
 }
 
 func (d *debugClientStream) errorEntry(err error) debugInterceptorLogEntry {
 	return debugInterceptorLogEntry{
-		Method:   d.method,
-		Metadata: d.metadata,
-		Errors:   []string{err.Error()},
+		Method:    d.method,
+		Metadata:  d.metadata,
+		Timestamp: time.Now(),
+		Errors:    []string{err.Error()},
 	}
 }
 
@@ -344,7 +368,7 @@ func (d *debugClientStream) Context() context.Context {
 	return d.innerClientStream.Context()
 }
 
-func (d *debugClientStream) SendMsg(m interface{}) error {
+func (d *debugClientStream) SendMsg(m any) error {
 	err := d.innerClientStream.SendMsg(m)
 	if err != nil {
 		if e := d.interceptor.record(d.errorEntry(err)); e != nil {
@@ -369,7 +393,7 @@ func (d *debugClientStream) SendMsg(m interface{}) error {
 	return err
 }
 
-func (d *debugClientStream) RecvMsg(m interface{}) error {
+func (d *debugClientStream) RecvMsg(m any) error {
 	err := d.innerClientStream.RecvMsg(m)
 	if err == io.EOF {
 		return err

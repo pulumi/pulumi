@@ -49,7 +49,7 @@ func (c *Config) Get(key string) string {
 
 // GetObject loads an optional configuration value into the specified output by its key,
 // or returns an error if unable to do so.
-func (c *Config) GetObject(key string, output interface{}) error {
+func (c *Config) GetObject(key string, output any) error {
 	return GetObject(c.ctx, c.fullKey(key), output)
 }
 
@@ -75,7 +75,7 @@ func (c *Config) Require(key string) string {
 
 // RequireObject loads a required configuration value into the specified output by its key,
 // or panics if unable to do so.
-func (c *Config) RequireObject(key string, output interface{}) {
+func (c *Config) RequireObject(key string, output any) {
 	RequireObject(c.ctx, c.fullKey(key), output)
 }
 
@@ -101,7 +101,7 @@ func (c *Config) Try(key string) (string, error) {
 
 // TryObject loads an optional configuration value into the specified output by its key,
 // or returns an error if unable to do so.
-func (c *Config) TryObject(key string, output interface{}) error {
+func (c *Config) TryObject(key string, output any) error {
 	return TryObject(c.ctx, c.fullKey(key), output)
 }
 
@@ -128,7 +128,7 @@ func (c *Config) GetSecret(key string) pulumi.StringOutput {
 
 // GetSecretObject loads an optional configuration value into the specified output by its key,
 // returning it wrapped in a secret Output or an error if unable to do so.
-func (c *Config) GetSecretObject(key string, output interface{}) (pulumi.Output, error) {
+func (c *Config) GetSecretObject(key string, output any) (pulumi.Output, error) {
 	return GetSecretObject(c.ctx, c.fullKey(key), output)
 }
 
@@ -158,7 +158,7 @@ func (c *Config) RequireSecret(key string) pulumi.StringOutput {
 
 // RequireSecretObject loads a required configuration value into the specified output by its key
 // and returns it wrapped in a secret Output, or panics if unable to do so.
-func (c *Config) RequireSecretObject(key string, output interface{}) pulumi.Output {
+func (c *Config) RequireSecretObject(key string, output any) pulumi.Output {
 	return RequireSecretObject(c.ctx, c.fullKey(key), output)
 }
 
@@ -186,7 +186,7 @@ func (c *Config) TrySecret(key string) (pulumi.StringOutput, error) {
 }
 
 // TrySecretObject loads a configuration value by its key, returning a non-nil error if it doesn't exist.
-func (c *Config) TrySecretObject(key string, output interface{}) (pulumi.Output, error) {
+func (c *Config) TrySecretObject(key string, output any) (pulumi.Output, error) {
 	return TrySecretObject(c.ctx, c.fullKey(key), output)
 }
 

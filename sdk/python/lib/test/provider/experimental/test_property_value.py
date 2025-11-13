@@ -82,15 +82,12 @@ def test_property_value_map():
     assert value == result
 
 
-async def test_nesting():
+def test_nesting():
     value = {
         "rec": PropertyValue(
             {"a": PropertyValue({"b": PropertyValue({"a": PropertyValue(None)})})}
         )
     }
-    obj = PropertyValue.deserialize_map(value)
-
-    assert obj == {"rec": {"a": {"b": {}}}}
-
-    pbvalue = await PropertyValue.serialize_map(obj, None, None)
-    assert value == pbvalue
+    pbvalue = PropertyValue.marshal_map(value)
+    result = PropertyValue.unmarshal_map(pbvalue)
+    assert value == result

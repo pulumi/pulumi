@@ -294,7 +294,7 @@ func TestRemoteTransformBadResponse(t *testing.T) {
 				"foo": resource.NewProperty(1.0),
 			},
 		})
-		assert.ErrorContains(t, err, "unmarshaling response: proto:")
+		assert.ErrorContains(t, err, "invoke transform: unmarshaling transform response: proto:")
 		assert.ErrorContains(t, err, "cannot parse invalid wire-format data")
 		return err
 	})
@@ -306,7 +306,7 @@ func TestRemoteTransformBadResponse(t *testing.T) {
 
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.ErrorContains(t, err, "unmarshaling response: proto:")
+	assert.ErrorContains(t, err, "invoke transform: unmarshaling transform response: proto:")
 	assert.ErrorContains(t, err, "cannot parse invalid wire-format data")
 	require.Len(t, snap.Resources, 0)
 }
@@ -833,7 +833,7 @@ func TestTransformsProviderOpt(t *testing.T) {
 	}
 	snap := p.Run(t, nil)
 	require.NotNil(t, snap)
-	assert.Equal(t, 9, len(snap.Resources)) // 2 providers + 7 resources
+	require.Len(t, snap.Resources, 9) // 2 providers + 7 resources
 	sort.Slice(snap.Resources, func(i, j int) bool {
 		return snap.Resources[i].URN < snap.Resources[j].URN
 	})
@@ -969,7 +969,7 @@ func TestTransformInvokeTransformProvider(t *testing.T) {
 	}
 	snap := p.Run(t, nil)
 	require.NotNil(t, snap)
-	assert.Equal(t, 1, len(snap.Resources)) // expect no default provider to be created for the invoke
+	require.Len(t, snap.Resources, 1) // expect no default provider to be created for the invoke
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/19904. Registering a transform that depends on a resource
@@ -1039,7 +1039,7 @@ func TestTransformOrdering(t *testing.T) {
 	}
 	snap := p.Run(t, nil)
 	require.NotNil(t, snap)
-	require.Equal(t, 2, len(snap.Resources))
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, implicitProvider, snap.Resources[1].Provider)
 }
 
@@ -1088,7 +1088,7 @@ func TestAssetArchiveRoundtrip(t *testing.T) {
 
 		assetValue, err := asset.FromText("hello world")
 		require.NoError(t, err)
-		archiveValue, err := archive.FromAssets(map[string]interface{}{
+		archiveValue, err := archive.FromAssets(map[string]any{
 			"file.txt": assetValue,
 		})
 		require.NoError(t, err)

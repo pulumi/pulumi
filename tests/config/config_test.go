@@ -397,15 +397,15 @@ config:
 	e.RunCommand("pulumi", "config", "set", "second-value", "second")
 	stdout, _ := e.RunCommand("pulumi", "config", "--json")
 	// check that stdout is an array containing 2 objects
-	var config map[string]interface{}
+	var config map[string]any
 	jsonError := json.Unmarshal([]byte(stdout), &config)
 	assert.Nil(t, jsonError)
-	assert.Equal(t, 3, len(config))
-	assert.Equal(t, "first", config["pulumi-test:first-value"].(map[string]interface{})["value"])
-	assert.Equal(t, "second", config["pulumi-test:second-value"].(map[string]interface{})["value"])
-	thirdValue := config["pulumi-test:third-value"].(map[string]interface{})
+	require.Len(t, config, 3)
+	assert.Equal(t, "first", config["pulumi-test:first-value"].(map[string]any)["value"])
+	assert.Equal(t, "second", config["pulumi-test:second-value"].(map[string]any)["value"])
+	thirdValue := config["pulumi-test:third-value"].(map[string]any)
 	assert.Equal(t, "[\"third\"]", thirdValue["value"])
-	assert.Equal(t, []interface{}{"third"}, thirdValue["objectValue"])
+	assert.Equal(t, []any{"third"}, thirdValue["objectValue"])
 }
 
 func TestConfigCommandsUsingEnvironments(t *testing.T) {

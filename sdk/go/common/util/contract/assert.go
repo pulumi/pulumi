@@ -30,7 +30,7 @@ func Assert(cond bool) {
 }
 
 // Assertf checks a condition and Failfs if it is false, formatting and logging the given message.
-func Assertf(cond bool, msg string, args ...interface{}) {
+func Assertf(cond bool, msg string, args ...any) {
 	if !cond {
 		failfast(fmt.Sprintf("%v: %v", assertMsg, fmt.Sprintf(msg, args...)))
 	}
@@ -46,7 +46,7 @@ func AssertNoError(err error) {
 }
 
 // AssertNoErrorf will Fail if the error is non-nil, adding the additional log message.
-func AssertNoErrorf(err error, msg string, args ...interface{}) {
+func AssertNoErrorf(err error, msg string, args ...any) {
 	if err != nil {
 		failfast(fmt.Sprintf("error %v: %v. source error: %v", assertMsg, fmt.Sprintf(msg, args...), err))
 	}

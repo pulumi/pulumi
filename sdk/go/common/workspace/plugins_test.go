@@ -1103,7 +1103,6 @@ func TestParsePluginDownloadURLOverride(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
@@ -1199,7 +1198,6 @@ func TestPluginDownloadOverrideArray_Get(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1295,7 +1293,7 @@ plugins:
 	proj, err := LoadProject(pyaml)
 	require.NoError(t, err)
 	require.NotNil(t, proj.Plugins)
-	assert.Equal(t, 1, len(proj.Plugins.Providers))
+	require.Len(t, proj.Plugins.Providers, 1)
 	assert.Equal(t, "aws", proj.Plugins.Providers[0].Name)
 	assert.Equal(t, "1.0.0", proj.Plugins.Providers[0].Version)
 	assert.Equal(t, "../bin/aws", proj.Plugins.Providers[0].Path)
@@ -1508,7 +1506,6 @@ func TestMissingErrorText(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.Name, func(t *testing.T) {
 			t.Parallel()
 			err := NewMissingError(
@@ -1982,10 +1979,20 @@ func TestNewPluginSpec(t *testing.T) {
 			kind:   apitype.ResourcePlugin,
 			Error:  errors.New("VERSION must be valid semver or git commit hash: v1.0.0.0"),
 		},
+		{
+			name:   "url with auth info",
+			source: "https://abc:token@github.com/pulumi/pulumi-example@v1.0.0",
+			kind:   apitype.ResourcePlugin,
+			ExpectedPluginSpec: PluginSpec{
+				Name:              "github.com_pulumi_pulumi-example.git",
+				Kind:              apitype.ResourcePlugin,
+				Version:           &v1,
+				PluginDownloadURL: "git://abc:token@github.com/pulumi/pulumi-example",
+			},
+		},
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -2193,7 +2200,6 @@ func TestLocalName(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			spec := PluginSpec{

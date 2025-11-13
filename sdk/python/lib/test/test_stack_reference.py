@@ -21,18 +21,25 @@ from pulumi.runtime import mocks
 from pulumi import StackReference, StackReferenceOutputDetails
 
 
+def compare_stack_ref_output(
+    expected: StackReferenceOutputDetails, actual: StackReferenceOutputDetails
+):
+    assert expected.value == actual.value
+    assert expected.secret_value == actual.secret_value
+
+
+@pulumi.runtime.test
 @pytest.mark.asyncio
 async def test_stack_reference_output_details(simple_mock):
     ref = StackReference("ref")
 
     non_secret = await ref.get_output_details("bucket")
-    assert StackReferenceOutputDetails(value="mybucket-1234"), non_secret
+    expected = StackReferenceOutputDetails(value="mybucket-1234")
+    compare_stack_ref_output(expected, non_secret)
 
     secret = await ref.get_output_details("password")
-    assert StackReferenceOutputDetails(secret_value="mypassword"), non_secret
-
-    unknown = await ref.get_output_details("does-not-exist")
-    assert StackReferenceOutputDetails(), non_secret
+    expected = StackReferenceOutputDetails(secret_value="mypassword")
+    compare_stack_ref_output(expected, secret)
 
 
 @pytest.fixture
@@ -52,6 +59,7 @@ class StackReferenceOutputMock(pulumi.runtime.Mocks):
                     "bucket": "mybucket-1234",
                     "password": pulumi.Output.secret("mypassword"),
                 },
+                "secretOutputNames": ["password"],
             },
         ]
 

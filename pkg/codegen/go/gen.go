@@ -758,23 +758,23 @@ func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (
 			extPkg = typ.PackageReference
 			token = typ.Token
 		}
-		return
+		return isExternal, extPkg, token
 	case *schema.ResourceType:
 		isExternal = typ.Resource != nil && pkg.pkg != nil && !codegen.PkgEquals(typ.Resource.PackageReference, pkg.pkg)
 		if isExternal {
 			extPkg = typ.Resource.PackageReference
 			token = typ.Token
 		}
-		return
+		return isExternal, extPkg, token
 	case *schema.EnumType:
 		isExternal = pkg.pkg != nil && !codegen.PkgEquals(typ.PackageReference, pkg.pkg)
 		if isExternal {
 			extPkg = typ.PackageReference
 			token = typ.Token
 		}
-		return
+		return isExternal, extPkg, token
 	}
-	return
+	return isExternal, extPkg, token
 }
 
 // resolveResourceType resolves resource references in properties while
@@ -823,7 +823,7 @@ func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, 
 	if info, ok := extDef.Language["go"].(GoPackageInfo); ok {
 		goInfo = info
 	} else {
-		goInfo.ImportBasePath = extractImportBasePath(extPkg)
+		goInfo.ImportBasePath = ExtractImportBasePath(extPkg)
 	}
 
 	pkgImportAliases := goInfo.PackageImportAliases
@@ -1984,7 +1984,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
 	}
 }
 
-func goPrimitiveValue(value interface{}) (string, error) {
+func goPrimitiveValue(value any) (string, error) {
 	v := reflect.ValueOf(value)
 	if v.Kind() == reflect.Interface {
 		v = v.Elem()
@@ -2014,7 +2014,7 @@ func goPrimitiveValue(value interface{}) (string, error) {
 	}
 }
 
-func (pkg *pkgContext) getConstValue(cv interface{}) (string, error) {
+func (pkg *pkgContext) getConstValue(cv any) (string, error) {
 	var val string
 	if cv != nil {
 		v, err := goPrimitiveValue(cv)
@@ -2823,7 +2823,10 @@ func (pkg *pkgContext) genFunctionCodeFile(f *schema.Function) (string, error) {
 	goInfo := goPackageInfo(pkg.pkg)
 	var imports []string
 	if f.ReturnType != nil {
-		imports = []string{"context", "reflect"}
+		imports = []string{"reflect"}
+		if _, ok := f.ReturnType.(*schema.ObjectType); ok {
+			imports = append(imports, "context")
+		}
 		if goInfo.Generics == GenericsSettingSideBySide {
 			importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumix"] = ""
 		}
@@ -2874,15 +2877,8 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTy
 		return fmt.Errorf("go SDK-gen does not implement MultiArgumentInputs for function '%s'", f.Token)
 	}
 
-	var objectReturnType *schema.ObjectType
-	if f.ReturnType != nil {
-		if objectType, ok := f.ReturnType.(*schema.ObjectType); ok {
-			objectReturnType = objectType
-		} else {
-			// TODO: remove when we add support for generalized return type for go
-			return fmt.Errorf("go sdk-gen doesn't support non-Object return types for function %s", f.Token)
-		}
-	}
+	returnType := f.ReturnType
+	objectReturnType, _ := returnType.(*schema.ObjectType)
 
 	printCommentWithDeprecationMessage(w, f.Comment, f.DeprecationMessage, false)
 
@@ -2892,10 +2888,12 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTy
 		argsig = fmt.Sprintf("%s, args *%sArgs", argsig, name)
 	}
 	var retty string
-	if objectReturnType == nil {
-		retty = "error"
-	} else {
+	if objectReturnType != nil {
 		retty = fmt.Sprintf("(*%sResult, error)", name)
+	} else if returnType != nil {
+		retty = fmt.Sprintf("(%s, error)", pkg.typeString(returnType))
+	} else {
+		retty = "error"
 	}
 	fmt.Fprintf(w, "func %s(%s, opts ...pulumi.InvokeOption) %s {\n", name, argsig, retty)
 
@@ -2911,8 +2909,10 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTy
 
 	// Now simply invoke the runtime function with the arguments.
 	var outputsType string
-	if objectReturnType == nil {
+	if returnType == nil {
 		outputsType = "struct{}"
+	} else if objectReturnType == nil {
+		outputsType = "map[string]" + pkg.typeString(returnType)
 	} else {
 		outputsType = name + "Result"
 	}
@@ -2944,8 +2944,21 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTy
 	fmt.Fprintf(w, "\terr %s ctx.Invoke%s(\"%s\", %s, &rv, %sopts...)\n",
 		assignment, packageRef, f.Token, inputsVar, packageArg)
 
-	if objectReturnType == nil {
+	if returnType == nil {
 		fmt.Fprintf(w, "\treturn err\n")
+	} else if objectReturnType == nil {
+		// Check the error before proceeding.
+		typ := pkg.typeString(returnType)
+		fmt.Fprintf(w, "\tvar result %s\n", typ)
+		fmt.Fprintf(w, "\tif err != nil {\n")
+		fmt.Fprintf(w, "\t\treturn result, err\n")
+		fmt.Fprintf(w, "\t}\n")
+		// Loop and collect the result
+		fmt.Fprintf(w, "\tfor _, v := range rv {\n")
+		fmt.Fprintf(w, "\t\tresult = v\n")
+		fmt.Fprintf(w, "\t\tbreak\n")
+		fmt.Fprintf(w, "\t}\n")
+		fmt.Fprintf(w, "\treturn result, nil\n")
 	} else {
 		// Check the error before proceeding.
 		fmt.Fprintf(w, "\tif err != nil {\n")
@@ -3148,10 +3161,18 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 		return nil
 	}
 
+	returnType := f.ReturnType
+	objectReturnType, _ := returnType.(*schema.ObjectType)
+
 	originalName := pkg.functionName(f)
 	name := originalName + "Output"
-	originalResultTypeName := pkg.functionResultTypeName(f)
-	resultTypeName := originalResultTypeName + "Output"
+	var resultTypeName string
+	if objectReturnType != nil {
+		originalResultTypeName := pkg.functionResultTypeName(f)
+		resultTypeName = originalResultTypeName + "Output"
+	} else {
+		resultTypeName = pkg.outputType(returnType)
+	}
 
 	var inputsVar string
 	if f.Inputs == nil {
@@ -3174,6 +3195,7 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 		fmt.Fprintf(w, "		ApplyT(func(v interface{}) (%s, error) {\n", resultTypeName)
 		fmt.Fprintf(w, "			args := v.(%sArgs)\n", originalName)
 		fmt.Fprintf(w, "			options := pulumi.InvokeOutputOptions{InvokeOptions: %s.PkgInvokeDefaultOpts(opts)}\n", pkg.internalModuleName)
+
 		if def.Parameterization != nil {
 			err = pkg.GenPkgGetPackageRefCall(w, resultTypeName+"{}")
 			if err != nil {
@@ -3181,9 +3203,23 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 			}
 			fmt.Fprint(w, "			options.PackageRef = ref\n")
 		}
-		fmt.Fprintf(w, "			return ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s), nil\n",
-			f.Token, inputsVar, resultTypeName, resultTypeName,
-		)
+		if objectReturnType != nil {
+			fmt.Fprintf(w, "			return ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s), nil\n",
+				f.Token, inputsVar, resultTypeName, resultTypeName)
+		} else {
+			otyp := pkg.outputType(&schema.MapType{ElementType: returnType})
+			ityp := pkg.typeString(&schema.MapType{ElementType: returnType})
+			typ := pkg.typeString(returnType)
+
+			fmt.Fprintf(w, "			rv := ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s)\n", f.Token, inputsVar, otyp, otyp)
+			fmt.Fprintf(w, "			return rv.ApplyT(func(rv %s) %s {\n", ityp, typ)
+			fmt.Fprintf(w, "				var result %s\n", typ)
+			fmt.Fprintf(w, "				for _, v := range rv {\n")
+			fmt.Fprintf(w, "					result = v\n")
+			fmt.Fprintf(w, "				}\n")
+			fmt.Fprintf(w, "				return result\n")
+			fmt.Fprintf(w, "			}).(%s), nil\n", resultTypeName)
+		}
 		fmt.Fprintf(w, "		}).(%s)\n", resultTypeName)
 		fmt.Fprint(w, "}\n")
 		fmt.Fprint(w, "\n")
@@ -3192,6 +3228,7 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 			originalName, resultTypeName)
 		fmt.Fprintf(w, "	return pulumi.ToOutput(0).ApplyT(func(int) (%s, error) {\n", resultTypeName)
 		fmt.Fprintf(w, "		options := pulumi.InvokeOutputOptions{InvokeOptions: %s.PkgInvokeDefaultOpts(opts)}\n", pkg.internalModuleName)
+
 		if def.Parameterization != nil {
 			err = pkg.GenPkgGetPackageRefCall(w, resultTypeName+"{}")
 			if err != nil {
@@ -3199,8 +3236,24 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 			}
 			fmt.Fprint(w, "			options.PackageRef = ref\n")
 		}
-		fmt.Fprintf(w, "		return ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s), nil\n",
-			f.Token, inputsVar, resultTypeName, resultTypeName)
+
+		if objectReturnType != nil {
+			fmt.Fprintf(w, "		return ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s), nil\n",
+				f.Token, inputsVar, resultTypeName, resultTypeName)
+		} else {
+			otyp := pkg.outputType(&schema.MapType{ElementType: returnType})
+			ityp := pkg.typeString(&schema.MapType{ElementType: returnType})
+			typ := pkg.typeString(returnType)
+
+			fmt.Fprintf(w, "			rv := ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s)\n", f.Token, inputsVar, otyp, otyp)
+			fmt.Fprintf(w, "			return rv.ApplyT(func(rv %s) %s {\n", ityp, typ)
+			fmt.Fprintf(w, "				var result %s\n", typ)
+			fmt.Fprintf(w, "				for _, v := range rv {\n")
+			fmt.Fprintf(w, "					result = v\n")
+			fmt.Fprintf(w, "				}\n")
+			fmt.Fprintf(w, "				return result\n")
+			fmt.Fprintf(w, "			}).(%s), nil\n", resultTypeName)
+		}
 		fmt.Fprintf(w, "	}).(%s)\n", resultTypeName)
 		fmt.Fprint(w, "}\n")
 		fmt.Fprint(w, "\n")
@@ -3220,22 +3273,24 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 		if objectType, ok := f.ReturnType.(*schema.ObjectType); ok && objectType != nil {
 			pkg.genOutputTypes(w, genOutputTypesArgs{
 				t:      objectType,
-				name:   originalResultTypeName,
+				name:   pkg.functionResultTypeName(f),
 				output: true,
 			})
 		}
 	}
 
-	// Assuming the file represented by `w` only has one function,
-	// generate an `init()` for Output type init.
-	initCode := `
-func init() {
-        pulumi.RegisterOutputType(${outputType}{})
-}
+	if objectReturnType != nil {
+		// Assuming the file represented by `w` only has one function,
+		// generate an `init()` for Output type init.
+		initCode := `
+	func init() {
+			pulumi.RegisterOutputType(${outputType}{})
+	}
 
-`
-	initCode = strings.ReplaceAll(initCode, "${outputType}", resultTypeName)
-	fmt.Fprint(w, initCode)
+	`
+		initCode = strings.ReplaceAll(initCode, "${outputType}", resultTypeName)
+		fmt.Fprint(w, initCode)
+	}
 
 	return nil
 }
@@ -3781,7 +3836,8 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 	}
 }
 
-func extractModulePath(extPkg schema.PackageReference) string {
+// ExtractModulePath creates a go module path for a given package.
+func ExtractModulePath(extPkg schema.PackageReference) string {
 	var vPath string
 	version := extPkg.Version()
 	name := extPkg.Name()
@@ -3813,8 +3869,11 @@ func extractModulePath(extPkg schema.PackageReference) string {
 	return fmt.Sprintf("%s/sdk%s", root, vPath)
 }
 
-func extractImportBasePath(extPkg schema.PackageReference) string {
-	modpath := extractModulePath(extPkg)
+// ExtractImportBasePath returns the import path to be used in Go code for a package reference. For example we might
+// have the module path "github.com/pulumi/pulumi-aws/sdk/v7" as returned by `ExtractModulePath` and the matching import
+// path "github.com/pulumi/pulumi-aws/sdk/v7/go/aws" returned by `ExtractImportBasePath`.
+func ExtractImportBasePath(extPkg schema.PackageReference) string {
+	modpath := ExtractModulePath(extPkg)
 	name := extPkg.Name()
 
 	// Support pack sdks write a go mod inside the go folder. Old legacy sdks would manually write a go.mod in the sdk
@@ -3826,7 +3885,7 @@ func extractImportBasePath(extPkg schema.PackageReference) string {
 	return fmt.Sprintf("%s/go/%s", modpath, name)
 }
 
-func (pkg *pkgContext) getImports(member interface{}, importsAndAliases map[string]string) {
+func (pkg *pkgContext) getImports(member any, importsAndAliases map[string]string) {
 	seen := map[schema.Type]struct{}{}
 	switch member := member.(type) {
 	case *schema.ObjectType:
@@ -4144,7 +4203,7 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 			importBasePath := goInfo.ImportBasePath
 			if importBasePath == "" {
 				// Default to a path based on the package name.
-				importBasePath = extractImportBasePath(pkg)
+				importBasePath = ExtractImportBasePath(pkg)
 			}
 
 			pack = &pkgContext{
@@ -4694,7 +4753,7 @@ func GeneratePackage(tool string,
 	}
 
 	if goPkgInfo.ImportBasePath == "" {
-		goPkgInfo.ImportBasePath = extractImportBasePath(pkg.Reference())
+		goPkgInfo.ImportBasePath = ExtractImportBasePath(pkg.Reference())
 	}
 
 	packages, err := generatePackageContextMap(tool, pkg.Reference(), goPkgInfo, NewCache())
@@ -5090,7 +5149,7 @@ func GeneratePackage(tool string,
 
 	// create a go.mod file with references to local dependencies
 	if pkg.SupportPack {
-		modulePath := extractModulePath(pkg.Reference())
+		modulePath := ExtractModulePath(pkg.Reference())
 		if langInfo, found := pkg.Language["go"]; found {
 			goInfo, ok := langInfo.(GoPackageInfo)
 			if ok && goInfo.ModulePath != "" {

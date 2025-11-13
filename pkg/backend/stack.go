@@ -17,6 +17,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -29,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type StackConfigLocation struct {
@@ -50,6 +52,8 @@ type Stack interface {
 	SaveRemoteConfig(ctx context.Context, projectStack *workspace.ProjectStack) error
 	// Snapshot returns the latest deployment snapshot.
 	Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
+	// SnapshotStackOutputs returns the stack outputs of the latest deployment snapshot.
+	SnapshotStackOutputs(ctx context.Context, secretsProvider secrets.Provider) (property.Map, error)
 	// Backend returns the backend this stack belongs to.
 	Backend() Backend
 	// Tags return the stack's existing tags.
@@ -193,7 +197,7 @@ func GetEnvironmentTagsForCurrentStack(root string,
 		if err != nil {
 			return nil, fmt.Errorf("%s must be an object of strings", apitype.PulumiTagsConfigKey)
 		}
-		configTagObject, ok := configTagInterface.(map[string]interface{})
+		configTagObject, ok := configTagInterface.(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("%s must be an object of strings", apitype.PulumiTagsConfigKey)
 		}
@@ -226,6 +230,13 @@ func addGitMetadataToStackTags(tags map[apitype.StackTagName]string, projPath st
 	}
 	if err != nil {
 		return err
+	}
+
+	if wt, err := repo.Worktree(); err == nil {
+		repoRelPath, err := filepath.Rel(wt.Filesystem.Root(), projPath)
+		if err == nil && filepath.IsLocal(repoRelPath) {
+			tags[apitype.VCSRepositoryRootTag] = filepath.ToSlash(repoRelPath)
+		}
 	}
 
 	remoteURL, err := gitutil.GetGitRemoteURL(repo, "origin")

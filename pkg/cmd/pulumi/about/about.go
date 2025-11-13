@@ -30,18 +30,19 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -218,6 +219,7 @@ func (summary *summaryAbout) Print() {
 	if summary.Backend != nil {
 		fmt.Println(summary.Backend)
 	}
+	formatEnvironmentVariables(declared.Variables())
 	if summary.Dependencies != nil {
 		fmt.Println(formatProgramDependenciesAbout(summary.Dependencies))
 	}
@@ -394,7 +396,7 @@ func getCurrentStackAbout(ctx context.Context, b backend.Backend, selectedStack 
 
 	name := s.Ref().String()
 	var snapshot *deploy.Snapshot
-	snapshot, err = s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	snapshot, err = s.Snapshot(ctx, secrets.DefaultProvider)
 	if err != nil {
 		return currentStackAbout{}, err
 	} else if snapshot == nil {
@@ -476,6 +478,26 @@ func simpleTableRows(arr [][]string) []cmdutil.TableRow {
 type programDependencyAbout struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
+}
+
+func formatEnvironmentVariables(vars []declared.Var) {
+	table := cmdutil.Table{
+		Headers: []string{"Name", "Value"},
+		Rows:    []cmdutil.TableRow{},
+	}
+
+	for _, v := range vars {
+		if _, present := v.Value.Underlying(); present {
+			table.Rows = append(table.Rows, cmdutil.TableRow{
+				Columns: []string{v.Name(), v.Value.String()},
+			})
+		}
+	}
+
+	if len(table.Rows) > 0 {
+		fmt.Println("Environment Variables:")
+		fmt.Println(table.String())
+	}
 }
 
 func formatProgramDependenciesAbout(deps []programDependencyAbout) string {

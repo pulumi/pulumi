@@ -896,6 +896,15 @@ func (pp ProjectPlugin) Spec(ctx context.Context) (PluginSpec, error) {
 	return NewPluginSpec(ctx, pp.Name, pp.Kind, pp.Version, "", nil)
 }
 
+// LinkablePackageDescriptor contains the information necessary to link an SDK for a package specified by a
+// PackageDescriptor into a project.
+type LinkablePackageDescriptor struct {
+	// Path to the package, either a binary artifact like a Python wheel, or a source directory.
+	Path string
+	// The descriptor for the package
+	Descriptor PackageDescriptor
+}
+
 // A PackageDescriptor specifies a package: the source PluginSpec that provides it, and any parameterization
 // that must be applied to that plugin in order to produce the package.
 type PackageDescriptor struct {
@@ -1105,13 +1114,21 @@ func parsePluginSpecFromURL(
 	default:
 		return PluginSpec{}, inference, errors.New(`unknown URL scheme: expected "git" or "https"`)
 	}
-
-	gitURL, _, err := gitutil.ParseGitRepoURL(parsedURL.String())
+	// We're purposely dropping any authentication info from the URL here. The name is used as
+	// the folder name for writing the plugin to disk, and we 1) don't want to write secrets
+	// in the folder name, 2) want to be able to reuse the same plugin even if the auth infoo
+	// changes and 3) avoid issues with the auth info being too long for a folder name.
+	urlWithoutAuth := &url.URL{
+		Scheme: parsedURL.Scheme,
+		Host:   parsedURL.Host,
+		Path:   parsedURL.Path,
+	}
+	nameURL, _, err := gitutil.ParseGitRepoURL(urlWithoutAuth.String())
 	if err != nil {
 		return PluginSpec{}, inference, err
 	}
 	pluginSpec := PluginSpec{
-		Name:    strings.ReplaceAll(strings.TrimPrefix(gitURL, "https://"), "/", "_"),
+		Name:    strings.ReplaceAll(strings.TrimPrefix(nameURL, "https://"), "/", "_"),
 		Kind:    kind,
 		Version: version,
 		// Prefix the url with `git://`, so we can later recognize this as a git URL.
@@ -1125,6 +1142,10 @@ func parsePluginSpecFromURL(
 	// is used, so the user gets a consistent experience.
 	if pluginSpec.Version == nil {
 		var err error
+		gitURL, _, err := gitutil.ParseGitRepoURL(parsedURL.String())
+		if err != nil {
+			return PluginSpec{}, inference, err
+		}
 		pluginSpec.Version, err = gitutil.GetLatestTagOrHash(ctx, gitURL)
 		if err != nil {
 			return pluginSpec, inference, PluginVersionNotFoundError(err)
@@ -1637,7 +1658,7 @@ func (d *pluginDownloader) downloadToFileWithRetry(ctx context.Context, pkgPlugi
 	}).Until(context.Background(), retry.Acceptor{
 		Delay:   &delay,
 		Backoff: &backoff,
-		Accept: func(attempt int, nextRetryTime time.Duration) (bool, interface{}, error) {
+		Accept: func(attempt int, nextRetryTime time.Duration) (bool, any, error) {
 			if attempt >= maxAttempts {
 				return false, nil, fmt.Errorf("failed all %d attempts", maxAttempts)
 			}

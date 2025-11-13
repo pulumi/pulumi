@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func await(out pulumi.Output) (interface{}, bool, bool, []pulumi.Resource, error) {
+func await(out pulumi.Output) (any, bool, bool, []pulumi.Resource, error) {
 	result, err := UnsafeAwaitOutput(context.Background(), out)
 
 	return result.Value, result.Known, result.Secret, result.Dependencies, err

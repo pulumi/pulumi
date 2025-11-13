@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -852,10 +852,20 @@ export interface ResourceOptions {
     deletedWith?: Resource;
 
     /**
+     * If set, the URNs of the resources whose replaces will also replace this resource.
+     */
+    replaceWith?: Resource[];
+
+    /**
      * Optional resource hooks to bind to this resource. The hooks will be
      * invoked during certain step of the lifecycle of the resource.
      */
     hooks?: ResourceHookBinding;
+
+    /**
+     * A list of property paths where the diffs will be hidden. This only changes display logic.
+     */
+    hideDiffs?: string[];
 
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
@@ -1420,19 +1430,13 @@ export class ComponentResource<TData = any> extends Resource {
         remote: boolean = false,
         packageRef?: Promise<string | undefined>,
     ) {
-        // Explicitly ignore the props passed in.  We allow them for back compat reasons.  However,
-        // we explicitly do not want to pass them along to the engine.  The ComponentResource acts
-        // only as a container for other resources.  Another way to think about this is that a normal
-        // 'custom resource' corresponds to real piece of cloud infrastructure.  So, when it changes
-        // in some way, the cloud resource needs to be updated (and vice versa).  That is not true
-        // for a component resource.  The component is just used for organizational purposes and does
-        // not correspond to a real piece of cloud infrastructure.  As such, changes to it *itself*
-        // do not have any effect on the cloud side of things at all.
+        // If the PULUMI_NODEJS_SKIP_COMPONENT_INPUTS environment variable is set,
+        // we skip sending the inputs to the engine.
         super(
             type,
             name,
             /*custom:*/ false,
-            /*props:*/ remote || opts?.urn ? args : {},
+            process.env.PULUMI_NODEJS_SKIP_COMPONENT_INPUTS ? {} : args,
             opts,
             remote,
             false,
@@ -1440,14 +1444,22 @@ export class ComponentResource<TData = any> extends Resource {
         );
         this.__remote = remote;
         this.__registered = remote || !!opts?.urn;
-        this.__data = remote || opts?.urn ? Promise.resolve(<TData>{}) : this.initializeAndRegisterOutputs(args);
+        this.__data =
+            remote || opts?.urn
+                ? Promise.resolve(<TData>{})
+                : this.initializeAndRegisterOutputs(args, opts, name, type);
     }
 
     /**
      * @internal
      */
-    private async initializeAndRegisterOutputs(args: Inputs) {
-        const data = await this.initialize(args);
+    private async initializeAndRegisterOutputs(
+        args: Inputs,
+        opts: ComponentResourceOptions,
+        name: string,
+        type: string,
+    ) {
+        const data = await this.initialize(args, opts, name, type);
         this.registerOutputs();
         return data;
     }
@@ -1457,7 +1469,12 @@ export class ComponentResource<TData = any> extends Resource {
      * automatically when constructed. The data will be available immediately for subclass
      * constructors to use. To access the data use {@link getData}.
      */
-    protected async initialize(args: Inputs): Promise<TData> {
+    protected async initialize(
+        args: Inputs,
+        opts?: ComponentResourceOptions,
+        name?: string,
+        type?: string,
+    ): Promise<TData> {
         return <TData>undefined!;
     }
 

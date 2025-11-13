@@ -21,7 +21,7 @@ import (
 	"time"
 
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/maps"
@@ -121,7 +121,7 @@ func (g *generator) writeLine(s string) {
 
 // writeLinef writes a formatted newline-prefixed line of Go code to the generator's strings.Builder, prefixed by the
 // current indentation level.
-func (g *generator) writeLinef(format string, args ...interface{}) {
+func (g *generator) writeLinef(format string, args ...any) {
 	g.writeLine(fmt.Sprintf(format, args...))
 }
 
@@ -269,6 +269,8 @@ func writeSnapshotTestFunction(
 				operation = "engine.Update"
 			case PlanOperationRefresh:
 				operation = "engine.Refresh"
+			case PlanOperationRefreshV2:
+				operation = "engine.RefreshV2"
 			case PlanOperationDestroy:
 				operation = "engine.Destroy"
 			case PlanOperationDestroyV2:
@@ -425,6 +427,8 @@ func writeFrameworkTestFunction(
 				operation = "engine.Update"
 			case PlanOperationRefresh:
 				operation = "engine.Refresh"
+			case PlanOperationRefreshV2:
+				operation = "engine.RefreshV2"
 			case PlanOperationDestroy:
 				operation = "engine.Destroy"
 			case PlanOperationDestroyV2:
@@ -563,7 +567,7 @@ func writeSnapshotStatements(t require.TestingT, snapSpec *SnapshotSpec) func(g 
 
 					if len(r.PropertyDependencies) > 0 {
 						g.writeBlock(
-							"PropertyDeps: map[resource.PropertyKey][]resource.URN{",
+							"PropertyDependencies: map[resource.PropertyKey][]resource.URN{",
 							func(g *generator) {
 								for k, deps := range r.PropertyDependencies {
 									g.writeBlock(

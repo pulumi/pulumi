@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
@@ -40,7 +41,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -120,8 +120,8 @@ func NewUpCmd() *cobra.Command {
 	var planFilePath string
 	var attachDebugger []string
 
-	// Flags for Copilot.
-	var copilotEnabled bool
+	// Flags for Neo.
+	var neoEnabled bool
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(
@@ -244,7 +244,7 @@ func NewUpCmd() *cobra.Command {
 			Opts:               opts,
 			StackConfiguration: cfg,
 			SecretsManager:     sm,
-			SecretsProvider:    stack.DefaultSecretsProvider,
+			SecretsProvider:    secrets.DefaultProvider,
 			Scopes:             backend.CancellationScopes,
 		}, nil /* events */)
 		switch {
@@ -478,7 +478,7 @@ func NewUpCmd() *cobra.Command {
 			Opts:               opts,
 			StackConfiguration: cfg,
 			SecretsManager:     sm,
-			SecretsProvider:    stack.DefaultSecretsProvider,
+			SecretsProvider:    secrets.DefaultProvider,
 			Scopes:             backend.CancellationScopes,
 		}, nil /* events */)
 		switch {
@@ -606,12 +606,12 @@ func NewUpCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			// Link to Copilot will be shown for orgs that have Copilot enabled, unless the user explicitly suppressed it.
+			// Link to Neo will be shown for orgs that have Neo enabled, unless the user explicitly suppressed it.
 			// Currently only available for `pulumi up`.
-			logging.V(7).Infof("PULUMI_SUPPRESS_COPILOT_LINK=%v", env.SuppressCopilotLink.Value())
-			opts.Display.ShowLinkToCopilot = !env.SuppressCopilotLink.Value()
+			logging.V(7).Infof("PULUMI_SUPPRESS_NEO_LINK=%v", env.SuppressNeoLink.Value())
+			opts.Display.ShowLinkToNeo = !env.SuppressNeoLink.Value()
 
-			configureCopilotOptions(copilotEnabled, cmd, &opts.Display, isDIYBackend)
+			configureNeoOptions(neoEnabled, cmd, &opts.Display, isDIYBackend)
 
 			if len(args) > 0 {
 				return upTemplateNameOrURL(
@@ -712,7 +712,7 @@ func NewUpCmd() *cobra.Command {
 		&parallel, "parallel", "p", defaultParallel(),
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().StringVarP(
-		&refresh, "refresh", "r", "",
+		&refresh, "refresh", "r", handleBoolFlag(env.Refresh),
 		"Refresh the state of the stack's resources before this update")
 	cmd.PersistentFlags().Lookup("refresh").NoOptDefVal = "true"
 	cmd.PersistentFlags().BoolVar(
@@ -778,9 +778,16 @@ func NewUpCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVar(
-		&copilotEnabled, "copilot", false,
-		"Enable Pulumi Copilot's assistance for improved CLI experience and insights."+
+		&neoEnabled, "neo", false,
+		"Enable Pulumi Neo's assistance for improved CLI experience and insights "+
+			"(can also be set with PULUMI_NEO environment variable)")
+
+	// Keep --copilot flag for backwards compatibility, but hide it
+	cmd.PersistentFlags().BoolVar(
+		&neoEnabled, "copilot", false,
+		"[DEPRECATED] Use --neo instead. Enable Pulumi Neo's assistance for improved CLI experience and insights "+
 			"(can also be set with PULUMI_COPILOT environment variable)")
+	_ = cmd.PersistentFlags().MarkDeprecated("copilot", "please use --neo instead")
 
 	// Currently, we can't mix `--target` and `--exclude`.
 	cmd.MarkFlagsMutuallyExclusive("target", "exclude")

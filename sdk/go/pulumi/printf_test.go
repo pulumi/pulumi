@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testPrintf(t *testing.T, ins ...interface{}) {
+func testPrintf(t *testing.T, ins ...any) {
 	const f = "%v %v %v"
 	expected := fmt.Sprintf(f, "foo", 42, true)
 

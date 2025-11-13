@@ -604,7 +604,6 @@ func TestProgramCodegen(
 	skipCompile := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_COMPILE_TEST"))
 
 	for _, tt := range testcase.TestCases {
-		tt := tt // avoid capturing loop variable
 		t.Run(tt.Directory, func(t *testing.T) {
 			// These tests should not run in parallel.
 			// They take up a fair bit of memory

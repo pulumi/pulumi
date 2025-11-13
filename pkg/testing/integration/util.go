@@ -180,7 +180,7 @@ func CopyDir(src, dst string) error {
 // and evaluate its response.
 func AssertHTTPResultWithRetry(
 	t *testing.T,
-	output interface{},
+	output any,
 	headers map[string]string,
 	maxWait time.Duration,
 	check func(string) bool,
@@ -241,13 +241,13 @@ func AssertHTTPResultWithRetry(
 	return check(string(body))
 }
 
-func CheckRuntimeOptions(t *testing.T, root string, expected map[string]interface{}) {
+func CheckRuntimeOptions(t *testing.T, root string, expected map[string]any) {
 	t.Helper()
 
 	var config struct {
 		Runtime struct {
-			Name    string                 `yaml:"name"`
-			Options map[string]interface{} `yaml:"options"`
+			Name    string         `yaml:"name"`
+			Options map[string]any `yaml:"options"`
 		} `yaml:"runtime"`
 	}
 	yamlFile, err := os.ReadFile(filepath.Join(root, "Pulumi.yaml"))

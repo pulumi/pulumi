@@ -435,14 +435,14 @@ func (se *stepExecutor) cancelDueToError(err error, step Step) {
 //   2. If successful, the step is executed (if not a preview)
 //   3. The post-step event is raised, if there are any attached callbacks to the engine
 //
-// The pre-step event returns an interface{}, which is some arbitrary context that must be passed
+// The pre-step event returns an any, which is some arbitrary context that must be passed
 // verbatim to the post-step event.
 //
 
 // executeStep executes a single step, returning true if the step execution was successful and
 // false if it was not.
 func (se *stepExecutor) executeStep(workerID int, step Step) error {
-	var payload interface{}
+	var payload any
 	events := se.deployment.events
 
 	// DiffSteps are special, we just use them for step worker parallelism but they shouldn't be passed to the rest of
@@ -461,7 +461,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 	return se.continueExecuteStep(payload, workerID, step)
 }
 
-func (se *stepExecutor) continueExecuteStep(payload interface{}, workerID int, step Step) error {
+func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step) error {
 	events := se.deployment.events
 
 	se.log(workerID, "applying step %v on %v (preview %v)", step.Op(), step.URN(), se.deployment.opts.DryRun)
@@ -610,7 +610,7 @@ func (se *stepExecutor) continueExecuteStep(payload interface{}, workerID int, s
 }
 
 // log is a simple logging helper for the step executor.
-func (se *stepExecutor) log(workerID int, msg string, args ...interface{}) {
+func (se *stepExecutor) log(workerID int, msg string, args ...any) {
 	if logging.V(stepExecutorLogLevel) {
 		message := fmt.Sprintf(msg, args...)
 		logging.V(stepExecutorLogLevel).Infof("StepExecutor worker(%d): %s", workerID, message)

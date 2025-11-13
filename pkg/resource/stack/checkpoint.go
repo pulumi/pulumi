@@ -101,8 +101,8 @@ func MarshalUntypedDeploymentToVersionedCheckpoint(
 	stack tokens.QName, deployment *apitype.UntypedDeployment,
 ) (*apitype.VersionedCheckpoint, error) {
 	chk := struct {
-		Stack  tokens.QName
-		Latest json.RawMessage
+		Stack  tokens.QName    `json:"stack,omitempty"`
+		Latest json.RawMessage `json:"latest,omitempty"`
 	}{
 		Stack:  stack,
 		Latest: deployment.Deployment,
@@ -141,6 +141,29 @@ func SerializeCheckpoint(stack tokens.QName, snap *deploy.Snapshot,
 		Stack:  stack,
 		Latest: latest,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("marshalling checkpoint: %w", err)
+	}
+
+	return &apitype.VersionedCheckpoint{
+		Version:    version,
+		Features:   features,
+		Checkpoint: json.RawMessage(b),
+	}, nil
+}
+
+func DeploymentV3ToCheckpoint(
+	stack tokens.QName,
+	deployment *apitype.DeploymentV3,
+	version int,
+	features []string,
+) (*apitype.VersionedCheckpoint, error) {
+	chk := apitype.CheckpointV3{
+		Stack:  stack,
+		Latest: deployment,
+	}
+
+	b, err := encoding.JSON.Marshal(chk)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling checkpoint: %w", err)
 	}
@@ -206,11 +229,13 @@ func CreateRootStackResource(stackName tokens.QName, projectName tokens.PackageN
 		ImportID:                "",
 		RetainOnDelete:          false,
 		DeletedWith:             "",
+		ReplaceWith:             nil,
 		Created:                 nil,
 		Modified:                nil,
 		SourcePosition:          "",
 		StackTrace:              nil,
 		IgnoreChanges:           nil,
+		HideDiff:                nil,
 		ReplaceOnChanges:        nil,
 		RefreshBeforeUpdate:     false,
 		ViewOf:                  "",

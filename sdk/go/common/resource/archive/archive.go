@@ -55,7 +55,7 @@ type Archive struct {
 	// Hash contains the SHA256 hash of the archive's contents.
 	Hash string `json:"hash,omitempty" yaml:"hash,omitempty"`
 	// Assets, when non-nil, is a collection of other assets/archives.
-	Assets map[string]interface{} `json:"assets,omitempty" yaml:"assets,omitempty"`
+	Assets map[string]any `json:"assets,omitempty" yaml:"assets,omitempty"`
 	// Path is a non-empty string representing a path to a file on the current filesystem, for file archives.
 	Path string `json:"path,omitempty" yaml:"path,omitempty"`
 	// URI is a non-empty URI (file://, http://, https://, etc), for URI-backed archives.
@@ -70,10 +70,10 @@ const (
 	ArchiveURIProperty    = "uri"    // the dynamic property for an archive's URI.
 )
 
-func FromAssetsWithWD(assets map[string]interface{}, wd string) (*Archive, error) {
+func FromAssetsWithWD(assets map[string]any, wd string) (*Archive, error) {
 	if assets == nil {
 		// when provided assets are nil, create an empty archive
-		assets = make(map[string]interface{})
+		assets = make(map[string]any)
 	}
 
 	// Ensure all elements are either assets or archives.
@@ -90,7 +90,7 @@ func FromAssetsWithWD(assets map[string]interface{}, wd string) (*Archive, error
 	return a, err
 }
 
-func FromAssets(assets map[string]interface{}) (*Archive, error) {
+func FromAssets(assets map[string]any) (*Archive, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -143,7 +143,7 @@ func (a *Archive) IsAssets() bool {
 func (a *Archive) IsPath() bool { return a.Path != "" }
 func (a *Archive) IsURI() bool  { return a.URI != "" }
 
-func (a *Archive) GetAssets() (map[string]interface{}, bool) {
+func (a *Archive) GetAssets() (map[string]any, bool) {
 	if a.IsAssets() {
 		return a.Assets, true
 	}
@@ -199,15 +199,15 @@ func (a *Archive) Equals(other *Archive) bool {
 }
 
 // Serialize returns a weakly typed map that contains the right signature for serialization purposes.
-func (a *Archive) Serialize() map[string]interface{} {
-	result := map[string]interface{}{
+func (a *Archive) Serialize() map[string]any {
+	result := map[string]any{
 		sig.Key: ArchiveSig,
 	}
 	if a.Hash != "" {
 		result[ArchiveHashProperty] = a.Hash
 	}
 	if a.Assets != nil {
-		assets := make(map[string]interface{})
+		assets := make(map[string]any)
 		for k, v := range a.Assets {
 			switch t := v.(type) {
 			case *asset.Asset:
@@ -230,7 +230,7 @@ func (a *Archive) Serialize() map[string]interface{} {
 }
 
 // DeserializeArchive checks to see if the map contains an archive, using its signature, and if so deserializes it.
-func Deserialize(obj map[string]interface{}) (*Archive, bool, error) {
+func Deserialize(obj map[string]any) (*Archive, bool, error) {
 	// If not an archive, return false immediately.
 	if obj[sig.Key] != ArchiveSig {
 		return &Archive{}, false, nil
@@ -270,19 +270,19 @@ func Deserialize(obj map[string]interface{}) (*Archive, bool, error) {
 	}
 
 	if assetsMap, has := obj[ArchiveAssetsProperty]; has {
-		m, ok := assetsMap.(map[string]interface{})
+		m, ok := assetsMap.(map[string]any)
 		if !ok {
 			return &Archive{}, false, fmt.Errorf("unexpected archive contents of type %T", assetsMap)
 		}
 
-		assets := make(map[string]interface{})
+		assets := make(map[string]any)
 		for k, elem := range m {
 			switch t := elem.(type) {
 			case *asset.Asset:
 				assets[k] = t
 			case *Archive:
 				assets[k] = t
-			case map[string]interface{}:
+			case map[string]any:
 				a, isa, err := asset.Deserialize(t)
 				if err != nil {
 					return &Archive{}, false, err
@@ -309,7 +309,7 @@ func Deserialize(obj map[string]interface{}) (*Archive, bool, error) {
 	// if we reached here, it means the archive is empty,
 	// we didn't find a non-zero path, non-zero uri nor non-nil assets
 	// we will consider this to be an empty assets archive then with zero assets
-	return &Archive{Sig: ArchiveSig, Assets: make(map[string]interface{}), Hash: hash}, true, nil
+	return &Archive{Sig: ArchiveSig, Assets: make(map[string]any), Hash: hash}, true, nil
 }
 
 // HasContents indicates whether or not an archive's contents can be read.
@@ -352,7 +352,7 @@ func (a *Archive) OpenWithWD(wd string) (Reader, error) {
 
 // assetsArchiveReader is used to read an Assets archive.
 type assetsArchiveReader struct {
-	assets      map[string]interface{}
+	assets      map[string]any
 	keys        []string
 	archive     Reader
 	archiveRoot string

@@ -193,8 +193,9 @@ message AnalyzeDiagnostic {
     reserved 6;
     reserved "tags";
 
-    EnforcementLevel enforcementLevel = 7; // Severity of the policy violation.
+    EnforcementLevel enforcementLevel = 7; // Enforcement level of the policy violation.
     string urn = 8;                        // URN of the resource that violates the policy.
+    PolicySeverity severity = 9;           // Severity of the policy violation.
 }
 
 // Remediation is a single resource remediation result.

@@ -70,6 +70,7 @@ import (
 
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
@@ -112,6 +113,7 @@ func main() {
 	flag.String("root", "", "[obsolete] Project root path to use")
 	flag.String("typechecker", "", "[obsolete] Use a typechecker to type check")
 	flag.String("toolchain", "pip", "[obsolete] Select the package manager to use for dependency management.")
+	showVersion := flag.Bool("version", false, "Print the current plugin version and exit")
 
 	// You can use the below flag to request that the language host load a specific executor instead of probing the
 	// PATH.  This can be used during testing to override the default location.
@@ -120,6 +122,12 @@ func main() {
 		"Use the given program as the executor instead of looking for one on PATH")
 
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(version.Version)
+		os.Exit(0)
+	}
+
 	args := flag.Args()
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-python", "pulumi-language-python", tracing)
@@ -206,7 +214,7 @@ type pythonLanguageHost struct {
 	toolchain string
 }
 
-func parseOptions(root string, programDir string, options map[string]interface{}) (toolchain.PythonOptions, error) {
+func parseOptions(root string, programDir string, options map[string]any) (toolchain.PythonOptions, error) {
 	pythonOptions := toolchain.PythonOptions{
 		Root:       root,
 		ProgramDir: programDir,
@@ -861,11 +869,11 @@ func startDebugging(
 	}
 
 	// emit a debug configuration
-	debugConfig, err := structpb.NewStruct(map[string]interface{}{
+	debugConfig, err := structpb.NewStruct(map[string]any{
 		"name":    name,
 		"type":    "python",
 		"request": "attach",
-		"connect": map[string]interface{}{
+		"connect": map[string]any{
 			"host": dbg.Host,
 			"port": dbg.Port,
 		},
@@ -1762,8 +1770,117 @@ func removeReleaseCandidateSuffix(version string) string {
 func (host *pythonLanguageHost) Link(
 	ctx context.Context, req *pulumirpc.LinkRequest,
 ) (*pulumirpc.LinkResponse, error) {
-	// The Python language host does not support linking, so we return an empty response.
-	return &pulumirpc.LinkResponse{}, nil
+	logging.V(5).Infof("Linking %+v in %s", req.Packages, req.Info.RootDirectory)
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
+	if err != nil {
+		return nil, err
+	}
+
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
+	if err != nil {
+		return nil, err
+	}
+	defer loader.Close()
+	cachedLoader := schema.NewCachedLoader(loader)
+
+	instructions := "You can import the SDK in your Python code with:\n\n"
+	if len(req.Packages) > 1 {
+		instructions = "You can import the SDKs in your Python code with:\n\n"
+	}
+
+	// Map of python package names to paths
+	packages := map[string]string{}
+	for _, dep := range req.Packages {
+		if dep.Package.Name == "pulumi" {
+			packages["pulumi"] = dep.Path
+			continue
+		}
+
+		var version *semver.Version
+		v, err := semver.New(dep.Package.Version)
+		if err != nil {
+			logging.V(5).Infof("Invalid version %s for package %s", dep.Package.Version, dep.Package.Name)
+		} else {
+			version = v
+		}
+		var param *schema.ParameterizationDescriptor
+		if dep.Package.Parameterization != nil {
+			param = &schema.ParameterizationDescriptor{
+				Name:  dep.Package.Parameterization.Name,
+				Value: dep.Package.Parameterization.Value,
+			}
+			if dep.Package.Parameterization.Version != "" {
+				v, err := semver.New(dep.Package.Parameterization.Version)
+				if err != nil {
+					logging.V(5).Infof("Invalid version %s for package %s", dep.Package.Version, dep.Package.Name)
+				} else {
+					param.Version = *v
+				}
+			}
+		}
+		packageDesc := &schema.PackageDescriptor{
+			Name:             dep.Package.Name,
+			Version:          version,
+			DownloadURL:      dep.Package.Server,
+			Parameterization: param,
+		}
+
+		pkgRef, err := schema.LoadPackageReferenceV2(ctx, cachedLoader, packageDesc)
+		if err != nil {
+			return nil, err
+		}
+		pkg, err := pkgRef.Definition()
+		if err != nil {
+			return nil, err
+		}
+		if err := pkg.ImportLanguages(map[string]schema.Language{"python": codegen.Importer}); err != nil {
+			return nil, err
+		}
+		var importName string
+		var packageName string
+		if info, ok := pkg.Language["go"]; ok {
+			if info, ok := info.(codegen.PackageInfo); ok && info.PackageName != "" {
+				importName = info.PackageName
+				packageName = info.PackageName
+			}
+		}
+		if importName == "" {
+			importName = strings.ReplaceAll(pkgRef.Name(), "-", "_")
+		}
+		if packageName == "" {
+			packageName = python.PyPack(pkgRef.Namespace(), pkgRef.Name())
+		}
+		packages[packageName] = dep.Path
+		instructions += fmt.Sprintf("  import %s as %s\n", packageName, importName)
+	}
+
+	if opts.Toolchain != toolchain.Pip {
+		pyprojectPath := filepath.Join(req.Info.ProgramDirectory, "pyproject.toml")
+		if _, err := os.Stat(pyprojectPath); os.IsNotExist(err) {
+			requirementsPath := filepath.Join(req.Info.ProgramDirectory, "requirements.txt")
+			if _, err := os.Stat(requirementsPath); os.IsNotExist(err) {
+				return nil, fmt.Errorf("no pyproject.toml or requirements.txt found in %s", req.Info.ProgramDirectory)
+			}
+			// We're not using pip, but there's no pyproject.toml, and requirements.txt still exists. This means we
+			// haven't run `pulumi install` yet. See https://github.com/pulumi/pulumi/issues/19763
+			//
+			// Pretend we're using pip so that the package gets linked into requirements.txt and then later converted
+			// into dependencies in pyproject.toml for poetry or uv.
+			opts.Toolchain = toolchain.Pip
+		}
+	}
+
+	tc, err := toolchain.ResolveToolchain(opts)
+	if err != nil {
+		return nil, err
+	}
+	if err := tc.LinkPackages(ctx, packages); err != nil {
+		return nil, fmt.Errorf("linking packages: %w", err)
+	}
+
+	return &pulumirpc.LinkResponse{
+		ImportInstructions: instructions,
+	}, nil
 }
 
 func (host *pythonLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {

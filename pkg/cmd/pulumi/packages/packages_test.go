@@ -15,72 +15,12 @@
 package packages
 
 import (
-	"bytes"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
-
-func TestPrintNodeJsImportInstructions(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name           string
-		pkg            *schema.Package
-		options        map[string]interface{}
-		wantImportLine string
-	}{
-		{
-			name: "uses package info name when available",
-			pkg: &schema.Package{
-				Name: "aws-native",
-				Language: map[string]interface{}{
-					"nodejs": nodejs.NodePackageInfo{
-						PackageName: "@pulumi/aws-native-renamed",
-					},
-				},
-			},
-			options:        map[string]interface{}{},
-			wantImportLine: "import * as awsNative from \"@pulumi/aws-native-renamed\";\n",
-		},
-		{
-			name: "falls back to camelCase when no package info",
-			pkg: &schema.Package{
-				Name: "aws-native",
-			},
-			options:        map[string]interface{}{},
-			wantImportLine: "import * as awsNative from \"@pulumi/aws-native\";\n",
-		},
-		{
-			name: "respects typescript option",
-			pkg: &schema.Package{
-				Name: "aws-native",
-			},
-			options: map[string]interface{}{
-				"typescript": false,
-			},
-			wantImportLine: "  const awsNative = require(\"@pulumi/aws-native\");\n",
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			var buf bytes.Buffer
-			err := printNodeJsImportInstructions(&buf, tt.pkg, tt.options)
-			require.NoError(t, err)
-
-			output := buf.String()
-			assert.Contains(t, output, tt.wantImportLine, "output should contain the import line")
-		})
-	}
-}
 
 func TestSetSpecNamespace(t *testing.T) {
 	t.Parallel()
@@ -116,7 +56,6 @@ func TestSetSpecNamespace(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.pluginDownloadURL, func(t *testing.T) {
 			t.Parallel()
 

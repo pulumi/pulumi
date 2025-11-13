@@ -613,6 +613,10 @@ func (acts *updateActions) OnSnapshotWrite(step *deploy.Snapshot) error {
 	return acts.Context.SnapshotManager.Write(step)
 }
 
+func (acts *updateActions) OnRebuiltBaseState() error {
+	return acts.Context.SnapshotManager.RebuiltBaseState()
+}
+
 func (acts *updateActions) OnResourceStepPre(step deploy.Step) (any, error) {
 	// Ensure we've marked this step as observed.
 	acts.MapLock.Lock()
@@ -630,7 +634,7 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (any, error) {
 }
 
 func (acts *updateActions) OnResourceStepPost(
-	ctx interface{}, step deploy.Step,
+	ctx any, step deploy.Step,
 	status resource.Status, err error,
 ) error {
 	acts.MapLock.Lock()
@@ -825,7 +829,11 @@ func (acts *previewActions) OnSnapshotWrite(base *deploy.Snapshot) error {
 	return nil
 }
 
-func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
+func (acts *previewActions) OnRebuiltBaseState() error {
+	return nil
+}
+
+func (acts *previewActions) OnResourceStepPre(step deploy.Step) (any, error) {
 	acts.MapLock.Lock()
 	acts.Seen[step.URN()] = step
 	acts.MapLock.Unlock()
@@ -840,7 +848,7 @@ func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, er
 	return nil, nil
 }
 
-func (acts *previewActions) OnResourceStepPost(ctx interface{},
+func (acts *previewActions) OnResourceStepPost(ctx any,
 	step deploy.Step, status resource.Status, err error,
 ) error {
 	acts.MapLock.Lock()

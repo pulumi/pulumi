@@ -53,7 +53,6 @@ func TestMeasureText(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.text, func(t *testing.T) {
 			t.Parallel()
 
@@ -143,7 +142,6 @@ func TestIsTruthy(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.give, func(t *testing.T) {
 			t.Parallel()
 
@@ -239,7 +237,6 @@ func TestReadConsoleFancy(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 

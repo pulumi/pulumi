@@ -48,16 +48,13 @@ import pulumi
 import pulumi.resource
 import pulumi.runtime.config
 import pulumi.runtime.settings
+from pulumi.runtime._grpc_settings import _GRPC_CHANNEL_OPTIONS
 from pulumi.errors import (
     InputPropertiesError,
     InputPropertyError,
     InputPropertyErrorDetails,
     RunError,
 )
-
-# _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-_MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
-_GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
 
 
 class ComponentInitError(Exception):
@@ -250,6 +247,12 @@ class ProviderServicer(ResourceProviderServicer):
         if request.deletedWith != "":
             deleted_with = _create_provider_resource(request.deletedWith)
 
+        replace_with: Optional[list[pulumi.Resource]] = None
+        if request.replace_with:
+            replace_with = [
+                _create_provider_resource(urn) for urn in request.replace_with
+            ]
+
         custom_timeouts = None
         if request.customTimeouts:
             pulumi.resource.CustomTimeouts(
@@ -274,6 +277,7 @@ class ProviderServicer(ResourceProviderServicer):
             replace_on_changes=list(request.replaceOnChanges),
             retain_on_delete=request.retainOnDelete,
             deleted_with=deleted_with,
+            replace_with=replace_with,
             hooks=resource_hooks,
         )
 
@@ -486,11 +490,7 @@ def main(provider: Provider, args: list[str]) -> None:  # args not in use?
         await server.wait_for_termination()
 
     try:
-        loop = asyncio.get_event_loop()
-        try:
-            loop.run_until_complete(serve())
-        finally:
-            loop.close()
+        asyncio.run(serve())
     except KeyboardInterrupt:
         pass
 

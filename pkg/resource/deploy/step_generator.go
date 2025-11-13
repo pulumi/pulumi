@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -130,7 +131,7 @@ func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
 
 	ref, allDeps := res.GetAllDependencies()
 	if ref != "" {
-		providerRef, err := providers.ParseReference(ref)
+		providerRef, err := sdkproviders.ParseReference(ref)
 		contract.AssertNoErrorf(err, "failed to parse provider reference: %v", ref)
 		providerURN := providerRef.URN()
 		if sg.targetsActual.Contains(providerURN) {
@@ -158,7 +159,7 @@ func (sg *stepGenerator) isExcludedFromUpdate(res *resource.State) bool {
 
 	ref, allDeps := res.GetAllDependencies()
 	if ref != "" {
-		providerRef, err := providers.ParseReference(ref)
+		providerRef, err := sdkproviders.ParseReference(ref)
 		contract.AssertNoErrorf(err, "failed to parse provider reference: %v", ref)
 		providerURN := providerRef.URN()
 		if sg.excludesActual.Contains(providerURN) {
@@ -230,7 +231,7 @@ func (sg *stepGenerator) checkParent(parent resource.URN, resourceType tokens.Ty
 }
 
 // bailDiag prints the given diagnostic to the error stream and then returns a bail error with the same message.
-func (sg *stepGenerator) bailDiag(diag *diag.Diag, args ...interface{}) error {
+func (sg *stepGenerator) bailDiag(diag *diag.Diag, args ...any) error {
 	sg.deployment.Diag().Errorf(diag, args...)
 	return result.BailErrorf(diag.Message, args...)
 }
@@ -262,6 +263,14 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 	if err != nil {
 		return nil, err
 	}
+
+	old, _, alias := sg.getOldResource(urn, event.Name(), event.Type(), parent, []resource.Alias{})
+
+	var aliasUrns []resource.URN
+	if alias != "" {
+		aliasUrns = []resource.URN{alias}
+	}
+
 	newState := resource.NewState{
 		Type:                    event.Type(),
 		URN:                     urn,
@@ -280,22 +289,23 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		PropertyDependencies:    nil,
 		PendingReplacement:      false,
 		AdditionalSecretOutputs: event.AdditionalSecretOutputs(),
-		Aliases:                 nil,
+		Aliases:                 aliasUrns,
 		CustomTimeouts:          nil,
 		ImportID:                "",
 		RetainOnDelete:          false,
 		DeletedWith:             "",
+		ReplaceWith:             nil,
 		Created:                 nil,
 		Modified:                nil,
 		SourcePosition:          event.SourcePosition(),
 		StackTrace:              event.StackTrace(),
 		IgnoreChanges:           nil,
+		HideDiff:                nil,
 		ReplaceOnChanges:        nil,
 		RefreshBeforeUpdate:     false,
 		ViewOf:                  "",
 		ResourceHooks:           nil,
 	}.Make()
-	old, hasOld := sg.deployment.Olds()[urn]
 
 	if newState.ID == "" {
 		return nil, fmt.Errorf("Expected an ID for %v", urn)
@@ -314,7 +324,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 	//
 	// This operation is tentatively called "relinquish" - it semantically represents the
 	// release of a resource from the management of Pulumi.
-	if hasOld && !old.External && old.ID != event.ID() {
+	if old != nil && !old.External && old.ID != event.ID() {
 		logging.V(7).Infof(
 			"stepGenerator.GenerateReadSteps(...): replacing existing resource %s, ids don't match", urn)
 		sg.replaces[urn] = true
@@ -324,7 +334,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		}, nil
 	}
 
-	if bool(logging.V(7)) && hasOld && old.ID == event.ID() {
+	if bool(logging.V(7)) && old != nil && old.ID == event.ID() {
 		logging.V(7).Infof("stepGenerator.GenerateReadSteps(...): recognized relinquish of resource %s", urn)
 	}
 
@@ -435,7 +445,7 @@ func (sg *stepGenerator) validateSteps(steps []Step) ([]Step, error) {
 		}
 
 		if provider != "" {
-			prov, err := providers.ParseReference(provider)
+			prov, err := sdkproviders.ParseReference(provider)
 			if err != nil {
 				return nil, fmt.Errorf(
 					"could not parse provider reference %s for %s: %w",
@@ -475,23 +485,25 @@ func (sg *stepGenerator) validateSteps(steps []Step) ([]Step, error) {
 	return steps, nil
 }
 
-func (sg *stepGenerator) collapseAliasToUrn(goal *resource.Goal, alias resource.Alias) resource.URN {
+func (sg *stepGenerator) collapseAliasToUrn(
+	name string, typ tokens.Type, resParent resource.URN, alias resource.Alias,
+) resource.URN {
 	if alias.URN != "" {
 		return alias.URN
 	}
 
 	n := alias.Name
 	if n == "" {
-		n = goal.Name
+		n = name
 	}
 	t := alias.Type
 	if t == "" {
-		t = string(goal.Type)
+		t = string(typ)
 	}
 
 	parent := alias.Parent
 	if parent == "" {
-		parent = goal.Parent
+		parent = resParent
 	} else {
 		// If the parent used an alias then use it's old URN here, as that will be this resource old URN as well.
 		if parentAlias, has := sg.aliases[parent]; has {
@@ -548,7 +560,9 @@ func (sg *stepGenerator) inheritedChildAlias(
 		aliasName)
 }
 
-func (sg *stepGenerator) generateAliases(goal *resource.Goal) []resource.URN {
+func (sg *stepGenerator) generateAliases(
+	name string, typ tokens.Type, parent resource.URN, resAliases []resource.Alias,
+) []resource.URN {
 	var result []resource.URN
 	aliases := make(map[resource.URN]struct{}, 0)
 
@@ -559,19 +573,19 @@ func (sg *stepGenerator) generateAliases(goal *resource.Goal) []resource.URN {
 		}
 	}
 
-	for _, alias := range goal.Aliases {
-		urn := sg.collapseAliasToUrn(goal, alias)
+	for _, alias := range resAliases {
+		urn := sg.collapseAliasToUrn(name, typ, parent, alias)
 		addAlias(urn)
 	}
 	// Now multiply out any aliases our parent had.
-	if goal.Parent != "" {
-		if parentAlias, has := sg.aliases[goal.Parent]; has {
-			addAlias(sg.inheritedChildAlias(goal.Type, goal.Name, goal.Parent.Name(), parentAlias))
-			for _, alias := range goal.Aliases {
-				childAlias := sg.collapseAliasToUrn(goal, alias)
+	if parent != "" {
+		if parentAlias, has := sg.aliases[parent]; has {
+			addAlias(sg.inheritedChildAlias(typ, name, parent.Name(), parentAlias))
+			for _, alias := range resAliases {
+				childAlias := sg.collapseAliasToUrn(name, typ, parent, alias)
 				aliasedChildType := childAlias.Type()
 				aliasedChildName := childAlias.Name()
-				inheritedAlias := sg.inheritedChildAlias(aliasedChildType, aliasedChildName, goal.Parent.Name(), parentAlias)
+				inheritedAlias := sg.inheritedChildAlias(aliasedChildType, aliasedChildName, parent.Name(), parentAlias)
 				addAlias(inheritedAlias)
 			}
 		}
@@ -580,25 +594,12 @@ func (sg *stepGenerator) generateAliases(goal *resource.Goal) []resource.URN {
 	return result
 }
 
-func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, bool, error) {
-	var invalid bool // will be set to true if this object fails validation.
-
-	goal := event.Goal()
-
-	// Some goal settings are based on the parent settings so make sure our parent is correct.
-	parent, err := sg.checkParent(goal.Parent, goal.Type)
-	if err != nil {
-		return nil, false, err
-	}
-	goal.Parent = parent
-
-	urn, err := sg.generateURN(goal.Parent, goal.Type, goal.Name)
-	if err != nil {
-		return nil, false, err
-	}
-
+func (sg *stepGenerator) getOldResource(
+	urn resource.URN, name string, typ tokens.Type, parent resource.URN, resAliases []resource.Alias,
+) (*resource.State, bool, resource.URN) {
+	invalid := false
 	// Generate the aliases for this resource.
-	aliases := sg.generateAliases(goal)
+	aliases := sg.generateAliases(name, typ, parent, resAliases)
 	// Log the aliases we're going to use to help with debugging aliasing issues.
 	logging.V(7).Infof("Generated aliases for %s: %v", urn, aliases)
 
@@ -611,8 +612,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or
 	// to diff.  We look up first by URN and then by any provided aliases.  If it is found using an
 	// alias, record that alias so that we do not delete the aliased resource later.
+
 	var old *resource.State
-	var alias []resource.Alias
+	var alias resource.URN
 	// Important: Check the URN first, then aliases. Otherwise we may pick the wrong resource which
 	// could lead to a corrupt snapshot.
 	for _, urnOrAlias := range append([]resource.URN{urn}, aliases...) {
@@ -638,7 +640,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 				// NOTE: we save the URN of the existing resource so that the snapshotter can replace references to the
 				// existing resource with the URN of the newly-registered resource. We do not need to save any of the
 				// resource's other possible aliases.
-				alias = []resource.Alias{{URN: urnOrAlias}}
+				alias = urnOrAlias
 				// Save the alias actually being used so we can look it up later if anything has this as a parent
 				sg.aliases[urn] = urnOrAlias
 
@@ -649,9 +651,31 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		}
 	}
 
-	aliasUrns := make([]resource.URN, len(alias))
-	for i, a := range alias {
-		aliasUrns[i] = a.URN
+	return old, invalid, alias
+}
+
+func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, bool, error) {
+	var invalid bool // will be set to true if this object fails validation.
+
+	goal := event.Goal()
+
+	// Some goal settings are based on the parent settings so make sure our parent is correct.
+	parent, err := sg.checkParent(goal.Parent, goal.Type)
+	if err != nil {
+		return nil, false, err
+	}
+	goal.Parent = parent
+
+	urn, err := sg.generateURN(goal.Parent, goal.Type, goal.Name)
+	if err != nil {
+		return nil, false, err
+	}
+
+	old, invalid, alias := sg.getOldResource(urn, goal.Name, goal.Type, goal.Parent, goal.Aliases)
+
+	var aliasUrns []resource.URN
+	if alias != "" {
+		aliasUrns = []resource.URN{alias}
 	}
 
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
@@ -704,17 +728,19 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		ImportID:                goal.ID,
 		RetainOnDelete:          retainOnDelete,
 		DeletedWith:             goal.DeletedWith,
+		ReplaceWith:             goal.ReplaceWith,
 		Created:                 createdAt,
 		Modified:                modifiedAt,
 		SourcePosition:          goal.SourcePosition,
 		StackTrace:              goal.StackTrace,
 		IgnoreChanges:           goal.IgnoreChanges,
+		HideDiff:                goal.HideDiff,
 		ReplaceOnChanges:        goal.ReplaceOnChanges,
 		RefreshBeforeUpdate:     refreshBeforeUpdate,
 		ViewOf:                  "",
 		ResourceHooks:           goal.ResourceHooks,
 	}.Make()
-	if providers.IsProviderType(goal.Type) {
+	if sdkproviders.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
 		for _, aliasURN := range aliasUrns {
 			sg.providers[aliasURN] = new
@@ -728,7 +754,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	if old != nil &&
 		sg.refresh &&
 		goal.Custom &&
-		!providers.IsProviderType(goal.Type) {
+		!sdkproviders.IsProviderType(goal.Type) {
 		cts := &promise.CompletionSource[*resource.State]{}
 		// Set up the cts to trigger a continueStepsFromRefresh when it resolves
 		go func() {
@@ -743,13 +769,13 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 				sg.refreshStates[old] = state
 				sg.refreshAliasLock.Unlock()
 			}
-			contract.AssertNoErrorf(err, "expected a result from refresh step")
 			sg.events <- &continueResourceRefreshEvent{
 				RegisterResourceEvent: event,
 				urn:                   urn,
 				old:                   state,
 				new:                   new,
 				invalid:               invalid,
+				err:                   err,
 			}
 		}()
 
@@ -798,7 +824,7 @@ func (sg *stepGenerator) hasSkippedDependencies(new *resource.State) (bool, erro
 	}
 
 	if provider != "" {
-		prov, err := providers.ParseReference(provider)
+		prov, err := sdkproviders.ParseReference(provider)
 		if err != nil {
 			return false, fmt.Errorf(
 				"could not parse provider reference %s for %s: %w",
@@ -820,6 +846,10 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 	urn := event.URN()
 	old := event.Old()
 	new := event.New()
+	err := event.Error()
+	if err != nil {
+		return nil, false, err
+	}
 
 	// If this is a refresh deployment we're _always_ going to do a skip create or refresh step here for
 	// custom non-provider resources. We also need to skip refreshes for custom provider resources if they
@@ -829,8 +859,8 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 		if err != nil {
 			return nil, false, err
 		}
-		if goal.Custom && !providers.IsProviderType(goal.Type) ||
-			providers.IsProviderType(goal.Type) && hasSkippedDeps {
+		if goal.Custom && !sdkproviders.IsProviderType(goal.Type) ||
+			sdkproviders.IsProviderType(goal.Type) && hasSkippedDeps {
 			// Custom resources that aren't in state just have to be skipped.
 			if old == nil {
 				sg.sames[urn] = true
@@ -860,7 +890,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 		}
 
 		if provider != "" {
-			prov, err := providers.ParseReference(provider)
+			prov, err := sdkproviders.ParseReference(provider)
 			if err != nil {
 				return nil, false, fmt.Errorf(
 					"could not parse provider reference %s for %s: %w",
@@ -885,7 +915,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 
 		// Otherwise we've got our dependencies, if this is a custom non-provider resource we can either same
 		// it or skip create it (we don't want to actually do real resource creates and updates in destroy).
-		if goal.Custom && !providers.IsProviderType(goal.Type) {
+		if goal.Custom && !sdkproviders.IsProviderType(goal.Type) {
 			// Custom resources that aren't in state just have to be skipped creates.
 			if old == nil {
 				sg.skippedCreates[urn] = true
@@ -991,11 +1021,13 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 					ImportID:                "",
 					RetainOnDelete:          new.RetainOnDelete,
 					DeletedWith:             goal.DeletedWith,
+					ReplaceWith:             goal.ReplaceWith,
 					Created:                 new.Created,
 					Modified:                new.Modified,
 					SourcePosition:          goal.SourcePosition,
 					StackTrace:              goal.StackTrace,
 					IgnoreChanges:           goal.IgnoreChanges,
+					HideDiff:                goal.HideDiff,
 					ReplaceOnChanges:        goal.ReplaceOnChanges,
 					RefreshBeforeUpdate:     new.RefreshBeforeUpdate,
 					ViewOf:                  "",
@@ -1106,7 +1138,8 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 		}
 	}
 
-	isImplicitlyTargetedResource := providers.IsProviderType(urn.Type()) || urn.QualifiedType() == resource.RootStackType
+	isImplicitlyTargetedResource := sdkproviders.IsProviderType(urn.Type()) ||
+		urn.QualifiedType() == resource.RootStackType
 
 	// Internally managed resources are under Pulumi's control and changes or creations should be invisible to
 	// the user, we also implicitly target providers (both default and explicit, see
@@ -1401,7 +1434,7 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
 			// We need to check that we have the provider for this resource.
 			if old.Provider != "" {
-				ref, err := providers.ParseReference(old.Provider)
+				ref, err := sdkproviders.ParseReference(old.Provider)
 				if err != nil {
 					return nil, false, err
 				}
@@ -1530,10 +1563,15 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 									"deleted with dependency %s of untargeted resource %s has no old state",
 									dep.URN, urn,
 								)
+							case resource.ResourceReplaceWith:
+								message = fmt.Sprintf(
+									"replace with dependency %s of untargeted resource %s has no old state",
+									dep.URN, urn,
+								)
 							}
 
 							//nolint:govet
-							return nil, result.BailErrorf(message)
+							return nil, result.BailErrorf("%s", message)
 						}
 
 						depSteps, err := getDependencySteps(depOld, nil)
@@ -1758,8 +1796,16 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			// If the goal state specified an ID, issue an error: the replacement will change the ID, and is
 			// therefore incompatible with the goal state.
 			if goal.ID != "" {
-				const message = "previously-imported resources that still specify an ID may not be replaced; " +
-					"please remove the `import` declaration from your program"
+				replaceDiff := strings.Join(
+					slice.Map(diff.ReplaceKeys, func(k resource.PropertyKey) string {
+						old := old.Inputs[k].String()
+						new := new.Inputs[k].String()
+						return fmt.Sprintf("%s: %s => %s", k, old, new)
+					}),
+					"\n")
+
+				message := "previously-imported resources that still specify an ID may not be replaced; " +
+					"please remove the `import` declaration from your program;\n" + replaceDiff
 				if sg.deployment.opts.DryRun {
 					sg.deployment.ctx.Diag.Warningf(diag.StreamMessage(urn, message, 0))
 				} else {
@@ -1829,6 +1875,12 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 				if err != nil {
 					return nil, err
 				}
+
+				replacedWith, err := sg.findResourcesReplacedWith(urn)
+				if err != nil {
+					return nil, err
+				}
+				toReplace = append(toReplace, replacedWith...)
 
 				// Deletions must occur in reverse dependency order, and `deps` is returned in dependency
 				// order, so we iterate in reverse.
@@ -2321,6 +2373,12 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 			return nil, err
 		}
 
+		replacedWith, err := sg.findResourcesReplacedWith(target)
+		if err != nil {
+			return nil, err
+		}
+		deps = append(deps, replacedWith...)
+
 		for _, dep := range deps {
 			logging.V(7).Infof("GenerateDeletes(...): Adding dependent: %v", dep.res.URN)
 			resourcesToDelete[dep.res.URN] = true
@@ -2491,11 +2549,11 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 		return true, nil
 	}
 
-	oldRef, err := providers.ParseReference(old.Provider)
+	oldRef, err := sdkproviders.ParseReference(old.Provider)
 	if err != nil {
 		return false, err
 	}
-	newRef, err := providers.ParseReference(new.Provider)
+	newRef, err := sdkproviders.ParseReference(new.Provider)
 	if err != nil {
 		return false, err
 	}
@@ -2556,6 +2614,20 @@ func (sg *stepGenerator) diff(
 	// If this resource is marked for replacement, just return a "replace" diff that blames the id.
 	if sg.isTargetedReplace(urn, old) {
 		return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"id"}}, nil, nil
+	}
+
+	// Check if this resource should be replaced because any resource in its ReplaceWith list is being replaced.
+	if new.ReplaceWith != nil {
+		for _, replaceWithURN := range new.ReplaceWith {
+			if sg.replaces[replaceWithURN] {
+				logging.V(7).Infof(
+					"Resource %v marked for replacement because %v (in its ReplaceWith list) is being replaced",
+					urn,
+					replaceWithURN,
+				)
+				return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"replaceWith"}}, nil, nil
+			}
+		}
 	}
 
 	// Before diffing the resource, diff the provider field. If the provider field changes, we may or may
@@ -2656,7 +2728,7 @@ func issueCheckErrors(deployment *Deployment, new *resource.State, urn resource.
 }
 
 // issueCheckErrors prints any check errors to the given printer function.
-func issueCheckFailures(printf func(*diag.Diag, ...interface{}), new *resource.State, urn resource.URN,
+func issueCheckFailures(printf func(*diag.Diag, ...any), new *resource.State, urn resource.URN,
 	failures []plugin.CheckFailure,
 ) bool {
 	if len(failures) == 0 {
@@ -2709,17 +2781,17 @@ func (sg *stepGenerator) loadResourceProvider(
 
 	// If this resource is a provider resource, use the deployment's provider registry for its CRUD operations.
 	// Otherwise, resolve the the resource's provider reference.
-	if providers.IsProviderType(typ) {
+	if sdkproviders.IsProviderType(typ) {
 		return sg.deployment.providers, nil
 	}
 
 	contract.Assertf(provider != "", "must have a provider for custom resource %v", urn)
-	ref, refErr := providers.ParseReference(provider)
+	ref, refErr := sdkproviders.ParseReference(provider)
 	if refErr != nil {
 		return nil, sg.bailDiag(diag.GetBadProviderError(urn), provider, urn, refErr)
 	}
-	if providers.IsDenyDefaultsProvider(ref) {
-		pkg := providers.GetDeniedDefaultProviderPkg(ref)
+	if sdkproviders.IsDenyDefaultsProvider(ref) {
+		pkg := sdkproviders.GetDeniedDefaultProviderPkg(ref)
 		return nil, sg.bailDiag(diag.GetDefaultProviderDenied(urn), pkg, urn)
 	}
 	p, ok := sg.deployment.GetProvider(ref)
@@ -2736,7 +2808,7 @@ func (sg *stepGenerator) getProviderResource(urn resource.URN, provider string) 
 
 	// All callers of this method are on paths that have previously validated that the provider
 	// reference can be parsed correctly and has a provider resource in the map.
-	ref, err := providers.ParseReference(provider)
+	ref, err := sdkproviders.ParseReference(provider)
 	contract.AssertNoErrorf(err, "failed to parse provider reference")
 	result := sg.providers[ref.URN()]
 	contract.Assertf(result != nil, "provider missing from step generator providers map")
@@ -2883,7 +2955,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 
 		// If the resource's provider is in the replace set, we must replace this resource.
 		if r.Provider != "" {
-			ref, err := providers.ParseReference(r.Provider)
+			ref, err := sdkproviders.ParseReference(r.Provider)
 			if err != nil {
 				return false, nil, err
 			}
@@ -2918,7 +2990,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 		}
 
 		// We're going to have to call diff on this resources provider so ensure that we have it created
-		if !providers.IsProviderType(r.Type) {
+		if !sdkproviders.IsProviderType(r.Type) {
 			err := sg.deployment.EnsureProvider(r.Provider)
 			if err != nil {
 				return false, nil, fmt.Errorf("could not load provider for resource %v: %w", r.URN, err)
@@ -2988,6 +3060,31 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 	return toReplace, nil
 }
 
+// If we want resource X to `replace_with` resource Y, then every time we want
+// to replace Y, we have to search for replace X to include it in the
+// replacement set.
+func (sg *stepGenerator) findResourcesReplacedWith(urn resource.URN) ([]dependentReplace, error) {
+	resources := []dependentReplace{}
+	seen := map[resource.URN]bool{}
+
+	sg.deployment.news.Range(func(check resource.URN, state *resource.State) bool {
+		if !seen[check] && state.ReplaceWith != nil && slices.Contains(state.ReplaceWith, urn) {
+			resources = append(resources, dependentReplace{res: state, keys: []resource.PropertyKey{}})
+			seen[check] = true
+		}
+		return true
+	})
+
+	for check, state := range sg.deployment.olds {
+		if !seen[check] && state.ReplaceWith != nil && slices.Contains(state.ReplaceWith, urn) {
+			resources = append(resources, dependentReplace{res: state, keys: []resource.PropertyKey{}})
+			seen[check] = true
+		}
+	}
+
+	return resources, nil
+}
+
 func (sg *stepGenerator) AnalyzeResources() error {
 	analyzers := sg.deployment.ctx.Host.ListAnalyzers()
 
@@ -3035,8 +3132,8 @@ func (sg *stepGenerator) AnalyzeResources() error {
 			// See https://github.com/pulumi/pulumi/issues/19879 for a case of this.
 			var providerResource *resource.State
 			if v.Provider != "" {
-				var ref providers.Reference
-				ref, err = providers.ParseReference(v.Provider)
+				var ref sdkproviders.Reference
+				ref, err = sdkproviders.ParseReference(v.Provider)
 				contract.AssertNoErrorf(err, "failed to parse provider reference")
 				var has bool
 				providerResource, has = sg.providers[ref.URN()]

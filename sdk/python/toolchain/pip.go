@@ -24,7 +24,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"sort"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -63,6 +65,78 @@ func (p *pip) InstallDependencies(ctx context.Context, cwd string, useLanguageVe
 		showOutput,
 		infoWriter,
 		errorWriter)
+}
+
+func (p *pip) LinkPackages(ctx context.Context, packages map[string]string) error {
+	logging.V(9).Infof("pip linking %s", packages)
+	fPath := filepath.Join(p.root, "requirements.txt")
+	fBytes, err := os.ReadFile(fPath)
+	if err != nil {
+		return fmt.Errorf("error opening requirements.txt: %w", err)
+	}
+
+	// Match the file's line endings when adding the package specifier.
+	usesCRLF := strings.Contains(string(fBytes), "\r\n")
+	lineEnding := "\n"
+	if usesCRLF {
+		lineEnding = "\r\n"
+	}
+
+	lines := regexp.MustCompile("\r?\n").Split(string(fBytes), -1)
+
+	// If the last line is empty, drop it to avoid adding extra blank lines
+	hasTrailingNewline := false
+	if len(lines) > 0 && strings.TrimSpace(lines[len(lines)-1]) == "" {
+		lines = lines[:len(lines)-1]
+		hasTrailingNewline = true
+	}
+
+	packagePaths := make(map[string]bool)
+	for _, path := range packages {
+		packagePaths[path] = true
+	}
+
+	packageNameRegex := regexp.MustCompile(`^([a-zA-Z0-9_-]+)`)
+
+	filteredLines := make([]string, 0, len(lines))
+	for _, originalLine := range lines {
+		line := strings.TrimSpace(originalLine)
+		if line == "" { // preserve whitespace only lines
+			filteredLines = append(filteredLines, originalLine)
+			continue
+		}
+		// The packages some_thing and some-thing are the same, normalize for comparison.
+		compareLine := strings.ReplaceAll(line, "-", "_")
+		matches := packageNameRegex.FindStringSubmatch(compareLine)
+		if len(matches) > 1 {
+			matchesPackageName := packages[matches[1]] != ""
+			matchesPackagePath := packagePaths[line]
+			if matchesPackageName || matchesPackagePath {
+				continue
+			}
+		}
+		filteredLines = append(filteredLines, originalLine)
+	}
+	lines = filteredLines
+
+	sortedPaths := make([]string, 0, len(packages))
+	for _, path := range packages {
+		sortedPaths = append(sortedPaths, path)
+	}
+	sort.Strings(sortedPaths)
+	lines = append(lines, sortedPaths...)
+
+	// Add back the trailing newline
+	if hasTrailingNewline {
+		lines = append(lines, "")
+	}
+
+	fBytes = []byte(strings.Join(lines, lineEnding))
+	err = os.WriteFile(fPath, fBytes, 0o600)
+	if err != nil {
+		return fmt.Errorf("could not write requirements.txt: %w", err)
+	}
+	return nil
 }
 
 func (p *pip) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error) {

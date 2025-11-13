@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -56,7 +56,7 @@ func NewPluginCmd() *cobra.Command {
 	cmd.AddCommand(newPluginInstallCmd(packageResolutionOptions))
 	cmd.AddCommand(newPluginLsCmd())
 	cmd.AddCommand(newPluginRmCmd())
-	cmd.AddCommand(newPluginRunCmd())
+	cmd.AddCommand(newPluginRunCmd(pkgWorkspace.Instance))
 
 	return cmd
 }

@@ -66,8 +66,6 @@ func TestStateRepair_ExitsIfTheStateIsAlreadyValid(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
-
 		t.Run(c.name, func(t *testing.T) {
 			fx := newStateRepairCmdFixture(t, []*resource.State{})
 
@@ -333,6 +331,7 @@ func newStateRepairCmdFixture(
 			diag.Sink,
 			string,
 			*workspace.Project,
+			bool,
 			bool,
 			colors.Colorization,
 		) (backend.Backend, error) {

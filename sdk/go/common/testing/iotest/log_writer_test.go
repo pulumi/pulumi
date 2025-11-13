@@ -107,7 +107,6 @@ func TestLogWriter(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -163,7 +162,7 @@ type fakeT struct {
 	cleanups []func()
 }
 
-func (t *fakeT) Logf(msg string, args ...interface{}) {
+func (t *fakeT) Logf(msg string, args ...any) {
 	t.msgs = append(t.msgs, fmt.Sprintf(msg, args...))
 }
 

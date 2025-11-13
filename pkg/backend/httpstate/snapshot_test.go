@@ -200,10 +200,18 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	persister := initPersister()
 
-	err := persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{URN: resource.URN("urn-1")},
-		},
+	deploymentV3, version, features, err := stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{URN: resource.URN("urn-1")},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
 	})
 	require.NoError(t, err)
 
@@ -216,13 +224,20 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	// Test 2: no delta, no v4: v4 deployment sent as v3.
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{
-				URN:                 resource.URN("urn-1"),
-				RefreshBeforeUpdate: true, // This is a v4 feature.
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:                 resource.URN("urn-1"),
+					RefreshBeforeUpdate: true, // This is a v4 feature.
+				},
 			},
-		},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
 	})
 	require.NoError(t, err)
 
@@ -241,10 +256,20 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 	delta = true
 	persister = initPersister()
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{URN: resource.URN("urn-1")},
-		},
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN: resource.URN("urn-1"),
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
 	})
 	require.NoError(t, err)
 
@@ -257,11 +282,18 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	// Test 4: delta, no v4: second request delta: v3 deployment sent as v3.
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{URN: resource.URN("urn-1")},
-			{URN: resource.URN("urn-2")},
-		},
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{URN: resource.URN("urn-1")},
+				{URN: resource.URN("urn-2")},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
 	})
 	require.NoError(t, err)
 
@@ -277,13 +309,21 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	persister = initPersister()
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{
-				URN:                 resource.URN("urn-1"),
-				RefreshBeforeUpdate: true, // This is a v4 feature.
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:                 resource.URN("urn-1"),
+					RefreshBeforeUpdate: true, // This is a v4 feature.
+				},
 			},
-		},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
 	})
 	require.NoError(t, err)
 
@@ -299,14 +339,22 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	// Test 4: delta, no v4: second request delta: v4 deployment sent as v3.
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{
-				URN:                 resource.URN("urn-1"),
-				RefreshBeforeUpdate: true, // This is a v4 feature.
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:                 resource.URN("urn-1"),
+					RefreshBeforeUpdate: true, // This is a v4 feature.
+				},
+				{URN: resource.URN("urn-2")},
 			},
-			{URN: resource.URN("urn-2")},
-		},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
 	})
 	require.NoError(t, err)
 
@@ -328,10 +376,19 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	persister = initPersister()
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{URN: resource.URN("urn-1")},
-		},
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN: resource.URN("urn-1"),
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
 	})
 	require.NoError(t, err)
 
@@ -344,13 +401,20 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	// Test 2: no delta, v4: v4 deployment sent as v4.
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{
-				URN:                 resource.URN("urn-1"),
-				RefreshBeforeUpdate: true, // This is a v4 feature.
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:                 resource.URN("urn-1"),
+					RefreshBeforeUpdate: true, // This is a v4 feature.
+				},
 			},
-		},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
 	})
 	require.NoError(t, err)
 
@@ -369,10 +433,19 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 	delta = true
 	persister = initPersister()
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{URN: resource.URN("urn-1")},
-		},
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN: resource.URN("urn-1"),
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
 	})
 	require.NoError(t, err)
 
@@ -385,11 +458,22 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	// Test 4: delta, v4: second request delta: v3 deployment sent as v3.
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{URN: resource.URN("urn-1")},
-			{URN: resource.URN("urn-2")},
-		},
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN: resource.URN("urn-1"),
+				},
+				{
+					URN: resource.URN("urn-2"),
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
 	})
 	require.NoError(t, err)
 
@@ -405,13 +489,21 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	persister = initPersister()
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{
-				URN:                 resource.URN("urn-1"),
-				RefreshBeforeUpdate: true, // This is a v4 feature.
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:                 resource.URN("urn-1"),
+					RefreshBeforeUpdate: true, // This is a v4 feature.
+				},
 			},
-		},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
 	})
 	require.NoError(t, err)
 
@@ -427,14 +519,20 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	// Test 4: delta, v4: second request delta: v4 deployment sent as v4.
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{
-				URN:                 resource.URN("urn-1"),
-				RefreshBeforeUpdate: true, // This is a v4 feature.
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:                 resource.URN("urn-1"),
+					RefreshBeforeUpdate: true, // This is a v4 feature.
+				},
 			},
-			{URN: resource.URN("urn-2")},
-		},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
 	})
 	require.NoError(t, err)
 
@@ -446,7 +544,6 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 			URN:                 resource.URN("urn-1"),
 			RefreshBeforeUpdate: true,
 		},
-		{URN: resource.URN("urn-2")},
 	}, typedPersistedState().Resources)
 }
 
@@ -504,14 +601,14 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 		err := json.NewDecoder(lastRequest.Body).Decode(&ret)
 		assert.Equal(t, "/api/stacks/owner/project/stack/update/update-id/checkpointverbatim", lastRequest.URL.Path)
 		require.NoError(t, err)
-		return
+		return ret
 	}
 
 	lastRequestAsDelta := func() (ret apitype.PatchUpdateCheckpointDeltaRequest) {
 		err := json.NewDecoder(lastRequest.Body).Decode(&ret)
 		assert.Equal(t, "/api/stacks/owner/project/stack/update/update-id/checkpointdelta", lastRequest.URL.Path)
 		require.NoError(t, err)
-		return
+		return ret
 	}
 
 	handleVerbatim := func(req apitype.PatchUpdateVerbatimCheckpointRequest) {
@@ -602,10 +699,19 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	// Req 1: the first request sends indented data verbatim to establish a good baseline state for further diffs.
 
-	err := persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{URN: resource.URN("urn-1")},
-		},
+	deploymentV3, version, features, err := stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN: resource.URN("urn-1"),
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
 	})
 	require.NoError(t, err)
 
@@ -624,11 +730,22 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	// Req 2: then it switches to sending deltas as text diffs together with SHA-256 checksum of the expected
 	// resulting text representation of state.
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{URN: resource.URN("urn-1")},
-			{URN: resource.URN("urn-2")},
-		},
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN: resource.URN("urn-1"),
+				},
+				{
+					URN: resource.URN("urn-2"),
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
 	})
 	require.NoError(t, err)
 
@@ -647,10 +764,19 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	// Req 3: and continues using the diff protocol.
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{URN: resource.URN("urn-1")},
-		},
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN: resource.URN("urn-1"),
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
 	})
 	require.NoError(t, err)
 
@@ -668,13 +794,20 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	// Req 4: then use a v4 deployment schema feature.
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{
-				URN:                 resource.URN("urn-1"),
-				RefreshBeforeUpdate: true, // This is a v4 feature.
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:                 resource.URN("urn-1"),
+					RefreshBeforeUpdate: true, // This is a v4 feature.
+				},
 			},
-		},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
 	})
 	require.NoError(t, err)
 
@@ -864,10 +997,10 @@ type diffStackCase interface {
 	getSnaps(t testing.TB) []*apitype.DeploymentV3
 }
 
-func testOrBenchmarkDiffStack[TB testingTB[TB]](
+func testOrBenchmarkDiffStack[TB testingTB[TB], Case diffStackCase](
 	tb TB,
 	inner diffStackTestFunc[TB],
-	cases []diffStackCase,
+	cases []Case,
 ) {
 	for _, c := range cases {
 		name, snaps := c.getName(), c.getSnaps(tb)
@@ -894,43 +1027,50 @@ func (c dynamicStackCase) getSnaps(tb testing.TB) []*apitype.DeploymentV3 {
 	return generateSnapshots(tb, r, c.resourceCount, c.resourcePayloadBytes)
 }
 
-var dynamicCases = []diffStackCase{
-	dynamicStackCase{seed: 0, resourceCount: 1, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 2, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 4, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 8, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 16, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 32, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 48, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 64, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 1, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 2, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 4, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 8, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 16, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 32, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 48, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 64, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 1, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 2, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 4, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 8, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 16, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 32, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 48, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 64, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 2, resourcePayloadBytes: 131072},
-	dynamicStackCase{seed: 0, resourceCount: 4, resourcePayloadBytes: 131072},
-	dynamicStackCase{seed: 0, resourceCount: 8, resourcePayloadBytes: 131072},
-	dynamicStackCase{seed: 0, resourceCount: 16, resourcePayloadBytes: 131072},
-	dynamicStackCase{seed: 0, resourceCount: 32, resourcePayloadBytes: 131072},
-	dynamicStackCase{seed: 0, resourceCount: 48, resourcePayloadBytes: 131072},
-	dynamicStackCase{seed: 0, resourceCount: 64, resourcePayloadBytes: 131072},
-	dynamicStackCase{seed: 0, resourceCount: 1, resourcePayloadBytes: 524288},
-	dynamicStackCase{seed: 0, resourceCount: 2, resourcePayloadBytes: 524288},
-	dynamicStackCase{seed: 0, resourceCount: 4, resourcePayloadBytes: 524288},
-	dynamicStackCase{seed: 0, resourceCount: 8, resourcePayloadBytes: 524288},
-	dynamicStackCase{seed: 0, resourceCount: 16, resourcePayloadBytes: 524288},
+func (c dynamicStackCase) pseudoRandomString(r *rand.Rand, desiredLength int) string {
+	buf := make([]byte, desiredLength)
+	r.Read(buf)
+	text := base64.StdEncoding.EncodeToString(buf)
+	return text[0:desiredLength]
+}
+
+var dynamicCases = []dynamicStackCase{
+	{seed: 0, resourceCount: 1, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 2, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 4, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 8, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 16, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 32, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 48, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 64, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 1, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 2, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 4, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 8, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 16, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 32, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 48, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 64, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 1, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 2, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 4, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 8, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 16, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 32, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 48, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 64, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 2, resourcePayloadBytes: 131072},
+	{seed: 0, resourceCount: 4, resourcePayloadBytes: 131072},
+	{seed: 0, resourceCount: 8, resourcePayloadBytes: 131072},
+	{seed: 0, resourceCount: 16, resourcePayloadBytes: 131072},
+	{seed: 0, resourceCount: 32, resourcePayloadBytes: 131072},
+	{seed: 0, resourceCount: 48, resourcePayloadBytes: 131072},
+	{seed: 0, resourceCount: 64, resourcePayloadBytes: 131072},
+	{seed: 0, resourceCount: 1, resourcePayloadBytes: 524288},
+	{seed: 0, resourceCount: 2, resourcePayloadBytes: 524288},
+	{seed: 0, resourceCount: 4, resourcePayloadBytes: 524288},
+	{seed: 0, resourceCount: 8, resourcePayloadBytes: 524288},
+	{seed: 0, resourceCount: 16, resourcePayloadBytes: 524288},
 }
 
 func BenchmarkDiffStack(b *testing.B) {

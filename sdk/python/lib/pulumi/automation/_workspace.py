@@ -14,7 +14,8 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Callable, Optional
+from typing import Any, Optional
+from collections.abc import Callable
 from collections.abc import Mapping, Awaitable
 from dataclasses import dataclass
 
@@ -302,6 +303,16 @@ class Workspace(ABC):
         :param stack_name: The name of the stack.
         :param config: A mapping of key to ConfigValue to set to config.
         :param path: The keys contain a path to a property in a map or list to set.
+        """
+
+    @abstractmethod
+    def set_all_config_json(self, stack_name: str, config_json: str) -> None:
+        """
+        Sets all config values from a JSON string for the specified stack name.
+        The JSON string should be in the format produced by "pulumi config --json".
+
+        :param stack_name: The name of the stack.
+        :param config_json: A JSON string containing the configuration values to set.
         """
 
     @abstractmethod

@@ -37,6 +37,7 @@ import (
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -47,6 +48,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+// encrypterFactory provides encryption functionality for configuration values.
+type encrypterFactory interface {
+	GetEncrypter(
+		ctx context.Context, stack backend.Stack, ps *workspace.ProjectStack,
+	) (config.Encrypter, cmdStack.SecretsManagerState, error)
+}
 
 func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var stack string
@@ -137,7 +145,8 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 	cmd.AddCommand(newConfigRmCmd(ws, &stack))
 	cmd.AddCommand(newConfigRmAllCmd(ws, &stack))
 	cmd.AddCommand(newConfigSetCmd(ws, &stack))
-	cmd.AddCommand(newConfigSetAllCmd(ws, &stack))
+	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
+	cmd.AddCommand(newConfigSetAllCmd(ws, &stack, cmdBackend.DefaultLoginManager, &ssml))
 	cmd.AddCommand(newConfigRefreshCmd(ws, &stack))
 	cmd.AddCommand(newConfigCopyCmd(ws, &stack))
 	cmd.AddCommand(newConfigEnvCmd(ws, &stack))
@@ -772,10 +781,13 @@ func (c *configSetCmd) Run(
 	return cmdStack.SaveProjectStack(ctx, s, ps)
 }
 
-func newConfigSetAllCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
+func newConfigSetAllCmd(
+	ws pkgWorkspace.Context, stack *string, lm cmdBackend.LoginManager, ssml encrypterFactory,
+) *cobra.Command {
 	var plaintextArgs []string
 	var secretArgs []string
 	var path bool
+	var jsonArg string
 
 	setCmd := &cobra.Command{
 		Use:   "set-all --plaintext key1=value1 --plaintext key2=value2 --secret key3=value3",
@@ -790,10 +802,20 @@ func newConfigSetAllCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 			"  - `pulumi config set-all --path --plaintext parent.nested=value --plaintext parent.other=value2` \n" +
 			"    will set the value of `parent` to a map `{nested: value, other: value2}`.\n" +
 			"  - `pulumi config set-all --path --plaintext '[\"parent.name\"].[\"nested.name\"]'=value` will set the \n" +
-			"    value of `parent.name` to a map `nested.name: value`.",
+			"    value of `parent.name` to a map `nested.name: value`.\n\n" +
+			"The `--json` flag can be used to pass a JSON string from which values should be read.\n" +
+			"The JSON string should follow the same format as that produced by `pulumi config --json`. If the\n" +
+			"`--json` option is passed, the `--plaintext`, `--secret` and `--path` flags must not be used.",
 		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+
+			// If the --json option is passed, the --plaintext, --secret and --path arguments are not allowed.
+			nonJSONArgs := len(plaintextArgs) > 0 || len(secretArgs) > 0 || path
+			if jsonArg != "" && nonJSONArgs {
+				return errors.New("the --json option cannot be used with the --plaintext, --secret or --path options")
+			}
+
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -808,7 +830,7 @@ func newConfigSetAllCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 				ctx,
 				cmdutil.Diag(),
 				ws,
-				cmdBackend.DefaultLoginManager,
+				lm,
 				*stack,
 				cmdStack.OfferNew,
 				opts,
@@ -835,28 +857,97 @@ func newConfigSetAllCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 				}
 			}
 
-			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
+			// We only want to fetch the stack encrypter once, and then only if we actually have one or more secrets to
+			// encrypt. We thus set up a little helper function to encrypt a value, caching the crypter once we've initially
+			// loaded it.
+			var c config.Encrypter
+			encrypt := func(plaintext string) (string, error) {
+				var err error
+				if c == nil {
+					// We're always going to save, so can ignore the bool for if GetEncrypter changed the config data.
+					c, _, err = ssml.GetEncrypter(ctx, stack, ps)
+					if err != nil {
+						return "", err
+					}
+				}
+
+				enc, err := c.EncryptValue(ctx, plaintext)
+				if err != nil {
+					return "", err
+				}
+
+				return enc, nil
+			}
 
 			for _, sArg := range secretArgs {
 				key, value, err := parseKeyValuePair(sArg, path)
 				if err != nil {
 					return err
 				}
-				// We're always going to save, so can ignore the bool for if getStackEncrypter changed the
-				// config data.
-				c, _, cerr := ssml.GetEncrypter(ctx, stack, ps)
-				if cerr != nil {
-					return cerr
-				}
-				enc, eerr := c.EncryptValue(ctx, value)
-				if eerr != nil {
-					return eerr
+
+				enc, err := encrypt(value)
+				if err != nil {
+					return err
 				}
 				v := config.NewSecureValue(enc)
 
 				err = ps.Config.Set(key, v, path)
 				if err != nil {
 					return err
+				}
+			}
+
+			if jsonArg != "" {
+				jsonConfig := make(map[string]configValueJSON)
+				err := json.Unmarshal([]byte(jsonArg), &jsonConfig)
+				if err != nil {
+					return fmt.Errorf("could not parse --json argument: %w", err)
+				}
+
+				for jsonKey, jsonValue := range jsonConfig {
+					// Every key in the JSON must have a value. While `pulumi config --json` may produce empty values for secrets
+					// where --show-secrets is not passed, we don't allow setting those same (missing) values back into
+					// configuration.
+					if jsonValue.Value == nil {
+						return fmt.Errorf("value for --json object key %q is nil", jsonKey)
+					}
+
+					key, err := ParseConfigKey(ws, jsonKey, false /*path*/)
+					if err != nil {
+						return fmt.Errorf("invalid --json object key %q: %w", jsonKey, err)
+					}
+
+					var value config.Value
+					var path bool
+					if jsonValue.ObjectValue != nil {
+						// If we have an ObjectValue, Value will be the stringified version of the object. We'll thus operate on
+						// ObjectValue directly.
+						path = true
+						if jsonValue.Secret {
+							enc, err := encrypt(*jsonValue.Value)
+							if err != nil {
+								return err
+							}
+
+							value = config.NewSecureObjectValue(enc)
+						} else {
+							value = config.NewObjectValue(*jsonValue.Value)
+						}
+					} else if jsonValue.Secret {
+						enc, err := encrypt(*jsonValue.Value)
+						if err != nil {
+							return err
+						}
+
+						value = config.NewSecureValue(enc)
+					} else {
+						value = config.NewValue(*jsonValue.Value)
+					}
+
+					err = ps.Config.Set(key, value, path)
+					if err != nil {
+						return fmt.Errorf("could not set --json config for %q: %w", jsonKey, err)
+					}
 				}
 			}
 
@@ -873,6 +964,10 @@ func newConfigSetAllCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 	setCmd.PersistentFlags().StringArrayVar(
 		&secretArgs, "secret", []string{},
 		"Marks a value as secret to be encrypted")
+	setCmd.PersistentFlags().StringVar(
+		&jsonArg, "json", "",
+		"Read values from a JSON string in the format produced by 'pulumi config --json'",
+	)
 
 	return setCmd
 }
@@ -882,9 +977,9 @@ func newConfigSetAllCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 type configValueJSON struct {
 	// When the value is encrypted and --show-secrets was not passed, the value will not be set.
 	// If the value is an object, ObjectValue will be set.
-	Value       *string     `json:"value,omitempty"`
-	ObjectValue interface{} `json:"objectValue,omitempty"`
-	Secret      bool        `json:"secret"`
+	Value       *string `json:"value,omitempty"`
+	ObjectValue any     `json:"objectValue,omitempty"`
+	Secret      bool    `json:"secret"`
 }
 
 func listConfig(
@@ -911,11 +1006,13 @@ func listConfig(
 	}
 
 	var pulumiEnv esc.Value
+	var secretsManager secrets.Manager
 	var envCrypter config.Encrypter
 	if env != nil {
 		pulumiEnv = env.Properties["pulumiConfig"]
 
-		stackEncrypter, state, err := ssml.GetEncrypter(ctx, stack, ps)
+		var state cmdStack.SecretsManagerState
+		secretsManager, state, err = ssml.GetSecretsManager(ctx, stack, ps)
 		if err != nil {
 			return err
 		}
@@ -925,7 +1022,9 @@ func listConfig(
 				return fmt.Errorf("save stack config: %w", err)
 			}
 		}
-		envCrypter = stackEncrypter
+		// secretsManager's crypter has a cache for crypto operations. As we are encrypting all environment secrets
+		// with the secretManager's encrypter ensure to use its decrypter later on when reading the merged config.
+		envCrypter = secretsManager.Encrypter()
 	}
 
 	stackName := stack.Ref().Name().String()
@@ -945,17 +1044,19 @@ func listConfig(
 	// By default, we will use a blinding decrypter to show "[secret]". If requested, display secrets in plaintext.
 	decrypter := config.NewBlindingDecrypter()
 	if cfg.HasSecureValue() && showSecrets {
-		stackDecrypter, state, err := ssml.GetDecrypter(ctx, stack, ps)
-		if err != nil {
-			return err
-		}
-		// This may have setup the stack's secrets provider, so save the stack if needed.
-		if state != cmdStack.SecretsManagerUnchanged {
-			if err = cmdStack.SaveProjectStack(ctx, stack, ps); err != nil {
-				return fmt.Errorf("save stack config: %w", err)
+		if secretsManager == nil {
+			var state cmdStack.SecretsManagerState
+			if secretsManager, state, err = ssml.GetSecretsManager(ctx, stack, ps); err != nil {
+				return err
+			}
+			// This may have setup the stack's secrets provider, so save the stack if needed.
+			if state != cmdStack.SecretsManagerUnchanged {
+				if err = cmdStack.SaveProjectStack(ctx, stack, ps); err != nil {
+					return fmt.Errorf("save stack config: %w", err)
+				}
 			}
 		}
-		decrypter = stackDecrypter
+		decrypter = secretsManager.Decrypter()
 	}
 
 	var keys config.KeyArray
@@ -966,6 +1067,11 @@ func listConfig(
 	}
 	sort.Sort(keys)
 
+	decryptedCfg, err := cfg.Decrypt(decrypter)
+	if err != nil {
+		return fmt.Errorf("could not decrypt configuration values: %w", err)
+	}
+
 	if jsonOut {
 		configValues := make(map[string]configValueJSON)
 		for _, key := range keys {
@@ -973,14 +1079,11 @@ func listConfig(
 				Secret: cfg[key].Secure(),
 			}
 
-			decrypted, err := cfg[key].Value(decrypter)
-			if err != nil {
-				return fmt.Errorf("could not decrypt configuration value: %w", err)
-			}
+			decrypted := decryptedCfg[key]
 			entry.Value = &decrypted
 
 			if cfg[key].Object() {
-				var obj interface{}
+				var obj any
 				if err := json.Unmarshal([]byte(decrypted), &obj); err != nil {
 					return err
 				}
@@ -1004,11 +1107,7 @@ func listConfig(
 	} else {
 		rows := []cmdutil.TableRow{}
 		for _, key := range keys {
-			decrypted, err := cfg[key].Value(decrypter)
-			if err != nil {
-				return fmt.Errorf("could not decrypt configuration value: %w", err)
-			}
-
+			decrypted := decryptedCfg[key]
 			rows = append(rows, cmdutil.TableRow{Columns: []string{PrettyKey(key), decrypted}})
 		}
 
@@ -1088,12 +1187,13 @@ func getConfig(
 	}
 
 	var pulumiEnv esc.Value
+	var secretsManager secrets.Manager
 	var envCrypter config.Encrypter
 	if env != nil {
 		pulumiEnv = env.Properties["pulumiConfig"]
 
-		stackEncrypter, state, err := ssml.GetEncrypter(ctx, stack, ps)
-		if err != nil {
+		var state cmdStack.SecretsManagerState
+		if secretsManager, state, err = ssml.GetSecretsManager(ctx, stack, ps); err != nil {
 			return err
 		}
 		// This may have setup the stack's secrets provider, so save the stack if needed.
@@ -1102,7 +1202,9 @@ func getConfig(
 				return fmt.Errorf("save stack config: %w", err)
 			}
 		}
-		envCrypter = stackEncrypter
+		// secretsManager's crypter has a cache for crypto operations. As we are encrypting all environment secrets
+		// with the secretManager's encrypter ensure to use its decrypter later on when reading the merged config.
+		envCrypter = secretsManager.Encrypter()
 	}
 
 	stackName := stack.Ref().Name().String()
@@ -1125,17 +1227,19 @@ func getConfig(
 	if ok {
 		var d config.Decrypter
 		if v.Secure() {
-			var err error
-			var state cmdStack.SecretsManagerState
-			if d, state, err = ssml.GetDecrypter(ctx, stack, ps); err != nil {
-				return fmt.Errorf("could not create a decrypter: %w", err)
-			}
-			// This may have setup the stack's secrets provider, so save the stack if needed.
-			if state != cmdStack.SecretsManagerUnchanged {
-				if err = cmdStack.SaveProjectStack(ctx, stack, ps); err != nil {
-					return fmt.Errorf("save stack config: %w", err)
+			if secretsManager == nil {
+				var state cmdStack.SecretsManagerState
+				if secretsManager, state, err = ssml.GetSecretsManager(ctx, stack, ps); err != nil {
+					return err
+				}
+				// This may have setup the stack's secrets provider, so save the stack if needed.
+				if state != cmdStack.SecretsManagerUnchanged {
+					if err = cmdStack.SaveProjectStack(ctx, stack, ps); err != nil {
+						return fmt.Errorf("save stack config: %w", err)
+					}
 				}
 			}
+			d = secretsManager.Decrypter()
 		} else {
 			d = config.NewPanicCrypter()
 		}
@@ -1151,7 +1255,7 @@ func getConfig(
 			}
 
 			if v.Object() {
-				var obj interface{}
+				var obj any
 				if err := json.Unmarshal([]byte(raw), &obj); err != nil {
 					return err
 				}

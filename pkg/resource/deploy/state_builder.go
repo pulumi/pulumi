@@ -84,6 +84,10 @@ func (sb *stateBuilder) withAllUpdatedDependencies(
 			}
 		case resource.ResourceDeletedWith:
 			sb.setURN(&sb.state.DeletedWith, updateURN(sb.state.DeletedWith))
+		case resource.ResourceReplaceWith:
+			for i, replaceWith := range sb.state.ReplaceWith {
+				sb.state.ReplaceWith[i] = updateURN(replaceWith)
+			}
 		}
 	}
 

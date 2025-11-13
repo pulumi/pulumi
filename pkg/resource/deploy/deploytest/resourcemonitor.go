@@ -25,6 +25,7 @@ import (
 	fxs "github.com/pgavlin/fx/v2/slices"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -148,6 +149,10 @@ func marshalSourceInfo(
 
 func (rm *ResourceMonitor) Close() error {
 	return rm.conn.Close()
+}
+
+func (rm *ResourceMonitor) Client() pulumirpc.ResourceMonitorClient {
+	return rm.resmon
 }
 
 func NewResourceMonitor(resmon pulumirpc.ResourceMonitorClient) *ResourceMonitor {
@@ -279,6 +284,7 @@ type ResourceOptions struct {
 	PropertyDeps            map[resource.PropertyKey][]resource.URN
 	DeleteBeforeReplace     *bool
 	Version                 string
+	HideDiffs               []resource.PropertyPath
 	PluginDownloadURL       string
 	PluginChecksums         map[string][]byte
 	IgnoreChanges           []string
@@ -289,6 +295,7 @@ type ResourceOptions struct {
 	CustomTimeouts          *resource.CustomTimeouts
 	RetainOnDelete          *bool
 	DeletedWith             resource.URN
+	ReplaceWith             []resource.URN
 	SupportsPartialValues   *bool
 	Remote                  bool
 	Providers               map[string]string
@@ -397,12 +404,22 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		additionalSecretOutputs[i] = string(v)
 	}
 
+	replaceWith := make([]string, len(opts.ReplaceWith))
+	for i, v := range opts.ReplaceWith {
+		replaceWith[i] = string(v)
+	}
+
 	sourcePosition, stackTrace, err := marshalSourceInfo(opts.SourcePosition, opts.StackTrace)
 	if err != nil {
 		return nil, err
 	}
 
 	resourceHooks := opts.ResourceHookBindings.marshal()
+
+	hideDiffs := slice.Prealloc[string](len(opts.HideDiffs))
+	for _, v := range opts.HideDiffs {
+		hideDiffs = append(hideDiffs, v.String())
+	}
 
 	requestInput := &pulumirpc.RegisterResourceRequest{
 		Type:                       string(t),
@@ -433,9 +450,11 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		AdditionalSecretOutputs:    additionalSecretOutputs,
 		Aliases:                    opts.Aliases,
 		DeletedWith:                string(opts.DeletedWith),
+		ReplaceWith:                replaceWith,
 		AliasSpecs:                 opts.AliasSpecs,
 		SourcePosition:             sourcePosition,
 		StackTrace:                 stackTrace,
+		HideDiffs:                  hideDiffs,
 		ParentStackTraceHandle:     opts.ParentStackTraceHandle,
 		Transforms:                 opts.Transforms,
 		SupportsResultReporting:    opts.SupportsResultReporting,

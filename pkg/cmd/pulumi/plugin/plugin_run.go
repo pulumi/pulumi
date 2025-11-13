@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -33,7 +34,34 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newPluginRunCmd() *cobra.Command {
+// preparePluginEnv prepares environment variables for the plugin including
+// RPC target, cloud URL, and access token from the workspace.
+func preparePluginEnv(ws pkgWorkspace.Context, grpcServer *plugin.GrpcServer) []string {
+	pluginEnv := os.Environ()
+	pluginEnv = append(pluginEnv, "PULUMI_RPC_TARGET="+grpcServer.Addr())
+
+	// Get current cloud URL from workspace
+	project, _, err := ws.ReadProject()
+	if err == nil {
+		cloudURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
+		if err == nil {
+			cloudURL = httpstate.ValueOrDefaultURL(ws, cloudURL)
+			pluginEnv = append(pluginEnv, "PULUMI_API="+cloudURL)
+
+			// Get account credentials for this cloud URL
+			creds, err := ws.GetStoredCredentials()
+			if err == nil {
+				if token, ok := creds.AccessTokens[cloudURL]; ok && token != "" {
+					pluginEnv = append(pluginEnv, "PULUMI_ACCESS_TOKEN="+token)
+				}
+			}
+		}
+	}
+
+	return pluginEnv
+}
+
+func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var kind string
 
 	cmd := &cobra.Command{
@@ -105,17 +133,29 @@ func newPluginRunCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("could not create plugin context: %w", err)
 			}
+			defer pctx.Close()
 
-			plugin, err := plugin.ExecPlugin(pctx, pluginPath, source, kind, pluginArgs, "", nil, false)
+			// Always create RPC server for tool plugins
+			grpcServer, err := createPluginRPCServer(ctx, pctx)
+			if err != nil {
+				return fmt.Errorf("create RPC server: %w", err)
+			}
+			defer grpcServer.Close()
+
+			// Prepare environment variables for the plugin
+			pluginEnv := preparePluginEnv(ws, grpcServer)
+
+			plugin, err := plugin.ExecPlugin(pctx, pluginPath, source, kind, pluginArgs, "", pluginEnv, false)
 			if err != nil {
 				return fmt.Errorf("could not execute plugin %s (%s): %w", source, pluginPath, err)
 			}
 
-			// Copy the plugin's stdout and stderr to the current process's stdout and stderr, and stdin to the
-			// plugin's stdin.
+			// Copy the plugin's stdout and stderr to the current process's stdout and stderr.
+			// For stdin, we start a copy goroutine but don't wait for it since it will block
+			// indefinitely if there's no stdin input.
 
 			var wg sync.WaitGroup
-			wg.Add(3)
+			wg.Add(2) // Only wait for stdout and stderr, not stdin
 			go func() {
 				defer wg.Done()
 				_, err := io.Copy(os.Stdout, plugin.Stdout)
@@ -130,17 +170,17 @@ func newPluginRunCmd() *cobra.Command {
 					fmt.Fprintf(os.Stderr, "error reading plugin stderr: %v\n", err)
 				}
 			}()
+			// Copy stdin in a separate goroutine but don't wait for it.
+			// It will either complete if stdin has data, or be interrupted when plugin.Stdin is closed.
 			go func() {
-				defer wg.Done()
-				_, err := io.Copy(plugin.Stdin, os.Stdin)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "error copying plugin stdin: %v\n", err)
-				}
+				_, _ = io.Copy(plugin.Stdin, os.Stdin)
+				// Don't report error since stdin pipe closure is expected
 			}()
 
 			// Wait for the plugin and IO to finish.
 			code, err := plugin.Wait(ctx)
 			wg.Wait()
+
 			if err != nil {
 				return fmt.Errorf("plugin %s exited with error: %w", source, err)
 			}

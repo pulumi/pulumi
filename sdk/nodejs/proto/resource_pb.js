@@ -1775,7 +1775,7 @@ proto.pulumirpc.ReadResourceResponse.prototype.hasProperties = function() {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.RegisterResourceRequest.repeatedFields_ = [7,12,14,15,23,26,31];
+proto.pulumirpc.RegisterResourceRequest.repeatedFields_ = [7,12,14,15,23,26,38,31,37];
 
 
 
@@ -1837,6 +1837,7 @@ retainondelete: (f = jspb.Message.getBooleanField(msg, 25)) == null ? undefined 
 aliasesList: jspb.Message.toObjectList(msg.getAliasesList(),
     pulumi_alias_pb.Alias.toObject, includeInstance),
 deletedwith: jspb.Message.getFieldWithDefault(msg, 27, ""),
+replaceWithList: (f = jspb.Message.getRepeatedField(msg, 38)) == null ? undefined : f,
 aliasspecs: jspb.Message.getBooleanFieldWithDefault(msg, 28, false),
 sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
 stacktrace: (f = msg.getStacktrace()) && pulumi_source_pb.StackTrace.toObject(includeInstance, f),
@@ -1845,7 +1846,8 @@ transformsList: jspb.Message.toObjectList(msg.getTransformsList(),
     pulumi_callback_pb.Callback.toObject, includeInstance),
 supportsresultreporting: jspb.Message.getBooleanFieldWithDefault(msg, 32, false),
 packageref: jspb.Message.getFieldWithDefault(msg, 33, ""),
-hooks: (f = msg.getHooks()) && proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.toObject(includeInstance, f)
+hooks: (f = msg.getHooks()) && proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.toObject(includeInstance, f),
+hidediffsList: (f = jspb.Message.getRepeatedField(msg, 37)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -2003,6 +2005,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       var value = /** @type {string} */ (reader.readString());
       msg.setDeletedwith(value);
       break;
+    case 38:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addReplaceWith(value);
+      break;
     case 28:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAliasspecs(value);
@@ -2038,6 +2044,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       var value = new proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding;
       reader.readMessage(value,proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.deserializeBinaryFromReader);
       msg.setHooks(value);
+      break;
+    case 37:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addHidediffs(value);
       break;
     default:
       reader.skipField();
@@ -2258,6 +2268,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       f
     );
   }
+  f = message.getReplaceWithList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      38,
+      f
+    );
+  }
   f = message.getAliasspecs();
   if (f) {
     writer.writeBool(
@@ -2316,6 +2333,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       34,
       f,
       proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.serializeBinaryToWriter
+    );
+  }
+  f = message.getHidediffsList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      37,
+      f
     );
   }
 };
@@ -3777,6 +3801,43 @@ proto.pulumirpc.RegisterResourceRequest.prototype.setDeletedwith = function(valu
 
 
 /**
+ * repeated string replace_with = 38;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getReplaceWithList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 38));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setReplaceWithList = function(value) {
+  return jspb.Message.setField(this, 38, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.addReplaceWith = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 38, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.clearReplaceWithList = function() {
+  return this.setReplaceWithList([]);
+};
+
+
+/**
  * optional bool aliasSpecs = 28;
  * @return {boolean}
  */
@@ -3994,6 +4055,43 @@ proto.pulumirpc.RegisterResourceRequest.prototype.clearHooks = function() {
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.hasHooks = function() {
   return jspb.Message.getField(this, 34) != null;
+};
+
+
+/**
+ * repeated string hideDiffs = 37;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getHidediffsList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 37));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setHidediffsList = function(value) {
+  return jspb.Message.setField(this, 37, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.addHidediffs = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 37, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.clearHidediffsList = function() {
+  return this.setHidediffsList([]);
 };
 
 
@@ -5855,7 +5953,7 @@ proto.pulumirpc.ResourceCallRequest.prototype.setPackageref = function(value) {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.TransformResourceOptions.repeatedFields_ = [1,3,4,6,13];
+proto.pulumirpc.TransformResourceOptions.repeatedFields_ = [1,3,4,6,13,18,19];
 
 
 
@@ -5905,7 +6003,9 @@ additionalSecretOutputsList: (f = jspb.Message.getRepeatedField(msg, 13)) == nul
 providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : [],
 pluginChecksumsMap: (f = msg.getPluginChecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
 hooks: (f = msg.getHooks()) && proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.toObject(includeInstance, f),
-pb_import: jspb.Message.getFieldWithDefault(msg, 17, "")
+pb_import: jspb.Message.getFieldWithDefault(msg, 17, ""),
+hideDiffList: (f = jspb.Message.getRepeatedField(msg, 18)) == null ? undefined : f,
+replaceWithList: (f = jspb.Message.getRepeatedField(msg, 19)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -6016,6 +6116,14 @@ proto.pulumirpc.TransformResourceOptions.deserializeBinaryFromReader = function(
     case 17:
       var value = /** @type {string} */ (reader.readString());
       msg.setImport(value);
+      break;
+    case 18:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addHideDiff(value);
+      break;
+    case 19:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addReplaceWith(value);
       break;
     default:
       reader.skipField();
@@ -6159,6 +6267,20 @@ proto.pulumirpc.TransformResourceOptions.serializeBinaryToWriter = function(mess
   if (f.length > 0) {
     writer.writeString(
       17,
+      f
+    );
+  }
+  f = message.getHideDiffList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      18,
+      f
+    );
+  }
+  f = message.getReplaceWithList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      19,
       f
     );
   }
@@ -6666,6 +6788,80 @@ proto.pulumirpc.TransformResourceOptions.prototype.getImport = function() {
  */
 proto.pulumirpc.TransformResourceOptions.prototype.setImport = function(value) {
   return jspb.Message.setProto3StringField(this, 17, value);
+};
+
+
+/**
+ * repeated string hide_diff = 18;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.getHideDiffList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 18));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.setHideDiffList = function(value) {
+  return jspb.Message.setField(this, 18, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.addHideDiff = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 18, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.clearHideDiffList = function() {
+  return this.setHideDiffList([]);
+};
+
+
+/**
+ * repeated string replace_with = 19;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.getReplaceWithList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 19));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.setReplaceWithList = function(value) {
+  return jspb.Message.setField(this, 19, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.addReplaceWith = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 19, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.clearReplaceWithList = function() {
+  return this.setReplaceWithList([]);
 };
 
 

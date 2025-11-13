@@ -19,20 +19,20 @@ import (
 	"io"
 )
 
-func Printf(format string, args ...interface{}) IntOutput {
-	return All(args...).ApplyT(func(args []interface{}) (int, error) {
+func Printf(format string, args ...any) IntOutput {
+	return All(args...).ApplyT(func(args []any) (int, error) {
 		return fmt.Printf(format, args...)
 	}).(IntOutput)
 }
 
-func Fprintf(w io.Writer, format string, args ...interface{}) IntOutput {
-	return All(args...).ApplyT(func(args []interface{}) (int, error) {
+func Fprintf(w io.Writer, format string, args ...any) IntOutput {
+	return All(args...).ApplyT(func(args []any) (int, error) {
 		return fmt.Fprintf(w, format, args...)
 	}).(IntOutput)
 }
 
-func Sprintf(format string, args ...interface{}) StringOutput {
-	return All(args...).ApplyT(func(args []interface{}) string {
+func Sprintf(format string, args ...any) StringOutput {
+	return All(args...).ApplyT(func(args []any) string {
 		return fmt.Sprintf(format, args...)
 	}).(StringOutput)
 }

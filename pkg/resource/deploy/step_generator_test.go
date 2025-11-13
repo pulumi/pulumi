@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -33,27 +34,27 @@ func TestIgnoreChanges(t *testing.T) {
 
 	cases := []struct {
 		name          string
-		oldInputs     map[string]interface{}
-		newInputs     map[string]interface{}
-		expected      map[string]interface{}
+		oldInputs     map[string]any
+		newInputs     map[string]any
+		expected      map[string]any
 		ignoreChanges []string
 		expectMessage bool
 	}{
 		{
 			name: "Present in old and new sets",
-			oldInputs: map[string]interface{}{
-				"a": map[string]interface{}{
+			oldInputs: map[string]any{
+				"a": map[string]any{
 					"b": "foo",
 				},
 			},
-			newInputs: map[string]interface{}{
-				"a": map[string]interface{}{
+			newInputs: map[string]any{
+				"a": map[string]any{
 					"b": "bar",
 				},
 				"c": 42,
 			},
-			expected: map[string]interface{}{
-				"a": map[string]interface{}{
+			expected: map[string]any{
+				"a": map[string]any{
 					"b": "foo",
 				},
 				"c": 42,
@@ -62,17 +63,17 @@ func TestIgnoreChanges(t *testing.T) {
 		},
 		{
 			name: "Missing in new sets",
-			oldInputs: map[string]interface{}{
-				"a": map[string]interface{}{
+			oldInputs: map[string]any{
+				"a": map[string]any{
 					"b": "foo",
 				},
 			},
-			newInputs: map[string]interface{}{
-				"a": map[string]interface{}{},
+			newInputs: map[string]any{
+				"a": map[string]any{},
 				"c": 42,
 			},
-			expected: map[string]interface{}{
-				"a": map[string]interface{}{
+			expected: map[string]any{
+				"a": map[string]any{
 					"b": "foo",
 				},
 				"c": 42,
@@ -81,24 +82,24 @@ func TestIgnoreChanges(t *testing.T) {
 		},
 		{
 			name: "Present in old and new sets, using [\"\"]",
-			oldInputs: map[string]interface{}{
-				"a": map[string]interface{}{
-					"b": map[string]interface{}{
+			oldInputs: map[string]any{
+				"a": map[string]any{
+					"b": map[string]any{
 						"c": "foo",
 					},
 				},
 			},
-			newInputs: map[string]interface{}{
-				"a": map[string]interface{}{
-					"b": map[string]interface{}{
+			newInputs: map[string]any{
+				"a": map[string]any{
+					"b": map[string]any{
 						"c": "bar",
 					},
 				},
 				"c": 42,
 			},
-			expected: map[string]interface{}{
-				"a": map[string]interface{}{
-					"b": map[string]interface{}{
+			expected: map[string]any{
+				"a": map[string]any{
+					"b": map[string]any{
 						"c": "foo",
 					},
 				},
@@ -108,22 +109,22 @@ func TestIgnoreChanges(t *testing.T) {
 		},
 		{
 			name: "Missing in new sets, using [\"\"]",
-			oldInputs: map[string]interface{}{
-				"a": map[string]interface{}{
-					"b": map[string]interface{}{
+			oldInputs: map[string]any{
+				"a": map[string]any{
+					"b": map[string]any{
 						"c": "foo",
 					},
 				},
 			},
-			newInputs: map[string]interface{}{
-				"a": map[string]interface{}{
-					"b": map[string]interface{}{},
+			newInputs: map[string]any{
+				"a": map[string]any{
+					"b": map[string]any{},
 				},
 				"c": 42,
 			},
-			expected: map[string]interface{}{
-				"a": map[string]interface{}{
-					"b": map[string]interface{}{
+			expected: map[string]any{
+				"a": map[string]any{
+					"b": map[string]any{
 						"c": "foo",
 					},
 				},
@@ -133,23 +134,23 @@ func TestIgnoreChanges(t *testing.T) {
 		},
 		{
 			name:      "Missing in old deletes",
-			oldInputs: map[string]interface{}{},
-			newInputs: map[string]interface{}{
-				"a": map[string]interface{}{
+			oldInputs: map[string]any{},
+			newInputs: map[string]any{
+				"a": map[string]any{
 					"b": "foo",
 				},
 				"c": 42,
 			},
-			expected: map[string]interface{}{
-				"a": map[string]interface{}{},
+			expected: map[string]any{
+				"a": map[string]any{},
 				"c": 42,
 			},
 			ignoreChanges: []string{"a.b"},
 		},
 		{
 			name:      "Missing keys in old and new are OK",
-			oldInputs: map[string]interface{}{},
-			newInputs: map[string]interface{}{},
+			oldInputs: map[string]any{},
+			newInputs: map[string]any{},
 			ignoreChanges: []string{
 				"a",
 				"a.b",
@@ -158,32 +159,32 @@ func TestIgnoreChanges(t *testing.T) {
 		},
 		{
 			name: "Missing parent keys in only new",
-			oldInputs: map[string]interface{}{
-				"a": map[string]interface{}{
+			oldInputs: map[string]any{
+				"a": map[string]any{
 					"b": "foo",
 				},
 			},
-			newInputs:     map[string]interface{}{},
-			expected:      map[string]interface{}{},
+			newInputs:     map[string]any{},
+			expected:      map[string]any{},
 			ignoreChanges: []string{"a.b"},
 		},
 		{
 			name: "Arrays with different lengths",
-			oldInputs: map[string]interface{}{
-				"a": []interface{}{
+			oldInputs: map[string]any{
+				"a": []any{
 					map[string]string{"b": "foo", "c": "bar"},
 					map[string]string{"b": "bar", "c": "baz"},
 				},
 			},
-			newInputs: map[string]interface{}{
-				"a": []interface{}{
+			newInputs: map[string]any{
+				"a": []any{
 					map[string]string{"b": "bar", "c": "bar"},
 					map[string]string{"b": "qux", "c": "baz"},
 					map[string]string{"b": "baz", "c": "qux"},
 				},
 			},
-			expected: map[string]interface{}{
-				"a": []interface{}{
+			expected: map[string]any{
+				"a": []any{
 					map[string]string{"b": "foo", "c": "bar"},
 					map[string]string{"b": "bar", "c": "baz"},
 					map[string]string{"b": "baz", "c": "qux"},
@@ -193,19 +194,19 @@ func TestIgnoreChanges(t *testing.T) {
 		},
 		{
 			name: "Shorter new array",
-			oldInputs: map[string]interface{}{
-				"a": []interface{}{
+			oldInputs: map[string]any{
+				"a": []any{
 					map[string]string{"b": "foo", "c": "bar"},
 					map[string]string{"b": "bar", "c": "baz"},
 				},
 			},
-			newInputs: map[string]interface{}{
-				"a": []interface{}{
+			newInputs: map[string]any{
+				"a": []any{
 					map[string]string{"b": "bar", "c": "bar"},
 				},
 			},
-			expected: map[string]interface{}{
-				"a": []interface{}{
+			expected: map[string]any{
+				"a": []any{
 					map[string]string{"b": "foo", "c": "bar"},
 				},
 			},
@@ -214,7 +215,6 @@ func TestIgnoreChanges(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -331,7 +331,6 @@ func TestApplyReplaceOnChangesEmptyDetailedDiff(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -354,11 +353,11 @@ func TestEngineDiff(t *testing.T) {
 	}{
 		{
 			name: "Empty diff",
-			oldInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			oldInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val1": resource.NewPropertyValue(8),
 				"val2": resource.NewPropertyValue("hello"),
 			}),
-			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			newInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val1": resource.NewPropertyValue(8),
 				"val2": resource.NewPropertyValue("hello"),
 			}),
@@ -367,10 +366,10 @@ func TestEngineDiff(t *testing.T) {
 		},
 		{
 			name: "All changes",
-			oldInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			oldInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val0": resource.NewPropertyValue(3.14),
 			}),
-			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			newInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val1": resource.NewProperty(42.0),
 				"val2": resource.NewPropertyValue("world"),
 			}),
@@ -379,10 +378,10 @@ func TestEngineDiff(t *testing.T) {
 		},
 		{
 			name: "Some changes",
-			oldInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			oldInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val1": resource.NewPropertyValue(42),
 			}),
-			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			newInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val1": resource.NewProperty(42.0),
 				"val2": resource.NewPropertyValue("world"),
 			}),
@@ -391,10 +390,10 @@ func TestEngineDiff(t *testing.T) {
 		},
 		{
 			name: "Ignore some changes",
-			oldInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			oldInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val1": resource.NewPropertyValue("hello"),
 			}),
-			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			newInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val2": resource.NewPropertyValue(8),
 			}),
 
@@ -404,10 +403,10 @@ func TestEngineDiff(t *testing.T) {
 		},
 		{
 			name: "Ignore all changes",
-			oldInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			oldInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val1": resource.NewPropertyValue("hello"),
 			}),
-			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			newInputs: resource.NewPropertyMapFromMap(map[string]any{
 				"val2": resource.NewPropertyValue(8),
 			}),
 
@@ -422,7 +421,6 @@ func TestEngineDiff(t *testing.T) {
 	allowUnknowns := false
 	provider := deploytest.Provider{}
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -529,7 +527,6 @@ func TestGenerateAliases(t *testing.T) {
 	}
 
 	for _, tt := range cases {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -555,7 +552,7 @@ func TestGenerateAliases(t *testing.T) {
 				}
 			}
 
-			actual := sg.generateAliases(goal)
+			actual := sg.generateAliases(goal.Name, goal.Type, goal.Parent, goal.Aliases)
 			assert.Equal(t, tt.expected, actual)
 		})
 	}
@@ -589,12 +586,12 @@ func TestStepGenerator(t *testing.T) {
 	t.Run("isTargetedForUpdate (no target dependents)", func(t *testing.T) {
 		t.Parallel()
 
-		apUrn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgA"), "a")
-		apRef, err := providers.NewReference(apUrn, "0")
+		apUrn := resource.NewURN("test", "test", "", sdkproviders.MakeProviderType("pkgA"), "a")
+		apRef, err := sdkproviders.NewReference(apUrn, "0")
 		require.NoError(t, err)
 
-		bpUrn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgB"), "b")
-		bpRef, err := providers.NewReference(bpUrn, "1")
+		bpUrn := resource.NewURN("test", "test", "", sdkproviders.MakeProviderType("pkgB"), "b")
+		bpRef, err := sdkproviders.NewReference(bpUrn, "1")
 		require.NoError(t, err)
 
 		// Arrange.
@@ -713,12 +710,12 @@ func TestStepGenerator(t *testing.T) {
 		t.Parallel()
 
 		// Arrange.
-		apUrn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgA"), "a")
-		apRef, err := providers.NewReference(apUrn, "0")
+		apUrn := resource.NewURN("test", "test", "", sdkproviders.MakeProviderType("pkgA"), "a")
+		apRef, err := sdkproviders.NewReference(apUrn, "0")
 		require.NoError(t, err)
 
-		bpUrn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgB"), "b")
-		bpRef, err := providers.NewReference(bpUrn, "1")
+		bpUrn := resource.NewURN("test", "test", "", sdkproviders.MakeProviderType("pkgB"), "b")
+		bpRef, err := sdkproviders.NewReference(bpUrn, "1")
 		require.NoError(t, err)
 
 		sg := &stepGenerator{

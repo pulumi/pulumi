@@ -35,12 +35,12 @@ func linkedConstruct(ctx context.Context, req *pulumirpc.ConstructRequest, engin
 }
 
 //go:linkname linkedConstructInputsMap github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedConstructInputsMap
-func linkedConstructInputsMap(ctx *Context, inputs map[string]interface{}) (Map, error) {
+func linkedConstructInputsMap(ctx *Context, inputs map[string]any) (Map, error) {
 	return constructInputsMap(ctx, inputs)
 }
 
 //go:linkname linkedConstructInputsCopyTo github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedConstructInputsCopyTo
-func linkedConstructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args interface{}) error {
+func linkedConstructInputsCopyTo(ctx *Context, inputs map[string]any, args any) error {
 	return constructInputsCopyTo(ctx, inputs, args)
 }
 
@@ -57,21 +57,21 @@ func linkedCall(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grp
 }
 
 //go:linkname linkedCallArgsCopyTo github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedCallArgsCopyTo
-func linkedCallArgsCopyTo(ctx *Context, source map[string]interface{}, args interface{}) (Resource, error) {
+func linkedCallArgsCopyTo(ctx *Context, source map[string]any, args any) (Resource, error) {
 	return callArgsCopyTo(ctx, source, args)
 }
 
 //go:linkname linkedCallArgsSelf github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedCallArgsSelf
-func linkedCallArgsSelf(ctx *Context, source map[string]interface{}) (Resource, error) {
+func linkedCallArgsSelf(ctx *Context, source map[string]any) (Resource, error) {
 	return callArgsSelf(ctx, source)
 }
 
 //go:linkname linkedNewCallResult github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedNewCallResult
-func linkedNewCallResult(result interface{}) (Input, error) {
+func linkedNewCallResult(result any) (Input, error) {
 	return newCallResult(result)
 }
 
 //go:linkname linkedNewCallFailure github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedNewCallFailure
-func linkedNewCallFailure(property, reason string) interface{} {
+func linkedNewCallFailure(property, reason string) any {
 	return newCallFailure(property, reason)
 }

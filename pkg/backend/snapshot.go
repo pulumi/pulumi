@@ -15,10 +15,12 @@
 package backend
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,9 +28,12 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -44,7 +49,11 @@ var DisableIntegrityChecking bool
 // saving snapshots and invalidating already-persisted snapshots.
 type SnapshotPersister interface {
 	// Persists the given snapshot. Returns an error if the persistence failed.
-	Save(snapshot *deploy.Snapshot) error
+	//
+	// Note that we can't just take a `VersionedDeployment` here, as the patch snapshot
+	// updater for the cloud backend needs the deserialized snapshot object to perform
+	// its update.
+	Save(deployment apitype.TypedDeployment) error
 }
 
 // SnapshotManager is an implementation of engine.SnapshotManager that inspects steps and performs
@@ -183,6 +192,12 @@ func (sm *SnapshotManager) Write(_ *deploy.Snapshot) error {
 	return nil
 }
 
+func (sm *SnapshotManager) RebuiltBaseState() error {
+	// Similar to Write() we don't need to do anything here, as the snapshot manager uses the
+	// same in-memory snapshot as the engine, that is already mutated.
+	return nil
+}
+
 // All SnapshotMutation implementations in this file follow the same basic formula:
 // mark the "old" state as done and mark the "new" state as new. The two special
 // cases are Create (where the "old" state does not exist) and Delete (where the "new" state
@@ -266,6 +281,19 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 	if old.DeletedWith != new.DeletedWith {
 		logging.V(9).Infof("SnapshotManager: mustWrite() true because of DeletedWith")
 		return true
+	}
+
+	// If the ReplaceWith attribute of this resource has changed, we must write the checkpoint.
+	if len(old.ReplaceWith) != len(new.ReplaceWith) {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of ReplaceWith")
+		return true
+	}
+
+	for i, replaceWith := range old.ReplaceWith {
+		if replaceWith != new.ReplaceWith[i] {
+			logging.V(9).Infof("SnapshotManager: mustWrite() true because of ReplaceWith")
+			return true
+		}
 	}
 
 	// If the protection attribute of this resource has changed, we must write the checkpoint.
@@ -528,7 +556,7 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		viewStep, isViewStep := step.(*deploy.ViewStep)
 		if (isViewStep && viewStep.Persisted()) || (isRefreshStep && refreshStep.Persisted()) {
 			rsm.manager.isRefresh = true
-			if successful {
+			if successful && step.Old() != nil {
 				rsm.manager.markDone(step.Old())
 				if step.New() != nil {
 					rsm.manager.markNew(step.New())
@@ -718,15 +746,33 @@ func (sm *SnapshotManager) Snap() *deploy.Snapshot {
 	return deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata)
 }
 
+func (sm *SnapshotManager) Deployment() (apitype.TypedDeployment, error) {
+	snap, err := sm.Snap().NormalizeURNReferences()
+	if err != nil {
+		return apitype.TypedDeployment{}, fmt.Errorf("failed to normalize URN references: %w", err)
+	}
+
+	deploymentV3, version, features, err := stack.SerializeDeploymentWithMetadata(
+		context.TODO(), snap, false /*showSecrets*/)
+	if err != nil {
+		return apitype.TypedDeployment{}, fmt.Errorf("failed to serialize snapshot: %w", err)
+	}
+	return apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	}, nil
+}
+
 // saveSnapshot persists the current snapshot. If integrity checking is enabled,
 // the snapshot's integrity is also verified. If the snapshot is invalid,
 // metadata about this write operation is added to the snapshot before it is
 // written, in order to aid debugging should future operations fail with an
 // error.
 func (sm *SnapshotManager) saveSnapshot() error {
-	snap, err := sm.Snap().NormalizeURNReferences()
+	deployment, err := sm.Deployment()
 	if err != nil {
-		return fmt.Errorf("failed to normalize URN references: %w", err)
+		return err
 	}
 
 	// In order to persist metadata about snapshot integrity issues, we check the
@@ -742,18 +788,18 @@ func (sm *SnapshotManager) saveSnapshot() error {
 	//
 	// Metadata will be cleared out by a successful operation (even if integrity
 	// checking is being enforced).
-	integrityError := snap.VerifyIntegrity()
+	integrityError := snapshot.VerifyIntegrity(deployment.Deployment)
 	if integrityError == nil {
-		snap.Metadata.IntegrityErrorMetadata = nil
+		deployment.Deployment.Metadata.IntegrityErrorMetadata = nil
 	} else {
-		snap.Metadata.IntegrityErrorMetadata = &deploy.SnapshotIntegrityErrorMetadata{
-			Version: version.Version,
+		deployment.Deployment.Metadata.IntegrityErrorMetadata = &apitype.SnapshotIntegrityErrorMetadataV1{
+			Version: strconv.FormatInt(int64(deployment.Version), 10),
 			Command: strings.Join(os.Args, " "),
 			Error:   integrityError.Error(),
 		}
 	}
 
-	if err := sm.persister.Save(snap); err != nil {
+	if err := sm.persister.Save(deployment); err != nil {
 		return fmt.Errorf("failed to save snapshot: %w", err)
 	}
 	if !DisableIntegrityChecking && integrityError != nil {

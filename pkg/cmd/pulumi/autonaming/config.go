@@ -118,7 +118,6 @@ func ParseAutonamingConfig(s StackContext, cfg config.Map, decrypter config.Decr
 
 	// Resolve the provider-level naming configs.
 	for providerName, providerCfg := range autonamingConfig.Providers {
-		providerCfg := providerCfg
 		naming, has, err := resolveNamingConfig(&providerCfg.namingConfigJSON, eval)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve naming config for provider %q: %w", providerName, err)
@@ -135,7 +134,6 @@ func ParseAutonamingConfig(s StackContext, cfg config.Map, decrypter config.Decr
 
 		// Resolve the resource-level naming configs.
 		for resourceName, resourceCfg := range providerCfg.Resources {
-			resourceCfg := resourceCfg
 			resourceNaming, has, err := resolveNamingConfig(&resourceCfg, eval)
 			if err != nil {
 				return nil, fmt.Errorf("failed to resolve naming config for resource %q: %w", resourceName, err)

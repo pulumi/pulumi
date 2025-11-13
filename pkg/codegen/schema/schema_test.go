@@ -163,7 +163,7 @@ func TestRoundtripPlainProperties(t *testing.T) {
 		exampleObjectType, ok := exampleType.(*ObjectType)
 		assert.True(t, ok)
 
-		assert.Equal(t, 3, len(exampleObjectType.Properties))
+		require.Len(t, exampleObjectType.Properties, 3)
 		var exampleProperty *Property
 		var nonPlainProperty *Property
 		var nestedProperty *Property
@@ -203,7 +203,7 @@ func TestRoundtripPlainProperties(t *testing.T) {
 		assert.True(t, ok)
 
 		check := func(properties []*Property) {
-			assert.Equal(t, 3, len(properties))
+			require.Len(t, properties, 3)
 
 			var exampleProperty *Property
 			var nonPlainProperty *Property
@@ -435,7 +435,6 @@ func TestInvalidTypes(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.filename, func(t *testing.T) {
 			t.Parallel()
 
@@ -453,7 +452,6 @@ func TestEnums(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range enumTests {
-		tt := tt
 		t.Run(tt.filename, func(t *testing.T) {
 			t.Parallel()
 
@@ -601,7 +599,6 @@ func TestRejectDuplicateNames(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -676,7 +673,6 @@ func TestImportResourceRef(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
@@ -820,7 +816,6 @@ func Test_parseTypeSpecRef(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1307,7 +1302,6 @@ func TestMethods(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.filename, func(t *testing.T) {
 			t.Parallel()
 
@@ -1530,7 +1524,6 @@ func TestReplaceOnChanges(t *testing.T) {
 			errors:   []string{},
 		},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1641,7 +1634,6 @@ func TestValidateTypeToken(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1688,7 +1680,6 @@ func TestTypeString(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.output, func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, c.output, c.input.String())
@@ -1756,7 +1747,6 @@ func TestPackageIdentity(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.nameA, func(t *testing.T) {
 			t.Parallel()
 
@@ -1810,7 +1800,7 @@ func TestMarshalResourceWithLanguageSettings(t *testing.T) {
 
 	prop := &Property{
 		Name: "prop1",
-		Language: map[string]interface{}{
+		Language: map[string]any{
 			"csharp": map[string]string{
 				"name": "CSharpProp1",
 			},
@@ -1822,7 +1812,7 @@ func TestMarshalResourceWithLanguageSettings(t *testing.T) {
 		Properties: []*Property{
 			prop,
 		},
-		Language: map[string]interface{}{
+		Language: map[string]any{
 			"csharp": map[string]string{
 				"name": "CSharpResource",
 			},
@@ -1899,10 +1889,10 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 			fspec: FunctionSpec{
 				Outputs: ots,
 			},
-			serial: map[string]interface{}{
-				"outputs": map[string]interface{}{
-					"properties": map[string]interface{}{
-						"x": map[string]interface{}{
+			serial: map[string]any{
+				"outputs": map[string]any{
+					"properties": map[string]any{
+						"x": map[string]any{
 							"type": "integer",
 						},
 					},
@@ -1920,14 +1910,14 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 			fspec: FunctionSpec{
 				Outputs: otsPlain,
 			},
-			serial: map[string]interface{}{
-				"outputs": map[string]interface{}{
-					"properties": map[string]interface{}{
-						"x": map[string]interface{}{
+			serial: map[string]any{
+				"outputs": map[string]any{
+					"properties": map[string]any{
+						"x": map[string]any{
 							"type": "integer",
 						},
 					},
-					"plain": []interface{}{"x"},
+					"plain": []any{"x"},
 					"type":  "object",
 				},
 			},
@@ -1947,8 +1937,8 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 					},
 				},
 			},
-			serial: map[string]interface{}{
-				"outputs": map[string]interface{}{
+			serial: map[string]any{
+				"outputs": map[string]any{
 					"plain": true,
 					"type":  "integer",
 				},
@@ -1963,8 +1953,8 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 					},
 				},
 			},
-			serial: map[string]interface{}{
-				"outputs": map[string]interface{}{
+			serial: map[string]any{
+				"outputs": map[string]any{
 					"type": "integer",
 				},
 			},
@@ -1977,11 +1967,11 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 					ObjectTypeSpecIsPlain: true,
 				},
 			},
-			serial: map[string]interface{}{
-				"outputs": map[string]interface{}{
+			serial: map[string]any{
+				"outputs": map[string]any{
 					"plain": true,
-					"properties": map[string]interface{}{
-						"x": map[string]interface{}{
+					"properties": map[string]any{
+						"x": map[string]any{
 							"type": "integer",
 						},
 					},
@@ -1996,10 +1986,10 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 					ObjectTypeSpec: ots,
 				},
 			},
-			serial: map[string]interface{}{
-				"outputs": map[string]interface{}{
-					"properties": map[string]interface{}{
-						"x": map[string]interface{}{
+			serial: map[string]any{
+				"outputs": map[string]any{
+					"properties": map[string]any{
+						"x": map[string]any{
 							"type": "integer",
 						},
 					},
@@ -2014,11 +2004,11 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 					ObjectTypeSpec: otsPlain,
 				},
 			},
-			serial: map[string]interface{}{
-				"outputs": map[string]interface{}{
-					"plain": []interface{}{"x"},
-					"properties": map[string]interface{}{
-						"x": map[string]interface{}{
+			serial: map[string]any{
+				"outputs": map[string]any{
+					"plain": []any{"x"},
+					"properties": map[string]any{
+						"x": map[string]any{
 							"type": "integer",
 						},
 					},
@@ -2029,7 +2019,6 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		fspec := tc.fspec
 		expectSerial := tc.serial
 		expectFSpec := fspec
@@ -2105,7 +2094,6 @@ func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name+"/marshalFunction", func(t *testing.T) {
 			t.Parallel()
 			pkg := Package{}

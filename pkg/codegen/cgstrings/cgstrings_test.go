@@ -50,7 +50,6 @@ func TestUnhyphenate(t *testing.T) {
 		{"WaldoThudFred", "WaldoThudFred"},
 	}
 	for _, tc := range testcases {
-		tc := tc
 		t.Run(fmt.Sprintf("Subtest:%q", tc.input), func(t *testing.T) {
 			t.Parallel()
 			assert := assert.New(t)

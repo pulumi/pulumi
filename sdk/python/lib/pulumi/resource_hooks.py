@@ -1,6 +1,7 @@
 import asyncio
 import copy
-from typing import Any, Callable, Optional, TypeVar, Union
+from typing import Any, Optional, TypeVar, Union
+from collections.abc import Callable
 from collections.abc import Awaitable, Mapping
 
 

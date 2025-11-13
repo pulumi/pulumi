@@ -22,9 +22,7 @@ import (
 	"sync/atomic"
 
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -32,64 +30,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// DefaultSecretsProvider is the default SecretsProvider to use when deserializing deployments.
-var DefaultSecretsProvider secrets.Provider = &defaultSecretsProvider{}
+type Base64SecretsProvider struct{}
 
-// defaultSecretsProvider implements the secrets.ManagerProviderFactory interface. Essentially
-// it is the global location where new secrets managers can be registered for use when
-// decrypting checkpoints.
-type defaultSecretsProvider struct{}
-
-// OfType returns a secrets manager for the given secrets type. Returns an error
-// if the type is unknown or the state is invalid.
-func (defaultSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
-	var sm secrets.Manager
-	var err error
-	switch ty {
-	case passphrase.Type:
-		sm, err = passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
-	case service.Type:
-		sm, err = service.NewServiceSecretsManagerFromState(state)
-	case cloud.Type:
-		sm, err = cloud.NewCloudSecretsManagerFromState(state)
-	default:
+func (Base64SecretsProvider) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
+	if ty != "b64" {
 		return nil, fmt.Errorf("no known secrets provider for type %q", ty)
 	}
-	if err != nil {
-		return nil, fmt.Errorf("constructing secrets manager of type %q: %w", ty, err)
-	}
-
-	return NewBatchingCachingSecretsManager(sm), nil
-}
-
-// NamedStackSecretsProvider is the same as the default secrets provider,
-// but is aware of the stack name for which it is used.  Currently
-// this is only used for prompting passphrase secrets managers to show
-// the stackname in the prompt for the passphrase.
-type NamedStackSecretsProvider struct {
-	StackName string
-}
-
-// OfType returns a secrets manager for the given secrets type. Returns an error
-// if the type is unknown or the state is invalid.
-func (s NamedStackSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
-	var sm secrets.Manager
-	var err error
-	switch ty {
-	case passphrase.Type:
-		sm, err = passphrase.NewStackPromptingPassphraseSecretsManagerFromState(state, s.StackName)
-	case service.Type:
-		sm, err = service.NewServiceSecretsManagerFromState(state)
-	case cloud.Type:
-		sm, err = cloud.NewCloudSecretsManagerFromState(state)
-	default:
-		return nil, fmt.Errorf("no known secrets provider for type %q", ty)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("constructing secrets manager of type %q: %w", ty, err)
-	}
-
-	return NewBatchingCachingSecretsManager(sm), nil
+	return NewBatchingCachingSecretsManager(b64.NewBase64SecretsManager()), nil
 }
 
 // BatchingSecretsManager is a secrets.Manager that supports batch encryption and decryption operations.

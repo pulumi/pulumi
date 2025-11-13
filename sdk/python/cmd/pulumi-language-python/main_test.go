@@ -113,7 +113,6 @@ func TestDeterminePluginVersion(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
@@ -253,7 +252,6 @@ func TestDeterminePulumiPackages(t *testing.T) {
 	t.Parallel()
 
 	for _, toolchainName := range []string{"pip", "poetry", "uv"} {
-		toolchainName := toolchainName
 		t.Run(toolchainName+"/empty", func(t *testing.T) {
 			t.Parallel()
 			cwd := t.TempDir()
@@ -277,7 +275,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 
 			require.NoError(t, err)
 			require.NotEmpty(t, packages)
-			require.Equal(t, 1, len(packages))
+			require.Len(t, packages, 1)
 			random := packages[0]
 			require.Equal(t, "pulumi_random", random.Name)
 			require.NotEmpty(t, random.Location)
@@ -322,7 +320,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			packages, err := determinePulumiPackages(t.Context(), opts)
 
 			require.NoError(t, err)
-			assert.Equal(t, 1, len(packages))
+			require.Len(t, packages, 1)
 			pipInstallTest := packages[0]
 			assert.Equal(t, "pip-install-test", pipInstallTest.Name)
 			assert.NotEmpty(t, pipInstallTest.Location)
@@ -351,7 +349,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			// The package should be considered a Pulumi package since its name is prefixed with "pulumi_".
 			packages, err := determinePulumiPackages(t.Context(), opts)
 			require.NoError(t, err)
-			assert.Equal(t, 1, len(packages))
+			require.Len(t, packages, 1)
 			assert.Equal(t, "pulumi_foo", packages[0].Name)
 			assert.NotEmpty(t, packages[0].Location)
 
@@ -377,7 +375,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			packages, err := determinePulumiPackages(t.Context(), opts)
 			require.NoError(t, err)
 			assert.NotEmpty(t, packages)
-			assert.Equal(t, 1, len(packages))
+			require.Len(t, packages, 1)
 			old := packages[0]
 			assert.Equal(t, "pulumi_old", old.Name)
 			assert.NotEmpty(t, old.Location)

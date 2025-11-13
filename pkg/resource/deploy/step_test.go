@@ -55,7 +55,6 @@ func TestRawPrefix(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, tt.want, RawPrefix(tt.op))
@@ -96,7 +95,6 @@ func TestPastTense(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, tt.want, PastTense(tt.op))
@@ -1068,7 +1066,7 @@ func TestImportStep(t *testing.T) {
 					},
 				}
 				status, _, err := s.Apply()
-				assert.ErrorContains(t, err, "does not exist")
+				assert.ErrorContains(t, err, "resource 'some-id' does not exist")
 				assert.Equal(t, resource.StatusOK, status)
 			})
 			t.Run("provider does not support importing resources", func(t *testing.T) {

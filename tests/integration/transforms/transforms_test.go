@@ -17,8 +17,8 @@ package ints
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
@@ -67,7 +67,7 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			length := res.Inputs["length"]
 			require.NotNil(t, length)
 			// length should be secret
-			secret, ok := length.(map[string]interface{})
+			secret, ok := length.(map[string]any)
 			assert.True(t, ok, "length should be a secret")
 			assert.Equal(t, resource.SecretSig, secret[resource.SigKey])
 			assert.Contains(t, res.AdditionalSecretOutputs, resource.PropertyKey("result"))

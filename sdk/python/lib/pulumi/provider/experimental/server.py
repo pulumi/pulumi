@@ -50,15 +50,12 @@ import pulumi
 import pulumi.resource
 import pulumi.runtime.config
 import pulumi.runtime.settings
+from pulumi.runtime._grpc_settings import _GRPC_CHANNEL_OPTIONS
 from pulumi.errors import (
     InputPropertiesError,
     InputPropertyError,
     InputPropertyErrorDetails,
 )
-
-# _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-_MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
-_GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
 
 
 class ComponentInitError(Exception):
@@ -664,11 +661,7 @@ def main(args: list[str], version: str, provider: provider.Provider) -> None:
         await server.wait_for_termination()
 
     try:
-        loop = asyncio.get_event_loop()
-        try:
-            loop.run_until_complete(serve())
-        finally:
-            loop.close()
+        asyncio.run(serve())
     except KeyboardInterrupt:
         pass
 

@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ import { randomUUID } from "crypto";
 import * as jspb from "google-protobuf";
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as log from "../log";
-import { output } from "../output";
+import { output, Inputs, secret } from "../output";
 import * as callrpc from "../proto/callback_grpc_pb";
 import * as callproto from "../proto/callback_pb";
 import { Callback, CallbackInvokeRequest, CallbackInvokeResponse } from "../proto/callback_pb";
@@ -41,17 +41,10 @@ import {
 import { InvokeOptions, InvokeTransform, InvokeTransformArgs } from "../invoke";
 
 import { hookBindingFromProto, mapAliasesForRequest, prepareHooks } from "./resource";
-import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
+import { deserializeProperties, serializeProperties, unknownValue, isRpcSecret, unwrapRpcSecret } from "./rpc";
 import { debuggablePromise } from "./debuggable";
-import { rpcKeepAlive } from "./settings";
+import { grpcChannelOptions, rpcKeepAlive } from "./settings";
 import { Http2Server, Http2Session } from "http2";
-
-/**
- * Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
- *
- * @internal
- */
-const maxRPCMessageSize: number = 1024 * 1024 * 400;
 
 type CallbackFunction = (args: Uint8Array) => Promise<jspb.Message>;
 
@@ -78,7 +71,7 @@ export class CallbackServer implements ICallbackServer {
         this._monitor = monitor;
 
         this._server = new grpc.Server({
-            "grpc.max_receive_message_length": maxRPCMessageSize,
+            ...grpcChannelOptions,
         });
 
         const implementation: callrpc.ICallbacksServer = {
@@ -264,6 +257,7 @@ export class CallbackServer implements ICallbackServer {
             ropts.hooks = hookBindingFromProto(opts.getHooks());
             ropts.deletedWith =
                 opts.getDeletedWith() !== "" ? new DependencyResource(opts.getDeletedWith()) : undefined;
+            ropts.replaceWith = opts.getReplaceWithList().map((dep) => new DependencyResource(dep));
             ropts.dependsOn = opts.getDependsOnList().map((dep) => new DependencyResource(dep));
             ropts.ignoreChanges = opts.getIgnoreChangesList();
             ropts.parent = request.getParent() !== "" ? new DependencyResource(request.getParent()) : undefined;
@@ -326,6 +320,11 @@ export class CallbackServer implements ICallbackServer {
                     }
                     if (result.opts.deletedWith !== undefined) {
                         opts.setDeletedWith(await result.opts.deletedWith.urn.promise());
+                    }
+                    if (result.opts.replaceWith !== undefined) {
+                        opts.setReplaceWithList(
+                            await Promise.all(result.opts.replaceWith.map(async (dep) => await dep.urn.promise())),
+                        );
                     }
                     if (result.opts.dependsOn !== undefined) {
                         const resolvedDeps = await output(result.opts.dependsOn).promise();
@@ -566,10 +565,18 @@ export class CallbackServer implements ICallbackServer {
                     id: request.getId(),
                     name: request.getName(),
                     type: request.getType(),
-                    newInputs: newInputs ? deserializeProperties(newInputs, true /*keepUnknowns */) : undefined,
-                    oldInputs: oldInputs ? deserializeProperties(oldInputs, true /*keepUnknowns */) : undefined,
-                    newOutputs: newOutputs ? deserializeProperties(newOutputs, true /*keepUnknowns */) : undefined,
-                    oldOutputs: oldOutputs ? deserializeProperties(oldOutputs, true /*keepUnknowns */) : undefined,
+                    newInputs: newInputs
+                        ? outputtifySecrets(deserializeProperties(newInputs, true /*keepUnknowns */))
+                        : undefined,
+                    oldInputs: oldInputs
+                        ? outputtifySecrets(deserializeProperties(oldInputs, true /*keepUnknowns */))
+                        : undefined,
+                    newOutputs: newOutputs
+                        ? outputtifySecrets(deserializeProperties(newOutputs, true /*keepUnknowns */))
+                        : undefined,
+                    oldOutputs: oldOutputs
+                        ? outputtifySecrets(deserializeProperties(oldOutputs, true /*keepUnknowns */))
+                        : undefined,
                 });
             } catch (error) {
                 const response = new resproto.ResourceHookResponse();
@@ -607,4 +614,16 @@ export class CallbackServer implements ICallbackServer {
             `resourceHook:${hook.name}`,
         );
     }
+}
+
+function outputtifySecrets(props: Inputs): Inputs {
+    const outputs: Inputs = {};
+    for (const [key, value] of Object.entries(props)) {
+        if (isRpcSecret(value)) {
+            outputs[key] = secret(unwrapRpcSecret(value));
+        } else {
+            outputs[key] = value;
+        }
+    }
+    return outputs;
 }

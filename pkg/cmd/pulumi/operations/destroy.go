@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
@@ -34,7 +35,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -82,8 +82,8 @@ func NewDestroyCmd() *cobra.Command {
 	var excludeProtected bool
 	var continueOnError bool
 
-	// Flags for Copilot.
-	var copilotEnabled bool
+	// Flags for Neo.
+	var neoEnabled bool
 
 	use, cmdArgs := "destroy", cmdutil.NoArgs
 	if deployment.RemoteSupported() {
@@ -192,7 +192,7 @@ func NewDestroyCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			configureCopilotOptions(copilotEnabled, cmd, &opts.Display, isDIYBackend)
+			configureNeoOptions(neoEnabled, cmd, &opts.Display, isDIYBackend)
 
 			s, err := cmdStack.RequireStack(
 				ctx,
@@ -270,7 +270,7 @@ func NewDestroyCmd() *cobra.Command {
 			excludeUrns := *excludes
 			protectedCount := 0
 			if excludeProtected {
-				snapshot, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+				snapshot, err := s.Snapshot(ctx, secrets.DefaultProvider)
 				if err != nil {
 					return err
 				} else if snapshot == nil {
@@ -323,7 +323,7 @@ func NewDestroyCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    stack.DefaultSecretsProvider,
+				SecretsProvider:    secrets.DefaultProvider,
 				Scopes:             backend.CancellationScopes,
 			})
 
@@ -410,7 +410,7 @@ func NewDestroyCmd() *cobra.Command {
 		&previewOnly, "preview-only", false,
 		"Only show a preview of the destroy, but don't perform the destroy itself")
 	cmd.PersistentFlags().StringVarP(
-		&refresh, "refresh", "r", "",
+		&refresh, "refresh", "r", handleBoolFlag(env.Refresh),
 		"Refresh the state of the stack's resources before this update")
 	cmd.PersistentFlags().Lookup("refresh").NoOptDefVal = "true"
 	cmd.PersistentFlags().BoolVar(
@@ -448,9 +448,16 @@ func NewDestroyCmd() *cobra.Command {
 		"Automatically approve and perform the destroy after previewing it")
 
 	cmd.PersistentFlags().BoolVar(
-		&copilotEnabled, "copilot", false,
-		"Enable Pulumi Copilot's assistance for improved CLI experience and insights."+
+		&neoEnabled, "neo", false,
+		"Enable Pulumi Neo's assistance for improved CLI experience and insights "+
+			"(can also be set with PULUMI_NEO environment variable)")
+
+	// Keep --copilot flag for backwards compatibility, but hide it
+	cmd.PersistentFlags().BoolVar(
+		&neoEnabled, "copilot", false,
+		"[DEPRECATED] Use --neo instead. Enable Pulumi Neo's assistance for improved CLI experience and insights "+
 			"(can also be set with PULUMI_COPILOT environment variable)")
+	_ = cmd.PersistentFlags().MarkDeprecated("copilot", "please use --neo instead")
 
 	// Remote flags
 	remoteArgs.ApplyFlags(cmd)

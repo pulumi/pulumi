@@ -111,7 +111,7 @@ func init() {
 					stringAsset, err := resource.NewTextAsset("file contents")
 					require.NoError(l, err)
 
-					assarcValue, err := resource.NewAssetArchiveWithWD(map[string]interface{}{
+					assarcValue, err := resource.NewAssetArchiveWithWD(map[string]any{
 						"string":  stringAsset,
 						"file":    assetValue,
 						"folder":  folderValue,

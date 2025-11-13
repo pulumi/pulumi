@@ -120,7 +120,6 @@ func TestResolvePackageManager(t *testing.T) {
 		{"pnpm > bun > npm", AutoPackageManager, []string{"pnpm", "bun", "npm"}, "pnpm"},
 		{"bun > npm", AutoPackageManager, []string{"bun", "npm"}, "bun"},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			dir := t.TempDir()
@@ -143,7 +142,6 @@ func TestPack(t *testing.T) {
 	}`)
 
 	for _, pm := range []string{"npm", "yarn", "pnpm", "bun"} {
-		pm := pm
 		t.Run(pm, func(t *testing.T) {
 			t.Parallel()
 			dir := t.TempDir()
@@ -188,7 +186,6 @@ func TestPackInvalidPackageJSON(t *testing.T) {
 		{"pnpm", "Package version is not defined in the package.json"},
 		{"bun", "error: package.json must have `name` and `version` fields"},
 	} {
-		tt := tt
 		t.Run(tt.packageManager, func(t *testing.T) {
 			t.Parallel()
 			dir := t.TempDir()
