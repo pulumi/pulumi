@@ -41,6 +41,10 @@ async def test_stack_reference_output_details(simple_mock):
     expected = StackReferenceOutputDetails(secret_value="mypassword")
     compare_stack_ref_output(expected, secret)
 
+    does_not_exit = await ref.get_output_details("does-not-exist")
+    expected = StackReferenceOutputDetails()
+    compare_stack_ref_output(expected, does_not_exit)
+
 
 @pytest.fixture
 def simple_mock():
