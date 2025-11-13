@@ -32,8 +32,11 @@ async def test_stack_reference_output_details(simple_mock):
     secret = await ref.get_output_details("password")
     assert StackReferenceOutputDetails(secret_value="mypassword"), non_secret
 
-    unknown = await ref.get_output_details("does-not-exist")
-    assert StackReferenceOutputDetails(), non_secret
+    try:
+        await ref.get_output_details("does-not-exist")
+        assert False, "should raise"
+    except Exception as e:
+        pass
 
 
 @pytest.fixture
