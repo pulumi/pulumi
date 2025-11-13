@@ -1651,8 +1651,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	// in this case because we know this is a replacement. Note that we treat Null
 	// as a special case for "no trigger", that is if Trigger goes from Null to
 	// anything, or from anything to Null, it does not cause a replace.
-	triggerReplace := !new.ReplacementTrigger.IsNull() && !old.ReplacementTrigger.IsNull() &&
-		!new.ReplacementTrigger.DeepEquals(old.ReplacementTrigger)
+	triggerReplace := shouldTriggerReplace(new.ReplacementTrigger, old.ReplacementTrigger)
 
 	var diff plugin.DiffResult
 	var pcs *promise.CompletionSource[plugin.DiffResult]
@@ -3281,4 +3280,34 @@ func newStepGenerator(
 
 		events: events,
 	}
+}
+
+// Should we trigger a replace for the given new and old property values?
+func shouldTriggerReplace(new resource.PropertyValue, old resource.PropertyValue) bool {
+	// `secret(X) === x`
+	if new.IsSecret() {
+		return shouldTriggerReplace(new.SecretValue().Element, old)
+	}
+
+	// `x === secret(X)`
+	if old.IsSecret() {
+		return shouldTriggerReplace(new, old.SecretValue().Element)
+	}
+
+	// Unknowns are always considered to be changed.
+	if old.IsOutput() && !old.OutputValue().Known || new.IsOutput() && !new.OutputValue().Known {
+		return true
+	}
+
+	// Computed values are always considered to be changed.
+	if old.IsComputed() || new.IsComputed() {
+		return true
+	}
+
+	// Nulls mean "there is no replacement trigger".
+	if old.IsNull() || new.IsNull() {
+		return false
+	}
+
+	return !new.DeepEquals(old)
 }

@@ -514,7 +514,7 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 				t = model.StringType
 				resourceOptions.ImportID = item.Value
 			case "replacementTrigger":
-				t = model.NewOutputType(model.DynamicType)
+				t = model.DynamicType
 				resourceOptions.ReplacementTrigger = NewConvertCall(item.Value, t)
 			default:
 				diagnostics = append(diagnostics, unsupportedAttribute(item.Name, item.Syntax.NameRange))
