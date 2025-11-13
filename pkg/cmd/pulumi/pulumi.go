@@ -480,7 +480,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 	// With all the commands registered, we can walk the tree to build the
 	// environment variable declarations.
-	DeclareFlagsAsEnvironmentVariables(cmd)
+	declareFlagsAsEnvironmentVariables(cmd)
 	return cmd, cleanup
 }
 
@@ -928,7 +928,7 @@ func isDevVersion(s semver.Version) bool {
 // declare an environment variable for each flag. Because the Cobra arguments
 // have some basic type information, we can use it to do things like accepting 1
 // and 0 as boolean values.
-func DeclareFlagsAsEnvironmentVariables(cmd *cobra.Command) {
+func declareFlagsAsEnvironmentVariables(cmd *cobra.Command) {
 	convertToEnvironmentVariable := func(name string) string {
 		name = strings.ReplaceAll(name, "-", "_")
 		name = "OPTION_" + strings.ToUpper(name)
@@ -982,6 +982,6 @@ func DeclareFlagsAsEnvironmentVariables(cmd *cobra.Command) {
 	cmd.Flags().VisitAll(exposeAsEnvironmentVariable)
 
 	for _, command := range cmd.Commands() {
-		DeclareFlagsAsEnvironmentVariables(command)
+		declareFlagsAsEnvironmentVariables(command)
 	}
 }
