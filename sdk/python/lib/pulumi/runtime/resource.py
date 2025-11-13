@@ -107,6 +107,11 @@ class ResourceResolverOperations(NamedTuple):
     URNs of resources whose replacement should trigger a replace of this resource.
     """
 
+    replacement_trigger: Optional[Any]
+    """
+    If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
+    """
+
     supports_alias_specs: bool
     """
     Returns whether the resource monitor supports alias specs which allows sending full alias specifications
@@ -248,6 +253,10 @@ async def prepare_resource(
         dependencies |= urns
         property_dependencies[key] = list(urns)
 
+    replacement_trigger: Optional[Any] = None
+    if opts is not None and opts.replacement_trigger is not None:
+        replacement_trigger = await Output.from_input(opts.replacement_trigger).future()
+
     supports_alias_specs = await settings.monitor_supports_alias_specs()
     aliases = await prepare_aliases(res, opts, supports_alias_specs)
     deleted_with_urn: Optional[str] = ""
@@ -273,6 +282,7 @@ async def prepare_resource(
         aliases,
         deleted_with_urn,
         replace_with_urns,
+        replacement_trigger,
         supports_alias_specs,
     )
 
@@ -1080,6 +1090,11 @@ def register_resource(
                 supportsPartialValues=True,
                 remote=remote,
                 replaceOnChanges=replace_on_changes or [],
+                replacement_trigger=rpc.python_value_to_proto_value(
+                    resolver.replacement_trigger
+                )
+                if resolver.replacement_trigger
+                else None,
                 retainOnDelete=opts.retain_on_delete,
                 deletedWith=resolver.deleted_with_urn or "",
                 replace_with=resolver.replace_with_urns or [],
