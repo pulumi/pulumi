@@ -1,0 +1,16 @@
+{
+  "name": "pkg-a",
+  "version": "0.0.1",
+  "main": "bin/index.js",
+  "types": "bin/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/node": "^18",
+    "typescript": "^4.9.0"
+  },
+  "dependencies": {
+    "@pulumi/pulumi": "latest"
+  }
+}

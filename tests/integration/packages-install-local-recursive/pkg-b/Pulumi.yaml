@@ -1,0 +1,3 @@
+name: pkg-b
+description: Local package B (Python)
+runtime: python

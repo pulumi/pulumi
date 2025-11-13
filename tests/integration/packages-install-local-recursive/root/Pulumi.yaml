@@ -1,0 +1,6 @@
+name: packages-install-local-recursive
+description: Test recursive local package installation
+runtime: go
+packages:
+  pkg-a: ../pkg-a
+  pkg-b: ../pkg-b

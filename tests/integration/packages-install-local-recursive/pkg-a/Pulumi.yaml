@@ -1,0 +1,3 @@
+name: pkg-a
+description: Local package A (TypeScript)
+runtime: nodejs
