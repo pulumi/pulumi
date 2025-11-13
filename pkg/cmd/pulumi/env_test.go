@@ -14,17 +14,13 @@
 package main
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestDeclaredEnvironmentVariable(t *testing.T) {
-	t.Parallel()
-
-	os.Setenv("PULUMI_OPTION_REFRESH", "true")
-	defer os.Unsetenv("PULUMI_OPTION_REFRESH")
+	t.Setenv("PULUMI_OPTION_REFRESH", "true")
 
 	cmd, cleanup := NewPulumiCmd()
 	defer cleanup()
@@ -38,10 +34,7 @@ func TestDeclaredEnvironmentVariable(t *testing.T) {
 }
 
 func TestEnvironmentVariableWorksWithMultipleCommands(t *testing.T) {
-	t.Parallel()
-
-	os.Setenv("PULUMI_OPTION_REFRESH", "true")
-	defer os.Unsetenv("PULUMI_OPTION_REFRESH")
+	t.Setenv("PULUMI_OPTION_REFRESH", "true")
 
 	cmd, cleanup := NewPulumiCmd()
 	defer cleanup()
@@ -55,10 +48,7 @@ func TestEnvironmentVariableWorksWithMultipleCommands(t *testing.T) {
 }
 
 func TestThatDefaultsAreNotOverriddenByEnvironmentVariables(t *testing.T) {
-	t.Parallel()
-
-	os.Setenv("PULUMI_OPTION_REFRESH", "true")
-	defer os.Unsetenv("PULUMI_OPTION_REFRESH")
+	t.Setenv("PULUMI_OPTION_REFRESH", "true")
 
 	cmd, cleanup := NewPulumiCmd()
 	defer cleanup()
@@ -70,10 +60,7 @@ func TestThatDefaultsAreNotOverriddenByEnvironmentVariables(t *testing.T) {
 }
 
 func TestBooleanEnvironmentVariables(t *testing.T) {
-	t.Parallel()
-
-	os.Setenv("PULUMI_OPTION_EMOJI", "true")
-	defer os.Unsetenv("PULUMI_OPTION_EMOJI")
+	t.Setenv("PULUMI_OPTION_EMOJI", "true")
 
 	cmd, cleanup := NewPulumiCmd()
 	defer cleanup()
@@ -84,10 +71,7 @@ func TestBooleanEnvironmentVariables(t *testing.T) {
 }
 
 func TestNumericEnvironmentVariables(t *testing.T) {
-	t.Parallel()
-
-	os.Setenv("PULUMI_OPTION_VERBOSE", "2")
-	defer os.Unsetenv("PULUMI_OPTION_VERBOSE")
+	t.Setenv("PULUMI_OPTION_VERBOSE", "2")
 
 	cmd, cleanup := NewPulumiCmd()
 	defer cleanup()
