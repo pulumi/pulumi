@@ -66,41 +66,44 @@ func newPackagePublishSdkCmd() *cobra.Command {
 	return cmd
 }
 
-// determineNPMTagForStableVersion determines if we should tag this version as a backport, rather than as latest.
-func determineNPMTagForStableVersion(npm, pkgName, currentVersion string) (string, error) {
-	// Parse the current version first
-	currentVer, err := semver.ParseTolerant(strings.TrimSpace(currentVersion))
+func determineNPMTagFromCommandResult(currentVersion, npmOutput, npmStderr string, npmError error) (string, error) {
+	currentVer, err := semver.ParseTolerant(currentVersion)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse current version %q: %w", currentVersion, err)
 	}
 
-	infoCmd := exec.Command(npm, "info", pkgName, "version")
-
-	// Capture stderr to check for "package not found" errors
-	var stderr bytes.Buffer
-	infoCmd.Stderr = &stderr
-
-	output, err := infoCmd.Output()
-	if err != nil {
+	if npmError != nil {
 		// If this is a new package, it won't exist on the registry yet and return a 404.
 		// We want to be able to push that and label it as latest.
-		if string(output) == "" && strings.Contains(stderr.String(), "404") {
+		if npmOutput == "" && strings.Contains(npmStderr, "404") {
 			return "latest", nil
 		}
-		return "", fmt.Errorf("failed to get latest version from npm: %w", err)
+		return "", fmt.Errorf("failed to get latest version from npm: %w", npmError)
 	}
-	latestVer, err := semver.ParseTolerant(string(output))
+
+	latestVer, err := semver.ParseTolerant(npmOutput)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse latest version %q from npm: %w", string(output), err)
+		return "", fmt.Errorf("failed to parse latest version %q from npm: %w", npmOutput, err)
 	}
+
 	if latestVer.GT(currentVer) {
 		return "backport", nil
 	}
 	return "latest", nil
 }
 
+// determineNPMTagForStableVersion determines if we should tag this version as a backport, rather than as latest.
+func determineNPMTagForStableVersion(npm, pkgName, currentVersion string) (string, error) {
+	infoCmd := exec.Command(npm, "info", pkgName, "version")
+
+	var stderr bytes.Buffer
+	infoCmd.Stderr = &stderr
+
+	output, err := infoCmd.Output()
+	return determineNPMTagFromCommandResult(currentVersion, string(output), stderr.String(), err)
+}
+
 func publishToNPM(path string) error {
-	// verify path
 	info, err := os.Stat(path)
 	if err != nil {
 		return fmt.Errorf("reading path %s: %w", path, err)

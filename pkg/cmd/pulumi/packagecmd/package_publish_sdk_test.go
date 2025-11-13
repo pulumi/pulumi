@@ -15,15 +15,15 @@
 package packagecmd
 
 import (
-	"strings"
+	"errors"
 	"testing"
 
-	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestDetermineNPMTagForStableVersion_Logic(t *testing.T) {
+func TestDetermineNPMTagFromCommandResult(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -31,7 +31,7 @@ func TestDetermineNPMTagForStableVersion_Logic(t *testing.T) {
 		currentVersion string
 		npmOutput      string
 		npmStderr      string
-		npmError       bool
+		npmError       error
 		expectedTag    string
 		expectedErr    string
 	}{
@@ -40,7 +40,7 @@ func TestDetermineNPMTagForStableVersion_Logic(t *testing.T) {
 			currentVersion: "1.0.0",
 			npmOutput:      "",
 			npmStderr:      "npm error code E404\nnpm error 404 Not Found",
-			npmError:       true,
+			npmError:       errors.New("command failed"),
 			expectedTag:    "latest",
 		},
 		{
@@ -48,7 +48,7 @@ func TestDetermineNPMTagForStableVersion_Logic(t *testing.T) {
 			currentVersion: "1.0.0",
 			npmOutput:      "",
 			npmStderr:      "npm error 404 The requested resource could not be found",
-			npmError:       true,
+			npmError:       errors.New("command failed"),
 			expectedTag:    "latest",
 		},
 		{
@@ -56,7 +56,7 @@ func TestDetermineNPMTagForStableVersion_Logic(t *testing.T) {
 			currentVersion: "2.0.0",
 			npmOutput:      "1.0.0",
 			npmStderr:      "",
-			npmError:       false,
+			npmError:       nil,
 			expectedTag:    "latest",
 		},
 		{
@@ -64,7 +64,7 @@ func TestDetermineNPMTagForStableVersion_Logic(t *testing.T) {
 			currentVersion: "1.0.0",
 			npmOutput:      "1.0.0",
 			npmStderr:      "",
-			npmError:       false,
+			npmError:       nil,
 			expectedTag:    "latest",
 		},
 		{
@@ -72,7 +72,7 @@ func TestDetermineNPMTagForStableVersion_Logic(t *testing.T) {
 			currentVersion: "1.0.0",
 			npmOutput:      "2.0.0",
 			npmStderr:      "",
-			npmError:       false,
+			npmError:       nil,
 			expectedTag:    "backport",
 		},
 		{
@@ -80,7 +80,7 @@ func TestDetermineNPMTagForStableVersion_Logic(t *testing.T) {
 			currentVersion: "1.0.0",
 			npmOutput:      "1.0.1",
 			npmStderr:      "",
-			npmError:       false,
+			npmError:       nil,
 			expectedTag:    "backport",
 		},
 		{
@@ -88,7 +88,7 @@ func TestDetermineNPMTagForStableVersion_Logic(t *testing.T) {
 			currentVersion: "1.0.0",
 			npmOutput:      "1.1.0",
 			npmStderr:      "",
-			npmError:       false,
+			npmError:       nil,
 			expectedTag:    "backport",
 		},
 		{
@@ -96,7 +96,7 @@ func TestDetermineNPMTagForStableVersion_Logic(t *testing.T) {
 			currentVersion: "1.0.1",
 			npmOutput:      "1.0.0",
 			npmStderr:      "",
-			npmError:       false,
+			npmError:       nil,
 			expectedTag:    "latest",
 		},
 		{
@@ -104,7 +104,7 @@ func TestDetermineNPMTagForStableVersion_Logic(t *testing.T) {
 			currentVersion: "not-a-version",
 			npmOutput:      "1.0.0",
 			npmStderr:      "",
-			npmError:       false,
+			npmError:       nil,
 			expectedErr:    "failed to parse current version",
 		},
 		{
@@ -112,7 +112,7 @@ func TestDetermineNPMTagForStableVersion_Logic(t *testing.T) {
 			currentVersion: "1.0.0",
 			npmOutput:      "not-a-version",
 			npmStderr:      "",
-			npmError:       false,
+			npmError:       nil,
 			expectedErr:    "failed to parse latest version",
 		},
 		{
@@ -120,7 +120,7 @@ func TestDetermineNPMTagForStableVersion_Logic(t *testing.T) {
 			currentVersion: "1.0.0",
 			npmOutput:      "",
 			npmStderr:      "npm error network timeout",
-			npmError:       true,
+			npmError:       errors.New("network timeout"),
 			expectedErr:    "failed to get latest version from npm",
 		},
 		{
@@ -128,7 +128,15 @@ func TestDetermineNPMTagForStableVersion_Logic(t *testing.T) {
 			currentVersion: "1.0.0",
 			npmOutput:      "some output",
 			npmStderr:      "npm error authentication failed",
-			npmError:       true,
+			npmError:       errors.New("auth failed"),
+			expectedErr:    "failed to get latest version from npm",
+		},
+		{
+			name:           "404 error but has output - should fail",
+			currentVersion: "1.0.0",
+			npmOutput:      "1.0.0",
+			npmStderr:      "npm error 404",
+			npmError:       errors.New("command failed"),
 			expectedErr:    "failed to get latest version from npm",
 		},
 	}
@@ -137,54 +145,25 @@ func TestDetermineNPMTagForStableVersion_Logic(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			// Since we can't easily mock exec.Command, we'll test the core logic
-			// by simulating what the function should do with the given inputs
-			currentVer, parseErr := semver.ParseTolerant(strings.TrimSpace(tt.currentVersion))
+			tag, err := determineNPMTagFromCommandResult(tt.currentVersion, tt.npmOutput, tt.npmStderr, tt.npmError)
 
-			if parseErr != nil {
-				assert.Contains(t, tt.expectedErr, "failed to parse current version")
-				return
-			}
-			// Simulate the npm command result
-			if tt.npmError {
-				// Check if it's a 404 error (package not found)
-				if tt.npmOutput == "" && strings.Contains(strings.ToLower(tt.npmStderr), "404") {
-					// Package doesn't exist - should return "latest"
-					assert.Equal(t, "latest", tt.expectedTag)
-					return
-				}
-				// Other errors should fail
-				if tt.expectedErr != "" {
-					assert.Contains(t, tt.expectedErr, "failed to get latest version from npm")
-				}
-				return
-			}
-
-			latestVer, err := semver.ParseTolerant(strings.TrimSpace(tt.npmOutput))
-			if err != nil {
-				if tt.expectedErr != "" {
-					assert.Contains(t, tt.expectedErr, "failed to parse latest version")
-				}
-				return
-			}
-
-			var resultTag string
-			if latestVer.GT(currentVer) {
-				resultTag = "backport"
+			if tt.expectedErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErr)
 			} else {
-				resultTag = "latest"
+				require.NoError(t, err)
+				assert.Equal(t, tt.expectedTag, tag)
 			}
-
-			assert.Equal(t, tt.expectedTag, resultTag)
 		})
 	}
 }
 
-// TestDetermineNPMTagForStableVersion_Integration tests the actual function
-// This requires npm to be available and will make real network calls
-func TestDetermineNPMTagForStableVersion_Integration(t *testing.T) {
+func TestDetermineNPMTagForStableVersion(t *testing.T) {
 	t.Parallel()
-	t.Skip("Integration test - requires npm and network access")
+	_, err := executable.FindExecutable("npm")
+	if err != nil {
+		t.Skip("could not find npm; skipping integration test")
+	}
 
 	// Test with a real package that exists
 	tag, err := determineNPMTagForStableVersion("npm", "@pulumi/aws", "5.0.0")
