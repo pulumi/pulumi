@@ -65,7 +65,7 @@ func init() {
 						"expected replacement trigger resource to use default provider",
 					)
 					require.EqualValues(
-						l, resource.NewStringProperty("test"), replacementTrigger.ReplacementTrigger,
+						l, resource.NewProperty("test"), replacementTrigger.ReplacementTrigger,
 						"expected replacement trigger resource to have the replacement trigger value from the program",
 					)
 
