@@ -3292,11 +3292,6 @@ func shouldTriggerReplace(new resource.PropertyValue, old resource.PropertyValue
 		return true
 	}
 
-	// Computed values are always considered to be changed.
-	if old.IsComputed() || new.IsComputed() {
-		return true
-	}
-
 	// Nulls mean "there is no replacement trigger".
 	if old.IsNull() || new.IsNull() {
 		return false
@@ -3308,7 +3303,7 @@ func shouldTriggerReplace(new resource.PropertyValue, old resource.PropertyValue
 // Strip all `Secret` wrappers from the given property value.
 func unwrapSecrets(value resource.PropertyValue) resource.PropertyValue {
 	if value.IsSecret() {
-		return value.SecretValue().Element
+		return unwrapSecrets(value.SecretValue().Element)
 	}
 
 	if value.IsArray() {
