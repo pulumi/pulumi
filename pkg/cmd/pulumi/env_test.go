@@ -80,3 +80,17 @@ func TestNumericEnvironmentVariables(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 2, verbose)
 }
+
+func TestStringArrayEnvironmentVariables(t *testing.T) {
+	t.Setenv("PULUMI_OPTION_TARGET", "foo,bar,baz")
+
+	cmd, cleanup := NewPulumiCmd()
+	defer cleanup()
+
+	up, _, err := cmd.Find([]string{"up"})
+	require.NoError(t, err)
+
+	targets, err := up.PersistentFlags().GetStringArray("target")
+	require.NoError(t, err)
+	require.Equal(t, []string{"foo", "bar", "baz"}, targets)
+}

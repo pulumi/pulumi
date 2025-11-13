@@ -962,8 +962,17 @@ func DeclareFlagsAsEnvironmentVariables(cmd *cobra.Command) {
 			case "false", "0":
 				f.Value.Set("false")
 			}
-		default: // ints and strings
+		case "stringArray", "stringSlice":
+			for _, v := range strings.Split(value, ",") {
+				f.Value.Set(strings.TrimSpace(v))
+			}
+		case "string", "int":
 			f.Value.Set(value)
+		default:
+			// Hello! If you're reading this, you've found a new CLI type and we don't
+			// know how to express it as an environment variable.  Please add a case
+			// above to handle it.
+			panic(fmt.Sprintf("unexpected CLI type: %s", f.Value.Type()))
 		}
 
 		f.Changed = true
