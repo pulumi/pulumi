@@ -1507,7 +1507,7 @@ func (host *nodeLanguageHost) RunPlugin(
 		env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+opts.tsconfigpath)
 	}
 
-	// TODO: Pretty sure this isn't right for convert/tool plugins.
+	// TODO(https://github.com/pulumi/pulumi/issues/20941): Pretty sure this isn't right for convert/tool plugins.
 	runPath := ""
 	if req.Kind == string(apitype.ResourcePlugin) {
 		runPath = os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
