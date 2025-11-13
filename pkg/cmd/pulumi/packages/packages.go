@@ -106,22 +106,16 @@ func InstallPackage(proj workspace.BaseProject, pctx *plugin.Context, language, 
 		return nil, nil, diags, fmt.Errorf("failed to move SDK to project: %w", err)
 	}
 
-	packageDescriptor, err := pkg.Descriptor(pctx.Base())
-	if err != nil {
-		return nil, nil, diags, err
-	}
-
 	// Link the package to the project
 	if err := LinkPackage(&LinkPackageContext{
-		Writer:            os.Stdout,
-		Project:           proj,
-		Language:          language,
-		Root:              root,
-		Pkg:               pkg,
-		PluginContext:     pctx,
-		PackageDescriptor: packageDescriptor,
-		Out:               out,
-		Install:           true,
+		Writer:        os.Stdout,
+		Project:       proj,
+		Language:      language,
+		Root:          root,
+		Pkg:           pkg,
+		PluginContext: pctx,
+		Out:           out,
+		Install:       true,
 	}); err != nil {
 		return nil, nil, diags, err
 	}
@@ -218,8 +212,6 @@ type LinkPackageContext struct {
 	Pkg *schema.Package
 	// A plugin context to load languages and providers.
 	PluginContext *plugin.Context
-	// The descriptor for the package to link.
-	PackageDescriptor workspace.PackageDescriptor
 	// The output directory where the SDK package to be linked is located.
 	Out string
 	// True if the linked SDK package should be installed into the project it is being added to. If this is false, the
@@ -274,9 +266,13 @@ func linkPackage(ctx *LinkPackageContext) error {
 	if err != nil {
 		return err
 	}
+	packageDescriptor, err := ctx.Pkg.Descriptor(ctx.PluginContext.Base())
+	if err != nil {
+		return fmt.Errorf("getting package descriptor: %w", err)
+	}
 	deps := []workspace.LinkablePackageDescriptor{{
 		Path:       packagePath,
-		Descriptor: ctx.PackageDescriptor,
+		Descriptor: packageDescriptor,
 	}}
 
 	instructions, err := languagePlugin.Link(programInfo, deps, grpcServer.Addr())
