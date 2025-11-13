@@ -263,6 +263,14 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 	if err != nil {
 		return nil, err
 	}
+
+	old, _, alias := sg.getOldResource(urn, event.Name(), event.Type(), parent, []resource.Alias{})
+
+	var aliasUrns []resource.URN
+	if alias != "" {
+		aliasUrns = []resource.URN{alias}
+	}
+
 	newState := resource.NewState{
 		Type:                    event.Type(),
 		URN:                     urn,
@@ -281,7 +289,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		PropertyDependencies:    nil,
 		PendingReplacement:      false,
 		AdditionalSecretOutputs: event.AdditionalSecretOutputs(),
-		Aliases:                 nil,
+		Aliases:                 aliasUrns,
 		CustomTimeouts:          nil,
 		ImportID:                "",
 		RetainOnDelete:          false,
@@ -298,7 +306,6 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		ViewOf:                  "",
 		ResourceHooks:           nil,
 	}.Make()
-	old, hasOld := sg.deployment.Olds()[urn]
 
 	if newState.ID == "" {
 		return nil, fmt.Errorf("Expected an ID for %v", urn)
@@ -317,7 +324,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 	//
 	// This operation is tentatively called "relinquish" - it semantically represents the
 	// release of a resource from the management of Pulumi.
-	if hasOld && !old.External && old.ID != event.ID() {
+	if old != nil && !old.External && old.ID != event.ID() {
 		logging.V(7).Infof(
 			"stepGenerator.GenerateReadSteps(...): replacing existing resource %s, ids don't match", urn)
 		sg.replaces[urn] = true
@@ -327,7 +334,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		}, nil
 	}
 
-	if bool(logging.V(7)) && hasOld && old.ID == event.ID() {
+	if bool(logging.V(7)) && old != nil && old.ID == event.ID() {
 		logging.V(7).Infof("stepGenerator.GenerateReadSteps(...): recognized relinquish of resource %s", urn)
 	}
 
@@ -478,23 +485,25 @@ func (sg *stepGenerator) validateSteps(steps []Step) ([]Step, error) {
 	return steps, nil
 }
 
-func (sg *stepGenerator) collapseAliasToUrn(goal *resource.Goal, alias resource.Alias) resource.URN {
+func (sg *stepGenerator) collapseAliasToUrn(
+	name string, typ tokens.Type, resParent resource.URN, alias resource.Alias,
+) resource.URN {
 	if alias.URN != "" {
 		return alias.URN
 	}
 
 	n := alias.Name
 	if n == "" {
-		n = goal.Name
+		n = name
 	}
 	t := alias.Type
 	if t == "" {
-		t = string(goal.Type)
+		t = string(typ)
 	}
 
 	parent := alias.Parent
 	if parent == "" {
-		parent = goal.Parent
+		parent = resParent
 	} else {
 		// If the parent used an alias then use it's old URN here, as that will be this resource old URN as well.
 		if parentAlias, has := sg.aliases[parent]; has {
@@ -551,7 +560,9 @@ func (sg *stepGenerator) inheritedChildAlias(
 		aliasName)
 }
 
-func (sg *stepGenerator) generateAliases(goal *resource.Goal) []resource.URN {
+func (sg *stepGenerator) generateAliases(
+	name string, typ tokens.Type, parent resource.URN, resAliases []resource.Alias,
+) []resource.URN {
 	var result []resource.URN
 	aliases := make(map[resource.URN]struct{}, 0)
 
@@ -562,19 +573,19 @@ func (sg *stepGenerator) generateAliases(goal *resource.Goal) []resource.URN {
 		}
 	}
 
-	for _, alias := range goal.Aliases {
-		urn := sg.collapseAliasToUrn(goal, alias)
+	for _, alias := range resAliases {
+		urn := sg.collapseAliasToUrn(name, typ, parent, alias)
 		addAlias(urn)
 	}
 	// Now multiply out any aliases our parent had.
-	if goal.Parent != "" {
-		if parentAlias, has := sg.aliases[goal.Parent]; has {
-			addAlias(sg.inheritedChildAlias(goal.Type, goal.Name, goal.Parent.Name(), parentAlias))
-			for _, alias := range goal.Aliases {
-				childAlias := sg.collapseAliasToUrn(goal, alias)
+	if parent != "" {
+		if parentAlias, has := sg.aliases[parent]; has {
+			addAlias(sg.inheritedChildAlias(typ, name, parent.Name(), parentAlias))
+			for _, alias := range resAliases {
+				childAlias := sg.collapseAliasToUrn(name, typ, parent, alias)
 				aliasedChildType := childAlias.Type()
 				aliasedChildName := childAlias.Name()
-				inheritedAlias := sg.inheritedChildAlias(aliasedChildType, aliasedChildName, goal.Parent.Name(), parentAlias)
+				inheritedAlias := sg.inheritedChildAlias(aliasedChildType, aliasedChildName, parent.Name(), parentAlias)
 				addAlias(inheritedAlias)
 			}
 		}
@@ -583,25 +594,12 @@ func (sg *stepGenerator) generateAliases(goal *resource.Goal) []resource.URN {
 	return result
 }
 
-func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, bool, error) {
-	var invalid bool // will be set to true if this object fails validation.
-
-	goal := event.Goal()
-
-	// Some goal settings are based on the parent settings so make sure our parent is correct.
-	parent, err := sg.checkParent(goal.Parent, goal.Type)
-	if err != nil {
-		return nil, false, err
-	}
-	goal.Parent = parent
-
-	urn, err := sg.generateURN(goal.Parent, goal.Type, goal.Name)
-	if err != nil {
-		return nil, false, err
-	}
-
+func (sg *stepGenerator) getOldResource(
+	urn resource.URN, name string, typ tokens.Type, parent resource.URN, resAliases []resource.Alias,
+) (*resource.State, bool, resource.URN) {
+	invalid := false
 	// Generate the aliases for this resource.
-	aliases := sg.generateAliases(goal)
+	aliases := sg.generateAliases(name, typ, parent, resAliases)
 	// Log the aliases we're going to use to help with debugging aliasing issues.
 	logging.V(7).Infof("Generated aliases for %s: %v", urn, aliases)
 
@@ -614,8 +612,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or
 	// to diff.  We look up first by URN and then by any provided aliases.  If it is found using an
 	// alias, record that alias so that we do not delete the aliased resource later.
+
 	var old *resource.State
-	var alias []resource.Alias
+	var alias resource.URN
 	// Important: Check the URN first, then aliases. Otherwise we may pick the wrong resource which
 	// could lead to a corrupt snapshot.
 	for _, urnOrAlias := range append([]resource.URN{urn}, aliases...) {
@@ -641,7 +640,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 				// NOTE: we save the URN of the existing resource so that the snapshotter can replace references to the
 				// existing resource with the URN of the newly-registered resource. We do not need to save any of the
 				// resource's other possible aliases.
-				alias = []resource.Alias{{URN: urnOrAlias}}
+				alias = urnOrAlias
 				// Save the alias actually being used so we can look it up later if anything has this as a parent
 				sg.aliases[urn] = urnOrAlias
 
@@ -652,9 +651,31 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		}
 	}
 
-	aliasUrns := make([]resource.URN, len(alias))
-	for i, a := range alias {
-		aliasUrns[i] = a.URN
+	return old, invalid, alias
+}
+
+func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, bool, error) {
+	var invalid bool // will be set to true if this object fails validation.
+
+	goal := event.Goal()
+
+	// Some goal settings are based on the parent settings so make sure our parent is correct.
+	parent, err := sg.checkParent(goal.Parent, goal.Type)
+	if err != nil {
+		return nil, false, err
+	}
+	goal.Parent = parent
+
+	urn, err := sg.generateURN(goal.Parent, goal.Type, goal.Name)
+	if err != nil {
+		return nil, false, err
+	}
+
+	old, invalid, alias := sg.getOldResource(urn, goal.Name, goal.Type, goal.Parent, goal.Aliases)
+
+	var aliasUrns []resource.URN
+	if alias != "" {
+		aliasUrns = []resource.URN{alias}
 	}
 
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
