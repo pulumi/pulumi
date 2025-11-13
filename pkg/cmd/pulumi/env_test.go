@@ -95,6 +95,20 @@ func TestStringArrayEnvironmentVariables(t *testing.T) {
 	require.Equal(t, []string{"foo", "bar", "baz"}, targets)
 }
 
+func TestStringArrayOneElement(t *testing.T) {
+	t.Setenv("PULUMI_OPTION_TARGET", "foo")
+
+	cmd, cleanup := NewPulumiCmd()
+	defer cleanup()
+
+	up, _, err := cmd.Find([]string{"up"})
+	require.NoError(t, err)
+
+	targets, err := up.PersistentFlags().GetStringArray("target")
+	require.NoError(t, err)
+	require.Equal(t, []string{"foo"}, targets)
+}
+
 func TestStringSliceEnvironmentVariables(t *testing.T) {
 	t.Setenv("PULUMI_OPTION_MAPPINGS", "foo,bar,baz")
 
@@ -109,7 +123,7 @@ func TestStringSliceEnvironmentVariables(t *testing.T) {
 	require.Equal(t, []string{"foo", "bar", "baz"}, mappings)
 }
 
-func TestStringSliceNoSplitOnComma(t *testing.T) {
+func TestStringArrayNoSplitOnComma(t *testing.T) {
 	t.Setenv("PULUMI_OPTION_PLAINTEXT", "\"a=foo,bar,baz\"")
 
 	cmd, cleanup := NewPulumiCmd()
