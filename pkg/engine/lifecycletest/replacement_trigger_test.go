@@ -168,6 +168,64 @@ func TestReplacementTriggerWithSecret(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 }
 
+func TestReplacementTriggerWithDeepSecret(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         resource.ID("id123"),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	value := resource.NewPropertyValue([]resource.PropertyValue{resource.NewPropertyValue("first")})
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs:             resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
+			ReplacementTrigger: value,
+		})
+
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
+
+	project := p.GetProject()
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 2)
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+
+	// Making the inner value secret should not trigger a replace, as the underlying value is still the same.
+	value = resource.NewPropertyValue([]resource.PropertyValue{resource.MakeSecret(resource.NewPropertyValue("first"))})
+
+	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
+			for _, e := range events {
+				if e.Type == ResourcePreEvent && e.Payload().(ResourcePreEventPayload).Metadata.URN.Name() == "resA" {
+					assert.Equal(t, deploy.OpSame, e.Payload().(ResourcePreEventPayload).Metadata.Op)
+				}
+			}
+			return nil
+		},
+		"1",
+	)
+	require.NoError(t, err)
+
+	assert.Equal(t, 2, len(snap.Resources))
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+}
+
 func TestReplacementTriggerWithOutput(t *testing.T) {
 	t.Parallel()
 
