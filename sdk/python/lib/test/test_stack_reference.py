@@ -30,7 +30,7 @@ async def test_stack_reference_output_details(simple_mock):
     assert StackReferenceOutputDetails(value="mybucket-1234"), non_secret
 
     secret = await ref.get_output_details("password")
-    assert StackReferenceOutputDetails(secret_value="mypassword"), non_secret
+    assert StackReferenceOutputDetails(secret_value="mypassword"), secret
 
     try:
         await ref.get_output_details("does-not-exist")
