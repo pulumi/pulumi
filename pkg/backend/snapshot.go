@@ -337,6 +337,11 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 		return true
 	}
 
+	if old.ReplacementTrigger != new.ReplacementTrigger {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of ReplacementTrigger")
+		return true
+	}
+
 	// Init errors are strictly advisory, so we do not consider them when deciding whether or not to write the
 	// checkpoint. Likewise source positions are purely metadata and do not affect the system correctness, so
 	// for performance we elide those as well. This prevents _every_ resource needing a snapshot write when
