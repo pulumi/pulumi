@@ -478,6 +478,9 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	// completion command as a recommended best practice.
 	cmd.CompletionOptions.DisableDefaultCmd = true
 
+	// With all the commands registered, we can walk the tree to build the
+	// environment variable declarations.
+	DeclareFlagsAsEnvironmentVariables(cmd)
 	return cmd, cleanup
 }
 
@@ -920,37 +923,56 @@ func isDevVersion(s semver.Version) bool {
 	return !s.Pre[0].IsNum && devRegex.MatchString(s.Pre[0].VersionStr)
 }
 
-func DeclareEnvironmentVariables(cmd *cobra.Command) {
-	cmd.PersistentFlags().VisitAll(exposeFlagAsEnvironmentVariable)
-	cmd.Flags().VisitAll(exposeFlagAsEnvironmentVariable)
+// We want to expose all the flags on all the commands as configurable with
+// environment variables. To do this, we walk the Cobra command tree, and
+// declare an environment variable for each flag. Because the Cobra arguments
+// have some basic type information, we can use it to do things like accepting 1
+// and 0 as boolean values.
+func DeclareFlagsAsEnvironmentVariables(cmd *cobra.Command) {
+	convertToEnvironmentVariable := func(name string) string {
+		name = strings.ReplaceAll(name, "-", "_")
+		name = "OPTION_" + strings.ToUpper(name)
+
+		return name
+	}
+
+	exposeAsEnvironmentVariable := func(f *pflag.Flag) {
+		name := convertToEnvironmentVariable(f.Name)
+
+		var env declared.Value
+		switch f.Value.Type() {
+		case "int", "int32":
+			env = declared.Int(name, f.Usage)
+		case "bool":
+			env = declared.Bool(name, f.Usage)
+		default:
+			env = declared.String(name, f.Usage)
+		}
+
+		value, present := env.Underlying()
+		if f.Changed || !present {
+			return
+		}
+
+		switch f.Value.Type() {
+		case "bool":
+			switch strings.ToLower(value) {
+			case "true", "1":
+				f.Value.Set("true")
+			case "false", "0":
+				f.Value.Set("false")
+			}
+		default: // ints and strings
+			f.Value.Set(value)
+		}
+
+		f.Changed = true
+	}
+
+	cmd.PersistentFlags().VisitAll(exposeAsEnvironmentVariable)
+	cmd.Flags().VisitAll(exposeAsEnvironmentVariable)
 
 	for _, command := range cmd.Commands() {
-		DeclareEnvironmentVariables(command)
+		DeclareFlagsAsEnvironmentVariables(command)
 	}
-}
-
-var seenVariables = map[string]declared.Value{}
-
-func exposeFlagAsEnvironmentVariable(f *pflag.Flag) {
-	if _, ok := seenVariables[f.Name]; ok {
-		return
-	}
-
-	name := "OPTION_" + strings.ToUpper(strings.ReplaceAll(f.Name, "-", "_"))
-	var env declared.Value
-
-	switch f.Value.Type() {
-	case "int", "int32":
-		env = declared.Int(name, "TODO")
-	case "bool":
-		env = declared.Bool(name, "TODO")
-	default:
-		env = declared.String(name, "TODO")
-	}
-
-	if value, present := env.Underlying(); present && !f.Changed {
-		f.Value.Set(value)
-	}
-
-	seenVariables[f.Name] = env
 }
