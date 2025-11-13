@@ -970,7 +970,7 @@ func declareFlagsAsEnvironmentVariables(cmd *cobra.Command) {
 			f.Value.Set(value)
 		default:
 			// Hello! If you're reading this, you've found a new CLI type and we don't
-			// know how to express it as an environment variable.  Please add a case
+			// know how to express it as an environment variable. Please add a case
 			// above to handle it.
 			panic(fmt.Sprintf("unexpected CLI type: %s", f.Value.Type()))
 		}
