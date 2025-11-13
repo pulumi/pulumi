@@ -119,10 +119,11 @@ func EncryptSecrets(ctx context.Context, filename string, source []byte, encrypt
 		}
 
 		// Encrypt the plaintext.
-		ciphertext, err := encrypter.Encrypt(ctx, []byte(plaintext.Value()))
+		ciphertext, err := EncryptSecret(ctx, encrypter, []byte(plaintext.Value()))
 		if err != nil {
 			return nil, nil, err
 		}
+		encodedCiphertext := base64.StdEncoding.EncodeToString(ciphertext)
 
 		// Replace the original call to `fn::secret` with a new call whose argument is the encrypted ciphertext.
 		//
@@ -134,7 +135,7 @@ func EncryptSecrets(ctx context.Context, filename string, source []byte, encrypt
 				syntax.Object(
 					syntax.ObjectProperty(
 						syntax.String("ciphertext"),
-						syntax.StringSyntax(syntax.CopyTrivia(plaintext.Syntax()), encodeCiphertext(ciphertext)),
+						syntax.StringSyntax(syntax.CopyTrivia(plaintext.Syntax()), encodedCiphertext),
 					),
 				),
 			),
@@ -176,6 +177,16 @@ func DecryptSecrets(ctx context.Context, filename string, source []byte, decrypt
 			syntax.ObjectPropertySyntax(obj.Index(0).Syntax, obj.Index(0).Key, syntax.StringSyntax(ciphertextNode.Syntax(), string(plaintext))),
 		), nil, nil
 	})
+}
+
+// EncryptSecret encrypts a given secret and returns the encoded ciphertext
+func EncryptSecret(ctx context.Context, encrypter Encrypter, plaintext []byte) ([]byte, error) {
+	ciphertext, err := encrypter.Encrypt(ctx, plaintext)
+	if err != nil {
+		return nil, err
+	}
+
+	return encodeCiphertext(ciphertext), nil
 }
 
 const envelopeMagic = "escx"
@@ -223,11 +234,11 @@ func decodeCiphertext(repr string) ([]byte, error) {
 	return bin[8 : len(bin)-4], nil
 }
 
-func encodeCiphertext(ciphertext []byte) string {
+func encodeCiphertext(ciphertext []byte) []byte {
 	var b bytes.Buffer
 	b.WriteString(envelopeMagic)                                                            // "escx"
 	b.Write(binary.BigEndian.AppendUint32(nil, envelopeVersion))                            // version
 	b.Write(ciphertext)                                                                     // ciphertext
 	b.Write(binary.BigEndian.AppendUint32(nil, crc32.Checksum(b.Bytes(), crc32.IEEETable))) // crc32
-	return base64.StdEncoding.EncodeToString(b.Bytes())
+	return b.Bytes()
 }
