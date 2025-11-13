@@ -1839,9 +1839,6 @@ func TestReplacementTrigger(t *testing.T) {
 
 	value = resource.NewPropertyValue("second")
 
-	hostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	p.Options.HostF = hostF
-
 	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
 			operations := []display.StepOp{}
