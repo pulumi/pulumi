@@ -1,3 +1,17 @@
+// Copyright 2025, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package lifecycletest
 
 import (
@@ -172,7 +186,7 @@ func TestReplacementTriggerWithOutput(t *testing.T) {
 	}
 
 	// A known output should not trigger a replace.
-	value := resource.NewOutputProperty(resource.Output{
+	value := resource.NewProperty(resource.Output{
 		Element:      resource.NewPropertyValue("first"),
 		Known:        true,
 		Secret:       false,
@@ -214,7 +228,7 @@ func TestReplacementTriggerWithOutput(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 
 	// Making this value an unknown output should always trigger a replace.
-	value = resource.NewOutputProperty(resource.Output{
+	value = resource.NewProperty(resource.Output{
 		Element:      resource.NewPropertyValue("first"),
 		Known:        false,
 		Secret:       false,
