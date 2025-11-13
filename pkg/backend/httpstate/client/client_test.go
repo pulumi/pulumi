@@ -54,8 +54,18 @@ func newMockServerRequestProcessor(statusCode int, processor func(req *http.Requ
 		}))
 }
 
+func newHTTPClient() *http.Client {
+	return &http.Client{
+		// Some arbitrary connection limits to avoid excessive connections
+		Transport: &http.Transport{
+			MaxIdleConns:    2,
+			IdleConnTimeout: 2 * time.Second,
+		},
+	}
+}
+
 func newMockClient(server *httptest.Server) *Client {
-	httpClient := http.DefaultClient
+	httpClient := newHTTPClient()
 
 	return &Client{
 		apiURL:     server.URL,
