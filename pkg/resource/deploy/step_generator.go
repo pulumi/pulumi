@@ -3284,18 +3284,11 @@ func newStepGenerator(
 
 // Should we trigger a replace for the given new and old property values?
 func shouldTriggerReplace(new resource.PropertyValue, old resource.PropertyValue) bool {
-	// `secret(X) === x`
-	if new.IsSecret() {
-		return shouldTriggerReplace(new.SecretValue().Element, old)
-	}
-
-	// `x === secret(X)`
-	if old.IsSecret() {
-		return shouldTriggerReplace(new, old.SecretValue().Element)
-	}
+	new = unwrapSecrets(new)
+	old = unwrapSecrets(old)
 
 	// Unknowns are always considered to be changed.
-	if old.IsOutput() && !old.OutputValue().Known || new.IsOutput() && !new.OutputValue().Known {
+	if old.ContainsUnknowns() || new.ContainsUnknowns() {
 		return true
 	}
 
@@ -3310,4 +3303,29 @@ func shouldTriggerReplace(new resource.PropertyValue, old resource.PropertyValue
 	}
 
 	return !new.DeepEquals(old)
+}
+
+// Strip all `Secret` wrappers from the given property value.
+func unwrapSecrets(value resource.PropertyValue) resource.PropertyValue {
+	if value.IsSecret() {
+		return value.SecretValue().Element
+	}
+
+	if value.IsArray() {
+		arr := []resource.PropertyValue{}
+		for _, e := range value.ArrayValue() {
+			arr = append(arr, unwrapSecrets(e))
+		}
+		return resource.NewProperty(arr)
+	}
+
+	if value.IsObject() {
+		obj := resource.PropertyMap{}
+		for key, e := range value.ObjectValue() {
+			obj[key] = unwrapSecrets(e)
+		}
+		return resource.NewProperty(obj)
+	}
+
+	return value
 }
