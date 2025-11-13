@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdkgen/python
-  description: Allow all PEP440 version specifiers to be used

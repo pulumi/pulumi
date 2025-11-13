@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 //
@@ -645,19 +646,19 @@ func (ms *MockStack) Snapshot(ctx context.Context, secretsProvider secrets.Provi
 
 func (ms *MockStack) SnapshotStackOutputs(
 	ctx context.Context, secretsProvider secrets.Provider,
-) (resource.PropertyMap, error) {
+) (property.Map, error) {
 	snapshot, err := ms.Snapshot(ctx, secretsProvider)
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
 	res, err := stack.GetRootStackResource(snapshot)
 	if err != nil {
-		return nil, fmt.Errorf("getting root stack resources: %w", err)
+		return property.Map{}, fmt.Errorf("getting root stack resources: %w", err)
 	}
 	if res == nil {
-		return resource.PropertyMap{}, nil
+		return property.Map{}, nil
 	}
-	return res.Outputs, nil
+	return resource.FromResourcePropertyMap(res.Outputs), nil
 }
 
 func (ms *MockStack) Tags() map[apitype.StackTagName]string {

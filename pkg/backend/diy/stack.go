@@ -20,8 +20,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -40,7 +40,7 @@ type diyStack struct {
 	snapshot atomic.Pointer[*deploy.Snapshot]
 	// snapshotStackOutputs contains the stack outputs of the latest deployment snapshot, allocated on first use.
 	// It's valid for the outputs property map itself to be nil.
-	snapshotStackOutputs atomic.Pointer[resource.PropertyMap]
+	snapshotStackOutputs atomic.Pointer[property.Map]
 	// a pointer to the backend this stack belongs to.
 	b *diyBackend
 }
@@ -84,14 +84,14 @@ func (s *diyStack) Snapshot(ctx context.Context, secretsProvider secrets.Provide
 
 func (s *diyStack) SnapshotStackOutputs(
 	ctx context.Context, secretsProvider secrets.Provider,
-) (resource.PropertyMap, error) {
+) (property.Map, error) {
 	if v := s.snapshotStackOutputs.Load(); v != nil {
 		return *v, nil
 	}
 
 	outputs, err := s.b.getSnapshotStackOutputs(ctx, secretsProvider, s.ref)
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
 
 	if s.snapshotStackOutputs.CompareAndSwap(nil, &outputs) {

@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // BackendClient is used to retrieve information about stacks from a backend.
@@ -50,14 +51,14 @@ type BackendClient interface {
 		ctx context.Context,
 		name string,
 		onDecryptError func(error) error,
-	) (resource.PropertyMap, error)
+	) (property.Map, error)
 
 	// GetStackResourceOutputs returns the resource outputs for a stack, or an error if the stack
 	// cannot be found. Resources are retrieved from the latest stack snapshot, which may include
-	// ongoing updates. They are returned in a `PropertyMap` mapping resource URN to another
-	// `Propertymap` with members `type` (containing the Pulumi type ID for the resource) and
+	// ongoing updates. They are returned in a `property.Map` mapping resource URN to another
+	// `property.Map` with members `type` (containing the Pulumi type ID for the resource) and
 	// `outputs` (containing the resource outputs themselves).
-	GetStackResourceOutputs(ctx context.Context, stackName string) (resource.PropertyMap, error)
+	GetStackResourceOutputs(ctx context.Context, stackName string) (property.Map, error)
 }
 
 // Options controls the deployment process.
