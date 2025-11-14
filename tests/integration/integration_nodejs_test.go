@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/acarl005/stripansi"
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
@@ -2624,6 +2625,15 @@ func TestNodejsSourcemapTest(t *testing.T) {
 	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
 	require.NoError(t, err)
 	e.RunCommand("yarn", "add", coreSDK)
+
+	// TODO(https://github.com/jestjs/jest/issues/15888): Remove the need to specify --localstorage-file when jest works
+	// around the Node.js v25.2.0 breaking change that requires it to be set when localStorage is accessed.
+	output, _ := e.RunCommand("node", "--version")
+	nodeVersion, err := semver.ParseTolerant(output)
+	require.NoError(t, err)
+	if nodeVersion.GTE(semver.MustParse("25.2.0")) {
+		e.SetEnvVars("NODE_OPTIONS=--localstorage-file=./jest-storage")
+	}
 
 	_, stderr := e.RunCommandExpectError("yarn", "test")
 
