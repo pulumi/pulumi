@@ -279,14 +279,14 @@ func TestReplacementTriggerWithOutput(t *testing.T) {
 				}
 			}
 			return nil
-		}, "1")
+		}, "0")
 
 	require.NoError(t, err)
 
 	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 
-	// Making this value an unknown output should always trigger a replace.
+	// Now we make it unknown...
 	value = resource.NewProperty(resource.Output{
 		Element:      resource.NewPropertyValue("first"),
 		Known:        false,
@@ -294,7 +294,8 @@ func TestReplacementTriggerWithOutput(t *testing.T) {
 		Dependencies: []resource.URN{},
 	})
 
-	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+	// Unknown output values during preview runs should trigger a replace.
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
 			operations := []display.StepOp{}
 
@@ -305,6 +306,24 @@ func TestReplacementTriggerWithOutput(t *testing.T) {
 			}
 
 			assert.Contains(t, operations, deploy.OpReplace)
+			return nil
+		}, "1")
+	require.NoError(t, err)
+
+	// Unknown output values during non-preview runs should trigger an error.
+	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
+			for _, e := range events {
+				if e.Type == DiagEvent {
+					diag := e.Payload().(DiagEventPayload).Message
+
+					if strings.Contains(diag, "replacement trigger contains unknowns for urn:pulumi:test::test::pkgA:m:typA::resA") {
+						return nil
+					}
+				}
+			}
+
+			assert.Fail(t, "expected matching diag event")
 			return nil
 		}, "2")
 	require.NoError(t, err)
