@@ -55,12 +55,6 @@ func newPulumiPackage() *Package {
 							Ref: "pulumi.json#/Any",
 						},
 					},
-					"passthrough": {
-						Description: "If true the input value is propagated as the output value without stashing.",
-						TypeSpec: TypeSpec{
-							Type: "boolean",
-						},
-					},
 				},
 				RequiredInputs: []string{
 					"input",

@@ -34,8 +34,7 @@ type Stash struct {
 }
 
 type stashArgs struct {
-	Input       any   `pulumi:"input"`
-	Passthrough *bool `pulumi:"passthrough"`
+	Input any `pulumi:"input"`
 }
 
 type StashArgs struct {

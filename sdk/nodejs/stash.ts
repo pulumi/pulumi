@@ -41,7 +41,6 @@ export class Stash extends CustomResource {
             name,
             {
                 input: args.input,
-                passthrough: args.passthrough,
                 output: undefined,
             },
             opts,
@@ -57,6 +56,4 @@ export interface StashArgs {
      * The value to store in the stash resource.
      */
     readonly input: Input<any>;
-
-    readonly passthrough?: Input<boolean>;
 }

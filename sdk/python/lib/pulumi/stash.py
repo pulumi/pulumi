@@ -20,14 +20,11 @@ from . import _types
 
 @_types.input_type
 class StashArgs:
-    def __init__(
-        self, *, input: Input[Any], passthrough: Optional[Input[bool]] = None
-    ):
+    def __init__(self, *, input: Input[Any]):
         """
         The set of arguments for constructing a State resource.
         """
         _types.set(self, "input", input)
-        _types.set(self, "passthrough", passthrough)
 
     @property
     @_types.getter
@@ -37,15 +34,6 @@ class StashArgs:
     @input.setter
     def input(self, input: Input[Any]):
         _types.set(self, "input", input)
-
-    @property
-    @_types.getter
-    def passthrough(self) -> Optional[Input[bool]]:
-        return _types.get(self, "passthrough")
-
-    @passthrough.setter
-    def passthrough(self, passthrough: Optional[Input[bool]]):
-        _types.set(self, "passthrough", passthrough)
 
 
 def _get_resource_args_opts(resource_args_type, resource_options_type, *args, **kwargs):
@@ -100,7 +88,6 @@ class Stash(CustomResource):
         resource_name: str,
         opts: Optional[ResourceOptions] = None,
         input: Optional[Input[Any]] = None,
-        passthrough: Optional[Input[bool]] = None,
         __props__=None,
     ):
         """
@@ -139,7 +126,6 @@ class Stash(CustomResource):
         resource_name: str,
         opts: Optional[ResourceOptions] = None,
         input: Optional[Input[Any]] = None,
-        passthrough: Optional[Input[bool]] = None,
     ):
         opts = opts or ResourceOptions()
         if not isinstance(opts, ResourceOptions):
@@ -150,8 +136,6 @@ class Stash(CustomResource):
         props = {}
         if input is not None:
             props["input"] = input
-        if passthrough is not None:
-            props["passthrough"] = passthrough
 
         props["output"] = None
 
