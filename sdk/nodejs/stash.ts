@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { all, Input, Output } from "./output";
+import { Input, Output } from "./output";
 import { CustomResource, CustomResourceOptions } from "./resource";
 
 /**
@@ -20,9 +20,14 @@ import { CustomResource, CustomResourceOptions } from "./resource";
  */
 export class Stash extends CustomResource {
     /**
-     * Value is any value stored in the stash resource.
+     * Output is any value stored in the stash resource.
      */
-    public readonly value!: Output<any>;
+    public readonly output!: Output<any>;
+
+    /**
+     * Input is the value stored in the stash resource.
+     */
+    public readonly input!: Output<any>;
 
     /**
      * Create a {@link Stash} resource with the given arguments, and options.
@@ -31,7 +36,11 @@ export class Stash extends CustomResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args: StashArgs, opts?: CustomResourceOptions) {
-        super("pulumi:pulumi:Stash", name, args, opts);
+        super("pulumi:index:Stash", name, {
+            input: args.input,
+            passthrough: args.passthrough,
+            output: undefined,
+        }, opts);
     }
 }
 
@@ -42,7 +51,7 @@ export interface StashArgs {
     /**
      * The value to store in the stash resource.
      */
-    readonly value: Input<any>;
+    readonly input: Input<any>;
 
     readonly passthrough?: Input<boolean>;
 }

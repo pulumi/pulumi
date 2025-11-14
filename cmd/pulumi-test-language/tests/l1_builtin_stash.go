@@ -41,10 +41,14 @@ func init() {
 
 					outputs := stack.Outputs
 
-					require.Len(l, outputs, 2, "expected 2 outputs")
+					require.Len(l, outputs, 4, "expected 4 outputs")
 
-					got, ok := outputs[resource.PropertyKey("stashOutput")]
-					require.True(l, ok, "expected property stashOutput")
+					getOutput := func(key string) resource.PropertyValue {
+						got, ok := outputs[resource.PropertyKey(key)]
+						require.True(l, ok, "expected property %s", key)
+						return got
+					}
+
 					expectedStash := resource.NewObjectProperty(resource.PropertyMap{
 						"key": resource.NewArrayProperty([]resource.PropertyValue{
 							resource.NewStringProperty("value"),
@@ -52,33 +56,43 @@ func init() {
 						}),
 						"": resource.NewBoolProperty(false),
 					})
+
+					got := getOutput("stashInput")
 					assert.Equal(l, expectedStash, got, "unexpected value for stashOutput")
 
-					got, ok = outputs[resource.PropertyKey("passthroughOutput")]
-					require.True(l, ok, "expected property passthroughOutput")
+					got = getOutput("stashOutput")
+					assert.Equal(l, expectedStash, got, "unexpected value for stashOutput")
+
 					expectedPassthrough := resource.NewStringProperty("old")
+
+					got = getOutput("passthroughInput")
+					assert.Equal(l, expectedPassthrough, got, "unexpected value for passthroughInput")
+
+					got = getOutput("passthroughOutput")
 					assert.Equal(l, expectedPassthrough, got, "unexpected value for passthroughOutput")
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:pulumi")
 					myStash := RequireSingleNamedResource(l, snap.Resources, "myStash")
 
 					want := resource.PropertyMap{
-						"value": expectedStash,
+						"input":  expectedStash,
+						"output": expectedStash,
 					}
 					assert.Equal(l, want, myStash.Outputs, "expected myStash outputs to be %v", want)
 					want = resource.PropertyMap{
-						"value": expectedStash,
+						"input": expectedStash,
 					}
 					assert.Equal(l, want, myStash.Inputs, "expected myStash inputs to be %v", want)
 
 					passthroughStash := RequireSingleNamedResource(l, snap.Resources, "passthroughStash")
 
 					want = resource.PropertyMap{
-						"value": expectedPassthrough,
+						"input":  expectedPassthrough,
+						"output": expectedPassthrough,
 					}
 					assert.Equal(l, want, passthroughStash.Outputs, "expected passthroughStash outputs to be %v", want)
 					want = resource.PropertyMap{
-						"value":       expectedPassthrough,
+						"input":       expectedPassthrough,
 						"passthrough": resource.NewBoolProperty(true),
 					}
 					assert.Equal(l, want, passthroughStash.Inputs, "expected passthroughStash inputs to be %v", want)
@@ -99,10 +113,19 @@ func init() {
 
 					outputs := stack.Outputs
 
-					require.Len(l, outputs, 2, "expected 2 outputs")
+					require.Len(l, outputs, 4, "expected 4 outputs")
 
-					got, ok := outputs[resource.PropertyKey("stashOutput")]
-					require.True(l, ok, "expected property stashOutput")
+					getOutput := func(key string) resource.PropertyValue {
+						got, ok := outputs[resource.PropertyKey(key)]
+						require.True(l, ok, "expected property %s", key)
+						return got
+					}
+
+					got := getOutput("stashInput")
+					expectedInput := resource.NewStringProperty("ignored")
+					assert.Equal(l, expectedInput, got, "unexpected value for stashInput")
+
+					got = getOutput("stashOutput")
 					expectedStash := resource.NewObjectProperty(resource.PropertyMap{
 						"key": resource.NewArrayProperty([]resource.PropertyValue{
 							resource.NewStringProperty("value"),
@@ -112,31 +135,35 @@ func init() {
 					})
 					assert.Equal(l, expectedStash, got, "unexpected value for stashOutput")
 
-					got, ok = outputs[resource.PropertyKey("passthroughOutput")]
-					require.True(l, ok, "expected property passthroughOutput")
 					expectedPassthrough := resource.NewStringProperty("new")
+					got = getOutput("passthroughInput")
+					assert.Equal(l, expectedPassthrough, got, "unexpected value for passthroughInput")
+
+					got = getOutput("passthroughOutput")
 					assert.Equal(l, expectedPassthrough, got, "unexpected value for passthroughOutput")
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:pulumi")
 					myStash := RequireSingleNamedResource(l, snap.Resources, "myStash")
 
 					want := resource.PropertyMap{
-						"value": expectedStash,
+						"input":  expectedInput,
+						"output": expectedStash,
 					}
 					assert.Equal(l, want, myStash.Outputs, "expected myStash outputs to be %v", want)
 					want = resource.PropertyMap{
-						"value": resource.NewProperty("ignored"),
+						"input": expectedInput,
 					}
 					assert.Equal(l, want, myStash.Inputs, "expected myStash inputs to be %v", want)
 
 					passthroughStash := RequireSingleNamedResource(l, snap.Resources, "passthroughStash")
 
 					want = resource.PropertyMap{
-						"value": expectedPassthrough,
+						"input":  expectedPassthrough,
+						"output": expectedPassthrough,
 					}
 					assert.Equal(l, want, passthroughStash.Outputs, "expected passthroughStash outputs to be %v", want)
 					want = resource.PropertyMap{
-						"value":       expectedPassthrough,
+						"input":       expectedPassthrough,
 						"passthrough": resource.NewBoolProperty(true),
 					}
 					assert.Equal(l, want, passthroughStash.Inputs, "expected passthroughStash inputs to be %v", want)

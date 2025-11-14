@@ -7,7 +7,7 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		myStash, err := pulumi.NewStash(ctx, "myStash", &pulumi.StashArgs{
-			Value: pulumi.Any(map[string]interface{}{
+			Input: pulumi.Any(map[string]interface{}{
 				"key": []string{
 					"value",
 					"s",
@@ -18,15 +18,17 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("stashOutput", myStash.Value)
+		ctx.Export("stashInput", myStash.Input)
+		ctx.Export("stashOutput", myStash.Output)
 		passthroughStash, err := pulumi.NewStash(ctx, "passthroughStash", &pulumi.StashArgs{
-			Value:       pulumi.Any("old"),
+			Input:       pulumi.Any("old"),
 			Passthrough: pulumi.Bool(true),
 		})
 		if err != nil {
 			return err
 		}
-		ctx.Export("passthroughOutput", passthroughStash.Value)
+		ctx.Export("passthroughInput", passthroughStash.Input)
+		ctx.Export("passthroughOutput", passthroughStash.Output)
 		return nil
 	})
 }

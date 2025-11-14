@@ -22,8 +22,11 @@ import (
 type Stash struct {
 	CustomResourceState
 
-	// Value is any value stored in the stash resource
-	Value AnyOutput `pulumi:"value"`
+	// Output is any value stored in the stash resource
+	Output AnyOutput `pulumi:"output"`
+
+	// Input is the value passed to the stash resource
+	Input AnyOutput `pulumi:"input"`
 
 	// ctx is a reference to the context used to create the state. It must be
 	// valid and non-nil to call `GetOutput`.
@@ -31,12 +34,12 @@ type Stash struct {
 }
 
 type stashArgs struct {
-	Value       any   `pulumi:"value"`
+	Input       any   `pulumi:"input"`
 	Passthrough *bool `pulumi:"passthrough"`
 }
 
 type StashArgs struct {
-	Value       Input
+	Input       Input
 	Passthrough BoolPtrInput
 }
 
@@ -52,7 +55,7 @@ func NewStash(ctx *Context, name string, args *StashArgs,
 		args = &StashArgs{}
 	}
 	stash := Stash{ctx: ctx}
-	if err := ctx.RegisterResource("pulumi:pulumi:Stash", name, args, &stash, opts...); err != nil {
+	if err := ctx.RegisterResource("pulumi:index:Stash", name, args, &stash, opts...); err != nil {
 		return nil, err
 	}
 	return &stash, nil

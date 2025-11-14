@@ -1,19 +1,27 @@
-resource "myStash" "pulumi:pulumi:Stash" {
-    value = {
+resource "myStash" "pulumi:index:Stash" {
+    input = {
         "key": ["value", "s"]
         "": false
     }
 }
 
-output "stashOutput" {
-    value = myStash.value
+output "stashInput" {
+    value = myStash.input
 }
 
-resource "passthroughStash" "pulumi:pulumi:Stash" { 
-    value = "old"
+output "stashOutput" {
+    value = myStash.output
+}
+
+resource "passthroughStash" "pulumi:index:Stash" {
+    input = "old"
     passthrough = true
 }
 
+output "passthroughInput" {
+    value = passthroughStash.input
+}
+
 output "passthroughOutput" {
-    value = passthroughStash.value
+    value = passthroughStash.output
 }

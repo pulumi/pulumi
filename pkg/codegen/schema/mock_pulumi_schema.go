@@ -28,22 +28,28 @@ func newPulumiPackage() *Package {
 		Version:     "1.0.0",
 		Description: "mock pulumi package",
 		Resources: map[string]ResourceSpec{
-			"pulumi:pulumi:Stash": {
+			"pulumi:index:Stash": {
 				ObjectTypeSpec: ObjectTypeSpec{
 					Properties: map[string]PropertySpec{
-						"value": {
+						"output": {
 							Description: "The stashed value.",
+							TypeSpec: TypeSpec{
+								Ref: "pulumi.json#/Any",
+							},
+						},
+						"input": {
+							Description: "The value passed in to stash.",
 							TypeSpec: TypeSpec{
 								Ref: "pulumi.json#/Any",
 							},
 						},
 					},
 					Required: []string{
-						"value",
+						"input", "output",
 					},
 				},
 				InputProperties: map[string]PropertySpec{
-					"value": {
+					"input": {
 						Description: "The value to stash.",
 						TypeSpec: TypeSpec{
 							Ref: "pulumi.json#/Any",
@@ -57,7 +63,7 @@ func newPulumiPackage() *Package {
 					},
 				},
 				RequiredInputs: []string{
-					"value",
+					"input",
 				},
 			},
 			"pulumi:pulumi:StackReference": {

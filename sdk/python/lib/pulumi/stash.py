@@ -21,22 +21,22 @@ from . import _types
 @_types.input_type
 class StashArgs:
     def __init__(
-        __self__, *, value: Input[Any], passthrough: Optional[Input[bool]] = None
+        __self__, *, input: Input[Any], passthrough: Optional[Input[bool]] = None
     ):
         """
         The set of arguments for constructing a State resource.
         """
-        _types.set(__self__, "value", value)
+        _types.set(__self__, "input", input)
         _types.set(__self__, "passthrough", passthrough)
 
     @property
     @_types.getter
-    def value(self) -> Input[Any]:
-        return _types.get(self, "value")
+    def input(self) -> Input[Any]:
+        return _types.get(self, "input")
 
-    @value.setter
-    def value(self, value: Input[Any]):
-        _types.set(self, "value", value)
+    @input.setter
+    def input(self, input: Input[Any]):
+        _types.set(self, "input", input)
 
     @property
     @_types.getter
@@ -84,17 +84,22 @@ class Stash(CustomResource):
     Manages a reference to a Pulumi stash value.
     """
 
-    value: Output[Any]
+    output: Output[Any]
     """
     The value of the stash resource.
     """
 
+    input: Output[Any]
+    """
+    The input value of the stash resource.
+    """
+
     @overload
     def __init__(
-        __self__,
+        self,
         resource_name: str,
         opts: Optional[ResourceOptions] = None,
-        value: Optional[Input[Any]] = None,
+        input: Optional[Input[Any]] = None,
         passthrough: Optional[Input[bool]] = None,
         __props__=None,
     ):
@@ -107,7 +112,7 @@ class Stash(CustomResource):
 
     @overload
     def __init__(
-        __self__,
+        self,
         resource_name: str,
         args: StashArgs,
         opts: Optional[ResourceOptions] = None,
@@ -120,20 +125,20 @@ class Stash(CustomResource):
         """
         ...
 
-    def __init__(__self__, resource_name: str, *args, **kwargs):
+    def __init__(self, resource_name: str, *args, **kwargs):
         resource_args, opts = _get_resource_args_opts(
             StashArgs, ResourceOptions, *args, **kwargs
         )
         if resource_args is not None:
-            __self__._internal_init(resource_name, opts, **resource_args.__dict__)
+            self._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
-            __self__._internal_init(resource_name, *args, **kwargs)
+            self._internal_init(resource_name, *args, **kwargs)
 
     def _internal_init(
-        __self__,
+        self,
         resource_name: str,
         opts: Optional[ResourceOptions] = None,
-        value: Optional[Input[Any]] = None,
+        input: Optional[Input[Any]] = None,
         passthrough: Optional[Input[bool]] = None,
     ):
         opts = opts or ResourceOptions()
@@ -143,13 +148,15 @@ class Stash(CustomResource):
             )
 
         props = {}
-        if value is not None:
-            props["value"] = value
+        if input is not None:
+            props["input"] = input
         if passthrough is not None:
             props["passthrough"] = passthrough
 
+        props["output"] = None
+
         super().__init__(
-            "pulumi:pulumi:Stash",
+            "pulumi:index:Stash",
             resource_name,
             props,
             opts,

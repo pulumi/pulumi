@@ -7,20 +7,22 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		myStash, err := pulumi.NewStash(ctx, "myStash", &pulumi.StashArgs{
-			Value: pulumi.Any("ignored"),
+			Input: pulumi.Any("ignored"),
 		})
 		if err != nil {
 			return err
 		}
-		ctx.Export("stashOutput", myStash.Value)
+		ctx.Export("stashInput", myStash.Input)
+		ctx.Export("stashOutput", myStash.Output)
 		passthroughStash, err := pulumi.NewStash(ctx, "passthroughStash", &pulumi.StashArgs{
-			Value:       pulumi.Any("new"),
+			Input:       pulumi.Any("new"),
 			Passthrough: pulumi.Bool(true),
 		})
 		if err != nil {
 			return err
 		}
-		ctx.Export("passthroughOutput", passthroughStash.Value)
+		ctx.Export("passthroughInput", passthroughStash.Input)
+		ctx.Export("passthroughOutput", passthroughStash.Output)
 		return nil
 	})
 }

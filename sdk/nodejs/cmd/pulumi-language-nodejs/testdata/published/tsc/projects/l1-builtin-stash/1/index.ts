@@ -1,9 +1,11 @@
 import * as pulumi from "@pulumi/pulumi";
 
-const myStash = new pulumi.Stash("myStash", {value: "ignored"});
-export const stashOutput = myStash.value;
+const myStash = new pulumi.Stash("myStash", {input: "ignored"});
+export const stashInput = myStash.input;
+export const stashOutput = myStash.output;
 const passthroughStash = new pulumi.Stash("passthroughStash", {
-    value: "new",
+    input: "new",
     passthrough: true,
 });
-export const passthroughOutput = passthroughStash.value;
+export const passthroughInput = passthroughStash.input;
+export const passthroughOutput = passthroughStash.output;

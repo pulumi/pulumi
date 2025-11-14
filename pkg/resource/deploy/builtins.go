@@ -115,7 +115,7 @@ func (p *builtinProvider) Configure(context.Context, plugin.ConfigureRequest) (p
 
 const (
 	stackReferenceType = "pulumi:pulumi:StackReference"
-	stashType          = "pulumi:pulumi:Stash"
+	stashType          = "pulumi:index:Stash"
 )
 
 func (p *builtinProvider) Check(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
@@ -156,17 +156,17 @@ func (p *builtinProvider) Check(_ context.Context, req plugin.CheckRequest) (plu
 	contract.Assertf(typ == stashType, "expected resource type %v, got %v", stashType, typ)
 
 	for k := range req.News {
-		if k != "value" && k != "passthrough" {
+		if k != "input" && k != "passthrough" {
 			return plugin.CheckResponse{
 				Failures: []plugin.CheckFailure{{Property: k, Reason: fmt.Sprintf("unknown property \"%v\"", k)}},
 			}, nil
 		}
 	}
 
-	_, ok := req.News["value"]
+	_, ok := req.News["input"]
 	if !ok {
 		return plugin.CheckResponse{
-			Failures: []plugin.CheckFailure{{Property: "value", Reason: `missing required property "value"`}},
+			Failures: []plugin.CheckFailure{{Property: "input", Reason: `missing required property "input"`}},
 		}, nil
 	}
 
@@ -200,14 +200,12 @@ func (p *builtinProvider) Diff(_ context.Context, req plugin.DiffRequest) (plugi
 	contract.Assertf(req.URN.Type() == stashType,
 		"expected resource type %v, got %v", stashType, req.URN.Type())
 
-	// If passthrough is false then we just maintain the current state, else we diff "value".
-	got, ok := req.NewInputs["passthrough"]
-	if ok && got.BoolValue() {
-		if !req.NewInputs["value"].DeepEquals(req.OldInputs["value"]) {
-			return plugin.DiffResult{
-				Changes: plugin.DiffSome,
-			}, nil
-		}
+	// If the input has changed we need to update, although that update might just be to copy the new input
+	// value to the output side property called "input".
+	if !req.NewInputs["input"].DeepEquals(req.OldInputs["input"]) {
+		return plugin.DiffResult{
+			Changes: plugin.DiffSome,
+		}, nil
 	}
 
 	return plugin.DiffResult{Changes: plugin.DiffNone}, nil
@@ -256,7 +254,8 @@ func (p *builtinProvider) Create(_ context.Context, req plugin.CreateRequest) (p
 	return plugin.CreateResponse{
 		ID: id,
 		Properties: resource.PropertyMap{
-			"value": req.Properties["value"],
+			"input":  req.Properties["input"],
+			"output": req.Properties["input"],
 		},
 		Status: resource.StatusOK,
 	}, nil
@@ -266,11 +265,25 @@ func (p *builtinProvider) Update(_ context.Context, req plugin.UpdateRequest) (p
 	contract.Assertf(req.URN.Type() == stashType,
 		"expected resource type %v, got %v", stashType, req.URN.Type())
 
+	// If passthrough is set then we copy the input to the output, otherwise we just copy the input through
+	var passthrough bool
+	if got, ok := req.NewInputs["passthrough"]; ok {
+		contract.Assertf(got.IsBool(), "expected 'passthrough' to be a bool")
+		passthrough = got.BoolValue()
+	}
+
+	properties := resource.PropertyMap{
+		"input":  req.NewInputs["input"],
+		"output": req.OldOutputs["output"],
+	}
+
+	if passthrough {
+		properties["output"] = req.NewInputs["input"]
+	}
+
 	return plugin.UpdateResponse{
-		Properties: resource.PropertyMap{
-			"value": req.NewInputs["value"],
-		},
-		Status: resource.StatusOK,
+		Properties: properties,
+		Status:     resource.StatusOK,
 	}, nil
 }
 
