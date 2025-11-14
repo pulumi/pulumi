@@ -302,6 +302,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		IgnoreChanges:           nil,
 		HideDiff:                nil,
 		ReplaceOnChanges:        nil,
+		ReplacementTrigger:      resource.NewNullProperty(),
 		RefreshBeforeUpdate:     false,
 		ViewOf:                  "",
 		ResourceHooks:           nil,
@@ -736,6 +737,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		IgnoreChanges:           goal.IgnoreChanges,
 		HideDiff:                goal.HideDiff,
 		ReplaceOnChanges:        goal.ReplaceOnChanges,
+		ReplacementTrigger:      goal.ReplacementTrigger,
 		RefreshBeforeUpdate:     refreshBeforeUpdate,
 		ViewOf:                  "",
 		ResourceHooks:           goal.ResourceHooks,
@@ -1029,6 +1031,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 					IgnoreChanges:           goal.IgnoreChanges,
 					HideDiff:                goal.HideDiff,
 					ReplaceOnChanges:        goal.ReplaceOnChanges,
+					ReplacementTrigger:      resource.NewNullProperty(),
 					RefreshBeforeUpdate:     new.RefreshBeforeUpdate,
 					ViewOf:                  "",
 					ResourceHooks:           goal.ResourceHooks,
@@ -1643,25 +1646,48 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	prov plugin.Provider, goal *resource.Goal, randomSeed []byte,
 	autonaming *plugin.AutonamingOptions,
 ) ([]Step, bool, error) {
-	diff, pcs, err := sg.diff(
-		event, goal, autonaming, randomSeed,
-		urn, old, new, oldInputs, inputs, prov)
-	if pcs != nil {
-		return []Step{
-			NewDiffStep(sg.deployment, pcs, old, new, goal.IgnoreChanges),
-		}, true, nil
+	// Unknowns in replacement triggers are fine during preview, but they should raise an error during the actual
+	// operation. This check only applies when we have an old resource (i.e., during updates/replaces), since a
+	// replacement trigger only makes sense when there's something to replace.
+	if !sg.deployment.opts.DryRun && new.ReplacementTrigger.ContainsUnknowns() {
+		message := fmt.Sprintf("replacement trigger contains unknowns for %s", urn)
+		sg.deployment.ctx.Diag.Errorf(diag.StreamMessage(urn, message, 0))
+		sg.sawError = true
+		return nil, false, result.BailErrorf("%s", message)
+	}
+
+	triggerReplace := shouldTriggerReplace(new.ReplacementTrigger, old.ReplacementTrigger)
+
+	var diff plugin.DiffResult
+	var pcs *promise.CompletionSource[plugin.DiffResult]
+	var err error
+	if triggerReplace {
+		// Return that there is a diff, but don't fill in any details. We later
+		// explicitly check for the presence of a `triggerReplace` instance, so all
+		// we need to know is that there is some type of change.
+		diff = plugin.DiffResult{Changes: plugin.DiffSome}
+	} else {
+		diff, pcs, err = sg.diff(
+			event, goal, autonaming, randomSeed,
+			urn, old, new, oldInputs, inputs, prov)
+		if pcs != nil {
+			return []Step{
+				NewDiffStep(sg.deployment, pcs, old, new, goal.IgnoreChanges),
+			}, true, nil
+		}
 	}
 
 	updateSteps, err := sg.continueStepsFromDiff(&continueDiffResourceEvent{
-		evt:        event,
-		err:        err,
-		diff:       diff,
-		urn:        urn,
-		old:        old,
-		new:        new,
-		provider:   prov,
-		autonaming: autonaming,
-		randomSeed: randomSeed,
+		evt:            event,
+		err:            err,
+		diff:           diff,
+		triggerReplace: triggerReplace,
+		urn:            urn,
+		old:            old,
+		new:            new,
+		provider:       prov,
+		autonaming:     autonaming,
+		randomSeed:     randomSeed,
 	})
 	if err != nil {
 		return nil, false, err
@@ -1707,6 +1733,10 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 	old := diffEvent.Old()
 	new := diffEvent.New()
 	diff := diffEvent.Diff()
+	triggerReplace := false
+	if ce, ok := diffEvent.(*continueDiffResourceEvent); ok {
+		triggerReplace = ce.triggerReplace
+	}
 	prov := diffEvent.Provider()
 	randomSeed := diffEvent.RandomSeed()
 	autonaming := diffEvent.Autonaming()
@@ -1772,7 +1802,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 
 	// If there were changes check for a replacement vs. an in-place update.
 	if diff.Changes == plugin.DiffSome || old.PendingReplacement {
-		if diff.Replace() || old.PendingReplacement {
+		if diff.Replace() || triggerReplace || old.PendingReplacement {
 			// If this resource is protected we can't replace it because that entails a delete
 			// Note that we do allow unprotecting and replacing to happen in a single update
 			// cycle, we don't look at old.Protect here.
@@ -3255,4 +3285,47 @@ func newStepGenerator(
 
 		events: events,
 	}
+}
+
+// Should we trigger a replace for the given new and old property values?
+func shouldTriggerReplace(new resource.PropertyValue, old resource.PropertyValue) bool {
+	new = unwrapSecrets(new)
+	old = unwrapSecrets(old)
+
+	// Unknowns are always considered to be changed.
+	if old.ContainsUnknowns() || new.ContainsUnknowns() {
+		return true
+	}
+
+	// Nulls mean "there is no replacement trigger".
+	if old.IsNull() || new.IsNull() {
+		return false
+	}
+
+	return !new.DeepEquals(old)
+}
+
+// Strip all `Secret` wrappers from the given property value.
+func unwrapSecrets(value resource.PropertyValue) resource.PropertyValue {
+	if value.IsSecret() {
+		return unwrapSecrets(value.SecretValue().Element)
+	}
+
+	if value.IsArray() {
+		arr := []resource.PropertyValue{}
+		for _, e := range value.ArrayValue() {
+			arr = append(arr, unwrapSecrets(e))
+		}
+		return resource.NewProperty(arr)
+	}
+
+	if value.IsObject() {
+		obj := resource.PropertyMap{}
+		for key, e := range value.ObjectValue() {
+			obj[key] = unwrapSecrets(e)
+		}
+		return resource.NewProperty(obj)
+	}
+
+	return value
 }

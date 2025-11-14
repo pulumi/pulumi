@@ -149,6 +149,7 @@ message RegisterResourceRequest {
     repeated Alias aliases = 26;                                // a list of additional aliases that should be considered the same.
     string deletedWith = 27;                                    // if set the engine will not call the resource providers delete method for this resource when specified resource is deleted.
     repeated string replace_with = 38;                          // if set the engine will replace this resource when any of the specified resources are replaced.
+    google.protobuf.Value replacement_trigger = 39;             // if set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
 
     // Indicates that alias specs are specified correctly according to the spec.
     // Older versions of the Node.js SDK did not send alias specs correctly.
@@ -275,6 +276,7 @@ message TransformResourceOptions {
     string import = 17;
     repeated string hide_diff = 18;
     repeated string replace_with = 19;
+    google.protobuf.Value replacement_trigger = 20;
 }
 
 message TransformRequest {

@@ -523,6 +523,11 @@ func SerializeResource(
 		outputs = soutp
 	}
 
+	trigger, err := SerializePropertyValue(ctx, res.ReplacementTrigger, enc, showSecrets)
+	if err != nil {
+		return apitype.ResourceV3{}, err
+	}
+
 	stackTrace := slices.Collect(fxs.Map(res.StackTrace, func(frame resource.StackFrame) apitype.StackFrameV1 {
 		return apitype.StackFrameV1{SourcePosition: frame.SourcePosition}
 	}))
@@ -550,6 +555,7 @@ func SerializeResource(
 		RetainOnDelete:          res.RetainOnDelete,
 		DeletedWith:             res.DeletedWith,
 		ReplaceWith:             res.ReplaceWith,
+		ReplacementTrigger:      trigger,
 		Created:                 res.Created,
 		Modified:                res.Modified,
 		SourcePosition:          res.SourcePosition,
@@ -720,6 +726,11 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 		return nil, err
 	}
 
+	trigger, err := DeserializePropertyValue(res.ReplacementTrigger, dec)
+	if err != nil {
+		return nil, err
+	}
+
 	if res.URN == "" {
 		return nil, errors.New("resource missing required 'urn' field")
 	}
@@ -767,6 +778,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 			IgnoreChanges:           res.IgnoreChanges,
 			HideDiff:                res.HideDiff,
 			ReplaceOnChanges:        res.ReplaceOnChanges,
+			ReplacementTrigger:      trigger,
 			RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
 			ViewOf:                  res.ViewOf,
 			ResourceHooks:           res.ResourceHooks,
