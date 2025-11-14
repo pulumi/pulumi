@@ -2774,6 +2774,59 @@ func TestInstallLocalPlugin(t *testing.T) {
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
 
+func TestInstallLocalPluginRecursive(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("packages-install-recursive")
+	e.CWD = filepath.Join(e.RootPath, "example")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	// TODO[https://github.com/pulumi/pulumi/issues/20963]: `pulumi install` should
+	// install plugins used by components to the degree possible.
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.18.4")
+
+	// `pulumi install` must build and then generate SDKs for 3 component
+	// providers. Dependencies are as follows:
+	//
+	//	example         : python-provider typescript-b
+	//	python-provider : typescript-a
+	//
+	// Both the Python and TypeScript providers need to have their dependencies
+	// installed before they can be used.
+	e.RunCommand("pulumi", "install")
+
+	// Run pulumi up to verify the entire chain works
+	e.RunCommand("pulumi", "stack", "select", "organization/install-recursive", "--create")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+}
+
+func TestInstallLocalPluginCycle(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("packages-install-cycle")
+	e.CWD = filepath.Join(e.RootPath, "example")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	// Plugin dependencies form a cycle:
+	//
+	//	example      : typescript-a
+	//	typescript-a : typescript-b
+	//	typescript-b : typescript-a
+	//
+	// This creates a cycle: typescript-a -> typescript-b -> typescript-a.
+	// The install command should detect and report this cycle.
+	stdout, stderr := e.RunCommandExpectError("pulumi", "install")
+	require.Containsf(t, stderr,
+		"Cycle found: typescript-a -> typescript-b -> typescript-a\n",
+		"Stdout is %q", stdout)
+}
+
 func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	t.Parallel()
 

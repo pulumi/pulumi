@@ -46,7 +46,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var reinstall bool
 	var noPlugins, noDependencies bool
 	var useLanguageVersionTools bool
-	var parallelism int
+	var parallel int
 
 	cmd := &cobra.Command{
 		Use:   "install",
@@ -125,7 +125,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 					// registry.
 					reg := unauthenticatedregistry.New(cmdutil.Diag(), env.Global())
 
-					if err := installPackagesFromProject(pctx.Base(), proj, cwd, reg, parallelism); err != nil {
+					if err := installPackagesFromProject(pctx.Base(), proj, cwd, reg, parallel); err != nil {
 						return fmt.Errorf("installing `packages` from PulumiPlugin.yaml: %w", err)
 					}
 
@@ -161,7 +161,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 			// so that the SDKs folder is present and references to it from package.json etc are valid.
 			if err := installPackagesFromProject(cmd.Context(), proj, root,
 				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global()),
-				parallelism,
+				parallel,
 			); err != nil {
 				return fmt.Errorf("installing `packages` from Pulumi.yaml: %w", err)
 			}
@@ -208,7 +208,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().IntVar(&parallelism,
+	cmd.Flags().IntVar(&parallel,
 		"parallel", 4, "The max number of concurrent installs to perform. "+
 			"Parallelism of less then 1 implies unbounded parallelism")
 	cmd.PersistentFlags().BoolVar(&reinstall,
@@ -242,65 +242,10 @@ func installPackagesFromProject(
 	}
 
 	installPackage := func(
-		pctx *plugin.Context, name string, proj workspace.BaseProject, packageSpec workspace.PackageSpec,
+		cwd, name string, proj workspace.BaseProject, packageSpec workspace.PackageSpec,
 	) func(context.Context) error {
 		return func(ctx context.Context) error {
 			fmt.Printf("Installing package '%s'...\n", name)
-
-			installSource := packageSpec.Source
-			if !plugin.IsLocalPluginPath(ctx, installSource) && packageSpec.Version != "" {
-				installSource = fmt.Sprintf("%s@%s", installSource, packageSpec.Version)
-			}
-
-			parameters := &plugin.ParameterizeArgs{Args: packageSpec.Parameters}
-			_, _, diags, err := packages.InstallPackage(
-				proj, pctx, proj.RuntimeInfo().Name(), pctx.Root, installSource, parameters, registry)
-			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
-			if err != nil {
-				return fmt.Errorf("failed to install package '%s': %w", name, err)
-			}
-
-			fmt.Printf("Package '%s' installed successfully\n", name)
-			return nil
-		}
-	}
-
-	installPlugin := func(path string, plugin *workspace.PluginProject) func(context.Context) error {
-		return func(ctx context.Context) error {
-			err := plugin.InstallAtPath(ctx, path)
-			if err != nil {
-				return fmt.Errorf("installing at '%s': %w", path, err)
-			}
-			return nil
-		}
-	}
-
-	var wg pdag.DAG[node]
-	var findPlugins func(root pdag.Node, cwd string, proj workspace.BaseProject) error
-	findPlugins = func(root pdag.Node, cwd string, proj workspace.BaseProject) error {
-		for name, packageSpec := range proj.GetPackageSpecs() {
-			var pluginInstall *pdag.Node
-			if plugin.IsLocalPluginPath(ctx, packageSpec.Source) {
-				// If the package is a local spec, then we need to install it and the
-				// packages that it depends on.
-				pluginYaml := filepath.Join(packageSpec.Source, "PulumiPlugin.yaml")
-				pluginProject, err := workspace.LoadPluginProject(pluginYaml)
-				if err != nil {
-					return fmt.Errorf("Failed to load plugin project '%s': %w", name, err)
-				}
-				absPluginSource, err := filepath.Abs(packageSpec.Source)
-				if err != nil {
-					return err
-				}
-				pkg := wg.NewNode(node{name, installPlugin(absPluginSource, pluginProject)})
-				if err := wg.NewEdge(pkg, root); err != nil {
-					return err
-				}
-				pluginInstall = &pkg
-				if err := findPlugins(pkg, packageSpec.Source, pluginProject); err != nil {
-					return err
-				}
-			}
 
 			pctx, err := plugin.NewContextWithRoot(ctx,
 				cmdutil.Diag(),
@@ -320,7 +265,72 @@ func installPackagesFromProject(
 				return err
 			}
 
-			installPkg := wg.NewNode(node{name, installPackage(pctx, name, proj, packageSpec)})
+			installSource := packageSpec.Source
+			if !plugin.IsLocalPluginPath(ctx, installSource) && packageSpec.Version != "" {
+				installSource = fmt.Sprintf("%s@%s", installSource, packageSpec.Version)
+			}
+
+			parameters := &plugin.ParameterizeArgs{Args: packageSpec.Parameters}
+			_, _, diags, err := packages.InstallPackage(
+				proj, pctx, proj.RuntimeInfo().Name(), pctx.Root, installSource, parameters, registry)
+			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
+			if err != nil {
+				return errors.Join(
+					fmt.Errorf("failed to install package '%s': %w", name, err),
+					pctx.Close(),
+				)
+			}
+
+			fmt.Printf("Package '%s' installed successfully\n", name)
+			return pctx.Close()
+		}
+	}
+
+	installPlugin := func(path string, plugin *workspace.PluginProject) func(context.Context) error {
+		return func(ctx context.Context) error {
+			err := plugin.InstallAtPath(ctx, path)
+			if err != nil {
+				return fmt.Errorf("installing at '%s': %w", path, err)
+			}
+			return nil
+		}
+	}
+
+	var wg pdag.DAG[node]
+	seen := map[string]pdag.Node{}
+	var findPlugins func(root pdag.Node, cwd string, proj workspace.BaseProject) error
+	findPlugins = func(root pdag.Node, cwd string, proj workspace.BaseProject) error {
+		for name, packageSpec := range proj.GetPackageSpecs() {
+			var pluginInstall *pdag.Node
+			if plugin.IsLocalPluginPath(ctx, packageSpec.Source) {
+				// If the package is a local spec, then we need to install it and the
+				// packages that it depends on.
+				pluginYaml := filepath.Join(packageSpec.Source, "PulumiPlugin.yaml")
+				pluginProject, err := workspace.LoadPluginProject(pluginYaml)
+				if err != nil {
+					return fmt.Errorf("Failed to load plugin project '%s': %w", name, err)
+				}
+				absPluginSource, err := filepath.Abs(packageSpec.Source)
+				if err != nil {
+					return err
+				}
+
+				if n, ok := seen[absPluginSource]; ok {
+					pluginInstall = &n
+				} else {
+					pkg := wg.NewNode(node{name, installPlugin(absPluginSource, pluginProject)})
+					if err := wg.NewEdge(pkg, root); err != nil {
+						return err
+					}
+					pluginInstall = &pkg
+					seen[absPluginSource] = pkg
+					if err := findPlugins(pkg, packageSpec.Source, pluginProject); err != nil {
+						return err
+					}
+				}
+			}
+
+			installPkg := wg.NewNode(node{name, installPackage(cwd, name, proj, packageSpec)})
 			if pluginInstall != nil {
 				if err := wg.NewEdge(*pluginInstall, installPkg); err != nil {
 					return err
@@ -340,6 +350,14 @@ func installPackagesFromProject(
 		root,
 		proj,
 	); err != nil {
+		var cycle pdag.ErrorCycle[node]
+		if errors.As(err, &cycle) {
+			cyclePath := make([]string, len(cycle.Cycle))
+			for i, n := range cycle.Cycle {
+				cyclePath[i] = n.name
+			}
+			return fmt.Errorf("Cycle found: %s", strings.Join(cyclePath, " -> "))
+		}
 		return err
 	}
 
