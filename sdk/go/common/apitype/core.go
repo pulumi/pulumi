@@ -490,6 +490,8 @@ type ResourceV3 struct {
 	HideDiff []resource.PropertyPath `json:"hideDiff,omitempty" yaml:"hideDiff,omitempty"`
 	// ReplaceOnChanges is a list of properties that if changed trigger a replace.
 	ReplaceOnChanges []string `json:"replaceOnChanges,omitempty" yaml:"replaceOnChanges,omitempty"`
+	// If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
+	ReplacementTrigger any `json:"replacementTrigger,omitempty" yaml:"replacementTrigger,omitempty"`
 	// RefreshBeforeUpdate indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool `json:"refreshBeforeUpdate,omitempty" yaml:"refreshBeforeUpdate,omitempty"`
 	// ViewOf is a reference to the resource that this resource is a view of.

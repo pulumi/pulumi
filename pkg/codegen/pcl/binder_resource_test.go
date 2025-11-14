@@ -107,6 +107,11 @@ func TestBindResourceOptions(t *testing.T) {
 			src:  `deletedWith = "abc123"`,
 			want: cty.StringVal("abc123"),
 		},
+		{
+			name: "ReplacementTrigger",
+			src:  `replacementTrigger = "abc123"`,
+			want: cty.StringVal("abc123"),
+		},
 	}
 
 	for _, tt := range tests {

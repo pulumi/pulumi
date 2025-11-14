@@ -249,6 +249,11 @@ export class RegisterResourceRequest extends jspb.Message {
     getReplaceWithList(): Array<string>;
     setReplaceWithList(value: Array<string>): RegisterResourceRequest;
     addReplaceWith(value: string, index?: number): string;
+
+    hasReplacementTrigger(): boolean;
+    clearReplacementTrigger(): void;
+    getReplacementTrigger(): google_protobuf_struct_pb.Value | undefined;
+    setReplacementTrigger(value?: google_protobuf_struct_pb.Value): RegisterResourceRequest;
     getAliasspecs(): boolean;
     setAliasspecs(value: boolean): RegisterResourceRequest;
 
@@ -325,6 +330,7 @@ export namespace RegisterResourceRequest {
         aliasesList: Array<pulumi_alias_pb.Alias.AsObject>,
         deletedwith: string,
         replaceWithList: Array<string>,
+        replacementTrigger?: google_protobuf_struct_pb.Value.AsObject,
         aliasspecs: boolean,
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
         stacktrace?: pulumi_source_pb.StackTrace.AsObject,
@@ -748,6 +754,11 @@ export class TransformResourceOptions extends jspb.Message {
     setReplaceWithList(value: Array<string>): TransformResourceOptions;
     addReplaceWith(value: string, index?: number): string;
 
+    hasReplacementTrigger(): boolean;
+    clearReplacementTrigger(): void;
+    getReplacementTrigger(): google_protobuf_struct_pb.Value | undefined;
+    setReplacementTrigger(value?: google_protobuf_struct_pb.Value): TransformResourceOptions;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): TransformResourceOptions.AsObject;
     static toObject(includeInstance: boolean, msg: TransformResourceOptions): TransformResourceOptions.AsObject;
@@ -781,6 +792,7 @@ export namespace TransformResourceOptions {
         pb_import: string,
         hideDiffList: Array<string>,
         replaceWithList: Array<string>,
+        replacementTrigger?: google_protobuf_struct_pb.Value.AsObject,
     }
 }
 

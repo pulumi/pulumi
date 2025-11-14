@@ -41,7 +41,14 @@ import {
 import { InvokeOptions, InvokeTransform, InvokeTransformArgs } from "../invoke";
 
 import { hookBindingFromProto, mapAliasesForRequest, prepareHooks } from "./resource";
-import { deserializeProperties, serializeProperties, unknownValue, isRpcSecret, unwrapRpcSecret } from "./rpc";
+import {
+    deserializeProperties,
+    deserializeProperty,
+    serializeProperties,
+    unknownValue,
+    isRpcSecret,
+    unwrapRpcSecret,
+} from "./rpc";
 import { debuggablePromise } from "./debuggable";
 import { grpcChannelOptions, rpcKeepAlive } from "./settings";
 import { Http2Server, Http2Session } from "http2";
@@ -265,6 +272,10 @@ export class CallbackServer implements ICallbackServer {
             ropts.protect = opts.getProtect();
             ropts.provider = opts.getProvider() !== "" ? new DependencyProviderResource(opts.getProvider()) : undefined;
             ropts.replaceOnChanges = opts.getReplaceOnChangesList();
+            const replacementTrigger = opts.getReplacementTrigger();
+            ropts.replacementTrigger = replacementTrigger
+                ? deserializeProperty(replacementTrigger.toJavaScript())
+                : undefined;
             ropts.retainOnDelete = opts.getRetainOnDelete();
             ropts.version = opts.getVersion() !== "" ? opts.getVersion() : undefined;
 
@@ -354,6 +365,10 @@ export class CallbackServer implements ICallbackServer {
                     }
                     if (result.opts.replaceOnChanges !== undefined) {
                         opts.setReplaceOnChangesList(result.opts.replaceOnChanges);
+                    }
+                    if (result.opts.replacementTrigger !== undefined) {
+                        const triggerValue = await output(result.opts.replacementTrigger).promise();
+                        opts.setReplacementTrigger(gstruct.Value.fromJavaScript(triggerValue));
                     }
                     if (result.opts.retainOnDelete !== undefined) {
                         opts.setRetainOnDelete(result.opts.retainOnDelete);
