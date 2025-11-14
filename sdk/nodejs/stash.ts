@@ -36,11 +36,16 @@ export class Stash extends CustomResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args: StashArgs, opts?: CustomResourceOptions) {
-        super("pulumi:index:Stash", name, {
-            input: args.input,
-            passthrough: args.passthrough,
-            output: undefined,
-        }, opts);
+        super(
+            "pulumi:index:Stash",
+            name,
+            {
+                input: args.input,
+                passthrough: args.passthrough,
+                output: undefined,
+            },
+            opts,
+        );
     }
 }
 
