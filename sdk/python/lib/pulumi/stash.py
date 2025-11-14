@@ -21,13 +21,13 @@ from . import _types
 @_types.input_type
 class StashArgs:
     def __init__(
-        __self__, *, input: Input[Any], passthrough: Optional[Input[bool]] = None
+        self, *, input: Input[Any], passthrough: Optional[Input[bool]] = None
     ):
         """
         The set of arguments for constructing a State resource.
         """
-        _types.set(__self__, "input", input)
-        _types.set(__self__, "passthrough", passthrough)
+        _types.set(self, "input", input)
+        _types.set(self, "passthrough", passthrough)
 
     @property
     @_types.getter
