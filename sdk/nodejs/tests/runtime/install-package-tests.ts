@@ -12,6 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// This test runs a matrix consisting of all of our supported package managers and TypeScript and ts-node versions
+// (including our vendored versions). The test creates a pulumi project for each combination and validates that
+// installation works and that we can successfully run a TypeScript program. This is important to test because we ship a
+// vendored version of TypeScript and ts-node, but also allow users to provide their own versions. These dependencies
+// are declared as optional peerDependencies, and we want to ensure the installation works correctly across our support
+// matrix.
+
 import { randomInt } from "crypto";
 import execa from "execa";
 import * as fs from "fs/promises";
@@ -103,7 +110,7 @@ async function main() {
             },
             {
                 name: "npm",
-                version: "*", // Latest version.
+                version: "latest",
             },
             {
                 name: "yarn",
@@ -113,12 +120,17 @@ async function main() {
             // We don't support yarn >= 2 yet.
             // {
             //     packageManager: "yarn",
-            //     version: "*", // Latest version.
+            //     version: "latest",
             // },
             {
                 name: "pnpm",
-                version: "*", // Latest version.
+                version: "latest",
             },
+            // Bun is not yet supported by corepack
+            // {
+            //     name: "bun",
+            //     version: "latest",
+            // }
         ];
 
         // Dependencies to add to package.json.
