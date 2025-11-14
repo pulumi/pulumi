@@ -12,16 +12,3 @@ output "stashInput" {
 output "stashOutput" {
     value = myStash.output
 }
-
-resource "passthroughStash" "pulumi:index:Stash" {
-    input = "old"
-    passthrough = true
-}
-
-output "passthroughInput" {
-    value = passthroughStash.input
-}
-
-output "passthroughOutput" {
-    value = passthroughStash.output
-}
