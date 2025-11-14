@@ -1159,7 +1159,7 @@ func (host *goLanguageHost) InstallDependencies(
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
 	if err := cmd.Run(); err != nil {
-		return errutil.ErrorWithStderr(err, "`go mod tidy` failed to install dependencies: %w")
+		return errutil.ErrorWithStderr(err, "`go mod tidy` failed to install dependencies")
 	}
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))
