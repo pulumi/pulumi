@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Allow resources marked as `Delete` to be targeted, and take them into account for dependency calculation

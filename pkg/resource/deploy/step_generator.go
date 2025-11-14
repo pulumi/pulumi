@@ -2384,34 +2384,36 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 
 	// Now actually use all the requested targets to figure out the exact set to delete.
 	for target := range targets {
-		current := sg.deployment.olds[target]
-		if current == nil {
-			// user specified a target that didn't exist.  they will have already gotten a warning
-			// about this when we called checkTargets.  explicitly ignore this target since it won't
-			// be something we could possibly be trying to delete, nor could have dependents we
-			// might need to replace either.
-			continue
-		}
+		current := sg.deployment.allOlds[target]
+		for _, current := range current {
+			if current == nil {
+				// user specified a target that didn't exist.  they will have already gotten a warning
+				// about this when we called checkTargets.  explicitly ignore this target since it won't
+				// be something we could possibly be trying to delete, nor could have dependents we
+				// might need to replace either.
+				continue
+			}
 
-		resourcesToDelete[target] = true
+			resourcesToDelete[target] = true
 
-		// the item the user is asking to destroy may cause downstream replacements.  Clean those up
-		// as well. Use the standard delete-before-replace computation to determine the minimal
-		// set of downstream resources that are affected.
-		deps, err := sg.calculateDependentReplacements(current)
-		if err != nil {
-			return nil, err
-		}
+			// the item the user is asking to destroy may cause downstream replacements.  Clean those up
+			// as well. Use the standard delete-before-replace computation to determine the minimal
+			// set of downstream resources that are affected.
+			deps, err := sg.calculateDependentReplacements(current)
+			if err != nil {
+				return nil, err
+			}
 
-		replacedWith, err := sg.findResourcesReplacedWith(target)
-		if err != nil {
-			return nil, err
-		}
-		deps = append(deps, replacedWith...)
+			replacedWith, err := sg.findResourcesReplacedWith(target)
+			if err != nil {
+				return nil, err
+			}
+			deps = append(deps, replacedWith...)
 
-		for _, dep := range deps {
-			logging.V(7).Infof("GenerateDeletes(...): Adding dependent: %v", dep.res.URN)
-			resourcesToDelete[dep.res.URN] = true
+			for _, dep := range deps {
+				logging.V(7).Infof("GenerateDeletes(...): Adding dependent: %v", dep.res.URN)
+				resourcesToDelete[dep.res.URN] = true
+			}
 		}
 	}
 

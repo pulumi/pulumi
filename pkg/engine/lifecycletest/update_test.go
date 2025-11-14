@@ -15,15 +15,19 @@
 package lifecycletest
 
 import (
+	"errors"
+	"strings"
 	"testing"
 
 	"github.com/blang/semver"
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/require"
 )
@@ -130,4 +134,82 @@ func TestComponentResourceTypeAliasWithReadResource(t *testing.T) {
 
 	require.Equal(t, urn.URN("urn:pulumi:test::test::pkg:typA:Repro::test"), snap2.Resources[0].URN)
 	require.Equal(t, urn.URN("urn:pulumi:test::test::pkg:typA:Repro::test"), snap2.Resources[2].Parent)
+}
+
+func TestUpdateWithTargetedParentChildMarkedAsDelete(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	snap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		resA := &resource.State{
+			Type: "pkgA:m:typA",
+			URN:  p.NewURN("pkgA:m:typA", "resA", ""),
+		}
+		s.Resources = append(s.Resources, resA)
+
+		justAChild := &resource.State{
+			Type:   "pkgA:m:typA",
+			URN:    "urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::childA",
+			Custom: true,
+			Delete: true,
+			Parent: resA.URN,
+			ID:     "id1",
+		}
+		s.Resources = append(s.Resources, justAChild)
+
+		return s
+	}()
+	require.NoError(t, snap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		return nil
+	})
+
+	host := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: host,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{
+				string(p.NewURN("pkgA:m:typA", "resA", "")),
+			}),
+		},
+	}
+
+	validationFunc := func(project workspace.Project, target deploy.Target, entries JournalEntries,
+		events []Event, err error,
+	) error {
+		foundError := false
+		for _, e := range events {
+			if e.Type == DiagEvent {
+				payload := e.Payload().(DiagEventPayload)
+				//nolint:lll // The error message is long
+				if strings.Contains(
+					payload.Message,
+					"Resource 'urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::childA' will be destroyed but was not specified in --target list.") {
+					foundError = true
+				}
+				opts.T.Logf("%s: %s", payload.Severity, payload.Message)
+			}
+		}
+		if !foundError {
+			return errors.New("expected error not found")
+		}
+
+		return err
+	}
+
+	_, err := lt.TestOp(Update).
+		RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, validationFunc, "1")
+	require.ErrorContains(t, err, "step generator errored")
 }
