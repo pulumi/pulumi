@@ -1646,11 +1646,11 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	prov plugin.Provider, goal *resource.Goal, randomSeed []byte,
 	autonaming *plugin.AutonamingOptions,
 ) ([]Step, bool, error) {
-	// We might be triggering a replace if we have an old state and its trigger
-	// value is different. In this case, we don't even need to bother doing a diff
-	// in this case because we know this is a replacement. Note that we treat Null
-	// as a special case for "no trigger", that is if Trigger goes from Null to
-	// anything, or from anything to Null, it does not cause a replace.
+	// Unknowns are fine during preview, but they should raise an error during the actual operation.
+	if !sg.deployment.opts.DryRun && new.ReplacementTrigger.ContainsUnknowns() {
+		return nil, false, fmt.Errorf("replacement trigger contains unknowns for %s", urn)
+	}
+
 	triggerReplace := shouldTriggerReplace(new.ReplacementTrigger, old.ReplacementTrigger)
 
 	var diff plugin.DiffResult
