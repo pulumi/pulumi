@@ -1646,9 +1646,14 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	prov plugin.Provider, goal *resource.Goal, randomSeed []byte,
 	autonaming *plugin.AutonamingOptions,
 ) ([]Step, bool, error) {
-	// Unknowns are fine during preview, but they should raise an error during the actual operation.
+	// Unknowns in replacement triggers are fine during preview, but they should raise an error during the actual operation.
+	// This check only applies when we have an old resource (i.e., during updates/replaces), since a replacement
+	// trigger only makes sense when there's something to replace.
 	if !sg.deployment.opts.DryRun && new.ReplacementTrigger.ContainsUnknowns() {
-		return nil, false, fmt.Errorf("replacement trigger contains unknowns for %s", urn)
+		message := fmt.Sprintf("replacement trigger contains unknowns for %s", urn)
+		sg.deployment.ctx.Diag.Errorf(diag.StreamMessage(urn, message, 0))
+		sg.sawError = true
+		return nil, false, result.BailErrorf("%s", message)
 	}
 
 	triggerReplace := shouldTriggerReplace(new.ReplacementTrigger, old.ReplacementTrigger)

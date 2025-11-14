@@ -16,6 +16,7 @@ package lifecycletest
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/blang/semver"
@@ -349,11 +350,11 @@ func TestReplacementTriggerWithComputed(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 
-	value = resource.MakeComputed(resource.NewPropertyValue("first"))
-
-	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+	// Unknown values during preview runs should trigger a replace.
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
 			operations := []display.StepOp{}
+
 			for _, e := range events {
 				if e.Type == ResourcePreEvent && e.Payload().(ResourcePreEventPayload).Metadata.URN.Name() == "resA" {
 					operations = append(operations, e.Payload().(ResourcePreEventPayload).Metadata.Op)
@@ -363,6 +364,27 @@ func TestReplacementTriggerWithComputed(t *testing.T) {
 			assert.Contains(t, operations, deploy.OpReplace)
 			return nil
 		}, "1")
+
+	require.NoError(t, err)
+
+	value = resource.MakeComputed(resource.NewPropertyValue("first"))
+
+	// Unknown values during non-preview runs should trigger an error.
+	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
+			for _, e := range events {
+				if e.Type == DiagEvent {
+					diag := e.Payload().(DiagEventPayload).Message
+
+					if strings.Contains(diag, "replacement trigger contains unknowns for urn:pulumi:test::test::pkgA:m:typA::resA") {
+						return nil
+					}
+				}
+			}
+
+			assert.Fail(t, "expected matching diag event")
+			return nil
+		}, "2")
 	require.NoError(t, err)
 
 	assert.Equal(t, 2, len(snap.Resources))
