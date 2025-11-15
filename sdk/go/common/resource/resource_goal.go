@@ -39,11 +39,15 @@ type Goal struct {
 	ID                      ID                    // the expected ID of the resource, if any.
 	CustomTimeouts          CustomTimeouts        // an optional config object for resource options
 	ReplaceOnChanges        []string              // a list of property paths that if changed should force a replacement.
+	// if set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
+	ReplacementTrigger PropertyValue
 	// if set to True, the providers Delete method will not be called for this resource.
 	RetainOnDelete *bool
 	// if set, the providers Delete method will not be called for this resource
 	// if specified resource is being deleted as well.
-	DeletedWith    URN
+	DeletedWith URN
+	// If set, the URNs of the resources whose replaces will also trigger a replace of the current resource.
+	ReplaceWith    []URN
 	SourcePosition string                // If set, the source location of the resource registration
 	StackTrace     []StackFrame          // If set, the stack trace at time of registration
 	ResourceHooks  map[HookType][]string // The resource hooks attached to the resource, by type.
@@ -103,6 +107,9 @@ type NewGoal struct {
 	// a list of property paths that if changed should force a replacement.
 	ReplaceOnChanges []string // required
 
+	// if set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
+	ReplacementTrigger PropertyValue // required
+
 	// if set to True, the providers Delete method will not be called for this resource.
 	// required
 	RetainOnDelete *bool // required
@@ -110,6 +117,9 @@ type NewGoal struct {
 	// if set, the providers Delete method will not be called for this resource
 	// if specified resource is being deleted as well.
 	DeletedWith URN // required
+
+	// If set, the URNs of the resources whose replaces will also trigger a replace of the current resource.
+	ReplaceWith []URN // required
 
 	// If set, the source location of the resource registration
 	SourcePosition string // required
@@ -149,8 +159,10 @@ func (g NewGoal) Make() *Goal {
 		ID:                      g.ID,
 		CustomTimeouts:          customTimeouts,
 		ReplaceOnChanges:        g.ReplaceOnChanges,
+		ReplacementTrigger:      g.ReplacementTrigger,
 		RetainOnDelete:          g.RetainOnDelete,
 		DeletedWith:             g.DeletedWith,
+		ReplaceWith:             g.ReplaceWith,
 		SourcePosition:          g.SourcePosition,
 		StackTrace:              g.StackTrace,
 		ResourceHooks:           g.ResourceHooks,

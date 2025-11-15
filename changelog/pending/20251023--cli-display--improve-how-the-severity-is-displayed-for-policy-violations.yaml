@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/display
-  description: Improve how the severity is displayed for policy violations

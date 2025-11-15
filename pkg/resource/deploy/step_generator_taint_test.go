@@ -17,7 +17,7 @@ package deploy
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
@@ -139,6 +139,8 @@ func TestTaintedResourceDiff(t *testing.T) {
 		ImportID:                "",
 		RetainOnDelete:          false,
 		DeletedWith:             "",
+		ReplaceWith:             nil,
+		ReplacementTrigger:      resource.NewNullProperty(),
 		Created:                 nil,
 		Modified:                nil,
 		SourcePosition:          "",
@@ -170,9 +172,11 @@ func TestTaintedResourceDiff(t *testing.T) {
 			ID:                      "",
 			CustomTimeouts:          nil,
 			ReplaceOnChanges:        nil,
+			ReplacementTrigger:      resource.NewNullProperty(),
 			RetainOnDelete:          nil,
 			HideDiff:                nil,
 			DeletedWith:             "",
+			ReplaceWith:             nil,
 			SourcePosition:          "",
 			StackTrace:              nil,
 			ResourceHooks:           nil,
@@ -369,6 +373,8 @@ func TestDiffWithTaintedResource(t *testing.T) {
 				ImportID:                "",
 				RetainOnDelete:          false,
 				DeletedWith:             "",
+				ReplaceWith:             nil,
+				ReplacementTrigger:      resource.NewNullProperty(),
 				Created:                 nil,
 				Modified:                nil,
 				SourcePosition:          "",
@@ -401,8 +407,10 @@ func TestDiffWithTaintedResource(t *testing.T) {
 					CustomTimeouts:          nil,
 					HideDiff:                nil,
 					ReplaceOnChanges:        nil,
+					ReplacementTrigger:      resource.NewNullProperty(),
 					RetainOnDelete:          nil,
 					DeletedWith:             "",
+					ReplaceWith:             nil,
 					SourcePosition:          "",
 					StackTrace:              nil,
 					ResourceHooks:           nil,

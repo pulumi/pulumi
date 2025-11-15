@@ -11,20 +11,20 @@ namespace Pulumi.Std
 {
     public static class GetArrayCustomResult
     {
-        public static async Task<List<Outputs.CustomResult>> InvokeAsync(double? a = null, InvokeOptions? invokeOptions = null)
+        public static async Task<ImmutableArray<Outputs.CustomResult>> InvokeAsync(double? a = null, InvokeOptions? invokeOptions = null)
         {
             var builder = ImmutableDictionary.CreateBuilder<string, object?>();
             builder["a"] = a;
             var args = new global::Pulumi.DictionaryInvokeArgs(builder.ToImmutableDictionary());
-            return await global::Pulumi.Deployment.Instance.InvokeSingleAsync<List<Outputs.CustomResult>>("std:index:GetArrayCustomResult", args, invokeOptions.WithDefaults());
+            return await global::Pulumi.Deployment.Instance.InvokeSingleAsync<ImmutableArray<Outputs.CustomResult>>("std:index:GetArrayCustomResult", args, invokeOptions.WithDefaults());
         }
 
-        public static Output<List<Outputs.CustomResult>> Invoke(Input<double?>? a = null, InvokeOptions? invokeOptions = null)
+        public static Output<ImmutableArray<Outputs.CustomResult>> Invoke(Input<double?>? a = null, InvokeOptions? invokeOptions = null)
         {
             var builder = ImmutableDictionary.CreateBuilder<string, object?>();
             builder["a"] = a;
             var args = new global::Pulumi.DictionaryInvokeArgs(builder.ToImmutableDictionary());
-            return global::Pulumi.Deployment.Instance.InvokeSingle<List<Outputs.CustomResult>>("std:index:GetArrayCustomResult", args, invokeOptions.WithDefaults());
+            return global::Pulumi.Deployment.Instance.InvokeSingle<ImmutableArray<Outputs.CustomResult>>("std:index:GetArrayCustomResult", args, invokeOptions.WithDefaults());
         }
     }
 }

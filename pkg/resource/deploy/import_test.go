@@ -87,7 +87,7 @@ func TestImporter(t *testing.T) {
 					},
 				},
 			}
-			_, _, err := i.registerProviders(context.Background())
+			_, err := i.registerProviders(context.Background())
 			assert.ErrorContains(t, err, "incorrect package type specified")
 		})
 		t.Run("ensure provider is called correctly", func(t *testing.T) {
@@ -123,7 +123,7 @@ func TestImporter(t *testing.T) {
 					},
 				},
 			}
-			_, _, err := i.registerProviders(context.Background())
+			_, err := i.registerProviders(context.Background())
 			assert.ErrorIs(t, err, expectedErr)
 		})
 	})
@@ -279,6 +279,6 @@ func TestImporterParameterizedProvider(t *testing.T) {
 			},
 		},
 	}
-	_, _, err := i.registerProviders(context.Background())
+	_, err := i.registerProviders(context.Background())
 	require.NoError(t, err)
 }

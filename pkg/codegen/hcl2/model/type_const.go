@@ -109,7 +109,7 @@ func (t *ConstType) conversionFrom(src Type, unifying bool, seen map[Type]struct
 		if t.Type.ConversionFrom(src) != NoConversion {
 			return UnsafeConversion, nil
 		}
-		return NoConversion, nil
+		return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
 	})
 }
 

@@ -18,8 +18,8 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"golang.org/x/exp/maps"
@@ -121,6 +121,7 @@ type ResourceDependenciesSpec struct {
 	Dependencies         []resource.URN
 	PropertyDependencies map[resource.PropertyKey][]resource.URN
 	DeletedWith          resource.URN
+	ReplaceWith          []resource.URN
 }
 
 // ApplyTo applies the dependencies specified in this ResourceDependenciesSpec to the given ResourceSpec.
@@ -129,6 +130,7 @@ func (rds *ResourceDependenciesSpec) ApplyTo(r *ResourceSpec) {
 	r.Dependencies = rds.Dependencies
 	r.PropertyDependencies = rds.PropertyDependencies
 	r.DeletedWith = rds.DeletedWith
+	r.ReplaceWith = rds.ReplaceWith
 }
 
 // Given a SnapshotSpec and ResourceSpec, returns a rapid.Generator that yields random (valid) sets of dependencies for
@@ -143,6 +145,7 @@ func GeneratedResourceDependencies(
 			Dependencies:         []resource.URN{},
 			PropertyDependencies: map[resource.PropertyKey][]resource.URN{},
 			DeletedWith:          "",
+			ReplaceWith:          []resource.URN{},
 		}
 
 		// As the number of resources in a snapshot grows, the probability of picking none of them will decrease rapidly if
@@ -192,6 +195,8 @@ func GeneratedResourceDependencies(
 				rds.PropertyDependencies[k] = append(rds.PropertyDependencies[k], sr.URN())
 			case resource.ResourceDeletedWith:
 				rds.DeletedWith = sr.URN()
+			case resource.ResourceReplaceWith:
+				rds.ReplaceWith = append(rds.ReplaceWith, sr.URN())
 			default:
 				continue
 			}

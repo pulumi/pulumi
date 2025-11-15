@@ -68,7 +68,7 @@ func NewLoginCmd(ws pkgWorkspace.Context) *cobra.Command {
 			"You can specify a default org to use when logging into the Pulumi Cloud backend or a " +
 			"self-hosted Pulumi Cloud.\n" +
 			"\n" +
-			"[PREVIEW] If you prefer to operate Pulumi independently of a Pulumi Cloud, and entirely local to your computer,\n" +
+			"If you prefer to operate Pulumi independently of a Pulumi Cloud, and entirely local to your computer,\n" +
 			"pass `file://<path>`, where `<path>` will be where state checkpoints will be stored. For instance,\n" +
 			"\n" +
 			"    $ pulumi login file://~\n" +
@@ -80,7 +80,7 @@ func NewLoginCmd(ws pkgWorkspace.Context) *cobra.Command {
 			"\n" +
 			"    $ pulumi login --local\n" +
 			"\n" +
-			"[PREVIEW] Additionally, you may leverage supported object storage backends from one of the cloud providers " +
+			"Additionally, you may leverage supported object storage backends from one of the cloud providers " +
 			"to manage the state independent of the Pulumi Cloud. For instance,\n" +
 			"\n" +
 			"AWS S3:\n" +

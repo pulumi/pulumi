@@ -15,44 +15,22 @@
 package backend
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 )
 
 var _ = SnapshotPersister((*ValidatingPersister)(nil))
 
 type ValidatingPersister struct {
-	Snap      *deploy.Snapshot
+	Snap      *apitype.DeploymentV3
 	ErrorFunc func(error)
 }
 
-func (p *ValidatingPersister) Save(snap *deploy.Snapshot) error {
-	result := &deploy.Snapshot{
-		Manifest:          snap.Manifest,
-		SecretsManager:    snap.SecretsManager,
-		Resources:         make([]*resource.State, len(snap.Resources)),
-		PendingOperations: make([]resource.Operation, len(snap.PendingOperations)),
-	}
-
-	for i, res := range snap.Resources {
-		res.Lock.Lock()
-		result.Resources[i] = res.Copy()
-		res.Lock.Unlock()
-	}
-
-	for i, op := range snap.PendingOperations {
-		op.Resource.Lock.Lock()
-		result.PendingOperations[i] = resource.Operation{
-			Type:     op.Type,
-			Resource: op.Resource.Copy(),
-		}
-		op.Resource.Lock.Unlock()
-	}
-
+func (p *ValidatingPersister) Save(deployment apitype.TypedDeployment) error {
 	if p.ErrorFunc != nil {
-		p.ErrorFunc(result.VerifyIntegrity())
+		p.ErrorFunc(snapshot.VerifyIntegrity(deployment.Deployment))
 	}
 
-	p.Snap = result
+	p.Snap = deployment.Deployment
 	return nil
 }

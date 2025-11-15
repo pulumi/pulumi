@@ -25,13 +25,6 @@ import * as langproto from "../proto/language_pb";
 import * as plugproto from "../proto/plugin_pb";
 
 /**
- * Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb).
- *
- * @internal
- */
-export const maxRPCMessageSize: number = 1024 * 1024 * 400;
-
-/**
  * @internal
  */
 export class LanguageServer<T> implements grpc.UntypedServiceImplementation {

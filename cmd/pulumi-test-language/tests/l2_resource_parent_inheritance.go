@@ -19,7 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	deployProviders "github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/require"
 )
@@ -58,13 +58,13 @@ func init() {
 					defaultProvider := RequireSingleNamedResource(l, snap.Resources, "default_2_0_0")
 					require.Equal(l, "pulumi:providers:simple", defaultProvider.Type.String(), "expected default simple provider")
 
-					defaultProviderRef, err := deployProviders.NewReference(defaultProvider.URN, defaultProvider.ID)
+					defaultProviderRef, err := sdkproviders.NewReference(defaultProvider.URN, defaultProvider.ID)
 					require.NoError(l, err, "expected to create default provider reference")
 
 					explicitProvider := RequireSingleNamedResource(l, snap.Resources, "provider")
 					require.Equal(l, "pulumi:providers:simple", explicitProvider.Type.String(), "expected explicit simple provider")
 
-					explicitProviderRef, err := deployProviders.NewReference(explicitProvider.URN, explicitProvider.ID)
+					explicitProviderRef, err := sdkproviders.NewReference(explicitProvider.URN, explicitProvider.ID)
 					require.NoError(l, err, "expected to create explicit provider reference")
 
 					// Children should inherit providers.

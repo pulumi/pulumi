@@ -43,15 +43,8 @@ import { InvokeOptions, InvokeTransform, InvokeTransformArgs } from "../invoke";
 import { hookBindingFromProto, mapAliasesForRequest, prepareHooks } from "./resource";
 import { deserializeProperties, serializeProperties, unknownValue, isRpcSecret, unwrapRpcSecret } from "./rpc";
 import { debuggablePromise } from "./debuggable";
-import { rpcKeepAlive } from "./settings";
+import { grpcChannelOptions, rpcKeepAlive } from "./settings";
 import { Http2Server, Http2Session } from "http2";
-
-/**
- * Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
- *
- * @internal
- */
-const maxRPCMessageSize: number = 1024 * 1024 * 400;
 
 type CallbackFunction = (args: Uint8Array) => Promise<jspb.Message>;
 
@@ -78,7 +71,7 @@ export class CallbackServer implements ICallbackServer {
         this._monitor = monitor;
 
         this._server = new grpc.Server({
-            "grpc.max_receive_message_length": maxRPCMessageSize,
+            ...grpcChannelOptions,
         });
 
         const implementation: callrpc.ICallbacksServer = {
@@ -264,6 +257,7 @@ export class CallbackServer implements ICallbackServer {
             ropts.hooks = hookBindingFromProto(opts.getHooks());
             ropts.deletedWith =
                 opts.getDeletedWith() !== "" ? new DependencyResource(opts.getDeletedWith()) : undefined;
+            ropts.replaceWith = opts.getReplaceWithList().map((dep) => new DependencyResource(dep));
             ropts.dependsOn = opts.getDependsOnList().map((dep) => new DependencyResource(dep));
             ropts.ignoreChanges = opts.getIgnoreChangesList();
             ropts.parent = request.getParent() !== "" ? new DependencyResource(request.getParent()) : undefined;
@@ -326,6 +320,11 @@ export class CallbackServer implements ICallbackServer {
                     }
                     if (result.opts.deletedWith !== undefined) {
                         opts.setDeletedWith(await result.opts.deletedWith.urn.promise());
+                    }
+                    if (result.opts.replaceWith !== undefined) {
+                        opts.setReplaceWithList(
+                            await Promise.all(result.opts.replaceWith.map(async (dep) => await dep.urn.promise())),
+                        );
                     }
                     if (result.opts.dependsOn !== undefined) {
                         const resolvedDeps = await output(result.opts.dependsOn).promise();

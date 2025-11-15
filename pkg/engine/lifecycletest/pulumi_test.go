@@ -44,9 +44,9 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -56,6 +56,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -450,70 +451,6 @@ func TestBrokenDecrypter(t *testing.T) {
 				return err
 			},
 		}},
-	}
-
-	p.Run(t, nil)
-}
-
-func TestConfigPropertyMapMatches(t *testing.T) {
-	t.Parallel()
-
-	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		// Check that the config property map matches what we expect.
-		require.Len(t, info.Config, 8)
-		require.Len(t, info.ConfigPropertyMap, 8)
-
-		assert.Equal(t, "hunter2", info.Config[config.MustMakeKey("pkgA", "secret")])
-		assert.True(t, info.ConfigPropertyMap["pkgA:secret"].IsSecret())
-		assert.Equal(t, "hunter2", info.ConfigPropertyMap["pkgA:secret"].SecretValue().Element.StringValue())
-
-		assert.Equal(t, "all I see is ******", info.Config[config.MustMakeKey("pkgA", "plain")])
-		assert.False(t, info.ConfigPropertyMap["pkgA:plain"].IsSecret())
-		assert.Equal(t, "all I see is ******", info.ConfigPropertyMap["pkgA:plain"].StringValue())
-
-		assert.Equal(t, "1234", info.Config[config.MustMakeKey("pkgA", "int")])
-		assert.Equal(t, 1234.0, info.ConfigPropertyMap["pkgA:int"].NumberValue())
-
-		assert.Equal(t, "12.34", info.Config[config.MustMakeKey("pkgA", "float")])
-		// This is a string because adjustObjectValue only parses integers, not floats.
-		assert.Equal(t, "12.34", info.ConfigPropertyMap["pkgA:float"].StringValue())
-
-		assert.Equal(t, "012345", info.Config[config.MustMakeKey("pkgA", "string")])
-		assert.Equal(t, "012345", info.ConfigPropertyMap["pkgA:string"].StringValue())
-
-		assert.Equal(t, "true", info.Config[config.MustMakeKey("pkgA", "bool")])
-		assert.Equal(t, true, info.ConfigPropertyMap["pkgA:bool"].BoolValue())
-
-		assert.Equal(t, "[1,2,3]", info.Config[config.MustMakeKey("pkgA", "array")])
-		assert.Equal(t, 1.0, info.ConfigPropertyMap["pkgA:array"].ArrayValue()[0].NumberValue())
-		assert.Equal(t, 2.0, info.ConfigPropertyMap["pkgA:array"].ArrayValue()[1].NumberValue())
-		assert.Equal(t, 3.0, info.ConfigPropertyMap["pkgA:array"].ArrayValue()[2].NumberValue())
-
-		assert.Equal(t, `{"bar":"02","foo":1}`, info.Config[config.MustMakeKey("pkgA", "map")])
-		assert.Equal(t, 1.0, info.ConfigPropertyMap["pkgA:map"].ObjectValue()["foo"].NumberValue())
-		assert.Equal(t, "02", info.ConfigPropertyMap["pkgA:map"].ObjectValue()["bar"].StringValue())
-		return nil
-	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF)
-
-	crypter := config.NewSymmetricCrypter(make([]byte, 32))
-	secret, err := crypter.EncryptValue(context.Background(), "hunter2")
-	require.NoError(t, err)
-
-	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
-		Steps:   lt.MakeBasicLifecycleSteps(t, 0),
-		Config: config.Map{
-			config.MustMakeKey("pkgA", "secret"): config.NewSecureValue(secret),
-			config.MustMakeKey("pkgA", "plain"):  config.NewValue("all I see is ******"),
-			config.MustMakeKey("pkgA", "int"):    config.NewValue("1234"),
-			config.MustMakeKey("pkgA", "float"):  config.NewValue("12.34"),
-			config.MustMakeKey("pkgA", "string"): config.NewValue("012345"),
-			config.MustMakeKey("pkgA", "bool"):   config.NewValue("true"),
-			config.MustMakeKey("pkgA", "array"):  config.NewObjectValue("[1, 2, 3]"),
-			config.MustMakeKey("pkgA", "map"):    config.NewObjectValue(`{"foo": 1, "bar": "02"}`),
-		},
-		Decrypter: crypter,
 	}
 
 	p.Run(t, nil)
@@ -1089,14 +1026,14 @@ func TestStackReference(t *testing.T) {
 	})
 	p := &lt.TestPlan{
 		BackendClient: &deploytest.BackendClient{
-			GetStackOutputsF: func(ctx context.Context, name string, _ func(error) error) (resource.PropertyMap, error) {
+			GetStackOutputsF: func(ctx context.Context, name string, _ func(error) error) (property.Map, error) {
 				switch name {
 				case "other":
-					return resource.NewPropertyMapFromMap(map[string]any{
-						"foo": "bar",
+					return property.NewMap(map[string]property.Value{
+						"foo": property.New("bar"),
 					}), nil
 				default:
-					return nil, fmt.Errorf("unknown stack \"%s\"", name)
+					return property.Map{}, fmt.Errorf("unknown stack \"%s\"", name)
 				}
 			},
 		},
@@ -1245,14 +1182,14 @@ func TestStackReferenceRegister(t *testing.T) {
 
 	p := &lt.TestPlan{
 		BackendClient: &deploytest.BackendClient{
-			GetStackOutputsF: func(ctx context.Context, name string, _ func(error) error) (resource.PropertyMap, error) {
+			GetStackOutputsF: func(ctx context.Context, name string, _ func(error) error) (property.Map, error) {
 				switch name {
 				case "other":
-					return resource.NewPropertyMapFromMap(map[string]any{
-						"foo": "bar",
+					return property.NewMap(map[string]property.Value{
+						"foo": property.New("bar"),
 					}), nil
 				default:
-					return nil, fmt.Errorf("unknown stack \"%s\"", name)
+					return property.Map{}, fmt.Errorf("unknown stack \"%s\"", name)
 				}
 			},
 		},
@@ -3118,6 +3055,104 @@ func TestDeletedWith(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 0)
+}
+
+func TestReplaceWithAndPropertyChange(t *testing.T) {
+	t.Parallel()
+
+	created := []resource.URN{}
+	deleted := []resource.URN{}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					// Both "foo" and "bar" properties require replacement when changed
+					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+						return plugin.DiffResult{
+							Changes:     plugin.DiffSome,
+							ReplaceKeys: []resource.PropertyKey{"foo"},
+						}, nil
+					}
+					if !req.OldOutputs["bar"].DeepEquals(req.NewInputs["bar"]) {
+						return plugin.DiffResult{
+							Changes:     plugin.DiffSome,
+							ReplaceKeys: []resource.PropertyKey{"bar"},
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					created = append(created, req.URN)
+					resourceID := resource.ID(fmt.Sprintf("created-id-%d", len(created)))
+					return plugin.CreateResponse{
+						ID:         resourceID,
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					deleted = append(deleted, req.URN)
+					return plugin.DeleteResponse{}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	insA := resource.NewPropertyMapFromMap(map[string]any{
+		"foo": "initial-value-a",
+	})
+
+	insB := resource.NewPropertyMapFromMap(map[string]any{
+		"bar": "initial-value-b",
+	})
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{Inputs: insA})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs:      insB,
+			ReplaceWith: []resource.URN{respA.URN},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 3)
+
+	require.Len(t, created, 2)
+	require.Equal(t, "created-id-1", snap.Resources[1].ID.String())
+	require.Equal(t, "created-id-2", snap.Resources[2].ID.String())
+	require.Len(t, deleted, 0)
+
+	// Step 1: Change BOTH A's and B's properties, both should replace
+	insA["foo"] = resource.NewProperty("changed-value-a")
+	insB["bar"] = resource.NewProperty("changed-value-b")
+
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	require.Len(t, created, 4)
+	require.Equal(t, "created-id-3", snap.Resources[1].ID.String())
+	require.Equal(t, "created-id-4", snap.Resources[2].ID.String())
+
+	require.Len(t, deleted, 2)
+	require.Contains(t, deleted, snap.Resources[1].URN)
+	require.Contains(t, deleted, snap.Resources[2].URN)
 }
 
 func TestInvalidGetIDReportsUserError(t *testing.T) {

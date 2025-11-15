@@ -64,5 +64,6 @@ def my_mocks():
 
 
 @pulumi.runtime.test
+@pytest.mark.asyncio
 def test_stack_registers_outputs(my_mocks):
     pass

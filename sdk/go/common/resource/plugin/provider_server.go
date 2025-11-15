@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -145,6 +145,7 @@ func (p *providerServer) Handshake(
 		ConfigureWithUrn:            req.ConfigureWithUrn,
 		SupportsViews:               req.SupportsViews,
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
+		InvokeWithPreview:           req.InvokeWithPreview,
 	})
 	if err != nil {
 		return nil, err
@@ -830,6 +831,11 @@ func (p *providerServer) Construct(ctx context.Context,
 		hooks[resource.AfterDelete] = binding.GetAfterDelete()
 	}
 
+	replaceWith := make([]resource.URN, len(req.GetReplaceWith()))
+	for i, urn := range req.GetReplaceWith() {
+		replaceWith[i] = resource.URN(urn)
+	}
+
 	options := ConstructOptions{
 		Aliases:              aliases,
 		Dependencies:         dependencies,
@@ -838,6 +844,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		PropertyDependencies: propertyDependencies,
 		ResourceHooks:        hooks,
 		DeletedWith:          resource.URN(req.DeletedWith),
+		ReplaceWith:          replaceWith,
 	}
 
 	resp, err := p.provider.Construct(ctx, ConstructRequest{
@@ -882,8 +889,9 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 	}
 
 	resp, err := p.provider.Invoke(ctx, InvokeRequest{
-		Tok:  tokens.ModuleMember(req.GetTok()),
-		Args: args,
+		Tok:     tokens.ModuleMember(req.GetTok()),
+		Args:    args,
+		Preview: req.GetPreview(),
 	})
 	if err != nil {
 		return nil, err

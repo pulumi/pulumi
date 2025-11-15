@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -177,12 +178,12 @@ func TestBuiltinProvider(t *testing.T) {
 				var called bool
 				p := &builtinProvider{
 					backendClient: &deploytest.BackendClient{
-						GetStackOutputsF: func(ctx context.Context, name string, _ func(error) error) (resource.PropertyMap, error) {
+						GetStackOutputsF: func(ctx context.Context, name string, _ func(error) error) (property.Map, error) {
 							called = true
-							return resource.PropertyMap{
-								"normal": resource.NewProperty("foo"),
-								"secret": resource.MakeSecret(resource.NewProperty("bar")),
-							}, nil
+							return property.NewMap(map[string]property.Value{
+								"normal": property.New("foo"),
+								"secret": property.New("bar").WithSecret(true),
+							}), nil
 						},
 					},
 				}
@@ -220,9 +221,9 @@ func TestBuiltinProvider(t *testing.T) {
 				var called bool
 				p := &builtinProvider{
 					backendClient: &deploytest.BackendClient{
-						GetStackResourceOutputsF: func(ctx context.Context, name string) (resource.PropertyMap, error) {
+						GetStackResourceOutputsF: func(ctx context.Context, name string) (property.Map, error) {
 							called = true
-							return resource.PropertyMap{}, nil
+							return property.Map{}, nil
 						},
 					},
 				}

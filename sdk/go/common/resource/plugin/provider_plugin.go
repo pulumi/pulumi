@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -197,6 +197,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 				ConfigureWithUrn:            true,
 				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
+				InvokeWithPreview:           true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -253,6 +254,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 				ConfigureWithUrn:            true,
 				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
+				InvokeWithPreview:           true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -322,6 +324,7 @@ func handshake(
 		ConfigureWithUrn:            req.ConfigureWithUrn,
 		SupportsViews:               req.SupportsViews,
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
+		InvokeWithPreview:           req.InvokeWithPreview,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -381,6 +384,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			ConfigureWithUrn:            true,
 			SupportsViews:               true,
 			SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
+			InvokeWithPreview:           true,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -496,6 +500,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		ConfigureWithUrn:            req.ConfigureWithUrn,
 		SupportsViews:               req.SupportsViews,
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
+		InvokeWithPreview:           req.InvokeWithPreview,
 	})
 	if err != nil {
 		return nil, err
@@ -1881,6 +1886,12 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		configSecretKeys = append(configSecretKeys, k.String())
 	}
 
+	// Marshal the replace with.
+	replaceWithURNs := make([]string, len(req.Options.ReplaceWith))
+	for i, urn := range req.Options.ReplaceWith {
+		replaceWithURNs[i] = string(urn)
+	}
+
 	// Marshal the resource hook bindings.
 	var resourceHook *pulumirpc.ConstructRequest_ResourceHooksBinding
 	if len(req.Options.ResourceHooks) > 0 {
@@ -1912,6 +1923,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		Dependencies:            dependencies,
 		AdditionalSecretOutputs: req.Options.AdditionalSecretOutputs,
 		DeletedWith:             string(req.Options.DeletedWith),
+		ReplaceWith:             replaceWithURNs,
 		DeleteBeforeReplace:     req.Options.DeleteBeforeReplace,
 		IgnoreChanges:           req.Options.IgnoreChanges,
 		ReplaceOnChanges:        req.Options.ReplaceOnChanges,
@@ -1992,8 +2004,9 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 	}
 
 	resp, err := client.Invoke(p.requestContext(), &pulumirpc.InvokeRequest{
-		Tok:  string(req.Tok),
-		Args: margs,
+		Tok:     string(req.Tok),
+		Args:    margs,
+		Preview: req.Preview,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

@@ -30,16 +30,12 @@ import (
 func TestRebuildBaseStateDanglingParentsSimple(t *testing.T) {
 	t.Parallel()
 
-	// Arrange.
 	steps, ex := makeStepsAndExecutor(
-		&resource.State{URN: "A", Delete: true},
 		&resource.State{URN: "B", Parent: "A"},
 	)
 
-	// Act.
 	ex.rebuildBaseState(steps)
 
-	// Assert.
 	assert.EqualValues(t, map[resource.URN]*resource.State{
 		"B": {URN: "B"},
 	}, ex.deployment.olds)
@@ -48,7 +44,6 @@ func TestRebuildBaseStateDanglingParentsSimple(t *testing.T) {
 func TestRebuildBaseStateDanglingParentsTree(t *testing.T) {
 	t.Parallel()
 
-	// Arrange.
 	steps, ex := makeStepsAndExecutor(
 		&resource.State{URN: "A"},
 		&resource.State{URN: "C", Parent: "A", Delete: true},
@@ -63,13 +58,11 @@ func TestRebuildBaseStateDanglingParentsTree(t *testing.T) {
 		&resource.State{URN: "I", Parent: "E"},
 	)
 
-	// Act.
 	ex.rebuildBaseState(steps)
 
-	// Assert.
 	assert.EqualValues(t, map[resource.URN]*resource.State{
 		"A": {URN: "A"},
-		"I": {URN: "I"},
+		"I": {URN: "I", Parent: "E"},
 		"F": {URN: "F", Parent: "A"},
 		"G": {URN: "G", Parent: "D"},
 		"D": {URN: "D", Parent: "A"},

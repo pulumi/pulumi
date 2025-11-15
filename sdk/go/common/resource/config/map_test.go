@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	yaml "gopkg.in/yaml.v2"
@@ -1436,92 +1436,92 @@ func TestPropertyMap(t *testing.T) {
 
 	tests := []struct {
 		Config   Map
-		Expected resource.PropertyMap
+		Expected property.Map
 	}{
 		{
 			Config: Map{
 				MustMakeKey("my", "testKey"): NewValue("testValue"),
 			},
-			Expected: resource.PropertyMap{
-				"my:testKey": resource.NewProperty("testValue"),
-			},
+			Expected: property.NewMap(map[string]property.Value{
+				"my:testKey": property.New("testValue"),
+			}),
 		},
 		{
 			Config: Map{
 				MustMakeKey("my", "testKey"): NewValue("1"),
 			},
-			Expected: resource.PropertyMap{
-				"my:testKey": resource.NewProperty(1.0),
-			},
+			Expected: property.NewMap(map[string]property.Value{
+				"my:testKey": property.New(1.0),
+			}),
 		},
 		{
 			Config: Map{
 				MustMakeKey("my", "testKey"): NewValue("18446744073709551615"),
 			},
-			Expected: resource.PropertyMap{
-				"my:testKey": resource.NewProperty(1.8446744073709552e+19),
-			},
+			Expected: property.NewMap(map[string]property.Value{
+				"my:testKey": property.New(1.8446744073709552e+19),
+			}),
 		},
 		{
 			Config: Map{
 				MustMakeKey("my", "testKey"): NewValue("true"),
 			},
-			Expected: resource.PropertyMap{
-				"my:testKey": resource.NewProperty(true),
-			},
+			Expected: property.NewMap(map[string]property.Value{
+				"my:testKey": property.New(true),
+			}),
 		},
 		{
 			Config: Map{
 				MustMakeKey("my", "testKey"): NewSecureValue("stackAsecurevalue"),
 			},
-			Expected: resource.PropertyMap{
-				"my:testKey": resource.MakeSecret(resource.NewProperty("stackAsecurevalue")),
-			},
+			Expected: property.NewMap(map[string]property.Value{
+				"my:testKey": property.New("stackAsecurevalue").WithSecret(true),
+			}),
 		},
 		{
 			Config: Map{
 				MustMakeKey("my", "testKey"): NewObjectValue(`{"inner":"value"}`),
 			},
-			Expected: resource.PropertyMap{
-				"my:testKey": resource.NewProperty(resource.PropertyMap{
-					"inner": resource.NewProperty("value"),
+			Expected: property.NewMap(map[string]property.Value{
+				"my:testKey": property.New(map[string]property.Value{
+					"inner": property.New("value"),
 				}),
-			},
+			}),
 		},
 		{
 			Config: Map{
 				//nolint:lll
 				MustMakeKey("my", "testKey"): NewSecureObjectValue(`[{"inner":{"secure":"stackAsecurevalue"}},{"secure":"stackAsecurevalue2"}]`),
 			},
-			Expected: resource.PropertyMap{
+			Expected: property.NewMap(map[string]property.Value{
 				//nolint:lll
-				"my:testKey": resource.NewProperty([]resource.PropertyValue{
-					resource.NewProperty(resource.PropertyMap{
-						"inner": resource.MakeSecret(resource.NewProperty("stackAsecurevalue")),
+				"my:testKey": property.New([]property.Value{
+					property.New(map[string]property.Value{
+						"inner": property.New("stackAsecurevalue").WithSecret(true),
 					}),
-					resource.MakeSecret(resource.NewProperty("stackAsecurevalue2")),
+					property.New("stackAsecurevalue2").WithSecret(true),
 				}),
-			},
+			}),
 		},
 		{
 			Config: Map{
 				MustMakeKey("my", "test.Key"): NewValue("testValue"),
 			},
-			Expected: resource.PropertyMap{
-				"my:test.Key": resource.NewProperty("testValue"),
-			},
+			Expected: property.NewMap(map[string]property.Value{
+				"my:test.Key": property.New("testValue"),
+			}),
 		},
 		{
 			Config: Map{
 				MustMakeKey("my", "name"): NewObjectValue(`[["value"]]`),
 			},
-			Expected: resource.PropertyMap{
-				"my:name": resource.NewProperty([]resource.PropertyValue{
-					resource.NewProperty([]resource.PropertyValue{
-						resource.NewProperty("value"),
+			Expected: property.NewMap(map[string]property.Value{
+				"my:name": property.New([]property.Value{
+					property.New([]property.Value{
+						property.New("value"),
 					}),
 				}),
-			},
+			}),
 		},
 	}
 
