@@ -57,6 +57,7 @@ func (bun *bunManager) Install(ctx context.Context, dir string, production bool,
 	command.Dir = dir
 	command.Stdout = stdout
 	command.Stderr = stderr
+	fmt.Fprintf(stdout, "Running %s in %s", command.String(), command.Dir)
 	return command.Run()
 }
 
