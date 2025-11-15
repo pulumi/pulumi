@@ -38,8 +38,7 @@ type stashArgs struct {
 }
 
 type StashArgs struct {
-	Input       Input
-	Passthrough BoolPtrInput
+	Input Input
 }
 
 func (StashArgs) ElementType() reflect.Type {

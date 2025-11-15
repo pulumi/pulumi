@@ -20,15 +20,6 @@ func main() {
 		}
 		ctx.Export("stashInput", myStash.Input)
 		ctx.Export("stashOutput", myStash.Output)
-		passthroughStash, err := pulumi.NewStash(ctx, "passthroughStash", &pulumi.StashArgs{
-			Input:       pulumi.Any("old"),
-			Passthrough: pulumi.Bool(true),
-		})
-		if err != nil {
-			return err
-		}
-		ctx.Export("passthroughInput", passthroughStash.Input)
-		ctx.Export("passthroughOutput", passthroughStash.Output)
 		return nil
 	})
 }

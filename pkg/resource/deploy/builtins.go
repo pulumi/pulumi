@@ -156,7 +156,7 @@ func (p *builtinProvider) Check(_ context.Context, req plugin.CheckRequest) (plu
 	contract.Assertf(typ == stashType, "expected resource type %v, got %v", stashType, typ)
 
 	for k := range req.News {
-		if k != "input" && k != "passthrough" {
+		if k != "input" {
 			return plugin.CheckResponse{
 				Failures: []plugin.CheckFailure{{Property: k, Reason: fmt.Sprintf("unknown property \"%v\"", k)}},
 			}, nil
@@ -168,15 +168,6 @@ func (p *builtinProvider) Check(_ context.Context, req plugin.CheckRequest) (plu
 		return plugin.CheckResponse{
 			Failures: []plugin.CheckFailure{{Property: "input", Reason: `missing required property "input"`}},
 		}, nil
-	}
-
-	got, ok := req.News["passthrough"]
-	if ok {
-		if !got.IsBool() && !got.IsComputed() {
-			return plugin.CheckResponse{
-				Failures: []plugin.CheckFailure{{Property: "passthrough", Reason: `property "passthrough" must be a boolean`}},
-			}, nil
-		}
 	}
 
 	return plugin.CheckResponse{Properties: req.News}, nil
@@ -204,7 +195,8 @@ func (p *builtinProvider) Diff(_ context.Context, req plugin.DiffRequest) (plugi
 	// value to the output side property called "input".
 	if !req.NewInputs["input"].DeepEquals(req.OldInputs["input"]) {
 		return plugin.DiffResult{
-			Changes: plugin.DiffSome,
+			Changes:     plugin.DiffSome,
+			ChangedKeys: []resource.PropertyKey{"input"},
 		}, nil
 	}
 
@@ -265,20 +257,9 @@ func (p *builtinProvider) Update(_ context.Context, req plugin.UpdateRequest) (p
 	contract.Assertf(req.URN.Type() == stashType,
 		"expected resource type %v, got %v", stashType, req.URN.Type())
 
-	// If passthrough is set then we copy the input to the output, otherwise we just copy the input through
-	var passthrough bool
-	if got, ok := req.NewInputs["passthrough"]; ok {
-		contract.Assertf(got.IsBool(), "expected 'passthrough' to be a bool")
-		passthrough = got.BoolValue()
-	}
-
 	properties := resource.PropertyMap{
 		"input":  req.NewInputs["input"],
 		"output": req.OldOutputs["output"],
-	}
-
-	if passthrough {
-		properties["output"] = req.NewInputs["input"]
 	}
 
 	return plugin.UpdateResponse{

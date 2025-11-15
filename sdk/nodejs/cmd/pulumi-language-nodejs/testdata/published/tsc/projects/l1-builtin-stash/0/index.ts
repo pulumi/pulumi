@@ -9,9 +9,3 @@ const myStash = new pulumi.Stash("myStash", {input: {
 }});
 export const stashInput = myStash.input;
 export const stashOutput = myStash.output;
-const passthroughStash = new pulumi.Stash("passthroughStash", {
-    input: "old",
-    passthrough: true,
-});
-export const passthroughInput = passthroughStash.input;
-export const passthroughOutput = passthroughStash.output;
