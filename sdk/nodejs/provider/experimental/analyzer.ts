@@ -327,14 +327,29 @@ Please ensure these components are properly imported to your package's entry poi
         }
 
         let outputs: Record<string, PropertyDefinition> = {};
-        const classType = this.checker.getTypeAtLocation(node);
-        const classSymbol = classType.getSymbol();
-        if (classSymbol?.members) {
-            outputs = this.analyzeSymbols(
-                { component: componentName, inputOutput: InputOutput.Output },
-                symbolTableToSymbols(classSymbol.members),
-                node,
-            );
+
+        /**
+         * We need to walk up the inheritance chain to find all the outputs
+         */
+        for (const type of this.getOrderedInheritanceChain(node)) {
+
+            if (this.isTypeComponentResource(type)) {
+                break;
+            }
+
+            const symbol = type.getSymbol();
+
+            if (symbol?.members) {
+                outputs = { 
+                    ...outputs, 
+                    ...this.analyzeSymbols(
+                        { component: componentName, inputOutput: InputOutput.Output },
+                        symbolTableToSymbols(symbol.members),
+                        node,
+                    )
+                };
+            }
+
         }
 
         const definition: ComponentDefinition = {
@@ -352,21 +367,32 @@ Please ensure these components are properly imported to your package's entry poi
     }
 
     private isPulumiComponent(node: typescript.ClassDeclaration): boolean {
-        if (!node.heritageClauses) {
-            return false;
+        return this.getOrderedInheritanceChain(node).some(this.isTypeComponentResource);
+    }
+
+    private isTypeComponentResource(type: typescript.Type): boolean {
+        const symbol = type.getSymbol();
+
+        const matchesName = symbol?.escapedName === "ComponentResource";
+        const sourceFile = symbol?.declarations?.[0].getSourceFile();
+        const matchesSourceFile =
+            sourceFile?.fileName.endsWith("resource.ts") || sourceFile?.fileName.endsWith("resource.d.ts");
+
+        return matchesName && matchesSourceFile!;
+    }
+
+    private getOrderedInheritanceChain(node: typescript.ClassDeclaration): typescript.Type[] {
+        const chain: typescript.Type[] = [];
+
+        let type: typescript.Type | undefined = this.checker.getTypeAtLocation(node);
+
+        while (type) {
+            chain.push(type);
+            const bases = type.getBaseTypes();
+            type = bases?.[0];
         }
 
-        return node.heritageClauses.some((clause) => {
-            return clause.types.some((clauseNode) => {
-                const type = this.checker.getTypeAtLocation(clauseNode);
-                const symbol = type.getSymbol();
-                const matchesName = symbol?.escapedName === "ComponentResource";
-                const sourceFile = symbol?.declarations?.[0].getSourceFile();
-                const matchesSourceFile =
-                    sourceFile?.fileName.endsWith("resource.ts") || sourceFile?.fileName.endsWith("resource.d.ts");
-                return matchesName && matchesSourceFile;
-            });
-        });
+        return chain;
     }
 
     private analyzeSymbols(
