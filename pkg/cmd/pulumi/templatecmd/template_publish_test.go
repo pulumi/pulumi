@@ -330,6 +330,10 @@ type mockTemplateWorkspace struct {
 
 var _ pkgWorkspace.Context = &mockTemplateWorkspace{}
 
+func (m *mockTemplateWorkspace) New() (pkgWorkspace.W, error) {
+	return nil, m.readProjectErr
+}
+
 func (m *mockTemplateWorkspace) ReadProject() (*workspace.Project, string, error) {
 	return nil, "", m.readProjectErr
 }

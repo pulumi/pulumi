@@ -79,7 +79,7 @@ func TestNoProject(t *testing.T) {
 	cmd := newStateDeleteCommand(ws, lm)
 	cmd.SetArgs([]string{"urn:pulumi:proj::stk::pkg:index:typ::res"})
 	err := cmd.ExecuteContext(context.Background())
-	assert.ErrorContains(t, err, "no Pulumi.yaml project file found")
+	assert.ErrorContains(t, err, "no project file found")
 }
 
 func TestStateDeleteURN(t *testing.T) {
