@@ -402,7 +402,6 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}.Make()
 		// TODO(seqnum) should default providers be created with 1? When do they ever get recreated/replaced?
 		if issueCheckErrors(i.deployment, state, urn, resp.Failures) {
-			fmt.Println("provider check had failures")
 			return nil, errors.New("provider check failed")
 		}
 
