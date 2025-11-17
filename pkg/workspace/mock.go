@@ -19,8 +19,16 @@ import (
 )
 
 type MockContext struct {
+	NewF                  func() (W, error)
 	ReadProjectF          func() (*workspace.Project, string, error)
 	GetStoredCredentialsF func() (workspace.Credentials, error)
+}
+
+func (c *MockContext) New() (W, error) {
+	if c.NewF != nil {
+		return c.NewF()
+	}
+	return nil, workspace.ErrProjectNotFound
 }
 
 func (c *MockContext) ReadProject() (*workspace.Project, string, error) {

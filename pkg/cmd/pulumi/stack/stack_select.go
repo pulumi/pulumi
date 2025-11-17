@@ -87,7 +87,7 @@ func newStackSelectCmd() *cobra.Command {
 				if stackErr != nil {
 					return stackErr
 				} else if s != nil {
-					return state.SetCurrentStack(stackRef.FullyQualifiedName().String())
+					return state.SetCurrentStack(ws, stackRef.FullyQualifiedName().String())
 				}
 				// If create flag was passed and stack was not found, create it and select it.
 				if create && stack != "" {
@@ -95,7 +95,7 @@ func newStackSelectCmd() *cobra.Command {
 					if err != nil {
 						return err
 					}
-					return state.SetCurrentStack(s.Ref().FullyQualifiedName().String())
+					return state.SetCurrentStack(ws, s.Ref().FullyQualifiedName().String())
 				}
 
 				return fmt.Errorf("no stack named '%s' found", stackRef)
@@ -115,7 +115,7 @@ func newStackSelectCmd() *cobra.Command {
 			}
 
 			contract.Assertf(stack != nil, "must select a stack")
-			return state.SetCurrentStack(stack.Ref().FullyQualifiedName().String())
+			return state.SetCurrentStack(ws, stack.Ref().FullyQualifiedName().String())
 		},
 	}
 	cmd.PersistentFlags().StringVarP(

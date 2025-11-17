@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,23 +22,23 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // W offers functionality for interacting with Pulumi workspaces.
 type W interface {
-	Settings() *Settings // returns a mutable pointer to the optional workspace settings info.
-	Save() error         // saves any modifications to the workspace.
+	Settings() *workspace.Settings // returns a mutable pointer to the optional workspace settings info.
+	Save() error                   // saves any modifications to the workspace.
 }
 
 type projectWorkspace struct {
-	name     tokens.PackageName // the package this workspace is associated with.
-	project  string             // the path to the Pulumi.[yaml|json] file for this project.
-	settings *Settings          // settings for this workspace.
+	name     tokens.PackageName  // the package this workspace is associated with.
+	project  string              // the path to the Pulumi.[yaml|json] file for this project.
+	settings *workspace.Settings // settings for this workspace.
 }
 
 var (
@@ -63,37 +63,33 @@ func upsertIntoCache(key string, w W) {
 	cache[key] = w
 }
 
-// New creates a new workspace using the current working directory.
-func New() (W, error) {
+// newW creates a new workspace using the current working directory. Requires a Pulumi.yaml file be present in the
+// folder hierarchy between the current working directory and the .pulumi folder.
+func newW() (W, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
-	return NewFrom(cwd)
-}
 
-// NewFrom creates a new Pulumi workspace in the given directory. Requires a Pulumi.yaml file be present in the
-// folder hierarchy between dir and the .pulumi folder.
-func NewFrom(dir string) (W, error) {
-	absDir, err := filepath.Abs(dir)
+	absDir, err := filepath.Abs(cwd)
 	if err != nil {
 		return nil, err
 	}
-	dir = absDir
+	cwd = absDir
 
-	if w, ok := loadFromCache(dir); ok {
+	if w, ok := loadFromCache(cwd); ok {
 		return w, nil
 	}
 
-	path, err := DetectProjectPathFrom(dir)
+	path, err := workspace.DetectProjectPathFrom(cwd)
 	if err != nil {
 		return nil, err
 	} else if path == "" {
 		return nil, fmt.Errorf("no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
-			"created a project yet, use `pulumi new` to do so", dir)
+			"created a project yet, use `pulumi new` to do so", cwd)
 	}
 
-	proj, err := LoadProject(path)
+	proj, err := workspace.LoadProject(path)
 	if err != nil {
 		return nil, err
 	}
@@ -108,11 +104,11 @@ func NewFrom(dir string) (W, error) {
 		return nil, fmt.Errorf("unable to read workspace settings: %w", err)
 	}
 
-	upsertIntoCache(dir, w)
+	upsertIntoCache(cwd, w)
 	return w, nil
 }
 
-func (pw *projectWorkspace) Settings() *Settings {
+func (pw *projectWorkspace) Settings() *workspace.Settings {
 	return pw.settings
 }
 
@@ -171,13 +167,13 @@ func (pw *projectWorkspace) readSettings() error {
 	b, err := os.ReadFile(settingsPath)
 	if err != nil && os.IsNotExist(err) {
 		// not an error to not have an existing settings file.
-		pw.settings = &Settings{}
+		pw.settings = &workspace.Settings{}
 		return nil
 	} else if err != nil {
 		return err
 	}
 
-	var settings Settings
+	var settings workspace.Settings
 
 	err = json.Unmarshal(b, &settings)
 	if err != nil {
@@ -189,8 +185,8 @@ func (pw *projectWorkspace) readSettings() error {
 }
 
 func (pw *projectWorkspace) settingsPath() string {
-	uniqueFileName := string(pw.name) + "-" + sha1HexString(pw.project) + "-" + WorkspaceFile
-	path, err := GetPulumiPath(WorkspaceDir, uniqueFileName)
+	uniqueFileName := string(pw.name) + "-" + sha1HexString(pw.project) + "-" + workspace.WorkspaceFile
+	path, err := workspace.GetPulumiPath(workspace.WorkspaceDir, uniqueFileName)
 	contract.AssertNoErrorf(err, "could not get workspace path")
 	return path
 }
@@ -202,9 +198,4 @@ func sha1HexString(value string) string {
 	_, err := h.Write([]byte(value))
 	contract.AssertNoErrorf(err, "error hashing string")
 	return hex.EncodeToString(h.Sum(nil))
-}
-
-// qnameFileName takes a qname and cleans it for use as a filename (by replacing tokens.QNameDelimter with a dash)
-func qnameFileName(nm tokens.QName) string {
-	return strings.ReplaceAll(string(nm), tokens.QNameDelimiter, "-")
 }
