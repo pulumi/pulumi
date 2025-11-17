@@ -52,6 +52,18 @@ type LoginManager interface {
 		insecure bool,
 		color colors.Colorization,
 	) (backend.Backend, error)
+
+	LoginFromAuthContext(
+		ctx context.Context,
+		ws pkgWorkspace.Context,
+		sink diag.Sink,
+		url string,
+		project *workspace.Project,
+		setCurrent bool,
+		insecure bool,
+		authContext workspace.AuthContext,
+		color colors.Colorization,
+	) (backend.Backend, error)
 }
 
 var DefaultLoginManager LoginManager = &lm{}
@@ -98,6 +110,30 @@ func (f *lm) Login(
 	return httpstate.New(ctx, sink, url, project, insecure)
 }
 
+func (f *lm) LoginFromAuthContext(
+	ctx context.Context,
+	ws pkgWorkspace.Context,
+	sink diag.Sink,
+	url string,
+	project *workspace.Project,
+	setCurrent bool,
+	insecure bool,
+	authContext workspace.AuthContext,
+	color colors.Colorization,
+) (backend.Backend, error) {
+	if authContext.GrantType == workspace.AuthContextGrantTypeTokenExchange {
+		lm := httpstate.NewLoginManager()
+		_, err := lm.LoginWithOIDCToken(
+			ctx, url, insecure, authContext.Token, authContext.Organization, authContext.Scope,
+			authContext.Expiration, setCurrent)
+		if err != nil {
+			return nil, err
+		}
+		return httpstate.New(ctx, sink, url, project, insecure)
+	}
+	return f.Login(ctx, ws, sink, url, project, setCurrent, insecure, color)
+}
+
 type MockLoginManager struct {
 	CurrentF func(
 		ctx context.Context,
@@ -118,6 +154,18 @@ type MockLoginManager struct {
 		insecure bool,
 		color colors.Colorization,
 	) (backend.Backend, error)
+
+	LoginFromAuthContextF func(
+		ctx context.Context,
+		ws pkgWorkspace.Context,
+		sink diag.Sink,
+		url string,
+		project *workspace.Project,
+		setCurrent bool,
+		insecure bool,
+		authContext workspace.AuthContext,
+		color colors.Colorization,
+	) (backend.Backend, error)
 }
 
 var _ LoginManager = (*MockLoginManager)(nil)
@@ -134,6 +182,23 @@ func (lm *MockLoginManager) Login(
 ) (backend.Backend, error) {
 	if lm.LoginF != nil {
 		return lm.LoginF(ctx, ws, sink, url, project, setCurrent, insecure, color)
+	}
+	panic("not implemented")
+}
+
+func (lm *MockLoginManager) LoginFromAuthContext(
+	ctx context.Context,
+	ws pkgWorkspace.Context,
+	sink diag.Sink,
+	url string,
+	project *workspace.Project,
+	setCurrent bool,
+	insecure bool,
+	authContext workspace.AuthContext,
+	color colors.Colorization,
+) (backend.Backend, error) {
+	if lm.LoginFromAuthContextF != nil {
+		return lm.LoginFromAuthContextF(ctx, ws, sink, url, project, setCurrent, insecure, authContext, color)
 	}
 	panic("not implemented")
 }

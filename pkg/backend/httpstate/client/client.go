@@ -87,39 +87,69 @@ type PublishTemplateVersionCompleteResponse struct{}
 
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.
 type Client struct {
-	apiURL     string
-	apiToken   apiAccessToken
-	apiUser    string
-	apiOrgs    []string
-	tokenInfo  *workspace.TokenInformation // might be nil if running against old services
-	diag       diag.Sink
-	insecure   bool
-	restClient restClient
-	httpClient *http.Client
+	apiURL      string
+	apiToken    apiAccessToken
+	apiUser     string
+	apiOrgs     []string
+	authContext *workspace.AuthContext
+	tokenInfo   *workspace.TokenInformation // might be nil if running against old services
+	diag        diag.Sink
+	insecure    bool
+	restClient  restClient
+	httpClient  *http.Client
 
 	// If true, do not probe the backend with GET /api/capabilities and assume no capabilities.
 	DisableCapabilityProbing bool
 }
 
+var (
+	ErrUnauthorized        = errors.New("unauthorized")
+	ErrAuthRefreshRequired = errors.New("auth refresh required")
+)
+
+type authContextTransport struct {
+	transport   http.RoundTripper
+	authContext *workspace.AuthContext
+}
+
+func (t *authContextTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp, err := t.transport.RoundTrip(req)
+	if err == nil && resp != nil && resp.StatusCode == http.StatusUnauthorized {
+		if t.authContext != nil && t.authContext.TokenExpired {
+			defer resp.Body.Close()
+			return nil, ErrUnauthorized
+		} else if t.authContext != nil {
+			defer resp.Body.Close()
+			return nil, ErrAuthRefreshRequired
+		}
+	}
+	return resp, err
+}
+
 // newClient creates a new Pulumi API client with the given URL and API token. It is a variable instead of a regular
 // function so it can be set to a different implementation at runtime, if necessary.
-var newClient = func(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
+var newClient = func(apiURL, apiToken string, authContext *workspace.AuthContext, insecure bool, d diag.Sink) *Client {
 	var httpClient *http.Client
 	if insecure {
 		tr := &http.Transport{
 			//nolint:gosec // The user has explicitly opted into setting this
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
-		httpClient = &http.Client{Transport: tr}
+		httpClient = &http.Client{
+			Transport: &authContextTransport{transport: tr, authContext: authContext},
+		}
 	} else {
-		httpClient = http.DefaultClient
+		httpClient = &http.Client{
+			Transport: &authContextTransport{transport: http.DefaultTransport, authContext: authContext},
+		}
 	}
 
 	return &Client{
-		apiURL:     apiURL,
-		apiToken:   apiAccessToken(apiToken),
-		diag:       d,
-		httpClient: httpClient,
+		apiURL:      apiURL,
+		apiToken:    apiAccessToken(apiToken),
+		authContext: authContext,
+		diag:        d,
+		httpClient:  httpClient,
 		restClient: &defaultRESTClient{
 			client: &defaultHTTPClient{
 				client: httpClient,
@@ -134,8 +164,8 @@ func (pc *Client) Insecure() bool {
 }
 
 // NewClient creates a new Pulumi API client with the given URL and API token.
-func NewClient(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
-	return newClient(apiURL, apiToken, insecure, d)
+func NewClient(apiURL, apiToken string, authContext *workspace.AuthContext, insecure bool, d diag.Sink) *Client {
+	return newClient(apiURL, apiToken, authContext, insecure, d)
 }
 
 // WithHTTPClient sets the HTTP client for the API client.
@@ -303,6 +333,46 @@ type serviceTokenInfo struct {
 	Name         string `json:"name"`
 	Organization string `json:"organization,omitempty"`
 	Team         string `json:"team,omitempty"`
+}
+
+func (pc *Client) ExchangeOidcToken(
+	oidcToken string, org string, scope string, expiration int,
+) (*apitype.TokenExchangeGrantResponse, error) {
+	//nolint:gosec // G101: These are token type URNs, not credentials
+	requestedTokenType := "urn:pulumi:token-type:access_token:organization"
+	if strings.HasPrefix(scope, "team:") {
+		requestedTokenType = "urn:pulumi:token-type:access_token:team" //nolint:gosec // G101: token type URN
+	}
+	if strings.HasPrefix(scope, "user:") {
+		requestedTokenType = "urn:pulumi:token-type:access_token:personal" //nolint:gosec // G101: token type URN
+	}
+	tokenUrl := pc.apiURL + "/api/oauth/token"
+	data := url.Values{
+		"audience":             {"urn:pulumi:org:" + org},
+		"grant_type":           {"urn:ietf:params:oauth:grant-type:token-exchange"},
+		"requested_token_type": {requestedTokenType},
+		"scope":                {scope},
+		"subject_token_type":   {"urn:ietf:params:oauth:token-type:id_token"},
+		"subject_token":        {oidcToken},
+		"expiration":           {strconv.Itoa(expiration)},
+	}
+	resp, err := pc.httpClient.PostForm(tokenUrl, data)
+	if err != nil {
+		return nil, err
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("%s", string(body))
+	}
+	var unmarshalledResp apitype.TokenExchangeGrantResponse
+	err = json.Unmarshal(body, &unmarshalledResp)
+	if err != nil {
+		return nil, err
+	}
+	return &unmarshalledResp, nil
 }
 
 // GetPulumiAccountDetails returns the user implied by the API token associated with this client.
@@ -1762,7 +1832,7 @@ func (pc *Client) DownloadTemplate(ctx context.Context, downloadURL string) (io.
 	} else {
 		// Set pc to the new client. This only sets the local variable. It is very
 		// different from *pc = *NewClient().
-		pc = NewClient(downloadURL, "", true, pc.diag)
+		pc = NewClient(downloadURL, "", nil, true, pc.diag)
 		downloadURL = ""
 	}
 

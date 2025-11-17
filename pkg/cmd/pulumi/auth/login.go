@@ -26,6 +26,7 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
+	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -44,6 +45,12 @@ func NewLoginCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var localMode bool
 	var insecure bool
 	var interactive bool
+
+	var oidcToken string
+	var org string
+	var team string
+	var user string
+	var expiration int
 
 	cmd := &cobra.Command{
 		Use:   "login [<url>]",
@@ -167,8 +174,41 @@ func NewLoginCmd(ws pkgWorkspace.Context) *cobra.Command {
 				}
 			}
 
-			be, err := backend.DefaultLoginManager.Login(
-				ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, displayOptions.Color)
+			if diy.IsDIYBackendURL(cloudURL) {
+				if oidcToken != "" || org != "" || team != "" || user != "" || expiration != -1 {
+					return errors.New("oidc-token, org, team, user, and expiration flags are not supported for this type of backend")
+				}
+			}
+
+			var be pkgBackend.Backend
+			if oidcToken != "" {
+				if team != "" && user != "" {
+					return errors.New("only one of --team or --user may be specified")
+				}
+				scope := ""
+				if team != "" {
+					scope = "team:" + team
+				}
+				if user != "" {
+					scope = "user:" + user
+				}
+				if expiration <= 0 {
+					expiration = 7200 // default to 2 hours
+				}
+				authContext := workspace.AuthContext{
+					GrantType:    workspace.AuthContextGrantTypeTokenExchange,
+					Organization: org,
+					Scope:        scope,
+					Token:        oidcToken,
+					Expiration:   expiration,
+				}
+				be, err = backend.DefaultLoginManager.LoginFromAuthContext(
+					ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, authContext, displayOptions.Color)
+			} else {
+				be, err = backend.DefaultLoginManager.Login(
+					ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, displayOptions.Color)
+			}
+
 			if err != nil {
 				return fmt.Errorf("problem logging in: %w", err)
 			}
@@ -204,6 +244,13 @@ func NewLoginCmd(ws pkgWorkspace.Context) *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&insecure, "insecure", false, "Allow insecure server connections when using SSL")
 	cmd.PersistentFlags().BoolVar(&interactive, "interactive", false,
 		"Show interactive login options based on known accounts")
+	cmd.PersistentFlags().StringVar(&oidcToken, "oidc-token", "", "An OIDC token to exchange for a Pulumi access token")
+	cmd.PersistentFlags().StringVar(&org, "org", "", "The organization to use for login")
+	cmd.PersistentFlags().StringVar(&team, "team", "", "The team to exchange the OIDC token for")
+	cmd.PersistentFlags().StringVar(&user, "user", "", "The user to exchange the OIDC token for")
+	cmd.PersistentFlags().IntVar(
+		&expiration, "expiration", -1,
+		"The expiration in seconds for the Pulumi access token. Defaults to 2 hours (7200 seconds)")
 
 	return cmd
 }

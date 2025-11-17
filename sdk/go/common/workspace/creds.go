@@ -120,6 +120,8 @@ type Account struct {
 	Insecure bool `json:"insecure,omitempty"`
 	// Information about the token used to authenticate.
 	TokenInformation *TokenInformation `json:"tokenInformation,omitempty"`
+	// Additional context used during authentication, like token exchange details.
+	AuthContext *AuthContext `json:"authContext,omitempty"`
 }
 
 // Information about the token that was used to authenticate the current user. One (or none) of Team or Organization
@@ -128,7 +130,22 @@ type TokenInformation struct {
 	Name         string `json:"name"`                   // The name of the token.
 	Organization string `json:"organization,omitempty"` // If this was an organization token, the organization it was for.
 	Team         string `json:"team,omitempty"`         // If this was a team token, the team it was for.
+	ExpiresAt    int64  `json:"expiresAt,omitempty"`    // The epoch time (in seconds) when this token expires.
 }
+
+type AuthContext struct {
+	GrantType    string `json:"grantType,omitempty"`
+	Organization string `json:"organization,omitempty"`
+	Scope        string `json:"scope,omitempty"`
+	Token        string `json:"token,omitempty"`
+	TokenExpired bool   `json:"tokenExpired,omitempty"`
+	Expiration   int    `json:"expiration,omitempty"`
+}
+
+// G101: This is an OAuth grant type URN, not a credential
+//
+//nolint:gosec
+const AuthContextGrantTypeTokenExchange = "urn:ietf:params:oauth:grant-type:token-exchange"
 
 // Credentials hold the information necessary for authenticating Pulumi Cloud API requests.  It contains
 // a map from the cloud API URL to the associated access token.

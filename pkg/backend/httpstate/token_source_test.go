@@ -111,7 +111,7 @@ func TestTokenSourceWithClient(t *testing.T) {
 	}))
 	defer server.Close()
 
-	apiClient := client.NewClient(server.URL, "fake-token", true, nil)
+	apiClient := client.NewClient(server.URL, "fake-token", nil, true, nil)
 	ctx := context.Background()
 
 	clock := clockwork.NewFakeClock()

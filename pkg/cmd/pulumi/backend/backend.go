@@ -79,6 +79,11 @@ func CurrentBackend(
 		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}
 	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
+	authContext := pkgWorkspace.GetCloudAuthContext(ws, url)
+
+	if authContext != nil {
+		return lm.LoginFromAuthContext(ctx, ws, cmdutil.Diag(), url, project, url == "", insecure, *authContext, opts.Color)
+	}
 
 	// Only set current if we don't currently have a cloud URL set.
 	return lm.Login(ctx, ws, cmdutil.Diag(), url, project, url == "", insecure, opts.Color)

@@ -31,6 +31,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/browser"
 
@@ -67,6 +68,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+var ErrRefreshTokenUnauthorized = errors.New("Unauthorized: No credentials provided or are invalid.")
 
 type PulumiAILanguage string
 
@@ -213,8 +216,9 @@ func New(ctx context.Context, d diag.Sink,
 		return nil, fmt.Errorf("getting stored credentials: %w", err)
 	}
 	apiToken := account.AccessToken
+	authContext := account.AuthContext
 
-	apiClient := client.NewClient(cloudURL, apiToken, insecure, d)
+	apiClient := client.NewClient(cloudURL, apiToken, authContext, insecure, d)
 	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
 
 	return &cloudBackend{
@@ -306,8 +310,11 @@ func loginWithBrowser(
 
 	accessToken := <-c
 
+	// authContext is always nil for browser logins for now.
+	var authContext *workspace.AuthContext
+
 	username, organizations, tokenInfo, err := client.NewClient(
-		cloudURL, accessToken, insecure, cmdutil.Diag()).GetPulumiAccountDetails(ctx)
+		cloudURL, accessToken, authContext, insecure, cmdutil.Diag()).GetPulumiAccountDetails(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -320,6 +327,7 @@ func loginWithBrowser(
 		LastValidatedAt:  time.Now(),
 		Insecure:         insecure,
 		TokenInformation: tokenInfo,
+		AuthContext:      authContext,
 	}
 	if err = workspace.StoreAccount(cloudURL, account, current); err != nil {
 		return nil, err
@@ -346,8 +354,19 @@ type LoginManager interface {
 		command string,
 		message string,
 		welcome func(display.Options),
-		current bool,
+		setCurrent bool,
 		opts display.Options,
+	) (*workspace.Account, error)
+
+	LoginWithOIDCToken(
+		ctx context.Context,
+		cloudURL string,
+		insecure bool,
+		oidcToken string,
+		organization string,
+		scope string,
+		expiration int,
+		setCurrent bool,
 	) (*workspace.Account, error)
 }
 
@@ -384,15 +403,23 @@ func (m defaultLoginManager) Current(
 	existingAccount, err := workspace.GetAccount(cloudURL)
 	if err == nil && existingAccount.AccessToken != "" &&
 		(accessToken == "" || existingAccount.AccessToken == accessToken) {
-		// If the account was last verified less than an hour ago, assume the token is valid.
 		valid := true
+		existingAccount, err = refreshAuthentication(cloudURL, insecure, existingAccount)
+		if err != nil {
+			return nil, err
+		}
 		username := existingAccount.Username
 		organizations := existingAccount.Organizations
 		tokenInfo := existingAccount.TokenInformation
+		authContext := existingAccount.AuthContext
+		// If the account was last verified less than an hour ago, assume the token is valid.
 		if username == "" || existingAccount.LastValidatedAt.Add(1*time.Hour).Before(time.Now()) {
-			valid, username, organizations, tokenInfo, err = IsValidAccessToken(
-				ctx, cloudURL, insecure, existingAccount.AccessToken)
-			if err != nil {
+			username, organizations, tokenInfo, err = getAccountDetails(
+				ctx, cloudURL, insecure, existingAccount.AccessToken, authContext,
+			)
+			if errors.Is(err, client.ErrUnauthorized) {
+				valid = false
+			} else if err != nil {
 				return nil, err
 			}
 			existingAccount.LastValidatedAt = time.Now()
@@ -404,6 +431,7 @@ func (m defaultLoginManager) Current(
 			existingAccount.Organizations = organizations
 			existingAccount.TokenInformation = tokenInfo
 			existingAccount.Insecure = insecure
+			existingAccount.AuthContext = authContext
 			if err = workspace.StoreAccount(cloudURL, existingAccount, setCurrent); err != nil {
 				return nil, err
 			}
@@ -425,11 +453,11 @@ func (m defaultLoginManager) Current(
 	contract.IgnoreError(err)
 
 	// Try and use the credentials to see if they are valid.
-	valid, username, organizations, tokenInfo, err := IsValidAccessToken(ctx, cloudURL, insecure, accessToken)
-	if err != nil {
-		return nil, err
-	} else if !valid {
+	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken, nil)
+	if errors.Is(err, client.ErrUnauthorized) {
 		return nil, errors.New("invalid access token")
+	} else if err != nil {
+		return nil, err
 	}
 
 	// Save them.
@@ -535,11 +563,11 @@ func (m defaultLoginManager) Login(
 	}
 
 	// Try and use the credentials to see if they are valid.
-	valid, username, organizations, tokenInfo, err := IsValidAccessToken(ctx, cloudURL, insecure, accessToken)
-	if err != nil {
-		return nil, err
-	} else if !valid {
+	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken, nil)
+	if errors.Is(err, client.ErrUnauthorized) {
 		return nil, errors.New("invalid access token")
+	} else if err != nil {
+		return nil, err
 	}
 
 	// Save them.
@@ -550,6 +578,60 @@ func (m defaultLoginManager) Login(
 		TokenInformation: tokenInfo,
 		LastValidatedAt:  time.Now(),
 		Insecure:         insecure,
+	}
+	if err = workspace.StoreAccount(cloudURL, account, setCurrent); err != nil {
+		return nil, err
+	}
+
+	return &account, nil
+}
+
+func (m defaultLoginManager) LoginWithOIDCToken(
+	ctx context.Context,
+	cloudURL string,
+	insecure bool,
+	oidcToken string,
+	organization string,
+	scope string,
+	expiration int,
+	setCurrent bool,
+) (*workspace.Account, error) {
+	current, err := m.Current(ctx, cloudURL, insecure, setCurrent)
+	if err != nil {
+		return nil, err
+	}
+	if current != nil {
+		return current, nil
+	}
+
+	accessToken, expiresAt, authContext, err := exchangeOidcToken(
+		cloudURL, insecure, oidcToken, organization, scope, expiration)
+	if err != nil {
+		return nil, err
+	}
+
+	// Try and use the credentials to see if they are valid.
+	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken, authContext)
+	if errors.Is(err, client.ErrUnauthorized) {
+		return nil, errors.New("invalid access token")
+	} else if err != nil {
+		return nil, err
+	}
+
+	if tokenInfo == nil {
+		tokenInfo = &workspace.TokenInformation{}
+	}
+	tokenInfo.ExpiresAt = expiresAt
+
+	// Save them.
+	account := workspace.Account{
+		AccessToken:      accessToken,
+		Username:         username,
+		Organizations:    organizations,
+		TokenInformation: tokenInfo,
+		LastValidatedAt:  time.Now(),
+		Insecure:         insecure,
+		AuthContext:      authContext,
 	}
 	if err = workspace.StoreAccount(cloudURL, account, setCurrent); err != nil {
 		return nil, err
@@ -2164,24 +2246,116 @@ func (b *cloudBackend) tryNextUpdate(ctx context.Context, update client.UpdateId
 	return false, nil, nil
 }
 
-// IsValidAccessToken tries to use the provided Pulumi access token and returns if it is accepted
-// or not. Returns error on any unexpected error.
-func IsValidAccessToken(ctx context.Context, cloudURL string,
-	insecure bool, accessToken string,
-) (bool, string, []string, *workspace.TokenInformation, error) {
-	// Make a request to get the authenticated user. If it returns a successful response,
-	// we know the access token is legit. We also parse the response as JSON and confirm
-	// it has a githubLogin field that is non-empty (like the Pulumi Service would return).
-	username, organizations, tokenInfo, err := client.NewClient(cloudURL, accessToken,
-		insecure, cmdutil.Diag()).GetPulumiAccountDetails(ctx)
-	if err != nil {
-		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 401 {
-			return false, "", nil, nil, nil
-		}
-		return false, "", nil, nil, fmt.Errorf("getting user info from %v: %w", cloudURL, err)
+func refreshAuthentication(cloudURL string, insecure bool, account workspace.Account) (workspace.Account, error) {
+	tokenInfo := account.TokenInformation
+	if tokenInfo == nil {
+		tokenInfo = &workspace.TokenInformation{}
 	}
+	authContext := account.AuthContext
+	if authContext != nil && authContext.GrantType == workspace.AuthContextGrantTypeTokenExchange {
+		// Refresh if token expires within 5 minutes or has no expiration stored.
+		if tokenInfo.ExpiresAt == 0 || time.Unix(tokenInfo.ExpiresAt, 0).Add(5*time.Minute).Before(time.Now()) {
+			if authContext.TokenExpired {
+				return workspace.Account{}, ErrRefreshTokenUnauthorized
+			}
+			accessToken, expiresAt, authContext, err := exchangeOidcToken(
+				cloudURL, insecure, authContext.Token, authContext.Organization, authContext.Scope, authContext.Expiration,
+			)
+			if err != nil {
+				return workspace.Account{}, err
+			}
+			account.AccessToken = accessToken
+			account.TokenInformation.ExpiresAt = expiresAt
+			account.AuthContext = authContext
+			account.LastValidatedAt = time.Now()
+		}
+	}
+	return account, nil
+}
 
-	return true, username, organizations, tokenInfo, nil
+func exchangeOidcToken(
+	cloudURL string, insecure bool, oidcToken string, organization string, scope string, expiration int,
+) (string, int64, *workspace.AuthContext, error) {
+	if oidcToken == "" {
+		return "", 0, nil, ErrRefreshTokenUnauthorized
+	}
+	tokenValue, oneTimeUsage, err := getTokenValue(oidcToken)
+	if err != nil {
+		return "", 0, nil, fmt.Errorf("OIDC token exchange failed: Failed to read OIDC token: %w", err)
+	}
+	expirationBase := time.Now().Unix()
+	resp, err := client.NewClient(cloudURL, "", nil, insecure, cmdutil.Diag()).
+		ExchangeOidcToken(tokenValue, organization, scope, expiration)
+	if err != nil {
+		return "", 0, nil, fmt.Errorf("OIDC token exchange failed: %w", err)
+	}
+	if oneTimeUsage {
+		// Do not store one-time-use tokens in the auth context.
+		oidcToken = ""
+	}
+	authContext := &workspace.AuthContext{
+		GrantType:    workspace.AuthContextGrantTypeTokenExchange,
+		Organization: organization,
+		Scope:        scope,
+		Token:        oidcToken,
+		TokenExpired: oneTimeUsage,
+		Expiration:   expiration,
+	}
+	// TODO: Return expiresIn within TokenInformation instead.
+	expiresAt := expirationBase + resp.ExpiresIn
+	return resp.AccessToken, expiresAt, authContext, nil
+}
+
+func getTokenValue(token string) (value string, oneTimeUsage bool, err error) {
+	if err := verifyTokenFormat(token); err == nil {
+		return token, true, nil
+	} else if strings.HasPrefix(token, "file://") {
+		filePath := strings.TrimPrefix(token, "file://")
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			return "", false, fmt.Errorf("reading token from file '%s': %w", filePath, err)
+		}
+		fileToken := strings.TrimSpace(string(data))
+		if fileToken == "" {
+			return "", false, fmt.Errorf("file '%s' is empty", filePath)
+		}
+		err = verifyTokenFormat(fileToken)
+		if err != nil {
+			return "", false, fmt.Errorf("invalid token format in file '%s'", filePath)
+		}
+		return fileToken, false, nil
+	} else {
+		envToken := os.Getenv(token)
+		if envToken == "" {
+			return "", false, fmt.Errorf("environment variable '%s' is not set or empty", token)
+		}
+		err = verifyTokenFormat(envToken)
+		if err != nil {
+			return "", false, fmt.Errorf("invalid token format in environment variable '%s'", token)
+		}
+		return envToken, false, nil
+	}
+}
+
+func verifyTokenFormat(token string) error {
+	if _, _, err := jwt.NewParser().ParseUnverified(token, jwt.MapClaims{}); err == nil {
+		return nil
+	}
+	return errors.New("invalid token format")
+}
+
+// getAccountDetails makes a request to get the authenticated user. If it returns a successful response,
+// we know the access token is legit. We also parse the response as JSON and confirm
+// it has a githubLogin field that is non-empty (like the Pulumi Service would return).
+func getAccountDetails(
+	ctx context.Context,
+	cloudURL string,
+	insecure bool,
+	accessToken string,
+	authContext *workspace.AuthContext,
+) (string, []string, *workspace.TokenInformation, error) {
+	// TODO: Return expiresIn within TokenInformation.
+	return client.NewClient(cloudURL, accessToken, authContext, insecure, cmdutil.Diag()).GetPulumiAccountDetails(ctx)
 }
 
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.
