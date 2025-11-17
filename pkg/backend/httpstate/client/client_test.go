@@ -18,6 +18,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -55,13 +56,14 @@ func newMockServerRequestProcessor(statusCode int, processor func(req *http.Requ
 }
 
 func newHTTPClient() *http.Client {
+	dialer := &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
 	return &http.Client{
-		// Some arbitrary connection limits to avoid excessive connections
+		// Copy of http.DefaultTransport settings except Proxy
 		Transport: &http.Transport{
-			DialContext: &net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}.DialContext,
+			DialContext:           dialer.DialContext,
 			ForceAttemptHTTP2:     true,
 			MaxIdleConns:          100,
 			IdleConnTimeout:       90 * time.Second,
