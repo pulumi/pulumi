@@ -56,7 +56,7 @@ func (ex *deploymentExecutor) checkTargets(targets UrnTargets) error {
 		return nil
 	}
 
-	olds := ex.deployment.olds
+	olds := ex.deployment.allOlds
 	var news map[resource.URN]bool
 	if ex.stepGen != nil {
 		news = ex.stepGen.urns
@@ -867,6 +867,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 	resources := []*resource.State{}
 	referenceable := make(map[resource.URN]bool)
 	olds := make(map[resource.URN]*resource.State)
+	allOlds := make(map[resource.URN][]*resource.State)
 	oldViews := make(map[resource.URN][]*resource.State)
 	for _, s := range ex.deployment.prev.Resources {
 		var old, new *resource.State
@@ -933,6 +934,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 		resources = append(resources, new)
 		referenceable[new.URN] = true
 
+		allOlds[new.URN] = append(allOlds[new.URN], new)
 		// Do not record resources that are pending deletion in the "olds" lookup table.
 		if !new.Delete {
 			olds[new.URN] = new
@@ -949,6 +951,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 	ex.deployment.prev.Resources = resources
 	ex.deployment.depGraph = graph.NewDependencyGraph(resources)
 	ex.deployment.olds = olds
+	ex.deployment.allOlds = allOlds
 	ex.deployment.oldViews = oldViews
 }
 
