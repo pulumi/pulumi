@@ -2345,7 +2345,8 @@ func getAccountDetails(
 	accessToken string,
 ) (string, []string, *workspace.TokenInformation, error) {
 	// TODO: Return expiresIn within TokenInformation.
-	username, organizations, tokenInfo, err := client.NewClient(cloudURL, accessToken, insecure, cmdutil.Diag()).GetPulumiAccountDetails(ctx)
+	username, organizations, tokenInfo, err := client.NewClient(cloudURL, accessToken, insecure, cmdutil.Diag()).
+		GetPulumiAccountDetails(ctx)
 	if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 401 {
 		return "", nil, nil, ErrUnauthorized
 	}
