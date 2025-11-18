@@ -10,7 +10,6 @@ replace github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-202
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
-	github.com/BurntSushi/toml v1.2.1 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/ProtonMail/go-crypto v1.1.3 // indirect
 	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
