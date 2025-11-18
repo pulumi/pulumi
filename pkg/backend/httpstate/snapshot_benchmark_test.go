@@ -415,7 +415,7 @@ func (r *resourceData) wait() (urn, id string, _ error) {
 	return r.urn, r.id, r.err
 }
 
-// The registrar is responsible for registring resources from a state file and ensuring that registration happens in
+// The registrar is responsible for registering resources from a state file and ensuring that registration happens in
 // dependency order.
 type registrar struct {
 	stack     string
