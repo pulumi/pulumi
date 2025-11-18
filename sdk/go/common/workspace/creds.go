@@ -17,6 +17,7 @@ package workspace
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -142,10 +143,31 @@ type AuthContext struct {
 	Expiration   int    `json:"expiration,omitempty"`
 }
 
-// G101: This is an OAuth grant type URN, not a credential
-//
-//nolint:gosec
+//nolint:gosec // This is an OAuth grant type URN, not a credential
 const AuthContextGrantTypeTokenExchange = "urn:ietf:params:oauth:grant-type:token-exchange"
+
+func NewAuthContextForTokenExchange(organization, team, user, token string, expiration int) (AuthContext, error) {
+	if team != "" && user != "" {
+		return AuthContext{}, errors.New("only one of team or user may be specified for token exchange")
+	}
+	scope := ""
+	if team != "" {
+		scope = "team:" + team
+	}
+	if user != "" {
+		scope = "user:" + user
+	}
+	if expiration <= 0 {
+		expiration = 7200 // default to 2 hours
+	}
+	return AuthContext{
+		GrantType:    AuthContextGrantTypeTokenExchange,
+		Organization: organization,
+		Scope:        scope,
+		Token:        token,
+		Expiration:   expiration,
+	}, nil
+}
 
 // Credentials hold the information necessary for authenticating Pulumi Cloud API requests.  It contains
 // a map from the cloud API URL to the associated access token.

@@ -69,7 +69,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
-var ErrRefreshTokenUnauthorized = errors.New("Unauthorized: No credentials provided or are invalid.")
+var ErrUnauthorized = errors.New("Unauthorized: No credentials provided or are invalid.")
 
 type PulumiAILanguage string
 
@@ -216,9 +216,8 @@ func New(ctx context.Context, d diag.Sink,
 		return nil, fmt.Errorf("getting stored credentials: %w", err)
 	}
 	apiToken := account.AccessToken
-	authContext := account.AuthContext
 
-	apiClient := client.NewClient(cloudURL, apiToken, authContext, insecure, d)
+	apiClient := client.NewClient(cloudURL, apiToken, insecure, d)
 	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
 
 	return &cloudBackend{
@@ -310,11 +309,7 @@ func loginWithBrowser(
 
 	accessToken := <-c
 
-	// authContext is always nil for browser logins for now.
-	var authContext *workspace.AuthContext
-
-	username, organizations, tokenInfo, err := client.NewClient(
-		cloudURL, accessToken, authContext, insecure, cmdutil.Diag()).GetPulumiAccountDetails(ctx)
+	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken)
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +322,7 @@ func loginWithBrowser(
 		LastValidatedAt:  time.Now(),
 		Insecure:         insecure,
 		TokenInformation: tokenInfo,
-		AuthContext:      authContext,
+		AuthContext:      nil, // browser logins don't have an auth context for now
 	}
 	if err = workspace.StoreAccount(cloudURL, account, current); err != nil {
 		return nil, err
@@ -415,9 +410,9 @@ func (m defaultLoginManager) Current(
 		// If the account was last verified less than an hour ago, assume the token is valid.
 		if username == "" || existingAccount.LastValidatedAt.Add(1*time.Hour).Before(time.Now()) {
 			username, organizations, tokenInfo, err = getAccountDetails(
-				ctx, cloudURL, insecure, existingAccount.AccessToken, authContext,
+				ctx, cloudURL, insecure, existingAccount.AccessToken,
 			)
-			if errors.Is(err, client.ErrUnauthorized) {
+			if errors.Is(err, ErrUnauthorized) {
 				valid = false
 			} else if err != nil {
 				return nil, err
@@ -453,10 +448,8 @@ func (m defaultLoginManager) Current(
 	contract.IgnoreError(err)
 
 	// Try and use the credentials to see if they are valid.
-	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken, nil)
-	if errors.Is(err, client.ErrUnauthorized) {
-		return nil, errors.New("invalid access token")
-	} else if err != nil {
+	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken)
+	if err != nil {
 		return nil, err
 	}
 
@@ -563,10 +556,8 @@ func (m defaultLoginManager) Login(
 	}
 
 	// Try and use the credentials to see if they are valid.
-	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken, nil)
-	if errors.Is(err, client.ErrUnauthorized) {
-		return nil, errors.New("invalid access token")
-	} else if err != nil {
+	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken)
+	if err != nil {
 		return nil, err
 	}
 
@@ -611,10 +602,8 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 	}
 
 	// Try and use the credentials to see if they are valid.
-	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken, authContext)
-	if errors.Is(err, client.ErrUnauthorized) {
-		return nil, errors.New("invalid access token")
-	} else if err != nil {
+	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken)
+	if err != nil {
 		return nil, err
 	}
 
@@ -2253,10 +2242,12 @@ func refreshAuthentication(cloudURL string, insecure bool, account workspace.Acc
 	}
 	authContext := account.AuthContext
 	if authContext != nil && authContext.GrantType == workspace.AuthContextGrantTypeTokenExchange {
-		// Refresh if token expires within 5 minutes or has no expiration stored.
-		if tokenInfo.ExpiresAt == 0 || time.Unix(tokenInfo.ExpiresAt, 0).Add(5*time.Minute).Before(time.Now()) {
+		// Refresh if token expires within 2 minutes or has no expiration stored.
+		// Using 2 minutes as a buffer to account for clock skew and network delays
+		// while using a valid token as long as possible as the auth context token may be expired.
+		if tokenInfo.ExpiresAt == 0 || time.Unix(tokenInfo.ExpiresAt, 0).Add(2*time.Minute).Before(time.Now()) {
 			if authContext.TokenExpired {
-				return workspace.Account{}, ErrRefreshTokenUnauthorized
+				return workspace.Account{}, ErrUnauthorized
 			}
 			accessToken, expiresAt, authContext, err := exchangeOidcToken(
 				cloudURL, insecure, authContext.Token, authContext.Organization, authContext.Scope, authContext.Expiration,
@@ -2277,14 +2268,14 @@ func exchangeOidcToken(
 	cloudURL string, insecure bool, oidcToken string, organization string, scope string, expiration int,
 ) (string, int64, *workspace.AuthContext, error) {
 	if oidcToken == "" {
-		return "", 0, nil, ErrRefreshTokenUnauthorized
+		return "", 0, nil, ErrUnauthorized
 	}
 	tokenValue, oneTimeUsage, err := getTokenValue(oidcToken)
 	if err != nil {
 		return "", 0, nil, fmt.Errorf("OIDC token exchange failed: Failed to read OIDC token: %w", err)
 	}
 	expirationBase := time.Now().Unix()
-	resp, err := client.NewClient(cloudURL, "", nil, insecure, cmdutil.Diag()).
+	resp, err := client.NewClient(cloudURL, "", insecure, cmdutil.Diag()).
 		ExchangeOidcToken(tokenValue, organization, scope, expiration)
 	if err != nil {
 		return "", 0, nil, fmt.Errorf("OIDC token exchange failed: %w", err)
@@ -2352,10 +2343,13 @@ func getAccountDetails(
 	cloudURL string,
 	insecure bool,
 	accessToken string,
-	authContext *workspace.AuthContext,
 ) (string, []string, *workspace.TokenInformation, error) {
 	// TODO: Return expiresIn within TokenInformation.
-	return client.NewClient(cloudURL, accessToken, authContext, insecure, cmdutil.Diag()).GetPulumiAccountDetails(ctx)
+	username, organizations, tokenInfo, err := client.NewClient(cloudURL, accessToken, insecure, cmdutil.Diag()).GetPulumiAccountDetails(ctx)
+	if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 401 {
+		return "", nil, nil, ErrUnauthorized
+	}
+	return username, organizations, tokenInfo, err
 }
 
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.

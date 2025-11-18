@@ -213,7 +213,6 @@ func NewServiceSecretsManagerFromState(state json.RawMessage) (secrets.Manager, 
 		return nil, fmt.Errorf("getting access token: %w", err)
 	}
 	token := account.AccessToken
-	authContext := account.AuthContext
 
 	if token == "" {
 		return nil, fmt.Errorf("could not find access token for %s, have you logged in?", s.URL)
@@ -229,11 +228,9 @@ func NewServiceSecretsManagerFromState(state json.RawMessage) (secrets.Manager, 
 		Project: s.Project,
 		Stack:   stack,
 	}
-	c := client.NewClient(
-		s.URL, token, authContext, s.Insecure,
-		diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
-			Color: colors.Never,
-		}))
+	c := client.NewClient(s.URL, token, s.Insecure, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	}))
 
 	crypter := newServiceCrypter(c, id)
 	cachedCrypter := config.NewCiphertextToPlaintextCachedCrypter(crypter, crypter)

@@ -182,25 +182,9 @@ func NewLoginCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			var be pkgBackend.Backend
 			if oidcToken != "" {
-				if team != "" && user != "" {
-					return errors.New("only one of --team or --user may be specified")
-				}
-				scope := ""
-				if team != "" {
-					scope = "team:" + team
-				}
-				if user != "" {
-					scope = "user:" + user
-				}
-				if expiration <= 0 {
-					expiration = 7200 // default to 2 hours
-				}
-				authContext := workspace.AuthContext{
-					GrantType:    workspace.AuthContextGrantTypeTokenExchange,
-					Organization: org,
-					Scope:        scope,
-					Token:        oidcToken,
-					Expiration:   expiration,
+				authContext, innerErr := workspace.NewAuthContextForTokenExchange(oidcToken, org, team, user, expiration)
+				if err != nil {
+					return fmt.Errorf("problem logging in: %w", innerErr)
 				}
 				be, err = backend.DefaultLoginManager.LoginFromAuthContext(
 					ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, authContext, displayOptions.Color)

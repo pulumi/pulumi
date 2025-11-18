@@ -37,7 +37,7 @@ func New(sink diag.Sink, store env.Env) registry.Registry {
 	if override := store.GetString(env.APIURL); override != "" {
 		url = override
 	}
-	return registryClient{client.NewClient(url, "", nil, false /* insecure */, sink)}
+	return registryClient{client.NewClient(url, "", false /* insecure */, sink)}
 }
 
 func (r registryClient) ListPackages(

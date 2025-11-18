@@ -383,7 +383,7 @@ func TestCopilotExplainer(t *testing.T) {
 	}
 
 	// Create a backend and API client using our mock transport
-	apiClient := client.NewClient(PulumiCloudURL, "test-token", nil, false, diagtest.LogSink(t))
+	apiClient := client.NewClient(PulumiCloudURL, "test-token", false, diagtest.LogSink(t))
 	apiClient.WithHTTPClient(&http.Client{Transport: mockTransport})
 	b := &cloudBackend{
 		client: apiClient,
@@ -1310,7 +1310,6 @@ func TestGetAccountDetails(t *testing.T) {
 	tests := []struct {
 		name         string
 		accessToken  string
-		authContext  *workspace.AuthContext
 		setupServer  func() *httptest.Server
 		wantErr      bool
 		wantUsername string
@@ -1343,9 +1342,6 @@ func TestGetAccountDetails(t *testing.T) {
 		{
 			name:        "unauthorized access",
 			accessToken: "pul-invalid-token",
-			authContext: &workspace.AuthContext{
-				TokenExpired: true,
-			},
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					if r.URL.Path == "/api/user" {
@@ -1359,7 +1355,7 @@ func TestGetAccountDetails(t *testing.T) {
 			},
 			wantErr: true,
 			checkErr: func(t *testing.T, err error) {
-				assert.True(t, errors.Is(err, client.ErrUnauthorized))
+				assert.True(t, errors.Is(err, ErrUnauthorized))
 			},
 		},
 	}
@@ -1376,7 +1372,7 @@ func TestGetAccountDetails(t *testing.T) {
 			}
 
 			username, orgs, tokenInfo, err := getAccountDetails(
-				context.Background(), cloudURL, false, tt.accessToken, tt.authContext,
+				context.Background(), cloudURL, false, tt.accessToken,
 			)
 
 			if tt.wantErr {

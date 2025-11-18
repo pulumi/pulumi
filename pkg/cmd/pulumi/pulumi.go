@@ -620,19 +620,15 @@ func getCLIVersionInfo(
 	cloudURL string,
 	metadata map[string]string,
 ) (semver.Version, semver.Version, semver.Version, error) {
-	var authContext *workspace.AuthContext
 	creds, err := workspace.GetStoredCredentials()
 	apiToken := creds.AccessTokens[creds.Current]
 
 	if err != nil || creds.Current != cloudURL {
 		apiToken = ""
 		metadata = nil
-	} else {
-		account := creds.Accounts[creds.Current]
-		authContext = account.AuthContext
 	}
 
-	client := client.NewClient(cloudURL, apiToken, authContext, false, cmdutil.Diag())
+	client := client.NewClient(cloudURL, apiToken, false, cmdutil.Diag())
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	latest, oldest, dev, err := client.GetCLIVersionInfo(ctx, metadata)
