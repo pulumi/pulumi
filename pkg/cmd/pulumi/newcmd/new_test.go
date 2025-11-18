@@ -1289,6 +1289,6 @@ func TestNoPromptWithYes(t *testing.T) {
 	}
 }
 
-func languageTemplateMock(ctx *plugin.Context, language plugin.LanguageRuntime, info plugin.ProgramInfo) error {
+func languageTemplateMock(language plugin.LanguageRuntime, info plugin.ProgramInfo) error {
 	return nil
 }

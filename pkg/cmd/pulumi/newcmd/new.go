@@ -60,8 +60,7 @@ type chooseTemplateFunc func(templates []cmdTemplates.Template, opts display.Opt
 type runtimeOptionsFunc func(ctx *plugin.Context, language plugin.LanguageRuntime, info *workspace.ProjectRuntimeInfo,
 	main string, opts display.Options, yes, interactive bool, prompt promptForValueFunc) (map[string]any, error)
 
-type languageTemplateFunc func(ctx *plugin.Context, language plugin.LanguageRuntime,
-	programInfo plugin.ProgramInfo) error
+type languageTemplateFunc func(language plugin.LanguageRuntime, programInfo plugin.ProgramInfo) error
 
 type promptForAIProjectURLFunc func(ctx context.Context,
 	ws pkgWorkspace.Context, args newArgs, opts display.Options) (string, error)
@@ -403,7 +402,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	// Let the language runtime do some templating
-	if err := args.languageTemplate(pluginCtx, lang, programInfo); err != nil {
+	if err := args.languageTemplate(lang, programInfo); err != nil {
 		return fmt.Errorf("language template: %w", err)
 	}
 
@@ -466,10 +465,12 @@ func isInteractive() bool {
 // NewNewCmd creates a New command with default dependencies.
 func NewNewCmd() *cobra.Command {
 	args := newArgs{
-		prompt:                ui.PromptForValue,
-		chooseTemplate:        ChooseTemplate,
-		promptRuntimeOptions:  promptRuntimeOptions,
-		languageTemplate:      languageTemplate,
+		prompt:               ui.PromptForValue,
+		chooseTemplate:       ChooseTemplate,
+		promptRuntimeOptions: promptRuntimeOptions,
+		languageTemplate: func(language plugin.LanguageRuntime, programInfo plugin.ProgramInfo) error {
+			return language.Template(programInfo)
+		},
 		promptForAIProjectURL: promptForAIProjectURL,
 	}
 
@@ -770,12 +771,6 @@ func promptRuntimeOptions(ctx *plugin.Context, language plugin.LanguageRuntime, 
 	}
 
 	return options, nil
-}
-
-func languageTemplate(
-	ctx *plugin.Context, language plugin.LanguageRuntime, programInfo plugin.ProgramInfo,
-) error {
-	return language.Template(programInfo)
 }
 
 func promptForAIProjectURL(ctx context.Context, ws pkgWorkspace.Context, args newArgs,
