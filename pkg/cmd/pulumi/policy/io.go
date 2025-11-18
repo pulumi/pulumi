@@ -71,7 +71,8 @@ func InstallPluginDependencies(ctx context.Context, root string, projRuntime wor
 	}
 	defer pluginCtx.Close()
 
-	programInfo := plugin.NewProgramInfo(pluginCtx.Root, pluginCtx.Pwd, main, projRuntime.Options())
+	programInfo := plugin.NewProgramInfo(pluginCtx.Root, pluginCtx.Pwd, main, "", /* projectName */
+		projRuntime.Options())
 	lang, err := pluginCtx.Host.LanguageRuntime(projRuntime.Name(), programInfo)
 	if err != nil {
 		return fmt.Errorf("failed to load language plugin %s: %w", projRuntime.Name(), err)

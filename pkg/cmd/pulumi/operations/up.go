@@ -413,7 +413,7 @@ func NewUpCmd() *cobra.Command {
 
 		defer pctx.Close()
 
-		if err = newcmd.InstallDependencies(pctx, &proj.Runtime, main); err != nil {
+		if err = newcmd.InstallDependencies(pctx, &proj.Runtime, proj.Name, main); err != nil {
 			return err
 		}
 

@@ -318,7 +318,7 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 		}
 	}
 
-	info := plugin.NewProgramInfo(finalDir, finalDir, ".", proj.Runtime.Options())
+	info := plugin.NewProgramInfo(finalDir, finalDir, ".", "" /* projectName */, proj.Runtime.Options())
 	language, err := ctx.Host.LanguageRuntime(proj.Runtime.Name(), info)
 	if err != nil {
 		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)

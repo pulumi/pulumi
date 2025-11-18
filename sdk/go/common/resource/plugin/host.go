@@ -607,7 +607,7 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 				// shimless multi-language providers). Pass the host root for the plugin directory, it
 				// shouldn't matter because we're starting with no options but it's a directory we've already
 				// got hold of.
-				info := NewProgramInfo(host.ctx.Root, host.ctx.Pwd, ".", nil)
+				info := NewProgramInfo(host.ctx.Root, host.ctx.Pwd, ".", "" /* projectName */, nil)
 				if _, err := host.LanguageRuntime(plugin.Name, info); err != nil {
 					result = multierror.Append(result,
 						fmt.Errorf("failed to load language plugin %s: %w", plugin.Name, err))

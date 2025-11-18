@@ -146,6 +146,9 @@ message ProgramInfo {
     // A struct capturing any language-specific options. If `ProgramInfo` is being built from a `Pulumi.yaml`, this will
     // contain the `runtime.options` property from that file.
     google.protobuf.Struct options = 4;
+
+    // The name of the project. Empty for plugin projects.
+    string project_name = 5;
 }
 
 // `AboutRequest` is the type of requests sent as part of an [](pulumirpc.LanguageRuntime.About) call.

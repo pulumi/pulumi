@@ -59,7 +59,8 @@ type promptForValueFunc func(yes bool, valueType string, defaultValue string, se
 type chooseTemplateFunc func(templates []cmdTemplates.Template, opts display.Options) (cmdTemplates.Template, error)
 
 type runtimeOptionsFunc func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo, main string,
-	opts display.Options, yes, interactive bool, prompt promptForValueFunc) (map[string]any, error)
+	projectName tokens.PackageName, opts display.Options, yes, interactive bool,
+	prompt promptForValueFunc) (map[string]any, error)
 
 type promptForAIProjectURLFunc func(ctx context.Context,
 	ws pkgWorkspace.Context, args newArgs, opts display.Options) (string, error)
@@ -374,7 +375,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			return err
 		}
 		defer pluginCtx.Close()
-		options, err := args.promptRuntimeOptions(pluginCtx, &proj.Runtime, entryPoint, opts,
+		options, err := args.promptRuntimeOptions(pluginCtx, &proj.Runtime, entryPoint, proj.Name, opts,
 			args.yes, args.interactive, args.prompt)
 		if err != nil {
 			return err
@@ -437,7 +438,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 		defer pluginCtx.Close()
 
-		if err := InstallDependencies(pluginCtx, &proj.Runtime, entryPoint); err != nil {
+		if err := InstallDependencies(pluginCtx, &proj.Runtime, proj.Name, entryPoint); err != nil {
 			return err
 		}
 	}
@@ -696,10 +697,10 @@ func validateProjectNameInternal(ctx context.Context, b backend.Backend,
 	return nil
 }
 
-func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
-	main string, opts display.Options, yes, interactive bool, prompt promptForValueFunc,
+func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo, main string,
+	projectName tokens.PackageName, opts display.Options, yes, interactive bool, prompt promptForValueFunc,
 ) (map[string]any, error) {
-	programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, info.Options())
+	programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, projectName, info.Options())
 	lang, err := ctx.Host.LanguageRuntime(info.Name(), programInfo)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load language plugin %s: %w", info.Name(), err)
@@ -714,7 +715,7 @@ func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInf
 	// Keep querying for prompts until there are no more.
 	for {
 		// Update the program info with the latest runtime options.
-		programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, options)
+		programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, projectName, options)
 		prompts, err := lang.RuntimeOptionsPrompts(programInfo)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get runtime options prompts: %w", err)

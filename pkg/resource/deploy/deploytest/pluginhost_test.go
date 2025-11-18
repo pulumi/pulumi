@@ -147,7 +147,7 @@ func TestPluginHostProvider(t *testing.T) {
 		t.Run("LanguageRuntime", func(t *testing.T) {
 			t.Parallel()
 			host := &pluginHost{closed: true}
-			programInfo := plugin.NewProgramInfo("/", "/", ".", nil)
+			programInfo := plugin.NewProgramInfo("/", "/", ".", "", nil)
 			_, err := host.LanguageRuntime("", programInfo)
 			assert.ErrorIs(t, err, ErrHostIsClosed)
 		})

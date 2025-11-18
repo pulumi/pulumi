@@ -22,6 +22,8 @@ export class ProgramInfo extends jspb.Message {
     clearOptions(): void;
     getOptions(): google_protobuf_struct_pb.Struct | undefined;
     setOptions(value?: google_protobuf_struct_pb.Struct): ProgramInfo;
+    getProjectName(): string;
+    setProjectName(value: string): ProgramInfo;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProgramInfo.AsObject;
@@ -39,6 +41,7 @@ export namespace ProgramInfo {
         programDirectory: string,
         entryPoint: string,
         options?: google_protobuf_struct_pb.Struct.AsObject,
+        projectName: string,
     }
 }
 

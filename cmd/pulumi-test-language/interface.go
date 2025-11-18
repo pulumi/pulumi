@@ -1094,6 +1094,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			projectDir, /* rootDirectory */
 			pwd,        /* programDirectory */
 			main,
+			project.Name,
 			project.Runtime.Options())
 
 		resp := installDependencies(languageClient, programInfo, false /* isPlugin */)
@@ -1330,7 +1331,7 @@ func (eng *languageTestServer) RunLanguageTest(
 				return nil, fmt.Errorf("copy policy pack: %w", err)
 			}
 
-			policyInfo := plugin.NewProgramInfo(policyPackDir, policyPackDir, ".", nil)
+			policyInfo := plugin.NewProgramInfo(policyPackDir, policyPackDir, ".", "" /* projectName */, nil)
 
 			// Link the core SDK into the policy pack
 			linkDeps := []workspace.LinkablePackageDescriptor{{

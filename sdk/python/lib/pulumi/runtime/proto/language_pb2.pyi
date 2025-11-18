@@ -47,6 +47,7 @@ class ProgramInfo(google.protobuf.message.Message):
     PROGRAM_DIRECTORY_FIELD_NUMBER: builtins.int
     ENTRY_POINT_FIELD_NUMBER: builtins.int
     OPTIONS_FIELD_NUMBER: builtins.int
+    PROJECT_NAME_FIELD_NUMBER: builtins.int
     root_directory: builtins.str
     """The root of the project containing the program, where the `Pulumi.yaml` file is located. This should be an
     absolute path on the filesystem that is accessible to the language host.
@@ -63,6 +64,8 @@ class ProgramInfo(google.protobuf.message.Message):
     `ProgramInfo` is being built from a `Pulumi.yaml`, this will typically be the filename specified `main` property
     in that file if it is present, or the aforementioned `.` if not.
     """
+    project_name: builtins.str
+    """The name of the project."""
     @property
     def options(self) -> google.protobuf.struct_pb2.Struct:
         """A struct capturing any language-specific options. If `ProgramInfo` is being built from a `Pulumi.yaml`, this will
@@ -76,9 +79,10 @@ class ProgramInfo(google.protobuf.message.Message):
         program_directory: builtins.str = ...,
         entry_point: builtins.str = ...,
         options: google.protobuf.struct_pb2.Struct | None = ...,
+        project_name: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["options", b"options"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["entry_point", b"entry_point", "options", b"options", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["entry_point", b"entry_point", "options", b"options", "program_directory", b"program_directory", "project_name", b"project_name", "root_directory", b"root_directory"]) -> None: ...
 
 global___ProgramInfo = ProgramInfo
 

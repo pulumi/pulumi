@@ -106,7 +106,9 @@ type ProgramInfo struct {
 	EntryPoint string `protobuf:"bytes,3,opt,name=entry_point,json=entryPoint,proto3" json:"entry_point,omitempty"`
 	// A struct capturing any language-specific options. If `ProgramInfo` is being built from a `Pulumi.yaml`, this will
 	// contain the `runtime.options` property from that file.
-	Options       *structpb.Struct `protobuf:"bytes,4,opt,name=options,proto3" json:"options,omitempty"`
+	Options *structpb.Struct `protobuf:"bytes,4,opt,name=options,proto3" json:"options,omitempty"`
+	// The name of the project.
+	ProjectName   string `protobuf:"bytes,5,opt,name=project_name,json=projectName,proto3" json:"project_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -167,6 +169,13 @@ func (x *ProgramInfo) GetOptions() *structpb.Struct {
 		return x.Options
 	}
 	return nil
+}
+
+func (x *ProgramInfo) GetProjectName() string {
+	if x != nil {
+		return x.ProjectName
+	}
+	return ""
 }
 
 // `AboutRequest` is the type of requests sent as part of an [](pulumirpc.LanguageRuntime.About) call.
@@ -2390,13 +2399,14 @@ var File_pulumi_language_proto protoreflect.FileDescriptor
 
 const file_pulumi_language_proto_rawDesc = "" +
 	"\n" +
-	"\x15pulumi/language.proto\x12\tpulumirpc\x1a\x18pulumi/codegen/hcl.proto\x1a\x13pulumi/plugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xb5\x01\n" +
+	"\x15pulumi/language.proto\x12\tpulumirpc\x1a\x18pulumi/codegen/hcl.proto\x1a\x13pulumi/plugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xd8\x01\n" +
 	"\vProgramInfo\x12%\n" +
 	"\x0eroot_directory\x18\x01 \x01(\tR\rrootDirectory\x12+\n" +
 	"\x11program_directory\x18\x02 \x01(\tR\x10programDirectory\x12\x1f\n" +
 	"\ventry_point\x18\x03 \x01(\tR\n" +
 	"entryPoint\x121\n" +
-	"\aoptions\x18\x04 \x01(\v2\x17.google.protobuf.StructR\aoptions\":\n" +
+	"\aoptions\x18\x04 \x01(\v2\x17.google.protobuf.StructR\aoptions\x12!\n" +
+	"\fproject_name\x18\x05 \x01(\tR\vprojectName\":\n" +
 	"\fAboutRequest\x12*\n" +
 	"\x04info\x18\x01 \x01(\v2\x16.pulumirpc.ProgramInfoR\x04info\"\xca\x01\n" +
 	"\rAboutResponse\x12\x1e\n" +

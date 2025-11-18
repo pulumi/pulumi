@@ -120,6 +120,7 @@ func newDestroySource(
 			/* rootDirectory */ plugctx.Root,
 			/* programDirectory */ pwd,
 			/* entryPoint */ main,
+			/* projectName */ proj.Name,
 			/* options */ proj.Runtime.Options(),
 		)
 

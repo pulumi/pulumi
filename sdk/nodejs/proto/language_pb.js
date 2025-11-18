@@ -792,7 +792,8 @@ proto.pulumirpc.ProgramInfo.toObject = function(includeInstance, msg) {
 rootDirectory: jspb.Message.getFieldWithDefault(msg, 1, ""),
 programDirectory: jspb.Message.getFieldWithDefault(msg, 2, ""),
 entryPoint: jspb.Message.getFieldWithDefault(msg, 3, ""),
-options: (f = msg.getOptions()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+options: (f = msg.getOptions()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+projectName: jspb.Message.getFieldWithDefault(msg, 5, "")
   };
 
   if (includeInstance) {
@@ -845,6 +846,10 @@ proto.pulumirpc.ProgramInfo.deserializeBinaryFromReader = function(msg, reader) 
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setOptions(value);
+      break;
+    case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setProjectName(value);
       break;
     default:
       reader.skipField();
@@ -902,6 +907,13 @@ proto.pulumirpc.ProgramInfo.serializeBinaryToWriter = function(message, writer) 
       4,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getProjectName();
+  if (f.length > 0) {
+    writer.writeString(
+      5,
+      f
     );
   }
 };
@@ -995,6 +1007,24 @@ proto.pulumirpc.ProgramInfo.prototype.clearOptions = function() {
  */
 proto.pulumirpc.ProgramInfo.prototype.hasOptions = function() {
   return jspb.Message.getField(this, 4) != null;
+};
+
+
+/**
+ * optional string project_name = 5;
+ * @return {string}
+ */
+proto.pulumirpc.ProgramInfo.prototype.getProjectName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ProgramInfo} returns this
+ */
+proto.pulumirpc.ProgramInfo.prototype.setProjectName = function(value) {
+  return jspb.Message.setProto3StringField(this, 5, value);
 };
 
 

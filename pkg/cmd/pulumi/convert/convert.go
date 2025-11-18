@@ -237,7 +237,7 @@ func runConvert(
 		) (hcl.Diagnostics, error) {
 			contract.Requiref(proj != nil, "proj", "must not be nil")
 
-			programInfo := plugin.NewProgramInfo(cwd, cwd, ".", nil)
+			programInfo := plugin.NewProgramInfo(cwd, cwd, ".", proj.Name, nil)
 			languagePlugin, err := pCtx.Host.LanguageRuntime(language, programInfo)
 			if err != nil {
 				return nil, err
@@ -484,7 +484,7 @@ func runConvert(
 		}
 		defer ctx.Close()
 
-		if err := newcmd.InstallDependencies(ctx, &proj.Runtime, main); err != nil {
+		if err := newcmd.InstallDependencies(ctx, &proj.Runtime, proj.Name, main); err != nil {
 			return err
 		}
 	}

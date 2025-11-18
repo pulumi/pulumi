@@ -19,14 +19,17 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
-func InstallDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeInfo, main string) error {
+func InstallDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeInfo, projectName tokens.PackageName,
+	main string,
+) error {
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-	programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, runtime.Options())
+	programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, projectName, runtime.Options())
 	lang, err := ctx.Host.LanguageRuntime(runtime.Name(), programInfo)
 	if err != nil {
 		return fmt.Errorf("failed to load language plugin %s: %w", runtime.Name(), err)

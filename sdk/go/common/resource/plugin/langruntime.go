@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	structpb "google.golang.org/protobuf/types/known/structpb"
@@ -33,13 +34,16 @@ import (
 
 // ProgramInfo contains minimal information about the program to be run.
 type ProgramInfo struct {
-	root       string
-	program    string
-	entryPoint string
-	options    map[string]any
+	root        string
+	program     string
+	entryPoint  string
+	projectName tokens.PackageName
+	options     map[string]any
 }
 
-func NewProgramInfo(rootDirectory, programDirectory, entryPoint string, options map[string]any) ProgramInfo {
+func NewProgramInfo(rootDirectory, programDirectory, entryPoint string, projectName tokens.PackageName,
+	options map[string]any,
+) ProgramInfo {
 	isFileName := func(path string) bool {
 		return filepath.Base(path) == path
 	}
@@ -57,10 +61,11 @@ func NewProgramInfo(rootDirectory, programDirectory, entryPoint string, options 
 	}
 
 	return ProgramInfo{
-		root:       rootDirectory,
-		program:    programDirectory,
-		entryPoint: entryPoint,
-		options:    options,
+		root:        rootDirectory,
+		program:     programDirectory,
+		entryPoint:  entryPoint,
+		projectName: projectName,
+		options:     options,
 	}
 }
 
@@ -79,13 +84,19 @@ func (info ProgramInfo) EntryPoint() string {
 	return info.entryPoint
 }
 
+// The name of the project.
+func (info ProgramInfo) ProjectName() tokens.PackageName {
+	return info.projectName
+}
+
 // Runtime plugin options for the program
 func (info ProgramInfo) Options() map[string]any {
 	return info.options
 }
 
 func (info ProgramInfo) String() string {
-	return fmt.Sprintf("root=%s, program=%s, entryPoint=%s", info.root, info.program, info.entryPoint)
+	return fmt.Sprintf("root=%s, program=%s, entryPoint=%s, projectName=%s",
+		info.root, info.program, info.entryPoint, info.projectName)
 }
 
 func (info ProgramInfo) Marshal() (*pulumirpc.ProgramInfo, error) {
@@ -98,6 +109,7 @@ func (info ProgramInfo) Marshal() (*pulumirpc.ProgramInfo, error) {
 		RootDirectory:    info.root,
 		ProgramDirectory: info.program,
 		EntryPoint:       info.entryPoint,
+		ProjectName:      string(info.projectName),
 		Options:          opts,
 	}, nil
 }

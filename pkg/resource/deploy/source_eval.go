@@ -287,6 +287,7 @@ func (iter *evalSourceIterator) forkRun(
 				/* rootDirectory */ iter.src.runinfo.ProjectRoot,
 				/* programDirectory */ iter.src.runinfo.Pwd,
 				/* entryPoint */ iter.src.runinfo.Program,
+				/* projectName */ iter.src.runinfo.Proj.Name,
 				/* options */ rtopts)
 
 			langhost, err := iter.src.plugctx.Host.LanguageRuntime(rt, programInfo)

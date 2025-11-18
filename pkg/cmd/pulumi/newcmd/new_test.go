@@ -830,7 +830,7 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 			}
 
 			runtimeOptionsMock := func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
-				main string, opts display.Options, interactive, yes bool, prompt promptForValueFunc,
+				main string, projectName tokens.PackageName, opts display.Options, interactive, yes bool, prompt promptForValueFunc,
 			) (map[string]any, error) {
 				return nil, nil
 			}
@@ -867,8 +867,8 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 
-	runtimeOptionsMock := func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
-		main string, opts display.Options, interactive, yes bool, prompt promptForValueFunc,
+	runtimeOptionsMock := func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo, main string,
+		projectName tokens.PackageName, opts display.Options, interactive, yes bool, prompt promptForValueFunc,
 	) (map[string]any, error) {
 		return map[string]any{"someOption": "someValue"}, nil
 	}
