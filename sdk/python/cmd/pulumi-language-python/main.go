@@ -1305,6 +1305,12 @@ func (host *pythonLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 	}, nil
 }
 
+func (host *pythonLanguageHost) Template(
+	ctx context.Context, req *pulumirpc.TemplateRequest,
+) (*pulumirpc.TemplateResponse, error) {
+	return &pulumirpc.TemplateResponse{}, nil
+}
+
 func (host *pythonLanguageHost) About(ctx context.Context,
 	req *pulumirpc.AboutRequest,
 ) (*pulumirpc.AboutResponse, error) {
