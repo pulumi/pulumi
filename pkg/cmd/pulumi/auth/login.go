@@ -47,10 +47,10 @@ func NewLoginCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var interactive bool
 
 	var oidcToken string
-	var org string
-	var team string
-	var user string
-	var expiration int
+	var oidcOrg string
+	var oidcTeam string
+	var oidcUser string
+	var oidcExpiration string
 
 	cmd := &cobra.Command{
 		Use:   "login [<url>]",
@@ -175,19 +175,21 @@ func NewLoginCmd(ws pkgWorkspace.Context) *cobra.Command {
 			}
 
 			if diy.IsDIYBackendURL(cloudURL) {
-				if oidcToken != "" || org != "" || team != "" || user != "" || expiration != -1 {
-					return errors.New("oidc-token, org, team, user, and expiration flags are not supported for this type of backend")
+				if oidcToken != "" || oidcOrg != "" || oidcTeam != "" || oidcUser != "" || oidcExpiration != "" {
+					return errors.New("oidc-token, oidc-org, oidc-team, oidc-user, " +
+						"and oidc-expiration flags are not supported for this type of backend")
 				}
 			}
 
 			var be pkgBackend.Backend
 			if oidcToken != "" {
-				authContext, innerErr := workspace.NewAuthContextForTokenExchange(oidcToken, org, team, user, expiration)
-				if err != nil {
+				authContext, innerErr := workspace.NewAuthContextForTokenExchange(
+					oidcOrg, oidcTeam, oidcUser, oidcToken, oidcExpiration)
+				if innerErr != nil {
 					return fmt.Errorf("problem logging in: %w", innerErr)
 				}
 				be, err = backend.DefaultLoginManager.LoginFromAuthContext(
-					ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, authContext, displayOptions.Color)
+					ctx, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, authContext)
 			} else {
 				be, err = backend.DefaultLoginManager.Login(
 					ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, displayOptions.Color)
@@ -228,13 +230,15 @@ func NewLoginCmd(ws pkgWorkspace.Context) *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&insecure, "insecure", false, "Allow insecure server connections when using SSL")
 	cmd.PersistentFlags().BoolVar(&interactive, "interactive", false,
 		"Show interactive login options based on known accounts")
-	cmd.PersistentFlags().StringVar(&oidcToken, "oidc-token", "", "An OIDC token to exchange for a Pulumi access token")
-	cmd.PersistentFlags().StringVar(&org, "org", "", "The organization to use for login")
-	cmd.PersistentFlags().StringVar(&team, "team", "", "The team to exchange the OIDC token for")
-	cmd.PersistentFlags().StringVar(&user, "user", "", "The user to exchange the OIDC token for")
-	cmd.PersistentFlags().IntVar(
-		&expiration, "expiration", -1,
-		"The expiration in seconds for the Pulumi access token. Defaults to 2 hours (7200 seconds)")
+	cmd.PersistentFlags().StringVar(&oidcToken, "oidc-token", "",
+		"An OIDC token to exchange for a cloud backend access token. Can be either a raw token or a file path "+
+			"prefixed with 'file://' or an arbitrary string used as environment variable key.")
+	cmd.PersistentFlags().StringVar(&oidcOrg, "oidc-org", "", "The organization to use for OIDC token exchange audience")
+	cmd.PersistentFlags().StringVar(&oidcTeam, "oidc-team", "", "The team when exchanging for a team token")
+	cmd.PersistentFlags().StringVar(&oidcUser, "oidc-user", "", "The user when exchanging for a personal token")
+	cmd.PersistentFlags().StringVar(
+		&oidcExpiration, "oidc-expiration", "",
+		"The expiration for the cloud backend access token in duration format (e.g. '15m', '24h')")
 
 	return cmd
 }

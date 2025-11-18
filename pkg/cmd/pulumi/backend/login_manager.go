@@ -16,6 +16,7 @@ package backend
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -55,14 +56,12 @@ type LoginManager interface {
 
 	LoginFromAuthContext(
 		ctx context.Context,
-		ws pkgWorkspace.Context,
 		sink diag.Sink,
 		url string,
 		project *workspace.Project,
 		setCurrent bool,
 		insecure bool,
 		authContext workspace.AuthContext,
-		color colors.Colorization,
 	) (backend.Backend, error)
 }
 
@@ -112,26 +111,24 @@ func (f *lm) Login(
 
 func (f *lm) LoginFromAuthContext(
 	ctx context.Context,
-	ws pkgWorkspace.Context,
 	sink diag.Sink,
 	url string,
 	project *workspace.Project,
 	setCurrent bool,
 	insecure bool,
 	authContext workspace.AuthContext,
-	color colors.Colorization,
 ) (backend.Backend, error) {
 	if authContext.GrantType == workspace.AuthContextGrantTypeTokenExchange {
 		lm := httpstate.NewLoginManager()
 		_, err := lm.LoginWithOIDCToken(
 			ctx, url, insecure, authContext.Token, authContext.Organization, authContext.Scope,
-			authContext.Expiration, setCurrent)
+			authContext.ExpirationSeconds, setCurrent)
 		if err != nil {
 			return nil, err
 		}
 		return httpstate.New(ctx, sink, url, project, insecure)
 	}
-	return f.Login(ctx, ws, sink, url, project, setCurrent, insecure, color)
+	return nil, fmt.Errorf("unknown auth context grant type: %s", authContext.GrantType)
 }
 
 type MockLoginManager struct {
@@ -157,14 +154,12 @@ type MockLoginManager struct {
 
 	LoginFromAuthContextF func(
 		ctx context.Context,
-		ws pkgWorkspace.Context,
 		sink diag.Sink,
 		url string,
 		project *workspace.Project,
 		setCurrent bool,
 		insecure bool,
 		authContext workspace.AuthContext,
-		color colors.Colorization,
 	) (backend.Backend, error)
 }
 
@@ -188,17 +183,15 @@ func (lm *MockLoginManager) Login(
 
 func (lm *MockLoginManager) LoginFromAuthContext(
 	ctx context.Context,
-	ws pkgWorkspace.Context,
 	sink diag.Sink,
 	url string,
 	project *workspace.Project,
 	setCurrent bool,
 	insecure bool,
 	authContext workspace.AuthContext,
-	color colors.Colorization,
 ) (backend.Backend, error) {
 	if lm.LoginFromAuthContextF != nil {
-		return lm.LoginFromAuthContextF(ctx, ws, sink, url, project, setCurrent, insecure, authContext, color)
+		return lm.LoginFromAuthContextF(ctx, sink, url, project, setCurrent, insecure, authContext)
 	}
 	panic("not implemented")
 }

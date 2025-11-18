@@ -314,7 +314,6 @@ func loginWithBrowser(
 		return nil, err
 	}
 
-	// Save the token and return the backend
 	account := workspace.Account{
 		AccessToken:      accessToken,
 		Username:         username,
@@ -360,7 +359,7 @@ type LoginManager interface {
 		oidcToken string,
 		organization string,
 		scope string,
-		expiration int,
+		expirationSeconds int64,
 		setCurrent bool,
 	) (*workspace.Account, error)
 }
@@ -407,7 +406,11 @@ func (m defaultLoginManager) Current(
 		organizations := existingAccount.Organizations
 		tokenInfo := existingAccount.TokenInformation
 		authContext := existingAccount.AuthContext
-		// If the account was last verified less than an hour ago, assume the token is valid.
+		// If the username has not yet been populated, fetch it now.
+		// Also, we do not store the expiration time of the backend access token.
+		// So we need to check periodically if it is still valid.
+		// We do this every hour by fetching the account details again using the backend access token.
+		// TODO(https://github.com/pulumi/pulumi/issues/20986): Return expiresIn within TokenInformation.
 		if username == "" || existingAccount.LastValidatedAt.Add(1*time.Hour).Before(time.Now()) {
 			username, organizations, tokenInfo, err = getAccountDetails(
 				ctx, cloudURL, insecure, existingAccount.AccessToken,
@@ -447,13 +450,11 @@ func (m defaultLoginManager) Current(
 	_, err = fmt.Fprintf(os.Stderr, "Logging in using access token from %s\n", env.AccessToken.Var().Name())
 	contract.IgnoreError(err)
 
-	// Try and use the credentials to see if they are valid.
 	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken)
 	if err != nil {
 		return nil, err
 	}
 
-	// Save them.
 	account := workspace.Account{
 		AccessToken:      accessToken,
 		Username:         username,
@@ -555,13 +556,11 @@ func (m defaultLoginManager) Login(
 		}
 	}
 
-	// Try and use the credentials to see if they are valid.
 	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken)
 	if err != nil {
 		return nil, err
 	}
 
-	// Save them.
 	account := workspace.Account{
 		AccessToken:      accessToken,
 		Username:         username,
@@ -584,7 +583,7 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 	oidcToken string,
 	organization string,
 	scope string,
-	expiration int,
+	expirationSeconds int64,
 	setCurrent bool,
 ) (*workspace.Account, error) {
 	current, err := m.Current(ctx, cloudURL, insecure, setCurrent)
@@ -596,12 +595,11 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 	}
 
 	accessToken, expiresAt, authContext, err := exchangeOidcToken(
-		cloudURL, insecure, oidcToken, organization, scope, expiration)
+		cloudURL, insecure, oidcToken, organization, scope, expirationSeconds)
 	if err != nil {
 		return nil, err
 	}
 
-	// Try and use the credentials to see if they are valid.
 	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken)
 	if err != nil {
 		return nil, err
@@ -610,9 +608,8 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 	if tokenInfo == nil {
 		tokenInfo = &workspace.TokenInformation{}
 	}
-	tokenInfo.ExpiresAt = expiresAt
+	tokenInfo.ExpiresAtEpochSeconds = expiresAt
 
-	// Save them.
 	account := workspace.Account{
 		AccessToken:      accessToken,
 		Username:         username,
@@ -2245,18 +2242,19 @@ func refreshAuthentication(cloudURL string, insecure bool, account workspace.Acc
 		// Refresh if token expires within 2 minutes or has no expiration stored.
 		// Using 2 minutes as a buffer to account for clock skew and network delays
 		// while using a valid token as long as possible as the auth context token may be expired.
-		if tokenInfo.ExpiresAt == 0 || time.Unix(tokenInfo.ExpiresAt, 0).Add(2*time.Minute).Before(time.Now()) {
+		if tokenInfo.ExpiresAtEpochSeconds == 0 ||
+			time.Unix(tokenInfo.ExpiresAtEpochSeconds, 0).Add(2*time.Minute).Before(time.Now()) {
 			if authContext.TokenExpired {
 				return workspace.Account{}, ErrUnauthorized
 			}
 			accessToken, expiresAt, authContext, err := exchangeOidcToken(
-				cloudURL, insecure, authContext.Token, authContext.Organization, authContext.Scope, authContext.Expiration,
+				cloudURL, insecure, authContext.Token, authContext.Organization, authContext.Scope, authContext.ExpirationSeconds,
 			)
 			if err != nil {
 				return workspace.Account{}, err
 			}
 			account.AccessToken = accessToken
-			account.TokenInformation.ExpiresAt = expiresAt
+			account.TokenInformation.ExpiresAtEpochSeconds = expiresAt
 			account.AuthContext = authContext
 			account.LastValidatedAt = time.Now()
 		}
@@ -2265,86 +2263,99 @@ func refreshAuthentication(cloudURL string, insecure bool, account workspace.Acc
 }
 
 func exchangeOidcToken(
-	cloudURL string, insecure bool, oidcToken string, organization string, scope string, expiration int,
+	cloudURL string, insecure bool, oidcToken string, organization string, scope string, expirationSeconds int64,
 ) (string, int64, *workspace.AuthContext, error) {
 	if oidcToken == "" {
 		return "", 0, nil, ErrUnauthorized
 	}
-	tokenValue, oneTimeUsage, err := getTokenValue(oidcToken)
+	tokenValue, tokenSourceType, err := getTokenValue(oidcToken)
 	if err != nil {
 		return "", 0, nil, fmt.Errorf("OIDC token exchange failed: Failed to read OIDC token: %w", err)
 	}
 	expirationBase := time.Now().Unix()
 	resp, err := client.NewClient(cloudURL, "", insecure, cmdutil.Diag()).
-		ExchangeOidcToken(tokenValue, organization, scope, expiration)
+		ExchangeOidcToken(tokenValue, organization, scope, expirationSeconds)
 	if err != nil {
 		return "", 0, nil, fmt.Errorf("OIDC token exchange failed: %w", err)
 	}
-	if oneTimeUsage {
-		// Do not store one-time-use tokens in the auth context.
+	tokenExpired := false
+	if tokenSourceType == tokenSourceTypeRaw {
+		// Do not store raw oidc tokens as they are very short-lived and probably can only be used once
+		// in contrast to tokens read from file or environment variable which are refreshed periodically
+		// within CI/CD pipelines. Store an empty string instead and mark the token immediately as expired.
 		oidcToken = ""
+		tokenExpired = true
 	}
 	authContext := &workspace.AuthContext{
-		GrantType:    workspace.AuthContextGrantTypeTokenExchange,
-		Organization: organization,
-		Scope:        scope,
-		Token:        oidcToken,
-		TokenExpired: oneTimeUsage,
-		Expiration:   expiration,
+		GrantType:         workspace.AuthContextGrantTypeTokenExchange,
+		Organization:      organization,
+		Scope:             scope,
+		Token:             oidcToken,
+		TokenExpired:      tokenExpired,
+		ExpirationSeconds: expirationSeconds,
 	}
-	// TODO: Return expiresIn within TokenInformation instead.
+	// TODO(https://github.com/pulumi/pulumi/issues/20986): Return expiresIn within TokenInformation.
 	expiresAt := expirationBase + resp.ExpiresIn
 	return resp.AccessToken, expiresAt, authContext, nil
 }
 
-func getTokenValue(token string) (value string, oneTimeUsage bool, err error) {
-	if err := verifyTokenFormat(token); err == nil {
-		return token, true, nil
-	} else if strings.HasPrefix(token, "file://") {
-		filePath := strings.TrimPrefix(token, "file://")
+const (
+	tokenSourceTypeRaw  = "raw"
+	tokenSourceTypeFile = "file"
+	tokenSourceTypeEnv  = "env"
+)
+
+// getTokenValue retrieves the token value from the provided source. The source can be a raw token,
+// a file path prefixed with "file://", or an environment variable name.
+// Note that token values are expected to be in a specific format (e.g. JWT).
+// Token values are not verified for authenticity here as we are running on client side only.
+// Authenticity is verified by the server when the token is used.
+func getTokenValue(source string) (value string, sourceType string, err error) {
+	if isExpectedTokenFormat(source) {
+		return source, tokenSourceTypeRaw, nil
+	} else if strings.HasPrefix(source, "file://") {
+		filePath := strings.TrimPrefix(source, "file://")
 		data, err := os.ReadFile(filePath)
 		if err != nil {
-			return "", false, fmt.Errorf("reading token from file '%s': %w", filePath, err)
+			return "", tokenSourceTypeFile, fmt.Errorf("reading token from file '%s': %w", filePath, err)
 		}
 		fileToken := strings.TrimSpace(string(data))
 		if fileToken == "" {
-			return "", false, fmt.Errorf("file '%s' is empty", filePath)
+			return "", tokenSourceTypeFile, fmt.Errorf("file '%s' is empty", filePath)
 		}
-		err = verifyTokenFormat(fileToken)
-		if err != nil {
-			return "", false, fmt.Errorf("invalid token format in file '%s'", filePath)
+		if !isExpectedTokenFormat(fileToken) {
+			return "", tokenSourceTypeFile, fmt.Errorf("unexpected token format in file '%s'", filePath)
 		}
-		return fileToken, false, nil
+		return fileToken, tokenSourceTypeFile, nil
 	} else {
-		envToken := os.Getenv(token)
+		envToken := os.Getenv(source)
 		if envToken == "" {
-			return "", false, fmt.Errorf("environment variable '%s' is not set or empty", token)
+			return "", tokenSourceTypeEnv, fmt.Errorf("environment variable '%s' is not set or empty", source)
 		}
-		err = verifyTokenFormat(envToken)
-		if err != nil {
-			return "", false, fmt.Errorf("invalid token format in environment variable '%s'", token)
+		if !isExpectedTokenFormat(envToken) {
+			return "", tokenSourceTypeEnv, fmt.Errorf("unexpected token format in environment variable '%s'", source)
 		}
-		return envToken, false, nil
+		return envToken, tokenSourceTypeEnv, nil
 	}
 }
 
-func verifyTokenFormat(token string) error {
+// isExpectedTokenFormat checks whether the provided token is in an expected format (e.g. JWT).
+func isExpectedTokenFormat(token string) bool {
 	if _, _, err := jwt.NewParser().ParseUnverified(token, jwt.MapClaims{}); err == nil {
-		return nil
+		return true
 	}
-	return errors.New("invalid token format")
+	return false
 }
 
 // getAccountDetails makes a request to get the authenticated user. If it returns a successful response,
-// we know the access token is legit. We also parse the response as JSON and confirm
-// it has a githubLogin field that is non-empty (like the Pulumi Service would return).
+// we know the access token is valid and a managed or self-hosted cloud backend is used.
 func getAccountDetails(
 	ctx context.Context,
 	cloudURL string,
 	insecure bool,
 	accessToken string,
 ) (string, []string, *workspace.TokenInformation, error) {
-	// TODO: Return expiresIn within TokenInformation.
+	// TODO(https://github.com/pulumi/pulumi/issues/20986): Return expiresIn within TokenInformation.
 	username, organizations, tokenInfo, err := client.NewClient(cloudURL, accessToken, insecure, cmdutil.Diag()).
 		GetPulumiAccountDetails(ctx)
 	if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 401 {

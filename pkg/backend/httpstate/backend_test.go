@@ -943,44 +943,44 @@ func TestIsExplainPreviewEnabled(t *testing.T) {
 	assert.True(t, result)
 }
 
-func TestVerifyTokenFormat(t *testing.T) {
+func TestIsExpectedTokenFormat(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		token   string
-		wantErr bool
+		name       string
+		token      string
+		isExpected bool
 	}{
 		{
-			name:    "valid JWT token",
-			token:   testJWT,
-			wantErr: false,
+			name:       "JWT token",
+			token:      testJWT,
+			isExpected: true,
 		},
 		{
-			name:    "empty token",
-			token:   "",
-			wantErr: true,
+			name:       "empty token",
+			token:      "",
+			isExpected: false,
 		},
 		{
-			name:    "invalid token",
-			token:   "not-a-valid-token",
-			wantErr: true,
+			name:       "unexpected token",
+			token:      "unexpected-token",
+			isExpected: false,
 		},
 		{
-			name:    "random string",
-			token:   "randomstring123",
-			wantErr: true,
+			name:       "random string",
+			token:      "randomstring123",
+			isExpected: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			err := verifyTokenFormat(tt.token)
-			if tt.wantErr {
-				assert.Error(t, err)
+			result := isExpectedTokenFormat(tt.token)
+			if tt.isExpected {
+				assert.True(t, result)
 			} else {
-				require.NoError(t, err)
+				assert.False(t, result)
 			}
 		})
 	}
@@ -994,7 +994,7 @@ func TestGetTokenValue(t *testing.T) {
 		setupEnv       func(*testing.T)
 		setupFile      func(*testing.T) string
 		wantValue      string
-		wantOneTimeUse bool
+		wantSourceType string
 		wantErr        bool
 		errContains    string
 	}{
@@ -1002,7 +1002,7 @@ func TestGetTokenValue(t *testing.T) {
 			name:           "direct JWT token",
 			token:          testJWT,
 			wantValue:      testJWT,
-			wantOneTimeUse: true,
+			wantSourceType: "raw",
 			wantErr:        false,
 		},
 		{
@@ -1018,7 +1018,7 @@ func TestGetTokenValue(t *testing.T) {
 				return tmpFile.Name()
 			},
 			wantValue:      testJWT,
-			wantOneTimeUse: false,
+			wantSourceType: "file",
 			wantErr:        false,
 		},
 		{
@@ -1041,19 +1041,19 @@ func TestGetTokenValue(t *testing.T) {
 			errContains: "is empty",
 		},
 		{
-			name:  "file with invalid token",
+			name:  "file with unexpected token format",
 			token: "file://",
 			setupFile: func(t *testing.T) string {
 				tmpFile, err := os.CreateTemp(t.TempDir(), "token-*.txt")
 				require.NoError(t, err)
 				t.Cleanup(func() { os.Remove(tmpFile.Name()) })
-				_, err = tmpFile.WriteString("not-a-valid-token\n")
+				_, err = tmpFile.WriteString("unexpected-token-format\n")
 				require.NoError(t, err)
 				tmpFile.Close()
 				return tmpFile.Name()
 			},
 			wantErr:     true,
-			errContains: "invalid token format in file",
+			errContains: "token format in file",
 		},
 		{
 			name:  "token from environment variable",
@@ -1062,7 +1062,7 @@ func TestGetTokenValue(t *testing.T) {
 				t.Setenv("MY_JWT_VAR", testJWT)
 			},
 			wantValue:      testJWT,
-			wantOneTimeUse: false,
+			wantSourceType: "env",
 			wantErr:        false,
 		},
 		{
@@ -1072,13 +1072,13 @@ func TestGetTokenValue(t *testing.T) {
 			errContains: "is not set or empty",
 		},
 		{
-			name:  "environment variable with invalid token",
-			token: "INVALID_TOKEN_VAR",
+			name:  "environment variable with unexpected token format",
+			token: "UNEXPECTED_TOKEN_VAR",
 			setupEnv: func(t *testing.T) {
-				t.Setenv("INVALID_TOKEN_VAR", "invalid-token")
+				t.Setenv("UNEXPECTED_TOKEN_VAR", "unexpected-token-format")
 			},
 			wantErr:     true,
-			errContains: "invalid token format in environment variable",
+			errContains: "token format in environment variable",
 		},
 	}
 
@@ -1095,7 +1095,7 @@ func TestGetTokenValue(t *testing.T) {
 				token = "file://" + filePath
 			}
 
-			value, oneTimeUse, err := getTokenValue(token)
+			value, sourceType, err := getTokenValue(token)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -1105,7 +1105,7 @@ func TestGetTokenValue(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, tt.wantValue, value)
-				assert.Equal(t, tt.wantOneTimeUse, oneTimeUse)
+				assert.Equal(t, tt.wantSourceType, sourceType)
 			}
 		})
 	}
@@ -1154,7 +1154,7 @@ func TestRefreshAuthentication(t *testing.T) {
 					TokenExpired: true,
 				},
 				TokenInformation: &workspace.TokenInformation{
-					ExpiresAt: time.Now().Add(-1 * time.Hour).Unix(),
+					ExpiresAtEpochSeconds: time.Now().Add(-1 * time.Hour).Unix(),
 				},
 			},
 			wantErr:     true,
@@ -1169,7 +1169,7 @@ func TestRefreshAuthentication(t *testing.T) {
 					Token:     "pul-oidc-token",
 				},
 				TokenInformation: &workspace.TokenInformation{
-					ExpiresAt: time.Now().Add(10 * time.Minute).Unix(),
+					ExpiresAtEpochSeconds: time.Now().Add(10 * time.Minute).Unix(),
 				},
 			},
 			wantErr: false,
@@ -1214,40 +1214,40 @@ func TestExchangeOidcToken(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name         string
-		oidcToken    string
-		organization string
-		scope        string
-		expiration   int
-		setupServer  func() *httptest.Server
-		wantErr      bool
-		errContains  string
-		checkResult  func(*testing.T, string, int64, *workspace.AuthContext)
+		name              string
+		oidcToken         string
+		organization      string
+		scope             string
+		expirationSeconds int64
+		setupServer       func() *httptest.Server
+		wantErr           bool
+		errContains       string
+		checkResult       func(*testing.T, string, int64, *workspace.AuthContext)
 	}{
 		{
-			name:         "empty oidc token",
-			oidcToken:    "",
-			organization: "test-org",
-			scope:        "org:test-org",
-			expiration:   3600,
-			wantErr:      true,
-			errContains:  "Unauthorized: No credentials provided or are invalid",
+			name:              "empty oidc token",
+			oidcToken:         "",
+			organization:      "test-org",
+			scope:             "org:test-org",
+			expirationSeconds: 3600,
+			wantErr:           true,
+			errContains:       "Unauthorized: No credentials provided or are invalid",
 		},
 		{
-			name:         "invalid oidc token format",
-			oidcToken:    "invalid-token-format",
-			organization: "test-org",
-			scope:        "org:test-org",
-			expiration:   3600,
-			wantErr:      true,
-			errContains:  "Failed to read OIDC token",
+			name:              "invalid oidc token format",
+			oidcToken:         "invalid-token-format",
+			organization:      "test-org",
+			scope:             "org:test-org",
+			expirationSeconds: 3600,
+			wantErr:           true,
+			errContains:       "Failed to read OIDC token",
 		},
 		{
-			name:         "one-time JWT token not stored",
-			oidcToken:    testJWT,
-			organization: "test-org",
-			scope:        "org:test-org",
-			expiration:   3600,
+			name:              "one-time JWT token not stored",
+			oidcToken:         testJWT,
+			organization:      "test-org",
+			scope:             "org:test-org",
+			expirationSeconds: 3600,
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					if r.URL.Path == "/api/oauth/token" {
@@ -1286,7 +1286,7 @@ func TestExchangeOidcToken(t *testing.T) {
 			}
 
 			accessToken, expiresAt, authContext, err := exchangeOidcToken(
-				cloudURL, false, tt.oidcToken, tt.organization, tt.scope, tt.expiration,
+				cloudURL, false, tt.oidcToken, tt.organization, tt.scope, tt.expirationSeconds,
 			)
 
 			if tt.wantErr {

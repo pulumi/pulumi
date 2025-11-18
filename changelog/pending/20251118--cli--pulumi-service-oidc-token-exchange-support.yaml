@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: cli
-  description: Add native support for OIDC token exchange when logging into Pulumi Cloud
+  description: Add native support for OIDC token exchange when logging into Pulumi Cloud. Run `pulumi login --help` for more information.

@@ -92,7 +92,7 @@ func TestOIDCLogin(t *testing.T) {
 		// Login with OIDC token for organization
 		e.RunCommand("pulumi", "login", "--cloud-url", server.URL, "--insecure",
 			"--oidc-token", testJWT,
-			"--org", testOrg)
+			"--oidc-org", testOrg)
 
 		// Verify we're logged in by running whoami
 		stdout, _ := e.RunCommand("pulumi", "whoami")
@@ -143,8 +143,8 @@ func TestOIDCLogin(t *testing.T) {
 
 		e.RunCommand("pulumi", "login", "--cloud-url", server.URL, "--insecure",
 			"--oidc-token", testJWT,
-			"--org", testOrg,
-			"--team", "test-team")
+			"--oidc-org", testOrg,
+			"--oidc-team", "test-team")
 
 		stdout, _ := e.RunCommand("pulumi", "whoami")
 		assert.Contains(t, stdout, "test-user")
@@ -191,8 +191,8 @@ func TestOIDCLogin(t *testing.T) {
 
 		e.RunCommand("pulumi", "login", "--cloud-url", server.URL, "--insecure",
 			"--oidc-token", testJWT,
-			"--org", testOrg,
-			"--user", "test-user")
+			"--oidc-org", testOrg,
+			"--oidc-user", "test-user")
 
 		stdout, _ := e.RunCommand("pulumi", "whoami")
 		assert.Contains(t, stdout, "test-user")
@@ -238,8 +238,8 @@ func TestOIDCLogin(t *testing.T) {
 
 		e.RunCommand("pulumi", "login", "--cloud-url", server.URL, "--insecure",
 			"--oidc-token", testJWT,
-			"--org", testOrg,
-			"--expiration", "3600")
+			"--oidc-org", testOrg,
+			"--oidc-expiration", "1h")
 	})
 
 	t.Run("TokenFromFile", func(t *testing.T) {
@@ -288,7 +288,7 @@ func TestOIDCLogin(t *testing.T) {
 
 		e.RunCommand("pulumi", "login", "--cloud-url", server.URL, "--insecure",
 			"--oidc-token", "file://"+tokenFile,
-			"--org", testOrg)
+			"--oidc-org", testOrg)
 	})
 }
 
@@ -304,11 +304,11 @@ func TestOIDCLoginErrors(t *testing.T) {
 		// Should fail when both --team and --user are specified
 		_, stderr := e.RunCommandExpectError("pulumi", "login",
 			"--oidc-token", testJWT,
-			"--org", testOrg,
-			"--team", "test-team",
-			"--user", "test-user")
+			"--oidc-org", testOrg,
+			"--oidc-team", "test-team",
+			"--oidc-user", "test-user")
 
-		assert.Contains(t, stderr, "only one of --team or --user may be specified")
+		assert.Contains(t, stderr, "only one of team or user may be specified")
 	})
 
 	t.Run("OIDCNotSupportedForDIYBackend", func(t *testing.T) {
@@ -322,10 +322,10 @@ func TestOIDCLoginErrors(t *testing.T) {
 		// Should fail when using OIDC flags with local backend
 		_, stderr := e.RunCommandExpectError("pulumi", "login", "--local",
 			"--oidc-token", testJWT,
-			"--org", testOrg)
+			"--oidc-org", testOrg)
 
 		assert.Contains(t, stderr,
-			"oidc-token, org, team, user, and expiration flags are not supported for this type of backend")
+			"oidc-token, oidc-org, oidc-team, oidc-user, and oidc-expiration flags are not supported for this type of backend")
 	})
 
 	t.Run("TokenExchangeServerError", func(t *testing.T) {
@@ -349,7 +349,7 @@ func TestOIDCLoginErrors(t *testing.T) {
 		// Should fail with server error message
 		_, stderr := e.RunCommandExpectError("pulumi", "login", "--cloud-url", server.URL, "--insecure",
 			"--oidc-token", testJWT,
-			"--org", testOrg)
+			"--oidc-org", testOrg)
 
 		assert.Contains(t, stderr, "invalid_token")
 	})
