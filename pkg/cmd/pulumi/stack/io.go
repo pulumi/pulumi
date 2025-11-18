@@ -178,7 +178,7 @@ func requireCurrentStack(
 	if err != nil {
 		return nil, err
 	}
-	stack, err := state.CurrentStack(ctx, b)
+	stack, err := state.CurrentStack(ctx, ws, b)
 	if err != nil {
 		return nil, err
 	} else if stack != nil {
@@ -241,7 +241,7 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 
 	// If a stack is already selected, make that the default.
 	var defaultOption string
-	currStack, currErr := state.CurrentStack(ctx, b)
+	currStack, currErr := state.CurrentStack(ctx, ws, b)
 	contract.IgnoreError(currErr)
 	if currStack != nil {
 		defaultOption = currStack.Ref().String()
@@ -319,7 +319,7 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 
 	// If setCurrent is true, we'll persist this choice so it'll be used for future CLI operations.
 	if lopt.SetCurrent() {
-		if err = state.SetCurrentStack(stackRef.FullyQualifiedName().String()); err != nil {
+		if err = state.SetCurrentStack(ws, stackRef.FullyQualifiedName().String()); err != nil {
 			return nil, err
 		}
 	}
@@ -420,7 +420,7 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	}
 
 	if setCurrent {
-		if err = state.SetCurrentStack(stack.Ref().FullyQualifiedName().String()); err != nil {
+		if err = state.SetCurrentStack(ws, stack.Ref().FullyQualifiedName().String()); err != nil {
 			return nil, err
 		}
 	}

@@ -56,7 +56,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
@@ -67,6 +66,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 var ErrRefreshTokenUnauthorized = errors.New("Unauthorized: No credentials provided or are invalid.")
@@ -2580,13 +2580,14 @@ func (c httpstateBackendClient) GetStackOutputs(
 	ctx context.Context,
 	name string,
 	onDecryptError func(error) error,
-) (resource.PropertyMap, error) {
+) (property.Map, error) {
 	// When using the cloud backend, require that stack references are fully qualified so they
 	// look like "<org>/<project>/<stack>"
 	if strings.Count(name, "/") != 2 {
-		return nil, errors.New("a stack reference's name should be of the form '<organization>/<project>/<stack>'. " +
-			"See https://www.pulumi.com/docs/using-pulumi/stack-outputs-and-references/#using-stack-references " +
-			"for more information.")
+		return property.Map{}, errors.New(
+			"a stack reference's name should be of the form '<organization>/<project>/<stack>'. " +
+				"See https://www.pulumi.com/docs/using-pulumi/stack-outputs-and-references/#using-stack-references " +
+				"for more information.")
 	}
 
 	return c.backend.GetStackOutputs(ctx, name, onDecryptError)
@@ -2594,7 +2595,7 @@ func (c httpstateBackendClient) GetStackOutputs(
 
 func (c httpstateBackendClient) GetStackResourceOutputs(
 	ctx context.Context, name string,
-) (resource.PropertyMap, error) {
+) (property.Map, error) {
 	return c.backend.GetStackResourceOutputs(ctx, name)
 }
 

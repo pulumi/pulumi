@@ -138,7 +138,7 @@ class StackReference(CustomResource):
         """
 
         is_secret = await ensure_future(self.__is_secret_name(name))
-        output_val = self.outputs.apply(lambda os: os[name])
+        output_val = self.outputs.apply(lambda os: os.get(name))
         if not await output_val.is_known():
             return StackReferenceOutputDetails()
 

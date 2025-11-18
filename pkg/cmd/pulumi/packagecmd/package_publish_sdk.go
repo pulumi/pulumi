@@ -15,6 +15,7 @@
 package packagecmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -22,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -64,8 +66,44 @@ func newPackagePublishSdkCmd() *cobra.Command {
 	return cmd
 }
 
+func determineNPMTagFromCommandResult(currentVersion, npmOutput, npmStderr string, npmError error) (string, error) {
+	currentVer, err := semver.ParseTolerant(currentVersion)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse current version %q: %w", currentVersion, err)
+	}
+
+	if npmError != nil {
+		// If this is a new package, it won't exist on the registry yet and return a 404.
+		// We want to be able to push that and label it as latest.
+		if npmOutput == "" && strings.Contains(npmStderr, "404") {
+			return "latest", nil
+		}
+		return "", fmt.Errorf("failed to get latest version from npm: %w", npmError)
+	}
+
+	latestVer, err := semver.ParseTolerant(npmOutput)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse latest version %q from npm: %w", npmOutput, err)
+	}
+
+	if latestVer.GT(currentVer) {
+		return "backport", nil
+	}
+	return "latest", nil
+}
+
+// determineNPMTagForStableVersion determines if we should tag this version as a backport, rather than as latest.
+func determineNPMTagForStableVersion(npm, pkgName, currentVersion string) (string, error) {
+	infoCmd := exec.Command(npm, "info", pkgName, "version")
+
+	var stderr bytes.Buffer
+	infoCmd.Stderr = &stderr
+
+	output, err := infoCmd.Output()
+	return determineNPMTagFromCommandResult(currentVersion, string(output), stderr.String(), err)
+}
+
 func publishToNPM(path string) error {
-	// verify path
 	info, err := os.Stat(path)
 	if err != nil {
 		return fmt.Errorf("reading path %s: %w", path, err)
@@ -120,7 +158,12 @@ func publishToNPM(path string) error {
 	case strings.Contains(pkgInfo.Version, "-rc"):
 		npmTag = "rc"
 	default:
-		npmTag = "latest"
+		// For stable versions, determine tag by comparing with npm
+		var err error
+		npmTag, err = determineNPMTagForStableVersion(npm, pkgInfo.Name, pkgInfo.Version)
+		if err != nil {
+			return fmt.Errorf("determining npm tag: %w", err)
+		}
 	}
 
 	pkgNameWithVersion := pkgInfo.Name + "@" + pkgInfo.Version

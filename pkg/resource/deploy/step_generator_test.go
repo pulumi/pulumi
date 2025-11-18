@@ -552,7 +552,7 @@ func TestGenerateAliases(t *testing.T) {
 				}
 			}
 
-			actual := sg.generateAliases(goal)
+			actual := sg.generateAliases(goal.Name, goal.Type, goal.Parent, goal.Aliases)
 			assert.Equal(t, tt.expected, actual)
 		})
 	}

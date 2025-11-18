@@ -809,6 +809,10 @@ type ConstructOptions struct {
 	// it will also delete this resource.
 	DeletedWith resource.URN
 
+	// ReplaceWith specifies that if any of the given resources are replaced,
+	// this resource will also be replaced.
+	ReplaceWith []resource.URN
+
 	// DeleteBeforeReplace specifies that replacements of this resource
 	// should delete the old resource before creating the new resource.
 	DeleteBeforeReplace *bool
@@ -820,6 +824,10 @@ type ConstructOptions struct {
 	// ReplaceOnChanges lists properties changing which should cause
 	// the resource to be replaced.
 	ReplaceOnChanges []string
+
+	// ReplacementTrigger specifies that if set, the engine will diff this with
+	// the last recorded value, and trigger a replace if they are not equal.
+	ReplacementTrigger resource.PropertyValue
 
 	// RetainOnDelete is true if deletion of the resource should not
 	// delete the resource in the provider.

@@ -174,6 +174,8 @@ type registryTemplate struct {
 	source   *Source
 }
 
+var _ Template = registryTemplate{}
+
 func (r registryTemplate) Name() string {
 	switch r.t.Source {
 	case "github", "gitlab":
@@ -184,15 +186,33 @@ func (r registryTemplate) Name() string {
 	}
 }
 
-func (r registryTemplate) Description() string {
-	return ""
+func (r registryTemplate) DisplayName() string {
+	// To help with disambiguation we show the "origin" of templates. For VCS backed templates we show the repo slug.
+	// For registry backed templates we show the publisher (= organisation name).
+	//
+	// Note that the default templates from https://github.com/pulumi/templates are not included here, they are not
+	// `registryTemplate` instances, so these are shown without extra annotation.
+	switch r.t.Source {
+	case "github", "gitlab":
+		nameParts := strings.SplitN(r.t.Name, "/", 3)
+		name := nameParts[len(nameParts)-1]
+		if r.t.RepoSlug != nil {
+			return fmt.Sprintf("%s [%s]", name, *r.t.RepoSlug)
+		}
+		return name
+	default:
+		if r.GetPublisher() != "" {
+			return fmt.Sprintf("%s [%s]", r.t.Name, r.GetPublisher())
+		}
+		return r.t.Name
+	}
 }
 
-func (r registryTemplate) ProjectDescription() string {
-	if r.t.Description == nil {
-		return ""
+func (r registryTemplate) Description() string {
+	if r.t.Description != nil {
+		return *r.t.Description
 	}
-	return *r.t.Description
+	return ""
 }
 
 func (r registryTemplate) Error() error { return nil }
@@ -357,10 +377,12 @@ type orgTemplate struct {
 	backend backend.Backend
 }
 
-func (t orgTemplate) Name() string               { return t.t.Name }
-func (t orgTemplate) Description() string        { return "" }
-func (t orgTemplate) ProjectDescription() string { return t.t.Description }
-func (t orgTemplate) Error() error               { return nil }
+var _ Template = (*orgTemplate)(nil)
+
+func (t orgTemplate) Name() string        { return t.t.Name }
+func (t orgTemplate) DisplayName() string { return t.t.Name }
+func (t orgTemplate) Description() string { return t.t.Description }
+func (t orgTemplate) Error() error        { return nil }
 func (t orgTemplate) Download(ctx context.Context) (workspace.Template, error) {
 	templateDir, err := os.MkdirTemp("", "pulumi-template-")
 	if err != nil {

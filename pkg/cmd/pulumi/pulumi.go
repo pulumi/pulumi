@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -81,6 +82,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -477,6 +479,9 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	// completion command as a recommended best practice.
 	cmd.CompletionOptions.DisableDefaultCmd = true
 
+	// With all the commands registered, we can walk the tree to build the
+	// environment variable declarations.
+	declareFlagsAsEnvironmentVariables(cmd)
 	return cmd, cleanup
 }
 
@@ -921,4 +926,81 @@ func isDevVersion(s semver.Version) bool {
 
 	devRegex := regexp.MustCompile(`\d*-g[0-9a-f]*$`)
 	return !s.Pre[0].IsNum && devRegex.MatchString(s.Pre[0].VersionStr)
+}
+
+// We want to expose all the flags on all the commands as configurable with
+// environment variables. To do this, we walk the Cobra command tree, and
+// declare an environment variable for each flag. Because the Cobra arguments
+// have some basic type information, we can use it to do things like accepting 1
+// and 0 as boolean values.
+func declareFlagsAsEnvironmentVariables(cmd *cobra.Command) {
+	convertToEnvironmentVariable := func(name string) string {
+		name = strings.ReplaceAll(name, "-", "_")
+		name = "OPTION_" + strings.ToUpper(name)
+
+		return name
+	}
+
+	exposeAsEnvironmentVariable := func(f *pflag.Flag) {
+		name := convertToEnvironmentVariable(f.Name)
+
+		var env declared.Value
+		switch f.Value.Type() {
+		case "int", "int32":
+			env = declared.Int(name, f.Usage)
+		case "bool":
+			env = declared.Bool(name, f.Usage)
+		default:
+			env = declared.String(name, f.Usage)
+		}
+
+		value, present := env.Underlying()
+		if f.Changed || !present {
+			return
+		}
+
+		switch f.Value.Type() {
+		case "bool":
+			switch strings.ToLower(value) {
+			case "true", "1":
+				_ = f.Value.Set("true")
+			case "false", "0":
+				_ = f.Value.Set("false")
+			}
+		case "stringArray", "stringSlice":
+			csv, err := parseArrayAsCSV(value)
+			if err != nil {
+				csv = []string{value}
+			}
+
+			for _, v := range csv {
+				_ = f.Value.Set(v)
+			}
+		case "string", "int":
+			_ = f.Value.Set(value)
+		default:
+			// Hello! If you're reading this, you've found a new CLI type and we don't
+			// know how to express it as an environment variable. Please add a case
+			// above to handle it.
+			panic("unexpected CLI type: " + f.Value.Type())
+		}
+
+		f.Changed = true
+	}
+
+	cmd.PersistentFlags().VisitAll(exposeAsEnvironmentVariable)
+	cmd.Flags().VisitAll(exposeAsEnvironmentVariable)
+
+	for _, command := range cmd.Commands() {
+		declareFlagsAsEnvironmentVariables(command)
+	}
+}
+
+func parseArrayAsCSV(val string) ([]string, error) {
+	if val == "" {
+		return []string{}, nil
+	}
+	stringReader := strings.NewReader(val)
+	csvReader := csv.NewReader(stringReader)
+	return csvReader.Read()
 }

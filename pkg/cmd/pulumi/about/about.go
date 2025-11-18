@@ -190,7 +190,7 @@ func getSummaryAbout(
 		addError(err, "Could not access the backend")
 	} else if backend != nil {
 		var stack currentStackAbout
-		if stack, err = getCurrentStackAbout(ctx, backend, selectedStack); err != nil {
+		if stack, err = getCurrentStackAbout(ctx, ws, backend, selectedStack); err != nil {
 			addError(err, "Failed to get information about the current stack")
 		} else {
 			result.CurrentStack = &stack
@@ -374,11 +374,13 @@ type aboutState struct {
 	URN  string `json:"urn"`
 }
 
-func getCurrentStackAbout(ctx context.Context, b backend.Backend, selectedStack string) (currentStackAbout, error) {
+func getCurrentStackAbout(
+	ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, selectedStack string,
+) (currentStackAbout, error) {
 	var s backend.Stack
 	var err error
 	if selectedStack == "" {
-		s, err = state.CurrentStack(ctx, b)
+		s, err = state.CurrentStack(ctx, ws, b)
 	} else {
 		var ref backend.StackReference
 		ref, err = b.ParseStackReference(selectedStack)

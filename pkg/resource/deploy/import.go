@@ -116,7 +116,7 @@ func NewImportDeployment(
 	}
 
 	// Produce a map of all old resources for fast access.
-	_, hasRefreshBeforeUpdateResources, olds, oldViews, err := buildResourceMaps(prev)
+	_, hasRefreshBeforeUpdateResources, olds, _, oldViews, err := buildResourceMaps(prev)
 	if err != nil {
 		return nil, err
 	}
@@ -245,6 +245,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 		ImportID:                "",
 		RetainOnDelete:          false,
 		DeletedWith:             "",
+		ReplaceWith:             nil,
 		Created:                 nil,
 		Modified:                nil,
 		SourcePosition:          "",
@@ -252,6 +253,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 		IgnoreChanges:           nil,
 		HideDiff:                nil,
 		ReplaceOnChanges:        nil,
+		ReplacementTrigger:      resource.NewNullProperty(),
 		RefreshBeforeUpdate:     false,
 		ViewOf:                  "",
 		ResourceHooks:           nil,
@@ -263,7 +265,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 	return urn, true, true
 }
 
-func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]string, bool, error) {
+func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]string, error) {
 	urnToReference := map[resource.URN]string{}
 
 	// Determine which default providers are not present in the state. If all default providers are accounted for,
@@ -294,12 +296,12 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 
 		if imp.Type.Package() == "" {
-			return nil, false, errors.New("incorrect package type specified")
+			return nil, errors.New("incorrect package type specified")
 		}
 
 		pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(imp.Type, imp.Version)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
 		req := providers.NewProviderRequest(
 			pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
@@ -320,7 +322,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		defaultProviders[urn] = struct{}{}
 	}
 	if len(defaultProviderRequests) == 0 {
-		return urnToReference, true, nil
+		return urnToReference, nil
 	}
 
 	steps := make([]Step, len(defaultProviderRequests))
@@ -329,7 +331,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 	})
 	for idx, req := range defaultProviderRequests {
 		if req.Package() == "" {
-			return nil, false, errors.New("incorrect package type specified")
+			return nil, errors.New("incorrect package type specified")
 		}
 
 		typ, name := sdkproviders.MakeProviderType(req.Package()), req.DefaultName()
@@ -338,7 +340,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		// Fetch, prepare, and check the configuration for this provider.
 		inputs, err := i.deployment.target.GetPackageConfig(req.Package())
 		if err != nil {
-			return nil, false, fmt.Errorf("failed to fetch provider config: %w", err)
+			return nil, fmt.Errorf("failed to fetch provider config: %w", err)
 		}
 
 		// Calculate the inputs for the provider using the ambient config.
@@ -360,7 +362,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			News: inputs,
 		})
 		if err != nil {
-			return nil, false, fmt.Errorf("failed to validate provider config: %w", err)
+			return nil, fmt.Errorf("failed to validate provider config: %w", err)
 		}
 		state := resource.NewState{
 			Type:                    typ,
@@ -385,6 +387,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			ImportID:                "",
 			RetainOnDelete:          false,
 			DeletedWith:             "",
+			ReplaceWith:             nil,
 			Created:                 nil,
 			Modified:                nil,
 			SourcePosition:          "",
@@ -392,13 +395,14 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			IgnoreChanges:           nil,
 			HideDiff:                nil,
 			ReplaceOnChanges:        nil,
+			ReplacementTrigger:      resource.NewNullProperty(),
 			RefreshBeforeUpdate:     false,
 			ViewOf:                  "",
 			ResourceHooks:           nil,
 		}.Make()
 		// TODO(seqnum) should default providers be created with 1? When do they ever get recreated/replaced?
 		if issueCheckErrors(i.deployment, state, urn, resp.Failures) {
-			return nil, false, nil
+			return nil, errors.New("provider check failed")
 		}
 
 		// Set a dummy goal so the resource is tracked as managed.
@@ -408,7 +412,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 
 	// Issue the create steps.
 	if !i.executeParallel(ctx, steps...) {
-		return nil, false, nil
+		return nil, i.executor.Errored()
 	}
 
 	// Update the URN to reference map.
@@ -419,23 +423,23 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		urnToReference[res.URN] = ref.String()
 	}
 
-	return urnToReference, true, nil
+	return urnToReference, nil
 }
 
 func (i *importer) importResources(ctx context.Context) error {
 	contract.Assertf(len(i.deployment.imports) != 0, "no resources to import")
 
 	if !i.registerExistingResources(ctx) {
-		return nil
+		return i.executor.Errored()
 	}
 
 	stackURN, createdStack, ok := i.getOrCreateStackResource(ctx)
 	if !ok {
-		return nil
+		return i.executor.Errored()
 	}
 
-	urnToReference, ok, err := i.registerProviders(ctx)
-	if !ok {
+	urnToReference, err := i.registerProviders(ctx)
+	if err != nil {
 		return err
 	}
 
@@ -514,6 +518,7 @@ func (i *importer) importResources(ctx context.Context) error {
 			ImportID:                imp.ID,
 			RetainOnDelete:          false,
 			DeletedWith:             "",
+			ReplaceWith:             nil,
 			Created:                 nil,
 			Modified:                nil,
 			SourcePosition:          "",
@@ -521,6 +526,7 @@ func (i *importer) importResources(ctx context.Context) error {
 			IgnoreChanges:           nil,
 			ReplaceOnChanges:        nil,
 			HideDiff:                nil,
+			ReplacementTrigger:      resource.NewNullProperty(),
 			RefreshBeforeUpdate:     false,
 			ViewOf:                  "",
 			ResourceHooks:           nil,
@@ -577,8 +583,12 @@ func (i *importer) importResources(ctx context.Context) error {
 		}
 
 		if !i.executeParallel(ctx, parallelSteps...) {
-			return nil
+			break
 		}
+	}
+
+	if i.executor.Errored() != nil {
+		return i.executor.Errored()
 	}
 
 	if createdStack {

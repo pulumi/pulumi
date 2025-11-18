@@ -24,6 +24,7 @@ import (
 	"iter"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -52,7 +53,10 @@ func TestFilterOnName(t *testing.T) {
 		TemplateURL:     "example.com/source1/name1",
 	}
 
-	testFilterOnName := func(t *testing.T, mapStore env.MapStore) {
+	testFilterOnName := func(t *testing.T, disableRegistryResolve bool) {
+		mapStore := env.MapStore{
+			"PULUMI_DISABLE_REGISTRY_RESOLVE": strconv.FormatBool(disableRegistryResolve),
+		}
 		ctx := testContext(t)
 
 		source := newImpl(ctx, "name1",
@@ -64,13 +68,17 @@ func TestFilterOnName(t *testing.T) {
 		template, err := source.Templates()
 		require.NoError(t, err)
 		require.Len(t, template, 1)
-		assert.Equal(t, "name1", template[0].Name())
+		if disableRegistryResolve {
+			assert.Equal(t, "name1", template[0].Name())
+		} else {
+			assert.Equal(t, "name1", template[0].Name())
+			assert.Equal(t, "name1 [publisher1]", template[0].DisplayName())
+		}
 		assert.Equal(t, "", template[0].Description())
-		assert.Equal(t, "", template[0].ProjectDescription())
 		assert.Nil(t, template[0].Error())
 	}
 
-	t.Run("org-backed-templates", func(t *testing.T) {
+	t.Run("org-backed-templates - disable registry resolve = true", func(t *testing.T) {
 		mockBackend := &backend.MockBackend{
 			SupportsTemplatesF: func() bool { return true },
 			CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
@@ -109,12 +117,10 @@ func TestFilterOnName(t *testing.T) {
 				return mockBackend, nil
 			},
 		})
-		testFilterOnName(t, env.MapStore{
-			"PULUMI_DISABLE_REGISTRY_RESOLVE": "true",
-		})
+		testFilterOnName(t, true)
 	})
 
-	t.Run("org-backed-templates", func(t *testing.T) {
+	t.Run("org-backed-templates - disable registry resolve = false", func(t *testing.T) {
 		listTemplates := func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
 			assert.Nil(t, name)
 			return func(yield func(apitype.TemplateMetadata, error) bool) {
@@ -155,9 +161,7 @@ func TestFilterOnName(t *testing.T) {
 				return mockBackend, nil
 			},
 		})
-		testFilterOnName(t, env.MapStore{
-			"PULUMI_DISABLE_REGISTRY_RESOLVE": "false",
-		})
+		testFilterOnName(t, false)
 	})
 }
 
@@ -644,6 +648,7 @@ func TestVCSBasedTemplateNames(t *testing.T) {
 					Name:      "gh-org/repo/name",
 					Source:    "github",
 					Publisher: "pulumi-org",
+					RepoSlug:  ref("gh-org/repo"),
 				}, nil) {
 					return
 				}
@@ -651,6 +656,7 @@ func TestVCSBasedTemplateNames(t *testing.T) {
 					Name:      "gl-org/repo/name",
 					Source:    "gitlab",
 					Publisher: "pulumi-org",
+					RepoSlug:  ref("gl-org/repo"),
 				}, nil) {
 					return
 				}
@@ -682,8 +688,11 @@ func TestVCSBasedTemplateNames(t *testing.T) {
 	require.Len(t, templates, 3)
 
 	assert.Equal(t, "name", templates[0].Name())
+	assert.Equal(t, "name [gh-org/repo]", templates[0].DisplayName())
 	assert.Equal(t, "name", templates[1].Name())
+	assert.Equal(t, "name [gl-org/repo]", templates[1].DisplayName())
 	assert.Equal(t, "just/has/slashes", templates[2].Name())
+	assert.Equal(t, "just/has/slashes [pulumi-org]", templates[2].DisplayName())
 }
 
 //nolint:paralleltest // replaces global backend instance
@@ -698,6 +707,7 @@ func TestVCSBasedTemplateNameFilter(t *testing.T) {
 					Source:      "github",
 					Description: ref("This is from GH"),
 					Publisher:   "pulumi-org",
+					RepoSlug:    ref("gh-org/repo"),
 				}, nil) {
 					return
 				}
@@ -705,6 +715,7 @@ func TestVCSBasedTemplateNameFilter(t *testing.T) {
 					Name:      "gl-org/repo/name",
 					Source:    "gitlab",
 					Publisher: "pulumi-org",
+					RepoSlug:  ref("gl-org/repo"),
 				}, nil) {
 					return
 				}
@@ -737,9 +748,11 @@ func TestVCSBasedTemplateNameFilter(t *testing.T) {
 	require.Len(t, templates, 2)
 
 	assert.Equal(t, "target", templates[0].Name())
-	assert.Equal(t, "This is from GH", templates[0].ProjectDescription())
+	assert.Equal(t, "target [gh-org/repo]", templates[0].DisplayName())
+	assert.Equal(t, "This is from GH", templates[0].Description())
 	assert.Equal(t, "target", templates[1].Name())
-	assert.Equal(t, "This is from the registry", templates[1].ProjectDescription())
+	assert.Equal(t, "target [pulumi-org]", templates[1].DisplayName())
+	assert.Equal(t, "This is from the registry", templates[1].Description())
 }
 
 func templateRepository(repo workspace.TemplateRepository, err error) getWorkspaceTemplateFunc {
@@ -778,9 +791,11 @@ func TestRegistryTemplateResolution(t *testing.T) {
 					Publisher: "different-org",
 				}, nil)
 				yield(apitype.TemplateMetadata{
-					Name:      "gh-org/repo/target",
-					Source:    "github",
-					Publisher: "pulumi-org",
+					Name:        "gh-org/repo/target",
+					Source:      "github",
+					Publisher:   "pulumi-org",
+					RepoSlug:    ref("gh-org/repo"),
+					Description: ref("A template from VCS"),
 				}, nil)
 				yield(apitype.TemplateMetadata{
 					Name:        "whatever-template",
@@ -802,42 +817,49 @@ func TestRegistryTemplateResolution(t *testing.T) {
 		templateURL         string
 		shouldMatch         bool
 		expectedName        string
+		expectedDisplayName string
 		description         string
 		expectSpecificError string
 	}{
 		{
-			name:         "registry URL full format",
-			templateURL:  "registry://templates/private/pulumi_local/csharp-documented",
-			shouldMatch:  true,
-			expectedName: "csharp-documented",
-			description:  "A C# template",
+			name:                "registry URL full format",
+			templateURL:         "registry://templates/private/pulumi_local/csharp-documented",
+			shouldMatch:         true,
+			expectedName:        "csharp-documented",
+			expectedDisplayName: "csharp-documented [pulumi_local]",
+			description:         "A C# template",
 		},
 		{
-			name:         "registry URL with version",
-			templateURL:  "registry://templates/private/pulumi_local/csharp-documented@latest",
-			shouldMatch:  true,
-			expectedName: "csharp-documented",
-			description:  "A C# template",
+			name:                "registry URL with version",
+			templateURL:         "registry://templates/private/pulumi_local/csharp-documented@latest",
+			shouldMatch:         true,
+			expectedName:        "csharp-documented",
+			expectedDisplayName: "csharp-documented [pulumi_local]",
+			description:         "A C# template",
 		},
 		{
-			name:         "partial URL format",
-			templateURL:  "private/pulumi_local/csharp-documented",
-			shouldMatch:  true,
-			expectedName: "csharp-documented",
-			description:  "A C# template",
+			name:                "partial URL format",
+			templateURL:         "private/pulumi_local/csharp-documented",
+			shouldMatch:         true,
+			expectedName:        "csharp-documented",
+			expectedDisplayName: "csharp-documented [pulumi_local]",
+			description:         "A C# template",
 		},
 		{
-			name:         "partial URL with version",
-			templateURL:  "private/pulumi_local/csharp-documented@latest",
-			shouldMatch:  true,
-			expectedName: "csharp-documented",
-			description:  "A C# template",
+			name:                "partial URL with version",
+			templateURL:         "private/pulumi_local/csharp-documented@latest",
+			shouldMatch:         true,
+			expectedName:        "csharp-documented",
+			expectedDisplayName: "csharp-documented [pulumi_local]",
+			description:         "A C# template",
 		},
 		{
-			name:         "VCS template display name matching",
-			templateURL:  "target",
-			shouldMatch:  true,
-			expectedName: "target",
+			name:                "VCS template display name matching",
+			templateURL:         "target",
+			shouldMatch:         true,
+			expectedName:        "target",
+			expectedDisplayName: "target [gh-org/repo]",
+			description:         "A template from VCS",
 		},
 		{
 			name:                "wrong resource type does not match",
@@ -846,11 +868,12 @@ func TestRegistryTemplateResolution(t *testing.T) {
 			expectSpecificError: "resource type 'packages' is not valid for templates",
 		},
 		{
-			name:         "parsing failure falls back to exact name match",
-			templateURL:  "whatever-template",
-			shouldMatch:  true,
-			expectedName: "whatever-template",
-			description:  "A template with special chars",
+			name:                "parsing failure falls back to exact name match",
+			templateURL:         "whatever-template",
+			shouldMatch:         true,
+			expectedName:        "whatever-template",
+			expectedDisplayName: "whatever-template [test-org]",
+			description:         "A template with special chars",
 		},
 		{
 			name:        "nonexistent template returns not found",
@@ -918,8 +941,9 @@ func TestRegistryTemplateResolution(t *testing.T) {
 				require.NoError(t, err)
 				require.Len(t, templates, 1)
 				assert.Equal(t, tc.expectedName, templates[0].Name())
+				assert.Equal(t, tc.expectedDisplayName, templates[0].DisplayName())
 				if tc.description != "" {
-					assert.Equal(t, tc.description, templates[0].ProjectDescription())
+					assert.Equal(t, tc.description, templates[0].Description())
 				}
 			} else {
 				require.Error(t, err)

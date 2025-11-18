@@ -1886,6 +1886,12 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		configSecretKeys = append(configSecretKeys, k.String())
 	}
 
+	// Marshal the replace with.
+	replaceWithURNs := make([]string, len(req.Options.ReplaceWith))
+	for i, urn := range req.Options.ReplaceWith {
+		replaceWithURNs[i] = string(urn)
+	}
+
 	// Marshal the resource hook bindings.
 	var resourceHook *pulumirpc.ConstructRequest_ResourceHooksBinding
 	if len(req.Options.ResourceHooks) > 0 {
@@ -1917,6 +1923,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		Dependencies:            dependencies,
 		AdditionalSecretOutputs: req.Options.AdditionalSecretOutputs,
 		DeletedWith:             string(req.Options.DeletedWith),
+		ReplaceWith:             replaceWithURNs,
 		DeleteBeforeReplace:     req.Options.DeleteBeforeReplace,
 		IgnoreChanges:           req.Options.IgnoreChanges,
 		ReplaceOnChanges:        req.Options.ReplaceOnChanges,

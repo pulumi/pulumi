@@ -37,7 +37,7 @@ from .events import OpMap, EngineEvent, SummaryEvent
 from ._output import OutputMap
 from ._server import LanguageServer
 from ._workspace import Workspace, PulumiFn, Deployment
-from ..runtime.settings import _GRPC_CHANNEL_OPTIONS
+from ..runtime._grpc_settings import _GRPC_CHANNEL_OPTIONS
 from ..runtime.proto import language_pb2_grpc
 from ..runtime.proto import events_pb2_grpc
 from google.protobuf import empty_pb2

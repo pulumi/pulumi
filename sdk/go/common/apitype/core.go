@@ -474,6 +474,8 @@ type ResourceV3 struct {
 	// If set, the providers Delete method will not be called for this resource
 	// if specified resource is being deleted as well.
 	DeletedWith resource.URN `json:"deletedWith,omitempty" yaml:"deletedWith,omitempty"`
+	// ReplaceWith is a list of resources whose replaces will also trigger this resource's replace.
+	ReplaceWith []resource.URN `json:"replaceWith,omitempty" yaml:"replaceWith,omitempty"`
 	// Created tracks when the remote resource was first added to state by pulumi. Checkpoints prior to early 2023 do not include this.
 	Created *time.Time `json:"created,omitempty" yaml:"created,omitempty"`
 	// Modified tracks when the resource state was last altered. Checkpoints prior to early 2023 do not include this.
@@ -488,6 +490,8 @@ type ResourceV3 struct {
 	HideDiff []resource.PropertyPath `json:"hideDiff,omitempty" yaml:"hideDiff,omitempty"`
 	// ReplaceOnChanges is a list of properties that if changed trigger a replace.
 	ReplaceOnChanges []string `json:"replaceOnChanges,omitempty" yaml:"replaceOnChanges,omitempty"`
+	// If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
+	ReplacementTrigger any `json:"replacementTrigger,omitempty" yaml:"replacementTrigger,omitempty"`
 	// RefreshBeforeUpdate indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool `json:"refreshBeforeUpdate,omitempty" yaml:"refreshBeforeUpdate,omitempty"`
 	// ViewOf is a reference to the resource that this resource is a view of.

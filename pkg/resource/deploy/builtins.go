@@ -303,9 +303,9 @@ func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resou
 	}
 
 	secretOutputs := make([]resource.PropertyValue, 0)
-	for k, v := range outputs {
-		if v.ContainsSecrets() {
-			secretOutputs = append(secretOutputs, resource.NewProperty(string(k)))
+	for k, v := range outputs.All {
+		if v.HasSecrets() {
+			secretOutputs = append(secretOutputs, resource.NewProperty(k))
 		}
 	}
 
@@ -316,7 +316,7 @@ func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resou
 
 	return resource.PropertyMap{
 		"name":              name,
-		"outputs":           resource.NewProperty(outputs),
+		"outputs":           resource.NewProperty(resource.ToResourcePropertyMap(outputs)),
 		"secretOutputNames": resource.NewProperty(secretOutputs),
 	}, nil
 }
@@ -337,7 +337,7 @@ func (p *builtinProvider) readStackResourceOutputs(inputs resource.PropertyMap) 
 
 	return resource.PropertyMap{
 		"name":    name,
-		"outputs": resource.NewProperty(outputs),
+		"outputs": resource.NewProperty(resource.ToResourcePropertyMap(outputs)),
 	}, nil
 }
 

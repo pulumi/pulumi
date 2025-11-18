@@ -261,6 +261,11 @@ func rebuildDependencies(resources []apitype.ResourceV3) {
 				}
 			}
 		}
+		for i, r := range resources[i].ReplaceWith {
+			if !referenceable[r] {
+				resources[i].ReplaceWith = append(resources[i].ReplaceWith, "")
+			}
+		}
 		if !referenceable[resources[i].DeletedWith] {
 			resources[i].DeletedWith = ""
 		}
@@ -387,7 +392,7 @@ func (r *JournalReplayer) GenerateDeployment() apitype.TypedDeployment {
 
 // snap produces a new Snapshot given the base snapshot and a list of resources that the current
 // plan has created.
-func (sj *SnapshotJournaler) snap(ctx context.Context) apitype.TypedDeployment {
+func (sj *SnapshotJournaler) snap() apitype.TypedDeployment {
 	// At this point we have two resource DAGs. One of these is the base DAG for this plan; the other is the current DAG
 	// for this plan. Any resource r may be present in both DAGs. In order to produce a snapshot, we need to merge these
 	// DAGs such that all resource dependencies are correctly preserved. Conceptually, the merge proceeds as follows:
@@ -443,8 +448,8 @@ func (sj *SnapshotJournaler) snap(ctx context.Context) apitype.TypedDeployment {
 // metadata about this write operation is added to the snapshot before it is
 // written, in order to aid debugging should future operations fail with an
 // error.
-func (sj *SnapshotJournaler) saveSnapshot(ctx context.Context) error {
-	deployment := sj.snap(ctx)
+func (sj *SnapshotJournaler) saveSnapshot() error {
+	deployment := sj.snap()
 	var err error
 	deployment.Deployment, err = deployment.Deployment.NormalizeURNReferences()
 	if err != nil {
@@ -486,7 +491,6 @@ func (sj *SnapshotJournaler) saveSnapshot(ctx context.Context) error {
 
 // defaultServiceLoop saves a Snapshot whenever a mutation occurs
 func (sj *SnapshotJournaler) defaultServiceLoop(
-	ctx context.Context,
 	journalEvents chan writeJournalEntryRequest, done chan error,
 ) {
 	// True if we have elided writes since the last actual write.
@@ -509,7 +513,7 @@ serviceLoop:
 				continue
 			}
 			hasElidedWrites = false
-			request.result <- sj.saveSnapshot(ctx)
+			request.result <- sj.saveSnapshot()
 		case <-sj.cancel:
 			break serviceLoop
 		}
@@ -519,7 +523,7 @@ serviceLoop:
 	var err error
 	if hasElidedWrites {
 		logging.V(9).Infof("SnapshotManager: flushing elided writes...")
-		err = sj.saveSnapshot(ctx)
+		err = sj.saveSnapshot()
 	}
 	done <- err
 }
@@ -528,7 +532,6 @@ serviceLoop:
 // SnapshotManager.Close() is invoked. It trades reliability for speed as every mutation does not
 // cause a Snapshot to be serialized to the user's state backend.
 func (sj *SnapshotJournaler) unsafeServiceLoop(
-	ctx context.Context,
 	journalEvents chan writeJournalEntryRequest, done chan error,
 ) {
 	for {
@@ -537,7 +540,7 @@ func (sj *SnapshotJournaler) unsafeServiceLoop(
 			sj.journalEntries = append(sj.journalEntries, request.journalEntry)
 			request.result <- nil
 		case <-sj.cancel:
-			done <- sj.saveSnapshot(ctx)
+			done <- sj.saveSnapshot()
 			return
 		}
 	}
@@ -638,7 +641,7 @@ func NewSnapshotJournaler(
 		serviceLoop = journaler.unsafeServiceLoop
 	}
 
-	go serviceLoop(ctx, journalEvents, done)
+	go serviceLoop(journalEvents, done)
 
 	return &journaler, nil
 }

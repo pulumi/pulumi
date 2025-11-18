@@ -1164,6 +1164,13 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.DeletedWith != nil {
 		appendOption("DeletedWith", opts.DeletedWith, model.DynamicType)
 	}
+	if opts.ReplaceWith != nil {
+		appendOption("ReplaceWith", opts.ReplaceWith, model.NewListType(resourceType))
+	}
+	if opts.ReplacementTrigger != nil {
+		destType := model.NewOutputType(model.DynamicType)
+		appendOption("ReplacementTrigger", opts.ReplacementTrigger, destType)
+	}
 	if opts.ImportID != nil {
 		appendOption("Import", opts.ImportID, model.StringType)
 	}

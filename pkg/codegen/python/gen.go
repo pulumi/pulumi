@@ -29,14 +29,12 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode"
 
 	"github.com/BurntSushi/toml"
-	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -2220,20 +2218,6 @@ func (mod *modContext) collectImportsForResource(properties []*schema.Property, 
 	})
 }
 
-var (
-	requirementRegex = regexp.MustCompile(`^>=([^,]+),<[^,]+$`)
-	pep440AlphaRegex = regexp.MustCompile(`^(\d+\.\d+\.\d)+a(\d+)$`)
-	pep440BetaRegex  = regexp.MustCompile(`^(\d+\.\d+\.\d+)b(\d+)$`)
-	pep440RCRegex    = regexp.MustCompile(`^(\d+\.\d+\.\d+)rc(\d+)$`)
-	pep440DevRegex   = regexp.MustCompile(`^(\d+\.\d+\.\d+)\.dev(\d+)$`)
-)
-
-var oldestAllowedPulumi = semver.Version{
-	Major: 0,
-	Minor: 17,
-	Patch: 28,
-}
-
 func sanitizePackageDescription(description string) string {
 	lines := strings.SplitN(description, "\n", 2)
 	if len(lines) > 0 {
@@ -2394,25 +2378,6 @@ func minimumPythonVersion(info PackageInfo) (string, error) {
 		return info.PythonRequires, nil
 	}
 	return "", errNoMinimumPythonVersion
-}
-
-func pep440VersionToSemver(v string) (semver.Version, error) {
-	switch {
-	case pep440AlphaRegex.MatchString(v):
-		parts := pep440AlphaRegex.FindStringSubmatch(v)
-		v = parts[1] + "-alpha." + parts[2]
-	case pep440BetaRegex.MatchString(v):
-		parts := pep440BetaRegex.FindStringSubmatch(v)
-		v = parts[1] + "-beta." + parts[2]
-	case pep440RCRegex.MatchString(v):
-		parts := pep440RCRegex.FindStringSubmatch(v)
-		v = parts[1] + "-rc." + parts[2]
-	case pep440DevRegex.MatchString(v):
-		parts := pep440DevRegex.FindStringSubmatch(v)
-		v = parts[1] + "-dev." + parts[2]
-	}
-
-	return semver.ParseTolerant(v)
 }
 
 // genInitDocstring emits the docstring for the __init__ method of the given resource type.
@@ -3471,28 +3436,9 @@ func ensureValidPulumiVersion(parameterized bool, requires map[string]string) (m
 		}
 		return result, nil
 	}
-	// If the pulumi dep is missing, we require it to fall within
-	// our major version constraint.
 	if pulumiDep, ok := requires["pulumi"]; !ok {
 		deps["pulumi"] = MinimumValidSDKVersion
 	} else {
-		// Since a value was provided, we check to make sure it's
-		// within an acceptable version range.
-		// We expect a specific pattern of ">=version,<version" here.
-		matches := requirementRegex.FindStringSubmatch(pulumiDep)
-		if len(matches) != 2 {
-			return nil, fmt.Errorf("invalid requirement specifier \"%s\"; expected \">=version1,<version2\"", pulumiDep)
-		}
-
-		lowerBound, err := pep440VersionToSemver(matches[1])
-		if err != nil {
-			return nil, fmt.Errorf("invalid version for lower bound: %w", err)
-		}
-		if lowerBound.LT(oldestAllowedPulumi) {
-			return nil, fmt.Errorf("lower version bound must be at least %v", oldestAllowedPulumi)
-		}
-		// The provided Pulumi version is valid, so we're copy it into
-		// the new map.
 		deps["pulumi"] = pulumiDep
 	}
 

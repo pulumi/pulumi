@@ -44,15 +44,16 @@ type ContinueResourceDiffEvent interface {
 }
 
 type continueDiffResourceEvent struct {
-	evt        RegisterResourceEvent
-	err        error
-	diff       plugin.DiffResult
-	urn        resource.URN
-	old        *resource.State
-	new        *resource.State
-	provider   plugin.Provider
-	autonaming *plugin.AutonamingOptions
-	randomSeed []byte
+	evt            RegisterResourceEvent
+	err            error
+	diff           plugin.DiffResult
+	triggerReplace bool
+	urn            resource.URN
+	old            *resource.State
+	new            *resource.State
+	provider       plugin.Provider
+	autonaming     *plugin.AutonamingOptions
+	randomSeed     []byte
 }
 
 var _ ContinueResourceDiffEvent = (*continueDiffResourceEvent)(nil)
@@ -73,6 +74,10 @@ func (g *continueDiffResourceEvent) Error() error {
 
 func (g *continueDiffResourceEvent) Diff() plugin.DiffResult {
 	return g.diff
+}
+
+func (g *continueDiffResourceEvent) ReplacementTrigger() bool {
+	return g.triggerReplace
 }
 
 func (g *continueDiffResourceEvent) Old() *resource.State {

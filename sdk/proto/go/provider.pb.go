@@ -2632,8 +2632,10 @@ type ConstructRequest struct {
 	ResourceHooks       *ConstructRequest_ResourceHooksBinding `protobuf:"bytes,26,opt,name=resource_hooks,json=resourceHooks,proto3,oneof" json:"resource_hooks,omitempty"`
 	// The stack trace handle for the construct call. Supports stitching stack traces together across plugins.
 	StackTraceHandle string `protobuf:"bytes,27,opt,name=stack_trace_handle,json=stackTraceHandle,proto3" json:"stack_trace_handle,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The URNs of resources whose replaces will trigger a replace on this resource.
+	ReplaceWith   []string `protobuf:"bytes,28,rep,name=replace_with,json=replaceWith,proto3" json:"replace_with,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ConstructRequest) Reset() {
@@ -2853,6 +2855,13 @@ func (x *ConstructRequest) GetStackTraceHandle() string {
 		return x.StackTraceHandle
 	}
 	return ""
+}
+
+func (x *ConstructRequest) GetReplaceWith() []string {
+	if x != nil {
+		return x.ReplaceWith
+	}
+	return nil
 }
 
 // `ConstructResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Construct) call.
@@ -4115,7 +4124,7 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\x17resource_status_address\x18\b \x01(\tR\x15resourceStatusAddress\x122\n" +
 	"\x15resource_status_token\x18\t \x01(\tR\x13resourceStatusToken\x12,\n" +
 	"\told_views\x18\n" +
-	" \x03(\v2\x0f.pulumirpc.ViewR\boldViews\"\x83\x0f\n" +
+	" \x03(\v2\x0f.pulumirpc.ViewR\boldViews\"\xa6\x0f\n" +
 	"\x10ConstructRequest\x12\x18\n" +
 	"\aproject\x18\x01 \x01(\tR\aproject\x12\x14\n" +
 	"\x05stack\x18\x02 \x01(\tR\x05stack\x12?\n" +
@@ -4144,7 +4153,8 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\x0eretainOnDelete\x18\x18 \x01(\bH\x02R\x0eretainOnDelete\x88\x01\x01\x122\n" +
 	"\x15accepts_output_values\x18\x19 \x01(\bR\x13acceptsOutputValues\x12\\\n" +
 	"\x0eresource_hooks\x18\x1a \x01(\v20.pulumirpc.ConstructRequest.ResourceHooksBindingH\x03R\rresourceHooks\x88\x01\x01\x12,\n" +
-	"\x12stack_trace_handle\x18\x1b \x01(\tR\x10stackTraceHandle\x1a*\n" +
+	"\x12stack_trace_handle\x18\x1b \x01(\tR\x10stackTraceHandle\x12!\n" +
+	"\freplace_with\x18\x1c \x03(\tR\vreplaceWith\x1a*\n" +
 	"\x14PropertyDependencies\x12\x12\n" +
 	"\x04urns\x18\x01 \x03(\tR\x04urns\x1aX\n" +
 	"\x0eCustomTimeouts\x12\x16\n" +

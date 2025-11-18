@@ -283,6 +283,19 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 		return true
 	}
 
+	// If the ReplaceWith attribute of this resource has changed, we must write the checkpoint.
+	if len(old.ReplaceWith) != len(new.ReplaceWith) {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of ReplaceWith")
+		return true
+	}
+
+	for i, replaceWith := range old.ReplaceWith {
+		if replaceWith != new.ReplaceWith[i] {
+			logging.V(9).Infof("SnapshotManager: mustWrite() true because of ReplaceWith")
+			return true
+		}
+	}
+
 	// If the protection attribute of this resource has changed, we must write the checkpoint.
 	if old.Protect != new.Protect {
 		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Protect")
@@ -321,6 +334,11 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 
 	if !reflect.DeepEqual(old.ResourceHooks, new.ResourceHooks) {
 		logging.V(9).Infof("SnapshotManager: mustWrite() true because of ResourceHooks")
+		return true
+	}
+
+	if !old.ReplacementTrigger.DeepEquals(new.ReplacementTrigger) {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of ReplacementTrigger")
 		return true
 	}
 
