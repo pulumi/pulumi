@@ -1308,6 +1308,32 @@ func (host *pythonLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 func (host *pythonLanguageHost) Template(
 	ctx context.Context, req *pulumirpc.TemplateRequest,
 ) (*pulumirpc.TemplateResponse, error) {
+	logging.V(5).Infof("Template(%+v)", req)
+
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
+	if err != nil {
+		return nil, err
+	}
+
+	tc, err := toolchain.ResolveToolchain(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	projectPath, err := workspace.DetectProjectPathFrom(req.Info.RootDirectory)
+	if err != nil {
+		return nil, fmt.Errorf("error detecting project path: %s", err)
+	}
+	proj, err := workspace.LoadProject(projectPath)
+	if err != nil {
+		return nil, fmt.Errorf("error loading project: %s", err)
+	}
+
+	if err := tc.PrepareProject(ctx, string(proj.Name), req.Info.ProgramDirectory, false, /*showOutput*/
+		nil /* infoWriter */, nil /* errWriter */); err != nil {
+		return nil, err
+	}
+
 	return &pulumirpc.TemplateResponse{}, nil
 }
 

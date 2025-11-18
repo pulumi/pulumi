@@ -148,6 +148,13 @@ func (p *languageRuntime) RuntimeOptionsPrompts(info plugin.ProgramInfo) ([]plug
 	return []plugin.RuntimeOptionPrompt{}, nil
 }
 
+func (p *languageRuntime) Template(info plugin.ProgramInfo) error {
+	if p.closed {
+		return ErrLanguageRuntimeIsClosed
+	}
+	return nil
+}
+
 func (p *languageRuntime) About(info plugin.ProgramInfo) (plugin.AboutInfo, error) {
 	if p.closed {
 		return plugin.AboutInfo{}, ErrLanguageRuntimeIsClosed

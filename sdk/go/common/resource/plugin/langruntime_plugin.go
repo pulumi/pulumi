@@ -596,6 +596,31 @@ func (h *langhost) RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPromp
 	return prompts, nil
 }
 
+func (h *langhost) Template(info ProgramInfo) error {
+	logging.V(7).Infof("langhost[%v].Template() executing", h.runtime)
+
+	minfo, err := info.Marshal()
+	if err != nil {
+		return err
+	}
+
+	_, err = h.client.Template(h.ctx.Request(), &pulumirpc.TemplateRequest{
+		Info: minfo,
+	})
+	if err != nil {
+		if status.Code(err) == codes.Unimplemented {
+			logging.V(7).Infof("langhost[%v].Template() not implemented", h.runtime)
+			return nil
+		}
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("langhost[%v].Template() failed: err=%v", h.runtime, rpcError)
+		return rpcError
+	}
+
+	logging.V(7).Infof("langhost[%v].Template() success", h.runtime)
+	return nil
+}
+
 func (h *langhost) About(info ProgramInfo) (AboutInfo, error) {
 	logging.V(7).Infof("langhost[%v].About() executing", h.runtime)
 	minfo, err := info.Marshal()

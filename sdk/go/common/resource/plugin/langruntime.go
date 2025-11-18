@@ -139,6 +139,8 @@ type LanguageRuntime interface {
 	// RuntimeOptionsPrompts returns additional options that can be set for the runtime.
 	RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPrompt, error)
 
+	Template(info ProgramInfo) error
+
 	// About returns information about the language runtime.
 	About(info ProgramInfo) (AboutInfo, error)
 
