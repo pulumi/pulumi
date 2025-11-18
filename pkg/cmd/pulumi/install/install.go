@@ -286,11 +286,28 @@ func installPackagesFromProject(
 		}
 	}
 
-	installPlugin := func(path string, plugin *workspace.PluginProject) func(context.Context) error {
+	installPlugin := func(path string, proj *workspace.PluginProject) func(context.Context) error {
 		return func(ctx context.Context) error {
-			err := plugin.InstallAtPath(ctx, path)
+			pctx, err := plugin.NewContextWithRoot(ctx,
+				cmdutil.Diag(),
+				cmdutil.Diag(),
+				nil,  // host
+				path, // pwd
+				path, // root
+				proj.RuntimeInfo().Options(),
+				false, // disableProviderPreview
+				nil,   // tracingSpan
+				nil,   // Plugins
+				proj.GetPackageSpecs(),
+				nil, // config
+				nil, // debugging
+			)
 			if err != nil {
-				return fmt.Errorf("installing at '%s': %w", path, err)
+				return err
+			}
+
+			if err := pkgWorkspace.InstallPluginAtPath(pctx, proj); err != nil {
+				return fmt.Errorf("installing at '%s': %w", pctx.Pwd, err)
 			}
 			return nil
 		}

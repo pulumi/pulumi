@@ -499,7 +499,7 @@ func ProviderFromSource(
 				// we previously installed a plugin in a different subdirectory of the same repository.
 				// This is why the provider might have failed to start up.  Install the dependencies
 				// and try again.
-				depErr := descriptor.InstallDependencies(pctx.Base())
+				depErr := pkgWorkspace.InstallDependenciesForPluginSpec(pctx.Base(), descriptor.PluginSpec)
 				if depErr != nil {
 					return Provider{}, fmt.Errorf("installing plugin dependencies: %w", depErr)
 				}

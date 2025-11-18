@@ -29,9 +29,12 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/util"
+	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
+	diagutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -315,13 +318,67 @@ func InstallPluginContent(ctx context.Context, spec workspace.PluginSpec, conten
 	// the progress bar.
 	contract.IgnoreClose(content)
 
-	err = spec.InstallDependencies(ctx)
+	err = InstallDependenciesForPluginSpec(ctx, spec)
 	if err != nil {
 		return err
 	}
 
 	// Installation is complete. Remove the partial file.
 	return os.Remove(partialFilePath)
+}
+
+func InstallDependenciesForPluginSpec(ctx context.Context, spec workspace.PluginSpec) error {
+	dir, err := spec.DirPath()
+	if err != nil {
+		return err
+	}
+	subdir := filepath.Join(dir, spec.SubDir())
+
+	// Install dependencies, if needed.
+	proj, err := workspace.LoadPluginProject(filepath.Join(subdir, "PulumiPlugin.yaml"))
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
+	}
+	if proj == nil {
+		return nil
+	}
+
+	pctx, err := plugin.NewContextWithRoot(ctx,
+		diagutil.Diag(),
+		diagutil.Diag(),
+		nil,    // host
+		subdir, // pwd
+		subdir, // root
+		proj.RuntimeInfo().Options(),
+		false, // disableProviderPreview
+		nil,   // tracingSpan
+		nil,   // Plugins
+		proj.GetPackageSpecs(),
+		nil, // config
+		nil, // debugging
+	)
+	if err != nil {
+		return err
+	}
+
+	return InstallPluginAtPath(pctx, proj)
+}
+
+func InstallPluginAtPath(pctx *plugin.Context, proj *workspace.PluginProject) error {
+	if err := proj.Validate(); err != nil {
+		return err
+	}
+	entryPoint := "." // Plugin's are not able to set a non-standard entry point.
+	pInfo := plugin.NewProgramInfo(pctx.Root, pctx.Pwd, entryPoint, proj.Runtime.Options())
+	runtime, err := plugin.NewLanguageRuntime(pctx.Host, pctx, proj.Runtime.Name(), pctx.Pwd, pInfo)
+	if err != nil {
+		return err
+	}
+	return cmdutil.InstallDependencies(runtime, plugin.InstallDependenciesRequest{
+		Info:                    pInfo,
+		UseLanguageVersionTools: false,
+		IsPlugin:                true,
+	})
 }
 
 // installingPluginRegexp matches the name of temporary folders. Previous versions of Pulumi first extracted

@@ -104,9 +104,12 @@ func (info ProgramInfo) Marshal() (*pulumirpc.ProgramInfo, error) {
 }
 
 type InstallDependenciesRequest struct {
-	Info                    ProgramInfo
+	Info ProgramInfo
+	// // True if the host should use language-specific version managers, such as `pyenv` or `nvm`, to set up the version
+	// of the language toolchain used.
 	UseLanguageVersionTools bool
-	IsPlugin                bool
+	// True if this install is for a plugin, as opposed to a top level Pulumi program.
+	IsPlugin bool
 }
 
 func (options InstallDependenciesRequest) String() string {
