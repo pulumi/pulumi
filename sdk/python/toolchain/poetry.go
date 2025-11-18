@@ -34,6 +34,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"gopkg.in/yaml.v3"
@@ -181,6 +182,7 @@ func (p *poetry) PrepareProject(
 			return fmt.Errorf("failed to open %q: %w", requirementsTxt, err)
 		}
 		deps, err = dependenciesFromRequirementsTxt(f, requirementsTxtDir)
+		contract.IgnoreClose(f)
 		if err != nil {
 			return fmt.Errorf("failed to parse %q: %w", requirementsTxt, err)
 		}
