@@ -1191,6 +1191,13 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 		switch attr.Name {
 		case "Import":
 			g.Fgenf(valBuffer, "pulumi.ID(%v)", attr.Value)
+		case "ReplacementTrigger":
+			// Non-Input values can be lifted using `pulumi.Any`
+			if _, ok := attr.Value.(*model.LiteralValueExpression); ok {
+				g.Fgenf(valBuffer, "pulumi.Any(%v)", attr.Value)
+			} else {
+				g.Fgenf(valBuffer, "%v", attr.Value)
+			}
 		default:
 			g.Fgenf(valBuffer, "%v", attr.Value)
 		}
