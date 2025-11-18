@@ -15,6 +15,8 @@
 package eval
 
 import (
+	"encoding/json"
+
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/syntax/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -42,7 +44,10 @@ func ApplyValuePatches(source []byte, patches []*Patch) ([]byte, error) {
 		}
 
 		// convert the esc.Value into a yaml node that can be set on the environment
-		replacement := valueToSecretJSON(patch.Replacement)
+		replacement, err := valueToSecretJSON(patch.Replacement)
+		if err != nil {
+			return nil, err
+		}
 		bytes, err := yaml.Marshal(replacement)
 		if err != nil {
 			return nil, err
@@ -63,30 +68,55 @@ func ApplyValuePatches(source []byte, patches []*Patch) ([]byte, error) {
 }
 
 // valueToSecretJSON converts a Value into a plain-old-JSON value, but secret values are wrapped with fn::secret
-func valueToSecretJSON(v esc.Value) any {
-	ret := func() any {
-		switch pv := v.Value.(type) {
-		case []esc.Value:
-			a := make([]any, len(pv))
-			for i, v := range pv {
-				a[i] = valueToSecretJSON(v)
-			}
-			return a
-		case map[string]esc.Value:
-			m := make(map[string]any, len(pv))
-			for k, v := range pv {
-				m[k] = valueToSecretJSON(v)
-			}
-			return m
-		default:
-			return pv
-		}
-	}()
-	// wrap secret values
+func valueToSecretJSON(v esc.Value) (any, error) {
+	// If this value is secret at the top level, we need to handle it specially
+	// to avoid nested fn::secret calls and to properly encode non-primitive secrets
 	if v.Secret {
-		return map[string]any{
-			"fn::secret": ret,
-		}
+		return wrapSecret(v.ToJSON(false))
 	}
-	return ret
+
+	// For non-secret values, recurse normally
+	var err error
+	switch pv := v.Value.(type) {
+	case []esc.Value:
+		a := make([]any, len(pv))
+		for i, v := range pv {
+			a[i], err = valueToSecretJSON(v)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return a, nil
+	case map[string]esc.Value:
+		m := make(map[string]any, len(pv))
+		for k, v := range pv {
+			m[k], err = valueToSecretJSON(v)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return m, nil
+	default:
+		return pv, nil
+	}
+}
+
+// wrapSecret wraps a value in a fn::secret function call
+func wrapSecret(v any) (any, error) {
+	if _, ok := v.(string); ok {
+		return map[string]any{
+			"fn::secret": v,
+		}, nil
+	}
+
+	// fn::secret requires a string literal, so encode any non-strings as a JSON
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{
+		"fn::fromJSON": map[string]any{
+			"fn::secret": string(encoded),
+		},
+	}, nil
 }
