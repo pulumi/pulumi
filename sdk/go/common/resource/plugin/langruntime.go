@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	structpb "google.golang.org/protobuf/types/known/structpb"
@@ -139,7 +140,8 @@ type LanguageRuntime interface {
 	// RuntimeOptionsPrompts returns additional options that can be set for the runtime.
 	RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPrompt, error)
 
-	Template(info ProgramInfo) error
+	// Template allows the language runtime to perform additional templating on a newly instantiated project template.
+	Template(info ProgramInfo, projectName tokens.PackageName) error
 
 	// About returns information about the language runtime.
 	About(info ProgramInfo) (AboutInfo, error)

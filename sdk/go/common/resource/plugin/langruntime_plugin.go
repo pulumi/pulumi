@@ -596,7 +596,7 @@ func (h *langhost) RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPromp
 	return prompts, nil
 }
 
-func (h *langhost) Template(info ProgramInfo) error {
+func (h *langhost) Template(info ProgramInfo, projectName tokens.PackageName) error {
 	logging.V(7).Infof("langhost[%v].Template() executing", h.runtime)
 
 	minfo, err := info.Marshal()
@@ -605,7 +605,8 @@ func (h *langhost) Template(info ProgramInfo) error {
 	}
 
 	_, err = h.client.Template(h.ctx.Request(), &pulumirpc.TemplateRequest{
-		Info: minfo,
+		Info:        minfo,
+		ProjectName: string(projectName),
 	})
 	if err != nil {
 		if status.Code(err) == codes.Unimplemented {

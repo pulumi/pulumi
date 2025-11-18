@@ -1320,16 +1320,7 @@ func (host *pythonLanguageHost) Template(
 		return nil, err
 	}
 
-	projectPath, err := workspace.DetectProjectPathFrom(req.Info.RootDirectory)
-	if err != nil {
-		return nil, fmt.Errorf("error detecting project path: %s", err)
-	}
-	proj, err := workspace.LoadProject(projectPath)
-	if err != nil {
-		return nil, fmt.Errorf("error loading project: %s", err)
-	}
-
-	if err := tc.PrepareProject(ctx, string(proj.Name), req.Info.ProgramDirectory, false, /*showOutput*/
+	if err := tc.PrepareProject(ctx, req.ProjectName, req.Info.ProgramDirectory, false, /*showOutput*/
 		nil /* infoWriter */, nil /* errWriter */); err != nil {
 		return nil, err
 	}
