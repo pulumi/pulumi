@@ -202,21 +202,19 @@ func TestInvalidEnvelope(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestEncryptSecret(t *testing.T) {
+func TestEncryptDecryptSecret(t *testing.T) {
 	secret := "this is a secret"
 
 	crypter := rot128{}
 	ctx := context.Background()
 
+	// Test Encrypt
 	encrypted, err := EncryptSecret(ctx, crypter, []byte(secret))
 	require.NoError(t, err)
 
-	// Decrypt the encrypted secret to confirm the values match
+	// Test Decrypt
 	encoded := base64.StdEncoding.EncodeToString(encrypted)
-	ciphertext, err := decodeCiphertext(encoded)
-	require.NoError(t, err)
-
-	decrypted, err := crypter.Decrypt(ctx, ciphertext)
+	decrypted, err := DecryptSecret(ctx, crypter, encoded)
 	require.NoError(t, err)
 
 	assert.Equal(t, secret, string(decrypted))

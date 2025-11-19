@@ -162,12 +162,7 @@ func DecryptSecrets(ctx context.Context, filename string, source []byte, decrypt
 			return n, nil, nil
 		}
 
-		ciphertext, err := decodeCiphertext(ciphertextNode.Value())
-		if err != nil {
-			return nil, nil, fmt.Errorf("invalid ciphertext: %w", err)
-		}
-
-		plaintext, err := decrypter.Decrypt(ctx, ciphertext)
+		plaintext, err := DecryptSecret(ctx, decrypter, ciphertextNode.Value())
 		if err != nil {
 			return nil, nil, err
 		}
@@ -187,6 +182,16 @@ func EncryptSecret(ctx context.Context, encrypter Encrypter, plaintext []byte) (
 	}
 
 	return encodeCiphertext(ciphertext), nil
+}
+
+// DecryptSecret decrypts a given encoded ciphertext and returns the plaintext
+func DecryptSecret(ctx context.Context, decrypter Decrypter, encodedCiphertext string) ([]byte, error) {
+	ciphertext, err := decodeCiphertext(encodedCiphertext)
+	if err != nil {
+		return nil, fmt.Errorf("invalid ciphertext: %w", err)
+	}
+
+	return decrypter.Decrypt(ctx, ciphertext)
 }
 
 const envelopeMagic = "escx"
