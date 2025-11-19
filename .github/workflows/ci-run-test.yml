@@ -79,6 +79,7 @@ env:
   PULUMI_TEST_USE_SERVICE: ${{ !contains(inputs.version, '-') }}
   # We're hitting a lot of github limits because of deploytest trying to auto install plugins, skip that for now.
   PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION: "true"
+  PULUMI_ENABLE_JOURNALING: "true"
   PYTHON: python
   GO_TEST_PARALLELISM: 8
   GO_TEST_PKG_PARALLELISM: 2
