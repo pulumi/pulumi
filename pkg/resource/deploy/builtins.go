@@ -275,10 +275,10 @@ func (p *builtinProvider) Delete(_ context.Context, req plugin.DeleteRequest) (p
 func (p *builtinProvider) Read(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 	contract.Requiref(req.URN != "", "urn", "must not be empty")
 	contract.Requiref(req.ID != "", "id", "must not be empty")
-	contract.Assertf(req.URN.Type() == stackReferenceType || req.URN.Type() == stashType,
-		"expected resource type %v or %v, got %v", stackReferenceType, stashType, req.URN.Type())
 
-	if req.URN.Type() == stackReferenceType {
+	typ := req.URN.Type()
+	switch typ {
+	case stackReferenceType:
 		for k := range req.Inputs {
 			if k != "name" {
 				return plugin.ReadResponse{Status: resource.StatusUnknown}, fmt.Errorf("unknown property \"%v\"", k)
@@ -303,21 +303,23 @@ func (p *builtinProvider) Read(_ context.Context, req plugin.ReadRequest) (plugi
 			},
 			Status: resource.StatusOK,
 		}, nil
+
+	case stashType:
+		if len(req.Inputs) == 0 {
+			return plugin.ReadResponse{Status: resource.StatusUnknown}, errors.New("stash can not be imported")
+		}
+
+		return plugin.ReadResponse{
+			ReadResult: plugin.ReadResult{
+				ID:      req.ID,
+				Inputs:  req.Inputs,
+				Outputs: req.State,
+			},
+			Status: resource.StatusOK,
+		}, nil
+	default:
+		return plugin.ReadResponse{Status: resource.StatusUnknown}, fmt.Errorf("unrecognized resource type '%v'", typ)
 	}
-
-	contract.Assertf(req.URN.Type() == stashType,
-		"expected resource type %v, got %v", stashType, req.URN.Type())
-
-	// TODO: Stash isn't "importable", we ought to error here if we don't have both inputs and state to just no-op refresh.
-
-	return plugin.ReadResponse{
-		ReadResult: plugin.ReadResult{
-			ID:      req.ID,
-			Inputs:  req.Inputs,
-			Outputs: req.State,
-		},
-		Status: resource.StatusOK,
-	}, nil
 }
 
 func (p *builtinProvider) Construct(context.Context, plugin.ConstructRequest) (plugin.ConstructResponse, error) {
