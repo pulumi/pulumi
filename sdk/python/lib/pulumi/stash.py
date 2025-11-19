@@ -69,17 +69,17 @@ def _get_resource_args_opts(resource_args_type, resource_options_type, *args, **
 
 class Stash(CustomResource):
     """
-    Manages a reference to a Pulumi stash value.
+    Stash stores an arbitrary value in the state.
     """
 
     output: Output[Any]
     """
-    The value of the stash resource.
+    The value saved in the state for the stash.
     """
 
     input: Output[Any]
     """
-    The input value of the stash resource.
+    The most recent value passed to the stash resource.
     """
 
     @overload
@@ -93,6 +93,7 @@ class Stash(CustomResource):
         """
         Create a Resource resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
+        :param Input[Any] input: The value to store in the stash resource.
         :param ResourceOptions opts: Options for the resource.
         """
         ...

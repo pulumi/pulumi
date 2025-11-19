@@ -16,16 +16,16 @@ import { Input, Output } from "./output";
 import { CustomResource, CustomResourceOptions } from "./resource";
 
 /**
- * Manages a reference to a Pulumi stash value.
+ * Stash stores an arbitrary value in the state.
  */
 export class Stash extends CustomResource {
     /**
-     * Output is any value stored in the stash resource.
+     * The value saved in the state for the stash.
      */
     public readonly output!: Output<any>;
 
     /**
-     * Input is the value stored in the stash resource.
+     * The most recent value passed to the stash resource.
      */
     public readonly input!: Output<any>;
 

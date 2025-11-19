@@ -30,15 +30,16 @@ func newPulumiPackage() *Package {
 		Resources: map[string]ResourceSpec{
 			"pulumi:index:Stash": {
 				ObjectTypeSpec: ObjectTypeSpec{
+					Description: "Stash stores an arbitrary value in the state.",
 					Properties: map[string]PropertySpec{
 						"output": {
-							Description: "The stashed value.",
+							Description: "The value saved in the state for the stash.",
 							TypeSpec: TypeSpec{
 								Ref: "pulumi.json#/Any",
 							},
 						},
 						"input": {
-							Description: "The value passed in to stash.",
+							Description: "The most recent value passed to the stash resource.",
 							TypeSpec: TypeSpec{
 								Ref: "pulumi.json#/Any",
 							},
@@ -50,7 +51,7 @@ func newPulumiPackage() *Package {
 				},
 				InputProperties: map[string]PropertySpec{
 					"input": {
-						Description: "The value to stash.",
+						Description: "The value to store in the stash resource.",
 						TypeSpec: TypeSpec{
 							Ref: "pulumi.json#/Any",
 						},

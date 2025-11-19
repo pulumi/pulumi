@@ -18,14 +18,14 @@ import (
 	"reflect"
 )
 
-// Stash manages a reference to a Pulumi stash resource.
+// Stash stores an arbitrary value in the state.
 type Stash struct {
 	CustomResourceState
 
-	// Output is any value stored in the stash resource
+	// The value saved in the state for the stash.
 	Output AnyOutput `pulumi:"output"`
 
-	// Input is the value passed to the stash resource
+	// The most recent value passed to the stash resource.
 	Input AnyOutput `pulumi:"input"`
 
 	// ctx is a reference to the context used to create the state. It must be
@@ -38,6 +38,7 @@ type stashArgs struct {
 }
 
 type StashArgs struct {
+	// The value to store in the stash resource.
 	Input Input
 }
 
