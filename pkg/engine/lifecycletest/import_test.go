@@ -30,7 +30,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -1565,8 +1564,8 @@ func TestImportFailedCreate(t *testing.T) {
 	assert.ErrorContains(t, err, "step application failed: not implemented")
 }
 
-// Regression https://github.com/pulumi/pulumi/issues/20984, ensure that an explicit provider can be used for an import.
-func TestImportExplicitProvider(t *testing.T) {
+// Regression https://github.com/pulumi/pulumi/issues/20984, ensure that an import followed by a DBR diff doesn't panic.
+func TestImportDeleteBeforeReplace(t *testing.T) {
 	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
@@ -1601,14 +1600,7 @@ func TestImportExplicitProvider(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true)
-		require.NoError(t, err)
-
-		provRef, err := providers.NewReference(prov.URN, prov.ID)
-		require.NoError(t, err)
-
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Provider: provRef.String(),
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			ImportID: "import-id",
 			Inputs: resource.PropertyMap{
 				"foo": resource.NewProperty("baz"),
