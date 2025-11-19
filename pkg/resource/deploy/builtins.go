@@ -120,11 +120,8 @@ const (
 
 func (p *builtinProvider) Check(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
 	typ := req.URN.Type()
-	if typ != stackReferenceType && typ != stashType {
-		return plugin.CheckResponse{}, fmt.Errorf("unrecognized resource type '%v'", typ)
-	}
-
-	if typ == stackReferenceType {
+	switch typ {
+	case stackReferenceType:
 		// We only need to warn about this in Check. This won't be called for Reads but Creates or Updates will
 		// call Check first.
 		msg := "The \"pulumi:pulumi:StackReference\" resource type is deprecated. " +
@@ -151,33 +148,32 @@ func (p *builtinProvider) Check(_ context.Context, req plugin.CheckRequest) (plu
 			}, nil
 		}
 		return plugin.CheckResponse{Properties: req.News}, nil
-	}
+	case stashType:
+		for k := range req.News {
+			if k != "input" {
+				return plugin.CheckResponse{
+					Failures: []plugin.CheckFailure{{Property: k, Reason: fmt.Sprintf("unknown property \"%v\"", k)}},
+				}, nil
+			}
+		}
 
-	contract.Assertf(typ == stashType, "expected resource type %v, got %v", stashType, typ)
-
-	for k := range req.News {
-		if k != "input" {
+		_, ok := req.News["input"]
+		if !ok {
 			return plugin.CheckResponse{
-				Failures: []plugin.CheckFailure{{Property: k, Reason: fmt.Sprintf("unknown property \"%v\"", k)}},
+				Failures: []plugin.CheckFailure{{Property: "input", Reason: `missing required property "input"`}},
 			}, nil
 		}
-	}
 
-	_, ok := req.News["input"]
-	if !ok {
-		return plugin.CheckResponse{
-			Failures: []plugin.CheckFailure{{Property: "input", Reason: `missing required property "input"`}},
-		}, nil
+		return plugin.CheckResponse{Properties: req.News}, nil
+	default:
+		return plugin.CheckResponse{}, fmt.Errorf("unrecognized resource type '%v'", typ)
 	}
-
-	return plugin.CheckResponse{Properties: req.News}, nil
 }
 
 func (p *builtinProvider) Diff(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
-	contract.Assertf(req.URN.Type() == stackReferenceType || req.URN.Type() == stashType,
-		"expected resource type %v or %v, got %v", stackReferenceType, stashType, req.URN.Type())
-
-	if req.URN.Type() == stackReferenceType {
+	typ := req.URN.Type()
+	switch typ {
+	case stackReferenceType:
 		if !req.NewInputs["name"].DeepEquals(req.OldInputs["name"]) {
 			return plugin.DiffResult{
 				Changes:     plugin.DiffSome,
@@ -186,28 +182,27 @@ func (p *builtinProvider) Diff(_ context.Context, req plugin.DiffRequest) (plugi
 		}
 
 		return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+	case stashType:
+		// If the input has changed we need to update, although that update might just be to copy the new input
+		// value to the output side property called "input".
+		if !req.NewInputs["input"].DeepEquals(req.OldInputs["input"]) {
+			return plugin.DiffResult{
+				Changes:     plugin.DiffSome,
+				ChangedKeys: []resource.PropertyKey{"input"},
+			}, nil
+		}
+
+		return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+	default:
+		return plugin.DiffResult{}, fmt.Errorf("unrecognized resource type '%v'", typ)
 	}
-
-	contract.Assertf(req.URN.Type() == stashType,
-		"expected resource type %v, got %v", stashType, req.URN.Type())
-
-	// If the input has changed we need to update, although that update might just be to copy the new input
-	// value to the output side property called "input".
-	if !req.NewInputs["input"].DeepEquals(req.OldInputs["input"]) {
-		return plugin.DiffResult{
-			Changes:     plugin.DiffSome,
-			ChangedKeys: []resource.PropertyKey{"input"},
-		}, nil
-	}
-
-	return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 }
 
 func (p *builtinProvider) Create(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-	contract.Assertf(req.URN.Type() == stackReferenceType || req.URN.Type() == stashType,
-		"expected resource type %v or %v, got %v", stackReferenceType, stashType, req.URN.Type())
+	typ := req.URN.Type()
+	switch typ {
+	case stackReferenceType:
 
-	if req.URN.Type() == stackReferenceType {
 		state, err := p.readStackReference(req.Properties)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
@@ -228,44 +223,46 @@ func (p *builtinProvider) Create(_ context.Context, req plugin.CreateRequest) (p
 			Properties: state,
 			Status:     resource.StatusOK,
 		}, nil
-	}
-
-	contract.Assertf(req.URN.Type() == stashType,
-		"expected resource type %v, got %v", stashType, req.URN.Type())
-
-	var id resource.ID
-	if !req.Preview {
-		// generate a new uuid
-		uuid, err := uuid.NewV4()
-		if err != nil {
-			return plugin.CreateResponse{Status: resource.StatusOK}, err
+	case stashType:
+		var id resource.ID
+		if !req.Preview {
+			// generate a new uuid
+			uuid, err := uuid.NewV4()
+			if err != nil {
+				return plugin.CreateResponse{Status: resource.StatusOK}, err
+			}
+			id = resource.ID(uuid.String())
 		}
-		id = resource.ID(uuid.String())
-	}
 
-	return plugin.CreateResponse{
-		ID: id,
-		Properties: resource.PropertyMap{
-			"input":  req.Properties["input"],
-			"output": req.Properties["input"],
-		},
-		Status: resource.StatusOK,
-	}, nil
+		return plugin.CreateResponse{
+			ID: id,
+			Properties: resource.PropertyMap{
+				"input":  req.Properties["input"],
+				"output": req.Properties["input"],
+			},
+			Status: resource.StatusOK,
+		}, nil
+	default:
+		return plugin.CreateResponse{}, fmt.Errorf("unrecognized resource type '%v'", typ)
+	}
 }
 
 func (p *builtinProvider) Update(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
-	contract.Assertf(req.URN.Type() == stashType,
-		"expected resource type %v, got %v", stashType, req.URN.Type())
+	typ := req.URN.Type()
+	switch typ {
+	case stashType:
+		properties := resource.PropertyMap{
+			"input":  req.NewInputs["input"],
+			"output": req.OldOutputs["output"],
+		}
 
-	properties := resource.PropertyMap{
-		"input":  req.NewInputs["input"],
-		"output": req.OldOutputs["output"],
+		return plugin.UpdateResponse{
+			Properties: properties,
+			Status:     resource.StatusOK,
+		}, nil
+	default:
+		return plugin.UpdateResponse{}, fmt.Errorf("unrecognized resource type '%v'", typ)
 	}
-
-	return plugin.UpdateResponse{
-		Properties: properties,
-		Status:     resource.StatusOK,
-	}, nil
 }
 
 func (p *builtinProvider) Delete(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
