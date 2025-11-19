@@ -111,6 +111,15 @@ class LanguageRuntimeStub:
     ask during `pulumi new`.
     """
 
+    Template: grpc.UnaryUnaryMultiCallable[
+        pulumi.language_pb2.TemplateRequest,
+        pulumi.language_pb2.TemplateResponse,
+    ]
+    """`Template` allows the language runtime to perform additional templating on a newly instantiated project template.
+    For example the Python runtime might want to convert a requirements.txt into a pyproject.toml suitable for use
+    with uv or poetry.
+    """
+
     About: grpc.UnaryUnaryMultiCallable[
         pulumi.language_pb2.AboutRequest,
         pulumi.language_pb2.AboutResponse,
@@ -270,6 +279,15 @@ class LanguageRuntimeAsyncStub:
     ]
     """`RuntimeOptionsPrompts` accepts a request specifying a Pulumi project and returns a list of additional prompts to
     ask during `pulumi new`.
+    """
+
+    Template: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.language_pb2.TemplateRequest,
+        pulumi.language_pb2.TemplateResponse,
+    ]
+    """`Template` allows the language runtime to perform additional templating on a newly instantiated project template.
+    For example the Python runtime might want to convert a requirements.txt into a pyproject.toml suitable for use
+    with uv or poetry.
     """
 
     About: grpc.aio.UnaryUnaryMultiCallable[
@@ -445,6 +463,17 @@ class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
     ) -> typing.Union[pulumi.language_pb2.RuntimeOptionsResponse, collections.abc.Awaitable[pulumi.language_pb2.RuntimeOptionsResponse]]:
         """`RuntimeOptionsPrompts` accepts a request specifying a Pulumi project and returns a list of additional prompts to
         ask during `pulumi new`.
+        """
+
+    
+    def Template(
+        self,
+        request: pulumi.language_pb2.TemplateRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.language_pb2.TemplateResponse, collections.abc.Awaitable[pulumi.language_pb2.TemplateResponse]]:
+        """`Template` allows the language runtime to perform additional templating on a newly instantiated project template.
+        For example the Python runtime might want to convert a requirements.txt into a pyproject.toml suitable for use
+        with uv or poetry.
         """
 
     
