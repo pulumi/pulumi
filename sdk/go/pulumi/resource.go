@@ -467,7 +467,11 @@ type ResourceOptions struct {
 	// replacements.
 	ReplaceOnChanges []string
 
-	// if set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
+	// If set, the engine will diff this with the last recorded value, and trigger
+	// a replace if they are not equal.  Note that if either value is null, no
+	// comparison is done and no replacement is triggered. This means that the
+	// replacement trigger only applies to two subsequent deployments with defined
+	// triggers.
 	ReplacementTrigger Input
 
 	// Transformations is a list of functions that transform

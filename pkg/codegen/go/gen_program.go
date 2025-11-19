@@ -1193,10 +1193,15 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 			g.Fgenf(valBuffer, "pulumi.ID(%v)", attr.Value)
 		case "ReplacementTrigger":
 			// Non-Input values can be lifted using `pulumi.Any`
-			if _, ok := attr.Value.(*model.LiteralValueExpression); ok {
-				g.Fgenf(valBuffer, "pulumi.Any(%v)", attr.Value)
-			} else {
+			if isInputty(attr.Value.Type()) {
 				g.Fgenf(valBuffer, "%v", attr.Value)
+			} else {
+				wrapperFunc := g.argumentTypeName(attr.Value.Type(), true)
+				if wrapperFunc != "" {
+					g.Fgenf(valBuffer, "%s(%v)", wrapperFunc, attr.Value)
+				} else {
+					g.Fgenf(valBuffer, "pulumi.Any(%v)", attr.Value)
+				}
 			}
 		default:
 			g.Fgenf(valBuffer, "%v", attr.Value)
