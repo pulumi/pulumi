@@ -1004,12 +1004,12 @@ func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 		ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
 			return func(yield func(apitype.TemplateMetadata, error) bool) {
 				if !yield(apitype.TemplateMetadata{
-					Name: "template-1", Description: ref("Describe 1"),
+					Name: "template-1", Description: ref("Describe 1"), Publisher: "Some org",
 				}, nil) {
 					return
 				}
 				if !yield(apitype.TemplateMetadata{
-					Name: "template-2", Description: ref("Describe 2"),
+					Name: "template-2", Description: ref("Describe 2"), RepoSlug: ref("some-org/repo"), Source: "github",
 				}, nil) {
 					return
 				}
@@ -1047,11 +1047,9 @@ func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 	assert.Contains(t, stdout.String(), `
 Available Templates:
 `)
-	// Check that our org based templates are there
-	assert.Contains(t, stdout.String(), `
-  template-1                         Describe 1
-  template-2                         Describe 2
-`)
+	// Check that our registry based templates are there with the appropriate disambiguation prefix.
+	assert.Contains(t, stdout.String(), "template-1 [Some org]              Describe 1")
+	assert.Contains(t, stdout.String(), "template-2 [some-org/repo]         Describe 2")
 
 	// Check that normal templates are there
 	assertTemplateContains(t, stdout.String(), `
@@ -1247,10 +1245,11 @@ func assertTemplateContains(t *testing.T, actual, expected string) {
 	}
 }
 
-//nolint:paralleltest // mocks backendInstance
 func TestNoPromptWithYes(t *testing.T) {
+	t.Parallel()
 	for _, interactive := range []bool{true, false} {
 		t.Run(fmt.Sprintf("interactive=%t", interactive), func(t *testing.T) {
+			t.Parallel()
 			args := newArgs{
 				interactive: interactive,
 				yes:         true,

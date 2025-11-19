@@ -383,3 +383,8 @@ func GetPulumiPath(elem ...string) (string, error) {
 
 	return filepath.Join(append([]string{homeDir}, elem...)...), nil
 }
+
+// qnameFileName takes a qname and cleans it for use as a filename (by replacing tokens.QNameDelimter with a dash)
+func qnameFileName(nm tokens.QName) string {
+	return strings.ReplaceAll(string(nm), tokens.QNameDelimiter, "-")
+}

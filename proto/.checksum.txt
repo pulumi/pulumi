@@ -16,10 +16,11 @@
 3996736482 3519 proto/pulumi/converter.proto
 1998652962 3845 proto/pulumi/engine.proto
 1921230328 1269 proto/pulumi/errors.proto
+427059480 1564 proto/pulumi/events.proto
 2650588763 29458 proto/pulumi/language.proto
 1674803920 2966 proto/pulumi/plugin.proto
-1167193716 65431 proto/pulumi/provider.proto
-4201941064 21748 proto/pulumi/resource.proto
+134007934 65900 proto/pulumi/provider.proto
+2035903667 22177 proto/pulumi/resource.proto
 300043576 5575 proto/pulumi/resource_status.proto
 1184641865 1334 proto/pulumi/source.proto
 2318563994 4286 proto/pulumi/testing/language.proto

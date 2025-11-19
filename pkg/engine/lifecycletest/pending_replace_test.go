@@ -365,6 +365,159 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 // Tests that a delete-before-replace operation:
 //
 // * that is interrupted after the deletion (e.g. with a failed create)
+// * and then resumed, with the same original program, using --refresh --run-program
+//
+// will:
+//
+// * not call delete (again) on the old resource
+// * remove the PendingReplacement flag from the resource in state
+// * call create on the new resource
+// * remove the old resource from the state
+func TestPendingReplaceResumeWithSameGoalsRefreshRunProgram(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	returnReplaceDiff := func(
+		_ context.Context,
+		req plugin.DiffRequest,
+	) (plugin.DiffResult, error) {
+		if req.URN.Name() == "resA" {
+			return plugin.DiffResult{
+				Changes:             plugin.DiffSome,
+				ReplaceKeys:         []resource.PropertyKey{"key"},
+				DeleteBeforeReplace: true,
+			}, nil
+		}
+
+		return plugin.DiffResult{}, nil
+	}
+
+	deleteCalled := false
+	trackedDelete := func(
+		_ context.Context,
+		req plugin.DeleteRequest,
+	) (plugin.DeleteResponse, error) {
+		deleteCalled = true
+		return plugin.DeleteResponse{Status: resource.StatusOK}, nil
+	}
+
+	createCalled := false
+	throwingCreate := func(
+		_ context.Context,
+		req plugin.CreateRequest,
+	) (plugin.CreateResponse, error) {
+		createCalled = true
+		return plugin.CreateResponse{
+			Properties: req.Properties,
+			Status:     resource.StatusUnknown,
+		}, errors.New("interrupt replace")
+	}
+
+	trackedCreate := func(
+		_ context.Context,
+		req plugin.CreateRequest,
+	) (plugin.CreateResponse, error) {
+		createCalled = true
+		return plugin.CreateResponse{
+			ID:         "created-id",
+			Properties: req.Properties,
+			Status:     resource.StatusOK,
+		}, nil
+	}
+
+	// Operation 1 -- initialise the state with a resource.
+	upLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	expectError := false
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		if expectError {
+			require.Fail(t, "RegisterResource should not return")
+		} else {
+			require.NoError(t, err)
+		}
+		return nil
+	})
+
+	upHostF := deploytest.NewPluginHostF(nil, nil, programF, upLoaders...)
+	upOptions := lt.TestUpdateOptions{T: t, HostF: upHostF}
+
+	upSnap, err := lt.TestOp(Update).
+		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	require.Len(t, upSnap.Resources, 2)
+	assert.Equal(t, upSnap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, upSnap.Resources[1].URN.Name(), "resA")
+
+	// Operation 2 -- return a replacing diff and interrupt it with a failing
+	// create.
+	expectError = true
+	replaceLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF:   returnReplaceDiff,
+				DeleteF: trackedDelete,
+				CreateF: throwingCreate,
+			}, nil
+		}),
+	}
+
+	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, replaceLoaders...)
+	replaceOptions := lt.TestUpdateOptions{T: t, HostF: replaceHostF}
+
+	replaceSnap, err := lt.TestOp(Update).
+		RunStep(project, p.GetTarget(t, upSnap), replaceOptions, false, p.BackendClient, nil, "1")
+	assert.ErrorContains(t, err, "interrupt replace")
+
+	require.Len(t, replaceSnap.Resources, 2)
+	assert.Equal(t, replaceSnap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, replaceSnap.Resources[1].URN.Name(), "resA")
+	assert.True(t, deleteCalled, "Delete should be called as part of replacement")
+	assert.True(t, replaceSnap.Resources[1].PendingReplacement)
+
+	// Operation 3 -- resume the replacement with the same program.
+	expectError = false
+	deleteCalled = false
+	createCalled = false
+
+	removeLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF:   returnReplaceDiff,
+				DeleteF: trackedDelete,
+				CreateF: trackedCreate,
+			}, nil
+		}),
+	}
+
+	removeHostF := deploytest.NewPluginHostF(nil, nil, programF, removeLoaders...)
+	removeOptions := lt.TestUpdateOptions{T: t, HostF: removeHostF}
+
+	removeOptions.Refresh = true
+	removeOptions.RefreshProgram = true
+
+	removeSnap, err := lt.TestOp(Update).
+		RunStep(project, p.GetTarget(t, replaceSnap), removeOptions, false, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+
+	require.Len(t, removeSnap.Resources, 2)
+	assert.Equal(t, removeSnap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, removeSnap.Resources[1].URN.Name(), "resA")
+	assert.False(t, deleteCalled, "Delete shouldn't be called a second time when resuming a replacement (same goals)")
+	assert.True(t, createCalled, "Create should be called when resuming a replacement (same goals)")
+	assert.False(t, removeSnap.Resources[1].PendingReplacement)
+}
+
+// Tests that a delete-before-replace operation:
+//
+// * that is interrupted after the deletion (e.g. with a failed create)
 // * and then resumed, with a new program that removes the deleted resource
 //
 // will:

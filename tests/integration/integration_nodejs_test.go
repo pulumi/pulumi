@@ -31,13 +31,14 @@ import (
 	"time"
 
 	"github.com/acarl005/stripansi"
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -2625,6 +2626,15 @@ func TestNodejsSourcemapTest(t *testing.T) {
 	require.NoError(t, err)
 	e.RunCommand("yarn", "add", coreSDK)
 
+	// TODO(https://github.com/jestjs/jest/issues/15888): Remove the need to specify --localstorage-file when jest works
+	// around the Node.js v25.2.0 breaking change that requires it to be set when localStorage is accessed.
+	output, _ := e.RunCommand("node", "--version")
+	nodeVersion, err := semver.ParseTolerant(output)
+	require.NoError(t, err)
+	if nodeVersion.GTE(semver.MustParse("25.2.0")) {
+		e.SetEnvVars("NODE_OPTIONS=--localstorage-file=./jest-storage")
+	}
+
 	_, stderr := e.RunCommandExpectError("yarn", "test")
 
 	expectedTrace := `a failing test so we can inspect the stacktrace reported by jest
@@ -2809,23 +2819,6 @@ func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
 	require.Contains(t, stdout, "0.0.0-xb39e20e4e33600e33073ccb2df0ddb46388641dc")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
-}
-
-func TestPackageAddWithPublisherSetNodeJS(t *testing.T) {
-	t.Parallel()
-
-	e := ptesting.NewEnvironment(t)
-	defer e.DeleteIfNotFailed()
-
-	e.ImportDirectory("packageadd-namespace")
-	e.CWD = filepath.Join(e.RootPath, "nodejs")
-	stdout, _ := e.RunCommand("pulumi", "package", "add", "../provider/schema.json")
-	require.Contains(t, stdout,
-		"You can import the SDK in your TypeScript code with:\n\n  import * as mypkg from \"@my-namespace/mypkg\"")
-
-	// Make sure the SDK was generated in the expected directory
-	_, err := os.Stat(filepath.Join(e.CWD, "sdks", "my-namespace-mypkg", "index.ts"))
-	require.NoError(t, err)
 }
 
 // Tests that we can get the schema for a Node.js component provider using component_provider_host.

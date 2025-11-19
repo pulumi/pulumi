@@ -59,12 +59,12 @@ type Options struct {
 	ShowSecrets              bool                // true to display secrets in the output.
 	SuppressDiagEventsInDiff bool                // true to suppress displaying diagnostic events in the diff display
 
-	// Copilot options
-	ShowLinkToCopilot   bool // true to display a 'explainFailure' link to Copilot.
-	ShowCopilotFeatures bool // true to display Copilot features like summaries and explanations.
-	// Copilot options that are ignored if ShowCopilotFeatures is false.
-	CopilotSummaryModel  string // the Copilot summary model to use (default: "gpt-4o-mini")
-	CopilotSummaryMaxLen int    // the maximum length of the Copilot summary. (default 80 characters)
+	// Neo options
+	ShowLinkToNeo   bool // true to display a 'explainFailure' link to Neo.
+	ShowNeoFeatures bool // true to display Neo features like summaries and explanations.
+	// Neo options that are ignored if ShowCopilotFeatures is false.
+	NeoSummaryModel  string // the Neo summary model to use (default: "gpt-4o-mini").
+	NeoSummaryMaxLen int    // the maximum length of the Neo summary. (default 80 characters).
 
 	// Low level options
 	term                terminal.Terminal

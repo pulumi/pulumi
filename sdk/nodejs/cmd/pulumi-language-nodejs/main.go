@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -58,6 +58,8 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/pulumi/pulumi/sdk/v3"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -85,9 +87,6 @@ const (
 	// The path to the "run" program which will spawn the rest of the language host. This may be overridden with
 	// PULUMI_LANGUAGE_NODEJS_RUN_PATH, which we do in some testing cases.
 	defaultRunPath = "@pulumi/pulumi/cmd/run"
-
-	// The path to the NodeJS plugin launcher.
-	defaultRunPluginPath = "@pulumi/pulumi/cmd/run-plugin"
 
 	// The runtime expects the config object to be saved to this environment variable.
 	pulumiConfigVar = "PULUMI_CONFIG"
@@ -1481,7 +1480,7 @@ func (host *nodeLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
 	logging.V(5).Infof("Attempting to run nodejs plugin in %s", req.Info.ProgramDirectory)
-	ctx := context.Background()
+	ctx := server.Context()
 
 	engineClient, closer, err := host.connectToEngine()
 	if err != nil {
@@ -1514,9 +1513,18 @@ func (host *nodeLanguageHost) RunPlugin(
 		env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+opts.tsconfigpath)
 	}
 
-	runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
-	if runPath == "" {
-		runPath = defaultRunPluginPath
+	// TODO(https://github.com/pulumi/pulumi/issues/20941): Pretty sure this isn't right for convert/tool plugins.
+	runPath := ""
+	if req.Kind == string(apitype.ResourcePlugin) {
+		runPath = os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
+		if runPath == "" {
+			runPath = "@pulumi/pulumi/cmd/run-plugin"
+		}
+	} else if req.Kind == string(apitype.AnalyzerPlugin) {
+		// Policy packs (i.e. kind=analyzer) need to be treated specially for back compatibility reasons. We
+		// used to have a dedicated shim plugin "pulumi-analyzer-policy" that would start policy packs up, but
+		// now we just let the nodejs RunPlugin code handle that logic.
+		runPath = "@pulumi/pulumi/cmd/run-policy-pack"
 	}
 
 	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, nodeBin, true)
@@ -1542,14 +1550,60 @@ func (host *nodeLanguageHost) RunPlugin(
 		return err
 	}
 
-	nodeargs = append(nodeargs, req.Info.ProgramDirectory)
-
 	args = append(args, nodeargs...)
-	args = append(args, req.Args...)
+	// For policy analyzers we need to send the program directory as an argument _last_, for everything else it comes first
+	if req.Kind == string(apitype.AnalyzerPlugin) {
+		args = append(args, req.Args...)
+		args = append(args, req.Info.ProgramDirectory)
+	} else {
+		args = append(args, req.Info.ProgramDirectory)
+		args = append(args, req.Args...)
+	}
+
+	// For policy packs we also need to adjust the environment to include stack configuration as well. Unfortunately to
+	// get that info we need to connect to the engine as a policy pack so that we can get the StackConfiguration call,
+	// we then need to wait for the _real_ policy pack to start up and shim all it's other request/responses.
+	var policyPackServer *sdk.PolicyProxy
+	if req.Kind == string(apitype.AnalyzerPlugin) {
+		policyPackServer, stdout, err = sdk.NewPolicyProxy(ctx, stdout)
+		if err != nil {
+			return fmt.Errorf("could not start policy pack proxy: %w", err)
+		}
+
+		config, err := policyPackServer.AwaitConfiguration(ctx)
+		if err != nil {
+			return fmt.Errorf("could not get stack configuration: %w", err)
+		}
+
+		if config != nil {
+			maybeAppendEnv := func(k, v string) {
+				if v != "" {
+					env = append(env, k+"="+v)
+				}
+			}
+			maybeAppendEnv("PULUMI_NODEJS_ORGANIZATION", config.Organization)
+			maybeAppendEnv("PULUMI_NODEJS_PROJECT", config.Project)
+			maybeAppendEnv("PULUMI_NODEJS_STACK", config.Stack)
+			maybeAppendEnv("PULUMI_NODEJS_DRY_RUN", strconv.FormatBool(config.DryRun))
+			if config.Config != nil {
+				configJSON, err := json.Marshal(config.Config)
+				if err != nil {
+					return fmt.Errorf("could not marshal stack configuration: %w", err)
+				}
+				maybeAppendEnv("PULUMI_CONFIG", string(configJSON))
+			}
+		}
+	}
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
-	cmd := exec.Command(nodeBin, args...)
-	cmd.Dir = req.Pwd
+	cmd := exec.CommandContext(ctx, nodeBin, args...)
+	// node policy packs used to always run with the working directory set to the policy pack directory, not
+	// the main working directory. We need to continue that for backwards compatibility.
+	if req.Kind == string(apitype.AnalyzerPlugin) {
+		cmd.Dir = req.Info.ProgramDirectory
+	} else {
+		cmd.Dir = req.Pwd
+	}
 	cmd.Env = env
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
@@ -1560,9 +1614,16 @@ func (host *nodeLanguageHost) RunPlugin(
 			return err
 		}
 		if req.GetAttachDebugger() {
-			err := startDebugging(server.Context(), engineClient, cmd, port, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name))
+			err := startDebugging(ctx, engineClient, cmd, port, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name))
 			if err != nil {
 				return err
+			}
+		}
+		// If we've got a proxy policy then tell it to attach now
+		if policyPackServer != nil {
+			err = policyPackServer.Attach(ctx)
+			if err != nil {
+				return fmt.Errorf("could not attach policy pack proxy: %w", err)
 			}
 		}
 		return cmd.Wait()
@@ -2055,7 +2116,14 @@ func (host *nodeLanguageHost) Link(
 		if err != nil {
 			return nil, err
 		}
-		packageName, err := getNodeJSPkgName(pkgRef)
+		pkg, err := pkgRef.Definition()
+		if err != nil {
+			return nil, err
+		}
+		if err := pkg.ImportLanguages(map[string]schema.Language{"nodejs": codegen.Importer}); err != nil {
+			return nil, err
+		}
+		packageName, err := getNodeJSPkgName(pkg)
 		if err != nil {
 			return nil, err
 		}
@@ -2080,18 +2148,16 @@ func (host *nodeLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*
 	return &emptypb.Empty{}, nil
 }
 
-func getNodeJSPkgName(pkgRef schema.PackageReference) (string, error) {
-	info, err := pkgRef.Language("nodejs")
-	if err != nil {
-		return "", err
+func getNodeJSPkgName(pkg *schema.Package) (string, error) {
+	if info, ok := pkg.Language["go"]; ok {
+		if info, ok := info.(nodejs.NodePackageInfo); ok && info.PackageName != "" {
+			return info.PackageName, nil
+		}
 	}
 
-	if info, ok := info.(nodejs.NodePackageInfo); ok && info.PackageName != "" {
-		return info.PackageName, nil
+	if pkg.Namespace != "" {
+		return "@" + pkg.Namespace + "/" + pkg.Name, nil
 	}
 
-	if pkgRef.Namespace() != "" {
-		return "@" + pkgRef.Namespace() + "/" + pkgRef.Name(), nil
-	}
-	return "@pulumi/" + pkgRef.Name(), nil
+	return "@pulumi/" + pkg.Name, nil
 }

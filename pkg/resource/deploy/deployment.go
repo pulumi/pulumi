@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -38,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // BackendClient is used to retrieve information about stacks from a backend.
@@ -49,14 +51,14 @@ type BackendClient interface {
 		ctx context.Context,
 		name string,
 		onDecryptError func(error) error,
-	) (resource.PropertyMap, error)
+	) (property.Map, error)
 
 	// GetStackResourceOutputs returns the resource outputs for a stack, or an error if the stack
 	// cannot be found. Resources are retrieved from the latest stack snapshot, which may include
-	// ongoing updates. They are returned in a `PropertyMap` mapping resource URN to another
-	// `Propertymap` with members `type` (containing the Pulumi type ID for the resource) and
+	// ongoing updates. They are returned in a `property.Map` mapping resource URN to another
+	// `property.Map` with members `type` (containing the Pulumi type ID for the resource) and
 	// `outputs` (containing the resource outputs themselves).
-	GetStackResourceOutputs(ctx context.Context, stackName string) (resource.PropertyMap, error)
+	GetStackResourceOutputs(ctx context.Context, stackName string) (property.Map, error)
 }
 
 // Options controls the deployment process.
@@ -306,8 +308,10 @@ type Deployment struct {
 	prev *Snapshot
 	// true if prev has resources that require a refresh before update.
 	hasRefreshBeforeUpdateResources bool
-	// a map of all old resources.
+	// a map of all old non-deleted resources.
 	olds map[resource.URN]*resource.State
+	// a map of all old resources
+	allOlds map[resource.URN][]*resource.State
 	// a map of all old resource views, keyed by the owning resource's URN.
 	oldViews map[resource.URN][]*resource.State
 	// a map of all planned resource changes, if any.
@@ -364,9 +368,9 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) (bool, e
 	//
 	// The configuration for each default provider is pulled from the stack's configuration information.
 	var defaultProviders []*resource.State
-	defaultProviderRefs := make(map[tokens.Package]providers.Reference)
+	defaultProviderRefs := make(map[tokens.Package]sdkproviders.Reference)
 	for _, res := range prev.Resources {
-		if providers.IsProviderType(res.URN.Type()) || !res.Custom || res.Provider != "" {
+		if sdkproviders.IsProviderType(res.URN.Type()) || !res.Custom || res.Provider != "" {
 			continue
 		}
 
@@ -389,7 +393,7 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) (bool, e
 			}
 
 			urn, id := defaultProviderURN(target, source, pkg), resource.ID(uuid.String())
-			ref, err = providers.NewReference(urn, id)
+			ref, err = sdkproviders.NewReference(urn, id)
 			contract.Assertf(err == nil,
 				"could not create provider reference with URN %v and ID %v", urn, id)
 
@@ -440,7 +444,7 @@ func migrateProviders(target *Target, prev *Snapshot, source Source) (bool, erro
 			// scenario where the CLI is being upgraded from a version that did not reflect provider inputs to
 			// provider outputs, and a provider is being upgraded from a version that did not implement DiffConfig to
 			// a version that does.
-			if providers.IsProviderType(res.URN.Type()) && len(res.Inputs) != 0 && len(res.Outputs) == 0 {
+			if sdkproviders.IsProviderType(res.URN.Type()) && len(res.Inputs) != 0 && len(res.Outputs) == 0 {
 				changed = true
 				// Importantly DO NOT copy the __internal key to the outputs. This key is only expected on inputs.
 				res.Outputs = make(resource.PropertyMap)
@@ -466,16 +470,19 @@ func buildResourceMaps(prev *Snapshot) (
 	bool,
 	map[resource.URN]*resource.State,
 	map[resource.URN][]*resource.State,
+	map[resource.URN][]*resource.State,
 	error,
 ) {
 	var hasRefreshBeforeUpdateResources bool
 	olds := make(map[resource.URN]*resource.State)
 	oldViews := make(map[resource.URN][]*resource.State)
+	allOlds := make(map[resource.URN][]*resource.State)
 	if prev == nil {
-		return nil, hasRefreshBeforeUpdateResources, olds, oldViews, nil
+		return nil, hasRefreshBeforeUpdateResources, olds, allOlds, oldViews, nil
 	}
 
 	for _, oldres := range prev.Resources {
+		allOlds[oldres.URN] = append(allOlds[oldres.URN], oldres)
 		// Ignore resources that are pending deletion; these should not be recorded in the LUT.
 		if oldres.Delete {
 			continue
@@ -485,7 +492,12 @@ func buildResourceMaps(prev *Snapshot) (
 
 		urn := oldres.URN
 		if olds[urn] != nil {
-			return nil, false, nil, nil, fmt.Errorf("unexpected duplicate resource '%s'", urn)
+			if oldres.Delete {
+				continue
+			}
+			if !olds[urn].Delete {
+				return nil, false, nil, nil, nil, fmt.Errorf("unexpected duplicate resource '%s'", urn)
+			}
 		}
 		olds[urn] = oldres
 
@@ -495,7 +507,7 @@ func buildResourceMaps(prev *Snapshot) (
 		}
 	}
 
-	return prev.Resources, hasRefreshBeforeUpdateResources, olds, oldViews, nil
+	return prev.Resources, hasRefreshBeforeUpdateResources, olds, allOlds, oldViews, nil
 }
 
 // NewDeployment creates a new deployment from a resource snapshot plus a package to evaluate.
@@ -532,7 +544,7 @@ func NewDeployment(
 	//
 	// NOTE: we can and do mutate prev.Resources, olds, and depGraph during execution after performing a refresh. See
 	// deploymentExecutor.refresh for details.
-	oldResources, hasRefreshBeforeUpdateResources, olds, oldViews, err := buildResourceMaps(prev)
+	oldResources, hasRefreshBeforeUpdateResources, olds, allOlds, oldViews, err := buildResourceMaps(prev)
 	if err != nil {
 		return nil, err
 	}
@@ -566,6 +578,7 @@ func NewDeployment(
 		plan:                            plan,
 		hasRefreshBeforeUpdateResources: hasRefreshBeforeUpdateResources,
 		olds:                            olds,
+		allOlds:                         allOlds,
 		oldViews:                        oldViews,
 		source:                          source,
 		localPolicyPackPaths:            localPolicyPackPaths,
@@ -611,7 +624,7 @@ func (d *Deployment) EnsureProvider(provider string) error {
 		return nil
 	}
 
-	providerRef, err := providers.ParseReference(provider)
+	providerRef, err := sdkproviders.ParseReference(provider)
 	if err != nil {
 		return fmt.Errorf("invalid provider reference %v: %w", provider, err)
 	}
@@ -638,7 +651,7 @@ func (d *Deployment) EnsureProvider(provider string) error {
 	return nil
 }
 
-func (d *Deployment) GetProvider(ref providers.Reference) (plugin.Provider, bool) {
+func (d *Deployment) GetProvider(ref sdkproviders.Reference) (plugin.Provider, bool) {
 	return d.providers.GetProvider(ref)
 }
 
@@ -674,7 +687,7 @@ func (d *Deployment) generateURN(parent resource.URN, ty tokens.Type, name strin
 
 // defaultProviderURN generates the URN for the global provider given a package.
 func defaultProviderURN(target *Target, source Source, pkg tokens.Package) resource.URN {
-	return resource.NewURN(target.Name.Q(), source.Project(), "", providers.MakeProviderType(pkg), "default")
+	return resource.NewURN(target.Name.Q(), source.Project(), "", sdkproviders.MakeProviderType(pkg), "default")
 }
 
 // generateEventURN generates a URN for the resource associated with the given event.

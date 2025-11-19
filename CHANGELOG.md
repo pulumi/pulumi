@@ -1,5 +1,91 @@
 # Changelog
 
+## 3.207.0 (2025-11-12)
+
+
+### Features
+
+- [cli] Log gRPC requests before invoking them in gRPC debug interceptor
+  [#20817](https://github.com/pulumi/pulumi/pull/20817)
+
+- [engine] Add `ReplaceWith` resource option to allow one resource's replace operations to trigger another's
+  [#20693](https://github.com/pulumi/pulumi/pull/20693)
+
+- [sdkgen/python] Allow all PEP440 version specifiers to be used
+
+
+### Bug Fixes
+
+- [cli/import] Return errors when an import fails
+  [#20904](https://github.com/pulumi/pulumi/pull/20904)
+
+- [engine] Fix parenting of resources in some cases in `refresh --run-program`
+  [#20894](https://github.com/pulumi/pulumi/pull/20894)
+
+- [engine] Fix StackReference secrets performance
+  [#20908](https://github.com/pulumi/pulumi/pull/20908)
+
+- [programgen] Do not panic when re-writing type-invalid PCL
+  [#20770](https://github.com/pulumi/pulumi/pull/20770)
+
+- [sdk/go] Fix import path in instructions when linking a package in Go
+  [#20888](https://github.com/pulumi/pulumi/pull/20888)
+
+- [sdk/nodejs] Fix closure serialization on Node.js v25.2.0
+  [#20913](https://github.com/pulumi/pulumi/pull/20913)
+
+- [sdk/{nodejs,python}] Avoid cancellations due to do slow processing of requests
+
+- [sdk/python] Avoid cancellations due to do slow processing of requests in the callbacks server
+  [#20917](https://github.com/pulumi/pulumi/pull/20917)
+
+
+### Miscellaneous
+
+- [engine] Stop sending ConfigPropertyMap as part of RunRequest
+  [#20887](https://github.com/pulumi/pulumi/pull/20887)
+
+## 3.206.0 (2025-11-05)
+
+
+### Features
+
+- [protobuf] Pass a `preview` flag to invokes so they can tell if they're being called during a preview
+  [#20827](https://github.com/pulumi/pulumi/pull/20827)
+
+- [cli/about] Include PULUMI_* environment variables in the `pulumi about` output
+  [#20855](https://github.com/pulumi/pulumi/pull/20855)
+
+- [auto/go] Get event log over gRPC instead of trying to read it from a text file
+  [#20822](https://github.com/pulumi/pulumi/pull/20822)
+
+- [auto/nodejs] Get event log over gRPC instead of trying to read it from a text file
+  [#20824](https://github.com/pulumi/pulumi/pull/20824)
+
+- [auto/python] Get event log over gRPC instead of trying to read it from a text file
+  [#20833](https://github.com/pulumi/pulumi/pull/20833)
+
+- [cli/engine] Add environment variable to add --refresh to preview,update,destroy
+  [#20797](https://github.com/pulumi/pulumi/pull/20797)
+
+- [sdk/nodejs] Add PULUMI_NODEJS_SKIP_COMPONENT_INPUTS environment variable to skip the new feature of sending component inputs to the engine for diffing and state storage
+  [#20842](https://github.com/pulumi/pulumi/pull/20842)
+
+
+### Bug Fixes
+
+- [engine] Fix duplicate resource snapshot integrity issue, when running `pulumi up --refresh --run-program` and when a resource `PendingReplacement` exists in the snapshot
+  [#20812](https://github.com/pulumi/pulumi/pull/20812)
+
+- [engine] Support floating point NaN and Inf values in resource state
+  [#20843](https://github.com/pulumi/pulumi/pull/20843)
+
+
+### Miscellaneous
+
+- [sdk/go] Use Language.Link to link Go packages
+  [#20811](https://github.com/pulumi/pulumi/pull/20811)
+
 ## 3.205.0 (2025-10-28)
 
 

@@ -27,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
@@ -68,8 +67,8 @@ func templatesToOptionArrayAndMap(templates []cmdTemplates.Template) ([]string, 
 	// Find the longest name length. Used to add padding between the name and description.
 	maxNameLength := 0
 	for _, template := range templates {
-		if len(template.Name()) > maxNameLength {
-			maxNameLength = len(template.Name())
+		if len(template.DisplayName()) > maxNameLength {
+			maxNameLength = len(template.DisplayName())
 		}
 	}
 
@@ -78,15 +77,13 @@ func templatesToOptionArrayAndMap(templates []cmdTemplates.Template) ([]string, 
 	var brokenOptions []string
 	nameToTemplateMap := make(map[string]cmdTemplates.Template)
 	for _, template := range templates {
-		projectDescription := template.ProjectDescription()
-		// If template is broken, indicate it in the project description.
-		if template.Error() != nil {
-			projectDescription = BrokenTemplateDescription
-		}
-
 		// Create the option string that combines the name, padding, and description.
-		desc := pkgWorkspace.ValueOrDefaultProjectDescription("", projectDescription, template.Description())
-		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name(), desc)
+		desc := template.Description()
+		// If template is broken, indicate it in the description.
+		if template.Error() != nil {
+			desc = BrokenTemplateDescription
+		}
+		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.DisplayName(), desc)
 
 		nameToTemplateMap[option] = template
 		if template.Error() != nil {

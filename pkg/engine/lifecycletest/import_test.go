@@ -1528,3 +1528,38 @@ func TestImportWithFailedUpdate(t *testing.T) {
 	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
 	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
 }
+
+func TestImportFailedCreate(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
+				},
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{}, errors.New("not implemented")
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		return errors.New("unexpected program execution")
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	project := p.GetProject()
+	_, err := lt.ImportOp([]deploy.Import{{
+		Type: "pkgA:m:typA",
+		Name: "resB",
+		ID:   "imported-id",
+	}}).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+
+	assert.ErrorContains(t, err, "step application failed: not implemented")
+}

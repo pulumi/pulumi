@@ -17,8 +17,8 @@ package stack
 import (
 	"fmt"
 
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +34,7 @@ func newStackUnselectCmd() *cobra.Command {
 			"from.\n",
 		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			currentWorkspace, err := workspace.New()
+			currentWorkspace, err := pkgWorkspace.Instance.New()
 			if err != nil {
 				return err
 			}

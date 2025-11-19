@@ -16,6 +16,7 @@ package model
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -241,10 +242,8 @@ func (t *UnionType) conversionFrom(src Type, unifying bool, seen map[Type]struct
 
 		// Fast path: see if the source type is equal to any of the element types. Equality checks are generally
 		// less expensive that full convertibility checks.
-		for _, t := range t.ElementTypes {
-			if src.Equals(t) {
-				return SafeConversion, nil
-			}
+		if slices.ContainsFunc(t.ElementTypes, src.Equals) {
+			return SafeConversion, nil
 		}
 
 		for _, t := range t.ElementTypes {
@@ -285,7 +284,7 @@ func (t *UnionType) conversionTo(dest Type, unifying bool, seen map[Type]struct{
 		}
 	}
 	if !exists {
-		return NoConversion, nil
+		return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(dest, t)} }
 	}
 	return conversionKind, nil
 }

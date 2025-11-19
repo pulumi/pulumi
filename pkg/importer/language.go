@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // A LangaugeGenerator generates code for a given Pulumi program to an io.Writer.
@@ -90,7 +91,7 @@ func nextPropertyPath(path hcl.Traversal, key hcl.Traverser) hcl.Traversal {
 
 func createPathedValue(
 	root string,
-	property resource.PropertyValue,
+	property property.Value,
 	currentPath hcl.Traversal,
 ) *PathedLiteralValue {
 	if property.IsNull() {
@@ -100,7 +101,7 @@ func createPathedValue(
 	if property.IsString() {
 		return &PathedLiteralValue{
 			Root:  root,
-			Value: property.StringValue(),
+			Value: property.AsString(),
 			ExpressionReference: &model.ScopeTraversalExpression{
 				RootName:  root,
 				Traversal: currentPath,
@@ -108,10 +109,10 @@ func createPathedValue(
 		}
 	}
 
-	if property.IsSecret() {
+	if property.Secret() {
 		// unwrap the secret
-		secret := property.SecretValue()
-		return createPathedValue(root, secret.Element, currentPath)
+		secret := property.WithSecret(false)
+		return createPathedValue(root, secret, currentPath)
 	}
 
 	return nil
@@ -150,7 +151,8 @@ func createImportState(states []*resource.State, snapshot []*resource.State, nam
 		for key, value := range state.Outputs {
 			if string(key) == "name" || string(key) == "arn" {
 				nextPath := nextPropertyPath(initialPath, hcl.TraverseAttr{Name: string(key)})
-				if output := createPathedValue(name, value, nextPath); output != nil {
+				valueV := resource.FromResourcePropertyValue(value)
+				if output := createPathedValue(name, valueV, nextPath); output != nil {
 					pathedLiteralValues = append(pathedLiteralValues, *output)
 				}
 			}

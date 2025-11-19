@@ -16,9 +16,9 @@ package edit
 
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -183,6 +183,11 @@ func RenameStack(deployment *apitype.DeploymentV3, newName tokens.StackName, new
 
 		if res.DeletedWith != "" {
 			res.DeletedWith = rewriteUrn(res.DeletedWith)
+		}
+
+		res.ReplaceWith = make([]resource.URN, len(res.ReplaceWith))
+		for i, replaceWith := range res.ReplaceWith {
+			res.ReplaceWith[i] = rewriteUrn(replaceWith)
 		}
 
 		if res.Provider != "" {

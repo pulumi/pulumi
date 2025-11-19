@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -266,6 +266,9 @@ message ProviderHandshakeRequest {
 
     // If true the engine supports letting the provider mark resource states as requiring refresh before update.
     bool supports_refresh_before_update = 6;
+
+    // If true the engine will send `preview` to `Invoke` methods to let them know if the current operation is a preview or up.
+    bool invoke_with_preview = 7;
 }
 
 // `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.
@@ -488,6 +491,10 @@ message InvokeRequest {
     // sure those fields don't get reused.
     reserved 3 to 6;
     reserved "provider", "version", "acceptResources", "pluginDownloadURL";
+
+    // This is only set if `HandshakeRequest.invoke_with_preview` was true. If this is true then the engine is currently
+    // running a preview deployment.
+    bool preview = 7;
 }
 
 message InvokeResponse {
@@ -1107,6 +1114,9 @@ message ConstructRequest {
 
     // The stack trace handle for the construct call. Supports stitching stack traces together across plugins.
     string stack_trace_handle = 27;
+
+    // The URNs of resources whose replaces will trigger a replace on this resource.
+    repeated string replace_with = 28;
 }
 
 // `ConstructResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Construct) call.

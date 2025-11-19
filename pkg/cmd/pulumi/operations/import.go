@@ -47,12 +47,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/importer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -662,8 +662,8 @@ func NewImportCmd() *cobra.Command {
 			"        ],\n" +
 			"    }\n" +
 			"\n" +
-			"The full import file schema references can be found in the [import documentation]\n" +
-			"(https://www.pulumi.com/docs/iac/adopting-pulumi/import/#bulk-import-operations).\n" +
+			"The full import file schema references can be found in the " +
+			"[import documentation](https://www.pulumi.com/docs/iac/adopting-pulumi/import/#bulk-import-operations).\n" +
 			"\n" +
 			"The import JSON file can be generated from a Pulumi program by running\n" +
 			"\n" +
@@ -1033,11 +1033,7 @@ func NewImportCmd() *cobra.Command {
 				}
 			}
 
-			if err != nil {
-				return err
-			}
-
-			return nil
+			return err
 		},
 	}
 

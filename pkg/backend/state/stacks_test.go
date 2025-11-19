@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -42,6 +43,7 @@ func TestCurrentStack(t *testing.T) {
 			fullyQualifiedName := fmt.Sprintf("%s/%s/%s", org, project, stack)
 			t.Setenv("PULUMI_STACK", fullyQualifiedName)
 
+			ws := &pkgWorkspace.MockContext{}
 			backend := &backend.MockBackend{
 				GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
 					assert.Equal(t, fullyQualifiedName, ref.FullyQualifiedName().String())
@@ -49,7 +51,7 @@ func TestCurrentStack(t *testing.T) {
 				},
 			}
 
-			_, err := CurrentStack(ctx, backend)
+			_, err := CurrentStack(ctx, ws, backend)
 			require.NoError(t, err)
 		})
 
@@ -57,6 +59,7 @@ func TestCurrentStack(t *testing.T) {
 			orgQualifiedName := fmt.Sprintf("%s/%s", project, stack)
 			t.Setenv("PULUMI_STACK", orgQualifiedName)
 
+			ws := &pkgWorkspace.MockContext{}
 			backend := &backend.MockBackend{
 				GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
 					assert.Equal(t, orgQualifiedName, ref.FullyQualifiedName().String())
@@ -64,7 +67,7 @@ func TestCurrentStack(t *testing.T) {
 				},
 			}
 
-			_, err := CurrentStack(ctx, backend)
+			_, err := CurrentStack(ctx, ws, backend)
 			require.NoError(t, err)
 		})
 
@@ -78,6 +81,7 @@ func TestCurrentStack(t *testing.T) {
 
 			writeConfig(t, tempdir, []byte("{}"))
 
+			ws := &pkgWorkspace.MockContext{}
 			backend := &backend.MockBackend{
 				SupportsOrganizationsF: func() bool {
 					return true
@@ -91,7 +95,7 @@ func TestCurrentStack(t *testing.T) {
 				},
 			}
 
-			_, err := CurrentStack(ctx, backend)
+			_, err := CurrentStack(ctx, ws, backend)
 			require.NoError(t, err)
 		})
 
@@ -111,6 +115,7 @@ func TestCurrentStack(t *testing.T) {
 			}`, backendURL, org)
 			writeConfig(t, tempdir, []byte(stub))
 
+			ws := &pkgWorkspace.MockContext{}
 			backend := &backend.MockBackend{
 				SupportsOrganizationsF: func() bool {
 					return true
@@ -121,13 +126,14 @@ func TestCurrentStack(t *testing.T) {
 				},
 			}
 
-			_, err := CurrentStack(ctx, backend)
+			_, err := CurrentStack(ctx, ws, backend)
 			require.NoError(t, err)
 		})
 
 		t.Run("`$stack` does not qualify with org if backend does not support orgs", func(t *testing.T) {
 			t.Setenv("PULUMI_STACK", stack)
 
+			ws := &pkgWorkspace.MockContext{}
 			backend := &backend.MockBackend{
 				SupportsOrganizationsF: func() bool {
 					return false
@@ -138,7 +144,7 @@ func TestCurrentStack(t *testing.T) {
 				},
 			}
 
-			_, err := CurrentStack(ctx, backend)
+			_, err := CurrentStack(ctx, ws, backend)
 			require.NoError(t, err)
 		})
 	})

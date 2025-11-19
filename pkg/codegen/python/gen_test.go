@@ -347,12 +347,6 @@ func TestCalculateDeps(t *testing.T) {
 			{"pulumi", ">=3.0.0,<3.50.0"},
 			{"semver>=2.8.1"},
 		},
-	}, {
-		// Test 4: If you provide an illegal pulumi version, we expect an error.
-		inputDeps: map[string]string{
-			"pulumi": ">=0.16.0,<4.0.0",
-		},
-		expectedErr: fmt.Errorf("lower version bound must be at least %v", oldestAllowedPulumi),
 	}}
 
 	for i, tc := range cases {

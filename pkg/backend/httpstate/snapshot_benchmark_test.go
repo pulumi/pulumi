@@ -41,7 +41,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
@@ -49,6 +48,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -56,6 +56,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/require"
@@ -69,15 +70,15 @@ func (snapshotBackendClient) GetStackOutputs(
 	ctx context.Context,
 	name string,
 	onDecryptError func(error) error,
-) (resource.PropertyMap, error) {
-	return resource.PropertyMap{}, nil
+) (property.Map, error) {
+	return property.Map{}, nil
 }
 
 func (snapshotBackendClient) GetStackResourceOutputs(
 	ctx context.Context,
 	stackName string,
-) (resource.PropertyMap, error) {
-	return resource.PropertyMap{}, nil
+) (property.Map, error) {
+	return property.Map{}, nil
 }
 
 // The snapshotBenchProvider implements plugin.Provider by mapping resource URNs to preloaded data. This allows test
@@ -675,8 +676,8 @@ func (s *benchmarkServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *benchmarkServer) Save(snapshot *deploy.Snapshot) error {
-	return s.p.Save(snapshot)
+func (s *benchmarkServer) Save(deployment apitype.TypedDeployment) error {
+	return s.p.Save(deployment)
 }
 
 func (s *benchmarkServer) Append(ctx context.Context, entry apitype.JournalEntry) error {

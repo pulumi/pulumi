@@ -53,8 +53,12 @@ type ResourceOptions struct {
 	// If set, the provider's Delete method will not be called for this resource if the specified resource is being
 	// deleted as well.
 	DeletedWith model.Expression
+	// If set, the resource will be replaced if one of the specified resources is replaced.
+	ReplaceWith model.Expression
 	// If the resource was imported, the id that was imported.
 	ImportID model.Expression
+	// If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
+	ReplacementTrigger model.Expression
 }
 
 // Resource represents a resource instantiation inside of a program or component.

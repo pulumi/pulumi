@@ -335,7 +335,7 @@ func currentUser(t *testing.T) string {
 }
 
 func loadStackName(t *testing.T) string {
-	w, err := workspace.New()
+	w, err := pkgWorkspace.Instance.New()
 	require.NoError(t, err)
 	return w.Settings().Stack
 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -48,6 +48,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -148,11 +149,6 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 	// Keep track of any config keys that have secure values.
 	configSecretKeys := src.runinfo.Target.Config.SecureKeys()
 
-	configMap, err := src.runinfo.Target.Config.AsDecryptedPropertyMap(ctx, src.runinfo.Target.Decrypter)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert config to map: %w", err)
-	}
-
 	// First, fire up a resource monitor that will watch for and record resource creation.
 	regChan := make(chan *registerResourceEvent)
 	regOutChan := make(chan *registerResourceOutputsEvent)
@@ -198,7 +194,7 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
 	// and we will pump them through the channel.  If the Run call ultimately fails, we need to propagate the error.
-	iter.forkRun(config, configSecretKeys, configMap)
+	iter.forkRun(config, configSecretKeys)
 
 	// Finally, return the fresh iterator that the caller can use to take things from here.
 	return iter, nil
@@ -276,7 +272,6 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 func (iter *evalSourceIterator) forkRun(
 	config map[config.Key]string,
 	configSecretKeys []config.Key,
-	configPropertyMap resource.PropertyMap,
 ) {
 	// Fire up the goroutine to make the RPC invocation against the language runtime.  As this executes, calls
 	// to queue things up in the resource channel will occur, and we will serve them concurrently.
@@ -302,20 +297,19 @@ func (iter *evalSourceIterator) forkRun(
 
 			// Now run the actual program.
 			progerr, bail, err := langhost.Run(plugin.RunInfo{
-				MonitorAddress:    iter.mon.Address(),
-				Stack:             iter.src.runinfo.Target.Name.String(),
-				Project:           string(iter.src.runinfo.Proj.Name),
-				Pwd:               iter.src.runinfo.Pwd,
-				Args:              iter.src.runinfo.Args,
-				Config:            config,
-				ConfigSecretKeys:  configSecretKeys,
-				ConfigPropertyMap: configPropertyMap,
-				DryRun:            iter.src.opts.DryRun,
-				Parallel:          iter.src.opts.Parallel,
-				Organization:      string(iter.src.runinfo.Target.Organization),
-				Info:              programInfo,
-				LoaderAddress:     iter.loaderServer.Addr(),
-				AttachDebugger:    iter.src.plugctx.Host.AttachDebugger(plugin.DebugSpec{Type: plugin.DebugTypeProgram}),
+				MonitorAddress:   iter.mon.Address(),
+				Stack:            iter.src.runinfo.Target.Name.String(),
+				Project:          string(iter.src.runinfo.Proj.Name),
+				Pwd:              iter.src.runinfo.Pwd,
+				Args:             iter.src.runinfo.Args,
+				Config:           config,
+				ConfigSecretKeys: configSecretKeys,
+				DryRun:           iter.src.opts.DryRun,
+				Parallel:         iter.src.opts.Parallel,
+				Organization:     string(iter.src.runinfo.Target.Organization),
+				Info:             programInfo,
+				LoaderAddress:    iter.loaderServer.Addr(),
+				AttachDebugger:   iter.src.plugctx.Host.AttachDebugger(plugin.DebugSpec{Type: plugin.DebugTypeProgram}),
 			})
 
 			// Check if we were asked to Bail.  This a special random constant used for that
@@ -363,7 +357,7 @@ type defaultProviders struct {
 
 	// A map of ProviderRequest strings to provider references, used to keep track of the set of default providers that
 	// have already been loaded.
-	providers map[string]providers.Reference
+	providers map[string]sdkproviders.Reference
 	config    plugin.ConfigSource
 
 	requests        chan defaultProviderRequest
@@ -372,7 +366,7 @@ type defaultProviders struct {
 }
 
 type defaultProviderResponse struct {
-	ref providers.Reference
+	ref sdkproviders.Reference
 	err error
 }
 
@@ -482,7 +476,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	done := make(chan *RegisterResult)
 	event := &registerResourceEvent{
 		goal: resource.NewGoal{
-			Type:                    providers.MakeProviderType(req.Package()),
+			Type:                    sdkproviders.MakeProviderType(req.Package()),
 			Name:                    req.DefaultName(),
 			Custom:                  true,
 			Properties:              inputs,
@@ -499,9 +493,11 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 			ID:                      "",
 			CustomTimeouts:          nil,
 			ReplaceOnChanges:        nil,
+			ReplacementTrigger:      resource.NewNullProperty(),
 			RetainOnDelete:          nil,
 			HideDiff:                nil,
 			DeletedWith:             "",
+			ReplaceWith:             nil,
 			SourcePosition:          "",
 			StackTrace:              nil,
 			ResourceHooks:           nil,
@@ -518,18 +514,18 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 //
 // Note that this function must not be called from two goroutines concurrently; it is the responsibility of d.serve()
 // to ensure this.
-func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (providers.Reference, error) {
+func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (sdkproviders.Reference, error) {
 	logging.V(5).Infof("handling default provider request for package %s", req)
 
 	req = d.normalizeProviderRequest(req)
 
 	denyCreation, err := d.shouldDenyRequest(req)
 	if err != nil {
-		return providers.Reference{}, err
+		return sdkproviders.Reference{}, err
 	}
 	if denyCreation {
 		logging.V(5).Infof("denied default provider request for package %s", req)
-		return providers.NewDenyDefaultProvider(string(req.Package().Name())), nil
+		return sdkproviders.NewDenyDefaultProvider(string(req.Package().Name())), nil
 	}
 
 	// Have we loaded this provider before? Use the existing reference, if so.
@@ -545,13 +541,13 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 
 	event, done, err := d.newRegisterDefaultProviderEvent(req)
 	if err != nil {
-		return providers.Reference{}, err
+		return sdkproviders.Reference{}, err
 	}
 
 	select {
 	case d.providerRegChan <- event:
 	case <-d.cancel:
-		return providers.Reference{}, context.Canceled
+		return sdkproviders.Reference{}, context.Canceled
 	}
 
 	logging.V(5).Infof("waiting for default provider for package %s", req)
@@ -560,7 +556,7 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 	select {
 	case result = <-done:
 	case <-d.cancel:
-		return providers.Reference{}, context.Canceled
+		return sdkproviders.Reference{}, context.Canceled
 	}
 
 	logging.V(5).Infof("registered default provider for package %s: %s", req, result.State.URN)
@@ -568,7 +564,7 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 	id := result.State.ID
 	contract.Assertf(id != "", "default provider for package %s has no ID", req)
 
-	ref, err = providers.NewReference(result.State.URN, id)
+	ref, err = sdkproviders.NewReference(result.State.URN, id)
 	contract.Assertf(err == nil, "could not create provider reference with URN %s and ID %s", result.State.URN, id)
 	d.providers[req.String()] = ref
 
@@ -639,12 +635,12 @@ func (d *defaultProviders) serve() {
 }
 
 // getDefaultProviderRef fetches the provider reference for the default provider for a particular package.
-func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) (providers.Reference, error) {
+func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) (sdkproviders.Reference, error) {
 	response := make(chan defaultProviderResponse)
 	select {
 	case d.requests <- defaultProviderRequest{req: req, response: response}:
 	case <-d.cancel:
-		return providers.Reference{}, context.Canceled
+		return sdkproviders.Reference{}, context.Canceled
 	}
 	res := <-response
 	return res.ref, res.err
@@ -759,7 +755,7 @@ func newResourceMonitor(
 	// Create a new default provider manager.
 	d := &defaultProviders{
 		defaultProviderInfo: src.defaultProviderInfo,
-		providers:           make(map[string]providers.Reference),
+		providers:           make(map[string]sdkproviders.Reference),
 		config:              src.runinfo.Target,
 		requests:            make(chan defaultProviderRequest),
 		providerRegChan:     regChan,
@@ -908,18 +904,18 @@ func sourceEvalServeOptions(ctx *plugin.Context, tracingSpan opentracing.Span, l
 // to the default provider for the indicated package.
 func (rm *resmon) getProviderReference(defaultProviders *defaultProviders, req providers.ProviderRequest,
 	rawProviderRef string,
-) (providers.Reference, error) {
+) (sdkproviders.Reference, error) {
 	if rawProviderRef != "" {
-		ref, err := providers.ParseReference(rawProviderRef)
+		ref, err := sdkproviders.ParseReference(rawProviderRef)
 		if err != nil {
-			return providers.Reference{}, fmt.Errorf("could not parse provider reference: %w", err)
+			return sdkproviders.Reference{}, fmt.Errorf("could not parse provider reference: %w", err)
 		}
 		return ref, nil
 	}
 
 	ref, err := defaultProviders.getDefaultProviderRef(req)
 	if err != nil {
-		return providers.Reference{}, err
+		return sdkproviders.Reference{}, err
 	}
 	return ref, nil
 }
@@ -935,7 +931,7 @@ func (rm *resmon) getProviderFromSource(
 	providerRef, err := rm.getProviderReference(defaultProviders, req, rawProviderRef)
 	if err != nil {
 		return nil, fmt.Errorf("getProviderFromSource: %w", err)
-	} else if providers.IsDenyDefaultsProvider(providerRef) {
+	} else if sdkproviders.IsDenyDefaultsProvider(providerRef) {
 		msg := diag.GetDefaultProviderDenied("Invoke").Message
 		return nil, fmt.Errorf(msg, req.Package(), token)
 	}
@@ -1052,7 +1048,11 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 		hasSupport = !rm.opts.DisableOutputValues
 	case "aliasSpecs":
 		hasSupport = true
+	case "replacementTrigger":
+		hasSupport = true
 	case "deletedWith":
+		hasSupport = true
+	case "replaceWith":
 		hasSupport = true
 	case "transforms":
 		hasSupport = true
@@ -1142,8 +1142,9 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 	// Do the invoke and then return the arguments.
 	logging.V(5).Infof("ResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
 	resp, err := prov.Invoke(ctx, plugin.InvokeRequest{
-		Tok:  tok,
-		Args: args,
+		Tok:     tok,
+		Args:    args,
+		Preview: rm.opts.DryRun,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("invocation of %v returned an error: %w", tok, err)
@@ -1192,7 +1193,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	var providerReq providers.ProviderRequest
 	var rawProviderRef string
 	var err error
-	if providers.IsProviderType(tokens.Type(tok)) {
+	if sdkproviders.IsProviderType(tokens.Type(tok)) {
 		parts := strings.Split(tok.Name().String(), "/")
 		if len(parts) != 2 {
 			return nil, fmt.Errorf("invalid provider method token %v", tok)
@@ -1378,7 +1379,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	}
 
 	provider := req.GetProvider()
-	if !providers.IsProviderType(t) && provider == "" {
+	if !sdkproviders.IsProviderType(t) && provider == "" {
 		providerReq, err := parseProviderRequest(
 			t.Package(), req.GetVersion(),
 			req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
@@ -1398,7 +1399,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		ref, provErr := rm.defaultProviders.getDefaultProviderRef(providerReq)
 		if provErr != nil {
 			return nil, provErr
-		} else if providers.IsDenyDefaultsProvider(ref) {
+		} else if sdkproviders.IsDenyDefaultsProvider(ref) {
 			msg := diag.GetDefaultProviderDenied("Read").Message
 			return nil, fmt.Errorf(msg, req.GetType(), t)
 		}
@@ -1509,7 +1510,7 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 
 		mprops, err := plugin.MarshalProperties(props, mopts)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("marshaling transform properties: %w", err)
 		}
 
 		request, err := proto.Marshal(&pulumirpc.TransformRequest{
@@ -1521,7 +1522,7 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 			Options:    opts,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("marshaling request: %w", err)
+			return nil, nil, fmt.Errorf("marshaling transform request: %w", err)
 		}
 
 		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
@@ -1529,14 +1530,14 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 			Request: request,
 		})
 		if err != nil {
-			logging.V(5).Infof("Transform callback error: %v", err)
+			logging.V(5).Infof("transform callback error: %v", err)
 			return nil, nil, err
 		}
 
 		var response pulumirpc.TransformResponse
 		err = proto.Unmarshal(resp.Response, &response)
 		if err != nil {
-			return nil, nil, fmt.Errorf("unmarshaling response: %w", err)
+			return nil, nil, fmt.Errorf("unmarshaling transform response: %w", err)
 		}
 
 		newOpts := opts
@@ -1548,7 +1549,7 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 		if response.Properties != nil {
 			newProps, err = plugin.UnmarshalProperties(response.Properties, mopts)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, fmt.Errorf("unmarshalling transform properties: %w", err)
 			}
 		}
 
@@ -2120,7 +2121,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			WorkingDirectory:      rm.workingDirectory,
 		})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal properties: %w", err)
 	}
 
 	// Before we pass the props to the transform function we need to ensure that they correctly carry any dependency
@@ -2173,6 +2174,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		Protect:                 req.Protect,
 		IgnoreChanges:           req.GetIgnoreChanges(),
 		ReplaceOnChanges:        req.GetReplaceOnChanges(),
+		ReplacementTrigger:      req.GetReplacementTrigger(),
 		Version:                 req.GetVersion(),
 		Aliases:                 aliases,
 		Provider:                provider,
@@ -2182,6 +2184,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		PluginDownloadUrl:       req.GetPluginDownloadURL(),
 		RetainOnDelete:          req.RetainOnDelete,
 		DeletedWith:             req.GetDeletedWith(),
+		ReplaceWith:             req.GetReplaceWith(),
 		DeleteBeforeReplace:     deleteBeforeReplace,
 		AdditionalSecretOutputs: req.GetAdditionalSecretOutputs(),
 		PluginChecksums:         req.GetPluginChecksums(),
@@ -2219,7 +2222,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return nil
 	}()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("collect resource transforms: %w", err)
 	}
 	// Lookup our parents transformations and add those to the list of transforms to run.
 	err = func() error {
@@ -2239,7 +2242,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return nil
 	}()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("collect parent transforms: %w", err)
 	}
 	// Then lock the stack transformations and collect all of those
 	func() {
@@ -2255,7 +2258,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	for _, transform := range transforms {
 		newProps, newOpts, err := transform(ctx, name, string(t), custom, parent, props, opts)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("invoke transform: %w", err)
 		}
 		props = newProps
 		opts = newOpts
@@ -2280,15 +2283,15 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}()
 
-	var providerRef providers.Reference
+	var providerRef sdkproviders.Reference
 	var providerRefs map[string]string
 
-	if custom && !providers.IsProviderType(t) || remote {
+	if custom && !sdkproviders.IsProviderType(t) || remote {
 		providerReq, err := parseProviderRequest(
 			t.Package(), opts.GetVersion(),
 			opts.GetPluginDownloadUrl(), opts.GetPluginChecksums(), nil)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("parse provider request: %w", err)
 		}
 
 		packageRef := req.GetPackageRef()
@@ -2388,7 +2391,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		rawPropertyDependencies[key] = deps.ToSlice()
 	}
 
-	if providers.IsProviderType(t) {
+	if sdkproviders.IsProviderType(t) {
 		if opts.GetVersion() != "" {
 			version, err := semver.Parse(opts.GetVersion())
 			if err != nil {
@@ -2426,7 +2429,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 		// Make sure that an explicit provider which doesn't specify its plugin gets the
 		// same plugin as the default provider for the package.
-		defaultProvider, ok := rm.defaultProviders.defaultProviderInfo[providers.GetProviderPackage(t)]
+		defaultProvider, ok := rm.defaultProviders.defaultProviderInfo[sdkproviders.GetProviderPackage(t)]
 		if ok && opts.GetVersion() == "" && opts.GetPluginDownloadUrl() == "" {
 			if defaultProvider.Version != nil {
 				providers.SetProviderVersion(props, defaultProvider.Version)
@@ -2448,7 +2451,29 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		hiddenDiffs = append(hiddenDiffs, path)
 	}
 	replaceOnChanges := opts.ReplaceOnChanges
+
+	replacementTrigger := resource.NewNullProperty()
+	if req.GetReplacementTrigger() != nil {
+		t, err := plugin.UnmarshalPropertyValue(
+			"replacementTrigger", req.GetReplacementTrigger(), plugin.MarshalOptions{
+				Label:              label,
+				KeepUnknowns:       true,
+				ComputeAssetHashes: true,
+				KeepSecrets:        true,
+				KeepResources:      true,
+				KeepOutputValues:   true,
+			})
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling replacement trigger: %w", err)
+		}
+		replacementTrigger = *t
+	}
+
 	retainOnDelete := opts.RetainOnDelete
+	replaceWith := []resource.URN{}
+	for _, v := range opts.GetReplaceWith() {
+		replaceWith = append(replaceWith, resource.URN(v))
+	}
 	deletedWith, err := resource.ParseOptionalURN(opts.GetDeletedWith())
 	if err != nil {
 		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid DeletedWith URN: %s", err))
@@ -2507,11 +2532,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
-			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v, deletedWith=%v, resourceHooks=%v, "+
-			"hideDiffs=%v",
+			"providers=%v, replaceOnChanges=%v, replaceWith=%v, replacementTrigger=%v, retainOnDelete=%v, deletedWith=%v, "+
+			"resourceHooks=%v, hideDiffs=%v",
 		t, name, custom, len(props), parent, protect, providerRef, rawDependencies, opts.DeleteBeforeReplace, ignoreChanges,
-		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith, resourceHooks,
-		hiddenDiffs)
+		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, replaceWith, replacementTrigger, retainOnDelete,
+		deletedWith, resourceHooks, hiddenDiffs)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
 	var result *RegisterResult
@@ -2519,7 +2544,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	var outputDeps map[string]*pulumirpc.RegisterResourceResponse_PropertyDependencies
 	if remote {
 		provider, ok := rm.providers.GetProvider(providerRef)
-		if providers.IsDenyDefaultsProvider(providerRef) {
+		if sdkproviders.IsDenyDefaultsProvider(providerRef) {
 			msg := diag.GetDefaultProviderDenied("").Message
 			return nil, fmt.Errorf(msg, t.Package().String(), t.String())
 		}
@@ -2538,8 +2563,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			Providers:               providerRefs,
 			AdditionalSecretOutputs: additionalSecretOutputs,
 			DeletedWith:             deletedWith,
+			ReplaceWith:             replaceWith,
 			IgnoreChanges:           ignoreChanges,
 			ReplaceOnChanges:        replaceOnChanges,
+			ReplacementTrigger:      replacementTrigger,
 			RetainOnDelete:          retainOnDelete,
 			ResourceHooks:           resourceHooks,
 		}
@@ -2667,8 +2694,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			ID:                      id,
 			CustomTimeouts:          &timeouts,
 			ReplaceOnChanges:        replaceOnChanges,
+			ReplacementTrigger:      replacementTrigger,
 			RetainOnDelete:          retainOnDelete,
 			DeletedWith:             deletedWith,
+			ReplaceWith:             replaceWith,
 			HideDiff:                hiddenDiffs,
 			SourcePosition:          sourcePosition,
 			StackTrace:              stackTrace,
@@ -2768,6 +2797,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	// • replaceOnChanges
 	// • retainOnDelete
 	// • deletedWith
+	// • replaceWith
 	// Revisit these semantics in Pulumi v4.0
 	// See this issue for more: https://github.com/pulumi/pulumi/issues/9704
 	if !custom {
@@ -2795,6 +2825,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		rm.checkComponentOption(result.State.URN, "deletedWith", func() bool {
 			return deletedWith != ""
 		})
+		rm.checkComponentOption(result.State.URN, "replaceWith", func() bool {
+			return len(result.State.ReplaceWith) > 0
+		})
 	}
 
 	logging.V(5).Infof(
@@ -2816,7 +2849,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	// Assert that we never leak the unconfigured provider ID to the language host.
 	contract.Assertf(
-		!providers.IsProviderType(result.State.Type) || result.State.ID != providers.UnconfiguredID,
+		!sdkproviders.IsProviderType(result.State.Type) || result.State.ID != providers.UnconfiguredID,
 		"provider resource %s has unconfigured ID", result.State.URN)
 
 	reason := pulumirpc.Result_SUCCESS
