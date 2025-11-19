@@ -62,7 +62,9 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager().LoginWithDiagSink(
+		ctx, diagtest.LogSink(t), PulumiCloudURL, false, "", "", nil, true, display.Options{},
+	)
 	require.NoError(t, err)
 
 	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
@@ -106,7 +108,9 @@ func TestMissingPulumiAccessToken(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err := NewLoginManager().Login(ctx, "https://api.example.com", false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager().LoginWithDiagSink(
+		ctx, diagtest.LogSink(t), "https://api.example.com", false, "", "", nil, true, display.Options{},
+	)
 	var expectedErr backenderr.MissingEnvVarForNonInteractiveError
 	if assert.ErrorAs(t, err, &expectedErr) {
 		assert.Equal(t, env.AccessToken.Var(), expectedErr.Var)
@@ -122,7 +126,9 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager().LoginWithDiagSink(
+		ctx, diagtest.LogSink(t), PulumiCloudURL, false, "", "", nil, true, display.Options{},
+	)
 	require.NoError(t, err)
 
 	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
@@ -280,7 +286,9 @@ func TestDisableIntegrityChecking(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager().LoginWithDiagSink(
+		ctx, diagtest.LogSink(t), PulumiCloudURL, false, "", "", nil, true, display.Options{},
+	)
 	require.NoError(t, err)
 
 	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
@@ -435,7 +443,9 @@ func TestListStackNames(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager().LoginWithDiagSink(
+		ctx, diagtest.LogSink(t), PulumiCloudURL, false, "", "", nil, true, display.Options{},
+	)
 	require.NoError(t, err)
 
 	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
@@ -550,7 +560,9 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager().LoginWithDiagSink(
+		ctx, diagtest.LogSink(t), PulumiCloudURL, false, "", "", nil, true, display.Options{},
+	)
 	require.NoError(t, err)
 
 	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
@@ -1154,7 +1166,7 @@ func TestRefreshAuthentication(t *testing.T) {
 					TokenExpired: true,
 				},
 				TokenInformation: &workspace.TokenInformation{
-					ExpiresAtEpochSeconds: time.Now().Add(-1 * time.Hour).Unix(),
+					ExpiresAt: time.Now().Add(-1 * time.Hour),
 				},
 			},
 			wantErr:     true,
@@ -1169,7 +1181,7 @@ func TestRefreshAuthentication(t *testing.T) {
 					Token:     "pul-oidc-token",
 				},
 				TokenInformation: &workspace.TokenInformation{
-					ExpiresAtEpochSeconds: time.Now().Add(10 * time.Minute).Unix(),
+					ExpiresAt: time.Now().Add(10 * time.Minute),
 				},
 			},
 			wantErr: false,
@@ -1193,7 +1205,7 @@ func TestRefreshAuthentication(t *testing.T) {
 				cloudURL = server.URL
 			}
 
-			result, err := refreshAuthentication(cloudURL, insecure, tt.account)
+			result, err := refreshAuthentication(diagtest.LogSink(t), cloudURL, insecure, tt.account)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -1214,40 +1226,40 @@ func TestExchangeOidcToken(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name              string
-		oidcToken         string
-		organization      string
-		scope             string
-		expirationSeconds int64
-		setupServer       func() *httptest.Server
-		wantErr           bool
-		errContains       string
-		checkResult       func(*testing.T, string, int64, *workspace.AuthContext)
+		name         string
+		oidcToken    string
+		organization string
+		scope        string
+		expiration   time.Duration
+		setupServer  func() *httptest.Server
+		wantErr      bool
+		errContains  string
+		checkResult  func(*testing.T, string, time.Time, *workspace.AuthContext)
 	}{
 		{
-			name:              "empty oidc token",
-			oidcToken:         "",
-			organization:      "test-org",
-			scope:             "org:test-org",
-			expirationSeconds: 3600,
-			wantErr:           true,
-			errContains:       "Unauthorized: No credentials provided or are invalid",
+			name:         "empty oidc token",
+			oidcToken:    "",
+			organization: "test-org",
+			scope:        "org:test-org",
+			expiration:   1 * time.Hour,
+			wantErr:      true,
+			errContains:  "Unauthorized: No credentials provided or are invalid",
 		},
 		{
-			name:              "invalid oidc token format",
-			oidcToken:         "invalid-token-format",
-			organization:      "test-org",
-			scope:             "org:test-org",
-			expirationSeconds: 3600,
-			wantErr:           true,
-			errContains:       "Failed to read OIDC token",
+			name:         "invalid oidc token format",
+			oidcToken:    "invalid-token-format",
+			organization: "test-org",
+			scope:        "org:test-org",
+			expiration:   1 * time.Hour,
+			wantErr:      true,
+			errContains:  "Failed to read OIDC token",
 		},
 		{
-			name:              "one-time JWT token not stored",
-			oidcToken:         testJWT,
-			organization:      "test-org",
-			scope:             "org:test-org",
-			expirationSeconds: 3600,
+			name:         "one-time JWT token not stored",
+			oidcToken:    testJWT,
+			organization: "test-org",
+			scope:        "org:test-org",
+			expiration:   1 * time.Hour,
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					if r.URL.Path == "/api/oauth/token" {
@@ -1263,9 +1275,9 @@ func TestExchangeOidcToken(t *testing.T) {
 				}))
 			},
 			wantErr: false,
-			checkResult: func(t *testing.T, accessToken string, expiresAt int64, authContext *workspace.AuthContext) {
+			checkResult: func(t *testing.T, accessToken string, expiresAt time.Time, authContext *workspace.AuthContext) {
 				assert.Equal(t, "pul-jwt-access-token", accessToken)
-				assert.NotZero(t, expiresAt)
+				assert.False(t, expiresAt.IsZero())
 				require.NotNil(t, authContext)
 				// JWT tokens should not be stored (one-time use)
 				assert.Empty(t, authContext.Token)
@@ -1286,7 +1298,7 @@ func TestExchangeOidcToken(t *testing.T) {
 			}
 
 			accessToken, expiresAt, authContext, err := exchangeOidcToken(
-				cloudURL, false, tt.oidcToken, tt.organization, tt.scope, tt.expirationSeconds,
+				diagtest.LogSink(t), cloudURL, false, tt.oidcToken, tt.organization, tt.scope, tt.expiration,
 			)
 
 			if tt.wantErr {

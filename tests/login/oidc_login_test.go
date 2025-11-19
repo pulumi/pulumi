@@ -88,6 +88,8 @@ func TestOIDCLogin(t *testing.T) {
 
 		e := ptesting.NewEnvironment(t)
 		defer e.DeleteIfNotFailed()
+		// Ensure PULUMI_ACCESS_TOKEN is not set to force OIDC login path
+		e.Env = append(e.Env, "PULUMI_ACCESS_TOKEN=")
 
 		// Login with OIDC token for organization
 		e.RunCommand("pulumi", "login", "--cloud-url", server.URL, "--insecure",
@@ -140,6 +142,8 @@ func TestOIDCLogin(t *testing.T) {
 
 		e := ptesting.NewEnvironment(t)
 		defer e.DeleteIfNotFailed()
+		// Ensure PULUMI_ACCESS_TOKEN is not set to force OIDC login path
+		e.Env = append(e.Env, "PULUMI_ACCESS_TOKEN=")
 
 		e.RunCommand("pulumi", "login", "--cloud-url", server.URL, "--insecure",
 			"--oidc-token", testJWT,
@@ -188,6 +192,8 @@ func TestOIDCLogin(t *testing.T) {
 
 		e := ptesting.NewEnvironment(t)
 		defer e.DeleteIfNotFailed()
+		// Ensure PULUMI_ACCESS_TOKEN is not set to force OIDC login path
+		e.Env = append(e.Env, "PULUMI_ACCESS_TOKEN=")
 
 		e.RunCommand("pulumi", "login", "--cloud-url", server.URL, "--insecure",
 			"--oidc-token", testJWT,
@@ -235,6 +241,8 @@ func TestOIDCLogin(t *testing.T) {
 
 		e := ptesting.NewEnvironment(t)
 		defer e.DeleteIfNotFailed()
+		// Ensure PULUMI_ACCESS_TOKEN is not set to force OIDC login path
+		e.Env = append(e.Env, "PULUMI_ACCESS_TOKEN=")
 
 		e.RunCommand("pulumi", "login", "--cloud-url", server.URL, "--insecure",
 			"--oidc-token", testJWT,
@@ -285,15 +293,103 @@ func TestOIDCLogin(t *testing.T) {
 
 		e := ptesting.NewEnvironment(t)
 		defer e.DeleteIfNotFailed()
+		// Ensure PULUMI_ACCESS_TOKEN is not set to force OIDC login path
+		e.Env = append(e.Env, "PULUMI_ACCESS_TOKEN=")
 
 		e.RunCommand("pulumi", "login", "--cloud-url", server.URL, "--insecure",
 			"--oidc-token", "file://"+tokenFile,
 			"--oidc-org", testOrg)
 	})
+
+	t.Run("WithPulumiAccessToken", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup a mock server to handle both regular login and OIDC token exchange
+		var oidcExchangeCalled bool
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Path {
+			case "/api/oauth/token":
+				oidcExchangeCalled = true
+				require.NoError(t, r.ParseForm())
+
+				// Return a mock Pulumi access token from OIDC exchange
+				resp := apitype.TokenExchangeGrantResponse{
+					AccessToken:     "pul-oidc-token",
+					IssuedTokenType: "urn:pulumi:token-type:access_token:organization",
+					TokenType:       "Bearer",
+					ExpiresIn:       7200,
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				err := json.NewEncoder(w).Encode(resp)
+				require.NoError(t, err)
+			case "/api/user":
+				// Return different user info based on the access token used
+				authHeader := r.Header.Get("Authorization")
+				if authHeader == "token pul-existing-token" {
+					w.WriteHeader(http.StatusOK)
+					_, err := w.Write([]byte(`{"githubLogin":"existing-user","name":"Existing User","email":"existing@example.com"}`))
+					require.NoError(t, err)
+				} else {
+					w.WriteHeader(http.StatusOK)
+					_, err := w.Write([]byte(`{"githubLogin":"oidc-user","name":"OIDC User","email":"oidc@example.com"}`))
+					require.NoError(t, err)
+				}
+			case "/api/capabilities":
+				w.WriteHeader(http.StatusOK)
+				_, err := w.Write([]byte(`{}`))
+				require.NoError(t, err)
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+		defer server.Close()
+
+		e := ptesting.NewEnvironment(t)
+		defer e.DeleteIfNotFailed()
+
+		// First, login with PULUMI_ACCESS_TOKEN to create an existing session
+		e.Env = append(e.Env, "PULUMI_ACCESS_TOKEN=pul-existing-token")
+		e.RunCommand("pulumi", "login", "--cloud-url", server.URL, "--insecure")
+
+		// Verify we're logged in as the existing user
+		stdout, _ := e.RunCommand("pulumi", "whoami")
+		assert.Contains(t, stdout, "existing-user")
+
+		// Reset the flag to track OIDC exchange calls
+		oidcExchangeCalled = false
+
+		// Now try to login with OIDC token while PULUMI_ACCESS_TOKEN is still set
+		// Current behavior: this will use the existing session and NOT perform OIDC exchange
+		e.RunCommand("pulumi", "login", "--cloud-url", server.URL, "--insecure",
+			"--oidc-token", testJWT,
+			"--oidc-org", testOrg)
+
+		// Verify current behavior: should still be logged in as existing user
+		stdout, _ = e.RunCommand("pulumi", "whoami")
+		assert.Contains(t, stdout, "existing-user")
+
+		// Document current behavior: OIDC token exchange is NOT called when already logged in
+		assert.False(t, oidcExchangeCalled,
+			"OIDC token exchange should not be called when already logged in with PULUMI_ACCESS_TOKEN")
+	})
 }
 
 func TestOIDCLoginErrors(t *testing.T) {
 	t.Parallel()
+
+	t.Run("MissingOrgForOIDC", func(t *testing.T) {
+		t.Parallel()
+
+		e := ptesting.NewEnvironment(t)
+		defer e.DeleteIfNotFailed()
+
+		// Should fail when both --team and --user are specified
+		_, stderr := e.RunCommandExpectError("pulumi", "login",
+			"--oidc-token", testJWT)
+
+		assert.Contains(t, stderr, "organization must be specified for token exchange")
+	})
 
 	t.Run("TeamAndUserMutuallyExclusive", func(t *testing.T) {
 		t.Parallel()
@@ -345,6 +441,8 @@ func TestOIDCLoginErrors(t *testing.T) {
 
 		e := ptesting.NewEnvironment(t)
 		defer e.DeleteIfNotFailed()
+		// Ensure PULUMI_ACCESS_TOKEN is not set to force OIDC login path
+		e.Env = append(e.Env, "PULUMI_ACCESS_TOKEN=")
 
 		// Should fail with server error message
 		_, stderr := e.RunCommandExpectError("pulumi", "login", "--cloud-url", server.URL, "--insecure",
@@ -352,34 +450,5 @@ func TestOIDCLoginErrors(t *testing.T) {
 			"--oidc-org", testOrg)
 
 		assert.Contains(t, stderr, "invalid_token")
-	})
-
-	t.Run("MissingOrgForOIDC", func(t *testing.T) {
-		t.Parallel()
-
-		// Note: Based on the code, --org is not validated as required in the CLI itself,
-		// but the server will likely reject it. This test documents current behavior.
-		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/api/oauth/token" {
-				require.NoError(t, r.ParseForm())
-				// Verify that audience is sent (even if empty)
-				assert.Equal(t, "urn:pulumi:org:", r.FormValue("audience"))
-
-				w.WriteHeader(http.StatusBadRequest)
-				_, err := w.Write([]byte(`{"error":"invalid_request","error_description":"organization is required"}`))
-				require.NoError(t, err)
-				return
-			}
-			w.WriteHeader(http.StatusNotFound)
-		}))
-		defer server.Close()
-
-		e := ptesting.NewEnvironment(t)
-		defer e.DeleteIfNotFailed()
-
-		_, stderr := e.RunCommandExpectError("pulumi", "login", "--cloud-url", server.URL, "--insecure",
-			"--oidc-token", testJWT)
-
-		assert.Contains(t, stderr, "invalid_request")
 	})
 }

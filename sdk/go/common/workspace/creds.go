@@ -128,25 +128,28 @@ type Account struct {
 // Information about the token that was used to authenticate the current user. One (or none) of Team or Organization
 // will be set, but not both.
 type TokenInformation struct {
-	Name                  string `json:"name"`                   // The name of the token.
-	Organization          string `json:"organization,omitempty"` //nolint:lll // If this was an organization token, the organization it was for.
-	Team                  string `json:"team,omitempty"`         // If this was a team token, the team it was for.
-	ExpiresAtEpochSeconds int64  `json:"expiresAt,omitempty"`    // The epoch time (in seconds) when this token expires.
+	Name         string    `json:"name"`                   // The name of the token.
+	Organization string    `json:"organization,omitempty"` //nolint:lll // If this was an organization token, the organization it was for.
+	Team         string    `json:"team,omitempty"`         // If this was a team token, the team it was for.
+	ExpiresAt    time.Time `json:"expiresAt,omitempty"`    // The time when this token expires.
 }
 
 type AuthContext struct {
-	GrantType         string `json:"grantType,omitempty"`
-	Organization      string `json:"organization,omitempty"`
-	Scope             string `json:"scope,omitempty"`
-	Token             string `json:"token,omitempty"`
-	TokenExpired      bool   `json:"tokenExpired,omitempty"`
-	ExpirationSeconds int64  `json:"expiration,omitempty"`
+	GrantType    string        `json:"grantType,omitempty"`
+	Organization string        `json:"organization,omitempty"`
+	Scope        string        `json:"scope,omitempty"`
+	Token        string        `json:"token,omitempty"`
+	TokenExpired bool          `json:"tokenExpired,omitempty"`
+	Expiration   time.Duration `json:"expiration,omitempty"`
 }
 
 //nolint:gosec // This is an OAuth grant type URN, not a credential
 const AuthContextGrantTypeTokenExchange = "urn:ietf:params:oauth:grant-type:token-exchange"
 
 func NewAuthContextForTokenExchange(organization, team, user, token, expirationDuration string) (AuthContext, error) {
+	if organization == "" {
+		return AuthContext{}, errors.New("organization must be specified for token exchange")
+	}
 	if team != "" && user != "" {
 		return AuthContext{}, errors.New("only one of team or user may be specified for token exchange")
 	}
@@ -166,11 +169,11 @@ func NewAuthContextForTokenExchange(organization, team, user, token, expirationD
 		expiration = duration
 	}
 	return AuthContext{
-		GrantType:         AuthContextGrantTypeTokenExchange,
-		Organization:      organization,
-		Scope:             scope,
-		Token:             token,
-		ExpirationSeconds: int64(expiration.Seconds()),
+		GrantType:    AuthContextGrantTypeTokenExchange,
+		Organization: organization,
+		Scope:        scope,
+		Token:        token,
+		Expiration:   expiration,
 	}, nil
 }
 

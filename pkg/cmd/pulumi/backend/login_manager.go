@@ -78,7 +78,7 @@ func (f *lm) Current(
 
 	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
 	lm := httpstate.NewLoginManager()
-	account, err := lm.Current(ctx, url, insecure, setCurrent)
+	account, err := lm.CurrentWithDiagSink(ctx, sink, url, insecure, setCurrent)
 	if err != nil || account == nil {
 		return nil, err
 	}
@@ -102,13 +102,18 @@ func (f *lm) Login(
 	opts := display.Options{
 		Color: color,
 	}
-	_, err := lm.Login(ctx, url, insecure, "pulumi", "Pulumi stacks", httpstate.WelcomeUser, setCurrent, opts)
+	_, err := lm.LoginWithDiagSink(
+		ctx, sink, url, insecure, "pulumi", "Pulumi stacks", httpstate.WelcomeUser, setCurrent, opts,
+	)
 	if err != nil {
 		return nil, err
 	}
 	return httpstate.New(ctx, sink, url, project, insecure)
 }
 
+// LoginFromAuthContext logs in to a backend using the provided authentication context.
+// It handles different grant types, such as OIDC token exchange, and returns an error
+// for unrecognized grant types.
 func (f *lm) LoginFromAuthContext(
 	ctx context.Context,
 	sink diag.Sink,
@@ -121,8 +126,8 @@ func (f *lm) LoginFromAuthContext(
 	if authContext.GrantType == workspace.AuthContextGrantTypeTokenExchange {
 		lm := httpstate.NewLoginManager()
 		_, err := lm.LoginWithOIDCToken(
-			ctx, url, insecure, authContext.Token, authContext.Organization, authContext.Scope,
-			authContext.ExpirationSeconds, setCurrent)
+			ctx, sink, url, insecure, authContext.Token, authContext.Organization, authContext.Scope,
+			authContext.Expiration, setCurrent)
 		if err != nil {
 			return nil, err
 		}

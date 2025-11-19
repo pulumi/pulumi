@@ -305,7 +305,7 @@ type serviceTokenInfo struct {
 	Team         string `json:"team,omitempty"`
 }
 
-//nolint:gosec // These are token type URNs, not credentials
+//nolint:gosec
 const (
 	pulumiAccessTokenTypeOrganization = "urn:pulumi:token-type:access_token:organization"
 	pulumiAccessTokenTypeTeam         = "urn:pulumi:token-type:access_token:team"
@@ -313,7 +313,7 @@ const (
 )
 
 func (pc *Client) ExchangeOidcToken(
-	oidcToken string, org string, scope string, expiration int64,
+	oidcToken string, org string, scope string, expiration time.Duration,
 ) (*apitype.TokenExchangeGrantResponse, error) {
 	requestedTokenType := pulumiAccessTokenTypeOrganization
 	if strings.HasPrefix(scope, "team:") {
@@ -330,7 +330,7 @@ func (pc *Client) ExchangeOidcToken(
 		"scope":                {scope},
 		"subject_token_type":   {"urn:ietf:params:oauth:token-type:id_token"},
 		"subject_token":        {oidcToken},
-		"expiration":           {strconv.FormatInt(expiration, 10)},
+		"expiration":           {strconv.Itoa(int(expiration.Seconds()))},
 	}
 	resp, err := pc.httpClient.PostForm(tokenUrl, data)
 	if err != nil {

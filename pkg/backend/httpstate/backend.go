@@ -340,6 +340,10 @@ type LoginManager interface {
 	// Current returns the current cloud backend if one is already logged in.
 	Current(ctx context.Context, cloudURL string, insecure, setCurrent bool) (*workspace.Account, error)
 
+	CurrentWithDiagSink(
+		ctx context.Context, sink diag.Sink, cloudURL string, insecure, setCurrent bool,
+	) (*workspace.Account, error)
+
 	// Login logs into the target cloud URL and returns the cloud backend for it.
 	Login(
 		ctx context.Context,
@@ -352,14 +356,31 @@ type LoginManager interface {
 		opts display.Options,
 	) (*workspace.Account, error)
 
-	LoginWithOIDCToken(
+	LoginWithDiagSink(
 		ctx context.Context,
+		sink diag.Sink,
 		cloudURL string,
 		insecure bool,
-		oidcToken string,
+		command string,
+		message string,
+		welcome func(display.Options),
+		setCurrent bool,
+		opts display.Options,
+	) (*workspace.Account, error)
+
+	// LoginWithOIDCToken logs into the target cloud URL using OIDC token exchange.
+	// It exchanges the provided OIDC token for a cloud backend access token and stores the credentials.
+	// The oidcTokenSource parameter can be a raw OIDC token, a file path prefixed with "file://",
+	// or an environment variable name.
+	LoginWithOIDCToken(
+		ctx context.Context,
+		sink diag.Sink,
+		cloudURL string,
+		insecure bool,
+		oidcTokenSource string,
 		organization string,
 		scope string,
-		expirationSeconds int64,
+		expiration time.Duration,
 		setCurrent bool,
 	) (*workspace.Account, error)
 }
@@ -384,6 +405,16 @@ func (m defaultLoginManager) Current(
 	insecure bool,
 	setCurrent bool,
 ) (*workspace.Account, error) {
+	return m.CurrentWithDiagSink(ctx, cmdutil.Diag(), cloudURL, insecure, setCurrent)
+}
+
+func (m defaultLoginManager) CurrentWithDiagSink(
+	ctx context.Context,
+	sink diag.Sink,
+	cloudURL string,
+	insecure bool,
+	setCurrent bool,
+) (*workspace.Account, error) {
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 
 	// We intentionally don't accept command-line args for the user's access token. Having it in
@@ -398,7 +429,7 @@ func (m defaultLoginManager) Current(
 	if err == nil && existingAccount.AccessToken != "" &&
 		(accessToken == "" || existingAccount.AccessToken == accessToken) {
 		valid := true
-		existingAccount, err = refreshAuthentication(cloudURL, insecure, existingAccount)
+		existingAccount, err = refreshAuthentication(sink, cloudURL, insecure, existingAccount)
 		if err != nil {
 			return nil, err
 		}
@@ -481,7 +512,21 @@ func (m defaultLoginManager) Login(
 	setCurrent bool,
 	opts display.Options,
 ) (*workspace.Account, error) {
-	current, err := m.Current(ctx, cloudURL, insecure, setCurrent)
+	return m.LoginWithDiagSink(ctx, cmdutil.Diag(), cloudURL, insecure, command, message, welcome, setCurrent, opts)
+}
+
+func (m defaultLoginManager) LoginWithDiagSink(
+	ctx context.Context,
+	sink diag.Sink,
+	cloudURL string,
+	insecure bool,
+	command string,
+	message string,
+	welcome func(display.Options),
+	setCurrent bool,
+	opts display.Options,
+) (*workspace.Account, error) {
+	current, err := m.CurrentWithDiagSink(ctx, sink, cloudURL, insecure, setCurrent)
 	if err != nil {
 		return nil, err
 	}
@@ -578,15 +623,16 @@ func (m defaultLoginManager) Login(
 
 func (m defaultLoginManager) LoginWithOIDCToken(
 	ctx context.Context,
+	sink diag.Sink,
 	cloudURL string,
 	insecure bool,
-	oidcToken string,
+	oidcTokenSource string,
 	organization string,
 	scope string,
-	expirationSeconds int64,
+	expiration time.Duration,
 	setCurrent bool,
 ) (*workspace.Account, error) {
-	current, err := m.Current(ctx, cloudURL, insecure, setCurrent)
+	current, err := m.CurrentWithDiagSink(ctx, sink, cloudURL, insecure, setCurrent)
 	if err != nil {
 		return nil, err
 	}
@@ -595,7 +641,7 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 	}
 
 	accessToken, expiresAt, authContext, err := exchangeOidcToken(
-		cloudURL, insecure, oidcToken, organization, scope, expirationSeconds)
+		sink, cloudURL, insecure, oidcTokenSource, organization, scope, expiration)
 	if err != nil {
 		return nil, err
 	}
@@ -608,7 +654,7 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 	if tokenInfo == nil {
 		tokenInfo = &workspace.TokenInformation{}
 	}
-	tokenInfo.ExpiresAtEpochSeconds = expiresAt
+	tokenInfo.ExpiresAt = expiresAt
 
 	account := workspace.Account{
 		AccessToken:      accessToken,
@@ -2232,7 +2278,11 @@ func (b *cloudBackend) tryNextUpdate(ctx context.Context, update client.UpdateId
 	return false, nil, nil
 }
 
-func refreshAuthentication(cloudURL string, insecure bool, account workspace.Account) (workspace.Account, error) {
+// refreshAuthentication attempts to refresh the access token in the Account
+// and returns the refreshed access token in a new account struct.
+func refreshAuthentication(
+	sink diag.Sink, cloudURL string, insecure bool, account workspace.Account,
+) (workspace.Account, error) {
 	tokenInfo := account.TokenInformation
 	if tokenInfo == nil {
 		tokenInfo = &workspace.TokenInformation{}
@@ -2242,19 +2292,19 @@ func refreshAuthentication(cloudURL string, insecure bool, account workspace.Acc
 		// Refresh if token expires within 2 minutes or has no expiration stored.
 		// Using 2 minutes as a buffer to account for clock skew and network delays
 		// while using a valid token as long as possible as the auth context token may be expired.
-		if tokenInfo.ExpiresAtEpochSeconds == 0 ||
-			time.Unix(tokenInfo.ExpiresAtEpochSeconds, 0).Add(2*time.Minute).Before(time.Now()) {
+		if tokenInfo.ExpiresAt.IsZero() ||
+			tokenInfo.ExpiresAt.Add(-2*time.Minute).Before(time.Now()) {
 			if authContext.TokenExpired {
 				return workspace.Account{}, ErrUnauthorized
 			}
 			accessToken, expiresAt, authContext, err := exchangeOidcToken(
-				cloudURL, insecure, authContext.Token, authContext.Organization, authContext.Scope, authContext.ExpirationSeconds,
+				sink, cloudURL, insecure, authContext.Token, authContext.Organization, authContext.Scope, authContext.Expiration,
 			)
 			if err != nil {
 				return workspace.Account{}, err
 			}
 			account.AccessToken = accessToken
-			account.TokenInformation.ExpiresAtEpochSeconds = expiresAt
+			account.TokenInformation.ExpiresAt = expiresAt
 			account.AuthContext = authContext
 			account.LastValidatedAt = time.Now()
 		}
@@ -2263,39 +2313,45 @@ func refreshAuthentication(cloudURL string, insecure bool, account workspace.Acc
 }
 
 func exchangeOidcToken(
-	cloudURL string, insecure bool, oidcToken string, organization string, scope string, expirationSeconds int64,
-) (string, int64, *workspace.AuthContext, error) {
-	if oidcToken == "" {
-		return "", 0, nil, ErrUnauthorized
+	sink diag.Sink,
+	cloudURL string,
+	insecure bool,
+	oidcTokenSource string,
+	organization string,
+	scope string,
+	expiration time.Duration,
+) (string, time.Time, *workspace.AuthContext, error) {
+	if oidcTokenSource == "" {
+		return "", time.Time{}, nil, ErrUnauthorized
 	}
-	tokenValue, tokenSourceType, err := getTokenValue(oidcToken)
+	tokenValue, tokenSourceType, err := getTokenValue(oidcTokenSource)
 	if err != nil {
-		return "", 0, nil, fmt.Errorf("OIDC token exchange failed: Failed to read OIDC token: %w", err)
+		return "", time.Time{}, nil, fmt.Errorf("OIDC token exchange failed: Failed to read OIDC token: %w", err)
 	}
-	expirationBase := time.Now().Unix()
-	resp, err := client.NewClient(cloudURL, "", insecure, cmdutil.Diag()).
-		ExchangeOidcToken(tokenValue, organization, scope, expirationSeconds)
+	now := time.Now()
+	resp, err := client.NewClient(cloudURL, "", insecure, sink).
+		ExchangeOidcToken(tokenValue, organization, scope, expiration)
 	if err != nil {
-		return "", 0, nil, fmt.Errorf("OIDC token exchange failed: %w", err)
+		return "", time.Time{}, nil, fmt.Errorf("OIDC token exchange failed: %w", err)
 	}
 	tokenExpired := false
 	if tokenSourceType == tokenSourceTypeRaw {
 		// Do not store raw oidc tokens as they are very short-lived and probably can only be used once
 		// in contrast to tokens read from file or environment variable which are refreshed periodically
 		// within CI/CD pipelines. Store an empty string instead and mark the token immediately as expired.
-		oidcToken = ""
+		oidcTokenSource = ""
 		tokenExpired = true
 	}
 	authContext := &workspace.AuthContext{
-		GrantType:         workspace.AuthContextGrantTypeTokenExchange,
-		Organization:      organization,
-		Scope:             scope,
-		Token:             oidcToken,
-		TokenExpired:      tokenExpired,
-		ExpirationSeconds: expirationSeconds,
+		GrantType:    workspace.AuthContextGrantTypeTokenExchange,
+		Organization: organization,
+		Scope:        scope,
+		Token:        oidcTokenSource,
+		TokenExpired: tokenExpired,
+		Expiration:   expiration,
 	}
 	// TODO(https://github.com/pulumi/pulumi/issues/20986): Return expiresIn within TokenInformation.
-	expiresAt := expirationBase + resp.ExpiresIn
+	expiresAt := now.Add(time.Duration(resp.ExpiresIn) * time.Second)
 	return resp.AccessToken, expiresAt, authContext, nil
 }
 
