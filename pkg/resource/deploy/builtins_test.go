@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -138,19 +137,16 @@ func TestBuiltinProvider(t *testing.T) {
 	})
 	t.Run("Update (always fails)", func(t *testing.T) {
 		t.Parallel()
-		assert.Panics(t, func() {
-			p := &builtinProvider{}
-
-			oldOutputs := resource.PropertyMap{"cookie": resource.NewProperty("yum")}
-			_, err := p.Update(context.Background(), plugin.UpdateRequest{
-				URN:        resource.CreateURN("foo", "not-stack-reference-type", "", "proj", "stack"),
-				ID:         "some-id",
-				OldInputs:  nil,
-				OldOutputs: oldOutputs,
-				NewInputs:  resource.PropertyMap{},
-			})
-			contract.Ignore(err)
+		p := &builtinProvider{}
+		oldOutputs := resource.PropertyMap{"cookie": resource.NewProperty("yum")}
+		_, err := p.Update(context.Background(), plugin.UpdateRequest{
+			URN:        resource.CreateURN("foo", "not-stack-reference-type", "", "proj", "stack"),
+			ID:         "some-id",
+			OldInputs:  nil,
+			OldOutputs: oldOutputs,
+			NewInputs:  resource.PropertyMap{},
 		})
+		require.ErrorContains(t, err, "unrecognized resource type 'not-stack-reference-type'")
 	})
 	t.Run("Construct (always fails)", func(t *testing.T) {
 		t.Parallel()

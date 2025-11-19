@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Add a new builtin `Stash` resource which can be used to save a value to state
