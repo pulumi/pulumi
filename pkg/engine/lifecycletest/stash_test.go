@@ -79,7 +79,7 @@ func TestStash(t *testing.T) {
 	require.NoError(t, err)
 
 	input = resource.NewProperty("second")
-	snap, err = lt.TestOp(Update).RunStep(
+	_, err = lt.TestOp(Update).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 }

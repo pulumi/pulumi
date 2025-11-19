@@ -120,7 +120,7 @@ const (
 
 func (p *builtinProvider) Check(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
 	typ := req.URN.Type()
-	switch typ {
+	switch typ { //nolint:exhaustive
 	case stackReferenceType:
 		// We only need to warn about this in Check. This won't be called for Reads but Creates or Updates will
 		// call Check first.
@@ -172,7 +172,7 @@ func (p *builtinProvider) Check(_ context.Context, req plugin.CheckRequest) (plu
 
 func (p *builtinProvider) Diff(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
 	typ := req.URN.Type()
-	switch typ {
+	switch typ { //nolint:exhaustive
 	case stackReferenceType:
 		if !req.NewInputs["name"].DeepEquals(req.OldInputs["name"]) {
 			return plugin.DiffResult{
@@ -200,7 +200,7 @@ func (p *builtinProvider) Diff(_ context.Context, req plugin.DiffRequest) (plugi
 
 func (p *builtinProvider) Create(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 	typ := req.URN.Type()
-	switch typ {
+	switch typ { //nolint:exhaustive
 	case stackReferenceType:
 
 		state, err := p.readStackReference(req.Properties)
@@ -249,7 +249,7 @@ func (p *builtinProvider) Create(_ context.Context, req plugin.CreateRequest) (p
 
 func (p *builtinProvider) Update(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 	typ := req.URN.Type()
-	switch typ {
+	switch typ { //nolint:exhaustive
 	case stashType:
 		properties := resource.PropertyMap{
 			"input":  req.NewInputs["input"],
@@ -277,7 +277,7 @@ func (p *builtinProvider) Read(_ context.Context, req plugin.ReadRequest) (plugi
 	contract.Requiref(req.ID != "", "id", "must not be empty")
 
 	typ := req.URN.Type()
-	switch typ {
+	switch typ { //nolint:exhaustive
 	case stackReferenceType:
 		for k := range req.Inputs {
 			if k != "name" {
