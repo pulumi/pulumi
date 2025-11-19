@@ -77,9 +77,9 @@ class Resource(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  private: Optional[pulumi.Input[_builtins.str]] = None,
-                 private_data: Optional[pulumi.Input[pulumi.InputType['DataArgs']]] = None,
+                 private_data: Optional[pulumi.Input[Union['DataArgs', 'DataArgsDict']]] = None,
                  public: Optional[pulumi.Input[_builtins.str]] = None,
-                 public_data: Optional[pulumi.Input[pulumi.InputType['DataArgs']]] = None,
+                 public_data: Optional[pulumi.Input[Union['DataArgs', 'DataArgsDict']]] = None,
                  __props__=None):
         """
         Create a Resource resource with the given unique name, props, and options.
@@ -110,9 +110,9 @@ class Resource(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  private: Optional[pulumi.Input[_builtins.str]] = None,
-                 private_data: Optional[pulumi.Input[pulumi.InputType['DataArgs']]] = None,
+                 private_data: Optional[pulumi.Input[Union['DataArgs', 'DataArgsDict']]] = None,
                  public: Optional[pulumi.Input[_builtins.str]] = None,
-                 public_data: Optional[pulumi.Input[pulumi.InputType['DataArgs']]] = None,
+                 public_data: Optional[pulumi.Input[Union['DataArgs', 'DataArgsDict']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

@@ -1,0 +1,13 @@
+name: packages-install-cycle
+description: Test cycle detection in plugin installation
+runtime: yaml
+packages:
+  typescript-a: ../ts-provider-a
+resources:
+  typescriptAComp:
+    type: typescript-a:index:Component
+    properties:
+      echo: "hello from typescript-a"
+
+outputs:
+  typescriptAEcho: ${typescriptAComp.echo}

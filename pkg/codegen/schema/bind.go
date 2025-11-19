@@ -1178,7 +1178,7 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 		}
 	}
 	if diags.HasErrors() {
-		return nil, nil, diags, errors.New("invalid property names")
+		return nil, nil, diags, fmt.Errorf("invalid property names: %s", diags.Error())
 	}
 
 	// Bind property types and constant or default values.
@@ -1680,7 +1680,7 @@ func (t *types) bindProvider(decl *Resource, options ValidationOptions) (hcl.Dia
 			diags = diags.Append(errorf(path, "%s", property.Name+" is a reserved provider input property name"))
 		}
 		if diags.HasErrors() {
-			return diags, errors.New("invalid property names")
+			return diags, fmt.Errorf("invalid property names: %s", diags.Error())
 		}
 	}
 

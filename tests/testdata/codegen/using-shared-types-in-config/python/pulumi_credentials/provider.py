@@ -93,7 +93,7 @@ class Provider(pulumi.ProviderResource):
                  opts: Optional[pulumi.ResourceOptions] = None,
                  hash: Optional[pulumi.Input['HashKind']] = None,
                  password: Optional[pulumi.Input[_builtins.str]] = None,
-                 shared: Optional[pulumi.Input[pulumi.InputType['SharedArgs']]] = None,
+                 shared: Optional[pulumi.Input[Union['SharedArgs', 'SharedArgsDict']]] = None,
                  user: Optional[pulumi.Input[_builtins.str]] = None,
                  __props__=None):
         """
@@ -129,7 +129,7 @@ class Provider(pulumi.ProviderResource):
                  opts: Optional[pulumi.ResourceOptions] = None,
                  hash: Optional[pulumi.Input['HashKind']] = None,
                  password: Optional[pulumi.Input[_builtins.str]] = None,
-                 shared: Optional[pulumi.Input[pulumi.InputType['SharedArgs']]] = None,
+                 shared: Optional[pulumi.Input[Union['SharedArgs', 'SharedArgsDict']]] = None,
                  user: Optional[pulumi.Input[_builtins.str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)

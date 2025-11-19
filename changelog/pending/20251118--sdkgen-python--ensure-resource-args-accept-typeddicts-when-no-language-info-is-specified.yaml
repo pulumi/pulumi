@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/python
+  description: Ensure resource args accept typeddicts when no language info is specified

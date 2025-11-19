@@ -405,6 +405,8 @@ func NewVirtualEnvError(dir, fullPath string) error {
 }
 
 // InstallDependencies will create a new virtual environment and install dependencies in the root directory.
+//
+// venvDir must be an absolute path.
 func InstallDependencies(ctx context.Context, cwd, venvDir string, useLanguageVersionTools, showOutput bool,
 	infoWriter, errorWriter io.Writer,
 ) error {
