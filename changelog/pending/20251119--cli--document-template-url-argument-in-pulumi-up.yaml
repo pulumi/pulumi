@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli
+  description: Document the [template|url] argument in `pulumi up` command help text
