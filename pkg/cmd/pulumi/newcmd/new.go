@@ -39,6 +39,7 @@ import (
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -330,6 +331,11 @@ func runNew(ctx context.Context, args newArgs) error {
 			return fmt.Errorf("invalid runtime option: %s", opt)
 		}
 		proj.Runtime.SetOption(parts[0], parts[1])
+	}
+
+	// For Python projects, if a typechecker runtime option is set, add it to requirements.txt
+	if err = updatePythonRequirementsForTypechecker(proj, root); err != nil {
+		return fmt.Errorf("updating Python requirements for typechecker: %w", err)
 	}
 
 	if err = workspace.SaveProject(proj); err != nil {
@@ -940,4 +946,64 @@ func compareStackProjectName(b backend.Backend, stackName, projectName string) e
 	}
 	return fmt.Errorf("project name (--name %s) and stack reference project name (--stack %s) must be the same",
 		projectName, stackProjectName)
+}
+
+// updatePythonRequirementsForTypechecker adds the typechecker dependency to requirements.txt
+// for Python projects when the typechecker runtime option is set.
+func updatePythonRequirementsForTypechecker(proj *workspace.Project, root string) error {
+	// Only process Python projects
+	if proj.Runtime.Name() != "python" {
+		return nil
+	}
+
+	// Get the typechecker option from runtime options
+	options := proj.Runtime.Options()
+	typecheckerVal, hasTypechecker := options["typechecker"]
+	if !hasTypechecker {
+		return nil
+	}
+
+	typechecker, ok := typecheckerVal.(string)
+	if !ok {
+		return nil
+	}
+
+	// Get the dependency line for this typechecker
+	dependency := python.TypecheckerDependency(typechecker)
+	if dependency == "" {
+		return nil
+	}
+
+	// Path to requirements.txt
+	requirementsPath := filepath.Join(root, "requirements.txt")
+
+	// Check if requirements.txt exists
+	if _, err := os.Stat(requirementsPath); os.IsNotExist(err) {
+		// Create requirements.txt with just the typechecker dependency
+		return os.WriteFile(requirementsPath, []byte(dependency+"\n"), 0o600)
+	} else if err != nil {
+		return fmt.Errorf("checking requirements.txt: %w", err)
+	}
+
+	// Read existing requirements.txt
+	content, err := os.ReadFile(requirementsPath)
+	if err != nil {
+		return fmt.Errorf("reading requirements.txt: %w", err)
+	}
+
+	// Check if the dependency is already present
+	lines := strings.Split(strings.TrimSpace(string(content)), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		// Check if this line is for the same package (handle cases like "mypy>=1.0.0" vs "mypy==1.2.0")
+		if strings.HasPrefix(line, strings.Split(dependency, ">=")[0]) {
+			// Typechecker dependency already exists, don't add it again
+			return nil
+		}
+	}
+
+	// Add the dependency to requirements.txt
+	// We'll add it at the end and let the user sort it if they want
+	updatedContent := strings.TrimSpace(string(content)) + "\n" + dependency + "\n"
+	return os.WriteFile(requirementsPath, []byte(updatedContent), 0o600)
 }

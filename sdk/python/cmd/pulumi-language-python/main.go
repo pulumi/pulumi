@@ -37,7 +37,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -235,6 +234,8 @@ func parseOptions(root string, programDir string, options map[string]any) (toolc
 				pythonOptions.Typechecker = toolchain.TypeCheckerMypy
 			case "pyright":
 				pythonOptions.Typechecker = toolchain.TypeCheckerPyright
+			case "none":
+				pythonOptions.Typechecker = toolchain.TypeCheckerNone
 			default:
 				return pythonOptions, fmt.Errorf("unsupported typechecker option: %s", typechecker)
 			}
@@ -913,11 +914,7 @@ func checkForPackage(ctx context.Context, pkg string, opts toolchain.PythonOptio
 	if idx < 0 {
 		installCommand := fmt.Sprintf("Please install it using `poetry add %s`.", pkg)
 		if opts.Toolchain != toolchain.Poetry {
-			pipCommand := opts.Virtualenv + "/bin/pip install -r requirements.txt"
-			if runtime.GOOS == "windows" {
-				pipCommand = opts.Virtualenv + "\\Scripts\\pip install -r requirements.txt"
-			}
-			installCommand = fmt.Sprintf("Please add an entry for %s to requirements.txt and run `%s`", pkg, pipCommand)
+			installCommand = fmt.Sprintf("Please add an entry for %s to requirements.txt and run `pulumi install`", pkg)
 		}
 		//revive:disable:error-strings // This error message is user facing.
 		return &NotInstalledError{
@@ -1616,8 +1613,32 @@ func (host *pythonLanguageHost) GenerateProject(
 		return nil, err
 	}
 
+	// Extract typechecker and toolchain from project runtime options
+	var typechecker, toolchain string
+	if project.Runtime.Name() != "" {
+		options := project.Runtime.Options()
+		if tc, ok := options["typechecker"]; ok {
+			if tcStr, ok := tc.(string); ok {
+				typechecker = tcStr
+			}
+		}
+		if tl, ok := options["toolchain"]; ok {
+			if tlStr, ok := tl.(string); ok {
+				toolchain = tlStr
+			}
+		}
+	}
+	
+	// Fall back to host fields if runtime options are not set (for conformance testing)
+	if typechecker == "" {
+		typechecker = host.typechecker
+	}
+	if toolchain == "" {
+		toolchain = host.toolchain
+	}
+
 	err = codegen.GenerateProject(
-		req.TargetDirectory, project, program, req.LocalDependencies, host.typechecker, host.toolchain)
+		req.TargetDirectory, project, program, req.LocalDependencies, typechecker, toolchain)
 	if err != nil {
 		return nil, err
 	}

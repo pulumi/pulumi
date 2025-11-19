@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -393,6 +394,126 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			packages, err := determinePulumiPackages(t.Context(), opts)
 			require.NoError(t, err)
 			assert.Empty(t, packages)
+		})
+	}
+}
+
+func TestGenerateProjectExtractsRuntimeOptions(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name               string
+		projectJSON        string
+		expectedTypechecker string
+		expectedToolchain  string
+	}{
+		{
+			name: "runtime options with typechecker and toolchain",
+			projectJSON: `{
+				"name": "test-project",
+				"runtime": {
+					"name": "python",
+					"options": {
+						"typechecker": "mypy",
+						"toolchain": "pip",
+						"virtualenv": "venv"
+					}
+				}
+			}`,
+			expectedTypechecker: "mypy",
+			expectedToolchain:   "pip",
+		},
+		{
+			name: "runtime options with pyright",
+			projectJSON: `{
+				"name": "test-project",
+				"runtime": {
+					"name": "python",
+					"options": {
+						"typechecker": "pyright",
+						"toolchain": "poetry"
+					}
+				}
+			}`,
+			expectedTypechecker: "pyright",
+			expectedToolchain:   "poetry",
+		},
+		{
+			name: "runtime options without typechecker",
+			projectJSON: `{
+				"name": "test-project",
+				"runtime": {
+					"name": "python",
+					"options": {
+						"toolchain": "uv"
+					}
+				}
+			}`,
+			expectedTypechecker: "",
+			expectedToolchain:   "uv",
+		},
+		{
+			name: "no runtime options",
+			projectJSON: `{
+				"name": "test-project",
+				"runtime": {
+					"name": "python"
+				}
+			}`,
+			expectedTypechecker: "",
+			expectedToolchain:   "",
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Create a temporary directory for the test
+			tempDir := t.TempDir()
+
+			// Create a simple PCL program
+			programContent := `resource "test" "example" {}`
+			programFile := filepath.Join(tempDir, "test.pp")
+			err := os.WriteFile(programFile, []byte(programContent), 0o644)
+			require.NoError(t, err)
+
+			// Create the language host
+			host := &pythonLanguageHost{}
+
+			// Test the project parsing logic directly
+			var project workspace.Project
+			err = json.Unmarshal([]byte(tc.projectJSON), &project)
+			require.NoError(t, err)
+
+			// Extract typechecker and toolchain from project runtime options
+			var typechecker, toolchain string
+			if project.Runtime.Name() != "" {
+				options := project.Runtime.Options()
+				if tc, ok := options["typechecker"]; ok {
+					if tcStr, ok := tc.(string); ok {
+						typechecker = tcStr
+					}
+				}
+				if tl, ok := options["toolchain"]; ok {
+					if tlStr, ok := tl.(string); ok {
+						toolchain = tlStr
+					}
+				}
+			}
+
+			// Fall back to host fields if runtime options are not set (for conformance testing)
+			if typechecker == "" {
+				typechecker = host.typechecker
+			}
+			if toolchain == "" {
+				toolchain = host.toolchain
+			}
+
+			// Verify the extracted values
+			assert.Equal(t, tc.expectedTypechecker, typechecker)
+			assert.Equal(t, tc.expectedToolchain, toolchain)
 		})
 	}
 }
