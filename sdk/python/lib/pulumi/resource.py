@@ -1223,7 +1223,7 @@ class ComponentResource(Resource):
         self._remote = remote
         self._registered = False
 
-    def __init_subclass__(cls) -> None:
+    def __init_subclass__(cls, auto_parent=False) -> None:
         super().__init_subclass__()
 
         old_init = cls.__init__
@@ -1231,11 +1231,12 @@ class ComponentResource(Resource):
         # Hook the __init__ method to set the ambient parent context
         def new_init(self, *args, **kwargs):
             def do_init():
-                # Get the current ambient parent
-                ambient = ambient_parent.get()
-                if ambient is not None:
-                    ambient = ambient[0]
-                ambient_parent.set((self, ambient))
+                if auto_parent:
+                    # Get the current ambient parent
+                    ambient = ambient_parent.get()
+                    if ambient is not None:
+                        ambient = ambient[0]
+                    ambient_parent.set((self, ambient))
 
                 old_init(self, *args, **kwargs)
 

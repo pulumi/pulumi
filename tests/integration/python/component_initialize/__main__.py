@@ -17,7 +17,7 @@ class Random(Resource):
     def __init__(self, name, opts=None):
         super().__init__(RandomResourceProvider(), name, {"val": ""}, opts)
 
-class RandomComponent(pulumi.ComponentResource):
+class RandomComponent(pulumi.ComponentResource, auto_parent=True):
     def __init__(self, name, opts=None):
         super().__init__("component:RandomComponent", name, {}, opts)
 
