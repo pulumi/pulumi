@@ -524,3 +524,68 @@ func (bd *cachingBatchDecrypter) DecryptValue(ctx context.Context, ciphertext st
 func (bd *cachingBatchDecrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	return bd.decrypter.BatchDecrypt(ctx, ciphertexts)
 }
+
+// BatchEncrypt is a helper function that encapsulates the pattern of checking if a secrets manager
+// supports batching, starting a batch encryption operation, calling a function with the encrypter,
+// and completing the batch operation.
+func BatchEncrypt[T any](
+	ctx context.Context,
+	sm secrets.Manager,
+	fn func(context.Context, config.Encrypter) (T, error),
+) (T, error) {
+	var zero T
+	var completeBatch CompleteCrypterBatch
+	enc := sm.Encrypter()
+
+	if batchingSecretsManager, ok := sm.(BatchingSecretsManager); ok {
+		enc, completeBatch = batchingSecretsManager.BeginBatchEncryption()
+	}
+
+	result, err := fn(ctx, enc)
+	if err != nil {
+		return zero, err
+	}
+
+	if completeBatch != nil {
+		if err := completeBatch(ctx); err != nil {
+			return zero, err
+		}
+	}
+
+	return result, nil
+}
+
+// BatchDecrypt is a helper function that encapsulates the pattern of checking if a secrets manager
+// supports batching, starting a batch decryption operation, calling a function with the decrypter,
+// and completing the batch operation.
+func BatchDecrypt[T any](
+	ctx context.Context,
+	sm secrets.Manager,
+	fn func(context.Context, config.Decrypter) (T, error),
+) (T, error) {
+	var zero T
+	var completeBatch CompleteCrypterBatch = func(context.Context) error { return nil }
+	var dec config.Decrypter
+
+	if sm != nil {
+		if batchingSecretsManager, ok := sm.(BatchingSecretsManager); ok {
+			dec, completeBatch = batchingSecretsManager.BeginBatchDecryption()
+		} else {
+			dec = sm.Decrypter()
+		}
+	} else {
+		// We'll attempt to continue without a decrypter, but fail if we encounter encrypted secrets.
+		dec = config.NewErrorCrypter("snapshot contains encrypted secrets but no secrets manager could be found")
+	}
+
+	result, err := fn(ctx, dec)
+	if err != nil {
+		return zero, err
+	}
+
+	if err := completeBatch(ctx); err != nil {
+		return zero, err
+	}
+
+	return result, nil
+}

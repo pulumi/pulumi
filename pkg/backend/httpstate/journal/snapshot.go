@@ -24,6 +24,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
 var _ engine.Journal = (*cloudJournaler)(nil)
@@ -40,19 +42,13 @@ type cloudJournaler struct {
 func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 	j.wg.Add(1)
 	defer j.wg.Done()
-	var completeBatch stack.CompleteCrypterBatch
-	enc := j.sm.Encrypter()
-	if batchingSecretsManager, ok := j.sm.(stack.BatchingSecretsManager); ok {
-		enc, completeBatch = batchingSecretsManager.BeginBatchEncryption()
-	}
-	serialized, err := backend.SerializeJournalEntry(j.context, entry, enc)
+	serialized, err := stack.BatchEncrypt(
+		j.context, j.sm, func(ctx context.Context, enc config.Encrypter,
+		) (apitype.JournalEntry, error) {
+			return backend.SerializeJournalEntry(ctx, entry, enc)
+		})
 	if err != nil {
 		return fmt.Errorf("serializing journal entry: %w", err)
-	}
-	if completeBatch != nil {
-		if err := completeBatch(j.context); err != nil {
-			return fmt.Errorf("completing batch encryption: %w", err)
-		}
 	}
 	return j.client.SaveJournalEntry(j.context, j.update, serialized, j.tokenSource)
 }
