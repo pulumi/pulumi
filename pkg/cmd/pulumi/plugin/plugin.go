@@ -69,7 +69,8 @@ func getProjectPlugins() ([]workspace.PluginSpec, error) {
 	}
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	pwd, main, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+	pwd, main, ctx, err := engine.ProjectInfoContext(
+		projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +99,7 @@ func resolvePlugins(plugins []workspace.PluginSpec) ([]workspace.PluginInfo, err
 	d := cmdutil.Diag()
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	_, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, d, d, nil, false, nil, nil)
+	_, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, d, d, nil, false, nil, nil, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -369,6 +369,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			false,
 			span,
 			nil,
+			nil,
 		)
 		if err != nil {
 			return err
@@ -429,6 +430,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			nil,
 			false,
 			span,
+			nil,
 			nil,
 		)
 		if err != nil {

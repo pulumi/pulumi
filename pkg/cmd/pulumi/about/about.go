@@ -138,7 +138,7 @@ func getSummaryAbout(
 	} else {
 		projinfo := &engine.Projinfo{Proj: proj, Root: pwd}
 		pwd, program, pluginContext, err := engine.ProjectInfoContext(
-			projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+			projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil, nil)
 		if err != nil {
 			addError(err, "Failed to create plugin context")
 		} else {

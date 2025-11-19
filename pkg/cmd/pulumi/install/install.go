@@ -112,6 +112,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 						proj.GetPackageSpecs(),
 						nil, // config
 						nil, // debugging
+						nil, // panicErrs
 					)
 					if err != nil {
 						return err
@@ -146,6 +147,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 				nil,
 				false,
 				span,
+				nil,
 				nil,
 			)
 			if err != nil {

@@ -299,6 +299,8 @@ type Deployment struct {
 	opts *Options
 	// event handlers for this deployment.
 	events Events
+	// Channel to collect panic errors from goroutines
+	panicErrs chan error
 	// writeSnapshot indicates whether or not the deployment should write a new snapshot at the beginning
 	// of the deployment. This is true if the previous snapshot was migrated to add providers
 	writeSnapshot bool

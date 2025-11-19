@@ -46,6 +46,9 @@ type deploymentExecutor struct {
 	// The number of expected events remaining from step generaton, this tells us we're still expecting events
 	// to be posted back to us from async work such as DiffSteps.
 	asyncEventsExpected int32
+
+	// Channel to collect panic errors from goroutines
+	panicErrs chan error
 }
 
 // checkTargets validates that all the targets passed in refer to existing resources.  Diagnostics
@@ -133,9 +136,11 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	// We do not hang this off of the context we create below because we do not want the failure of a single step to
 	// cause other steps to fail.
 	ex.skipped = mapset.NewSet[urn.URN]()
+	// Initialize the panic error channel with buffer to avoid blocking
+	ex.panicErrs = make(chan error, 10)
 	done := make(chan bool)
 	defer close(done)
-	go func() {
+	go PanicRecovery(ex.panicErrs, func() {
 		select {
 		case <-callerCtx.Done():
 			logging.V(4).Infof("deploymentExecutor.Execute(...): signalling cancellation to providers...")
@@ -146,7 +151,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 		case <-done:
 			logging.V(4).Infof("deploymentExecutor.Execute(...): exiting provider canceller")
 		}
-	}()
+	})
 
 	// Close the deployment when we're finished.
 	defer contract.IgnoreClose(ex.deployment)
@@ -207,6 +212,9 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 		}
 	}()
 
+	// Set the panic error channel on the deployment so step generator can access it
+	ex.deployment.panicErrs = ex.panicErrs
+
 	// Set up a step generator for this deployment.
 	mode := updateMode
 	if ex.deployment.opts.DestroyProgram {
@@ -239,7 +247,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 		Error error
 	}
 	incomingEvents := make(chan nextEvent)
-	go func() {
+	go PanicRecovery(ex.panicErrs, func() {
 		for {
 			event, err := src.Next()
 			select {
@@ -252,7 +260,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 				return
 			}
 		}
-	}()
+	})
 
 	// The main loop. We'll continuously select for incoming events and the cancellation signal. There are three ways
 	// we can exit this loop:
@@ -409,6 +417,26 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 			}
 			return nil, result.BailErrorf("failed to analyze resources: %v", err)
 		}
+	}
+
+	// Close the panic errors channel to signal we're done collecting
+	close(ex.panicErrs)
+
+	// Collect any panic errors from goroutines
+	panicErrors := make([]error, 0, 1)
+	for panicErr := range ex.panicErrs {
+		panicErrors = append(panicErrors, panicErr)
+		logging.V(4).Infof("deploymentExecutor.Execute(...): collected panic error: %v", panicErr)
+		ex.reportError("", panicErr)
+	}
+
+	// If we have panic errors, combine them with any existing errors
+	if len(panicErrors) > 0 {
+		for _, pErr := range panicErrors {
+			err = errors.Join(err, pErr)
+		}
+		ex.reportExecResult("failed due to panic in goroutine")
+		return nil, result.BailError(err)
 	}
 
 	// Figure out if execution failed and why. Step generation and execution errors trump cancellation.

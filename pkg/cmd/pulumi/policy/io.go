@@ -65,6 +65,7 @@ func InstallPluginDependencies(ctx context.Context, root string, projRuntime wor
 		false,
 		span,
 		nil,
+		nil,
 	)
 	if err != nil {
 		return err

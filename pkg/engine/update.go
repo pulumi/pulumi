@@ -527,7 +527,7 @@ func newUpdateSource(ctx context.Context,
 		DisableResourceReferences: opts.DisableResourceReferences,
 		DisableOutputValues:       opts.DisableOutputValues,
 		AttachDebugger:            opts.AttachDebugger,
-	}), nil
+	}, plugctx.PanicErrs), nil
 }
 
 func update(

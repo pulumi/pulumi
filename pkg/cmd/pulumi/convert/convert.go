@@ -478,7 +478,8 @@ func runConvert(
 		}
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		_, main, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+		_, main, ctx, err := engine.ProjectInfoContext(
+			projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil, nil)
 		if err != nil {
 			return err
 		}
