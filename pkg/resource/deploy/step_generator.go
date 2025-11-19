@@ -1908,7 +1908,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 				// check that and just return the empty set here instead. We only need to do this check in preview mode,
 				// in a real update old _MUST_ be in the dep graph and it's better to panic if that ever doesn't hold
 				// true.
-				if sg.deployment.opts.DryRun && sg.deployment.depGraph.Contains(old) {
+				if !sg.deployment.opts.DryRun || sg.deployment.depGraph.Contains(old) {
 					toReplace, err = sg.calculateDependentReplacements(old)
 					if err != nil {
 						return nil, err
