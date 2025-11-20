@@ -1166,7 +1166,7 @@ func TestRefreshAuthentication(t *testing.T) {
 					TokenExpired: true,
 				},
 				TokenInformation: &workspace.TokenInformation{
-					ExpiresAt: time.Now().Add(-1 * time.Hour),
+					ExpiresAt: timePtr(time.Now().Add(-1 * time.Hour)),
 				},
 			},
 			wantErr:     true,
@@ -1181,7 +1181,7 @@ func TestRefreshAuthentication(t *testing.T) {
 					Token:     "pul-oidc-token",
 				},
 				TokenInformation: &workspace.TokenInformation{
-					ExpiresAt: time.Now().Add(10 * time.Minute),
+					ExpiresAt: timePtr(time.Now().Add(10 * time.Minute)),
 				},
 			},
 			wantErr: false,
@@ -1220,6 +1220,10 @@ func TestRefreshAuthentication(t *testing.T) {
 			}
 		})
 	}
+}
+
+func timePtr(t time.Time) *time.Time {
+	return &t
 }
 
 func TestExchangeOidcToken(t *testing.T) {

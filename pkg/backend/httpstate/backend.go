@@ -654,7 +654,7 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 	if tokenInfo == nil {
 		tokenInfo = &workspace.TokenInformation{}
 	}
-	tokenInfo.ExpiresAt = expiresAt
+	tokenInfo.ExpiresAt = &expiresAt
 
 	account := workspace.Account{
 		AccessToken:      accessToken,
@@ -2292,7 +2292,7 @@ func refreshAuthentication(
 		// Refresh if token expires within 2 minutes or has no expiration stored.
 		// Using 2 minutes as a buffer to account for clock skew and network delays
 		// while using a valid token as long as possible as the auth context token may be expired.
-		if tokenInfo.ExpiresAt.IsZero() ||
+		if tokenInfo.ExpiresAt == nil || tokenInfo.ExpiresAt.IsZero() ||
 			tokenInfo.ExpiresAt.Add(-2*time.Minute).Before(time.Now()) {
 			if authContext.TokenExpired {
 				return workspace.Account{}, ErrUnauthorized
@@ -2304,7 +2304,7 @@ func refreshAuthentication(
 				return workspace.Account{}, err
 			}
 			account.AccessToken = accessToken
-			account.TokenInformation.ExpiresAt = expiresAt
+			account.TokenInformation.ExpiresAt = &expiresAt
 			account.AuthContext = authContext
 			account.LastValidatedAt = time.Now()
 		}

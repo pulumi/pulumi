@@ -128,10 +128,10 @@ type Account struct {
 // Information about the token that was used to authenticate the current user. One (or none) of Team or Organization
 // will be set, but not both.
 type TokenInformation struct {
-	Name         string    `json:"name"`                   // The name of the token.
-	Organization string    `json:"organization,omitempty"` //nolint:lll // If this was an organization token, the organization it was for.
-	Team         string    `json:"team,omitempty"`         // If this was a team token, the team it was for.
-	ExpiresAt    time.Time `json:"expiresAt,omitempty"`    // The time when this token expires.
+	Name         string     `json:"name"`                   // The name of the token.
+	Organization string     `json:"organization,omitempty"` //nolint:lll // If this was an organization token, the organization it was for.
+	Team         string     `json:"team,omitempty"`         // If this was a team token, the team it was for.
+	ExpiresAt    *time.Time `json:"expiresAt,omitempty"`    // The time when this token expires.
 }
 
 type AuthContext struct {
