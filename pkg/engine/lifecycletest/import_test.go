@@ -1563,3 +1563,59 @@ func TestImportFailedCreate(t *testing.T) {
 
 	assert.ErrorContains(t, err, "step application failed: not implemented")
 }
+
+// Regression https://github.com/pulumi/pulumi/issues/20984, ensure that an import followed by a DBR diff doesn't panic.
+func TestImportDeleteBeforeReplace(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					assert.Equal(t, "import-id", string(req.ID))
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Inputs: resource.PropertyMap{
+								"foo": resource.NewProperty("bar"),
+							},
+							Outputs: resource.PropertyMap{
+								"foo": resource.NewProperty("bar"),
+							},
+							ID: "imported-id",
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+				DiffF: func(ctx context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					assert.Equal(t, "resB", req.Name)
+					return plugin.DiffResult{
+						Changes:             plugin.DiffSome,
+						ReplaceKeys:         []resource.PropertyKey{"foo"},
+						DeleteBeforeReplace: true,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			ImportID: "import-id",
+			Inputs: resource.PropertyMap{
+				"foo": resource.NewProperty("baz"),
+			},
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	project := p.GetProject()
+	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, true, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+}

@@ -353,6 +353,28 @@ function deserialize_pulumirpc_RuntimeOptionsResponse(buffer_arg) {
   return pulumi_language_pb.RuntimeOptionsResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_TemplateRequest(arg) {
+  if (!(arg instanceof pulumi_language_pb.TemplateRequest)) {
+    throw new Error('Expected argument of type pulumirpc.TemplateRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_TemplateRequest(buffer_arg) {
+  return pulumi_language_pb.TemplateRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_TemplateResponse(arg) {
+  if (!(arg instanceof pulumi_language_pb.TemplateResponse)) {
+    throw new Error('Expected argument of type pulumirpc.TemplateResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_TemplateResponse(buffer_arg) {
+  return pulumi_language_pb.TemplateResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 
 // The LanguageRuntime service defines a standard interface for [language hosts/runtimes](languages). At a high level, a
 // language runtime provides the ability to execute programs, install and query dependencies, and generate code for a
@@ -464,6 +486,20 @@ runtimeOptionsPrompts: {
     requestDeserialize: deserialize_pulumirpc_RuntimeOptionsRequest,
     responseSerialize: serialize_pulumirpc_RuntimeOptionsResponse,
     responseDeserialize: deserialize_pulumirpc_RuntimeOptionsResponse,
+  },
+  // `Template` allows the language runtime to perform additional templating on a newly instantiated project template.
+// For example the Python runtime might want to convert a requirements.txt into a pyproject.toml suitable for use
+// with uv or poetry.
+template: {
+    path: '/pulumirpc.LanguageRuntime/Template',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_language_pb.TemplateRequest,
+    responseType: pulumi_language_pb.TemplateResponse,
+    requestSerialize: serialize_pulumirpc_TemplateRequest,
+    requestDeserialize: deserialize_pulumirpc_TemplateRequest,
+    responseSerialize: serialize_pulumirpc_TemplateResponse,
+    responseDeserialize: deserialize_pulumirpc_TemplateResponse,
   },
   // `About` returns information about the language runtime being used.
 about: {

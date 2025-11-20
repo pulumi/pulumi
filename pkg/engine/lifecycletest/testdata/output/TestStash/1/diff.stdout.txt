@@ -1,0 +1,13 @@
+<{%reset%}>  pulumi:providers:pulumi: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pulumi::default]
+<{%reset%}><{%reset%}><{%fg 3%}>~ pulumi:index:Stash: (update)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:index:Stash::stash]
+<{%reset%}><{%fg 3%}>  ~ input: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>first<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>second<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 3%}>    --outputs:--<{%reset%}>
+<{%reset%}>    output: <{%reset%}><{%reset%}>"first"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 updated<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

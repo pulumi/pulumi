@@ -31,14 +31,14 @@ import (
 
 // W offers functionality for interacting with Pulumi workspaces.
 type W interface {
-	Settings() *workspace.Settings // returns a mutable pointer to the optional workspace settings info.
-	Save() error                   // saves any modifications to the workspace.
+	Settings() *Settings // returns a mutable pointer to the optional workspace settings info.
+	Save() error         // saves any modifications to the workspace.
 }
 
 type projectWorkspace struct {
-	name     tokens.PackageName  // the package this workspace is associated with.
-	project  string              // the path to the Pulumi.[yaml|json] file for this project.
-	settings *workspace.Settings // settings for this workspace.
+	name     tokens.PackageName // the package this workspace is associated with.
+	project  string             // the path to the Pulumi.[yaml|json] file for this project.
+	settings *Settings          // settings for this workspace.
 }
 
 var (
@@ -108,7 +108,7 @@ func newW() (W, error) {
 	return w, nil
 }
 
-func (pw *projectWorkspace) Settings() *workspace.Settings {
+func (pw *projectWorkspace) Settings() *Settings {
 	return pw.settings
 }
 
@@ -167,13 +167,13 @@ func (pw *projectWorkspace) readSettings() error {
 	b, err := os.ReadFile(settingsPath)
 	if err != nil && os.IsNotExist(err) {
 		// not an error to not have an existing settings file.
-		pw.settings = &workspace.Settings{}
+		pw.settings = &Settings{}
 		return nil
 	} else if err != nil {
 		return err
 	}
 
-	var settings workspace.Settings
+	var settings Settings
 
 	err = json.Unmarshal(b, &settings)
 	if err != nil {

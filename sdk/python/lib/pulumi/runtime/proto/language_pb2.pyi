@@ -727,6 +727,43 @@ class RuntimeOptionsResponse(google.protobuf.message.Message):
 global___RuntimeOptionsResponse = RuntimeOptionsResponse
 
 @typing.final
+class TemplateRequest(google.protobuf.message.Message):
+    """`TemplateRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Template) call."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    INFO_FIELD_NUMBER: builtins.int
+    PROJECT_NAME_FIELD_NUMBER: builtins.int
+    project_name: builtins.str
+    """The name of the project we are templating."""
+    @property
+    def info(self) -> global___ProgramInfo:
+        """The [plugin program](pulumirpc.ProgramInfo) to use."""
+
+    def __init__(
+        self,
+        *,
+        info: global___ProgramInfo | None = ...,
+        project_name: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["info", b"info"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["info", b"info", "project_name", b"project_name"]) -> None: ...
+
+global___TemplateRequest = TemplateRequest
+
+@typing.final
+class TemplateResponse(google.protobuf.message.Message):
+    """`TemplateResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Template) call."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(
+        self,
+    ) -> None: ...
+
+global___TemplateResponse = TemplateResponse
+
+@typing.final
 class RunPluginRequest(google.protobuf.message.Message):
     """`RunPluginRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.RunPlugin) call."""
 

@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 )
 
@@ -39,9 +40,19 @@ type cloudJournaler struct {
 func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 	j.wg.Add(1)
 	defer j.wg.Done()
-	serialized, err := backend.SerializeJournalEntry(j.context, entry, j.sm.Encrypter())
+	var completeBatch stack.CompleteCrypterBatch
+	enc := j.sm.Encrypter()
+	if batchingSecretsManager, ok := j.sm.(stack.BatchingSecretsManager); ok {
+		enc, completeBatch = batchingSecretsManager.BeginBatchEncryption()
+	}
+	serialized, err := backend.SerializeJournalEntry(j.context, entry, enc)
 	if err != nil {
 		return fmt.Errorf("serializing journal entry: %w", err)
+	}
+	if completeBatch != nil {
+		if err := completeBatch(j.context); err != nil {
+			return fmt.Errorf("completing batch encryption: %w", err)
+		}
 	}
 	return j.client.SaveJournalEntry(j.context, j.update, serialized, j.tokenSource)
 }
