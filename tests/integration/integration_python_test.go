@@ -2514,6 +2514,14 @@ func TestPythonComponentProviderInComponentProvider(t *testing.T) {
 func installPythonProviderDependencies(t *testing.T, dir string) {
 	t.Helper()
 
+	// Use `pulumi install` to install plugin dependencies
+	// This handles both pyproject.toml and requirements.txt automatically
+	cmd := exec.Command("pulumi", "install")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "`%s` in %s failed with output: %s", cmd.String(), cmd.Dir, string(out))
+
+	// Install the local development SDK
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 		Root:       dir,
 		Virtualenv: "venv",
@@ -2521,29 +2529,11 @@ func installPythonProviderDependencies(t *testing.T, dir string) {
 	})
 	require.NoError(t, err)
 
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	if _, err := os.Stat(filepath.Join(dir, "pyproject.toml")); err == nil {
-		t.Logf("Found bootstrap-less Python plugin in %s", dir)
-		// Create a venv and install the package into it
-		err = tc.EnsureVenv(context.Background(), dir, false, false, stdout, stderr)
-		require.NoError(t, err)
-		cmd, err := tc.ModuleCommand(context.Background(), "pip", "install", dir)
-		require.NoError(t, err)
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, "output: %s", out)
-	} else {
-		// Install dependencies from requirements.txt
-		err = tc.InstallDependencies(context.Background(), dir, false, false, stdout, stderr)
-		require.NoError(t, err, "stdout: %s, stderr: %s", stdout, stderr)
-	}
-
-	// Install the core SDK so we have the current version
 	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
 	require.NoError(t, err)
-	cmd, err := tc.ModuleCommand(context.Background(), "pip", "install", coreSDK)
+	cmd, err = tc.ModuleCommand(t.Context(), "pip", "install", coreSDK)
 	require.NoError(t, err)
-	out, err := cmd.CombinedOutput()
+	out, err = cmd.CombinedOutput()
 	require.NoError(t, err, "output: %s", out)
 }
 
