@@ -98,13 +98,13 @@ func newStackImportCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager, sp s
 				// encryption is in use, but for import purposes we don't care about that.
 				ps := workspace.ProjectStack{}
 				sm, err := s.DefaultSecretManager(&ps)
-				contract.Assertf(
-					ps.EncryptedKey == "" && ps.EncryptionSalt == "" && ps.SecretsProvider == "",
-					"expected ProjectStack to remain unmodified")
 				if err != nil {
 					return fmt.Errorf("could not create service secrets manager for stack %q: %w",
 						s.Ref().String(), err)
 				}
+				contract.Assertf(
+					ps.EncryptedKey == "" && ps.EncryptionSalt == "" && ps.SecretsProvider == "",
+					"expected ProjectStack to remain unmodified")
 				snapshot.SecretsManager = sm
 			}
 
