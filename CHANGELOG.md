@@ -1,5 +1,55 @@
 # Changelog
 
+## 3.208.0 (2025-11-20)
+
+
+### Features
+
+- [cli] Expose all command flags as env vars (e.g. --refresh can now be set with PULUMI_OPTION_REFRESH)
+  [#20868](https://github.com/pulumi/pulumi/pull/20868)
+
+- [cli/install] Make `pulumi install` recurse into local packages
+  [#20945](https://github.com/pulumi/pulumi/pull/20945)
+
+- [engine] Add a `replacement_trigger` resource option. Any change to this value between program runs will trigger a replace of the resource
+  [#20936](https://github.com/pulumi/pulumi/pull/20936)
+
+- [engine] Add a new builtin `Stash` resource which can be used to save a value to state
+  [#20819](https://github.com/pulumi/pulumi/pull/20819)
+
+- [protobuf] Add `Language.Template` RPC to protos
+  [#20948](https://github.com/pulumi/pulumi/pull/20948)
+
+- [sdk/go] Add support for `replacement_trigger` in the Go SDK
+  [#20937](https://github.com/pulumi/pulumi/pull/20937)
+
+
+### Bug Fixes
+
+- [engine] Fix duplicate resource snapshot integrity issue with aliases
+  [#20926](https://github.com/pulumi/pulumi/pull/20926)
+
+- [engine] Allow resources marked as `Delete` to be targeted, and take them into account for dependency calculation
+  [#20962](https://github.com/pulumi/pulumi/pull/20962)
+
+- [engine] Fix a panic when previewing and import of a resource that wants to delete and then replace due to diffs
+  [#20997](https://github.com/pulumi/pulumi/pull/20997)
+
+- [pkg] Include invalid property names in bind errors
+  [#20989](https://github.com/pulumi/pulumi/pull/20989)
+
+- [sdk/python] Don’t raise when looking up a stack reference output that does not exist
+  [#20938](https://github.com/pulumi/pulumi/pull/20938)
+
+- [sdkgen/python] Ensure resource args accept typeddicts when no language info is specified
+  [#20982](https://github.com/pulumi/pulumi/pull/20982)
+
+
+### Miscellaneous
+
+- [cli] Document the [template|url] argument in `pulumi up` command help text
+  [#20996](https://github.com/pulumi/pulumi/pull/20996)
+
 ## 3.207.0 (2025-11-12)
 
 

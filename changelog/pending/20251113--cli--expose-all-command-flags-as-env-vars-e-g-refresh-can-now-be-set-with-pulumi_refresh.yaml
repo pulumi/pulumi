@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Expose all command flags as env vars (e.g. --refresh can now be set with PULUMI_OPTION_REFRESH)
