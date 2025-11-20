@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: pkg
-  description: Include invalid property names in bind errors
