@@ -1,0 +1,55 @@
+#!/bin/sh
+
+# Parse the -virtualenv command line argument and recreate %@ without it.
+virtualenv=""
+for arg do
+  case $arg in
+    -virtualenv=*)
+      virtualenv="${arg#*=}"
+      shift
+      ;;
+    *)
+      set -- "$@" "$arg"
+      shift
+      ;;
+  esac
+done
+
+if [ -n "${virtualenv:-}" ] ; then
+    # Remove trailing slash.
+    virtualenv=${virtualenv%/}
+
+    # Make the path absolute (if not already).
+    case $virtualenv in
+        /*) : ;;
+        *) virtualenv=$PWD/$virtualenv;;
+    esac
+
+    # If python exists in the virtual environment, set PATH and run it.
+    if [ -f "$virtualenv/bin/python" ]; then
+        # Update PATH and unset PYTHONHOME.
+        PATH="$virtualenv/bin:$PATH"
+        export PATH
+        if [ -n "${PYTHONHOME:-}" ] ; then
+            unset PYTHONHOME
+        fi
+
+        # Run python from the virtual environment.
+        "$virtualenv/bin/python" -u -m pulumi.policy "$@"
+    else
+        if [ -d "$virtualenv" ]; then
+            1>&2 echo "The 'virtualenv' option in PulumiPolicy.yaml is set to \"$virtualenv\", but \"$virtualenv\" doesn't appear to be a virtual environment."
+        else
+            1>&2 echo "The 'virtualenv' option in PulumiPolicy.yaml is set to \"$virtualenv\", but \"$virtualenv\" doesn't exist."
+        fi
+        1>&2 echo "Run the following commands to create the virtual environment and install dependencies into it:"
+        1>&2 echo "    1. python3 -m venv $virtualenv"
+        1>&2 echo "    2. $virtualenv/bin/python -m pip install --upgrade pip setuptools wheel"
+        1>&2 echo "    3. $virtualenv/bin/python -m pip install -r $PWD/requirements.txt"
+        1>&2 echo "For more information see: https://www.pulumi.com/docs/intro/languages/python/#virtual-environments"
+        exit 1
+    fi
+else
+    # Otherwise, run either PULUMI_PYTHON_CMD (if set) or python3.
+    "${PULUMI_PYTHON_CMD:-python3}" -u -m pulumi.policy "$@"
+fi

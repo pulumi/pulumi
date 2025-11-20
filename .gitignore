@@ -63,9 +63,13 @@ tests/testdata/codegen/*-pp/*/tsconfig.json
 goreleaser
 pulumi-resource-pulumi-nodejs
 pulumi-resource-pulumi-python
+pulumi-analyzer-policy
+pulumi-analyzer-policy-python
 pulumi-language-python-exec
 pulumi-resource-pulumi-nodejs.cmd
 pulumi-resource-pulumi-python.cmd
+pulumi-analyzer-policy.cmd
+pulumi-analyzer-policy-python.cmd
 artifacts/
 goreleaser-downloads/
 goreleaser-prebuilt/
