@@ -23,7 +23,7 @@ import os
 import threading
 from collections import deque
 from contextvars import ContextVar
-from typing import TYPE_CHECKING, Any, NoReturn, Optional, Union, Tuple
+from typing import TYPE_CHECKING, Any, NoReturn, Optional, Union
 
 import grpc
 
@@ -41,7 +41,7 @@ if TYPE_CHECKING:
 excessive_debug_output = False
 
 # current ambient parent resource, this is set for component resource initialization methods.
-ambient_parent: ContextVar[Optional[Tuple[Resource, Optional[Resource]]]] = ContextVar(
+ambient_parent: ContextVar[Optional[tuple[Resource, Optional[Resource]]]] = ContextVar(
     "ambient_parent", default=None
 )
 

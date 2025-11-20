@@ -17,7 +17,6 @@
 import asyncio
 import copy
 import contextvars
-import threading
 import warnings
 from typing import (
     Optional,
@@ -40,7 +39,7 @@ from .runtime.resource import (
     collapse_alias_to_urn,
     create_urn as create_urn_internal,
 )
-from .runtime.settings import get_root_resource, _get_rpc_manager, ambient_parent
+from .runtime.settings import get_root_resource, ambient_parent
 from .output import _is_prompt, _map_input, _map2_input, Output
 from . import urn as urn_util
 from . import log
@@ -907,15 +906,15 @@ class Resource:
                 raise TypeError("Expected resource properties to be a mapping")
             typ = None
 
-
         # If the ambient parent context is set (and not ourselves, we set the context before calling super) use that, else use the root stack resource as the parent.
         ambient = ambient_parent.get()
+        parent = None
         if ambient is not None:
             if ambient[0] is self:
-                ambient = ambient[1]
+                parent = ambient[1]
             else:
-                ambient = ambient[0]
-        parent = opts.parent or ambient or get_root_resource()
+                parent = ambient[0]
+        parent = opts.parent or parent or get_root_resource()
 
         # Before anything else - if there are transformations registered, give them a chance to run to modify the user
         # provided properties and options assigned to this resource.
@@ -1000,7 +999,14 @@ class Resource:
                     "Cannot read an existing resource unless it has a custom provider"
                 )
             read_resource(
-                cast("CustomResource", self), t, name, props, opts, typ, package_ref, parent,
+                cast("CustomResource", self),
+                t,
+                name,
+                props,
+                opts,
+                typ,
+                package_ref,
+                parent,
             )
         else:
             register_resource(
@@ -1254,7 +1260,7 @@ class ComponentResource(Resource):
             ctx = contextvars.copy_context()
             return ctx.run(do_init)
 
-        cls.__init__ = new_init
+        setattr(cls, "__init__", new_init)
 
     def register_outputs(self, outputs: "Inputs"):
         """

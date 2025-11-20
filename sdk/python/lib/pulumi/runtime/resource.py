@@ -526,7 +526,12 @@ def resource_output(
 
 
 def get_resource(
-    res: "Resource", props: "Inputs", custom: bool, urn: str, typ: Optional[type] = None, parent: Optional["Resource"] = None
+    res: "Resource",
+    props: "Inputs",
+    custom: bool,
+    urn: str,
+    typ: Optional[type] = None,
+    parent: Optional["Resource"] = None,
 ) -> None:
     log.debug(f"getting resource: urn={urn}")
 
@@ -551,7 +556,9 @@ def get_resource(
 
     async def do_get():
         try:
-            resolver = await prepare_resource(res, ty, custom, False, props, None, typ, parent)
+            resolver = await prepare_resource(
+                res, ty, custom, False, props, None, typ, parent
+            )
 
             monitor = settings.get_monitor()
             inputs = await rpc.serialize_properties({"urn": urn}, {})
@@ -791,7 +798,9 @@ def read_resource(
 
     async def do_read():
         try:
-            resolver = await prepare_resource(res, ty, True, False, props, opts, typ, parent)
+            resolver = await prepare_resource(
+                res, ty, True, False, props, opts, typ, parent
+            )
 
             # Resolve the ID that we were given. Note that we are explicitly discarding the list of
             # dependencies returned to us from "serialize_property" (the second argument). This is
