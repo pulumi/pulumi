@@ -17,6 +17,7 @@ package stack
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -533,24 +534,17 @@ func BatchEncrypt[T any](
 	sm secrets.Manager,
 	fn func(context.Context, config.Encrypter) (T, error),
 ) (T, error) {
-	var zero T
-	var completeBatch CompleteCrypterBatch
 	enc := sm.Encrypter()
 
+	var err error
 	if batchingSecretsManager, ok := sm.(BatchingSecretsManager); ok {
+		var completeBatch CompleteCrypterBatch
 		enc, completeBatch = batchingSecretsManager.BeginBatchEncryption()
+		defer func() { err = errors.Join(err, completeBatch(ctx)) }()
 	}
 
-	result, err := fn(ctx, enc)
-	if err != nil {
-		return zero, err
-	}
-
-	if completeBatch != nil {
-		if err := completeBatch(ctx); err != nil {
-			return zero, err
-		}
-	}
+	result, fnerr := fn(ctx, enc)
+	err = errors.Join(err, fnerr)
 
 	return result, nil
 }
@@ -563,13 +557,14 @@ func BatchDecrypt[T any](
 	sm secrets.Manager,
 	fn func(context.Context, config.Decrypter) (T, error),
 ) (T, error) {
-	var zero T
-	var completeBatch CompleteCrypterBatch = func(context.Context) error { return nil }
 	var dec config.Decrypter
 
+	var err error
 	if sm != nil {
 		if batchingSecretsManager, ok := sm.(BatchingSecretsManager); ok {
+			var completeBatch CompleteCrypterBatch
 			dec, completeBatch = batchingSecretsManager.BeginBatchDecryption()
+			defer func() { err = errors.Join(err, completeBatch(ctx)) }()
 		} else {
 			dec = sm.Decrypter()
 		}
@@ -578,14 +573,7 @@ func BatchDecrypt[T any](
 		dec = config.NewErrorCrypter("snapshot contains encrypted secrets but no secrets manager could be found")
 	}
 
-	result, err := fn(ctx, dec)
-	if err != nil {
-		return zero, err
-	}
-
-	if err := completeBatch(ctx); err != nil {
-		return zero, err
-	}
-
-	return result, nil
+	result, fnerr := fn(ctx, dec)
+	err = errors.Join(err, fnerr)
+	return result, err
 }
