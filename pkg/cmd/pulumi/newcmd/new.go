@@ -28,7 +28,6 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
-	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -58,8 +57,11 @@ type promptForValueFunc func(yes bool, valueType string, defaultValue string, se
 
 type chooseTemplateFunc func(templates []cmdTemplates.Template, opts display.Options) (cmdTemplates.Template, error)
 
-type runtimeOptionsFunc func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo, main string,
-	opts display.Options, yes, interactive bool, prompt promptForValueFunc) (map[string]any, error)
+type runtimeOptionsFunc func(ctx *plugin.Context, language plugin.LanguageRuntime, info *workspace.ProjectRuntimeInfo,
+	main string, opts display.Options, yes, interactive bool, prompt promptForValueFunc) (map[string]any, error)
+
+type languageTemplateFunc func(language plugin.LanguageRuntime, programInfo plugin.ProgramInfo,
+	projectName tokens.PackageName) error
 
 type promptForAIProjectURLFunc func(ctx context.Context,
 	ws pkgWorkspace.Context, args newArgs, opts display.Options) (string, error)
@@ -76,6 +78,7 @@ type newArgs struct {
 	offline               bool
 	prompt                promptForValueFunc
 	promptRuntimeOptions  runtimeOptionsFunc
+	languageTemplate      languageTemplateFunc
 	promptForAIProjectURL promptForAIProjectURLFunc
 	chooseTemplate        chooseTemplateFunc
 	secretsProvider       string
@@ -356,25 +359,32 @@ func runNew(ctx context.Context, args newArgs) error {
 		fmt.Println()
 	}
 
+	projinfo := &engine.Projinfo{Proj: proj, Root: root}
+	_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
+		projinfo,
+		nil, /* host */
+		cmdutil.Diag(),
+		cmdutil.Diag(),
+		nil,   /* debugging */
+		false, /* disableProviderPreview */
+		nil,   /* tracingSpan */
+		nil,   /* config */
+	)
+	if err != nil {
+		return err
+	}
+	defer pluginCtx.Close()
+
+	programInfo := plugin.NewProgramInfo(pluginCtx.Root, pluginCtx.Pwd, entryPoint, proj.Runtime.Options())
+	lang, err := pluginCtx.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
+	if err != nil {
+		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
+	}
+	defer lang.Close()
+
 	// Query the language runtime for additional options.
 	if args.promptRuntimeOptions != nil {
-		span := opentracing.SpanFromContext(ctx)
-		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
-			projinfo,
-			nil,
-			cmdutil.Diag(),
-			cmdutil.Diag(),
-			nil,
-			false,
-			span,
-			nil,
-		)
-		if err != nil {
-			return err
-		}
-		defer pluginCtx.Close()
-		options, err := args.promptRuntimeOptions(pluginCtx, &proj.Runtime, entryPoint, opts,
+		options, err := args.promptRuntimeOptions(pluginCtx, lang, &proj.Runtime, entryPoint, opts,
 			args.yes, args.interactive, args.prompt)
 		if err != nil {
 			return err
@@ -387,7 +397,14 @@ func runNew(ctx context.Context, args newArgs) error {
 			if err = workspace.SaveProject(proj); err != nil {
 				return fmt.Errorf("saving project: %w", err)
 			}
+			// update programInfo to have the new options
+			programInfo = plugin.NewProgramInfo(pluginCtx.Root, pluginCtx.Pwd, entryPoint, proj.Runtime.Options())
 		}
+	}
+
+	// Let the language runtime do some templating
+	if err := args.languageTemplate(lang, programInfo, proj.Name); err != nil {
+		return fmt.Errorf("language template: %w", err)
 	}
 
 	// Prompt for config values (if needed) and save.
@@ -419,24 +436,6 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Install dependencies.
 	if !args.generateOnly {
-		span := opentracing.SpanFromContext(ctx)
-		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
-			projinfo,
-			nil,
-			cmdutil.Diag(),
-			cmdutil.Diag(),
-			nil,
-			false,
-			span,
-			nil,
-		)
-		if err != nil {
-			return err
-		}
-
-		defer pluginCtx.Close()
-
 		if err := InstallDependencies(pluginCtx, &proj.Runtime, entryPoint); err != nil {
 			return err
 		}
@@ -467,9 +466,14 @@ func isInteractive() bool {
 // NewNewCmd creates a New command with default dependencies.
 func NewNewCmd() *cobra.Command {
 	args := newArgs{
-		prompt:                ui.PromptForValue,
-		chooseTemplate:        ChooseTemplate,
-		promptRuntimeOptions:  promptRuntimeOptions,
+		prompt:               ui.PromptForValue,
+		chooseTemplate:       ChooseTemplate,
+		promptRuntimeOptions: promptRuntimeOptions,
+		languageTemplate: func(language plugin.LanguageRuntime, programInfo plugin.ProgramInfo,
+			projectName tokens.PackageName,
+		) error {
+			return language.Template(programInfo, projectName)
+		},
 		promptForAIProjectURL: promptForAIProjectURL,
 	}
 
@@ -696,16 +700,9 @@ func validateProjectNameInternal(ctx context.Context, b backend.Backend,
 	return nil
 }
 
-func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
+func promptRuntimeOptions(ctx *plugin.Context, language plugin.LanguageRuntime, info *workspace.ProjectRuntimeInfo,
 	main string, opts display.Options, yes, interactive bool, prompt promptForValueFunc,
 ) (map[string]any, error) {
-	programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, info.Options())
-	lang, err := ctx.Host.LanguageRuntime(info.Name(), programInfo)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load language plugin %s: %w", info.Name(), err)
-	}
-	defer lang.Close()
-
 	options := make(map[string]any, len(info.Options()))
 	for k, v := range info.Options() {
 		options[k] = v
@@ -715,7 +712,7 @@ func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInf
 	for {
 		// Update the program info with the latest runtime options.
 		programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, options)
-		prompts, err := lang.RuntimeOptionsPrompts(programInfo)
+		prompts, err := language.RuntimeOptionsPrompts(programInfo)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get runtime options prompts: %w", err)
 		}

@@ -512,6 +512,14 @@ func InstallDependencies(ctx context.Context, cwd, venvDir string, useLanguageVe
 	return nil
 }
 
+func (p *pip) PrepareProject(
+	ctx context.Context, projectName, cwd string, showOutput bool, infoWriter, errorWriter io.Writer,
+) error {
+	// pip with requirements.txt is currently the canonical representation for templates, so there is nothing to do
+	// here.
+	return nil
+}
+
 func resolveVirtualEnvironmentPath(root, virtualenv string) string {
 	if virtualenv == "" {
 		return ""
