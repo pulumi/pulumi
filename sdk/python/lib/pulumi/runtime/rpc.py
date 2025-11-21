@@ -139,6 +139,41 @@ def isLegalProtobufValue(value: Any) -> bool:
     return value is None or isinstance(value, (bool, str, int, float, dict, list))
 
 
+def python_value_to_proto_value(value: Any) -> struct_pb2.Value:
+    """
+    Converts a Python value to a protobuf struct_pb2.Value.
+
+    :param Any value: The Python value to convert (None, bool, int, float, str, list, dict)
+    :return: A protobuf struct_pb2.Value representation of the Python value
+    """
+    if value is None:
+        return struct_pb2.Value(null_value=struct_pb2.NULL_VALUE)
+
+    if isinstance(value, bool):
+        return struct_pb2.Value(bool_value=value)
+
+    if isinstance(value, (int, float)):
+        return struct_pb2.Value(number_value=float(value))
+
+    if isinstance(value, str):
+        return struct_pb2.Value(string_value=value)
+
+    if isinstance(value, (list, tuple)):
+        return struct_pb2.Value(
+            list_value=struct_pb2.ListValue(
+                values=[python_value_to_proto_value(item) for item in value]
+            )
+        )
+
+    if isinstance(value, dict):
+        fields = {k: python_value_to_proto_value(v) for k, v in value.items()}
+        return struct_pb2.Value(struct_value=struct_pb2.Struct(fields=fields))
+
+    raise ValueError(
+        f"Unsupported value type for conversion to protobuf: {type(value)}"
+    )
+
+
 def _get_list_element_type(typ: Optional[type]) -> Optional[type]:
     if typ is None:
         return None
