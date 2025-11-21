@@ -35,7 +35,11 @@ func SetupPulumiBinary() {
 	}
 	repoRoot := strings.TrimSpace(string(stdout))
 	if os.Getenv("PULUMI_INTEGRATION_REBUILD_BINARIES") == "true" {
-		cmd := exec.Command("make", "build")
+		cmd := exec.Command("make",
+			"bin/pulumi",
+			"bin/pulumi-language-python",
+			"bin/pulumi-language-go",
+			"bin/pulumi-language-nodejs")
 		cmd.Dir = repoRoot
 		stdout, err = cmd.CombinedOutput()
 		if err != nil {
