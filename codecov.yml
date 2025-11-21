@@ -46,7 +46,9 @@ ignore:
   - "pkg/codegen/testing/test/testdata"
 
   # Don't count protobuf-generated code against coverage.
+  - "sdk/nodejs/proto"
   - "sdk/proto"
+  - "sdk/python/lib/pulumi/runtime/proto"
 
   # Ignore code generator for pulumix/applyn.go.
   - "sdk/go/internal/gen-pux-applyn"

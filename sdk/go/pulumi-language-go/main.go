@@ -1159,7 +1159,7 @@ func (host *goLanguageHost) InstallDependencies(
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
 	if err := cmd.Run(); err != nil {
-		return errutil.ErrorWithStderr(err, "`go mod tidy` failed to install dependencies: %w")
+		return errutil.ErrorWithStderr(err, "`go mod tidy` failed to install dependencies")
 	}
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))
@@ -1171,6 +1171,12 @@ func (host *goLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 	req *pulumirpc.RuntimeOptionsRequest,
 ) (*pulumirpc.RuntimeOptionsResponse, error) {
 	return &pulumirpc.RuntimeOptionsResponse{}, nil
+}
+
+func (host *goLanguageHost) Template(ctx context.Context,
+	req *pulumirpc.TemplateRequest,
+) (*pulumirpc.TemplateResponse, error) {
+	return &pulumirpc.TemplateResponse{}, nil
 }
 
 func (host *goLanguageHost) About(ctx context.Context, req *pulumirpc.AboutRequest) (*pulumirpc.AboutResponse, error) {

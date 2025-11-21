@@ -48,7 +48,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -300,9 +299,7 @@ func runConvert(
 
 			err = generateAndLinkSdksForPackages(
 				pCtx,
-				ws,
 				language,
-				filepath.Join(targetDirectory, "sdks"),
 				targetDirectory,
 				packageBlockDescriptors,
 				generateOnly,
@@ -530,14 +527,22 @@ func getPackagesToGenerateSdks(
 
 func generateAndLinkSdksForPackages(
 	pctx *plugin.Context,
-	ws pkgWorkspace.Context,
 	language string,
-	sdkTargetDirectory string,
-	convertOutputDirectory string,
+	targetDirectory string,
 	pkgs map[string]*schema.PackageDescriptor,
 	generateOnly bool,
 	registry registry.Registry,
 ) error {
+	projectPath, err := workspace.DetectProjectPathFrom(targetDirectory)
+	if err != nil {
+		return fmt.Errorf("failed to detect project path: %w", err)
+	}
+	proj, err := workspace.LoadProject(projectPath)
+	if err != nil {
+		return fmt.Errorf("failed to load project: %w", err)
+	}
+
+	packagesToLink := make([]packages.PackageToLink, 0, len(pkgs))
 	for _, pkg := range pkgs {
 		tempOut, err := os.MkdirTemp("", "gen-sdk-for-dependency-")
 		if err != nil {
@@ -571,7 +576,7 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("error generating sdk: %w", err)
 		}
 
-		sdkOut := filepath.Join(sdkTargetDirectory, pkg.Parameterization.Name)
+		sdkOut := filepath.Join(targetDirectory, "sdks", pkg.Parameterization.Name)
 		err = packages.CopyAll(sdkOut, filepath.Join(tempOut, language))
 		if err != nil {
 			return fmt.Errorf("failed to move SDK to project: %w", err)
@@ -582,39 +587,23 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("could not remove temp dir: %w", err)
 		}
 
+		packagesToLink = append(packagesToLink, packages.PackageToLink{Pkg: pkgSchema, Out: sdkOut})
+
 		fmt.Printf("Generated local SDK for package '%s:%s'\n", pkg.Name, pkg.Parameterization.Name)
+	}
 
-		// If we don't change the working directory, the workspace instance (when
-		// reading project etc) will not be correct when doing the local sdk
-		// linking, causing errors.
-		returnToStartingDir, err := fsutil.Chdir(convertOutputDirectory)
-		if err != nil {
-			return fmt.Errorf("could not change to output directory: %w", err)
-		}
+	if err := packages.LinkPackages(&packages.LinkPackagesContext{
+		Writer:        os.Stdout,
+		Project:       proj,
+		Language:      language,
+		Root:          targetDirectory,
+		Packages:      packagesToLink,
+		PluginContext: pctx,
 
-		proj, _, err := ws.ReadProject()
-		if err != nil {
-			return fmt.Errorf("generated root is not a valid pulumi workspace %q: %w", convertOutputDirectory, err)
-		}
-
-		sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
-		err = packages.LinkPackage(&packages.LinkPackageContext{
-			Writer:        os.Stdout,
-			Project:       proj,
-			Language:      language,
-			Root:          "./",
-			Pkg:           pkgSchema,
-			PluginContext: pctx,
-			Out:           sdkRelPath,
-
-			// Don't install the SDK if we've been told to `--generate-only`.
-			Install: !generateOnly,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to link SDK to project: %w", err)
-		}
-
-		returnToStartingDir()
+		// Don't install the SDK if we've been told to `--generate-only`.
+		Install: !generateOnly,
+	}); err != nil {
+		return fmt.Errorf("failed to link SDK to project: %w", err)
 	}
 
 	return nil

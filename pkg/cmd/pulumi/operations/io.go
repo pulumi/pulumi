@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -29,7 +28,6 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	utilenv "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -148,17 +146,4 @@ func configureNeoOptions(neoEnabledFlag bool, cmd *cobra.Command, displayOpts *d
 	displayOpts.ShowNeoFeatures = showNeoFeatures
 	displayOpts.NeoSummaryModel = env.NeoSummaryModel.Value()
 	displayOpts.NeoSummaryMaxLen = env.NeoSummaryMaxLen.Value()
-}
-
-func handleBoolFlag(variable utilenv.Value) string {
-	if value, present := variable.Underlying(); present {
-		switch strings.ToLower(value) {
-		case "true", "1":
-			return "true"
-		case "false", "0":
-			return "false"
-		}
-	}
-
-	return ""
 }

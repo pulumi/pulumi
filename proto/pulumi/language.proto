@@ -73,6 +73,11 @@ service LanguageRuntime {
     // ask during `pulumi new`.
     rpc RuntimeOptionsPrompts(RuntimeOptionsRequest) returns (RuntimeOptionsResponse) {}
 
+    // `Template` allows the language runtime to perform additional templating on a newly instantiated project template.
+    // For example the Python runtime might want to convert a requirements.txt into a pyproject.toml suitable for use
+    // with uv or poetry.
+    rpc Template(TemplateRequest) returns (TemplateResponse) {}
+
     // `About` returns information about the language runtime being used.
     rpc About(AboutRequest) returns (AboutResponse) {}
 
@@ -436,6 +441,18 @@ message RuntimeOptionsResponse {
     // Prompts to ask the user.
     repeated RuntimeOptionPrompt prompts = 1;
 }
+
+// `TemplateRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Template) call.
+message TemplateRequest {
+    // The [plugin program](pulumirpc.ProgramInfo) to use.
+    ProgramInfo info = 1;
+
+    // The name of the project we are templating.
+    string project_name = 2;
+}
+
+// `TemplateResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Template) call.
+message TemplateResponse {}
 
 // `RunPluginRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.RunPlugin) call.
 message RunPluginRequest{

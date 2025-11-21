@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	"github.com/zclconf/go-cty/cty"
 )
 
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
@@ -542,4 +543,100 @@ func TestDeferredOutputCastTypeParameter(t *testing.T) {
 	assert.Equal(t, "pulumi.BoolMapOutput", deferredOutputCastTypeParameter(model.NewMapType(model.BoolType)))
 	assert.Equal(t, "pulumi.Float64MapOutput", deferredOutputCastTypeParameter(model.NewMapType(model.NumberType)))
 	assert.Equal(t, "pulumi.MapOutput", deferredOutputCastTypeParameter(model.NewMapType(model.DynamicType)))
+}
+
+func TestReplacementTriggerInputConversion(t *testing.T) {
+	t.Parallel()
+
+	g := &generator{
+		jsonTempSpiller:     &jsonSpiller{},
+		ternaryTempSpiller:  &tempSpiller{},
+		readDirTempSpiller:  &readDirSpiller{},
+		splatSpiller:        &splatSpiller{},
+		optionalSpiller:     &optionalSpiller{},
+		inlineInvokeSpiller: &inlineInvokeSpiller{},
+		scopeTraversalRoots: codegen.NewStringSet(),
+		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
+		importer:            newFileImporter(),
+	}
+	g.Formatter = format.NewFormatter(g)
+
+	tests := []struct {
+		name           string
+		expr           model.Expression
+		expectedOutput string
+		description    string
+	}{
+		{
+			name: "Input types",
+			expr: &model.RelativeTraversalExpression{
+				Source: &model.ScopeTraversalExpression{
+					RootName:  "other",
+					Traversal: hcl.Traversal{hcl.TraverseRoot{Name: "other"}},
+					Parts:     []model.Traversable{&pcl.Resource{}},
+				},
+				Traversal: hcl.Traversal{hcl.TraverseAttr{Name: "value"}},
+				Parts:     []model.Traversable{&model.OutputType{ElementType: model.StringType}},
+			},
+			expectedOutput: "pulumi.ReplacementTrigger(other.Value)",
+			description:    "output values should not be wrapped",
+		},
+		{
+			name: "Known types",
+			expr: &model.LiteralValueExpression{
+				Value: cty.StringVal("test"),
+			},
+			expectedOutput: "pulumi.ReplacementTrigger(pulumi.String(\"test\"))",
+			description:    "string literals should be wrapped with pulumi.String",
+		},
+		{
+			name: "Number literals",
+			expr: &model.LiteralValueExpression{
+				Value: cty.NumberIntVal(42),
+			},
+			expectedOutput: "pulumi.ReplacementTrigger(pulumi.Float64(42))",
+			description:    "number literals should be wrapped with pulumi.Float64",
+		},
+		{
+			name: "Bool literals",
+			expr: &model.LiteralValueExpression{
+				Value: cty.BoolVal(true),
+			},
+			expectedOutput: "pulumi.ReplacementTrigger(pulumi.Bool(true))",
+			description:    "bool literals should be wrapped with pulumi.Bool",
+		},
+		{
+			name: "Unknown argument type",
+			expr: &model.ScopeTraversalExpression{
+				RootName:  "dynamicVar",
+				Traversal: hcl.Traversal{hcl.TraverseRoot{Name: "dynamicVar"}},
+				Parts:     []model.Traversable{&model.Variable{Name: "dynamicVar", VariableType: model.DynamicType}},
+			},
+			expectedOutput: "pulumi.ReplacementTrigger(pulumi.Any(",
+			description:    "dynamic types should be wrapped with pulumi.Any",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			block := &model.Block{
+				Type: "options",
+				Body: &model.Body{
+					Items: []model.BodyItem{
+						&model.Attribute{
+							Name:  "ReplacementTrigger",
+							Value: tt.expr,
+						},
+					},
+				},
+			}
+
+			var buf bytes.Buffer
+
+			g.genResourceOptions(&buf, block)
+			assert.Contains(t, buf.String(), tt.expectedOutput)
+		})
+	}
 }

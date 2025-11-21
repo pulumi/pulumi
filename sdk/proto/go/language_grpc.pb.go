@@ -41,6 +41,7 @@ const (
 	LanguageRuntime_GetPluginInfo_FullMethodName          = "/pulumirpc.LanguageRuntime/GetPluginInfo"
 	LanguageRuntime_InstallDependencies_FullMethodName    = "/pulumirpc.LanguageRuntime/InstallDependencies"
 	LanguageRuntime_RuntimeOptionsPrompts_FullMethodName  = "/pulumirpc.LanguageRuntime/RuntimeOptionsPrompts"
+	LanguageRuntime_Template_FullMethodName               = "/pulumirpc.LanguageRuntime/Template"
 	LanguageRuntime_About_FullMethodName                  = "/pulumirpc.LanguageRuntime/About"
 	LanguageRuntime_GetProgramDependencies_FullMethodName = "/pulumirpc.LanguageRuntime/GetProgramDependencies"
 	LanguageRuntime_RunPlugin_FullMethodName              = "/pulumirpc.LanguageRuntime/RunPlugin"
@@ -98,6 +99,10 @@ type LanguageRuntimeClient interface {
 	// `RuntimeOptionsPrompts` accepts a request specifying a Pulumi project and returns a list of additional prompts to
 	// ask during `pulumi new`.
 	RuntimeOptionsPrompts(ctx context.Context, in *RuntimeOptionsRequest, opts ...grpc.CallOption) (*RuntimeOptionsResponse, error)
+	// `Template` allows the language runtime to perform additional templating on a newly instantiated project template.
+	// For example the Python runtime might want to convert a requirements.txt into a pyproject.toml suitable for use
+	// with uv or poetry.
+	Template(ctx context.Context, in *TemplateRequest, opts ...grpc.CallOption) (*TemplateResponse, error)
 	// `About` returns information about the language runtime being used.
 	About(ctx context.Context, in *AboutRequest, opts ...grpc.CallOption) (*AboutResponse, error)
 	// `GetProgramDependencies` computes the set of language-level dependencies (e.g. NPM packages for NodeJS, or Maven
@@ -223,6 +228,16 @@ func (c *languageRuntimeClient) RuntimeOptionsPrompts(ctx context.Context, in *R
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RuntimeOptionsResponse)
 	err := c.cc.Invoke(ctx, LanguageRuntime_RuntimeOptionsPrompts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *languageRuntimeClient) Template(ctx context.Context, in *TemplateRequest, opts ...grpc.CallOption) (*TemplateResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TemplateResponse)
+	err := c.cc.Invoke(ctx, LanguageRuntime_Template_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -374,6 +389,10 @@ type LanguageRuntimeServer interface {
 	// `RuntimeOptionsPrompts` accepts a request specifying a Pulumi project and returns a list of additional prompts to
 	// ask during `pulumi new`.
 	RuntimeOptionsPrompts(context.Context, *RuntimeOptionsRequest) (*RuntimeOptionsResponse, error)
+	// `Template` allows the language runtime to perform additional templating on a newly instantiated project template.
+	// For example the Python runtime might want to convert a requirements.txt into a pyproject.toml suitable for use
+	// with uv or poetry.
+	Template(context.Context, *TemplateRequest) (*TemplateResponse, error)
 	// `About` returns information about the language runtime being used.
 	About(context.Context, *AboutRequest) (*AboutResponse, error)
 	// `GetProgramDependencies` computes the set of language-level dependencies (e.g. NPM packages for NodeJS, or Maven
@@ -445,6 +464,9 @@ func (UnimplementedLanguageRuntimeServer) InstallDependencies(*InstallDependenci
 }
 func (UnimplementedLanguageRuntimeServer) RuntimeOptionsPrompts(context.Context, *RuntimeOptionsRequest) (*RuntimeOptionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RuntimeOptionsPrompts not implemented")
+}
+func (UnimplementedLanguageRuntimeServer) Template(context.Context, *TemplateRequest) (*TemplateResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Template not implemented")
 }
 func (UnimplementedLanguageRuntimeServer) About(context.Context, *AboutRequest) (*AboutResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method About not implemented")
@@ -609,6 +631,24 @@ func _LanguageRuntime_RuntimeOptionsPrompts_Handler(srv interface{}, ctx context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LanguageRuntimeServer).RuntimeOptionsPrompts(ctx, req.(*RuntimeOptionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LanguageRuntime_Template_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TemplateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LanguageRuntimeServer).Template(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LanguageRuntime_Template_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LanguageRuntimeServer).Template(ctx, req.(*TemplateRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -798,6 +838,10 @@ var LanguageRuntime_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RuntimeOptionsPrompts",
 			Handler:    _LanguageRuntime_RuntimeOptionsPrompts_Handler,
+		},
+		{
+			MethodName: "Template",
+			Handler:    _LanguageRuntime_Template_Handler,
 		},
 		{
 			MethodName: "About",

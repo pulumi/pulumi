@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build python || all
-
 package ints
 
 import (
@@ -731,51 +729,6 @@ func TestNewPythonRuntimeOptions(t *testing.T) {
 		"virtualenv": "mytestenv",
 	}
 	integration.CheckRuntimeOptions(t, e.RootPath, expected)
-}
-
-//nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
-func TestNewPythonConvertRequirementsTxt(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		t.Parallel()
-	}
-
-	e := ptesting.NewEnvironment(t)
-	defer e.DeleteIfNotFailed()
-
-	// Add a poetry.toml to make poetry create the virtualenv inside the temp
-	// directory. That way it gets cleaned up with the test.
-	poetryToml := `[virtualenvs]
-in-project = true`
-	err := os.WriteFile(filepath.Join(e.RootPath, "poetry.toml"), []byte(poetryToml), 0o600)
-	require.NoError(t, err)
-
-	template := "python"
-
-	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	out, _ := e.RunCommand("pulumi", "new", template, "--force", "--non-interactive", "--yes",
-		"--name", "test_project",
-		"--description", "A python test using poetry as toolchain",
-		"--stack", "test",
-		"--runtime-options", "toolchain=poetry",
-	)
-
-	require.Contains(t, out, "Deleted requirements.txt")
-	require.True(t, e.PathExists("pyproject.toml"), "pyproject.toml was created")
-	require.False(t, e.PathExists("requirements.txt"), "requirements.txt was removed")
-
-	b, err := os.ReadFile(filepath.Join(e.RootPath, "pyproject.toml"))
-	require.NoError(t, err)
-	require.Equal(t, `[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
-[tool]
-[tool.poetry]
-package-mode = false
-[tool.poetry.dependencies]
-pulumi = ">=3.0.0,<4.0.0"
-python = "^3.10"
-`, string(b))
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/17877

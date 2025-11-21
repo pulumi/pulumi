@@ -81,6 +81,7 @@ func TestFailIfProjectNameDoesNotMatch(t *testing.T) {
 		stack:             "org/projectA/stack",
 		name:              "projectB",
 		templateNameOrURL: "typescript",
+		languageTemplate:  languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)
@@ -106,6 +107,7 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 		secretsProvider:   "default",
 		stack:             orgStackName,
 		templateNameOrURL: "typescript",
+		languageTemplate:  languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)
@@ -131,6 +133,7 @@ func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 		prompt:            promptMock(uniqueProjectName, orgStackName),
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
+		languageTemplate:  languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)
@@ -158,6 +161,7 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 		secretsProvider:   "default",
 		stack:             fullStackName,
 		templateNameOrURL: "typescript",
+		languageTemplate:  languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)
@@ -183,6 +187,7 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 		secretsProvider:   "default",
 		stack:             stackName,
 		templateNameOrURL: "typescript",
+		languageTemplate:  languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)
@@ -207,6 +212,7 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 		prompt:            promptMock(uniqueProjectName, stackName),
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
+		languageTemplate:  languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)
@@ -280,6 +286,7 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 		prompt:            promptMock(projectName, ""),
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
+		languageTemplate:  languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)
@@ -317,6 +324,7 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
+		languageTemplate:  languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)
@@ -355,6 +363,7 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 		prompt:            promptMock(projectName, ""),
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
+		languageTemplate:  languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)
@@ -389,6 +398,7 @@ func TestCreatingProjectWithEmptyConfig(t *testing.T) {
 		prompt:            prompt,
 		secretsProvider:   "default",
 		templateNameOrURL: "aws-typescript",
+		languageTemplate:  languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)
@@ -432,6 +442,7 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
+		languageTemplate:  languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)
@@ -467,6 +478,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 		prompt:            promptMock("not#valid", ""),
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
+		languageTemplate:  languageTemplateMock,
 	})
 	assert.ErrorContains(t, err, "project names may only contain")
 
@@ -476,6 +488,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 		prompt:            promptMock("", ""),
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
+		languageTemplate:  languageTemplateMock,
 	})
 	assert.ErrorContains(t, err, "project names may not be empty")
 }
@@ -735,6 +748,7 @@ func TestGenerateOnlyProjectCheck(t *testing.T) {
 				stack:             tt.stack,
 				name:              "project",
 				templateNameOrURL: "typescript",
+				languageTemplate:  languageTemplateMock,
 			}
 
 			err := runNew(context.Background(), args)
@@ -829,8 +843,9 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 				return nil, errors.New("template not found")
 			}
 
-			runtimeOptionsMock := func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
-				main string, opts display.Options, interactive, yes bool, prompt promptForValueFunc,
+			runtimeOptionsMock := func(ctx *plugin.Context, language plugin.LanguageRuntime,
+				info *workspace.ProjectRuntimeInfo, main string, opts display.Options, interactive, yes bool,
+				prompt promptForValueFunc,
 			) (map[string]any, error) {
 				return nil, nil
 			}
@@ -843,6 +858,7 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 				name:                 projectName,
 				prompt:               promptMock(uniqueProjectName, stackName),
 				promptRuntimeOptions: runtimeOptionsMock,
+				languageTemplate:     languageTemplateMock,
 				chooseTemplate:       chooseTemplateMock,
 				secretsProvider:      "default",
 				templateNameOrURL:    tt.argument,
@@ -867,7 +883,7 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 
-	runtimeOptionsMock := func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
+	runtimeOptionsMock := func(ctx *plugin.Context, language plugin.LanguageRuntime, info *workspace.ProjectRuntimeInfo,
 		main string, opts display.Options, interactive, yes bool, prompt promptForValueFunc,
 	) (map[string]any, error) {
 		return map[string]any{"someOption": "someValue"}, nil
@@ -881,6 +897,7 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 		name:                 projectName,
 		prompt:               ui.PromptForValue,
 		promptRuntimeOptions: runtimeOptionsMock,
+		languageTemplate:     languageTemplateMock,
 		secretsProvider:      "default",
 		templateNameOrURL:    "python",
 	}
@@ -1270,4 +1287,10 @@ func TestNoPromptWithYes(t *testing.T) {
 			require.False(t, shouldPromptForAIOrTemplate(args, mockBackend))
 		})
 	}
+}
+
+func languageTemplateMock(language plugin.LanguageRuntime, info plugin.ProgramInfo,
+	projectName tokens.PackageName,
+) error {
+	return nil
 }

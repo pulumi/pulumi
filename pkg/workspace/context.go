@@ -23,6 +23,10 @@ import (
 // Context is an interface that represents the context of a workspace. It provides access to loading projects and
 // plugins.
 type Context interface {
+	// New creates a new workspace using the current working directory. Requires a Pulumi.yaml file be present
+	// in the folder hierarchy between the current working directory and the .pulumi folder.
+	New() (W, error)
+
 	// ReadProject attempts to detect and read a Pulumi project for the current workspace. If the
 	// project is successfully detected and read, it is returned along with the path to its containing
 	// directory, which will be used as the root of the project's Pulumi program.
@@ -35,6 +39,10 @@ type Context interface {
 var Instance Context = &workspaceContext{}
 
 type workspaceContext struct{}
+
+func (c *workspaceContext) New() (W, error) {
+	return newW()
+}
 
 func (c *workspaceContext) ReadProject() (*workspace.Project, string, error) {
 	proj, path, err := workspace.DetectProjectAndPath()

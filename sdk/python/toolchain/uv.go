@@ -31,9 +31,11 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"gopkg.in/yaml.v3"
 )
 
 type uv struct {
@@ -109,86 +111,38 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 		}
 	}
 
-	// Look for a uv.lock file.
-	// If no uv.lock file is found, look for a pyproject.toml file.
-	// If no pyproject.toml file is found, create it, and then look for a
-	// requirements.txt file to install dependencies.
+	// If there's no `uv.lock` or `pyproject.toml` file, we first need to prepare the project.
 	if _, err := searchup(cwd, "uv.lock"); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("error while looking for uv.lock in %s: %w", cwd, err)
 		}
-
 		// No uv.lock found, look for pyproject.toml.
 		if _, err := searchup(cwd, "pyproject.toml"); err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
 				return fmt.Errorf("error while looking for pyproject.toml in %s: %w", cwd, err)
 			}
-			// No pyproject.toml found, we'll create it with `uv init`.
-			// First we'll look for a requirements.txt file. If we find one, we'll use the directory
-			// that contains the requirements.txt file as the directory for `pyproject.toml`.
-			// We'll also install the dependencies from the requirements.txt file., and then
-			// remove the requirements.txt file.
-			requirementsTxtDir, err := searchup(cwd, "requirements.txt")
-			pyprojectTomlDir := cwd
-			hasRequirementsTxt := false
-			if err == nil {
-				pyprojectTomlDir = requirementsTxtDir
-				hasRequirementsTxt = true
-			} else if !errors.Is(err, os.ErrNotExist) {
-				return fmt.Errorf("error while looking for requirements.txt in %s: %w", cwd, err)
-			}
-
-			args := []string{"init", "--bare", "--no-package", "--no-pin-python"}
-			deleteHello := false
-			uvVersion, err := u.uvVersion()
-			if err != nil {
-				return fmt.Errorf("error getting uv version: %s", err)
-			}
-			if uvVersion.LT(semver.MustParse("0.6.0")) {
-				// The `--bare` option prevents `uv init` from creating a
-				// `main.py` file, but this is only available in uv 0.6. Prior
-				// to 0.6, uv always creates a `hello.py` file, which we
-				// manually delete below.
-				// https://github.com/astral-sh/uv/blob/main/CHANGELOG.md#060
-				args = []string{"init", "--no-readme", "--no-package", "--no-pin-python"}
-				deleteHello = true
-			}
-
-			initCmd := u.uvCommand(ctx, pyprojectTomlDir, showOutput, infoWriter, errorWriter, args...)
-			if err := initCmd.Run(); err != nil {
-				return errutil.ErrorWithStderr(err, "error initializing python project")
-			}
-
-			if hasRequirementsTxt {
-				requirementsTxt := filepath.Join(requirementsTxtDir, "requirements.txt")
-				args := []string{"add", "-r", requirementsTxt}
-				needs, err := u.needsNoWorkspacesFlag(ctx)
-				if err != nil {
-					return err
+			// No pyproject.toml found, this is likely a template with a requirements.txt, convert it to a
+			// pyproject.toml file.
+			// We can't use workspace.LoadProject here because the workspace module depends on toolchain.
+			// TODO: https://github.com/pulumi/pulumi/issues/20953
+			//
+			// We can also remove the call to `PrepareProject` here eventually. Before `Language.Template` existed, the
+			// creation of a `pyproject.toml` file happened during `pulumi install`. It is possible to have a half
+			// initialized project, for example from `pulumi new ... --generate-only` which has a `requirements.txt`
+			// that still needs to be converted. We want to maintain the same behavior as before here for a while.
+			// TODO: https://github.com/pulumi/pulumi/issues/20987
+			var projectName string
+			pulumiYamlPath := filepath.Join(cwd, "Pulumi.yaml")
+			if pulumiYamlData, err := os.ReadFile(pulumiYamlPath); err == nil {
+				var pulumiConfig struct {
+					Name tokens.PackageName `json:"name" yaml:"name"`
 				}
-				if needs {
-					args = append(args, "--no-workspace")
-				}
-				addCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, args...)
-				if err := addCmd.Run(); err != nil {
-					return errutil.ErrorWithStderr(err, "error installing dependecies from requirements.txt")
-				}
-				// Remove the requirements.txt file, after calling `uv add`, the
-				// dependencies are tracked in pyproject.toml.
-				if err := os.Remove(requirementsTxt); err != nil {
-					return fmt.Errorf("failed to remove %q", requirementsTxt)
-				}
-				if showOutput {
-					if _, err := infoWriter.Write([]byte("Deleted requirements.txt, " +
-						"dependencies for this project are tracked in pyproject.toml\n")); err != nil {
-						return fmt.Errorf("failed to write to infoWriter: %w", err)
-					}
+				if err := yaml.Unmarshal(pulumiYamlData, &pulumiConfig); err == nil {
+					projectName = string(pulumiConfig.Name)
 				}
 			}
-
-			// `uv init` prior to 0.6 creates a `hello.py` file, delete it.
-			if deleteHello {
-				contract.IgnoreError(os.Remove(filepath.Join(cwd, "hello.py")))
+			if err := u.PrepareProject(ctx, projectName, cwd, showOutput, infoWriter, errorWriter); err != nil {
+				return fmt.Errorf("error preparing project: %w", err)
 			}
 		}
 	}
@@ -198,6 +152,89 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 	syncCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "sync")
 	if err := syncCmd.Run(); err != nil {
 		return errutil.ErrorWithStderr(err, "error installing dependencies")
+	}
+	return nil
+}
+
+// PrepareProject prepares a project for use with uv. It will create a suitable pyproject.toml project file. If a
+// requirements.txt file exists, its dependencies will be added to pyproject.toml. No-op if pyproject.toml exists.
+func (u *uv) PrepareProject(
+	ctx context.Context, projectName, cwd string, showOutput bool, infoWriter, errorWriter io.Writer,
+) error {
+	_, err := searchup(cwd, "pyproject.toml")
+	if err == nil {
+		// There's already a pyproject.toml, we're done.
+		return nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("error while looking for nearest pyproject.toml in %s: %w", cwd, err)
+	}
+
+	requirementsTxtDir, err := searchup(cwd, "requirements.txt")
+	pyprojectTomlDir := cwd
+	hasRequirementsTxt := false
+	if err == nil {
+		pyprojectTomlDir = requirementsTxtDir
+		hasRequirementsTxt = true
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("error while looking for requirements.txt in %s: %w", cwd, err)
+	}
+
+	args := []string{"init", "--bare", "--no-package", "--no-pin-python"}
+	deleteHello := false
+	uvVersion, err := u.uvVersion()
+	if err != nil {
+		return fmt.Errorf("error getting uv version: %s", err)
+	}
+	if uvVersion.LT(semver.MustParse("0.6.0")) {
+		// The `--bare` option prevents `uv init` from creating a
+		// `main.py` file, but this is only available in uv 0.6. Prior
+		// to 0.6, uv always creates a `hello.py` file, which we
+		// manually delete below.
+		// https://github.com/astral-sh/uv/blob/main/CHANGELOG.md#060
+		args = []string{"init", "--no-readme", "--no-package", "--no-pin-python"}
+		deleteHello = true
+	}
+
+	// Set the name in pyproject to that of the pulumi project
+	if projectName != "" {
+		args = append(args, "--name", projectName)
+	}
+
+	initCmd := u.uvCommand(ctx, pyprojectTomlDir, showOutput, infoWriter, errorWriter, args...)
+	if err := initCmd.Run(); err != nil {
+		return errutil.ErrorWithStderr(err, "error initializing python project")
+	}
+
+	if hasRequirementsTxt {
+		requirementsTxt := filepath.Join(requirementsTxtDir, "requirements.txt")
+		args := []string{"add", "--no-sync", "-r", requirementsTxt}
+		needs, err := u.needsNoWorkspacesFlag(ctx)
+		if err != nil {
+			return err
+		}
+		if needs {
+			args = append(args, "--no-workspace")
+		}
+		addCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, args...)
+		if err := addCmd.Run(); err != nil {
+			return errutil.ErrorWithStderr(err, "error installing dependecies from requirements.txt")
+		}
+		// Remove the requirements.txt file, after calling `uv add`, the
+		// dependencies are tracked in pyproject.toml.
+		if err := os.Remove(requirementsTxt); err != nil {
+			return fmt.Errorf("failed to remove %q: %w", requirementsTxt, err)
+		}
+		if showOutput {
+			if _, err := infoWriter.Write([]byte("Deleted requirements.txt, " +
+				"dependencies for this project are tracked in pyproject.toml\n")); err != nil {
+				return fmt.Errorf("failed to write to infoWriter: %w", err)
+			}
+		}
+	}
+
+	// `uv init` prior to 0.6 creates a `hello.py` file, delete it.
+	if deleteHello {
+		contract.IgnoreError(os.Remove(filepath.Join(cwd, "hello.py")))
 	}
 	return nil
 }

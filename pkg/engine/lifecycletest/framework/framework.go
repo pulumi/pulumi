@@ -311,6 +311,13 @@ func (op TestOp) runWithContext(
 		return nil, nil, err
 	}
 
+	for _, event := range firedEvents {
+		if event.Type == engine.DiagEvent {
+			payload := event.Payload().(engine.DiagEventPayload)
+			opts.T.Logf("%s: %s", payload.Severity, payload.Message)
+		}
+	}
+
 	if validate != nil {
 		var entries engine.JournalEntries
 		if !dryRun {
