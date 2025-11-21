@@ -5,7 +5,7 @@
 93309742 2041 proto/build-container/scripts/install-protobuf-tools.sh
 745180271 1066 proto/build-container/scripts/install-python.sh
 3756980346 1282 proto/build-container/scripts/utils.sh
-916499759 6997 proto/generate.sh
+810511076 6996 proto/generate.sh
 1574098198 4061 proto/google/protobuf/status.proto
 1405145341 1741 proto/pulumi/alias.proto
 3584612078 16663 proto/pulumi/analyzer.proto
