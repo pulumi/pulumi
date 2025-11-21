@@ -3223,6 +3223,10 @@ func GeneratePackage(
 	}
 
 	files := codegen.Fs{}
+
+	files.Add(".gitignore", genGitignoreFile())
+	files.Add(".gitattributes", codegen.GenGitAttributesFile())
+
 	for p, f := range extraFiles {
 		files.Add(filepath.Join(pkgName, p), f)
 	}
@@ -3282,6 +3286,16 @@ func GeneratePackage(
 	}
 
 	return files, nil
+}
+
+func genGitignoreFile() []byte {
+	return []byte(`*.pyc
+__pycache__
+.mypy_cache
+dist
+build
+*.egg-info
+`)
 }
 
 func genPyprojectTOML(tool string,
