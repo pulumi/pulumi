@@ -116,7 +116,7 @@ func NewImportDeployment(
 	}
 
 	// Produce a map of all old resources for fast access.
-	_, hasRefreshBeforeUpdateResources, olds, oldViews, err := buildResourceMaps(prev)
+	_, hasRefreshBeforeUpdateResources, olds, _, oldViews, err := buildResourceMaps(prev)
 	if err != nil {
 		return nil, err
 	}
@@ -401,9 +401,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			ResourceHooks:           nil,
 		}.Make()
 		// TODO(seqnum) should default providers be created with 1? When do they ever get recreated/replaced?
-		fmt.Println("issuing check errors", resp.Failures)
 		if issueCheckErrors(i.deployment, state, urn, resp.Failures) {
-			fmt.Println("provider check had failures")
 			return nil, errors.New("provider check failed")
 		}
 

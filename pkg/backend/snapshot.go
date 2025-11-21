@@ -337,7 +337,7 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 		return true
 	}
 
-	if old.ReplacementTrigger != new.ReplacementTrigger {
+	if !old.ReplacementTrigger.DeepEquals(new.ReplacementTrigger) {
 		logging.V(9).Infof("SnapshotManager: mustWrite() true because of ReplacementTrigger")
 		return true
 	}

@@ -662,8 +662,8 @@ func NewImportCmd() *cobra.Command {
 			"        ],\n" +
 			"    }\n" +
 			"\n" +
-			"The full import file schema references can be found in the [import documentation]\n" +
-			"(https://www.pulumi.com/docs/iac/adopting-pulumi/import/#bulk-import-operations).\n" +
+			"The full import file schema references can be found in the " +
+			"[import documentation](https://www.pulumi.com/docs/iac/adopting-pulumi/import/#bulk-import-operations).\n" +
 			"\n" +
 			"The import JSON file can be generated from a Pulumi program by running\n" +
 			"\n" +

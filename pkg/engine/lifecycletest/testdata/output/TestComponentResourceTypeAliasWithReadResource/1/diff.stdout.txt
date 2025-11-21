@@ -1,0 +1,13 @@
+<{%reset%}>  pkg:typA:Repro: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkg:typA:Repro::test]
+<{%reset%}><{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=2]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}>    <{%fg 14%}>> pkgA:iam:Policy: (read)
+<{%reset%}>        [id=3]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pkg:typA:Repro$pkgA:iam:Policy::AWSBackupServiceRolePolicyForBackup]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

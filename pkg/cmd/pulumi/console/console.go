@@ -75,7 +75,7 @@ func NewConsoleCmd(ws pkgWorkspace.Context) *cobra.Command {
 						return nil
 					}
 				} else {
-					stack, err = state.CurrentStack(ctx, currentBackend)
+					stack, err = state.CurrentStack(ctx, ws, currentBackend)
 					if err != nil {
 						return err
 					}

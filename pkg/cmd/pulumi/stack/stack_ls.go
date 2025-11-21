@@ -155,7 +155,7 @@ func runStackLS(ctx context.Context, args stackLSArgs) error {
 
 	// Get the current stack so we can print a '*' next to it.
 	var current string
-	if s, _ := state.CurrentStack(ctx, b); s != nil {
+	if s, _ := state.CurrentStack(ctx, ws, b); s != nil {
 		// If we couldn't figure out the current stack, just don't print the '*' later on instead of failing.
 		current = s.Ref().String()
 	}

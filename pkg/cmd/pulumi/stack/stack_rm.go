@@ -121,7 +121,7 @@ func newStackRmCmd() *cobra.Command {
 			msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, s.Ref(), colors.Reset)
 			fmt.Println(opts.Color.Colorize(msg))
 
-			contract.IgnoreError(state.SetCurrentStack(""))
+			contract.IgnoreError(state.SetCurrentStack(ws, ""))
 			return nil
 		},
 	}

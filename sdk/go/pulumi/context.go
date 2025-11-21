@@ -26,6 +26,7 @@ import (
 	"path"
 	"reflect"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -2494,7 +2495,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		}
 
 		if len(rtDepResources) > 0 {
-			depMap, err := expandDependencies(context.TODO(), rtDepResources)
+			depMap, err := expandDependencies(ctx.Context(), rtDepResources)
 			if err != nil {
 				return nil, fmt.Errorf("expanding replacementTrigger dependencies: %w", err)
 			}
@@ -2520,21 +2521,18 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 	}
 
 	// Merge all dependencies with what we got earlier from property marshaling, and remove duplicates.
-	allDepURNs := make([]URN, 0, len(resOpts.depURNs)+len(rpcDeps)+len(replacementTriggerDeps))
-	allDepURNs = append(allDepURNs, resOpts.depURNs...)
-	allDepURNs = append(allDepURNs, rpcDeps...)
-	allDepURNs = append(allDepURNs, replacementTriggerDeps...)
-
-	depSet := map[URN]struct{}{}
-	for _, dep := range allDepURNs {
-		depSet[dep] = struct{}{}
-	}
-
-	deps := make([]string, 0, len(depSet))
-	for dep := range depSet {
+	deps := make([]string, 0, len(resOpts.depURNs)+len(rpcDeps)+len(replacementTriggerDeps))
+	for _, dep := range resOpts.depURNs {
 		deps = append(deps, string(dep))
 	}
-	sort.Strings(deps)
+	for _, dep := range rpcDeps {
+		deps = append(deps, string(dep))
+	}
+	for _, dep := range replacementTriggerDeps {
+		deps = append(deps, string(dep))
+	}
+	slices.Sort(deps)
+	deps = slices.Compact(deps)
 
 	aliases, err := ctx.mapAliases(opts.Aliases, t, state.name, opts.Parent)
 	if err != nil {

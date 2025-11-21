@@ -263,6 +263,14 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 	if err != nil {
 		return nil, err
 	}
+
+	old, _, alias := sg.getOldResource(urn, event.Name(), event.Type(), parent, []resource.Alias{})
+
+	var aliasUrns []resource.URN
+	if alias != "" {
+		aliasUrns = []resource.URN{alias}
+	}
+
 	newState := resource.NewState{
 		Type:                    event.Type(),
 		URN:                     urn,
@@ -281,7 +289,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		PropertyDependencies:    nil,
 		PendingReplacement:      false,
 		AdditionalSecretOutputs: event.AdditionalSecretOutputs(),
-		Aliases:                 nil,
+		Aliases:                 aliasUrns,
 		CustomTimeouts:          nil,
 		ImportID:                "",
 		RetainOnDelete:          false,
@@ -299,7 +307,6 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		ViewOf:                  "",
 		ResourceHooks:           nil,
 	}.Make()
-	old, hasOld := sg.deployment.Olds()[urn]
 
 	if newState.ID == "" {
 		return nil, fmt.Errorf("Expected an ID for %v", urn)
@@ -318,7 +325,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 	//
 	// This operation is tentatively called "relinquish" - it semantically represents the
 	// release of a resource from the management of Pulumi.
-	if hasOld && !old.External && old.ID != event.ID() {
+	if old != nil && !old.External && old.ID != event.ID() {
 		logging.V(7).Infof(
 			"stepGenerator.GenerateReadSteps(...): replacing existing resource %s, ids don't match", urn)
 		sg.replaces[urn] = true
@@ -328,7 +335,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		}, nil
 	}
 
-	if bool(logging.V(7)) && hasOld && old.ID == event.ID() {
+	if bool(logging.V(7)) && old != nil && old.ID == event.ID() {
 		logging.V(7).Infof("stepGenerator.GenerateReadSteps(...): recognized relinquish of resource %s", urn)
 	}
 
@@ -479,23 +486,25 @@ func (sg *stepGenerator) validateSteps(steps []Step) ([]Step, error) {
 	return steps, nil
 }
 
-func (sg *stepGenerator) collapseAliasToUrn(goal *resource.Goal, alias resource.Alias) resource.URN {
+func (sg *stepGenerator) collapseAliasToUrn(
+	name string, typ tokens.Type, resParent resource.URN, alias resource.Alias,
+) resource.URN {
 	if alias.URN != "" {
 		return alias.URN
 	}
 
 	n := alias.Name
 	if n == "" {
-		n = goal.Name
+		n = name
 	}
 	t := alias.Type
 	if t == "" {
-		t = string(goal.Type)
+		t = string(typ)
 	}
 
 	parent := alias.Parent
 	if parent == "" {
-		parent = goal.Parent
+		parent = resParent
 	} else {
 		// If the parent used an alias then use it's old URN here, as that will be this resource old URN as well.
 		if parentAlias, has := sg.aliases[parent]; has {
@@ -552,7 +561,9 @@ func (sg *stepGenerator) inheritedChildAlias(
 		aliasName)
 }
 
-func (sg *stepGenerator) generateAliases(goal *resource.Goal) []resource.URN {
+func (sg *stepGenerator) generateAliases(
+	name string, typ tokens.Type, parent resource.URN, resAliases []resource.Alias,
+) []resource.URN {
 	var result []resource.URN
 	aliases := make(map[resource.URN]struct{}, 0)
 
@@ -563,19 +574,19 @@ func (sg *stepGenerator) generateAliases(goal *resource.Goal) []resource.URN {
 		}
 	}
 
-	for _, alias := range goal.Aliases {
-		urn := sg.collapseAliasToUrn(goal, alias)
+	for _, alias := range resAliases {
+		urn := sg.collapseAliasToUrn(name, typ, parent, alias)
 		addAlias(urn)
 	}
 	// Now multiply out any aliases our parent had.
-	if goal.Parent != "" {
-		if parentAlias, has := sg.aliases[goal.Parent]; has {
-			addAlias(sg.inheritedChildAlias(goal.Type, goal.Name, goal.Parent.Name(), parentAlias))
-			for _, alias := range goal.Aliases {
-				childAlias := sg.collapseAliasToUrn(goal, alias)
+	if parent != "" {
+		if parentAlias, has := sg.aliases[parent]; has {
+			addAlias(sg.inheritedChildAlias(typ, name, parent.Name(), parentAlias))
+			for _, alias := range resAliases {
+				childAlias := sg.collapseAliasToUrn(name, typ, parent, alias)
 				aliasedChildType := childAlias.Type()
 				aliasedChildName := childAlias.Name()
-				inheritedAlias := sg.inheritedChildAlias(aliasedChildType, aliasedChildName, goal.Parent.Name(), parentAlias)
+				inheritedAlias := sg.inheritedChildAlias(aliasedChildType, aliasedChildName, parent.Name(), parentAlias)
 				addAlias(inheritedAlias)
 			}
 		}
@@ -584,25 +595,12 @@ func (sg *stepGenerator) generateAliases(goal *resource.Goal) []resource.URN {
 	return result
 }
 
-func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, bool, error) {
-	var invalid bool // will be set to true if this object fails validation.
-
-	goal := event.Goal()
-
-	// Some goal settings are based on the parent settings so make sure our parent is correct.
-	parent, err := sg.checkParent(goal.Parent, goal.Type)
-	if err != nil {
-		return nil, false, err
-	}
-	goal.Parent = parent
-
-	urn, err := sg.generateURN(goal.Parent, goal.Type, goal.Name)
-	if err != nil {
-		return nil, false, err
-	}
-
+func (sg *stepGenerator) getOldResource(
+	urn resource.URN, name string, typ tokens.Type, parent resource.URN, resAliases []resource.Alias,
+) (*resource.State, bool, resource.URN) {
+	invalid := false
 	// Generate the aliases for this resource.
-	aliases := sg.generateAliases(goal)
+	aliases := sg.generateAliases(name, typ, parent, resAliases)
 	// Log the aliases we're going to use to help with debugging aliasing issues.
 	logging.V(7).Infof("Generated aliases for %s: %v", urn, aliases)
 
@@ -615,8 +613,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or
 	// to diff.  We look up first by URN and then by any provided aliases.  If it is found using an
 	// alias, record that alias so that we do not delete the aliased resource later.
+
 	var old *resource.State
-	var alias []resource.Alias
+	var alias resource.URN
 	// Important: Check the URN first, then aliases. Otherwise we may pick the wrong resource which
 	// could lead to a corrupt snapshot.
 	for _, urnOrAlias := range append([]resource.URN{urn}, aliases...) {
@@ -642,7 +641,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 				// NOTE: we save the URN of the existing resource so that the snapshotter can replace references to the
 				// existing resource with the URN of the newly-registered resource. We do not need to save any of the
 				// resource's other possible aliases.
-				alias = []resource.Alias{{URN: urnOrAlias}}
+				alias = urnOrAlias
 				// Save the alias actually being used so we can look it up later if anything has this as a parent
 				sg.aliases[urn] = urnOrAlias
 
@@ -653,9 +652,31 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		}
 	}
 
-	aliasUrns := make([]resource.URN, len(alias))
-	for i, a := range alias {
-		aliasUrns[i] = a.URN
+	return old, invalid, alias
+}
+
+func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, bool, error) {
+	var invalid bool // will be set to true if this object fails validation.
+
+	goal := event.Goal()
+
+	// Some goal settings are based on the parent settings so make sure our parent is correct.
+	parent, err := sg.checkParent(goal.Parent, goal.Type)
+	if err != nil {
+		return nil, false, err
+	}
+	goal.Parent = parent
+
+	urn, err := sg.generateURN(goal.Parent, goal.Type, goal.Name)
+	if err != nil {
+		return nil, false, err
+	}
+
+	old, invalid, alias := sg.getOldResource(urn, goal.Name, goal.Type, goal.Parent, goal.Aliases)
+
+	var aliasUrns []resource.URN
+	if alias != "" {
+		aliasUrns = []resource.URN{alias}
 	}
 
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
@@ -1625,13 +1646,17 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	prov plugin.Provider, goal *resource.Goal, randomSeed []byte,
 	autonaming *plugin.AutonamingOptions,
 ) ([]Step, bool, error) {
-	// We might be triggering a replace if we have an old state and its trigger
-	// value is different. In this case, we don't even need to bother doing a diff
-	// in this case because we know this is a replacement. Note that we treat Null
-	// as a special case for "no trigger", that is if Trigger goes from Null to
-	// anything, or from anything to Null, it does not cause a replace.
-	triggerReplace := !new.ReplacementTrigger.IsNull() && !old.ReplacementTrigger.IsNull() &&
-		!new.ReplacementTrigger.DeepEquals(old.ReplacementTrigger)
+	// Unknowns in replacement triggers are fine during preview, but they should raise an error during the actual
+	// operation. This check only applies when we have an old resource (i.e., during updates/replaces), since a
+	// replacement trigger only makes sense when there's something to replace.
+	if !sg.deployment.opts.DryRun && new.ReplacementTrigger.ContainsUnknowns() {
+		message := fmt.Sprintf("replacement trigger contains unknowns for %s", urn)
+		sg.deployment.ctx.Diag.Errorf(diag.StreamMessage(urn, message, 0))
+		sg.sawError = true
+		return nil, false, result.BailErrorf("%s", message)
+	}
+
+	triggerReplace := shouldTriggerReplace(new.ReplacementTrigger, old.ReplacementTrigger)
 
 	var diff plugin.DiffResult
 	var pcs *promise.CompletionSource[plugin.DiffResult]
@@ -1876,9 +1901,18 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 				// To do this, we'll utilize the dependency information contained in the snapshot if it is
 				// trustworthy, which is interpreted by the DependencyGraph type.
 				var steps []Step
-				toReplace, err := sg.calculateDependentReplacements(old)
-				if err != nil {
-					return nil, err
+				var toReplace []dependentReplace
+
+				// At this point if we're in a preview we might be trying to work out a dependent replace set for a
+				// resource we've just imported, in that case "old" won't actully be in our dep graph and so we need to
+				// check that and just return the empty set here instead. We only need to do this check in preview mode,
+				// in a real update old _MUST_ be in the dep graph and it's better to panic if that ever doesn't hold
+				// true.
+				if !sg.deployment.opts.DryRun || sg.deployment.depGraph.Contains(old) {
+					toReplace, err = sg.calculateDependentReplacements(old)
+					if err != nil {
+						return nil, err
+					}
 				}
 
 				replacedWith, err := sg.findResourcesReplacedWith(urn)
@@ -2359,34 +2393,36 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 
 	// Now actually use all the requested targets to figure out the exact set to delete.
 	for target := range targets {
-		current := sg.deployment.olds[target]
-		if current == nil {
-			// user specified a target that didn't exist.  they will have already gotten a warning
-			// about this when we called checkTargets.  explicitly ignore this target since it won't
-			// be something we could possibly be trying to delete, nor could have dependents we
-			// might need to replace either.
-			continue
-		}
+		current := sg.deployment.allOlds[target]
+		for _, current := range current {
+			if current == nil {
+				// user specified a target that didn't exist.  they will have already gotten a warning
+				// about this when we called checkTargets.  explicitly ignore this target since it won't
+				// be something we could possibly be trying to delete, nor could have dependents we
+				// might need to replace either.
+				continue
+			}
 
-		resourcesToDelete[target] = true
+			resourcesToDelete[target] = true
 
-		// the item the user is asking to destroy may cause downstream replacements.  Clean those up
-		// as well. Use the standard delete-before-replace computation to determine the minimal
-		// set of downstream resources that are affected.
-		deps, err := sg.calculateDependentReplacements(current)
-		if err != nil {
-			return nil, err
-		}
+			// the item the user is asking to destroy may cause downstream replacements.  Clean those up
+			// as well. Use the standard delete-before-replace computation to determine the minimal
+			// set of downstream resources that are affected.
+			deps, err := sg.calculateDependentReplacements(current)
+			if err != nil {
+				return nil, err
+			}
 
-		replacedWith, err := sg.findResourcesReplacedWith(target)
-		if err != nil {
-			return nil, err
-		}
-		deps = append(deps, replacedWith...)
+			replacedWith, err := sg.findResourcesReplacedWith(target)
+			if err != nil {
+				return nil, err
+			}
+			deps = append(deps, replacedWith...)
 
-		for _, dep := range deps {
-			logging.V(7).Infof("GenerateDeletes(...): Adding dependent: %v", dep.res.URN)
-			resourcesToDelete[dep.res.URN] = true
+			for _, dep := range deps {
+				logging.V(7).Infof("GenerateDeletes(...): Adding dependent: %v", dep.res.URN)
+				resourcesToDelete[dep.res.URN] = true
+			}
 		}
 	}
 
@@ -3260,4 +3296,47 @@ func newStepGenerator(
 
 		events: events,
 	}
+}
+
+// Should we trigger a replace for the given new and old property values?
+func shouldTriggerReplace(new resource.PropertyValue, old resource.PropertyValue) bool {
+	new = unwrapSecrets(new)
+	old = unwrapSecrets(old)
+
+	// Unknowns are always considered to be changed.
+	if old.ContainsUnknowns() || new.ContainsUnknowns() {
+		return true
+	}
+
+	// Nulls mean "there is no replacement trigger".
+	if old.IsNull() || new.IsNull() {
+		return false
+	}
+
+	return !new.DeepEquals(old)
+}
+
+// Strip all `Secret` wrappers from the given property value.
+func unwrapSecrets(value resource.PropertyValue) resource.PropertyValue {
+	if value.IsSecret() {
+		return unwrapSecrets(value.SecretValue().Element)
+	}
+
+	if value.IsArray() {
+		arr := []resource.PropertyValue{}
+		for _, e := range value.ArrayValue() {
+			arr = append(arr, unwrapSecrets(e))
+		}
+		return resource.NewProperty(arr)
+	}
+
+	if value.IsObject() {
+		obj := resource.PropertyMap{}
+		for key, e := range value.ObjectValue() {
+			obj[key] = unwrapSecrets(e)
+		}
+		return resource.NewProperty(obj)
+	}
+
+	return value
 }

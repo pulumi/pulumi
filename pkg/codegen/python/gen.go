@@ -2527,17 +2527,22 @@ func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
 		if !opts.acceptMapping {
 			return typ
 		}
-		// If the type is an input and the TypedDict generation is enabled for the type's package, we
-		// we can emit `Union[type, dictType]` and avoid the `InputType[]` wrapper.
-		// dictType covers the Mapping case in `InputType = Union[T, Mapping[str, Any]]`.
 		pkg, err := t.PackageReference.Definition()
 		contract.AssertNoErrorf(err, "error loading definition for package %q", t.PackageReference.Name())
-		info, ok := pkg.Language["python"].(PackageInfo)
+		inputTypes := InputTypesSettingClassesAndDicts
+		if info, ok := pkg.Language["python"].(PackageInfo); ok {
+			if info.InputTypes != "" {
+				inputTypes = info.InputTypes
+			}
+		}
 		// TODO[https://github.com/pulumi/pulumi/issues/16702]
 		// We don't yet assume that external packages support TypedDicts by default.
 		// Remove samePackage condition to enable TypedDicts for external packages by default.
 		samePackage := codegen.PkgEquals(t.PackageReference, mod.pkg)
-		typedDicts := ok && typedDictEnabled(info.InputTypes) && samePackage
+		// If the type is an input and the TypedDict generation is enabled for the type's package, we
+		// we can emit `Union[type, dictType]` and avoid the `InputType[]` wrapper.
+		// dictType covers the Mapping case in `InputType = Union[T, Mapping[str, Any]]`.
+		typedDicts := typedDictEnabled(inputTypes) && samePackage
 		if typedDicts && opts.input {
 			return fmt.Sprintf("Union[%s, %s]", typ, mod.objectType(t, opts.input, true /*dictType*/))
 		}

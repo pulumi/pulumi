@@ -657,21 +657,14 @@ type writeJournalEntryRequest struct {
 }
 
 func (sj *SnapshotJournaler) journalMutation(entry engine.JournalEntry) error {
-	var completeBatch stack.CompleteCrypterBatch
-	enc := sj.secretsManager.Encrypter()
-
-	if batchingSecretsManager, ok := sj.secretsManager.(stack.BatchingSecretsManager); ok {
-		enc, completeBatch = batchingSecretsManager.BeginBatchEncryption()
-	}
-	serializedEntry, err := SerializeJournalEntry(
-		sj.ctx, entry, enc)
+	serializedEntry, err := stack.BatchEncrypt(
+		sj.ctx,
+		sj.secretsManager,
+		func(ctx context.Context, enc config.Encrypter) (apitype.JournalEntry, error) {
+			return SerializeJournalEntry(ctx, entry, enc)
+		})
 	if err != nil {
 		return fmt.Errorf("failed to serialize journal entry: %w", err)
-	}
-	if completeBatch != nil {
-		if err := completeBatch(sj.ctx); err != nil {
-			return fmt.Errorf("failed to complete batch encryption: %w", err)
-		}
 	}
 
 	result := make(chan error)
@@ -783,21 +776,14 @@ func NewJournaler(
 }
 
 func (sj *journaler) AddJournalEntry(entry engine.JournalEntry) error {
-	var completeBatch stack.CompleteCrypterBatch
-	enc := sj.secretsManager.Encrypter()
-
-	if batchingSecretsManager, ok := sj.secretsManager.(stack.BatchingSecretsManager); ok {
-		enc, completeBatch = batchingSecretsManager.BeginBatchEncryption()
-	}
-	serializedEntry, err := SerializeJournalEntry(
-		sj.ctx, entry, enc)
+	serializedEntry, err := stack.BatchEncrypt(
+		sj.ctx,
+		sj.secretsManager,
+		func(ctx context.Context, enc config.Encrypter) (apitype.JournalEntry, error) {
+			return SerializeJournalEntry(ctx, entry, enc)
+		})
 	if err != nil {
 		return fmt.Errorf("failed to serialize journal entry: %w", err)
-	}
-	if completeBatch != nil {
-		if err := completeBatch(sj.ctx); err != nil {
-			return fmt.Errorf("failed to complete batch encryption: %w", err)
-		}
 	}
 	return sj.persister.Append(sj.ctx, serializedEntry)
 }
