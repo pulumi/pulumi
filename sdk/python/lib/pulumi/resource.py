@@ -1263,7 +1263,7 @@ class ComponentResource(Resource):
             ctx = contextvars.copy_context()
             return ctx.run(do_init)
 
-        new_init.__signature__ = inspect.signature(old_init)
+        setattr(new_init, "__signature__", inspect.signature(old_init))
         setattr(cls, "__init__", new_init)
 
     def register_outputs(self, outputs: "Inputs"):
