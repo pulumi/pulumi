@@ -501,6 +501,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 			SourcePosition:          "",
 			StackTrace:              nil,
 			ResourceHooks:           nil,
+			RetryWith:               nil,
 		}.Make(),
 		done: done,
 	}
@@ -653,6 +654,12 @@ type TransformFunction func(
 	props resource.PropertyMap,
 	opts *pulumirpc.TransformResourceOptions,
 ) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error)
+
+// A retry function that can be called when resource registration fails.
+type RetryFunction func(
+	ctx context.Context,
+	errors []string,
+) (bool, error)
 
 // A transformation function that can be applied to an invoke.
 type TransformInvokeFunction func(
@@ -1630,6 +1637,46 @@ func (rm *resmon) wrapInvokeTransformCallback(cb *pulumirpc.Callback) (Transform
 		logging.V(5).Infof("Invoke transform: props=%v opts=%v", newProps, newOpts)
 
 		return newProps, newOpts, nil
+	}, nil
+}
+
+// Wrap the retry callback so the engine can call the callback server, which will then execute the function.
+// The wrapper takes care of all the necessary marshalling and unmarshalling.
+func (rm *resmon) wrapRetryCallback(cb *resource.RetryCallback) (RetryFunction, error) {
+	client, err := rm.GetCallbacksClient(cb.Target)
+	if err != nil {
+		return nil, err
+	}
+
+	token := cb.Token
+	return func(ctx context.Context, errors []string) (bool, error) {
+		logging.V(5).Infof("Retry callback: token=%v errors=%v", token, errors)
+
+		request, err := proto.Marshal(&pulumirpc.RetryRequest{
+			Errors: errors,
+		})
+		if err != nil {
+			return false, fmt.Errorf("marshaling retry request: %w", err)
+		}
+
+		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
+			Token:   token,
+			Request: request,
+		})
+		if err != nil {
+			logging.V(5).Infof("Retry callback error: %v", err)
+			return false, err
+		}
+
+		var response pulumirpc.RetryResponse
+		err = proto.Unmarshal(resp.Response, &response)
+		if err != nil {
+			return false, fmt.Errorf("unmarshaling retry response: %w", err)
+		}
+
+		logging.V(5).Infof("Retry callback response: should_retry=%v", response.ShouldRetry)
+
+		return response.ShouldRetry, nil
 	}, nil
 }
 
@@ -2676,6 +2723,15 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 
 		sourcePosition, stackTrace := rm.sourcePositions.getFromRequest(req)
+
+		var retryWith *resource.RetryCallback
+		if req.GetRetryWith() != nil {
+			retryWith = &resource.RetryCallback{
+				Target: req.GetRetryWith().GetTarget(),
+				Token:  req.GetRetryWith().GetToken(),
+			}
+		}
+
 		goal := resource.NewGoal{
 			Type:                    t,
 			Name:                    name,
@@ -2702,6 +2758,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			SourcePosition:          sourcePosition,
 			StackTrace:              stackTrace,
 			ResourceHooks:           resourceHooks,
+			RetryWith:               retryWith,
 		}.Make()
 		if goal.Parent != "" {
 			rm.resGoalsLock.Lock()
@@ -2711,26 +2768,78 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			}
 			rm.resGoalsLock.Unlock()
 		}
-		// Send the goal state to the engine.
-		step := &registerResourceEvent{
-			goal: goal,
-			done: make(chan *RegisterResult),
+
+		var retryFn RetryFunction
+		if goal.RetryWith != nil {
+			var err error
+			retryFn, err = rm.wrapRetryCallback(goal.RetryWith)
+			if err != nil {
+				return nil, fmt.Errorf("wrapping retry callback: %w", err)
+			}
 		}
 
-		select {
-		case rm.regChan <- step:
-		case <-rm.cancel:
-			logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
-			return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource registration")
+		var errors []string
+
+		// TODO: this should probably be configurable
+		maxRetries := 100
+
+		for retry := 0; retry < maxRetries; retry++ {
+			step := &registerResourceEvent{
+				goal: goal,
+				done: make(chan *RegisterResult),
+			}
+
+			select {
+			case rm.regChan <- step:
+			case <-rm.cancel:
+				logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
+				return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource registration")
+			}
+
+			// Now block waiting for the operation to finish.
+			select {
+			case result = <-step.done:
+			case <-rm.cancel:
+				logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
+				return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
+			}
+
+			// If we're successful or we skip, we don't need to retry.
+			if result.Result == ResultStateSuccess || result.Result == ResultStateSkipped {
+				break
+			}
+
+			// Add error to the list (most recent first). Note that we could recieve
+			// multiple errors, so we join them together in one string.
+			latestErrors := strings.Join(result.State.InitErrors, ", ")
+			errors = append(errors, latestErrors)
+
+			// If no retry callback, fail immediately
+			if retryFn == nil {
+				if !req.GetSupportsResultReporting() {
+					return nil, rpcerror.New(codes.Internal, latestErrors)
+				}
+				break
+			}
+
+			// If the callback is set, and it returns true, we should retry.
+			// Otherwise, we've failed, and we want to exit.
+			shouldRetry, err := retryFn(ctx, errors)
+			if err != nil {
+				logging.V(5).Infof("Retry callback invocation failed: %v", err)
+				return nil, fmt.Errorf("retry callback failed: %w", err)
+			}
+
+			if !shouldRetry {
+				if !req.GetSupportsResultReporting() {
+					return nil, rpcerror.New(codes.Internal, latestErrors)
+				}
+				break
+			}
+
+			logging.V(5).Infof("Retry callback returned true, retrying resource registration (attempt %d)", retry+1)
 		}
 
-		// Now block waiting for the operation to finish.
-		select {
-		case result = <-step.done:
-		case <-rm.cancel:
-			logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
-			return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
-		}
 		if result != nil && result.Result != ResultStateSuccess && !req.GetSupportsResultReporting() {
 			return nil, rpcerror.New(codes.Internal, "resource registration failed")
 		}

@@ -180,6 +180,7 @@ func TestTaintedResourceDiff(t *testing.T) {
 			SourcePosition:          "",
 			StackTrace:              nil,
 			ResourceHooks:           nil,
+			RetryWith:               nil,
 		}.Make(),
 		done: done,
 	}
@@ -414,6 +415,7 @@ func TestDiffWithTaintedResource(t *testing.T) {
 					SourcePosition:          "",
 					StackTrace:              nil,
 					ResourceHooks:           nil,
+					RetryWith:               nil,
 				}.Make(),
 				done: done,
 			}

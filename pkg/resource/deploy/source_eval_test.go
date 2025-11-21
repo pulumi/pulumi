@@ -355,6 +355,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
+				RetryWith:               nil,
 			}.Make(),
 		},
 		// Register a couple resources using provider A.
@@ -385,6 +386,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
+				RetryWith:               nil,
 			}.Make(),
 		},
 		&testRegEvent{
@@ -414,6 +416,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
+				RetryWith:               nil,
 			}.Make(),
 		},
 		// Register two more providers.
@@ -447,6 +450,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
+				RetryWith:               nil,
 			}.Make(),
 		},
 		&testRegEvent{
@@ -476,6 +480,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
+				RetryWith:               nil,
 			}.Make(),
 		},
 	}
@@ -612,6 +617,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
+				RetryWith:               nil,
 			}.Make(),
 		},
 		// Register a couple resources from package A.
@@ -642,6 +648,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
+				RetryWith:               nil,
 			}.Make(),
 		},
 		&testRegEvent{
@@ -671,6 +678,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
+				RetryWith:               nil,
 			}.Make(),
 		},
 		// Register a few resources from other packages.
@@ -701,6 +709,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
+				RetryWith:               nil,
 			}.Make(),
 		},
 		&testRegEvent{
@@ -730,6 +739,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
+				RetryWith:               nil,
 			}.Make(),
 		},
 	}
