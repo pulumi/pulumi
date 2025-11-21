@@ -16,6 +16,7 @@ package workspace
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -361,7 +362,7 @@ func InstallDependenciesForPluginSpec(ctx context.Context, spec workspace.Plugin
 		return err
 	}
 
-	return InstallPluginAtPath(pctx, proj, stdout, stderr)
+	return errors.Join(InstallPluginAtPath(pctx, proj, stdout, stderr), pctx.Close())
 }
 
 func InstallPluginAtPath(pctx *plugin.Context, proj *workspace.PluginProject, stdout, stderr io.Writer) error {

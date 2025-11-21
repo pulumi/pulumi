@@ -105,7 +105,7 @@ func (info ProgramInfo) Marshal() (*pulumirpc.ProgramInfo, error) {
 
 type InstallDependenciesRequest struct {
 	Info ProgramInfo
-	// // True if the host should use language-specific version managers, such as `pyenv` or `nvm`, to set up the version
+	// True if the host should use language-specific version managers, such as `pyenv` or `nvm`, to set up the version
 	// of the language toolchain used.
 	UseLanguageVersionTools bool
 	// True if this install is for a plugin, as opposed to a top level Pulumi program.

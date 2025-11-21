@@ -310,9 +310,9 @@ func installPackagesFromProject(
 			}
 
 			if err := pkgWorkspace.InstallPluginAtPath(pctx, proj, stdout, stderr); err != nil {
-				return fmt.Errorf("installing at '%s': %w", pctx.Pwd, err)
+				return errors.Join(fmt.Errorf("installing at '%s': %w", pctx.Pwd, err), pctx.Close())
 			}
-			return nil
+			return pctx.Close()
 		}
 	}
 
