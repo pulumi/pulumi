@@ -85,6 +85,12 @@ bin/pulumi-display.wasm:: .make/ensure/go .make/ensure/phony pkg/backend/display
 	cd pkg && GOOS=js GOARCH=wasm go build -o ../bin/pulumi-display.wasm -ldflags "-w -s -X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" -trimpath ./backend/display/wasm
 	python3 scripts/wasm-size-check.py bin/pulumi-display.wasm pkg/backend/display/wasm/gold-size.txt
 
+bin/pulumi-language-python: .make/ensure/go $(shell bin/helpmakego sdk/python/cmd/pulumi-language-python)
+	go build -C sdk/python/cmd/pulumi-language-python \
+		-o ../../../../$@ \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
+		github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3
+
 .PHONY: build
 build:: export GOBIN=$(shell realpath ./bin)
 build:: build_proto .make/ensure/go bin/pulumi bin/pulumi-display.wasm

@@ -30,10 +30,7 @@ build_plugin: ../../bin/pulumi-language-python
 
 .PHONY: ../../bin/pulumi-language-python
 ../../bin/pulumi-language-python:
-	go build -C cmd/pulumi-language-python \
-		-o ../../$@ \
-		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
-		${LANGHOST_PKG}
+	$(MAKE) -C ../.. bin/pulumi-language-python
 
 build:: build_package build_plugin
 
