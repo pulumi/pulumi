@@ -318,7 +318,7 @@ func InstallPluginContent(ctx context.Context, spec workspace.PluginSpec, conten
 	// the progress bar.
 	contract.IgnoreClose(content)
 
-	err = InstallDependenciesForPluginSpec(ctx, spec)
+	err = InstallDependenciesForPluginSpec(ctx, spec, os.Stderr /* redirect stdout to stderr */, os.Stderr)
 	if err != nil {
 		return err
 	}
@@ -327,7 +327,7 @@ func InstallPluginContent(ctx context.Context, spec workspace.PluginSpec, conten
 	return os.Remove(partialFilePath)
 }
 
-func InstallDependenciesForPluginSpec(ctx context.Context, spec workspace.PluginSpec) error {
+func InstallDependenciesForPluginSpec(ctx context.Context, spec workspace.PluginSpec, stdout, stderr io.Writer) error {
 	dir, err := spec.DirPath()
 	if err != nil {
 		return err
@@ -361,10 +361,10 @@ func InstallDependenciesForPluginSpec(ctx context.Context, spec workspace.Plugin
 		return err
 	}
 
-	return InstallPluginAtPath(pctx, proj)
+	return InstallPluginAtPath(pctx, proj, stdout, stderr)
 }
 
-func InstallPluginAtPath(pctx *plugin.Context, proj *workspace.PluginProject) error {
+func InstallPluginAtPath(pctx *plugin.Context, proj *workspace.PluginProject, stdout, stderr io.Writer) error {
 	if err := proj.Validate(); err != nil {
 		return err
 	}
@@ -378,7 +378,7 @@ func InstallPluginAtPath(pctx *plugin.Context, proj *workspace.PluginProject) er
 		Info:                    pInfo,
 		UseLanguageVersionTools: false,
 		IsPlugin:                true,
-	})
+	}, stdout, stderr)
 }
 
 // installingPluginRegexp matches the name of temporary folders. Previous versions of Pulumi first extracted

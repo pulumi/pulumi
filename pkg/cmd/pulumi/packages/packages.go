@@ -288,7 +288,7 @@ func linkPackage(ctx *LinkPackagesContext) error {
 	if ctx.Install {
 		if err = pkgCmdUtil.InstallDependencies(languagePlugin, plugin.InstallDependenciesRequest{
 			Info: programInfo,
-		}); err != nil {
+		}, ctx.Writer, ctx.Writer); err != nil {
 			return fmt.Errorf("installing dependencies: %w", err)
 		}
 	}
@@ -499,7 +499,8 @@ func ProviderFromSource(
 				// we previously installed a plugin in a different subdirectory of the same repository.
 				// This is why the provider might have failed to start up.  Install the dependencies
 				// and try again.
-				depErr := pkgWorkspace.InstallDependenciesForPluginSpec(pctx.Base(), descriptor.PluginSpec)
+				depErr := pkgWorkspace.InstallDependenciesForPluginSpec(pctx.Base(), descriptor.PluginSpec,
+					os.Stderr /* pipe stdout and stderr to stderr */, os.Stderr)
 				if depErr != nil {
 					return Provider{}, fmt.Errorf("installing plugin dependencies: %w", depErr)
 				}
