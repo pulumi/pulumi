@@ -1480,11 +1480,13 @@ func (b *cloudBackend) createAndStartUpdate(
 		userName = "unknown"
 	}
 	// Check if the user's org (stack's owner) has Neo enabled. If not, we don't show the link to Neo.
+	// Also check that the org is not a single-user org, as those do not support Neo.
 	isNeoEnabled := updateDetails.IsNeoIntegrationEnabled
+	isSingleUserOrg := updateDetails.IsSingleUserOrg
 	b.neoEnabledForCurrentProject = &isNeoEnabled
 	neoEnabledValueString := "is"
 	continuationString := ""
-	if isNeoEnabled {
+	if isNeoEnabled && !isSingleUserOrg {
 		if env.SuppressNeoLink.Value() {
 			// Neo is enabled in user's org, but the environment variable to suppress the link to Neo is set.
 			op.Opts.Display.ShowLinkToNeo = false
@@ -1494,7 +1496,12 @@ func (b *cloudBackend) createAndStartUpdate(
 	} else {
 		op.Opts.Display.ShowLinkToNeo = false
 		op.Opts.Display.ShowNeoFeatures = false
-		neoEnabledValueString = "is not"
+		if isSingleUserOrg {
+			neoEnabledValueString = "is not"
+			continuationString = " (single-user organization does not support Neo)"
+		} else {
+			neoEnabledValueString = "is not"
+		}
 	}
 	logging.V(7).Infof("Neo in org '%s' %s enabled for user '%s'%s",
 		stackID.Owner, neoEnabledValueString, userName, continuationString)

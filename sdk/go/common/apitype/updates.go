@@ -94,6 +94,7 @@ type Message struct {
 
 type AISettingsForUpdate struct {
 	CopilotIsEnabled bool `json:"copilotIsEnabled"`
+	IsSingleUserOrg  bool `json:"isSingleUserOrg"`
 }
 
 // UpdateProgramResponse is the result of an update program request.
