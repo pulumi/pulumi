@@ -53,8 +53,15 @@ PROTO_CKSUM = cksum ${PROTO_FILES} | LC_ALL=C sort --key=3
 build-proto: build_proto
 build_proto: proto/.checksum.txt
 proto/.checksum.txt: ${PROTO_FILES}
-	cd proto && ./generate.sh
-	${PROTO_CKSUM} > $@
+	@printf "Protobuffer interfaces are ....... "
+	@if [ "$$(cat proto/.checksum.txt)" = "`${PROTO_CKSUM}`" ]; then \
+		printf "\033[0;32malready up to date\033[0m\n"; \
+	else \
+		printf "\033[0;34mout of date: REBUILDING\033[0m\n"; \
+		cd proto && ./generate.sh || exit 1; \
+		cd ../ && ${PROTO_CKSUM} > $@; \
+		printf "\033[0;34mProtobuffer interfaces have been \033[0;32mREBUILT\033[0m\n"; \
+	fi
 
 .PHONY: check-proto check_proto
 check-proto: check_proto
