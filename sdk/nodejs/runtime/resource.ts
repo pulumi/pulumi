@@ -177,7 +177,8 @@ interface ResourceResolverOperation {
     deletedWithURN: URN | undefined;
 
     /**
-     * If set, contains the resources whose replacement should trigger a replace of this resource.
+     * If set, contains the resources whose replacement should trigger a replace
+     * of this resource.
      */
     replaceWithResources: Resource[] | undefined;
 
