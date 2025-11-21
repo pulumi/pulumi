@@ -62,9 +62,7 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err := NewLoginManager().LoginWithDiagSink(
-		ctx, diagtest.LogSink(t), PulumiCloudURL, false, "", "", nil, true, display.Options{},
-	)
+	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
 	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
@@ -108,9 +106,7 @@ func TestMissingPulumiAccessToken(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err := NewLoginManager().LoginWithDiagSink(
-		ctx, diagtest.LogSink(t), "https://api.example.com", false, "", "", nil, true, display.Options{},
-	)
+	_, err := NewLoginManager().Login(ctx, "https://api.example.com", false, "", "", nil, true, display.Options{})
 	var expectedErr backenderr.MissingEnvVarForNonInteractiveError
 	if assert.ErrorAs(t, err, &expectedErr) {
 		assert.Equal(t, env.AccessToken.Var(), expectedErr.Var)
@@ -126,9 +122,7 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err := NewLoginManager().LoginWithDiagSink(
-		ctx, diagtest.LogSink(t), PulumiCloudURL, false, "", "", nil, true, display.Options{},
-	)
+	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
 	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
@@ -286,9 +280,7 @@ func TestDisableIntegrityChecking(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err := NewLoginManager().LoginWithDiagSink(
-		ctx, diagtest.LogSink(t), PulumiCloudURL, false, "", "", nil, true, display.Options{},
-	)
+	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
 	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
@@ -443,9 +435,7 @@ func TestListStackNames(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err := NewLoginManager().LoginWithDiagSink(
-		ctx, diagtest.LogSink(t), PulumiCloudURL, false, "", "", nil, true, display.Options{},
-	)
+	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
 	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
@@ -560,9 +550,7 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err := NewLoginManager().LoginWithDiagSink(
-		ctx, diagtest.LogSink(t), PulumiCloudURL, false, "", "", nil, true, display.Options{},
-	)
+	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
 	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
@@ -1001,21 +989,19 @@ func TestIsExpectedTokenFormat(t *testing.T) {
 //nolint:paralleltest // Cannot use t.Parallel() because subtests use t.Setenv
 func TestGetTokenValue(t *testing.T) {
 	tests := []struct {
-		name           string
-		token          string
-		setupEnv       func(*testing.T)
-		setupFile      func(*testing.T) string
-		wantValue      string
-		wantSourceType string
-		wantErr        bool
-		errContains    string
+		name        string
+		token       string
+		setupEnv    func(*testing.T)
+		setupFile   func(*testing.T) string
+		wantValue   string
+		wantErr     bool
+		errContains string
 	}{
 		{
-			name:           "direct JWT token",
-			token:          testJWT,
-			wantValue:      testJWT,
-			wantSourceType: "raw",
-			wantErr:        false,
+			name:      "direct JWT token",
+			token:     testJWT,
+			wantValue: testJWT,
+			wantErr:   false,
 		},
 		{
 			name:  "token from file",
@@ -1029,9 +1015,8 @@ func TestGetTokenValue(t *testing.T) {
 				tmpFile.Close()
 				return tmpFile.Name()
 			},
-			wantValue:      testJWT,
-			wantSourceType: "file",
-			wantErr:        false,
+			wantValue: testJWT,
+			wantErr:   false,
 		},
 		{
 			name:        "token from nonexistent file",
@@ -1067,31 +1052,6 @@ func TestGetTokenValue(t *testing.T) {
 			wantErr:     true,
 			errContains: "token format in file",
 		},
-		{
-			name:  "token from environment variable",
-			token: "MY_JWT_VAR",
-			setupEnv: func(t *testing.T) {
-				t.Setenv("MY_JWT_VAR", testJWT)
-			},
-			wantValue:      testJWT,
-			wantSourceType: "env",
-			wantErr:        false,
-		},
-		{
-			name:        "empty environment variable",
-			token:       "EMPTY_VAR",
-			wantErr:     true,
-			errContains: "is not set or empty",
-		},
-		{
-			name:  "environment variable with unexpected token format",
-			token: "UNEXPECTED_TOKEN_VAR",
-			setupEnv: func(t *testing.T) {
-				t.Setenv("UNEXPECTED_TOKEN_VAR", "unexpected-token-format")
-			},
-			wantErr:     true,
-			errContains: "token format in environment variable",
-		},
 	}
 
 	for _, tt := range tests {
@@ -1107,7 +1067,7 @@ func TestGetTokenValue(t *testing.T) {
 				token = "file://" + filePath
 			}
 
-			value, sourceType, err := getTokenValue(token)
+			value, err := getTokenValue(token)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -1117,113 +1077,9 @@ func TestGetTokenValue(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, tt.wantValue, value)
-				assert.Equal(t, tt.wantSourceType, sourceType)
 			}
 		})
 	}
-}
-
-func TestRefreshAuthentication(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name        string
-		account     workspace.Account
-		setupServer func() *httptest.Server
-		wantErr     bool
-		errContains string
-		checkResult func(*testing.T, workspace.Account)
-	}{
-		{
-			name: "no auth context",
-			account: workspace.Account{
-				AccessToken: "pul-existing-token",
-			},
-			wantErr: false,
-			checkResult: func(t *testing.T, account workspace.Account) {
-				assert.Equal(t, "pul-existing-token", account.AccessToken)
-			},
-		},
-		{
-			name: "auth context but not token exchange",
-			account: workspace.Account{
-				AccessToken: "pul-existing-token",
-				AuthContext: &workspace.AuthContext{
-					GrantType: "some-other-grant",
-				},
-			},
-			wantErr: false,
-			checkResult: func(t *testing.T, account workspace.Account) {
-				assert.Equal(t, "pul-existing-token", account.AccessToken)
-			},
-		},
-		{
-			name: "token exchange with expired token",
-			account: workspace.Account{
-				AccessToken: "old-token",
-				AuthContext: &workspace.AuthContext{
-					GrantType:    workspace.AuthContextGrantTypeTokenExchange,
-					TokenExpired: true,
-				},
-				TokenInformation: &workspace.TokenInformation{
-					ExpiresAt: timePtr(time.Now().Add(-1 * time.Hour)),
-				},
-			},
-			wantErr:     true,
-			errContains: "Unauthorized: No credentials provided or are invalid",
-		},
-		{
-			name: "token not expiring soon",
-			account: workspace.Account{
-				AccessToken: "current-token",
-				AuthContext: &workspace.AuthContext{
-					GrantType: workspace.AuthContextGrantTypeTokenExchange,
-					Token:     "pul-oidc-token",
-				},
-				TokenInformation: &workspace.TokenInformation{
-					ExpiresAt: timePtr(time.Now().Add(10 * time.Minute)),
-				},
-			},
-			wantErr: false,
-			checkResult: func(t *testing.T, account workspace.Account) {
-				assert.Equal(t, "current-token", account.AccessToken)
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			var server *httptest.Server
-			cloudURL := "https://api.pulumi.com"
-			insecure := false
-
-			if tt.setupServer != nil {
-				server = tt.setupServer()
-				defer server.Close()
-				cloudURL = server.URL
-			}
-
-			result, err := refreshAuthentication(diagtest.LogSink(t), cloudURL, insecure, tt.account)
-
-			if tt.wantErr {
-				assert.Error(t, err)
-				if tt.errContains != "" {
-					assert.Contains(t, err.Error(), tt.errContains)
-				}
-			} else {
-				require.NoError(t, err)
-				if tt.checkResult != nil {
-					tt.checkResult(t, result)
-				}
-			}
-		})
-	}
-}
-
-func timePtr(t time.Time) *time.Time {
-	return &t
 }
 
 func TestExchangeOidcToken(t *testing.T) {
@@ -1238,7 +1094,7 @@ func TestExchangeOidcToken(t *testing.T) {
 		setupServer  func() *httptest.Server
 		wantErr      bool
 		errContains  string
-		checkResult  func(*testing.T, string, time.Time, *workspace.AuthContext)
+		checkResult  func(*testing.T, string, time.Time)
 	}{
 		{
 			name:         "empty oidc token",
@@ -1279,13 +1135,9 @@ func TestExchangeOidcToken(t *testing.T) {
 				}))
 			},
 			wantErr: false,
-			checkResult: func(t *testing.T, accessToken string, expiresAt time.Time, authContext *workspace.AuthContext) {
+			checkResult: func(t *testing.T, accessToken string, expiresAt time.Time) {
 				assert.Equal(t, "pul-jwt-access-token", accessToken)
 				assert.False(t, expiresAt.IsZero())
-				require.NotNil(t, authContext)
-				// JWT tokens should not be stored (one-time use)
-				assert.Empty(t, authContext.Token)
-				assert.True(t, authContext.TokenExpired)
 			},
 		},
 	}
@@ -1301,7 +1153,7 @@ func TestExchangeOidcToken(t *testing.T) {
 				cloudURL = server.URL
 			}
 
-			accessToken, expiresAt, authContext, err := exchangeOidcToken(
+			accessToken, expiresAt, err := exchangeOidcToken(
 				diagtest.LogSink(t), cloudURL, false, tt.oidcToken, tt.organization, tt.scope, tt.expiration,
 			)
 
@@ -1313,7 +1165,7 @@ func TestExchangeOidcToken(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				if tt.checkResult != nil {
-					tt.checkResult(t, accessToken, expiresAt, authContext)
+					tt.checkResult(t, accessToken, expiresAt)
 				}
 			}
 		})

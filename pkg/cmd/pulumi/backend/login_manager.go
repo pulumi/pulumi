@@ -78,7 +78,7 @@ func (f *lm) Current(
 
 	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
 	lm := httpstate.NewLoginManager()
-	account, err := lm.CurrentWithDiagSink(ctx, sink, url, insecure, setCurrent)
+	account, err := lm.Current(ctx, url, insecure, setCurrent)
 	if err != nil || account == nil {
 		return nil, err
 	}
@@ -102,9 +102,7 @@ func (f *lm) Login(
 	opts := display.Options{
 		Color: color,
 	}
-	_, err := lm.LoginWithDiagSink(
-		ctx, sink, url, insecure, "pulumi", "Pulumi stacks", httpstate.WelcomeUser, setCurrent, opts,
-	)
+	_, err := lm.Login(ctx, url, insecure, "pulumi", "Pulumi stacks", httpstate.WelcomeUser, setCurrent, opts)
 	if err != nil {
 		return nil, err
 	}

@@ -61,24 +61,6 @@ func GetCloudInsecure(ws Context, cloudURL string) bool {
 	return insecure
 }
 
-func GetCloudAuthContext(ws Context, cloudURL string) *workspace.AuthContext {
-	if cloudURL == "" {
-		return nil
-	}
-
-	creds, err := ws.GetStoredCredentials()
-	if err != nil {
-		return nil
-	}
-
-	account, ok := creds.Accounts[cloudURL]
-	if !ok {
-		return nil
-	}
-
-	return account.AuthContext
-}
-
 func GetBackendConfigDefaultOrg(project *workspace.Project) (string, error) {
 	config, err := workspace.GetPulumiConfig()
 	if err != nil && !os.IsNotExist(err) {

@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/rogpeppe/go-internal/lockedfile"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -121,8 +122,6 @@ type Account struct {
 	Insecure bool `json:"insecure,omitempty"`
 	// Information about the token used to authenticate.
 	TokenInformation *TokenInformation `json:"tokenInformation,omitempty"`
-	// Additional context used during authentication, like token exchange details.
-	AuthContext *AuthContext `json:"authContext,omitempty"`
 }
 
 // Information about the token that was used to authenticate the current user. One (or none) of Team or Organization
@@ -135,18 +134,24 @@ type TokenInformation struct {
 }
 
 type AuthContext struct {
-	GrantType    string        `json:"grantType,omitempty"`
-	Organization string        `json:"organization,omitempty"`
-	Scope        string        `json:"scope,omitempty"`
-	Token        string        `json:"token,omitempty"`
-	TokenExpired bool          `json:"tokenExpired,omitempty"`
-	Expiration   time.Duration `json:"expiration,omitempty"`
+	GrantType    string
+	Organization string
+	Scope        string
+	Token        string
+	TokenExpired bool
+	Expiration   time.Duration
 }
 
 //nolint:gosec // This is an OAuth grant type URN, not a credential
 const AuthContextGrantTypeTokenExchange = "urn:ietf:params:oauth:grant-type:token-exchange"
 
 func NewAuthContextForTokenExchange(organization, team, user, token, expirationDuration string) (AuthContext, error) {
+	if token == "" {
+		return AuthContext{}, errors.New("oidc token must be specified for token exchange")
+	}
+	if env.AccessToken.Value() != "" {
+		return AuthContext{}, errors.New("cannot perform token exchange when an access token is set as environment variable")
+	}
 	if organization == "" {
 		return AuthContext{}, errors.New("organization must be specified for token exchange")
 	}
