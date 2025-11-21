@@ -6,6 +6,9 @@ def test_property_value_type():
     value = PropertyValue(2.0)
     assert value.type == PropertyValueType.NUMBER
 
+    value = PropertyValue(42)
+    assert value.type == PropertyValueType.NUMBER
+
     value = PropertyValue("hello")
     assert value.type == PropertyValueType.STRING
 
@@ -91,3 +94,10 @@ def test_nesting():
     pbvalue = PropertyValue.marshal_map(value)
     result = PropertyValue.unmarshal_map(pbvalue)
     assert value == result
+
+
+def test_marshal_int_as_number():
+    value = PropertyValue(42)
+    pbvalue = value.marshal()
+
+    assert pbvalue.number_value == 42
