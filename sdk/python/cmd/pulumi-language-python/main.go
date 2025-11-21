@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,8 +46,6 @@ import (
 	"unicode"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/sdk/v3"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tail"
@@ -1308,6 +1306,23 @@ func (host *pythonLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 func (host *pythonLanguageHost) Template(
 	ctx context.Context, req *pulumirpc.TemplateRequest,
 ) (*pulumirpc.TemplateResponse, error) {
+	logging.V(5).Infof("Template(%+v)", req)
+
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
+	if err != nil {
+		return nil, err
+	}
+
+	tc, err := toolchain.ResolveToolchain(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tc.PrepareProject(ctx, req.ProjectName, req.Info.ProgramDirectory, false, /*showOutput*/
+		nil /* infoWriter */, nil /* errWriter */); err != nil {
+		return nil, err
+	}
+
 	return &pulumirpc.TemplateResponse{}, nil
 }
 
@@ -1385,7 +1400,6 @@ func (host *pythonLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
 	logging.V(5).Infof("Attempting to run python plugin in %s with args %v", req.Info.ProgramDirectory, req.Args)
-	ctx := server.Context()
 
 	engineClient, closer, err := host.connectToEngine()
 	if err != nil {
@@ -1424,7 +1438,7 @@ func (host *pythonLanguageHost) RunPlugin(
 	// Pulumi package. A plugin might ship with an old version, in which case we
 	// fallback to the bare directory mode.
 	hasPluginRunModule := true
-	checkModuleCmd, err := tc.Command(ctx, "-c", "import pulumi.run.plugin")
+	checkModuleCmd, err := tc.Command(server.Context(), "-c", "import pulumi.run.plugin")
 	if err != nil {
 		return err
 	}
@@ -1437,7 +1451,7 @@ func (host *pythonLanguageHost) RunPlugin(
 	args := []string{}
 	var dbg *debugger
 	if req.GetAttachDebugger() {
-		args, dbg, err = debugCommand(ctx, opts)
+		args, dbg, err = debugCommand(server.Context(), opts)
 		if err != nil {
 			return err
 		}
@@ -1461,27 +1475,16 @@ func (host *pythonLanguageHost) RunPlugin(
 
 		args = append(args, pyproject.Project.Name)
 		args = append(args, req.Args...)
-		cmd, err = tc.ModuleCommand(ctx, "pulumi.run.plugin", args...)
+		cmd, err = tc.ModuleCommand(server.Context(), "pulumi.run.plugin", args...)
 		if err != nil {
 			return err
 		}
 		logging.V(5).Infof("RunPlugin: %s", cmd.String())
 	} else {
-		// For policy analyzers we need to send the program directory as an argument _last_, for everything
-		// else it comes first
-		if req.Kind == string(apitype.AnalyzerPlugin) {
-			// Policy packs (i.e. kind=analyzer) need to be treated specially for back compatibility reasons. We
-			// used to have a dedicated shim plugin "pulumi-analyzer-python-policy" that would start policy packs
-			// up, but now we just let the RunPlugin code handle that logic.
-			args = append(args, []string{"-u", "-m", "pulumi.policy"}...)
-			args = append(args, req.Args...)
-			args = append(args, req.Info.ProgramDirectory)
-		} else {
-			// Run `python <path to plugin> req.Args...`, executing the plugin's `__main__.py`.
-			args = append(args, req.Info.ProgramDirectory)
-			args = append(args, req.Args...)
-		}
-		cmd, err = tc.Command(ctx, args...)
+		// Run `python <path to plugin> req.Args...`, executing the plugin's `__main__.py`.
+		args = append(args, req.Info.ProgramDirectory)
+		args = append(args, req.Args...)
+		cmd, err = tc.Command(server.Context(), args...)
 		if err != nil {
 			return err
 		}
@@ -1494,49 +1497,7 @@ func (host *pythonLanguageHost) RunPlugin(
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
 
-	// python policy packs used to always run with the working directory set to the policy pack directory, not
-	// the main working directory. We need to continue that for backwards compatibility.
-	if req.Kind == string(apitype.AnalyzerPlugin) {
-		cmd.Dir = req.Info.ProgramDirectory
-	} else {
-		cmd.Dir = req.Pwd
-	}
-
-	// For policy packs we also need to adjust the environment to include stack configuration as well. Unfortunately to
-	// get that info we need to connect to the engine as a policy pack so that we can get the StackConfiguration call,
-	// we then need to wait for the _real_ policy pack to start up and shim all it's other request/responses.
-	var policyPackServer *sdk.PolicyProxy
-	if req.Kind == string(apitype.AnalyzerPlugin) {
-		policyPackServer, stdout, err = sdk.NewPolicyProxy(ctx, stdout)
-		if err != nil {
-			return fmt.Errorf("could not start policy pack proxy: %w", err)
-		}
-
-		config, err := policyPackServer.AwaitConfiguration(ctx)
-		if err != nil {
-			return fmt.Errorf("could not get stack configuration: %w", err)
-		}
-
-		if config != nil {
-			maybeAppendEnv := func(k, v string) {
-				if v != "" {
-					cmd.Env = append(cmd.Env, k+"="+v)
-				}
-			}
-			maybeAppendEnv("PULUMI_ORGANIZATION", config.Organization)
-			maybeAppendEnv("PULUMI_PROJECT", config.Project)
-			maybeAppendEnv("PULUMI_STACK", config.Stack)
-			maybeAppendEnv("PULUMI_DRY_RUN", strconv.FormatBool(config.DryRun))
-			if config.Config != nil {
-				configJSON, err := json.Marshal(config.Config)
-				if err != nil {
-					return fmt.Errorf("could not marshal stack configuration: %w", err)
-				}
-				maybeAppendEnv("PULUMI_CONFIG", string(configJSON))
-			}
-		}
-	}
-
+	cmd.Dir = req.Pwd
 	cmd.Env = append(cmd.Env, req.Env...)
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
@@ -1547,7 +1508,7 @@ func (host *pythonLanguageHost) RunPlugin(
 		}
 		if req.GetAttachDebugger() {
 			// create a sub-context to cancel the startDebugging operation when the process exits.
-			ctx, cancel := context.WithCancel(ctx)
+			ctx, cancel := context.WithCancel(server.Context())
 			defer cancel()
 			go func() {
 				err := startDebugging(ctx, engineClient, cmd, dbg, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name))
@@ -1557,13 +1518,6 @@ func (host *pythonLanguageHost) RunPlugin(
 					contract.IgnoreError(cmd.Process.Kill())
 				}
 			}()
-		}
-		// If we've got a proxy policy then tell it to attach now
-		if policyPackServer != nil {
-			err = policyPackServer.Attach(ctx)
-			if err != nil {
-				return fmt.Errorf("could not attach policy pack proxy: %w", err)
-			}
 		}
 		return cmd.Wait()
 	}

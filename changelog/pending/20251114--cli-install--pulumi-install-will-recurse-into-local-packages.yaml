@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/install
-  description: Make `pulumi install` recurse into local packages

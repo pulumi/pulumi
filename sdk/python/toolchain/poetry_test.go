@@ -57,9 +57,12 @@ func TestGeneratePyProjectTOML(t *testing.T) {
 		"setuptools":    "*",
 		"spaces-before": "1.2.3",
 	}
-	s, err := p.generatePyProjectTOML(deps)
+	s, err := p.generatePyProjectTOML("project-name-here", deps)
 	require.NoError(t, err)
-	require.Equal(t, `[build-system]
+	require.Equal(t, `[project]
+name = "project-name-here"
+
+[build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 

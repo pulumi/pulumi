@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix a panic when previewing and import of a resource that wants to delete and then replace due to diffs

@@ -10,13 +10,15 @@ PROJECT         := github.com/pulumi/pulumi/pkg/v3/cmd/pulumi
 # to avoid issues like realpath failing on macOS if the directory doesn't exist.
 _ := $(shell mkdir -p bin)
 
+_ := $(shell cd pkg && go build -o ../bin/helpmakego github.com/iwahbe/helpmakego)
+
 PKG_CODEGEN := github.com/pulumi/pulumi/pkg/v3/codegen
 # nodejs and python codegen tests are much slower than go/dotnet:
-PROJECT_PKGS    := $(shell cd ./pkg && go list ./... | grep -v -E '^${PKG_CODEGEN}/(dotnet|go|nodejs|python)')
+PROJECT_PKGS    = $(shell cd ./pkg && go list ./... | grep -v -E '^${PKG_CODEGEN}/(dotnet|go|nodejs|python)')
 INTEGRATION_PKG := github.com/pulumi/pulumi/tests/integration
 PERFORMANCE_PKG := github.com/pulumi/pulumi/tests/performance
-TESTS_PKGS      := $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v ^${INTEGRATION_PKG}$ | grep -v ^${PERFORMANCE_PKG}$)
-VERSION         := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ./scripts/pulumi-version.sh))
+TESTS_PKGS      = $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v ^${INTEGRATION_PKG}$ | grep -v ^${PERFORMANCE_PKG}$)
+VERSION         = $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ./scripts/pulumi-version.sh))
 
 # Relative paths to directories with go.mod files that should be linted.
 LINT_GOLANG_PKGS := sdk pkg tests sdk/go/pulumi-language-go sdk/nodejs/cmd/pulumi-language-nodejs sdk/python/cmd/pulumi-language-python cmd/pulumi-test-language
@@ -49,14 +51,15 @@ ensure: .make/ensure/go .make/ensure/phony $(SUB_PROJECTS:%=%_ensure)
 PROTO_FILES := $(sort $(shell find proto -type f -name '*.proto') proto/generate.sh proto/build-container/Dockerfile $(wildcard proto/build-container/scripts/*))
 PROTO_CKSUM = cksum ${PROTO_FILES} | LC_ALL=C sort --key=3
 build-proto: build_proto
-build_proto:
+build_proto: proto/.checksum.txt
+proto/.checksum.txt: ${PROTO_FILES}
 	@printf "Protobuffer interfaces are ....... "
 	@if [ "$$(cat proto/.checksum.txt)" = "`${PROTO_CKSUM}`" ]; then \
-		printf "\033[0;32mup to date\033[0m\n"; \
+		printf "\033[0;32malready up to date\033[0m\n"; \
 	else \
 		printf "\033[0;34mout of date: REBUILDING\033[0m\n"; \
 		cd proto && ./generate.sh || exit 1; \
-		cd ../ && ${PROTO_CKSUM} > proto/.checksum.txt; \
+		cd ../ && ${PROTO_CKSUM} > $@; \
 		printf "\033[0;34mProtobuffer interfaces have been \033[0;32mREBUILT\033[0m\n"; \
 	fi
 
@@ -74,8 +77,7 @@ generate::
 	$(call STEP_MESSAGE)
 	echo "This command does not do anything anymore. It will be removed in a future version."
 
-.PHONY: bin/pulumi
-bin/pulumi: build_proto .make/ensure/go .make/ensure/phony
+bin/pulumi: proto/.checksum.txt .make/ensure/go $(shell bin/helpmakego pkg/cmd/pulumi)
 	go build -C pkg -o ../$@ -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
 .PHONY: bin/pulumi-display.wasm

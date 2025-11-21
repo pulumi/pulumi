@@ -23,7 +23,7 @@ docker build build-container -t "pulumi/pulumi-build-container:${PULUMI_BUILD_CO
 # Run as the _current_ user, so that the generated files are owned by the current user, not root.
 USER=$(id -u):$(id -g)
 
-DOCKER_RUN="docker run --user $USER -it --rm -w /local -v $(pwd)/../sdk/proto/go:/go  -v $(pwd)/../sdk/python:/python -v $(pwd)/../sdk/nodejs:/nodejs -v $(pwd):/local pulumi/pulumi-build-container:${PULUMI_BUILD_CONTAINER_VERSION}"
+DOCKER_RUN="docker run --user $USER -i --rm -w /local -v $(pwd)/../sdk/proto/go:/go  -v $(pwd)/../sdk/python:/python -v $(pwd)/../sdk/nodejs:/nodejs -v $(pwd):/local pulumi/pulumi-build-container:${PULUMI_BUILD_CONTAINER_VERSION}"
 
 PROTOC_VERSION=$($DOCKER_RUN protoc --version | head -n1 | tr -d '\n\r')
 

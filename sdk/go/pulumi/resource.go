@@ -467,6 +467,13 @@ type ResourceOptions struct {
 	// replacements.
 	ReplaceOnChanges []string
 
+	// If set, the engine will diff this with the last recorded value, and trigger
+	// a replace if they are not equal.  Note that if either value is null, no
+	// comparison is done and no replacement is triggered. This means that the
+	// replacement trigger only applies to two subsequent deployments with defined
+	// triggers.
+	ReplacementTrigger Input
+
 	// Transformations is a list of functions that transform
 	// the resource's properties during construction.
 	Transformations []ResourceTransformation
@@ -532,6 +539,7 @@ type resourceOptions struct {
 	Provider                ProviderResource
 	Providers               map[string]ProviderResource
 	ReplaceOnChanges        []string
+	ReplacementTrigger      Input
 	Transformations         []ResourceTransformation
 	Transforms              []ResourceTransform
 	URN                     string
@@ -599,6 +607,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		Provider:                ro.Provider,
 		Providers:               providers,
 		ReplaceOnChanges:        ro.ReplaceOnChanges,
+		ReplacementTrigger:      ro.ReplacementTrigger,
 		Transformations:         ro.Transformations,
 		Transforms:              ro.Transforms,
 		URN:                     ro.URN,
@@ -1027,6 +1036,13 @@ func Providers(o ...ProviderResource) ResourceOption {
 func ReplaceOnChanges(o []string) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.ReplaceOnChanges = append(ro.ReplaceOnChanges, o...)
+	})
+}
+
+// If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
+func ReplacementTrigger(o Input) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.ReplacementTrigger = o
 	})
 }
 

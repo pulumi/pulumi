@@ -174,7 +174,7 @@ func (p *pip) Command(ctx context.Context, arg ...string) (*exec.Cmd, error) {
 		name = name + ".exe"
 	}
 	cmdPath := filepath.Join(p.virtualenvPath, virtualEnvBinDirName(), name)
-	cmd = exec.CommandContext(ctx, cmdPath, arg...)
+	cmd = exec.Command(cmdPath, arg...)
 
 	cmd.Env = ActivateVirtualEnv(os.Environ(), p.virtualenvPath)
 
@@ -509,6 +509,14 @@ func InstallDependencies(ctx context.Context, cwd, venvDir string, useLanguageVe
 
 	printmsg("Finished installing dependencies")
 
+	return nil
+}
+
+func (p *pip) PrepareProject(
+	ctx context.Context, projectName, cwd string, showOutput bool, infoWriter, errorWriter io.Writer,
+) error {
+	// pip with requirements.txt is currently the canonical representation for templates, so there is nothing to do
+	// here.
 	return nil
 }
 
