@@ -78,6 +78,10 @@ type Toolchain interface {
 	// InstallDependencies installs the dependencies of the project found in `cwd`.
 	InstallDependencies(ctx context.Context, cwd string, useLanguageVersionTools,
 		showOutput bool, infoWriter, errorWriter io.Writer) error
+	// PrepareProject prepares the python project for use with its toolchain. For example it will convert a
+	// requirements.txt into an pyproject.toml for uv or poetry.
+	PrepareProject(ctx context.Context, projectName, cwd string, showOutput bool, infoWriter,
+		errorWriter io.Writer) error
 	// EnsureVenv validates virtual environment of the toolchain and creates it if it doesn't exist.
 	EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTools,
 		showOutput bool, infoWriter, errorWriter io.Writer) error

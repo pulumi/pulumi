@@ -508,7 +508,10 @@ func NewUpCmd() *cobra.Command {
 			"afterwards so that the stack may be updated incrementally again later on.\n" +
 			"\n" +
 			"The program to run is loaded from the project in the current directory by default. Use the `-C` or\n" +
-			"`--cwd` flag to use a different directory.",
+			"`--cwd` flag to use a different directory.\n" +
+			"\n" +
+			"Note: An optional template name or URL can be provided to deploy from a template. When used, a temporary\n" +
+			" project is created, deployed, and then deleted, leaving only the stack state.",
 		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

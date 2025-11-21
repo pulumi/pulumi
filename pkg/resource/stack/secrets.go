@@ -17,6 +17,7 @@ package stack
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -523,4 +524,56 @@ func (bd *cachingBatchDecrypter) DecryptValue(ctx context.Context, ciphertext st
 
 func (bd *cachingBatchDecrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	return bd.decrypter.BatchDecrypt(ctx, ciphertexts)
+}
+
+// BatchEncrypt is a helper function that encapsulates the pattern of checking if a secrets manager
+// supports batching, starting a batch encryption operation, calling a function with the encrypter,
+// and completing the batch operation.
+func BatchEncrypt[T any](
+	ctx context.Context,
+	sm secrets.Manager,
+	fn func(context.Context, config.Encrypter) (T, error),
+) (T, error) {
+	enc := sm.Encrypter()
+
+	var err error
+	if batchingSecretsManager, ok := sm.(BatchingSecretsManager); ok {
+		var completeBatch CompleteCrypterBatch
+		enc, completeBatch = batchingSecretsManager.BeginBatchEncryption()
+		defer func() { err = errors.Join(err, completeBatch(ctx)) }()
+	}
+
+	result, fnerr := fn(ctx, enc)
+	err = errors.Join(err, fnerr)
+
+	return result, nil
+}
+
+// BatchDecrypt is a helper function that encapsulates the pattern of checking if a secrets manager
+// supports batching, starting a batch decryption operation, calling a function with the decrypter,
+// and completing the batch operation.
+func BatchDecrypt[T any](
+	ctx context.Context,
+	sm secrets.Manager,
+	fn func(context.Context, config.Decrypter) (T, error),
+) (T, error) {
+	var dec config.Decrypter
+
+	var err error
+	if sm != nil {
+		if batchingSecretsManager, ok := sm.(BatchingSecretsManager); ok {
+			var completeBatch CompleteCrypterBatch
+			dec, completeBatch = batchingSecretsManager.BeginBatchDecryption()
+			defer func() { err = errors.Join(err, completeBatch(ctx)) }()
+		} else {
+			dec = sm.Decrypter()
+		}
+	} else {
+		// We'll attempt to continue without a decrypter, but fail if we encounter encrypted secrets.
+		dec = config.NewErrorCrypter("snapshot contains encrypted secrets but no secrets manager could be found")
+	}
+
+	result, fnerr := fn(ctx, dec)
+	err = errors.Join(err, fnerr)
+	return result, err
 }

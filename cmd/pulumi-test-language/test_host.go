@@ -175,6 +175,16 @@ func (h *testHost) LanguageRuntime(runtime string, info plugin.ProgramInfo) (plu
 }
 
 func (h *testHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Flags) error {
+	// Remove the builtin "pulumi" provider, as that's always available.
+	filtered := make([]workspace.PluginSpec, 0, len(plugins))
+	for _, plugin := range plugins {
+		if plugin.Kind == apitype.ResourcePlugin && plugin.Name == "pulumi" {
+			continue
+		}
+		filtered = append(filtered, plugin)
+	}
+	plugins = filtered
+
 	// EnsurePlugins will be called with the result of GetRequiredPlugins, so we can use this to check
 	// that that returned the expected plugins (with expected versions).
 	expected := mapset.NewSet[string]()

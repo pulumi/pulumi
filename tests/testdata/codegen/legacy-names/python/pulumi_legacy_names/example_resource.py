@@ -57,7 +57,7 @@ class Example_resource(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  map_enum: Optional[pulumi.Input[Sequence[pulumi.Input[Mapping[str, pulumi.Input['Enum_XYZ']]]]]] = None,
-                 request__http: Optional[pulumi.Input[pulumi.InputType['_http_module.RequestArgs']]] = None,
+                 request__http: Optional[pulumi.Input[Union['_http_module.RequestArgs', '_http_module.RequestArgsDict']]] = None,
                  __props__=None):
         """
         Create a Example_resource resource with the given unique name, props, and options.
@@ -88,7 +88,7 @@ class Example_resource(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  map_enum: Optional[pulumi.Input[Sequence[pulumi.Input[Mapping[str, pulumi.Input['Enum_XYZ']]]]]] = None,
-                 request__http: Optional[pulumi.Input[pulumi.InputType['_http_module.RequestArgs']]] = None,
+                 request__http: Optional[pulumi.Input[Union['_http_module.RequestArgs', '_http_module.RequestArgsDict']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

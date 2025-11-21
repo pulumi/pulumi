@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -146,6 +147,13 @@ func (p *languageRuntime) RuntimeOptionsPrompts(info plugin.ProgramInfo) ([]plug
 		return []plugin.RuntimeOptionPrompt{}, ErrLanguageRuntimeIsClosed
 	}
 	return []plugin.RuntimeOptionPrompt{}, nil
+}
+
+func (p *languageRuntime) Template(info plugin.ProgramInfo, projectName tokens.PackageName) error {
+	if p.closed {
+		return ErrLanguageRuntimeIsClosed
+	}
+	return nil
 }
 
 func (p *languageRuntime) About(info plugin.ProgramInfo) (plugin.AboutInfo, error) {

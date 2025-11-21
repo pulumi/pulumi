@@ -1901,9 +1901,18 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 				// To do this, we'll utilize the dependency information contained in the snapshot if it is
 				// trustworthy, which is interpreted by the DependencyGraph type.
 				var steps []Step
-				toReplace, err := sg.calculateDependentReplacements(old)
-				if err != nil {
-					return nil, err
+				var toReplace []dependentReplace
+
+				// At this point if we're in a preview we might be trying to work out a dependent replace set for a
+				// resource we've just imported, in that case "old" won't actully be in our dep graph and so we need to
+				// check that and just return the empty set here instead. We only need to do this check in preview mode,
+				// in a real update old _MUST_ be in the dep graph and it's better to panic if that ever doesn't hold
+				// true.
+				if !sg.deployment.opts.DryRun || sg.deployment.depGraph.Contains(old) {
+					toReplace, err = sg.calculateDependentReplacements(old)
+					if err != nil {
+						return nil, err
+					}
 				}
 
 				replacedWith, err := sg.findResourcesReplacedWith(urn)
