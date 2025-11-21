@@ -1,5 +1,6 @@
 {
   "emittedFiles": [
+    ".gitattributes",
     "world/doc.go",
     "world/init.go",
     "world/internal/pulumiUtilities.go",

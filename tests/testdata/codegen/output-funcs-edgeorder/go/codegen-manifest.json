@@ -1,5 +1,6 @@
 {
   "emittedFiles": [
+    ".gitattributes",
     "myedgeorder/doc.go",
     "myedgeorder/init.go",
     "myedgeorder/internal/pulumiUtilities.go",

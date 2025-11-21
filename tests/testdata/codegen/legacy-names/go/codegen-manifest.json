@@ -1,5 +1,6 @@
 {
   "emittedFiles": [
+    ".gitattributes",
     "legacy_names/doc.go",
     "legacy_names/example_resource.go",
     "legacy_names/http_module/pulumiTypes.go",

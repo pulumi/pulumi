@@ -1,5 +1,6 @@
 {
   "emittedFiles": [
+    ".gitattributes",
     "mongodbatlas/doc.go",
     "mongodbatlas/getCustomDbRoles.go",
     "mongodbatlas/init.go",

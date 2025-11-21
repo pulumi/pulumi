@@ -1,5 +1,6 @@
 {
   "emittedFiles": [
+    ".gitattributes",
     "configstation/config/config.go",
     "configstation/config/pulumiTypes.go",
     "configstation/doc.go",
