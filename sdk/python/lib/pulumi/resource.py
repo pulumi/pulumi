@@ -17,7 +17,7 @@
 import asyncio
 import copy
 import contextvars
-import inspect
+import functools
 import warnings
 from typing import (
     Optional,
@@ -1230,41 +1230,42 @@ class ComponentResource(Resource):
         self._remote = remote
         self._registered = False
 
+    @classmethod
     def __init_subclass__(cls, auto_parent=False) -> None:
         super().__init_subclass__()
 
         old_init = cls.__init__
 
         # Hook the __init__ method to set the ambient parent context
-        def new_init(self, *args, **kwargs):
-            def do_init():
-                if auto_parent:
-                    # Get the current ambient parent
-                    ambient = ambient_parent.get()
-                    if ambient is not None:
-                        ambient = ambient[0]
-                    ambient_parent.set((self, ambient))
+        def __init__(self, *args, **kwargs):
+            if auto_parent:
+                # Get the current ambient parent
+                old_ambient = ambient_parent.get()
+                if old_ambient is not None:
+                    ambient = old_ambient[0]
+                ambient_parent.set((self, ambient))
 
-                old_init(self, *args, **kwargs)
+            old_init(self, *args, **kwargs)
+            if auto_parent:
+                # Restore the old ambient parent
+                ambient_parent.set(old_ambient)
 
-                # For non-remote components, we automatically register outputs after construction to mark the
-                # component as finished, __init__ may have already called this directly but we check inside
-                # register_outputs to only run it once, so we won't overwrite existing outputs. However we
-                # reflect over the resource to register useful outputs so most users shouldn't need to call
-                # register_outputs directly.
-                if not self._remote:
-                    outputs = {}
-                    for k, v in self.__dict__.items():
-                        if k.startswith("_") or k == "urn":
-                            continue
-                        outputs[k] = v
-                    self.register_outputs(outputs)
+            # For non-remote components, we automatically register outputs after construction to mark the component
+            # as finished, __init__ may have already called this directly but we check inside register_outputs to
+            # only run it once, so we won't overwrite existing outputs. However we reflect over the resource to
+            # register useful outputs so most users shouldn't need to call register_outputs directly.
+            if not getattr(self, "_remote", False):
+                # We use getattr to avoid issues with components that didn't call super().__init__ and thus don't
+                # have _remote defined.
+                outputs = {}
+                for k, v in self.__dict__.items():
+                    if k.startswith("_") or k == "urn":
+                        continue
+                    outputs[k] = v
+                self.register_outputs(outputs)
 
-            ctx = contextvars.copy_context()
-            return ctx.run(do_init)
-
-        setattr(new_init, "__signature__", inspect.signature(old_init))
-        setattr(cls, "__init__", new_init)
+        functools.update_wrapper(__init__, old_init)
+        setattr(cls, "__init__", __init__)
 
     def register_outputs(self, outputs: "Inputs"):
         """
@@ -1273,7 +1274,9 @@ class ComponentResource(Resource):
 
         :param dict output: A dictionary of outputs to associate with this resource.
         """
-        if self._registered:
+        if getattr(self, "_registered", False):
+            # We use getattr to avoid issues with components that didn't call super().__init__ and thus don't have
+            # _registered defined.
             return
         self._registered = True
         register_resource_outputs(self, outputs)
