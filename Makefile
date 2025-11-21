@@ -91,6 +91,11 @@ bin/pulumi-language-python: .make/ensure/go $(shell bin/helpmakego sdk/python/cm
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
 		github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3
 
+bin/pulumi-language-go: .make/ensure/go $(shell bin/helpmakego sdk/go/pulumi-language-go)
+	go build -C sdk/go/pulumi-language-go -o ../../../bin/pulumi-language-go \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
+		github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3
+
 .PHONY: build
 build:: export GOBIN=$(shell realpath ./bin)
 build:: build_proto .make/ensure/go bin/pulumi bin/pulumi-display.wasm
