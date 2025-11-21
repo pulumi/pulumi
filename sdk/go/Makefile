@@ -24,9 +24,7 @@ build:: gen ../../bin/pulumi-language-go
 
 .PHONY: ../../bin/pulumi-language-go
 ../../bin/pulumi-language-go:
-	go build -C pulumi-language-go -o ../../../bin/pulumi-language-go \
-		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
-		${LANGHOST_PKG}
+	$(MAKE) -C ../.. bin/pulumi-language-go
 
 .PHONY: install_plugin
 install_plugin: ../../bin/pulumi-language-go
