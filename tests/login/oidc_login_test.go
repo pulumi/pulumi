@@ -310,9 +310,10 @@ func TestOIDCLoginErrors(t *testing.T) {
 
 		e := ptesting.NewEnvironment(t)
 		defer e.DeleteIfNotFailed()
+		// Ensure PULUMI_ACCESS_TOKEN is set
+		e.Env = append(e.Env, "PULUMI_ACCESS_TOKEN=pul-access-token")
 
 		// Should fail when both PULUMI_ACCESS_TOKEN and --oidc-token are specified
-		e.Env = append(e.Env, "PULUMI_ACCESS_TOKEN=pul-access-token")
 		_, stderr := e.RunCommandExpectError("pulumi", "login",
 			"--oidc-token", testJWT,
 			"--oidc-org", testOrg)
@@ -325,6 +326,8 @@ func TestOIDCLoginErrors(t *testing.T) {
 
 		e := ptesting.NewEnvironment(t)
 		defer e.DeleteIfNotFailed()
+		// Ensure PULUMI_ACCESS_TOKEN is not set to force OIDC login path
+		e.Env = append(e.Env, "PULUMI_ACCESS_TOKEN=")
 
 		// Should fail when both --team and --user are specified
 		_, stderr := e.RunCommandExpectError("pulumi", "login",
@@ -338,6 +341,8 @@ func TestOIDCLoginErrors(t *testing.T) {
 
 		e := ptesting.NewEnvironment(t)
 		defer e.DeleteIfNotFailed()
+		// Ensure PULUMI_ACCESS_TOKEN is not set to force OIDC login path
+		e.Env = append(e.Env, "PULUMI_ACCESS_TOKEN=")
 
 		// Should fail when both --team and --user are specified
 		_, stderr := e.RunCommandExpectError("pulumi", "login",
@@ -354,6 +359,8 @@ func TestOIDCLoginErrors(t *testing.T) {
 
 		e := ptesting.NewEnvironment(t)
 		defer e.DeleteIfNotFailed()
+		// Ensure PULUMI_ACCESS_TOKEN is not set to force OIDC login path
+		e.Env = append(e.Env, "PULUMI_ACCESS_TOKEN=")
 
 		integration.CreateBasicPulumiRepo(e)
 
