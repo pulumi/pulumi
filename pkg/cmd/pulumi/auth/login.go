@@ -232,7 +232,7 @@ func NewLoginCmd(ws pkgWorkspace.Context) *cobra.Command {
 		"Show interactive login options based on known accounts")
 	cmd.PersistentFlags().StringVar(&oidcToken, "oidc-token", "",
 		"An OIDC token to exchange for a cloud backend access token. Can be either a raw token or a file path "+
-			"prefixed with 'file://' or an arbitrary string used as environment variable key.")
+			"prefixed with 'file://'.")
 	cmd.PersistentFlags().StringVar(&oidcOrg, "oidc-org", "", "The organization to use for OIDC token exchange audience")
 	cmd.PersistentFlags().StringVar(&oidcTeam, "oidc-team", "", "The team when exchanging for a team token")
 	cmd.PersistentFlags().StringVar(&oidcUser, "oidc-user", "", "The user when exchanging for a personal token")

@@ -1115,7 +1115,7 @@ func TestExchangeOidcToken(t *testing.T) {
 			errContains:  "Failed to read OIDC token",
 		},
 		{
-			name:         "one-time JWT token not stored",
+			name:         "successful token exchange",
 			oidcToken:    testJWT,
 			organization: "test-org",
 			scope:        "org:test-org",

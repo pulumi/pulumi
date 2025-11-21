@@ -405,7 +405,7 @@ func (m defaultLoginManager) Current(
 		organizations := existingAccount.Organizations
 		tokenInfo := existingAccount.TokenInformation
 		now := time.Now()
-		if tokenInfo != nil && tokenInfo.ExpiresAt != nil && tokenInfo.ExpiresAt.After(now) {
+		if tokenInfo != nil && tokenInfo.ExpiresAt != nil && tokenInfo.ExpiresAt.Before(now) {
 			// TODO(https://github.com/pulumi/pulumi/issues/20986): Return expiresIn within TokenInformation.
 			valid = false
 		} else if username == "" || existingAccount.LastValidatedAt.Add(1*time.Hour).Before(now) {
