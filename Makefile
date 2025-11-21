@@ -86,15 +86,19 @@ bin/pulumi-display.wasm:: .make/ensure/go .make/ensure/phony pkg/backend/display
 	python3 scripts/wasm-size-check.py bin/pulumi-display.wasm pkg/backend/display/wasm/gold-size.txt
 
 bin/pulumi-language-python: .make/ensure/go $(shell bin/helpmakego sdk/python/cmd/pulumi-language-python)
-	go build -C sdk/python/cmd/pulumi-language-python \
-		-o ../../../../$@ \
+	go build -C sdk/python/cmd/pulumi-language-python -o ../../../../$@ \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
 		github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3
 
 bin/pulumi-language-go: .make/ensure/go $(shell bin/helpmakego sdk/go/pulumi-language-go)
-	go build -C sdk/go/pulumi-language-go -o ../../../bin/pulumi-language-go \
+	go build -C sdk/go/pulumi-language-go -o ../../../$@ \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
 		github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3
+
+bin/pulumi-language-nodejs: .make/ensure/go $(shell bin/helpmakego sdk/nodejs/cmd/pulumi-language-nodejs)
+	go build -C sdk/nodejs/cmd/pulumi-language-nodejs -o ../../../../$@ \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
+		github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3
 
 .PHONY: build
 build:: export GOBIN=$(shell realpath ./bin)

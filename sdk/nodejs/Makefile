@@ -54,10 +54,7 @@ build_plugin: ../../bin/pulumi-language-nodejs
 
 .PHONY: ../../bin/pulumi-language-nodejs
 ../../bin/pulumi-language-nodejs:
-	go build -C cmd/pulumi-language-nodejs \
-	-o ../../$@ \
-		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
-		${LANGHOST_PKG}
+	$(MAKE) -C ../.. bin/pulumi-language-nodejs
 
 build:: build_package build_plugin
 
