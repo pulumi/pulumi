@@ -2373,8 +2373,9 @@ func genPackageMetadata(
 	fs.Add("tsconfig.json", []byte(genTypeScriptProjectFile(info, fs)))
 	if localSDK {
 		fs.Add("scripts/postinstall.js", genPostInstallScript())
-		fs.Add(".gitignore", genGitignoreFile())
 	}
+	fs.Add(".gitignore", genGitignoreFile())
+	fs.Add(".gitattributes", codegen.GenGitAttributesFile())
 	return nil
 }
 

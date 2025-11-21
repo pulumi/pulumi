@@ -2673,6 +2673,10 @@ func GeneratePackage(
 
 	// Generate each module.
 	files := codegen.Fs{}
+
+	files.Add(".gitattributes", codegen.GenGitAttributesFile())
+	files.Add(".gitingore", genGitignoreFile())
+
 	for p, f := range extraFiles {
 		files.Add(p, f)
 	}
@@ -2692,4 +2696,10 @@ func GeneratePackage(
 		return nil, err
 	}
 	return files, nil
+}
+
+func genGitignoreFile() []byte {
+	return []byte(`bin
+obj
+`)
 }

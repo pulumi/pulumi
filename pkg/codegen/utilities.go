@@ -190,3 +190,9 @@ func PkgEquals(p1, p2 schema.PackageReference) bool {
 	}
 	return v1.Equals(*v2)
 }
+
+// A .gitattributes file allows us to mark filepath patterns as containing generated content. This enables git tools to
+// treat these files differently, for example GitHub will show these files as collapsed by default.
+func GenGitAttributesFile() []byte {
+	return []byte("* linguist-generated\n")
+}
