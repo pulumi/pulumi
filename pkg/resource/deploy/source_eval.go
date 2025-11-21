@@ -2809,7 +2809,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				break
 			}
 
-			// Add error to the list (most recent first). Note that we could recieve
+			// Add error to the list (most recent first). Note that we could receive
 			// multiple errors, so we join them together in one string.
 			latestErrors := strings.Join(result.State.InitErrors, ", ")
 			errors = append(errors, latestErrors)
