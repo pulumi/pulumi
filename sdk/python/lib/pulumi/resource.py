@@ -1246,17 +1246,12 @@ class ComponentResource(Resource):
 
                 old_init(self, *args, **kwargs)
 
-                # remote arg might be passed positionally or as a kwarg
-                remote = kwargs.get("remote", False)
-                if len(args) >= 6:
-                    remote = args[5]
-
                 # For non-remote components, we automatically register outputs after construction to mark the
                 # component as finished, __init__ may have already called this directly but we check inside
                 # register_outputs to only run it once, so we won't overwrite existing outputs. However we
                 # reflect over the resource to register useful outputs so most users shouldn't need to call
                 # register_outputs directly.
-                if not remote:
+                if not self._remote:
                     outputs = {}
                     for k, v in self.__dict__.items():
                         if k.startswith("_") or k == "urn":
