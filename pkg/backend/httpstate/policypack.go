@@ -328,7 +328,7 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 		Info:                    info,
 		UseLanguageVersionTools: false,
 		IsPlugin:                true,
-	})
+	}, os.Stdout, os.Stderr)
 	if err != nil {
 		return fmt.Errorf("installing dependencies: %w", err)
 	}

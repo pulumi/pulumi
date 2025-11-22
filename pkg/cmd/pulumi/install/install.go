@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -125,7 +126,8 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 					// registry.
 					reg := unauthenticatedregistry.New(cmdutil.Diag(), env.Global())
 
-					if err := installPackagesFromProject(pctx.Base(), proj, cwd, reg, parallel); err != nil {
+					if err := installPackagesFromProject(pctx.Base(), proj, cwd, reg, parallel,
+						cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
 						return fmt.Errorf("installing `packages` from PulumiPlugin.yaml: %w", err)
 					}
 
@@ -161,7 +163,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 			// so that the SDKs folder is present and references to it from package.json etc are valid.
 			if err := installPackagesFromProject(cmd.Context(), proj, root,
 				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global()),
-				parallel,
+				parallel, cmd.OutOrStdout(), cmd.ErrOrStderr(),
 			); err != nil {
 				return fmt.Errorf("installing `packages` from Pulumi.yaml: %w", err)
 			}
@@ -180,7 +182,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 					Info:                    programInfo,
 					UseLanguageVersionTools: useLanguageVersionTools,
 					IsPlugin:                false,
-				})
+				}, cmd.OutOrStdout(), cmd.ErrOrStderr())
 				if err != nil {
 					return fmt.Errorf("installing dependencies: %w", err)
 				}
@@ -228,6 +230,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 func installPackagesFromProject(
 	ctx context.Context, proj workspace.BaseProject, root string, registry registry.Registry,
 	parallelism int,
+	stdout, stderr io.Writer,
 ) error {
 	pkgs := proj.GetPackageSpecs()
 	if len(pkgs) == 0 {
@@ -286,13 +289,30 @@ func installPackagesFromProject(
 		}
 	}
 
-	installPlugin := func(path string, plugin *workspace.PluginProject) func(context.Context) error {
+	installPlugin := func(path string, proj *workspace.PluginProject) func(context.Context) error {
 		return func(ctx context.Context) error {
-			err := plugin.InstallAtPath(ctx, path)
+			pctx, err := plugin.NewContextWithRoot(ctx,
+				cmdutil.Diag(),
+				cmdutil.Diag(),
+				nil,  // host
+				path, // pwd
+				path, // root
+				proj.RuntimeInfo().Options(),
+				false, // disableProviderPreview
+				nil,   // tracingSpan
+				nil,   // Plugins
+				proj.GetPackageSpecs(),
+				nil, // config
+				nil, // debugging
+			)
 			if err != nil {
-				return fmt.Errorf("installing at '%s': %w", path, err)
+				return err
 			}
-			return nil
+
+			if err := pkgWorkspace.InstallPluginAtPath(pctx, proj, stdout, stderr); err != nil {
+				return errors.Join(fmt.Errorf("installing at '%s': %w", pctx.Pwd, err), pctx.Close())
+			}
+			return pctx.Close()
 		}
 	}
 

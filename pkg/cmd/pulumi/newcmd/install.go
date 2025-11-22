@@ -16,6 +16,7 @@ package newcmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -35,7 +36,7 @@ func InstallDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeI
 	err = cmdutil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
 		Info:     programInfo,
 		IsPlugin: false,
-	})
+	}, os.Stdout, os.Stderr)
 	if err != nil {
 		//revive:disable-next-line:error-strings // This error message is user facing.
 		return fmt.Errorf("installing dependencies failed: %w\nRun `pulumi install` to complete the installation.", err)
