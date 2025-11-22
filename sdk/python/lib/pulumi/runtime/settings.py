@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2025, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -39,6 +39,11 @@ if TYPE_CHECKING:
 
 # excessive_debug_output enables, well, pretty excessive debug output pertaining to resources and properties.
 excessive_debug_output = False
+
+# current ambient parent resource, this is set for component resource initialization methods.
+ambient_parent: ContextVar[Optional[tuple[Resource, Optional[Resource]]]] = ContextVar(
+    "ambient_parent", default=None
+)
 
 
 class Settings:
