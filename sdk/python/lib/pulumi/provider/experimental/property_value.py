@@ -313,7 +313,7 @@ class PropertyValue:
             if isinstance(value, bool):
                 return struct_pb2.Value(bool_value=value)
 
-            if isinstance(value, float):
+            if isinstance(value, (int, float)):
                 return struct_pb2.Value(number_value=value)
 
             if isinstance(value, str):
