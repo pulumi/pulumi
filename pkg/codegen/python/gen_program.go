@@ -807,6 +807,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.ReplaceWith != nil {
 		appendOption("replace_with", opts.ReplaceWith)
 	}
+	if opts.ReplacementTrigger != nil {
+		appendOption("replacement_trigger", opts.ReplacementTrigger)
+	}
 	if opts.ImportID != nil {
 		appendOption("import_", opts.ImportID)
 	}
