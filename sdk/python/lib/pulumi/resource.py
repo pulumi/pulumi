@@ -16,7 +16,6 @@
 
 import asyncio
 import copy
-import contextvars
 import functools
 import warnings
 from typing import (
