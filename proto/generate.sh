@@ -61,7 +61,7 @@ $DOCKER_RUN /bin/bash -c 'set -x && GO_PULUMIRPC=/go && \
 # that we have to skip this transformation for the google/protobuf/status_pb.js file because it _does_ depend
 # on that global state (https://github.com/pulumi/pulumi/pull/2403#issuecomment-458673703).
 $DOCKER_RUN /bin/bash -c 'set -x && JS_PULUMIRPC=/nodejs/proto && \
-    JS_PROTOFLAGS="import_style=commonjs,binary"   && \
+    JS_PROTOFLAGS="import_style=commonjs_strict,binary"   && \
     PROTO_FILES=$(find . -name "*.proto") && \
     echo -e "\tJavaScript: $JS_PULUMIRPC [$JS_PROTOFLAGS]" && \
     TEMP_DIR=/tmp/nodejs-build                 && \

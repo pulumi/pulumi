@@ -13,13 +13,7 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var global =
-    (typeof globalThis !== 'undefined' && globalThis) ||
-    (typeof window !== 'undefined' && window) ||
-    (typeof global !== 'undefined' && global) ||
-    (typeof self !== 'undefined' && self) ||
-    (function () { return this; }).call(null) ||
-    Function('return this')();
+var proto = {};
 
 var pulumi_plugin_pb = require('./plugin_pb.js');
 goog.object.extend(proto, pulumi_plugin_pb);
@@ -27,54 +21,54 @@ var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb
 goog.object.extend(proto, google_protobuf_empty_pb);
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 goog.object.extend(proto, google_protobuf_struct_pb);
-goog.exportSymbol('proto.pulumirpc.CallRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.CallRequest.ArgumentDependencies', null, global);
-goog.exportSymbol('proto.pulumirpc.CallResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.CallResponse.ReturnDependencies', null, global);
-goog.exportSymbol('proto.pulumirpc.CheckFailure', null, global);
-goog.exportSymbol('proto.pulumirpc.CheckRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.CheckRequest.AutonamingOptions', null, global);
-goog.exportSymbol('proto.pulumirpc.CheckRequest.AutonamingOptions.Mode', null, global);
-goog.exportSymbol('proto.pulumirpc.CheckResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.ConfigureErrorMissingKeys', null, global);
-goog.exportSymbol('proto.pulumirpc.ConfigureErrorMissingKeys.MissingKey', null, global);
-goog.exportSymbol('proto.pulumirpc.ConfigureRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.ConfigureResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.ConstructRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.ConstructRequest.CustomTimeouts', null, global);
-goog.exportSymbol('proto.pulumirpc.ConstructRequest.PropertyDependencies', null, global);
-goog.exportSymbol('proto.pulumirpc.ConstructRequest.ResourceHooksBinding', null, global);
-goog.exportSymbol('proto.pulumirpc.ConstructResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.ConstructResponse.PropertyDependencies', null, global);
-goog.exportSymbol('proto.pulumirpc.CreateRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.CreateResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.DeleteRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.DiffRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.DiffResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.DiffResponse.DiffChanges', null, global);
-goog.exportSymbol('proto.pulumirpc.ErrorResourceInitFailed', null, global);
-goog.exportSymbol('proto.pulumirpc.GetMappingRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.GetMappingResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.GetMappingsRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.GetMappingsResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.GetSchemaRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.GetSchemaResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.InvokeRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.InvokeResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.ParameterizeRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.ParameterizeRequest.ParametersArgs', null, global);
-goog.exportSymbol('proto.pulumirpc.ParameterizeRequest.ParametersCase', null, global);
-goog.exportSymbol('proto.pulumirpc.ParameterizeRequest.ParametersValue', null, global);
-goog.exportSymbol('proto.pulumirpc.ParameterizeResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.PropertyDiff', null, global);
-goog.exportSymbol('proto.pulumirpc.PropertyDiff.Kind', null, global);
-goog.exportSymbol('proto.pulumirpc.ProviderHandshakeRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.ProviderHandshakeResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.ReadRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.ReadResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.UpdateRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.UpdateResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.View', null, global);
+goog.exportSymbol('pulumirpc.CallRequest', null, proto);
+goog.exportSymbol('pulumirpc.CallRequest.ArgumentDependencies', null, proto);
+goog.exportSymbol('pulumirpc.CallResponse', null, proto);
+goog.exportSymbol('pulumirpc.CallResponse.ReturnDependencies', null, proto);
+goog.exportSymbol('pulumirpc.CheckFailure', null, proto);
+goog.exportSymbol('pulumirpc.CheckRequest', null, proto);
+goog.exportSymbol('pulumirpc.CheckRequest.AutonamingOptions', null, proto);
+goog.exportSymbol('pulumirpc.CheckRequest.AutonamingOptions.Mode', null, proto);
+goog.exportSymbol('pulumirpc.CheckResponse', null, proto);
+goog.exportSymbol('pulumirpc.ConfigureErrorMissingKeys', null, proto);
+goog.exportSymbol('pulumirpc.ConfigureErrorMissingKeys.MissingKey', null, proto);
+goog.exportSymbol('pulumirpc.ConfigureRequest', null, proto);
+goog.exportSymbol('pulumirpc.ConfigureResponse', null, proto);
+goog.exportSymbol('pulumirpc.ConstructRequest', null, proto);
+goog.exportSymbol('pulumirpc.ConstructRequest.CustomTimeouts', null, proto);
+goog.exportSymbol('pulumirpc.ConstructRequest.PropertyDependencies', null, proto);
+goog.exportSymbol('pulumirpc.ConstructRequest.ResourceHooksBinding', null, proto);
+goog.exportSymbol('pulumirpc.ConstructResponse', null, proto);
+goog.exportSymbol('pulumirpc.ConstructResponse.PropertyDependencies', null, proto);
+goog.exportSymbol('pulumirpc.CreateRequest', null, proto);
+goog.exportSymbol('pulumirpc.CreateResponse', null, proto);
+goog.exportSymbol('pulumirpc.DeleteRequest', null, proto);
+goog.exportSymbol('pulumirpc.DiffRequest', null, proto);
+goog.exportSymbol('pulumirpc.DiffResponse', null, proto);
+goog.exportSymbol('pulumirpc.DiffResponse.DiffChanges', null, proto);
+goog.exportSymbol('pulumirpc.ErrorResourceInitFailed', null, proto);
+goog.exportSymbol('pulumirpc.GetMappingRequest', null, proto);
+goog.exportSymbol('pulumirpc.GetMappingResponse', null, proto);
+goog.exportSymbol('pulumirpc.GetMappingsRequest', null, proto);
+goog.exportSymbol('pulumirpc.GetMappingsResponse', null, proto);
+goog.exportSymbol('pulumirpc.GetSchemaRequest', null, proto);
+goog.exportSymbol('pulumirpc.GetSchemaResponse', null, proto);
+goog.exportSymbol('pulumirpc.InvokeRequest', null, proto);
+goog.exportSymbol('pulumirpc.InvokeResponse', null, proto);
+goog.exportSymbol('pulumirpc.ParameterizeRequest', null, proto);
+goog.exportSymbol('pulumirpc.ParameterizeRequest.ParametersArgs', null, proto);
+goog.exportSymbol('pulumirpc.ParameterizeRequest.ParametersCase', null, proto);
+goog.exportSymbol('pulumirpc.ParameterizeRequest.ParametersValue', null, proto);
+goog.exportSymbol('pulumirpc.ParameterizeResponse', null, proto);
+goog.exportSymbol('pulumirpc.PropertyDiff', null, proto);
+goog.exportSymbol('pulumirpc.PropertyDiff.Kind', null, proto);
+goog.exportSymbol('pulumirpc.ProviderHandshakeRequest', null, proto);
+goog.exportSymbol('pulumirpc.ProviderHandshakeResponse', null, proto);
+goog.exportSymbol('pulumirpc.ReadRequest', null, proto);
+goog.exportSymbol('pulumirpc.ReadResponse', null, proto);
+goog.exportSymbol('pulumirpc.UpdateRequest', null, proto);
+goog.exportSymbol('pulumirpc.UpdateResponse', null, proto);
+goog.exportSymbol('pulumirpc.View', null, proto);
 /**
  * Generated by JsPbCodeGenerator.
  * @param {Array=} opt_data Optional initial data array, typically from a
@@ -13287,4 +13281,4 @@ proto.pulumirpc.View.prototype.hasOutputs = function() {
 };
 
 
-goog.object.extend(exports, proto.pulumirpc);
+goog.object.extend(exports, proto);
