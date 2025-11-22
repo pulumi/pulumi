@@ -305,6 +305,52 @@ type serviceTokenInfo struct {
 	Team         string `json:"team,omitempty"`
 }
 
+//nolint:gosec
+const (
+	pulumiAccessTokenTypeOrganization = "urn:pulumi:token-type:access_token:organization"
+	pulumiAccessTokenTypeTeam         = "urn:pulumi:token-type:access_token:team"
+	pulumiAccessTokenTypePersonal     = "urn:pulumi:token-type:access_token:personal"
+)
+
+func (pc *Client) ExchangeOidcToken(
+	oidcToken string, org string, scope string, expiration time.Duration,
+) (*apitype.TokenExchangeGrantResponse, error) {
+	requestedTokenType := pulumiAccessTokenTypeOrganization
+	if strings.HasPrefix(scope, "team:") {
+		requestedTokenType = pulumiAccessTokenTypeTeam
+	}
+	if strings.HasPrefix(scope, "user:") {
+		requestedTokenType = pulumiAccessTokenTypePersonal
+	}
+	tokenUrl := pc.apiURL + "/api/oauth/token"
+	data := url.Values{
+		"audience":             {"urn:pulumi:org:" + org},
+		"grant_type":           {"urn:ietf:params:oauth:grant-type:token-exchange"},
+		"requested_token_type": {requestedTokenType},
+		"scope":                {scope},
+		"subject_token_type":   {"urn:ietf:params:oauth:token-type:id_token"},
+		"subject_token":        {oidcToken},
+		"expiration":           {strconv.Itoa(int(expiration.Seconds()))},
+	}
+	resp, err := pc.httpClient.PostForm(tokenUrl, data)
+	if err != nil {
+		return nil, err
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("%s", string(body))
+	}
+	var unmarshalledResp apitype.TokenExchangeGrantResponse
+	err = json.Unmarshal(body, &unmarshalledResp)
+	if err != nil {
+		return nil, err
+	}
+	return &unmarshalledResp, nil
+}
+
 // GetPulumiAccountDetails returns the user implied by the API token associated with this client.
 func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string, *workspace.TokenInformation, error) {
 	if pc.apiUser == "" {
