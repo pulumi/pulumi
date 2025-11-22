@@ -723,10 +723,10 @@ def _get_stack_trace() -> source_pb2.StackTrace:
         if f.name == "__init__":
             n += 1
             if n == 3 and i > 1:
-                # We've found the third init frame; but the next frame might be the component resource internal do_init function in which case we
+                # We've found the third init frame; but the next frame might be the component resource internal __init__ function in which case we
                 # need to keep going until we find the next non-init frame
                 f = stack[i - 1]
-                if f.name == "do_init" and f.filename.endswith("resource.py"):
+                if f.name == "__init__" and f.filename.endswith("pulumi/resource.py"):
                     target = 4
             if n == target:
                 break
