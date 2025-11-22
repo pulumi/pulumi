@@ -1,0 +1,28 @@
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::prov]
+<{%reset%}><{%reset%}><{%fg 10%}>++pkgA:m:typA: (create-replacement)
+<{%reset%}>    [id=2]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::future-parent]
+<{%reset%}><{%reset%}><{%fg 13%}>+-pkgA:m:typA: (replace)
+<{%reset%}>    [id=2]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::future-parent]
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ pulumi:providers:pkgB: (create)
+<{%fg 2%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pulumi:providers:pkgB::future-child]
+<{%reset%}><{%reset%}><{%fg 9%}>--pkgA:m:typA: (delete-replaced)
+<{%fg 9%}>    [id=2]
+<{%reset%}><{%fg 9%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::future-parent]
+<{%reset%}><{%fg 9%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::prov::prov]
+<{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgB: (delete)
+<{%fg 1%}>    [id=1]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgB::future-child]
+<{%reset%}><{%reset%}><{%fg 1%}>- pkgA:m:typA: (delete)
+<{%fg 1%}>    [id=2]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::future-parent]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+    <{%fg 1%}>- 2 deleted<{%reset%}>
+    <{%fg 13%}>+-1 replaced<{%reset%}>
+    <{%bold%}>4 changes<{%reset%}>. 1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
