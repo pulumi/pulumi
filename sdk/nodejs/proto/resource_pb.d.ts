@@ -286,6 +286,11 @@ export class RegisterResourceRequest extends jspb.Message {
     setHidediffsList(value: Array<string>): RegisterResourceRequest;
     addHidediffs(value: string, index?: number): string;
 
+    hasRetrywith(): boolean;
+    clearRetrywith(): void;
+    getRetrywith(): pulumi_callback_pb.Callback | undefined;
+    setRetrywith(value?: pulumi_callback_pb.Callback): RegisterResourceRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
     static toObject(includeInstance: boolean, msg: RegisterResourceRequest): RegisterResourceRequest.AsObject;
@@ -340,6 +345,7 @@ export namespace RegisterResourceRequest {
         packageref: string,
         hooks?: RegisterResourceRequest.ResourceHooksBinding.AsObject,
         hidediffsList: Array<string>,
+        retrywith?: pulumi_callback_pb.Callback.AsObject,
     }
 
 
@@ -955,6 +961,48 @@ export namespace TransformInvokeOptions {
         version: string,
 
         pluginChecksumsMap: Array<[string, Uint8Array | string]>,
+    }
+}
+
+export class RetryRequest extends jspb.Message { 
+    clearErrorsList(): void;
+    getErrorsList(): Array<string>;
+    setErrorsList(value: Array<string>): RetryRequest;
+    addErrors(value: string, index?: number): string;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RetryRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: RetryRequest): RetryRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RetryRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RetryRequest;
+    static deserializeBinaryFromReader(message: RetryRequest, reader: jspb.BinaryReader): RetryRequest;
+}
+
+export namespace RetryRequest {
+    export type AsObject = {
+        errorsList: Array<string>,
+    }
+}
+
+export class RetryResponse extends jspb.Message { 
+    getShouldRetry(): boolean;
+    setShouldRetry(value: boolean): RetryResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RetryResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: RetryResponse): RetryResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RetryResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RetryResponse;
+    static deserializeBinaryFromReader(message: RetryResponse, reader: jspb.BinaryReader): RetryResponse;
+}
+
+export namespace RetryResponse {
+    export type AsObject = {
+        shouldRetry: boolean,
     }
 }
 
