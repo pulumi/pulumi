@@ -13,13 +13,7 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var global =
-    (typeof globalThis !== 'undefined' && globalThis) ||
-    (typeof window !== 'undefined' && window) ||
-    (typeof global !== 'undefined' && global) ||
-    (typeof self !== 'undefined' && self) ||
-    (function () { return this; }).call(null) ||
-    Function('return this')();
+var proto = {};
 
 var pulumi_codegen_hcl_pb = require('./codegen/hcl_pb.js');
 goog.object.extend(proto, pulumi_codegen_hcl_pb);
@@ -29,43 +23,43 @@ var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb
 goog.object.extend(proto, google_protobuf_empty_pb);
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 goog.object.extend(proto, google_protobuf_struct_pb);
-goog.exportSymbol('proto.pulumirpc.AboutRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.AboutResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.DependencyInfo', null, global);
-goog.exportSymbol('proto.pulumirpc.GeneratePackageRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.GeneratePackageResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.GenerateProgramRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.GenerateProgramResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.GenerateProjectRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.GenerateProjectResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.GetProgramDependenciesRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.GetProgramDependenciesResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.GetRequiredPackagesRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.GetRequiredPackagesResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.GetRequiredPluginsRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.GetRequiredPluginsResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.InstallDependenciesRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.InstallDependenciesResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.LanguageHandshakeRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.LanguageHandshakeResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.LinkRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.LinkRequest.LinkDependency', null, global);
-goog.exportSymbol('proto.pulumirpc.LinkResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.PackRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.PackResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.ProgramInfo', null, global);
-goog.exportSymbol('proto.pulumirpc.RunPluginRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.RunPluginResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.RunPluginResponse.OutputCase', null, global);
-goog.exportSymbol('proto.pulumirpc.RunRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.RunResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.RuntimeOptionPrompt', null, global);
-goog.exportSymbol('proto.pulumirpc.RuntimeOptionPrompt.RuntimeOptionType', null, global);
-goog.exportSymbol('proto.pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue', null, global);
-goog.exportSymbol('proto.pulumirpc.RuntimeOptionsRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.RuntimeOptionsResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.TemplateRequest', null, global);
-goog.exportSymbol('proto.pulumirpc.TemplateResponse', null, global);
+goog.exportSymbol('pulumirpc.AboutRequest', null, proto);
+goog.exportSymbol('pulumirpc.AboutResponse', null, proto);
+goog.exportSymbol('pulumirpc.DependencyInfo', null, proto);
+goog.exportSymbol('pulumirpc.GeneratePackageRequest', null, proto);
+goog.exportSymbol('pulumirpc.GeneratePackageResponse', null, proto);
+goog.exportSymbol('pulumirpc.GenerateProgramRequest', null, proto);
+goog.exportSymbol('pulumirpc.GenerateProgramResponse', null, proto);
+goog.exportSymbol('pulumirpc.GenerateProjectRequest', null, proto);
+goog.exportSymbol('pulumirpc.GenerateProjectResponse', null, proto);
+goog.exportSymbol('pulumirpc.GetProgramDependenciesRequest', null, proto);
+goog.exportSymbol('pulumirpc.GetProgramDependenciesResponse', null, proto);
+goog.exportSymbol('pulumirpc.GetRequiredPackagesRequest', null, proto);
+goog.exportSymbol('pulumirpc.GetRequiredPackagesResponse', null, proto);
+goog.exportSymbol('pulumirpc.GetRequiredPluginsRequest', null, proto);
+goog.exportSymbol('pulumirpc.GetRequiredPluginsResponse', null, proto);
+goog.exportSymbol('pulumirpc.InstallDependenciesRequest', null, proto);
+goog.exportSymbol('pulumirpc.InstallDependenciesResponse', null, proto);
+goog.exportSymbol('pulumirpc.LanguageHandshakeRequest', null, proto);
+goog.exportSymbol('pulumirpc.LanguageHandshakeResponse', null, proto);
+goog.exportSymbol('pulumirpc.LinkRequest', null, proto);
+goog.exportSymbol('pulumirpc.LinkRequest.LinkDependency', null, proto);
+goog.exportSymbol('pulumirpc.LinkResponse', null, proto);
+goog.exportSymbol('pulumirpc.PackRequest', null, proto);
+goog.exportSymbol('pulumirpc.PackResponse', null, proto);
+goog.exportSymbol('pulumirpc.ProgramInfo', null, proto);
+goog.exportSymbol('pulumirpc.RunPluginRequest', null, proto);
+goog.exportSymbol('pulumirpc.RunPluginResponse', null, proto);
+goog.exportSymbol('pulumirpc.RunPluginResponse.OutputCase', null, proto);
+goog.exportSymbol('pulumirpc.RunRequest', null, proto);
+goog.exportSymbol('pulumirpc.RunResponse', null, proto);
+goog.exportSymbol('pulumirpc.RuntimeOptionPrompt', null, proto);
+goog.exportSymbol('pulumirpc.RuntimeOptionPrompt.RuntimeOptionType', null, proto);
+goog.exportSymbol('pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue', null, proto);
+goog.exportSymbol('pulumirpc.RuntimeOptionsRequest', null, proto);
+goog.exportSymbol('pulumirpc.RuntimeOptionsResponse', null, proto);
+goog.exportSymbol('pulumirpc.TemplateRequest', null, proto);
+goog.exportSymbol('pulumirpc.TemplateResponse', null, proto);
 /**
  * Generated by JsPbCodeGenerator.
  * @param {Array=} opt_data Optional initial data array, typically from a
@@ -8296,4 +8290,4 @@ proto.pulumirpc.LinkResponse.prototype.setImportInstructions = function(value) {
 };
 
 
-goog.object.extend(exports, proto.pulumirpc);
+goog.object.extend(exports, proto);
