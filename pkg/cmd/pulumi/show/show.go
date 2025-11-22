@@ -59,7 +59,7 @@ func NewShowCmd() *cobra.Command {
 			resources := ss.Resources
 			for _, res := range resources {
 				if strings.Contains(res.URN.Name(), name) {
-					printResourceState(res, pOpts)
+					fmt.Println(renderResourceState(res, pOpts))
 				}
 			}
 
@@ -77,15 +77,16 @@ type printOptions struct {
 	keysOnly bool
 }
 
-func printResourceState(rs *resource.State, pOpts printOptions) {
-	fmt.Println()
+func renderResourceState(rs *resource.State, pOpts printOptions) string {
+	var resStateString string
 
+	resStateString += "\n"
 	name := colors.Always.Colorize(colors.Bold+"Name: "+colors.Reset) + rs.URN.Name()
-	fmt.Println(name)
+	resStateString += name + "\n"
 	urn := colors.Always.Colorize(colors.Bold+"URN: "+colors.Reset) + string(rs.URN)
-	fmt.Println(urn)
+	resStateString += urn + "\n"
 	properties := colors.Always.Colorize(colors.Bold + "Properties: " + colors.Reset)
-	fmt.Printf("%s", properties)
+	resStateString += properties
 
 	resourcePropertiesString := ""
 	if pOpts.keysOnly {
@@ -105,8 +106,8 @@ func printResourceState(rs *resource.State, pOpts printOptions) {
 			resourcePropertiesString += "    " + string(k) + ": " + renderPropertyVal(v, "    ") + "\n"
 		}
 	}
-	fmt.Println(resourcePropertiesString)
-	fmt.Println()
+	resStateString += resourcePropertiesString
+	return resStateString
 }
 
 // render resource properties , properties can be nested Arrays or maps
