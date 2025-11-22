@@ -931,6 +931,9 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	if opts.ReplaceWith != nil {
 		appendOption("replaceWith", opts.ReplaceWith)
 	}
+	if opts.ReplacementTrigger != nil {
+		appendOption("replacementTrigger", opts.ReplacementTrigger)
+	}
 	if opts.ImportID != nil {
 		appendOption("import", opts.ImportID)
 	}
