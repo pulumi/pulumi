@@ -95,10 +95,11 @@ func TestShowCmd(t *testing.T) {
 	mws := pkgWs.MockContext{
 		ReadProjectF: func() (*workspace.Project, string, error) {
 			return &workspace.Project{
-				Name: ,
-			}
+				Name: "test-ws",
+			}, "", nil
 		},
 	}
+	pkgWs.Instance = &mws
 
 	tests := []struct {
 		name string
