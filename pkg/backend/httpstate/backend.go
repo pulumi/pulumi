@@ -1665,10 +1665,8 @@ func (b *cloudBackend) runEngineAction(
 			if err != nil {
 				validationErrs = append(validationErrs, err)
 			}
-			noopPersister := backend.ValidatingPersister{}
-			snapshotManager = backend.NewSnapshotManager(&noopPersister, op.SecretsManager, u.Target.Snapshot)
 			combinedManager = &engine.CombinedManager{
-				Managers: []engine.SnapshotManager{journalManager, snapshotManager},
+				Managers: []engine.SnapshotManager{journalManager},
 			}
 		} else {
 			persister := b.newSnapshotPersister(ctx, update, tokenSource)
