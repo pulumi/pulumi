@@ -77,6 +77,13 @@ func PromptAndCreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.C
 		return s, nil
 	}
 
+	if !yes {
+		fmt.Println("A stack is an isolated, independently configurable instance of your Pulumi program.")
+		fmt.Println("Stacks are commonly used to denote different phases of development (e.g., 'dev', 'staging', 'prod')")
+		fmt.Println("or different feature branches. Each stack has its own state and configuration.")
+		fmt.Println()
+	}
+
 	if b.SupportsOrganizations() {
 		fmt.Print("Please enter your desired stack name.\n" +
 			"To create a stack in an organization, " +
