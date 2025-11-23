@@ -15,7 +15,6 @@
 package show
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -29,7 +28,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewShowCmd() *cobra.Command {
+func NewShowCmd(ws workspace.Context, sn string) *cobra.Command {
 	var stackName string
 	var name string
 	var pOpts printOptions
@@ -42,11 +41,17 @@ func NewShowCmd() *cobra.Command {
 			"in other stack --stack can be passed. Resources can be filtered by\n" +
 			"their name using --name.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ws := workspace.Instance
+			cmdOut := cmd.OutOrStdout()
 			ctx := cmd.Context()
 			snk := cmdutil.Diag()
 
-			s, err := stack.RequireStack(ctx, snk, ws, backend.DefaultLoginManager, stackName, stack.OfferNew, display.Options{})
+			var stckName string
+			if sn != "" {
+				stckName = sn
+			} else {
+				stckName = stackName
+			}
+			s, err := stack.RequireStack(ctx, snk, ws, backend.DefaultLoginManager, stckName, stack.OfferNew, display.Options{})
 			if err != nil {
 				return err
 			}
@@ -59,13 +64,14 @@ func NewShowCmd() *cobra.Command {
 			resources := ss.Resources
 			for _, res := range resources {
 				if strings.Contains(res.URN.Name(), name) {
-					fmt.Println(renderResourceState(res, pOpts))
+					cmdOut.Write([]byte(renderResourceState(res, pOpts)))
 				}
 			}
 
 			return nil
 		},
 	}
+
 	cmd.PersistentFlags().StringVar(&stackName, "stack", "", "the stack for which resources will be shown")
 	cmd.PersistentFlags().StringVar(&name, "name", "", "filter resources by name")
 	cmd.PersistentFlags().BoolVar(&pOpts.keysOnly, "keys-only", false, "only show property keys")
@@ -97,6 +103,7 @@ func renderResourceState(rs *resource.State, pOpts printOptions) string {
 			resourcePropertiesString += " " + string(k) + ","
 		}
 		resourcePropertiesString = strings.TrimSuffix(resourcePropertiesString, ",")
+		resourcePropertiesString += "\n"
 	} else {
 		resourcePropertiesString += "\n"
 		for k, v := range rs.Outputs {

@@ -375,7 +375,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				operations.NewRefreshCmd(),
 				state.NewStateCmd(),
 				install.NewInstallCmd(pkgWorkspace.Instance),
-				show.NewShowCmd(),
+				show.NewShowCmd(pkgWorkspace.Instance, ""),
 			},
 		},
 		{

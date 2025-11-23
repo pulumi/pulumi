@@ -16,6 +16,7 @@ package show
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -30,7 +31,7 @@ import (
 
 func TestShowCmd(t *testing.T) {
 	ms := backend.MockStack{
-		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
+		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
 			return &deploy.Snapshot{
 				Manifest:       deploy.Manifest{},
 				SecretsManager: &secrets.MockSecretsManager{},
@@ -85,7 +86,7 @@ func TestShowCmd(t *testing.T) {
 			}, nil
 		},
 	}
-
+	msName := "test-stack"
 	cmdBackend.BackendInstance = &backend.MockBackend{
 		GetStackF: func(_ context.Context, _ backend.StackReference) (backend.Stack, error) {
 			return &ms, nil
@@ -99,7 +100,6 @@ func TestShowCmd(t *testing.T) {
 			}, "", nil
 		},
 	}
-	pkgWs.Instance = &mws
 
 	tests := []struct {
 		name string
@@ -118,19 +118,26 @@ func TestShowCmd(t *testing.T) {
 	for _, tst := range tests {
 		t.Run(tst.name, func(t *testing.T) {
 			var cmdOut bytes.Buffer
-			showCmd := NewShowCmd()
+			showCmd := NewShowCmd(&mws, msName)
 			showCmd.SetArgs(tst.args)
 			showCmd.SetOut(&cmdOut)
 			require.NoError(t, showCmd.Execute())
 			var CmdPrintopts printOptions
-			if flag := showCmd.Flags().Lookup("keys-only"); flag != nil {
-				CmdPrintopts.keysOnly = true
+			keysOnly, err := showCmd.Flags().GetBool("keys-only")
+			fmt.Println(keysOnly)
+			require.NoError(t, err)
+			if keysOnly {
+				CmdPrintopts.keysOnly = keysOnly
 			}
-			var expectedOut string
+
+			var expectedOut bytes.Buffer
 			for _, res := range ss.Resources {
-				expectedOut += renderResourceState(res, CmdPrintopts) + "\n"
+				expectedOut.Write([]byte(renderResourceState(res, CmdPrintopts)))
 			}
-			require.Equal(t, cmdOut.String(), expectedOut)
+
+			if !bytes.Equal(expectedOut.Bytes(), cmdOut.Bytes()) {
+				t.Fatal("outputs do not match")
+			}
 		})
 	}
 }
