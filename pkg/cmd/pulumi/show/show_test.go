@@ -16,7 +16,6 @@ package show
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -124,7 +123,6 @@ func TestShowCmd(t *testing.T) {
 			require.NoError(t, showCmd.Execute())
 			var CmdPrintopts printOptions
 			keysOnly, err := showCmd.Flags().GetBool("keys-only")
-			fmt.Println(keysOnly)
 			require.NoError(t, err)
 			if keysOnly {
 				CmdPrintopts.keysOnly = keysOnly
