@@ -38,16 +38,12 @@ func mkTempDir(t *testing.T) string {
 //nolint:paralleltest // Theses test use and change the current working directory
 func TestDetectProjectAndPath(t *testing.T) {
 	tmpDir := mkTempDir(t)
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() { err := os.Chdir(cwd); require.NoError(t, err) }()
-	err = os.Chdir(tmpDir)
-	require.NoError(t, err)
+	t.Chdir(tmpDir)
 
 	yamlPath := filepath.Join(tmpDir, "Pulumi.yaml")
 	yamlContents := "name: some_project\ndescription: Some project\nruntime: nodejs\n"
 
-	err = os.WriteFile(yamlPath, []byte(yamlContents), 0o600)
+	err := os.WriteFile(yamlPath, []byte(yamlContents), 0o600)
 	require.NoError(t, err)
 
 	project, path, err := DetectProjectAndPath()
@@ -96,13 +92,9 @@ func TestProjectStackPath(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tmpDir := mkTempDir(t)
-			cwd, err := os.Getwd()
-			require.NoError(t, err)
-			defer func() { err := os.Chdir(cwd); require.NoError(t, err) }()
-			err = os.Chdir(tmpDir)
-			require.NoError(t, err)
+			t.Chdir(tmpDir)
 
-			err = os.WriteFile(
+			err := os.WriteFile(
 				filepath.Join(tmpDir, "Pulumi.yaml"),
 				[]byte(tt.yamlContents),
 				0o600)
@@ -119,13 +111,10 @@ func TestDetectProjectUnreadableParent(t *testing.T) {
 	// Regression test for https://github.com/pulumi/pulumi/issues/12481
 
 	tmpDir := mkTempDir(t)
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() { err := os.Chdir(cwd); require.NoError(t, err) }()
 
 	// unreadable parent directory
 	parentDir := filepath.Join(tmpDir, "root")
-	err = os.Mkdir(parentDir, 0o300)
+	err := os.Mkdir(parentDir, 0o300)
 	require.NoError(t, err)
 	// Make it readable so we can clean it up later
 	defer func() { err := os.Chmod(parentDir, 0o700); require.NoError(t, err) }()
@@ -135,7 +124,7 @@ func TestDetectProjectUnreadableParent(t *testing.T) {
 	err = os.Mkdir(currentDir, 0o700)
 	require.NoError(t, err)
 
-	err = os.Chdir(currentDir)
+	t.Chdir(currentDir)
 	require.NoError(t, err)
 
 	_, _, err = DetectProjectAndPath()
@@ -145,11 +134,7 @@ func TestDetectProjectUnreadableParent(t *testing.T) {
 //nolint:paralleltest // These tests use and change the current working directory
 func TestDetectProjectStackDeploymentPath(t *testing.T) {
 	tmpDir := mkTempDir(t)
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() { err := os.Chdir(cwd); require.NoError(t, err) }()
-	err = os.Chdir(tmpDir)
-	require.NoError(t, err)
+	t.Chdir(tmpDir)
 
 	yamlPath := filepath.Join(tmpDir, "Pulumi.yaml")
 	yamlContents := `
@@ -157,7 +142,7 @@ name: some_project
 description: Some project
 runtime: nodejs`
 
-	err = os.WriteFile(yamlPath, []byte(yamlContents), 0o600)
+	err := os.WriteFile(yamlPath, []byte(yamlContents), 0o600)
 	require.NoError(t, err)
 
 	yamlDeployPath := filepath.Join(tmpDir, "Pulumi.stack.deploy.yaml")
