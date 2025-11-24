@@ -654,8 +654,6 @@ type TransformFunction func(
 	opts *pulumirpc.TransformResourceOptions,
 ) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error)
 
-// A retry function that can be called when resource registration fails.
-
 // A transformation function that can be applied to an invoke.
 type TransformInvokeFunction func(
 	ctx context.Context, token string, args resource.PropertyMap,
@@ -1857,7 +1855,6 @@ func (rm *resmon) RegisterResourceHook(ctx context.Context, req *pulumirpc.Regis
 ) {
 	logging.V(6).Infof("RegisterResourceHook %q", req.Name)
 
-	// Register as a regular resource hook
 	wrapped, err := rm.wrapResourceHookCallback(req.Name, req.Callback)
 	if err != nil {
 		return nil, err
@@ -2824,7 +2821,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 
 		sourcePosition, stackTrace := rm.sourcePositions.getFromRequest(req)
-
 		goal := resource.NewGoal{
 			Type:                    t,
 			Name:                    name,
@@ -2861,6 +2857,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			rm.resGoalsLock.Unlock()
 		}
 
+		// Send the goal state to the engine.
 		step := &registerResourceEvent{
 			goal: goal,
 			done: make(chan *RegisterResult),
@@ -2880,7 +2877,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
 			return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
 		}
-
+		if result != nil && result.Result != ResultStateSuccess && !req.GetSupportsResultReporting() {
+			return nil, rpcerror.New(codes.Internal, "resource registration failed")
+		}
 		if result != nil && result.State != nil && result.State.URN != "" {
 			rm.resGoalsLock.Lock()
 			rm.resGoals[result.State.URN] = *goal

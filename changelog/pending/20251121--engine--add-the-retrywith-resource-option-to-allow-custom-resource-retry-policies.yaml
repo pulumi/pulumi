@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: engine
-  description: Add the `retryWith` resource option to allow custom resource retry policies
+  description: Add the `OnCreateError`, `OnUpdateError`, and `OnDeleteError` error hooks to allow custom resource retry policies

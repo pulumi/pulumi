@@ -176,17 +176,14 @@ message RegisterResourceRequest {
         repeated string after_update = 4;
         repeated string before_delete = 5;
         repeated string after_delete = 6;
-        optional string on_create_error = 7; // unique error hook for create operations
-        optional string on_update_error = 8; // unique error hook for update operations
-        optional string on_delete_error = 9; // unique error hook for delete operations
+        optional string on_create_error = 7;
+        optional string on_update_error = 8;
+        optional string on_delete_error = 9;
     }
 
     // The resource hooks that should run at certain points in the resource's lifecycle.
     optional ResourceHooksBinding hooks = 34;
     repeated string hideDiffs = 37;
-
-    // A callback for managing retries of the resource registration.
-    optional Callback retryWith = 40;
 }
 
 enum Result {
@@ -318,17 +315,6 @@ message TransformInvokeOptions {
     string plugin_download_url = 2;
     string version = 3;
     map<string, bytes> plugin_checksums = 4;
-}
-
-// RetryRequest is for when resource registration fails to determine whether we should retry.
-message RetryRequest {
-    // The list of errors that have occurred during retries, with the most recent error first.
-    repeated string errors = 1;
-}
-
-// RetryResponse is the response to a RetryRequest.
-message RetryResponse {
-    bool should_retry = 1;
 }
 
 // ResourceHookRequest is the request object for resource hook callbacks in CallbackInvokeRequest.
