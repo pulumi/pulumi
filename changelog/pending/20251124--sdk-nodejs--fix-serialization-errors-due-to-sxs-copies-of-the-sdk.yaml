@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Fix serialization errors due to SxS copies of the SDK

@@ -73,7 +73,7 @@ $DOCKER_RUN /bin/bash -c 'set -x && JS_PULUMIRPC=/nodejs/proto && \
     find $TEMP_DIR && \
     find "$TEMP_DIR/pulumi" -type f -name "*.ts" -exec sed -i "s|../pulumi/|./|" {} \; && \
     find "$TEMP_DIR/pulumi" -type f -name "*.ts" -exec sed -i "s|/./|/|" {} \; && \
-    find "$TEMP_DIR/pulumi" -type f -name "*.js" -exec sed -i "s|^var global = .*;|var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;|" {} \; && \
+    find "$TEMP_DIR/pulumi" -type f -name "*.js" -exec sed -i "/^var global[[:space:]]*=/,/Function(.*this.*)/c var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;" {} \; && \
     find "$TEMP_DIR/pulumi" -type f -name "*.js" -exec sed -i "s|require('\''../pulumi/|require('\''./|" {} \; && \
     find "$TEMP_DIR/pulumi" -type f -name "*.js" -exec sed -i "s|require('\''../../pulumi/|require('\''../|" {} \; && \
     rm -rf "$JS_PULUMIRPC"/* && \

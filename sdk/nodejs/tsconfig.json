@@ -116,6 +116,7 @@
         "tests/automation/localWorkspace.spec.ts",
         "tests/automation/remoteWorkspace.spec.ts",
         "tests/automation/util.ts",
+        "tests/proto/proto.spec.ts",
         "tests/provider/experimental/provider.spec.ts",
         "tests/provider/experimental/analyzer.spec.ts",
         "tests/provider/experimental/schema.spec.ts",
