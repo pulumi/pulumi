@@ -96,7 +96,8 @@ func renderResourceState(rs *resource.State, pOpts printOptions) string {
 
 	resourcePropertiesString := ""
 	if pOpts.keysOnly {
-		for k := range rs.Outputs {
+		mapKeys := rs.Outputs.StableKeys()
+		for _, k := range mapKeys {
 			if strings.HasPrefix(string(k), "__") {
 				continue
 			}
@@ -106,11 +107,13 @@ func renderResourceState(rs *resource.State, pOpts printOptions) string {
 		resourcePropertiesString += "\n"
 	} else {
 		resourcePropertiesString += "\n"
-		for k, v := range rs.Outputs {
+		keys := rs.Outputs.StableKeys()
+		propMap := rs.Outputs
+		for _, k := range keys {
 			if strings.HasPrefix(string(k), "__") {
 				continue
 			}
-			resourcePropertiesString += "    " + string(k) + ": " + renderPropertyVal(v, "    ") + "\n"
+			resourcePropertiesString += "    " + string(k) + ": " + renderPropertyVal(propMap[k], "    ") + "\n"
 		}
 	}
 	resStateString += resourcePropertiesString
@@ -125,8 +128,9 @@ func renderPropertyVal(rsp resource.PropertyValue, currIdent string) string {
 		newIdent := currIdent + "    "
 		var res string
 		objMap := rsp.ObjectValue()
-		for k, v := range objMap {
-			res += "\n" + newIdent + string(k) + ": " + renderPropertyVal(v, newIdent)
+		keys := objMap.StableKeys()
+		for _, k := range keys {
+			res += "\n" + newIdent + string(k) + ": " + renderPropertyVal(objMap[k], newIdent)
 		}
 		return res
 	}

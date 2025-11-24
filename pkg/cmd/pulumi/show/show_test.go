@@ -133,9 +133,7 @@ func TestShowCmd(t *testing.T) {
 				expectedOut.Write([]byte(renderResourceState(res, CmdPrintopts)))
 			}
 
-			if !bytes.Equal(expectedOut.Bytes(), cmdOut.Bytes()) {
-				t.Fatal("outputs do not match")
-			}
+			require.Equal(t, cmdOut, expectedOut)
 		})
 	}
 }
