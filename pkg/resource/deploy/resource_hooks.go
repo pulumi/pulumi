@@ -37,6 +37,21 @@ type ResourceHookFunction func(
 	oldOutputs resource.PropertyMap,
 ) error
 
+// ErrorHookFunction is the shape of an error hook. It receives the same inputs as ResourceHookFunction
+// plus a list of errors (most recent first), and returns whether to retry the operation.
+type ErrorHookFunction func(
+	ctx context.Context,
+	urn resource.URN,
+	id resource.ID,
+	name string,
+	typ tokens.Type,
+	newInputs resource.PropertyMap,
+	oldInputs resource.PropertyMap,
+	newOutputs resource.PropertyMap,
+	oldOutputs resource.PropertyMap,
+	errors []string,
+) (bool, error)
+
 // ResourceHook represents a resource hook with its (wrapped) callback and options.
 type ResourceHook struct {
 	Name     string               // The unqiue name of the hook.
@@ -44,14 +59,23 @@ type ResourceHook struct {
 	OnDryRun bool                 // Whether to run this hook for previews or not.
 }
 
+// ErrorHook represents an error hook with its (wrapped) callback and options.
+type ErrorHook struct {
+	Name     string            // The unique name of the hook.
+	Callback ErrorHookFunction // The callback of the hook.
+	OnDryRun bool              // Whether to run this hook for previews or not.
+}
+
 // ResourceHooks is a registry of all resource hooks provided by a program.
 type ResourceHooks struct {
 	resourceHooks *gsync.Map[string, ResourceHook]
+	errorHooks    *gsync.Map[string, ErrorHook]
 }
 
 func NewResourceHooks(dialOptions DialOptions) *ResourceHooks {
 	return &ResourceHooks{
 		resourceHooks: &gsync.Map[string, ResourceHook]{},
+		errorHooks:    &gsync.Map[string, ErrorHook]{},
 	}
 }
 
@@ -70,6 +94,25 @@ func (l *ResourceHooks) GetResourceHook(name string) (ResourceHook, error) {
 	hook, has := l.resourceHooks.Load(name)
 	if !has {
 		return ResourceHook{}, fmt.Errorf("resource hook not registered for %s", name)
+	}
+	return hook, nil
+}
+
+func (l *ResourceHooks) RegisterErrorHook(hook ErrorHook) error {
+	if hook.Name == "" {
+		return errors.New("error hook name cannot be empty")
+	}
+	if _, has := l.errorHooks.Load(hook.Name); has {
+		return fmt.Errorf("error hook already registered for name %q", hook.Name)
+	}
+	l.errorHooks.Store(hook.Name, hook)
+	return nil
+}
+
+func (l *ResourceHooks) GetErrorHook(name string) (ErrorHook, error) {
+	hook, has := l.errorHooks.Load(name)
+	if !has {
+		return ErrorHook{}, fmt.Errorf("error hook not registered for %s", name)
 	}
 	return hook, nil
 }

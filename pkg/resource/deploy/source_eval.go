@@ -501,7 +501,6 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 			SourcePosition:          "",
 			StackTrace:              nil,
 			ResourceHooks:           nil,
-			RetryWith:               nil,
 		}.Make(),
 		done: done,
 	}
@@ -656,10 +655,6 @@ type TransformFunction func(
 ) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error)
 
 // A retry function that can be called when resource registration fails.
-type RetryFunction func(
-	ctx context.Context,
-	errors []string,
-) (bool, error)
 
 // A transformation function that can be applied to an invoke.
 type TransformInvokeFunction func(
@@ -1640,46 +1635,6 @@ func (rm *resmon) wrapInvokeTransformCallback(cb *pulumirpc.Callback) (Transform
 	}, nil
 }
 
-// Wrap the retry callback so the engine can call the callback server, which will then execute the function.
-// The wrapper takes care of all the necessary marshalling and unmarshalling.
-func (rm *resmon) wrapRetryCallback(cb *resource.RetryCallback) (RetryFunction, error) {
-	client, err := rm.GetCallbacksClient(cb.Target)
-	if err != nil {
-		return nil, err
-	}
-
-	token := cb.Token
-	return func(ctx context.Context, errors []string) (bool, error) {
-		logging.V(5).Infof("Retry callback: token=%v errors=%v", token, errors)
-
-		request, err := proto.Marshal(&pulumirpc.RetryRequest{
-			Errors: errors,
-		})
-		if err != nil {
-			return false, fmt.Errorf("marshaling retry request: %w", err)
-		}
-
-		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
-			Token:   token,
-			Request: request,
-		})
-		if err != nil {
-			logging.V(5).Infof("Retry callback error: %v", err)
-			return false, err
-		}
-
-		var response pulumirpc.RetryResponse
-		err = proto.Unmarshal(resp.Response, &response)
-		if err != nil {
-			return false, fmt.Errorf("unmarshaling retry response: %w", err)
-		}
-
-		logging.V(5).Infof("Retry callback response: should_retry=%v", response.ShouldRetry)
-
-		return response.ShouldRetry, nil
-	}, nil
-}
-
 func (rm *resmon) RegisterStackTransform(ctx context.Context, cb *pulumirpc.Callback) (*emptypb.Empty, error) {
 	rm.stackTransformsLock.Lock()
 	defer rm.stackTransformsLock.Unlock()
@@ -1786,6 +1741,7 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 			OldInputs:  mOldInputs,
 			NewOutputs: mNewOutputs,
 			OldOutputs: mOldOutputs,
+			Errors:     nil, // No errors in regular hooks
 		})
 		if err != nil {
 			return fmt.Errorf("marshaling resource hook request for %q: %w", name, err)
@@ -1811,10 +1767,97 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 	}, nil
 }
 
+// Wrap the error hook callback so the engine can call the callback server in
+// the language runtime, which will then execute the hook. The wrapper takes
+// care of all the necessary marshalling and unmarshalling.
+func (rm *resmon) wrapErrorHookCallback(name string, cb *pulumirpc.Callback) (ErrorHookFunction, error) {
+	client, err := rm.GetCallbacksClient(cb.Target)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(ctx context.Context, urn resource.URN, id resource.ID,
+		name string, typ tokens.Type, newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		errorMessages []string,
+	) (bool, error) {
+		logging.V(6).Infof("ErrorHook calling hook %q for urn %s", name, urn)
+		var mNewInputs, mOldInputs, mNewOutputs, mOldOutputs *structpb.Struct
+		mOpts := plugin.MarshalOptions{
+			Label:            fmt.Sprintf("ResourceMonitor.ErrorHook(%s, %s)", name, urn),
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		}
+		if newInputs != nil {
+			mNewInputs, err = plugin.MarshalProperties(newInputs, mOpts)
+			if err != nil {
+				return false, fmt.Errorf("marshaling new inputs for error hook %q: %w", name, err)
+			}
+		}
+		if oldInputs != nil {
+			mOldInputs, err = plugin.MarshalProperties(oldInputs, mOpts)
+			if err != nil {
+				return false, fmt.Errorf("marshaling old inputs for error hook %q: %w", name, err)
+			}
+		}
+		if newOutputs != nil {
+			mNewOutputs, err = plugin.MarshalProperties(newOutputs, mOpts)
+			if err != nil {
+				return false, fmt.Errorf("marshaling new outputs for error hook %q: %w", name, err)
+			}
+		}
+		if oldOutputs != nil {
+			mOldOutputs, err = plugin.MarshalProperties(oldOutputs, mOpts)
+			if err != nil {
+				return false, fmt.Errorf("marshaling old outputs for error hook %q: %w", name, err)
+			}
+		}
+		reqBytes, err := proto.Marshal(&pulumirpc.ResourceHookRequest{
+			Urn:        string(urn),
+			Id:         string(id),
+			Name:       name,
+			Type:       string(typ),
+			NewInputs:  mNewInputs,
+			OldInputs:  mOldInputs,
+			NewOutputs: mNewOutputs,
+			OldOutputs: mOldOutputs,
+			Errors:     errorMessages,
+		})
+		if err != nil {
+			return false, fmt.Errorf("marshaling error hook request for %q: %w", name, err)
+		}
+		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
+			Token:   cb.Token,
+			Request: reqBytes,
+		})
+		if err != nil {
+			logging.V(6).Infof("ErrorHook %q call error: %v", name, err)
+			return false, err
+		}
+		var response pulumirpc.ResourceHookResponse
+		err = proto.Unmarshal(resp.Response, &response)
+		if err != nil {
+			return false, fmt.Errorf("unmarshaling error hook response for %q: %w", name, err)
+		}
+		logging.V(6).Infof("ErrorHook %s returned should_retry=%v, error=%q", name, response.ShouldRetry != nil && *response.ShouldRetry, response.Error)
+		if response.Error != "" {
+			return false, errors.New(response.Error)
+		}
+		shouldRetry := false
+		if response.ShouldRetry != nil {
+			shouldRetry = *response.ShouldRetry
+		}
+		return shouldRetry, nil
+	}, nil
+}
+
 func (rm *resmon) RegisterResourceHook(ctx context.Context, req *pulumirpc.RegisterResourceHookRequest) (
 	*emptypb.Empty, error,
 ) {
 	logging.V(6).Infof("RegisterResourceHook %q", req.Name)
+
+	// Register as a regular resource hook
 	wrapped, err := rm.wrapResourceHookCallback(req.Name, req.Callback)
 	if err != nil {
 		return nil, err
@@ -1825,11 +1868,31 @@ func (rm *resmon) RegisterResourceHook(ctx context.Context, req *pulumirpc.Regis
 		OnDryRun: req.OnDryRun,
 	}
 	err = rm.resourceHooks.RegisterResourceHook(hook)
-	return nil, err
+	if err != nil {
+		return nil, err
+	}
+
+	// Also register as an error hook (hooks can be used as both regular hooks and error hooks)
+	errorWrapped, err := rm.wrapErrorHookCallback(req.Name, req.Callback)
+	if err != nil {
+		return nil, err
+	}
+	errorHook := ErrorHook{
+		Name:     req.Name,
+		Callback: errorWrapped,
+		OnDryRun: req.OnDryRun,
+	}
+	err = rm.resourceHooks.RegisterErrorHook(errorHook)
+	// If it's already registered as an error hook, that's fine - just continue
+	if err != nil && !strings.Contains(err.Error(), "already registered") {
+		return nil, err
+	}
+
+	return nil, nil
 }
 
 // inheritFromParent returns a new goal that inherits from the given parent goal.
-// Currently only inherits DeletedWith, Protect, and RetainOnDelete from parent.
+// Currently only inherits DeletedWith, Protect, RetainOnDelete, and error hooks from parent.
 func inheritFromParent(child resource.Goal, parent resource.Goal) *resource.Goal {
 	goal := child
 	if goal.DeletedWith == "" {
@@ -1840,6 +1903,20 @@ func inheritFromParent(child resource.Goal, parent resource.Goal) *resource.Goal
 	}
 	if goal.RetainOnDelete == nil {
 		goal.RetainOnDelete = parent.RetainOnDelete
+	}
+	// Inherit error hooks unless overridden (error hooks are unique, stored as []string with max length 1)
+	if goal.ResourceHooks == nil {
+		goal.ResourceHooks = make(map[resource.HookType][]string)
+	}
+	for _, hookType := range []resource.HookType{
+		resource.OnCreateError,
+		resource.OnUpdateError,
+		resource.OnDeleteError,
+	} {
+		// Only inherit if child doesn't have this error hook
+		if len(goal.ResourceHooks[hookType]) == 0 && len(parent.ResourceHooks[hookType]) > 0 {
+			goal.ResourceHooks[hookType] = parent.ResourceHooks[hookType]
+		}
 	}
 	return &goal
 }
@@ -2566,6 +2643,30 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
+	// Parse error hooks (unique, one per operation type)
+	// Error hooks are stored as []string with max length 1 to maintain compatibility with the map type
+	hooks := opts.GetHooks()
+	if hooks != nil {
+		if hooks.OnCreateError != nil && *hooks.OnCreateError != "" {
+			if resourceHooks == nil {
+				resourceHooks = make(map[resource.HookType][]string)
+			}
+			resourceHooks[resource.OnCreateError] = []string{*hooks.OnCreateError}
+		}
+		if hooks.OnUpdateError != nil && *hooks.OnUpdateError != "" {
+			if resourceHooks == nil {
+				resourceHooks = make(map[resource.HookType][]string)
+			}
+			resourceHooks[resource.OnUpdateError] = []string{*hooks.OnUpdateError}
+		}
+		if hooks.OnDeleteError != nil && *hooks.OnDeleteError != "" {
+			if resourceHooks == nil {
+				resourceHooks = make(map[resource.HookType][]string)
+			}
+			resourceHooks[resource.OnDeleteError] = []string{*hooks.OnDeleteError}
+		}
+	}
+
 	// At this point we're going to forward these properties to the rest of the engine and potentially to providers. As
 	// we add features to the code above (most notably transforms) we could end up with more instances of `OutputValue`
 	// than the rest of the system historically expects. To minimize the disruption we downgrade `OutputValue`s with no
@@ -2724,14 +2825,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 		sourcePosition, stackTrace := rm.sourcePositions.getFromRequest(req)
 
-		var retryWith *resource.RetryCallback
-		if req.GetRetryWith() != nil {
-			retryWith = &resource.RetryCallback{
-				Target: req.GetRetryWith().GetTarget(),
-				Token:  req.GetRetryWith().GetToken(),
-			}
-		}
-
 		goal := resource.NewGoal{
 			Type:                    t,
 			Name:                    name,
@@ -2758,7 +2851,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			SourcePosition:          sourcePosition,
 			StackTrace:              stackTrace,
 			ResourceHooks:           resourceHooks,
-			RetryWith:               retryWith,
 		}.Make()
 		if goal.Parent != "" {
 			rm.resGoalsLock.Lock()
@@ -2769,80 +2861,26 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			rm.resGoalsLock.Unlock()
 		}
 
-		var retryFn RetryFunction
-		if goal.RetryWith != nil {
-			var err error
-			retryFn, err = rm.wrapRetryCallback(goal.RetryWith)
-			if err != nil {
-				return nil, fmt.Errorf("wrapping retry callback: %w", err)
-			}
+		step := &registerResourceEvent{
+			goal: goal,
+			done: make(chan *RegisterResult),
 		}
 
-		var errors []string
-
-		// TODO: this should probably be configurable
-		maxRetries := 100
-
-		for retry := 0; retry < maxRetries; retry++ {
-			step := &registerResourceEvent{
-				goal: goal,
-				done: make(chan *RegisterResult),
-			}
-
-			select {
-			case rm.regChan <- step:
-			case <-rm.cancel:
-				logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
-				return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource registration")
-			}
-
-			// Now block waiting for the operation to finish.
-			select {
-			case result = <-step.done:
-			case <-rm.cancel:
-				logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
-				return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
-			}
-
-			// If we're successful or we skip, we don't need to retry.
-			if result.Result == ResultStateSuccess || result.Result == ResultStateSkipped {
-				break
-			}
-
-			// Add error to the list (most recent first). Note that we could receive
-			// multiple errors, so we join them together in one string.
-			latestErrors := strings.Join(result.State.InitErrors, ", ")
-			errors = append(errors, latestErrors)
-
-			// If no retry callback, fail immediately
-			if retryFn == nil {
-				if !req.GetSupportsResultReporting() {
-					return nil, rpcerror.New(codes.Internal, latestErrors)
-				}
-				break
-			}
-
-			// If the callback is set, and it returns true, we should retry.
-			// Otherwise, we've failed, and we want to exit.
-			shouldRetry, err := retryFn(ctx, errors)
-			if err != nil {
-				logging.V(5).Infof("Retry callback invocation failed: %v", err)
-				return nil, fmt.Errorf("retry callback failed: %w", err)
-			}
-
-			if !shouldRetry {
-				if !req.GetSupportsResultReporting() {
-					return nil, rpcerror.New(codes.Internal, latestErrors)
-				}
-				break
-			}
-
-			logging.V(5).Infof("Retry callback returned true, retrying resource registration (attempt %d)", retry+1)
+		select {
+		case rm.regChan <- step:
+		case <-rm.cancel:
+			logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
+			return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource registration")
 		}
 
-		if result != nil && result.Result != ResultStateSuccess && !req.GetSupportsResultReporting() {
-			return nil, rpcerror.New(codes.Internal, "resource registration failed")
+		// Now block waiting for the operation to finish.
+		select {
+		case result = <-step.done:
+		case <-rm.cancel:
+			logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
+			return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
 		}
+
 		if result != nil && result.State != nil && result.State.URN != "" {
 			rm.resGoalsLock.Lock()
 			rm.resGoals[result.State.URN] = *goal

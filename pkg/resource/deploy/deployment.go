@@ -755,3 +755,30 @@ func (d *Deployment) RunHooks(hooks []string, isBeforeHook bool, id resource.ID,
 	}
 	return nil
 }
+
+// RunErrorHook runs an error hook for the given state. Error hooks are unique (only one per resource),
+// and return whether to retry the operation. If the hook returns an error, the operation will not be retried.
+func (d *Deployment) RunErrorHook(hookName string, id resource.ID, urn resource.URN,
+	name string, typ tokens.Type, newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+	errors []string,
+) (bool, error) {
+	if hookName == "" {
+		return false, nil
+	}
+	if d.resourceHooks == nil {
+		return false, nil
+	}
+	hook, err := d.resourceHooks.GetErrorHook(hookName)
+	if err != nil {
+		return false, fmt.Errorf("error hook %q was not registered", hookName)
+	}
+	if d.opts != nil && d.opts.DryRun && !hook.OnDryRun {
+		return false, nil
+	}
+	logging.V(9).Infof("calling error hook %q for urn %s", hookName, urn)
+	shouldRetry, err := hook.Callback(d.Ctx().Base(), urn, id, name, typ, newInputs, oldInputs, newOutputs, oldOutputs, errors)
+	if err != nil {
+		return false, fmt.Errorf("error hook %q failed: %w", hookName, err)
+	}
+	return shouldRetry, nil
+}

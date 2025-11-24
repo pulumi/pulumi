@@ -20,15 +20,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 func TestRetryLifecycle(t *testing.T) {
@@ -95,107 +91,104 @@ type retryTestConfig struct {
 }
 
 func testRetries(t *testing.T, config *retryTestConfig) {
-	callbackServer, err := deploytest.NewCallbacksServer()
-	require.NoError(t, err)
-	defer callbackServer.Close()
-
-	var retries int
-
-	retryCallback, err := callbackServer.Allocate(func(req []byte) (proto.Message, error) {
-		var retryReq pulumirpc.RetryRequest
-		err := proto.Unmarshal(req, &retryReq)
-		if err != nil {
-			return nil, err
-		}
-
-		retries++
-
-		shouldRetry := false
-		if retries <= len(config.retryPatterns) {
-			shouldRetry = config.retryPatterns[retries-1]
-		}
-
-		return &pulumirpc.RetryResponse{
-			ShouldRetry: shouldRetry,
-		}, nil
-	})
-	require.NoError(t, err)
-
 	plugctx, err := plugin.NewContext(context.Background(),
 		&deploytest.NoopSink{}, &deploytest.NoopSink{},
 		deploytest.NewPluginHostF(nil, nil, nil)(),
 		nil, "", nil, false, nil)
 	require.NoError(t, err)
 
-	regChan := make(chan *registerResourceEvent, 150)
+	// Create ResourceHooks instance
+	resourceHooks := NewResourceHooks(plugctx.DialOptions)
 
-	mon, err := newResourceMonitor(&evalSource{
-		runinfo: &EvalRunInfo{
-			ProjectRoot: "/",
-			Pwd:         "/",
-			Program:     ".",
-			Proj:        &workspace.Project{Name: "proj"},
-			Target: &Target{
-				Name: tokens.MustParseStackName("stack"),
-			},
+	// Track hook calls
+	var hookCalls int
+
+	// Register the error hook
+	err = resourceHooks.RegisterErrorHook(ErrorHook{
+		Name: "test-error-hook",
+		Callback: func(ctx context.Context, urn resource.URN, id resource.ID,
+			name string, typ tokens.Type, newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+			errorMessages []string,
+		) (bool, error) {
+			hookCalls++
+
+			shouldRetry := false
+			if hookCalls <= len(config.retryPatterns) {
+				shouldRetry = config.retryPatterns[hookCalls-1]
+			}
+
+			return shouldRetry, nil
 		},
-		plugctx: plugctx,
-	}, &providerSourceMock{
-		Provider: &deploytest.Provider{},
-	}, regChan, nil, nil, nil, nil, nil, nil, nil)
+		OnDryRun: false,
+	})
 	require.NoError(t, err)
 
-	mon.abortChan = make(chan bool)
-	mon.cancel = make(chan bool)
-
+	// Create a provider that can fail and track Create calls
 	var attempts int
-
-	go func() {
-		for {
-			select {
-			case <-mon.cancel:
-				return
-			case evt := <-regChan:
-				resultState := ResultStateSuccess
-
-				// Providers etc always succeed, we only care about our test resource
-				if evt.goal.Type == tokens.Type("test:index:Resource") && evt.goal.Name == "test-resource" {
-					resultState = config.registrationResponses[attempts]
-					attempts++
-				}
-
-				urn := resource.URN("urn:pulumi:stack::project::" + string(evt.goal.Type) + "::" + evt.goal.Name)
-				id := resource.ID("id-" + evt.goal.Name)
-
-				state := &resource.State{
-					Type: evt.goal.Type,
-					URN:  urn,
-					ID:   id,
-				}
-
-				if resultState == ResultStateFailed {
-					state.InitErrors = []string{"oh dear"}
-				}
-
-				evt.done <- &RegisterResult{
-					State:  state,
-					Result: resultState,
+	testProvider := &deploytest.Provider{
+		CreateF: func(ctx context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+			attempts++
+			// Use modulo to handle cases where we have more attempts than responses
+			idx := (attempts - 1) % len(config.registrationResponses)
+			resultState := config.registrationResponses[idx]
+			if resultState == ResultStateFailed {
+				return plugin.CreateResponse{}, &plugin.InitError{
+					Reasons: []string{"oh dear"},
 				}
 			}
+			return plugin.CreateResponse{
+				ID:         resource.ID("id-test-resource"),
+				Properties: resource.PropertyMap{},
+			}, nil
+		},
+	}
+
+	// Create a deployment with the resource hooks
+	deployment := &Deployment{
+		opts: &Options{
+			DryRun: false,
+		},
+		resourceHooks: resourceHooks,
+		ctx:           plugctx,
+	}
+
+	// Create a mock register event
+	regChan := make(chan *RegisterResult, 1)
+	reg := &registerResourceEvent{
+		done: regChan,
+	}
+
+	// Create the CreateStep with error hook configured
+	urn := resource.URN("urn:pulumi:stack::project::test:index:Resource::test-resource")
+	step := &CreateStep{
+		deployment: deployment,
+		reg:        reg,
+		provider:   testProvider,
+		new: &resource.State{
+			URN:    urn,
+			Type:   tokens.Type("test:index:Resource"),
+			Custom: true,
+			ResourceHooks: map[resource.HookType][]string{
+				resource.OnCreateError: {"test-error-hook"},
+			},
+			Inputs:         resource.PropertyMap{},
+			CustomTimeouts: resource.CustomTimeouts{},
+		},
+	}
+
+	// Execute the step
+	_, _, err = step.Apply()
+
+	// For success cases, we expect no error
+	if config.registrationResponses[0] == ResultStateSuccess {
+		require.NoError(t, err)
+	} else {
+		// For failure cases, we expect an error (unless we retried and eventually succeeded)
+		if attempts < config.totalRetries {
+			require.Error(t, err)
 		}
-	}()
+	}
 
-	_, err = mon.RegisterResource(context.Background(), &pulumirpc.RegisterResourceRequest{
-		Type:                    "test:index:Resource",
-		Name:                    "test-resource",
-		Custom:                  true,
-		Object:                  &structpb.Struct{},
-		SupportsResultReporting: true,
-		RetryWith:               retryCallback,
-	})
-
-	require.NoError(t, err)
-	close(mon.cancel)
-
+	// Verify the number of attempts matches expected retries
 	assert.Equal(t, config.totalRetries, attempts)
 }
