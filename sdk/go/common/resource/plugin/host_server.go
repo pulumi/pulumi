@@ -15,10 +15,10 @@
 package plugin
 
 import (
+	"context"
 	"fmt"
 	"sync/atomic"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 
