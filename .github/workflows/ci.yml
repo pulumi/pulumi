@@ -93,9 +93,6 @@ jobs:
           install: true
           cache: true
           experimental: true
-      # Install gotestsum using mise for consistent installation
-      - name: Install gotestsum
-        run: mise install gotestsum@1.8.1
       - uses: actions/cache@v4
         with:
           path: test-results
