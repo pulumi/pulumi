@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitingore",
     "GetAmiIds.cs",
     "Inputs/GetAmiIdsFilter.cs",
     "Inputs/GetAmiIdsFilterArgs.cs",

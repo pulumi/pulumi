@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitingore",
     "BasicResource.cs",
     "BasicResourceV2.cs",
     "BasicResourceV3.cs",
