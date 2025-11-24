@@ -136,22 +136,15 @@ python3 -m grpc_tools.protoc \
     --mypy_grpc_out="$TEMP_DIR_PY" \
     $PROTO_FILES
 
-# Fix Python import paths (only for files directly in pulumi/, matching original Docker script behavior)
 for pyfile in "$TEMP_DIR_PY"/pulumi/*.py; do
     $SED_INPLACE "s/^from pulumi import \([^ ]*\)_pb2 as \([^ ]*\)$/from . import \1_pb2 as \2/" "$pyfile"
-done
-for pyfile in "$TEMP_DIR_PY"/pulumi/*.py; do
     $SED_INPLACE "s/^from pulumi.codegen import \([^ ]*\)_pb2 as \([^ ]*\)$/from .codegen import \1_pb2 as \2/" "$pyfile"
 done
 
 # Fix mypy stub files (only add imports if they don't already exist, matching original Docker script)
 for pyifile in "$TEMP_DIR_PY"/pulumi/*.pyi; do
     $SED_INPLACE "s/^import grpc$/import grpc\nimport grpc.aio\nimport typing/" "$pyifile"
-done
-for pyifile in "$TEMP_DIR_PY"/pulumi/*.pyi; do
     $SED_INPLACE "s/: grpc\.Server/: typing.Union[grpc.Server, grpc.aio.Server]/" "$pyifile"
-done
-for pyifile in "$TEMP_DIR_PY"/pulumi/*.pyi; do
     $SED_INPLACE "s/@abc.abstractmethod//" "$pyifile"
 done
 
