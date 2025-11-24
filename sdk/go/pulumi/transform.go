@@ -14,7 +14,7 @@
 
 package pulumi
 
-import "golang.org/x/net/context"
+import "context"
 
 // ResourceTransformArgs is the argument bag passed to a resource transform.
 type ResourceTransformArgs struct {
