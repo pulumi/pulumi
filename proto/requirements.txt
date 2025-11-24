@@ -1,0 +1,6 @@
+# Python tools for protobuf generation
+# These versions must match what's in proto/build-container/Dockerfile
+grpcio==1.71.0
+grpcio-tools==1.71.0
+mypy-protobuf==3.6.0
+

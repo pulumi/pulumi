@@ -71,11 +71,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
-      - uses: actions/setup-go@v5
+      - name: Set up mise
+        uses: jdx/mise-action@v2
         with:
+          install: true
           cache: true
-          cache-dependency-path: pkg/go.sum
-          go-version-file: pkg/go.mod
+          experimental: true
       - name: Install CLI
         run: SDKS='' make install
       - name: build matrix
