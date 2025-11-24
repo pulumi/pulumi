@@ -88,14 +88,76 @@ export namespace GetSchemaResponse {
     }
 }
 
+export class PackageMeta extends jspb.Message { 
+    getModuleFormat(): string;
+    setModuleFormat(value: string): PackageMeta;
+    getSupportPack(): boolean;
+    setSupportPack(value: boolean): PackageMeta;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PackageMeta.AsObject;
+    static toObject(includeInstance: boolean, msg: PackageMeta): PackageMeta.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PackageMeta, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PackageMeta;
+    static deserializeBinaryFromReader(message: PackageMeta, reader: jspb.BinaryReader): PackageMeta;
+}
+
+export namespace PackageMeta {
+    export type AsObject = {
+        moduleFormat: string,
+        supportPack: boolean,
+    }
+}
+
 export class PackageInfo extends jspb.Message { 
     getName(): string;
     setName(value: string): PackageInfo;
+    getDisplayName(): string;
+    setDisplayName(value: string): PackageInfo;
 
     hasVersion(): boolean;
     clearVersion(): void;
     getVersion(): string | undefined;
     setVersion(value: string): PackageInfo;
+    getDescription(): string;
+    setDescription(value: string): PackageInfo;
+    clearKeywordsList(): void;
+    getKeywordsList(): Array<string>;
+    setKeywordsList(value: Array<string>): PackageInfo;
+    addKeywords(value: string, index?: number): string;
+    getHomepage(): string;
+    setHomepage(value: string): PackageInfo;
+    getLicense(): string;
+    setLicense(value: string): PackageInfo;
+    getAttribution(): string;
+    setAttribution(value: string): PackageInfo;
+    getRepository(): string;
+    setRepository(value: string): PackageInfo;
+    getLogoUrl(): string;
+    setLogoUrl(value: string): PackageInfo;
+    getPluginDownloadUrl(): string;
+    setPluginDownloadUrl(value: string): PackageInfo;
+    getPublisher(): string;
+    setPublisher(value: string): PackageInfo;
+
+    hasNamespace(): boolean;
+    clearNamespace(): void;
+    getNamespace(): string | undefined;
+    setNamespace(value: string): PackageInfo;
+
+    hasMeta(): boolean;
+    clearMeta(): void;
+    getMeta(): PackageMeta | undefined;
+    setMeta(value?: PackageMeta): PackageInfo;
+    clearAllowedPackageNamesList(): void;
+    getAllowedPackageNamesList(): Array<string>;
+    setAllowedPackageNamesList(value: Array<string>): PackageInfo;
+    addAllowedPackageNames(value: string, index?: number): string;
+
+    getLanguagesMap(): jspb.Map<string, string>;
+    clearLanguagesMap(): void;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): PackageInfo.AsObject;
@@ -110,7 +172,22 @@ export class PackageInfo extends jspb.Message {
 export namespace PackageInfo {
     export type AsObject = {
         name: string,
+        displayName: string,
         version?: string,
+        description: string,
+        keywordsList: Array<string>,
+        homepage: string,
+        license: string,
+        attribution: string,
+        repository: string,
+        logoUrl: string,
+        pluginDownloadUrl: string,
+        publisher: string,
+        namespace?: string,
+        meta?: PackageMeta.AsObject,
+        allowedPackageNamesList: Array<string>,
+
+        languagesMap: Array<[string, string]>,
     }
 }
 

@@ -46,6 +46,7 @@ const (
 type LoaderClient interface {
 	// GetSchema tries to find a schema for the given package and version.
 	GetSchema(ctx context.Context, in *GetSchemaRequest, opts ...grpc.CallOption) (*GetSchemaResponse, error)
+	// GetPackageInfo gets the top level information about a package.
 	GetPackageInfo(ctx context.Context, in *GetSchemaRequest, opts ...grpc.CallOption) (*PackageInfo, error)
 }
 
@@ -86,6 +87,7 @@ func (c *loaderClient) GetPackageInfo(ctx context.Context, in *GetSchemaRequest,
 type LoaderServer interface {
 	// GetSchema tries to find a schema for the given package and version.
 	GetSchema(context.Context, *GetSchemaRequest) (*GetSchemaResponse, error)
+	// GetPackageInfo gets the top level information about a package.
 	GetPackageInfo(context.Context, *GetSchemaRequest) (*PackageInfo, error)
 	mustEmbedUnimplementedLoaderServer()
 }

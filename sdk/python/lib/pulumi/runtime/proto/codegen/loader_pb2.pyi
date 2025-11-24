@@ -17,7 +17,9 @@ limitations under the License.
 """
 
 import builtins
+import collections.abc
 import google.protobuf.descriptor
+import google.protobuf.internal.containers
 import google.protobuf.message
 import typing
 
@@ -101,21 +103,132 @@ class GetSchemaResponse(google.protobuf.message.Message):
 global___GetSchemaResponse = GetSchemaResponse
 
 @typing.final
+class PackageMeta(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    MODULE_FORMAT_FIELD_NUMBER: builtins.int
+    SUPPORT_PACK_FIELD_NUMBER: builtins.int
+    module_format: builtins.str
+    """A regex that is used by the importer to extract a module name from the module portion of a type token.
+    Packages that use the module format \\"namespace1/namespace2/.../namespaceN\\" do not need to specify a
+    format. The regex must define one capturing group that contains the module name, which must be
+    formatted as \\"namespace1/namespace2/...namespaceN\\".
+    """
+    support_pack: builtins.bool
+    """Write the package to support the pack command."""
+    def __init__(
+        self,
+        *,
+        module_format: builtins.str = ...,
+        support_pack: builtins.bool = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["module_format", b"module_format", "support_pack", b"support_pack"]) -> None: ...
+
+global___PackageMeta = PackageMeta
+
+@typing.final
 class PackageInfo(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    @typing.final
+    class LanguagesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+
     NAME_FIELD_NUMBER: builtins.int
+    DISPLAY_NAME_FIELD_NUMBER: builtins.int
     VERSION_FIELD_NUMBER: builtins.int
+    DESCRIPTION_FIELD_NUMBER: builtins.int
+    KEYWORDS_FIELD_NUMBER: builtins.int
+    HOMEPAGE_FIELD_NUMBER: builtins.int
+    LICENSE_FIELD_NUMBER: builtins.int
+    ATTRIBUTION_FIELD_NUMBER: builtins.int
+    REPOSITORY_FIELD_NUMBER: builtins.int
+    LOGO_URL_FIELD_NUMBER: builtins.int
+    PLUGIN_DOWNLOAD_URL_FIELD_NUMBER: builtins.int
+    PUBLISHER_FIELD_NUMBER: builtins.int
+    NAMESPACE_FIELD_NUMBER: builtins.int
+    META_FIELD_NUMBER: builtins.int
+    ALLOWED_PACKAGE_NAMES_FIELD_NUMBER: builtins.int
+    LANGUAGES_FIELD_NUMBER: builtins.int
     name: builtins.str
+    """The unqualified name of the package (e.g. \\"aws\\", \\"azure\\", \\"gcp\\", \\"kubernetes\\", \\"random\\")."""
+    display_name: builtins.str
+    """The human-friendly name of the package."""
     version: builtins.str
+    """The version of the package. The version must be valid semver."""
+    description: builtins.str
+    """The description of the package. Descriptions are interpreted as Markdown."""
+    homepage: builtins.str
+    """The package's homepage."""
+    license: builtins.str
+    """The name of the license used for the package's contents."""
+    attribution: builtins.str
+    """Freeform text attribution of derived work, if required."""
+    repository: builtins.str
+    """The URL at which the package's sources can be found."""
+    logo_url: builtins.str
+    """The URL of the package's logo, if any."""
+    plugin_download_url: builtins.str
+    """The URL to use when downloading the provider plugin binary."""
+    publisher: builtins.str
+    """The name of the person or organization that authored and published the package."""
+    namespace: builtins.str
+    """The namespace of the package. Used to disambiguate the package name. Defaults to 'pulumi' when not specified."""
+    @property
+    def keywords(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """The list of keywords that are associated with the package, if any."""
+
+    @property
+    def meta(self) -> global___PackageMeta:
+        """Format metadata about this package."""
+
+    @property
+    def allowed_package_names(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """A list of allowed package names in addition to the name property."""
+
+    @property
+    def languages(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """Additional language-specific data about the package."""
+
     def __init__(
         self,
         *,
         name: builtins.str = ...,
+        display_name: builtins.str = ...,
         version: builtins.str | None = ...,
+        description: builtins.str = ...,
+        keywords: collections.abc.Iterable[builtins.str] | None = ...,
+        homepage: builtins.str = ...,
+        license: builtins.str = ...,
+        attribution: builtins.str = ...,
+        repository: builtins.str = ...,
+        logo_url: builtins.str = ...,
+        plugin_download_url: builtins.str = ...,
+        publisher: builtins.str = ...,
+        namespace: builtins.str | None = ...,
+        meta: global___PackageMeta | None = ...,
+        allowed_package_names: collections.abc.Iterable[builtins.str] | None = ...,
+        languages: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["_version", b"_version", "version", b"version"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_version", b"_version", "name", b"name", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["_meta", b"_meta", "_namespace", b"_namespace", "_version", b"_version", "meta", b"meta", "namespace", b"namespace", "version", b"version"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["_meta", b"_meta", "_namespace", b"_namespace", "_version", b"_version", "allowed_package_names", b"allowed_package_names", "attribution", b"attribution", "description", b"description", "display_name", b"display_name", "homepage", b"homepage", "keywords", b"keywords", "languages", b"languages", "license", b"license", "logo_url", b"logo_url", "meta", b"meta", "name", b"name", "namespace", b"namespace", "plugin_download_url", b"plugin_download_url", "publisher", b"publisher", "repository", b"repository", "version", b"version"]) -> None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing.Literal["_meta", b"_meta"]) -> typing.Literal["meta"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing.Literal["_namespace", b"_namespace"]) -> typing.Literal["namespace"] | None: ...
+    @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_version", b"_version"]) -> typing.Literal["version"] | None: ...
 
 global___PackageInfo = PackageInfo

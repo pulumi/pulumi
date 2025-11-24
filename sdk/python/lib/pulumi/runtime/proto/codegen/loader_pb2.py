@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bpulumi/codegen/loader.proto\x12\x07\x63odegen\"@\n\x10Parameterization\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\r\n\x05value\x18\x03 \x01(\x0c\"\x7f\n\x10GetSchemaRequest\x12\x0f\n\x07package\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\x14\n\x0c\x64ownload_url\x18\x03 \x01(\t\x12\x33\n\x10parameterization\x18\x04 \x01(\x0b\x32\x19.codegen.Parameterization\"#\n\x11GetSchemaResponse\x12\x0e\n\x06schema\x18\x01 \x01(\x0c\"=\n\x0bPackageInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x07version\x18\x02 \x01(\tH\x00\x88\x01\x01\x42\n\n\x08_version\";\n\x17GetPartialSchemaRequest\x12\x0f\n\x07package\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t2\x93\x01\n\x06Loader\x12\x44\n\tGetSchema\x12\x19.codegen.GetSchemaRequest\x1a\x1a.codegen.GetSchemaResponse\"\x00\x12\x43\n\x0eGetPackageInfo\x12\x19.codegen.GetSchemaRequest\x1a\x14.codegen.PackageInfo\"\x00\x32[\n\rPartialLoader\x12J\n\x0eGetPackageInfo\x12 .codegen.GetPartialSchemaRequest\x1a\x14.codegen.PackageInfo\"\x00\x42\x32Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bpulumi/codegen/loader.proto\x12\x07\x63odegen\"@\n\x10Parameterization\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\r\n\x05value\x18\x03 \x01(\x0c\"\x7f\n\x10GetSchemaRequest\x12\x0f\n\x07package\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\x14\n\x0c\x64ownload_url\x18\x03 \x01(\t\x12\x33\n\x10parameterization\x18\x04 \x01(\x0b\x32\x19.codegen.Parameterization\"#\n\x11GetSchemaResponse\x12\x0e\n\x06schema\x18\x01 \x01(\x0c\":\n\x0bPackageMeta\x12\x15\n\rmodule_format\x18\x01 \x01(\t\x12\x14\n\x0csupport_pack\x18\x02 \x01(\x08\"\xe9\x03\n\x0bPackageInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0c\x64isplay_name\x18\x02 \x01(\t\x12\x14\n\x07version\x18\x03 \x01(\tH\x00\x88\x01\x01\x12\x13\n\x0b\x64\x65scription\x18\x04 \x01(\t\x12\x10\n\x08keywords\x18\x05 \x03(\t\x12\x10\n\x08homepage\x18\x06 \x01(\t\x12\x0f\n\x07license\x18\x07 \x01(\t\x12\x13\n\x0b\x61ttribution\x18\x08 \x01(\t\x12\x12\n\nrepository\x18\t \x01(\t\x12\x10\n\x08logo_url\x18\n \x01(\t\x12\x1b\n\x13plugin_download_url\x18\x0b \x01(\t\x12\x11\n\tpublisher\x18\x0c \x01(\t\x12\x16\n\tnamespace\x18\r \x01(\tH\x01\x88\x01\x01\x12\'\n\x04meta\x18\x0e \x01(\x0b\x32\x14.codegen.PackageMetaH\x02\x88\x01\x01\x12\x1d\n\x15\x61llowed_package_names\x18\x0f \x03(\t\x12\x36\n\tlanguages\x18\x10 \x03(\x0b\x32#.codegen.PackageInfo.LanguagesEntry\x1a\x30\n\x0eLanguagesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x42\n\n\x08_versionB\x0c\n\n_namespaceB\x07\n\x05_meta\";\n\x17GetPartialSchemaRequest\x12\x0f\n\x07package\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t2\x93\x01\n\x06Loader\x12\x44\n\tGetSchema\x12\x19.codegen.GetSchemaRequest\x1a\x1a.codegen.GetSchemaResponse\"\x00\x12\x43\n\x0eGetPackageInfo\x12\x19.codegen.GetSchemaRequest\x1a\x14.codegen.PackageInfo\"\x00\x32[\n\rPartialLoader\x12J\n\x0eGetPackageInfo\x12 .codegen.GetPartialSchemaRequest\x1a\x14.codegen.PackageInfo\"\x00\x42\x32Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,18 +32,24 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'pulumi.codegen.loader_pb2',
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegen'
+  _globals['_PACKAGEINFO_LANGUAGESENTRY']._loaded_options = None
+  _globals['_PACKAGEINFO_LANGUAGESENTRY']._serialized_options = b'8\001'
   _globals['_PARAMETERIZATION']._serialized_start=40
   _globals['_PARAMETERIZATION']._serialized_end=104
   _globals['_GETSCHEMAREQUEST']._serialized_start=106
   _globals['_GETSCHEMAREQUEST']._serialized_end=233
   _globals['_GETSCHEMARESPONSE']._serialized_start=235
   _globals['_GETSCHEMARESPONSE']._serialized_end=270
-  _globals['_PACKAGEINFO']._serialized_start=272
-  _globals['_PACKAGEINFO']._serialized_end=333
-  _globals['_GETPARTIALSCHEMAREQUEST']._serialized_start=335
-  _globals['_GETPARTIALSCHEMAREQUEST']._serialized_end=394
-  _globals['_LOADER']._serialized_start=397
-  _globals['_LOADER']._serialized_end=544
-  _globals['_PARTIALLOADER']._serialized_start=546
-  _globals['_PARTIALLOADER']._serialized_end=637
+  _globals['_PACKAGEMETA']._serialized_start=272
+  _globals['_PACKAGEMETA']._serialized_end=330
+  _globals['_PACKAGEINFO']._serialized_start=333
+  _globals['_PACKAGEINFO']._serialized_end=822
+  _globals['_PACKAGEINFO_LANGUAGESENTRY']._serialized_start=739
+  _globals['_PACKAGEINFO_LANGUAGESENTRY']._serialized_end=787
+  _globals['_GETPARTIALSCHEMAREQUEST']._serialized_start=824
+  _globals['_GETPARTIALSCHEMAREQUEST']._serialized_end=883
+  _globals['_LOADER']._serialized_start=886
+  _globals['_LOADER']._serialized_end=1033
+  _globals['_PARTIALLOADER']._serialized_start=1035
+  _globals['_PARTIALLOADER']._serialized_end=1126
 # @@protoc_insertion_point(module_scope)

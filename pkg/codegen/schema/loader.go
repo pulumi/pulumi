@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 // ParameterizationDescriptor is the serializable description of a dependency's parameterization.
@@ -101,6 +102,12 @@ type ReferenceLoader interface {
 	LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error)
 
 	LoadPackageReferenceV2(ctx context.Context, descriptor *PackageDescriptor) (PackageReference, error)
+}
+
+type PartialLoader interface {
+	ReferenceLoader
+
+	GetPackageInfo(ctx context.Context, request *codegenrpc.GetSchemaRequest) (*codegenrpc.PackageInfo, error)
 }
 
 type pluginLoader struct {

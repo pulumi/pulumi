@@ -215,17 +215,104 @@ func (x *GetSchemaResponse) GetSchema() []byte {
 	return nil
 }
 
+type PackageMeta struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A regex that is used by the importer to extract a module name from the module portion of a type token.
+	// Packages that use the module format \"namespace1/namespace2/.../namespaceN\" do not need to specify a
+	// format. The regex must define one capturing group that contains the module name, which must be
+	// formatted as \"namespace1/namespace2/...namespaceN\".
+	ModuleFormat string `protobuf:"bytes,1,opt,name=module_format,json=moduleFormat,proto3" json:"module_format,omitempty"`
+	// Write the package to support the pack command.
+	SupportPack   bool `protobuf:"varint,2,opt,name=support_pack,json=supportPack,proto3" json:"support_pack,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PackageMeta) Reset() {
+	*x = PackageMeta{}
+	mi := &file_pulumi_codegen_loader_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PackageMeta) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PackageMeta) ProtoMessage() {}
+
+func (x *PackageMeta) ProtoReflect() protoreflect.Message {
+	mi := &file_pulumi_codegen_loader_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PackageMeta.ProtoReflect.Descriptor instead.
+func (*PackageMeta) Descriptor() ([]byte, []int) {
+	return file_pulumi_codegen_loader_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *PackageMeta) GetModuleFormat() string {
+	if x != nil {
+		return x.ModuleFormat
+	}
+	return ""
+}
+
+func (x *PackageMeta) GetSupportPack() bool {
+	if x != nil {
+		return x.SupportPack
+	}
+	return false
+}
+
 type PackageInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Version       *string                `protobuf:"bytes,2,opt,name=version,proto3,oneof" json:"version,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The unqualified name of the package (e.g. \"aws\", \"azure\", \"gcp\", \"kubernetes\", \"random\").
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The human-friendly name of the package.
+	DisplayName string `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	// The version of the package. The version must be valid semver.
+	Version *string `protobuf:"bytes,3,opt,name=version,proto3,oneof" json:"version,omitempty"`
+	// The description of the package. Descriptions are interpreted as Markdown.
+	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	// The list of keywords that are associated with the package, if any.
+	Keywords []string `protobuf:"bytes,5,rep,name=keywords,proto3" json:"keywords,omitempty"`
+	// The package's homepage.
+	Homepage string `protobuf:"bytes,6,opt,name=homepage,proto3" json:"homepage,omitempty"`
+	// The name of the license used for the package's contents.
+	License string `protobuf:"bytes,7,opt,name=license,proto3" json:"license,omitempty"`
+	// Freeform text attribution of derived work, if required.
+	Attribution string `protobuf:"bytes,8,opt,name=attribution,proto3" json:"attribution,omitempty"`
+	// The URL at which the package's sources can be found.
+	Repository string `protobuf:"bytes,9,opt,name=repository,proto3" json:"repository,omitempty"`
+	// The URL of the package's logo, if any.
+	LogoUrl string `protobuf:"bytes,10,opt,name=logo_url,json=logoUrl,proto3" json:"logo_url,omitempty"`
+	// The URL to use when downloading the provider plugin binary.
+	PluginDownloadUrl string `protobuf:"bytes,11,opt,name=plugin_download_url,json=pluginDownloadUrl,proto3" json:"plugin_download_url,omitempty"`
+	// The name of the person or organization that authored and published the package.
+	Publisher string `protobuf:"bytes,12,opt,name=publisher,proto3" json:"publisher,omitempty"`
+	// The namespace of the package. Used to disambiguate the package name. Defaults to 'pulumi' when not specified.
+	Namespace *string `protobuf:"bytes,13,opt,name=namespace,proto3,oneof" json:"namespace,omitempty"`
+	// Format metadata about this package.
+	Meta *PackageMeta `protobuf:"bytes,14,opt,name=meta,proto3,oneof" json:"meta,omitempty"`
+	// A list of allowed package names in addition to the name property.
+	AllowedPackageNames []string `protobuf:"bytes,15,rep,name=allowed_package_names,json=allowedPackageNames,proto3" json:"allowed_package_names,omitempty"`
+	// Additional language-specific data about the package.
+	Languages     map[string]string `protobuf:"bytes,16,rep,name=languages,proto3" json:"languages,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PackageInfo) Reset() {
 	*x = PackageInfo{}
-	mi := &file_pulumi_codegen_loader_proto_msgTypes[3]
+	mi := &file_pulumi_codegen_loader_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -237,7 +324,7 @@ func (x *PackageInfo) String() string {
 func (*PackageInfo) ProtoMessage() {}
 
 func (x *PackageInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_codegen_loader_proto_msgTypes[3]
+	mi := &file_pulumi_codegen_loader_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -250,7 +337,7 @@ func (x *PackageInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PackageInfo.ProtoReflect.Descriptor instead.
 func (*PackageInfo) Descriptor() ([]byte, []int) {
-	return file_pulumi_codegen_loader_proto_rawDescGZIP(), []int{3}
+	return file_pulumi_codegen_loader_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *PackageInfo) GetName() string {
@@ -260,11 +347,109 @@ func (x *PackageInfo) GetName() string {
 	return ""
 }
 
+func (x *PackageInfo) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
 func (x *PackageInfo) GetVersion() string {
 	if x != nil && x.Version != nil {
 		return *x.Version
 	}
 	return ""
+}
+
+func (x *PackageInfo) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *PackageInfo) GetKeywords() []string {
+	if x != nil {
+		return x.Keywords
+	}
+	return nil
+}
+
+func (x *PackageInfo) GetHomepage() string {
+	if x != nil {
+		return x.Homepage
+	}
+	return ""
+}
+
+func (x *PackageInfo) GetLicense() string {
+	if x != nil {
+		return x.License
+	}
+	return ""
+}
+
+func (x *PackageInfo) GetAttribution() string {
+	if x != nil {
+		return x.Attribution
+	}
+	return ""
+}
+
+func (x *PackageInfo) GetRepository() string {
+	if x != nil {
+		return x.Repository
+	}
+	return ""
+}
+
+func (x *PackageInfo) GetLogoUrl() string {
+	if x != nil {
+		return x.LogoUrl
+	}
+	return ""
+}
+
+func (x *PackageInfo) GetPluginDownloadUrl() string {
+	if x != nil {
+		return x.PluginDownloadUrl
+	}
+	return ""
+}
+
+func (x *PackageInfo) GetPublisher() string {
+	if x != nil {
+		return x.Publisher
+	}
+	return ""
+}
+
+func (x *PackageInfo) GetNamespace() string {
+	if x != nil && x.Namespace != nil {
+		return *x.Namespace
+	}
+	return ""
+}
+
+func (x *PackageInfo) GetMeta() *PackageMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *PackageInfo) GetAllowedPackageNames() []string {
+	if x != nil {
+		return x.AllowedPackageNames
+	}
+	return nil
+}
+
+func (x *PackageInfo) GetLanguages() map[string]string {
+	if x != nil {
+		return x.Languages
+	}
+	return nil
 }
 
 type GetPartialSchemaRequest struct {
@@ -277,7 +462,7 @@ type GetPartialSchemaRequest struct {
 
 func (x *GetPartialSchemaRequest) Reset() {
 	*x = GetPartialSchemaRequest{}
-	mi := &file_pulumi_codegen_loader_proto_msgTypes[4]
+	mi := &file_pulumi_codegen_loader_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -289,7 +474,7 @@ func (x *GetPartialSchemaRequest) String() string {
 func (*GetPartialSchemaRequest) ProtoMessage() {}
 
 func (x *GetPartialSchemaRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_codegen_loader_proto_msgTypes[4]
+	mi := &file_pulumi_codegen_loader_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -302,7 +487,7 @@ func (x *GetPartialSchemaRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPartialSchemaRequest.ProtoReflect.Descriptor instead.
 func (*GetPartialSchemaRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_codegen_loader_proto_rawDescGZIP(), []int{4}
+	return file_pulumi_codegen_loader_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetPartialSchemaRequest) GetPackage() string {
@@ -334,12 +519,38 @@ const file_pulumi_codegen_loader_proto_rawDesc = "" +
 	"\fdownload_url\x18\x03 \x01(\tR\vdownloadUrl\x12E\n" +
 	"\x10parameterization\x18\x04 \x01(\v2\x19.codegen.ParameterizationR\x10parameterization\"+\n" +
 	"\x11GetSchemaResponse\x12\x16\n" +
-	"\x06schema\x18\x01 \x01(\fR\x06schema\"L\n" +
+	"\x06schema\x18\x01 \x01(\fR\x06schema\"U\n" +
+	"\vPackageMeta\x12#\n" +
+	"\rmodule_format\x18\x01 \x01(\tR\fmoduleFormat\x12!\n" +
+	"\fsupport_pack\x18\x02 \x01(\bR\vsupportPack\"\xac\x05\n" +
 	"\vPackageInfo\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1d\n" +
-	"\aversion\x18\x02 \x01(\tH\x00R\aversion\x88\x01\x01B\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12!\n" +
+	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12\x1d\n" +
+	"\aversion\x18\x03 \x01(\tH\x00R\aversion\x88\x01\x01\x12 \n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescription\x12\x1a\n" +
+	"\bkeywords\x18\x05 \x03(\tR\bkeywords\x12\x1a\n" +
+	"\bhomepage\x18\x06 \x01(\tR\bhomepage\x12\x18\n" +
+	"\alicense\x18\a \x01(\tR\alicense\x12 \n" +
+	"\vattribution\x18\b \x01(\tR\vattribution\x12\x1e\n" +
 	"\n" +
-	"\b_version\"M\n" +
+	"repository\x18\t \x01(\tR\n" +
+	"repository\x12\x19\n" +
+	"\blogo_url\x18\n" +
+	" \x01(\tR\alogoUrl\x12.\n" +
+	"\x13plugin_download_url\x18\v \x01(\tR\x11pluginDownloadUrl\x12\x1c\n" +
+	"\tpublisher\x18\f \x01(\tR\tpublisher\x12!\n" +
+	"\tnamespace\x18\r \x01(\tH\x01R\tnamespace\x88\x01\x01\x12-\n" +
+	"\x04meta\x18\x0e \x01(\v2\x14.codegen.PackageMetaH\x02R\x04meta\x88\x01\x01\x122\n" +
+	"\x15allowed_package_names\x18\x0f \x03(\tR\x13allowedPackageNames\x12A\n" +
+	"\tlanguages\x18\x10 \x03(\v2#.codegen.PackageInfo.LanguagesEntryR\tlanguages\x1a<\n" +
+	"\x0eLanguagesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\n" +
+	"\n" +
+	"\b_versionB\f\n" +
+	"\n" +
+	"_namespaceB\a\n" +
+	"\x05_meta\"M\n" +
 	"\x17GetPartialSchemaRequest\x12\x18\n" +
 	"\apackage\x18\x01 \x01(\tR\apackage\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion2\x93\x01\n" +
@@ -361,27 +572,31 @@ func file_pulumi_codegen_loader_proto_rawDescGZIP() []byte {
 	return file_pulumi_codegen_loader_proto_rawDescData
 }
 
-var file_pulumi_codegen_loader_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_pulumi_codegen_loader_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_pulumi_codegen_loader_proto_goTypes = []any{
 	(*Parameterization)(nil),        // 0: codegen.Parameterization
 	(*GetSchemaRequest)(nil),        // 1: codegen.GetSchemaRequest
 	(*GetSchemaResponse)(nil),       // 2: codegen.GetSchemaResponse
-	(*PackageInfo)(nil),             // 3: codegen.PackageInfo
-	(*GetPartialSchemaRequest)(nil), // 4: codegen.GetPartialSchemaRequest
+	(*PackageMeta)(nil),             // 3: codegen.PackageMeta
+	(*PackageInfo)(nil),             // 4: codegen.PackageInfo
+	(*GetPartialSchemaRequest)(nil), // 5: codegen.GetPartialSchemaRequest
+	nil,                             // 6: codegen.PackageInfo.LanguagesEntry
 }
 var file_pulumi_codegen_loader_proto_depIdxs = []int32{
 	0, // 0: codegen.GetSchemaRequest.parameterization:type_name -> codegen.Parameterization
-	1, // 1: codegen.Loader.GetSchema:input_type -> codegen.GetSchemaRequest
-	1, // 2: codegen.Loader.GetPackageInfo:input_type -> codegen.GetSchemaRequest
-	4, // 3: codegen.PartialLoader.GetPackageInfo:input_type -> codegen.GetPartialSchemaRequest
-	2, // 4: codegen.Loader.GetSchema:output_type -> codegen.GetSchemaResponse
-	3, // 5: codegen.Loader.GetPackageInfo:output_type -> codegen.PackageInfo
-	3, // 6: codegen.PartialLoader.GetPackageInfo:output_type -> codegen.PackageInfo
-	4, // [4:7] is the sub-list for method output_type
-	1, // [1:4] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	3, // 1: codegen.PackageInfo.meta:type_name -> codegen.PackageMeta
+	6, // 2: codegen.PackageInfo.languages:type_name -> codegen.PackageInfo.LanguagesEntry
+	1, // 3: codegen.Loader.GetSchema:input_type -> codegen.GetSchemaRequest
+	1, // 4: codegen.Loader.GetPackageInfo:input_type -> codegen.GetSchemaRequest
+	5, // 5: codegen.PartialLoader.GetPackageInfo:input_type -> codegen.GetPartialSchemaRequest
+	2, // 6: codegen.Loader.GetSchema:output_type -> codegen.GetSchemaResponse
+	4, // 7: codegen.Loader.GetPackageInfo:output_type -> codegen.PackageInfo
+	4, // 8: codegen.PartialLoader.GetPackageInfo:output_type -> codegen.PackageInfo
+	6, // [6:9] is the sub-list for method output_type
+	3, // [3:6] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_pulumi_codegen_loader_proto_init() }
@@ -389,14 +604,14 @@ func file_pulumi_codegen_loader_proto_init() {
 	if File_pulumi_codegen_loader_proto != nil {
 		return
 	}
-	file_pulumi_codegen_loader_proto_msgTypes[3].OneofWrappers = []any{}
+	file_pulumi_codegen_loader_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_codegen_loader_proto_rawDesc), len(file_pulumi_codegen_loader_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

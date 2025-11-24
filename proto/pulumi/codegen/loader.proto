@@ -24,6 +24,7 @@ service Loader {
     // GetSchema tries to find a schema for the given package and version.
     rpc GetSchema(GetSchemaRequest) returns (GetSchemaResponse) {}
 
+    // GetPackageInfo gets the top level information about a package.
     rpc GetPackageInfo(GetSchemaRequest) returns (PackageInfo) {}
 }
 
@@ -52,9 +53,49 @@ message GetSchemaResponse {
     bytes schema = 1;
 }
 
+message PackageMeta {
+    // A regex that is used by the importer to extract a module name from the module portion of a type token.
+    // Packages that use the module format \"namespace1/namespace2/.../namespaceN\" do not need to specify a
+    // format. The regex must define one capturing group that contains the module name, which must be
+    // formatted as \"namespace1/namespace2/...namespaceN\".
+    string module_format = 1;
+    // Write the package to support the pack command.
+    bool support_pack = 2;
+}
+
 message PackageInfo {
+    // The unqualified name of the package (e.g. \"aws\", \"azure\", \"gcp\", \"kubernetes\", \"random\").
     string name = 1;
-    optional string version = 2;
+    // The human-friendly name of the package.
+    string display_name = 2;
+    // The version of the package. The version must be valid semver.
+    optional string version = 3;
+    // The description of the package. Descriptions are interpreted as Markdown.
+    string description = 4;
+    // The list of keywords that are associated with the package, if any.
+    repeated string keywords = 5;
+    // The package's homepage.
+    string homepage = 6;
+    // The name of the license used for the package's contents.
+    string license = 7;
+    // Freeform text attribution of derived work, if required.
+    string attribution = 8;
+    // The URL at which the package's sources can be found.
+    string repository = 9;
+    // The URL of the package's logo, if any.
+    string logo_url = 10;
+    // The URL to use when downloading the provider plugin binary.
+    string plugin_download_url = 11;
+    // The name of the person or organization that authored and published the package.
+    string publisher = 12;
+    // The namespace of the package. Used to disambiguate the package name. Defaults to 'pulumi' when not specified.
+    optional string namespace = 13;
+    // Format metadata about this package.
+    optional PackageMeta meta = 14;
+    // A list of allowed package names in addition to the name property.
+    repeated string allowed_package_names = 15;
+    // Additional language-specific data about the package.
+    map<string, string> languages = 16;
 }
 
 // PartialLoader is a service a provider can implement to allow the engine to only load partial parts of the schema.

@@ -79,7 +79,8 @@ getSchema: {
     responseSerialize: serialize_codegen_GetSchemaResponse,
     responseDeserialize: deserialize_codegen_GetSchemaResponse,
   },
-  getPackageInfo: {
+  // GetPackageInfo gets the top level information about a package.
+getPackageInfo: {
     path: '/codegen.Loader/GetPackageInfo',
     requestStream: false,
     responseStream: false,

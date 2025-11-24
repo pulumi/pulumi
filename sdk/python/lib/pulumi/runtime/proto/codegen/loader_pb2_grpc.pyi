@@ -46,6 +46,7 @@ class LoaderStub:
         pulumi.codegen.loader_pb2.GetSchemaRequest,
         pulumi.codegen.loader_pb2.PackageInfo,
     ]
+    """GetPackageInfo gets the top level information about a package."""
 
 class LoaderAsyncStub:
     """Loader is a service for getting schemas from the Pulumi engine for use in code generators and other tools.
@@ -62,6 +63,7 @@ class LoaderAsyncStub:
         pulumi.codegen.loader_pb2.GetSchemaRequest,
         pulumi.codegen.loader_pb2.PackageInfo,
     ]
+    """GetPackageInfo gets the top level information about a package."""
 
 class LoaderServicer(metaclass=abc.ABCMeta):
     """Loader is a service for getting schemas from the Pulumi engine for use in code generators and other tools.
@@ -81,7 +83,8 @@ class LoaderServicer(metaclass=abc.ABCMeta):
         self,
         request: pulumi.codegen.loader_pb2.GetSchemaRequest,
         context: _ServicerContext,
-    ) -> typing.Union[pulumi.codegen.loader_pb2.PackageInfo, collections.abc.Awaitable[pulumi.codegen.loader_pb2.PackageInfo]]: ...
+    ) -> typing.Union[pulumi.codegen.loader_pb2.PackageInfo, collections.abc.Awaitable[pulumi.codegen.loader_pb2.PackageInfo]]:
+        """GetPackageInfo gets the top level information about a package."""
 
 def add_LoaderServicer_to_server(servicer: LoaderServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...
 
