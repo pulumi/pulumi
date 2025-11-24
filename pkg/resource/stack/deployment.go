@@ -390,21 +390,17 @@ func DeserializeStackOutputs(
 		return nil, nil
 	}
 
-	_, dec, completeBatch, err := initializeSecretsManagerAndDecrypter(deployment, secretsProv)
+	secretsManager, err := initializeSecretsManager(deployment, secretsProv)
 	if err != nil {
 		return nil, err
 	}
 
-	outputs, err := DeserializeProperties(stackResource.Outputs, dec)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := completeBatch(ctx); err != nil {
-		return nil, err
-	}
-
-	return outputs, nil
+	return BatchDecrypt(
+		ctx,
+		secretsManager,
+		func(ctx context.Context, dec config.Decrypter) (resource.PropertyMap, error) {
+			return DeserializeProperties(stackResource.Outputs, dec)
+		})
 }
 
 // DeserializeDeploymentV3 deserializes a typed DeploymentV3 into a `deploy.Snapshot`.
@@ -419,31 +415,42 @@ func DeserializeDeploymentV3(
 		return nil, err
 	}
 
-	secretsManager, dec, completeBatch, err := initializeSecretsManagerAndDecrypter(deployment, secretsProv)
+	secretsManager, err := initializeSecretsManager(deployment, secretsProv)
 	if err != nil {
 		return nil, err
 	}
 
-	// For every serialized resource vertex, create a ResourceDeployment out of it.
-	resources := slice.Prealloc[*resource.State](len(deployment.Resources))
-	for _, res := range deployment.Resources {
-		desres, err := DeserializeResource(res, dec)
-		if err != nil {
-			return nil, err
-		}
-		resources = append(resources, desres)
+	type deserializedData struct {
+		resources []*resource.State
+		ops       []resource.Operation
 	}
 
-	ops := slice.Prealloc[resource.Operation](len(deployment.PendingOperations))
-	for _, op := range deployment.PendingOperations {
-		desop, err := DeserializeOperation(op, dec)
-		if err != nil {
-			return nil, err
-		}
-		ops = append(ops, desop)
-	}
+	data, err := BatchDecrypt(
+		ctx,
+		secretsManager,
+		func(ctx context.Context, dec config.Decrypter) (deserializedData, error) {
+			// For every serialized resource vertex, create a ResourceDeployment out of it.
+			resources := slice.Prealloc[*resource.State](len(deployment.Resources))
+			for _, res := range deployment.Resources {
+				desres, err := DeserializeResource(res, dec)
+				if err != nil {
+					return deserializedData{}, err
+				}
+				resources = append(resources, desres)
+			}
 
-	if err := completeBatch(ctx); err != nil {
+			ops := slice.Prealloc[resource.Operation](len(deployment.PendingOperations))
+			for _, op := range deployment.PendingOperations {
+				desop, err := DeserializeOperation(op, dec)
+				if err != nil {
+					return deserializedData{}, err
+				}
+				ops = append(ops, desop)
+			}
+
+			return deserializedData{resources: resources, ops: ops}, nil
+		})
+	if err != nil {
 		return nil, err
 	}
 
@@ -456,43 +463,28 @@ func DeserializeDeploymentV3(
 		}
 	}
 
-	return deploy.NewSnapshot(*manifest, secretsManager, resources, ops, metadata), nil
+	return deploy.NewSnapshot(*manifest, secretsManager, data.resources, data.ops, metadata), nil
 }
 
-// initializeSecretsManagerAndDecrypter initializes the secrets manager and decrypter for a deployment.
-// It returns the secrets manager, decrypter, and a completeBatch function that must be called when done.
-func initializeSecretsManagerAndDecrypter(
+// initializeSecretsManager initializes the secrets manager for a deployment.
+func initializeSecretsManager(
 	deployment apitype.DeploymentV3,
 	secretsProv secrets.Provider,
-) (secrets.Manager, config.Decrypter, CompleteCrypterBatch, error) {
+) (secrets.Manager, error) {
 	var secretsManager secrets.Manager
 	if deployment.SecretsProviders != nil && deployment.SecretsProviders.Type != "" {
 		if secretsProv == nil {
-			return nil, nil, nil, errors.New("deployment uses a SecretsProvider but no SecretsProvider was provided")
+			return nil, errors.New("deployment uses a SecretsProvider but no SecretsProvider was provided")
 		}
 
 		sm, err := secretsProv.OfType(deployment.SecretsProviders.Type, deployment.SecretsProviders.State)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, err
 		}
 		secretsManager = sm
 	}
 
-	var dec config.Decrypter
-	var completeBatch CompleteCrypterBatch = func(context.Context) error { return nil }
-	if secretsManager != nil {
-		if batchingSecretsManager, ok := secretsManager.(BatchingSecretsManager); ok {
-			// If the secrets manager supports batching, start a batch operation.
-			dec, completeBatch = batchingSecretsManager.BeginBatchDecryption()
-		} else {
-			dec = secretsManager.Decrypter()
-		}
-	} else {
-		// We'll attempt to continue without a decrypter, but fail if we encounter encrypted secrets.
-		dec = config.NewErrorCrypter("snapshot contains encrypted secrets but no secrets manager could be found")
-	}
-
-	return secretsManager, dec, completeBatch, nil
+	return secretsManager, nil
 }
 
 // SerializeResource turns a resource into a structure suitable for serialization.

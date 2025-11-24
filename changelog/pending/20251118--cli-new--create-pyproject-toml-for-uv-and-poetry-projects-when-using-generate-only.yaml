@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/new
+  description: Create pyproject.toml for uv and poetry projects when using --generate-only

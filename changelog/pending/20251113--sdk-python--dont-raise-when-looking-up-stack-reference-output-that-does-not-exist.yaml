@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: Don’t raise when looking up a stack reference output that does not exist

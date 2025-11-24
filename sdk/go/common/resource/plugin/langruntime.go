@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	structpb "google.golang.org/protobuf/types/known/structpb"
@@ -103,9 +104,12 @@ func (info ProgramInfo) Marshal() (*pulumirpc.ProgramInfo, error) {
 }
 
 type InstallDependenciesRequest struct {
-	Info                    ProgramInfo
+	Info ProgramInfo
+	// True if the host should use language-specific version managers, such as `pyenv` or `nvm`, to set up the version
+	// of the language toolchain used.
 	UseLanguageVersionTools bool
-	IsPlugin                bool
+	// True if this install is for a plugin, as opposed to a top level Pulumi program.
+	IsPlugin bool
 }
 
 func (options InstallDependenciesRequest) String() string {
@@ -138,6 +142,9 @@ type LanguageRuntime interface {
 
 	// RuntimeOptionsPrompts returns additional options that can be set for the runtime.
 	RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPrompt, error)
+
+	// Template allows the language runtime to perform additional templating on a newly instantiated project template.
+	Template(info ProgramInfo, projectName tokens.PackageName) error
 
 	// About returns information about the language runtime.
 	About(info ProgramInfo) (AboutInfo, error)

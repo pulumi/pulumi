@@ -17,6 +17,7 @@ package policy
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/opentracing/opentracing-go"
@@ -80,7 +81,7 @@ func InstallPluginDependencies(ctx context.Context, root string, projRuntime wor
 	err = pkgCmdUtil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
 		Info:     programInfo,
 		IsPlugin: true,
-	})
+	}, os.Stdout, os.Stderr)
 	if err != nil {
 		return fmt.Errorf("installing dependencies failed: %w", err)
 	}

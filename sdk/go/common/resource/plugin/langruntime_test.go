@@ -97,6 +97,12 @@ func (m *MockLanguageRuntimeClient) RuntimeOptionsPrompts(
 	panic("not implemented")
 }
 
+func (m *MockLanguageRuntimeClient) Template(
+	ctx context.Context, in *pulumirpc.TemplateRequest, opts ...grpc.CallOption,
+) (*pulumirpc.TemplateResponse, error) {
+	panic("not implemented")
+}
+
 func (m *MockLanguageRuntimeClient) About(
 	ctx context.Context, in *pulumirpc.AboutRequest, opts ...grpc.CallOption,
 ) (*pulumirpc.AboutResponse, error) {

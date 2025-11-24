@@ -56,6 +56,7 @@ func TestRegress13774(t *testing.T) {
 		description:       "description", // Needs special escaping for YAML
 		templateNameOrURL: "typescript",
 		force:             true,
+		languageTemplate:  languageTemplateMock,
 	}
 
 	// Create new project.
@@ -88,6 +89,7 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 		description:       "foo: bar", // Needs special escaping for YAML
 		stack:             orgStackName,
 		templateNameOrURL: "typescript",
+		languageTemplate:  languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)
@@ -122,6 +124,7 @@ func TestCreatingStackWithNumericName(t *testing.T) {
 		secretsProvider:   "default",
 		stack:             orgStackName,
 		templateNameOrURL: "yaml",
+		languageTemplate:  languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)
@@ -152,6 +155,7 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 		prompt:            promptMock(uniqueProjectName, orgStackName),
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
+		languageTemplate:  languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)
@@ -176,6 +180,7 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 		stack:             stackName,
 		templateNameOrURL: "typescript",
 		yes:               true,
+		languageTemplate:  languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)
@@ -214,6 +219,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 		stack:             stackName,
 		templateNameOrURL: "typescript",
 		yes:               true,
+		languageTemplate:  languageTemplateMock,
 	}
 
 	require.NoError(t, runNew(context.Background(), args))
@@ -243,6 +249,7 @@ func TestRunNewYesNoTemplate(t *testing.T) {
 		secretsProvider:   "default",
 		stack:             stackName,
 		generateOnly:      true,
+		languageTemplate:  languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)
@@ -262,6 +269,7 @@ func TestRunNewYesWithTemplate(t *testing.T) {
 		secretsProvider:   "default",
 		stack:             stackName,
 		generateOnly:      true,
+		languageTemplate:  languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)
@@ -288,6 +296,7 @@ func TestRunNewYesWithAILanguage(t *testing.T) {
 		stack:                 stackName,
 		generateOnly:          true,
 		promptForAIProjectURL: promptForAIProjectURL,
+		languageTemplate:      languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)

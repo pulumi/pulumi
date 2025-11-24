@@ -1173,6 +1173,12 @@ func (host *goLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 	return &pulumirpc.RuntimeOptionsResponse{}, nil
 }
 
+func (host *goLanguageHost) Template(ctx context.Context,
+	req *pulumirpc.TemplateRequest,
+) (*pulumirpc.TemplateResponse, error) {
+	return &pulumirpc.TemplateResponse{}, nil
+}
+
 func (host *goLanguageHost) About(ctx context.Context, req *pulumirpc.AboutRequest) (*pulumirpc.AboutResponse, error) {
 	getResponse := func(execString string, args ...string) (string, string, error) {
 		ex, err := executable.FindExecutable(execString)

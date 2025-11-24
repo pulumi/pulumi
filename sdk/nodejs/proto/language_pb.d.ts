@@ -553,6 +553,49 @@ export namespace RuntimeOptionsResponse {
     }
 }
 
+export class TemplateRequest extends jspb.Message { 
+
+    hasInfo(): boolean;
+    clearInfo(): void;
+    getInfo(): ProgramInfo | undefined;
+    setInfo(value?: ProgramInfo): TemplateRequest;
+    getProjectName(): string;
+    setProjectName(value: string): TemplateRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): TemplateRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: TemplateRequest): TemplateRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: TemplateRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): TemplateRequest;
+    static deserializeBinaryFromReader(message: TemplateRequest, reader: jspb.BinaryReader): TemplateRequest;
+}
+
+export namespace TemplateRequest {
+    export type AsObject = {
+        info?: ProgramInfo.AsObject,
+        projectName: string,
+    }
+}
+
+export class TemplateResponse extends jspb.Message { 
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): TemplateResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: TemplateResponse): TemplateResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: TemplateResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): TemplateResponse;
+    static deserializeBinaryFromReader(message: TemplateResponse, reader: jspb.BinaryReader): TemplateResponse;
+}
+
+export namespace TemplateResponse {
+    export type AsObject = {
+    }
+}
+
 export class RunPluginRequest extends jspb.Message { 
     getPwd(): string;
     setPwd(value: string): RunPluginRequest;
