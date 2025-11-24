@@ -138,24 +138,24 @@ python3 -m grpc_tools.protoc \
 
 # Fix Python import paths (only for files directly in pulumi/, matching original Docker script behavior)
 for pyfile in "$TEMP_DIR_PY"/pulumi/*.py; do
-    [ -f "$pyfile" ] && $SED_INPLACE "s/^from pulumi import \([^ ]*\)_pb2 as \([^ ]*\)$/from . import \1_pb2 as \2/" "$pyfile"
+    $SED_INPLACE "s/^from pulumi import \([^ ]*\)_pb2 as \([^ ]*\)$/from . import \1_pb2 as \2/" "$pyfile"
 done
 for pyfile in "$TEMP_DIR_PY"/pulumi/*.py; do
-    [ -f "$pyfile" ] && $SED_INPLACE "s/^from pulumi.codegen import \([^ ]*\)_pb2 as \([^ ]*\)$/from .codegen import \1_pb2 as \2/" "$pyfile"
+    $SED_INPLACE "s/^from pulumi.codegen import \([^ ]*\)_pb2 as \([^ ]*\)$/from .codegen import \1_pb2 as \2/" "$pyfile"
 done
-find "$TEMP_DIR_PY/pulumi" -type f -name "*.py.bak" -delete 2>/dev/null || true
 
 # Fix mypy stub files (only add imports if they don't already exist, matching original Docker script)
 for pyifile in "$TEMP_DIR_PY"/pulumi/*.pyi; do
-    [ -f "$pyifile" ] && $SED_INPLACE "s/^import grpc$/import grpc\nimport grpc.aio\nimport typing/" "$pyifile"
+    $SED_INPLACE "s/^import grpc$/import grpc\nimport grpc.aio\nimport typing/" "$pyifile"
 done
 for pyifile in "$TEMP_DIR_PY"/pulumi/*.pyi; do
-    [ -f "$pyifile" ] && $SED_INPLACE "s/: grpc\.Server/: typing.Union[grpc.Server, grpc.aio.Server]/" "$pyifile"
+    $SED_INPLACE "s/: grpc\.Server/: typing.Union[grpc.Server, grpc.aio.Server]/" "$pyifile"
 done
 for pyifile in "$TEMP_DIR_PY"/pulumi/*.pyi; do
-    [ -f "$pyifile" ] && $SED_INPLACE "s/@abc.abstractmethod//" "$pyifile"
+    $SED_INPLACE "s/@abc.abstractmethod//" "$pyifile"
 done
-find "$TEMP_DIR_PY/pulumi" -type f -name "*.pyi.bak" -delete 2>/dev/null || true
+
+find "$TEMP_DIR_PY/pulumi" -type f -name "*.py*.bak" -delete 2>/dev/null || true
 
 rm -rf "$PY_PULUMIRPC"/*
 cp -r "$TEMP_DIR_PY"/pulumi/* "$PY_PULUMIRPC"
