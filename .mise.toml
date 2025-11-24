@@ -25,4 +25,9 @@ uv = "0.8.22"
 "go:go.abhg.dev/requiredfield/cmd/requiredfield" = "0.7.1"
 "github:WebAssembly/wabt" = "1.0.37"
 
-[plugins]
+protoc = "29.5"
+"go:google.golang.org/protobuf/cmd/protoc-gen-go" = "v1.36.6"
+"go:google.golang.org/grpc/cmd/protoc-gen-go-grpc" = "v1.5.1"
+
+[alias]
+protoc = "https://github.com/paxosglobal/asdf-protoc.git"

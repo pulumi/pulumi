@@ -1,0 +1,13 @@
+{
+  "name": "pulumi-proto-tools",
+  "version": "1.0.0",
+  "description": "Node.js tools for protobuf generation",
+  "private": true,
+  "dependencies": {
+    "@grpc/grpc-js": "1.13.3",
+    "grpc-tools": "1.13.0",
+    "grpc_tools_node_protoc_ts": "5.3.3",
+    "protoc-gen-js": "3.21.4"
+  }
+}
+

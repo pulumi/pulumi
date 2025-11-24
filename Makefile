@@ -48,36 +48,22 @@ ensure: .make/ensure/go .make/ensure/phony $(SUB_PROJECTS:%=%_ensure)
 	@mkdir -p .make/ensure && touch .make/ensure/phony
 
 .PHONY: build-proto build_proto
-PROTO_FILES := $(sort $(shell find proto -type f -name '*.proto') proto/generate.sh proto/build-container/Dockerfile $(wildcard proto/build-container/scripts/*))
-PROTO_CKSUM = cksum ${PROTO_FILES} | LC_ALL=C sort --key=3
 build-proto: build_proto
-build_proto: proto/.checksum.txt
-proto/.checksum.txt: ${PROTO_FILES}
+build_proto:
 	@printf "Protobuffer interfaces are ....... "
-	@if [ "$$(cat proto/.checksum.txt)" = "`${PROTO_CKSUM}`" ]; then \
-		printf "\033[0;32malready up to date\033[0m\n"; \
-	else \
-		printf "\033[0;34mout of date: REBUILDING\033[0m\n"; \
-		cd proto && ./generate.sh || exit 1; \
-		cd ../ && ${PROTO_CKSUM} > $@; \
-		printf "\033[0;34mProtobuffer interfaces have been \033[0;32mREBUILT\033[0m\n"; \
-	fi
+	@printf "\033[0;34mREBUILDING\033[0m\n"
+	@cd proto && npm i && \
+	mise exec -- python -m pip install -r requirements.txt && \
+	mise exec -- ./generate.sh || exit 1
+	@printf "\033[0;34mProtobuffer interfaces have been \033[0;32mREBUILT\033[0m\n"
 
-.PHONY: check-proto check_proto
-check-proto: check_proto
-check_proto:
-	@if [ "$$(cat proto/.checksum.txt)" != "`${PROTO_CKSUM}`" ]; then \
-		echo "Protobuf checksum doesn't match. Run \`make build_proto\` to rebuild."; \
-		${PROTO_CKSUM} | diff - proto/.checksum.txt; \
-		exit 1; \
-	fi
 
 .PHONY: generate
 generate::
 	$(call STEP_MESSAGE)
 	echo "This command does not do anything anymore. It will be removed in a future version."
 
-bin/pulumi: proto/.checksum.txt .make/ensure/go $(shell bin/helpmakego pkg/cmd/pulumi)
+bin/pulumi: build_proto .make/ensure/go $(shell bin/helpmakego pkg/cmd/pulumi)
 	go build -C pkg -o ../$@ -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
 .PHONY: bin/pulumi-display.wasm
