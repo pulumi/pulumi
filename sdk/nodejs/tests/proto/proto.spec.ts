@@ -26,6 +26,8 @@ describe("proto", () => {
         it(`${protoFile} does not pollute global state`, () => {
             // This test ensures that importing proto files does not add pulumirpc types to global.proto.
             // The pulumirpc namespace should be module-local, not attached to the global object.
+            // This test is ensuring the script (proto/generate.sh) used to generate the JS proto files
+            // is correctly applying the find/replace tweaks that avoids polluting global state.
 
             // Dynamically import the proto module.
             const protoModule = require(path.join(protoDir, protoFile));
