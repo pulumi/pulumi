@@ -36,9 +36,9 @@ func NewShowCmd(ws workspace.Context, sn string) *cobra.Command {
 		Use:   "show",
 		Short: "Show resources in the stack",
 		Long: "Show resources in the stack" + "\n" +
-			"This Command shows resources with their properties in the stack.\n" +
+			"This Command shows resources with their properties in a stack.\n" +
 			"By default resources of the current stack will be shown, to view\n" +
-			"in other stack --stack can be passed. Resources can be filtered by\n" +
+			"in other stackS --stack can be passed. Resources can be filtered by\n" +
 			"their name using --name.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmdOut := cmd.OutOrStdout()
