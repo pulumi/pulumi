@@ -1724,7 +1724,33 @@ func TestPulumiInstallInstallsPackagesIntoTheCorrectDirectory(t *testing.T) {
 		"github.com/pulumi/component-test-providers/test-provider@b39e20e4e33600e33073ccb2df0ddb46388641dc")
 
 	// Remove the plugin from the local cache and try to install it using `pulumi install`
-	e.RunCommand("pulumi", "plugin", "rm", "--all", "--yes")
+	// e.RunCommand("pulumi", "plugin", "rm", "--all", "--yes")
+
+	if runtime.GOOS == "windows" {
+		// Try to run plugin rm, but if it fails, diagnose which process is holding the file
+		stdout, stderr, err := e.GetCommandResults("pulumi", "plugin", "rm", "--all", "--yes")
+		if err != nil {
+			t.Logf("Plugin rm failed: %v", err)
+			t.Logf("STDOUT: %v", stdout)
+			t.Logf("STDERR: %v", stderr)
+
+			// Download and run handle.exe to diagnose
+			e.RunCommand("powershell", "-Command",
+				"Invoke-WebRequest -Uri 'https://download.sysinternals.com/files/Handle.zip' -OutFile 'Handle.zip'")
+			e.RunCommand("powershell", "-Command", "Expand-Archive -Path 'Handle.zip' -DestinationPath '.'")
+			handleOut, _ := e.RunCommand("cmd", "/c", "handle.exe -accepteula -a -l | findstr plugins")
+			t.Logf("Processes holding plugin files: %v", handleOut)
+
+			// Also show running pulumi processes
+			psOut, _ := e.RunCommand("powershell", "-Command", "Get-Process | Where-Object {$_.ProcessName -like '*pulumi*'}")
+			t.Logf("Pulumi processes: %v", psOut)
+
+			t.Fatalf("Plugin rm failed and diagnostics completed")
+		}
+	} else {
+		e.RunCommand("pulumi", "plugin", "rm", "--all", "--yes")
+	}
+
 	stdout, _ := e.RunCommand("pulumi", "plugin", "ls")
 	require.NotContains(t, stdout, "github.com_pulumi_component-test-providers")
 
