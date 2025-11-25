@@ -696,14 +696,14 @@ dev = [
     { name = "pyright", specifier = "==1.1.404" },
     { name = "pytest", specifier = "~=8.4.0" },
     { name = "pytest-asyncio", specifier = "~=1.2.0" },
-    { name = "pytest-timeout" },
-    { name = "pytest-xdist" },
+    { name = "pytest-timeout", specifier = ">=2.3.1" },
+    { name = "pytest-xdist", specifier = ">=3.8.0" },
     { name = "ruff", specifier = "==0.13.2" },
     { name = "twine", specifier = ">=6.0.1" },
     { name = "types-grpcio", specifier = ">=1.0.0.20250703" },
-    { name = "types-protobuf" },
-    { name = "types-pyyaml" },
-    { name = "wheel" },
+    { name = "types-protobuf", specifier = ">=5.29.1.20241207" },
+    { name = "types-pyyaml", specifier = ">=6.0.12.20241230" },
+    { name = "wheel", specifier = ">=0.45.1" },
 ]
 
 [[package]]
