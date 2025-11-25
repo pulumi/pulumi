@@ -1604,7 +1604,7 @@ func (pt *ProgramTester) exportImport(dir string) error {
 	}()
 
 	if err := pt.runPulumiCommand("pulumi-stack-export", exportCmd, dir, false); err != nil {
-		return err
+		return fmt.Errorf("export: %w", err)
 	}
 
 	if f := pt.opts.ExportStateValidator; f != nil {
@@ -1621,7 +1621,12 @@ func (pt *ProgramTester) exportImport(dir string) error {
 		}
 	}
 
-	return pt.runPulumiCommand("pulumi-stack-import", importCmd, dir, false)
+	err := pt.runPulumiCommand("pulumi-stack-import", importCmd, dir, false)
+	if err != nil {
+		return fmt.Errorf("import: %w", err)
+	}
+
+	return nil
 }
 
 // PreviewAndUpdate runs pulumi preview followed by pulumi up
