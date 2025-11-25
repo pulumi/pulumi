@@ -23,6 +23,7 @@ Regresses https://github.com/pulumi/pulumi/issues/8273
 from copy import deepcopy
 
 import pytest
+import pytest_asyncio
 from pulumi.runtime import settings, mocks
 import pulumi
 
@@ -43,8 +44,8 @@ class MyMonitor(mocks.MockMonitor):
         self.outputs = outputs
 
 
-@pytest.fixture
-def my_mocks():
+@pytest_asyncio.fixture
+async def my_mocks():
     settings.reset_options()
     old_settings = deepcopy(settings.SETTINGS)
     monitor = MyMonitor()
