@@ -107,10 +107,6 @@ var (
 func main() {
 	var tracing string
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
-	flag.String("virtualenv", "", "[obsolete] Virtual environment path to use")
-	flag.String("root", "", "[obsolete] Project root path to use")
-	flag.String("typechecker", "", "[obsolete] Use a typechecker to type check")
-	flag.String("toolchain", "pip", "[obsolete] Select the package manager to use for dependency management.")
 	showVersion := flag.Bool("version", false, "Print the current plugin version and exit")
 
 	// You can use the below flag to request that the language host load a specific executor instead of probing the
