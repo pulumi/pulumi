@@ -1,0 +1,44 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: ["github>pulumi/renovate-config//default.json5"],
+  // TODO: Remove this setting once we're happy with the configuration
+  baseBranches: ["renovate-dev"],
+  enabledManagers: [
+    // Go
+    "gomod",
+
+    // Node
+    "npm",
+
+    // Python
+    "pip_requirements",
+    // "pip_setup",
+    // "poetry",
+    // uv.lock support
+    "pep621",
+
+    // GitHub
+    // "github-actions",
+  ],
+  // The present's ignorePaths has `sdk/**` in it, we don't want that
+  // https://github.com/pulumi/renovate-config/blob/main/default.json5#L55
+  // TODO: do we want to exclude tests & testdata?
+  ignorePaths: [
+    "**/node_modules/**",
+    "**/testdata/**",
+    "**/tests/**",
+  ],
+  // Override for https://github.com/pulumi/renovate-config/blob/main/default.json5#L89
+  // TODO: just for now, while developing, we probably want to have this on `false` so security PRs are created automatically
+  vulnerabilityAlerts: {
+    dependencyDashboardApproval: true,
+  },
+  packageRules: [
+    // TODO: I think this is already set for npm via https://docs.renovatebot.com/presets-security/#securityminimumreleaseagenpm which is part of the `config:best-practices` preset our pulumi preset includes
+    // {
+    //   matchDatasources: ["npm", "pypi", "go"],
+    //    minimumReleaseAge: "3 days",
+    //    prCreation: "not-pending"
+    // }
+  ]
+}
