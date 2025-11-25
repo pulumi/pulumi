@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
-import unittest
 import pytest
+import pytest_asyncio
 
 import pulumi
 from pulumi.runtime import mocks
@@ -46,8 +45,8 @@ async def test_stack_reference_output_details(simple_mock):
     compare_stack_ref_output(expected, does_not_exit)
 
 
-@pytest.fixture
-def simple_mock():
+@pytest_asyncio.fixture
+async def simple_mock():
     mock = StackReferenceOutputMock()
     mocks.set_mocks(mock)
     yield mock

@@ -17,6 +17,7 @@ import asyncio
 import os
 import unittest
 import pytest
+import pytest_asyncio
 
 from pulumi.resource import DependencyProviderResource
 from pulumi.runtime import settings, mocks
@@ -29,12 +30,12 @@ import pulumi
 T = TypeVar("T")
 
 
-class DependencyProviderResourceTests(unittest.TestCase):
-    def test_get_package(self):
-        res = DependencyProviderResource(
-            "urn:pulumi:stack::project::pulumi:providers:aws::default_4_13_0"
-        )
-        self.assertEqual("aws", res.package)
+@pytest.mark.asyncio
+async def test_get_package():
+    res = DependencyProviderResource(
+        "urn:pulumi:stack::project::pulumi:providers:aws::default_4_13_0"
+    )
+    assert "aws" == res.package
 
 
 @pytest.fixture(autouse=True)
@@ -238,14 +239,14 @@ def output_depending_on_resource(
     return pulumi.Output(resources=set([r]), is_known=is_known_fut, future=o.future())
 
 
-@pytest.fixture
-def dep_tracker():
+@pytest_asyncio.fixture
+async def dep_tracker():
     for dt in build_dep_tracker():
         yield dt
 
 
-@pytest.fixture
-def dep_tracker_preview():
+@pytest_asyncio.fixture
+async def dep_tracker_preview():
     for dt in build_dep_tracker(preview=True):
         yield dt
 
