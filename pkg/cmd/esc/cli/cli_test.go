@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/esc/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -196,6 +197,12 @@ func (w *testPulumiWorkspace) GetAccount(key string) (workspace.Account, error) 
 	return w.credentials.Accounts[key], nil
 }
 
+func (w *testPulumiWorkspace) NewAuthContextForTokenExchange(
+	organization, team, user, token, expirationDuration string,
+) (workspace.AuthContext, error) {
+	return workspace.NewAuthContextForTokenExchange(organization, team, user, token, expirationDuration)
+}
+
 type testProvider struct{}
 
 func (testProvider) Schema() (*schema.Schema, *schema.Schema) {
@@ -316,6 +323,32 @@ func (lm *testLoginManager) Login(
 	welcome func(display.Options),
 	current bool,
 	opts display.Options,
+) (*workspace.Account, error) {
+	acct, ok := lm.creds.Accounts[cloudURL]
+	if !ok {
+		if cloudURL != "https://api.pulumi.com" {
+			return nil, errors.New("unauthorized")
+		}
+		acct := workspace.Account{
+			Username:    "test-user",
+			AccessToken: "access-token",
+		}
+		lm.creds.Accounts[cloudURL] = acct
+		return &acct, nil
+	}
+	return &acct, nil
+}
+
+func (lm *testLoginManager) LoginWithOIDCToken(
+	ctx context.Context,
+	sink diag.Sink,
+	cloudURL string,
+	insecure bool,
+	oidcTokenSource string,
+	organization string,
+	scope string,
+	expiration time.Duration,
+	setCurrent bool,
 ) (*workspace.Account, error) {
 	acct, ok := lm.creds.Accounts[cloudURL]
 	if !ok {

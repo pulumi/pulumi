@@ -211,6 +211,12 @@ func (w *Workspace) getCurrentAccountName() (string, error) {
 	return creds.Current, nil
 }
 
+func (w *Workspace) NewAuthContextForTokenExchange(
+	organization, team, user, token, expirationDuration string,
+) (workspace.AuthContext, error) {
+	return w.pulumi.NewAuthContextForTokenExchange(organization, team, user, token, expirationDuration)
+}
+
 // getCredsFilePath returns the path to the esc credentials file on disk, regardless of
 // whether it exists or not.
 func (w *Workspace) getCredsFilePath() (string, error) {

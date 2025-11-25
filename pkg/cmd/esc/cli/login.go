@@ -15,6 +15,8 @@ import (
 	"github.com/pulumi/esc/cmd/esc/cli/workspace"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	pulumi_workspace "github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newLoginCmd(esc *escCommand) *cobra.Command {
@@ -22,6 +24,12 @@ func newLoginCmd(esc *escCommand) *cobra.Command {
 	var defaultOrg string
 	var insecure bool
 	var shared bool
+
+	var oidcToken string
+	var oidcOrg string
+	var oidcTeam string
+	var oidcUser string
+	var oidcExpiration string
 
 	cmd := &cobra.Command{
 		Use:   "login [<url>]",
@@ -76,25 +84,55 @@ func newLoginCmd(esc *escCommand) *cobra.Command {
 				return err
 			}
 
-			account, err := esc.login.Login(
-				ctx,
-				backendURL,
-				insecure,
-				"esc",
-				"Pulumi ESC environments",
-				nil,
-				false,
-				display.Options{Color: esc.colors},
-			)
+			if diy.IsDIYBackendURL(backendURL) {
+				if oidcToken != "" || oidcOrg != "" || oidcTeam != "" || oidcUser != "" || oidcExpiration != "" {
+					return errors.New("oidc-token, oidc-org, oidc-team, oidc-user, " +
+						"and oidc-expiration flags are not supported for this type of backend")
+				}
+			}
+
+			var account *pulumi_workspace.Account
+			var err error
+			if oidcToken != "" {
+				authContext, innerErr := esc.workspace.NewAuthContextForTokenExchange(
+					oidcOrg, oidcTeam, oidcUser, oidcToken, oidcExpiration)
+				if innerErr != nil {
+					return fmt.Errorf("problem logging in: %w", innerErr)
+				}
+				account, err = esc.login.LoginWithOIDCToken(
+					ctx,
+					cmdutil.Diag(),
+					backendURL,
+					insecure,
+					authContext.Token,
+					authContext.Organization,
+					authContext.Scope,
+					authContext.Expiration,
+					false,
+				)
+			} else {
+				account, err = esc.login.Login(
+					ctx,
+					backendURL,
+					insecure,
+					"esc",
+					"Pulumi ESC environments",
+					nil,
+					false,
+					display.Options{Color: esc.colors},
+				)
+			}
+			if err != nil {
+				return fmt.Errorf("problem logging in: %w", err)
+			}
+
 			// if the user has specified a default org to associate with the backend
 			if defaultOrg != "" {
 				if err := esc.workspace.SetBackendConfigDefaultOrg(backendURL, defaultOrg); err != nil {
 					return err
 				}
 			}
-			if err != nil {
-				return fmt.Errorf("problem logging in: %w", err)
-			}
+
 			esc.account = workspace.Account{
 				Account:    *account,
 				BackendURL: backendURL,
@@ -127,6 +165,15 @@ func newLoginCmd(esc *escCommand) *cobra.Command {
 	cmd.Flags().StringVar(&defaultOrg, "default-org", "", "A default org to associate with the login.")
 	cmd.Flags().BoolVar(&insecure, "insecure", false, "Allow insecure server connections when using SSL")
 	cmd.Flags().BoolVar(&shared, "shared", false, "Log in to the account in use by the pulumi CLI")
+	cmd.PersistentFlags().StringVar(&oidcToken, "oidc-token", "",
+		"An OIDC token to exchange for a cloud backend access token. Can be either a raw token or a file path "+
+			"prefixed with 'file://'.")
+	cmd.PersistentFlags().StringVar(&oidcOrg, "oidc-org", "", "The organization to use for OIDC token exchange audience")
+	cmd.PersistentFlags().StringVar(&oidcTeam, "oidc-team", "", "The team when exchanging for a team token")
+	cmd.PersistentFlags().StringVar(&oidcUser, "oidc-user", "", "The user when exchanging for a personal token")
+	cmd.PersistentFlags().StringVar(
+		&oidcExpiration, "oidc-expiration", "",
+		"The expiration for the cloud backend access token in duration format (e.g. '15m', '24h')")
 
 	return cmd
 }

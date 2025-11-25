@@ -3,14 +3,18 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"testing"
+	"testing/fstest"
+	"time"
 
 	"github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/esc/cmd/esc/cli/workspace"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	pulumi_workspace "github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 )
@@ -32,6 +36,20 @@ func (noCredsLoginManager) Login(
 	welcome func(display.Options),
 	current bool,
 	opts display.Options,
+) (*pulumi_workspace.Account, error) {
+	return nil, errors.New("unauthorized")
+}
+
+func (noCredsLoginManager) LoginWithOIDCToken(
+	ctx context.Context,
+	sink diag.Sink,
+	cloudURL string,
+	insecure bool,
+	oidcTokenSource string,
+	organization string,
+	scope string,
+	expiration time.Duration,
+	setCurrent bool,
 ) (*pulumi_workspace.Account, error) {
 	return nil, errors.New("unauthorized")
 }
@@ -62,6 +80,20 @@ func (invalidatedCredsLoginManager) Login(
 	welcome func(display.Options),
 	current bool,
 	opts display.Options,
+) (*pulumi_workspace.Account, error) {
+	return nil, fmt.Errorf("not expected to call")
+}
+
+func (invalidatedCredsLoginManager) LoginWithOIDCToken(
+	ctx context.Context,
+	sink diag.Sink,
+	cloudURL string,
+	insecure bool,
+	oidcTokenSource string,
+	organization string,
+	scope string,
+	expiration time.Duration,
+	setCurrent bool,
 ) (*pulumi_workspace.Account, error) {
 	return nil, fmt.Errorf("not expected to call")
 }
@@ -267,5 +299,303 @@ func TestDefaultOrgConfiguration(t *testing.T) {
 		// THEN
 		assert.NoError(t, err)
 		assert.Equal(t, username, esc.account.DefaultOrg)
+	})
+}
+
+type oidcLoginManager struct {
+	creds                     pulumi_workspace.Credentials
+	capturedOIDCTokenSource   string
+	capturedOrganization      string
+	capturedScope             string
+	capturedExpiration        time.Duration
+	loginWithOIDCTokenError   error
+	loginWithOIDCTokenAccount *pulumi_workspace.Account
+}
+
+func (lm *oidcLoginManager) Current(ctx context.Context, cloudURL string, insecure, setCurrent bool) (*pulumi_workspace.Account, error) {
+	if lm.creds.Current == "" {
+		return nil, nil
+	}
+	acct, ok := lm.creds.Accounts[lm.creds.Current]
+	if !ok {
+		return nil, errors.New("unauthorized")
+	}
+	return &acct, nil
+}
+
+func (lm *oidcLoginManager) Login(
+	ctx context.Context,
+	cloudURL string,
+	insecure bool,
+	command string,
+	message string,
+	welcome func(display.Options),
+	current bool,
+	opts display.Options,
+) (*pulumi_workspace.Account, error) {
+	return nil, errors.New("should not be called when using OIDC token")
+}
+
+func (lm *oidcLoginManager) LoginWithOIDCToken(
+	ctx context.Context,
+	sink diag.Sink,
+	cloudURL string,
+	insecure bool,
+	oidcTokenSource string,
+	organization string,
+	scope string,
+	expiration time.Duration,
+	setCurrent bool,
+) (*pulumi_workspace.Account, error) {
+	lm.capturedOIDCTokenSource = oidcTokenSource
+	lm.capturedOrganization = organization
+	lm.capturedScope = scope
+	lm.capturedExpiration = expiration
+
+	if lm.loginWithOIDCTokenError != nil {
+		return nil, lm.loginWithOIDCTokenError
+	}
+
+	if lm.loginWithOIDCTokenAccount != nil {
+		return lm.loginWithOIDCTokenAccount, nil
+	}
+
+	acct := pulumi_workspace.Account{
+		Username:    "oidc-user",
+		AccessToken: "oidc-access-token",
+	}
+	return &acct, nil
+}
+
+func TestOIDCTokenExchange(t *testing.T) {
+	backend := "https://api.pulumi.com"
+	creds := pulumi_workspace.Credentials{
+		Current: backend,
+		Accounts: map[string]pulumi_workspace.Account{
+			backend: {
+				Username:    "test-user",
+				AccessToken: "access-token",
+			},
+		},
+	}
+
+	t.Run("successful OIDC login with organization token", func(t *testing.T) {
+		// GIVEN
+		loginMgr := &oidcLoginManager{creds: creds}
+		fs := testFS{MapFS: make(map[string]*fstest.MapFile)}
+		testWorkspace := workspace.New(fs, &testPulumiWorkspace{credentials: creds})
+
+		var stdout, stderr bytes.Buffer
+		cmd := newLoginCmd(&escCommand{
+			command:   "esc",
+			login:     loginMgr,
+			workspace: testWorkspace,
+			environ:   testEnviron{},
+			stdout:    &stdout,
+			stderr:    &stderr,
+			newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
+				return &testPulumiClient{user: "oidc-user"}
+			},
+		})
+
+		// WHEN
+		cmd.SetArgs([]string{
+			"--oidc-token", "test-oidc-token",
+			"--oidc-org", "my-org",
+			"--oidc-expiration", "1h",
+		})
+		err := cmd.Execute()
+
+		// THEN
+		assert.NoError(t, err)
+		assert.Equal(t, "test-oidc-token", loginMgr.capturedOIDCTokenSource)
+		assert.Equal(t, "my-org", loginMgr.capturedOrganization)
+		assert.Equal(t, "", loginMgr.capturedScope)
+		assert.Equal(t, 1*time.Hour, loginMgr.capturedExpiration)
+	})
+
+	t.Run("successful OIDC login with team token", func(t *testing.T) {
+		// GIVEN
+		loginMgr := &oidcLoginManager{creds: creds}
+		fs := testFS{MapFS: make(map[string]*fstest.MapFile)}
+		testWorkspace := workspace.New(fs, &testPulumiWorkspace{credentials: creds})
+
+		var stdout, stderr bytes.Buffer
+		cmd := newLoginCmd(&escCommand{
+			command:   "esc",
+			login:     loginMgr,
+			workspace: testWorkspace,
+			environ:   testEnviron{},
+			stdout:    &stdout,
+			stderr:    &stderr,
+			newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
+				return &testPulumiClient{user: "oidc-user"}
+			},
+		})
+
+		// WHEN
+		cmd.SetArgs([]string{
+			"--oidc-token", "test-oidc-token",
+			"--oidc-org", "my-org",
+			"--oidc-team", "my-team",
+		})
+		err := cmd.Execute()
+
+		// THEN
+		assert.NoError(t, err)
+		assert.Equal(t, "test-oidc-token", loginMgr.capturedOIDCTokenSource)
+		assert.Equal(t, "my-org", loginMgr.capturedOrganization)
+		assert.Equal(t, "team:my-team", loginMgr.capturedScope)
+		assert.Equal(t, 2*time.Hour, loginMgr.capturedExpiration) // Default expiration is 2h
+	})
+
+	t.Run("successful OIDC login with user token", func(t *testing.T) {
+		// GIVEN
+		loginMgr := &oidcLoginManager{creds: creds}
+		fs := testFS{MapFS: make(map[string]*fstest.MapFile)}
+		testWorkspace := workspace.New(fs, &testPulumiWorkspace{credentials: creds})
+
+		var stdout, stderr bytes.Buffer
+		cmd := newLoginCmd(&escCommand{
+			command:   "esc",
+			login:     loginMgr,
+			workspace: testWorkspace,
+			environ:   testEnviron{},
+			stdout:    &stdout,
+			stderr:    &stderr,
+			newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
+				return &testPulumiClient{user: "oidc-user"}
+			},
+		})
+
+		// WHEN
+		cmd.SetArgs([]string{
+			"--oidc-token", "test-oidc-token",
+			"--oidc-org", "my-org",
+			"--oidc-user", "my-user",
+		})
+		err := cmd.Execute()
+
+		// THEN
+		assert.NoError(t, err)
+		assert.Equal(t, "test-oidc-token", loginMgr.capturedOIDCTokenSource)
+		assert.Equal(t, "my-org", loginMgr.capturedOrganization)
+		assert.Equal(t, "user:my-user", loginMgr.capturedScope)
+		assert.Equal(t, 2*time.Hour, loginMgr.capturedExpiration) // Default expiration is 2h
+	})
+
+	t.Run("OIDC flags rejected with DIY backend", func(t *testing.T) {
+		// GIVEN
+		loginMgr := &oidcLoginManager{creds: creds}
+		fs := testFS{MapFS: make(map[string]*fstest.MapFile)}
+		testWorkspace := workspace.New(fs, &testPulumiWorkspace{credentials: creds})
+
+		var stdout, stderr bytes.Buffer
+		cmd := newLoginCmd(&escCommand{
+			command:   "esc",
+			login:     loginMgr,
+			workspace: testWorkspace,
+			environ:   testEnviron{},
+			stdout:    &stdout,
+			stderr:    &stderr,
+		})
+
+		// WHEN - using a DIY backend URL (file://, gs://, s3://, etc.)
+		cmd.SetArgs([]string{
+			"file:///tmp/state",
+			"--oidc-token", "test-oidc-token",
+			"--oidc-org", "my-org",
+		})
+		err := cmd.Execute()
+
+		// THEN
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "does not support Pulumi ESC")
+	})
+
+	t.Run("error from LoginWithOIDCToken", func(t *testing.T) {
+		// GIVEN
+		loginMgr := &oidcLoginManager{
+			creds:                   creds,
+			loginWithOIDCTokenError: errors.New("OIDC authentication failed"),
+		}
+		fs := testFS{MapFS: make(map[string]*fstest.MapFile)}
+		testWorkspace := workspace.New(fs, &testPulumiWorkspace{credentials: creds})
+
+		var stdout, stderr bytes.Buffer
+		cmd := newLoginCmd(&escCommand{
+			command:   "esc",
+			login:     loginMgr,
+			workspace: testWorkspace,
+			environ:   testEnviron{},
+			stdout:    &stdout,
+			stderr:    &stderr,
+		})
+
+		// WHEN
+		cmd.SetArgs([]string{
+			"--oidc-token", "invalid-token",
+			"--oidc-org", "my-org",
+		})
+		err := cmd.Execute()
+
+		// THEN
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "problem logging in")
+		assert.Contains(t, err.Error(), "OIDC authentication failed")
+	})
+}
+
+type errorAuthContextWorkspace struct {
+	testPulumiWorkspace
+}
+
+func (w *errorAuthContextWorkspace) NewAuthContextForTokenExchange(
+	organization, team, user, token, expirationDuration string,
+) (pulumi_workspace.AuthContext, error) {
+	return pulumi_workspace.AuthContext{}, errors.New("invalid token format")
+}
+
+func TestOIDCTokenExchangeAuthContextError(t *testing.T) {
+	backend := "https://api.pulumi.com"
+	creds := pulumi_workspace.Credentials{
+		Current: backend,
+		Accounts: map[string]pulumi_workspace.Account{
+			backend: {
+				Username:    "test-user",
+				AccessToken: "access-token",
+			},
+		},
+	}
+
+	t.Run("error from NewAuthContextForTokenExchange", func(t *testing.T) {
+		// GIVEN
+		loginMgr := &oidcLoginManager{creds: creds}
+		fs := testFS{MapFS: make(map[string]*fstest.MapFile)}
+		testWorkspace := workspace.New(fs, &errorAuthContextWorkspace{
+			testPulumiWorkspace: testPulumiWorkspace{credentials: creds},
+		})
+
+		var stdout, stderr bytes.Buffer
+		cmd := newLoginCmd(&escCommand{
+			command:   "esc",
+			login:     loginMgr,
+			workspace: testWorkspace,
+			environ:   testEnviron{},
+			stdout:    &stdout,
+			stderr:    &stderr,
+		})
+
+		// WHEN
+		cmd.SetArgs([]string{
+			"--oidc-token", "malformed-token",
+			"--oidc-org", "my-org",
+		})
+		err := cmd.Execute()
+
+		// THEN
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "problem logging in")
+		assert.Contains(t, err.Error(), "invalid token format")
 	})
 }

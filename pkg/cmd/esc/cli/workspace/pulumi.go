@@ -25,6 +25,7 @@ type PulumiWorkspace interface {
 	GetStoredCredentials() (workspace.Credentials, error)
 	StoreAccount(key string, account workspace.Account, current bool) error
 	GetAccount(key string) (workspace.Account, error)
+	NewAuthContextForTokenExchange(organization, team, user, token, expirationDuration string) (workspace.AuthContext, error)
 }
 
 type defaultPulumiWorkspace int
@@ -63,4 +64,10 @@ func (defaultPulumiWorkspace) StoreAccount(key string, account workspace.Account
 
 func (defaultPulumiWorkspace) GetAccount(key string) (workspace.Account, error) {
 	return workspace.GetAccount(key)
+}
+
+func (defaultPulumiWorkspace) NewAuthContextForTokenExchange(
+	organization, team, user, token, expirationDuration string,
+) (workspace.AuthContext, error) {
+	return workspace.NewAuthContextForTokenExchange(organization, team, user, token, expirationDuration)
 }
