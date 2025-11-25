@@ -1,0 +1,6 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: ["github>pulumi/renovate-config//default.json5"],
+  // TODO: Remove this setting once we're happy with the configuration
+  baseBranchPatterns: ["renovate-dev"]
+}
