@@ -483,14 +483,14 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			return nil, fmt.Errorf("getting absolute path for plugin directory: %w", err)
 		}
 
-		info := NewProgramInfo(pluginDir, pluginDir, ".", runtimeInfo.Options())
-		runtime, err := ctx.Host.LanguageRuntime(runtimeInfo.Name(), info)
+		runtime, err := ctx.Host.LanguageRuntime(runtimeInfo.Name())
 		if err != nil {
 			return nil, fmt.Errorf("loading runtime: %w", err)
 		}
 
 		rctx, kill := context.WithCancel(ctx.Request()) //nolint:govet // lostcancel
 
+		info := NewProgramInfo(pluginDir, pluginDir, ".", runtimeInfo.Options())
 		stdout, stderr, done, err := runtime.RunPlugin(rctx, RunPluginInfo{
 			Info:             info,
 			WorkingDirectory: ctx.Pwd,

@@ -151,8 +151,7 @@ func GenSDK(language, out string, pkg *schema.Package, overlays string, local bo
 			return nil, fmt.Errorf("create plugin context: %w", err)
 		}
 		defer contract.IgnoreClose(pCtx)
-		programInfo := plugin.NewProgramInfo(cwd, cwd, ".", nil)
-		languagePlugin, err := pCtx.Host.LanguageRuntime(language, programInfo)
+		languagePlugin, err := pCtx.Host.LanguageRuntime(language)
 		if err != nil {
 			return nil, err
 		}
@@ -241,8 +240,7 @@ func linkPackage(ctx *LinkPackagesContext) error {
 	if err != nil {
 		return err
 	}
-	programInfo := plugin.NewProgramInfo(root, root, ".", ctx.Project.RuntimeInfo().Options())
-	languagePlugin, err := ctx.PluginContext.Host.LanguageRuntime(ctx.Project.RuntimeInfo().Name(), programInfo)
+	languagePlugin, err := ctx.PluginContext.Host.LanguageRuntime(ctx.Project.RuntimeInfo().Name())
 	if err != nil {
 		return err
 	}
@@ -280,6 +278,7 @@ func linkPackage(ctx *LinkPackagesContext) error {
 			Descriptor: packageDescriptor,
 		})
 	}
+	programInfo := plugin.NewProgramInfo(root, root, ".", ctx.Project.RuntimeInfo().Options())
 	instructions, err := languagePlugin.Link(programInfo, deps, grpcServer.Addr())
 	if err != nil {
 		return fmt.Errorf("linking package: %w", err)

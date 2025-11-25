@@ -173,11 +173,12 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 			// First make sure the language plugin is present.  We need this to load the required resource plugins.
 			// TODO: we need to think about how best to version this.  For now, it always picks the latest.
 			runtime := proj.Runtime
-			programInfo := plugin.NewProgramInfo(pctx.Root, pwd, main, runtime.Options())
-			lang, err := pctx.Host.LanguageRuntime(runtime.Name(), programInfo)
+			lang, err := pctx.Host.LanguageRuntime(runtime.Name())
 			if err != nil {
 				return fmt.Errorf("load language plugin %s: %w", runtime.Name(), err)
 			}
+
+			programInfo := plugin.NewProgramInfo(pctx.Root, pwd, main, runtime.Options())
 
 			if !noDependencies {
 				err = pkgCmdUtil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
