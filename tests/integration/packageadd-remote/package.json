@@ -6,7 +6,7 @@
         "typescript": "^5.0.0"
     },
     "dependencies": {
-        "@pulumi/pulumi": "^3.113.0",
+        "@pulumi/pulumi": "3.208.0",
         "@pulumi/tls-self-signed-cert": "file:sdks/pulumi-tls-self-signed-cert"
     }
 }

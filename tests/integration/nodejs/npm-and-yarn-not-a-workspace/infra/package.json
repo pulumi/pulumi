@@ -4,6 +4,6 @@
     "main": "index.ts",
     "version": "1.0.0",
     "dependencies": {
-        "@pulumi/pulumi": "^3.104.2"
+        "@pulumi/pulumi": "3.208.0"
     }
 }
