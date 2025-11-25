@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitingore",
     "Cat.cs",
     "Dog.cs",
     "God.cs",

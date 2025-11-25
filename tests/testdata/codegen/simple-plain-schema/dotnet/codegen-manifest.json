@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitingore",
     "Component.cs",
     "DoFoo.cs",
     "Inputs/Foo.cs",

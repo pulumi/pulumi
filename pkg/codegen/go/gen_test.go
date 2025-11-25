@@ -323,6 +323,9 @@ func TestPackageNaming(t *testing.T) {
 			sort.Strings(ordering)
 			require.NotEmpty(t, files, "This test only works when files are generated")
 			for _, k := range ordering {
+				if k == ".gitattributes" {
+					continue
+				}
 				root := strings.Split(k, "/")[0]
 				if tt.expectedRoot != "" {
 					require.Equal(t, tt.expectedRoot, root, "Root should precede all cases. Got file %s", k)

@@ -4776,6 +4776,8 @@ func GeneratePackage(tool string,
 
 	files := codegen.Fs{}
 
+	files.Add(".gitattributes", codegen.GenGitAttributesFile())
+
 	// Generate pulumi-plugin.json
 	pulumiPlugin := &plugin.PulumiPluginJSON{
 		Resource: true,

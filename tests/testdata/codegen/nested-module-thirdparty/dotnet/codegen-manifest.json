@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitingore",
     "Deeply/Nested/Module/README.md",
     "Deeply/Nested/Module/Resource.cs",
     "Deeply/Nested/README.md",
