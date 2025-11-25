@@ -371,7 +371,7 @@ func InstallPluginAtPath(pctx *plugin.Context, proj *workspace.PluginProject, st
 	}
 	entryPoint := "." // Plugin's are not able to set a non-standard entry point.
 	pInfo := plugin.NewProgramInfo(pctx.Root, pctx.Pwd, entryPoint, proj.Runtime.Options())
-	runtime, err := plugin.NewLanguageRuntime(pctx.Host, pctx, proj.Runtime.Name(), pctx.Pwd, pInfo)
+	runtime, err := pctx.Host.LanguageRuntime(proj.Runtime.Name(), pInfo)
 	if err != nil {
 		return err
 	}

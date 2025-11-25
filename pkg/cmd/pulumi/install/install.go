@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
@@ -120,6 +121,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 					if err != nil {
 						return err
 					}
+					defer contract.IgnoreClose(pctx)
 
 					// Cloud registry is linked to a backend, but we don't have
 					// one available in a plugin. Use the unauthenticated
