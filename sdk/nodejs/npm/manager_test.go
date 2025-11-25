@@ -37,20 +37,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// chdir temporarily changes the current directory of the program.
-// It restores it to the original directory when the test is done.
-func chdir(t *testing.T, dir string) {
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	require.NoError(t, os.Chdir(dir)) // Set directory
-	t.Cleanup(func() {
-		require.NoError(t, os.Chdir(cwd)) // Restore directory
-		restoredDir, err := os.Getwd()
-		require.NoError(t, err)
-		assert.Equal(t, cwd, restoredDir)
-	})
-}
-
 //nolint:paralleltest // changes working directory
 func TestNPMInstall(t *testing.T) {
 	t.Run("development", func(t *testing.T) {
@@ -258,7 +244,7 @@ func testInstall(t *testing.T, packageManager string, production bool) {
 
 	// Create a new empty test directory and change the current working directory to it.
 	tempdir := t.TempDir()
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	// Create a package directory to install dependencies into.
 	pkgdir := filepath.Join(tempdir, "package")
