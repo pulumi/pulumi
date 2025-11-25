@@ -1,4 +1,4 @@
-FROM pulumi/pulumi
+FROM pulumi/pulumi@sha256:6aacae3054cf4d728e97c199e19129233859147518a7d6c7ea1de09a5e04622a
 
 # Install golangci-lint
 RUN version=2.1.6 \

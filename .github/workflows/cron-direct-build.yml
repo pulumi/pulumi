@@ -24,7 +24,7 @@ jobs:
         with:
           go-version: "1.24"
 
-      - uses: pulumi/actions@v6
+      - uses: pulumi/actions@8582a9e8cc630786854029b4e09281acd6794b58 # v6
         with:
           pulumi-version: dev
 
