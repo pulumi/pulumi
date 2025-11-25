@@ -369,12 +369,12 @@ func InstallPluginAtPath(pctx *plugin.Context, proj *workspace.PluginProject, st
 	if err := proj.Validate(); err != nil {
 		return err
 	}
-	entryPoint := "." // Plugin's are not able to set a non-standard entry point.
-	pInfo := plugin.NewProgramInfo(pctx.Root, pctx.Pwd, entryPoint, proj.Runtime.Options())
-	runtime, err := pctx.Host.LanguageRuntime(proj.Runtime.Name(), pInfo)
+	runtime, err := pctx.Host.LanguageRuntime(proj.Runtime.Name())
 	if err != nil {
 		return err
 	}
+	entryPoint := "." // Plugin's are not able to set a non-standard entry point.
+	pInfo := plugin.NewProgramInfo(pctx.Root, pctx.Pwd, entryPoint, proj.Runtime.Options())
 	return cmdutil.InstallDependencies(runtime, plugin.InstallDependenciesRequest{
 		Info:                    pInfo,
 		UseLanguageVersionTools: false,
