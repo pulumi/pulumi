@@ -71,6 +71,8 @@ export class PrepareLanguageTestsRequest extends jspb.Message {
     setPolicyPackDirectory(value: string): PrepareLanguageTestsRequest;
     getLocal(): boolean;
     setLocal(value: boolean): PrepareLanguageTestsRequest;
+    getProvidersDirectory(): string;
+    setProvidersDirectory(value: string): PrepareLanguageTestsRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): PrepareLanguageTestsRequest.AsObject;
@@ -96,6 +98,7 @@ export namespace PrepareLanguageTestsRequest {
         programOverridesMap: Array<[string, PrepareLanguageTestsRequest.ProgramOverride.AsObject]>,
         policyPackDirectory: string,
         local: boolean,
+        providersDirectory: string,
     }
 
 

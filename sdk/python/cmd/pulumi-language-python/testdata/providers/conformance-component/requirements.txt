@@ -1,0 +1,2 @@
+./sdks/simple-2.0.0
+pulumi
