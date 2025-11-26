@@ -135,6 +135,7 @@ func NewUpCmd() *cobra.Command {
 		opts backend.UpdateOptions,
 		cmd *cobra.Command,
 		meta *promise.Promise[map[string]string],
+		strict bool,
 	) error {
 		s, err := cmdStack.RequireStack(
 			ctx,
@@ -227,6 +228,7 @@ func NewUpCmd() *cobra.Command {
 			// update phase.
 			GeneratePlan:    true,
 			Experimental:    env.Experimental.Value(),
+			Strict:          strict,
 			ContinueOnError: continueOnError,
 			AttachDebugger:  attachDebugger,
 			Autonamer:       autonamer,
@@ -282,6 +284,7 @@ func NewUpCmd() *cobra.Command {
 		opts backend.UpdateOptions,
 		cmd *cobra.Command,
 		meta *promise.Promise[map[string]string],
+		strict bool,
 	) error {
 		// Retrieve the template repo.
 		templateSource := cmdTemplates.New(ctx,
@@ -461,6 +464,7 @@ func NewUpCmd() *cobra.Command {
 		if err != nil {
 			return err
 		}
+
 		opts.Engine = engine.UpdateOptions{
 			ParallelDiff:     env.ParallelDiff.Value(),
 			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
@@ -469,10 +473,11 @@ func NewUpCmd() *cobra.Command {
 			Refresh:          refreshOption,
 			RefreshProgram:   runProgram,
 			ShowSecrets:      showSecrets,
-			// If we're in experimental mode then we trigger a plan to be generated during the preview phase
+			// If the user passed --plan (but no path) then trigger a plan to be generated during the preview phase
 			// which will be constrained to during the update phase.
-			GeneratePlan: env.Experimental.Value(),
+			GeneratePlan: strict,
 			Experimental: env.Experimental.Value(),
+			Strict:       strict,
 
 			UseLegacyRefreshDiff: env.EnableLegacyRefreshDiff.Value(),
 			ContinueOnError:      continueOnError,
@@ -555,6 +560,14 @@ func NewUpCmd() *cobra.Command {
 			}
 
 			yes = yes || skipPreview || env.SkipConfirmations.Value()
+
+			strict := cmd.PersistentFlags().Changed("plan") && planFilePath == ""
+
+			// Validate that the user did not pass both --skip-preview and --plan.
+			// Plan requires a preview so these flags are mutually exclusive.
+			if skipPreview && strict {
+				return errors.New("--plan cannot be used with --skip-preview; plan requires a preview")
+			}
 
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes {
@@ -656,6 +669,7 @@ func NewUpCmd() *cobra.Command {
 					opts,
 					cmd,
 					meta,
+					strict,
 				)
 			}
 
@@ -667,6 +681,7 @@ func NewUpCmd() *cobra.Command {
 				opts,
 				cmd,
 				meta,
+				strict,
 			)
 		},
 	}
