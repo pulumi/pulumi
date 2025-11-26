@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: engine
-  description: Don't send root directory and runtime options to language plugins as command line arguments

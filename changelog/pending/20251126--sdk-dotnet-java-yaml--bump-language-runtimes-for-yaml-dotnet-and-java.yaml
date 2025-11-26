@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/dotnet,java,yaml
-  description: Bump language runtimes for yaml, dotnet and java

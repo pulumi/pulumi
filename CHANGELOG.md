@@ -1,5 +1,42 @@
 # Changelog
 
+## 3.209.0 (2025-11-26)
+
+
+### Features
+
+- [cli] Add native support for OIDC token exchange when logging into Pulumi Cloud. Run `pulumi login --help` for more information.
+  [#20974](https://github.com/pulumi/pulumi/pull/20974)
+
+- [sdk/python] Allow older grpcio and protobuf dependencies
+  [#21007](https://github.com/pulumi/pulumi/pull/21007)
+
+- [sdkgen/{dotnet,go,nodejs,python}] Generate .gitignore and .gitattributes files for generated SDKs
+  [#21034](https://github.com/pulumi/pulumi/pull/21034)
+
+
+### Bug Fixes
+
+- [cli/install] Correctly install non-standard plugins. See https://github.com/pulumi/pulumi/issues/20953 for more information
+  [#20983](https://github.com/pulumi/pulumi/pull/20983)
+
+- [cli/new] Create pyproject.toml for uv and poetry projects when using --generate-only
+  [#20979](https://github.com/pulumi/pulumi/pull/20979)
+
+- [sdk/nodejs] Fix serialization errors due to SxS copies of the SDK
+  [#21029](https://github.com/pulumi/pulumi/pull/21029)
+
+- [sdk/python] Add `PropertyValue` runtime validation checks
+  [#21058](https://github.com/pulumi/pulumi/pull/21058)
+
+
+### Miscellaneous
+
+- [engine] Don't send root directory and runtime options to language plugins as command line arguments
+  [#21054](https://github.com/pulumi/pulumi/pull/21054)
+
+- [sdk/{dotnet,java,yaml}] Bump language runtimes for yaml, dotnet and java
+
 ## 3.208.0 (2025-11-20)
 
 
