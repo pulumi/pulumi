@@ -363,6 +363,8 @@ type UpdateOptions struct {
 	SkipPreview bool
 	// PreviewOnly, when true, causes only the preview step to be run, without running the Update.
 	PreviewOnly bool
+	// IterateOnConstraintError, when true, causes updates to continue iterating
+	IterateOnConstraintError bool
 }
 
 // CancellationScope provides a scoped source of cancellation and termination requests.

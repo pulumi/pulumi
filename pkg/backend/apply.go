@@ -134,9 +134,9 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
 	if op.Opts.AutoApprove || kind == apitype.PreviewUpdate {
 		close(eventsChannel)
-		// If we're running in experimental mode then return the plan generated, else discard it. The user may
+		// If we're running in strict plan mode then return the plan generated, else discard it. The user may
 		// be explicitly setting a plan but that's handled higher up the call stack.
-		if !op.Opts.Engine.Experimental {
+		if !op.Opts.Engine.Strict {
 			plan = nil
 		}
 		return plan, changes, nil
@@ -233,8 +233,8 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRe
 		}
 
 		if response == string(yes) {
-			// If we're in experimental mode always use the plan
-			if opts.Engine.Experimental {
+			// If we're in strict plan mode always use the plan
+			if opts.Engine.Strict {
 				return plan, nil
 			}
 			return nil, nil
@@ -279,44 +279,55 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRe
 func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, stack Stack,
 	op UpdateOperation, apply Applier, explainer Explainer, events chan<- engine.Event,
 ) (sdkDisplay.ResourceChanges, error) {
-	// Preview the operation to the user and ask them if they want to proceed.
-	if !op.Opts.SkipPreview {
-		// We want to run the preview with the given plan and then run the full update with the initial plan as well,
-		// but because plans are mutated as they're checked we need to clone it here.
-		// We want to use the original plan because a program could be non-deterministic and have a plan of
-		// operations P0, the update preview could return P1, and then the actual update could run P2, were P1 < P2 < P0.
+	for {
+		// Preview the operation to the user and ask them if they want to proceed.
 		var originalPlan *deploy.Plan
-		if op.Opts.Engine.Plan != nil {
-			originalPlan = op.Opts.Engine.Plan.Clone()
+		if !op.Opts.SkipPreview {
+			// We want to run the preview with the given plan and then run the full update with the initial plan as well,
+			// but because plans are mutated as they're checked we need to clone it here.
+			// We want to use the original plan because a program could be non-deterministic and have a plan of
+			// operations P0, the update preview could return P1, and then the actual update could run P2, were P1 < P2 < P0.
+			if op.Opts.Engine.Plan != nil {
+				originalPlan = op.Opts.Engine.Plan.Clone()
+			}
+
+			plan, changes, err := PreviewThenPrompt(ctx, kind, stack, op, apply, explainer)
+			if err != nil || kind == apitype.PreviewUpdate {
+				return changes, err
+			}
+
+			// If we had an original plan use it, else if prompt said to use the plan from Preview then use the
+			// newly generated plan
+			if originalPlan != nil {
+				op.Opts.Engine.Plan = originalPlan
+			} else if plan != nil {
+				op.Opts.Engine.Plan = plan
+			} else {
+				op.Opts.Engine.Plan = nil
+			}
 		}
 
-		plan, changes, err := PreviewThenPrompt(ctx, kind, stack, op, apply, explainer)
-		if err != nil || kind == apitype.PreviewUpdate {
-			return changes, err
+		// Perform the change (!DryRun) and show the cloud link to the result.
+		// We don't care about the events it issues, so just pass a nil channel along.
+		opts := ApplierOptions{
+			DryRun:   false,
+			ShowLink: true,
 		}
-
-		// If we had an original plan use it, else if prompt said to use the plan from Preview then use the
-		// newly generated plan
-		if originalPlan != nil {
+		// No need to generate a plan at this stage, there's no way for the system or user to extract the plan
+		// after here.
+		didGeneratePlan := op.Opts.Engine.GeneratePlan
+		op.Opts.Engine.GeneratePlan = false
+		_, changes, res := apply(ctx, kind, stack, op, opts, events)
+		if op.Opts.IterateOnConstraintError && deploy.IsConstraintError(res) && !op.Opts.SkipPreview {
+			// Re-prompt on constraint errors.
+			fmt.Print(op.Opts.Display.Color.Colorize(
+				colors.SpecWarning + "An operation did not adhere to plan, re-running preview.\n\n" + colors.Reset))
+			op.Opts.Engine.GeneratePlan = didGeneratePlan
 			op.Opts.Engine.Plan = originalPlan
-		} else if plan != nil {
-			op.Opts.Engine.Plan = plan
-		} else {
-			op.Opts.Engine.Plan = nil
+			continue
 		}
+		return changes, res
 	}
-
-	// Perform the change (!DryRun) and show the cloud link to the result.
-	// We don't care about the events it issues, so just pass a nil channel along.
-	opts := ApplierOptions{
-		DryRun:   false,
-		ShowLink: true,
-	}
-	// No need to generate a plan at this stage, there's no way for the system or user to extract the plan
-	// after here.
-	op.Opts.Engine.GeneratePlan = false
-	_, changes, res := apply(ctx, kind, stack, op, opts, events)
-	return changes, res
 }
 
 type updateStats struct {
