@@ -99,7 +99,7 @@ func NewStackCmd() *cobra.Command {
 
 	cmd.AddCommand(newStackExportCmd())
 	cmd.AddCommand(newStackGraphCmd())
-	cmd.AddCommand(newStackImportCmd())
+	cmd.AddCommand(newStackImportCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, secrets.DefaultProvider))
 	cmd.AddCommand(newStackInitCmd())
 	cmd.AddCommand(newStackLsCmd())
 	cmd.AddCommand(newStackOutputCmd())
