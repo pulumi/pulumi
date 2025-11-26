@@ -340,6 +340,15 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         AFTER_UPDATE_FIELD_NUMBER: builtins.int
         BEFORE_DELETE_FIELD_NUMBER: builtins.int
         AFTER_DELETE_FIELD_NUMBER: builtins.int
+        ON_CREATE_ERROR_FIELD_NUMBER: builtins.int
+        ON_UPDATE_ERROR_FIELD_NUMBER: builtins.int
+        ON_DELETE_ERROR_FIELD_NUMBER: builtins.int
+        on_create_error: builtins.str
+        """unique error hook for create operations"""
+        on_update_error: builtins.str
+        """unique error hook for update operations"""
+        on_delete_error: builtins.str
+        """unique error hook for delete operations"""
         @property
         def before_create(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
         @property
@@ -361,8 +370,18 @@ class RegisterResourceRequest(google.protobuf.message.Message):
             after_update: collections.abc.Iterable[builtins.str] | None = ...,
             before_delete: collections.abc.Iterable[builtins.str] | None = ...,
             after_delete: collections.abc.Iterable[builtins.str] | None = ...,
+            on_create_error: builtins.str | None = ...,
+            on_update_error: builtins.str | None = ...,
+            on_delete_error: builtins.str | None = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing.Literal["after_create", b"after_create", "after_delete", b"after_delete", "after_update", b"after_update", "before_create", b"before_create", "before_delete", b"before_delete", "before_update", b"before_update"]) -> None: ...
+        def HasField(self, field_name: typing.Literal["_on_create_error", b"_on_create_error", "_on_delete_error", b"_on_delete_error", "_on_update_error", b"_on_update_error", "on_create_error", b"on_create_error", "on_delete_error", b"on_delete_error", "on_update_error", b"on_update_error"]) -> builtins.bool: ...
+        def ClearField(self, field_name: typing.Literal["_on_create_error", b"_on_create_error", "_on_delete_error", b"_on_delete_error", "_on_update_error", b"_on_update_error", "after_create", b"after_create", "after_delete", b"after_delete", "after_update", b"after_update", "before_create", b"before_create", "before_delete", b"before_delete", "before_update", b"before_update", "on_create_error", b"on_create_error", "on_delete_error", b"on_delete_error", "on_update_error", b"on_update_error"]) -> None: ...
+        @typing.overload
+        def WhichOneof(self, oneof_group: typing.Literal["_on_create_error", b"_on_create_error"]) -> typing.Literal["on_create_error"] | None: ...
+        @typing.overload
+        def WhichOneof(self, oneof_group: typing.Literal["_on_delete_error", b"_on_delete_error"]) -> typing.Literal["on_delete_error"] | None: ...
+        @typing.overload
+        def WhichOneof(self, oneof_group: typing.Literal["_on_update_error", b"_on_update_error"]) -> typing.Literal["on_update_error"] | None: ...
 
     TYPE_FIELD_NUMBER: builtins.int
     NAME_FIELD_NUMBER: builtins.int
@@ -403,6 +422,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     PACKAGEREF_FIELD_NUMBER: builtins.int
     HOOKS_FIELD_NUMBER: builtins.int
     HIDEDIFFS_FIELD_NUMBER: builtins.int
+    RETRYWITH_FIELD_NUMBER: builtins.int
     type: builtins.str
     """the type of the object allocated."""
     name: builtins.str
@@ -522,6 +542,10 @@ class RegisterResourceRequest(google.protobuf.message.Message):
 
     @property
     def hideDiffs(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+    @property
+    def retryWith(self) -> pulumi.callback_pb2.Callback:
+        """A callback for managing retries of the resource registration."""
+
     def __init__(
         self,
         *,
@@ -564,15 +588,18 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         packageRef: builtins.str = ...,
         hooks: global___RegisterResourceRequest.ResourceHooksBinding | None = ...,
         hideDiffs: collections.abc.Iterable[builtins.str] | None = ...,
+        retryWith: pulumi.callback_pb2.Callback | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["_hooks", b"_hooks", "_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "customTimeouts", b"customTimeouts", "hooks", b"hooks", "object", b"object", "protect", b"protect", "replacement_trigger", b"replacement_trigger", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_hooks", b"_hooks", "_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "hideDiffs", b"hideDiffs", "hooks", b"hooks", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "packageRef", b"packageRef", "parent", b"parent", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "replace_with", b"replace_with", "replacement_trigger", b"replacement_trigger", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["_hooks", b"_hooks", "_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "_retryWith", b"_retryWith", "customTimeouts", b"customTimeouts", "hooks", b"hooks", "object", b"object", "protect", b"protect", "replacement_trigger", b"replacement_trigger", "retainOnDelete", b"retainOnDelete", "retryWith", b"retryWith", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["_hooks", b"_hooks", "_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "_retryWith", b"_retryWith", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "hideDiffs", b"hideDiffs", "hooks", b"hooks", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "packageRef", b"packageRef", "parent", b"parent", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "replace_with", b"replace_with", "replacement_trigger", b"replacement_trigger", "retainOnDelete", b"retainOnDelete", "retryWith", b"retryWith", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_hooks", b"_hooks"]) -> typing.Literal["hooks"] | None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_protect", b"_protect"]) -> typing.Literal["protect"] | None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_retainOnDelete", b"_retainOnDelete"]) -> typing.Literal["retainOnDelete"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing.Literal["_retryWith", b"_retryWith"]) -> typing.Literal["retryWith"] | None: ...
 
 global___RegisterResourceRequest = RegisterResourceRequest
 
@@ -1179,6 +1206,43 @@ class TransformInvokeOptions(google.protobuf.message.Message):
 global___TransformInvokeOptions = TransformInvokeOptions
 
 @typing.final
+class RetryRequest(google.protobuf.message.Message):
+    """RetryRequest is for when resource registration fails to determine whether we should retry."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ERRORS_FIELD_NUMBER: builtins.int
+    @property
+    def errors(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """The list of errors that have occurred during retries, with the most recent error first."""
+
+    def __init__(
+        self,
+        *,
+        errors: collections.abc.Iterable[builtins.str] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["errors", b"errors"]) -> None: ...
+
+global___RetryRequest = RetryRequest
+
+@typing.final
+class RetryResponse(google.protobuf.message.Message):
+    """RetryResponse is the response to a RetryRequest."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    SHOULD_RETRY_FIELD_NUMBER: builtins.int
+    should_retry: builtins.bool
+    def __init__(
+        self,
+        *,
+        should_retry: builtins.bool = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["should_retry", b"should_retry"]) -> None: ...
+
+global___RetryResponse = RetryResponse
+
+@typing.final
 class ResourceHookRequest(google.protobuf.message.Message):
     """ResourceHookRequest is the request object for resource hook callbacks in CallbackInvokeRequest."""
 
@@ -1192,6 +1256,7 @@ class ResourceHookRequest(google.protobuf.message.Message):
     OLD_INPUTS_FIELD_NUMBER: builtins.int
     NEW_OUTPUTS_FIELD_NUMBER: builtins.int
     OLD_OUTPUTS_FIELD_NUMBER: builtins.int
+    ERRORS_FIELD_NUMBER: builtins.int
     urn: builtins.str
     """the urn of the resource for which the hook is called."""
     id: builtins.str
@@ -1216,6 +1281,10 @@ class ResourceHookRequest(google.protobuf.message.Message):
     def old_outputs(self) -> google.protobuf.struct_pb2.Struct:
         """the optional old outputs of the resource."""
 
+    @property
+    def errors(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """the list of errors encountered (for error hooks only, most recent first)."""
+
     def __init__(
         self,
         *,
@@ -1227,9 +1296,10 @@ class ResourceHookRequest(google.protobuf.message.Message):
         old_inputs: google.protobuf.struct_pb2.Struct | None = ...,
         new_outputs: google.protobuf.struct_pb2.Struct | None = ...,
         old_outputs: google.protobuf.struct_pb2.Struct | None = ...,
+        errors: collections.abc.Iterable[builtins.str] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["new_inputs", b"new_inputs", "new_outputs", b"new_outputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["id", b"id", "name", b"name", "new_inputs", b"new_inputs", "new_outputs", b"new_outputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs", "type", b"type", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["errors", b"errors", "id", b"id", "name", b"name", "new_inputs", b"new_inputs", "new_outputs", b"new_outputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___ResourceHookRequest = ResourceHookRequest
 
@@ -1240,14 +1310,20 @@ class ResourceHookResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     ERROR_FIELD_NUMBER: builtins.int
+    SHOULD_RETRY_FIELD_NUMBER: builtins.int
     error: builtins.str
     """an optional error message to return from the hook."""
+    should_retry: builtins.bool
+    """whether to retry the operation (for error hooks only)."""
     def __init__(
         self,
         *,
         error: builtins.str = ...,
+        should_retry: builtins.bool | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["error", b"error"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["_should_retry", b"_should_retry", "should_retry", b"should_retry"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["_should_retry", b"_should_retry", "error", b"error", "should_retry", b"should_retry"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing.Literal["_should_retry", b"_should_retry"]) -> typing.Literal["should_retry"] | None: ...
 
 global___ResourceHookResponse = ResourceHookResponse
 

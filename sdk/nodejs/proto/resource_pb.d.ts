@@ -286,6 +286,11 @@ export class RegisterResourceRequest extends jspb.Message {
     setHidediffsList(value: Array<string>): RegisterResourceRequest;
     addHidediffs(value: string, index?: number): string;
 
+    hasRetrywith(): boolean;
+    clearRetrywith(): void;
+    getRetrywith(): pulumi_callback_pb.Callback | undefined;
+    setRetrywith(value?: pulumi_callback_pb.Callback): RegisterResourceRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
     static toObject(includeInstance: boolean, msg: RegisterResourceRequest): RegisterResourceRequest.AsObject;
@@ -340,6 +345,7 @@ export namespace RegisterResourceRequest {
         packageref: string,
         hooks?: RegisterResourceRequest.ResourceHooksBinding.AsObject,
         hidediffsList: Array<string>,
+        retrywith?: pulumi_callback_pb.Callback.AsObject,
     }
 
 
@@ -417,6 +423,21 @@ export namespace RegisterResourceRequest {
         setAfterDeleteList(value: Array<string>): ResourceHooksBinding;
         addAfterDelete(value: string, index?: number): string;
 
+        hasOnCreateError(): boolean;
+        clearOnCreateError(): void;
+        getOnCreateError(): string | undefined;
+        setOnCreateError(value: string): ResourceHooksBinding;
+
+        hasOnUpdateError(): boolean;
+        clearOnUpdateError(): void;
+        getOnUpdateError(): string | undefined;
+        setOnUpdateError(value: string): ResourceHooksBinding;
+
+        hasOnDeleteError(): boolean;
+        clearOnDeleteError(): void;
+        getOnDeleteError(): string | undefined;
+        setOnDeleteError(value: string): ResourceHooksBinding;
+
         serializeBinary(): Uint8Array;
         toObject(includeInstance?: boolean): ResourceHooksBinding.AsObject;
         static toObject(includeInstance: boolean, msg: ResourceHooksBinding): ResourceHooksBinding.AsObject;
@@ -435,6 +456,9 @@ export namespace RegisterResourceRequest {
             afterUpdateList: Array<string>,
             beforeDeleteList: Array<string>,
             afterDeleteList: Array<string>,
+            onCreateError?: string,
+            onUpdateError?: string,
+            onDeleteError?: string,
         }
     }
 
@@ -958,6 +982,48 @@ export namespace TransformInvokeOptions {
     }
 }
 
+export class RetryRequest extends jspb.Message { 
+    clearErrorsList(): void;
+    getErrorsList(): Array<string>;
+    setErrorsList(value: Array<string>): RetryRequest;
+    addErrors(value: string, index?: number): string;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RetryRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: RetryRequest): RetryRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RetryRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RetryRequest;
+    static deserializeBinaryFromReader(message: RetryRequest, reader: jspb.BinaryReader): RetryRequest;
+}
+
+export namespace RetryRequest {
+    export type AsObject = {
+        errorsList: Array<string>,
+    }
+}
+
+export class RetryResponse extends jspb.Message { 
+    getShouldRetry(): boolean;
+    setShouldRetry(value: boolean): RetryResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RetryResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: RetryResponse): RetryResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RetryResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RetryResponse;
+    static deserializeBinaryFromReader(message: RetryResponse, reader: jspb.BinaryReader): RetryResponse;
+}
+
+export namespace RetryResponse {
+    export type AsObject = {
+        shouldRetry: boolean,
+    }
+}
+
 export class ResourceHookRequest extends jspb.Message { 
     getUrn(): string;
     setUrn(value: string): ResourceHookRequest;
@@ -987,6 +1053,10 @@ export class ResourceHookRequest extends jspb.Message {
     clearOldOutputs(): void;
     getOldOutputs(): google_protobuf_struct_pb.Struct | undefined;
     setOldOutputs(value?: google_protobuf_struct_pb.Struct): ResourceHookRequest;
+    clearErrorsList(): void;
+    getErrorsList(): Array<string>;
+    setErrorsList(value: Array<string>): ResourceHookRequest;
+    addErrors(value: string, index?: number): string;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceHookRequest.AsObject;
@@ -1008,12 +1078,18 @@ export namespace ResourceHookRequest {
         oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
         newOutputs?: google_protobuf_struct_pb.Struct.AsObject,
         oldOutputs?: google_protobuf_struct_pb.Struct.AsObject,
+        errorsList: Array<string>,
     }
 }
 
 export class ResourceHookResponse extends jspb.Message { 
     getError(): string;
     setError(value: string): ResourceHookResponse;
+
+    hasShouldRetry(): boolean;
+    clearShouldRetry(): void;
+    getShouldRetry(): boolean | undefined;
+    setShouldRetry(value: boolean): ResourceHookResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceHookResponse.AsObject;
@@ -1028,6 +1104,7 @@ export class ResourceHookResponse extends jspb.Message {
 export namespace ResourceHookResponse {
     export type AsObject = {
         error: string,
+        shouldRetry?: boolean,
     }
 }
 

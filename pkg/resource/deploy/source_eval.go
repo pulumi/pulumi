@@ -1739,6 +1739,7 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 			OldInputs:  mOldInputs,
 			NewOutputs: mNewOutputs,
 			OldOutputs: mOldOutputs,
+			Errors:     nil, // No errors in regular hooks
 		})
 		if err != nil {
 			return fmt.Errorf("marshaling resource hook request for %q: %w", name, err)
@@ -1764,10 +1765,96 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 	}, nil
 }
 
+// Wrap the error hook callback so the engine can call the callback server in
+// the language runtime, which will then execute the hook. The wrapper takes
+// care of all the necessary marshalling and unmarshalling.
+func (rm *resmon) wrapErrorHookCallback(name string, cb *pulumirpc.Callback) (ErrorHookFunction, error) {
+	client, err := rm.GetCallbacksClient(cb.Target)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(ctx context.Context, urn resource.URN, id resource.ID,
+		name string, typ tokens.Type, newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		errorMessages []string,
+	) (bool, error) {
+		logging.V(6).Infof("ErrorHook calling hook %q for urn %s", name, urn)
+		var mNewInputs, mOldInputs, mNewOutputs, mOldOutputs *structpb.Struct
+		mOpts := plugin.MarshalOptions{
+			Label:            fmt.Sprintf("ResourceMonitor.ErrorHook(%s, %s)", name, urn),
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		}
+		if newInputs != nil {
+			mNewInputs, err = plugin.MarshalProperties(newInputs, mOpts)
+			if err != nil {
+				return false, fmt.Errorf("marshaling new inputs for error hook %q: %w", name, err)
+			}
+		}
+		if oldInputs != nil {
+			mOldInputs, err = plugin.MarshalProperties(oldInputs, mOpts)
+			if err != nil {
+				return false, fmt.Errorf("marshaling old inputs for error hook %q: %w", name, err)
+			}
+		}
+		if newOutputs != nil {
+			mNewOutputs, err = plugin.MarshalProperties(newOutputs, mOpts)
+			if err != nil {
+				return false, fmt.Errorf("marshaling new outputs for error hook %q: %w", name, err)
+			}
+		}
+		if oldOutputs != nil {
+			mOldOutputs, err = plugin.MarshalProperties(oldOutputs, mOpts)
+			if err != nil {
+				return false, fmt.Errorf("marshaling old outputs for error hook %q: %w", name, err)
+			}
+		}
+		reqBytes, err := proto.Marshal(&pulumirpc.ResourceHookRequest{
+			Urn:        string(urn),
+			Id:         string(id),
+			Name:       name,
+			Type:       string(typ),
+			NewInputs:  mNewInputs,
+			OldInputs:  mOldInputs,
+			NewOutputs: mNewOutputs,
+			OldOutputs: mOldOutputs,
+			Errors:     errorMessages,
+		})
+		if err != nil {
+			return false, fmt.Errorf("marshaling error hook request for %q: %w", name, err)
+		}
+		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
+			Token:   cb.Token,
+			Request: reqBytes,
+		})
+		if err != nil {
+			logging.V(6).Infof("ErrorHook %q call error: %v", name, err)
+			return false, err
+		}
+		var response pulumirpc.ResourceHookResponse
+		err = proto.Unmarshal(resp.Response, &response)
+		if err != nil {
+			return false, fmt.Errorf("unmarshaling error hook response for %q: %w", name, err)
+		}
+		logging.V(6).Infof("ErrorHook %s returned should_retry=%v, error=%q", name, response.ShouldRetry != nil && *response.ShouldRetry, response.Error)
+		if response.Error != "" {
+			return false, errors.New(response.Error)
+		}
+		shouldRetry := false
+		if response.ShouldRetry != nil {
+			shouldRetry = *response.ShouldRetry
+		}
+		return shouldRetry, nil
+	}, nil
+}
+
 func (rm *resmon) RegisterResourceHook(ctx context.Context, req *pulumirpc.RegisterResourceHookRequest) (
 	*emptypb.Empty, error,
 ) {
 	logging.V(6).Infof("RegisterResourceHook %q", req.Name)
+
 	wrapped, err := rm.wrapResourceHookCallback(req.Name, req.Callback)
 	if err != nil {
 		return nil, err
@@ -1778,11 +1865,31 @@ func (rm *resmon) RegisterResourceHook(ctx context.Context, req *pulumirpc.Regis
 		OnDryRun: req.OnDryRun,
 	}
 	err = rm.resourceHooks.RegisterResourceHook(hook)
-	return nil, err
+	if err != nil {
+		return nil, err
+	}
+
+	// Also register as an error hook (hooks can be used as both regular hooks and error hooks)
+	errorWrapped, err := rm.wrapErrorHookCallback(req.Name, req.Callback)
+	if err != nil {
+		return nil, err
+	}
+	errorHook := ErrorHook{
+		Name:     req.Name,
+		Callback: errorWrapped,
+		OnDryRun: req.OnDryRun,
+	}
+	err = rm.resourceHooks.RegisterErrorHook(errorHook)
+	// If it's already registered as an error hook, that's fine - just continue
+	if err != nil && !strings.Contains(err.Error(), "already registered") {
+		return nil, err
+	}
+
+	return nil, nil
 }
 
 // inheritFromParent returns a new goal that inherits from the given parent goal.
-// Currently only inherits DeletedWith, Protect, and RetainOnDelete from parent.
+// Currently only inherits DeletedWith, Protect, RetainOnDelete, and error hooks from parent.
 func inheritFromParent(child resource.Goal, parent resource.Goal) *resource.Goal {
 	goal := child
 	if goal.DeletedWith == "" {
@@ -1793,6 +1900,20 @@ func inheritFromParent(child resource.Goal, parent resource.Goal) *resource.Goal
 	}
 	if goal.RetainOnDelete == nil {
 		goal.RetainOnDelete = parent.RetainOnDelete
+	}
+	// Inherit error hooks unless overridden (error hooks are unique, stored as []string with max length 1)
+	if goal.ResourceHooks == nil {
+		goal.ResourceHooks = make(map[resource.HookType][]string)
+	}
+	for _, hookType := range []resource.HookType{
+		resource.OnCreateError,
+		resource.OnUpdateError,
+		resource.OnDeleteError,
+	} {
+		// Only inherit if child doesn't have this error hook
+		if len(goal.ResourceHooks[hookType]) == 0 && len(parent.ResourceHooks[hookType]) > 0 {
+			goal.ResourceHooks[hookType] = parent.ResourceHooks[hookType]
+		}
 	}
 	return &goal
 }
@@ -2519,6 +2640,30 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
+	// Parse error hooks (unique, one per operation type)
+	// Error hooks are stored as []string with max length 1 to maintain compatibility with the map type
+	hooks := opts.GetHooks()
+	if hooks != nil {
+		if hooks.OnCreateError != nil && *hooks.OnCreateError != "" {
+			if resourceHooks == nil {
+				resourceHooks = make(map[resource.HookType][]string)
+			}
+			resourceHooks[resource.OnCreateError] = []string{*hooks.OnCreateError}
+		}
+		if hooks.OnUpdateError != nil && *hooks.OnUpdateError != "" {
+			if resourceHooks == nil {
+				resourceHooks = make(map[resource.HookType][]string)
+			}
+			resourceHooks[resource.OnUpdateError] = []string{*hooks.OnUpdateError}
+		}
+		if hooks.OnDeleteError != nil && *hooks.OnDeleteError != "" {
+			if resourceHooks == nil {
+				resourceHooks = make(map[resource.HookType][]string)
+			}
+			resourceHooks[resource.OnDeleteError] = []string{*hooks.OnDeleteError}
+		}
+	}
+
 	// At this point we're going to forward these properties to the rest of the engine and potentially to providers. As
 	// we add features to the code above (most notably transforms) we could end up with more instances of `OutputValue`
 	// than the rest of the system historically expects. To minimize the disruption we downgrade `OutputValue`s with no
@@ -2711,6 +2856,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			}
 			rm.resGoalsLock.Unlock()
 		}
+
 		// Send the goal state to the engine.
 		step := &registerResourceEvent{
 			goal: goal,
