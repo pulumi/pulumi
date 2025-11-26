@@ -185,6 +185,22 @@ jobs:
             --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
           )
 
+          LOWEST_PYTHON_DEPS_TEST_MATRIX=$(
+            ./scripts/get-job-matrix.py \
+            -vvv \
+            generate-matrix \
+            --kind lowest-python-deps-test \
+            --platform ubuntu-latest \
+            --version-set minimum
+          )
+
+          INTEGRATION_TEST_MATRIX=$(
+            ./scripts/get-job-matrix.py \
+            combine-matrices \
+            "${INTEGRATION_TEST_MATRIX}" \
+            "${LOWEST_PYTHON_DEPS_TEST_MATRIX}"
+          )
+
           ACCEPTANCE_TEST_MATRIX_WIN="{}"
           if [[ " ${ACCEPTANCE_PLATFORMS[*]} " =~ [[:space:]]windows-latest[[:space:]] ]]; then
             ACCEPTANCE_TEST_MATRIX_WIN=$(

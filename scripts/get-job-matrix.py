@@ -33,6 +33,7 @@ class JobKind(str, Enum):
     UNIT_TEST = "unit-test"
     PERFORMANCE_TEST = "performance-test"
     ALL_TEST = "all-test"
+    LOWEST_PYTHON_DEPS_TEST = "lowest-python-deps-test"
 
 
 @dataclass
@@ -115,6 +116,11 @@ MAKEFILE_INTEGRATION_TESTS: List[MakefileTest] = [
     {"name": "sdk/nodejs test_integration", "run": "cd sdk/nodejs && ../../scripts/retry make test_integration", "eta": 3},
     {"name": "sdk/python test_auto", "run": "cd sdk/python && ../../scripts/retry make test_auto", "eta": 6},
     {"name": "sdk/python test_fast", "run": "cd sdk/python && ../../scripts/retry make test_fast", "eta": 3},
+]
+
+MAKEFILE_LOWEST_PYTHON_DEPS_TESTS: List[MakefileTest] = [
+    {"name": "sdk/python test_auto_lowest_deps", "run": "cd sdk/python && ../../scripts/retry make test_auto_lowest_deps", "eta": 6},
+    {"name": "sdk/python test_fast_lowest_deps", "run": "cd sdk/python && ../../scripts/retry make test_fast_lowest_deps", "eta": 3},
 ]
 
 MAKEFILE_ACCEPTANCE_TESTS: List[MakefileTest] = [
@@ -411,6 +417,8 @@ def get_matrix(
         makefile_tests = MAKEFILE_PERFORMANCE_TESTS
     elif kind == JobKind.ALL_TEST:
         makefile_tests = MAKEFILE_INTEGRATION_TESTS + MAKEFILE_UNIT_TESTS
+    elif kind == JobKind.LOWEST_PYTHON_DEPS_TEST:
+        makefile_tests = MAKEFILE_LOWEST_PYTHON_DEPS_TESTS
     else:
         raise Exception(f"Unknown job kind {kind}")
 
@@ -436,6 +444,9 @@ def get_matrix(
             go_packages = {pkg for pkg in go_packages if is_unit_test(pkg)}
         elif kind == JobKind.ALL_TEST:
             pass
+        elif kind == JobKind.LOWEST_PYTHON_DEPS_TEST:
+            # Skip all Go packages for lowest-deps tests (only Makefile tests)
+            go_packages = set()
 
         test_suites += run_gotestsum_ci_matrix_packages(list(go_packages), item, tags)
 
