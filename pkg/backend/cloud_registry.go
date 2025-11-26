@@ -17,6 +17,7 @@ package backend
 import (
 	"context"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 )
@@ -27,4 +28,6 @@ type CloudRegistry interface {
 	PublishPackage(ctx context.Context, op apitype.PackagePublishOp) error
 	// PublishTemplate publishes a template to the registry.
 	PublishTemplate(ctx context.Context, op apitype.TemplatePublishOp) error
+	// DeletePackageVersion deletes a specific version of a package from the registry.
+	DeletePackageVersion(ctx context.Context, source, publisher, name string, version semver.Version) error
 }

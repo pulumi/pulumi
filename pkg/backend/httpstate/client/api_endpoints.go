@@ -127,6 +127,7 @@ func init() {
 	// APIs for interacting with the Package Registry
 	addEndpoint("POST", "/api/preview/registry/packages/{source}/{publisher}/{name}/versions", "publishPackage")
 	addEndpoint("POST", "/api/preview/registry/packages/{source}/{publisher}/{name}/versions/{version}/complete", "completePackagePublish")
+	addEndpoint("DELETE", "/api/registry/packages/{source}/{publisher}/{name}/versions/{version}", "deletePackageVersion")
 
 	// APIs for interacting with the Template Registry
 	addEndpoint("POST", "/api/registry/templates/{source}/{publisher}/{name}/versions", "publishTemplate")

@@ -22,6 +22,7 @@ import (
 	"net/http"
 
 	"github.com/blang/semver"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -82,4 +83,14 @@ func (r *cloudRegistry) PublishTemplate(ctx ctx.Context, op apitype.TemplatePubl
 
 func (r *cloudRegistry) DownloadTemplate(ctx ctx.Context, downloadURL string) (io.ReadCloser, error) {
 	return r.cl.DownloadTemplate(ctx, downloadURL)
+}
+
+func (r *cloudRegistry) DeletePackageVersion(
+	ctx ctx.Context, source, publisher, name string, version semver.Version,
+) error {
+	err := r.cl.DeletePackageVersion(ctx, source, publisher, name, version)
+	if apiErr := (&apitype.ErrorResponse{}); errors.As(err, &apiErr) && apiErr.Code == http.StatusNotFound {
+		return backenderr.NotFoundError{Err: err}
+	}
+	return err
 }

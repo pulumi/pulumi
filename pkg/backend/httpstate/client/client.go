@@ -269,6 +269,10 @@ func completePackagePublishPath(source, publisher, name, version string) string 
 	return fmt.Sprintf("/api/preview/registry/packages/%s/%s/%s/versions/%s/complete", source, publisher, name, version)
 }
 
+func deletePackageVersionPath(source, publisher, name, version string) string {
+	return fmt.Sprintf("/api/registry/packages/%s/%s/%s/versions/%s", source, publisher, name, version)
+}
+
 func publishTemplatePath(source, publisher, name string) string {
 	return fmt.Sprintf("/api/registry/templates/%s/%s/%s/versions", source, publisher, name)
 }
@@ -1773,6 +1777,15 @@ func (pc *Client) GetPackage(
 	var resp apitype.PackageMetadata
 	err := pc.restCall(ctx, "GET", url, nil, nil, &resp)
 	return resp, err
+}
+
+// DeletePackageVersion deletes a specific version of a package from the registry.
+func (pc *Client) DeletePackageVersion(
+	ctx context.Context, source, publisher, name string, version semver.Version,
+) error {
+	url := deletePackageVersionPath(source, publisher, name, version.String())
+	err := pc.restCall(ctx, "DELETE", url, nil, nil, nil)
+	return err
 }
 
 func (pc *Client) GetTemplate(
