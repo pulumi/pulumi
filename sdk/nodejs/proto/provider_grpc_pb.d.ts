@@ -6,6 +6,7 @@
 
 import * as grpc from "@grpc/grpc-js";
 import * as pulumi_provider_pb from "./provider_pb";
+import * as pulumi_alias_pb from "./alias_pb";
 import * as pulumi_plugin_pb from "./plugin_pb";
 import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
 import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";

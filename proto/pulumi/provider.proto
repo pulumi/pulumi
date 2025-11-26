@@ -14,6 +14,7 @@
 
 syntax = "proto3";
 
+import "pulumi/alias.proto";
 import "pulumi/plugin.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
@@ -1066,10 +1067,10 @@ message ConstructRequest {
     // Protected resources cannot be deleted without first being unprotected.
     optional bool protect = 12;
 
-    // A list of additional URNs that should be considered the same as this component's URN (and which will therefore be
-    // used to build aliases for its nested resource URNs). These may be URNs that previously referred to this component
-    // e.g. if it had its parent (and consequently URN) changed.
-    repeated string aliases = 14;
+    // We used to declare an alias field here of just strings, unlike the new aliases field which is sending
+    // alias specs, and the engine stopped sending this one years ago. But to ensure we don't confuse any old
+    // plugins/monitors making sure that field doesn't get reused.
+    reserved 14;
 
     // A list of input properties whose values should be treated as [secret](output-secrets).
     repeated string additionalSecretOutputs = 18;
@@ -1117,6 +1118,9 @@ message ConstructRequest {
 
     // The URNs of resources whose replaces will trigger a replace on this resource.
     repeated string replace_with = 28;
+
+    // a list of additional aliases that should be considered the same.
+    repeated Alias aliases = 29;
 }
 
 // `ConstructResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Construct) call.

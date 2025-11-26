@@ -1784,7 +1784,9 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 		t.Parallel()
 
 		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
-			Aliases: []string{"test"},
+			Aliases: []*pulumirpc.Alias{
+				{Alias: &pulumirpc.Alias_Urn{Urn: "test"}},
+			},
 		})
 		require.Len(t, snap.Aliases, 1, "aliases were not set")
 	})
