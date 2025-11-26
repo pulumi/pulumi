@@ -40,6 +40,24 @@
     //   matchDatasources: ["npm", "pypi", "go"],
     //    minimumReleaseAge: "3 days",
     //    prCreation: "not-pending"
-    // }
+    // },
+    //
+    // Disable auto-update for pulumi/pulumi - our base config auto-updates first party packages, but we don't want
+    // this for dependencies that come from this repo, i.e. don't update the core SDK in tests.
+    {
+      matchManagers: ["gomod"],
+      matchPackageNames: ["github.com/pulumi/pulumi/**"],
+      enabled: false
+    },
+    {
+      matchManagers: ["npm"],
+      matchPackageNames: ["@pulumi/pulumi"],
+      enabled: false
+    },
+    {
+      matchManagers: ["pep621"],
+      matchPackageNames: ["pulumi"],
+      enabled: false
+    },
   ]
 }
