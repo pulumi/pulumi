@@ -14,12 +14,12 @@
 
 import { readFileSync } from "fs";
 import * as path from "path";
+import { Input, Inputs } from "../../output";
 import { ComponentResource, ComponentResourceOptions } from "../../resource";
 import { ConstructResult, Provider } from "../provider";
-import { Input, Inputs, Output } from "../../output";
 import { main } from "../server";
-import { generateSchema } from "./schema";
 import { Analyzer, ComponentDefinition } from "./analyzer";
+import { generateSchema } from "./schema";
 
 function getComponentOutputs<T extends ComponentResource>(
     componentDefinition: ComponentDefinition,

@@ -45,8 +45,9 @@ func TestTestNames(t *testing.T) {
 		isl2 := strings.HasPrefix(name, "l2-")
 		isl3 := strings.HasPrefix(name, "l3-")
 		isPolicy := strings.HasPrefix(name, "policy-")
-		assert.True(t, isInternal || isl1 || isl2 || isl3 || isPolicy,
-			"test name %s must start with internal-, l1-, l2-, l3-, or policy-", name)
+		isProvider := strings.HasPrefix(name, "provider-")
+		assert.True(t, isInternal || isl1 || isl2 || isl3 || isPolicy || isProvider,
+			"test name %s must start with internal-, l1-, l2-, l3-, policy-, or provider-", name)
 	}
 }
 
@@ -81,6 +82,22 @@ func TestPolicyPacks(t *testing.T) {
 		} else {
 			assert.Empty(t, policies,
 				"test name %s must not use policy packs", name)
+		}
+	}
+}
+
+// Ensure provider tests do use language providers and no other test does.
+func TestLanguageProviders(t *testing.T) {
+	t.Parallel()
+
+	for name, test := range tests.LanguageTests {
+		isProvider := strings.HasPrefix(name, "provider-")
+		if isProvider {
+			assert.NotEmpty(t, test.LanguageProviders,
+				"test name %s must use language providers", name)
+		} else {
+			assert.Empty(t, test.LanguageProviders,
+				"test name %s must not use language providers", name)
 		}
 	}
 }
