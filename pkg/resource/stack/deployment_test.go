@@ -116,7 +116,7 @@ func TestDeploymentSerialization(t *testing.T) {
 		ReplacementTrigger:      resource.NewNullProperty(),
 		RefreshBeforeUpdate:     false,
 		ViewOf:                  "",
-		ResourceHooks: map[resource.HookType][]string{
+		ResourceHooks: map[resource.ResourceHookType][]string{
 			resource.BeforeCreate: {"hook1"},
 			resource.AfterDelete:  {"hook2"},
 		},
@@ -132,7 +132,7 @@ func TestDeploymentSerialization(t *testing.T) {
 	require.Len(t, dep.Dependencies, 2)
 	assert.Equal(t, resource.URN("foo:bar:baz"), dep.Dependencies[0])
 	assert.Equal(t, resource.URN("foo:bar:boo"), dep.Dependencies[1])
-	assert.Equal(t, map[resource.HookType][]string{
+	assert.Equal(t, map[resource.ResourceHookType][]string{
 		"BeforeCreate": {"hook1"},
 		"AfterDelete":  {"hook2"},
 	}, dep.ResourceHooks)
@@ -266,7 +266,7 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 			resources: []*resource.State{
 				{
 					URN: "urn1",
-					ResourceHooks: map[resource.HookType][]string{
+					ResourceHooks: map[resource.ResourceHookType][]string{
 						resource.AfterCreate: {"hook1"},
 					},
 				},

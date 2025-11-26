@@ -835,7 +835,7 @@ type ConstructOptions struct {
 
 	// ResourceHooks specifies hooks to be executed before and after
 	// resource operations.
-	ResourceHooks map[resource.HookType][]string
+	ResourceHooks map[resource.ResourceHookType][]string
 }
 
 // CustomTimeouts overrides default timeouts for resource operations.
