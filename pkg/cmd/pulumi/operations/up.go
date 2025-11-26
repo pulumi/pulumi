@@ -119,6 +119,8 @@ func NewUpCmd() *cobra.Command {
 	var excludeDependents bool
 	var planFilePath string
 	var attachDebugger []string
+	var strict bool
+	var iterate bool
 
 	// Flags for Neo.
 	var neoEnabled bool
@@ -223,6 +225,7 @@ func NewUpCmd() *cobra.Command {
 			// update phase.
 			GeneratePlan:    true,
 			Experimental:    env.Experimental.Value(),
+			Strict:          strict,
 			ContinueOnError: continueOnError,
 			AttachDebugger:  attachDebugger,
 			Autonamer:       autonamer,
@@ -455,10 +458,11 @@ func NewUpCmd() *cobra.Command {
 			Refresh:          refreshOption,
 			RefreshProgram:   runProgram,
 			ShowSecrets:      showSecrets,
-			// If we're in experimental mode then we trigger a plan to be generated during the preview phase
+			// If the user passed --strict then trigger a plan to be generated during the preview phase
 			// which will be constrained to during the update phase.
-			GeneratePlan: env.Experimental.Value(),
+			GeneratePlan: strict,
 			Experimental: env.Experimental.Value(),
+			Strict:       strict,
 
 			UseLegacyRefreshDiff: env.EnableLegacyRefreshDiff.Value(),
 			ContinueOnError:      continueOnError,
@@ -525,6 +529,26 @@ func NewUpCmd() *cobra.Command {
 
 			yes = yes || skipPreview || env.SkipConfirmations.Value()
 
+			// If iterate is set, it implies strict mode.
+			if iterate {
+				strict = true
+			}
+
+			if skipPreview && iterate {
+				return errors.New("--iterate cannot be used with --skip-preview; iterate requires a preview")
+			}
+
+			// Validate that the user did not pass both --skip-preview and --strict.
+			// Strict requires a preview so these flags are mutually exclusive.
+			if skipPreview && strict {
+				return errors.New("--strict cannot be used with --skip-preview; strict requires a preview")
+			}
+
+			// Avoid infinite loops in an unattended environment.
+			if iterate && yes {
+				return errors.New("--iterate cannot be used with --yes; iterate requires interactive confirmations")
+			}
+
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes {
 				return errors.New(
@@ -541,6 +565,7 @@ func NewUpCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			opts.IterateOnConstraintError = iterate
 
 			if err = validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
 				return err
@@ -791,6 +816,16 @@ func NewUpCmd() *cobra.Command {
 		"[DEPRECATED] Use --neo instead. Enable Pulumi Neo's assistance for improved CLI experience and insights "+
 			"(can also be set with PULUMI_COPILOT environment variable)")
 	_ = cmd.PersistentFlags().MarkDeprecated("copilot", "please use --neo instead")
+
+	cmd.PersistentFlags().BoolVar(
+		&strict, "strict", false,
+		"[EXPERIMENTAL] Enable strict plan behavior: generate a plan during preview and constrain the update "+
+			"to that plan (opt-in). Cannot be used with --skip-preview.")
+
+	cmd.PersistentFlags().BoolVar(
+		&iterate, "iterate", false,
+		"[EXPERIMENTAL] Return to preview phase if an update doesn't match the preview. "+
+			"Implies --strict and cannot be used with --yes or --skip-preview.")
 
 	// Currently, we can't mix `--target` and `--exclude`.
 	cmd.MarkFlagsMutuallyExclusive("target", "exclude")
