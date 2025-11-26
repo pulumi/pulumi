@@ -457,7 +457,7 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context,
 
 func newUpdateSource(ctx context.Context,
 	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
-	target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks,
+	target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks, errorHooks *deploy.ErrorHooks,
 ) (deploy.Source, error) {
 	//
 	// Step 1: Install and load plugins.
@@ -521,7 +521,7 @@ func newUpdateSource(ctx context.Context,
 		ProjectRoot: projectRoot,
 		Args:        args,
 		Target:      target,
-	}, defaultProviderVersions, resourceHooks, deploy.EvalSourceOptions{
+	}, defaultProviderVersions, resourceHooks, errorHooks, deploy.EvalSourceOptions{
 		DryRun:                    opts.DryRun,
 		Parallel:                  opts.Parallel,
 		DisableResourceReferences: opts.DisableResourceReferences,

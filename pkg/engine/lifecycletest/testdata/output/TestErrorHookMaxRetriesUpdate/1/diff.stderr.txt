@@ -1,0 +1,2 @@
+<{%fg 1%}>error: <{%reset%}><{%reset%}>maximum retry limit (100) exceeded: update failed<{%reset%}>
+<{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>

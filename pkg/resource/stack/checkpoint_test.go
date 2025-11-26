@@ -150,7 +150,7 @@ func TestSerializeCheckpoint(t *testing.T) {
 			resources: []*resource.State{
 				{
 					URN: "urn1",
-					ResourceHooks: map[resource.HookType][]string{
+					ResourceHooks: map[resource.ResourceHookType][]string{
 						resource.AfterCreate: {"hook1"},
 					},
 				},

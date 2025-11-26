@@ -89,6 +89,14 @@ class ResourceMonitorStub:
     steps of a resource's lifecycle.
     """
 
+    RegisterErrorHook: grpc.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.RegisterErrorHookRequest,
+        google.protobuf.empty_pb2.Empty,
+    ]
+    """Register an error hook that can be called by the engine when errors occur
+    during resource operations.
+    """
+
     RegisterPackage: grpc.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.RegisterPackageRequest,
         pulumi.resource_pb2.RegisterPackageResponse,
@@ -160,6 +168,14 @@ class ResourceMonitorAsyncStub:
     ]
     """Register a resource hook that can be called by the engine during certain
     steps of a resource's lifecycle.
+    """
+
+    RegisterErrorHook: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.RegisterErrorHookRequest,
+        google.protobuf.empty_pb2.Empty,
+    ]
+    """Register an error hook that can be called by the engine when errors occur
+    during resource operations.
     """
 
     RegisterPackage: grpc.aio.UnaryUnaryMultiCallable[
@@ -251,6 +267,16 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
     ) -> typing.Union[google.protobuf.empty_pb2.Empty, collections.abc.Awaitable[google.protobuf.empty_pb2.Empty]]:
         """Register a resource hook that can be called by the engine during certain
         steps of a resource's lifecycle.
+        """
+
+    
+    def RegisterErrorHook(
+        self,
+        request: pulumi.resource_pb2.RegisterErrorHookRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[google.protobuf.empty_pb2.Empty, collections.abc.Awaitable[google.protobuf.empty_pb2.Empty]]:
+        """Register an error hook that can be called by the engine when errors occur
+        during resource operations.
         """
 
     

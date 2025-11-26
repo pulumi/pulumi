@@ -103,6 +103,7 @@ func NewEvalSource(
 	runinfo *EvalRunInfo,
 	defaultProviderInfo map[tokens.Package]workspace.PackageDescriptor,
 	resourceHooks *ResourceHooks,
+	errorHooks *ErrorHooks,
 	opts EvalSourceOptions,
 ) Source {
 	return &evalSource{
@@ -110,6 +111,7 @@ func NewEvalSource(
 		runinfo:             runinfo,
 		defaultProviderInfo: defaultProviderInfo,
 		resourceHooks:       resourceHooks,
+		errorHooks:          errorHooks,
 		opts:                opts,
 	}
 }
@@ -119,6 +121,7 @@ type evalSource struct {
 	runinfo             *EvalRunInfo                                   // the directives to use when running the program.
 	defaultProviderInfo map[tokens.Package]workspace.PackageDescriptor // the default provider versions for this source.
 	resourceHooks       *ResourceHooks                                 // the resource hook registry.
+	errorHooks          *ErrorHooks                                    // the error hook registry.
 	opts                EvalSourceOptions                              // options for the evaluation source.
 }
 
@@ -723,6 +726,7 @@ type resmon struct {
 	resourceTransformsLock    sync.Mutex
 	resourceTransforms        map[resource.URN][]TransformFunction // option transformation functions per resource
 	resourceHooks             *ResourceHooks
+	errorHooks                *ErrorHooks
 	callbacksLock             sync.Mutex
 	callbacks                 map[string]*CallbacksClient // callbacks clients per target address
 	grpcDialOptions           DialOptions
@@ -784,6 +788,7 @@ func newResourceMonitor(
 		opts:                src.opts,
 		callbacks:           map[string]*CallbacksClient{},
 		resourceHooks:       src.resourceHooks,
+		errorHooks:          src.errorHooks,
 		resourceTransforms:  map[resource.URN][]TransformFunction{},
 		packageRefMap:       map[string]providers.ProviderRequest{},
 		grpcDialOptions:     src.plugctx.DialOptions,
@@ -1781,8 +1786,111 @@ func (rm *resmon) RegisterResourceHook(ctx context.Context, req *pulumirpc.Regis
 	return nil, err
 }
 
+// Wrap the error hook callback so the engine can call the callback server in
+// the language runtime, which will then execute the hook. The wrapper takes
+// care of all the necessary marshalling and unmarshalling.
+func (rm *resmon) wrapErrorHookCallback(name string, cb *pulumirpc.Callback) (ErrorHookFunction, error) {
+	client, err := rm.GetCallbacksClient(cb.Target)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(ctx context.Context, urn resource.URN, id resource.ID,
+		name string, typ tokens.Type, newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		errs []error,
+	) (bool, error) {
+		logging.V(6).Infof("ErrorHook calling hook %q for urn %s", name, urn)
+		var mNewInputs, mOldInputs, mNewOutputs, mOldOutputs *structpb.Struct
+		mOpts := plugin.MarshalOptions{
+			Label:            fmt.Sprintf("ResourceMonitor.ErrorHook(%s, %s)", name, urn),
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		}
+		if newInputs != nil {
+			mNewInputs, err = plugin.MarshalProperties(newInputs, mOpts)
+			if err != nil {
+				return false, fmt.Errorf("marshaling new inputs for error hook %q: %w", name, err)
+			}
+		}
+		if oldInputs != nil {
+			mOldInputs, err = plugin.MarshalProperties(oldInputs, mOpts)
+			if err != nil {
+				return false, fmt.Errorf("marshaling old inputs for error hook %q: %w", name, err)
+			}
+		}
+		if newOutputs != nil {
+			mNewOutputs, err = plugin.MarshalProperties(newOutputs, mOpts)
+			if err != nil {
+				return false, fmt.Errorf("marshaling new outputs for error hook %q: %w", name, err)
+			}
+		}
+		if oldOutputs != nil {
+			mOldOutputs, err = plugin.MarshalProperties(oldOutputs, mOpts)
+			if err != nil {
+				return false, fmt.Errorf("marshaling old outputs for error hook %q: %w", name, err)
+			}
+		}
+
+		errorsSoFar := make([]string, len(errs))
+		for i, err := range errs {
+			errorsSoFar[i] = err.Error()
+		}
+
+		reqBytes, err := proto.Marshal(&pulumirpc.ErrorHookRequest{
+			Urn:        string(urn),
+			Id:         string(id),
+			Name:       name,
+			Type:       string(typ),
+			NewInputs:  mNewInputs,
+			OldInputs:  mOldInputs,
+			NewOutputs: mNewOutputs,
+			OldOutputs: mOldOutputs,
+			Errors:     errorsSoFar,
+		})
+		if err != nil {
+			return false, fmt.Errorf("marshaling error hook request for %q: %w", name, err)
+		}
+		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
+			Token:   cb.Token,
+			Request: reqBytes,
+		})
+		if err != nil {
+			logging.V(6).Infof("ErrorHook %q call error: %v", name, err)
+			return false, err
+		}
+		var response pulumirpc.ErrorHookResponse
+		err = proto.Unmarshal(resp.Response, &response)
+		if err != nil {
+			return false, fmt.Errorf("unmarshaling error hook response for %q: %w", name, err)
+		}
+		logging.V(6).Infof("ErrorHook %s returned retry=%v error=%q", name, response.Retry, response.Error)
+		if response.Error != "" {
+			return false, errors.New(response.Error)
+		}
+		return response.Retry, nil
+	}, nil
+}
+
+func (rm *resmon) RegisterErrorHook(ctx context.Context, req *pulumirpc.RegisterErrorHookRequest) (
+	*emptypb.Empty, error,
+) {
+	logging.V(6).Infof("RegisterErrorHook %q", req.Name)
+	wrapped, err := rm.wrapErrorHookCallback(req.Name, req.Callback)
+	if err != nil {
+		return nil, err
+	}
+	hook := ErrorHook{
+		Name:     req.Name,
+		Callback: wrapped,
+	}
+	err = rm.errorHooks.RegisterErrorHook(hook)
+	return nil, err
+}
+
 // inheritFromParent returns a new goal that inherits from the given parent goal.
-// Currently only inherits DeletedWith, Protect, and RetainOnDelete from parent.
+// Currently inherits DeletedWith, Protect, RetainOnDelete, and ErrorHooks from parent.
 func inheritFromParent(child resource.Goal, parent resource.Goal) *resource.Goal {
 	goal := child
 	if goal.DeletedWith == "" {
@@ -1793,6 +1901,14 @@ func inheritFromParent(child resource.Goal, parent resource.Goal) *resource.Goal
 	}
 	if goal.RetainOnDelete == nil {
 		goal.RetainOnDelete = parent.RetainOnDelete
+	}
+	if goal.ErrorHooks == nil {
+		goal.ErrorHooks = make(map[resource.ErrorHookType]string)
+	}
+	for hookType, hookName := range parent.ErrorHooks {
+		if _, exists := goal.ErrorHooks[hookType]; !exists {
+			goal.ErrorHooks[hookType] = hookName
+		}
 	}
 	return &goal
 }
@@ -2484,7 +2600,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	additionalSecretOutputs := opts.GetAdditionalSecretOutputs()
 
 	// Grab the names for all of the hooks of a given type.
-	getHookNames := func(hookType resource.HookType) []string {
+	getHookNames := func(hookType resource.ResourceHookType) []string {
 		names := []string{}
 		hooks := opts.GetHooks()
 		if hooks == nil {
@@ -2501,8 +2617,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return names
 	}
 
-	var resourceHooks map[resource.HookType][]string
-	for _, hookType := range []resource.HookType{
+	var resourceHooks map[resource.ResourceHookType][]string
+	for _, hookType := range []resource.ResourceHookType{
 		resource.BeforeCreate,
 		resource.AfterCreate,
 		resource.BeforeUpdate,
@@ -2513,9 +2629,24 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		names := getHookNames(hookType)
 		if len(names) > 0 {
 			if resourceHooks == nil {
-				resourceHooks = make(map[resource.HookType][]string)
+				resourceHooks = make(map[resource.ResourceHookType][]string)
 			}
 			resourceHooks[hookType] = append(resourceHooks[hookType], names...)
+		}
+	}
+
+	var errorHooks map[resource.ErrorHookType]string
+	errorHooksBinding := req.GetErrorHooks()
+	if errorHooksBinding != nil {
+		errorHooks = make(map[resource.ErrorHookType]string)
+		if errorHooksBinding.OnErrorCreate != nil && *errorHooksBinding.OnErrorCreate != "" {
+			errorHooks[resource.OnErrorCreate] = *errorHooksBinding.OnErrorCreate
+		}
+		if errorHooksBinding.OnErrorUpdate != nil && *errorHooksBinding.OnErrorUpdate != "" {
+			errorHooks[resource.OnErrorUpdate] = *errorHooksBinding.OnErrorUpdate
+		}
+		if errorHooksBinding.OnErrorDelete != nil && *errorHooksBinding.OnErrorDelete != "" {
+			errorHooks[resource.OnErrorDelete] = *errorHooksBinding.OnErrorDelete
 		}
 	}
 
@@ -2702,6 +2833,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			SourcePosition:          sourcePosition,
 			StackTrace:              stackTrace,
 			ResourceHooks:           resourceHooks,
+			ErrorHooks:              errorHooks,
 		}.Make()
 		if goal.Parent != "" {
 			rm.resGoalsLock.Lock()
