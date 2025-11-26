@@ -598,7 +598,7 @@ func setupProviderFromPath(packageSource string, pctx *plugin.Context) (Provider
 		return Provider{}, nil, fmt.Errorf("plugin at path %q not executable", packageSource)
 	}
 
-	p, err := plugin.NewProviderFromPath(pctx.Host, pctx, packageSource)
+	p, err := plugin.NewProviderFromPath(pctx.Host, pctx, "", packageSource)
 	if err != nil {
 		return Provider{}, nil, err
 	}
