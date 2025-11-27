@@ -4,7 +4,7 @@
     "main": "index.ts",
     "dependencies": {
        "@pulumi/pulumi": "latest",
-       "@pulumi/tls": "4.10.0"
+       "@pulumi/tls": "5.2.3"
     },
     "devDependencies": {
         "@types/node": "^16"
