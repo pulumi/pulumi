@@ -337,6 +337,9 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			ResourceStatusToken:   resourceStatusToken,
 		})
 		if err != nil {
+			// Enhance "already exists" errors with helpful guidance (issue #10313)
+			err = enhanceAlreadyExistsError(err, s.URN())
+
 			if resp.Status != resource.StatusPartialFailure {
 				return resp.Status, nil, err
 			}
@@ -1589,7 +1592,10 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		contract.Assertf(s.cts == nil, "planned import should not have a completion source")
 
 		if _, ok := s.deployment.olds[s.new.URN]; ok {
-			return resource.StatusOK, nil, fmt.Errorf("resource '%v' already exists", s.new.URN)
+			err := fmt.Errorf("resource '%v' already exists", s.new.URN)
+			// Enhance the error with helpful guidance
+			err = enhanceAlreadyExistsError(err, s.new.URN)
+			return resource.StatusOK, nil, err
 		}
 		if s.new.Parent.QualifiedType() != resource.RootStackType {
 			_, ok := s.deployment.news.Load(s.new.Parent)
@@ -2204,4 +2210,70 @@ func (s *ViewStep) Fail() {
 
 func (s *ViewStep) Skip() {
 	// Nothing to do here.
+}
+
+// enhanceAlreadyExistsError detects "already exists" errors from providers and wraps them with helpful guidance.
+// This addresses issue #10313 by providing actionable steps to resolve resource conflicts.
+func enhanceAlreadyExistsError(err error, urn resource.URN) error {
+	if err == nil {
+		return nil
+	}
+
+	errMsg := err.Error()
+	errMsgLower := strings.ToLower(errMsg)
+
+	// Check if this is an "already exists" type error
+	alreadyExistsIndicators := []string{
+		"already exists",
+		"alreadyexists",
+		"entityalreadyexists",
+		"status code: 409",
+		"statuscode 409",
+		"conflict",
+		"duplicate",
+	}
+
+	isAlreadyExists := false
+	for _, indicator := range alreadyExistsIndicators {
+		if strings.Contains(errMsgLower, indicator) {
+			isAlreadyExists = true
+			break
+		}
+	}
+
+	if !isAlreadyExists {
+		return err
+	}
+
+	// Extract resource information for helpful messaging
+	resourceType := urn.Type()
+	resourceName := urn.Name()
+
+	// Build the enhanced error message with actionable steps
+	helpMsg := fmt.Sprintf(`%s
+
+To resolve this error, you can:
+
+1. Import the resource:
+   If you want Pulumi to manage this existing resource, import it using:
+   pulumi import %s %s <resource-id>
+
+   Replace <resource-id> with the actual ID of the existing resource in your cloud provider.
+
+2. Change the resource name:
+   Rename your locally declared resource to avoid the conflict.
+   Update the resource name in your Pulumi program.
+
+3. Delete the external resource:
+   If the resource is no longer needed, manually delete it from your cloud provider.
+   Then rerun 'pulumi up'.
+
+For more information on importing resources, see:
+https://www.pulumi.com/docs/cli/commands/pulumi_import/`,
+		errMsg,
+		resourceType,
+		resourceName,
+	)
+
+	return errors.New(helpMsg)
 }
