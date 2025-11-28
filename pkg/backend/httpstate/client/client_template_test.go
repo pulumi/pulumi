@@ -114,7 +114,7 @@ func TestStartTemplatePublish(t *testing.T) {
 				apiToken: "fake-token",
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
-						client: http.DefaultClient,
+						client: newHTTPClient(),
 					},
 				},
 			}
@@ -198,7 +198,7 @@ func TestCompleteTemplatePublish(t *testing.T) {
 				apiToken: "fake-token",
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
-						client: http.DefaultClient,
+						client: newHTTPClient(),
 					},
 				},
 			}
@@ -393,11 +393,9 @@ func TestPublishTemplate_Integration(t *testing.T) {
 			server := tt.setupServer(blobStorage)
 			defer server.Close()
 
-			var httpClient *http.Client
+			httpClient := newHTTPClient()
 			if tt.httpClient != nil {
 				httpClient = tt.httpClient
-			} else {
-				httpClient = http.DefaultClient
 			}
 
 			// Create a mock cloud registry that uses the HTTP client methods
@@ -467,8 +465,7 @@ func (r *testCloudRegistry) PublishTemplate(ctx context.Context, op templatePubl
 
 	req.Header.Set("Content-Type", "application/gzip")
 
-	httpClient := &http.Client{}
-	resp, err := httpClient.Do(req)
+	resp, err := newHTTPClient().Do(req)
 	if err != nil {
 		return err
 	}
