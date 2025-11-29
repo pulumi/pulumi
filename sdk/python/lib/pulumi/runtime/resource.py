@@ -175,6 +175,7 @@ async def prepare_resource(
     props: "Inputs",
     opts: Optional["ResourceOptions"],
     typ: Optional[type] = None,
+    parent: Optional["Resource"] = None,
 ) -> ResourceResolverOperations:
     # Before we can proceed, all our dependencies must be finished.
     explicit_urn_dependencies: set[str] = set()
@@ -210,14 +211,8 @@ async def prepare_resource(
 
     # Wait for our parent to resolve
     parent_urn: Optional[str] = ""
-    if opts is not None and opts.parent is not None:
-        parent_urn = await opts.parent.urn.future()
-    # TODO(sean) is it necessary to check the type here?
-    elif ty != "pulumi:pulumi:Stack":
-        # If no parent was provided, parent to the root resource.
-        parent = settings.get_root_resource()
-        if parent is not None:
-            parent_urn = await parent.urn.future()
+    if parent is not None:
+        parent_urn = await parent.urn.future()
 
     # Construct the provider reference, if we were given a provider to use.
     provider_ref = None
@@ -531,7 +526,12 @@ def resource_output(
 
 
 def get_resource(
-    res: "Resource", props: "Inputs", custom: bool, urn: str, typ: Optional[type] = None
+    res: "Resource",
+    props: "Inputs",
+    custom: bool,
+    urn: str,
+    typ: Optional[type] = None,
+    parent: Optional["Resource"] = None,
 ) -> None:
     log.debug(f"getting resource: urn={urn}")
 
@@ -556,7 +556,9 @@ def get_resource(
 
     async def do_get():
         try:
-            resolver = await prepare_resource(res, ty, custom, False, props, None, typ)
+            resolver = await prepare_resource(
+                res, ty, custom, False, props, None, typ, parent
+            )
 
             monitor = settings.get_monitor()
             inputs = await rpc.serialize_properties({"urn": urn}, {})
@@ -715,11 +717,18 @@ def _get_stack_trace() -> source_pb2.StackTrace:
     # Look up the stack to find the third __init__ frame (the first is Resource, the second is
     # CustomResource/ComponentResource, the third should be the concrete resource, including skipping any __internal_init__ function)
     n = 0  # how many __inits__ we've seen
+    target = 3
     for i in range(len(stack) - 1, -1, -1):
         f = stack[i]
         if f.name == "__init__":
             n += 1
-            if n == 3:
+            if n == 3 and i > 1:
+                # We've found the third init frame; but the next frame might be the component resource internal __init__ function in which case we
+                # need to keep going until we find the next non-init frame
+                f = stack[i - 1]
+                if f.name == "__init__" and f.filename.endswith("pulumi/resource.py"):
+                    target = 4
+            if n == target:
                 break
 
     # If we didn't find the third init frame before the end then just return None
@@ -756,6 +765,7 @@ def read_resource(
     opts: "ResourceOptions",
     typ: Optional[type] = None,
     package_ref: Optional[Awaitable[Optional[str]]] = None,
+    parent: Optional["Resource"] = None,
 ) -> None:
     if opts.id is None:
         raise Exception("Cannot read resource whose options are lacking an ID value")
@@ -795,7 +805,9 @@ def read_resource(
 
     async def do_read():
         try:
-            resolver = await prepare_resource(res, ty, True, False, props, opts, typ)
+            resolver = await prepare_resource(
+                res, ty, True, False, props, opts, typ, parent
+            )
 
             # Resolve the ID that we were given. Note that we are explicitly discarding the list of
             # dependencies returned to us from "serialize_property" (the second argument). This is
@@ -922,6 +934,7 @@ def register_resource(
     opts: Optional["ResourceOptions"],
     typ: Optional[type] = None,
     package_ref: Optional[Awaitable[Optional[str]]] = None,
+    parent: Optional["Resource"] = None,
 ) -> None:
     """
     Registers a new resource object with a given type t and name.  It returns the
@@ -979,7 +992,7 @@ def register_resource(
 
             try:
                 resolver = await prepare_resource(
-                    res, ty, custom, remote, props, opts, typ
+                    res, ty, custom, remote, props, opts, typ, parent
                 )
             except ValueError as e:
                 raise ValueError(
