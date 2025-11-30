@@ -285,6 +285,7 @@ func NewPreviewCmd() *cobra.Command {
 	var targetDependents bool
 	var excludeDependents bool
 	var attachDebugger []string
+	var continueOnError bool
 
 	// Flags for Neo.
 	var neoEnabled bool
@@ -484,10 +485,11 @@ func NewPreviewCmd() *cobra.Command {
 					ExcludeDependents:         excludeDependents,
 					// If we're trying to save a plan then we _need_ to generate it. We also turn this on in
 					// experimental mode to just get more testing of it.
-					GeneratePlan:   env.Experimental.Value() || planFilePath != "",
-					Experimental:   env.Experimental.Value(),
-					AttachDebugger: attachDebugger,
-					Autonamer:      autonamer,
+					GeneratePlan:    env.Experimental.Value() || planFilePath != "",
+					Experimental:    env.Experimental.Value(),
+					AttachDebugger:  attachDebugger,
+					Autonamer:       autonamer,
+					ContinueOnError: continueOnError,
 				},
 				Display: displayOpts,
 			}
@@ -660,6 +662,10 @@ func NewPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", false,
 		"Show detailed resource replacement creates and deletes instead of a single step")
+	cmd.PersistentFlags().BoolVar(
+		&continueOnError, "continue-on-error", env.ContinueOnError.Value(),
+		"Continue generating preview even if an error is encountered "+
+			"(can also be set with PULUMI_CONTINUE_ON_ERROR environment variable)")
 
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
