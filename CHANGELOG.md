@@ -17,6 +17,8 @@
 
 ### Bug Fixes
 
+- [cli/plugin] Fix `PULUMI_PLUGIN_DOWNLOAD_URL_OVERRIDES` not being applied when falling back from GitHub to get.pulumi.com during plugin downloads. URL overrides now work correctly with the fallback mechanism, allowing users to redirect plugin downloads to custom CDN/mirrors.
+
 - [cli/install] Correctly install non-standard plugins. See https://github.com/pulumi/pulumi/issues/20953 for more information
   [#20983](https://github.com/pulumi/pulumi/pull/20983)
 
