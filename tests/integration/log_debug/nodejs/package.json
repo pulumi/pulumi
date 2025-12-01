@@ -3,8 +3,8 @@
     "license": "Apache-2.0",
     "version": "0.0.1",
     "devDependencies": {
-        "@types/node": "^18",
-        "typescript": "^5.0.0"
+        "@types/node": "18.19.130",
+        "typescript": "5.9.3"
     },
     "peerDependencies": {
         "pulumi": "*"
