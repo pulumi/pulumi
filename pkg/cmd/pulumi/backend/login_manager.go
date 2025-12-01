@@ -16,6 +16,7 @@ package backend
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -51,6 +52,16 @@ type LoginManager interface {
 		setCurrent bool,
 		insecure bool,
 		color colors.Colorization,
+	) (backend.Backend, error)
+
+	LoginFromAuthContext(
+		ctx context.Context,
+		sink diag.Sink,
+		url string,
+		project *workspace.Project,
+		setCurrent bool,
+		insecure bool,
+		authContext workspace.AuthContext,
 	) (backend.Backend, error)
 }
 
@@ -98,6 +109,31 @@ func (f *lm) Login(
 	return httpstate.New(ctx, sink, url, project, insecure)
 }
 
+// LoginFromAuthContext logs in to a backend using the provided authentication context.
+// It handles different grant types, such as OIDC token exchange, and returns an error
+// for unrecognized grant types.
+func (f *lm) LoginFromAuthContext(
+	ctx context.Context,
+	sink diag.Sink,
+	url string,
+	project *workspace.Project,
+	setCurrent bool,
+	insecure bool,
+	authContext workspace.AuthContext,
+) (backend.Backend, error) {
+	if authContext.GrantType == workspace.AuthContextGrantTypeTokenExchange {
+		lm := httpstate.NewLoginManager()
+		_, err := lm.LoginWithOIDCToken(
+			ctx, sink, url, insecure, authContext.Token, authContext.Organization, authContext.Scope,
+			authContext.Expiration, setCurrent)
+		if err != nil {
+			return nil, err
+		}
+		return httpstate.New(ctx, sink, url, project, insecure)
+	}
+	return nil, fmt.Errorf("unknown auth context grant type: %s", authContext.GrantType)
+}
+
 type MockLoginManager struct {
 	CurrentF func(
 		ctx context.Context,
@@ -118,6 +154,16 @@ type MockLoginManager struct {
 		insecure bool,
 		color colors.Colorization,
 	) (backend.Backend, error)
+
+	LoginFromAuthContextF func(
+		ctx context.Context,
+		sink diag.Sink,
+		url string,
+		project *workspace.Project,
+		setCurrent bool,
+		insecure bool,
+		authContext workspace.AuthContext,
+	) (backend.Backend, error)
 }
 
 var _ LoginManager = (*MockLoginManager)(nil)
@@ -134,6 +180,21 @@ func (lm *MockLoginManager) Login(
 ) (backend.Backend, error) {
 	if lm.LoginF != nil {
 		return lm.LoginF(ctx, ws, sink, url, project, setCurrent, insecure, color)
+	}
+	panic("not implemented")
+}
+
+func (lm *MockLoginManager) LoginFromAuthContext(
+	ctx context.Context,
+	sink diag.Sink,
+	url string,
+	project *workspace.Project,
+	setCurrent bool,
+	insecure bool,
+	authContext workspace.AuthContext,
+) (backend.Backend, error) {
+	if lm.LoginFromAuthContextF != nil {
+		return lm.LoginFromAuthContextF(ctx, sink, url, project, setCurrent, insecure, authContext)
 	}
 	panic("not implemented")
 }

@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitingore",
     "Foo.cs",
     "Provider.cs",
     "Pulumi.Example.csproj",

@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitingore",
     "Config/Config.cs",
     "Config/README.md",
     "Configstation.Pulumi.Configstation.csproj",

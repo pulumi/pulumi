@@ -151,26 +151,6 @@ func testDeletePlugin(t *testing.T, plugin workspace.PluginInfo) {
 	}
 }
 
-func testPluginInstall(t *testing.T, expectedDir string, files map[string][]byte) {
-	// Skip during short test runs since this test involves downloading dependencies.
-	if testing.Short() {
-		t.Skip("Skipped in short test run")
-	}
-
-	dir, tarball, plugin := prepareTestDir(t, files)
-
-	err := InstallPluginContent(context.Background(), plugin, tarPlugin{tarball}, false)
-	require.NoError(t, err)
-
-	pluginInfo := assertPluginInstalled(t, dir, plugin)
-
-	info, err := os.Stat(filepath.Join(dir, plugin.Dir(), expectedDir))
-	require.NoError(t, err)
-	assert.True(t, info.IsDir())
-
-	testDeletePlugin(t, pluginInfo)
-}
-
 func TestInstallNoDeps(t *testing.T) {
 	t.Parallel()
 

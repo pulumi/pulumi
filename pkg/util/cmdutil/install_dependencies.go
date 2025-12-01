@@ -17,7 +17,6 @@ package cmdutil
 import (
 	"errors"
 	"io"
-	"os"
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -26,8 +25,11 @@ import (
 // InstallDependencies installs dependencies for the given language runtime, blocking until the installation is
 // complete. Standard output and error are streamed to os.Stdout and os.Stderr, respectively, and any errors encountered
 // during the installation or streaming of its output are returned.
-func InstallDependencies(lang plugin.LanguageRuntime, req plugin.InstallDependenciesRequest) error {
-	stdout, stderr, done, err := lang.InstallDependencies(req)
+func InstallDependencies(
+	lang plugin.LanguageRuntime, req plugin.InstallDependenciesRequest,
+	stdout, stderr io.Writer,
+) error {
+	stdoutPipe, stderrPipe, done, err := lang.InstallDependencies(req)
 	if err != nil {
 		return err
 	}
@@ -41,14 +43,14 @@ func InstallDependencies(lang plugin.LanguageRuntime, req plugin.InstallDependen
 
 	go func() {
 		defer wg.Done()
-		if _, err := io.Copy(os.Stdout, stdout); err != nil {
+		if _, err := io.Copy(stdout, stdoutPipe); err != nil {
 			errorChan <- err
 		}
 	}()
 
 	go func() {
 		defer wg.Done()
-		if _, err := io.Copy(os.Stderr, stderr); err != nil {
+		if _, err := io.Copy(stderr, stderrPipe); err != nil {
 			errorChan <- err
 		}
 	}()

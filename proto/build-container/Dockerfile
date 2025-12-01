@@ -48,6 +48,8 @@ ENV GOPATH=/go \
     PATH=/root/.local/bin:/go/bin:/root/.pulumi/bin:/usr/local/go/bin:/root/.yarn/bin/:$PATH
 
 # Install Protocol Buffers compiler and various GRPC generators
+# We are using version 1.50.0 for Python to support users who require older versions of
+# protobuf and grpcio (3.20.3 and 1.68.1 respectively).
 COPY /scripts/install-protobuf-tools.sh /build-scripts/
 RUN PROTOC_VERSION=29.5 \
     PROTOC_SHA256=a3f094363cd205c6f7af0d1b9305cb4c8517043f265cdb188f098cae93e8b217 \
@@ -57,6 +59,6 @@ RUN PROTOC_VERSION=29.5 \
     NODEJS_GRPC_TOOLS_VERSION=1.13.0 \
     NODEJS_TS_PROTOC_GEN_VERSION=5.3.3 \
     NODEJS_JS_PROTOC_GEN_VERSION=3.21.4 \
-    PYTHON_GRPCIO_VERSION=1.71.0 \
-    PYTHON_GRPCIO_TOOLS_VERSION=1.71.0 \
+    PYTHON_GRPCIO_VERSION=1.50.0 \
+    PYTHON_GRPCIO_TOOLS_VERSION=1.50.0 \
     /build-scripts/install-protobuf-tools.sh

@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitingore",
     "ArgFunction.cs",
     "OtherResource.cs",
     "Provider.cs",

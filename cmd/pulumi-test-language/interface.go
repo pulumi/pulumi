@@ -652,6 +652,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
+	defer contract.IgnoreClose(pctx)
 
 	// NewContextWithRoot will make a default plugin host, but we want to make sure we never actually use that
 	pctx.Host = nil

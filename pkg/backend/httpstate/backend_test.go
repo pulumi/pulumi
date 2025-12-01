@@ -48,6 +48,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testJWT is a test JWT token used in tests.
+//
+//nolint:lll // JWT token is long
+const testJWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+
 //nolint:paralleltest // mutates global configuration
 func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 	// Arrange
@@ -936,4 +941,320 @@ func TestIsExplainPreviewEnabled(t *testing.T) {
 
 	result := b.IsExplainPreviewEnabled(context.Background(), display.Options{})
 	assert.True(t, result)
+}
+
+func TestIsExpectedTokenFormat(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		token      string
+		isExpected bool
+	}{
+		{
+			name:       "JWT token",
+			token:      testJWT,
+			isExpected: true,
+		},
+		{
+			name:       "empty token",
+			token:      "",
+			isExpected: false,
+		},
+		{
+			name:       "unexpected token",
+			token:      "unexpected-token",
+			isExpected: false,
+		},
+		{
+			name:       "random string",
+			token:      "randomstring123",
+			isExpected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			result := isExpectedTokenFormat(tt.token)
+			if tt.isExpected {
+				assert.True(t, result)
+			} else {
+				assert.False(t, result)
+			}
+		})
+	}
+}
+
+//nolint:paralleltest // Cannot use t.Parallel() because subtests use t.Setenv
+func TestGetTokenValue(t *testing.T) {
+	tests := []struct {
+		name        string
+		token       string
+		setupEnv    func(*testing.T)
+		setupFile   func(*testing.T) string
+		wantValue   string
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:      "direct JWT token",
+			token:     testJWT,
+			wantValue: testJWT,
+			wantErr:   false,
+		},
+		{
+			name:  "token from file",
+			token: "file://",
+			setupFile: func(t *testing.T) string {
+				tmpFile, err := os.CreateTemp(t.TempDir(), "token-*.txt")
+				require.NoError(t, err)
+				t.Cleanup(func() { os.Remove(tmpFile.Name()) })
+				_, err = fmt.Fprintf(tmpFile, "  %s  \n", testJWT)
+				require.NoError(t, err)
+				tmpFile.Close()
+				return tmpFile.Name()
+			},
+			wantValue: testJWT,
+			wantErr:   false,
+		},
+		{
+			name:        "token from nonexistent file",
+			token:       "file:///nonexistent/path/to/token.txt",
+			wantErr:     true,
+			errContains: "reading token from file",
+		},
+		{
+			name:  "empty file",
+			token: "file://",
+			setupFile: func(t *testing.T) string {
+				tmpFile, err := os.CreateTemp(t.TempDir(), "token-*.txt")
+				require.NoError(t, err)
+				t.Cleanup(func() { os.Remove(tmpFile.Name()) })
+				tmpFile.Close()
+				return tmpFile.Name()
+			},
+			wantErr:     true,
+			errContains: "is empty",
+		},
+		{
+			name:  "file with unexpected token format",
+			token: "file://",
+			setupFile: func(t *testing.T) string {
+				tmpFile, err := os.CreateTemp(t.TempDir(), "token-*.txt")
+				require.NoError(t, err)
+				t.Cleanup(func() { os.Remove(tmpFile.Name()) })
+				_, err = tmpFile.WriteString("unexpected-token-format\n")
+				require.NoError(t, err)
+				tmpFile.Close()
+				return tmpFile.Name()
+			},
+			wantErr:     true,
+			errContains: "token format in file",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Cannot use t.Parallel() here because some tests use t.Setenv or create temp files
+
+			token := tt.token
+			if tt.setupEnv != nil {
+				tt.setupEnv(t)
+			}
+			if tt.setupFile != nil {
+				filePath := tt.setupFile(t)
+				token = "file://" + filePath
+			}
+
+			value, err := getTokenValue(token)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantValue, value)
+			}
+		})
+	}
+}
+
+func TestExchangeOidcToken(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		oidcToken    string
+		organization string
+		scope        string
+		expiration   time.Duration
+		setupServer  func() *httptest.Server
+		wantErr      bool
+		errContains  string
+		checkResult  func(*testing.T, string, time.Time)
+	}{
+		{
+			name:         "empty oidc token",
+			oidcToken:    "",
+			organization: "test-org",
+			scope:        "org:test-org",
+			expiration:   1 * time.Hour,
+			wantErr:      true,
+			errContains:  "Unauthorized: No credentials provided or are invalid",
+		},
+		{
+			name:         "invalid oidc token format",
+			oidcToken:    "invalid-token-format",
+			organization: "test-org",
+			scope:        "org:test-org",
+			expiration:   1 * time.Hour,
+			wantErr:      true,
+			errContains:  "Failed to read OIDC token",
+		},
+		{
+			name:         "successful token exchange",
+			oidcToken:    testJWT,
+			organization: "test-org",
+			scope:        "org:test-org",
+			expiration:   1 * time.Hour,
+			setupServer: func() *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.Path == "/api/oauth/token" {
+						resp := apitype.TokenExchangeGrantResponse{
+							AccessToken: "pul-jwt-access-token",
+							ExpiresIn:   3600,
+							TokenType:   "Bearer",
+							Scope:       "org:test-org",
+						}
+						w.WriteHeader(http.StatusOK)
+						_ = json.NewEncoder(w).Encode(resp)
+					}
+				}))
+			},
+			wantErr: false,
+			checkResult: func(t *testing.T, accessToken string, expiresAt time.Time) {
+				assert.Equal(t, "pul-jwt-access-token", accessToken)
+				assert.False(t, expiresAt.IsZero())
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cloudURL := ""
+			if tt.setupServer != nil {
+				server := tt.setupServer()
+				defer server.Close()
+				cloudURL = server.URL
+			}
+
+			accessToken, expiresAt, err := exchangeOidcToken(
+				diagtest.LogSink(t), cloudURL, false, tt.oidcToken, tt.organization, tt.scope, tt.expiration,
+			)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+			} else {
+				require.NoError(t, err)
+				if tt.checkResult != nil {
+					tt.checkResult(t, accessToken, expiresAt)
+				}
+			}
+		})
+	}
+}
+
+func TestGetAccountDetails(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		accessToken  string
+		setupServer  func() *httptest.Server
+		wantErr      bool
+		wantUsername string
+		wantOrgs     []string
+		checkErr     func(*testing.T, error)
+	}{
+		{
+			name:        "successful account details fetch",
+			accessToken: "pul-valid-token",
+			setupServer: func() *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.Path == "/api/user" {
+						// Create a response matching the serviceUser structure
+						resp := map[string]any{
+							"githubLogin": "testuser",
+							"organizations": []map[string]any{
+								{"githubLogin": "org1"},
+								{"githubLogin": "org2"},
+							},
+						}
+						w.WriteHeader(http.StatusOK)
+						_ = json.NewEncoder(w).Encode(resp)
+					}
+				}))
+			},
+			wantErr:      false,
+			wantUsername: "testuser",
+			wantOrgs:     []string{"org1", "org2"},
+		},
+		{
+			name:        "unauthorized access",
+			accessToken: "pul-invalid-token",
+			setupServer: func() *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.Path == "/api/user" {
+						w.WriteHeader(http.StatusUnauthorized)
+						_ = json.NewEncoder(w).Encode(apitype.ErrorResponse{
+							Code:    401,
+							Message: "Unauthorized",
+						})
+					}
+				}))
+			},
+			wantErr: true,
+			checkErr: func(t *testing.T, err error) {
+				assert.True(t, errors.Is(err, ErrUnauthorized))
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cloudURL := ""
+			if tt.setupServer != nil {
+				server := tt.setupServer()
+				defer server.Close()
+				cloudURL = server.URL
+			}
+
+			username, orgs, tokenInfo, err := getAccountDetails(
+				context.Background(), cloudURL, false, tt.accessToken,
+			)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.checkErr != nil {
+					tt.checkErr(t, err)
+				}
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantUsername, username)
+				assert.Equal(t, tt.wantOrgs, orgs)
+				// tokenInfo might be nil for old services
+				_ = tokenInfo
+			}
+		})
+	}
 }

@@ -71,9 +71,9 @@ async function reportModuleLoadFailure(program: string, error: Error): Promise<v
  * which defaults to the project "root" directory.
  */
 async function npmPackageRootFromProgramPath(programPath: string): Promise<string> {
-    // pkg-dir is an ESM module which we use to find the location of package.json
-    // Because it's an ESM module, we cannot import it directly.
-    const { packageDirectory } = await dynamicImport("pkg-dir");
+    // package-directory is an ESM module which we use to find the location of package.json Because it's an ESM module,
+    // we cannot import it directly.
+    const { packageDirectory } = await dynamicImport("package-directory");
     // Check if programPath is a directory. If not, then we
     // look at it's parent dir for the package root.
     let isDirectory = false;

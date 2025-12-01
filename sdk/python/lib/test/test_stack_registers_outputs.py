@@ -21,34 +21,43 @@ Regresses https://github.com/pulumi/pulumi/issues/8273
 """
 
 from copy import deepcopy
+from typing import Optional
 
+from pulumi.runtime.stack import Stack
 import pytest
-from pulumi.runtime import settings, mocks
+import pytest_asyncio
+from pulumi.runtime import get_root_resource, settings, mocks
 import pulumi
+
+
+class MockResource(pulumi.CustomResource):
+    def __init__(self, name: str, opts: Optional[pulumi.ResourceOptions] = None):
+        super().__init__("python:test:MockResource", name, {}, opts)
 
 
 class MyMocks(pulumi.runtime.Mocks):
     def new_resource(self, args: pulumi.runtime.MockResourceArgs):
-        raise Exception("new_resource")
+        return [args.name + "_id", args.inputs]
 
     def call(self, args: pulumi.runtime.MockCallArgs):
         raise Exception("call")
 
 
 class MyMonitor(mocks.MockMonitor):
-    def __init__(self):
+    def __init__(self, args):
+        super().__init__(args)
         self.outputs = None
 
     def RegisterResourceOutputs(self, outputs):
         self.outputs = outputs
 
 
-@pytest.fixture
-def my_mocks():
+@pytest_asyncio.fixture
+async def my_mocks():
     settings.reset_options()
     old_settings = deepcopy(settings.SETTINGS)
-    monitor = MyMonitor()
     mm = MyMocks()
+    monitor = MyMonitor(mm)
     mocks.set_mocks(mm, preview=False, monitor=monitor)
 
     try:
@@ -65,5 +74,22 @@ def my_mocks():
 
 @pulumi.runtime.test
 @pytest.mark.asyncio
-def test_stack_registers_outputs(my_mocks):
-    pass
+async def test_component_registers_outputs(my_mocks):
+    MockResource(name="res")
+
+
+@pytest.mark.asyncio
+async def test_stack_registers_outputs():
+    settings.reset_options()
+    old_settings = deepcopy(settings.SETTINGS)
+
+    def program():
+        pulumi.export("fruit", "banana")
+
+    try:
+        Stack(program)
+        stack = get_root_resource()
+        assert stack.outputs is not None
+        assert stack.outputs["fruit"] == "banana"
+    finally:
+        settings.configure(old_settings)

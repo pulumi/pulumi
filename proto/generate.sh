@@ -23,7 +23,7 @@ docker build build-container -t "pulumi/pulumi-build-container:${PULUMI_BUILD_CO
 # Run as the _current_ user, so that the generated files are owned by the current user, not root.
 USER=$(id -u):$(id -g)
 
-DOCKER_RUN="docker run --user $USER -it --rm -w /local -v $(pwd)/../sdk/proto/go:/go  -v $(pwd)/../sdk/python:/python -v $(pwd)/../sdk/nodejs:/nodejs -v $(pwd):/local pulumi/pulumi-build-container:${PULUMI_BUILD_CONTAINER_VERSION}"
+DOCKER_RUN="docker run --user $USER -i --rm -w /local -v $(pwd)/../sdk/proto/go:/go  -v $(pwd)/../sdk/python:/python -v $(pwd)/../sdk/nodejs:/nodejs -v $(pwd):/local pulumi/pulumi-build-container:${PULUMI_BUILD_CONTAINER_VERSION}"
 
 PROTOC_VERSION=$($DOCKER_RUN protoc --version | head -n1 | tr -d '\n\r')
 
@@ -73,7 +73,7 @@ $DOCKER_RUN /bin/bash -c 'set -x && JS_PULUMIRPC=/nodejs/proto && \
     find $TEMP_DIR && \
     find "$TEMP_DIR/pulumi" -type f -name "*.ts" -exec sed -i "s|../pulumi/|./|" {} \; && \
     find "$TEMP_DIR/pulumi" -type f -name "*.ts" -exec sed -i "s|/./|/|" {} \; && \
-    find "$TEMP_DIR/pulumi" -type f -name "*.js" -exec sed -i "s|^var global = .*;|var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;|" {} \; && \
+    find "$TEMP_DIR/pulumi" -type f -name "*.js" -exec sed -i "/^var global[[:space:]]*=/,/Function(.*this.*)/c var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;" {} \; && \
     find "$TEMP_DIR/pulumi" -type f -name "*.js" -exec sed -i "s|require('\''../pulumi/|require('\''./|" {} \; && \
     find "$TEMP_DIR/pulumi" -type f -name "*.js" -exec sed -i "s|require('\''../../pulumi/|require('\''../|" {} \; && \
     rm -rf "$JS_PULUMIRPC"/* && \
