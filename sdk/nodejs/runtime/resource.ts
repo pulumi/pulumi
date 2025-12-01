@@ -206,7 +206,7 @@ export function getResource(
     const done = rpcKeepAlive();
 
     const monitor = getMonitor();
-    const resopAsync = prepareResource(label, res, parent, custom, false, props, {});
+    const resopAsync = prepareResource(label, res, parent, custom, false, props, {urn: urn});
 
     const preallocError = new Error();
     debuggablePromise(
