@@ -900,7 +900,7 @@ export async function prepareResource(
     // Now "transfer" all input properties into unresolved Promises on res.  This way,
     // this resource will look like it has all its output properties to anyone it is
     // passed to.  However, those promises won't actually resolve until the registerResource
-    // RPC returns. We don't do this for local component resources as their outputs are
+    // RPC returns.  We don't do this for local component resources as their outputs are
     // manually setup in their constructors.
     let resolvers: OutputResolvers = {};
     if (remote || custom || opts.urn !== undefined) {
