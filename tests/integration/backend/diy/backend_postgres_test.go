@@ -176,9 +176,9 @@ func TestPostgresBackend(t *testing.T) {
 	assert.False(t, configLoc.IsRemote, "DIY backend should not have remote config")
 	assert.Nil(t, configLoc.EscEnv, "DIY backend should not use ESC env")
 
-	// Test stack tags (should be nil/empty for DIY backend)
+	// Test stack tags (should be empty for a newly created stack)
 	tags := stack1.Tags()
-	assert.Nil(t, tags, "DIY backend should not support tags")
+	assert.Empty(t, tags, "Newly created stack should have no tags")
 
 	// Test stack listing and retrieval
 	t.Log("Testing stack listing and retrieval")
