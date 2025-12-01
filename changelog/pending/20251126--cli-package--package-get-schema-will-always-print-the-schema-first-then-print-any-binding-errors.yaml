@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: cli/package
-  description: `package get-schema` will always print the schema first, then print any binding errors
+  description: Always print the schema first in `package get-schema`, then print any binding errors
