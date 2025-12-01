@@ -1429,6 +1429,14 @@ func TestPluginSpec_GetSource(t *testing.T) {
 	}
 }
 
+func TestGetPulumiSource_URL(t *testing.T) {
+	t.Parallel()
+
+	source := newGetPulumiSource("test-plugin", apitype.ResourcePlugin)
+	expectedURL := "https://get.pulumi.com/releases/plugins"
+	assert.Equal(t, expectedURL, source.URL())
+}
+
 func TestMissingErrorText(t *testing.T) {
 	t.Parallel()
 
