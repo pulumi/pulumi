@@ -51,7 +51,7 @@ type Goal struct {
 	SourcePosition string                        // If set, the source location of the resource registration
 	StackTrace     []StackFrame                  // If set, the stack trace at time of registration
 	ResourceHooks  map[ResourceHookType][]string // The resource hooks attached to the resource, by type.
-	ErrorHooks     map[ErrorHookType]string      // The error hooks attached to the resource, by type. Single hook per type.
+	ErrorHooks     map[ErrorHookType]string      // The error hooks attached to the resource, by type.
 }
 
 // NewGoal is used to construct Goal values. The dataflow for Goal is rather sensitive, so all fields are required.
