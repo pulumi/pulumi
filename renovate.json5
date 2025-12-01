@@ -72,13 +72,13 @@
     // https://github.com/pulumi/renovate-config/blob/5a711294b6b86c30f210802d7dc5b7bdbadd8629/default.json5#L131-L139
     {
       matchFileNames: ["tests/**", "sdk/python/lib/test/**", "sdk/nodejs/tests/**", "sdk/go/auto/test/**"],
+      matchDatasources: ["npm", "pypi", "go"],
       rangeStrategy: "pin",
     },
-    // Don't pin requires-python in test pyproject.toml files, we need the test projects to be installable in a range of Python versions
+    // Don't update requires-python in test pyproject.toml files, we need the test projects to be installable in a range of Python versions
     {
-      matchFileNames: ["tests/**", "sdk/python/lib/test/**", "sdk/nodejs/tests/**", "sdk/go/auto/test/**"],
-      matchDepTypes: ["project.requires-python"],
-      rangeStrategy: "replace"
+      matchDatasources: ["python-version"],
+      enabled: false
     },
   ]
 }
