@@ -15,7 +15,6 @@
 package ints
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -28,19 +27,8 @@ import (
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestReplacementTriggerWithSecret(t *testing.T) {
-	d := filepath.Join("nodejs", "simple")
-	// Use locally built pulumi binary if available
-	bin := ""
-	relBin := filepath.Join("..", "..", "..", "bin", "pulumi")
-	if absBin, err := filepath.Abs(relBin); err == nil {
-		if _, err := os.Stat(absBin); err == nil {
-			bin = absBin
-			t.Logf("Using locally built pulumi binary: %s", bin)
-		}
-	}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          d,
-		Bin:          bin,
+		Dir:          filepath.Join("nodejs", "simple"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
