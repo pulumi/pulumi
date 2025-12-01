@@ -1,9 +1,7 @@
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: [
-    "github>pulumi/renovate-config//default.json5",
-    // Don't pin dependencies, we want to keep semver. Note that tests get pinned via https://github.com/pulumi/renovate-config/blob/5a711294b6b86c30f210802d7dc5b7bdbadd8629/default.json5#L131-L139
-    ":preserveSemverRanges",
+    "github>pulumi/renovate-config//default.json5"
   ],
   // TODO: Remove baseBranches and useBaseBranchConfig settings once we're happy with the configuration
   baseBranches: ["renovate-dev"],
