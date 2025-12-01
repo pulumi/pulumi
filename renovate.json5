@@ -19,7 +19,7 @@
     "pep621",
 
     // GitHub
-    // "github-actions",
+    "github-actions",
   ],
   // The present's ignorePaths has `sdk/**` in it, we don't want that
   // https://github.com/pulumi/renovate-config/blob/main/default.json5#L55
