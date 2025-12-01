@@ -71,7 +71,7 @@
         "devDependencies",
         "optionalDependencies",
       ],
-      matchFileNames: ["sdk/python/lib/test/**", "sdk/nodejs/tests/**, "sdk/go/auto/test/**"],
+      matchFileNames: ["sdk/python/lib/test/**", "sdk/nodejs/tests/**", "sdk/go/auto/test/**"],
       rangeStrategy: "pin",
     },
   ]
