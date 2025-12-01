@@ -72,6 +72,9 @@ type tokenInfo struct {
 	// Whether this token is for a refresh operation.
 	refresh bool
 
+	// If this is a refresh operation, whether the steps should be persisted.
+	persisted bool
+
 	// Protects the steps slice.
 	mu sync.Mutex
 
@@ -161,24 +164,35 @@ func (rs *resourceStatusServer) Address() string {
 }
 
 // ReserveToken reserves a token for a resource status operation.
-func (rs *resourceStatusServer) ReserveToken(urn resource.URN, refresh bool) (string, error) {
+func (rs *resourceStatusServer) ReserveToken(urn resource.URN, refresh, persisted bool) (string, error) {
 	if rs == nil {
 		return "", nil
+	}
+	token, _, err := rs.reserveToken(urn, refresh, persisted)
+	return token, err
+}
+
+// reserveToken reserves a token for a resource status operation, and returns the token and tokenInfo.
+func (rs *resourceStatusServer) reserveToken(urn resource.URN, refresh, persisted bool) (string, *tokenInfo, error) {
+	if rs == nil {
+		return "", nil, nil
 	}
 
 	logging.V(5).Infof("Reserving token for %s (refresh: %t)", urn, refresh)
 
 	token, err := uuid.NewV4()
 	if err != nil {
-		return "", fmt.Errorf("creating token: %w", err)
+		return "", nil, fmt.Errorf("creating token: %w", err)
 	}
 	tokenString := token.String()
 	rs.urns.Store(urn, tokenString)
-	rs.tokens.Store(tokenString, &tokenInfo{
-		urn:     urn,
-		refresh: refresh,
-	})
-	return tokenString, nil
+	info := &tokenInfo{
+		urn:       urn,
+		refresh:   refresh,
+		persisted: persisted,
+	}
+	rs.tokens.Store(tokenString, info)
+	return tokenString, info, nil
 }
 
 // ReleaseToken returns the view steps published for the URN and releases the associated token so that no further
@@ -243,17 +257,17 @@ func (rs *resourceStatusServer) PublishViewSteps(ctx context.Context,
 	}
 	viewOf := info.urn
 
+	if len(req.Steps) == 0 {
+		return &pulumirpc.PublishViewStepsResponse{}, nil
+	}
+
 	// Unmarshal the steps.
 	steps, err := slice.MapError(req.Steps, func(step *pulumirpc.ViewStep) (Step, error) {
-		return rs.unmarshalViewStep(viewOf, step, info.refresh)
+		return rs.unmarshalViewStep(viewOf, step, info.refresh, info.persisted)
 	})
 	if err != nil {
 		logging.V(5).Infof("ResourceStatus: error unmarshaling steps: %v", err)
 		return nil, fmt.Errorf("unmarshaling steps: %w", err)
-	}
-
-	if len(steps) == 0 {
-		return &pulumirpc.PublishViewStepsResponse{}, nil
 	}
 
 	// Save any refresh steps.
@@ -265,31 +279,48 @@ func (rs *resourceStatusServer) PublishViewSteps(ctx context.Context,
 		}
 	}
 
-	events := rs.deployment.events
-
-	// Raise the OnResourceStepPre event and keep track of the payload context.
-	if events != nil {
-		for _, step := range steps {
-			payload, err := events.OnResourceStepPre(step)
-			if err != nil {
-				logging.V(5).Infof("ResourceStatus: error publishing view steps: %v", err)
-				return nil, fmt.Errorf("publishing view steps: %w", err)
-			}
-
-			info.mu.Lock()
-			info.steps = append(info.steps, stepInfo{
-				step:    step,
-				payload: payload,
-			})
-			info.mu.Unlock()
-		}
+	// Publish the steps.
+	if err := rs.publishViewSteps(info, steps); err != nil {
+		return nil, err
 	}
 
 	return &pulumirpc.PublishViewStepsResponse{}, nil
 }
 
+// publishViewStepsWithTokenInfo publishes the view steps.
+func (rs *resourceStatusServer) publishViewSteps(info *tokenInfo, steps []Step) error {
+	if rs == nil {
+		return nil
+	}
+
+	contract.Requiref(info != nil, "info", "must not be nil")
+
+	events := rs.deployment.events
+	if events == nil {
+		return nil
+	}
+
+	// Raise the OnResourceStepPre event and keep track of the payload context.
+	for _, step := range steps {
+		payload, err := events.OnResourceStepPre(step)
+		if err != nil {
+			logging.V(5).Infof("ResourceStatus: error publishing view steps: %v", err)
+			return fmt.Errorf("publishing view steps: %w", err)
+		}
+
+		info.mu.Lock()
+		info.steps = append(info.steps, stepInfo{
+			step:    step,
+			payload: payload,
+		})
+		info.mu.Unlock()
+	}
+
+	return nil
+}
+
 func (rs *resourceStatusServer) unmarshalViewStep(
-	viewOf resource.URN, step *pulumirpc.ViewStep, refresh bool,
+	viewOf resource.URN, step *pulumirpc.ViewStep, refresh bool, persisted bool,
 ) (Step, error) {
 	status, err := rs.unmarshalStepStatus(step.GetStatus())
 	if err != nil {
@@ -343,7 +374,9 @@ func (rs *resourceStatusServer) unmarshalViewStep(
 		op = OpRefresh
 	}
 
-	return NewViewStep(rs.deployment, op, status, step.GetError(), old, new, keys, diffs, detailedDiff, resultOp), nil
+	return NewViewStep(
+		rs.deployment, op, status, step.GetError(),
+		old, new, keys, diffs, detailedDiff, resultOp, persisted), nil
 }
 
 // unmarshalDetailedDiff unmarshals the detailed diff from a ViewStep.

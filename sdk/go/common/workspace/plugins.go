@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"hash"
 	"io"
-	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
@@ -49,17 +48,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
-	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
-	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
 
 const (
@@ -899,6 +894,15 @@ func (pp ProjectPlugin) Spec(ctx context.Context) (PluginSpec, error) {
 	return NewPluginSpec(ctx, pp.Name, pp.Kind, pp.Version, "", nil)
 }
 
+// LinkablePackageDescriptor contains the information necessary to link an SDK for a package specified by a
+// PackageDescriptor into a project.
+type LinkablePackageDescriptor struct {
+	// Path to the package, either a binary artifact like a Python wheel, or a source directory.
+	Path string
+	// The descriptor for the package
+	Descriptor PackageDescriptor
+}
+
 // A PackageDescriptor specifies a package: the source PluginSpec that provides it, and any parameterization
 // that must be applied to that plugin in order to produce the package.
 type PackageDescriptor struct {
@@ -1010,6 +1014,10 @@ var urlRegex = sync.OnceValue(func() *regexp.Regexp {
 	return regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-/]*[a-zA-Z0-9/](@.*)?$`)
 })
 
+func IsExternalURL(source string) bool {
+	return strings.HasPrefix(source, "https://") || strings.HasPrefix(source, "git://") || urlRegex().MatchString(source)
+}
+
 // Allow sha1 and sha256 hashes.
 var gitCommitHashRegex = sync.OnceValue(func() *regexp.Regexp {
 	return regexp.MustCompile(`^[0-9a-fA-F]{4,64}$`)
@@ -1054,7 +1062,7 @@ type parsePluginSpecInference struct {
 func parsePluginSpec(
 	ctx context.Context, source string, kind apitype.PluginKind,
 ) (PluginSpec, parsePluginSpecInference, error) {
-	if strings.HasPrefix(source, "https://") || strings.HasPrefix(source, "git://") || urlRegex().MatchString(source) {
+	if IsExternalURL(source) {
 		return parsePluginSpecFromURL(ctx, source, kind)
 	}
 
@@ -1104,13 +1112,21 @@ func parsePluginSpecFromURL(
 	default:
 		return PluginSpec{}, inference, errors.New(`unknown URL scheme: expected "git" or "https"`)
 	}
-
-	gitURL, _, err := gitutil.ParseGitRepoURL(parsedURL.String())
+	// We're purposely dropping any authentication info from the URL here. The name is used as
+	// the folder name for writing the plugin to disk, and we 1) don't want to write secrets
+	// in the folder name, 2) want to be able to reuse the same plugin even if the auth infoo
+	// changes and 3) avoid issues with the auth info being too long for a folder name.
+	urlWithoutAuth := &url.URL{
+		Scheme: parsedURL.Scheme,
+		Host:   parsedURL.Host,
+		Path:   parsedURL.Path,
+	}
+	nameURL, _, err := gitutil.ParseGitRepoURL(urlWithoutAuth.String())
 	if err != nil {
 		return PluginSpec{}, inference, err
 	}
 	pluginSpec := PluginSpec{
-		Name:    strings.ReplaceAll(strings.TrimPrefix(gitURL, "https://"), "/", "_"),
+		Name:    strings.ReplaceAll(strings.TrimPrefix(nameURL, "https://"), "/", "_"),
 		Kind:    kind,
 		Version: version,
 		// Prefix the url with `git://`, so we can later recognize this as a git URL.
@@ -1124,6 +1140,10 @@ func parsePluginSpecFromURL(
 	// is used, so the user gets a consistent experience.
 	if pluginSpec.Version == nil {
 		var err error
+		gitURL, _, err := gitutil.ParseGitRepoURL(parsedURL.String())
+		if err != nil {
+			return PluginSpec{}, inference, err
+		}
 		pluginSpec.Version, err = gitutil.GetLatestTagOrHash(ctx, gitURL)
 		if err != nil {
 			return pluginSpec, inference, PluginVersionNotFoundError(err)
@@ -1246,11 +1266,26 @@ type PluginInfo struct {
 	Path         string             // the path that a plugin was loaded from (this will always be a directory)
 	Kind         apitype.PluginKind // the kind of the plugin (language, resource, etc).
 	Version      *semver.Version    // the plugin's semantic version, if present.
-	Size         uint64             // the size of the plugin, in bytes.
 	InstallTime  time.Time          // the time the plugin was installed.
 	LastUsedTime time.Time          // the last time the plugin was used.
 	SchemaPath   string             // if set, used as the path for loading and caching the schema
 	SchemaTime   time.Time          // if set and newer than the file at SchemaPath, used to invalidate a cached schema
+
+	size uint64 // cached plugin size in bytes
+}
+
+// Size calculates the size of the plugin, in bytes.
+func (info *PluginInfo) Size() uint64 {
+	if info.size > 0 {
+		return info.size
+	}
+	size, err := getPluginSize(info.Path)
+	if err != nil {
+		logging.V(6).Infof("unable to get plugin dir size for %s: %v", info.Path, err)
+		return 0
+	}
+	info.size = size
+	return size
 }
 
 // Spec returns the PluginSpec for this PluginInfo
@@ -1280,20 +1315,12 @@ func (info *PluginInfo) Delete() error {
 	return nil
 }
 
-// SetFileMetadata adds extra metadata from the given file, representing this plugin's directory.
-func (info *PluginInfo) SetFileMetadata(path string) error {
+// setFileMetadata adds extra metadata from the given file, representing this plugin's directory.
+func (info *PluginInfo) setFileMetadata(path string) error {
 	// Get the file info.
 	file, err := os.Stat(path)
 	if err != nil {
 		return err
-	}
-
-	// Next, get the size from the directory (or, if there is none, just the file).
-	size, err := getPluginSize(path)
-	if err == nil {
-		info.Size = size
-	} else {
-		logging.V(6).Infof("unable to get plugin dir size for %s: %v", path, err)
 	}
 
 	// Next get the access times from the plugin folder.
@@ -1508,32 +1535,6 @@ func newDownloadError(statusCode int, url *url.URL, header http.Header) error {
 	}
 }
 
-// installLock acquires a file lock used to prevent concurrent installs.
-func (spec PluginSpec) installLock() (unlock func(), err error) {
-	finalDir, err := spec.DirPath()
-	if err != nil {
-		return nil, err
-	}
-	lockFilePath := finalDir + ".lock"
-
-	if err := os.MkdirAll(filepath.Dir(lockFilePath), 0o700); err != nil {
-		return nil, fmt.Errorf("creating plugin root: %w", err)
-	}
-
-	mutex := fsutil.NewFileMutex(lockFilePath)
-	if err := mutex.Lock(); err != nil {
-		return nil, err
-	}
-	return func() {
-		contract.IgnoreError(mutex.Unlock())
-	}, nil
-}
-
-// Install installs a plugin's tarball into the cache. See InstallWithContext for details.
-func (spec PluginSpec) Install(tgz io.ReadCloser, reinstall bool) error {
-	return spec.InstallWithContext(context.Background(), tarPlugin{tgz}, reinstall)
-}
-
 // pluginDownloader is responsible for downloading plugins from PluginSpecs.
 //
 // It allows hooking into various stages of the download process
@@ -1655,7 +1656,7 @@ func (d *pluginDownloader) downloadToFileWithRetry(ctx context.Context, pkgPlugi
 	}).Until(context.Background(), retry.Acceptor{
 		Delay:   &delay,
 		Backoff: &backoff,
-		Accept: func(attempt int, nextRetryTime time.Duration) (bool, interface{}, error) {
+		Accept: func(attempt int, nextRetryTime time.Duration) (bool, any, error) {
 			if attempt >= maxAttempts {
 				return false, nil, fmt.Errorf("failed all %d attempts", maxAttempts)
 			}
@@ -1723,326 +1724,6 @@ func DownloadToFile(
 		WrapStream: wrapper,
 		OnRetry:    retry,
 	}).DownloadToFile(ctx, pkgPlugin)
-}
-
-type PluginContent interface {
-	io.Closer
-
-	writeToDir(pathToDir string) error
-}
-
-func SingleFilePlugin(f *os.File, spec PluginSpec) PluginContent {
-	return singleFilePlugin{F: f, Kind: spec.Kind, Name: spec.Name}
-}
-
-type singleFilePlugin struct {
-	F    *os.File
-	Kind apitype.PluginKind
-	Name string
-}
-
-func (p singleFilePlugin) writeToDir(finalDir string) error {
-	bytes, err := io.ReadAll(p.F)
-	if err != nil {
-		return err
-	}
-
-	finalPath := filepath.Join(finalDir, fmt.Sprintf("pulumi-%s-%s", p.Kind, p.Name))
-	if runtime.GOOS == "windows" {
-		finalPath += ".exe"
-	}
-	// We are writing an executable.
-	return os.WriteFile(finalPath, bytes, 0o700) //nolint:gosec
-}
-
-func (p singleFilePlugin) Close() error {
-	return p.F.Close()
-}
-
-func TarPlugin(tgz io.ReadCloser) PluginContent {
-	return tarPlugin{Tgz: tgz}
-}
-
-type tarPlugin struct {
-	Tgz io.ReadCloser
-}
-
-func (p tarPlugin) Close() error {
-	return p.Tgz.Close()
-}
-
-func (p tarPlugin) writeToDir(finalPath string) error {
-	return archive.ExtractTGZ(p.Tgz, finalPath)
-}
-
-func DirPlugin(rootPath string) PluginContent {
-	return dirPlugin{Root: rootPath}
-}
-
-type dirPlugin struct {
-	Root string
-}
-
-func (p dirPlugin) Close() error {
-	return nil
-}
-
-func (p dirPlugin) writeToDir(dstRoot string) error {
-	return filepath.WalkDir(p.Root, func(srcPath string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		relPath := strings.TrimPrefix(srcPath, p.Root)
-		dstPath := filepath.Join(dstRoot, relPath)
-
-		if srcPath == p.Root {
-			return nil
-		}
-		if d.IsDir() {
-			return os.Mkdir(dstPath, 0o700)
-		}
-
-		src, err := os.Open(srcPath)
-		if err != nil {
-			return err
-		}
-
-		info, err := d.Info()
-		if err != nil {
-			return err
-		}
-
-		bytes, err := io.ReadAll(src)
-		if err != nil {
-			return err
-		}
-
-		return os.WriteFile(dstPath, bytes, info.Mode())
-	})
-}
-
-// InstallWithContext installs a plugin's tarball into the cache. It validates that plugin names are in the expected
-// format. Previous versions of Pulumi extracted the tarball to a temp directory first, and then renamed the temp
-// directory to the final directory. The rename operation fails often enough on Windows due to aggressive virus scanners
-// opening files in the temp directory. To address this, we now extract the tarball directly into the final directory,
-// and use file locks to prevent concurrent installs.
-//
-// Each plugin has its own file lock, with the same name as the plugin directory, with a `.lock` suffix.
-// During installation an empty file with a `.partial` suffix is created, indicating that installation is in-progress.
-// The `.partial` file is deleted when installation is complete, indicating that the plugin has finished installing.
-// If a failure occurs during installation, the `.partial` file will remain, indicating the plugin wasn't fully
-// installed. The next time the plugin is installed, the old installation directory will be removed and replaced with
-// a fresh installation.
-func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginContent, reinstall bool) error {
-	defer contract.IgnoreClose(content)
-
-	// Fetch the directory into which we will expand this tarball.
-	finalDir, err := spec.DirPath()
-	if err != nil {
-		return err
-	}
-
-	// Create a file lock file at <pluginsdir>/<kind>-<name>-<version>.lock.
-	unlock, err := spec.installLock()
-	if err != nil {
-		return err
-	}
-	defer unlock()
-
-	// Cleanup any temp dirs from failed installations of this plugin from previous versions of Pulumi.
-	if err := cleanupTempDirs(finalDir); err != nil {
-		// We don't want to fail the installation if there was an error cleaning up these old temp dirs.
-		// Instead, log the error and continue on.
-		logging.V(5).Infof("Install: Error cleaning up temp dirs: %s", err)
-	}
-
-	// Get the partial file path (e.g. <pluginsdir>/<kind>-<name>-<version>.partial).
-	partialFilePath, err := spec.PartialFilePath()
-	if err != nil {
-		return err
-	}
-
-	// Check whether the directory exists while we were waiting on the lock.
-	_, finalDirStatErr := os.Stat(finalDir)
-	if finalDirStatErr == nil {
-		_, partialFileStatErr := os.Stat(partialFilePath)
-		if partialFileStatErr != nil {
-			if !os.IsNotExist(partialFileStatErr) {
-				return partialFileStatErr
-			}
-			if !reinstall {
-				// finalDir exists, there's no partial file, and we're not reinstalling, so the plugin is already
-				// installed.
-				return nil
-			}
-		}
-
-		// Either the partial file exists--meaning a previous attempt at installing the plugin failed--or we're
-		// deliberately reinstalling the plugin. Delete finalDir so we can try installing again. There's no need to
-		// delete the partial file since we'd just be recreating it again below anyway.
-		if err := os.RemoveAll(finalDir); err != nil {
-			return err
-		}
-	} else if !os.IsNotExist(finalDirStatErr) {
-		return finalDirStatErr
-	}
-
-	// Create an empty partial file to indicate installation is in-progress.
-	if err := os.WriteFile(partialFilePath, nil, 0o600); err != nil {
-		return err
-	}
-
-	// Create the final directory.
-	if err := os.MkdirAll(finalDir, 0o700); err != nil {
-		return err
-	}
-
-	if err := content.writeToDir(finalDir); err != nil {
-		return err
-	}
-
-	// Even though we deferred closing the tarball at the beginning of this function, go ahead and explicitly close
-	// it now since we're finished extracting it, to prevent subsequent output from being displayed oddly with
-	// the progress bar.
-	contract.IgnoreClose(content)
-
-	err = spec.InstallDependencies(ctx)
-	if err != nil {
-		return err
-	}
-
-	// Installation is complete. Remove the partial file.
-	return os.Remove(partialFilePath)
-}
-
-func (spec PluginSpec) InstallDependencies(ctx context.Context) error {
-	dir, err := spec.DirPath()
-	if err != nil {
-		return err
-	}
-	subdir := filepath.Join(dir, spec.SubDir())
-
-	// Install dependencies, if needed.
-	proj, err := LoadPluginProject(filepath.Join(subdir, "PulumiPlugin.yaml"))
-	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
-	}
-	if proj != nil {
-		runtime := strings.ToLower(proj.Runtime.Name())
-		// For now, we only do this for Node.js and Python. For Go, the expectation is the binary is
-		// already built. For .NET, similarly, a single self-contained binary could be used, but
-		// otherwise `dotnet run` will implicitly run `dotnet restore`.
-		// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
-		switch runtime {
-		case "nodejs":
-			var b bytes.Buffer
-			if _, err := npm.Install(ctx, npm.AutoPackageManager, subdir, true /* production */, &b, &b); err != nil {
-				os.Stderr.Write(b.Bytes())
-				return fmt.Errorf("installing plugin dependencies: %w", err)
-			}
-		case "python":
-			// We support two types of Python based plugins: bare directories or
-			// buildable packages.
-			//
-			// If the plugin directory is a bare directory (that is not a Python
-			// package), we expect it to have a `__main__.py` file that's the
-			// entrypoint to the plugin. Dependencies must be specified in
-			// `requirements.txt`.
-			//
-			// Plugins can also be Python packages, with a pyproject.toml. The
-			// package needs to be buildable [1]. We expect the package to
-			// include a module with the name of the project.
-			//
-			// See also sdk/python/cmd/pulumi-language-python/main.go#RunPlugin.
-			//
-			// 1: https://packaging.python.org/en/latest/tutorials/packaging-projects/#choosing-a-build-backend
-			mainPy := filepath.Join(subdir, "__main__.py")
-			_, err := os.Stat(mainPy)
-			if os.IsNotExist(err) {
-				// There is no `__main__.py` file. Check for pyproject.toml and if it's a buildable package.
-				buildable, err := toolchain.IsBuildablePackage(subdir)
-				if err != nil {
-					return fmt.Errorf("checking if plugin is a buildable package: %w", err)
-				}
-				if !buildable {
-					return errors.New("plugin is not runnable, it provides neither __main__.py nor a buildable pyproject.toml")
-				}
-
-				logging.V(6).Infof("Plugin at %s is a buildable Python package, installing it in package mode.", subdir)
-
-				// We have a pyproject.toml and it's a buildable package. We'll create a virtualenv
-				// and install the package into it.
-				ambientTc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{})
-				if err != nil {
-					return fmt.Errorf("getting ambient toolchain: %w", err)
-				}
-				cmd, err := ambientTc.ModuleCommand(ctx, "venv", "venv")
-				cmd.Dir = subdir
-				if err != nil {
-					return fmt.Errorf("preparing venv command: %w", err)
-				}
-				if out, err := cmd.CombinedOutput(); err != nil {
-					return fmt.Errorf("creating venv: %w; output %s", err, out)
-				}
-
-				tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-					Toolchain:  toolchain.Pip,
-					Root:       subdir,
-					Virtualenv: "venv",
-				})
-				if err != nil {
-					return fmt.Errorf("getting python toolchain: %w", err)
-				}
-				cmd, err = tc.ModuleCommand(ctx, "pip", "install", ".")
-				cmd.Dir = subdir
-				if err != nil {
-					return fmt.Errorf("preparing pip install command: %w", err)
-				}
-				if out, err := cmd.CombinedOutput(); err != nil {
-					return fmt.Errorf("installing package: %w; output %s", err, out)
-				}
-				return nil
-			}
-
-			// TODO[pulumi/pulumi/issues/16287]: Support toolchain options for installing plugins.
-			tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-				Toolchain:  toolchain.Pip,
-				Root:       subdir,
-				Virtualenv: "venv",
-			})
-			if err != nil {
-				return fmt.Errorf("getting python toolchain: %w", err)
-			}
-			if err := tc.InstallDependencies(ctx, subdir, false, /*useLanguageVersionTools */
-				false /*showOutput*/, os.Stdout, os.Stderr); err != nil {
-				return fmt.Errorf("installing plugin dependencies: %w", err)
-			}
-		}
-	}
-	return nil
-}
-
-// cleanupTempDirs cleans up leftover temp dirs from failed installs with previous versions of Pulumi.
-func cleanupTempDirs(finalDir string) error {
-	dir := filepath.Dir(finalDir)
-
-	infos, err := os.ReadDir(dir)
-	if err != nil {
-		return err
-	}
-
-	for _, info := range infos {
-		// Temp dirs have a suffix of `.tmpXXXXXX` (where `XXXXXX`) is a random number,
-		// from os.CreateTemp.
-		if info.IsDir() && installingPluginRegexp.MatchString(info.Name()) {
-			path := filepath.Join(dir, info.Name())
-			if err := os.RemoveAll(path); err != nil {
-				return fmt.Errorf("cleaning up temp dir %s: %w", path, err)
-			}
-		}
-	}
-
-	return nil
 }
 
 // Re exporting PluginKind to keep backward compatibility, this should be kept in sync with
@@ -2154,7 +1835,7 @@ func GetPlugins() ([]PluginInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return getPlugins(dir, true /* skipMetadata */)
+	return GetPluginsFromDir(dir)
 }
 
 // GetPluginsWithMetadata returns a list of installed plugins with metadata about size,
@@ -2167,10 +1848,10 @@ func GetPluginsWithMetadata() ([]PluginInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return getPlugins(dir, false /* skipMetadata */)
+	return GetPluginsFromDir(dir)
 }
 
-func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
+func GetPluginsFromDir(dir string) ([]PluginInfo, error) {
 	files, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -2197,11 +1878,8 @@ func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
 			} else if !os.IsNotExist(err) {
 				return nil, err
 			}
-			// computing plugin sizes can be very expensive (nested node_modules)
-			if !skipMetadata {
-				if err = plugin.SetFileMetadata(path); err != nil {
-					return nil, err
-				}
+			if err = plugin.setFileMetadata(path); err != nil {
+				return nil, err
 			}
 			plugins = append(plugins, plugin)
 		}
@@ -2323,7 +2001,7 @@ func getPluginInfoAndPath(
 		}
 		// computing plugin sizes can be very expensive (nested node_modules)
 		if !skipMetadata {
-			if err := info.SetFileMetadata(info.Path); err != nil {
+			if err := info.setFileMetadata(info.Path); err != nil {
 				return nil, "", err
 			}
 		}
@@ -2403,7 +2081,7 @@ func getPluginInfoAndPath(
 		}
 		// computing plugin sizes can be very expensive (nested node_modules)
 		if !skipMetadata {
-			if err := info.SetFileMetadata(info.Path); err != nil {
+			if err := info.setFileMetadata(info.Path); err != nil {
 				return nil, "", err
 			}
 		}
@@ -2649,7 +2327,13 @@ func getCandidateExtensions() []string {
 	return []string{""}
 }
 
-var PluginNameRegexp = regexp.MustCompile(`^(?P<Name>[a-zA-Z0-9-][a-zA-Z0-9-_.]*[a-zA-Z0-9])$`)
+var PluginNameRegexp = func() *regexp.Regexp {
+	part := func(name string) string {
+		return "(?P<" + name + ">[a-zA-Z0-9-][a-zA-Z0-9-_.]*[a-zA-Z0-9])"
+	}
+
+	return regexp.MustCompile(`^((` + part("Source") + `/)?(` + part("Publisher") + `/))?` + part("Name") + `$`)
+}()
 
 // pluginRegexp matches plugin directory names: pulumi-KIND-NAME-VERSION.
 var pluginRegexp = regexp.MustCompile(

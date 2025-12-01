@@ -320,23 +320,6 @@ class Analyzer:
             "external_enum_types": self.external_enum_types,
         }
 
-    def get_annotations(self, o: Any) -> dict[str, Any]:
-        """
-        Get the type annotations for `o` in a backwards compatible way.
-        """
-        if sys.version_info >= (3, 10):
-            # Only available in 3.10 and later
-            return inspect.get_annotations(o)
-        else:
-            # On Python 3.9 and older, __annotations__ is not guaranteed to be
-            # present. Additionally, if the class has no annotations, and it is
-            # a subclass, it will return the annotations of the parent
-            # https://docs.python.org/3/howto/annotations.html#accessing-the-annotations-dict-of-an-object-in-python-3-9-and-older
-            if isinstance(o, type):
-                return o.__dict__.get("__annotations__", {})
-            else:
-                return getattr(o, "__annotations__", {})
-
     def analyze_component(
         self, component: type[ComponentResource]
     ) -> ComponentDefinition:
@@ -345,7 +328,7 @@ class Analyzer:
         holds all the information necessary to create a resource in a Pulumi
         provider schema.
         """
-        ann = self.get_annotations(component.__init__)
+        ann = inspect.get_annotations(component.__init__)
         args = ann.get("args", None)
         if not args:
             raise Exception(
@@ -398,7 +381,7 @@ class Analyzer:
                 }
             )
         """
-        ann = self.get_annotations(typ)
+        ann = inspect.get_annotations(typ)
         mapping: dict[str, str] = {camel_case(k): k for k in ann.keys()}
         return {
             camel_case(k): self.analyze_property(
@@ -809,10 +792,8 @@ def is_union(typ: type):
     # Check for `Union[a, b]`
     if get_origin(typ) == Union:
         return True
-    if sys.version_info >= (3, 10):
-        # Check for `a | b`
-        return get_origin(typ) == types.UnionType
-    return False
+    # Check for `a | b`
+    return get_origin(typ) == types.UnionType
 
 
 def is_enum(typ: type):
@@ -923,7 +904,7 @@ def is_list(typ: type) -> bool:
         abc.Sequence,
         abc.MutableSequence,
         collections.UserList,
-        typing.List,
+        list,
         typing.Sequence,
         typing.MutableSequence,
     )
@@ -940,10 +921,10 @@ def is_dict(typ: type) -> bool:
         collections.defaultdict,
         collections.OrderedDict,
         collections.UserDict,
-        typing.Dict,
+        typing.Dict,  # noqa - normally you'd use dict, but we want to check for this too
         typing.Mapping,
         typing.MutableMapping,
-        typing.DefaultDict,
+        typing.DefaultDict,  # noqa - normally you'd use collections.defaultdict, but we want to check for this too
         typing.OrderedDict,
     )
 

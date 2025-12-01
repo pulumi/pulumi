@@ -117,7 +117,7 @@ func (h *L2ResourceSimpleLanguageHost) GeneratePackage(
 
 	if h.expectLanguageInfo {
 		// Check we see the language info block in the schema.
-		var spec map[string]interface{}
+		var spec map[string]any
 		err := json.Unmarshal([]byte(req.Schema), &spec)
 		if err != nil {
 			return nil, fmt.Errorf("could not unmarshal schema: %w", err)
@@ -126,7 +126,7 @@ func (h *L2ResourceSimpleLanguageHost) GeneratePackage(
 		if !ok {
 			return nil, errors.New("expected language block in schema")
 		}
-		language, ok := languageRaw.(map[string]interface{})
+		language, ok := languageRaw.(map[string]any)
 		if !ok {
 			return nil, errors.New("expected language block in schema to be a map")
 		}
@@ -134,7 +134,7 @@ func (h *L2ResourceSimpleLanguageHost) GeneratePackage(
 		if !ok {
 			return nil, errors.New("expected mock language block in schema")
 		}
-		info, ok := infoRaw.(map[string]interface{})
+		info, ok := infoRaw.(map[string]any)
 		if !ok {
 			return nil, errors.New("expected mock language block in schema to be a map")
 		}

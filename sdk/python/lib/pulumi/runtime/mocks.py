@@ -19,7 +19,7 @@ Mocks for testing.
 import functools
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, List, NamedTuple, Optional, Tuple
+from typing import NamedTuple, Optional
 
 from google.protobuf import empty_pb2
 
@@ -124,7 +124,7 @@ class Mocks(ABC):
     """
 
     @abstractmethod
-    def call(self, args: MockCallArgs) -> Tuple[dict, Optional[List[Tuple[str, str]]]]:
+    def call(self, args: MockCallArgs) -> tuple[dict, Optional[list[tuple[str, str]]]]:
         """
         call mocks provider-implemented function calls (e.g. aws.get_availability_zones).
 
@@ -133,7 +133,7 @@ class Mocks(ABC):
         return {}, None
 
     @abstractmethod
-    def new_resource(self, args: MockResourceArgs) -> Tuple[Optional[str], dict]:
+    def new_resource(self, args: MockResourceArgs) -> tuple[Optional[str], dict]:
         """
         new_resource mocks resource construction calls. This function should return the physical identifier and the output properties
         for the resource being constructed.
@@ -145,12 +145,16 @@ class Mocks(ABC):
 
 class MockMonitor:
     class ResourceRegistration(NamedTuple):
+        """
+        ResourceRegistration contains the URN, ID, and state of a registered resource.
+        """
+
         urn: str
         id: str
         state: dict
 
     mocks: Mocks
-    resources: Dict[str, ResourceRegistration]
+    resources: dict[str, ResourceRegistration]
 
     def __init__(self, mocks: Mocks):
         self.mocks = mocks
@@ -163,6 +167,13 @@ class MockMonitor:
             type_ = parentType + "$" + type_
 
         return "urn:pulumi:" + "::".join([get_stack(), get_project(), type_, name])
+
+    def get_registered_resources(self) -> dict[str, ResourceRegistration]:
+        """
+        get_registered_resources returns a copy of the resources dictionary that can be used for test assertions.
+        """
+
+        return dict(self.resources)
 
     def Invoke(self, request):
         # Ensure we have an event loop on this thread because it's needed when deserializing resource references.
@@ -262,6 +273,9 @@ class MockMonitor:
     def RegisterPackage(self, request):
         # Mocks don't _really_ support packages, so we just return a fake package ref.
         return resource_pb2.RegisterPackageResponse(ref="mock-uuid")
+
+    def SignalAndWaitForShutdown(self, request):
+        return empty_pb2.Empty()
 
 
 class MockEngine:

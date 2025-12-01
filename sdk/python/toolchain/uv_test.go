@@ -15,8 +15,10 @@
 package toolchain
 
 import (
+	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/blang/semver"
@@ -84,19 +86,76 @@ func TestUvVirtualenvPath(t *testing.T) {
 func TestUvVersion(t *testing.T) {
 	t.Parallel()
 
-	uv, err := newUv(".", "")
-	require.NoError(t, err)
-
 	for _, versionString := range []string{
 		"uv 0.4.26",
 		"uv 0.4.26 (Homebrew 2024-10-23)",
 		"uv 0.4.26 (d2cd09bbd 2024-10-25)",
 	} {
-		v, err := uv.parseUvVersion(versionString)
+		v, err := ParseUvVersion(versionString)
 		require.NoError(t, err)
 		require.Equal(t, semver.MustParse("0.4.26"), v)
 	}
 
-	_, err = uv.parseUvVersion("uv 0.4.25")
+	_, err := ParseUvVersion("uv 0.4.25")
 	require.ErrorContains(t, err, "less than the minimum required version")
+}
+
+func TestUvCommandSyncsEnvironment(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	pyproject, err := os.ReadFile(filepath.Join("testdata", "project", "pyproject.toml"))
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(root, "pyproject.toml"), pyproject, 0o600)
+	require.NoError(t, err)
+
+	uv, err := newUv(root, "")
+	require.NoError(t, err)
+
+	// Run a python command, this should run `uv sync` as side effect
+	cmd, err := uv.Command(context.Background(), "-c", "print('hello')")
+	require.NoError(t, err)
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err)
+	require.Equal(t, "hello", strings.TrimSpace(string(out)))
+
+	// check that .venv exists
+	require.DirExists(t, filepath.Join(root, ".venv"))
+
+	// `wheel`, the project's dependency, should be installed
+	cmd, err = uv.ModuleCommand(context.Background(), "wheel", "version")
+	require.NoError(t, err)
+	out, err = cmd.CombinedOutput()
+	require.NoError(t, err)
+	require.True(t, strings.Contains(string(out), "wheel"), "unexpected output: %s", out)
+}
+
+func TestUvCommandSyncsEnvironmentCustomVenv(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	pyproject, err := os.ReadFile(filepath.Join("testdata", "project", "pyproject.toml"))
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(root, "pyproject.toml"), pyproject, 0o600)
+	require.NoError(t, err)
+
+	uv, err := newUv(root, "my_venv")
+	require.NoError(t, err)
+
+	// Run a python command, this should run `uv sync` as side effect
+	cmd, err := uv.Command(context.Background(), "-c", "print('hello')")
+	require.NoError(t, err)
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err)
+	require.Equal(t, "hello", strings.TrimSpace(string(out)))
+
+	// check that my_venv exists
+	require.DirExists(t, filepath.Join(root, "my_venv"))
+
+	// `wheel`, the project's dependency, should be installed
+	cmd, err = uv.ModuleCommand(context.Background(), "wheel", "version")
+	require.NoError(t, err)
+	out, err = cmd.CombinedOutput()
+	require.NoError(t, err)
+	require.True(t, strings.Contains(string(out), "wheel"), "unexpected output: %s", out)
 }

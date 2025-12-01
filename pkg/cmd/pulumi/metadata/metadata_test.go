@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2024-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
@@ -54,11 +55,10 @@ func TestReadingGitRepo(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		assert.NoError(t, addGitMetadata(e.RootPath, test))
+		require.NoError(t, addGitMetadata(e.RootPath, test))
 
-		assert.EqualValues(t, test.Message, "message for commit alpha")
-		_, ok := test.Environment[backend.GitHead]
-		assert.True(t, ok, "Expected to find Git SHA in update environment map")
+		assert.Equal(t, test.Message, "message for commit alpha")
+		assert.Contains(t, test.Environment, backend.GitHead, "Expected to find Git SHA in update environment map")
 
 		assertEnvValue(t, test, backend.GitHeadName, "refs/heads/master")
 		assertEnvValue(t, test, backend.GitDirty, "false")
@@ -79,12 +79,11 @@ func TestReadingGitRepo(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		assert.NoError(t, addGitMetadata(e.RootPath, test))
+		require.NoError(t, addGitMetadata(e.RootPath, test))
 
-		assert.EqualValues(t, test.Message, "message for commit beta")
+		assert.Equal(t, "message for commit beta", test.Message)
+		assert.Contains(t, test.Environment, backend.GitHead, "Expected to find Git SHA in update environment map")
 		featureBranch1SHA = test.Environment[backend.GitHead]
-		_, ok := test.Environment[backend.GitHead]
-		assert.True(t, ok, "Expected to find Git SHA in update environment map")
 		assertEnvValue(t, test, backend.GitHeadName, "refs/heads/feature/branch1")
 		assertEnvValue(t, test, backend.GitDirty, "true") // Because beta-unsubmitted.txt, after commit
 
@@ -99,11 +98,11 @@ func TestReadingGitRepo(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		assert.NoError(t, addGitMetadata(e.RootPath, test))
+		require.NoError(t, addGitMetadata(e.RootPath, test))
 
-		assert.EqualValues(t, test.Message, "message for commit beta")
+		assert.Equal(t, "message for commit beta", test.Message)
 		featureBranch2SHA := test.Environment[backend.GitHead]
-		assert.EqualValues(t, featureBranch1SHA, featureBranch2SHA)
+		assert.Equal(t, featureBranch1SHA, featureBranch2SHA)
 		assertEnvValue(t, test, backend.GitHeadName, "refs/heads/feature/branch2")
 	}
 
@@ -114,13 +113,12 @@ func TestReadingGitRepo(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		assert.NoError(t, addGitMetadata(e.RootPath, test))
+		require.NoError(t, addGitMetadata(e.RootPath, test))
 
-		assert.EqualValues(t, test.Message, "message for commit alpha") // The prior commit
-		_, ok := test.Environment[backend.GitHead]
-		assert.True(t, ok, "Expected to find Git SHA in update environment map")
-		_, ok = test.Environment[backend.GitHeadName]
-		assert.False(t, ok, "Expected no 'git.headName' key, since in detached head state.")
+		assert.Equal(t, "message for commit alpha", test.Message) // The prior commit
+		assert.Contains(t, test.Environment, backend.GitHead, "Expected to find Git SHA in update environment map")
+		assert.NotContains(t, test.Environment, backend.GitHeadName,
+			"Expected no 'git.headName' key, since in detached head state.")
 	}
 
 	// Tag the commit
@@ -131,7 +129,7 @@ func TestReadingGitRepo(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		assert.NoError(t, addGitMetadata(e.RootPath, test))
+		require.NoError(t, addGitMetadata(e.RootPath, test))
 		// Ref is still branch2, since `git tag` didn't change anything.
 		assertEnvValue(t, test, backend.GitHeadName, "refs/heads/feature/branch2")
 	}
@@ -144,9 +142,9 @@ func TestReadingGitRepo(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		assert.NoError(t, addGitMetadata(e.RootPath, test))
-		_, ok := test.Environment[backend.GitHeadName]
-		assert.False(t, ok, "Expected no 'git.headName' key, since in detached head state.")
+		require.NoError(t, addGitMetadata(e.RootPath, test))
+		assert.NotContains(t, test.Environment, backend.GitHeadName,
+			"Expected no 'git.headName' key, since in detached head state.")
 	}
 
 	// Confirm that data can be inferred from the CI system if unavailable.
@@ -160,11 +158,10 @@ func TestReadingGitRepo(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		assert.NoError(t, addGitMetadata(e.RootPath, test))
-		name, ok := test.Environment[backend.GitHeadName]
-		t.Log(name)
-		assert.True(t, ok, "Expected 'git.headName' key, from CI util.")
-		// assert.Equal(t, "branch-from-ci", name) # see https://github.com/pulumi/pulumi/issues/5303
+		require.NoError(t, addGitMetadata(e.RootPath, test))
+		assert.Contains(t, test.Environment, backend.GitHeadName, "Expected 'git.headName' key, from CI util.")
+		// TODO: https://github.com/pulumi/pulumi/issues/5303
+		// assert.Equal(t, "branch-from-ci", test.Environment[backend.GitHeadName])
 	}
 }
 
@@ -194,10 +191,9 @@ func TestReadingGitLabMetadata(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		assert.NoError(t, addGitMetadata(e.RootPath, test))
+		require.NoError(t, addGitMetadata(e.RootPath, test))
 
-		_, ok := test.Environment[backend.GitHead]
-		assert.True(t, ok, "Expected to find Git SHA in update environment map")
+		assert.Contains(t, test.Environment, backend.GitHead, "Expected to find Git SHA in update environment map")
 
 		assertEnvValue(t, test, backend.VCSRepoOwner, "owner-name")
 		assertEnvValue(t, test, backend.VCSRepoName, "repo-name")
@@ -256,7 +252,7 @@ func TestPulumiCLIMetadata(t *testing.T) {
 	cmd.SetArgs([]string{"subcommand", "--name", "pulumipus", "--age", "100", "--human"})
 
 	err := cmd.Execute()
-	assert.NoError(t, err, "Expected command to execute successfully")
+	require.NoError(t, err, "Expected command to execute successfully")
 
 	// Check that normal flags are set in the environment.
 	for _, flagName := range []string{
@@ -340,7 +336,7 @@ func TestGitMetadataIsReadFromEnvironmentWhenNoRepo(t *testing.T) {
 	err := addGitMetadata(e.RootPath, test)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assertEnvValue(t, test, backend.VCSRepoOwner, "owner-name")
 	assertEnvValue(t, test, backend.VCSRepoName, "repo-name")
 	assertEnvValue(t, test, backend.VCSRepoKind, "repo-kind")
@@ -376,14 +372,16 @@ func TestGitMetadataIsNotReadFromEnvironmentWhenRepo(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	e.RunCommand("mkdir", "subdirectory")
 	e.RunCommand("git", "init", "-b", "master")
 	e.RunCommand("git", "config", "user.email", "repo-user@example.com")
 	e.RunCommand("git", "config", "user.name", "repo-user")
 	e.RunCommand("git", "remote", "add", "origin", "git@github.com:repo-owner-name/repo-repo-name")
 	e.RunCommand("git", "checkout", "-b", "master")
 
+	subDir := filepath.Join(e.RootPath, "subdirectory")
+	e.CWD = subDir
 	e.WriteTestFile("alpha.txt", "")
+	e.CWD = e.RootPath
 	e.RunCommand("git", "add", ".")
 	e.RunCommand("git", "commit", "-m", "repo-message")
 
@@ -394,10 +392,10 @@ func TestGitMetadataIsNotReadFromEnvironmentWhenRepo(t *testing.T) {
 	}
 
 	// Act.
-	err := addGitMetadata(filepath.Join(e.RootPath, "subdirectory"), test)
+	err := addGitMetadata(subDir, test)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assertEnvValue(t, test, backend.VCSRepoOwner, "repo-owner-name")
 	assertEnvValue(t, test, backend.VCSRepoName, "repo-repo-name")
 	assertEnvValue(t, test, backend.VCSRepoKind, "github.com")
@@ -415,9 +413,6 @@ func TestGitMetadataIsNotReadFromEnvironmentWhenRepo(t *testing.T) {
 func assertEnvValue(t *testing.T, md *backend.UpdateMetadata, key, val string) {
 	t.Helper()
 	got, ok := md.Environment[key]
-	if !ok {
-		t.Errorf("Didn't find expected update metadata key %q (full env %+v)", key, md.Environment)
-	} else {
-		assert.EqualValues(t, val, got, "got different value for update metadata %v than expected", key)
-	}
+	require.True(t, ok, "Didn't find expected update metadata key %q (full env %+v)", key, md.Environment)
+	assert.Equal(t, val, got, "got different value for update metadata %v than expected", key)
 }

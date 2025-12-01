@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//nolint:revive // Legacy package name we don't want to change
 package utils
 
 import (
@@ -43,7 +44,19 @@ func NewHostWithProviders(schemaDirectoryPath string, providers ...SchemaProvide
 	mockProvider := func(name tokens.Package, version string) *deploytest.PluginLoader {
 		return deploytest.NewProviderLoader(name, semver.MustParse(version), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+				ParameterizeF: func(_ context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+					name := ""
+					var version semver.Version
+					if paramValues, ok := req.Parameters.(*plugin.ParameterizeValue); ok {
+						name = paramValues.Name
+						version = paramValues.Version
+					}
+					return plugin.ParameterizeResponse{
+						Name:    name,
+						Version: version,
+					}, nil
+				},
+				GetSchemaF: func(_ context.Context, req plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
 					path := filepath.Join(schemaDirectoryPath, fmt.Sprintf("%s-%s.json", name, version))
 					data, err := os.ReadFile(path)
 					if err != nil {
@@ -129,5 +142,8 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"aliases", "1.0.0"},
 		SchemaProvider{"dangling-reference-bad", "0.1.0"},
 		SchemaProvider{"dangling-reference-good", "0.1.0"},
+
+		// parameterized schemas
+		SchemaProvider{"tfe", "0.68.2"},
 	)
 }

@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -49,7 +50,7 @@ func TestBasePluginMapper_UsesEntries(t *testing.T) {
 	mappingFile := tempDir + "/provider.json"
 
 	err := os.WriteFile(mappingFile, []byte("entrydata"), 0o600)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	mapper, err := NewBasePluginMapper(
 		ws,
@@ -58,14 +59,14 @@ func TestBasePluginMapper_UsesEntries(t *testing.T) {
 		installPlugin,
 		[]string{mappingFile},
 	)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
 
 	// Act.
 	data, err := mapper.GetMapping(context.Background(), "provider", nil /*hint*/)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("entrydata"), data)
 }
 
@@ -111,14 +112,14 @@ func TestBasePluginMapper_InstalledPluginMatches(t *testing.T) {
 		installPlugin,
 		nil, /*mappings*/
 	)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
 
 	// Act.
 	data, err := mapper.GetMapping(context.Background(), "provider", nil /*hint*/)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("data"), data)
 }
 
@@ -172,15 +173,15 @@ func TestBasePluginMapper_MappedNameDiffersFromPulumiName(t *testing.T) {
 		installPlugin,
 		nil, /*mappings*/
 	)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
 
 	// Act.
 	data, err := mapper.GetMapping(context.Background(), "otherProvider", nil /*hint*/)
 
 	// Assert.
 	assert.True(t, installCalled, "installPlugin should have been called")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("data"), data)
 }
 
@@ -233,15 +234,15 @@ func TestBasePluginMapper_NoPluginMatches_ButCanBeInstalled(t *testing.T) {
 		installPlugin,
 		nil, /*mappings*/
 	)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
 
 	// Act.
 	data, err := mapper.GetMapping(context.Background(), "yetAnotherProvider", nil /*hint*/)
 
 	// Assert.
 	assert.True(t, installCalled, "installPlugin should have been called")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("data"), data)
 }
 
@@ -293,14 +294,14 @@ func TestBasePluginMapper_UseMatchingNameFirst(t *testing.T) {
 		installPlugin,
 		nil, /*mappings*/
 	)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
 
 	// Act.
 	data, err := mapper.GetMapping(context.Background(), "provider", nil /*hint*/)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("data"), data)
 }
 
@@ -379,15 +380,15 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 		installPlugin,
 		nil, /*mappings*/
 	)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
 
 	// Act.
 	data, err := mapper.GetMapping(context.Background(), "gcp", nil /*hint*/)
 
 	// Assert.
 	assert.Equal(t, 1, installCalls, "installPlugin should have been called once")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("datagcp"), data)
 
 	// Act.
@@ -395,7 +396,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 
 	// Assert.
 	assert.Equal(t, 2, installCalls, "installPlugin should have been called twice")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("dataaws"), data)
 }
 
@@ -447,8 +448,8 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithHint(t *testing.T) 
 		installPlugin,
 		nil, /*mappings*/
 	)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
 
 	// Act.
 	data, err := mapper.GetMapping(context.Background(), "gcp", &MapperPackageHint{
@@ -456,7 +457,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithHint(t *testing.T) 
 	})
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("datagcp"), data)
 }
 
@@ -515,8 +516,8 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithParameterizedHint(t
 		installPlugin,
 		nil, /*mappings*/
 	)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
 
 	// Act.
 	data, err := mapper.GetMapping(context.Background(), "gcp", &MapperPackageHint{
@@ -529,7 +530,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithParameterizedHint(t
 	})
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("datagcp"), data)
 }
 
@@ -579,8 +580,8 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithUnusableParameteriz
 		installPlugin,
 		nil, /*mappings*/
 	)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
 
 	// Act.
 	data, err := mapper.GetMapping(context.Background(), "aws", &MapperPackageHint{
@@ -593,7 +594,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithUnusableParameteriz
 	})
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("dataaws"), data)
 }
 
@@ -646,8 +647,8 @@ func TestBasePluginMapper_InfiniteLoopRegression(t *testing.T) {
 		installPlugin,
 		nil, /*mappings*/
 	)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
 
 	// Act.
 
@@ -655,7 +656,7 @@ func TestBasePluginMapper_InfiniteLoopRegression(t *testing.T) {
 	data, err := mapper.GetMapping(context.Background(), "gcp", nil /*hint*/)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{}, data)
 }
 

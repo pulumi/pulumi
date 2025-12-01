@@ -17,6 +17,7 @@ package plugin
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,7 +34,6 @@ import (
 
 	multierror "github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
@@ -124,7 +124,7 @@ type Plugin struct {
 	Stderr io.ReadCloser
 	// Function to wait for the plugin to exit, this will either return the exitcode from the process or an
 	// error if we didn't get a normal process exit.
-	Wait func() (int, error)
+	Wait func(context.Context) (int, error)
 }
 
 type unstructuredOutput struct {
@@ -185,7 +185,8 @@ func dialPlugin[T any](
 	// TODO[pulumi/pulumi#337]: in theory, this should be unnecessary.  gRPC's default WaitForReady behavior
 	//     should auto-retry appropriately.  On Linux, however, we are observing different behavior.  In the meantime
 	//     while this bug exists, we'll simply do a bit of waiting of our own up front.
-	timeout, _ := context.WithTimeout(context.Background(), pluginRPCConnectionTimeout)
+	timeout, cancel := context.WithTimeout(context.Background(), pluginRPCConnectionTimeout)
+	defer cancel()
 	for {
 		s := conn.GetState()
 		if s == connectivity.Ready {
@@ -310,7 +311,7 @@ func newPlugin[T any](
 					sawPolicyModuleNotFoundErr = true
 				}
 
-				var log func(*diag.Diag, ...interface{})
+				var log func(*diag.Diag, ...any)
 				if plug.unstructuredOutput != nil {
 					log = ctx.Diag.Debugf
 				} else if streamID == outStreamID {
@@ -354,7 +355,7 @@ func newPlugin[T any](
 			// If readerr is just EOF get the actual error from the plugin.
 			if errors.Is(readerr, io.EOF) {
 				var exitcode int
-				exitcode, readerr = plug.Wait()
+				exitcode, readerr = plug.Wait(ctx.baseContext)
 				// If there's no error from waiting, but a non-zero exit code use that as the error.
 				if readerr == nil && exitcode != 0 {
 					readerr = fmt.Errorf("exit status %d", exitcode)
@@ -482,14 +483,14 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			return nil, fmt.Errorf("getting absolute path for plugin directory: %w", err)
 		}
 
-		info := NewProgramInfo(pluginDir, pluginDir, ".", runtimeInfo.Options())
-		runtime, err := ctx.Host.LanguageRuntime(runtimeInfo.Name(), info)
+		runtime, err := ctx.Host.LanguageRuntime(runtimeInfo.Name())
 		if err != nil {
 			return nil, fmt.Errorf("loading runtime: %w", err)
 		}
 
-		rctx, kill := context.WithCancel(ctx.Request())
+		rctx, kill := context.WithCancel(ctx.Request()) //nolint:govet // lostcancel
 
+		info := NewProgramInfo(pluginDir, pluginDir, ".", runtimeInfo.Options())
 		stdout, stderr, done, err := runtime.RunPlugin(rctx, RunPluginInfo{
 			Info:             info,
 			WorkingDirectory: ctx.Pwd,
@@ -499,7 +500,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			AttachDebugger:   attachDebugger,
 		})
 		if err != nil {
-			return nil, err
+			return nil, err //nolint:govet // lostcancel
 		}
 
 		return &Plugin{
@@ -509,8 +510,8 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			Kill:   func() error { kill(); return nil },
 			Stdout: io.NopCloser(stdout),
 			Stderr: io.NopCloser(stderr),
-			Wait: func() (int, error) {
-				exitcode, err := done.Result(context.TODO())
+			Wait: func(ctx context.Context) (int, error) {
+				exitcode, err := done.Result(ctx)
 				if err != nil {
 					return -1, err
 				}
@@ -526,9 +527,13 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		cmd.Env = env
 	}
 	in, _ := cmd.StdinPipe()
-	stdout, _ := cmd.StdoutPipe()
-	stderr, _ := cmd.StderrPipe()
+	outr, outw := io.Pipe()
+	errr, errw := io.Pipe()
+	cmd.Stdout = outw
+	cmd.Stderr = errw
 	if err := cmd.Start(); err != nil {
+		contract.IgnoreClose(outw)
+		contract.IgnoreClose(errw)
 		// If we try to run a plugin that isn't found, intercept the error
 		// and instead return a custom one so we can more easily check for
 		// it upstream
@@ -548,6 +553,8 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	wait := &promise.CompletionSource[struct{}]{}
 	go func() {
 		err := cmd.Wait()
+		contract.IgnoreClose(outw)
+		contract.IgnoreClose(errw)
 		if err != nil {
 			wait.Reject(err)
 		} else {
@@ -556,6 +563,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	}()
 
 	kill := sync.OnceValue(func() error {
+		logging.V(9).Infof("killing plugin %s\n", bin)
 		// On each platform, plugins are not loaded directly, instead a shell launches each plugin as a child process, so
 		// instead we need to kill all the children of the PID we have recorded, as well. Otherwise we will block waiting
 		// for the child processes to close.
@@ -565,7 +573,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		cmdutil.InterruptChildren(cmd.Process.Pid)
 
 		// Give the process 5 seconds to shut down, or kill it forcibly.
-		timeout, cancel := context.WithTimeout(ctx.Base(), 5*time.Second)
+		timeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_, err := wait.Promise().Result(timeout)
 		if !errors.Is(err, context.DeadlineExceeded) {
@@ -579,7 +587,6 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			result = multierror.Append(result, err)
 		}
 
-		// IDEA: consider a more graceful termination than just SIGKILL.
 		if err := cmd.Process.Kill(); err != nil {
 			result = multierror.Append(result, err)
 		}
@@ -593,10 +600,10 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		Env:    env,
 		Kill:   kill,
 		Stdin:  in,
-		Stdout: stdout,
-		Stderr: stderr,
-		Wait: func() (int, error) {
-			_, err := wait.Promise().Result(ctx.Base())
+		Stdout: outr,
+		Stderr: errr,
+		Wait: func(ctx context.Context) (int, error) {
+			_, err := wait.Promise().Result(ctx)
 			if err != nil {
 				// If this is a non-zero exit code, we need to return it.
 				if exiterr, ok := err.(*exec.ExitError); ok {

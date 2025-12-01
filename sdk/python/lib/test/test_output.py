@@ -14,9 +14,12 @@
 
 import asyncio
 import json
+import os
 import unittest
+from unittest.mock import patch
 from typing import Mapping, Optional, Sequence, cast
 
+from pulumi.output import Output, _OutputToStringError, _safe_str
 from pulumi.runtime import rpc, rpc_manager, settings
 from pulumi.runtime._serialization import (
     _deserialize,
@@ -24,7 +27,6 @@ from pulumi.runtime._serialization import (
 )
 
 import pulumi
-from pulumi import Output
 
 
 def pulumi_test(coro):
@@ -305,23 +307,83 @@ class OutputHoistingTests(unittest.TestCase):
 
 
 class OutputStrTests(unittest.TestCase):
-    @pulumi_test
-    async def test_str(self):
-        o = Output.from_input(1)
-        self.assertEqual(
-            str(o),
-            """Calling __str__ on an Output[T] is not supported.
+    output_str_message = """Calling __str__ on an Output[T] is not supported.
 
 To get the value of an Output[T] as an Output[str] consider:
 1. o.apply(lambda v: f"prefix{v}suffix")
 
-See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.
-This function may throw in a future version of Pulumi.""",
+See https://www.pulumi.com/docs/concepts/inputs-outputs for more details."""
+
+    def test_str(self):
+        """Test that the str function returns a warning when Output.__str__ is
+        called."""
+
+        o = Output.from_input(1)
+        self.assertEqual(
+            str(o),
+            self.output_str_message
+            + "\nThis function may throw in a future version of Pulumi.",
         )
+
+    @patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "true"})
+    def test_str_error(self):
+        """Test that the str function raises an error when
+        PULUMI_ERROR_OUTPUT_STRING is set."""
+
+        with self.assertRaises(_OutputToStringError, msg=self.output_str_message):
+            o = Output.from_input(1)
+            str(o)
+
+    # This is not strictly necessary but allows us to test the "explicitly
+    # disabled" case.
+    @patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "false"})
+    def test_safe_str_spot_output_by_default(self):
+        """Test that the _safe_str function spots outputs and returns a fallback
+        string, even if PULUMI_ERROR_OUTPUT_STRING is not set."""
+
+        o = Output.from_input(1)
+        self.assertEqual(_safe_str(o), "Output[T]")
+
+    @patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "1"})
+    def test_safe_str_spot_output_before_errors(self):
+        """Test that the _safe_str function spots outputs and returns a fallback
+        string when PULUMI_ERROR_OUTPUT_STRING is set."""
+
+        o = Output.from_input(1)
+        self.assertEqual(_safe_str(o), "Output[T]")
+
+    @patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "true"})
+    def test_safe_str_catch_error(self):
+        """Test that the _safe_str function catches _OutputToStringErrors and
+        returns a fallback string."""
+
+        class Broken:
+            def __init__(self, o):
+                self.o = o
+
+            def __str__(self):
+                return f"Broken: {self.o}"
+
+        o = Output.from_input(1)
+        x = Broken(o)
+        self.assertEqual(_safe_str(x), "Output[T]")
+
+    @patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "true"})
+    def test_safe_str_reraise_error(self):
+        """Test that the _safe_str function re-raises any error which is not an
+        _OutputToStringError."""
+
+        class Broken:
+            def __str__(self):
+                raise Exception("This should be re-raised")
+
+        with self.assertRaises(Exception):
+            x = Broken()
+            _safe_str(x)
 
 
 class OutputApplyTests(unittest.TestCase):
-    async def test_apply_always_sets_is_secret_and_is_known(self):
+    def test_apply_always_sets_is_secret_and_is_known(self):
         """Regressing a convoluted situation where apply created an Output
         with incomplete is_secret, is_known future, manifesting in
         program hangs when those futures were awaited.

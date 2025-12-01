@@ -43,7 +43,7 @@ func TestPolicyWithConfig(t *testing.T) {
 	// Pack and push a Policy Pack for the organization.
 	policyPackName := fmt.Sprintf("%s-%x", "test-policy-pack", time.Now().UnixNano())
 	e.ImportDirectory("policy_pack_w_config")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 	t.Setenv("TEST_POLICY_PACK", policyPackName)
 
 	// Publish the Policy Pack twice.
@@ -115,7 +115,7 @@ func TestPolicyWithoutConfig(t *testing.T) {
 	// Pack and push a Policy Pack for the organization.
 	policyPackName := fmt.Sprintf("%s-%x", "test-policy-pack", time.Now().UnixNano())
 	e.ImportDirectory("policy_pack_wo_config")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 	t.Setenv("TEST_POLICY_PACK", policyPackName)
 
 	// Publish the Policy Pack twice.
@@ -156,7 +156,7 @@ type policyGroupsJSON struct {
 }
 
 //nolint:unused // Used by skipped test
-func assertJSON(e *ptesting.Environment, out string, respObj interface{}) {
+func assertJSON(e *ptesting.Environment, out string, respObj any) {
 	err := json.Unmarshal([]byte(out), &respObj)
 	if err != nil {
 		e.Errorf("unable to unmarshal %v", out)

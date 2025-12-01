@@ -3,5 +3,7 @@
   "req2": "[{\"Span\":{\"uri\":\"\",\"start\":{\"line\":1,\"column\":1,\"offset\":121},\"end\":{\"line\":1,\"column\":1,\"offset\":161}},\"NewText\":\"{\\\"urn\\\":\\\"urn-1\\\",\\\"custom\\\":false,\\\"type\\\":\\\"\\\"},{\\\"urn\\\":\\\"urn-2\\\",\\\"custom\\\":false,\\\"type\\\":\\\"\\\"}\"}]",
   "req2.hash": "5ffa59a4628983b155933e87fd91ef1f5e76cb2dfdd413eefc3bedb52a7ce1c4",
   "req3": "[{\"Span\":{\"uri\":\"\",\"start\":{\"line\":1,\"column\":1,\"offset\":121},\"end\":{\"line\":1,\"column\":1,\"offset\":202}},\"NewText\":\"{\\\"urn\\\":\\\"urn-1\\\",\\\"custom\\\":false,\\\"type\\\":\\\"\\\"}\"}]",
-  "req3.hash": "fa39495cd65a25d850d69388092ae6efcdb5e999ca72b378384236bc77e098a4"
+  "req3.hash": "fa39495cd65a25d850d69388092ae6efcdb5e999ca72b378384236bc77e098a4",
+  "req4": "[{\"Span\":{\"uri\":\"\",\"start\":{\"line\":1,\"column\":1,\"offset\":0},\"end\":{\"line\":1,\"column\":1,\"offset\":161}},\"NewText\":\"{\\\"version\\\":4,\\\"features\\\":[\\\"refreshBeforeUpdate\\\"],\\\"deployment\\\":{\\\"manifest\\\":{\\\"time\\\":\\\"0001-01-01T00:00:00Z\\\",\\\"magic\\\":\\\"\\\",\\\"version\\\":\\\"\\\"},\\\"metadata\\\":{},\\\"resources\\\":[{\\\"urn\\\":\\\"urn-1\\\",\\\"custom\\\":false,\\\"type\\\":\\\"\\\",\\\"refreshBeforeUpdate\\\":true}\"}]",
+  "req4.hash": "5e927ea2f899447a4b917769e32d921f96dd19c637c593eb936563380f2be3a3"
 }

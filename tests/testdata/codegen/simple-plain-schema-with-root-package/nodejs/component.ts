@@ -21,15 +21,15 @@ export class Component extends pulumi.ComponentResource {
         return obj['__pulumiType'] === Component.__pulumiType;
     }
 
-    public readonly a!: pulumi.Output<boolean>;
-    public readonly b!: pulumi.Output<boolean | undefined>;
-    public readonly bar!: pulumi.Output<outputs.Foo | undefined>;
-    public readonly baz!: pulumi.Output<outputs.Foo[] | undefined>;
-    public readonly c!: pulumi.Output<number>;
-    public readonly d!: pulumi.Output<number | undefined>;
-    public readonly e!: pulumi.Output<string>;
-    public readonly f!: pulumi.Output<string | undefined>;
-    public readonly foo!: pulumi.Output<outputs.Foo | undefined>;
+    declare public readonly a: pulumi.Output<boolean>;
+    declare public readonly b: pulumi.Output<boolean | undefined>;
+    declare public readonly bar: pulumi.Output<outputs.Foo | undefined>;
+    declare public readonly baz: pulumi.Output<outputs.Foo[] | undefined>;
+    declare public readonly c: pulumi.Output<number>;
+    declare public readonly d: pulumi.Output<number | undefined>;
+    declare public readonly e: pulumi.Output<string>;
+    declare public readonly f: pulumi.Output<string | undefined>;
+    declare public readonly foo: pulumi.Output<outputs.Foo | undefined>;
 
     /**
      * Create a Component resource with the given unique name, arguments, and options.
@@ -42,24 +42,24 @@ export class Component extends pulumi.ComponentResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.a === undefined) && !opts.urn) {
+            if (args?.a === undefined && !opts.urn) {
                 throw new Error("Missing required property 'a'");
             }
-            if ((!args || args.c === undefined) && !opts.urn) {
+            if (args?.c === undefined && !opts.urn) {
                 throw new Error("Missing required property 'c'");
             }
-            if ((!args || args.e === undefined) && !opts.urn) {
+            if (args?.e === undefined && !opts.urn) {
                 throw new Error("Missing required property 'e'");
             }
-            resourceInputs["a"] = args ? args.a : undefined;
-            resourceInputs["b"] = args ? args.b : undefined;
-            resourceInputs["bar"] = args ? args.bar : undefined;
-            resourceInputs["baz"] = args ? args.baz : undefined;
-            resourceInputs["c"] = args ? args.c : undefined;
-            resourceInputs["d"] = args ? args.d : undefined;
-            resourceInputs["e"] = args ? args.e : undefined;
-            resourceInputs["f"] = args ? args.f : undefined;
-            resourceInputs["foo"] = args ? args.foo : undefined;
+            resourceInputs["a"] = args?.a;
+            resourceInputs["b"] = args?.b;
+            resourceInputs["bar"] = args?.bar;
+            resourceInputs["baz"] = args?.baz;
+            resourceInputs["c"] = args?.c;
+            resourceInputs["d"] = args?.d;
+            resourceInputs["e"] = args?.e;
+            resourceInputs["f"] = args?.f;
+            resourceInputs["foo"] = args?.foo;
         } else {
             resourceInputs["a"] = undefined /*out*/;
             resourceInputs["b"] = undefined /*out*/;

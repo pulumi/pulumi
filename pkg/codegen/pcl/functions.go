@@ -586,7 +586,7 @@ func newResourceFunction(functionName string) *model.Function {
 				}
 
 				return model.StaticFunctionSignature{}, hcl.Diagnostics{
-					errorf(r, functionName+" expects exactly one argument"),
+					errorf(r, "%s", functionName+" expects exactly one argument"),
 				}
 			}
 
@@ -600,7 +600,7 @@ func newResourceFunction(functionName string) *model.Function {
 
 			if res == nil {
 				return model.StaticFunctionSignature{}, hcl.Diagnostics{
-					errorf(args[0].SyntaxNode().Range(), functionName+" argument must be a single resource"),
+					errorf(args[0].SyntaxNode().Range(), "%s", functionName+" argument must be a single resource"),
 				}
 			}
 

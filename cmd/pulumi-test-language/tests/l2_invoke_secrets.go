@@ -26,9 +26,9 @@ import (
 
 func init() {
 	LanguageTests["l2-invoke-secrets"] = LanguageTest{
-		Providers: []plugin.Provider{
-			&providers.SimpleInvokeProvider{},
-			&providers.SimpleProvider{},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SimpleInvokeProvider{} },
+			func() plugin.Provider { return &providers.SimpleProvider{} },
 		},
 		Runs: []TestRun{
 			{
@@ -50,11 +50,11 @@ func init() {
 
 					outputs := stack.Outputs
 					AssertPropertyMapMember(l, outputs, "nonSecret",
-						resource.NewStringProperty("hello world"))
+						resource.NewProperty("hello world"))
 					AssertPropertyMapMember(l, outputs, "firstSecret",
-						resource.MakeSecret(resource.NewStringProperty("hello world")))
+						resource.MakeSecret(resource.NewProperty("hello world")))
 					AssertPropertyMapMember(l, outputs, "secondSecret",
-						resource.MakeSecret(resource.NewStringProperty("goodbye world")))
+						resource.MakeSecret(resource.NewProperty("goodbye world")))
 				},
 			},
 		},

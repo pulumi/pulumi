@@ -23,7 +23,7 @@ import os
 import threading
 from collections import deque
 from contextvars import ContextVar
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, NoReturn, Optional, Union
 
 import grpc
 
@@ -31,15 +31,11 @@ from .._utils import contextproperty
 from ..errors import RunError
 from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc
 from ._callbacks import _CallbackServicer
+from ._grpc_settings import _GRPC_CHANNEL_OPTIONS
 from .rpc_manager import RPCManager
 
 if TYPE_CHECKING:
     from ..resource import Resource
-
-# _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-_MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
-_GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
-
 
 # excessive_debug_output enables, well, pretty excessive debug output pertaining to resources and properties.
 excessive_debug_output = False
@@ -275,14 +271,14 @@ async def _shutdown_callbacks():
     await _CallbackServicer.shutdown()
 
 
-def get_root_resource() -> Optional["Resource"]:
+def get_root_resource() -> Optional[Resource]:
     """
     Returns the implicit root stack resource for all resources created in this program.
     """
     return ROOT.get()
 
 
-def set_root_resource(root: "Resource"):
+def set_root_resource(root: Resource):
     """
     Sets the current root stack resource for all resources subsequently to be created in this program.
     """
@@ -320,7 +316,7 @@ def grpc_error_to_exception(exn: grpc.RpcError) -> Exception:
     return Exception(details)
 
 
-def handle_grpc_error(exn: grpc.RpcError) -> None:
+def handle_grpc_error(exn: grpc.RpcError) -> NoReturn:
     raise grpc_error_to_exception(exn)
 
 
@@ -340,6 +336,10 @@ async def monitor_supports_deleted_with() -> bool:
     return await monitor_supports_feature("deletedWith")
 
 
+async def monitor_supports_replace_with() -> bool:
+    return await monitor_supports_feature("replaceWith")
+
+
 async def monitor_supports_alias_specs() -> bool:
     return await monitor_supports_feature("aliasSpecs")
 
@@ -354,6 +354,10 @@ def _sync_monitor_supports_invoke_transforms() -> bool:
 
 def _sync_monitor_supports_parameterization() -> bool:
     return SETTINGS.feature_support.get("parameterization", False)
+
+
+async def monitor_supports_resource_hooks() -> bool:
+    return await monitor_supports_feature("resourceHooks")
 
 
 def reset_options(
@@ -408,8 +412,10 @@ async def _load_monitor_feature_support():
         monitor_supports_feature("resourceReferences"),
         monitor_supports_feature("outputValues"),
         monitor_supports_feature("deletedWith"),
+        monitor_supports_feature("replaceWith"),
         monitor_supports_feature("aliasSpecs"),
         monitor_supports_feature("transforms"),
         monitor_supports_feature("invokeTransforms"),
         monitor_supports_feature("parameterization"),
+        monitor_supports_feature("resourceHooks"),
     )

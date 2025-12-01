@@ -171,9 +171,9 @@ async def test_invoke_depends_on() -> None:
         o = pulumi.runtime.invoke_output("test::MyFunction", {}, opts)
 
         def check(invoke_result):
-            assert (
-                dep_future.done()
-            ), "invoke_output should wait for dep_future to be done"
+            assert dep_future.done(), (
+                "invoke_output should wait for dep_future to be done"
+            )
             assert invoke_result == {"result": "mock"}
 
         return o.apply(check)

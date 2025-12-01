@@ -7,6 +7,7 @@ permissions:
 on:
   schedule:
     - cron: "27 5 * * *"
+  workflow_dispatch: {}
 
 jobs:
   info:

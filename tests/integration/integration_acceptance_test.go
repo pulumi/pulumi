@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build all
-
 package ints
 
 import (
@@ -23,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -45,7 +44,7 @@ func TestConfigSave(t *testing.T) {
 	}
 
 	err := project.Save(path)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "testing-2")
 	e.RunCommand("pulumi", "stack", "init", "testing-1")
@@ -79,26 +78,26 @@ func TestConfigSave(t *testing.T) {
 	// Finally, check that the stack file contains what we expected.
 	validate := func(k string, v string, cfg config.Map) {
 		key, err := config.ParseKey("testing-config:config:" + k)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		d, ok := cfg[key]
 		assert.True(t, ok, "config key %v should be set", k)
 		dv, err := d.Value(nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, v, dv)
 	}
 
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
 	testStack1, err := workspace.LoadProjectStack(sink, &project, filepath.Join(e.CWD, "Pulumi.testing-1.yaml"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	testStack2, err := workspace.LoadProjectStack(sink, &project, filepath.Join(e.CWD, "Pulumi.testing-2.yaml"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
 
-	assert.Equal(t, 2, len(testStack1.Config))
-	assert.Equal(t, 2, len(testStack2.Config))
+	require.Len(t, testStack1.Config, 2)
+	require.Len(t, testStack2.Config, 2)
 
 	validate("configA", "value1", testStack1.Config)
 	validate("configC", "value3", testStack1.Config)

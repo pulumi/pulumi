@@ -167,6 +167,98 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	return files, g.diagnostics, nil
 }
 
+func generatePackageJSON(
+	program *pcl.Program,
+	projectName string,
+	localDependencies map[string]string,
+) ([]byte, error) {
+	// Build the package.json
+	var packageJSON bytes.Buffer
+	fmt.Fprintf(&packageJSON, `{
+	"name": "%s",
+	"devDependencies": {
+		"@types/node": "%s"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		`, projectName, MinimumNodeTypesVersion)
+
+	// Check if pulumi is a local dependency, else add it as a normal range dependency
+	if pulumiArtifact, has := localDependencies[PulumiToken]; has {
+		fmt.Fprintf(&packageJSON, `"@pulumi/pulumi": "%s"`, pulumiArtifact)
+	} else {
+		fmt.Fprintf(&packageJSON, `"@pulumi/pulumi": "^3.0.0"`)
+	}
+
+	// For each package add a dependency line
+	packages, err := program.CollectNestedPackageSnapshots()
+	if err != nil {
+		return nil, err
+	}
+	// Sort the dependencies to ensure a deterministic package.json. Note that the typescript and
+	// @pulumi/pulumi dependencies are already added above and not sorted.
+	sortedPackageNames := make([]string, 0, len(packages))
+	for k := range packages {
+		sortedPackageNames = append(sortedPackageNames, k)
+	}
+	sort.Strings(sortedPackageNames)
+	for _, k := range sortedPackageNames {
+		p := packages[k]
+		if p.Name == PulumiToken {
+			continue
+		}
+		if err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
+			return nil, err
+		}
+
+		namespace := "@pulumi"
+		if p.Namespace != "" {
+			namespace = "@" + p.Namespace
+		}
+		packageName := namespace + "/" + p.Name
+		err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer})
+		if err != nil {
+			return nil, err
+		}
+		if langInfo, found := p.Language["nodejs"]; found {
+			nodeInfo, ok := langInfo.(NodePackageInfo)
+			if ok && nodeInfo.PackageName != "" {
+				packageName = nodeInfo.PackageName
+			}
+		}
+
+		dependencyTemplate := ",\n		\"%s\": \"%s\""
+		if path, has := localDependencies[p.Name]; has {
+			// npm packages that are packed end up in a .tgz|.tar.gz file
+			isZippedArtifact := strings.HasSuffix(path, ".tgz") || strings.HasSuffix(path, ".tar.gz")
+			if isZippedArtifact {
+				// local packaged dependency, use as-is:
+				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, path)
+			} else {
+				// path to local source dependency, prefix with "file:" if not already present:
+				if !strings.HasPrefix(path, "file:") {
+					path = "file:" + path
+				}
+
+				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, path)
+			}
+		} else {
+			// this is a package that is published to npm
+			// either use the version specified in the schema if available, or use "*"
+			if p.Version != nil {
+				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, p.Version.String())
+			} else {
+				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, "*")
+			}
+		}
+	}
+	packageJSON.WriteString(`
+	}
+}`)
+
+	return packageJSON.Bytes(), nil
+}
+
 func GenerateProject(
 	directory string, project workspace.Project,
 	program *pcl.Program, localDependencies map[string]string,
@@ -207,77 +299,11 @@ func GenerateProject(
 		return fmt.Errorf("write Pulumi.yaml: %w", err)
 	}
 
-	// Build the package.json
-	var packageJSON bytes.Buffer
-	fmt.Fprintf(&packageJSON, `{
-	"name": "%s",
-	"devDependencies": {
-		"@types/node": "%s"
-	},
-	"dependencies": {
-		"typescript": "^4.0.0",
-		`, project.Name.String(), MinimumNodeTypesVersion)
-
-	// Check if pulumi is a local dependency, else add it as a normal range dependency
-	if pulumiArtifact, has := localDependencies[PulumiToken]; has {
-		fmt.Fprintf(&packageJSON, `"@pulumi/pulumi": "%s"`, pulumiArtifact)
-	} else {
-		fmt.Fprintf(&packageJSON, `"@pulumi/pulumi": "^3.0.0"`)
-	}
-
-	// For each package add a dependency line
-	packages, err := program.CollectNestedPackageSnapshots()
+	packageJSON, err := generatePackageJSON(program, project.Name.String(), localDependencies)
 	if err != nil {
 		return err
 	}
-	// Sort the dependencies to ensure a deterministic package.json. Note that the typescript and
-	// @pulumi/pulumi dependencies are already added above and not sorted.
-	sortedPackageNames := make([]string, 0, len(packages))
-	for k := range packages {
-		sortedPackageNames = append(sortedPackageNames, k)
-	}
-	sort.Strings(sortedPackageNames)
-	for _, k := range sortedPackageNames {
-		p := packages[k]
-		if p.Name == PulumiToken {
-			continue
-		}
-		if err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
-			return err
-		}
-
-		namespace := "@pulumi"
-		if p.Namespace != "" {
-			namespace = "@" + p.Namespace
-		}
-		packageName := namespace + "/" + p.Name
-		err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer})
-		if err != nil {
-			return err
-		}
-		if langInfo, found := p.Language["nodejs"]; found {
-			nodeInfo, ok := langInfo.(NodePackageInfo)
-			if ok && nodeInfo.PackageName != "" {
-				packageName = nodeInfo.PackageName
-			}
-		}
-
-		dependencyTemplate := ",\n		\"%s\": \"%s\""
-		if path, has := localDependencies[p.Name]; has {
-			fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, path)
-		} else {
-			if p.Version != nil {
-				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, p.Version.String())
-			} else {
-				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, "*")
-			}
-		}
-	}
-	packageJSON.WriteString(`
-	}
-}`)
-
-	files["package.json"] = packageJSON.Bytes()
+	files["package.json"] = packageJSON
 
 	// Add the language specific .gitignore
 	files[".gitignore"] = []byte(`/bin/
@@ -896,8 +922,14 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	if opts.IgnoreChanges != nil {
 		appendOption("ignoreChanges", opts.IgnoreChanges)
 	}
+	if opts.HideDiffs != nil {
+		appendOption("hideDiffs", opts.HideDiffs)
+	}
 	if opts.DeletedWith != nil {
 		appendOption("deletedWith", opts.DeletedWith)
+	}
+	if opts.ReplaceWith != nil {
+		appendOption("replaceWith", opts.ReplaceWith)
 	}
 	if opts.ImportID != nil {
 		appendOption("import", opts.ImportID)
@@ -1371,7 +1403,7 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 		makeValidIdentifier(v.Name()), g.lowerExpression(v.Value, v.Type()))
 }
 
-func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
+func (g *generator) genNYI(w io.Writer, reason string, vs ...any) {
 	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
 		Severity: hcl.DiagError,

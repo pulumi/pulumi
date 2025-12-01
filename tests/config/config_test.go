@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
@@ -150,7 +151,7 @@ config:
   pulumi-test:a: A
 $`
 		b, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
 		// set an additional secret config and verify that the generated config file matches the expected values
@@ -164,7 +165,7 @@ config:
     secure: \S*
 $`
 		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
 		// update a config and verify that the generated config file matches the expected values
@@ -178,7 +179,7 @@ config:
     secure: \S*
 $`
 		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
 		// update the secret config and verify that the generated config file matches the expected values
@@ -192,7 +193,7 @@ config:
     secure: \S*
 $`
 		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
 		// set a config with path=true and verify that the generated config file matches the expected values
@@ -208,7 +209,7 @@ config:
   pulumi-test:c: C
 $`
 		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
 		// set a nested config and verify that the generated config file matches the expected values
@@ -226,7 +227,7 @@ config:
     a: D
 $`
 		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
 		// set an array config and verify that the generated config file matches the expected values
@@ -246,7 +247,7 @@ config:
     - E
 $`
 		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
 		// set a nested array config and verify that the generated config file matches the expected values
@@ -269,7 +270,7 @@ config:
       - F
 $`
 		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
@@ -319,7 +320,7 @@ runtime: go`
 	e.RunCommand("pulumi", "config", "set", "Bconfig", "shouldOverWrite")
 
 	b, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedRegex := `encryptionsalt: .*
 config:
@@ -350,7 +351,7 @@ runtime: go`
 	e.RunCommand("pulumi", "config", "rm", "Aconfig")
 
 	b, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedRegex := `encryptionsalt: .*
 config:
@@ -361,7 +362,7 @@ config:
 	e.RunCommand("pulumi", "config", "rm", "Bconfig")
 
 	b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedRegex = `encryptionsalt: .*`
 	assert.Regexp(t, regexp.MustCompile(expectedRegex), strings.TrimSpace(string(b)))
@@ -396,15 +397,15 @@ config:
 	e.RunCommand("pulumi", "config", "set", "second-value", "second")
 	stdout, _ := e.RunCommand("pulumi", "config", "--json")
 	// check that stdout is an array containing 2 objects
-	var config map[string]interface{}
+	var config map[string]any
 	jsonError := json.Unmarshal([]byte(stdout), &config)
 	assert.Nil(t, jsonError)
-	assert.Equal(t, 3, len(config))
-	assert.Equal(t, "first", config["pulumi-test:first-value"].(map[string]interface{})["value"])
-	assert.Equal(t, "second", config["pulumi-test:second-value"].(map[string]interface{})["value"])
-	thirdValue := config["pulumi-test:third-value"].(map[string]interface{})
+	require.Len(t, config, 3)
+	assert.Equal(t, "first", config["pulumi-test:first-value"].(map[string]any)["value"])
+	assert.Equal(t, "second", config["pulumi-test:second-value"].(map[string]any)["value"])
+	thirdValue := config["pulumi-test:third-value"].(map[string]any)
 	assert.Equal(t, "[\"third\"]", thirdValue["value"])
-	assert.Equal(t, []interface{}{"third"}, thirdValue["objectValue"])
+	assert.Equal(t, []any{"third"}, thirdValue["objectValue"])
 }
 
 func TestConfigCommandsUsingEnvironments(t *testing.T) {

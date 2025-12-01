@@ -169,7 +169,7 @@ func (h *L1MainLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest)
 		return nil, fmt.Errorf("could not register stack: %w", err)
 	}
 
-	outputs, err := structpb.NewStruct(map[string]interface{}{
+	outputs, err := structpb.NewStruct(map[string]any{
 		"output_true": true,
 	})
 	if err != nil {

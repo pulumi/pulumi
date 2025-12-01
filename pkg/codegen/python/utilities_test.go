@@ -75,7 +75,6 @@ func TestMakeSafeEnumName(t *testing.T) {
 		{"ZeroPointOne", "ZERO_POINT_ONE", false},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
@@ -110,7 +109,6 @@ func TestMakePyPiVersion(t *testing.T) {
 		{"0.0.1-rc.18", "0.0.1rc18"},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
@@ -132,7 +130,6 @@ func TestPythonCase(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, tt.expected, pythonCase(tt.input))

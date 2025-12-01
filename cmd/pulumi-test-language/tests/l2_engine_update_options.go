@@ -25,7 +25,9 @@ import (
 
 func init() {
 	LanguageTests["l2-engine-update-options"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.SimpleProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SimpleProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				UpdateOptions: engine.UpdateOptions{

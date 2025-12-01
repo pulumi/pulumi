@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitingore",
     "Enums.cs",
     "ModuleResource.cs",
     "Provider.cs",

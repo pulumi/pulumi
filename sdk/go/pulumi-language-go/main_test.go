@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"os"
@@ -29,6 +30,8 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 func TestParseRunParams(t *testing.T) {
@@ -87,7 +90,6 @@ func TestParseRunParams(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -103,7 +105,7 @@ func TestParseRunParams(t *testing.T) {
 			if tt.wantErr != "" {
 				assert.ErrorContains(t, err, tt.wantErr)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, &tt.want, got)
 			}
 		})
@@ -286,7 +288,6 @@ func TestGetPackage(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.Name, func(t *testing.T) {
 			t.Parallel()
 
@@ -297,11 +298,11 @@ func TestGetPackage(t *testing.T) {
 			if c.JSON != nil {
 				path := filepath.Join(cwd, c.JSONPath)
 				err := os.MkdirAll(path, 0o700)
-				assert.NoErrorf(t, err, "Failed to setup test folder %s", path)
+				require.NoErrorf(t, err, "Failed to setup test folder %s", path)
 				bytes, err := c.JSON.JSON()
-				assert.NoError(t, err, "Failed to setup test pulumi-plugin.json")
+				require.NoError(t, err, "Failed to setup test pulumi-plugin.json")
 				err = os.WriteFile(filepath.Join(path, "pulumi-plugin.json"), bytes, 0o600)
-				assert.NoError(t, err, "Failed to write pulumi-plugin.json")
+				require.NoError(t, err, "Failed to write pulumi-plugin.json")
 			}
 
 			actual, err := c.Mod.getPackage(t.TempDir())
@@ -312,7 +313,7 @@ func TestGetPackage(t *testing.T) {
 				if c.Expected.Kind == "" {
 					c.Expected.Kind = "resource"
 				}
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, c.Expected, actual)
 			}
 		})
@@ -462,5 +463,84 @@ func testPluginsAndDependencies(t *testing.T, progDir string) {
 			"github.com/pulumi/go-dependency-testdata/dep":             "v1.6.0",
 			"github.com/pulumi/go-dependency-testdata/indirect-dep/v2": "v2.1.0",
 		}, gotDeps)
+	})
+}
+
+type mockEngine struct {
+	logs []*pulumirpc.LogRequest
+}
+
+func (m *mockEngine) Log(ctx context.Context, in *pulumirpc.LogRequest,
+	opts ...grpc.CallOption,
+) (*emptypb.Empty, error) {
+	m.logs = append(m.logs, in)
+	return &emptypb.Empty{}, nil
+}
+
+func (m *mockEngine) GetRootResource(ctx context.Context, in *pulumirpc.GetRootResourceRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.GetRootResourceResponse, error) {
+	return &pulumirpc.GetRootResourceResponse{}, nil
+}
+
+func (m *mockEngine) SetRootResource(ctx context.Context, in *pulumirpc.SetRootResourceRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.SetRootResourceResponse, error) {
+	return &pulumirpc.SetRootResourceResponse{}, nil
+}
+
+func (m *mockEngine) StartDebugging(ctx context.Context, in *pulumirpc.StartDebuggingRequest,
+	opts ...grpc.CallOption,
+) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
+}
+
+func TestCompileProgram(t *testing.T) {
+	t.Parallel()
+
+	t.Run("no .go files", func(t *testing.T) {
+		t.Parallel()
+		tmp := t.TempDir()
+		stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+		_, err := compileProgram(
+			context.Background(), &mockEngine{}, tmp, "", false /* withDebugFlags */, stdout, stderr)
+		require.ErrorContains(t, err, "Failed to find go files")
+	})
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+		tmp := t.TempDir()
+		goMod := `module example`
+		program := `package main
+func main() {}
+`
+		stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+		engineClient := &mockEngine{}
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, "go.mod"), []byte(goMod), 0o600))
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, "main.go"), []byte(program), 0o600))
+		expectedOut := filepath.Join(tmp, "out")
+		out, err := compileProgram(
+			context.Background(), engineClient, tmp, expectedOut, false /* withDebugFlags */, stdout, stderr)
+		require.NoError(t, err)
+		require.Equal(t, expectedOut, out)
+		require.Len(t, engineClient.logs, 2)
+		require.Equal(t, "Compiling the program ...", engineClient.logs[0].Message)
+		require.Equal(t, "Finished compiling", engineClient.logs[1].Message)
+	})
+
+	t.Run("compile error", func(t *testing.T) {
+		t.Parallel()
+		tmp := t.TempDir()
+		goMod := `module example`
+		badProgram := `package main
+func main() {
+`
+		stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, "go.mod"), []byte(goMod), 0o600))
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, "main.go"), []byte(badProgram), 0o600))
+		_, err := compileProgram(
+			context.Background(), &mockEngine{}, tmp, "", false /* withDebugFlags */, stdout, stderr)
+		require.ErrorContains(t, err, "unable to run `go build`: exit status 1")
+		require.Contains(t, stderr.String(), "main.go:3:1: syntax error")
 	})
 }

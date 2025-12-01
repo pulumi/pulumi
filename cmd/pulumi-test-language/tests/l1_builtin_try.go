@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -42,9 +43,9 @@ func init() {
 
 					outputs := stack.Outputs
 
-					assert.Len(l, outputs, 10, "expected 10 outputs")
-					AssertPropertyMapMember(l, outputs, "plainTrySuccess", resource.NewStringProperty("MOK"))
-					AssertPropertyMapMember(l, outputs, "plainTryFailure", resource.NewStringProperty("fallback"))
+					require.Len(l, outputs, 10, "expected 10 outputs")
+					AssertPropertyMapMember(l, outputs, "plainTrySuccess", resource.NewProperty("MOK"))
+					AssertPropertyMapMember(l, outputs, "plainTryFailure", resource.NewProperty("fallback"))
 
 					// The output failure variants may or may not be secret, depending on the language. We allow either.
 					assertPropertyMapMember := func(
@@ -70,19 +71,19 @@ func init() {
 					}
 
 					AssertPropertyMapMember(l, outputs, "outputTrySuccess",
-						resource.MakeSecret(resource.NewStringProperty("MOK")))
+						resource.MakeSecret(resource.NewProperty("MOK")))
 					assertPropertyMapMember(outputs, "outputTryFailure",
-						resource.NewStringProperty("fallback"))
+						resource.NewProperty("fallback"))
 					AssertPropertyMapMember(l, outputs, "dynamicTrySuccess",
-						resource.NewStringProperty("OOK"))
+						resource.NewProperty("OOK"))
 					assertPropertyMapMember(outputs, "dynamicTryFailure",
-						resource.NewStringProperty("fallback"))
+						resource.NewProperty("fallback"))
 					AssertPropertyMapMember(l, outputs, "outputDynamicTrySuccess",
-						resource.MakeSecret(resource.NewStringProperty("OOK")))
+						resource.MakeSecret(resource.NewProperty("OOK")))
 					assertPropertyMapMember(outputs, "outputDynamicTryFailure",
-						resource.NewStringProperty("fallback"))
+						resource.NewProperty("fallback"))
 					AssertPropertyMapMember(l, outputs, "plainTryNull",
-						resource.NewArrayProperty([]resource.PropertyValue{resource.NewNullProperty()}))
+						resource.NewProperty([]resource.PropertyValue{resource.NewNullProperty()}))
 
 					// This may be secret at the list level, or the element level, or none
 					got, ok := outputs["outputTryNull"]
@@ -91,9 +92,9 @@ func init() {
 
 						ok := false
 						for _, want := range []resource.PropertyValue{
-							resource.NewArrayProperty([]resource.PropertyValue{resource.NewNullProperty()}),
-							resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{resource.NewNullProperty()})),
-							resource.NewArrayProperty([]resource.PropertyValue{resource.MakeSecret(resource.NewNullProperty())}),
+							resource.NewProperty([]resource.PropertyValue{resource.NewNullProperty()}),
+							resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{resource.NewNullProperty()})),
+							resource.NewProperty([]resource.PropertyValue{resource.MakeSecret(resource.NewNullProperty())}),
 						} {
 							if got.DeepEquals(want) {
 								ok = true

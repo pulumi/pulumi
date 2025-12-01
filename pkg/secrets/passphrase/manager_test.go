@@ -94,8 +94,8 @@ func TestPassphraseManagerCorrectPassphraseReturnsSecretsManager(t *testing.T) {
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
 	sm, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
-	assert.NoError(t, err)
-	assert.NotNil(t, sm)
+	require.NoError(t, err)
+	require.NotNil(t, sm)
 }
 
 func TestPassphraseManagerNoEnvironmentVariablesReturnsError(t *testing.T) {
@@ -126,18 +126,18 @@ func TestPassphraseManagerEmptyPassphraseIsValid(t *testing.T) {
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
 	sm, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
-	assert.NoError(t, err)
-	assert.NotNil(t, sm)
+	require.NoError(t, err)
+	require.NotNil(t, sm)
 }
 
 func TestPassphraseManagerCorrectPassfileReturnsSecretsManager(t *testing.T) {
 	clearCachedSecretsManagers()
 
 	tmpFile, err := os.CreateTemp(t.TempDir(), "pulumi-secret-test")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer os.Remove(tmpFile.Name())
 	_, err = tmpFile.WriteString("password")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// There is no t.Unsetenv, so for variables we want to genuinely unset (and not just set to ""), we set the
 	// environment variables to empty strings using t.Setenv and then unset them using os.Unsetenv. In doing do, the
@@ -148,8 +148,8 @@ func TestPassphraseManagerCorrectPassfileReturnsSecretsManager(t *testing.T) {
 	t.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", tmpFile.Name())
 
 	sm, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
-	assert.NoError(t, err)
-	assert.NotNil(t, sm)
+	require.NoError(t, err)
+	require.NotNil(t, sm)
 }
 
 func TestPassphraseManagerEmptyPassfileReturnsError(t *testing.T) {

@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRegisterResourceErrorsOnMissingPendingNew(t *testing.T) {
@@ -56,21 +57,21 @@ func (e *mockRegisterResourceOutputsEvent) Outputs() resource.PropertyMap {
 func (e *mockRegisterResourceOutputsEvent) Done() {}
 
 type mockEvents struct {
-	OnResourceStepPreF   func(step Step) (interface{}, error)
-	OnResourceStepPostF  func(ctx interface{}, step Step, status resource.Status, err error) error
+	OnResourceStepPreF   func(step Step) (any, error)
+	OnResourceStepPostF  func(ctx any, step Step, status resource.Status, err error) error
 	OnResourceOutputsF   func(step Step) error
 	OnPolicyViolationF   func(resource.URN, plugin.AnalyzeDiagnostic)
 	OnPolicyRemediationF func(resource.URN, plugin.Remediation, resource.PropertyMap, resource.PropertyMap)
 }
 
-func (e *mockEvents) OnResourceStepPre(step Step) (interface{}, error) {
+func (e *mockEvents) OnResourceStepPre(step Step) (any, error) {
 	if e.OnResourceStepPreF != nil {
 		return e.OnResourceStepPreF(step)
 	}
 	panic("unimplemented")
 }
 
-func (e *mockEvents) OnResourceStepPost(ctx interface{}, step Step, status resource.Status, err error) error {
+func (e *mockEvents) OnResourceStepPost(ctx any, step Step, status resource.Status, err error) error {
 	if e.OnResourceStepPostF != nil {
 		return e.OnResourceStepPostF(ctx, step, status, err)
 	}
@@ -90,6 +91,26 @@ func (e *mockEvents) OnPolicyViolation(resource.URN, plugin.AnalyzeDiagnostic) {
 
 func (e *mockEvents) OnPolicyRemediation(resource.URN, plugin.Remediation, resource.PropertyMap, resource.PropertyMap) {
 	panic("unimplemented")
+}
+
+func (e *mockEvents) OnPolicyAnalyzeSummary(plugin.PolicySummary) {
+	panic("unimplemented")
+}
+
+func (e *mockEvents) OnPolicyRemediateSummary(plugin.PolicySummary) {
+	panic("unimplemented")
+}
+
+func (e *mockEvents) OnPolicyAnalyzeStackSummary(plugin.PolicySummary) {
+	panic("unimplemented")
+}
+
+func (e *mockEvents) OnSnapshotWrite(base *Snapshot) error {
+	return nil
+}
+
+func (e *mockEvents) OnRebuiltBaseState() error {
+	return nil
 }
 
 var _ Events = (*mockEvents)(nil)
@@ -154,9 +175,11 @@ func TestStepExecutor(t *testing.T) {
 				pendingNews: gsync.Map[resource.URN, Step]{},
 			}
 			notInPlan := resource.NewURN("test", "test", "", "test", "not-in-plan")
-			se.pendingNews.Store(notInPlan, &CreateStep{new: &resource.State{}})
+			se.pendingNews.Store(notInPlan, &CreateStep{new: &resource.State{
+				URN: "urn:pulumi:some-urn",
+			}})
 			// Does not error.
-			assert.NoError(t, se.ExecuteRegisterResourceOutputs(&registerResourceOutputsEvent{
+			require.NoError(t, se.ExecuteRegisterResourceOutputs(&registerResourceOutputsEvent{
 				urn: notInPlan,
 			}))
 			assert.True(t, cancelCalled)
@@ -174,7 +197,7 @@ func TestStepExecutor(t *testing.T) {
 					},
 					opts: &Options{},
 					events: &mockEvents{
-						OnResourceStepPreF: func(step Step) (interface{}, error) {
+						OnResourceStepPreF: func(step Step) (any, error) {
 							return nil, expectedErr
 						},
 					},
@@ -183,7 +206,7 @@ func TestStepExecutor(t *testing.T) {
 			}
 			se.pendingNews.Store(resource.URN("not-in-plan"), &CreateStep{new: &resource.State{}})
 			assert.ErrorIs(t, se.executeStep(0, &CreateStep{
-				new: &resource.State{URN: "some-urn"},
+				new: &resource.State{URN: "urn:pulumi:some-urn"},
 			}), expectedErr)
 		})
 		t.Run("disallow mark id secret", func(t *testing.T) {
@@ -197,22 +220,23 @@ func TestStepExecutor(t *testing.T) {
 					},
 					opts: &Options{},
 					events: &mockEvents{
-						OnResourceStepPreF: func(step Step) (interface{}, error) {
+						OnResourceStepPreF: func(step Step) (any, error) {
 							return nil, nil
 						},
 						OnResourceStepPostF: func(
-							ctx interface{}, step Step, status resource.Status, err error,
+							ctx any, step Step, status resource.Status, err error,
 						) error {
 							return expectedErr
 						},
 					},
 					goals: &gsync.Map[resource.URN, *resource.Goal]{},
+					news:  &gsync.Map[resource.URN, *resource.State]{},
 				},
 				pendingNews: gsync.Map[resource.URN, Step]{},
 			}
 			step := &CreateStep{
 				new: &resource.State{
-					URN: "some-urn",
+					URN: "urn:pulumi:some-urn",
 					AdditionalSecretOutputs: []resource.PropertyKey{
 						"id",
 						"non-existent-property",

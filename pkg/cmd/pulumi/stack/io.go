@@ -178,7 +178,7 @@ func requireCurrentStack(
 	if err != nil {
 		return nil, err
 	}
-	stack, err := state.CurrentStack(ctx, b)
+	stack, err := state.CurrentStack(ctx, ws, b)
 	if err != nil {
 		return nil, err
 	} else if stack != nil {
@@ -241,7 +241,7 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 
 	// If a stack is already selected, make that the default.
 	var defaultOption string
-	currStack, currErr := state.CurrentStack(ctx, b)
+	currStack, currErr := state.CurrentStack(ctx, ws, b)
 	contract.IgnoreError(currErr)
 	if currStack != nil {
 		defaultOption = currStack.Ref().String()
@@ -319,7 +319,7 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 
 	// If setCurrent is true, we'll persist this choice so it'll be used for future CLI operations.
 	if lopt.SetCurrent() {
-		if err = state.SetCurrentStack(stackRef.FullyQualifiedName().String()); err != nil {
+		if err = state.SetCurrentStack(ws, stackRef.FullyQualifiedName().String()); err != nil {
 			return nil, err
 		}
 	}
@@ -420,7 +420,7 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	}
 
 	if setCurrent {
-		if err = state.SetCurrentStack(stack.Ref().FullyQualifiedName().String()); err != nil {
+		if err = state.SetCurrentStack(ws, stack.Ref().FullyQualifiedName().String()); err != nil {
 			return nil, err
 		}
 	}
@@ -526,36 +526,15 @@ func SaveSnapshot(ctx context.Context, s backend.Stack, snapshot *deploy.Snapsho
 
 		snapshot.PendingOperations = nil
 	}
-	sdp, err := stack.SerializeDeployment(ctx, snapshot, false /* showSecrets */)
+
+	dep, err := stack.SerializeUntypedDeployment(ctx, snapshot, nil /*opts*/)
 	if err != nil {
 		return fmt.Errorf("constructing deployment for upload: %w", err)
 	}
 
-	bytes, err := json.Marshal(sdp)
-	if err != nil {
-		return err
-	}
-
-	dep := apitype.UntypedDeployment{
-		Version:    apitype.DeploymentSchemaVersionCurrent,
-		Deployment: bytes,
-	}
-
 	// Now perform the deployment.
-	if err = backend.ImportStackDeployment(ctx, s, &dep); err != nil {
+	if err = backend.ImportStackDeployment(ctx, s, dep); err != nil {
 		return fmt.Errorf("could not import deployment: %w", err)
 	}
 	return nil
-}
-
-func checkDeploymentVersionError(err error, stackName string) error {
-	switch err {
-	case stack.ErrDeploymentSchemaVersionTooOld:
-		return fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
-			stackName)
-	case stack.ErrDeploymentSchemaVersionTooNew:
-		return fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
-			"Please update your version of the Pulumi CLI", stackName)
-	}
-	return fmt.Errorf("could not deserialize deployment: %w", err)
 }

@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -35,16 +36,16 @@ func TestGetStackResourceOutputs(t *testing.T) {
 	typ := "some:invalid:type1"
 
 	resc1 := liveState(typ, "resc1", resource.PropertyMap{
-		resource.PropertyKey("prop1"): resource.NewStringProperty("val1"),
+		resource.PropertyKey("prop1"): resource.NewProperty("val1"),
 	})
 	resc2 := liveState(typ, "resc2", resource.PropertyMap{
-		resource.PropertyKey("prop2"): resource.NewStringProperty("val2"),
+		resource.PropertyKey("prop2"): resource.NewProperty("val2"),
 	})
 
 	// `deleted` will be ignored by `GetStackResourceOutputs`.
 	deletedName := "resc3"
 	deleted := deleteState("deletedType", "resc3", resource.PropertyMap{
-		resource.PropertyKey("deleted"): resource.NewStringProperty("deleted"),
+		resource.PropertyKey("deleted"): resource.NewProperty("deleted"),
 	})
 
 	// Mock backend that implements just enough methods to service `GetStackResourceOutputs`.
@@ -69,36 +70,36 @@ func TestGetStackResourceOutputs(t *testing.T) {
 
 	// Get resource outputs for mock stack.
 	outs, err := client.GetStackResourceOutputs(context.Background(), "fakeStack")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Verify resource outputs for resc1.
-	resc1Actual, exists := outs[resource.PropertyKey(testURN(typ, "resc1"))]
+	resc1Actual, exists := outs.GetOk(string(testURN(typ, "resc1")))
 	assert.True(t, exists)
-	assert.True(t, resc1Actual.IsObject())
+	assert.True(t, resc1Actual.IsMap())
 
-	resc1Type, exists := resc1Actual.ObjectValue()["type"]
+	resc1Type, exists := resc1Actual.AsMap().GetOk("type")
 	assert.True(t, exists)
-	assert.Equal(t, typ, resc1Type.V)
+	assert.Equal(t, typ, resc1Type.AsString())
 
-	resc1Outs, exists := resc1Actual.ObjectValue()["outputs"]
+	resc1Outs, exists := resc1Actual.AsMap().GetOk("outputs")
 	assert.True(t, exists)
-	assert.True(t, resc1Outs.IsObject())
+	assert.True(t, resc1Outs.IsMap())
 
 	// Verify resource outputs for resc2.
-	resc2Actual, exists := outs[resource.PropertyKey(testURN(typ, "resc2"))]
+	resc2Actual, exists := outs.GetOk(string(testURN(typ, "resc2")))
 	assert.True(t, exists)
-	assert.True(t, resc2Actual.IsObject())
+	assert.True(t, resc2Actual.IsMap())
 
-	resc2Type, exists := resc2Actual.ObjectValue()["type"]
+	resc2Type, exists := resc2Actual.AsMap().GetOk("type")
 	assert.True(t, exists)
-	assert.Equal(t, typ, resc2Type.V) // Same type.
+	assert.Equal(t, typ, resc2Type.AsString()) // Same type.
 
-	resc2Outs, exists := resc2Actual.ObjectValue()["outputs"]
+	resc2Outs, exists := resc2Actual.AsMap().GetOk("outputs")
 	assert.True(t, exists)
-	assert.True(t, resc2Outs.IsObject())
+	assert.True(t, resc2Outs.IsMap())
 
 	// Verify the deleted resource is not present.
-	_, exists = outs[resource.PropertyKey(deletedName)]
+	_, exists = outs.GetOk(deletedName)
 	assert.False(t, exists)
 }
 

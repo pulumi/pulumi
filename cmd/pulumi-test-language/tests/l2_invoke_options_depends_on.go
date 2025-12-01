@@ -26,7 +26,9 @@ import (
 
 func init() {
 	LanguageTests["l2-invoke-options-depends-on"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SimpleInvokeProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
@@ -52,7 +54,7 @@ func init() {
 
 					require.NotNil(l, stack, "expected a stack resource")
 					outputs := stack.Outputs
-					AssertPropertyMapMember(l, outputs, "hello", resource.NewStringProperty("hello world"))
+					AssertPropertyMapMember(l, outputs, "hello", resource.NewProperty("hello world"))
 
 					var first *resource.State
 					var second *resource.State

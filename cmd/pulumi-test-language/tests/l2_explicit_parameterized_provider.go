@@ -27,7 +27,9 @@ import (
 
 func init() {
 	LanguageTests["l2-explicit-parameterized-provider"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.ParameterizedProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.ParameterizedProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
@@ -42,7 +44,7 @@ func init() {
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					require.Equal(l,
-						resource.NewStringProperty("Goodbye World"),
+						resource.NewProperty("Goodbye World"),
 						stack.Outputs["parameterValue"],
 						"parameter value and provider config should be correct")
 

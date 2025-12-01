@@ -2,13 +2,22 @@ package main
 
 import (
 	"fmt"
+	"reflect"
 
 	"example.com/pulumi-simple/sdk/go/v2/simple"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+type myComponentArgs struct {
+	Input bool `pulumi:"input"`
+}
+
 type MyComponentArgs struct {
 	Input pulumi.BoolInput
+}
+
+func (MyComponentArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*myComponentArgs)(nil)).Elem()
 }
 
 type MyComponent struct {
@@ -23,7 +32,7 @@ func NewMyComponent(
 	opts ...pulumi.ResourceOption,
 ) (*MyComponent, error) {
 	var componentResource MyComponent
-	err := ctx.RegisterComponentResource("components:index:MyComponent", name, &componentResource, opts...)
+	err := ctx.RegisterComponentResourceV2("components:index:MyComponent", name, args, &componentResource, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +48,7 @@ func NewMyComponent(
 	if err != nil {
 		return nil, err
 	}
-	componentResource.Output = res.Value.ApplyT(func(v interface{}) interface{} {
+	componentResource.Output = res.Value.ApplyT(func(v any) any {
 		return v
 	}).(pulumi.AnyOutput)
 	return &componentResource, nil

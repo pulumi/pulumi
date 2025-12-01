@@ -26,7 +26,9 @@ import (
 
 func init() {
 	LanguageTests["l2-provider-call-explicit"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.CallProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.CallProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
@@ -70,15 +72,15 @@ func init() {
 					require.Len(l, outputs, 3, "expected 3 outputs")
 					AssertPropertyMapMember(
 						l, outputs,
-						"explicitProviderValue", resource.NewStringProperty("explicitProvValueexplicitValue"),
+						"explicitProviderValue", resource.NewProperty("explicitProvValueexplicitValue"),
 					)
 					AssertPropertyMapMember(
 						l, outputs,
-						"explicitProvFromIdentity", resource.NewStringProperty("explicitProvValue"),
+						"explicitProvFromIdentity", resource.NewProperty("explicitProvValue"),
 					)
 					AssertPropertyMapMember(
 						l, outputs,
-						"explicitProvFromPrefixed", resource.NewStringProperty("call-prefix-explicitProvValue"),
+						"explicitProvFromPrefixed", resource.NewProperty("call-prefix-explicitProvValue"),
 					)
 				},
 			},

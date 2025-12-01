@@ -29,7 +29,9 @@ import (
 
 func init() {
 	LanguageTests["l2-resource-asset-archive"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.AssetArchiveProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.AssetArchiveProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Main: "subdir",
@@ -109,7 +111,7 @@ func init() {
 					stringAsset, err := resource.NewTextAsset("file contents")
 					require.NoError(l, err)
 
-					assarcValue, err := resource.NewAssetArchiveWithWD(map[string]interface{}{
+					assarcValue, err := resource.NewAssetArchiveWithWD(map[string]any{
 						"string":  stringAsset,
 						"file":    assetValue,
 						"folder":  folderValue,

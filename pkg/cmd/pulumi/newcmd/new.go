@@ -28,7 +28,6 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
-	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -58,32 +57,40 @@ type promptForValueFunc func(yes bool, valueType string, defaultValue string, se
 
 type chooseTemplateFunc func(templates []cmdTemplates.Template, opts display.Options) (cmdTemplates.Template, error)
 
-type runtimeOptionsFunc func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo, main string,
-	opts display.Options, yes, interactive bool, prompt promptForValueFunc) (map[string]interface{}, error)
+type runtimeOptionsFunc func(ctx *plugin.Context, language plugin.LanguageRuntime, info *workspace.ProjectRuntimeInfo,
+	main string, opts display.Options, yes, interactive bool, prompt promptForValueFunc) (map[string]any, error)
+
+type languageTemplateFunc func(language plugin.LanguageRuntime, programInfo plugin.ProgramInfo,
+	projectName tokens.PackageName) error
+
+type promptForAIProjectURLFunc func(ctx context.Context,
+	ws pkgWorkspace.Context, args newArgs, opts display.Options) (string, error)
 
 type newArgs struct {
-	configArray          []string
-	configPath           bool
-	description          string
-	dir                  string
-	force                bool
-	generateOnly         bool
-	interactive          bool
-	name                 string
-	offline              bool
-	prompt               promptForValueFunc
-	promptRuntimeOptions runtimeOptionsFunc
-	chooseTemplate       chooseTemplateFunc
-	secretsProvider      string
-	stack                string
-	templateNameOrURL    string
-	yes                  bool
-	listTemplates        bool
-	aiPrompt             string
-	aiLanguage           httpstate.PulumiAILanguage
-	templateMode         bool
-	runtimeOptions       []string
-	remoteStackConfig    bool
+	configArray           []string
+	configPath            bool
+	description           string
+	dir                   string
+	force                 bool
+	generateOnly          bool
+	interactive           bool
+	name                  string
+	offline               bool
+	prompt                promptForValueFunc
+	promptRuntimeOptions  runtimeOptionsFunc
+	languageTemplate      languageTemplateFunc
+	promptForAIProjectURL promptForAIProjectURLFunc
+	chooseTemplate        chooseTemplateFunc
+	secretsProvider       string
+	stack                 string
+	templateNameOrURL     string
+	yes                   bool
+	listTemplates         bool
+	aiPrompt              string
+	aiLanguage            httpstate.PulumiAILanguage
+	templateMode          bool
+	runtimeOptions        []string
+	remoteStackConfig     bool
 }
 
 func runNew(ctx context.Context, args newArgs) error {
@@ -158,55 +165,22 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
+	if args.templateNameOrURL == "" && args.promptForAIProjectURL != nil {
+		aiURL, err := args.promptForAIProjectURL(ctx, ws, args, opts)
+		if err != nil {
+			return err
+		}
+		args.templateNameOrURL = aiURL
+	}
+
 	// Retrieve the template repo.
 	scope := cmdTemplates.ScopeAll
 	if args.offline {
 		scope = cmdTemplates.ScopeLocal
 	}
 	templateSource := cmdTemplates.New(ctx,
-		args.templateNameOrURL, scope, workspace.TemplateKindPulumiProject)
+		args.templateNameOrURL, scope, workspace.TemplateKindPulumiProject, env.Global())
 	defer func() { contract.IgnoreError(templateSource.Close()) }()
-
-	if args.templateNameOrURL == "" {
-		// Try to read the current project
-		project, _, err := ws.ReadProject()
-		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-			return err
-		}
-
-		b, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts)
-		if err != nil {
-			return err
-		}
-
-		var aiOrTemplate string
-		if shouldPromptForAIOrTemplate(args, b) {
-			aiOrTemplate, err = chooseWithAIOrTemplate(opts)
-		} else {
-			aiOrTemplate = deriveAIOrTemplate(args)
-		}
-		if err != nil {
-			return err
-		}
-		if aiOrTemplate == "ai" {
-			checkedBackend, ok := b.(httpstate.Backend)
-			if !ok {
-				if args.aiLanguage != "" && args.aiPrompt == "" {
-					return errors.New(
-						"--language is used to generate a template with Pulumi AI. " +
-							"Please log in to Pulumi Cloud to use Pulumi AI.\n" +
-							"Use --template to create a project from a template, " +
-							"or no flags to choose one interactively.")
-				}
-				return errors.New("please log in to Pulumi Cloud to use Pulumi AI")
-			}
-			conversationURL, err := runAINew(ctx, args, opts, checkedBackend)
-			if err != nil {
-				return err
-			}
-			args.templateNameOrURL = conversationURL
-		}
-	}
 
 	// List the templates from the repo.
 	templates, err := templateSource.Templates()
@@ -385,25 +359,33 @@ func runNew(ctx context.Context, args newArgs) error {
 		fmt.Println()
 	}
 
+	projinfo := &engine.Projinfo{Proj: proj, Root: root}
+	_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
+		projinfo,
+		nil, /* host */
+		cmdutil.Diag(),
+		cmdutil.Diag(),
+		nil,   /* debugging */
+		false, /* disableProviderPreview */
+		nil,   /* tracingSpan */
+		nil,   /* config */
+	)
+	if err != nil {
+		return err
+	}
+	defer pluginCtx.Close()
+
+	lang, err := pluginCtx.Host.LanguageRuntime(proj.Runtime.Name())
+	if err != nil {
+		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
+	}
+	defer lang.Close()
+
+	programInfo := plugin.NewProgramInfo(pluginCtx.Root, pluginCtx.Pwd, entryPoint, proj.Runtime.Options())
+
 	// Query the language runtime for additional options.
 	if args.promptRuntimeOptions != nil {
-		span := opentracing.SpanFromContext(ctx)
-		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
-			projinfo,
-			nil,
-			cmdutil.Diag(),
-			cmdutil.Diag(),
-			nil,
-			false,
-			span,
-			nil,
-		)
-		if err != nil {
-			return err
-		}
-		defer pluginCtx.Close()
-		options, err := args.promptRuntimeOptions(pluginCtx, &proj.Runtime, entryPoint, opts,
+		options, err := args.promptRuntimeOptions(pluginCtx, lang, &proj.Runtime, entryPoint, opts,
 			args.yes, args.interactive, args.prompt)
 		if err != nil {
 			return err
@@ -416,7 +398,14 @@ func runNew(ctx context.Context, args newArgs) error {
 			if err = workspace.SaveProject(proj); err != nil {
 				return fmt.Errorf("saving project: %w", err)
 			}
+			// update programInfo to have the new options
+			programInfo = plugin.NewProgramInfo(pluginCtx.Root, pluginCtx.Pwd, entryPoint, proj.Runtime.Options())
 		}
+	}
+
+	// Let the language runtime do some templating
+	if err := args.languageTemplate(lang, programInfo, proj.Name); err != nil {
+		return fmt.Errorf("language template: %w", err)
 	}
 
 	// Prompt for config values (if needed) and save.
@@ -443,29 +432,11 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Ensure the stack is selected.
 	if !args.generateOnly && s != nil {
-		contract.IgnoreError(state.SetCurrentStack(s.Ref().FullyQualifiedName().String()))
+		contract.IgnoreError(state.SetCurrentStack(ws, s.Ref().FullyQualifiedName().String()))
 	}
 
 	// Install dependencies.
 	if !args.generateOnly {
-		span := opentracing.SpanFromContext(ctx)
-		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
-			projinfo,
-			nil,
-			cmdutil.Diag(),
-			cmdutil.Diag(),
-			nil,
-			false,
-			span,
-			nil,
-		)
-		if err != nil {
-			return err
-		}
-
-		defer pluginCtx.Close()
-
 		if err := InstallDependencies(pluginCtx, &proj.Runtime, entryPoint); err != nil {
 			return err
 		}
@@ -499,6 +470,12 @@ func NewNewCmd() *cobra.Command {
 		prompt:               ui.PromptForValue,
 		chooseTemplate:       ChooseTemplate,
 		promptRuntimeOptions: promptRuntimeOptions,
+		languageTemplate: func(language plugin.LanguageRuntime, programInfo plugin.ProgramInfo,
+			projectName tokens.PackageName,
+		) error {
+			return language.Template(programInfo, projectName)
+		},
+		promptForAIProjectURL: promptForAIProjectURL,
 	}
 
 	getTemplates := func(ctx context.Context) ([]cmdTemplates.Template, io.Closer, error) {
@@ -507,7 +484,7 @@ func NewNewCmd() *cobra.Command {
 			scope = cmdTemplates.ScopeLocal
 		}
 		// Attempt to retrieve available templates.
-		s := cmdTemplates.New(ctx, "", scope, workspace.TemplateKindPulumiProject)
+		s := cmdTemplates.New(ctx, "", scope, workspace.TemplateKindPulumiProject, env.Global())
 		t, err := s.Templates()
 		return t, s, err
 	}
@@ -598,10 +575,7 @@ func NewNewCmd() *cobra.Command {
 		// Show default help.
 		defaultHelp(cmd, args)
 
-		// You'd think you could use cmd.Context() here but cobra doesn't set context on the cmd even though
-		// the parent help command has it. If https://github.com/spf13/cobra/issues/2240 gets fixed we can
-		// change back to cmd.Context() here.
-		templates, closer, err := getTemplates(context.Background())
+		templates, closer, err := getTemplates(cmd.Context())
 		contract.IgnoreClose(closer)
 		if err != nil {
 			logging.Warningf("could not list templates: %v", err)
@@ -727,17 +701,10 @@ func validateProjectNameInternal(ctx context.Context, b backend.Backend,
 	return nil
 }
 
-func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
+func promptRuntimeOptions(ctx *plugin.Context, language plugin.LanguageRuntime, info *workspace.ProjectRuntimeInfo,
 	main string, opts display.Options, yes, interactive bool, prompt promptForValueFunc,
-) (map[string]interface{}, error) {
-	programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, info.Options())
-	lang, err := ctx.Host.LanguageRuntime(info.Name(), programInfo)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load language plugin %s: %w", info.Name(), err)
-	}
-	defer lang.Close()
-
-	options := make(map[string]interface{}, len(info.Options()))
+) (map[string]any, error) {
+	options := make(map[string]any, len(info.Options()))
 	for k, v := range info.Options() {
 		options[k] = v
 	}
@@ -746,7 +713,7 @@ func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInf
 	for {
 		// Update the program info with the latest runtime options.
 		programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, options)
-		prompts, err := lang.RuntimeOptionsPrompts(programInfo)
+		prompts, err := language.RuntimeOptionsPrompts(programInfo)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get runtime options prompts: %w", err)
 		}
@@ -773,7 +740,7 @@ func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInf
 				// Pick one among the choices
 				choices := make([]string, 0, len(optionPrompt.Choices))
 				// Map choice display string to the actual value
-				choiceMap := make(map[string]interface{}, len(optionPrompt.Choices))
+				choiceMap := make(map[string]any, len(optionPrompt.Choices))
 				for _, choice := range optionPrompt.Choices {
 					displayName := choice.DisplayName
 					if displayName == "" {
@@ -808,6 +775,52 @@ func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInf
 	}
 
 	return options, nil
+}
+
+func promptForAIProjectURL(ctx context.Context, ws pkgWorkspace.Context, args newArgs,
+	opts display.Options,
+) (string, error) {
+	// Try to read the current project
+	project, _, err := ws.ReadProject()
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return "", err
+	}
+
+	b, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts)
+	if err != nil {
+		return "", err
+	}
+
+	var aiOrTemplate string
+	if shouldPromptForAIOrTemplate(args, b) {
+		aiOrTemplate, err = chooseWithAIOrTemplate(opts)
+	} else {
+		aiOrTemplate = deriveAIOrTemplate(args)
+	}
+	if err != nil {
+		return "", err
+	}
+	if aiOrTemplate != "ai" {
+		return "", nil
+	}
+
+	if args.aiPrompt == "" && !opts.IsInteractive {
+		return "", errors.New(
+			"the --ai <prompt> flag is required when running in non-interactive mode with the --language flag")
+	}
+
+	checkedBackend, ok := b.(httpstate.Backend)
+	if !ok {
+		if args.aiLanguage != "" && args.aiPrompt == "" {
+			return "", errors.New(
+				"--language is used to generate a template with Pulumi AI. " +
+					"Please log in to Pulumi Cloud to use Pulumi AI.\n" +
+					"Use --template to create a project from a template, " +
+					"or no flags to choose one interactively.")
+		}
+		return "", errors.New("please log in to Pulumi Cloud to use Pulumi AI")
+	}
+	return runAINew(ctx, args, opts, checkedBackend)
 }
 
 func makePromptValidator(prompt plugin.RuntimeOptionPrompt) func(string) error {

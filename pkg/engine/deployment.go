@@ -25,10 +25,10 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	interceptors "github.com/pulumi/pulumi/pkg/v3/util/rpcdebug"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -69,7 +69,7 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 		if err != nil {
 			return "", "", nil, err
 		}
-		ctx.DialOptions = func(metadata interface{}) []grpc.DialOption {
+		ctx.DialOptions = func(metadata any) []grpc.DialOption {
 			return di.DialOptions(interceptors.LogOptions{
 				Metadata: metadata,
 			})
@@ -99,8 +99,6 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 // newDeploymentContext creates a context for a subsequent deployment. Callers must call Close on the context after the
 // associated deployment completes.
 func newDeploymentContext(u UpdateInfo, opName string, parentSpan opentracing.SpanContext) (*deploymentContext, error) {
-	contract.Requiref(u != nil, "u", "must not be nil")
-
 	// Create a root span for the operation
 	opts := []opentracing.StartSpanOption{}
 	if opName != "" {
@@ -134,6 +132,9 @@ type deploymentOptions struct {
 	// creates resources to compare against the current checkpoint state (e.g., by evaluating a program, etc).
 	SourceFunc deploymentSourceFunc
 
+	// pluginManager manages plugin installations.
+	pluginManager PluginManager
+
 	// true if we should print the DOT file for this deployment.
 	DOT bool
 	// the channel to write events from the engine to.
@@ -162,7 +163,7 @@ type deploymentOptions struct {
 type deploymentSourceFunc func(
 	ctx context.Context,
 	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
-	target *deploy.Target, plugctx *plugin.Context) (deploy.Source, error)
+	target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks) (deploy.Source, error)
 
 // newDeployment creates a new deployment with the given context and options.
 func newDeployment(
@@ -172,15 +173,14 @@ func newDeployment(
 	opts *deploymentOptions,
 ) (*deployment, error) {
 	contract.Assertf(info != nil, "a deployment context must be provided")
-	contract.Assertf(info.Update != nil, "update info cannot be nil")
 	contract.Assertf(opts.SourceFunc != nil, "a source factory must be provided")
 
 	// First, load the package metadata and the deployment target in preparation for executing the package's program
 	// and creating resources.  This includes fetching its pwd and main overrides.
-	proj, target := info.Update.GetProject(), info.Update.GetTarget()
+	proj, target := info.Update.Project, info.Update.Target
 	contract.Assertf(proj != nil, "update project cannot be nil")
 	contract.Assertf(target != nil, "update target cannot be nil")
-	projinfo := &Projinfo{Proj: proj, Root: info.Update.GetRoot()}
+	projinfo := &Projinfo{Proj: proj, Root: info.Update.Root}
 
 	// Decrypt the configuration.
 	config, err := target.Config.Decrypt(target.Decrypter)
@@ -208,10 +208,12 @@ func newDeployment(
 		cancelFunc()
 	}()
 
+	resourceHooks := deploy.NewResourceHooks(plugctx.DialOptions)
+
 	// Now create the state source.  This may issue an error if it can't create the source.  This entails,
 	// for example, loading any plugins which will be required to execute a program, among other things.
 	source, err := opts.SourceFunc(
-		cancelCtx, ctx.BackendClient, opts, proj, pwd, main, projinfo.Root, target, plugctx)
+		cancelCtx, ctx.BackendClient, opts, proj, pwd, main, projinfo.Root, target, plugctx, resourceHooks)
 	if err != nil {
 		contract.IgnoreClose(plugctx)
 		return nil, err
@@ -245,7 +247,7 @@ func newDeployment(
 	if !opts.isImport {
 		depl, err = deploy.NewDeployment(
 			plugctx, deplOpts, actions, target, target.Snapshot, opts.Plan, source,
-			localPolicyPackPaths, ctx.BackendClient)
+			localPolicyPackPaths, ctx.BackendClient, resourceHooks)
 	} else {
 		_, defaultProviderInfo, pluginErr := installPlugins(
 			cancelCtx,
@@ -361,7 +363,7 @@ func (deployment *deployment) run(cancelCtx *Context) (*deploy.Plan, display.Res
 
 	// Emit an appropriate prelude event.
 	deployment.Options.Events.preludeEvent(
-		deployment.Options.DryRun, deployment.Ctx.Update.GetTarget().Config)
+		deployment.Options.DryRun, deployment.Ctx.Update.Target.Config)
 
 	// Execute the deployment.
 	start := time.Now()

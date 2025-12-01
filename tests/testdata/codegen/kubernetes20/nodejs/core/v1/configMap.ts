@@ -39,27 +39,27 @@ export class ConfigMap extends pulumi.CustomResource {
     /**
      * APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
      */
-    public readonly apiVersion!: pulumi.Output<"v1">;
+    declare public readonly apiVersion: pulumi.Output<"v1">;
     /**
      * BinaryData contains the binary data. Each key must consist of alphanumeric characters, '-', '_' or '.'. BinaryData can contain byte sequences that are not in the UTF-8 range. The keys stored in BinaryData must not overlap with the ones in the Data field, this is enforced during validation process. Using this field will require 1.10+ apiserver and kubelet.
      */
-    public readonly binaryData!: pulumi.Output<{[key: string]: string}>;
+    declare public readonly binaryData: pulumi.Output<{[key: string]: string}>;
     /**
      * Data contains the configuration data. Each key must consist of alphanumeric characters, '-', '_' or '.'. Values with non-UTF-8 byte sequences must use the BinaryData field. The keys stored in Data must not overlap with the keys in the BinaryData field, this is enforced during validation process.
      */
-    public readonly data!: pulumi.Output<{[key: string]: string}>;
+    declare public readonly data: pulumi.Output<{[key: string]: string}>;
     /**
      * Immutable, if set to true, ensures that data stored in the ConfigMap cannot be updated (only object metadata can be modified). If not set to true, the field can be modified at any time. Defaulted to nil.
      */
-    public readonly immutable!: pulumi.Output<boolean>;
+    declare public readonly immutable: pulumi.Output<boolean>;
     /**
      * Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
      */
-    public readonly kind!: pulumi.Output<"ConfigMap">;
+    declare public readonly kind: pulumi.Output<"ConfigMap">;
     /**
      * Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
      */
-    public readonly metadata!: pulumi.Output<outputs.meta.v1.ObjectMeta>;
+    declare public readonly metadata: pulumi.Output<outputs.meta.v1.ObjectMeta>;
 
     /**
      * Create a ConfigMap resource with the given unique name, arguments, and options.
@@ -73,11 +73,11 @@ export class ConfigMap extends pulumi.CustomResource {
         opts = opts || {};
         if (!opts.id) {
             resourceInputs["apiVersion"] = "v1";
-            resourceInputs["binaryData"] = args ? args.binaryData : undefined;
-            resourceInputs["data"] = args ? args.data : undefined;
-            resourceInputs["immutable"] = args ? args.immutable : undefined;
+            resourceInputs["binaryData"] = args?.binaryData;
+            resourceInputs["data"] = args?.data;
+            resourceInputs["immutable"] = args?.immutable;
             resourceInputs["kind"] = "ConfigMap";
-            resourceInputs["metadata"] = args ? args.metadata : undefined;
+            resourceInputs["metadata"] = args?.metadata;
         } else {
             resourceInputs["apiVersion"] = undefined /*out*/;
             resourceInputs["binaryData"] = undefined /*out*/;

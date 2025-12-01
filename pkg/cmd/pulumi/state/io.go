@@ -16,7 +16,6 @@ package state
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -27,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -35,7 +35,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -128,7 +127,7 @@ func TotalStateEdit(
 	operation func(opts display.Options, snap *deploy.Snapshot) error,
 	overridePromptMessage *string,
 ) error {
-	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
 	if err != nil {
 		return err
 	} else if snap == nil {
@@ -164,21 +163,13 @@ func TotalStateEdit(
 		contract.AssertNoErrorf(snap.VerifyIntegrity(), "state edit produced an invalid snapshot")
 	}
 
-	sdep, err := stack.SerializeDeployment(ctx, snap, false /* showSecrets */)
+	dep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
 	if err != nil {
 		return fmt.Errorf("serializing deployment: %w", err)
 	}
 
 	// Once we've mutated the snapshot, import it back into the backend so that it can be persisted.
-	bytes, err := json.Marshal(sdep)
-	if err != nil {
-		return err
-	}
-	dep := apitype.UntypedDeployment{
-		Version:    apitype.DeploymentSchemaVersionCurrent,
-		Deployment: bytes,
-	}
-	return backend.ImportStackDeployment(ctx, s, &dep)
+	return backend.ImportStackDeployment(ctx, s, dep)
 }
 
 // locateStackResource attempts to find a unique resource associated with the given URN in the given snapshot. If the
@@ -270,7 +261,7 @@ func getURNFromState(
 		if err != nil {
 			return "", err
 		}
-		*snap, err = s.Snapshot(ctx, stack.DefaultSecretsProvider)
+		*snap, err = s.Snapshot(ctx, secrets.DefaultProvider)
 		if err != nil {
 			return "", err
 		}

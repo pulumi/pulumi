@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -60,7 +61,7 @@ func TestSingleOrNoneBindsCorrectlyWhenFirstArgumentIsList(t *testing.T) {
 	source := "value = singleOrNone([1, 2, 3])"
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
 	contract.Ignore(diags)
-	assert.NotNil(t, program, "The program doesn't bind")
+	require.NotNil(t, program, "The program doesn't bind")
 	assert.Nil(t, err, "There is no bind error")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
 	localVariable, ok := program.Nodes[0].(*pcl.LocalVariable)
@@ -77,7 +78,7 @@ func TestBindingInvokeThatReturnsRecursiveType(t *testing.T) {
 	source := `value = invoke("recursive:index:getRecursiveType", { name = "foo" })`
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
 	contract.Ignore(diags)
-	assert.NotNil(t, program, "The program doesn't bind")
+	require.NotNil(t, program, "The program doesn't bind")
 	assert.Nil(t, err, "There is no bind error")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
 	localVariable, ok := program.Nodes[0].(*pcl.LocalVariable)
@@ -114,8 +115,8 @@ func TestTryWithCorrectArguments(t *testing.T) {
 	program, _, err := ParseAndBindProgram(t, source, "program.pp")
 
 	// Assert.
-	assert.NotNil(t, program, "The program binds")
-	assert.NoError(t, err)
+	require.NotNil(t, program, "The program binds")
+	require.NoError(t, err)
 
 	// Assert that the type of the variable is a plain number.
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -140,8 +141,8 @@ func TestTryWithCorrectOutputArguments(t *testing.T) {
 	program, _, err := ParseAndBindProgram(t, source, "program.pp")
 
 	// Assert.
-	assert.NotNil(t, program, "The program binds")
-	assert.NoError(t, err)
+	require.NotNil(t, program, "The program binds")
+	require.NoError(t, err)
 
 	// Assert that the type of the variable is an output number.
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -169,8 +170,8 @@ func TestTryWithCorrectDynamicArguments(t *testing.T) {
 	program, _, err := ParseAndBindProgram(t, source, "program.pp")
 
 	// Assert.
-	assert.NotNil(t, program, "The program binds")
-	assert.NoError(t, err)
+	require.NotNil(t, program, "The program binds")
+	require.NoError(t, err)
 
 	// Assert that the type of the variable is a plain number.
 	assert.Equal(t, len(program.Nodes), 2, "there are two nodes")
@@ -207,8 +208,8 @@ func TestCanWithCorrectArgument(t *testing.T) {
 	program, _, err := ParseAndBindProgram(t, source, "program.pp")
 
 	// Assert.
-	assert.NotNil(t, program, "The program binds")
-	assert.NoError(t, err)
+	require.NotNil(t, program, "The program binds")
+	require.NoError(t, err)
 
 	// Assert that the type of the variable is a boolean.
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -229,8 +230,8 @@ func TestCanWithCorrectOutputArgument(t *testing.T) {
 	program, _, err := ParseAndBindProgram(t, source, "program.pp")
 
 	// Assert.
-	assert.NotNil(t, program, "The program binds")
-	assert.NoError(t, err)
+	require.NotNil(t, program, "The program binds")
+	require.NoError(t, err)
 
 	// Assert that the type of the variable is a boolean.
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -267,8 +268,8 @@ func TestRootDirectory(t *testing.T) {
 	program, _, err := ParseAndBindProgram(t, source, "program.pp")
 
 	// Assert.
-	assert.NotNil(t, program, "The program binds")
-	assert.NoError(t, err)
+	require.NotNil(t, program, "The program binds")
+	require.NoError(t, err)
 }
 
 func TestRootDirectoryFailsWithArguments(t *testing.T) {
@@ -291,8 +292,8 @@ func TestBindingPulumiResourceTypeName(t *testing.T) {
 type = pulumiResourceType(res)
 name = pulumiResourceName(res)`
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
-	assert.NotNil(t, program, "The program doesn't bind")
-	assert.Len(t, diags, 0, "There are no diagnostics")
+	require.NotNil(t, program, "The program doesn't bind")
+	require.Len(t, diags, 0, "There are no diagnostics")
 	assert.Nil(t, err, "There is no bind error")
 	assert.Equal(t, len(program.Nodes), 3, "there are two nodes")
 	localVariable, ok := program.Nodes[1].(*pcl.LocalVariable)

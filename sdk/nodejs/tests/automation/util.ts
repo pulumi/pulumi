@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "crypto";
 
 /** @internal */
 export function getTestSuffix() {
-    return uuidv4();
+    return randomUUID();
 }
 
 /** @internal */
 export function getTestOrg() {
+    if (process.env.PULUMI_TEST_ORG) {
+        return process.env.PULUMI_TEST_ORG;
+    }
     if (process.env.PULUMI_ACCESS_TOKEN) {
-        if (process.env.PULUMI_TEST_ORG) {
-            return process.env.PULUMI_TEST_ORG;
-        }
         return "pulumi-test";
     }
     return "organization";

@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
@@ -101,24 +102,21 @@ func newStackExportCmd() *cobra.Command {
 
 			if showSecrets {
 				// log show secrets event
-				snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
+				snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, secrets.DefaultProvider)
 				if err != nil {
-					return checkDeploymentVersionError(err, stackName)
+					return stack.FormatDeploymentDeserializationError(err, stackName)
 				}
 
-				serializedDeployment, err := stack.SerializeDeployment(ctx, snap, true)
+				// Serialize with pretty formatting so that HTML characters are not escaped when serializing
+				// the deployment back to JSON. Note that if the HTML characters were already escaped as part
+				// of exporting from the backend, those escaped characters will remain escaped, this just
+				// avoids introducing additional escaping.
+				deployment, err = stack.SerializeUntypedDeployment(ctx, snap, &stack.SerializeOptions{
+					ShowSecrets: true,
+					Pretty:      true,
+				})
 				if err != nil {
 					return err
-				}
-
-				data, err := json.Marshal(serializedDeployment)
-				if err != nil {
-					return err
-				}
-
-				deployment = &apitype.UntypedDeployment{
-					Version:    3,
-					Deployment: data,
 				}
 
 				Log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack export")

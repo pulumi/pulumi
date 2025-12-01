@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // CreateBasicPulumiRepo will initialize the environment with a basic Pulumi repository and
@@ -33,7 +34,7 @@ func CreateBasicPulumiRepo(e *testing.Environment) {
 	filePath := workspace.ProjectFile + ".yaml"
 	filePath = path.Join(e.CWD, filePath)
 	err := os.WriteFile(filePath, []byte(contents), 0o600)
-	assert.NoError(e, err, "writing %s file", filePath)
+	require.NoError(e, err, "writing %s file", filePath)
 }
 
 // CreatePulumiRepo will initialize the environment with a basic Pulumi repository and
@@ -43,7 +44,7 @@ func CreatePulumiRepo(e *testing.Environment, projectFileContent string) {
 	e.RunCommand("git", "init")
 	filePath := path.Join(e.CWD, workspace.ProjectFile+".yaml")
 	err := os.WriteFile(filePath, []byte(projectFileContent), 0o600)
-	assert.NoError(e, err, "writing %s file", filePath)
+	require.NoError(e, err, "writing %s file", filePath)
 }
 
 // GetStacks returns the list of stacks and current stack by scraping `pulumi stack ls`.

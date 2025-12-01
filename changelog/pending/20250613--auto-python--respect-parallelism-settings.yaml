@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: auto/python
-  description: Fix parallelism issue when running inline programs with the automation API

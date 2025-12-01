@@ -1,0 +1,6 @@
+<{%fg 2%}>+ pulumi:providers:pkgB: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgB::default]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgB:m:typB: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgB:m:typB::resB]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 to create<{%reset%}>

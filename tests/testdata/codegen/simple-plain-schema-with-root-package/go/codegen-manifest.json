@@ -1,5 +1,6 @@
 {
   "emittedFiles": [
+    ".gitattributes",
     "component.go",
     "doc.go",
     "init.go",

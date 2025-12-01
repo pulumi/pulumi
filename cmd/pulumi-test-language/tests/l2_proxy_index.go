@@ -21,12 +21,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
 	LanguageTests["l2-proxy-index"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.RefRefProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.RefRefProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
@@ -39,11 +41,11 @@ func init() {
 
 					outputs := stack.Outputs
 
-					assert.Len(l, outputs, 4, "expected 4 outputs")
-					AssertPropertyMapMember(l, outputs, "bool", resource.NewBoolProperty(true))
-					AssertPropertyMapMember(l, outputs, "array", resource.NewBoolProperty(true))
-					AssertPropertyMapMember(l, outputs, "map", resource.NewStringProperty("100"))
-					AssertPropertyMapMember(l, outputs, "nested", resource.NewStringProperty("french hens"))
+					require.Len(l, outputs, 4, "expected 4 outputs")
+					AssertPropertyMapMember(l, outputs, "bool", resource.NewProperty(true))
+					AssertPropertyMapMember(l, outputs, "array", resource.NewProperty(true))
+					AssertPropertyMapMember(l, outputs, "map", resource.NewProperty("100"))
+					AssertPropertyMapMember(l, outputs, "nested", resource.NewProperty("french hens"))
 				},
 			},
 		},

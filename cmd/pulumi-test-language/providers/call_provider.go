@@ -23,7 +23,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -399,7 +399,7 @@ func (p *CallProvider) callCustomProviderValue(
 	result := provValue.GetStringValue() + resValue.GetStringValue()
 
 	return plugin.CallResponse{
-		Return: resource.NewPropertyMapFromMap(map[string]interface{}{
+		Return: resource.NewPropertyMapFromMap(map[string]any{
 			"result": result,
 		}),
 	}, nil
@@ -429,7 +429,7 @@ func (p *CallProvider) callProviderIdentity(
 	result := value.GetStringValue()
 
 	return plugin.CallResponse{
-		Return: resource.NewPropertyMapFromMap(map[string]interface{}{
+		Return: resource.NewPropertyMapFromMap(map[string]any{
 			"result": result,
 		}),
 	}, nil
@@ -472,7 +472,7 @@ func (p *CallProvider) callProviderPrefixed(
 	result := prefix.StringValue() + value.GetStringValue()
 
 	return plugin.CallResponse{
-		Return: resource.NewPropertyMapFromMap(map[string]interface{}{
+		Return: resource.NewPropertyMapFromMap(map[string]any{
 			"result": result,
 		}),
 	}, nil

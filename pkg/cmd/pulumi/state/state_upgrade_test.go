@@ -61,7 +61,6 @@ func TestStateUpgradeCommand_parseArgsErrors(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -90,7 +89,7 @@ func TestStateUpgradeCommand_Run_upgrade(t *testing.T) {
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -120,7 +119,7 @@ func TestStateUpgradeCommand_Run_upgrade_yes_flag(t *testing.T) {
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -148,7 +147,7 @@ func TestStateUpgradeCommand_Run_upgradeRejected(t *testing.T) {
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -171,7 +170,7 @@ func TestStateUpgradeCommand_Run_unsupportedBackend(t *testing.T) {
 	be := &backend.MockBackend{}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -194,7 +193,7 @@ func TestStateUpgradeCmd_Run_backendError(t *testing.T) {
 	ws := &pkgWorkspace.MockContext{}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
 			return nil, giveErr
 		},
@@ -248,7 +247,7 @@ func TestStateUpgradeProjectNameWidget(t *testing.T) {
 	)
 	require.NoError(t, err, "creating console")
 	defer func() {
-		assert.NoError(t, console.Close(), "close console")
+		require.NoError(t, console.Close(), "close console")
 	}()
 
 	expect := func(t *testing.T, s string) {
@@ -283,12 +282,12 @@ func TestStateUpgradeProjectNameWidget(t *testing.T) {
 			Stdout: console.Tty(),
 			Stderr: iotest.LogWriterPrefixed(t, "[stderr] "),
 		}).Prompt(stacks, projects)
-		assert.NoError(t, err, "prompt failed")
+		require.NoError(t, err, "prompt failed")
 		assert.Equal(t, []tokens.Name{"foo-project", "", "baz-project"}, projects)
 
 		// We need to close the TTY after we're done here
 		// so that ExpectEOF unblocks.
-		assert.NoError(t, console.Tty().Close(), "close tty")
+		require.NoError(t, console.Tty().Close(), "close tty")
 	}()
 	defer func() {
 		select {
@@ -335,7 +334,7 @@ func TestStateUpgradeProjectNameWidget(t *testing.T) {
 	// ExpectEOF blocks until the console reaches EOF on its input.
 	// This will happen when the widget exits and closes the TTY.
 	_, err = console.ExpectEOF()
-	assert.NoError(t, err, "expect EOF")
+	require.NoError(t, err, "expect EOF")
 }
 
 func TestStateUpgradeProjectNameWidget_noStacks(t *testing.T) {
@@ -348,8 +347,8 @@ func TestStateUpgradeProjectNameWidget_noStacks(t *testing.T) {
 	ptty, tty, err := pty.Open()
 	require.NoError(t, err, "creating pseudo-terminal")
 	defer func() {
-		assert.NoError(t, ptty.Close())
-		assert.NoError(t, tty.Close())
+		require.NoError(t, ptty.Close())
+		require.NoError(t, tty.Close())
 	}()
 
 	err = (&stateUpgradeProjectNameWidget{

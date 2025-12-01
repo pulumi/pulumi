@@ -148,9 +148,9 @@ type updateInfoJSON struct {
 // configValueJSON is the shape of the --json output for a configuration value in an update in a stack history. While we
 // can add fields to this structure in the future, we should not change existing fields.
 type configValueJSON struct {
-	Value       *string     `json:"value,omitempty"`
-	ObjectValue interface{} `json:"objectValue,omitempty"`
-	Secret      bool        `json:"secret"`
+	Value       *string `json:"value,omitempty"`
+	ObjectValue any     `json:"objectValue,omitempty"`
+	Secret      bool    `json:"secret"`
 }
 
 func buildUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter) ([]updateInfoJSON, error) {
@@ -183,7 +183,7 @@ func buildUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter) 
 					configValue.Value = makeStringRef(value)
 
 					if value != "" && v.Object() {
-						var obj interface{}
+						var obj any
 						if err := json.Unmarshal([]byte(value), &obj); err != nil {
 							return nil, err
 						}

@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEnvOverrideGetCommandResults(t *testing.T) {
@@ -28,7 +29,7 @@ func TestEnvOverrideGetCommandResults(t *testing.T) {
 	checkDebug := func(expect string) {
 		stdout, stderr, err := e.GetCommandResults("bash", "-c", "echo $PULUMI_DEBUG_COMMANDS")
 		stdout = strings.TrimSuffix(stdout, "\n")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, stderr)
 		assert.Equal(t, expect, stdout)
 	}

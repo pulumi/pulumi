@@ -15,17 +15,43 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import abc
+import collections.abc
 import grpc
 import grpc.aio
 import typing
+import grpc.aio
 import pulumi.resource_status_pb2
+import typing
+
+_T = typing.TypeVar("_T")
+
+class _MaybeAsyncIterator(collections.abc.AsyncIterator[_T], collections.abc.Iterator[_T], metaclass=abc.ABCMeta): ...
+
+class _ServicerContext(grpc.ServicerContext, grpc.aio.ServicerContext):  # type: ignore[misc, type-arg]
+    ...
 
 class ResourceStatusStub:
     """ResourceStatus is an interface that can be called from a resource provider to update status about a resource."""
 
-    def __init__(self, channel: grpc.Channel) -> None: ...
+    def __init__(self, channel: typing.Union[grpc.Channel, grpc.aio.Channel]) -> None: ...
     PublishViewSteps: grpc.UnaryUnaryMultiCallable[
+        pulumi.resource_status_pb2.PublishViewStepsRequest,
+        pulumi.resource_status_pb2.PublishViewStepsResponse,
+    ]
+    """`PublishViewSteps` is used to publish a series of steps for a view resource.
+    Views can be materialized via create and update steps, and more complex
+    changes, such as replacements, can be modeled as a series of steps.
+    The engine does not actually apply these steps, but rather flows them through
+    the engine such that the view resources are written to state and the view
+    resources are displayed in the UI.
+    """
+
+class ResourceStatusAsyncStub:
+    """ResourceStatus is an interface that can be called from a resource provider to update status about a resource."""
+
+    PublishViewSteps: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.resource_status_pb2.PublishViewStepsRequest,
         pulumi.resource_status_pb2.PublishViewStepsResponse,
     ]
@@ -44,8 +70,8 @@ class ResourceStatusServicer(metaclass=abc.ABCMeta):
     def PublishViewSteps(
         self,
         request: pulumi.resource_status_pb2.PublishViewStepsRequest,
-        context: grpc.ServicerContext,
-    ) -> pulumi.resource_status_pb2.PublishViewStepsResponse:
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.resource_status_pb2.PublishViewStepsResponse, collections.abc.Awaitable[pulumi.resource_status_pb2.PublishViewStepsResponse]]:
         """`PublishViewSteps` is used to publish a series of steps for a view resource.
         Views can be materialized via create and update steps, and more complex
         changes, such as replacements, can be modeled as a series of steps.

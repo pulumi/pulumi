@@ -34,7 +34,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-type constructFunc func(ctx *Context, typ, name string, inputs map[string]interface{},
+type constructFunc func(ctx *Context, typ, name string, inputs map[string]any,
 	options ResourceOption) (URNInput, Input, error)
 
 // construct adapts the gRPC ConstructRequest/ConstructResponse to/from the Pulumi Go SDK programming model.
@@ -72,7 +72,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	if err != nil {
 		return nil, fmt.Errorf("unmarshaling inputs: %w", err)
 	}
-	inputs := make(map[string]interface{}, len(deserializedInputs))
+	inputs := make(map[string]any, len(deserializedInputs))
 	for key, value := range deserializedInputs {
 		k := string(key)
 		var deps map[URN]struct{}
@@ -112,6 +112,19 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	if req.GetParent() != "" {
 		parent = pulumiCtx.newDependencyResource(URN(req.GetParent()))
 	}
+
+	var hooks *ResourceHookBinding
+	binding := req.GetResourceHooks()
+	if binding != nil {
+		hooks = &ResourceHookBinding{}
+		hooks.BeforeCreate = makeStubHooks(binding.GetBeforeCreate())
+		hooks.AfterCreate = makeStubHooks(binding.GetAfterCreate())
+		hooks.BeforeUpdate = makeStubHooks(binding.GetBeforeUpdate())
+		hooks.AfterUpdate = makeStubHooks(binding.GetAfterUpdate())
+		hooks.BeforeDelete = makeStubHooks(binding.GetBeforeDelete())
+		hooks.AfterDelete = makeStubHooks(binding.GetAfterDelete())
+	}
+
 	opts := resourceOption(func(ro *resourceOptions) {
 		ro.Aliases = aliases
 		if len(dependencies) > 0 {
@@ -129,6 +142,12 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 				Delete: t.GetDelete(),
 			}
 		}
+		if len(req.GetReplaceWith()) > 0 {
+			ro.ReplaceWith = make([]Resource, len(req.GetReplaceWith()))
+			for i, urn := range req.GetReplaceWith() {
+				ro.ReplaceWith[i] = pulumiCtx.newDependencyResource(URN(urn))
+			}
+		}
 		if urn := req.DeletedWith; urn != "" {
 			ro.DeletedWith = pulumiCtx.newDependencyResource(URN(urn))
 		}
@@ -136,6 +155,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		ro.IgnoreChanges = append(ro.IgnoreChanges, req.GetIgnoreChanges()...)
 		ro.ReplaceOnChanges = append(ro.ReplaceOnChanges, req.GetReplaceOnChanges()...)
 		ro.RetainOnDelete = req.RetainOnDelete
+		ro.Hooks = hooks
 	})
 
 	urn, state, err := constructF(pulumiCtx, req.GetType(), req.GetName(), inputs, opts)
@@ -210,7 +230,7 @@ func createProviderResource(ctx *Context, ref string) (ProviderResource, error) 
 	// the intended provider type with its state, if it's been registered.
 	resource, err := unmarshalResourceReference(ctx, resource.ResourceReference{
 		URN: resource.URN(urn),
-		ID:  resource.NewStringProperty(id),
+		ID:  resource.NewProperty(id),
 	})
 	if err != nil {
 		return nil, err
@@ -240,7 +260,7 @@ func (ci constructInput) Dependencies(ctx *Context) []Resource {
 }
 
 // constructInputsMap returns the inputs as a Map.
-func constructInputsMap(ctx *Context, inputs map[string]interface{}) (Map, error) {
+func constructInputsMap(ctx *Context, inputs map[string]any) (Map, error) {
 	result := make(Map, len(inputs))
 	for k, v := range inputs {
 		ci := v.(*constructInput)
@@ -310,7 +330,7 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 			known, element = false, element.Input().Element
 		}
 		// Handle this as a secret output.
-		return copyInputTo(ctx, resource.NewOutputProperty(resource.Output{
+		return copyInputTo(ctx, resource.NewProperty(resource.Output{
 			Element: element,
 			Known:   known,
 			Secret:  true,
@@ -590,7 +610,7 @@ func copyToStruct(ctx *Context, v resource.PropertyValue, typ reflect.Type, dest
 }
 
 // constructInputsCopyTo sets the inputs on the given args struct.
-func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args interface{}) error {
+func constructInputsCopyTo(ctx *Context, inputs map[string]any, args any) error {
 	if args == nil {
 		return errors.New("args must not be nil")
 	}
@@ -755,7 +775,7 @@ type callFailure struct {
 	Reason   string
 }
 
-type callFunc func(ctx *Context, tok string, args map[string]interface{}) (Input, []interface{}, error)
+type callFunc func(ctx *Context, tok string, args map[string]any) (Input, []any, error)
 
 // call adapts the gRPC CallRequest/CallResponse to/from the Pulumi Go SDK programming model.
 func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.ClientConn,
@@ -791,7 +811,7 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 	if err != nil {
 		return nil, fmt.Errorf("unmarshaling inputs: %w", err)
 	}
-	args := make(map[string]interface{}, len(deserializedArgs))
+	args := make(map[string]any, len(deserializedArgs))
 	for key, value := range deserializedArgs {
 		k := string(key)
 		var deps map[URN]struct{}
@@ -875,7 +895,7 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 
 // callArgsCopyTo sets the args on the given args struct. If there is a `__self__` argument, it will be
 // returned, otherwise it will return nil.
-func callArgsCopyTo(ctx *Context, source map[string]interface{}, args interface{}) (Resource, error) {
+func callArgsCopyTo(ctx *Context, source map[string]any, args any) (Resource, error) {
 	// Use the same implementation as construct.
 	if err := constructInputsCopyTo(ctx, source, args); err != nil {
 		return nil, err
@@ -892,7 +912,7 @@ func callArgsCopyTo(ctx *Context, source map[string]interface{}, args interface{
 
 // callArgsSelf retrieves the `__self__` argument. If `__self__` is present the value is returned,
 // otherwise the returned value will be nil.
-func callArgsSelf(ctx *Context, source map[string]interface{}) (Resource, error) {
+func callArgsSelf(ctx *Context, source map[string]any) (Resource, error) {
 	v, ok := source["__self__"]
 	if !ok {
 		return nil, nil
@@ -915,7 +935,7 @@ func callArgsSelf(ctx *Context, source map[string]interface{}) (Resource, error)
 }
 
 // newCallResult converts a result struct into an input Map that can be marshalled.
-func newCallResult(result interface{}) (Input, error) {
+func newCallResult(result any) (Input, error) {
 	if result == nil {
 		return nil, errors.New("result must not be nil")
 	}
@@ -950,7 +970,7 @@ func newCallResult(result interface{}) (Input, error) {
 }
 
 // newCallFailure creates a call failure.
-func newCallFailure(property, reason string) interface{} {
+func newCallFailure(property, reason string) any {
 	return callFailure{
 		Property: property,
 		Reason:   reason,

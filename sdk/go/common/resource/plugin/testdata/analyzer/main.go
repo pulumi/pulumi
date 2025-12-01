@@ -10,6 +10,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type analyzer struct {
@@ -33,6 +34,9 @@ func (a *analyzer) StackConfigure(ctx context.Context, req *pulumirpc.AnalyzerSt
 	if !req.DryRun {
 		return nil, fmt.Errorf("expected dry run to be true, got false")
 	}
+	if req.Tags["tag1"] != "value1" || req.Tags["tag2"] != "value2" || len(req.Tags) != 2 {
+		return nil, fmt.Errorf("expected tags to be {tag1: value1, tag2: value2}, got %v", req.Tags)
+	}
 
 	expectedConfig := map[string]string{
 		"test-project:bool":   "true",
@@ -48,16 +52,20 @@ func (a *analyzer) StackConfigure(ctx context.Context, req *pulumirpc.AnalyzerSt
 	return &pulumirpc.AnalyzerStackConfigureResponse{}, nil
 }
 
+func (a *analyzer) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
+}
+
 func main() {
 	// Bootup a policy plugin but first assert that the config is what we expect
 
 	config := os.Getenv("PULUMI_CONFIG")
-	var actual map[string]interface{}
+	var actual map[string]any
 	if err := json.Unmarshal([]byte(config), &actual); err != nil {
 		fmt.Printf("fatal: %v\n", err)
 		os.Exit(1)
 	}
-	expect := map[string]interface{}{
+	expect := map[string]any{
 		"test-project:bool":   "true",
 		"test-project:float":  "1.5",
 		"test-project:string": "hello",

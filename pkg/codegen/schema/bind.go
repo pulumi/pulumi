@@ -72,7 +72,7 @@ func memberPath(section, token string, rest ...string) string {
 	return path
 }
 
-func errorf(path, message string, args ...interface{}) *hcl.Diagnostic {
+func errorf(path, message string, args ...any) *hcl.Diagnostic {
 	contract.Requiref(path != "", "path", "must not be empty")
 
 	summary := path + ": " + fmt.Sprintf(message, args...)
@@ -82,7 +82,7 @@ func errorf(path, message string, args ...interface{}) *hcl.Diagnostic {
 	}
 }
 
-func warningf(path, message string, args ...interface{}) *hcl.Diagnostic {
+func warningf(path, message string, args ...any) *hcl.Diagnostic {
 	contract.Requiref(path != "", "path", "must not be empty")
 
 	summary := path + ": " + fmt.Sprintf(message, args...)
@@ -97,7 +97,7 @@ func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
 	if err != nil {
 		return nil, err
 	}
-	var raw interface{}
+	var raw any
 	if err = json.Unmarshal(bytes, &raw); err != nil {
 		return nil, err
 	}
@@ -250,7 +250,7 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		diags = diags.Append(errorf("#/meta/moduleFormat", "failed to compile regex: %v", err))
 	}
 
-	language := make(map[string]interface{}, len(info.Language))
+	language := make(map[string]any, len(info.Language))
 	for name, v := range info.Language {
 		language[name] = json.RawMessage(v)
 	}
@@ -648,6 +648,7 @@ func (t *types) parseTypeSpecRef(refPath, ref string) (typeSpecRef, hcl.Diagnost
 		kind, token = fragment[:slash], fragment[slash+1:]
 	}
 
+	var diagnostics hcl.Diagnostics
 	switch kind {
 	case "provider":
 		if token != "" {
@@ -659,6 +660,17 @@ func (t *types) parseTypeSpecRef(refPath, ref string) (typeSpecRef, hcl.Diagnost
 		if err != nil {
 			return typeSpecRef{}, hcl.Diagnostics{errorf(refPath, "failed to unescape token '%s': %v", token, err)}
 		}
+		// Its possible that the token is "pulumi:providers:<package>", which happened to work through the rest of
+		// binding but wasn't intended as a valid schema. The ref pointed to doesn't actually exist, there is no entry
+		// for "pulumi:providers:<package>" under the "resources" section. See
+		// https://github.com/pulumi/pulumi/issues/20029 for context.
+		if strings.HasPrefix(token, "pulumi:providers:") {
+			// For now we still consider this a valid reference, but we want to return a warning diagnostic. In the
+			// future, we'll make this an error.
+			diagnostics = hcl.Diagnostics{
+				warningf(refPath, "reference to provider resource '/resources/%s' is deprecated, use '#/provider' instead", token),
+			}
+		}
 	default:
 		return typeSpecRef{}, hcl.Diagnostics{errorf(refPath, "invalid type reference '%v'", ref)}
 	}
@@ -669,7 +681,7 @@ func (t *types) parseTypeSpecRef(refPath, ref string) (typeSpecRef, hcl.Diagnost
 		Version: pkgVersion,
 		Kind:    kind,
 		Token:   token,
-	}, nil
+	}, diagnostics
 }
 
 func versionEquals(a, b *semver.Version) bool {
@@ -757,7 +769,7 @@ func (t *types) bindTypeDef(token string, options ValidationOptions) (Type, hcl.
 	if len(parts) == 3 {
 		name := parts[2]
 		if isReservedKeyword(name) {
-			diags = append(diags, errorf(path, name+" is a reserved name, cannot name type"))
+			diags = append(diags, errorf(path, "%s", name+" is a reserved name, cannot name type"))
 			return nil, diags, errors.New("type name " + name + " is reserved")
 		}
 	}
@@ -874,9 +886,11 @@ func (t *types) bindTypeSpecRef(
 	case typesRef:
 		// Try to bind this as a reference to a type defined by this package.
 		typ, diags, err := t.bindTypeDef(ref.Token, options)
+		diags = refDiags.Extend(diags)
 		if err != nil {
 			return nil, diags, err
 		}
+
 		switch typ := typ.(type) {
 		case *ObjectType:
 			// If the type is an object type, we might need to return its input shape.
@@ -910,9 +924,11 @@ func (t *types) bindTypeSpecRef(
 		return tokenType, diags, nil
 	case resourcesRef, providerRef:
 		typ, diags, err := t.bindResourceTypeDef(ref.Token, options)
+		diags = refDiags.Extend(diags)
 		if err != nil {
 			return nil, diags, err
 		}
+
 		if typ == nil {
 			typ, diags := invalidType(errorf(path, "resource type %v not found in package %v", ref.Token, ref.Package))
 			return typ, diags, nil
@@ -1057,7 +1073,7 @@ func plainType(typ Type) Type {
 	}
 }
 
-func bindConstValue(path, kind string, value interface{}, typ Type) (interface{}, hcl.Diagnostics) {
+func bindConstValue(path, kind string, value any, typ Type) (any, hcl.Diagnostics) {
 	if value == nil {
 		return nil, nil
 	}
@@ -1111,7 +1127,7 @@ func bindConstValue(path, kind string, value interface{}, typ Type) (interface{}
 	}
 }
 
-func bindDefaultValue(path string, value interface{}, spec *DefaultSpec, typ Type) (*DefaultValue, hcl.Diagnostics) {
+func bindDefaultValue(path string, value any, spec *DefaultSpec, typ Type) (*DefaultValue, hcl.Diagnostics) {
 	if value == nil && spec == nil {
 		return nil, nil
 	}
@@ -1141,15 +1157,11 @@ func bindDefaultValue(path string, value interface{}, spec *DefaultSpec, typ Typ
 
 	dv := &DefaultValue{Value: value}
 	if spec != nil {
-		language := make(map[string]interface{})
-		for name, raw := range spec.Language {
-			language[name] = json.RawMessage(raw)
-		}
 		if len(spec.Environment) == 0 {
 			diags = diags.Append(errorf(path, "Default must specify an environment"))
 		}
 
-		dv.Environment, dv.Language = spec.Environment, language
+		dv.Environment, dv.Language = spec.Environment, makeLanguageMap(spec.Language)
 	}
 	return dv, diags
 }
@@ -1162,11 +1174,11 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 	var diags hcl.Diagnostics
 	for name := range properties {
 		if isReservedKeyword(name) {
-			diags = diags.Append(errorf(path+"/"+name, name+" is a reserved property name"))
+			diags = diags.Append(errorf(path+"/"+name, "%s", name+" is a reserved property name"))
 		}
 	}
 	if diags.HasErrors() {
-		return nil, nil, diags, errors.New("invalid property names")
+		return nil, nil, diags, fmt.Errorf("invalid property names: %s", diags.Error())
 	}
 
 	// Bind property types and constant or default values.
@@ -1196,11 +1208,6 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 		dv, dvDiags := bindDefaultValue(propertyPath+"/default", spec.Default, spec.DefaultInfo, typ)
 		diags = diags.Extend(dvDiags)
 
-		language := make(map[string]interface{})
-		for name, raw := range spec.Language {
-			language[name] = json.RawMessage(raw)
-		}
-
 		p := &Property{
 			Name:                 name,
 			Comment:              spec.Description,
@@ -1208,7 +1215,7 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 			ConstValue:           cv,
 			DefaultValue:         dv,
 			DeprecationMessage:   spec.DeprecationMessage,
-			Language:             language,
+			Language:             makeLanguageMap(spec.Language),
 			Secret:               spec.Secret,
 			ReplaceOnChanges:     spec.ReplaceOnChanges,
 			WillReplaceOnChanges: spec.WillReplaceOnChanges,
@@ -1262,10 +1269,7 @@ func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string
 		return diags, err
 	}
 
-	language := make(map[string]interface{})
-	for name, raw := range spec.Language {
-		language[name] = json.RawMessage(raw)
-	}
+	language := makeLanguageMap(spec.Language)
 
 	obj.PackageReference = t.externalPackage()
 	obj.Token = token
@@ -1554,7 +1558,7 @@ func (t *types) bindResourceDef(
 		if len(parts) == 3 {
 			name := parts[2]
 			if isReservedKeyword(name) {
-				diags = diags.Append(errorf(path, name+" is a reserved name, cannot name resource"))
+				diags = diags.Append(errorf(path, "%s", name+" is a reserved name, cannot name resource"))
 			}
 		}
 
@@ -1595,12 +1599,12 @@ func (t *types) bindResourceDetails(
 	for _, property := range properties {
 		if isReservedComponentResourcePropertyKey(property.Name) {
 			warnPath := path + "/properties/" + property.Name
-			diags = diags.Append(warningf(warnPath, property.Name+" is a reserved property name"))
+			diags = diags.Append(warningf(warnPath, "%s", property.Name+" is a reserved property name"))
 		}
 
 		if !spec.IsComponent && isReservedCustomResourcePropertyKey(property.Name) {
 			warnPath := path + "/properties/" + property.Name
-			diags = diags.Append(warningf(warnPath, property.Name+" is a reserved property name for resources"))
+			diags = diags.Append(warningf(warnPath, "%s", property.Name+" is a reserved property name for resources"))
 		}
 	}
 
@@ -1638,11 +1642,6 @@ func (t *types) bindResourceDetails(
 		aliases = append(aliases, &Alias{compatibility: a.compatibility, Type: a.Type})
 	}
 
-	language := make(map[string]interface{})
-	for name, raw := range spec.Language {
-		language[name] = json.RawMessage(raw)
-	}
-
 	*decl = Resource{
 		PackageReference:          t.externalPackage(),
 		Token:                     token,
@@ -1652,7 +1651,7 @@ func (t *types) bindResourceDetails(
 		StateInputs:               stateInputs,
 		Aliases:                   aliases,
 		DeprecationMessage:        spec.DeprecationMessage,
-		Language:                  language,
+		Language:                  makeLanguageMap(spec.Language),
 		IsComponent:               spec.IsComponent,
 		Methods:                   methods,
 		IsOverlay:                 spec.IsOverlay,
@@ -1678,10 +1677,10 @@ func (t *types) bindProvider(decl *Resource, options ValidationOptions) (hcl.Dia
 	for _, property := range decl.InputProperties {
 		if isReservedProviderPropertyName(property.Name) {
 			path := "#/provider/properties/" + property.Name
-			diags = diags.Append(errorf(path, property.Name+" is a reserved provider input property name"))
+			diags = diags.Append(errorf(path, "%s", property.Name+" is a reserved provider input property name"))
 		}
 		if diags.HasErrors() {
-			return diags, errors.New("invalid property names")
+			return diags, fmt.Errorf("invalid property names: %s", diags.Error())
 		}
 	}
 
@@ -1755,7 +1754,7 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 	if len(parts) == 3 {
 		name := parts[2]
 		if isReservedKeyword(name) {
-			diags = diags.Append(errorf(path, name+" is a reserved name, cannot name function"))
+			diags = diags.Append(errorf(path, "%s", name+" is a reserved name, cannot name function"))
 			return nil, diags, errors.New(name + " is a reserved name, cannot name function")
 		}
 	}
@@ -1824,11 +1823,6 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 
 	var outputs *ObjectType
 
-	language := make(map[string]interface{})
-	for name, raw := range spec.Language {
-		language[name] = json.RawMessage(raw)
-	}
-
 	var inlineObjectAsReturnType bool
 	var returnType Type
 	var returnTypePlain bool
@@ -1882,7 +1876,7 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 			}
 
 			if isReservedKeyword(input.Name) {
-				diags = diags.Append(errorf(path+"/inputs/"+input.Name, input.Name+" is a reserved input name"))
+				diags = diags.Append(errorf(path+"/inputs/"+input.Name, "%s", input.Name+" is a reserved input name"))
 				return nil, diags, errors.New("input name " + input.Name + " is reserved")
 			}
 		}
@@ -1899,7 +1893,7 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 		ReturnType:                returnType,
 		ReturnTypePlain:           returnTypePlain,
 		DeprecationMessage:        spec.DeprecationMessage,
-		Language:                  language,
+		Language:                  makeLanguageMap(spec.Language),
 		IsOverlay:                 spec.IsOverlay,
 		OverlaySupportedLanguages: spec.OverlaySupportedLanguages,
 	}
@@ -1925,4 +1919,19 @@ func (t *types) finishFunctions(tokens []string, options ValidationOptions) ([]*
 	})
 
 	return functions, diags, nil
+}
+
+// makeLanguageMap converts a map[string]RawMessage as found on serializable
+// spec object into map[string]any (using json.RawMessage for the
+// values) for use in schema types. If the passed in map is empty (or nil), we
+// return a nil map instead of an empty map to save memory.
+func makeLanguageMap(raw map[string]RawMessage) map[string]any {
+	var language map[string]any
+	if len(raw) > 0 {
+		language = make(map[string]any)
+		for name, raw := range raw {
+			language[name] = json.RawMessage(raw)
+		}
+	}
+	return language
 }

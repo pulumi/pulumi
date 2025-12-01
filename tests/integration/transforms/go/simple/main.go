@@ -242,7 +242,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		args := map[string]interface{}{
+		args := map[string]any{
 			"length": 10,
 			"prefix": "test",
 		}
@@ -257,6 +257,19 @@ func main() {
 		}
 		if result["prefix"] != "test" {
 			return fmt.Errorf("expected prefix to be test, got %v", result["prefix"])
+		}
+
+		_, err = NewRandom(ctx, "res9", &RandomArgs{Length: pulumi.Int(7)}, pulumi.Transforms([]pulumi.ResourceTransform{
+			func(_ context.Context, rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
+				rta.Opts.Import = pulumi.ID("stackDefault:test-id")
+				return &pulumi.ResourceTransformResult{
+					Props: rta.Props,
+					Opts:  rta.Opts,
+				}
+			},
+		}))
+		if err != nil {
+			return err
 		}
 
 		return nil

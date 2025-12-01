@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -29,7 +30,7 @@ type mocks int
 
 func pulumiTest(t *testing.T, body func(ctx *pulumi.Context) error) {
 	err := pulumi.RunErr(body, pulumi.WithMocks("project", "stack", mocks(0)))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func (mocks) NewResource(args pulumi.MockResourceArgs) (string, resource.PropertyMap, error) {
@@ -47,7 +48,7 @@ func (mocks) MethodCall(args pulumi.MockCallArgs) (resource.PropertyMap, error) 
 func TestHasDefaultPluginDownloadURL(t *testing.T) {
 	pulumiTest(t, func(ctx *pulumi.Context) error {
 		r, err := example.NewResource(ctx, "resource", &example.ResourceArgs{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Contains(t, fmt.Sprintf("%#v", r), `pluginDownloadURL:"example.com/download"`)
 		return nil
 	})
@@ -57,7 +58,7 @@ func TestCanOverrideDefaultPluginDownloadURL(t *testing.T) {
 	pulumiTest(t, func(ctx *pulumi.Context) error {
 		r, err := example.NewResource(ctx, "resource", &example.ResourceArgs{},
 			pulumi.PluginDownloadURL("example.com/other"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Contains(t, fmt.Sprintf("%#v", r), `pluginDownloadURL:"example.com/other"`)
 		return nil
 	})

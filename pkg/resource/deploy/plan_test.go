@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPlan(t *testing.T) {
@@ -59,7 +60,7 @@ func TestPlan(t *testing.T) {
 					resource.PropertyKey("foo"),
 				},
 			}
-			val := resource.NewStringProperty("val")
+			val := resource.NewProperty("val")
 			errStr := p.MakeError(resource.PropertyKey("foo"), "", &val)
 			assert.True(t, strings.HasPrefix(errStr, "-"))
 		})
@@ -146,7 +147,6 @@ func TestResourcePlan(t *testing.T) {
 		}
 
 		for _, tt := range tests {
-			tt := tt
 			t.Run(tt.name, func(t *testing.T) {
 				t.Parallel()
 				rp := &ResourcePlan{}
@@ -222,7 +222,6 @@ func TestResourcePlan(t *testing.T) {
 			},
 		}
 		for _, tt := range tests {
-			tt := tt
 			t.Run(tt.name, func(t *testing.T) {
 				t.Parallel()
 				rp := &ResourcePlan{}
@@ -242,7 +241,7 @@ func TestResourcePlan(t *testing.T) {
 				resource.PropertyMap{},
 				resource.PropertyMap{},
 				&resource.Goal{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 		t.Run("violations", func(t *testing.T) {
 			t.Run("custom mismatch", func(t *testing.T) {
@@ -554,7 +553,7 @@ func TestCheckDiff(t *testing.T) {
 						"should-be-here",
 					},
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 		t.Run("diff violation", func(t *testing.T) {
 			t.Parallel()
@@ -563,7 +562,7 @@ func TestCheckDiff(t *testing.T) {
 				err := checkDiff(
 					resource.PropertyMap{},
 					resource.PropertyMap{
-						resource.PropertyKey("should-delete"): resource.NewStringProperty("test"),
+						resource.PropertyKey("should-delete"): resource.NewProperty("test"),
 					},
 					PlanDiff{
 						Deletes: []resource.PropertyKey{
@@ -576,10 +575,10 @@ func TestCheckDiff(t *testing.T) {
 				t.Parallel()
 				err := checkDiff(
 					resource.PropertyMap{
-						resource.PropertyKey("should-delete"): resource.NewStringProperty("test"),
+						resource.PropertyKey("should-delete"): resource.NewProperty("test"),
 					},
 					resource.PropertyMap{
-						resource.PropertyKey("should-delete"): resource.NewStringProperty("new-test"),
+						resource.PropertyKey("should-delete"): resource.NewProperty("new-test"),
 					},
 					PlanDiff{
 						Deletes: []resource.PropertyKey{
@@ -601,14 +600,14 @@ func TestCheckDiff(t *testing.T) {
 			err := checkDiff(
 				resource.PropertyMap{},
 				resource.PropertyMap{
-					resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+					resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 				},
 				PlanDiff{
 					Adds: resource.PropertyMap{
-						resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+						resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 					},
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 		t.Run("diff violation", func(t *testing.T) {
 			t.Parallel()
@@ -621,33 +620,33 @@ func TestCheckDiff(t *testing.T) {
 			t.Parallel()
 			err := checkDiff(
 				resource.PropertyMap{
-					resource.PropertyKey("should-update"): resource.NewStringProperty("old-test"),
+					resource.PropertyKey("should-update"): resource.NewProperty("old-test"),
 				},
 				resource.PropertyMap{
-					resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+					resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 				},
 				PlanDiff{
 					Updates: resource.PropertyMap{
-						resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+						resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 					},
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 		t.Run("ok same", func(t *testing.T) {
 			t.Parallel()
 			err := checkDiff(
 				resource.PropertyMap{
-					resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+					resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 				},
 				resource.PropertyMap{
-					resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+					resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 				},
 				PlanDiff{
 					Updates: resource.PropertyMap{
-						resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+						resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 					},
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 		t.Run("diff violation", func(t *testing.T) {
 			t.Parallel()
@@ -656,11 +655,11 @@ func TestCheckDiff(t *testing.T) {
 				err := checkDiff(
 					resource.PropertyMap{},
 					resource.PropertyMap{
-						resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+						resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 					},
 					PlanDiff{
 						Updates: resource.PropertyMap{
-							resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+							resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 						},
 					})
 				assert.ErrorContains(t, err,
@@ -670,14 +669,14 @@ func TestCheckDiff(t *testing.T) {
 				t.Parallel()
 				err := checkDiff(
 					resource.PropertyMap{
-						resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+						resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 					},
 					resource.PropertyMap{
-						resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+						resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 					},
 					PlanDiff{
 						Updates: resource.PropertyMap{
-							resource.PropertyKey("should-update"): resource.NewStringProperty("new-new-test"),
+							resource.PropertyKey("should-update"): resource.NewProperty("new-new-test"),
 						},
 					})
 				assert.ErrorContains(t, err, "properties changed: ~=should-update[{new-new-test}!={new-test}]")
@@ -688,12 +687,12 @@ func TestCheckDiff(t *testing.T) {
 					t.Parallel()
 					err := checkDiff(
 						resource.PropertyMap{
-							resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+							resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 						},
 						resource.PropertyMap{},
 						PlanDiff{
 							Updates: resource.PropertyMap{
-								resource.PropertyKey("should-update"): resource.NewStringProperty("new-new-test"),
+								resource.PropertyKey("should-update"): resource.NewProperty("new-new-test"),
 							},
 						})
 					assert.ErrorContains(t, err,
@@ -703,15 +702,15 @@ func TestCheckDiff(t *testing.T) {
 					t.Parallel()
 					err := checkDiff(
 						resource.PropertyMap{
-							resource.PropertyKey("should-update"): resource.NewStringProperty("new-test"),
+							resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 						},
 						resource.PropertyMap{},
 						PlanDiff{
 							Updates: resource.PropertyMap{
-								resource.PropertyKey("should-update"): resource.MakeComputed(resource.NewStringProperty("new-new-test")),
+								resource.PropertyKey("should-update"): resource.MakeComputed(resource.NewProperty("new-new-test")),
 							},
 						})
-					assert.NoError(t, err)
+					require.NoError(t, err)
 				})
 			})
 		})

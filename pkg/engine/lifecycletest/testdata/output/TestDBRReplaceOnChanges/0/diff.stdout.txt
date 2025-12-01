@@ -1,0 +1,12 @@
+<{%fg 2%}>+ pulumi:providers:pkgA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:index:typA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:index:typA::resA]
+<{%reset%}><{%fg 2%}>    value: <{%reset%}><{%fg 2%}>"foo"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:index:typA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:index:typA::resB]
+<{%reset%}><{%fg 2%}>    value: <{%reset%}><{%fg 2%}>"foo"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 2 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

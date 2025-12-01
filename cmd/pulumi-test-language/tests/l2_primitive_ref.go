@@ -27,7 +27,9 @@ import (
 
 func init() {
 	LanguageTests["l2-primitive-ref"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.PrimitiveRefProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.PrimitiveRefProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
@@ -49,8 +51,8 @@ func init() {
 							"float":     2.17,
 							"integer":   -12,
 							"string":    "Goodbye",
-							"boolArray": []interface{}{false, true},
-							"stringMap": map[string]interface{}{
+							"boolArray": []any{false, true},
+							"stringMap": map[string]any{
 								"two":   "turtle doves",
 								"three": "french hens",
 							},

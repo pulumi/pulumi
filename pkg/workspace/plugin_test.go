@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInstallPluginErrorText(t *testing.T) {
@@ -106,7 +107,6 @@ func TestInstallPluginErrorText(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.Name, func(t *testing.T) {
 			t.Parallel()
 			assert.EqualError(t, &tt.Err, tt.ExpectedError)
@@ -143,7 +143,7 @@ func TestPluginInstallCancellation(t *testing.T) {
 			if canceled {
 				assert.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		}
 

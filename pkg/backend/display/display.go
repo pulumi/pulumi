@@ -15,10 +15,14 @@
 package display
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
@@ -27,11 +31,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // printPermalinkNonInteractive prints an update's permalink prefaced with `View Live: `.
@@ -97,7 +105,7 @@ func ShowEvents(
 		return !e.Internal()
 	})
 
-	streamPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_STREAMING_JSON_PREVIEW"))
+	streamPreview := env.EnableStreamingJSONPreview.Value()
 
 	// If we're in non-preview JSON display mode we need to show the stamped events, for anything else we need
 	// to show the raw events. We work out here if we're transforming the stamped events back to raw events so
@@ -171,6 +179,60 @@ func logJSONEvent(encoder *json.Encoder, event engine.StampedEvent, opts Options
 func startEventLogger(
 	events <-chan engine.StampedEvent, done chan<- bool, opts Options,
 ) (<-chan engine.StampedEvent, chan<- bool) {
+	if strings.HasPrefix(opts.EventLogPath, "tcp://") {
+		addr := strings.TrimPrefix(opts.EventLogPath, "tcp://")
+		conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			logging.V(7).Infof("could not connect to event log server: %v", err)
+			return events, done
+		}
+
+		client := pulumirpc.NewEventsClient(conn)
+
+		outEvents, outDone := make(chan engine.StampedEvent), make(chan bool)
+		go func() {
+			defer close(done)
+
+			stream, err := client.StreamEvents(context.TODO())
+			if err != nil {
+				logging.V(7).Infof("failed to start event stream: %v", err)
+				<-outDone
+				return
+			}
+
+			for e := range events {
+				var buf bytes.Buffer
+				encoder := json.NewEncoder(&buf)
+				encoder.SetEscapeHTML(false)
+				err := logJSONEvent(encoder, e, opts)
+				if err != nil {
+					logging.V(7).Infof("failed to convert event: %v", err)
+				} else {
+					err = stream.Send(&pulumirpc.EventRequest{
+						Event: buf.String(),
+					})
+					if err != nil {
+						logging.V(7).Infof("failed to send event: %v", err)
+					}
+				}
+
+				outEvents <- e
+
+				if e.Type == engine.CancelEvent {
+					break
+				}
+			}
+
+			_, err = stream.CloseAndRecv()
+			if err != nil {
+				logging.V(7).Infof("failed to close event stream: %v", err)
+			}
+
+			<-outDone
+		}()
+
+		return outEvents, outDone
+	}
 	// Before moving further, attempt to open the log file.
 	//
 	// Try setting O_APPEND to see if that helps with the malformed reads we've been seeing in automation api:
@@ -248,7 +310,19 @@ func shouldShow(step engine.StepEventMetadata, opts Options) bool {
 	return true
 }
 
-func fprintIgnoreError(w io.Writer, a ...interface{}) {
+func fprintIgnoreError(w io.Writer, a ...any) {
 	_, err := fmt.Fprint(w, a...)
 	contract.IgnoreError(err)
+}
+
+// escapeURN escapes URNs to make them safe for display.
+// URNs can contain characters that can't be displayed, we use `QuoteToGraphic`
+// to escape these so they can be safely displayed.
+func escapeURN(urn string) string {
+	name := strconv.QuoteToGraphic(urn)
+	name = name[1 : len(name)-1] // Trim the outer quotes from `QuoteToGraphic`
+	// QuoteToGraphic escapes double quotes, but we don't want that, unescape them.
+	name = strings.ReplaceAll(name, "\\\\", "\\") // Unescape backslashes ...
+	name = strings.ReplaceAll(name, "\\\"", "\"") // ... then unescape quotes
+	return name
 }

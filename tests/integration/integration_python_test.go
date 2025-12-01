@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,14 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build python || all
-
 package ints
 
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -37,6 +34,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/blang/semver"
 	"github.com/google/go-dap"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -101,16 +99,15 @@ func TestStackOutputsPython(t *testing.T) {
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
 			fmt.Printf("Deployment: %v", stackInfo.Deployment)
-			assert.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 1, len(stackInfo.Deployment.Resources)) {
-				stackRes := stackInfo.Deployment.Resources[0]
-				assert.NotNil(t, stackRes)
-				assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-				assert.Equal(t, 0, len(stackRes.Inputs))
-				assert.Equal(t, 2, len(stackRes.Outputs))
-				assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
-				assert.Equal(t, float64(42), stackRes.Outputs["foo"])
-			}
+			require.NotNil(t, stackInfo.Deployment)
+			require.Len(t, stackInfo.Deployment.Resources, 1)
+			stackRes := stackInfo.Deployment.Resources[0]
+			require.NotNil(t, stackRes)
+			assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
+			assert.Empty(t, stackRes.Inputs)
+			require.Len(t, stackRes.Outputs, 2)
+			assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
+			assert.Equal(t, float64(42), stackRes.Outputs["foo"])
 		},
 	})
 }
@@ -123,7 +120,7 @@ func TestStackOutputsProgramErrorPython(t *testing.T) {
 	d := filepath.Join("stack_outputs_program_error", "python")
 
 	validateOutputs := func(
-		expected map[string]interface{},
+		expected map[string]any,
 	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
@@ -136,7 +133,7 @@ func TestStackOutputsProgramErrorPython(t *testing.T) {
 			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick: true,
-		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+		ExtraRuntimeValidation: validateOutputs(map[string]any{
 			"xyz": "ABC",
 			"foo": float64(42),
 		}),
@@ -145,7 +142,7 @@ func TestStackOutputsProgramErrorPython(t *testing.T) {
 				Dir:           filepath.Join(d, "step2"),
 				Additive:      true,
 				ExpectFailure: true,
-				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+				ExtraRuntimeValidation: validateOutputs(map[string]any{
 					"xyz": "DEF",       // Expected to be updated
 					"foo": float64(42), // Expected to remain the same
 				}),
@@ -162,7 +159,7 @@ func TestStackOutputsResourceErrorPython(t *testing.T) {
 	d := filepath.Join("stack_outputs_resource_error", "python")
 
 	validateOutputs := func(
-		expected map[string]interface{},
+		expected map[string]any,
 	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
@@ -178,7 +175,7 @@ func TestStackOutputsResourceErrorPython(t *testing.T) {
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider-py")},
 		},
 		Quick: true,
-		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+		ExtraRuntimeValidation: validateOutputs(map[string]any{
 			"xyz": "ABC",
 			"foo": float64(42),
 		}),
@@ -189,7 +186,7 @@ func TestStackOutputsResourceErrorPython(t *testing.T) {
 				ExpectFailure: true,
 				// Expect the values to remain the same because the deployment ends before RegisterResourceOutputs is
 				// called for the stack.
-				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+				ExtraRuntimeValidation: validateOutputs(map[string]any{
 					"xyz": "ABC",
 					"foo": float64(42),
 				}),
@@ -199,7 +196,7 @@ func TestStackOutputsResourceErrorPython(t *testing.T) {
 				Additive:      true,
 				ExpectFailure: true,
 				// Expect the values to be updated.
-				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+				ExtraRuntimeValidation: validateOutputs(map[string]any{
 					"xyz": "DEF",
 					"foo": float64(1),
 				}),
@@ -426,22 +423,22 @@ func TestResourceWithSecretSerializationPython(t *testing.T) {
 			//      additionalSecretOutputs.
 			//   3. One named `withoutSecret` which should not be a secret.
 			// We serialize both of the these as plain old objects, so they appear as maps in the output.
-			withSecretProps, ok := stackInfo.Outputs["withSecret"].(map[string]interface{})
+			withSecretProps, ok := stackInfo.Outputs["withSecret"].(map[string]any)
 			assert.Truef(t, ok, "POJO output was not serialized as a map")
 
-			withSecretAdditionalProps, ok := stackInfo.Outputs["withSecretAdditional"].(map[string]interface{})
+			withSecretAdditionalProps, ok := stackInfo.Outputs["withSecretAdditional"].(map[string]any)
 			assert.Truef(t, ok, "POJO output was not serialized as a map")
 
-			withoutSecretProps, ok := stackInfo.Outputs["withoutSecret"].(map[string]interface{})
+			withoutSecretProps, ok := stackInfo.Outputs["withoutSecret"].(map[string]any)
 			assert.Truef(t, ok, "POJO output was not serialized as a map")
 
 			// The secret prop should have been serialized as a secret
-			secretPropValue, ok := withSecretProps["prefix"].(map[string]interface{})
+			secretPropValue, ok := withSecretProps["prefix"].(map[string]any)
 			assert.Truef(t, ok, "secret output was not serialized as a secret")
 			assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
 
 			// The other secret prop should have been serialized as a secret
-			secretAdditionalPropValue, ok := withSecretAdditionalProps["prefix"].(map[string]interface{})
+			secretAdditionalPropValue, ok := withSecretAdditionalProps["prefix"].(map[string]any)
 			assert.Truef(t, ok, "secret output was not serialized as a secret")
 			assert.Equal(t, resource.SecretSig, secretAdditionalPropValue[resource.SigKey].(string))
 
@@ -557,11 +554,11 @@ func TestDynamicProviderSecretsPython(t *testing.T) {
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure the __provider input (and corresponding output) was marked secret
 			dynRes := stackInfo.Deployment.Resources[2]
-			for _, providerVal := range []interface{}{dynRes.Inputs["__provider"], dynRes.Outputs["__provider"]} {
+			for _, providerVal := range []any{dynRes.Inputs["__provider"], dynRes.Outputs["__provider"]} {
 				switch v := providerVal.(type) {
 				case string:
 					assert.Fail(t, "__provider was not a secret")
-				case map[string]interface{}:
+				case map[string]any:
 					assert.Equal(t, resource.SecretSig, v[resource.SigKey])
 				}
 			}
@@ -582,7 +579,6 @@ func TestDynamicProviderConfig(t *testing.T) {
 		"python-config-separate-module",
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir: filepath.Join("dynamic", test),
@@ -641,7 +637,7 @@ func TestEnumOutputsPython(t *testing.T) {
 			filepath.Join("..", "..", "sdk", "python"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stack.Outputs)
+			require.NotNil(t, stack.Outputs)
 
 			assert.Equal(t, "Burgundy", stack.Outputs["myTreeType"])
 			assert.Equal(t, "Pulumi Planters Inc.foo", stack.Outputs["myTreeFarmChanged"])
@@ -678,7 +674,7 @@ func TestPythonPylint(t *testing.T) {
 			}
 
 			err := integration.RunCommand(t, "pylint", []string{pylint, "__main__.py"}, cwd, opts)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		},
 		Quick: true,
 	}
@@ -693,23 +689,23 @@ func TestPythonResourceArgs(t *testing.T) {
 
 	// Generate example library from schema.
 	schemaBytes, err := os.ReadFile(filepath.Join(testdir, "schema.json"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	var spec schema.PackageSpec
-	assert.NoError(t, json.Unmarshal(schemaBytes, &spec))
+	require.NoError(t, json.Unmarshal(schemaBytes, &spec))
 	pkg, err := schema.ImportSpec(spec, nil, schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	files, err := pygen.GeneratePackage("test", pkg, map[string][]byte{}, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	outdir := filepath.Join(testdir, "lib")
-	assert.NoError(t, os.RemoveAll(outdir))
+	require.NoError(t, os.RemoveAll(outdir))
 	for f, contents := range files {
 		outfile := filepath.Join(outdir, f)
-		assert.NoError(t, os.MkdirAll(filepath.Dir(outfile), 0o755))
-		assert.NoError(t, os.WriteFile(outfile, contents, 0o600))
+		require.NoError(t, os.MkdirAll(filepath.Dir(outfile), 0o755))
+		require.NoError(t, os.WriteFile(outfile, contents, 0o600))
 	}
-	assert.NoError(t, os.WriteFile(filepath.Join(outdir, "README.md"), []byte(""), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(outdir, "README.md"), []byte(""), 0o600))
 
 	// Test the program.
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -806,13 +802,12 @@ func TestConstructSlowPython(t *testing.T) {
 		Quick:          true,
 		NoParallel:     true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
-				stackRes := stackInfo.Deployment.Resources[0]
-				assert.NotNil(t, stackRes)
-				assert.Equal(t, resource.RootStackType, stackRes.Type)
-				assert.Equal(t, "", string(stackRes.Parent))
-			}
+			require.NotNil(t, stackInfo.Deployment)
+			require.Len(t, stackInfo.Deployment.Resources, 5)
+			stackRes := stackInfo.Deployment.Resources[0]
+			require.NotNil(t, stackRes)
+			assert.Equal(t, resource.RootStackType, stackRes.Type)
+			assert.Equal(t, "", string(stackRes.Parent))
 		},
 	}
 	integration.ProgramTest(t, opts)
@@ -853,7 +848,6 @@ func TestConstructPlainPython(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -876,7 +870,7 @@ func optsForConstructPlainPython(t *testing.T, expectedResourceCount int, localP
 		LocalProviders: localProviders,
 		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
 		},
 	}
@@ -911,7 +905,6 @@ func TestConstructMethodsPython(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProvider := integration.LocalDependency{
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
@@ -1018,7 +1011,6 @@ func TestConstructProviderPython(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProvider := integration.LocalDependency{
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
@@ -1332,9 +1324,10 @@ func TestAboutPython(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
+	e.RunCommand("pulumi", "install")
 	stdout, _ := e.RunCommand("pulumi", "about")
 	// Assert we parsed the dependencies
-	assert.Contains(t, stdout, "pulumi-kubernetes")
+	assert.Contains(t, stdout, "pulumi_kubernetes")
 	// Assert we parsed the language plugin, we don't assert against the minor version number
 	assert.Regexp(t, regexp.MustCompile(`language\W+python\W+3\.`), stdout)
 }
@@ -1392,7 +1385,7 @@ func TestDuplicateOutputPython(t *testing.T) {
 			filepath.Join("..", "..", "sdk", "python"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			expected := []interface{}{float64(1), float64(2)}
+			expected := []any{float64(1), float64(2)}
 			assert.Equal(t, expected, stack.Outputs["export1"])
 			assert.Equal(t, expected, stack.Outputs["export2"])
 		},
@@ -1508,7 +1501,7 @@ func TestPackageAddPython(t *testing.T) {
 			if pm.usePyProject {
 				pyprojectToml := make(map[string]any)
 				_, err := toml.DecodeFile(filepath.Join(e.CWD, "pyproject.toml"), &pyprojectToml)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				path := strings.Split(pm.pyprojectPath, ".")
 				data := pyprojectToml
@@ -1528,13 +1521,13 @@ func TestPackageAddPython(t *testing.T) {
 				assert.Equal(t, "sdks/random", pf)
 			} else {
 				b1, err := os.ReadFile(filepath.Join(e.CWD, "requirements.txt"))
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Contains(t, string(b1), filepath.Join("sdks", "random"))
 
 				// Run the command again to ensure it doesn't add the dependency twice to requirements.txt
 				_, _ = e.RunCommand("pulumi", "package", "add", "random")
 				b2, err := os.ReadFile(filepath.Join(e.CWD, "requirements.txt"))
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				lines := regexp.MustCompile("\r?\n").Split(string(b2), -1)
 				var sdksRandomCount int
 				for _, line := range lines {
@@ -1547,23 +1540,6 @@ func TestPackageAddPython(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestPackageAddWithPublisherSetPython(t *testing.T) {
-	t.Parallel()
-
-	e := ptesting.NewEnvironment(t)
-	defer e.DeleteIfNotFailed()
-
-	e.ImportDirectory("packageadd-namespace")
-	e.CWD = filepath.Join(e.RootPath, "python")
-	stdout, _ := e.RunCommand("pulumi", "package", "add", "../provider/schema.json")
-	require.Contains(t, stdout,
-		"You can then import the SDK in your Python code with:\n\n  import my_namespace_mypkg as mypkg")
-
-	// Make sure the SDK was generated in the expected directory
-	_, err := os.Stat(filepath.Join(e.CWD, "sdks", "my-namespace-mypkg", "my_namespace_mypkg"))
-	require.NoError(t, err)
 }
 
 //nolint:paralleltest // mutates environment
@@ -1581,7 +1557,7 @@ func TestConvertTerraformProviderPython(t *testing.T) {
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "python", "--out", "pydir")
 
 	b, err := os.ReadFile(filepath.Join(e.CWD, "pydir", "requirements.txt"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, string(b), filepath.Join("sdks", "supabase"))
 
 	// Check that `supabase` was installed
@@ -1597,7 +1573,7 @@ func TestConvertTerraformProviderPython(t *testing.T) {
 	e.CWD = e.RootPath
 	a := about{}
 	err = json.Unmarshal([]byte(out), &a)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	found := false
 	depList := []string{}
 	for _, dep := range a.Dependencies {
@@ -1689,7 +1665,7 @@ outer:
 
 	// We've attached a debugger, so we need to connect to it and let the program continue.
 	conn, err := net.Dial("tcp", "localhost:"+strconv.Itoa(
-		int(debugEvent.Config["connect"].(map[string]interface{})["port"].(float64))))
+		int(debugEvent.Config["connect"].(map[string]any)["port"].(float64))))
 	if err != nil {
 		log.Fatalf("Failed to connect to debugger: %v", err)
 	}
@@ -1833,7 +1809,7 @@ outer:
 
 	// We've attached a debugger, so we need to connect to it and let the program continue.
 	conn, err := net.Dial("tcp", "localhost:"+strconv.Itoa(
-		int(debugEvent.Config["connect"].(map[string]interface{})["port"].(float64))))
+		int(debugEvent.Config["connect"].(map[string]any)["port"].(float64))))
 	if err != nil {
 		log.Fatalf("Failed to connect to debugger: %v", err)
 	}
@@ -1968,7 +1944,6 @@ func TestDynamicProviderPython(t *testing.T) {
 	}
 
 	for _, toolchain := range []string{"pip", "uv", "poetry"} {
-		toolchain := toolchain
 		t.Run(toolchain, func(t *testing.T) {
 			t.Parallel()
 			e := ptesting.NewEnvironment(t)
@@ -2031,6 +2006,33 @@ func TestRegress18176(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestStuckEventLoop(t *testing.T) {
+	done := make(chan struct{})
+	stderr := &bytes.Buffer{}
+	go func() {
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python", "stuck-eventloop"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python"),
+			},
+			LocalProviders: []integration.LocalDependency{
+				{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			},
+			Stderr:        stderr,
+			Quick:         true,
+			ExpectFailure: true, // We expect a failure, but the program shouldn't hang indefinitely.
+		})
+		done <- struct{}{}
+	}()
+	select {
+	case <-time.After(10 * time.Minute):
+		t.Fatal("Test timed out")
+	case <-done:
+		require.Contains(t, stderr.String(), "delay failed", "stderr = %s", stderr.String())
+	}
+}
+
 // Tests that we can run a Python component provider using component_provider_host
 func TestPythonComponentProviderRun(t *testing.T) {
 	t.Parallel()
@@ -2042,6 +2044,16 @@ func TestPythonComponentProviderRun(t *testing.T) {
 				PrepareProject: func(info *engine.Projinfo) error {
 					providerPath := filepath.Join(info.Root, "..", "provider")
 					installPythonProviderDependencies(t, providerPath)
+					if runtime == "python" {
+						// Link the current version of the SDK into the project
+						coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
+						require.NoError(t, err)
+						f, err := os.OpenFile(filepath.Join(info.Root, "requirements.txt"), os.O_WRONLY|os.O_APPEND, 0o644)
+						require.NoError(t, err)
+						_, err = fmt.Fprintln(f, coreSDK)
+						require.NoError(t, err)
+						f.Close()
+					}
 					cmd := exec.Command("pulumi", "package", "add", providerPath)
 					cmd.Dir = info.Root
 					out, err := cmd.CombinedOutput()
@@ -2053,25 +2065,32 @@ func TestPythonComponentProviderRun(t *testing.T) {
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 					urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
 					require.NoError(t, err)
-					require.Equal(t, tokens.Type("component:index:MyComponent"), urn.Type())
+					expectedType := tokens.Type("component:index:MyComponent")
+					expectedQualifiedType := "ParentComponent$" + expectedType
+					if runtime == "yaml" {
+						// yaml doesn't have components
+						expectedQualifiedType = expectedType
+					}
+					require.Equal(t, expectedQualifiedType, urn.QualifiedType())
+					require.Equal(t, expectedType, urn.Type())
 					require.Equal(t, "comp", urn.Name())
 					t.Logf("Outputs: %v", stack.Outputs)
 					require.Equal(t, "HELLO", stack.Outputs["strOutput"].(string))
 					require.Equal(t, float64(84), stack.Outputs["optionalIntOutput"].(float64))
-					complexOutput := stack.Outputs["complexOutput"].(map[string]interface{})
+					complexOutput := stack.Outputs["complexOutput"].(map[string]any)
 					if runtime == "python" {
 						// The output is stored in the stack as a plain object,
 						// but that means for Python the keys are snake_case.
 						require.Equal(t, "complex_str_output_value", complexOutput["str_value"].(string))
-						nested := complexOutput["nested_value"].(map[string]interface{})
+						nested := complexOutput["nested_value"].(map[string]any)
 						require.Equal(t, "nested_str_plain_value", nested["value"].(string))
 					} else {
 						require.Equal(t, "complex_str_output_value", complexOutput["strValue"].(string))
-						nested := complexOutput["nestedValue"].(map[string]interface{})
+						nested := complexOutput["nestedValue"].(map[string]any)
 						require.Equal(t, "nested_str_plain_value", nested["value"].(string))
 					}
-					require.Equal(t, []interface{}{"A", "B", "C"}, stack.Outputs["listOutput"].([]interface{}))
-					require.Equal(t, map[string]interface{}{
+					require.Equal(t, []any{"A", "B", "C"}, stack.Outputs["listOutput"].([]any))
+					require.Equal(t, map[string]any{
 						"a": float64(2),
 						"b": float64(4),
 						"c": float64(6),
@@ -2080,13 +2099,13 @@ func TestPythonComponentProviderRun(t *testing.T) {
 					// TODO: YAML is not properly exporting assets https://github.com/pulumi/pulumi-yaml/issues/714
 					if runtime != "yaml" {
 						// We're expecting assetOutput = map[text:HELLO, WORLD!]
-						asset := stack.Outputs["assetOutput"].(map[string]interface{})
+						asset := stack.Outputs["assetOutput"].(map[string]any)
 						text := asset["text"].(string)
 						checkAssetText(t, runtime, "HELLO, WORLD!", text)
 
 						// We're expecting  archiveOutput = map[assets:map[asset1:map[text:IM INSIDE AN ARCHIVE]]
-						archive := stack.Outputs["archiveOutput"].(map[string]interface{})
-						asset1 := archive["assets"].(map[string]interface{})["asset1"].(map[string]interface{})
+						archive := stack.Outputs["archiveOutput"].(map[string]any)
+						asset1 := archive["assets"].(map[string]any)["asset1"].(map[string]any)
 						text = asset1["text"].(string)
 						checkAssetText(t, runtime, "IM INSIDE AN ARCHIVE", text)
 					}
@@ -2134,6 +2153,29 @@ func TestPythonComponentProviderPackageRun(t *testing.T) {
 	})
 }
 
+// Tests that features are set in the pulumi runtime used to construct the component.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonComponentProviderFeatures(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("component_provider", "python", "features"),
+		RelativeWorkDir: "yaml",
+		Quick:           true,
+		PrepareProject: func(info *engine.Projinfo) error {
+			installPythonProviderDependencies(t, filepath.Join(info.Root, "..", "provider"))
+			return nil
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
+			require.NoError(t, err)
+			require.Equal(t, tokens.Type("provider:index:MyComponent"), urn.Type())
+			require.True(t, stack.Outputs["parameterization"].(bool))
+			require.True(t, stack.Outputs["transforms"].(bool))
+			require.True(t, stack.Outputs["resourceHooks"].(bool))
+		},
+	})
+}
+
 func checkAssetText(t *testing.T, runtime, expected, actual string) {
 	t.Helper()
 	switch runtime {
@@ -2160,7 +2202,7 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 	e.CWD = t.TempDir()
 	stdout, stderr := e.RunCommand("pulumi", "package", "get-schema", e.RootPath)
 	require.Empty(t, stderr)
-	var schema map[string]interface{}
+	var schema map[string]any
 	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
 	require.Equal(t, "provider", schema["name"].(string))
 	require.Equal(t, "0.0.0", schema["version"].(string))
@@ -2223,9 +2265,9 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 		"requiredInputs": ["archiveInput", "assetInput", "dictInput", "enumInput", "listInput", "strInput"]
 	}
 	`
-	expected := make(map[string]interface{})
-	resources := schema["resources"].(map[string]interface{})
-	component := resources["provider:index:MyComponent"].(map[string]interface{})
+	expected := make(map[string]any)
+	resources := schema["resources"].(map[string]any)
+	component := resources["provider:index:MyComponent"].(map[string]any)
 	require.NoError(t, json.Unmarshal([]byte(expectedJSON), &expected))
 	// TODO https://github.com/pulumi/pulumi/issues/18481
 	// properties.dictOutput.additionalProperties.plain and
@@ -2291,8 +2333,8 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 			]
 		}
 	}`
-	expectedTypes := make(map[string]interface{})
-	types := schema["types"].(map[string]interface{})
+	expectedTypes := make(map[string]any)
+	types := schema["types"].(map[string]any)
 	require.NoError(t, json.Unmarshal([]byte(expectedTypesJSON), &expectedTypes))
 	require.Equal(t, expectedTypes, types)
 }
@@ -2313,16 +2355,16 @@ func TestPythonComponentProviderRecursiveTypes(t *testing.T) {
 			require.Equal(t, tokens.Type("component:index:MyComponent"), urn.Type())
 			require.Equal(t, "comp", urn.Name())
 			// map[rec:map[a:map[b:map[a:map[b:map[]]]]]
-			rec := stack.Outputs["rec"].(map[string]interface{})
-			rec, ok := rec["a"].(map[string]interface{})
+			rec := stack.Outputs["rec"].(map[string]any)
+			rec, ok := rec["a"].(map[string]any)
 			require.True(t, ok)
-			rec, ok = rec["b"].(map[string]interface{})
+			rec, ok = rec["b"].(map[string]any)
 			require.True(t, ok)
-			rec, ok = rec["a"].(map[string]interface{})
+			rec, ok = rec["a"].(map[string]any)
 			require.True(t, ok)
-			rec, ok = rec["b"].(map[string]interface{})
+			rec, ok = rec["b"].(map[string]any)
 			require.True(t, ok)
-			require.Equal(t, map[string]interface{}{}, rec)
+			require.Equal(t, map[string]any{}, rec)
 		},
 	})
 }
@@ -2393,6 +2435,17 @@ func TestPythonComponentProviderResourceReference(t *testing.T) {
 					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
 					providerPath := filepath.Join(info.Root, "..", "provider")
 					installPythonProviderDependencies(t, providerPath)
+					if runtime == "python" {
+						// Link the current version of the SDK into the project
+						coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
+						require.NoError(t, err)
+						coreSDK = strings.ReplaceAll(coreSDK, `\`, `\\`)
+						f, err := os.OpenFile(filepath.Join(info.Root, "requirements.txt"), os.O_WRONLY|os.O_APPEND, 0o644)
+						require.NoError(t, err)
+						_, err = fmt.Fprintln(f, coreSDK)
+						require.NoError(t, err)
+						f.Close()
+					}
 					cmd = exec.Command("pulumi", "package", "add", providerPath)
 					cmd.Dir = info.Root
 					cmd.Env = append(cmd.Environ(), "PULUMI_HOME="+pulumiHome)
@@ -2418,9 +2471,57 @@ func TestPythonComponentProviderResourceReference(t *testing.T) {
 	}
 }
 
+// Test that a component provider can use a package reference to another component provider
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonComponentProviderInComponentProvider(t *testing.T) {
+	pulumiHome := t.TempDir()
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		PulumiHomeDir:   pulumiHome,
+		Dir:             filepath.Join("component_provider", "python", "component-in-component"),
+		RelativeWorkDir: "program",
+		PrepareProject: func(info *engine.Projinfo) error {
+			// Install the dependencies for the two providers: `provider-nested`
+			// which is used within `provider`, which in turn is used by the
+			// program.
+			providerNestedPath := filepath.Join(info.Root, "..", "provider-nested")
+			installPythonProviderDependencies(t, providerNestedPath)
+
+			// For `provider` we need to generate `provider-nested`'s SDK and
+			// link it into the plugin.
+			providerPath := filepath.Join(info.Root, "..", "provider")
+			installPythonProviderDependencies(t, providerPath)
+			cmd := exec.Command("pulumi", "package", "add", providerNestedPath)
+			cmd.Dir = providerPath
+			out, err := cmd.CombinedOutput()
+			require.NoError(t, err, "`%s` in %s failed err: %s, out: %s", cmd.String(), cmd.Dir, out, err)
+
+			// Install the dependencies for the program
+			cmd = exec.Command("pulumi", "install")
+			cmd.Dir = info.Root
+			out, err = cmd.CombinedOutput()
+			require.NoError(t, err, "`%s` in %s failed err: %s, out: %s", cmd.String(), cmd.Dir, out, err)
+
+			return nil
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Logf("outputs = %+v\n", stack.Outputs)
+			require.Equal(t, "HELLO, PULUMI!", stack.Outputs["str_output"].(string))
+		},
+	})
+}
+
 func installPythonProviderDependencies(t *testing.T, dir string) {
 	t.Helper()
 
+	// Use `pulumi install` to install plugin dependencies
+	// This handles both pyproject.toml and requirements.txt automatically
+	cmd := exec.Command("pulumi", "install")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "`%s` in %s failed with output: %s", cmd.String(), cmd.Dir, string(out))
+
+	// Install the local development SDK
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 		Root:       dir,
 		Virtualenv: "venv",
@@ -2428,29 +2529,11 @@ func installPythonProviderDependencies(t *testing.T, dir string) {
 	})
 	require.NoError(t, err)
 
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	if _, err := os.Stat(filepath.Join(dir, "pyproject.toml")); err == nil {
-		t.Logf("Found bootstrap-less Python plugin in %s", dir)
-		// Create a venv and install the package into it
-		err = tc.EnsureVenv(context.Background(), dir, false, false, stdout, stderr)
-		require.NoError(t, err)
-		cmd, err := tc.ModuleCommand(context.Background(), "pip", "install", dir)
-		require.NoError(t, err)
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, "output: %s", out)
-	} else {
-		// Install dependencies from requirements.txt
-		err = tc.InstallDependencies(context.Background(), dir, false, false, stdout, stderr)
-		require.NoError(t, err, "stdout: %s, stderr: %s", stdout, stderr)
-	}
-
-	// Install the core SDK so we have the current version
 	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
 	require.NoError(t, err)
-	cmd, err := tc.ModuleCommand(context.Background(), "pip", "install", coreSDK)
+	cmd, err = tc.ModuleCommand(t.Context(), "pip", "install", coreSDK)
 	require.NoError(t, err)
-	out, err := cmd.CombinedOutput()
+	out, err = cmd.CombinedOutput()
 	require.NoError(t, err, "output: %s", out)
 }
 
@@ -2458,6 +2541,18 @@ func installPythonProviderDependencies(t *testing.T, dir string) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestOrganization(t *testing.T) {
+	cmd := exec.Command("python", "-c",
+		"import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')")
+	output, err := cmd.Output()
+	require.NoError(t, err)
+	versionString := strings.TrimSpace(string(output))
+	version := semver.MustParse(versionString)
+	if version.GTE(semver.MustParse("3.14.0")) {
+		// The test requires an old SDK, but that version does
+		// not work on 3.14 because of an older grpcio version
+		t.Skip("Skipping test for Python version >= 3.14")
+	}
+
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("python", "organization"),
 		Dependencies: []string{

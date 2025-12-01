@@ -25,14 +25,18 @@ download_release() {
 
 # Notes:
 #
-# * When updating .Net, you should also update PulumiDotnetSDKVersion in pulumi/pkg/codegen/testing/test/helpers.go
+# * When updating .Net, you should also update PulumiDotnetSDKVersion in pkg/codegen/testing/test/helpers.go
 #
-# shellcheck disable=SC2043
-for i in "github.com/pulumi/pulumi-java java v1.13.0" "github.com/pulumi/pulumi-yaml yaml v1.21.0" "github.com/pulumi/pulumi-dotnet dotnet v3.83.2"; do
+LANGUAGES=(
+  "dotnet v3.94.1"
+  "java v1.17.1"
+  "yaml v1.25.1"
+)
+
+for i in "${LANGUAGES[@]}"; do
   set -- $i # treat strings in loop as args
-  REPO="$1"
-  PULUMI_LANG="$2"
-  TAG="$3"
+  PULUMI_LANG="$1"
+  TAG="$2"
 
   LANG_DIST="$(pwd)/bin"
   mkdir -p "${LANG_DIST}"

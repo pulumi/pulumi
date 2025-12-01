@@ -88,7 +88,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Provider(aws1), Provider(aws2))
-		assert.Equal(t, 1, len(opts.Providers))
+		require.Len(t, opts.Providers, 1)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Equal(t, aws2, opts.Provider,
 			"Provider should be set to the last specified provider")
@@ -98,7 +98,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Provider(aws1), Provider(azure))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws1, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Equal(t, azure, opts.Provider,
@@ -109,7 +109,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Provider(aws1), Providers(aws2, azure))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Equal(t, aws1, opts.Provider,
@@ -120,7 +120,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Provider(aws1), Providers(aws2))
-		assert.Equal(t, 1, len(opts.Providers))
+		require.Len(t, opts.Providers, 1)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Equal(t, aws1, opts.Provider,
 			"Provider should be set to the last specified provider")
@@ -130,7 +130,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Providers(aws1), Providers(azure))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws1, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Nil(t, opts.Provider,
@@ -141,7 +141,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Providers(aws1, aws2), Providers(aws1, azure))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws1, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Nil(t, opts.Provider,
@@ -156,7 +156,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(ProviderMap(m1), ProviderMap(m2))
-		assert.Equal(t, 1, len(opts.Providers))
+		require.Len(t, opts.Providers, 1)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Nil(t, opts.Provider,
 			"Providers should not upgrade to Provider")
@@ -166,7 +166,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Provider(aws1), ProviderMap(m3))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Equal(t, aws1, opts.Provider,
@@ -177,7 +177,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Providers(aws2, aws1), ProviderMap(m3))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Nil(t, opts.Provider,
@@ -312,7 +312,6 @@ func TestResourceOptionComposite(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -380,7 +379,6 @@ func TestInvokeOptionComposite(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -578,8 +576,8 @@ func TestNewResourceInput(t *testing.T) {
 
 	resourceOutput := resourceInput.ToResourceOutput()
 
-	channel := make(chan interface{})
-	resourceOutput.ApplyT(func(res interface{}) interface{} {
+	channel := make(chan any)
+	resourceOutput.ApplyT(func(res any) any {
 		channel <- res
 		return res
 	})
@@ -656,7 +654,6 @@ func TestUninitializedParentResource(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -686,7 +683,7 @@ func TestUninitializedParentResource(t *testing.T) {
 				assert.Contains(t, buff.String(), tt.wantErr)
 				return nil
 			}, WithMocks("project", "stack", &testMonitor{}))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 }
@@ -711,7 +708,7 @@ func TestDependsOnInputs(t *testing.T) {
 			assertHasDeps(t, ctx, depTracker, res, dep1, dep2)
 			return nil
 		}, WithMocks("project", "stack", &testMonitor{}), WrapResourceMonitorClient(depTracker.Wrap))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("dynamic", func(t *testing.T) {
@@ -742,7 +739,7 @@ func TestDependsOnInputs(t *testing.T) {
 
 			return nil
 		}, WithMocks("project", "stack", &testMonitor{}), WrapResourceMonitorClient(depTracker.Wrap))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }
 
@@ -772,7 +769,7 @@ func TestComponentResourcePropagatesProvider(t *testing.T) {
 			assert.True(t, &prov == custom.provider, "provider not propagated: %v", custom.provider)
 			return nil
 		}, WithMocks("project", "stack", &testMonitor{}))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("providers option", func(t *testing.T) {
@@ -797,7 +794,7 @@ func TestComponentResourcePropagatesProvider(t *testing.T) {
 			assert.True(t, &prov == custom.provider, "provider not propagated: %v", custom.provider)
 			return nil
 		}, WithMocks("project", "stack", &testMonitor{}))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }
 
@@ -855,7 +852,7 @@ func TestRemoteComponentResourcePropagatesProvider(t *testing.T) {
 			return args.Name, resource.PropertyMap{}, nil
 		},
 	}))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // Verifies that Provider takes precedence over Providers.
@@ -943,7 +940,7 @@ func TestComponentResourceMultipleSingletonProviders(t *testing.T) {
 
 		return nil
 	}, WithMocks("project", "stack", &testMonitor{}))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestNewResourceOptions(t *testing.T) {
@@ -1144,7 +1141,6 @@ func TestNewResourceOptions(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -1208,7 +1204,6 @@ func TestNewInvokeOptions(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -1252,7 +1247,7 @@ func outputDependingOnResource(res Resource, isKnown bool) IntOutput {
 func newTestRes(t *testing.T, ctx *Context, name string, opts ...ResourceOption) Resource {
 	var res testRes
 	err := ctx.RegisterResource(fmt.Sprintf("test:resource:%stype", name), name, nil, &res, opts...)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return &res
 }
 
@@ -1416,7 +1411,7 @@ func TestInvokeDependsOn(t *testing.T) {
 	monitor := &testMonitor{
 		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			return resource.PropertyMap{
-				"echo": resource.NewStringProperty("hello"),
+				"echo": resource.NewProperty("hello"),
 			}, nil
 		},
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
@@ -1457,7 +1452,7 @@ func TestInvokeDependsOnInputs(t *testing.T) {
 	monitor := &testMonitor{
 		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			return resource.PropertyMap{
-				"echo": resource.NewStringProperty("hello"),
+				"echo": resource.NewProperty("hello"),
 			}, nil
 		},
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
@@ -1552,7 +1547,7 @@ func TestInvokeDependsOnIgnored(t *testing.T) {
 	monitor := &testMonitor{
 		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			return resource.PropertyMap{
-				"echo": resource.NewStringProperty("hello"),
+				"echo": resource.NewProperty("hello"),
 			}, nil
 		},
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
@@ -1600,7 +1595,7 @@ func TestInvokeSecret(t *testing.T) {
 		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			return resource.PropertyMap{
 				// The invoke result contains a secret.
-				"echo": resource.MakeSecret(resource.NewStringProperty("hello")),
+				"echo": resource.MakeSecret(resource.NewProperty("hello")),
 			}, nil
 		},
 	}

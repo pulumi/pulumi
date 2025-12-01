@@ -66,7 +66,6 @@ func TestColorizer(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.command, func(t *testing.T) {
 			t.Parallel()
 

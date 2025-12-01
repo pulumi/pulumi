@@ -20,6 +20,7 @@ import (
 
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCLI(t *testing.T) {
@@ -38,7 +39,7 @@ func TestBackend(t *testing.T) {
 		t.Skipf("Underlying stats call failed: %s", err)
 	}
 	backend, err := getHostAbout()
-	assert.NoError(t, err, "We should be able to get stats here")
+	require.NoError(t, err, "We should be able to get stats here")
 	display := backend.String()
 	assert.Contains(t, display, stats.Platform)
 	assert.Contains(t, display, stats.PlatformVersion)

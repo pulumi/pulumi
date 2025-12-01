@@ -21,6 +21,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,9 +40,9 @@ func TestIsVirtualEnv(t *testing.T) {
 	// Create and run a python command to create a virtual environment.
 	venvDir := filepath.Join(tempdir, "venv")
 	cmd, err := Command(context.Background(), "-m", "venv", venvDir)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = cmd.Run()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Assert the new venv directory is a virtual environment.
 	assert.True(t, IsVirtualEnv(venvDir))
@@ -86,7 +87,6 @@ func TestActivateVirtualEnv(t *testing.T) {
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%#v", test.input), func(t *testing.T) {
 			t.Parallel()
 
@@ -110,13 +110,13 @@ func TestRunningPipInVirtualEnvironment(t *testing.T) {
 	// Create and run a python command to create a virtual environment.
 	venvDir := filepath.Join(tempdir, "venv")
 	cmd, err := Command(context.Background(), "-m", "venv", venvDir)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = cmd.Run()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create a requirements.txt file in the temp directory.
 	requirementsFile := filepath.Join(tempdir, "requirements.txt")
-	assert.NoError(t, os.WriteFile(requirementsFile, []byte("pulumi==2.0.0\n"), 0o600))
+	require.NoError(t, os.WriteFile(requirementsFile, []byte("pulumi==2.0.0\n"), 0o600))
 
 	// Create a command to run pip from the virtual environment.
 	pipCmd := VirtualEnvCommand(venvDir, "python", "-m", "pip", "install", "-r", "requirements.txt")
@@ -159,4 +159,61 @@ func TestCommandPulumiPythonCommand(t *testing.T) {
 	cmd, err := tc.Command(context.Background())
 	require.ErrorContains(t, err, "python-not-found")
 	require.Nil(t, cmd)
+}
+
+func TestPipLinkPackages(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                string
+		requirementsContent string
+		packages            map[string]string
+		expectedLines       []string
+	}{
+		{
+			name:                "replaces existing packages",
+			requirementsContent: "pulumi>=3.0.0\ncat==1.2.3\n",
+			packages:            map[string]string{"pulumi": "/path/to/sdk"},
+			expectedLines:       []string{"cat==1.2.3", "/path/to/sdk", ""},
+		},
+		{
+			name:                "multiple packages",
+			requirementsContent: "pulumi>=3.0.0\ncat==1.2.3\ndog>=1.20.0",
+			packages:            map[string]string{"pulumi": "/path/to/sdk"},
+			expectedLines:       []string{"cat==1.2.3", "dog>=1.20.0", "/path/to/sdk"},
+		},
+		{
+			name:                "empty requirements",
+			requirementsContent: "",
+			packages:            map[string]string{"pulumi": "/path/to/sdk"},
+			expectedLines:       []string{"/path/to/sdk", ""},
+		},
+		{
+			name:                "link multiple packages packages",
+			requirementsContent: "cat==1.2.3\n",
+			packages: map[string]string{
+				"pulumi":     "/path/to/sdk",
+				"pulumi-aws": "/path/to/aws-sdk",
+			},
+			expectedLines: []string{"cat==1.2.3", "/path/to/aws-sdk", "/path/to/sdk", ""},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			tmp := t.TempDir()
+			tc, err := newPip(tmp, "")
+			require.NoError(t, err)
+			requirementsTxt := filepath.Join(tmp, "requirements.txt")
+			require.NoError(t, os.WriteFile(requirementsTxt, []byte(test.requirementsContent), 0o600))
+
+			err = tc.LinkPackages(context.Background(), test.packages)
+			require.NoError(t, err)
+
+			b, err := os.ReadFile(requirementsTxt)
+			require.NoError(t, err)
+			lines := strings.Split(string(b), "\n")
+			require.Equal(t, test.expectedLines, lines)
+		})
+	}
 }

@@ -23,6 +23,10 @@ func (a *analyzer) Handshake(ctx context.Context, req *pulumirpc.AnalyzerHandsha
 	return &pulumirpc.AnalyzerHandshakeResponse{}, nil
 }
 
+func (a *analyzer) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
+}
+
 func (a *analyzer) StackConfigure(ctx context.Context, req *pulumirpc.AnalyzerStackConfigureRequest) (*pulumirpc.AnalyzerStackConfigureResponse, error) {
 	if req.Stack != "test-stack" {
 		return nil, fmt.Errorf("expected stack to be test-stack, got %s", req.Stack)
@@ -35,6 +39,9 @@ func (a *analyzer) StackConfigure(ctx context.Context, req *pulumirpc.AnalyzerSt
 	}
 	if !req.DryRun {
 		return nil, fmt.Errorf("expected dry run to be true, got false")
+	}
+	if req.Tags["tag1"] != "value1" || req.Tags["tag2"] != "value2" || len(req.Tags) != 2 {
+		return nil, fmt.Errorf("expected tags to be {tag1: value1, tag2: value2}, got %v", req.Tags)
 	}
 
 	expectedConfig := map[string]string{

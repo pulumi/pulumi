@@ -249,9 +249,22 @@ func (h *PolicySimpleLanguageHost) Link(
 	if !strings.HasSuffix(req.Info.RootDirectory, filepath.Join("policy_packs", "simple")) {
 		return nil, fmt.Errorf("unexpected root directory to link %s", req.Info.RootDirectory)
 	}
-	if req.LocalDependencies["pulumi"] != filepath.Join(h.tempDir, "artifacts", "core.sdk") {
-		return nil, fmt.Errorf("unexpected core sdk %s", req.LocalDependencies["pulumi"])
+
+	coreSDKPath := filepath.Join(h.tempDir, "artifacts", "core.sdk")
+	found := false
+	for _, dep := range req.Packages {
+		if dep.Package.Name == "pulumi" {
+			if dep.Path != coreSDKPath {
+				return nil, fmt.Errorf("unexpected core SDK path %s", dep.Path)
+			}
+			found = true
+			break
+		}
 	}
+	if !found {
+		return nil, fmt.Errorf("core SDK not found in packages %v", req.Packages)
+	}
+
 	return &pulumirpc.LinkResponse{}, nil
 }
 
@@ -310,6 +323,10 @@ func (a *analyzerPlugin) Analyze(
 	}
 
 	return &pulumirpc.AnalyzeResponse{}, nil
+}
+
+func (a *analyzerPlugin) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }
 
 func (h *PolicySimpleLanguageHost) RunPlugin(

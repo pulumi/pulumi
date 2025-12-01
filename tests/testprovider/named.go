@@ -77,7 +77,7 @@ func (p *namedProvider) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.
 			}
 		}
 		if generatedName != "" {
-			news["name"] = resource.NewStringProperty(generatedName)
+			news["name"] = resource.NewProperty(generatedName)
 		}
 	}
 

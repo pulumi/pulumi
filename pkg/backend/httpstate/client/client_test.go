@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -82,7 +82,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer unauthorizedServer.Close()
 
 		unauthorizedClient := newMockClient(unauthorizedServer)
-		_, _, _, _, unauthorizedErr := unauthorizedClient.GetCLIVersionInfo(context.Background(), nil)
+		_, _, _, unauthorizedErr := unauthorizedClient.GetCLIVersionInfo(context.Background(), nil)
 
 		assert.EqualError(t, unauthorizedErr, "this command requires logging in; try running `pulumi login` first")
 	})
@@ -94,7 +94,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer rateLimitedServer.Close()
 
 		rateLimitedClient := newMockClient(rateLimitedServer)
-		_, _, _, _, rateLimitErr := rateLimitedClient.GetCLIVersionInfo(context.Background(), nil)
+		_, _, _, rateLimitErr := rateLimitedClient.GetCLIVersionInfo(context.Background(), nil)
 
 		assert.EqualError(t, rateLimitErr, "pulumi service: request rate-limit exceeded")
 	})
@@ -106,7 +106,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer defaultErrorServer.Close()
 
 		defaultErrorClient := newMockClient(defaultErrorServer)
-		_, _, _, _, defaultErrorErr := defaultErrorClient.GetCLIVersionInfo(context.Background(), nil)
+		_, _, _, defaultErrorErr := defaultErrorClient.GetCLIVersionInfo(context.Background(), nil)
 
 		assert.Error(t, defaultErrorErr)
 	})
@@ -122,11 +122,11 @@ func TestAPIVersionResponses(t *testing.T) {
 	defer versionServer.Close()
 
 	versionClient := newMockClient(versionServer)
-	latestVersion, oldestWithoutWarning, latestDevVersion, _, err := versionClient.GetCLIVersionInfo(
+	latestVersion, oldestWithoutWarning, latestDevVersion, err := versionClient.GetCLIVersionInfo(
 		context.Background(), nil,
 	)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, latestVersion.String(), "1.0.0")
 	assert.Equal(t, oldestWithoutWarning.String(), "0.1.0")
 	assert.Equal(t, latestDevVersion.String(), "1.0.0-11-gdeadbeef")
@@ -146,13 +146,13 @@ func TestAPIVersionMetadataHeaders(t *testing.T) {
 	client := newMockClient(server)
 
 	// Act.
-	_, _, _, _, err := client.GetCLIVersionInfo(context.Background(), map[string]string{
+	_, _, _, err := client.GetCLIVersionInfo(context.Background(), map[string]string{
 		"First":  "foo",
 		"Second": "bar",
 	})
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestGzip(t *testing.T) {
@@ -172,25 +172,28 @@ func TestGzip(t *testing.T) {
 
 	// POST /import
 	_, err := client.ImportStackDeployment(context.Background(), identifier, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tok := updateTokenStaticSource("")
 
 	// PATCH /checkpoint
 	err = client.PatchUpdateCheckpoint(context.Background(), UpdateIdentifier{
 		StackIdentifier: identifier,
-	}, nil, tok)
-	assert.NoError(t, err)
+	}, &apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: json.RawMessage("{}"),
+	}, tok)
+	require.NoError(t, err)
 
 	// POST /events/batch
 	err = client.RecordEngineEvents(context.Background(), UpdateIdentifier{
 		StackIdentifier: identifier,
 	}, apitype.EngineEventBatch{}, tok)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// POST /events/batch
 	_, err = client.BatchDecryptValue(context.Background(), identifier, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
@@ -205,23 +208,23 @@ func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
 
 	var serializedDeployment json.RawMessage
 	serializedDeployment, err := json.Marshal(deployment)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	untypedDeployment, err := json.Marshal(apitype.UntypedDeployment{
 		Version:    3,
 		Deployment: serializedDeployment,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var request apitype.PatchUpdateVerbatimCheckpointRequest
 
 	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
 		reader, err := gzip.NewReader(req.Body)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer reader.Close()
 
 		err = json.NewDecoder(reader).Decode(&request)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return "{}"
 	})
@@ -240,18 +243,18 @@ func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
 			StackIdentifier: StackIdentifier{
 				Stack: tokens.MustParseStackName("stack"),
 			},
-		}, sequenceNumber, indented, updateTokenStaticSource("token"))
-	assert.NoError(t, err)
+		}, sequenceNumber, indented, 3, updateTokenStaticSource("token"))
+	require.NoError(t, err)
 
 	compacted := func(raw json.RawMessage) string {
 		var buf bytes.Buffer
 		err := json.Compact(&buf, []byte(raw))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return buf.String()
 	}
 
 	// It should have more than one line as json.Marshal would produce.
-	assert.Equal(t, newlines+1, len(strings.Split(string(request.UntypedDeployment), "\n")))
+	require.Len(t, strings.Split(string(request.UntypedDeployment), "\n"), newlines+1)
 
 	// Compacting should recover the same form as json.Marshal would produce.
 	assert.Equal(t, string(untypedDeployment), compacted(request.UntypedDeployment))
@@ -266,8 +269,8 @@ func TestGetCapabilities(t *testing.T) {
 
 		c := newMockClient(s)
 		resp, err := c.GetCapabilities(context.Background())
-		assert.NoError(t, err)
-		assert.NotNil(t, resp)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
 		assert.Empty(t, resp.Capabilities)
 	})
 	t.Run("updated-service-with-delta-checkpoint-capability", func(t *testing.T) {
@@ -293,9 +296,9 @@ func TestGetCapabilities(t *testing.T) {
 
 		c := newMockClient(s)
 		resp, err := c.GetCapabilities(context.Background())
-		assert.NoError(t, err)
-		assert.NotNil(t, resp)
-		assert.Len(t, resp.Capabilities, 2)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Len(t, resp.Capabilities, 2)
 		assert.Equal(t, apitype.DeltaCheckpointUploads, resp.Capabilities[0].Capability)
 		assert.Equal(t, `{"checkpointCutoffSizeBytes":4194304}`,
 			string(resp.Capabilities[0].Configuration))
@@ -361,30 +364,30 @@ func TestDeploymentSettingsApi(t *testing.T) {
 			Project: "project",
 			Stack:   stack,
 		})
-		assert.NoError(t, err)
-		assert.NotNil(t, resp)
-		assert.NotNil(t, resp.SourceContext)
-		assert.NotNil(t, resp.SourceContext.Git)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.NotNil(t, resp.SourceContext)
+		require.NotNil(t, resp.SourceContext.Git)
 		assert.Equal(t, "main", resp.SourceContext.Git.Branch)
 		assert.Equal(t, "git@github.com:pulumi/test-repo.git", resp.SourceContext.Git.RepoURL)
 		assert.Equal(t, ".", resp.SourceContext.Git.RepoDir)
-		assert.NotNil(t, resp.SourceContext.Git.GitAuth)
-		assert.NotNil(t, resp.SourceContext.Git.GitAuth.BasicAuth)
-		assert.NotNil(t, resp.SourceContext.Git.GitAuth.BasicAuth.UserName)
+		require.NotNil(t, resp.SourceContext.Git.GitAuth)
+		require.NotNil(t, resp.SourceContext.Git.GitAuth.BasicAuth)
+		require.NotNil(t, resp.SourceContext.Git.GitAuth.BasicAuth.UserName)
 		assert.Equal(t, "jdoe", resp.SourceContext.Git.GitAuth.BasicAuth.UserName.Value)
-		assert.NotNil(t, resp.SourceContext.Git.GitAuth.BasicAuth.Password)
+		require.NotNil(t, resp.SourceContext.Git.GitAuth.BasicAuth.Password)
 		assert.Equal(t, "AAABAMcGtHDraogfM3Qk4WyaNp3F/syk2cjHPQTb6Hu6ps8=",
 			resp.SourceContext.Git.GitAuth.BasicAuth.Password.Ciphertext)
-		assert.NotNil(t, resp.Operation)
-		assert.NotNil(t, resp.Operation.Options)
+		require.NotNil(t, resp.Operation)
+		require.NotNil(t, resp.Operation.Options)
 		assert.True(t, resp.Operation.Options.SkipIntermediateDeployments)
 		assert.False(t, resp.Operation.Options.DeleteAfterDestroy)
 		assert.False(t, resp.Operation.Options.RemediateIfDriftDetected)
 		assert.False(t, resp.Operation.Options.SkipInstallDependencies)
-		assert.NotNil(t, resp.Operation.OIDC)
+		require.NotNil(t, resp.Operation.OIDC)
 		assert.Nil(t, resp.Operation.OIDC.Azure)
 		assert.Nil(t, resp.Operation.OIDC.GCP)
-		assert.NotNil(t, resp.Operation.OIDC.AWS)
+		require.NotNil(t, resp.Operation.OIDC.AWS)
 		assert.Equal(t, "the_session_name", resp.Operation.OIDC.AWS.SessionName)
 		assert.Equal(t, "the_role", resp.Operation.OIDC.AWS.RoleARN)
 		duration, _ := time.ParseDuration("1h0m0s")
@@ -394,7 +397,7 @@ func TestDeploymentSettingsApi(t *testing.T) {
 	})
 }
 
-func TestListTemplates(t *testing.T) {
+func TestListOrgTemplates(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
@@ -470,8 +473,8 @@ func TestGetDefaultOrg(t *testing.T) {
 
 		// THEN
 		// We should gracefully handle the 404
-		assert.NoError(t, err)
-		assert.NotNil(t, resp)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
 		assert.Empty(t, resp.GitHubLogin)
 	})
 }
@@ -567,7 +570,7 @@ func TestGetPackage(t *testing.T) {
 	})
 }
 
-func TestSearchByName(t *testing.T) {
+func TestListPackages(t *testing.T) {
 	t.Parallel()
 
 	t.Run("no-continuation-token", func(t *testing.T) {
@@ -610,10 +613,10 @@ func TestSearchByName(t *testing.T) {
 
 		mockClient := newMockClient(mockServer)
 
-		// Call SearchByName and collect results
+		// Call ListPackages and collect results
 		searchName := "my-package"
 		searchResults := []apitype.PackageMetadata{}
-		for pkg, err := range mockClient.SearchByName(context.Background(), &searchName) {
+		for pkg, err := range mockClient.ListPackages(context.Background(), &searchName) {
 			require.NoError(t, err)
 			searchResults = append(searchResults, pkg)
 		}
@@ -707,7 +710,7 @@ func TestSearchByName(t *testing.T) {
 
 		searchName := "my-package"
 		searchResults := []apitype.PackageMetadata{}
-		for pkg, err := range mockClient.SearchByName(context.Background(), &searchName) {
+		for pkg, err := range mockClient.ListPackages(context.Background(), &searchName) {
 			require.NoError(t, err)
 			searchResults = append(searchResults, pkg)
 		}

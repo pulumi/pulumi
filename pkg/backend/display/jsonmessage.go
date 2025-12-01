@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ package display
 import (
 	"fmt"
 	"io"
-	"os"
 	"slices"
 	"strconv"
 	"unicode/utf8"
@@ -30,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"golang.org/x/exp/maps"
 )
 
 // Progress describes a message we want to show in the display.  There are two types of messages,
@@ -55,19 +53,19 @@ func makeActionProgress(id string, action string) Progress {
 }
 
 // Display displays the Progress to `out`. `termInfo` is non-nil if `out` is a terminal.
-func (jm *Progress) Display(out io.Writer, termInfo terminal.Info) {
+func (jm *Progress) Display(out io.Writer, term terminal.Terminal) {
 	var emitCr bool
 
-	if termInfo != nil && /*jm.Stream == "" &&*/ jm.Action != "" {
-		termInfo.ClearLine(out)
+	if term != nil && /*jm.Stream == "" &&*/ jm.Action != "" {
+		term.ClearLine()
 		emitCr = true
-		termInfo.CarriageReturn(out)
+		term.CarriageReturn()
 	}
 
-	if jm.Action != "" && termInfo != nil {
+	if jm.Action != "" && term != nil {
 		fmt.Fprint(out, jm.Action)
 		if emitCr {
-			termInfo.CarriageReturn(out)
+			term.CarriageReturn()
 		}
 	} else {
 		var msg string
@@ -79,7 +77,7 @@ func (jm *Progress) Display(out io.Writer, termInfo terminal.Info) {
 
 		fmt.Fprint(out, msg)
 		if emitCr {
-			termInfo.CarriageReturn(out)
+			term.CarriageReturn()
 		}
 		fmt.Fprint(out, "\n")
 	}
@@ -324,10 +322,16 @@ func (r *messageRenderer) render(done bool) {
 		}
 	}
 
-	if len(r.display.progressEventPayloads) > 0 {
+	keys := []string{}
+	if r.display.progressEventPayloads != nil {
+		r.display.progressEventPayloads.Range(func(key string, value engine.ProgressEventPayload) bool {
+			keys = append(keys, key)
+			return true
+		})
+	}
+	if len(keys) > 0 {
 		// Render progress events into the JSON message stream using ASCII
 		// progress bars to be safe.
-		keys := maps.Keys(r.display.progressEventPayloads)
 		slices.Sort(keys)
 
 		for i, key := range keys {
@@ -337,7 +341,7 @@ func (r *messageRenderer) render(done bool) {
 					colors.Yellow+"Downloads"+colors.Reset))
 			}
 
-			payload := r.display.progressEventPayloads[key]
+			payload, _ := r.display.progressEventPayloads.Load(key)
 			rendered := renderProgress(renderASCIIProgressBar, r.terminalWidth, payload)
 			r.colorizeAndWriteProgress(makeActionProgress(payload.ID, rendered))
 		}
@@ -369,13 +373,11 @@ func (r *messageRenderer) updateTerminalDimensions() {
 func ShowProgressOutput(in <-chan Progress, out io.Writer, isInteractive bool) {
 	ids := make(map[string]int)
 
-	var info terminal.Info
+	var term terminal.Terminal
 	if isInteractive {
-		term := os.Getenv("TERM")
-		if term == "" {
-			term = "vt102"
+		if t, ok := out.(terminal.Terminal); ok {
+			term = t
 		}
-		info = terminal.OpenInfo(term)
 	}
 
 	for jm := range in {
@@ -396,13 +398,13 @@ func ShowProgressOutput(in <-chan Progress, out io.Writer, isInteractive bool) {
 				// with no ID.
 				line = len(ids)
 				ids[jm.ID] = line
-				if info != nil {
-					fmt.Fprintf(out, "\n")
+				if term != nil {
+					term.CarriageReturn()
 				}
 			}
 			diff = len(ids) - line
-			if info != nil {
-				info.CursorUp(out, diff)
+			if term != nil {
+				term.CursorUp(diff)
 			}
 		} else {
 			// When outputting something that isn't progress
@@ -412,9 +414,9 @@ func ShowProgressOutput(in <-chan Progress, out io.Writer, isInteractive bool) {
 			// with multiple tags).
 			ids = make(map[string]int)
 		}
-		jm.Display(out, info)
-		if jm.Action != "" && info != nil {
-			info.CursorDown(out, diff)
+		jm.Display(out, term)
+		if jm.Action != "" && term != nil {
+			term.CursorDown(diff)
 		}
 	}
 }

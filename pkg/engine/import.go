@@ -23,7 +23,6 @@ import (
 func Import(u UpdateInfo, ctx *Context, opts UpdateOptions, imports []deploy.Import,
 	dryRun bool,
 ) (*deploy.Plan, display.ResourceChanges, error) {
-	contract.Requiref(u != nil, "u", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 
 	defer func() { ctx.Events <- NewCancelEvent() }()
@@ -49,5 +48,6 @@ func Import(u UpdateInfo, ctx *Context, opts UpdateOptions, imports []deploy.Imp
 		isImport:      true,
 		imports:       imports,
 		DryRun:        dryRun,
+		pluginManager: ctx.PluginManager,
 	})
 }

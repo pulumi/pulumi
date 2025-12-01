@@ -46,7 +46,7 @@ type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op 
 	opts ApplierOptions, events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
 
 // Explainer provides a contract for explaining changes that will be made to the stack.
-// For Pulumi Cloud, this is a Copilot explainer.
+// For Pulumi Cloud, this is a Neo explainer.
 type Explainer interface {
 	// Explain returns a human-readable explanation of the changes that will be made to the stack.
 	Explain(ctx context.Context, stackRef StackReference, kind apitype.UpdateKind, op UpdateOperation,
@@ -241,7 +241,9 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRe
 		}
 
 		if response == string(details) {
-			diff, err := display.CreateDiff(events, opts.Display)
+			displayOpts := opts.Display
+			displayOpts.TruncateOutput = false // We want to always show the full details
+			diff, err := display.CreateDiff(events, displayOpts)
 			if err != nil {
 				return nil, err
 			}

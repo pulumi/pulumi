@@ -10,13 +10,15 @@ PROJECT         := github.com/pulumi/pulumi/pkg/v3/cmd/pulumi
 # to avoid issues like realpath failing on macOS if the directory doesn't exist.
 _ := $(shell mkdir -p bin)
 
+_ := $(shell cd pkg && go build -o ../bin/helpmakego github.com/iwahbe/helpmakego)
+
 PKG_CODEGEN := github.com/pulumi/pulumi/pkg/v3/codegen
 # nodejs and python codegen tests are much slower than go/dotnet:
-PROJECT_PKGS    := $(shell cd ./pkg && go list ./... | grep -v -E '^${PKG_CODEGEN}/(dotnet|go|nodejs|python)')
+PROJECT_PKGS    = $(shell cd ./pkg && go list ./... | grep -v -E '^${PKG_CODEGEN}/(dotnet|go|nodejs|python)')
 INTEGRATION_PKG := github.com/pulumi/pulumi/tests/integration
 PERFORMANCE_PKG := github.com/pulumi/pulumi/tests/performance
-TESTS_PKGS      := $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v ^${INTEGRATION_PKG}$ | grep -v ^${PERFORMANCE_PKG}$)
-VERSION         := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ./scripts/pulumi-version.sh))
+TESTS_PKGS      = $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v ^${INTEGRATION_PKG}$ | grep -v ^${PERFORMANCE_PKG}$)
+VERSION         = $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ./scripts/pulumi-version.sh))
 
 # Relative paths to directories with go.mod files that should be linted.
 LINT_GOLANG_PKGS := sdk pkg tests sdk/go/pulumi-language-go sdk/nodejs/cmd/pulumi-language-nodejs sdk/python/cmd/pulumi-language-python cmd/pulumi-test-language
@@ -49,14 +51,15 @@ ensure: .make/ensure/go .make/ensure/phony $(SUB_PROJECTS:%=%_ensure)
 PROTO_FILES := $(sort $(shell find proto -type f -name '*.proto') proto/generate.sh proto/build-container/Dockerfile $(wildcard proto/build-container/scripts/*))
 PROTO_CKSUM = cksum ${PROTO_FILES} | LC_ALL=C sort --key=3
 build-proto: build_proto
-build_proto:
+build_proto: proto/.checksum.txt
+proto/.checksum.txt: ${PROTO_FILES}
 	@printf "Protobuffer interfaces are ....... "
 	@if [ "$$(cat proto/.checksum.txt)" = "`${PROTO_CKSUM}`" ]; then \
-		printf "\033[0;32mup to date\033[0m\n"; \
+		printf "\033[0;32malready up to date\033[0m\n"; \
 	else \
 		printf "\033[0;34mout of date: REBUILDING\033[0m\n"; \
 		cd proto && ./generate.sh || exit 1; \
-		cd ../ && ${PROTO_CKSUM} > proto/.checksum.txt; \
+		cd ../ && ${PROTO_CKSUM} > $@; \
 		printf "\033[0;34mProtobuffer interfaces have been \033[0;32mREBUILT\033[0m\n"; \
 	fi
 
@@ -74,16 +77,17 @@ generate::
 	$(call STEP_MESSAGE)
 	echo "This command does not do anything anymore. It will be removed in a future version."
 
-.PHONY: bin/pulumi
-bin/pulumi: build_proto .make/ensure/go .make/ensure/phony
+bin/pulumi: proto/.checksum.txt .make/ensure/go $(shell bin/helpmakego pkg/cmd/pulumi)
 	go build -C pkg -o ../$@ -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
-build_display_wasm:: .make/ensure/go
-	cd pkg && GOOS=js GOARCH=wasm go build -o ../bin/pulumi-display.wasm -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ./backend/display/wasm
+.PHONY: bin/pulumi-display.wasm
+bin/pulumi-display.wasm:: .make/ensure/go .make/ensure/phony pkg/backend/display/wasm/gold-size.txt
+	cd pkg && GOOS=js GOARCH=wasm go build -o ../bin/pulumi-display.wasm -ldflags "-w -s -X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" -trimpath ./backend/display/wasm
+	python3 scripts/wasm-size-check.py bin/pulumi-display.wasm pkg/backend/display/wasm/gold-size.txt
 
 .PHONY: build
 build:: export GOBIN=$(shell realpath ./bin)
-build:: build_proto .make/ensure/go dist build_display_wasm
+build:: build_proto .make/ensure/go bin/pulumi bin/pulumi-display.wasm
 
 install:: bin/pulumi
 	cp $< $(PULUMI_BIN)/pulumi
@@ -101,8 +105,6 @@ install_cover:: build_cover
 
 developer_docs::
 	cd developer-docs && make html
-
-install_all:: install
 
 dist::
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
@@ -134,27 +136,26 @@ lint_pulumi_json_fix::
 
 lint_fix:: lint_golang_fix lint_pulumi_json_fix
 
-lint_golang:: lint_deps
-	$(eval GOLANGCI_LINT_CONFIG = $(shell pwd)/.golangci.yml)
-	@$(foreach pkg,$(LINT_GOLANG_PKGS),(cd $(pkg) && \
-		echo "[golangci-lint] Linting $(pkg)..." && \
-		golangci-lint run $(GOLANGCI_LINT_ARGS) \
+define lint_golang_pkg
+	@echo "[golangci-lint] Linting $(1)..."
+	@(cd $(1) && golangci-lint run $(GOLANGCI_LINT_ARGS) \
 			--config $(GOLANGCI_LINT_CONFIG) \
-			--timeout 5m) \
-		&&) true
+			--max-same-issues 0 \
+			--max-issues-per-linter 0 \
+			--timeout 5m)
+	@echo "[requiredfield] Linting $(1)..."
+	@(cd $(1) && go vet -tags all -vettool=$$(which requiredfield) github.com/pulumi/pulumi/$(1)/...)
 
-lint_golang_fix::
-	$(eval GOLANGCI_LINT_CONFIG = $(shell pwd)/.golangci.yml)
-	@$(foreach pkg,$(LINT_GOLANG_PKGS),(cd $(pkg) && \
-		echo "[golangci-lint] Linting $(pkg)..." && \
-		golangci-lint run $(GOLANGCI_LINT_ARGS) \
-			--config $(GOLANGCI_LINT_CONFIG) \
-			--timeout 5m \
-			--fix) \
-		&&) true
+endef
 
-lint_deps:
-	@echo "Check for golangci-lint"; [ -e "$(shell which golangci-lint)" ]
+.PHONY: lint_golang lint_golang_fix
+lint_golang: GOLANGCI_LINT_CONFIG=$(shell pwd)/.golangci.yml
+lint_golang: .make/ensure/golangci-lint .make/ensure/requiredfield
+	$(foreach pkg,$(LINT_GOLANG_PKGS),$(call lint_golang_pkg,${pkg}))
+
+lint_golang_fix: GOLANGCI_LINT_ARGS=--fix
+lint_golang_fix: lint_golang
+
 lint_actions:
 	go run github.com/rhysd/actionlint/cmd/actionlint@v1.6.27 \
 	  -format '{{range $$err := .}}### Error at line {{$$err.Line}}, col {{$$err.Column}} of `{{$$err.Filepath}}`\n\n{{$$err.Message}}\n\n```\n{{$$err.Snippet}}\n```\n\n{{end}}'
@@ -173,14 +174,16 @@ test_lifecycle:
 test_lifecycle_fuzz: GO_TEST_RACE = false
 test_lifecycle_fuzz: export PULUMI_LIFECYCLE_TEST_FUZZ := 1
 test_lifecycle_fuzz:
-	@cd pkg && $(GO_TEST) github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest \
+	@cd pkg && go test github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest \
 		-run '^TestFuzz$$' \
+		-tags all \
 		-rapid.checks=$(LIFECYCLE_TEST_FUZZ_CHECKS)
 
 test_lifecycle_fuzz_from_state_file: GO_TEST_RACE = false
 test_lifecycle_fuzz_from_state_file:
-	@cd pkg && $(GO_TEST) github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest \
+	@cd pkg && go test github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest \
 		-run '^TestFuzzFromStateFile$$' \
+		-tags all \
 		-rapid.checks=$(LIFECYCLE_TEST_FUZZ_CHECKS)
 
 lang=$(subst test_codegen_,,$(word 1,$(subst !, ,$@)))

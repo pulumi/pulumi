@@ -5,5 +5,6 @@
 <{%reset%}><{%fg 14%}>    foo : <{%reset%}><{%fg 14%}>"bar"<{%reset%}><{%fg 14%}>
 <{%reset%}><{%fg 14%}>    name: <{%reset%}><{%fg 14%}>"other"<{%reset%}><{%fg 14%}>
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>1 errored<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

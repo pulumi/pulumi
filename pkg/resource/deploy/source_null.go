@@ -46,7 +46,7 @@ func (src *nullSource) Iterate(ctx context.Context, providers ProviderSource) (S
 // nullSourceIterator always returns nil, nil in response to Next, indicating that it is done.
 type nullSourceIterator struct{}
 
-func (iter *nullSourceIterator) Close() error {
+func (iter *nullSourceIterator) Cancel(context.Context) error {
 	return nil // nothing to do.
 }
 

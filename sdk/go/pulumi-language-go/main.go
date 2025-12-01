@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,7 +26,9 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -73,7 +75,23 @@ const preferredDebugPort = 57134
 // This function takes a file target to specify where to compile to.
 // If `outfile` is "", the binary is compiled to a new temporary file.
 // This function returns the path of the file that was produced.
-func compileProgram(programDirectory string, outfile string, withDebugFlags bool) (string, error) {
+func compileProgram(
+	ctx context.Context,
+	engineClient pulumirpc.EngineClient,
+	programDirectory string,
+	outfile string,
+	withDebugFlags bool,
+	stdout, stderr io.Writer,
+) (string, error) {
+	if _, err := engineClient.Log(ctx, &pulumirpc.LogRequest{
+		Severity:  pulumirpc.LogSeverity_INFO,
+		Urn:       "",
+		Message:   "Compiling the program ...",
+		Ephemeral: true,
+	}); err != nil {
+		logging.V(6).Infof("Failed to log message: %v", err)
+	}
+
 	goFileSearchPattern := filepath.Join(programDirectory, "*.go")
 	if matches, err := filepath.Glob(goFileSearchPattern); err != nil || len(matches) == 0 {
 		return "", fmt.Errorf("Failed to find go files for 'go build' matching %s", goFileSearchPattern)
@@ -103,7 +121,7 @@ func compileProgram(programDirectory string, outfile string, withDebugFlags bool
 	}
 	buildCmd := exec.Command(gobin, args...)
 	buildCmd.Dir = programDirectory
-	buildCmd.Stdout, buildCmd.Stderr = os.Stdout, os.Stderr
+	buildCmd.Stdout, buildCmd.Stderr = stdout, stderr
 
 	if err := buildCmd.Run(); err != nil {
 		return "", fmt.Errorf("unable to run `go build`: %w", err)
@@ -115,6 +133,14 @@ func compileProgram(programDirectory string, outfile string, withDebugFlags bool
 	}
 	if !isExecutable {
 		return "", errors.New("go program is not executable, does your program have a 'main' package?")
+	}
+	if _, err := engineClient.Log(ctx, &pulumirpc.LogRequest{
+		Severity:  pulumirpc.LogSeverity_INFO,
+		Urn:       "",
+		Message:   "Finished compiling",
+		Ephemeral: true,
+	}); err != nil {
+		logging.V(6).Infof("Failed to log message: %v", err)
 	}
 
 	return outfile, nil
@@ -152,9 +178,15 @@ func parseRunParams(flag *flag.FlagSet, args []string) (*runParams, error) {
 
 // Launches the language host, which in turn fires up an RPC server implementing the LanguageRuntimeServer endpoint.
 func main() {
+	showVersion := flag.Bool("version", false, "Print the current plugin version and exit")
 	p, err := parseRunParams(flag.CommandLine, os.Args[1:])
 	if err != nil {
 		cmdutil.Exit(err)
+	}
+
+	if *showVersion {
+		fmt.Println(version.Version)
+		os.Exit(0)
 	}
 
 	logging.InitLogging(false, 0, false)
@@ -245,7 +277,7 @@ type goOptions struct {
 	buildTarget string
 }
 
-func parseOptions(root string, options map[string]interface{}) (goOptions, error) {
+func parseOptions(root string, options map[string]any) (goOptions, error) {
 	var goOptions goOptions
 	if binary, ok := options["binary"]; ok {
 		if binary, ok := binary.(string); ok {
@@ -866,7 +898,7 @@ func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, db
 		return err
 	}
 
-	debugConfig, err := structpb.NewStruct(map[string]interface{}{
+	debugConfig, err := structpb.NewStruct(map[string]any{
 		"name":    name,
 		"type":    "go",
 		"request": "attach",
@@ -1017,7 +1049,8 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 	// user did not specify a binary and we will compile and run the binary on-demand
 	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via compilation")
 
-	program, err := compileProgram(req.Info.ProgramDirectory, opts.buildTarget, req.GetAttachDebugger())
+	program, err := compileProgram(
+		ctx, engineClient, req.Info.ProgramDirectory, opts.buildTarget, req.GetAttachDebugger(), os.Stdout, os.Stderr)
 	if err != nil {
 		return nil, errutil.ErrorWithStderr(err, "error in compiling Go")
 	}
@@ -1126,7 +1159,7 @@ func (host *goLanguageHost) InstallDependencies(
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("`go mod tidy` failed to install dependencies: %w", err)
+		return errutil.ErrorWithStderr(err, "`go mod tidy` failed to install dependencies")
 	}
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))
@@ -1138,6 +1171,12 @@ func (host *goLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 	req *pulumirpc.RuntimeOptionsRequest,
 ) (*pulumirpc.RuntimeOptionsResponse, error) {
 	return &pulumirpc.RuntimeOptionsResponse{}, nil
+}
+
+func (host *goLanguageHost) Template(ctx context.Context,
+	req *pulumirpc.TemplateRequest,
+) (*pulumirpc.TemplateResponse, error) {
+	return &pulumirpc.TemplateResponse{}, nil
 }
 
 func (host *goLanguageHost) About(ctx context.Context, req *pulumirpc.AboutRequest) (*pulumirpc.AboutResponse, error) {
@@ -1223,7 +1262,8 @@ func (host *goLanguageHost) RunPlugin(
 	}
 	defer contract.IgnoreClose(closer)
 
-	program, err := compileProgram(req.Info.ProgramDirectory, "", false)
+	program, err := compileProgram(
+		server.Context(), engineClient, req.Info.ProgramDirectory, "", false, os.Stdout, os.Stderr)
 	if err != nil {
 		return errutil.ErrorWithStderr(err, "error in compiling Go")
 	}
@@ -1485,44 +1525,131 @@ func (host *goLanguageHost) Handshake(
 func (host *goLanguageHost) Link(
 	ctx context.Context, req *pulumirpc.LinkRequest,
 ) (*pulumirpc.LinkResponse, error) {
-	// Find the go.mod in the program directory, and add a replace statement to point to the given local dependency.
-	// Currently this _only_ supports "pulumi" for the core SDK.
-
-	path := filepath.Join(req.Info.ProgramDirectory, "go.mod")
-	stat, err := os.Stat(path)
+	logging.V(5).Infof("Linking %+v in %s", req.Packages, req.Info.RootDirectory)
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
-		return nil, fmt.Errorf("stat go.mod: %w", err)
+		return nil, err
 	}
+	defer loader.Close()
+	cachedLoader := schema.NewCachedLoader(loader)
 
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read go.mod: %w", err)
-	}
-	mod, err := modfile.Parse(path, data, nil)
-	if err != nil {
-		return nil, fmt.Errorf("parse go.mod: %w", err)
+	instructions := "You can import the SDK in your Go code with:\n\n  import (\n"
+	if len(req.Packages) > 1 {
+		instructions = "You can import the SDKs in your Go code with:\n\n  import (\n"
 	}
 
-	core, ok := req.LocalDependencies["pulumi"]
-	if !ok {
-		// TODO: support other local dependencies.
-		return nil, status.Errorf(codes.InvalidArgument, "no local dependency for 'pulumi' found")
+	// Map of moduleName to replacement paths
+	modules := map[string]string{}
+	for _, dep := range req.Packages {
+		if dep.Package.Name == "pulumi" { // TODO: should this just be github.com/pulumi/pulumi/sdk/v3?
+			modules["github.com/pulumi/pulumi/sdk/v3"] = dep.Path
+			continue
+		}
+
+		var version *semver.Version
+		v, err := semver.New(dep.Package.Version)
+		if err != nil {
+			logging.V(5).Infof("Invalid version %s for package %s", dep.Package.Version, dep.Package.Name)
+		} else {
+			version = v
+		}
+		var param *schema.ParameterizationDescriptor
+		if dep.Package.Parameterization != nil {
+			param = &schema.ParameterizationDescriptor{
+				Name:  dep.Package.Parameterization.Name,
+				Value: dep.Package.Parameterization.Value,
+			}
+			if dep.Package.Parameterization.Version != "" {
+				v, err := semver.New(dep.Package.Parameterization.Version)
+				if err != nil {
+					logging.V(5).Infof("Invalid version %s for package %s", dep.Package.Version, dep.Package.Name)
+				} else {
+					param.Version = *v
+				}
+			}
+		}
+		packageDesc := &schema.PackageDescriptor{
+			Name:             dep.Package.Name,
+			Version:          version,
+			DownloadURL:      dep.Package.Server,
+			Parameterization: param,
+		}
+
+		pkgRef, err := schema.LoadPackageReferenceV2(ctx, cachedLoader, packageDesc)
+		if err != nil {
+			return nil, err
+		}
+		pkg, err := pkgRef.Definition()
+		if err != nil {
+			return nil, err
+		}
+		if err := pkg.ImportLanguages(map[string]schema.Language{"go": codegen.Importer}); err != nil {
+			return nil, err
+		}
+		var modulePath string
+		if info, ok := pkg.Language["go"]; ok {
+			if info, ok := info.(codegen.GoPackageInfo); ok {
+				modulePath = info.ModulePath
+				if modulePath == "" {
+					if info.ImportBasePath != "" {
+						modulePath = path.Dir(info.ImportBasePath)
+					}
+				}
+			}
+		}
+		if modulePath == "" {
+			modulePath = codegen.ExtractModulePath(pkg.Reference())
+		}
+
+		modules[modulePath] = dep.Path
+		// The relative path used in the replace directive must start with `./` or `.\`.
+		// https://go.dev/ref/mod#go-mod-file-replace
+		start := "./"
+		if runtime.GOOS == "windows" {
+			start = ".\\"
+		}
+		if !strings.HasPrefix(dep.Path, start) {
+			modules[modulePath] = start + dep.Path
+		}
+		instructions += fmt.Sprintf("    \"%s\"\n", codegen.ExtractImportBasePath(pkg.Reference()))
+	}
+	instructions += "  )\n"
+
+	gomodFilepath := filepath.Join(req.Info.ProgramDirectory, "go.mod")
+	stat, err := os.Stat(gomodFilepath)
+	if err != nil {
+		return nil, fmt.Errorf("stat %s: %w", gomodFilepath, err)
+	}
+	gomodFileContent, err := os.ReadFile(gomodFilepath)
+	if err != nil {
+		return nil, fmt.Errorf("reading go.mod: %w", err)
+	}
+	gomod, err := modfile.Parse(gomodFilepath, gomodFileContent, nil)
+	if err != nil {
+		return nil, fmt.Errorf("go.mod parse: %w", err)
 	}
 
-	err = mod.AddReplace("github.com/pulumi/pulumi/sdk/v3", "", core, "")
-	if err != nil {
-		return nil, fmt.Errorf("add replace: %w", err)
+	for modulePath, path := range modules {
+		err = gomod.AddReplace(modulePath, "", path, "")
+		if err != nil {
+			return nil, fmt.Errorf("could not add replace statement: %w", err)
+		}
 	}
 
-	// Write the modified go.mod back to disk.
-	data, err = mod.Format()
+	data, err := gomod.Format()
 	if err != nil {
-		return nil, fmt.Errorf("format go.mod: %w", err)
+		return nil, fmt.Errorf("formatting go.mod: %w", err)
 	}
-	err = os.WriteFile(path, data, stat.Mode().Perm())
+	err = os.WriteFile(gomodFilepath, data, stat.Mode().Perm())
 	if err != nil {
-		return nil, fmt.Errorf("write go.mod: %w", err)
+		return nil, fmt.Errorf("writing go.mod: %w", err)
 	}
 
-	return &pulumirpc.LinkResponse{}, nil
+	return &pulumirpc.LinkResponse{
+		ImportInstructions: instructions,
+	}, nil
+}
+
+func (host *goLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }

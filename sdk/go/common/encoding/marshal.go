@@ -64,8 +64,8 @@ func DefaultExt() string {
 
 // Marshaler is a type that knows how to marshal and unmarshal data in one format.
 type Marshaler interface {
-	Marshal(v interface{}) ([]byte, error)
-	Unmarshal(data []byte, v interface{}) error
+	Marshal(v any) ([]byte, error)
+	Unmarshal(data []byte, v any) error
 }
 
 // JSON is a Marshaler that marshals and unmarshals JSON with indented printing.
@@ -73,7 +73,7 @@ var JSON Marshaler = &jsonMarshaler{}
 
 type jsonMarshaler struct{}
 
-func (m *jsonMarshaler) Marshal(v interface{}) ([]byte, error) {
+func (m *jsonMarshaler) Marshal(v any) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
@@ -85,7 +85,7 @@ func (m *jsonMarshaler) Marshal(v interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (m *jsonMarshaler) Unmarshal(data []byte, v interface{}) error {
+func (m *jsonMarshaler) Unmarshal(data []byte, v any) error {
 	// IDEA: use a "strict" marshaler, so that we can warn on unrecognized keys (avoiding silly mistakes).  We should
 	//     set aside an officially sanctioned area in the metadata for extensibility by 3rd parties.
 	return json.Unmarshal(data, v)
@@ -95,7 +95,7 @@ var YAML Marshaler = &yamlMarshaler{}
 
 type yamlMarshaler struct{}
 
-func (m *yamlMarshaler) Marshal(v interface{}) ([]byte, error) {
+func (m *yamlMarshaler) Marshal(v any) ([]byte, error) {
 	if r, ok := v.(yamlutil.HasRawValue); ok {
 		if len(r.RawValue()) > 0 {
 			// Attempt a comment preserving edit:
@@ -106,7 +106,7 @@ func (m *yamlMarshaler) Marshal(v interface{}) ([]byte, error) {
 	return yamlutil.YamlEncode(v)
 }
 
-func (m *yamlMarshaler) Unmarshal(data []byte, v interface{}) error {
+func (m *yamlMarshaler) Unmarshal(data []byte, v any) error {
 	// IDEA: use a "strict" marshaler, so that we can warn on unrecognized keys (avoiding silly mistakes).  We should
 	//     set aside an officially sanctioned area in the metadata for extensibility by 3rd parties.
 
@@ -126,7 +126,7 @@ type gzipMarshaller struct {
 	inner Marshaler
 }
 
-func (m *gzipMarshaller) Marshal(v interface{}) ([]byte, error) {
+func (m *gzipMarshaller) Marshal(v any) ([]byte, error) {
 	b, err := m.inner.Marshal(v)
 	if err != nil {
 		return nil, err
@@ -145,7 +145,7 @@ func (m *gzipMarshaller) Marshal(v interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (m *gzipMarshaller) Unmarshal(data []byte, v interface{}) error {
+func (m *gzipMarshaller) Unmarshal(data []byte, v any) error {
 	buf := bytes.NewBuffer(data)
 	reader, err := gzip.NewReader(buf)
 	if err != nil {

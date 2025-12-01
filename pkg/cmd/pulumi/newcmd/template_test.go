@@ -34,7 +34,6 @@ func TestSanitizeTemplate(t *testing.T) {
 		{"aws-typescript", "aws-typescript"},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 			result := sanitizeTemplate(tt.input)

@@ -16,8 +16,9 @@ package plugin
 
 import (
 	"fmt"
+	"maps"
 	"reflect"
-	"sort"
+	"slices"
 
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -43,6 +44,9 @@ type MarshalOptions struct {
 	KeepOutputValues      bool   // true if we are keeping output values.
 	UpgradeToOutputValues bool   // true if secrets and unknowns should be upgraded to output values.
 	WorkingDirectory      string // the optional working directory to use when serializing assets & archives.
+
+	// true if a nil input should result in a nil output, false if it should result in an empty struct/map.
+	PropagateNil bool
 }
 
 const (
@@ -71,6 +75,10 @@ const (
 
 // MarshalProperties marshals a resource's property map as a "JSON-like" protobuf structure.
 func MarshalProperties(props resource.PropertyMap, opts MarshalOptions) (*structpb.Struct, error) {
+	if props == nil && opts.PropagateNil {
+		return nil, nil
+	}
+
 	fields := make(map[string]*structpb.Value)
 	for _, key := range props.StableKeys() {
 		v := props[key]
@@ -150,8 +158,8 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 			return nil, fmt.Errorf("unexpected unknown property value for %q", key)
 		} else if opts.KeepUnknowns {
 			if opts.KeepOutputValues && opts.UpgradeToOutputValues {
-				output := resource.NewObjectProperty(resource.PropertyMap{
-					resource.SigKey: resource.NewStringProperty(resource.OutputValueSig),
+				output := resource.NewProperty(resource.PropertyMap{
+					resource.SigKey: resource.NewProperty(resource.OutputValueSig),
 				})
 				return MarshalPropertyValue(key, output, opts)
 			}
@@ -163,7 +171,7 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 			result := v.OutputValue().Element
 			if !v.OutputValue().Known {
 				// Unknown outputs are marshaled the same as Computed.
-				result = resource.MakeComputed(resource.NewStringProperty(""))
+				result = resource.MakeComputed(resource.NewProperty(""))
 			}
 			if v.OutputValue().Secret {
 				result = resource.MakeSecret(result)
@@ -171,22 +179,22 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 			return MarshalPropertyValue(key, result, opts)
 		}
 		obj := resource.PropertyMap{
-			resource.SigKey: resource.NewStringProperty(resource.OutputValueSig),
+			resource.SigKey: resource.NewProperty(resource.OutputValueSig),
 		}
 		if v.OutputValue().Known {
 			obj["value"] = v.OutputValue().Element
 		}
 		if v.OutputValue().Secret {
-			obj["secret"] = resource.NewBoolProperty(v.OutputValue().Secret)
+			obj["secret"] = resource.NewProperty(v.OutputValue().Secret)
 		}
 		if len(v.OutputValue().Dependencies) > 0 {
 			deps := make([]resource.PropertyValue, len(v.OutputValue().Dependencies))
 			for i, dep := range v.OutputValue().Dependencies {
-				deps[i] = resource.NewStringProperty(string(dep))
+				deps[i] = resource.NewProperty(string(dep))
 			}
-			obj["dependencies"] = resource.NewArrayProperty(deps)
+			obj["dependencies"] = resource.NewProperty(deps)
 		}
-		output := resource.NewObjectProperty(obj)
+		output := resource.NewProperty(obj)
 		return MarshalPropertyValue(key, output, opts)
 	} else if v.IsSecret() {
 		if !opts.KeepSecrets {
@@ -194,15 +202,15 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 			return MarshalPropertyValue(key, v.SecretValue().Element, opts)
 		}
 		if opts.KeepOutputValues && opts.UpgradeToOutputValues {
-			output := resource.NewObjectProperty(resource.PropertyMap{
-				resource.SigKey: resource.NewStringProperty(resource.OutputValueSig),
-				"secret":        resource.NewBoolProperty(true),
+			output := resource.NewProperty(resource.PropertyMap{
+				resource.SigKey: resource.NewProperty(resource.OutputValueSig),
+				"secret":        resource.NewProperty(true),
 				"value":         v.SecretValue().Element,
 			})
 			return MarshalPropertyValue(key, output, opts)
 		}
-		secret := resource.NewObjectProperty(resource.PropertyMap{
-			resource.SigKey: resource.NewStringProperty(resource.SecretSig),
+		secret := resource.NewProperty(resource.PropertyMap{
+			resource.SigKey: resource.NewProperty(resource.SecretSig),
 			"value":         v.SecretValue().Element,
 		})
 		return MarshalPropertyValue(key, secret, opts)
@@ -217,16 +225,16 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 			return MarshalString(val, opts), nil
 		}
 		m := resource.PropertyMap{
-			resource.SigKey: resource.NewStringProperty(resource.ResourceReferenceSig),
-			"urn":           resource.NewStringProperty(string(ref.URN)),
+			resource.SigKey: resource.NewProperty(resource.ResourceReferenceSig),
+			"urn":           resource.NewProperty(string(ref.URN)),
 		}
 		if id, hasID := ref.IDString(); hasID {
-			m["id"] = resource.NewStringProperty(id)
+			m["id"] = resource.NewProperty(id)
 		}
 		if ref.PackageVersion != "" {
-			m["packageVersion"] = resource.NewStringProperty(ref.PackageVersion)
+			m["packageVersion"] = resource.NewProperty(ref.PackageVersion)
 		}
-		return MarshalPropertyValue(key, resource.NewObjectProperty(m), opts)
+		return MarshalPropertyValue(key, resource.NewProperty(m), opts)
 	}
 
 	contract.Failf("Unrecognized property value in RPC[%s] for %q: %v (type=%v)",
@@ -271,15 +279,16 @@ func marshalUnknownProperty(elem resource.PropertyValue, opts MarshalOptions) *s
 
 // UnmarshalProperties unmarshals a "JSON-like" protobuf structure into a new resource property map.
 func UnmarshalProperties(props *structpb.Struct, opts MarshalOptions) (resource.PropertyMap, error) {
+	if props == nil && opts.PropagateNil {
+		return nil, nil
+	}
+
 	result := make(resource.PropertyMap)
 
 	// First sort the keys so we enumerate them in order (in case errors happen, we want determinism).
 	var keys []string
 	if props != nil {
-		for k := range props.Fields {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
+		keys = slices.Sorted(maps.Keys(props.Fields))
 	}
 
 	// And now unmarshal every field it into the map.
@@ -314,10 +323,10 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 		m := resource.NewNullProperty()
 		return &m, nil
 	case *structpb.Value_BoolValue:
-		m := resource.NewBoolProperty(v.GetBoolValue())
+		m := resource.NewProperty(v.GetBoolValue())
 		return &m, nil
 	case *structpb.Value_NumberValue:
-		m := resource.NewNumberProperty(v.GetNumberValue())
+		m := resource.NewProperty(v.GetNumberValue())
 		return &m, nil
 	case *structpb.Value_StringValue:
 		// If it's a string, it could be an unknown property, or just a regular string.
@@ -330,7 +339,7 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 			}
 			return nil, nil
 		}
-		m := resource.NewStringProperty(s)
+		m := resource.NewProperty(s)
 		return &m, nil
 	case *structpb.Value_ListValue:
 		lst := v.GetListValue()
@@ -347,7 +356,7 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 				}
 			}
 		}
-		m := resource.NewArrayProperty(elems)
+		m := resource.NewProperty(elems)
 		return &m, nil
 	case *structpb.Value_StructValue:
 		// Start by unmarshaling.
@@ -361,7 +370,7 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 		sig, hasSig := objmap[string(resource.SigKey)]
 		if !hasSig {
 			// This is a weakly-typed object map.
-			m := resource.NewObjectProperty(obj)
+			m := resource.NewProperty(obj)
 			return &m, nil
 		}
 
@@ -388,7 +397,7 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 					}
 				}
 			}
-			m := resource.NewAssetProperty(asset)
+			m := resource.NewProperty(asset)
 			return &m, nil
 		case archive.ArchiveSig:
 			if opts.RejectAssets {
@@ -412,7 +421,7 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 					}
 				}
 			}
-			m := resource.NewArchiveProperty(archive)
+			m := resource.NewProperty(archive)
 			return &m, nil
 		case resource.SecretSig:
 			value, ok := obj["value"]
@@ -469,7 +478,7 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 					}
 					value = id
 				}
-				r := resource.NewStringProperty(value)
+				r := resource.NewProperty(value)
 				return &r, nil
 			}
 
@@ -522,7 +531,7 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 				}
 			}
 
-			output := resource.NewOutputProperty(resource.Output{
+			output := resource.NewProperty(resource.Output{
 				Element:      value,
 				Known:        known,
 				Secret:       secret,
@@ -544,28 +553,28 @@ func unmarshalUnknownPropertyValue(s string, opts MarshalOptions) (resource.Prop
 	var unknown bool
 	switch s {
 	case UnknownBoolValue:
-		elem, unknown = resource.NewBoolProperty(false), true
+		elem, unknown = resource.NewProperty(false), true
 	case UnknownNumberValue:
-		elem, unknown = resource.NewNumberProperty(0), true
+		elem, unknown = resource.NewProperty(0.0), true
 	case UnknownStringValue:
-		elem, unknown = resource.NewStringProperty(""), true
+		elem, unknown = resource.NewProperty(""), true
 	case UnknownArrayValue:
-		elem, unknown = resource.NewArrayProperty([]resource.PropertyValue{}), true
+		elem, unknown = resource.NewProperty([]resource.PropertyValue{}), true
 	case UnknownAssetValue:
-		elem, unknown = resource.NewAssetProperty(&asset.Asset{}), true
+		elem, unknown = resource.NewProperty(&asset.Asset{}), true
 	case UnknownArchiveValue:
-		elem, unknown = resource.NewArchiveProperty(&archive.Archive{}), true
+		elem, unknown = resource.NewProperty(&archive.Archive{}), true
 	case UnknownObjectValue:
-		elem, unknown = resource.NewObjectProperty(make(resource.PropertyMap)), true
+		elem, unknown = resource.NewProperty(make(resource.PropertyMap)), true
 	}
 	if unknown {
 		if opts.KeepOutputValues && opts.UpgradeToOutputValues {
-			return resource.NewOutputProperty(resource.Output{
+			return resource.NewProperty(resource.Output{
 				Element: elem,
 			}), true
 		}
 		comp := resource.Computed{Element: elem}
-		return resource.NewComputedProperty(comp), true
+		return resource.NewProperty(comp), true
 	}
 	return resource.PropertyValue{}, false
 }
@@ -577,7 +586,7 @@ func unmarshalSecretPropertyValue(v resource.PropertyValue, opts MarshalOptions)
 	}
 	var s resource.PropertyValue
 	if opts.KeepOutputValues && opts.UpgradeToOutputValues {
-		s = resource.NewOutputProperty(resource.Output{
+		s = resource.NewProperty(resource.Output{
 			Element: v,
 			Secret:  true,
 			Known:   true,
@@ -640,7 +649,7 @@ func MarshalAsset(v *asset.Asset, opts MarshalOptions) (*structpb.Value, error) 
 	sera := v.Serialize()
 	serap := resource.NewPropertyMapFromMap(sera)
 	pk := resource.PropertyKey(v.URI)
-	return MarshalPropertyValue(pk, resource.NewObjectProperty(serap), opts)
+	return MarshalPropertyValue(pk, resource.NewProperty(serap), opts)
 }
 
 // MarshalArchive marshals an archive into its wire form for resource provider plugins.
@@ -668,5 +677,5 @@ func MarshalArchive(v *archive.Archive, opts MarshalOptions) (*structpb.Value, e
 	sera := v.Serialize()
 	serap := resource.NewPropertyMapFromMap(sera)
 	pk := resource.PropertyKey(v.URI)
-	return MarshalPropertyValue(pk, resource.NewObjectProperty(serap), opts)
+	return MarshalPropertyValue(pk, resource.NewProperty(serap), opts)
 }

@@ -14,12 +14,11 @@
 
 import base64
 import pickle
+import sys
 from typing import (
     TYPE_CHECKING,
     Any,
     ClassVar,
-    Dict,
-    List,
     Optional,
     cast,
     no_type_check,
@@ -59,17 +58,17 @@ class CheckResult:
     CheckResult represents the results of a call to `ResourceProvider.check`.
     """
 
-    inputs: Dict[str, Any]
+    inputs: dict[str, Any]
     """
     The inputs to use, if any.
     """
 
-    failures: List["CheckFailure"]
+    failures: list["CheckFailure"]
     """
     Any validation failures that occurred.
     """
 
-    def __init__(self, inputs: Dict[str, Any], failures: List["CheckFailure"]) -> None:
+    def __init__(self, inputs: dict[str, Any], failures: list["CheckFailure"]) -> None:
         self.inputs = inputs
         self.failures = failures
 
@@ -104,12 +103,12 @@ class DiffResult:
     If true, this diff detected changes and suggests an update.
     """
 
-    replaces: Optional[List[str]]
+    replaces: Optional[list[str]]
     """
     If this update requires a replacement, the set of properties triggering it.
     """
 
-    stables: Optional[List[str]]
+    stables: Optional[list[str]]
     """
     An optional list of properties that will not ever change.
     """
@@ -123,8 +122,8 @@ class DiffResult:
     def __init__(
         self,
         changes: Optional[bool] = None,
-        replaces: Optional[List[str]] = None,
-        stables: Optional[List[str]] = None,
+        replaces: Optional[list[str]] = None,
+        stables: Optional[list[str]] = None,
         delete_before_replace: Optional[bool] = None,
     ) -> None:
         self.changes = changes
@@ -143,12 +142,12 @@ class CreateResult:
     The ID of the created resource.
     """
 
-    outs: Optional[Dict[str, Any]]
+    outs: Optional[dict[str, Any]]
     """
     Any properties that were computed during creation.
     """
 
-    def __init__(self, id_: str, outs: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, id_: str, outs: Optional[dict[str, Any]] = None) -> None:
         self.id = id_
         self.outs = outs
 
@@ -163,7 +162,7 @@ class ReadResult:
     The ID of the resource ready back (or blank if missing).
     """
 
-    outs: Optional[Dict[str, Any]]
+    outs: Optional[dict[str, Any]]
     """
     The current property state read from the live environment.
     """
@@ -171,7 +170,7 @@ class ReadResult:
     def __init__(
         self,
         id_: Optional[str] = None,
-        outs: Optional[Dict[str, Any]] = None,
+        outs: Optional[dict[str, Any]] = None,
     ) -> None:
         self.id = id_
         self.outs = outs
@@ -182,12 +181,12 @@ class UpdateResult:
     UpdateResult represents the results of a call to `ResourceProvider.update`.
     """
 
-    outs: Optional[Dict[str, Any]]
+    outs: Optional[dict[str, Any]]
     """
     Any properties that were computed during updating.
     """
 
-    def __init__(self, outs: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, outs: Optional[dict[str, Any]] = None) -> None:
         self.outs = outs
 
 
@@ -205,7 +204,7 @@ class ResourceProvider:
     if any secret Outputs were captured during serialization of the provider.
     """
 
-    def check(self, _olds: Dict[str, Any], news: Dict[str, Any]) -> CheckResult:
+    def check(self, _olds: dict[str, Any], news: dict[str, Any]) -> CheckResult:
         """
         Check validates that the given property bag is valid for a resource of the given type.
         """
@@ -214,15 +213,15 @@ class ResourceProvider:
     def diff(
         self,
         _id: str,
-        _olds: Dict[str, Any],
-        _news: Dict[str, Any],
+        _olds: dict[str, Any],
+        _news: dict[str, Any],
     ) -> DiffResult:
         """
         Diff checks what impacts a hypothetical update will have on the resource's properties.
         """
         return DiffResult()
 
-    def create(self, props: Dict[str, Any]) -> CreateResult:
+    def create(self, props: dict[str, Any]) -> CreateResult:
         """
         Create allocates a new instance of the provided resource and returns its unique ID
         afterwards. If this call fails, the resource must not have been created (i.e., it is
@@ -230,7 +229,7 @@ class ResourceProvider:
         """
         raise Exception("Subclass of ResourceProvider must implement 'create'")
 
-    def read(self, id_: str, props: Dict[str, Any]) -> ReadResult:
+    def read(self, id_: str, props: dict[str, Any]) -> ReadResult:
         """
         Reads the current live state associated with a resource.  Enough state must be included in
         the inputs to uniquely identify the resource; this is typically just the resource ID, but it
@@ -241,15 +240,15 @@ class ResourceProvider:
     def update(
         self,
         _id: str,
-        _olds: Dict[str, Any],
-        _news: Dict[str, Any],
+        _olds: dict[str, Any],
+        _news: dict[str, Any],
     ) -> UpdateResult:
         """
         Update updates an existing resource with new values.
         """
         return UpdateResult()
 
-    def delete(self, _id: str, _props: Dict[str, Any]) -> None:
+    def delete(self, _id: str, _props: dict[str, Any]) -> None:
         """
         Delete tears down an existing resource with the given ID.  If it fails, the resource is
         assumed to still exist.
@@ -278,10 +277,18 @@ def serialize_provider(provider: ResourceProvider) -> str:
     # See: https://github.com/uqfoundation/dill/issues/481#issuecomment-1133789848
     unsorted_batch_setitems = pickle.Pickler._batch_setitems
 
-    def batch_set_items_sorted(self, items):
+    def batch_set_items_sorted(self, items, obj):
+        unsorted_batch_setitems(self, sorted(items), obj)
+
+    def batch_set_items_sorted_before_py14(self, items):
         unsorted_batch_setitems(self, sorted(items))
 
-    pickle.Pickler._batch_setitems = batch_set_items_sorted
+    if sys.version_info < (3, 14):
+        pickle.Pickler._batch_setitems = batch_set_items_sorted_before_py14
+    else:
+        # This internal method takes `obj` as a 2nd parameter since 3.14
+        # https://github.com/python/cpython/commit/c0c2aa7644ebd4953682784dbb9904fe955ff647#diff-0e6904a03cced1cde99717e889a6a20715fd002d7186a64e77477c2d99c32a47
+        pickle.Pickler._batch_setitems = batch_set_items_sorted
 
     def save_dict_sorted(self, obj):
         if self.bin:
@@ -290,7 +297,10 @@ def serialize_provider(provider: ResourceProvider) -> str:
             self.write(pickle.MARK + pickle.DICT)
 
         self.memoize(obj)
-        self._batch_setitems(obj.items())
+        if sys.version_info < (3, 14):
+            self._batch_setitems(obj.items())
+        else:
+            self._batch_setitems(obj.items(), obj)
 
     pickle.Pickler.save_dict = save_dict_sorted
 

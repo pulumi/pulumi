@@ -82,6 +82,7 @@ func GetCollectionTypes(collectionType Type, rng hcl.Range, strict bool) (Type, 
 			types = append(types, t)
 		}
 		valueType, _ = UnifyTypes(types...)
+
 	default:
 		// If the collection is a dynamic type, treat it as an iterable(dynamic, dynamic).
 		// Otherwise, if we are in strict-mode, issue an error.

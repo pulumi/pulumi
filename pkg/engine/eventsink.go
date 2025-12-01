@@ -37,7 +37,7 @@ type eventSink struct {
 	statusSink bool         // whether this is an event sink for status messages.
 }
 
-func (s *eventSink) Logf(sev diag.Severity, d *diag.Diag, args ...interface{}) {
+func (s *eventSink) Logf(sev diag.Severity, d *diag.Diag, args ...any) {
 	switch sev {
 	case diag.Debug:
 		s.Debugf(d, args...)
@@ -54,7 +54,7 @@ func (s *eventSink) Logf(sev diag.Severity, d *diag.Diag, args ...interface{}) {
 	}
 }
 
-func (s *eventSink) Debugf(d *diag.Diag, args ...interface{}) {
+func (s *eventSink) Debugf(d *diag.Diag, args ...any) {
 	// For debug messages, write both to the glogger and a stream, if there is one.
 	logging.V(3).Infof(d.Message, args...)
 	prefix, msg := s.Stringify(diag.Debug, d, args...)
@@ -64,7 +64,7 @@ func (s *eventSink) Debugf(d *diag.Diag, args ...interface{}) {
 	s.events.diagDebugEvent(d, prefix, msg, s.statusSink)
 }
 
-func (s *eventSink) Infof(d *diag.Diag, args ...interface{}) {
+func (s *eventSink) Infof(d *diag.Diag, args ...any) {
 	prefix, msg := s.Stringify(diag.Info, d, args...)
 	if logging.V(5) {
 		logging.V(5).Infof("eventSink::Info(%v)", msg[:len(msg)-1])
@@ -72,7 +72,7 @@ func (s *eventSink) Infof(d *diag.Diag, args ...interface{}) {
 	s.events.diagInfoEvent(d, prefix, msg, s.statusSink)
 }
 
-func (s *eventSink) Infoerrf(d *diag.Diag, args ...interface{}) {
+func (s *eventSink) Infoerrf(d *diag.Diag, args ...any) {
 	prefix, msg := s.Stringify(diag.Info /* not Infoerr, just "info: "*/, d, args...)
 	if logging.V(5) {
 		logging.V(5).Infof("eventSink::Infoerr(%v)", msg[:len(msg)-1])
@@ -80,7 +80,7 @@ func (s *eventSink) Infoerrf(d *diag.Diag, args ...interface{}) {
 	s.events.diagInfoerrEvent(d, prefix, msg, s.statusSink)
 }
 
-func (s *eventSink) Errorf(d *diag.Diag, args ...interface{}) {
+func (s *eventSink) Errorf(d *diag.Diag, args ...any) {
 	prefix, msg := s.Stringify(diag.Error, d, args...)
 	if logging.V(5) {
 		logging.V(5).Infof("eventSink::Error(%v)", msg[:len(msg)-1])
@@ -88,7 +88,7 @@ func (s *eventSink) Errorf(d *diag.Diag, args ...interface{}) {
 	s.events.diagErrorEvent(d, prefix, msg, s.statusSink)
 }
 
-func (s *eventSink) Warningf(d *diag.Diag, args ...interface{}) {
+func (s *eventSink) Warningf(d *diag.Diag, args ...any) {
 	prefix, msg := s.Stringify(diag.Warning, d, args...)
 	if logging.V(5) {
 		logging.V(5).Infof("eventSink::Warning(%v)", msg[:len(msg)-1])
@@ -96,7 +96,7 @@ func (s *eventSink) Warningf(d *diag.Diag, args ...interface{}) {
 	s.events.diagWarningEvent(d, prefix, msg, s.statusSink)
 }
 
-func (s *eventSink) Stringify(sev diag.Severity, d *diag.Diag, args ...interface{}) (string, string) {
+func (s *eventSink) Stringify(sev diag.Severity, d *diag.Diag, args ...any) (string, string) {
 	var prefix bytes.Buffer
 	if sev != diag.Info && sev != diag.Infoerr {
 		// Unless it's an ordinary stdout message, prepend the message category's prefix (error/warning).

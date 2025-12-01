@@ -25,9 +25,8 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -43,8 +42,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newPluginInstallCmd() *cobra.Command {
+func newPluginInstallCmd(packageResolutionOptions packageresolution.Options) *cobra.Command {
 	var picmd pluginInstallCmd
+	picmd.packageResolutionOptions = packageResolutionOptions
 	cmd := &cobra.Command{
 		Use:   "install [KIND NAME [VERSION]]",
 		Args:  cmdutil.MaximumNArgs(3),
@@ -92,6 +92,8 @@ type pluginInstallCmd struct {
 	color    colors.Colorization
 	registry registry.Registry
 
+	packageResolutionOptions packageresolution.Options
+
 	pluginGetLatestVersion func(
 		workspace.PluginSpec, context.Context,
 	) (*semver.Version, error) // == workspace.PluginSpec.GetLatestVersion
@@ -120,18 +122,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		cmd.installPluginSpec = installPluginSpec
 	}
 	if cmd.registry == nil {
-		cmd.registry = registry.NewOnDemandRegistry(func() (registry.Registry, error) {
-			b, err := cmdBackend.NonInteractiveCurrentBackend(
-				ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil,
-			)
-			if err == nil && b != nil {
-				return b.GetReadOnlyPackageRegistry(), nil
-			}
-			if b == nil || errors.Is(err, backenderr.ErrLoginRequired) {
-				return unauthenticatedregistry.New(cmd.diag, cmd.env), nil
-			}
-			return nil, fmt.Errorf("could not get registry backend: %w", err)
-		})
+		cmd.registry = cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmd.diag, cmd.env)
 	}
 
 	// Parse the kind, name, and version, if specified.
@@ -193,29 +184,17 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		}
 
 		if pluginSpec.Kind == apitype.ResourcePlugin && // The registry only supports resource plugins
-			!cmd.env.GetBool(env.DisableRegistryResolve) &&
 			pluginSpec.PluginDownloadURL == "" && // Don't override explicit pluginDownloadURLs
 			cmd.file == "" { // We don't need help looking up the download URL when we are not downloading a file
-			pkgMetadata, err := registry.ResolvePackageFromName(ctx, cmd.registry, pluginSpec.Name, pluginSpec.Version)
-			if err == nil {
-				pluginSpec.Name = pkgMetadata.Name
-				pluginSpec.PluginDownloadURL = pkgMetadata.PluginDownloadURL
-			} else if errors.Is(err, registry.ErrNotFound) &&
-				registry.PulumiPublishedBeforeRegistry(pluginSpec.Name) {
-				// If the error is [registry.ErrNotFound], then this could
-				// be a Pulumi plugin that isn't in the registry.
-				//
-				// We just ignore the failure in the hope that the
-				// download against GitHub will succeed.
-			} else {
-				for _, suggested := range registry.GetSuggestedPackages(err) {
-					cmd.diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
-						suggested.Source, suggested.Publisher, suggested.Name,
-						suggested.Version,
-					)
-				}
-				return fmt.Errorf("Unable to resolve package from name: %w", err)
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("getting current working directory: %w", err)
 			}
+			updatedSpec, err := cmd.resolvePluginSpec(ctx, pluginSpec, cwd)
+			if err != nil {
+				return err
+			}
+			pluginSpec = updatedSpec
 		}
 
 		// If we don't have a version try to look one up
@@ -287,7 +266,7 @@ func installPluginSpec(
 ) error {
 	// If we got here, actually try to do the download.
 	var source string
-	var payload workspace.PluginContent
+	var payload pkgWorkspace.PluginContent
 	var err error
 	if file == "" {
 		withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
@@ -304,7 +283,7 @@ func installPluginSpec(
 		}
 		defer func() { contract.IgnoreError(os.Remove(r.Name())) }()
 
-		payload = workspace.TarPlugin(r)
+		payload = pkgWorkspace.TarPlugin(r)
 	} else {
 		source = file
 		logging.V(1).Infof("%s opening tarball from %s", label, file)
@@ -314,13 +293,13 @@ func installPluginSpec(
 		}
 	}
 	logging.V(1).Infof("%s installing tarball ...", label)
-	if err = install.InstallWithContext(ctx, payload, reinstall); err != nil {
+	if err = pkgWorkspace.InstallPluginContent(ctx, install, payload, reinstall); err != nil {
 		return fmt.Errorf("installing %s from %s: %w", label, source, err)
 	}
 	return nil
 }
 
-func getFilePayload(file string, spec workspace.PluginSpec) (workspace.PluginContent, error) {
+func getFilePayload(file string, spec workspace.PluginSpec) (pkgWorkspace.PluginContent, error) {
 	source := file
 	stat, err := os.Stat(file)
 	if err != nil {
@@ -328,7 +307,7 @@ func getFilePayload(file string, spec workspace.PluginSpec) (workspace.PluginCon
 	}
 
 	if stat.IsDir() {
-		return workspace.DirPlugin(file), nil
+		return pkgWorkspace.DirPlugin(file), nil
 	}
 
 	f, err := os.Open(file)
@@ -349,7 +328,42 @@ func getFilePayload(file string, spec workspace.PluginSpec) (workspace.PluginCon
 		if runtime.GOOS != "windows" && (stat.Mode()&0o100) == 0 {
 			return nil, fmt.Errorf("%s is not executable", source)
 		}
-		return workspace.SingleFilePlugin(f, spec), nil
+		return pkgWorkspace.SingleFilePlugin(f, spec), nil
 	}
-	return workspace.TarPlugin(f), nil
+	return pkgWorkspace.TarPlugin(f), nil
+}
+
+// resolvePluginSpec resolves plugin specifications using various resolution strategies.
+func (cmd *pluginInstallCmd) resolvePluginSpec(
+	ctx context.Context, pluginSpec workspace.PluginSpec, absProjectDir string,
+) (workspace.PluginSpec, error) {
+	resolutionEnv := cmd.packageResolutionOptions
+	result, err := packageresolution.Resolve(
+		ctx, cmd.registry, packageresolution.DefaultWorkspace(), pluginSpec, resolutionEnv, absProjectDir)
+	if err != nil {
+		var packageNotFoundErr *packageresolution.PackageNotFoundError
+		if errors.As(err, &packageNotFoundErr) {
+			for _, suggested := range packageNotFoundErr.Suggestions() {
+				cmd.diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
+					suggested.Source, suggested.Publisher, suggested.Name,
+					suggested.Version,
+				)
+			}
+		}
+		return pluginSpec, fmt.Errorf("Unable to resolve package from name: %w", err)
+	}
+
+	switch res := result.(type) {
+	case packageresolution.LocalPathResult,
+		packageresolution.ExternalSourceResult,
+		packageresolution.InstalledInWorkspaceResult:
+		return pluginSpec, nil
+	case packageresolution.RegistryResult:
+		pluginSpec.Name = res.Metadata.Name
+		pluginSpec.PluginDownloadURL = res.Metadata.PluginDownloadURL
+		return pluginSpec, nil
+	default:
+		contract.Failf("Unexpected result type: %T", result)
+		return pluginSpec, nil
+	}
 }

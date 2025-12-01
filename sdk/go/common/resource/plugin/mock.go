@@ -33,7 +33,7 @@ type MockHost struct {
 	ListAnalyzersF      func() []Analyzer
 	ProviderF           func(descriptor workspace.PackageDescriptor) (Provider, error)
 	CloseProviderF      func(provider Provider) error
-	LanguageRuntimeF    func(runtime string, info ProgramInfo) (LanguageRuntime, error)
+	LanguageRuntimeF    func(runtime string) (LanguageRuntime, error)
 	EnsurePluginsF      func(plugins []workspace.PluginSpec, kinds Flags) error
 	ResolvePluginF      func(spec workspace.PluginSpec) (*workspace.PluginInfo, error)
 	GetProjectPluginsF  func() []workspace.ProjectPlugin
@@ -99,9 +99,9 @@ func (m *MockHost) CloseProvider(provider Provider) error {
 	return nil
 }
 
-func (m *MockHost) LanguageRuntime(runtime string, info ProgramInfo) (LanguageRuntime, error) {
+func (m *MockHost) LanguageRuntime(runtime string) (LanguageRuntime, error) {
 	if m.LanguageRuntimeF != nil {
-		return m.LanguageRuntimeF(runtime, info)
+		return m.LanguageRuntimeF(runtime)
 	}
 	return nil, errors.New("LanguageRuntime not implemented")
 }

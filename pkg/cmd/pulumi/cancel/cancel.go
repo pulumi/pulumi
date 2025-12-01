@@ -31,7 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
-func NewCancelCmd() *cobra.Command {
+func NewCancelCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var yes bool
 	var stack string
 	cmd := &cobra.Command{
@@ -60,8 +60,6 @@ func NewCancelCmd() *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-
-			ws := pkgWorkspace.Instance
 
 			s, err := cmdStack.RequireStack(
 				ctx,

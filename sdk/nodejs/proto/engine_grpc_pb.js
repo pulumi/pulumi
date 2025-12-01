@@ -155,4 +155,4 @@ startDebugging: {
   },
 };
 
-exports.EngineClient = grpc.makeGenericClientConstructor(EngineService);
+exports.EngineClient = grpc.makeGenericClientConstructor(EngineService, 'Engine');

@@ -47,7 +47,7 @@ func TestDuplicateURN(t *testing.T) {
 		assert.Error(t, err)
 
 		// Reads use the same URN namespace as register so make sure this also errors
-		_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", "id", "", resource.PropertyMap{}, "", "", "", "")
+		_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", "id", "", resource.PropertyMap{}, "", "", "", nil, "", "")
 		assert.Error(t, err)
 
 		return nil
@@ -75,7 +75,7 @@ func TestDuplicateAlias(t *testing.T) {
 
 	program := func(monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	}
 
@@ -91,7 +91,7 @@ func TestDuplicateAlias(t *testing.T) {
 
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
@@ -121,7 +121,7 @@ func TestSecretMasked(t *testing.T) {
 					return plugin.CreateResponse{
 						ID: "id",
 						Properties: resource.PropertyMap{
-							"shouldBeSecret": resource.NewStringProperty("bar"),
+							"shouldBeSecret": resource.NewProperty("bar"),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -133,7 +133,7 @@ func TestSecretMasked(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"shouldBeSecret": resource.MakeSecret(resource.NewStringProperty("bar")),
+				"shouldBeSecret": resource.MakeSecret(resource.NewProperty("bar")),
 			},
 		})
 		require.NoError(t, err)
@@ -149,9 +149,9 @@ func TestSecretMasked(t *testing.T) {
 
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 	if snap != nil {
 		assert.True(t, snap.Resources[1].Outputs["shouldBeSecret"].IsSecret())
 	}
@@ -174,15 +174,15 @@ func TestReadReplaceStep(t *testing.T) {
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			return nil
 		}, true).
 		Then(func(snap *deploy.Snapshot, err error) {
-			assert.NoError(t, err)
-			assert.NotNil(t, snap)
+			require.NoError(t, err)
+			require.NotNil(t, snap)
 
 			assert.Nil(t, snap.VerifyIntegrity())
-			assert.Len(t, snap.Resources, 2)
+			require.Len(t, snap.Resources, 2)
 			assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 			assert.False(t, snap.Resources[1].External)
 
@@ -197,16 +197,16 @@ func TestReadReplaceStep(t *testing.T) {
 					},
 				}).
 				RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "read-id", "", nil, "", "", "", "")
-					assert.NoError(t, err)
+					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "read-id", "", nil, "", "", "", nil, "", "")
+					require.NoError(t, err)
 					return nil
 				}, false).
 				Then(func(snap *deploy.Snapshot, err error) {
-					assert.NoError(t, err)
+					require.NoError(t, err)
 
-					assert.NotNil(t, snap)
+					require.NotNil(t, snap)
 					assert.Nil(t, snap.VerifyIntegrity())
-					assert.Len(t, snap.Resources, 2)
+					require.Len(t, snap.Resources, 2)
 					assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 					assert.True(t, snap.Resources[1].External)
 				})
@@ -230,13 +230,13 @@ func TestRelinquishStep(t *testing.T) {
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			return nil
 		}, true).
 		Then(func(snap *deploy.Snapshot, err error) {
-			assert.NotNil(t, snap)
+			require.NotNil(t, snap)
 			assert.Nil(t, snap.VerifyIntegrity())
-			assert.Len(t, snap.Resources, 2)
+			require.Len(t, snap.Resources, 2)
 			assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 			assert.False(t, snap.Resources[1].External)
 
@@ -250,16 +250,16 @@ func TestRelinquishStep(t *testing.T) {
 					},
 				}).
 				RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "", "")
-					assert.NoError(t, err)
+					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "", nil, "", "")
+					require.NoError(t, err)
 					return nil
 				}, true).
 				Then(func(snap *deploy.Snapshot, err error) {
-					assert.NoError(t, err)
+					require.NoError(t, err)
 
-					assert.NotNil(t, snap)
+					require.NotNil(t, snap)
 					assert.Nil(t, snap.VerifyIntegrity())
-					assert.Len(t, snap.Resources, 2)
+					require.Len(t, snap.Resources, 2)
 					assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 					assert.True(t, snap.Resources[1].External)
 				})
@@ -279,16 +279,16 @@ func TestTakeOwnershipStep(t *testing.T) {
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "my-resource-id", "", nil, "", "", "", "")
-			assert.NoError(t, err)
+			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "my-resource-id", "", nil, "", "", "", nil, "", "")
+			require.NoError(t, err)
 			return nil
 		}, false).
 		Then(func(snap *deploy.Snapshot, err error) {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
-			assert.NotNil(t, snap)
+			require.NotNil(t, snap)
 			assert.Nil(t, snap.VerifyIntegrity())
-			assert.Len(t, snap.Resources, 2)
+			require.Len(t, snap.Resources, 2)
 			assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 			assert.True(t, snap.Resources[1].External)
 
@@ -306,15 +306,15 @@ func TestTakeOwnershipStep(t *testing.T) {
 				}).
 				RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 					_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					return nil
 				}, true).
 				Then(func(snap *deploy.Snapshot, err error) {
-					assert.NoError(t, err)
+					require.NoError(t, err)
 
-					assert.NotNil(t, snap)
+					require.NotNil(t, snap)
 					assert.Nil(t, snap.VerifyIntegrity())
-					assert.Len(t, snap.Resources, 2)
+					require.Len(t, snap.Resources, 2)
 					assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 					assert.False(t, snap.Resources[1].External)
 				})
@@ -328,11 +328,13 @@ func TestInitErrorsStep(t *testing.T) {
 	lt.NewTestBuilder(t, &deploy.Snapshot{
 		Resources: []*resource.State{
 			{
-				Type:   "pulumi:providers:pkgA",
-				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::default",
-				Custom: true,
-				Delete: false,
-				ID:     "935b2216-aec5-4810-96fd-5f6eae57ac88",
+				Type:    "pulumi:providers:pkgA",
+				URN:     "urn:pulumi:test::test::pulumi:providers:pkgA::default",
+				Custom:  true,
+				Delete:  false,
+				ID:      "935b2216-aec5-4810-96fd-5f6eae57ac88",
+				Outputs: resource.PropertyMap{},
+				Inputs:  resource.PropertyMap{},
 			},
 			{
 				Type:     "pkgA:m:typA",
@@ -343,6 +345,8 @@ func TestInitErrorsStep(t *testing.T) {
 				InitErrors: []string{
 					`errors should yield an empty update to "continue" awaiting initialization.`,
 				},
+				Outputs: resource.PropertyMap{},
+				Inputs:  resource.PropertyMap{},
 			},
 		},
 	}).
@@ -357,15 +361,15 @@ func TestInitErrorsStep(t *testing.T) {
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			return nil
 		}, false).
 		Then(func(snap *deploy.Snapshot, err error) {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
-			assert.NotNil(t, snap)
+			require.NotNil(t, snap)
 			assert.Nil(t, snap.VerifyIntegrity())
-			assert.Len(t, snap.Resources, 2)
+			require.Len(t, snap.Resources, 2)
 			assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 			assert.Empty(t, snap.Resources[1].InitErrors)
 		})
@@ -382,8 +386,8 @@ func TestReadNilOutputs(t *testing.T) {
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "", "")
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			_, _, _ = monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "", nil, "", "")
+			require.Fail(t, "RegisterResource should not return")
 
 			return nil
 		}, true).

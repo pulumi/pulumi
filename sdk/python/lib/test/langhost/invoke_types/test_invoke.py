@@ -69,6 +69,7 @@ class TestInvoke(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         if name == "resourceA":
             self.assertEqual(

@@ -16,20 +16,22 @@ package model
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
 
-func errorf(subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {
+func errorf(subject hcl.Range, f string, args ...any) *hcl.Diagnostic {
 	return diagf(hcl.DiagError, subject, f, args...)
 }
 
-func warnf(subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {
+func warnf(subject hcl.Range, f string, args ...any) *hcl.Diagnostic {
 	return diagf(hcl.DiagWarning, subject, f, args...)
 }
 
-func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {
+func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ...any) *hcl.Diagnostic {
 	message := fmt.Sprintf(f, args...)
 	return &hcl.Diagnostic{
 		Severity: severity,
@@ -39,7 +41,9 @@ func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ..
 }
 
 func ExprNotConvertible(destType Type, expr Expression) *hcl.Diagnostic {
-	_, whyF := destType.conversionFrom(expr.Type(), false, map[Type]struct{}{})
+	conversionKind, whyF := destType.conversionFrom(expr.Type(), false, map[Type]struct{}{})
+	contract.Assertf(whyF != nil, "destType.conversionFrom (kind: %#v) should always have a reason: %T\n",
+		conversionKind, destType)
 	why := whyF()
 	if len(why) != 0 {
 		return errorf(expr.SyntaxNode().Range(), "%s", why[0].Summary)
@@ -104,11 +108,16 @@ func tupleIndexOutOfRange(tupleLen int, indexRange hcl.Range) *hcl.Diagnostic {
 }
 
 func unknownObjectProperty(name string, indexRange hcl.Range, props []string) *hcl.Diagnostic {
+	slices.Sort(props)
 	return errorf(indexRange, "unknown property '%s' among %v", name, props)
 }
 
 func unsupportedReceiverType(receiver Type, indexRange hcl.Range) *hcl.Diagnostic {
 	return errorf(indexRange, "cannot traverse value of type %v", receiver)
+}
+
+func unsupportedReceiverTypeWarning(receiver Type, indexRange hcl.Range) *hcl.Diagnostic {
+	return warnf(indexRange, "cannot traverse value of type %v", receiver)
 }
 
 func unsupportedCollectionType(collectionType Type, iteratorRange hcl.Range) *hcl.Diagnostic {
@@ -123,7 +132,7 @@ func undefinedVariable(variableName string, variableRange hcl.Range, warn bool) 
 	return f(variableRange, "undefined variable %v", variableName)
 }
 
-func internalError(rng hcl.Range, fmt string, args ...interface{}) *hcl.Diagnostic {
+func internalError(rng hcl.Range, fmt string, args ...any) *hcl.Diagnostic {
 	return errorf(rng, "Internal error: "+fmt, args...)
 }
 

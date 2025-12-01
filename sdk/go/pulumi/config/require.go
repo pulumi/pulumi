@@ -25,11 +25,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-func failf(format string, a ...interface{}) {
+func failf(format string, a ...any) {
 	panic(fmt.Errorf(format, a...))
 }
 
-func require(ctx *pulumi.Context, key string, secret bool, use, insteadOf string) string {
+func requireConfig(ctx *pulumi.Context, key string, secret bool, use, insteadOf string) string {
 	v, ok := get(ctx, key, use, insteadOf)
 
 	secretText := " "
@@ -47,11 +47,11 @@ func require(ctx *pulumi.Context, key string, secret bool, use, insteadOf string
 
 // Require loads a configuration value by its key, or panics if it doesn't exist.
 func Require(ctx *pulumi.Context, key string) string {
-	return require(ctx, key, false, "RequireSecret", "Require")
+	return requireConfig(ctx, key, false, "RequireSecret", "Require")
 }
 
-func requireObject(ctx *pulumi.Context, key string, secret bool, output interface{}, use, insteadOf string) {
-	v := require(ctx, key, secret, use, insteadOf)
+func requireObject(ctx *pulumi.Context, key string, secret bool, output any, use, insteadOf string) {
+	v := requireConfig(ctx, key, secret, use, insteadOf)
 	if err := json.Unmarshal([]byte(v), output); err != nil {
 		failf("unable to unmarshall required configuration variable '%s'; %s", key, err)
 	}
@@ -59,12 +59,12 @@ func requireObject(ctx *pulumi.Context, key string, secret bool, output interfac
 
 // RequireObject loads an optional configuration value by its key into the output variable,
 // or panics if unable to do so.
-func RequireObject(ctx *pulumi.Context, key string, output interface{}) {
+func RequireObject(ctx *pulumi.Context, key string, output any) {
 	requireObject(ctx, key, false, output, "RequireSecretObject", "RequireObject")
 }
 
 func requireBool(ctx *pulumi.Context, key string, secret bool, use, insteadOf string) bool {
-	v := require(ctx, key, secret, use, insteadOf)
+	v := requireConfig(ctx, key, secret, use, insteadOf)
 	o, err := cast.ToBoolE(v)
 	if err != nil {
 		failf("unable to parse required configuration variable '%s'; %s", key, err)
@@ -78,7 +78,7 @@ func RequireBool(ctx *pulumi.Context, key string) bool {
 }
 
 func requireFloat64(ctx *pulumi.Context, key string, secret bool, use, insteadOf string) float64 {
-	v := require(ctx, key, secret, use, insteadOf)
+	v := requireConfig(ctx, key, secret, use, insteadOf)
 	o, err := cast.ToFloat64E(v)
 	if err != nil {
 		failf("unable to parse required configuration variable '%s'; %s", key, err)
@@ -92,7 +92,7 @@ func RequireFloat64(ctx *pulumi.Context, key string) float64 {
 }
 
 func requireInt(ctx *pulumi.Context, key string, secret bool, use, insteadOf string) int {
-	v := require(ctx, key, secret, use, insteadOf)
+	v := requireConfig(ctx, key, secret, use, insteadOf)
 	o, err := cast.ToIntE(v)
 	if err != nil {
 		failf("unable to parse required configuration variable '%s'; %s", key, err)
@@ -108,12 +108,12 @@ func RequireInt(ctx *pulumi.Context, key string) int {
 // RequireSecret loads a configuration value by its key returning it wrapped in a secret Output,
 // or panics if it doesn't exist.
 func RequireSecret(ctx *pulumi.Context, key string) pulumi.StringOutput {
-	return pulumi.ToSecret(require(ctx, key, true, "", "")).(pulumi.StringOutput)
+	return pulumi.ToSecret(requireConfig(ctx, key, true, "", "")).(pulumi.StringOutput)
 }
 
 // RequireSecretObject loads an optional configuration value by its key into the output variable,
 // returning it wrapped in a secret Output, or panics if unable to do so.
-func RequireSecretObject(ctx *pulumi.Context, key string, output interface{}) pulumi.Output {
+func RequireSecretObject(ctx *pulumi.Context, key string, output any) pulumi.Output {
 	requireObject(ctx, key, true, output, "", "")
 	return pulumi.ToSecret(output)
 }

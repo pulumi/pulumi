@@ -17,7 +17,7 @@ package graph
 import (
 	mapset "github.com/deckarep/golang-set/v2"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -27,6 +27,18 @@ type DependencyGraph struct {
 	index      map[*resource.State]int // A mapping of resource pointers to indexes within the snapshot
 	resources  []*resource.State       // The list of resources, obtained from the snapshot
 	childrenOf map[resource.URN][]int  // Pre-computed map of transitive children for each resource
+}
+
+// Alias maps a new *resource.State to an existing resource in the dependency graph.
+func (dg *DependencyGraph) Alias(newRes *resource.State, existingRes *resource.State) {
+	// Ensure that the new resource is not already in the dependency graph.
+	_, exists := dg.index[newRes]
+	contract.Assertf(!exists, "new resource %s already exists in the dependency graph", newRes.URN)
+	// Ensure that the existing resource is in the dependency graph.
+	index, exists := dg.index[existingRes]
+	contract.Assertf(exists, "existing resource %s does not exist in the dependency graph", existingRes.URN)
+	// Map the new resource to the index of the existing resource.
+	dg.index[newRes] = index
 }
 
 // DependingOn returns a slice containing all resources that directly or indirectly
@@ -60,7 +72,8 @@ func (dg *DependencyGraph) DependingOn(res *resource.State,
 				if includeChildren && dependentSet[dep.URN] {
 					return true
 				}
-			case resource.ResourceDependency, resource.ResourcePropertyDependency, resource.ResourceDeletedWith:
+			case resource.ResourceDependency, resource.ResourcePropertyDependency,
+				resource.ResourceDeletedWith, resource.ResourceReplaceWith:
 				if dependentSet[dep.URN] {
 					return true
 				}
@@ -130,7 +143,8 @@ func (dg *DependencyGraph) OnlyDependsOn(res *resource.State) []*resource.State 
 				if len(dependentSet[dep.URN]) > 0 && len(nonDependentSet[dep.URN]) == 0 {
 					return true
 				}
-			case resource.ResourceDependency, resource.ResourcePropertyDependency, resource.ResourceDeletedWith:
+			case resource.ResourceDependency, resource.ResourcePropertyDependency, resource.ResourceDeletedWith,
+				resource.ResourceReplaceWith:
 				if len(dependentSet[dep.URN]) == 1 && len(nonDependentSet[dep.URN]) == 0 {
 					return true
 				}
@@ -187,7 +201,7 @@ func (dg *DependencyGraph) OnlyDependsOn(res *resource.State) []*resource.State 
 // depends directly. This includes the resource's provider, parent, any
 // resources in the `Dependencies` list, any resources in the
 // `PropertyDependencies` map, and any resource referenced by the `DeletedWith`
-// field.
+// or `ReplaceWith` fields.
 func (dg *DependencyGraph) DependenciesOf(res *resource.State) mapset.Set[*resource.State] {
 	set := mapset.NewSet[*resource.State]()
 
@@ -390,7 +404,9 @@ func NewDependencyGraph(resources []*resource.State) *DependencyGraph {
 		parent := res.Parent
 		for parent != "" {
 			childrenOf[parent] = append(childrenOf[parent], idx)
-			parent = resources[urnIndex[parent]].Parent
+			idx, has := urnIndex[parent]
+			contract.Assertf(has, "parent %q not found in urnIndex", parent)
+			parent = resources[idx].Parent
 		}
 	}
 

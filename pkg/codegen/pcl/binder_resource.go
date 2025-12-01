@@ -445,7 +445,7 @@ func (s *optionsScopes) GetScopesForBlock(block *hclsyntax.Block) (model.Scopes,
 }
 
 func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.Scope, hcl.Diagnostics) {
-	if attr.Name == "ignoreChanges" {
+	if attr.Name == "ignoreChanges" || attr.Name == "hideDiffs" {
 		obj, ok := model.ResolveOutputs(s.resource.InputType).(*model.ObjectType)
 		if !ok {
 			return nil, nil
@@ -495,6 +495,9 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 			case "ignoreChanges":
 				t = model.NewListType(ResourcePropertyType)
 				resourceOptions.IgnoreChanges = item.Value
+			case "hideDiffs":
+				t = model.NewListType(ResourcePropertyType) // Property paths
+				resourceOptions.HideDiffs = item.Value
 			case "version":
 				t = model.StringType
 				resourceOptions.Version = item.Value
@@ -504,9 +507,15 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 			case "deletedWith":
 				t = model.DynamicType
 				resourceOptions.DeletedWith = item.Value
+			case "replaceWith":
+				t = model.NewListType(model.DynamicType)
+				resourceOptions.ReplaceWith = item.Value
 			case "import":
 				t = model.StringType
 				resourceOptions.ImportID = item.Value
+			case "replacementTrigger":
+				t = model.DynamicType
+				resourceOptions.ReplacementTrigger = NewConvertCall(item.Value, t)
 			default:
 				diagnostics = append(diagnostics, unsupportedAttribute(item.Name, item.Syntax.NameRange))
 				continue
@@ -572,7 +581,11 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 						}),
 					}
 					diags := condExpr.Typecheck(false)
-					contract.Assertf(len(diags) == 0, "failed to typecheck conditional expression: %v", diags)
+					checkDiagnostics := len(diags) == 0
+					if b.options.skipResourceTypecheck {
+						checkDiagnostics = !diags.HasErrors()
+					}
+					contract.Assertf(checkDiagnostics, "failed to typecheck conditional expression: %v", diags)
 
 					node.VariableType = condExpr.Type()
 				case model.InputType(model.NumberType).ConversionFrom(typ) == model.SafeConversion:
@@ -593,7 +606,11 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 						Value: model.VariableReference(resourceVar),
 					}
 					diags := rangeExpr.Typecheck(false)
-					contract.Assertf(len(diags) == 0, "failed to typecheck range expression: %v", diags)
+					checkDiagnostics := len(diags) == 0
+					if b.options.skipResourceTypecheck {
+						checkDiagnostics = !diags.HasErrors()
+					}
+					contract.Assertf(checkDiagnostics, "failed to typecheck range expression: %v", diags)
 
 					rangeValue = model.IntType
 
@@ -602,7 +619,6 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 					strictCollectionType := !b.options.skipRangeTypecheck
 					rk, rv, diags := model.GetCollectionTypes(typ, rng.Range(), strictCollectionType)
 					rangeKey, rangeValue, diagnostics = rk, rv, append(diagnostics, diags...)
-
 					iterationExpr := &model.ForExpression{
 						ValueVariable: &model.Variable{
 							Name:         "_",
@@ -624,6 +640,12 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 	// Bind the resource's body.
 	scopes := newResourceScopes(b.root, node, rangeKey, rangeValue)
 	block, blockDiags := model.BindBlock(node.syntax, scopes, b.tokens, b.options.modelOptions()...)
+	for _, diag := range blockDiags {
+		if b.options.skipResourceTypecheck && diag.Severity == hcl.DiagError {
+			// If we are skipping resource type-checking, convert errors to warnings.
+			diag.Severity = hcl.DiagWarning
+		}
+	}
 	diagnostics = append(diagnostics, blockDiags...)
 
 	var options *model.Block

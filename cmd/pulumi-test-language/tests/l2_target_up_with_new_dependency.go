@@ -25,7 +25,9 @@ import (
 
 func init() {
 	LanguageTests["l2-target-up-with-new-dependency"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.SimpleProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SimpleProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
@@ -43,7 +45,7 @@ func init() {
 
 					unrelated := RequireSingleNamedResource(l, snap.Resources, "unrelated")
 					require.Equal(l, "simple:index:Resource", unrelated.Type.String(), "expected simple resource")
-					require.Equal(l, 0, len(unrelated.Dependencies), "expected no dependencies")
+					require.Empty(l, unrelated.Dependencies, "expected no dependencies")
 				},
 			},
 			{
@@ -63,7 +65,7 @@ func init() {
 					require.Equal(l, "simple:index:Resource", target.Type.String(), "expected simple resource")
 					unrelated := RequireSingleNamedResource(l, snap.Resources, "unrelated")
 					require.Equal(l, "simple:index:Resource", unrelated.Type.String(), "expected simple resource")
-					require.Equal(l, 0, len(unrelated.Dependencies), "expected still no dependencies")
+					require.Empty(l, unrelated.Dependencies, "expected still no dependencies")
 				},
 			},
 		},

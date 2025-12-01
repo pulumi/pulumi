@@ -22,7 +22,7 @@ import (
 )
 
 // Quick and dirty utility function for printing to writers that we know will never fail.
-func Fprintf(writer io.Writer, msg string, args ...interface{}) {
+func Fprintf(writer io.Writer, msg string, args ...any) {
 	_, err := fmt.Fprintf(writer, msg, args...)
 	contract.IgnoreError(err)
 }

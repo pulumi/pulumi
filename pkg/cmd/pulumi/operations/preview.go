@@ -26,6 +26,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
@@ -34,15 +36,14 @@ import (
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -133,7 +134,7 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 
 			// If this is a provider we need to note we've seen it so we can build the Version and PluginDownloadURL of
 			// any resources that use it.
-			if providers.IsProviderType(urn.Type()) {
+			if sdkproviders.IsProviderType(urn.Type()) {
 				providerInputs[urn] = preEvent.Metadata.Res.Inputs
 			}
 
@@ -151,7 +152,7 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 
 			// We can't actually import providers yet, just skip them. We'll only error if anything
 			// actually tries to use it.
-			if providers.IsProviderType(urn.Type()) {
+			if sdkproviders.IsProviderType(urn.Type()) {
 				continue
 			}
 
@@ -174,14 +175,14 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 
 			var provider, version, pluginDownloadURL string
 			if new.Provider != "" {
-				ref, err := providers.ParseReference(new.Provider)
+				ref, err := sdkproviders.ParseReference(new.Provider)
 				if err != nil {
 					return importFile{}, fmt.Errorf("could not parse provider reference: %w", err)
 				}
 
 				// If we're trying to create this provider in the same deployment and it's not a default provider then
 				// we need to error, the import system can't yet "import" providers.
-				if !providers.IsDefaultProvider(ref.URN()) {
+				if !sdkproviders.IsDefaultProvider(ref.URN()) {
 					if _, has := importSet[ref.URN()]; has {
 						return importFile{}, fmt.Errorf("cannot import resource %q with a new explicit provider %q", new.URN, ref.URN())
 					}
@@ -273,6 +274,7 @@ func NewPreviewCmd() *cobra.Command {
 	var showReplacementSteps bool
 	var showSames bool
 	var showReads bool
+	var showFullOutput bool
 	var suppressOutputs bool
 	var suppressProgress bool
 	var suppressPermalink string
@@ -284,8 +286,8 @@ func NewPreviewCmd() *cobra.Command {
 	var excludeDependents bool
 	var attachDebugger []string
 
-	// Flags for Copilot.
-	var copilotEnabled bool
+	// Flags for Neo.
+	var neoEnabled bool
 
 	use, cmdArgs := "preview", cmdutil.NoArgs
 	if deployment.RemoteSupported() {
@@ -334,6 +336,7 @@ func NewPreviewCmd() *cobra.Command {
 				ShowSecrets:            showSecrets,
 				SuppressOutputs:        suppressOutputs,
 				SuppressProgress:       suppressProgress,
+				TruncateOutput:         !showFullOutput,
 				IsInteractive:          cmdutil.Interactive(),
 				Type:                   displayType,
 				JSONDisplay:            jsonDisplay,
@@ -381,7 +384,7 @@ func NewPreviewCmd() *cobra.Command {
 				displayOpts.SuppressPermalink = true
 			}
 
-			configureCopilotOptions(copilotEnabled, cmd, &displayOpts, isDIYBackend)
+			configureNeoOptions(neoEnabled, cmd, &displayOpts, isDIYBackend)
 
 			if err := validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
 				return err
@@ -505,7 +508,7 @@ func NewPreviewCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    stack.DefaultSecretsProvider,
+				SecretsProvider:    secrets.DefaultProvider,
 				Scopes:             backend.CancellationScopes,
 			}, events)
 			// If we made an events channel then we need to close it to trigger the exit of the import goroutine above.
@@ -579,16 +582,12 @@ func NewPreviewCmd() *cobra.Command {
 		"Config keys contain a path to a property in a map or list to set")
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "save-plan", "",
-		"[EXPERIMENTAL] Save the operations proposed by the preview to a plan file at the given path")
+		"[PREVIEW] Save the operations proposed by the preview to a plan file at the given path")
 	cmd.Flags().BoolVarP(
 		&showSecrets, "show-secrets", "", false,
 		"Show secrets in plaintext in the CLI output,"+
 			" if used with --save-plan the secrets will also be shown in the plan file. Defaults to `false`")
 
-	if !env.Experimental.Value() {
-		contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("save-plan"),
-			`Could not mark "save-plan" as hidden`)
-	}
 	cmd.PersistentFlags().StringVar(
 		&importFilePath, "import-file", "",
 		"Save any creates seen during the preview into an import file to use with 'pulumi import'")
@@ -639,7 +638,8 @@ func NewPreviewCmd() *cobra.Command {
 		"Display operation as a rich diff showing the overall change")
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
-		"Serialize the preview diffs, operations, and overall output as JSON")
+		"Serialize the preview diffs, operations, and overall output as JSON."+
+			" Set PULUMI_ENABLE_STREAMING_JSON_PREVIEW to stream JSON events instead.")
 	cmd.PersistentFlags().Int32VarP(
 		&parallel, "parallel", "p", defaultParallel(),
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
@@ -671,6 +671,9 @@ func NewPreviewCmd() *cobra.Command {
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
 	cmd.PersistentFlags().BoolVar(
+		&showFullOutput, "show-full-output", false,
+		"Display full length of inputs & outputs")
+	cmd.PersistentFlags().BoolVar(
 		&suppressProgress, "suppress-progress", false,
 		"Suppress display of periodic progress dots")
 	cmd.PersistentFlags().StringVar(
@@ -684,9 +687,16 @@ func NewPreviewCmd() *cobra.Command {
 	cmd.Flag("attach-debugger").NoOptDefVal = "program"
 
 	cmd.PersistentFlags().BoolVar(
-		&copilotEnabled, "copilot", false,
-		"Enable Pulumi Copilot's assistance for improved CLI experience and insights."+
+		&neoEnabled, "neo", false,
+		"Enable Pulumi Neo's assistance for improved CLI experience and insights "+
+			"(can also be set with PULUMI_NEO environment variable)")
+
+	// Keep --copilot flag for backwards compatibility, but hide it
+	cmd.PersistentFlags().BoolVar(
+		&neoEnabled, "copilot", false,
+		"[DEPRECATED] Use --neo instead. Enable Pulumi Neo's assistance for improved CLI experience and insights "+
 			"(can also be set with PULUMI_COPILOT environment variable)")
+	_ = cmd.PersistentFlags().MarkDeprecated("copilot", "please use --neo instead")
 
 	// Remote flags
 	remoteArgs.ApplyFlags(cmd)

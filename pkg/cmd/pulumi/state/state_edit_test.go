@@ -38,7 +38,7 @@ func TestSnapshotFrontendRoundTrip(t *testing.T) {
 				URN:  resource.URN("urn:pulumi:dev::random::pulumi:pulumi:Stack::random-dev"),
 				Type: "pulumi:pulumi:Stack",
 				Outputs: resource.PropertyMap{
-					resource.PropertyKey("name"): resource.NewStringProperty("fancy-pig"),
+					resource.PropertyKey("name"): resource.NewProperty("fancy-pig"),
 				},
 			},
 			{
@@ -47,11 +47,11 @@ func TestSnapshotFrontendRoundTrip(t *testing.T) {
 				Custom: true,
 				ID:     resource.ID("ed72fad1-9a82-49d7-b09f-1659b7a3c7db"),
 				Inputs: resource.PropertyMap{
-					resource.PropertyKey("version"): resource.NewStringProperty("4.13.2"),
+					resource.PropertyKey("version"): resource.NewProperty("4.13.2"),
 				},
 				Outputs: resource.PropertyMap{
-					resource.PropertyKey("aversion"): resource.NewStringProperty("4.13.2"),
-					resource.PropertyKey("version"):  resource.NewStringProperty("4.13.2"),
+					resource.PropertyKey("aversion"): resource.NewProperty("4.13.2"),
+					resource.PropertyKey("version"):  resource.NewProperty("4.13.2"),
 				},
 			},
 			{
@@ -60,9 +60,9 @@ func TestSnapshotFrontendRoundTrip(t *testing.T) {
 				Custom: true,
 				ID:     resource.ID("wondrous-doe"),
 				Outputs: resource.PropertyMap{
-					resource.PropertyKey("id"):        resource.NewStringProperty("wondrous-doe"),
-					resource.PropertyKey("length"):    resource.NewNumberProperty(2),
-					resource.PropertyKey("separator"): resource.NewStringProperty("-"),
+					resource.PropertyKey("id"):        resource.NewProperty("wondrous-doe"),
+					resource.PropertyKey("length"):    resource.NewProperty(2.0),
+					resource.PropertyKey("separator"): resource.NewProperty("-"),
 				},
 				Parent:   resource.URN("urn:pulumi:dev::random::pulumi:pulumi:Stack::random-dev"),
 				Provider: "urn:pulumi:dev::random::pulumi:providers:random::default_4_13_2::ed72fad1-9a82-49d7-b09f-1659b7a3c7db",
@@ -114,11 +114,10 @@ func TestOpenInEditorMultiPart(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := openInEditorInternal(tt.command, tt.filename)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 }

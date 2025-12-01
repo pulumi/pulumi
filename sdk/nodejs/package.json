@@ -1,6 +1,6 @@
 {
     "name": "@pulumi/pulumi",
-    "version": "3.178.0",
+    "version": "3.210.0",
     "description": "Pulumi's Node.js SDK",
     "license": "Apache-2.0",
     "repository": {
@@ -24,10 +24,10 @@
         "@types/tmp": "^0.2.6",
         "execa": "^5.1.0",
         "fdir": "^6.1.1",
-        "google-protobuf": "^3.5.0",
+        "google-protobuf": "^3.21.4",
         "got": "^11.8.6",
         "ini": "^2.0.0",
-        "js-yaml": "^3.14.0",
+        "js-yaml": "^3.14.2",
         "minimist": "^1.2.6",
         "normalize-package-data": "^6.0.0",
         "picomatch": "^3.0.1",
@@ -35,7 +35,7 @@
         "require-from-string": "^2.0.1",
         "semver": "^7.5.2",
         "source-map-support": "^0.5.6",
-        "tmp": "^0.2.1",
+        "tmp": "^0.2.4",
         "upath": "^1.1.0"
     },
     "devDependencies": {
@@ -44,12 +44,11 @@
         "@types/js-yaml": "^3.12.5",
         "@types/minimist": "^1.2.0",
         "@types/mocha": "^10.0.0",
-        "@types/node": "14.18.3",
+        "@types/node": "^14.18.3",
         "@types/normalize-package-data": "^2.4.0",
         "@types/picomatch": "^2.3.3",
         "@types/sinon": "^10.0.13",
         "@types/split2": "^2.1.6",
-        "@types/uuid": "^9.0.7",
         "@typescript-eslint/eslint-plugin": "^4.29.0",
         "@typescript-eslint/parser": "^4.29.0",
         "corepack": "^0.31.0",

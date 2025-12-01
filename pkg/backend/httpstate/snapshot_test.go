@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -61,6 +61,492 @@ func applyEdits(before, deltas json.RawMessage) (json.RawMessage, error) {
 	return json.RawMessage(gotextdiff.ApplyEdits(string(before), edits)), nil
 }
 
+// TestCloudSnapshotPersisterDeploymentSchemaVersion tests that the appropriate deployment schema version is
+// sent to the server depending on features used and the server's capabilities.
+func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	stackID := client.StackIdentifier{
+		Owner:   "owner",
+		Project: "project",
+		Stack:   tokens.MustParseStackName("stack"),
+	}
+	updateID := "update-id"
+
+	var persistedState json.RawMessage
+
+	var lastRequest *http.Request
+
+	handleLastRequestAsRegular := func() {
+		var req apitype.PatchUpdateCheckpointRequest
+		err := json.NewDecoder(lastRequest.Body).Decode(&req)
+		assert.Equal(t, "/api/stacks/owner/project/stack/update/update-id/checkpoint", lastRequest.URL.Path)
+		require.NoError(t, err)
+
+		bytes, err := json.Marshal(&apitype.UntypedDeployment{
+			Version:    req.Version,
+			Features:   req.Features,
+			Deployment: req.Deployment,
+		})
+		require.NoError(t, err)
+		persistedState = json.RawMessage(bytes)
+	}
+
+	handleLastRequestAsVerbatim := func() {
+		var req apitype.PatchUpdateVerbatimCheckpointRequest
+		err := json.NewDecoder(lastRequest.Body).Decode(&req)
+		assert.Equal(t, "/api/stacks/owner/project/stack/update/update-id/checkpointverbatim", lastRequest.URL.Path)
+		require.NoError(t, err)
+		persistedState = req.UntypedDeployment
+	}
+
+	handleLastRequestAsDelta := func() {
+		var req apitype.PatchUpdateCheckpointDeltaRequest
+		err := json.NewDecoder(lastRequest.Body).Decode(&req)
+		assert.Equal(t, "/api/stacks/owner/project/stack/update/update-id/checkpointdelta", lastRequest.URL.Path)
+		require.NoError(t, err)
+
+		edits := []gotextdiff.TextEdit{}
+		if err := json.Unmarshal(req.DeploymentDelta, &edits); err != nil {
+			require.NoError(t, err)
+		}
+		persistedState = json.RawMessage([]byte(gotextdiff.ApplyEdits(string(persistedState), edits)))
+		assert.Equal(t, req.CheckpointHash, fmt.Sprintf("%x", sha256.Sum256(persistedState)))
+	}
+
+	untypedPersistedState := func() apitype.UntypedDeployment {
+		var ud apitype.UntypedDeployment
+		err := json.Unmarshal(persistedState, &ud)
+		require.NoError(t, err)
+		return ud
+	}
+
+	typedPersistedState := func() apitype.DeploymentV3 {
+		ud := untypedPersistedState()
+		var d3 apitype.DeploymentV3
+		err := json.Unmarshal(ud.Deployment, &d3)
+		require.NoError(t, err)
+		return d3
+	}
+
+	var delta bool
+	var v4 bool
+	capabilities := func() []apitype.APICapabilityConfig {
+		var result []apitype.APICapabilityConfig
+		if delta {
+			result = append(result, apitype.APICapabilityConfig{
+				Capability:    apitype.DeltaCheckpointUploads,
+				Configuration: json.RawMessage(`{"checkpointCutoffSizeBytes":1}`),
+			})
+		}
+		if v4 {
+			result = append(result, apitype.APICapabilityConfig{
+				Capability:    apitype.DeploymentSchemaVersion,
+				Version:       1,
+				Configuration: json.RawMessage(`{"version":4}`),
+			})
+		}
+		return result
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/capabilities":
+			resp := apitype.CapabilitiesResponse{Capabilities: capabilities()}
+			err := json.NewEncoder(rw).Encode(resp)
+			require.NoError(t, err)
+			return
+		case "/api/stacks/owner/project/stack/update/update-id/checkpoint",
+			"/api/stacks/owner/project/stack/update/update-id/checkpointverbatim",
+			"/api/stacks/owner/project/stack/update/update-id/checkpointdelta":
+			lastRequest = req
+			rw.WriteHeader(200)
+			message := `{}`
+			reader, err := gzip.NewReader(req.Body)
+			require.NoError(t, err)
+			defer reader.Close()
+			rbytes, err := io.ReadAll(reader)
+			require.NoError(t, err)
+			_, err = rw.Write([]byte(message))
+			require.NoError(t, err)
+			req.Body = io.NopCloser(bytes.NewBuffer(rbytes))
+		default:
+			panic(fmt.Sprintf("Path not supported: %v", req.URL.Path))
+		}
+	}))
+	defer server.Client()
+
+	newMockTokenSource := func() tokenSourceCapability {
+		return tokenSourceFn(func() (string, error) {
+			return "token", nil
+		})
+	}
+
+	initPersister := func() *cloudSnapshotPersister {
+		backendGeneric, err := New(ctx, nil, server.URL, nil, false)
+		require.NoError(t, err)
+		backend := backendGeneric.(*cloudBackend)
+		persister := backend.newSnapshotPersister(ctx, client.UpdateIdentifier{
+			StackIdentifier: stackID,
+			UpdateKind:      apitype.UpdateUpdate,
+			UpdateID:        updateID,
+		}, newMockTokenSource())
+		return persister
+	}
+
+	// Test 1: no delta, no v4: v3 deployment sent as v3.
+
+	persister := initPersister()
+
+	deploymentV3, version, features, err := stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{URN: resource.URN("urn-1")},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
+	require.NoError(t, err)
+
+	handleLastRequestAsRegular()
+	assert.Equal(t, 3, untypedPersistedState().Version)
+	assert.Empty(t, untypedPersistedState().Features)
+	assert.Equal(t, []apitype.ResourceV3{
+		{URN: resource.URN("urn-1")},
+	}, typedPersistedState().Resources)
+
+	// Test 2: no delta, no v4: v4 deployment sent as v3.
+
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:                 resource.URN("urn-1"),
+					RefreshBeforeUpdate: true, // This is a v4 feature.
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
+	require.NoError(t, err)
+
+	handleLastRequestAsRegular()
+	assert.Equal(t, 3, untypedPersistedState().Version)
+	assert.Empty(t, untypedPersistedState().Features)
+	assert.Equal(t, []apitype.ResourceV3{
+		{
+			URN:                 resource.URN("urn-1"),
+			RefreshBeforeUpdate: true,
+		},
+	}, typedPersistedState().Resources)
+
+	// Test 3: delta, no v4: first request verbatim: v3 deployment sent as v3.
+
+	delta = true
+	persister = initPersister()
+
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN: resource.URN("urn-1"),
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
+	require.NoError(t, err)
+
+	handleLastRequestAsVerbatim()
+	assert.Equal(t, 3, untypedPersistedState().Version)
+	assert.Empty(t, untypedPersistedState().Features)
+	assert.Equal(t, []apitype.ResourceV3{
+		{URN: resource.URN("urn-1")},
+	}, typedPersistedState().Resources)
+
+	// Test 4: delta, no v4: second request delta: v3 deployment sent as v3.
+
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{URN: resource.URN("urn-1")},
+				{URN: resource.URN("urn-2")},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
+	require.NoError(t, err)
+
+	handleLastRequestAsDelta()
+	assert.Equal(t, 3, untypedPersistedState().Version)
+	assert.Empty(t, untypedPersistedState().Features)
+	assert.Equal(t, []apitype.ResourceV3{
+		{URN: resource.URN("urn-1")},
+		{URN: resource.URN("urn-2")},
+	}, typedPersistedState().Resources)
+
+	// Test 5: delta, no v4: first request verbatim: v4 deployment sent as v3.
+
+	persister = initPersister()
+
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:                 resource.URN("urn-1"),
+					RefreshBeforeUpdate: true, // This is a v4 feature.
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
+	require.NoError(t, err)
+
+	handleLastRequestAsVerbatim()
+	assert.Equal(t, 3, untypedPersistedState().Version)
+	assert.Empty(t, untypedPersistedState().Features)
+	assert.Equal(t, []apitype.ResourceV3{
+		{
+			URN:                 resource.URN("urn-1"),
+			RefreshBeforeUpdate: true,
+		},
+	}, typedPersistedState().Resources)
+
+	// Test 4: delta, no v4: second request delta: v4 deployment sent as v3.
+
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:                 resource.URN("urn-1"),
+					RefreshBeforeUpdate: true, // This is a v4 feature.
+				},
+				{URN: resource.URN("urn-2")},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
+	require.NoError(t, err)
+
+	handleLastRequestAsDelta()
+	assert.Equal(t, 3, untypedPersistedState().Version)
+	assert.Empty(t, untypedPersistedState().Features)
+	assert.Equal(t, []apitype.ResourceV3{
+		{
+			URN:                 resource.URN("urn-1"),
+			RefreshBeforeUpdate: true,
+		},
+		{URN: resource.URN("urn-2")},
+	}, typedPersistedState().Resources)
+
+	delta = false
+	v4 = true
+
+	// Test 1: no delta, v4: v3 deployment sent as v3.
+
+	persister = initPersister()
+
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN: resource.URN("urn-1"),
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
+	require.NoError(t, err)
+
+	handleLastRequestAsRegular()
+	assert.Equal(t, 3, untypedPersistedState().Version)
+	assert.Empty(t, untypedPersistedState().Features)
+	assert.Equal(t, []apitype.ResourceV3{
+		{URN: resource.URN("urn-1")},
+	}, typedPersistedState().Resources)
+
+	// Test 2: no delta, v4: v4 deployment sent as v4.
+
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:                 resource.URN("urn-1"),
+					RefreshBeforeUpdate: true, // This is a v4 feature.
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
+	require.NoError(t, err)
+
+	handleLastRequestAsRegular()
+	assert.Equal(t, 4, untypedPersistedState().Version)
+	assert.Equal(t, []string{"refreshBeforeUpdate"}, untypedPersistedState().Features)
+	assert.Equal(t, []apitype.ResourceV3{
+		{
+			URN:                 resource.URN("urn-1"),
+			RefreshBeforeUpdate: true,
+		},
+	}, typedPersistedState().Resources)
+
+	// Test 3: delta, v4: first request verbatim: v3 deployment sent as v3.
+
+	delta = true
+	persister = initPersister()
+
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN: resource.URN("urn-1"),
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
+	require.NoError(t, err)
+
+	handleLastRequestAsVerbatim()
+	assert.Equal(t, 3, untypedPersistedState().Version)
+	assert.Empty(t, untypedPersistedState().Features)
+	assert.Equal(t, []apitype.ResourceV3{
+		{URN: resource.URN("urn-1")},
+	}, typedPersistedState().Resources)
+
+	// Test 4: delta, v4: second request delta: v3 deployment sent as v3.
+
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN: resource.URN("urn-1"),
+				},
+				{
+					URN: resource.URN("urn-2"),
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
+	require.NoError(t, err)
+
+	handleLastRequestAsDelta()
+	assert.Equal(t, 3, untypedPersistedState().Version)
+	assert.Empty(t, untypedPersistedState().Features)
+	assert.Equal(t, []apitype.ResourceV3{
+		{URN: resource.URN("urn-1")},
+		{URN: resource.URN("urn-2")},
+	}, typedPersistedState().Resources)
+
+	// Test 5: delta, v4: first request verbatim: v4 deployment sent as v4.
+
+	persister = initPersister()
+
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:                 resource.URN("urn-1"),
+					RefreshBeforeUpdate: true, // This is a v4 feature.
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
+	require.NoError(t, err)
+
+	handleLastRequestAsVerbatim()
+	assert.Equal(t, 4, untypedPersistedState().Version)
+	assert.Equal(t, []string{"refreshBeforeUpdate"}, untypedPersistedState().Features)
+	assert.Equal(t, []apitype.ResourceV3{
+		{
+			URN:                 resource.URN("urn-1"),
+			RefreshBeforeUpdate: true,
+		},
+	}, typedPersistedState().Resources)
+
+	// Test 4: delta, v4: second request delta: v4 deployment sent as v4.
+
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:                 resource.URN("urn-1"),
+					RefreshBeforeUpdate: true, // This is a v4 feature.
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
+	require.NoError(t, err)
+
+	handleLastRequestAsDelta()
+	assert.Equal(t, 4, untypedPersistedState().Version)
+	assert.Equal(t, []string{"refreshBeforeUpdate"}, untypedPersistedState().Features)
+	assert.Equal(t, []apitype.ResourceV3{
+		{
+			URN:                 resource.URN("urn-1"),
+			RefreshBeforeUpdate: true,
+		},
+	}, typedPersistedState().Resources)
+}
+
 // Check that cloudSnapshotPersister can talk the diff-based
 // "checkpointverbatim" and "checkpointdelta" protocol when saving
 // snapshots.
@@ -114,15 +600,15 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	lastRequestAsVerbatim := func() (ret apitype.PatchUpdateVerbatimCheckpointRequest) {
 		err := json.NewDecoder(lastRequest.Body).Decode(&ret)
 		assert.Equal(t, "/api/stacks/owner/project/stack/update/update-id/checkpointverbatim", lastRequest.URL.Path)
-		assert.NoError(t, err)
-		return
+		require.NoError(t, err)
+		return ret
 	}
 
 	lastRequestAsDelta := func() (ret apitype.PatchUpdateCheckpointDeltaRequest) {
 		err := json.NewDecoder(lastRequest.Body).Decode(&ret)
 		assert.Equal(t, "/api/stacks/owner/project/stack/update/update-id/checkpointdelta", lastRequest.URL.Path)
-		assert.NoError(t, err)
-		return
+		require.NoError(t, err)
+		return ret
 	}
 
 	handleVerbatim := func(req apitype.PatchUpdateVerbatimCheckpointRequest) {
@@ -132,19 +618,24 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	handleDelta := func(req apitype.PatchUpdateCheckpointDeltaRequest) {
 		edits := []gotextdiff.TextEdit{}
 		if err := json.Unmarshal(req.DeploymentDelta, &edits); err != nil {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		persistedState = json.RawMessage([]byte(gotextdiff.ApplyEdits(string(persistedState), edits)))
 		assert.Equal(t, req.CheckpointHash, fmt.Sprintf("%x", sha256.Sum256(persistedState)))
 	}
 
-	typedPersistedState := func() apitype.DeploymentV3 {
+	untypedPersistedState := func() apitype.UntypedDeployment {
 		var ud apitype.UntypedDeployment
 		err := json.Unmarshal(persistedState, &ud)
-		assert.NoError(t, err)
+		require.NoError(t, err)
+		return ud
+	}
+
+	typedPersistedState := func() apitype.DeploymentV3 {
+		ud := untypedPersistedState()
 		var d3 apitype.DeploymentV3
-		err = json.Unmarshal(ud.Deployment, &d3)
-		assert.NoError(t, err)
+		err := json.Unmarshal(ud.Deployment, &d3)
+		require.NoError(t, err)
 		return d3
 	}
 
@@ -152,12 +643,19 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 		return httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			switch req.URL.Path {
 			case "/api/capabilities":
-				resp := apitype.CapabilitiesResponse{Capabilities: []apitype.APICapabilityConfig{{
-					Capability:    apitype.DeltaCheckpointUploads,
-					Configuration: json.RawMessage(`{"checkpointCutoffSizeBytes":1}`),
-				}}}
+				resp := apitype.CapabilitiesResponse{Capabilities: []apitype.APICapabilityConfig{
+					{
+						Capability:    apitype.DeltaCheckpointUploads,
+						Configuration: json.RawMessage(`{"checkpointCutoffSizeBytes":1}`),
+					},
+					{
+						Capability:    apitype.DeploymentSchemaVersion,
+						Version:       1,
+						Configuration: json.RawMessage(`{"version":4}`),
+					},
+				}}
 				err := json.NewEncoder(rw).Encode(resp)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				return
 			case "/api/stacks/owner/project/stack/update/update-id/checkpointverbatim",
 				"/api/stacks/owner/project/stack/update/update-id/checkpointdelta":
@@ -165,12 +663,12 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 				rw.WriteHeader(200)
 				message := `{}`
 				reader, err := gzip.NewReader(req.Body)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				defer reader.Close()
 				rbytes, err := io.ReadAll(reader)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				_, err = rw.Write([]byte(message))
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				req.Body = io.NopCloser(bytes.NewBuffer(rbytes))
 			default:
 				panic(fmt.Sprintf("Path not supported: %v", req.URL.Path))
@@ -187,7 +685,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	initPersister := func() *cloudSnapshotPersister {
 		server := newMockServer()
 		backendGeneric, err := New(ctx, nil, server.URL, nil, false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		backend := backendGeneric.(*cloudBackend)
 		persister := backend.newSnapshotPersister(ctx, client.UpdateIdentifier{
 			StackIdentifier: stackID,
@@ -201,12 +699,21 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	// Req 1: the first request sends indented data verbatim to establish a good baseline state for further diffs.
 
-	err := persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{URN: resource.URN("urn-1")},
-		},
+	deploymentV3, version, features, err := stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN: resource.URN("urn-1"),
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	req1 := lastRequestAsVerbatim()
 	assert.Equal(t, 1, req1.SequenceNumber)
@@ -214,6 +721,8 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	assertEqual("req1", req1.UntypedDeployment)
 
 	handleVerbatim(req1)
+	assert.Equal(t, 3, untypedPersistedState().Version)
+	assert.Empty(t, untypedPersistedState().Features)
 	assert.Equal(t, []apitype.ResourceV3{
 		{URN: resource.URN("urn-1")},
 	}, typedPersistedState().Resources)
@@ -221,13 +730,24 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	// Req 2: then it switches to sending deltas as text diffs together with SHA-256 checksum of the expected
 	// resulting text representation of state.
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{URN: resource.URN("urn-1")},
-			{URN: resource.URN("urn-2")},
-		},
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN: resource.URN("urn-1"),
+				},
+				{
+					URN: resource.URN("urn-2"),
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	req2 := lastRequestAsDelta()
 	assert.Equal(t, 2, req2.SequenceNumber)
@@ -235,6 +755,8 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	assertEquals("req2.hash", req2.CheckpointHash)
 
 	handleDelta(req2)
+	assert.Equal(t, 3, untypedPersistedState().Version)
+	assert.Empty(t, untypedPersistedState().Features)
 	assert.Equal(t, []apitype.ResourceV3{
 		{URN: resource.URN("urn-1")},
 		{URN: resource.URN("urn-2")},
@@ -242,12 +764,21 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	// Req 3: and continues using the diff protocol.
 
-	err = persister.Save(&deploy.Snapshot{
-		Resources: []*resource.State{
-			{URN: resource.URN("urn-1")},
-		},
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN: resource.URN("urn-1"),
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	req3 := lastRequestAsDelta()
 	assert.Equal(t, 3, req3.SequenceNumber)
@@ -255,8 +786,44 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	assertEquals("req3.hash", req3.CheckpointHash)
 
 	handleDelta(req3)
+	assert.Equal(t, 3, untypedPersistedState().Version)
+	assert.Empty(t, untypedPersistedState().Features)
 	assert.Equal(t, []apitype.ResourceV3{
 		{URN: resource.URN("urn-1")},
+	}, typedPersistedState().Resources)
+
+	// Req 4: then use a v4 deployment schema feature.
+
+	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
+		&deploy.Snapshot{
+			Resources: []*resource.State{
+				{
+					URN:                 resource.URN("urn-1"),
+					RefreshBeforeUpdate: true, // This is a v4 feature.
+				},
+			},
+		}, false /*showSecrets*/)
+	require.NoError(t, err)
+	err = persister.Save(apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	})
+	require.NoError(t, err)
+
+	req4 := lastRequestAsDelta()
+	assert.Equal(t, 4, req4.SequenceNumber)
+	assertEqual("req4", req4.DeploymentDelta)
+	assertEquals("req4.hash", req4.CheckpointHash)
+
+	handleDelta(req4)
+	assert.Equal(t, 4, untypedPersistedState().Version)
+	assert.Equal(t, []string{"refreshBeforeUpdate"}, untypedPersistedState().Features)
+	assert.Equal(t, []apitype.ResourceV3{
+		{
+			URN:                 resource.URN("urn-1"),
+			RefreshBeforeUpdate: true,
+		},
 	}, typedPersistedState().Resources)
 }
 
@@ -277,7 +844,7 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 			DryRun:      info.DryRun,
 			MonitorAddr: info.MonitorAddress,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
 			type Dummy struct {
@@ -342,7 +909,7 @@ func testMarshalDeployment(t *testing.T, snaps []*apitype.DeploymentV3) {
 
 	dds := newDeploymentDiffState(0)
 	for _, s := range snaps {
-		expected, err := dds.MarshalDeployment(s)
+		expected, err := dds.MarshalDeployment(s, 3, nil)
 		require.NoError(t, err)
 
 		marshaled, err := json.Marshal(apitype.PatchUpdateVerbatimCheckpointRequest{
@@ -366,7 +933,7 @@ func testDiffStack(t *testing.T, snaps []*apitype.DeploymentV3) {
 
 	dds := newDeploymentDiffState(0)
 	for _, s := range snaps {
-		json, err := dds.MarshalDeployment(s)
+		json, err := dds.MarshalDeployment(s, 3, nil)
 		require.NoError(t, err)
 		if dds.ShouldDiff(json) {
 			d, err := dds.Diff(ctx, json)
@@ -387,7 +954,7 @@ func benchmarkDiffStack(b *testing.B, snaps []*apitype.DeploymentV3) {
 		dds := newDeploymentDiffState(0)
 
 		for _, s := range snaps {
-			json, err := dds.MarshalDeployment(s)
+			json, err := dds.MarshalDeployment(s, 3, nil)
 			require.NoError(b, err)
 			verbatimSize += len(json.raw)
 			if dds.ShouldDiff(json) {
@@ -430,10 +997,10 @@ type diffStackCase interface {
 	getSnaps(t testing.TB) []*apitype.DeploymentV3
 }
 
-func testOrBenchmarkDiffStack[TB testingTB[TB]](
+func testOrBenchmarkDiffStack[TB testingTB[TB], Case diffStackCase](
 	tb TB,
 	inner diffStackTestFunc[TB],
-	cases []diffStackCase,
+	cases []Case,
 ) {
 	for _, c := range cases {
 		name, snaps := c.getName(), c.getSnaps(tb)
@@ -460,43 +1027,50 @@ func (c dynamicStackCase) getSnaps(tb testing.TB) []*apitype.DeploymentV3 {
 	return generateSnapshots(tb, r, c.resourceCount, c.resourcePayloadBytes)
 }
 
-var dynamicCases = []diffStackCase{
-	dynamicStackCase{seed: 0, resourceCount: 1, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 2, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 4, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 8, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 16, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 32, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 48, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 64, resourcePayloadBytes: 2},
-	dynamicStackCase{seed: 0, resourceCount: 1, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 2, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 4, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 8, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 16, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 32, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 48, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 64, resourcePayloadBytes: 8192},
-	dynamicStackCase{seed: 0, resourceCount: 1, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 2, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 4, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 8, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 16, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 32, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 48, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 64, resourcePayloadBytes: 32768},
-	dynamicStackCase{seed: 0, resourceCount: 2, resourcePayloadBytes: 131072},
-	dynamicStackCase{seed: 0, resourceCount: 4, resourcePayloadBytes: 131072},
-	dynamicStackCase{seed: 0, resourceCount: 8, resourcePayloadBytes: 131072},
-	dynamicStackCase{seed: 0, resourceCount: 16, resourcePayloadBytes: 131072},
-	dynamicStackCase{seed: 0, resourceCount: 32, resourcePayloadBytes: 131072},
-	dynamicStackCase{seed: 0, resourceCount: 48, resourcePayloadBytes: 131072},
-	dynamicStackCase{seed: 0, resourceCount: 64, resourcePayloadBytes: 131072},
-	dynamicStackCase{seed: 0, resourceCount: 1, resourcePayloadBytes: 524288},
-	dynamicStackCase{seed: 0, resourceCount: 2, resourcePayloadBytes: 524288},
-	dynamicStackCase{seed: 0, resourceCount: 4, resourcePayloadBytes: 524288},
-	dynamicStackCase{seed: 0, resourceCount: 8, resourcePayloadBytes: 524288},
-	dynamicStackCase{seed: 0, resourceCount: 16, resourcePayloadBytes: 524288},
+func (c dynamicStackCase) pseudoRandomString(r *rand.Rand, desiredLength int) string {
+	buf := make([]byte, desiredLength)
+	r.Read(buf)
+	text := base64.StdEncoding.EncodeToString(buf)
+	return text[0:desiredLength]
+}
+
+var dynamicCases = []dynamicStackCase{
+	{seed: 0, resourceCount: 1, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 2, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 4, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 8, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 16, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 32, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 48, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 64, resourcePayloadBytes: 2},
+	{seed: 0, resourceCount: 1, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 2, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 4, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 8, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 16, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 32, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 48, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 64, resourcePayloadBytes: 8192},
+	{seed: 0, resourceCount: 1, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 2, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 4, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 8, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 16, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 32, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 48, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 64, resourcePayloadBytes: 32768},
+	{seed: 0, resourceCount: 2, resourcePayloadBytes: 131072},
+	{seed: 0, resourceCount: 4, resourcePayloadBytes: 131072},
+	{seed: 0, resourceCount: 8, resourcePayloadBytes: 131072},
+	{seed: 0, resourceCount: 16, resourcePayloadBytes: 131072},
+	{seed: 0, resourceCount: 32, resourcePayloadBytes: 131072},
+	{seed: 0, resourceCount: 48, resourcePayloadBytes: 131072},
+	{seed: 0, resourceCount: 64, resourcePayloadBytes: 131072},
+	{seed: 0, resourceCount: 1, resourcePayloadBytes: 524288},
+	{seed: 0, resourceCount: 2, resourcePayloadBytes: 524288},
+	{seed: 0, resourceCount: 4, resourcePayloadBytes: 524288},
+	{seed: 0, resourceCount: 8, resourcePayloadBytes: 524288},
+	{seed: 0, resourceCount: 16, resourcePayloadBytes: 524288},
 }
 
 func BenchmarkDiffStack(b *testing.B) {

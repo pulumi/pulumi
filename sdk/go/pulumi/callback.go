@@ -15,6 +15,7 @@
 package pulumi
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -23,7 +24,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 )

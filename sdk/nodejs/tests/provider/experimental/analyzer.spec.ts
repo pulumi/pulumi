@@ -35,6 +35,11 @@ describe("Analyzer", function () {
         execa.sync("yarn", ["link", "@pulumi/pulumi", "--no-default-rc", "--non-interactive"], { cwd: dir });
     });
 
+    after(() => {
+        const dir = path.join(__dirname, "testdata");
+        execa.sync("yarn", ["unlink", "@pulumi/pulumi", "--no-default-rc", "--non-interactive"], { cwd: dir });
+    });
+
     it("infers simple types", async function () {
         const dir = path.join(__dirname, "testdata", "simple-types");
         const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));

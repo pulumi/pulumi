@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitingore",
     "ExampleServer.cs",
     "Inputs/ServerPropertiesForReplicaArgs.cs",
     "Inputs/ServerPropertiesForRestoreArgs.cs",

@@ -17,9 +17,9 @@ package python
 // The specification for the pyproject.toml file can be found here.
 // https://packaging.python.org/en/latest/specifications/declaring-project-metadata/
 type PyprojectSchema struct {
-	Project     *Project               `toml:"project,omitempty" json:"project,omitempty"`
-	BuildSystem *BuildSystem           `toml:"build-system,omitempty" json:"build-system,omitempty"`
-	Tool        map[string]interface{} `toml:"tool,omitempty" json:"tool,omitempty"`
+	Project     *Project       `toml:"project,omitempty" json:"project,omitempty"`
+	BuildSystem *BuildSystem   `toml:"build-system,omitempty" json:"build-system,omitempty"`
+	Tool        map[string]any `toml:"tool,omitempty" json:"tool,omitempty"`
 }
 
 // Project is a view layer for a pyproject.toml file.

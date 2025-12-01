@@ -26,7 +26,9 @@ import (
 
 func init() {
 	LanguageTests["l2-invoke-simple"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SimpleInvokeProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
@@ -44,8 +46,8 @@ func init() {
 
 					outputs := stack.Outputs
 
-					AssertPropertyMapMember(l, outputs, "hello", resource.NewStringProperty("hello world"))
-					AssertPropertyMapMember(l, outputs, "goodbye", resource.NewStringProperty("goodbye world"))
+					AssertPropertyMapMember(l, outputs, "hello", resource.NewProperty("hello world"))
+					AssertPropertyMapMember(l, outputs, "goodbye", resource.NewProperty("goodbye world"))
 				},
 			},
 		},

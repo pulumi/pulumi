@@ -1,0 +1,4 @@
+<{%fg 2%}>+ component: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::component::resA]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 to create<{%reset%}>

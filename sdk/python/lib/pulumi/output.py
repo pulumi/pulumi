@@ -1,4 +1,4 @@
-# Copyright 2016-2022, Pulumi Corporation.
+# Copyright 2016-2025, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,21 +20,15 @@ from inspect import isawaitable
 from typing import (
     TYPE_CHECKING,
     Any,
-    Awaitable,
-    Callable,
-    Dict,
     Generic,
-    List,
-    Mapping,
     Optional,
-    Set,
-    Tuple,
-    Type,
     TypeVar,
     Union,
     cast,
     overload,
 )
+from collections.abc import Callable
+from collections.abc import Awaitable, Mapping
 
 from . import log
 from . import _types
@@ -92,14 +86,14 @@ class Output(Generic[T_co]):
     Future that actually produces the concrete value of this output.
     """
 
-    _resources: Awaitable[Set["Resource"]]
+    _resources: Awaitable[set["Resource"]]
     """
     The list of resources that this output value depends on.
     """
 
     def __init__(
         self,
-        resources: Union[Awaitable[Set["Resource"]], Set["Resource"]],
+        resources: Union[Awaitable[set["Resource"]], set["Resource"]],
         future: Awaitable[T_co],
         is_known: Awaitable[bool],
         is_secret: Optional[Awaitable[bool]] = None,
@@ -143,7 +137,7 @@ class Output(Generic[T_co]):
             self._is_secret.set_result(False)
 
     # Private implementation details - do not document.
-    def resources(self) -> Awaitable[Set["Resource"]]:
+    def resources(self) -> Awaitable[set["Resource"]]:
         return self._resources
 
     def future(self, with_unknowns: Optional[bool] = None) -> Awaitable[Optional[T_co]]:
@@ -246,13 +240,13 @@ class Output(Generic[T_co]):
         :return: A transformed Output obtained from running the transformation function on this Output's value.
         :rtype: Output[U]
         """
-        result_resources: asyncio.Future[Set["Resource"]] = asyncio.Future()
+        result_resources: asyncio.Future[set[Resource]] = asyncio.Future()
         result_is_known: asyncio.Future[bool] = asyncio.Future()
         result_is_secret: asyncio.Future[bool] = asyncio.Future()
 
         # The "run" coroutine actually runs the apply.
         async def run() -> U:
-            resources: Set["Resource"] = set()
+            resources: set[Resource] = set()
             try:
                 # Await this output's details.
                 resources = await self._resources
@@ -422,7 +416,7 @@ class Output(Generic[T_co]):
             keys = list(val.keys())
             values = list(val.values())
 
-            def liftValues(keys: List[Any]):
+            def liftValues(keys: list[Any]):
                 d = {keys[i]: values[i] for i in range(len(keys))}
                 return Output.all(**d)
 
@@ -524,24 +518,24 @@ class Output(Generic[T_co]):
     # https://mypy.readthedocs.io/en/stable/more_types.html#type-checking-the-variants:~:text=considered%20unsafely%20overlapping
     @overload
     @staticmethod
-    def all(*args: "Output[Any]") -> "Output[List[Any]]": ...  # type: ignore
+    def all(*args: "Output[Any]") -> "Output[list[Any]]": ...  # type: ignore
 
     @overload
     @staticmethod
-    def all(**kwargs: "Output[Any]") -> "Output[Dict[str, Any]]": ...  # type: ignore
+    def all(**kwargs: "Output[Any]") -> "Output[dict[str, Any]]": ...  # type: ignore
 
     @overload
     @staticmethod
-    def all(*args: Input[Any]) -> "Output[List[Any]]": ...  # type: ignore
+    def all(*args: Input[Any]) -> "Output[list[Any]]": ...  # type: ignore
 
     @overload
     @staticmethod
-    def all(**kwargs: Input[Any]) -> "Output[Dict[str, Any]]": ...  # type: ignore
+    def all(**kwargs: Input[Any]) -> "Output[dict[str, Any]]": ...  # type: ignore
 
     @staticmethod
     def all(
         *args: Input[Any], **kwargs: Input[Any]
-    ) -> "Output[List[Any] | Dict[str, Any]]":
+    ) -> "Output[list[Any] | dict[str, Any]]":
         """
         Produces an Output of a list (if args i.e a list of inputs are supplied)
         or dict (if kwargs i.e. keyworded arguments are supplied).
@@ -634,7 +628,7 @@ class Output(Generic[T_co]):
         :rtype: Output[str]
         """
 
-        transformed_items: List[Input[Any]] = [Output.from_input(v) for v in args]
+        transformed_items: list[Input[Any]] = [Output.from_input(v) for v in args]
         # invariant http://mypy.readthedocs.io/en/latest/common_issues.html#variance
         return Output.all(*transformed_items).apply("".join)  # type: ignore
 
@@ -683,9 +677,9 @@ class Output(Generic[T_co]):
         ensure_ascii: bool = True,
         check_circular: bool = True,
         allow_nan: bool = True,
-        cls: Optional[Type[json.JSONEncoder]] = None,
+        cls: Optional[type[json.JSONEncoder]] = None,
         indent: Optional[Union[int, str]] = None,
-        separators: Optional[Tuple[str, str]] = None,
+        separators: Optional[tuple[str, str]] = None,
         default: Optional[Callable[[Any], Any]] = None,
         sort_keys: bool = False,
         **kw: Any,
@@ -700,12 +694,12 @@ class Output(Generic[T_co]):
             cls = json.JSONEncoder
 
         output = Output.from_input(obj)
-        result_resources: asyncio.Future[Set["Resource"]] = asyncio.Future()
+        result_resources: asyncio.Future[set[Resource]] = asyncio.Future()
         result_is_known: asyncio.Future[bool] = asyncio.Future()
         result_is_secret: asyncio.Future[bool] = asyncio.Future()
 
         async def run() -> str:
-            resources: Set["Resource"] = set()
+            resources: set[Resource] = set()
             try:
                 seen_unknown = False
                 seen_secret = False
@@ -719,7 +713,7 @@ class Output(Generic[T_co]):
                             nonlocal seen_resources
 
                             # We need to synchronously wait for o to complete
-                            async def wait_output() -> Tuple[object, bool, bool, set]:
+                            async def wait_output() -> tuple[object, bool, bool, set]:
                                 return (
                                     await o._future,
                                     await o._is_known,
@@ -803,12 +797,12 @@ class Output(Generic[T_co]):
     def json_loads(
         s: Input[Union[str, bytes, bytearray]],
         *,
-        cls: Optional[Type[json.JSONDecoder]] = None,
-        object_hook: Optional[Callable[[Dict[Any, Any]], Any]] = None,
+        cls: Optional[type[json.JSONDecoder]] = None,
+        object_hook: Optional[Callable[[dict[Any, Any]], Any]] = None,
         parse_float: Optional[Callable[[str], Any]] = None,
         parse_int: Optional[Callable[[str], Any]] = None,
         parse_constant: Optional[Callable[[str], Any]] = None,
-        object_pairs_hook: Optional[Callable[[List[Tuple[Any, Any]]], Any]] = None,
+        object_pairs_hook: Optional[Callable[[list[tuple[Any, Any]]], Any]] = None,
         **kwds: Any,
     ) -> "Output[Any]":
         """
@@ -835,14 +829,10 @@ class Output(Generic[T_co]):
         return s_output.apply(loads)
 
     def __str__(self) -> str:
-        msg = """Calling __str__ on an Output[T] is not supported.
-
-To get the value of an Output[T] as an Output[str] consider:
-1. o.apply(lambda v: f"prefix{v}suffix")
-
-See https://www.pulumi.com/docs/concepts/inputs-outputs for more details."""
+        err = _OutputToStringError()
         if os.getenv("PULUMI_ERROR_OUTPUT_STRING", "").lower() in ["1", "true"]:
-            raise TypeError(msg)
+            raise err
+        msg = str(err)
         log.warn(msg)
         msg += "\nThis function may throw in a future version of Pulumi."
         return msg
@@ -905,7 +895,7 @@ def _map2_output(
             else cast(U, UNKNOWN)
         )
 
-    async def res() -> Set["Resource"]:
+    async def res() -> set["Resource"]:
         r1 = await o1.resources()
         r2 = await o2.resources()
         return r1 | r2
@@ -936,7 +926,7 @@ def _map3_output(
             else cast(U, UNKNOWN)
         )
 
-    async def res() -> Set["Resource"]:
+    async def res() -> set["Resource"]:
         r1 = await o1.resources()
         r2 = await o2.resources()
         r3 = await o3.resources()
@@ -1003,15 +993,15 @@ async def _gather_from_dict(tasks: dict) -> dict:
     return dict(zip(tasks.keys(), results))
 
 
-def deferred_output() -> Tuple[Output[T], Callable[[Output[T]], None]]:
+def deferred_output() -> tuple[Output[T], Callable[[Output[T]], None]]:
     """
     Creates an Output[T] whose value can be later resolved from another Output[T] instance.
     """
     # Setup the futures for the output.
-    resolve_value: "asyncio.Future" = asyncio.Future()
-    resolve_is_known: "asyncio.Future[bool]" = asyncio.Future()
-    resolve_is_secret: "asyncio.Future[bool]" = asyncio.Future()
-    resolve_deps: "asyncio.Future[Set[Resource]]" = asyncio.Future()
+    resolve_value: asyncio.Future = asyncio.Future()
+    resolve_is_known: asyncio.Future[bool] = asyncio.Future()
+    resolve_is_secret: asyncio.Future[bool] = asyncio.Future()
+    resolve_deps: asyncio.Future[set[Resource]] = asyncio.Future()
     already_resolved = False
 
     def resolve(o: Output[T]) -> None:
@@ -1048,7 +1038,7 @@ def deferred_output() -> Tuple[Output[T], Callable[[Output[T]], None]]:
 
         asyncio.ensure_future(o.is_secret()).add_done_callback(is_secret_callback)
 
-        def deps_callback(fut: "asyncio.Future[Set[Resource]]") -> None:
+        def deps_callback(fut: asyncio.Future[set["Resource"]]) -> None:
             if fut.exception() is not None:
                 resolve_deps.set_exception(fut.exception())  # type: ignore
             else:
@@ -1058,3 +1048,42 @@ def deferred_output() -> Tuple[Output[T], Callable[[Output[T]], None]]:
 
     out = Output(resolve_deps, resolve_value, resolve_is_known, resolve_is_secret)
     return out, resolve
+
+
+class _OutputToStringError(Exception):
+    """_OutputToStringError is the class of errors raised when __str__ is called
+    on a Pulumi Output."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            """Calling __str__ on an Output[T] is not supported.
+
+To get the value of an Output[T] as an Output[str] consider:
+1. o.apply(lambda v: f"prefix{v}suffix")
+
+See https://www.pulumi.com/docs/concepts/inputs-outputs for more details."""
+        )
+
+
+def _safe_str(v: Any) -> str:
+    """_safe_str returns the string representation of v if possible. If v is an
+    Output, _safe_str returns a fallback string, whether it's able to detect an
+    Output ahead of time or not by catching the _OutputToStringError. _safe_str
+    is designed for use in e.g. logging and debugging contexts where it's useful
+    to print all the information that can be reasonably obtained, without
+    falling afoul of things like PULUMI_ERROR_OUTPUT_STRING."""
+
+    # This is not a perfect implementation. If v's __str__ method tries to
+    # stringify an Output, and PULUMI_ERROR_OUTPUT_STRING is not set, we'll
+    # still produce an ugly message somwhere inside the resulting string. If
+    # this becomes an issue, we could spot it using e.g. string comparison or
+    # (far uglier but potentially more performant) monkey patching/subclassing
+    # the strings involved. For now this feels like a sensible compromise.
+
+    if isinstance(v, Output):
+        return "Output[T]"
+
+    try:
+        return str(v)
+    except _OutputToStringError:
+        return "Output[T]"

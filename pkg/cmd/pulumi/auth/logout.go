@@ -27,7 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func NewLogoutCmd() *cobra.Command {
+func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var cloudURL string
 	var localMode bool
 	var all bool
@@ -70,7 +70,6 @@ func NewLogoutCmd() *cobra.Command {
 			} else {
 				if cloudURL == "" {
 					// Try to read the current project
-					ws := pkgWorkspace.Instance
 					project, _, err := ws.ReadProject()
 					if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 						return err

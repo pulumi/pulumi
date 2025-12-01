@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -58,7 +59,7 @@ func HandleConfig(
 	}
 
 	// Get the existing snapshot.
-	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
 	if err != nil {
 		return err
 	}

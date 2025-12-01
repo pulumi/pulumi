@@ -1,7 +1,7 @@
 // GENERATED CODE -- DO NOT EDIT!
 
 // Original file comments:
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -774,4 +774,4 @@ getMappings: {
   },
 };
 
-exports.ResourceProviderClient = grpc.makeGenericClientConstructor(ResourceProviderService);
+exports.ResourceProviderClient = grpc.makeGenericClientConstructor(ResourceProviderService, 'ResourceProvider');

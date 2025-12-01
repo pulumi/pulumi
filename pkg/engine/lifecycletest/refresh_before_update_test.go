@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRefreshBeforeUpdate(t *testing.T) {
@@ -95,17 +96,17 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 	}
 
 	inputs := resource.PropertyMap{
-		"input": resource.NewStringProperty("value-1"),
+		"input": resource.NewProperty("value-1"),
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return nil
 	})
@@ -121,7 +122,7 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 	// First update.
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
 	assert.Equal(t, "default", snap.Resources[1].URN.Name())
 	assert.Equal(t, "resA", snap.Resources[2].URN.Name())
@@ -136,11 +137,11 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 
 	// Second update.
 	inputs = resource.PropertyMap{
-		"input": resource.NewStringProperty("value-2"),
+		"input": resource.NewProperty("value-2"),
 	}
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap = p.Run(t, snap)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
 	assert.Equal(t, "default", snap.Resources[1].URN.Name())
 	assert.Equal(t, "resA", snap.Resources[2].URN.Name())
@@ -157,7 +158,7 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 	readToken++
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap = p.Run(t, snap)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
 	assert.Equal(t, "default", snap.Resources[1].URN.Name())
 	assert.Equal(t, "resA", snap.Resources[2].URN.Name())
@@ -175,7 +176,7 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Update}}
 	p.Options.Refresh = true
 	snap = p.Run(t, snap)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
 	assert.Equal(t, "default", snap.Resources[1].URN.Name())
 	assert.Equal(t, "resA", snap.Resources[2].URN.Name())
@@ -193,7 +194,7 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Refresh}}
 	p.Options.Refresh = false
 	snap = p.Run(t, snap)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
 	assert.Equal(t, "default", snap.Resources[1].URN.Name())
 	assert.Equal(t, "resA", snap.Resources[2].URN.Name())
@@ -214,7 +215,7 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 		ID:   "imported-id",
 	}})}}
 	snap = p.Run(t, snap)
-	assert.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
 	assert.Equal(t, "default", snap.Resources[1].URN.Name())
 	assert.Equal(t, "resA", snap.Resources[2].URN.Name())
@@ -235,4 +236,89 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 		"result": resource.NewProperty("<FRESH-RESULT-42>"),
 	}, snap.Resources[3].Outputs)
 	assert.True(t, snap.Resources[3].RefreshBeforeUpdate)
+}
+
+func TestRefreshBeforeUpdateDeletedResource(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					props := req.Properties.Copy()
+					props["result"] = props["input"]
+					return plugin.CreateResponse{
+						Properties:          props,
+						ID:                  "new-id",
+						RefreshBeforeUpdate: true,
+					}, nil
+				},
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					if req.Name == "res0" {
+						return plugin.ReadResponse{
+							Status: resource.StatusOK,
+							ReadResult: plugin.ReadResult{
+								ID: "",
+							},
+						}, nil
+					}
+
+					return plugin.ReadResponse{
+						Status: resource.StatusOK,
+						ReadResult: plugin.ReadResult{
+							ID:                  "new-id",
+							Inputs:              req.Inputs,
+							Outputs:             req.State,
+							RefreshBeforeUpdate: true,
+						},
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		require.NoError(t, err)
+
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "res0", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{
+				"input": {resp.URN},
+			},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	// First update.
+	p.Steps = []lt.TestStep{{Op: Update}}
+	snap := p.Run(t, nil)
+	require.Len(t, snap.Resources, 4)
+	assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
+	assert.Equal(t, "default", snap.Resources[1].URN.Name())
+	assert.Equal(t, "res0", snap.Resources[2].URN.Name())
+	assert.Equal(t, "resA", snap.Resources[3].URN.Name())
+	assert.True(t, snap.Resources[2].RefreshBeforeUpdate)
+
+	// Second update.
+	p.Steps = []lt.TestStep{{Op: Update}}
+	snap = p.Run(t, snap)
+	require.Len(t, snap.Resources, 4)
+	assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
+	assert.Equal(t, "default", snap.Resources[1].URN.Name())
+	assert.Equal(t, "res0", snap.Resources[2].URN.Name())
+	assert.Equal(t, "resA", snap.Resources[3].URN.Name())
+	assert.True(t, snap.Resources[2].RefreshBeforeUpdate)
 }

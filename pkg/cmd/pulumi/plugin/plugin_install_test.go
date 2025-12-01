@@ -15,12 +15,17 @@
 package plugin
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"iter"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -112,7 +117,7 @@ func TestGetLatestPluginIncludedVersion(t *testing.T) {
 	}
 
 	err := cmd.Run(context.Background(), []string{"resource", "aws@1000.78.0"})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
@@ -125,12 +130,16 @@ func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
 
 	cmd := &pluginInstallCmd{
 		diag: diagtest.LogSink(t),
+		packageResolutionOptions: packageresolution.Options{
+			DisableRegistryResolve: false,
+			Experimental:           true,
+		},
 		pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
 			assert.Fail(t, "GetLatestVersion should not have been called")
 			return nil, nil
 		},
-		registry: testMockRegistry{
-			searchByName: func(
+		registry: &backend.MockCloudRegistry{
+			ListPackagesF: func(
 				ctx context.Context, name *string,
 			) iter.Seq2[apitype.PackageMetadata, error] {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
@@ -163,7 +172,7 @@ func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
 	}
 
 	err := cmd.Run(context.Background(), []string{"resource", "foo@2.0.0"})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // We need to check that we don't break installs of versions that are not published into the registry.
@@ -181,8 +190,8 @@ func TestGetPluginDownloadFromKnownUnpublishedPackage(t *testing.T) {
 			assert.Fail(t, "GetLatestVersion should not have been called")
 			return nil, nil
 		},
-		registry: testMockRegistry{
-			getPackage: func(
+		registry: &backend.MockCloudRegistry{
+			GetPackageF: func(
 				_ context.Context, source, publisher, name string, version *semver.Version,
 			) (apitype.PackageMetadata, error) {
 				switch version.String() {
@@ -193,7 +202,7 @@ func TestGetPluginDownloadFromKnownUnpublishedPackage(t *testing.T) {
 					return apitype.PackageMetadata{}, nil
 				}
 			},
-			searchByName: func(
+			ListPackagesF: func(
 				ctx context.Context, name *string,
 			) iter.Seq2[apitype.PackageMetadata, error] {
 				return func(yield func(apitype.PackageMetadata, error) bool) {
@@ -225,7 +234,7 @@ func TestGetPluginDownloadFromKnownUnpublishedPackage(t *testing.T) {
 	}
 
 	err := cmd.Run(context.Background(), []string{"resource", "random", "1.48.0"})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestGetPluginDownloadForMissingPackage(t *testing.T) {
@@ -236,12 +245,16 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 
 		cmd := &pluginInstallCmd{
 			diag: diagtest.LogSink(t),
+			packageResolutionOptions: packageresolution.Options{
+				DisableRegistryResolve: false,
+				Experimental:           true,
+			},
 			pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
 				assert.Fail(t, "GetLatestVersion should not have been called")
 				return nil, nil
 			},
-			registry: testMockRegistry{
-				searchByName: func(
+			registry: &backend.MockCloudRegistry{
+				ListPackagesF: func(
 					ctx context.Context, name *string,
 				) iter.Seq2[apitype.PackageMetadata, error] {
 					return func(yield func(apitype.PackageMetadata, error) bool) {}
@@ -251,7 +264,7 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 
 		err := cmd.Run(context.Background(), []string{"resource", "unknown", "1.48.0"})
 		assert.ErrorContains(t, err,
-			"Unable to resolve package from name: not found: unknown@1.48.0 does not match a registry package")
+			"Unable to resolve package from name: package unknown@1.48.0 not found")
 	})
 
 	t.Run("without version", func(t *testing.T) {
@@ -259,12 +272,16 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 
 		cmd := &pluginInstallCmd{
 			diag: diagtest.LogSink(t),
+			packageResolutionOptions: packageresolution.Options{
+				DisableRegistryResolve: false,
+				Experimental:           true,
+			},
 			pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
 				assert.Fail(t, "GetLatestVersion should not have been called")
 				return nil, nil
 			},
-			registry: testMockRegistry{
-				searchByName: func(
+			registry: &backend.MockCloudRegistry{
+				ListPackagesF: func(
 					ctx context.Context, name *string,
 				) iter.Seq2[apitype.PackageMetadata, error] {
 					return func(yield func(apitype.PackageMetadata, error) bool) {}
@@ -274,7 +291,7 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 
 		err := cmd.Run(context.Background(), []string{"resource", "unknown"})
 		assert.ErrorContains(t, err,
-			"Unable to resolve package from name: not found: unknown does not match a registry package")
+			"Unable to resolve package from name: package unknown not found")
 	})
 }
 
@@ -291,7 +308,7 @@ func TestRegistryIsNotUsedWhenAFileIsSpecified(t *testing.T) {
 			require.Fail(t, "GetLatestVersion should not have been called")
 			return nil, nil
 		},
-		registry: testMockRegistry{ /* empty registry will fail when used */ },
+		registry: &backend.MockCloudRegistry{ /* empty registry will fail when used */ },
 		file:     "./pulumi-resource-some-file.tar.gz", // This is a flag: --file
 		installPluginSpec: func(
 			_ context.Context, _ string,
@@ -309,31 +326,101 @@ func TestRegistryIsNotUsedWhenAFileIsSpecified(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, cmd.Run(ctx, []string{"resource", "some-file", "v1.0.0"}))
+	require.NoError(t, cmd.Run(ctx, []string{"resource", "some-file", "v1.0.0"}))
 }
 
-type testMockRegistry struct {
-	getPackage func(
-		ctx context.Context, source, publisher, name string, version *semver.Version,
-	) (apitype.PackageMetadata, error)
-	searchByName func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
-}
+//nolint:paralleltest // uses t.Chdir
+func TestRegistryFallbackWithLocalPackages(t *testing.T) {
+	tmpDir := t.TempDir()
+	pulumiYaml := `name: test-project
+runtime: nodejs
+packages:
+  my-local-provider: ./my-provider`
 
-func (r testMockRegistry) GetPackage(
-	ctx context.Context, source, publisher, name string, version *semver.Version,
-) (apitype.PackageMetadata, error) {
-	if r.getPackage != nil {
-		return r.getPackage(ctx, source, publisher, name, version)
+	err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte(pulumiYaml), 0o600)
+	require.NoError(t, err)
+
+	t.Chdir(tmpDir)
+
+	installCalled := false
+	defer func() {
+		require.True(t, installCalled, "Expected installPluginSpec to be called")
+	}()
+
+	cmd := &pluginInstallCmd{
+		diag: diagtest.LogSink(t),
+		pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
+			return &semver.Version{Major: 1}, nil
+		},
+		registry: &backend.MockCloudRegistry{
+			ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+				return func(yield func(apitype.PackageMetadata, error) bool) {}
+			},
+		},
+		installPluginSpec: func(
+			_ context.Context, _ string, install workspace.PluginSpec, _ string,
+			_ diag.Sink, _ colors.Colorization, _ bool,
+		) error {
+			require.Equal(t, "my-local-provider", install.Name)
+			require.NotContains(t, install.PluginDownloadURL, "github.com/pulumi/pulumi-my-local-provider")
+			installCalled = true
+			return nil
+		},
 	}
-	panic("GetPackage not implemented")
+
+	err = cmd.Run(context.Background(), []string{"resource", "my-local-provider"})
+	require.NoError(t, err)
 }
 
-func (r testMockRegistry) SearchByName(
-	ctx context.Context, name *string,
-) iter.Seq2[apitype.PackageMetadata, error] {
-	if r.searchByName != nil {
-		return r.searchByName(ctx, name)
+func TestSuggestedPackagesDisplay(t *testing.T) {
+	t.Parallel()
+
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+
+	cmd := &pluginInstallCmd{
+		diag: sink,
+		packageResolutionOptions: packageresolution.Options{
+			DisableRegistryResolve: false,
+			Experimental:           true,
+		},
+		pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
+			assert.Fail(t, "GetLatestVersion should not have been called")
+			return nil, nil
+		},
+		registry: &backend.MockCloudRegistry{
+			ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+				return func(yield func(apitype.PackageMetadata, error) bool) {
+					if !yield(apitype.PackageMetadata{
+						Source:    "community",
+						Publisher: "example",
+						Name:      "similar-pkg",
+						Version:   semver.Version{Major: 1, Minor: 0, Patch: 0},
+					}, nil) {
+						return
+					}
+					yield(apitype.PackageMetadata{
+						Source:    "github",
+						Publisher: "someuser",
+						Name:      "another-similar-pkg",
+						Version:   semver.Version{Major: 2, Minor: 1, Patch: 0},
+					}, nil)
+				}
+			},
+		},
+		installPluginSpec: func(
+			_ context.Context, _ string, install workspace.PluginSpec, _ string,
+			_ diag.Sink, _ colors.Colorization, _ bool,
+		) error {
+			assert.Fail(t, "installPluginSpec should not have been called")
+			return nil
+		},
 	}
 
-	panic("SearchByName not implemented")
+	err := cmd.Run(context.Background(), []string{"resource", "missing-pkg", "1.0.0"})
+	assert.ErrorContains(t, err, "Unable to resolve package from name")
+
+	output := stdout.String() + stderr.String()
+	assert.Contains(t, output, "community/example/similar-pkg@1.0.0 is a similar package")
+	assert.Contains(t, output, "github/someuser/another-similar-pkg@2.1.0 is a similar package")
 }

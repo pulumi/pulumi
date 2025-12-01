@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build go || all
-
 package ints
 
 import (
@@ -66,7 +64,7 @@ func TestBuildTarget(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "select", "go-build-target-test-stack")
 	e.RunCommand("pulumi", "preview")
 	_, err := os.Stat(filepath.Join(e.RootPath, "a.out"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // This checks that the Exit Status artifact from Go Run is not being produced
@@ -614,13 +612,12 @@ func TestConstructSlowGo(t *testing.T) {
 		Quick:          true,
 		NoParallel:     true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
-				stackRes := stackInfo.Deployment.Resources[0]
-				assert.NotNil(t, stackRes)
-				assert.Equal(t, resource.RootStackType, stackRes.Type)
-				assert.Equal(t, "", string(stackRes.Parent))
-			}
+			require.NotNil(t, stackInfo.Deployment)
+			require.Len(t, stackInfo.Deployment.Resources, 5)
+			stackRes := stackInfo.Deployment.Resources[0]
+			require.NotNil(t, stackRes)
+			assert.Equal(t, resource.RootStackType, stackRes.Type)
+			assert.Equal(t, "", string(stackRes.Parent))
 		},
 	}
 	integration.ProgramTest(t, opts)
@@ -661,7 +658,6 @@ func TestConstructPlainGo(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -684,7 +680,7 @@ func optsForConstructPlainGo(
 		LocalProviders: localProviders,
 		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
 		},
 	}
@@ -719,7 +715,6 @@ func TestConstructMethodsGo(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProvider := integration.LocalDependency{
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
@@ -795,7 +790,6 @@ func TestConstructProviderGo(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProvider := integration.LocalDependency{
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
@@ -830,10 +824,10 @@ func TestGetResourceGo(t *testing.T) {
 			"bar": "this super secret is encrypted",
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stack.Outputs)
+			require.NotNil(t, stack.Outputs)
 			assert.Equal(t, float64(2), stack.Outputs["getPetLength"])
 
-			out, ok := stack.Outputs["secret"].(map[string]interface{})
+			out, ok := stack.Outputs["secret"].(map[string]any)
 			assert.True(t, ok)
 
 			_, ok = out["ciphertext"]
@@ -880,8 +874,8 @@ func TestTracePropagationGo(t *testing.T) {
 	integration.ProgramTest(t, opts)
 
 	store, err := ReadMemoryStoreFromFile(filepath.Join(dir, "pulumi-update-initial.trace"))
-	assert.NoError(t, err)
-	assert.NotNil(t, store)
+	require.NoError(t, err)
+	require.NotNil(t, store)
 
 	t.Run("traced `go list -m -json`", func(t *testing.T) {
 		t.Parallel()
@@ -897,8 +891,8 @@ func TestTracePropagationGo(t *testing.T) {
 				strings.Contains(m["args"], "list -m -json")
 		}
 		tr, err := FindTrace(store, isGoListTrace)
-		assert.NoError(t, err)
-		assert.NotNil(t, tr)
+		require.NoError(t, err)
+		require.NotNil(t, tr)
 	})
 
 	t.Run("traced api/exportStack exactly once", func(t *testing.T) {
@@ -912,7 +906,7 @@ func TestTracePropagationGo(t *testing.T) {
 			}
 			return nil
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, 1, exportStackCounter)
 	})
 }
@@ -954,7 +948,7 @@ func TestProjectMainGo(t *testing.T) {
 		Dependencies: []string{"github.com/pulumi/pulumi/sdk/v3"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Simple runtime validation that just ensures the checkpoint was written and read.
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 		},
 	}
 	integration.ProgramTest(t, &test)
@@ -1119,7 +1113,7 @@ func TestStackOutputsProgramErrorGo(t *testing.T) {
 	d := filepath.Join("stack_outputs_program_error", "go")
 
 	validateOutputs := func(
-		expected map[string]interface{},
+		expected map[string]any,
 	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
@@ -1132,7 +1126,7 @@ func TestStackOutputsProgramErrorGo(t *testing.T) {
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		Quick: true,
-		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+		ExtraRuntimeValidation: validateOutputs(map[string]any{
 			"xyz": "ABC",
 			"foo": float64(42),
 		}),
@@ -1141,7 +1135,7 @@ func TestStackOutputsProgramErrorGo(t *testing.T) {
 				Dir:           filepath.Join(d, "step2"),
 				Additive:      true,
 				ExpectFailure: true,
-				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+				ExtraRuntimeValidation: validateOutputs(map[string]any{
 					"xyz": "DEF",       // Expected to be updated
 					"foo": float64(42), // Expected to remain the same
 				}),
@@ -1158,7 +1152,7 @@ func TestStackOutputsResourceErrorGo(t *testing.T) {
 	d := filepath.Join("stack_outputs_resource_error", "go")
 
 	validateOutputs := func(
-		expected map[string]interface{},
+		expected map[string]any,
 	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
@@ -1174,7 +1168,7 @@ func TestStackOutputsResourceErrorGo(t *testing.T) {
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
 		Quick: true,
-		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+		ExtraRuntimeValidation: validateOutputs(map[string]any{
 			"xyz": "ABC",
 			"foo": float64(42),
 		}),
@@ -1185,7 +1179,7 @@ func TestStackOutputsResourceErrorGo(t *testing.T) {
 				ExpectFailure: true,
 				// Expect the values to remain the same because the deployment ends before RegisterResourceOutputs is
 				// called for the stack.
-				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+				ExtraRuntimeValidation: validateOutputs(map[string]any{
 					"xyz": "ABC",
 					"foo": float64(42),
 				}),
@@ -1195,7 +1189,7 @@ func TestStackOutputsResourceErrorGo(t *testing.T) {
 				Additive:      true,
 				ExpectFailure: true,
 				// Expect the values to be updated.
-				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+				ExtraRuntimeValidation: validateOutputs(map[string]any{
 					"xyz": "DEF",
 					"foo": float64(1),
 				}),
@@ -1274,6 +1268,7 @@ func appendLines(name string, lines []string) error {
 
 //nolint:paralleltest // mutates environment
 func TestPackageAddGo(t *testing.T) {
+	// xx move this
 	e := ptesting.NewEnvironment(t)
 
 	var err error
@@ -1291,9 +1286,9 @@ func TestPackageAddGo(t *testing.T) {
 	require.NotContains(t, stderr, "exited prematurely")
 
 	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "go.mod"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = modfile.Parse("go.mod", modBytes, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Verify that the Pulumi.yaml file contains the random package with correct settings
 	yamlContent, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi.yaml"))
@@ -1363,16 +1358,16 @@ func TestPackageAddGoParameterized(t *testing.T) {
 
 	assert.True(t, e.PathExists("sdks/netapp-cloudmanager/go.mod"))
 	packageModBytes, err := os.ReadFile(filepath.Join(e.CWD, "sdks", "netapp-cloudmanager", "go.mod"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	packageMod, err := modfile.Parse("package.mod", packageModBytes, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "github.com/pulumi/pulumi-terraform-provider/sdks/go/netapp-cloudmanager/v25",
 		packageMod.Module.Mod.Path)
 
 	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "go.mod"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	gomod, err := modfile.Parse("go.mod", modBytes, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	containsRename := false
 	containedRenames := make([]string, len(gomod.Replace))
@@ -1406,9 +1401,9 @@ func TestConvertTerraformProviderGo(t *testing.T) {
 	assert.True(t, e.PathExists("godir/sdks/supabase/go.mod"))
 
 	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "godir", "go.mod"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	gomod, err := modfile.Parse("go.mod", modBytes, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	containsRename := false
 	for _, r := range gomod.Replace {
@@ -1440,9 +1435,9 @@ func TestConvertMultipleTerraformProviderGo(t *testing.T) {
 	assert.True(t, e.PathExists("godir/sdks/b2/go.mod"))
 
 	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "godir", "go.mod"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	gomod, err := modfile.Parse("go.mod", modBytes, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	containsRenameSupabase := false
 	containsRenameBB := false
@@ -1557,47 +1552,47 @@ outer:
 			ColumnsStartAt1: true,
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	seq++
 	reader := bufio.NewReader(conn)
 	// We need to read the response, but we don't actually care
 	// about it.  It just includes the capabilities of the
 	// debugger.
 	resp, err := dap.ReadProtocolMessage(reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.IsType(t, &dap.InitializeResponse{}, resp)
 	json, err := json.Marshal(debugEvent.Config)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = dap.WriteProtocolMessage(conn, &dap.AttachRequest{
 		Request:   newDAPRequest(seq, "attach"),
 		Arguments: json,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	seq++
 	// read the initialized event, and then the response to the attach request.
 	resp, err = dap.ReadProtocolMessage(reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.IsType(t, &dap.InitializedEvent{}, resp)
 	resp, err = dap.ReadProtocolMessage(reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.IsType(t, &dap.AttachResponse{}, resp)
 
 	err = dap.WriteProtocolMessage(conn, &dap.ContinueRequest{
 		Request: newDAPRequest(seq, "continue"),
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	seq++
 	resp, err = dap.ReadProtocolMessage(reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.IsType(t, &dap.ContinueResponse{}, resp)
 	resp, err = dap.ReadProtocolMessage(reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.IsType(t, &dap.TerminatedEvent{}, resp)
 
 	err = dap.WriteProtocolMessage(conn, &dap.DisconnectRequest{
 		Request: newDAPRequest(seq, "disconnect"),
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Make sure the program finished successfully.
 	wg.Wait()
@@ -1705,7 +1700,7 @@ outer:
 	err = dap.WriteProtocolMessage(conn, &dap.DisconnectRequest{
 		Request: newDAPRequest(seq, "disconnect"),
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Wait for the pulumi preview command to finish.
 	wg.Wait()
@@ -1765,11 +1760,8 @@ func TestRunPlugin(t *testing.T) {
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
-	e.CWD = filepath.Join(e.RootPath, "provider-nodejs")
-	e.RunCommand("pulumi", "install")
-
-	e.CWD = filepath.Join(e.RootPath, "provider-python")
-	e.RunCommand("pulumi", "install")
+	installNodejsProviderDependencies(t, filepath.Join(e.RootPath, "provider-nodejs"))
+	installPythonProviderDependencies(t, filepath.Join(e.RootPath, "provider-python"))
 
 	e.CWD = filepath.Join(e.RootPath, "go")
 	sdkPath, err := filepath.Abs("../../sdk/")

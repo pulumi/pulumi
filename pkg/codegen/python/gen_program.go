@@ -325,23 +325,23 @@ func GenerateProject(
 		}
 	}
 
-	var options map[string]interface{}
+	var options map[string]any
 	if _, ok := localDependencies["pulumi"]; ok {
-		options = map[string]interface{}{
+		options = map[string]any{
 			"virtualenv": "venv",
 		}
 	}
 
 	if typechecker != "" {
 		if options == nil {
-			options = map[string]interface{}{}
+			options = map[string]any{}
 		}
 		options["typechecker"] = typechecker
 	}
 
 	if toolchain != "" {
 		if options == nil {
-			options = map[string]interface{}{}
+			options = map[string]any{}
 		}
 		options["toolchain"] = toolchain
 	}
@@ -580,7 +580,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		}
 		control := importSet[pkg]
 		if control.ImportAs {
-			imports = append(imports, fmt.Sprintf("import %s as %s", pkg, EnsureKeywordSafe(control.Pkg)))
+			imports = append(imports, fmt.Sprintf("import %s as %s", pkg, EnsureKeywordSafe(PyName(control.Pkg))))
 		} else {
 			imports = append(imports, "import "+pkg)
 		}
@@ -634,7 +634,7 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 }
 
 func tokenToQualifiedName(pkg, module, member string) string {
-	components := strings.Split(module, "/")
+	components := strings.Split(strings.ToLower(module), "/")
 	for i, component := range components {
 		components[i] = PyName(component)
 	}
@@ -643,7 +643,7 @@ func tokenToQualifiedName(pkg, module, member string) string {
 		module = "." + module
 	}
 
-	return fmt.Sprintf("%s%s.%s", PyName(pkg), module, title(member))
+	return fmt.Sprintf("%s%s.%s", EnsureKeywordSafe(PyName(pkg)), module, title(member))
 }
 
 // resourceTypeName computes the qualified name of a python resource.
@@ -804,8 +804,14 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.DeletedWith != nil {
 		appendOption("deleted_with", opts.DeletedWith)
 	}
+	if opts.ReplaceWith != nil {
+		appendOption("replace_with", opts.ReplaceWith)
+	}
 	if opts.ImportID != nil {
 		appendOption("import_", opts.ImportID)
+	}
+	if opts.HideDiffs != nil {
+		appendOption("hide_diffs", opts.HideDiffs)
 	}
 
 	return block, temps
@@ -1231,7 +1237,7 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 	g.Fgenf(w, "%spulumi.export(\"%s\", %.v)\n", g.Indent, v.LogicalName(), value)
 }
 
-func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
+func (g *generator) genNYI(w io.Writer, reason string, vs ...any) {
 	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
 		Severity: hcl.DiagError,

@@ -105,7 +105,11 @@ func (cmd *aiWebCmd) Run(ctx context.Context, args []string) error {
 	}
 	if !cmd.disableAutoSubmit {
 		if len(args) == 0 {
-			return errors.New("prompt must be provided when auto-submit is enabled")
+			return errors.New(
+				"prompt must be provided when auto-submit is enabled.\n" +
+					"Example: 'pulumi ai web \"Create an S3 bucket in Python\"'\n" +
+					"Alternatively, use --no-auto-submit to open the app without a prompt",
+			)
 		}
 		query.Set("autoSubmit", "true")
 	}
@@ -131,7 +135,7 @@ func newAIWebCommand() *cobra.Command {
 		aiwebcmd.appURL = "https://www.pulumi.com/ai"
 	}
 	cmd := &cobra.Command{
-		Use:   "web",
+		Use:   "web <prompt|--no-auto-submit>",
 		Short: "Opens Pulumi AI in your local browser",
 		Long: `Opens Pulumi AI in your local browser
 
@@ -139,10 +143,11 @@ This command opens the Pulumi AI web app in your local default browser.
 It can be further initialized by providing a prompt to pre-fill in the app,
 with the default behavior then automatically submitting that prompt to Pulumi AI.
 
-If no prompt is provided, the app will be opened with no prompt pre-filled.
-
 If you do not want to submit the prompt to Pulumi AI, you can opt-out of this
 by passing the --no-auto-submit flag.
+
+Example:
+  pulumi ai web "Create an S3 bucket in Python"
 `,
 		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

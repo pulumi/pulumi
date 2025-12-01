@@ -16,6 +16,7 @@ package backend
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -49,7 +50,18 @@ type LoginManager interface {
 		url string,
 		project *workspace.Project,
 		setCurrent bool,
+		insecure bool,
 		color colors.Colorization,
+	) (backend.Backend, error)
+
+	LoginFromAuthContext(
+		ctx context.Context,
+		sink diag.Sink,
+		url string,
+		project *workspace.Project,
+		setCurrent bool,
+		insecure bool,
+		authContext workspace.AuthContext,
 	) (backend.Backend, error)
 }
 
@@ -75,7 +87,7 @@ func (f *lm) Current(
 
 func (f *lm) Login(
 	ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string, project *workspace.Project, setCurrent bool,
-	color colors.Colorization,
+	insecure bool, color colors.Colorization,
 ) (backend.Backend, error) {
 	if diy.IsDIYBackendURL(url) {
 		if setCurrent {
@@ -84,7 +96,6 @@ func (f *lm) Login(
 		return diy.New(ctx, sink, url, project)
 	}
 
-	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
 	lm := httpstate.NewLoginManager()
 	// Color is the only thing used by lm.Login, so we can just request a colors.Colorization and only fill that part of
 	// the display options in. It's hard to change Login itself because it's circularly depended on by esc.
@@ -96,6 +107,31 @@ func (f *lm) Login(
 		return nil, err
 	}
 	return httpstate.New(ctx, sink, url, project, insecure)
+}
+
+// LoginFromAuthContext logs in to a backend using the provided authentication context.
+// It handles different grant types, such as OIDC token exchange, and returns an error
+// for unrecognized grant types.
+func (f *lm) LoginFromAuthContext(
+	ctx context.Context,
+	sink diag.Sink,
+	url string,
+	project *workspace.Project,
+	setCurrent bool,
+	insecure bool,
+	authContext workspace.AuthContext,
+) (backend.Backend, error) {
+	if authContext.GrantType == workspace.AuthContextGrantTypeTokenExchange {
+		lm := httpstate.NewLoginManager()
+		_, err := lm.LoginWithOIDCToken(
+			ctx, sink, url, insecure, authContext.Token, authContext.Organization, authContext.Scope,
+			authContext.Expiration, setCurrent)
+		if err != nil {
+			return nil, err
+		}
+		return httpstate.New(ctx, sink, url, project, insecure)
+	}
+	return nil, fmt.Errorf("unknown auth context grant type: %s", authContext.GrantType)
 }
 
 type MockLoginManager struct {
@@ -115,7 +151,18 @@ type MockLoginManager struct {
 		url string,
 		project *workspace.Project,
 		setCurrent bool,
+		insecure bool,
 		color colors.Colorization,
+	) (backend.Backend, error)
+
+	LoginFromAuthContextF func(
+		ctx context.Context,
+		sink diag.Sink,
+		url string,
+		project *workspace.Project,
+		setCurrent bool,
+		insecure bool,
+		authContext workspace.AuthContext,
 	) (backend.Backend, error)
 }
 
@@ -128,10 +175,26 @@ func (lm *MockLoginManager) Login(
 	url string,
 	project *workspace.Project,
 	setCurrent bool,
+	insecure bool,
 	color colors.Colorization,
 ) (backend.Backend, error) {
 	if lm.LoginF != nil {
-		return lm.LoginF(ctx, ws, sink, url, project, setCurrent, color)
+		return lm.LoginF(ctx, ws, sink, url, project, setCurrent, insecure, color)
+	}
+	panic("not implemented")
+}
+
+func (lm *MockLoginManager) LoginFromAuthContext(
+	ctx context.Context,
+	sink diag.Sink,
+	url string,
+	project *workspace.Project,
+	setCurrent bool,
+	insecure bool,
+	authContext workspace.AuthContext,
+) (backend.Backend, error) {
+	if lm.LoginFromAuthContextF != nil {
+		return lm.LoginFromAuthContextF(ctx, sink, url, project, setCurrent, insecure, authContext)
 	}
 	panic("not implemented")
 }

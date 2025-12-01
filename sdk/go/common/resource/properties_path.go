@@ -27,7 +27,7 @@ import (
 
 // PropertyPath represents a path to a nested property. The path may be composed of strings (which access properties
 // in ObjectProperty values) and integers (which access elements of ArrayProperty values).
-type PropertyPath []interface{}
+type PropertyPath []any
 
 // ParsePropertyPath parses a property path into a PropertyPath value.
 //
@@ -67,7 +67,7 @@ func parsePropertyPath(path string, strict bool) (PropertyPath, error) {
 	// pathElement := { '.' } [a-zA-Z_$][a-zA-Z0-9_$]
 	// pathIndex := '[' ( [0-9]+ | '"' ('\' '"' | [^"] )+ '"' ']'
 	// path := { pathElement | pathIndex }
-	var elements []interface{}
+	var elements []any
 	if len(path) > 0 && path[0] == '.' {
 		return nil, errors.New("expected property path to start with a name or index")
 	}
@@ -86,7 +86,7 @@ func parsePropertyPath(path string, strict bool) (PropertyPath, error) {
 			}
 		case '[':
 			// If the character following the '[' is a '"', parse a string key.
-			var pathElement interface{}
+			var pathElement any
 			if len(path) > 1 && path[1] == '"' {
 				var propertyKey []byte
 				var i int
@@ -228,13 +228,13 @@ func (p PropertyPath) Add(dest, v PropertyValue) (PropertyValue, bool) {
 			case dest.IsNull():
 				// If the destination array does not exist, create a new array with enough room to store the value at
 				// the requested index.
-				dest = NewArrayProperty(make([]PropertyValue, key+1))
+				dest = NewProperty(make([]PropertyValue, key+1))
 				set(dest)
 			case dest.IsArray():
 				// If the destination array does exist, ensure that it is large enough to accommodate the requested
 				// index.
 				if arr := dest.ArrayValue(); key >= len(arr) {
-					dest = NewArrayProperty(append(make([]PropertyValue, key+1-len(arr)), arr...))
+					dest = NewProperty(append(make([]PropertyValue, key+1-len(arr)), arr...))
 					set(dest)
 				}
 			default:
@@ -250,7 +250,7 @@ func (p PropertyPath) Add(dest, v PropertyValue) (PropertyValue, bool) {
 			switch {
 			case dest.IsNull():
 				// If the destination does not exist, create a new object.
-				dest = NewObjectProperty(PropertyMap{})
+				dest = NewProperty(PropertyMap{})
 				set(dest)
 			case dest.IsObject():
 				// OK
@@ -440,13 +440,10 @@ func (p PropertyPath) reset(old, new PropertyValue, oldIsSecret, newIsSecret boo
 					if old.IsArray() {
 						oldArray := old.ArrayValue()
 						newArray := new.ArrayValue()
-						// If arrays are of different length then this is a path failure because we can't
-						// synchronise the two values.
-						if len(oldArray) != len(newArray) {
-							return false
-						}
-
 						for i := range oldArray {
+							if i >= len(newArray) {
+								break
+							}
 							v := oldArray[i]
 							// If this was a secret value in old, but new isn't currently a secret context then we need
 							// to mark this reset value as secret.
@@ -454,6 +451,11 @@ func (p PropertyPath) reset(old, new PropertyValue, oldIsSecret, newIsSecret boo
 								v = MakeSecret(v)
 							}
 							newArray[i] = v
+						}
+						// If arrays are of different length then this is a path failure because we can't
+						// synchronise the two values.
+						if len(oldArray) != len(newArray) {
+							return false
 						}
 					}
 					return true
@@ -481,17 +483,20 @@ func (p PropertyPath) reset(old, new PropertyValue, oldIsSecret, newIsSecret boo
 			} else if old.IsArray() && new.IsArray() {
 				oldArray := old.ArrayValue()
 				newArray := new.ArrayValue()
+				for i := range oldArray {
+					if i >= len(newArray) {
+						break
+					}
+					if !p[1:].reset(oldArray[i], newArray[i], oldIsSecret, newIsSecret) {
+						return false
+					}
+				}
 				// If arrays are of different length then this is a path failure because we can't
 				// continue the search of this path down each PropertyValue.
 				if len(oldArray) != len(newArray) {
 					return false
 				}
 
-				for i := range oldArray {
-					if !p[1:].reset(oldArray[i], newArray[i], oldIsSecret, newIsSecret) {
-						return false
-					}
-				}
 				return true
 			}
 			return false
@@ -563,7 +568,7 @@ func (p PropertyPath) reset(old, new PropertyValue, oldIsSecret, newIsSecret boo
 // intermediate locations, it also won't create or delete array locations (because that would change the size
 // of the array).
 func (p PropertyPath) Reset(old, new PropertyMap) bool {
-	return p.reset(NewObjectProperty(old), NewObjectProperty(new), false, false)
+	return p.reset(NewProperty(old), NewProperty(new), false, false)
 }
 
 func requiresQuote(c rune) bool {
@@ -600,4 +605,46 @@ func (p PropertyPath) String() string {
 		}
 	}
 	return buf.String()
+}
+
+func (p PropertyPath) MarshalText() ([]byte, error) {
+	return []byte(p.String()), nil
+}
+
+func (p *PropertyPath) UnmarshalText(b []byte) error {
+	path, err := ParsePropertyPath(string(b))
+	if err != nil {
+		*p = nil
+		return err
+	}
+	*p = path
+	return nil
+}
+
+func (p PropertyPath) GoString() string {
+	var buffer strings.Builder
+	buffer.WriteString("resource.PropertyPath{")
+	if len(p) == 0 {
+		buffer.WriteString("}")
+		return buffer.String()
+	}
+
+	format := func(a any) {
+		switch a := a.(type) {
+		case int:
+			buffer.WriteString(strconv.Itoa(a))
+		case string:
+			buffer.WriteString(strconv.Quote(a))
+		default:
+			buffer.WriteString(fmt.Sprintf("INVALID %[1]T (%[1]q)", a))
+		}
+	}
+
+	for _, e := range p[:len(p)-1] {
+		format(e)
+		buffer.WriteRune(',')
+	}
+	format(p[len(p)-1])
+	buffer.WriteRune('}')
+	return buffer.String()
 }

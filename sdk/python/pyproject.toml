@@ -4,24 +4,26 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pulumi"
-version = "3.178.0"
+version = "3.210.0"
 license = "Apache-2.0"
-license-files = ["../..LICENSE"]
-requires-python = ">=3.9"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
 description = "Pulumi's Python SDK"
 readme = "README.md"
 classifiers = [
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
 ]
 dependencies = [
-    'protobuf~=4.21',
-    'grpcio~=1.66.2',
-    'dill~=0.3',
+    # We deliberately allow older versions of protobuf and grpcio (3.20.3 and 1.68.1 respectively)
+    # to support users who require older versions of these dependencies.
+    'protobuf>=3.20.3,<6',
+    'grpcio>=1.68.1,<2',
+    'dill~=0.4',
     'semver~=3.0',
     'pyyaml~=6.0',
     'debugpy~=1.8.7',
@@ -30,18 +32,20 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    'mypy==1.9.0',
-    'pyright==1.1.375',
-    'pytest~=7.4.4',
-    'pytest-timeout',
-    'types-pyyaml',
-    'types-protobuf',
-    'pytest-asyncio',
+    'mypy==1.17.1',
+    'pyright==1.1.404',
+    'pytest~=8.4.0',
+    'pytest-timeout>=2.3.1',
+    'pytest-xdist>=3.8.0',
+    'types-pyyaml>=6.0.12.20241230',
+    'types-protobuf>=5.29.1.20241207',
+    'pytest-asyncio~=1.2.0',
     'coverage>=6.0.2',
-    'wheel',
-    'ruff==0.8.0',
+    'wheel>=0.45.1',
+    'ruff==0.13.2',
     "build>=1.2.2.post1",
     "twine>=6.0.1",
+    "types-grpcio>=1.0.0.20250703",
 ]
 
 [project.urls]
@@ -71,7 +75,7 @@ include = ["lib/test_types"]
 strict = ["lib/test_types"]
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py310"
 
 include = [
     "lib/pulumi/**.py",
@@ -100,12 +104,16 @@ select = [
     "ASYNC", # flake8-async
     "BLE",   # flake8-blind-except
     "S102",  # use of exec builtin
+    "UP",    # pyupgrade
 ]
 ignore = [
-    "PLR",  # pylint refactor rules
-    "S101", # use of assert, probably want to re-enable this
-    "E731", # lambda-assignment
-    "E741", # ambiguous-variable-name
+    "PLR",     # pylint refactor rules
+    "S101",    # use of assert, probably want to re-enable this
+    "E731",    # lambda-assignment
+    "E741",    # ambiguous-variable-name
+    "PLC0415", # `import` should be at the top-level of a file
+    "UP045",   # non-pep604-annotation-optional
+    "UP007",   # non-pep604-annotation-union
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -118,12 +126,13 @@ quote-style = "double"
 
 [tool.mypy]
 # The minimum Python version we support
-python_version = "3.9"
+python_version = "3.10"
 
 [[tool.mypy.overrides]]
 module = [
     "dill",
     "google.protobuf.pyext._message",
+    "grpc.experimental.aio",
     "google.protobuf.pyext",
     "pulumi.runtime.proto.*",
 ]

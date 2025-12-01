@@ -21,14 +21,14 @@ import (
 )
 
 // Encode encodes a strongly typed struct into a weakly typed JSON-like property bag.
-func (md *mapper) Encode(source interface{}) (map[string]interface{}, MappingError) {
+func (md *mapper) Encode(source any) (map[string]any, MappingError) {
 	if source == nil {
 		return nil, nil
 	}
 	return md.encode(reflect.ValueOf(source))
 }
 
-func (md *mapper) encode(vsrc reflect.Value) (map[string]interface{}, MappingError) {
+func (md *mapper) encode(vsrc reflect.Value) (map[string]any, MappingError) {
 	contract.Requiref(vsrc.IsValid(), "vsrc", "value must be valid")
 
 	// Fetch the type; if it's a pointer, do a quick nil check, otherwise operate on its underlying type.
@@ -46,7 +46,7 @@ func (md *mapper) encode(vsrc reflect.Value) (map[string]interface{}, MappingErr
 
 	// Fetch the source type, allocate a fresh object, and start encoding into it.
 	var errs []error
-	obj := make(map[string]interface{})
+	obj := make(map[string]any)
 	for _, fldtag := range md.structFieldsTags(vsrc.Type()) {
 		if !fldtag.Skip {
 			key := fldtag.Key
@@ -74,14 +74,14 @@ func (md *mapper) encode(vsrc reflect.Value) (map[string]interface{}, MappingErr
 }
 
 // EncodeValue decodes primitive type fields.  For fields of complex types, we use custom deserialization.
-func (md *mapper) EncodeValue(v interface{}) (interface{}, MappingError) {
+func (md *mapper) EncodeValue(v any) (any, MappingError) {
 	if v == nil {
 		return nil, nil
 	}
 	return md.encodeValue(reflect.ValueOf(v))
 }
 
-func (md *mapper) encodeValue(vsrc reflect.Value) (interface{}, MappingError) {
+func (md *mapper) encodeValue(vsrc reflect.Value) (any, MappingError) {
 	contract.Requiref(vsrc.IsValid(), "vsrc", "value must be valid")
 
 	// Otherwise, try to map to the closest JSON-like destination type we can.
@@ -111,7 +111,7 @@ func (md *mapper) encodeValue(vsrc reflect.Value) (interface{}, MappingError) {
 			return nil, nil
 		}
 
-		slice := make([]interface{}, vsrc.Len())
+		slice := make([]any, vsrc.Len())
 		var errs []error
 		for i := 0; i < vsrc.Len(); i++ {
 			ev := vsrc.Index(i)
@@ -133,7 +133,7 @@ func (md *mapper) encodeValue(vsrc reflect.Value) (interface{}, MappingError) {
 		contract.Assertf(ktype.Kind() == reflect.String, "expected map with string keys, got %v (%v)", ktype, ktype.Kind())
 
 		iter := vsrc.MapRange()
-		mmap := make(map[string]interface{}, vsrc.Len())
+		mmap := make(map[string]any, vsrc.Len())
 		var errs []error
 		for iter.Next() {
 			if val, err := md.encodeValue(iter.Value()); err != nil {
@@ -147,7 +147,7 @@ func (md *mapper) encodeValue(vsrc reflect.Value) (interface{}, MappingError) {
 		}
 		return nil, NewMappingError(errs)
 
-	// Structs and interface{}:
+	// Structs and any:
 	case reflect.Struct:
 		return md.encode(vsrc)
 	case reflect.Interface:

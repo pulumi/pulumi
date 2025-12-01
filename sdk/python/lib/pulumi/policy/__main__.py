@@ -1,4 +1,4 @@
-# Copyright 2016-2020, Pulumi Corporation.
+# Copyright 2016-2025, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,7 +29,9 @@ def main():
     parser.add_argument("--tracing", required=False, nargs=1, metavar="TRACING_FILE")
     parser.add_argument("--logtostderr", required=False, action="store_true")
     parser.add_argument("--logflow", required=False, action="store_true")
-    args = parser.parse_args()
+    parser.add_argument("-v", "--verbose", required=False, type=int, default=0)
+    # Parse the args, ignoring unknown args.
+    args, _ = parser.parse_known_args()
     program = args.program
 
     # If any config variables are present, parse and set them, so subsequent accesses are fast.

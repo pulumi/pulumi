@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,8 +32,9 @@ import (
 
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -42,11 +43,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -54,7 +55,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
 
-func NewConvertCmd() *cobra.Command {
+func NewConvertCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var outDir string
 	var from string
 	var language string
@@ -90,7 +91,7 @@ func NewConvertCmd() *cobra.Command {
 
 			return runConvert(
 				cmd.Context(),
-				pkgWorkspace.Instance,
+				ws,
 				env.Global(),
 				args,
 				cwd,
@@ -149,7 +150,7 @@ func safePclBindDirectory(sourceDirectory string, loader schema.ReferenceLoader,
 	}
 
 	program, diagnostics, err = pcl.BindDirectory(sourceDirectory, loader, extraOptions...)
-	return
+	return program, diagnostics, err
 }
 
 // pclGenerateProject writes out a pcl.Program directly as .pp files
@@ -199,7 +200,7 @@ func runConvert(
 	// the plugin context uses the output directory as the working directory
 	// of the generated program because in general, where Pulumi.yaml lives is
 	// the root of the project.
-	pCtx, err := packagecmd.NewPluginContext(outDir)
+	pCtx, err := packages.NewPluginContext(outDir)
 	if err != nil {
 		return fmt.Errorf("create plugin host: %w", err)
 	}
@@ -236,8 +237,7 @@ func runConvert(
 		) (hcl.Diagnostics, error) {
 			contract.Requiref(proj != nil, "proj", "must not be nil")
 
-			programInfo := plugin.NewProgramInfo(cwd, cwd, ".", nil)
-			languagePlugin, err := pCtx.Host.LanguageRuntime(language, programInfo)
+			languagePlugin, err := pCtx.Host.LanguageRuntime(language)
 			if err != nil {
 				return nil, err
 			}
@@ -298,12 +298,11 @@ func runConvert(
 
 			err = generateAndLinkSdksForPackages(
 				pCtx,
-				ws,
 				language,
-				filepath.Join(targetDirectory, "sdks"),
 				targetDirectory,
 				packageBlockDescriptors,
 				generateOnly,
+				cmdCmd.NewDefaultRegistry(ctx, ws, proj, cmdutil.Diag(), e),
 			)
 			if err != nil {
 				return diags, fmt.Errorf("error generating packages: %w", err)
@@ -527,13 +526,22 @@ func getPackagesToGenerateSdks(
 
 func generateAndLinkSdksForPackages(
 	pctx *plugin.Context,
-	ws pkgWorkspace.Context,
 	language string,
-	sdkTargetDirectory string,
-	convertOutputDirectory string,
+	targetDirectory string,
 	pkgs map[string]*schema.PackageDescriptor,
 	generateOnly bool,
+	registry registry.Registry,
 ) error {
+	projectPath, err := workspace.DetectProjectPathFrom(targetDirectory)
+	if err != nil {
+		return fmt.Errorf("failed to detect project path: %w", err)
+	}
+	proj, err := workspace.LoadProject(projectPath)
+	if err != nil {
+		return fmt.Errorf("failed to load project: %w", err)
+	}
+
+	packagesToLink := make([]packages.PackageToLink, 0, len(pkgs))
 	for _, pkg := range pkgs {
 		tempOut, err := os.MkdirTemp("", "gen-sdk-for-dependency-")
 		if err != nil {
@@ -545,28 +553,35 @@ func generateAndLinkSdksForPackages(
 			continue
 		}
 
-		pkgSchema, err := packagecmd.SchemaFromSchemaSourceValueArgs(
+		pkgSpec, _, err := packages.SchemaFromSchemaSource(
 			pctx,
 			pkg.Name,
-			pkg.Parameterization.Value,
+			&plugin.ParameterizeValue{Value: pkg.Parameterization.Value},
+			registry,
 		)
 		if err != nil {
 			return fmt.Errorf("creating package schema: %w", err)
 		}
 
-		err = packagecmd.GenSDK(
+		pkgSchema, err := packages.BindSpec(*pkgSpec)
+		if err != nil {
+			return fmt.Errorf("binding package schema: %w", err)
+		}
+
+		diags, err := packages.GenSDK(
 			language,
 			tempOut,
 			pkgSchema,
 			/*overlays*/ "",
 			/*local*/ true,
 		)
+		cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 		if err != nil {
 			return fmt.Errorf("error generating sdk: %w", err)
 		}
 
-		sdkOut := filepath.Join(sdkTargetDirectory, pkg.Parameterization.Name)
-		err = packagecmd.CopyAll(sdkOut, filepath.Join(tempOut, language))
+		sdkOut := filepath.Join(targetDirectory, "sdks", pkg.Parameterization.Name)
+		err = packages.CopyAll(sdkOut, filepath.Join(tempOut, language))
 		if err != nil {
 			return fmt.Errorf("failed to move SDK to project: %w", err)
 		}
@@ -576,37 +591,23 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("could not remove temp dir: %w", err)
 		}
 
+		packagesToLink = append(packagesToLink, packages.PackageToLink{Pkg: pkgSchema, Out: sdkOut})
+
 		fmt.Printf("Generated local SDK for package '%s:%s'\n", pkg.Name, pkg.Parameterization.Name)
+	}
 
-		// If we don't change the working directory, the workspace instance (when
-		// reading project etc) will not be correct when doing the local sdk
-		// linking, causing errors.
-		returnToStartingDir, err := fsutil.Chdir(convertOutputDirectory)
-		if err != nil {
-			return fmt.Errorf("could not change to output directory: %w", err)
-		}
+	if err := packages.LinkPackages(&packages.LinkPackagesContext{
+		Writer:        os.Stdout,
+		Project:       proj,
+		Language:      language,
+		Root:          targetDirectory,
+		Packages:      packagesToLink,
+		PluginContext: pctx,
 
-		_, _, err = ws.ReadProject()
-		if err != nil {
-			return fmt.Errorf("generated root is not a valid pulumi workspace %q: %w", convertOutputDirectory, err)
-		}
-
-		sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
-		err = packagecmd.LinkPackage(&packagecmd.LinkPackageContext{
-			Workspace: ws,
-			Language:  language,
-			Root:      "./",
-			Pkg:       pkgSchema,
-			Out:       sdkRelPath,
-
-			// Don't install the SDK if we've been told to `--generate-only`.
-			Install: !generateOnly,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to link SDK to project: %w", err)
-		}
-
-		returnToStartingDir()
+		// Don't install the SDK if we've been told to `--generate-only`.
+		Install: !generateOnly,
+	}); err != nil {
+		return fmt.Errorf("failed to link SDK to project: %w", err)
 	}
 
 	return nil

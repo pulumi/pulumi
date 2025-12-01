@@ -28,6 +28,8 @@ export class ProviderHandshakeRequest extends jspb.Message {
     setSupportsViews(value: boolean): ProviderHandshakeRequest;
     getSupportsRefreshBeforeUpdate(): boolean;
     setSupportsRefreshBeforeUpdate(value: boolean): ProviderHandshakeRequest;
+    getInvokeWithPreview(): boolean;
+    setInvokeWithPreview(value: boolean): ProviderHandshakeRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeRequest.AsObject;
@@ -47,6 +49,7 @@ export namespace ProviderHandshakeRequest {
         configureWithUrn: boolean,
         supportsViews: boolean,
         supportsRefreshBeforeUpdate: boolean,
+        invokeWithPreview: boolean,
     }
 }
 
@@ -389,6 +392,8 @@ export class InvokeRequest extends jspb.Message {
     clearArgs(): void;
     getArgs(): google_protobuf_struct_pb.Struct | undefined;
     setArgs(value?: google_protobuf_struct_pb.Struct): InvokeRequest;
+    getPreview(): boolean;
+    setPreview(value: boolean): InvokeRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): InvokeRequest.AsObject;
@@ -404,6 +409,7 @@ export namespace InvokeRequest {
     export type AsObject = {
         tok: string,
         args?: google_protobuf_struct_pb.Struct.AsObject,
+        preview: boolean,
     }
 }
 
@@ -467,6 +473,8 @@ export class CallRequest extends jspb.Message {
     setOrganization(value: string): CallRequest;
     getAcceptsOutputValues(): boolean;
     setAcceptsOutputValues(value: boolean): CallRequest;
+    getStackTraceHandle(): string;
+    setStackTraceHandle(value: string): CallRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CallRequest.AsObject;
@@ -494,6 +502,7 @@ export namespace CallRequest {
         monitorendpoint: string,
         organization: string,
         acceptsOutputValues: boolean,
+        stackTraceHandle: string,
     }
 
 
@@ -1240,6 +1249,17 @@ export class ConstructRequest extends jspb.Message {
     getAcceptsOutputValues(): boolean;
     setAcceptsOutputValues(value: boolean): ConstructRequest;
 
+    hasResourceHooks(): boolean;
+    clearResourceHooks(): void;
+    getResourceHooks(): ConstructRequest.ResourceHooksBinding | undefined;
+    setResourceHooks(value?: ConstructRequest.ResourceHooksBinding): ConstructRequest;
+    getStackTraceHandle(): string;
+    setStackTraceHandle(value: string): ConstructRequest;
+    clearReplaceWithList(): void;
+    getReplaceWithList(): Array<string>;
+    setReplaceWithList(value: Array<string>): ConstructRequest;
+    addReplaceWith(value: string, index?: number): string;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConstructRequest.AsObject;
     static toObject(includeInstance: boolean, msg: ConstructRequest): ConstructRequest.AsObject;
@@ -1280,6 +1300,9 @@ export namespace ConstructRequest {
         replaceonchangesList: Array<string>,
         retainondelete?: boolean,
         acceptsOutputValues: boolean,
+        resourceHooks?: ConstructRequest.ResourceHooksBinding.AsObject,
+        stackTraceHandle: string,
+        replaceWithList: Array<string>,
     }
 
 
@@ -1328,6 +1351,53 @@ export namespace ConstructRequest {
             create: string,
             update: string,
             pb_delete: string,
+        }
+    }
+
+    export class ResourceHooksBinding extends jspb.Message { 
+        clearBeforeCreateList(): void;
+        getBeforeCreateList(): Array<string>;
+        setBeforeCreateList(value: Array<string>): ResourceHooksBinding;
+        addBeforeCreate(value: string, index?: number): string;
+        clearAfterCreateList(): void;
+        getAfterCreateList(): Array<string>;
+        setAfterCreateList(value: Array<string>): ResourceHooksBinding;
+        addAfterCreate(value: string, index?: number): string;
+        clearBeforeUpdateList(): void;
+        getBeforeUpdateList(): Array<string>;
+        setBeforeUpdateList(value: Array<string>): ResourceHooksBinding;
+        addBeforeUpdate(value: string, index?: number): string;
+        clearAfterUpdateList(): void;
+        getAfterUpdateList(): Array<string>;
+        setAfterUpdateList(value: Array<string>): ResourceHooksBinding;
+        addAfterUpdate(value: string, index?: number): string;
+        clearBeforeDeleteList(): void;
+        getBeforeDeleteList(): Array<string>;
+        setBeforeDeleteList(value: Array<string>): ResourceHooksBinding;
+        addBeforeDelete(value: string, index?: number): string;
+        clearAfterDeleteList(): void;
+        getAfterDeleteList(): Array<string>;
+        setAfterDeleteList(value: Array<string>): ResourceHooksBinding;
+        addAfterDelete(value: string, index?: number): string;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): ResourceHooksBinding.AsObject;
+        static toObject(includeInstance: boolean, msg: ResourceHooksBinding): ResourceHooksBinding.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: ResourceHooksBinding, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): ResourceHooksBinding;
+        static deserializeBinaryFromReader(message: ResourceHooksBinding, reader: jspb.BinaryReader): ResourceHooksBinding;
+    }
+
+    export namespace ResourceHooksBinding {
+        export type AsObject = {
+            beforeCreateList: Array<string>,
+            afterCreateList: Array<string>,
+            beforeUpdateList: Array<string>,
+            afterUpdateList: Array<string>,
+            beforeDeleteList: Array<string>,
+            afterDeleteList: Array<string>,
         }
     }
 
@@ -1405,6 +1475,8 @@ export class ErrorResourceInitFailed extends jspb.Message {
     clearInputs(): void;
     getInputs(): google_protobuf_struct_pb.Struct | undefined;
     setInputs(value?: google_protobuf_struct_pb.Struct): ErrorResourceInitFailed;
+    getRefreshBeforeUpdate(): boolean;
+    setRefreshBeforeUpdate(value: boolean): ErrorResourceInitFailed;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ErrorResourceInitFailed.AsObject;
@@ -1422,6 +1494,7 @@ export namespace ErrorResourceInitFailed {
         properties?: google_protobuf_struct_pb.Struct.AsObject,
         reasonsList: Array<string>,
         inputs?: google_protobuf_struct_pb.Struct.AsObject,
+        refreshBeforeUpdate: boolean,
     }
 }
 

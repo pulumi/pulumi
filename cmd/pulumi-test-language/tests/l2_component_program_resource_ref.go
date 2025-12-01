@@ -19,7 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	deployProviders "github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/require"
 )
@@ -28,7 +28,9 @@ func init() {
 	// Tests the ability to hydrate component resource references in the program and use their outputs as inputs to other
 	// resources.
 	LanguageTests["l2-component-program-resource-ref"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.ComponentProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.ComponentProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
@@ -64,7 +66,7 @@ func init() {
 						"expected default component provider",
 					)
 
-					defaultProviderRef, err := deployProviders.NewReference(defaultProvider.URN, defaultProvider.ID)
+					defaultProviderRef, err := sdkproviders.NewReference(defaultProvider.URN, defaultProvider.ID)
 					require.NoError(l, err, "expected to create default provider reference")
 
 					component1 := RequireSingleNamedResource(l, snap.Resources, "component1")

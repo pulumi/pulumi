@@ -24,12 +24,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -39,14 +39,12 @@ import (
 
 //nolint:paralleltest // This test uses the global backendInstance variable
 func TestPackagePublishCmd_Run(t *testing.T) {
-	version := semver.MustParse("1.0.0")
-
 	tests := []struct {
 		name                string
 		args                publishPackageArgs
 		packageSource       string
-		packageParams       []string
-		mockSchema          *schema.Package
+		packageParams       plugin.ParameterizeParameters
+		mockSchema          *schema.PackageSpec
 		schemaExtractionErr error
 		mockOrg             string
 		mockOrgErr          error
@@ -63,12 +61,10 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				source: "pulumi",
 			},
 			packageSource: "testpackage",
-			packageParams: []string{},
-			mockSchema: &schema.Package{
+			mockSchema: &schema.PackageSpec{
 				Name:      "testpkg",
 				Publisher: "testpublisher",
-				Version:   &version,
-				Provider:  &schema.Resource{},
+				Version:   "1.0.0",
 			},
 			readmeContent:  "# Test README\nThis is a test readme.",
 			installContent: "# Installation\nHow to install this package.",
@@ -80,11 +76,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "cmdpublisher",
 			},
 			packageSource: "testpackage",
-			packageParams: []string{},
-			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name:    "testpkg",
+				Version: "1.0.0",
 			},
 			readmeContent:  "# Test README\nThis is a test readme.",
 			installContent: "# Installation\nHow to install this package.",
@@ -95,11 +89,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				source: "pulumi",
 			},
 			packageSource: "testpackage",
-			packageParams: []string{},
-			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name:    "testpkg",
+				Version: "1.0.0",
 			},
 			mockOrg:        "defaultorg",
 			readmeContent:  "# Test README\nThis is a test readme.",
@@ -112,11 +104,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource: "testpackage",
-			packageParams: []string{},
-			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name:    "testpkg",
+				Version: "1.0.0",
 			},
 			readmeContent: "# Test README\nThis is a test readme.",
 		},
@@ -126,10 +116,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				source:    "pulumi",
 				publisher: "publisher",
 			},
-			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name:    "testpkg",
+				Version: "1.0.0",
 			},
 			sourceDir: func(t *testing.T) string {
 				t.Helper()
@@ -148,12 +137,10 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				source:    "pulumi",
 				publisher: "publisher",
 			},
-			packageParams: []string{},
 			packageSource: "testpackage",
-			mockSchema: &schema.Package{
-				Name:     "testpackage",
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name:    "testpackage",
+				Version: "1.0.0",
 			},
 			pluginDir: func(t *testing.T) string {
 				t.Helper()
@@ -175,11 +162,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				source: "pulumi",
 			},
 			packageSource: "testpackage",
-			packageParams: []string{},
-			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name:    "testpkg",
+				Version: "1.0.0",
 			},
 			expectedErr:    "no publisher specified and no default organization found",
 			readmeContent:  "# Test README\nThis is a test readme.",
@@ -191,11 +176,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				source: "pulumi",
 			},
 			packageSource: "testpackage",
-			packageParams: []string{},
-			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name:    "testpkg",
+				Version: "1.0.0",
 			},
 			mockOrgErr:     errors.New("unexpected error"),
 			expectedErr:    "failed to determine default organization: unexpected error",
@@ -209,7 +192,6 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource:  "testpackage",
-			packageParams:  []string{},
 			mockSchema:     nil,
 			expectedErr:    "failed to get schema",
 			readmeContent:  "# Test README\nThis is a test readme.",
@@ -222,10 +204,8 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource: "testpackage",
-			packageParams: []string{},
-			mockSchema: &schema.Package{
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Version: "1.0.0",
 			},
 			expectedErr:    "no package name specified",
 			readmeContent:  "# Test README\nThis is a test readme.",
@@ -238,10 +218,8 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource: "testpackage",
-			packageParams: []string{},
-			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name: "testpkg",
 			},
 			expectedErr:    "no version specified",
 			readmeContent:  "# Test README\nThis is a test readme.",
@@ -254,11 +232,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource: "testpackage",
-			packageParams: []string{},
-			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name:    "testpkg",
+				Version: "1.0.0",
 			},
 			expectedErr: "no README found. Please add one named README.md to the package, or use --readme to specify the path",
 		},
@@ -269,10 +245,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource: "testpackage",
-			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name:    "testpkg",
+				Version: "1.0.0",
 			},
 			publishErr:     errors.New("publish failed"),
 			expectedErr:    "failed to publish package",
@@ -286,10 +261,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource: "testpackage",
-			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name:    "testpkg",
+				Version: "1.0.0",
 			},
 			schemaExtractionErr: errors.New("schema extraction failed"),
 			expectedErr:         "failed to get schema: schema extraction failed",
@@ -303,11 +277,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource: "testpackage@not-a-valid-version",
-			packageParams: []string{},
-			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name:    "testpkg",
+				Version: "1.0.0",
 			},
 			expectedErr: "failed to find readme: failed to create plugin spec: VERSION must be valid semver",
 		},
@@ -362,25 +334,14 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				tt.args.installDocsPath = installDocsPath
 			}
 
-			mockPackageRegistry := &backend.MockPackageRegistry{
-				PublishF: func(ctx context.Context, op apitype.PackagePublishOp) error {
+			mockCloudRegistry := &backend.MockCloudRegistry{
+				PublishPackageF: func(ctx context.Context, op apitype.PackagePublishOp) error {
 					schemaBytes, err := io.ReadAll(op.Schema)
 					require.NoError(t, err)
 					packageSpec, err := unmarshalSchema(schemaBytes)
 
-					if len(packageSpec.Types) == 0 {
-						packageSpec.Types = map[string]schema.ComplexTypeSpec{}
-					}
-					if len(packageSpec.Resources) == 0 {
-						packageSpec.Resources = map[string]schema.ResourceSpec{}
-					}
-					if len(packageSpec.Functions) == 0 {
-						packageSpec.Functions = map[string]schema.FunctionSpec{}
-					}
 					require.NoError(t, err)
-					expectedSpec, err := tt.mockSchema.MarshalSpec()
-					require.NoError(t, err)
-					assert.Equal(t, expectedSpec, packageSpec, "package schema should match input package spec")
+					assert.Equal(t, tt.mockSchema, packageSpec, "package schema should match input package spec")
 
 					// Verify readme and install docs content
 					if tt.args.readmePath != "" {
@@ -407,9 +368,10 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 			}
 
 			testutil.MockBackendInstance(t, &backend.MockBackend{
-				GetPackageRegistryF: func() (backend.PackageRegistry, error) {
-					return mockPackageRegistry, nil
+				GetCloudRegistryF: func() (backend.CloudRegistry, error) {
+					return mockCloudRegistry, nil
 				},
+				GetReadOnlyCloudRegistryF: func() registry.Registry { return mockCloudRegistry },
 			})
 
 			// Setup defaultOrg mock
@@ -419,11 +381,13 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 
 			cmd := &packagePublishCmd{
 				defaultOrg: defaultOrg,
-				extractSchema: func(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
+				extractSchema: func(
+					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
+				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 					if tt.mockSchema == nil && tt.schemaExtractionErr == nil {
-						return nil, errors.New("mock schema extraction failed")
+						return nil, nil, errors.New("mock schema extraction failed")
 					}
-					return tt.mockSchema, tt.schemaExtractionErr
+					return tt.mockSchema, nil, tt.schemaExtractionErr
 				},
 				pluginDir: pluginDir,
 			}
@@ -433,7 +397,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.expectedErr)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -442,18 +406,16 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 //nolint:paralleltest // This test uses the global backendInstance variable
 func TestPackagePublishCmd_IOErrors(t *testing.T) {
 	t.Parallel()
-	version := semver.MustParse("1.0.0")
-	validSchema := &schema.Package{
+	validSchema := &schema.PackageSpec{
 		Name:      "testpkg",
 		Publisher: "testpublisher",
-		Version:   &version,
-		Provider:  &schema.Resource{},
+		Version:   "1.0.0",
 	}
 
 	tests := []struct {
 		name           string
 		args           publishPackageArgs
-		mockSchema     *schema.Package
+		mockSchema     *schema.PackageSpec
 		setupTest      func(*testing.T) (string, string)
 		expectedErrStr string
 	}{
@@ -502,25 +464,28 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 
 			// Mock the backend
 			testutil.MockBackendInstance(t, &backend.MockBackend{
-				GetPackageRegistryF: func() (backend.PackageRegistry, error) {
-					return &backend.MockPackageRegistry{
-						PublishF: func(ctx context.Context, op apitype.PackagePublishOp) error {
+				GetCloudRegistryF: func() (backend.CloudRegistry, error) {
+					return &backend.MockCloudRegistry{
+						PublishPackageF: func(ctx context.Context, op apitype.PackagePublishOp) error {
 							return nil
 						},
 					}, nil
 				},
+				GetReadOnlyCloudRegistryF: func() registry.Registry { return &backend.MockCloudRegistry{} },
 			})
 
 			cmd := &packagePublishCmd{
 				defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
 					return "default-org", nil
 				},
-				extractSchema: func(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
-					return tt.mockSchema, nil
+				extractSchema: func(
+					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
+				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
+					return tt.mockSchema, nil, nil
 				},
 			}
 
-			err := cmd.Run(context.Background(), tt.args, "testpackage", []string{})
+			err := cmd.Run(context.Background(), tt.args, "testpackage", nil /* packageParams */)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.expectedErrStr)
 		})
@@ -529,12 +494,10 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 
 //nolint:paralleltest // This test uses the global backendInstance variable
 func TestPackagePublishCmd_BackendErrors(t *testing.T) {
-	version := semver.MustParse("1.0.0")
-	validSchema := &schema.Package{
+	validSchema := &schema.PackageSpec{
 		Name:      "testpkg",
 		Publisher: "testpublisher",
-		Version:   &version,
-		Provider:  &schema.Resource{},
+		Version:   "1.0.0",
 	}
 
 	tests := []struct {
@@ -546,8 +509,11 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 			name: "error getting package registry",
 			setupBackend: func(t *testing.T) {
 				testutil.MockBackendInstance(t, &backend.MockBackend{
-					GetPackageRegistryF: func() (backend.PackageRegistry, error) {
+					GetCloudRegistryF: func() (backend.CloudRegistry, error) {
 						return nil, errors.New("failed to get package registry")
+					},
+					GetReadOnlyCloudRegistryF: func() registry.Registry {
+						return &backend.MockCloudRegistry{}
 					},
 				})
 			},
@@ -570,8 +536,10 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 				defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
 					return "default-org", nil
 				},
-				extractSchema: func(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
-					return validSchema, nil
+				extractSchema: func(
+					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
+				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
+					return validSchema, nil, nil
 				},
 			}
 
@@ -579,7 +547,7 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 				source:     "pulumi",
 				publisher:  "publisher",
 				readmePath: readmePath,
-			}, "testpackage", []string{})
+			}, "testpackage", nil /* packageParams */)
 
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), tt.expectedErrStr)
@@ -592,6 +560,10 @@ type mockWorkspace struct {
 }
 
 var _ pkgWorkspace.Context = &mockWorkspace{}
+
+func (m *mockWorkspace) New() (pkgWorkspace.W, error) {
+	return nil, m.readProjectErr
+}
 
 func (m *mockWorkspace) ReadProject() (*workspace.Project, string, error) {
 	return nil, "", m.readProjectErr
@@ -607,12 +579,17 @@ func TestPackagePublishCmd_Run_ReadProjectError(t *testing.T) {
 		defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
 			return "", nil
 		},
-		extractSchema: func(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
-			pkg := &schema.Package{
+		extractSchema: func(
+			pctx *plugin.Context,
+			packageSource string,
+			parameters plugin.ParameterizeParameters,
+			registry registry.Registry,
+		) (*schema.PackageSpec, *workspace.PackageSpec, error) {
+			pkg := &schema.PackageSpec{
 				Name:    "test-package",
-				Version: &semver.Version{Major: 1, Minor: 0, Patch: 0},
+				Version: "1.0.0",
 			}
-			return pkg, nil
+			return pkg, nil, nil
 		},
 	}
 
@@ -621,7 +598,8 @@ func TestPackagePublishCmd_Run_ReadProjectError(t *testing.T) {
 	t.Cleanup(func() { pkgWorkspace.Instance = originalWorkspace })
 	pkgWorkspace.Instance = &mockWorkspace{readProjectErr: customErr}
 
-	err := cmd.Run(context.Background(), publishPackageArgs{readmePath: "README.md"}, "test-source", []string{})
+	err := cmd.Run(context.Background(), publishPackageArgs{readmePath: "README.md"},
+		"test-source", nil /* packageParams */)
 
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, customErr)
@@ -648,7 +626,7 @@ func TestFindReadme(t *testing.T) {
 		nonExistentDir := filepath.Join(tmpDir, "does-not-exist")
 		readme, err := cmd.findReadme(ctx, nonExistentDir)
 		assert.Empty(t, readme)
-		assert.NoError(t, err, "Should not return error for non-existent directory")
+		require.NoError(t, err, "Should not return error for non-existent directory")
 	})
 
 	t.Run("FileInsteadOfDirectory", func(t *testing.T) {
@@ -659,7 +637,7 @@ func TestFindReadme(t *testing.T) {
 
 		readme, err := cmd.findReadme(ctx, filePath)
 		assert.Empty(t, readme)
-		assert.NoError(t, err, "Should not return error when source is a file")
+		require.NoError(t, err, "Should not return error when source is a file")
 	})
 
 	t.Run("SchemaFile", func(t *testing.T) {
@@ -670,7 +648,7 @@ func TestFindReadme(t *testing.T) {
 
 		readme, err := cmd.findReadme(ctx, schemaPath)
 		assert.Empty(t, readme)
-		assert.NoError(t, err, "Should not return error when source is a schema file")
+		require.NoError(t, err, "Should not return error when source is a schema file")
 	})
 
 	t.Run("DirectoryWithoutReadme", func(t *testing.T) {
@@ -680,7 +658,7 @@ func TestFindReadme(t *testing.T) {
 
 		readme, err := cmd.findReadme(ctx, dirPath)
 		assert.Empty(t, readme)
-		assert.NoError(t, err, "Should not return error when directory has no readme")
+		require.NoError(t, err, "Should not return error when directory has no readme")
 	})
 
 	t.Run("DirectoryWithReadme", func(t *testing.T) {
@@ -692,7 +670,7 @@ func TestFindReadme(t *testing.T) {
 
 		found, err := cmd.findReadme(ctx, dirPath)
 		assert.Equal(t, readmePath, found)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("InvalidPluginSpec", func(t *testing.T) {
@@ -711,7 +689,7 @@ func TestFindReadme(t *testing.T) {
 		validPlugin := "my-cool-plugin"
 		readme, err := cmd.findReadme(ctx, validPlugin)
 		assert.Empty(t, readme)
-		assert.NoError(t, err, "Should not return error when no readme is found")
+		require.NoError(t, err, "Should not return error when no readme is found")
 	})
 
 	t.Run("Git Plugin Download URL", func(t *testing.T) {
@@ -728,7 +706,7 @@ func TestFindReadme(t *testing.T) {
 
 		readme, err := cmd.findReadme(ctx, pluginDownloadURL)
 		assert.Equal(t, readmePath, readme)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("Git Plugin Download URL with subdirectory", func(t *testing.T) {
@@ -749,6 +727,6 @@ func TestFindReadme(t *testing.T) {
 
 		readme, err := cmd.findReadme(ctx, pluginDownloadURL)
 		assert.Equal(t, subdirReadmePath, readme)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }

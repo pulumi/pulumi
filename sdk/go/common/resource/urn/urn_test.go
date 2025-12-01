@@ -233,7 +233,7 @@ func TestURNParse(t *testing.T) {
 		}
 		for _, str := range goodUrns {
 			urn, err := urn.Parse(str)
-			assert.NoErrorf(t, err, "Expecting %v to parse as a good urn", str)
+			require.NoErrorf(t, err, "Expecting %v to parse as a good urn", str)
 			assert.Equal(t, str, string(urn), "A parsed URN should be the same as the string that it was parsed from")
 		}
 	})
@@ -283,7 +283,7 @@ func TestParseOptionalURN(t *testing.T) {
 		}
 		for _, str := range goodUrns {
 			urn, err := urn.ParseOptional(str)
-			assert.NoErrorf(t, err, "Expecting '%v' to parse as a good urn", str)
+			require.NoErrorf(t, err, "Expecting '%v' to parse as a good urn", str)
 			assert.Equal(t, str, string(urn))
 		}
 	})

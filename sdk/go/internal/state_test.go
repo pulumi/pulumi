@@ -118,7 +118,7 @@ func TestOutputDependencies(t *testing.T) {
 		ResolveOutput(out, 42, true, false, deps)
 
 		gotDeps := OutputDependencies(out)
-		assert.Len(t, gotDeps, 2)
+		require.Len(t, gotDeps, 2)
 		for i, dep := range deps {
 			assert.Same(t, dep, gotDeps[i])
 		}

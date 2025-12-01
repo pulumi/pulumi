@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -31,30 +32,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type updateInfo struct {
-	project workspace.Project
-	target  deploy.Target
-}
-
-func (u *updateInfo) GetRoot() string {
-	return ""
-}
-
-func (u *updateInfo) GetProject() *workspace.Project {
-	return &u.project
-}
-
-func (u *updateInfo) GetTarget() *deploy.Target {
-	return &u.target
-}
-
-func makeUpdateInfo() *updateInfo {
-	return &updateInfo{
-		project: workspace.Project{
+func makeUpdateInfo() UpdateInfo {
+	return UpdateInfo{
+		Root: "",
+		Project: &workspace.Project{
 			Name:    "test",
 			Runtime: workspace.NewProjectRuntimeInfo("test", nil),
 		},
-		target: deploy.Target{Name: tokens.MustParseStackName("test")},
+		Target: &deploy.Target{Name: tokens.MustParseStackName("test")},
 	}
 }
 
@@ -62,14 +47,14 @@ type testContext struct {
 	Context
 	wg      sync.WaitGroup
 	events  chan Event
-	journal *Journal
+	journal *TestJournal
 
 	firedEvents []Event
 }
 
 func makeTestContext(t testing.TB, cancelCtx *cancel.Context) *testContext {
 	events := make(chan Event)
-	journal := NewJournal()
+	journal := NewTestJournal()
 
 	ctx := &testContext{
 		Context: Context{
@@ -96,7 +81,7 @@ func makeTestContext(t testing.TB, cancelCtx *cancel.Context) *testContext {
 
 func (ctx *testContext) makeEventEmitter(t testing.TB) eventEmitter {
 	emitter, err := makeQueryEventEmitter(ctx.events)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return emitter
 }
 
@@ -130,7 +115,7 @@ func TestSourceFuncCancellation(t *testing.T) {
 	// Create a source func that waits for cancellation.
 	sourceF := func(ctx context.Context,
 		client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
-		target *deploy.Target, plugctx *plugin.Context,
+		target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks,
 	) (deploy.Source, error) {
 		// Send ops completion then wait for the cancellation signal.
 		close(ops)
@@ -145,7 +130,7 @@ func TestSourceFuncCancellation(t *testing.T) {
 	defer ctx.Close()
 
 	info, err := newDeploymentContext(makeUpdateInfo(), "test", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer info.Close()
 
 	host := makePluginHost(t, program)

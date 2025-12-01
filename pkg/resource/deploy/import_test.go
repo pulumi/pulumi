@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestImportDeployment(t *testing.T) {
@@ -86,7 +87,7 @@ func TestImporter(t *testing.T) {
 					},
 				},
 			}
-			_, _, err := i.registerProviders(context.Background())
+			_, err := i.registerProviders(context.Background())
 			assert.ErrorContains(t, err, "incorrect package type specified")
 		})
 		t.Run("ensure provider is called correctly", func(t *testing.T) {
@@ -122,7 +123,7 @@ func TestImporter(t *testing.T) {
 					},
 				},
 			}
-			_, _, err := i.registerProviders(context.Background())
+			_, err := i.registerProviders(context.Background())
 			assert.ErrorIs(t, err, expectedErr)
 		})
 	})
@@ -154,7 +155,7 @@ func TestImporter(t *testing.T) {
 						},
 					},
 				}
-				assert.NoError(t, i.importResources(ctx))
+				require.NoError(t, i.importResources(ctx))
 			})
 		})
 		t.Run("getOrCreateStackResource", func(t *testing.T) {
@@ -177,7 +178,7 @@ func TestImporter(t *testing.T) {
 						},
 					},
 				}
-				assert.NoError(t, i.importResources(ctx))
+				require.NoError(t, i.importResources(ctx))
 			})
 			t.Run("ignore existing delete resources", func(t *testing.T) {
 				t.Parallel()
@@ -206,7 +207,7 @@ func TestImporter(t *testing.T) {
 						},
 					},
 				}
-				assert.NoError(t, i.importResources(ctx))
+				require.NoError(t, i.importResources(ctx))
 			})
 		})
 	})
@@ -278,6 +279,6 @@ func TestImporterParameterizedProvider(t *testing.T) {
 			},
 		},
 	}
-	_, _, err := i.registerProviders(context.Background())
-	assert.NoError(t, err)
+	_, err := i.registerProviders(context.Background())
+	require.NoError(t, err)
 }

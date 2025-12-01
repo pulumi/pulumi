@@ -16,18 +16,17 @@ package stack
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -87,7 +86,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		stdout = os.Stdout
 	}
 	if cmd.secretsProvider == nil {
-		cmd.secretsProvider = stack.DefaultSecretsProvider
+		cmd.secretsProvider = backend_secrets.DefaultProvider
 	}
 
 	// For change-secrets-provider, we explicitly don't want any fallback behaviour when loading secrets providers.
@@ -221,26 +220,16 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(
 	}
 	snap, err := stack.DeserializeUntypedDeployment(ctx, checkpoint, secretsProvider)
 	if err != nil {
-		return checkDeploymentVersionError(err, currentStack.Ref().Name().String())
+		return stack.FormatDeploymentDeserializationError(err, currentStack.Ref().Name().String())
 	}
 
 	// Reserialize the Snapshopshot with the NewSecrets Manager
 	snap.SecretsManager = newSecretsManager
-	reserializedDeployment, err := stack.SerializeDeployment(ctx, snap, false /*showSecrets*/)
+	dep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
 	if err != nil {
 		return err
-	}
-
-	bytes, err := json.Marshal(reserializedDeployment)
-	if err != nil {
-		return err
-	}
-
-	dep := apitype.UntypedDeployment{
-		Version:    apitype.DeploymentSchemaVersionCurrent,
-		Deployment: bytes,
 	}
 
 	// Import the newly changes Deployment
-	return backend.ImportStackDeployment(ctx, currentStack, &dep)
+	return backend.ImportStackDeployment(ctx, currentStack, dep)
 }

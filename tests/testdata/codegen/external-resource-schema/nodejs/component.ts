@@ -34,9 +34,9 @@ export class Component extends pulumi.CustomResource {
         return obj['__pulumiType'] === Component.__pulumiType;
     }
 
-    public /*out*/ readonly provider!: pulumi.Output<pulumiKubernetes.Provider | undefined>;
-    public /*out*/ readonly securityGroup!: pulumi.Output<pulumiAws.ec2.SecurityGroup>;
-    public /*out*/ readonly storageClasses!: pulumi.Output<{[key: string]: pulumiKubernetes.storage.v1.StorageClass} | undefined>;
+    declare public /*out*/ readonly provider: pulumi.Output<pulumiKubernetes.Provider | undefined>;
+    declare public /*out*/ readonly securityGroup: pulumi.Output<pulumiAws.ec2.SecurityGroup>;
+    declare public /*out*/ readonly storageClasses: pulumi.Output<{[key: string]: pulumiKubernetes.storage.v1.StorageClass} | undefined>;
 
     /**
      * Create a Component resource with the given unique name, arguments, and options.
@@ -49,21 +49,21 @@ export class Component extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.requiredMetadata === undefined) && !opts.urn) {
+            if (args?.requiredMetadata === undefined && !opts.urn) {
                 throw new Error("Missing required property 'requiredMetadata'");
             }
-            if ((!args || args.requiredMetadataArray === undefined) && !opts.urn) {
+            if (args?.requiredMetadataArray === undefined && !opts.urn) {
                 throw new Error("Missing required property 'requiredMetadataArray'");
             }
-            if ((!args || args.requiredMetadataMap === undefined) && !opts.urn) {
+            if (args?.requiredMetadataMap === undefined && !opts.urn) {
                 throw new Error("Missing required property 'requiredMetadataMap'");
             }
-            resourceInputs["metadata"] = args ? args.metadata : undefined;
-            resourceInputs["metadataArray"] = args ? args.metadataArray : undefined;
-            resourceInputs["metadataMap"] = args ? args.metadataMap : undefined;
-            resourceInputs["requiredMetadata"] = args ? args.requiredMetadata : undefined;
-            resourceInputs["requiredMetadataArray"] = args ? args.requiredMetadataArray : undefined;
-            resourceInputs["requiredMetadataMap"] = args ? args.requiredMetadataMap : undefined;
+            resourceInputs["metadata"] = args?.metadata;
+            resourceInputs["metadataArray"] = args?.metadataArray;
+            resourceInputs["metadataMap"] = args?.metadataMap;
+            resourceInputs["requiredMetadata"] = args?.requiredMetadata;
+            resourceInputs["requiredMetadataArray"] = args?.requiredMetadataArray;
+            resourceInputs["requiredMetadataMap"] = args?.requiredMetadataMap;
             resourceInputs["provider"] = undefined /*out*/;
             resourceInputs["securityGroup"] = undefined /*out*/;
             resourceInputs["storageClasses"] = undefined /*out*/;

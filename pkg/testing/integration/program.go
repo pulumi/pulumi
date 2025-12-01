@@ -41,6 +41,7 @@ import (
 	"golang.org/x/mod/module"
 	"gopkg.in/yaml.v3"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -55,7 +56,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -76,7 +77,7 @@ type RuntimeValidationStackInfo struct {
 	StackName    tokens.QName
 	Deployment   *apitype.DeploymentV3
 	RootResource apitype.ResourceV3
-	Outputs      map[string]interface{}
+	Outputs      map[string]any
 	Events       []apitype.EngineEvent
 }
 
@@ -725,13 +726,11 @@ func GetLogs(
 	snap, err := stack.DeserializeDeploymentV3(
 		context.Background(),
 		*stackInfo.Deployment,
-		stack.DefaultSecretsProvider)
-	assert.NoError(t, err)
+		secrets.DefaultProvider)
+	require.NoError(t, err)
 
 	tree := operations.NewResourceTree(snap.Resources)
-	if !assert.NotNil(t, tree) {
-		return nil
-	}
+	require.NotNil(t, tree)
 
 	cfg := map[config.Key]string{
 		config.MustMakeKey(provider, "region"): region,
@@ -740,9 +739,7 @@ func GetLogs(
 
 	// Validate logs from example
 	logs, err := ops.GetLogs(query)
-	if !assert.NoError(t, err) {
-		return nil
-	}
+	require.NoError(t, err)
 
 	return logs
 }
@@ -860,7 +857,7 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	pt := ProgramTestManualLifeCycle(t, opts)
 	err := pt.TestLifeCycleInitAndDestroy()
 	if !errors.Is(err, ErrTestFailed) {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
@@ -1072,7 +1069,7 @@ func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string,
 	}
 
 	_, _, err = retry.Until(context.Background(), retry.Acceptor{
-		Accept: func(try int, nextRetryTime time.Duration) (bool, interface{}, error) {
+		Accept: func(try int, nextRetryTime time.Duration) (bool, any, error) {
 			runerr := pt.runCommand(name, cmd, wd)
 			if runerr == nil {
 				return true, nil, nil
@@ -1111,7 +1108,7 @@ func (pt *ProgramTester) runYarnCommand(name string, args []string, wd string) e
 	}
 
 	_, _, err = retry.Until(context.Background(), retry.Acceptor{
-		Accept: func(try int, nextRetryTime time.Duration) (bool, interface{}, error) {
+		Accept: func(try int, nextRetryTime time.Duration) (bool, any, error) {
 			runerr := pt.runCommand(name, cmd, wd)
 			if runerr == nil {
 				return true, nil, nil
@@ -1294,7 +1291,7 @@ func (pt *ProgramTester) TestLifeCycleInitAndDestroy() error {
 
 	destroyStack := func() {
 		destroyErr := pt.TestLifeCycleDestroy()
-		assert.NoError(pt.t, destroyErr)
+		require.NoError(pt.t, destroyErr)
 	}
 	if pt.opts.DestroyOnCleanup {
 		// Allow other tests to refer to this stack until the test is complete.
@@ -1894,7 +1891,7 @@ func (pt *ProgramTester) performExtraRuntimeValidation(
 
 	// Get the root resource and outputs from the deployment
 	var rootResource apitype.ResourceV3
-	var outputs map[string]interface{}
+	var outputs map[string]any
 	for _, res := range deployment.Resources {
 		if res.Type == resource.RootStackType && res.Parent == "" {
 			rootResource = res
@@ -2202,12 +2199,12 @@ func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 			return err
 		}
 
-		resolutions := make(map[string]interface{})
+		resolutions := make(map[string]any)
 
 		for packageName, packageVersion := range pt.opts.Overrides {
 			for _, section := range []string{"dependencies", "devDependencies"} {
 				if _, has := packageJSON[section]; has {
-					entry := packageJSON[section].(map[string]interface{})
+					entry := packageJSON[section].(map[string]any)
 
 					if _, has := entry[packageName]; has {
 						entry[packageName] = packageVersion
@@ -2249,14 +2246,14 @@ func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 }
 
 // readPackageJSON unmarshals the package.json file located in pathToPackage.
-func readPackageJSON(pathToPackage string) (map[string]interface{}, error) {
+func readPackageJSON(pathToPackage string) (map[string]any, error) {
 	f, err := os.Open(filepath.Join(pathToPackage, "package.json"))
 	if err != nil {
 		return nil, fmt.Errorf("opening package.json: %w", err)
 	}
 	defer contract.IgnoreClose(f)
 
-	var ret map[string]interface{}
+	var ret map[string]any
 	if err := json.NewDecoder(f).Decode(&ret); err != nil {
 		return nil, fmt.Errorf("decoding package.json: %w", err)
 	}
@@ -2264,7 +2261,7 @@ func readPackageJSON(pathToPackage string) (map[string]interface{}, error) {
 	return ret, nil
 }
 
-func writePackageJSON(pathToPackage string, metadata map[string]interface{}) error {
+func writePackageJSON(pathToPackage string, metadata map[string]any) error {
 	// os.Create truncates the already existing file.
 	f, err := os.Create(filepath.Join(pathToPackage, "package.json"))
 	if err != nil {

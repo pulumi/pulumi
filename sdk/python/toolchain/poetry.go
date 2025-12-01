@@ -22,17 +22,22 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"gopkg.in/yaml.v3"
 )
 
 type poetry struct {
@@ -96,31 +101,42 @@ func validateVersion(versionOut string) error {
 }
 
 func (p *poetry) InstallDependencies(ctx context.Context,
-	root string, useLanguageVersionTools, showOutput bool, infoWriter, errorWriter io.Writer,
+	cwd string, useLanguageVersionTools, showOutput bool, infoWriter, errorWriter io.Writer,
 ) error {
-	if _, err := searchup(root, "pyproject.toml"); err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("error while looking for pyproject.toml in %s: %w", root, err)
-		}
-		// If pyproject.toml does not exist, look for a requirements.txt file and use
-		// it to generate a new pyproject.toml.
-		requirementsTxtDir, err := searchup(root, "requirements.txt")
-		if err != nil {
-			if !errors.Is(err, os.ErrNotExist) {
-				return fmt.Errorf("error while looking for requirements.txt in %s: %w", root, err)
-			}
-			return fmt.Errorf("could not find pyproject.toml or requirements.txt in %s", root)
-		}
-		requirementsTxt := filepath.Join(requirementsTxtDir, "requirements.txt")
-		pyprojectToml := filepath.Join(requirementsTxtDir, "pyproject.toml")
-		if err := p.convertRequirementsTxt(requirementsTxt, pyprojectToml, showOutput, infoWriter); err != nil {
+	if useLanguageVersionTools {
+		if err := installPython(ctx, cwd, showOutput, infoWriter, errorWriter); err != nil {
 			return err
 		}
 	}
 
-	if useLanguageVersionTools {
-		if err := installPython(ctx, root, showOutput, infoWriter, errorWriter); err != nil {
-			return err
+	// If there's no `pyproject.toml` file, we first need to prepare the project.
+	if _, err := searchup(cwd, "pyproject.toml"); err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("error while looking for pyproject.toml in %s: %w", cwd, err)
+		}
+		// No pyproject.toml found, this is likely a template with a requirements.txt, convert it to a
+		// pyproject.toml file.
+		// We can't use workspace.LoadProject here because the workspace module depends on toolchain.
+		// TODO: https://github.com/pulumi/pulumi/issues/20953
+		//
+		// We can also remove the call to `PrepareProject` here eventually. Before `Language.Template` existed, the
+		// creation of a `pyproject.toml` file happened during `pulumi install`. It is possible to have a half
+		// initialized project, for example from `pulumi new ... --generate-only` which has a `requirements.txt`
+		// that still needs to be converted. We want to maintain the same behavior as before here for a while.
+		// TODO: https://github.com/pulumi/pulumi/issues/20987
+		var projectName string
+		pulumiYamlPath := filepath.Join(cwd, "Pulumi.yaml")
+		if pulumiYamlData, err := os.ReadFile(pulumiYamlPath); err == nil {
+			var pulumiConfig struct {
+				Name tokens.PackageName `json:"name" yaml:"name"`
+			}
+			if err := yaml.Unmarshal(pulumiYamlData, &pulumiConfig); err == nil {
+				projectName = string(pulumiConfig.Name)
+			}
+		}
+
+		if err := p.PrepareProject(ctx, projectName, cwd, showOutput, infoWriter, errorWriter); err != nil {
+			return fmt.Errorf("error preparing project: %w", err)
 		}
 	}
 
@@ -128,7 +144,7 @@ func (p *poetry) InstallDependencies(ctx context.Context,
 	if useLanguageVersionTools {
 		// For poetry to work nicely with pyenv, we need to make poetry use the active python,
 		// otherwise poetry will use the python version used to run poetry itself.
-		use, _, _, err := usePyenv(root)
+		use, _, _, err := usePyenv(cwd)
 		if err != nil {
 			return fmt.Errorf("checking for pyenv: %w", err)
 		}
@@ -140,6 +156,83 @@ func (p *poetry) InstallDependencies(ctx context.Context,
 	poetryCmd.Stdout = infoWriter
 	poetryCmd.Stderr = errorWriter
 	return poetryCmd.Run()
+}
+
+func (p *poetry) PrepareProject(
+	ctx context.Context, projectName, cwd string, showOutput bool, infoWriter, errorWriter io.Writer,
+) error {
+	_, err := searchup(cwd, "pyproject.toml")
+	if err == nil {
+		// There's already a pyproject.toml, we're done.
+		return nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("error while looking for pyproject.toml in %s: %w", cwd, err)
+	}
+
+	requirementsTxtDir, err := searchup(cwd, "requirements.txt")
+	pyprojectTomlDir := cwd
+	hasRequirementsTxt := false
+	if err == nil {
+		pyprojectTomlDir = requirementsTxtDir
+		hasRequirementsTxt = true
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("error while looking for requirements.txt in %s: %w", cwd, err)
+	}
+
+	var deps map[string]any
+	requirementsTxt := filepath.Join(requirementsTxtDir, "requirements.txt")
+	if hasRequirementsTxt {
+		f, err := os.Open(requirementsTxt)
+		if err != nil {
+			return fmt.Errorf("failed to open %q: %w", requirementsTxt, err)
+		}
+		deps, err = dependenciesFromRequirementsTxt(f, requirementsTxtDir)
+		contract.IgnoreClose(f)
+		if err != nil {
+			return fmt.Errorf("failed to parse %q: %w", requirementsTxt, err)
+		}
+	}
+
+	pyprojectToml := filepath.Join(pyprojectTomlDir, "pyproject.toml")
+	b, err := p.generatePyProjectTOML(projectName, deps)
+	if err != nil {
+		return fmt.Errorf("failed to generate %q: %w", pyprojectToml, err)
+	}
+
+	pyprojectFile, err := os.Create(pyprojectToml)
+	if err != nil {
+		return fmt.Errorf("failed to create %q: %w", pyprojectToml, err)
+	}
+	defer pyprojectFile.Close()
+
+	if _, err := pyprojectFile.Write([]byte(b)); err != nil {
+		return fmt.Errorf("failed to write to %q: %w", pyprojectToml, err)
+	}
+
+	if hasRequirementsTxt {
+		if err := os.Remove(requirementsTxt); err != nil {
+			return fmt.Errorf("failed to remove %q: %w", requirementsTxt, err)
+		}
+		if showOutput {
+			if _, err := infoWriter.Write([]byte("Deleted requirements.txt, " +
+				"dependencies for this project are tracked in pyproject.toml\n")); err != nil {
+				return fmt.Errorf("failed to write to infoWriter: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+func (p *poetry) LinkPackages(ctx context.Context, packages map[string]string) error {
+	logging.V(9).Infof("poetry linking %s", packages)
+	args := []string{"add", "--lock"} // Add package to lockfile only
+	paths := slices.Collect(maps.Values(packages))
+	args = append(args, paths...)
+	cmd := exec.Command("poetry", args...)
+	if err := cmd.Run(); err != nil {
+		return errutil.ErrorWithStderr(err, "linking packages")
+	}
+	return nil
 }
 
 func (p *poetry) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error) {
@@ -155,13 +248,13 @@ func (p *poetry) ListPackages(ctx context.Context, transitive bool) ([]PythonPac
 
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("calling `python -m pip %s`: %w", strings.Join(args, " "), err)
+		return nil, fmt.Errorf("calling `python %s`: %w", strings.Join(cmd.Args, " "), err)
 	}
 
 	var packages []PythonPackage
 	jsonDecoder := json.NewDecoder(bytes.NewBuffer(output))
 	if err := jsonDecoder.Decode(&packages); err != nil {
-		return nil, fmt.Errorf("parsing `python -m pip %s` output: %w", strings.Join(args, " "), err)
+		return nil, fmt.Errorf("parsing `python %s` output: %w", strings.Join(cmd.Args, " "), err)
 	}
 
 	return packages, nil
@@ -244,49 +337,7 @@ func (p *poetry) VirtualEnvPath(ctx context.Context) (string, error) {
 	return virtualenvPath, nil
 }
 
-func (p *poetry) convertRequirementsTxt(requirementsTxt, pyprojectToml string, showOutput bool,
-	infoWriter io.Writer,
-) error {
-	f, err := os.Open(requirementsTxt)
-	if err != nil {
-		return fmt.Errorf("failed to open %q", requirementsTxt)
-	}
-
-	deps, err := dependenciesFromRequirementsTxt(f)
-	contract.IgnoreError(f.Close())
-	if err != nil {
-		return fmt.Errorf("failed to gather dependencies from %q", requirementsTxt)
-	}
-
-	b, err := p.generatePyProjectTOML(deps)
-	if err != nil {
-		return fmt.Errorf("failed to generate %q", pyprojectToml)
-	}
-
-	pyprojectFile, err := os.Create(pyprojectToml)
-	if err != nil {
-		return fmt.Errorf("failed to create %q", pyprojectToml)
-	}
-	defer pyprojectFile.Close()
-
-	if _, err := pyprojectFile.Write([]byte(b)); err != nil {
-		return fmt.Errorf("failed to write to %q", pyprojectToml)
-	}
-
-	if err := os.Remove(requirementsTxt); err != nil {
-		return fmt.Errorf("failed to remove %q", requirementsTxt)
-	}
-	if showOutput {
-		if _, err := infoWriter.Write([]byte("Deleted requirements.txt, " +
-			"dependencies for this project are tracked in pyproject.toml\n")); err != nil {
-			return fmt.Errorf("failed to write to infoWriter: %w", err)
-		}
-	}
-
-	return nil
-}
-
-func (p *poetry) generatePyProjectTOML(dependencies map[string]string) (string, error) {
+func (p *poetry) generatePyProjectTOML(name string, dependencies map[string]any) (string, error) {
 	pp := Pyproject{
 		BuildSystem: &BuildSystem{
 			Requires:     []string{"poetry-core"},
@@ -299,6 +350,11 @@ func (p *poetry) generatePyProjectTOML(dependencies map[string]string) (string, 
 			},
 		},
 	}
+	if name != "" {
+		pp.Project = &Project{
+			Name: name,
+		}
+	}
 
 	w := &bytes.Buffer{}
 	encoder := toml.NewEncoder(w)
@@ -309,15 +365,15 @@ func (p *poetry) generatePyProjectTOML(dependencies map[string]string) (string, 
 	return w.String(), nil
 }
 
-func dependenciesFromRequirementsTxt(r io.Reader) (map[string]string, error) {
+func dependenciesFromRequirementsTxt(r io.Reader, basePath string) (map[string]any, error) {
 	versionRe := regexp.MustCompile("[<>=]+.+")
-	deps := map[string]string{
-		"python": "^3.9",
+	deps := map[string]any{
+		"python": "^3.10",
 	}
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		if err := scanner.Err(); err != nil {
-			return map[string]string{}, err
+			return map[string]any{}, err
 		}
 		line := strings.TrimSpace(scanner.Text())
 		// Skip empty lines and comment lines
@@ -335,6 +391,27 @@ func dependenciesFromRequirementsTxt(r io.Reader) (map[string]string, error) {
 
 		version = strings.TrimSpace(version)
 		if version == "" {
+			// If the pkg references a local path, we have to create a dependency entry that points to the path instead
+			// of a versioned dependency.
+			if info, err := os.Stat(pkg); err == nil {
+				relPath, err := filepath.Rel(basePath, pkg)
+				if err != nil {
+					return map[string]any{}, err
+				}
+				if info.IsDir() {
+					name := strings.ReplaceAll(info.Name(), "-", "_")
+					deps[name] = map[string]string{"path": relPath}
+				} else if strings.HasSuffix(pkg, ".whl") {
+					// If it's a wheel file, we get the package name from the wheel filename. By convention, everything
+					// up to the first `-` is the package name.
+					parts := strings.SplitN(filepath.Base(pkg), "-", 2)
+					if len(parts) == 2 {
+						deps[parts[0]] = map[string]string{"path": relPath}
+					}
+				}
+				continue
+			}
+
 			version = "*"
 		}
 		// Drop `==` for an exact version match

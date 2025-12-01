@@ -16,6 +16,7 @@ package registry
 
 import (
 	"context"
+	"io"
 	"iter"
 	"sync"
 
@@ -39,14 +40,25 @@ type Registry interface {
 	GetPackage(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.PackageMetadata, error)
+
 	// Retrieve a list of packages.
 	//
 	// If name is non-nil, it will filter to accessible packages that exactly match
 	// */*/{name}.
 	//
-	// Implementations of SearchByName should return an empty iterator and nil if
+	// Implementations of ListPackages should return an empty iterator and nil if
 	// there are no matching packages in the Registry.
-	SearchByName(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
+	ListPackages(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
+
+	GetTemplate(
+		ctx context.Context, source, publisher, name string, version *semver.Version,
+	) (apitype.TemplateMetadata, error)
+
+	ListTemplates(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error]
+
+	// DownloadTemplate downloads a template given the value of
+	// [apitype.TemplateMetadata].DownloadURL.
+	DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error)
 }
 
 type registryKey struct{}
@@ -82,7 +94,7 @@ func (r *onDemandRegistry) GetPackage(
 	return impl.GetPackage(ctx, source, publisher, name, version)
 }
 
-func (r *onDemandRegistry) SearchByName(
+func (r *onDemandRegistry) ListPackages(
 	ctx context.Context, name *string,
 ) iter.Seq2[apitype.PackageMetadata, error] {
 	impl, err := r.factory()
@@ -91,5 +103,37 @@ func (r *onDemandRegistry) SearchByName(
 			consumer(apitype.PackageMetadata{}, err)
 		}
 	}
-	return impl.SearchByName(ctx, name)
+	return impl.ListPackages(ctx, name)
+}
+
+func (r *onDemandRegistry) GetTemplate(
+	ctx context.Context, source, publisher, name string, version *semver.Version,
+) (apitype.TemplateMetadata, error) {
+	impl, err := r.factory()
+	if err != nil {
+		return apitype.TemplateMetadata{}, err
+	}
+	return impl.GetTemplate(ctx, source, publisher, name, version)
+}
+
+func (r *onDemandRegistry) ListTemplates(
+	ctx context.Context, name *string,
+) iter.Seq2[apitype.TemplateMetadata, error] {
+	impl, err := r.factory()
+	if err != nil {
+		return func(consumer func(apitype.TemplateMetadata, error) bool) {
+			consumer(apitype.TemplateMetadata{}, err)
+		}
+	}
+	return impl.ListTemplates(ctx, name)
+}
+
+func (r *onDemandRegistry) DownloadTemplate(
+	ctx context.Context, downloadURL string,
+) (io.ReadCloser, error) {
+	impl, err := r.factory()
+	if err != nil {
+		return nil, err
+	}
+	return impl.DownloadTemplate(ctx, downloadURL)
 }

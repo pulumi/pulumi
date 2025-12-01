@@ -20,12 +20,22 @@ ensure:: .make/ensure/uv
 	../../scripts/retry uv venv --allow-existing
 	../../scripts/retry uv sync --dev
 
+ensure_lowest:: .make/ensure/uv
+	../../scripts/retry uv venv --allow-existing
+	../../scripts/retry uv sync --dev --resolution lowest-direct
+
 build_package:: ensure
 	uv run -m build --outdir ./build --installer uv
 
-build_plugin::
+build_plugin: ../../bin/pulumi-language-python
+	cp ./cmd/pulumi-language-python-exec ../../bin/
+	cp ./dist/pulumi-resource-pulumi-python ../../bin/
+	cp ./dist/pulumi-analyzer-policy-python ../../bin/
+
+.PHONY: ../../bin/pulumi-language-python
+../../bin/pulumi-language-python:
 	go build -C cmd/pulumi-language-python \
-		-o ../../../../bin/pulumi-language-python \
+		-o ../../$@ \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
 		${LANGHOST_PKG}
 
@@ -33,13 +43,15 @@ build:: build_package build_plugin
 
 lint:: ensure
 	uv run -m ruff format --check
-	MYPYPATH=./stubs uv run -m mypy ./lib/pulumi
+	uv run -m mypy ./lib/pulumi
 	uv run -m ruff check
 	uv run -m pyright
 
 lint_fix:: ensure
 	make format
-	make lint
+	uv run -m mypy ./lib/pulumi
+	uv run -m ruff check --fix
+	uv run -m pyright
 
 format:: ensure
 	uv run -m ruff format
@@ -66,6 +78,14 @@ test_auto:: $(TEST_ALL_DEPS)
 	. .venv/*/activate && ./scripts/test_auto.sh
 
 test_all:: test_fast test_auto test_go
+
+test_fast_lowest_deps:: ensure_lowest
+	. .venv/*/activate && ./scripts/test_fast.sh
+
+test_auto_lowest_deps:: ensure_lowest
+	. .venv/*/activate && ./scripts/test_auto.sh
+
+test_all_lowest_deps:: test_fast_lowest_deps test_auto_lowest_deps
 
 PULUMI_TEST_ORG ?= $(shell pulumi whoami --json | jq ".organizations[0]")
 

@@ -86,6 +86,15 @@ another paragraph`,
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Description: "this is another test resource",
 				},
+				InputProperties: map[string]schema.PropertySpec{
+					"propA": {
+						Description: "this is propA",
+						TypeSpec: schema.TypeSpec{
+							Type: "string",
+						},
+					},
+				},
+				RequiredInputs: []string{"propA"},
 			},
 			"test:another/Test:Test": {},
 		},
@@ -112,6 +121,52 @@ another paragraph`,
 				},
 			},
 		},
+		Functions: map[string]schema.FunctionSpec{
+			"test:funs:TestFunction": {
+				Description: "this is a test function",
+				Inputs: &schema.ObjectTypeSpec{
+					Description: "properties for TestFunction",
+					Properties: map[string]schema.PropertySpec{
+						"input1": {
+							Description: "the first and only input",
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+				ReturnType: &schema.ReturnTypeSpec{
+					TypeSpec: &schema.TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+			"test:funs:TestFunction2": {
+				Inputs: &schema.ObjectTypeSpec{
+					Description: "properties for TestFunction2",
+					Properties: map[string]schema.PropertySpec{
+						"input1": {
+							Description: "a flag input",
+							TypeSpec: schema.TypeSpec{
+								Type: "boolean",
+							},
+						},
+					},
+					Required: []string{"input1"},
+				},
+				Outputs: &schema.ObjectTypeSpec{
+					Description: "the outputs for TestFunction2",
+					Properties: map[string]schema.PropertySpec{
+						"output1": {
+							Description: "the first and only output",
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 	marshalled, err := json.Marshal(spec)
 	require.NoError(t, err)
@@ -131,19 +186,21 @@ func TestPackageInfo(t *testing.T) {
 	cmd := newPackageInfoCmd()
 	cmd.SetArgs([]string{schemaPath})
 	var output bytes.Buffer
-	cmd.SetOutput(&output)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	err = cmd.Execute()
 	require.NoError(t, err)
 	require.Equal(t, fmt.Sprintf(`\x1b[1mName\x1b[0m: test
 \x1b[1mVersion\x1b[0m: 0.0.1
 \x1b[1mDescription\x1b[0m: test description markdown formatted
 \x1b[1mTotal resources\x1b[0m 3
-\x1b[1mTotal modules\x1b[0m: 2
+\x1b[1mTotal functions\x1b[0m 2
+\x1b[1mTotal modules\x1b[0m: 3
 
-\x1b[1mModules\x1b[0m: another, index
+\x1b[1mModules\x1b[0m: another, funs, index
 
 Use 'pulumi package info %[1]s --module <module>' to list resources in a module
-Use 'pulumi package info %[1]s --resource <resource>  --module <module>' for detailed resource info
+Use 'pulumi package info %[1]s --module <module> --resource <resource>' for detailed resource info
 `, schemaPath), strings.ReplaceAll(output.String(), "\x1b", "\\x1b"))
 }
 
@@ -160,7 +217,8 @@ func TestModuleInfo(t *testing.T) {
 	cmd := newPackageInfoCmd()
 	cmd.SetArgs([]string{"--module", "index", schemaPath})
 	var output bytes.Buffer
-	cmd.SetOutput(&output)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	err = cmd.Execute()
 	require.NoError(t, err)
 	require.Equal(t, `\x1b[1mName\x1b[0m: test
@@ -171,6 +229,9 @@ func TestModuleInfo(t *testing.T) {
 
  - \x1b[1mTest\x1b[0m: test resource description
  - \x1b[1mTest2\x1b[0m: this is another test resource
+
+\x1b[1mFunctions\x1b[0m: 0
+
 `, strings.ReplaceAll(output.String(), "\x1b", "\\x1b"))
 }
 
@@ -186,20 +247,81 @@ func TestResourceInfo(t *testing.T) {
 	cmd := newPackageInfoCmd()
 	cmd.SetArgs([]string{"--module", "index", "--resource", "Test", schemaPath})
 	var output bytes.Buffer
-	cmd.SetOutput(&output)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	err = cmd.Execute()
 	require.NoError(t, err)
 	require.Equal(t, `\x1b[1mResource\x1b[0m: test:index:Test
 \x1b[1mDescription\x1b[0m: test resource description
 
 \x1b[1mInputs\x1b[0m:
- - \x1b[1mprop1\x1b[0m (\x1b[4mstring\x1b[0m\x1b[4m*\x1b[0m): this is a string property
-Inputs marked with '*' are required
+ - \x1b[1mprop1\x1b[0m (\x1b[4mstring\x1b[0m\x1b[4m\x1b[0m): this is a string property
 
 \x1b[1mOutputs\x1b[0m:
-(All input properties are implicitly available as output properties)
  - \x1b[1marrayProp\x1b[0m (\x1b[4m[]TestType\x1b[0m\x1b[4m\x1b[0m): this is an array property
  - \x1b[1menumProp\x1b[0m (\x1b[4menum(string){EnumValue1, value2}\x1b[0m\x1b[4m\x1b[0m): this is an enum property
  - \x1b[1mmapProp\x1b[0m (\x1b[4mmap[string]string\x1b[0m\x1b[4m\x1b[0m): this is a map property
+ - \x1b[1mprop1\x1b[0m (\x1b[4mstring\x1b[0m\x1b[4m*\x1b[0m): this is a string property
+Outputs marked with '*' are always present
+`, strings.ReplaceAll(output.String(), "\x1b", "\\x1b"))
+
+	cmd.SetArgs([]string{"--module", "index", "--resource", "Test2", schemaPath})
+	output.Reset()
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
+	err = cmd.Execute()
+	require.NoError(t, err)
+	require.Equal(t, `\x1b[1mResource\x1b[0m: test:index:Test2
+\x1b[1mDescription\x1b[0m: this is another test resource
+
+\x1b[1mInputs\x1b[0m:
+ - \x1b[1mpropA\x1b[0m (\x1b[4mstring\x1b[0m\x1b[4m*\x1b[0m): this is propA
+Inputs marked with '*' are required
+
+\x1b[1mOutputs\x1b[0m:
+`, strings.ReplaceAll(output.String(), "\x1b", "\\x1b"))
+}
+
+func TestFunctionInfo(t *testing.T) {
+	t.Parallel()
+
+	schema := generateSchema(t)
+	tmpDir := t.TempDir()
+	schemaPath := filepath.Join(tmpDir, "schema.json")
+
+	err := os.WriteFile(schemaPath, schema, 0o600)
+	require.NoError(t, err)
+
+	cmd := newPackageInfoCmd()
+	cmd.SetArgs([]string{"--module", "funs", "--function", "TestFunction", schemaPath})
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
+	err = cmd.Execute()
+	require.NoError(t, err)
+	require.Equal(t, `\x1b[1mFunction\x1b[0m: test:funs:TestFunction
+\x1b[1mDescription\x1b[0m: this is a test function
+
+\x1b[1mInputs\x1b[0m:
+ - \x1b[1minput1\x1b[0m (\x1b[4mstring\x1b[0m\x1b[4m\x1b[0m): the first and only input
+
+\x1b[1mOutputs\x1b[0m: \x1b[4mstring\x1b[0m
+`, strings.ReplaceAll(output.String(), "\x1b", "\\x1b"))
+
+	cmd.SetArgs([]string{"--function", "TestFunction2", schemaPath})
+	output = bytes.Buffer{}
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
+	err = cmd.Execute()
+	require.NoError(t, err)
+	require.Equal(t, `\x1b[1mFunction\x1b[0m: test:funs:TestFunction2
+\x1b[1mDescription\x1b[0m: 
+
+\x1b[1mInputs\x1b[0m:
+ - \x1b[1minput1\x1b[0m (\x1b[4mboolean\x1b[0m\x1b[4m*\x1b[0m): a flag input
+Inputs marked with '*' are required
+
+\x1b[1mOutputs\x1b[0m:
+ - \x1b[1moutput1\x1b[0m (\x1b[4mstring\x1b[0m\x1b[4m\x1b[0m): the first and only output
 `, strings.ReplaceAll(output.String(), "\x1b", "\\x1b"))
 }

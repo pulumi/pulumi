@@ -96,10 +96,6 @@ export function generateSchema(
         types: {},
         language: {
             nodejs: {
-                dependencies: {},
-                devDependencies: {
-                    typescript: "^5.0.0",
-                },
                 respectSchemaVersion: true,
             },
             python: {

@@ -22,8 +22,18 @@ from pulumi_gcp.compute.instancebootdisk import InstanceBootDiskArgs
 from pulumi_gcp.compute.instancebootdiskinitializeparams import InstanceBootDiskInitializeParamsArgs
 
 
+@pytest.fixture(scope="session")
+def event_loop():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        yield loop
+    finally:
+        loop.close()
+
+
 @pytest.fixture
-def my_mocks():
+def my_mocks(event_loop):
     old_settings = pulumi.runtime.settings.SETTINGS
     try:
         mocks = MyMocks()

@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -41,9 +42,9 @@ func init() {
 
 					outputs := stack.Outputs
 
-					assert.Len(l, outputs, 10, "expected 10 outputs")
-					AssertPropertyMapMember(l, outputs, "plainTrySuccess", resource.NewBoolProperty(true))
-					AssertPropertyMapMember(l, outputs, "plainTryFailure", resource.NewBoolProperty(false))
+					require.Len(l, outputs, 10, "expected 10 outputs")
+					AssertPropertyMapMember(l, outputs, "plainTrySuccess", resource.NewProperty(true))
+					AssertPropertyMapMember(l, outputs, "plainTryFailure", resource.NewProperty(false))
 
 					// The output failure variants may or may not be secret, depending on the language. We allow either.
 					assertPropertyMapMember := func(
@@ -69,19 +70,19 @@ func init() {
 					}
 
 					AssertPropertyMapMember(l, outputs, "outputTrySuccess",
-						resource.MakeSecret(resource.NewBoolProperty(true)))
+						resource.MakeSecret(resource.NewProperty(true)))
 					assertPropertyMapMember(outputs, "outputTryFailure",
-						resource.NewBoolProperty(false))
+						resource.NewProperty(false))
 					AssertPropertyMapMember(l, outputs, "dynamicTrySuccess",
-						resource.NewBoolProperty(true))
+						resource.NewProperty(true))
 					assertPropertyMapMember(outputs, "dynamicTryFailure",
-						resource.NewBoolProperty(false))
+						resource.NewProperty(false))
 					AssertPropertyMapMember(l, outputs, "outputDynamicTrySuccess",
-						resource.MakeSecret(resource.NewBoolProperty(true)))
+						resource.MakeSecret(resource.NewProperty(true)))
 					assertPropertyMapMember(outputs, "outputDynamicTryFailure",
-						resource.NewBoolProperty(false))
-					AssertPropertyMapMember(l, outputs, "plainTryNull", resource.NewBoolProperty(true))
-					assertPropertyMapMember(outputs, "outputTryNull", resource.NewBoolProperty(true))
+						resource.NewProperty(false))
+					AssertPropertyMapMember(l, outputs, "plainTryNull", resource.NewProperty(true))
+					assertPropertyMapMember(outputs, "outputTryNull", resource.NewProperty(true))
 				},
 			},
 		},

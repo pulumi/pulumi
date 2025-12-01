@@ -33,7 +33,7 @@ export class Rec extends pulumi.CustomResource {
         return obj['__pulumiType'] === Rec.__pulumiType;
     }
 
-    public /*out*/ readonly rec!: pulumi.Output<Rec | undefined>;
+    declare public /*out*/ readonly rec: pulumi.Output<Rec | undefined>;
 
     /**
      * Create a Rec resource with the given unique name, arguments, and options.

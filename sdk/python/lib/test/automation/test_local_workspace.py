@@ -517,6 +517,46 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertEqual(all_config["python_test:secret-key"].value, "-value")
         ws.remove_stack(stack_name)
 
+    def test_set_all_config_json(self):
+        project_name = "python_config_json_test"
+        project_settings = ProjectSettings(project_name, runtime="python")
+        ws = LocalWorkspace(project_settings=project_settings)
+        stack_name = stack_namer(project_name)
+        stack = Stack.create(stack_name, ws)
+
+        # Set config using JSON format
+        config_json = json.dumps(
+            {
+                f"{project_name}:plainKey": {
+                    "value": "plainValue",
+                    "secret": False,
+                },
+                f"{project_name}:secretKey": {
+                    "value": "secretValue",
+                    "secret": True,
+                },
+                f"{project_name}:numberKey": {
+                    "value": "42",
+                    "secret": False,
+                },
+            }
+        )
+
+        stack.set_all_config_json(config_json)
+
+        # Verify the config was set correctly
+        all_config = stack.get_all_config()
+
+        self.assertEqual(all_config[f"{project_name}:plainKey"].value, "plainValue")
+        self.assertFalse(all_config[f"{project_name}:plainKey"].secret)
+
+        self.assertTrue(all_config[f"{project_name}:secretKey"].secret)
+
+        self.assertEqual(all_config[f"{project_name}:numberKey"].value, "42")
+        self.assertFalse(all_config[f"{project_name}:numberKey"].secret)
+
+        ws.remove_stack(stack_name)
+
     # This test requires the existence of a Pulumi.dev.yaml file because we are reading the nested
     # config from the file. This means we can't remove the stack at the end of the test.
     # We should also not include secrets in this config, because the secret encryption is only valid within
@@ -803,6 +843,69 @@ class TestLocalWorkspace(unittest.TestCase):
         finally:
             stack.workspace.remove_stack(stack_name)
 
+    def test_on_error(self):
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_stack(
+            stack_name, program=pulumi_program, project_name=project_name
+        )
+
+        try:
+            error = ""
+
+            def logger(e):
+                nonlocal error
+                error += e
+
+            try:
+                stack.up(color="vibrant grey", on_error=logger)
+            except:
+                self.assertNotEqual(error, "")
+
+            self.assertIn("error: unsupported color", error)
+            error = ""
+
+            up_res = stack.up()
+            self.assertEqual(up_res.summary.kind, "update")
+            self.assertEqual(up_res.summary.result, "succeeded")
+
+            # pulumi preview
+            try:
+                stack.preview(color="plum yellow", on_error=logger)
+            except:
+                self.assertNotEqual(error, "")
+
+            self.assertIn("error: unsupported color", error)
+            error = ""
+
+            # pulumi refresh
+            try:
+                stack.refresh(color="inquisitive heliotrope", on_error=logger)
+            except:
+                self.assertNotEqual(error, "")
+
+            self.assertIn("error: unsupported color", error)
+            error = ""
+
+            refresh_res = stack.refresh()
+            self.assertEqual(refresh_res.summary.kind, "refresh")
+            self.assertEqual(refresh_res.summary.result, "succeeded")
+
+            # pulumi destroy
+            try:
+                stack.refresh(color="violent orange", on_error=logger)
+            except:
+                self.assertNotEqual(error, "")
+
+            self.assertIn("error: unsupported color", error)
+            error = ""
+
+            destroy_res = stack.destroy()
+            self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
+        finally:
+            stack.workspace.remove_stack(stack_name)
+
     def test_preview_refresh(self):
         project_name = "inline_python"
         stack_name = stack_namer(project_name)
@@ -815,9 +918,30 @@ class TestLocalWorkspace(unittest.TestCase):
             stack.up()
 
             # pulumi refresh
-            refresh_res = stack.refresh(preview_only=True)
-            self.assertEqual(refresh_res.summary.kind, "update")
-            self.assertEqual(refresh_res.summary.result, "succeeded")
+            refresh_res = stack.preview_refresh()
+            self.assertEqual(refresh_res.change_summary, {"same": 1})
+
+            # pulumi destroy
+            destroy_res = stack.destroy()
+            self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
+        finally:
+            stack.workspace.remove_stack(stack_name)
+
+    def test_preview_refresh_with_resource(self):
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_or_select_stack(
+            stack_name, program=pulumi_program_with_resource, project_name=project_name
+        )
+
+        try:
+            # pulumi up
+            stack.up()
+
+            # pulumi refresh
+            refresh_res = stack.preview_refresh(expect_no_changes=True)
+            self.assertEqual(refresh_res.change_summary, {"same": 2})
 
             # pulumi destroy
             destroy_res = stack.destroy()
@@ -838,8 +962,59 @@ class TestLocalWorkspace(unittest.TestCase):
             stack.up()
 
             # pulumi destroy
-            destroy_res = stack.destroy(preview_only=True)
-            self.assertEqual(destroy_res.summary.kind, "update")
+            destroy_res = stack.preview_destroy()
+            self.assertEqual(destroy_res.change_summary, {"delete": 1})
+        finally:
+            stack.workspace.remove_stack(stack_name)
+
+    def test_preview_destroy_with_resource(self):
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_or_select_stack(
+            stack_name, program=pulumi_program_with_resource, project_name=project_name
+        )
+
+        try:
+            # pulumi up
+            stack.up()
+
+            # pulumi destroy
+            destroy_res = stack.preview_destroy()
+            self.assertEqual(destroy_res.change_summary, {"delete": 2})
+
+            # a second preview should produce the same result
+            destroy_res = stack.preview_destroy()
+            self.assertEqual(destroy_res.change_summary, {"delete": 2})
+
+            # pulumi destroy
+            destroy_res = stack.destroy()
+            self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
+        finally:
+            stack.workspace.remove_stack(stack_name)
+
+    def test_preview_with_json(self):
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_or_select_stack(
+            stack_name, program=pulumi_program_with_resource, project_name=project_name
+        )
+
+        try:
+            # pulumi up
+            stack.up()
+
+            # pulumi preview
+            preview_res = stack.preview(json=True)
+
+            result = json.loads(preview_res.stdout)
+
+            # Check that the JSON output could be parsed.
+            assert result is not None
+
+            # pulumi destroy to clean up
+            destroy_res = stack.destroy()
+            self.assertEqual(destroy_res.summary.kind, "destroy")
             self.assertEqual(destroy_res.summary.result, "succeeded")
         finally:
             stack.workspace.remove_stack(stack_name)

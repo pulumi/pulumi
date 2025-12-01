@@ -351,6 +351,7 @@ func RunCommandWithOptions(
 		append([]string{exec}, args...),
 		wd,
 		opts)
+	//nolint:forbidigo // We enhance the error message show if the test fails
 	if !assert.NoError(t, err) {
 		stdout := stdout.String()
 		stderr := stderr.String()
@@ -380,4 +381,4 @@ const (
 )
 
 // PulumiDotnetSDKVersion is the version of the Pulumi .NET SDK to use in program-gen tests
-const PulumiDotnetSDKVersion = "3.83.2"
+const PulumiDotnetSDKVersion = "3.94.1"

@@ -30,7 +30,7 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -40,9 +40,9 @@ import (
 func TestDestroyWithProgram(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
 	var deleteCalled int32
 	loaders := []*deploytest.ProviderLoader{
@@ -96,7 +96,7 @@ func TestDestroyWithProgram(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: programInputs,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// Should see the create outputs both times we run this program
 		assert.Equal(t, createOutputs, resp.Outputs)
 
@@ -105,7 +105,7 @@ func TestDestroyWithProgram(t *testing.T) {
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 				Inputs: programInputs,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, createOutputs, resp.Outputs)
 		}
 
@@ -131,7 +131,7 @@ func TestDestroyWithProgram(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// Run a destroy
 	snap, err = lt.TestOp(DestroyV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -141,16 +141,16 @@ func TestDestroyWithProgram(t *testing.T) {
 	// Should have deleted resA and resB
 	assert.Equal(t, int32(2), deleteCalled)
 	// Resources should be deleted from state
-	assert.Len(t, snap.Resources, 0)
+	require.Len(t, snap.Resources, 0)
 }
 
 // Test that we can run a targeted destroy by executing the program for it.
 func TestTargetedDestroyWithProgram(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
 	deleteCalled := 0
 	loaders := []*deploytest.ProviderLoader{
@@ -204,7 +204,7 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: programInputs,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// Should see the create outputs both times we run this program
 		assert.Equal(t, createOutputs, resp.Outputs)
 
@@ -213,7 +213,7 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 				Inputs: programInputs,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, createOutputs, resp.Outputs)
 		}
 
@@ -239,7 +239,7 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// Run a targeted destroy against resA
 	p.Options.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{snap.Resources[1].URN})
 	snap, err = lt.TestOp(DestroyV2).
@@ -250,7 +250,7 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 	// Should have deleted resA
 	assert.Equal(t, 1, deleteCalled)
 	// resA should be deleted from state
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, "resB", snap.Resources[1].URN.Name())
 }
 
@@ -258,9 +258,9 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
 	var deleteCalled int32
 	loaders := []*deploytest.ProviderLoader{
@@ -334,7 +334,7 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 			Inputs:  programInputs,
 			Version: pkgVersion,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// Should see the create outputs both times we run this program
 		assert.Equal(t, createOutputs, resp.Outputs)
 
@@ -344,7 +344,7 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 				Inputs:  programInputs,
 				Version: pkgVersion,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, createOutputs, resp.Outputs)
 		}
 
@@ -370,7 +370,7 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// Run a destroy with the new provider version
 	pkgVersion = "2.0.0"
 	snap, err = lt.TestOp(DestroyV2).
@@ -381,7 +381,7 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 	// Should have deleted resA and resB
 	assert.Equal(t, int32(2), deleteCalled)
 	// All the resources should be deleted from state
-	assert.Len(t, snap.Resources, 0)
+	require.Len(t, snap.Resources, 0)
 }
 
 // Test that we can run a destroy by executing the program for it, and that in that update we change provider version.
@@ -389,9 +389,9 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
 	var deleteCalled int32
 	loaders := []*deploytest.ProviderLoader{
@@ -451,16 +451,16 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{
 			Version: pkgVersion,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		provRef, err := providers.NewReference(prov.URN, prov.ID)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:   programInputs,
 			Provider: provRef.String(),
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// Should see the create outputs both times we run this program
 		assert.Equal(t, createOutputs, resp.Outputs)
 
@@ -470,7 +470,7 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 				Inputs:   programInputs,
 				Provider: provRef.String(),
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, createOutputs, resp.Outputs)
 		}
 
@@ -496,7 +496,7 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// Run a destroy with the new provider version
 	pkgVersion = "2.0.0"
 	snap, err = lt.TestOp(DestroyV2).
@@ -507,16 +507,16 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 	// Should have deleted resA and resB
 	assert.Equal(t, int32(2), deleteCalled)
 	// All the resources should be deleted from state
-	assert.Len(t, snap.Resources, 0)
+	require.Len(t, snap.Resources, 0)
 }
 
 // Test that we can run a destroy by executing the program for it when that program creates components.
 func TestDestroyWithProgramWithComponents(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
 	deleteCalled := 0
 	loaders := []*deploytest.ProviderLoader{
@@ -568,13 +568,13 @@ func TestDestroyWithProgramWithComponents(t *testing.T) {
 		programExecutions++
 
 		resp, err := monitor.RegisterResource("my_component", "parent", false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		resp, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: programInputs,
 			Parent: resp.URN,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, createOutputs, resp.Outputs)
 
 		return nil
@@ -597,7 +597,7 @@ func TestDestroyWithProgramWithComponents(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// Run a destroy
 	snap, err = lt.TestOp(DestroyV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -607,7 +607,7 @@ func TestDestroyWithProgramWithComponents(t *testing.T) {
 	// Should have deleted resA
 	assert.Equal(t, 1, deleteCalled)
 	// Everything should be deleted from state
-	assert.Len(t, snap.Resources, 0)
+	require.Len(t, snap.Resources, 0)
 }
 
 // Test that we can run a destroy by executing the program for it when that program creates components which
@@ -615,9 +615,9 @@ func TestDestroyWithProgramWithComponents(t *testing.T) {
 func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
 	deleteCalled := 0
 	loaders := []*deploytest.ProviderLoader{
@@ -667,7 +667,7 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs: programInputs,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, createOutputs, resp.Outputs)
 		} else {
 			// Second execution (the deletion) we create a custom resource, then a component that depends on
@@ -676,20 +676,20 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 
 			// Create a custom resource that will be skipped
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// Create a component that depends on the custom resource, it also has to be skipped
 			resp, err = monitor.RegisterResource("my_component", "parent", false, deploytest.ResourceOptions{
 				Dependencies: []resource.URN{resp.URN},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// And then create the original custom resource as a child of the component, remember to alias it
 			resp, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs:       programInputs,
 				Dependencies: []resource.URN{resp.URN},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, createOutputs, resp.Outputs)
 		}
 		return nil
@@ -712,7 +712,7 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// Run a destroy
 	snap, err = lt.TestOp(DestroyV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -722,7 +722,7 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 	// Should have deleted resA
 	assert.Equal(t, 1, deleteCalled)
 	// Everything should be deleted from state
-	assert.Len(t, snap.Resources, 0)
+	require.Len(t, snap.Resources, 0)
 }
 
 // Test that we can run a destroy by executing the program for it when that program now aliases _and_ skips
@@ -730,9 +730,9 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
 	deleteCalled := 0
 	loaders := []*deploytest.ProviderLoader{
@@ -782,7 +782,7 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs: programInputs,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, createOutputs, resp.Outputs)
 		} else {
 			// Second execution (the deletion) we create a custom resource that will have to be skipped, then
@@ -790,7 +790,7 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 
 			// Create a custom resource that will be skipped
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// And then create the original custom resource as a child of the component, remember to alias it
 			resp, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -808,7 +808,7 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 					},
 				},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, createOutputs, resp.Outputs)
 		}
 		return nil
@@ -831,7 +831,7 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// Run a destroy
 	snap, err = lt.TestOp(DestroyV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -841,5 +841,193 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 	// Should have deleted resA
 	assert.Equal(t, 1, deleteCalled)
 	// Everything should be deleted from state
-	assert.Len(t, snap.Resources, 0)
+	require.Len(t, snap.Resources, 0)
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/19363. Check that a read resource (i.e.
+// Resource.get) doesn't remain in the state after a destroy --run-program operation.
+func TestDestroyWithProgramResourceRead(t *testing.T) {
+	t.Parallel()
+
+	readInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+	createInputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+
+	deleteCalled := 0
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					if req.Name == "resB" {
+						deleteCalled++
+						assert.Equal(t, createInputs, req.Inputs)
+						assert.Equal(t, createOutputs, req.Outputs)
+
+						return plugin.DeleteResponse{
+							Status: resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.DeleteResponse{}, fmt.Errorf("should not have called delete on %s", req.URN)
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					uuid, err := uuid.NewV4()
+					if err != nil {
+						return plugin.CreateResponse{}, err
+					}
+
+					if req.Name == "resB" {
+						assert.Equal(t, programInputs, req.Properties)
+
+						return plugin.CreateResponse{
+							ID:         resource.ID(uuid.String()),
+							Properties: createOutputs,
+							Status:     resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.CreateResponse{}, fmt.Errorf("should not have called create on %s", req.URN)
+				},
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					if req.Name == "resA" {
+						assert.Equal(t, resource.ID("id"), req.ID)
+						assert.Empty(t, req.Inputs)
+						assert.Empty(t, req.State)
+
+						return plugin.ReadResponse{
+							ReadResult: plugin.ReadResult{
+								Inputs:  readInputs,
+								Outputs: readOutputs,
+								ID:      req.ID,
+							},
+							Status: resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.ReadResponse{}, fmt.Errorf("should not have called read on %s", req.URN)
+				},
+			}, nil
+		}),
+	}
+
+	programExecutions := 0
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		programExecutions++
+
+		_, state, err := monitor.ReadResource(
+			"pkgA:m:typA",
+			"resA",
+			"id",
+			"",
+			resource.PropertyMap{},
+			"",
+			"",
+			"",
+			nil,
+			"",
+			"",
+		)
+		require.NoError(t, err)
+		assert.Equal(t, readOutputs, state)
+
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs: programInputs,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, createOutputs, resp.Outputs)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:                t,
+			HostF:            hostF,
+			SkipDisplayTests: true,
+		},
+	}
+
+	// Run an update to create the initial state.
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	assert.Equal(t, 1, programExecutions)
+	assert.Equal(t, resource.PropertyMap{}, snap.Resources[1].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, programInputs, snap.Resources[2].Inputs)
+	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
+
+	// Change the program inputs to check we don't send changed inputs to the provider
+	programInputs["foo"] = resource.NewProperty("qux")
+	// Run a destroy
+	snap, err = lt.TestOp(DestroyV2).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	// Should have run the program again
+	assert.Equal(t, 2, programExecutions)
+	// Should have deleted resA
+	assert.Equal(t, 1, deleteCalled)
+	// Everything should be deleted from state
+	require.Len(t, snap.Resources, 0)
+}
+
+func TestDestroyV2ProtectedWithProviderDependencies(t *testing.T) {
+	t.Parallel()
+
+	initialSnap := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type:   "pulumi:providers:pkgA",
+				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::prov",
+				Custom: true,
+				ID:     "prov",
+			},
+			{
+				Type:     "pkgA:m:typA",
+				URN:      "urn:pulumi:test::test::pkgA:m:typA::resA",
+				Provider: "urn:pulumi:test::test::pulumi:providers:pkgA::prov::prov",
+				ID:       "0",
+				Protect:  true,
+			},
+		},
+	}
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		protect := true
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Protect:  &protect,
+			Provider: provRef.String(),
+		})
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+	}
+	p := &lt.TestPlan{
+		Options: opts,
+	}
+
+	_, err := lt.TestOp(DestroyV2).RunStep(
+		p.GetProject(), p.GetTarget(t, initialSnap), opts, false, p.BackendClient, nil, "0")
+	require.ErrorContains(t, err, "BAIL: step executor errored: step application failed: resource"+
+		" \"urn:pulumi:test::test::pkgA:m:typA::resA\" cannot be deleted")
+	require.NotContains(t, err.Error(), "validation error")
 }

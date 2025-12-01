@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -151,7 +152,7 @@ func TestListStorageAccountKeysOutput(t *testing.T) {
 
 		keys := waitOut(t, output.Keys()).([]mypkg.StorageAccountKeyResponse)
 
-		assert.Equal(t, 1, len(keys))
+		require.Len(t, keys, 1)
 		assert.Equal(t, "key", keys[0].KeyName)
 		assert.Equal(t, "permissions", keys[0].Permissions)
 		assert.Equal(t, "accountName=my-account-name, resourceGroupName=my-resource-group-name, expand=",
@@ -165,7 +166,7 @@ func TestListStorageAccountKeysOutput(t *testing.T) {
 
 		keys = waitOut(t, output.Keys()).([]mypkg.StorageAccountKeyResponse)
 
-		assert.Equal(t, 1, len(keys))
+		require.Len(t, keys, 1)
 		assert.Equal(t, "key", keys[0].KeyName)
 		assert.Equal(t, "permissions", keys[0].Permissions)
 		assert.Equal(t, "accountName=my-account-name, resourceGroupName=my-resource-group-name, expand=my-expand",
@@ -221,7 +222,7 @@ func TestGetAmiIdsWorks(t *testing.T) {
 
 func pulumiTest(t *testing.T, testBody func(ctx *pulumi.Context) error) {
 	err := pulumi.RunErr(testBody, pulumi.WithMocks("project", "stack", mocks(0)))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func waitOut(t *testing.T, output pulumi.Output) interface{} {

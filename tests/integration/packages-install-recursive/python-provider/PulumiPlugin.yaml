@@ -1,0 +1,7 @@
+name: python-provider
+runtime:
+  name: python
+  options:
+    virtualenv: venv
+packages:
+  typescript-a: ../ts-provider-a

@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
@@ -35,7 +36,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -53,6 +53,7 @@ func NewRefreshCmd() *cobra.Command {
 	var execKind string
 	var execAgent string
 	var stackName string
+	var client string
 
 	// Flags for remote operations.
 	remoteArgs := deployment.RemoteArgs{}
@@ -81,8 +82,8 @@ func NewRefreshCmd() *cobra.Command {
 	var clearPendingCreates bool
 	var importPendingCreates *[]string
 
-	// Flags for Copilot.
-	var copilotEnabled bool
+	// Flags for Neo.
+	var neoEnabled bool
 
 	use, cmdArgs := "refresh", cmdutil.NoArgs
 	if deployment.RemoteSupported() {
@@ -152,7 +153,7 @@ func NewRefreshCmd() *cobra.Command {
 			}
 
 			if remoteArgs.Remote {
-				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, nil, false, "", jsonDisplay, nil,
+				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, nil, false, client, jsonDisplay, nil,
 					nil, "", showConfig, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil, nil,
 					false, "", cmdStack.ConfigFile, runProgram)
@@ -183,7 +184,7 @@ func NewRefreshCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			configureCopilotOptions(copilotEnabled, cmd, &opts.Display, isDIYBackend)
+			configureNeoOptions(neoEnabled, cmd, &opts.Display, isDIYBackend)
 
 			s, err := cmdStack.RequireStack(
 				ctx,
@@ -198,7 +199,7 @@ func NewRefreshCmd() *cobra.Command {
 				return err
 			}
 
-			proj, root, err := ws.ReadProject()
+			proj, root, err := readProjectForUpdate(ws, client)
 			if err != nil {
 				return err
 			}
@@ -253,7 +254,7 @@ func NewRefreshCmd() *cobra.Command {
 				}
 			}
 
-			snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+			snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
 			if err != nil {
 				return fmt.Errorf("getting snapshot: %w", err)
 			}
@@ -309,7 +310,7 @@ func NewRefreshCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    stack.DefaultSecretsProvider,
+				SecretsProvider:    secrets.DefaultProvider,
 				Scopes:             backend.CancellationScopes,
 			})
 
@@ -410,9 +411,16 @@ func NewRefreshCmd() *cobra.Command {
 		"A list of form [[URN ID]...] describing the provider IDs of pending creates")
 
 	cmd.PersistentFlags().BoolVar(
-		&copilotEnabled, "copilot", false,
-		"Enable Pulumi Copilot's assistance for improved CLI experience and insights."+
+		&neoEnabled, "neo", false,
+		"Enable Pulumi Neo's assistance for improved CLI experience and insights "+
+			"(can also be set with PULUMI_NEO environment variable)")
+
+	// Keep --copilot flag for backwards compatibility, but hide it
+	cmd.PersistentFlags().BoolVar(
+		&neoEnabled, "copilot", false,
+		"[DEPRECATED] Use --neo instead. Enable Pulumi Neo's assistance for improved CLI experience and insights "+
 			"(can also be set with PULUMI_COPILOT environment variable)")
+	_ = cmd.PersistentFlags().MarkDeprecated("copilot", "please use --neo instead")
 
 	// Currently, we can't mix `--target` and `--exclude`.
 	cmd.MarkFlagsMutuallyExclusive("target", "exclude")
@@ -433,6 +441,10 @@ func NewRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&execAgent, "exec-agent", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
+
+	cmd.PersistentFlags().StringVar(
+		&client, "client", "", "The address of an existing language runtime host to connect to")
+	_ = cmd.PersistentFlags().MarkHidden("client")
 
 	return cmd
 }

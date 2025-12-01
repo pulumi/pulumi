@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,6 +51,7 @@ func (p *providerServer) unmarshalOptions(label string, keepOutputValues bool) M
 		KeepSecrets:      true,
 		KeepResources:    true,
 		KeepOutputValues: keepOutputValues,
+		PropagateNil:     true,
 	}
 }
 
@@ -60,6 +61,7 @@ func (p *providerServer) marshalOptions(label string) MarshalOptions {
 		KeepUnknowns:  true,
 		KeepSecrets:   p.keepSecrets,
 		KeepResources: p.keepResources,
+		PropagateNil:  true,
 	}
 }
 
@@ -143,6 +145,7 @@ func (p *providerServer) Handshake(
 		ConfigureWithUrn:            req.ConfigureWithUrn,
 		SupportsViews:               req.SupportsViews,
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
+		InvokeWithPreview:           req.InvokeWithPreview,
 	})
 	if err != nil {
 		return nil, err
@@ -363,7 +366,7 @@ func (p *providerServer) Configure(ctx context.Context,
 				return nil, err
 			}
 
-			var value interface{}
+			var value any
 			if err = json.Unmarshal([]byte(v), &value); err != nil {
 				// If we couldn't unmarshal a JSON value, just pass the raw string through.
 				value = v
@@ -796,6 +799,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		DryRun:           req.GetDryRun(),
 		Parallel:         req.GetParallel(),
 		MonitorAddress:   req.GetMonitorEndpoint(),
+		StackTraceHandle: req.GetStackTraceHandle(),
 	}
 
 	aliases := make([]resource.Alias, len(req.GetAliases()))
@@ -814,12 +818,33 @@ func (p *providerServer) Construct(ctx context.Context,
 		}
 		propertyDependencies[resource.PropertyKey(name)] = urns
 	}
+
+	var hooks map[resource.HookType][]string
+	binding := req.GetResourceHooks()
+	if binding != nil {
+		hooks = make(map[resource.HookType][]string)
+		hooks[resource.BeforeCreate] = binding.GetBeforeCreate()
+		hooks[resource.AfterCreate] = binding.GetAfterCreate()
+		hooks[resource.BeforeUpdate] = binding.GetBeforeUpdate()
+		hooks[resource.AfterUpdate] = binding.GetAfterUpdate()
+		hooks[resource.BeforeDelete] = binding.GetBeforeDelete()
+		hooks[resource.AfterDelete] = binding.GetAfterDelete()
+	}
+
+	replaceWith := make([]resource.URN, len(req.GetReplaceWith()))
+	for i, urn := range req.GetReplaceWith() {
+		replaceWith[i] = resource.URN(urn)
+	}
+
 	options := ConstructOptions{
 		Aliases:              aliases,
 		Dependencies:         dependencies,
 		Protect:              req.Protect,
 		Providers:            req.GetProviders(),
 		PropertyDependencies: propertyDependencies,
+		ResourceHooks:        hooks,
+		DeletedWith:          resource.URN(req.DeletedWith),
+		ReplaceWith:          replaceWith,
 	}
 
 	resp, err := p.provider.Construct(ctx, ConstructRequest{
@@ -864,8 +889,9 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 	}
 
 	resp, err := p.provider.Invoke(ctx, InvokeRequest{
-		Tok:  tokens.ModuleMember(req.GetTok()),
-		Args: args,
+		Tok:     tokens.ModuleMember(req.GetTok()),
+		Args:    args,
+		Preview: req.GetPreview(),
 	})
 	if err != nil {
 		return nil, err
@@ -902,12 +928,13 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 		cfg[configKey] = v
 	}
 	info := CallInfo{
-		Project:        req.GetProject(),
-		Stack:          req.GetStack(),
-		Config:         cfg,
-		DryRun:         req.GetDryRun(),
-		Parallel:       req.GetParallel(),
-		MonitorAddress: req.GetMonitorEndpoint(),
+		Project:          req.GetProject(),
+		Stack:            req.GetStack(),
+		Config:           cfg,
+		DryRun:           req.GetDryRun(),
+		Parallel:         req.GetParallel(),
+		MonitorAddress:   req.GetMonitorEndpoint(),
+		StackTraceHandle: req.GetStackTraceHandle(),
 	}
 	argDependencies := map[resource.PropertyKey][]resource.URN{}
 	for name, deps := range req.GetArgDependencies() {

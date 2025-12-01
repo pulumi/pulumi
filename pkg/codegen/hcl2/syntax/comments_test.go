@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
 )
@@ -42,7 +43,7 @@ func commentString(trivia []Trivia) string {
 func validateTokenLeadingTrivia(t *testing.T, token Token) {
 	// There is nowhere to attach leading trivia to template control sequences.
 	if token.Raw.Type == hclsyntax.TokenTemplateControl {
-		assert.Len(t, token.LeadingTrivia, 0)
+		require.Len(t, token.LeadingTrivia, 0)
 		return
 	}
 
@@ -64,7 +65,7 @@ func validateTokenTrivia(t *testing.T, token Token) {
 	validateTokenTrailingTrivia(t, token)
 }
 
-func validateTrivia(t *testing.T, tokens ...interface{}) {
+func validateTrivia(t *testing.T, tokens ...any) {
 	for _, te := range tokens {
 		switch te := te.(type) {
 		case Token:
@@ -107,25 +108,24 @@ func validateTemplateStringTrivia(t *testing.T, template *hclsyntax.TemplateExpr
 	assert.NotEqual(t, -1, index)
 
 	v, err := convert.Convert(n.Val, cty.String)
-	assert.NoError(t, err)
-	if v.AsString() == "" || !assert.Len(t, tokens.Value, 1) {
+	require.NoError(t, err)
+	if v.AsString() == "" {
 		return
 	}
+	require.Len(t, tokens.Value, 1)
 
 	value := tokens.Value[0]
 	if index == 0 {
-		assert.Len(t, value.LeadingTrivia, 0)
+		require.Len(t, value.LeadingTrivia, 0)
 	} else {
 		delim, ok := value.LeadingTrivia[0].(TemplateDelimiter)
 		assert.True(t, ok)
 		assert.Equal(t, hclsyntax.TokenTemplateSeqEnd, delim.Type)
 	}
 	if index == len(template.Parts)-1 {
-		assert.Len(t, value.TrailingTrivia, 0)
+		require.Len(t, value.TrailingTrivia, 0)
 	} else if len(value.TrailingTrivia) != 0 {
-		if !assert.Len(t, value.TrailingTrivia, 1) {
-			return
-		}
+		require.Len(t, value.TrailingTrivia, 1)
 		delim, ok := value.TrailingTrivia[0].(TemplateDelimiter)
 		assert.True(t, ok)
 		assert.Equal(t, hclsyntax.TokenTemplateInterp, delim.Type)
@@ -235,9 +235,9 @@ func TestComments(t *testing.T) {
 
 	parser := NewParser()
 	err = parser.ParseFile(bytes.NewReader(contents), "comments_all.hcl")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.Len(t, parser.Diagnostics, 0)
+	require.Len(t, parser.Diagnostics, 0)
 
 	f := parser.Files[0]
 	diags := hclsyntax.Walk(f.Body, &validator{t: t, tokens: f.Tokens})

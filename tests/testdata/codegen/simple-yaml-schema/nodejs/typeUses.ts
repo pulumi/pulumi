@@ -36,14 +36,14 @@ export class TypeUses extends pulumi.CustomResource {
         return obj['__pulumiType'] === TypeUses.__pulumiType;
     }
 
-    public /*out*/ readonly alpha!: pulumi.Output<enums.OutputOnlyEnumType | undefined>;
-    public readonly bar!: pulumi.Output<outputs.SomeOtherObject | undefined>;
-    public readonly baz!: pulumi.Output<outputs.ObjectWithNodeOptionalInputs | undefined>;
-    public /*out*/ readonly beta!: pulumi.Output<outputs.OutputOnlyObjectType[] | undefined>;
-    public readonly foo!: pulumi.Output<outputs.Object | undefined>;
-    public /*out*/ readonly gamma!: pulumi.Output<{[key: string]: enums.OutputOnlyEnumType} | undefined>;
-    public readonly qux!: pulumi.Output<enums.RubberTreeVariety | undefined>;
-    public /*out*/ readonly zed!: pulumi.Output<outputs.OutputOnlyObjectType | undefined>;
+    declare public /*out*/ readonly alpha: pulumi.Output<enums.OutputOnlyEnumType | undefined>;
+    declare public readonly bar: pulumi.Output<outputs.SomeOtherObject | undefined>;
+    declare public readonly baz: pulumi.Output<outputs.ObjectWithNodeOptionalInputs | undefined>;
+    declare public /*out*/ readonly beta: pulumi.Output<outputs.OutputOnlyObjectType[] | undefined>;
+    declare public readonly foo: pulumi.Output<outputs.Object | undefined>;
+    declare public /*out*/ readonly gamma: pulumi.Output<{[key: string]: enums.OutputOnlyEnumType} | undefined>;
+    declare public readonly qux: pulumi.Output<enums.RubberTreeVariety | undefined>;
+    declare public /*out*/ readonly zed: pulumi.Output<outputs.OutputOnlyObjectType | undefined>;
 
     /**
      * Create a TypeUses resource with the given unique name, arguments, and options.
@@ -56,10 +56,10 @@ export class TypeUses extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["bar"] = args ? args.bar : undefined;
-            resourceInputs["baz"] = args ? args.baz : undefined;
-            resourceInputs["foo"] = args ? args.foo : undefined;
-            resourceInputs["qux"] = args ? args.qux : undefined;
+            resourceInputs["bar"] = args?.bar;
+            resourceInputs["baz"] = args?.baz;
+            resourceInputs["foo"] = args?.foo;
+            resourceInputs["qux"] = args?.qux;
             resourceInputs["alpha"] = undefined /*out*/;
             resourceInputs["beta"] = undefined /*out*/;
             resourceInputs["gamma"] = undefined /*out*/;

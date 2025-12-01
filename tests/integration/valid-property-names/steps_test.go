@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build nodejs || all
-
 package ints
 
 import (
@@ -57,7 +55,6 @@ func TestPropertyNameDiffs(t *testing.T) {
 	}
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, propName := range validPropertyNames {
-		propName := propName
 		t.Run("validate path "+propName, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:          "step1",
@@ -69,8 +66,8 @@ func TestPropertyNameDiffs(t *testing.T) {
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					require.NotNil(t, stackInfo.Deployment)
 					res, err := getResource(stackInfo, "a")
-					assert.NoError(t, err)
-					state := res.Outputs["state"].(map[string]interface{})
+					require.NoError(t, err)
+					state := res.Outputs["state"].(map[string]any)
 					assert.Equal(t, "foo", state[propName])
 				},
 				EditDirs: []integration.EditDir{
@@ -80,7 +77,7 @@ func TestPropertyNameDiffs(t *testing.T) {
 						ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 							require.NotNil(t, stackInfo.Deployment)
 							_, err := getResource(stackInfo, "a")
-							assert.NoError(t, err)
+							require.NoError(t, err)
 						},
 					},
 				},

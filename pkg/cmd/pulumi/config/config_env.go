@@ -35,12 +35,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newConfigEnvCmd(stackRef *string) *cobra.Command {
+func newConfigEnvCmd(ws pkgWorkspace.Context, stackRef *string) *cobra.Command {
 	impl := configEnvCmd{
 		stdin:            os.Stdin,
 		stdout:           os.Stdout,
 		diags:            cmdutil.Diag(),
-		ws:               pkgWorkspace.Instance,
+		ws:               ws,
 		requireStack:     cmdStack.RequireStack,
 		loadProjectStack: cmdStack.LoadProjectStack,
 		saveProjectStack: cmdStack.SaveProjectStack,

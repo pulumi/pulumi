@@ -15,59 +15,171 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import abc
+import collections.abc
 import google.protobuf.empty_pb2
 import grpc
 import grpc.aio
 import typing
+import grpc.aio
 import pulumi.callback_pb2
 import pulumi.provider_pb2
 import pulumi.resource_pb2
+import typing
+
+_T = typing.TypeVar("_T")
+
+class _MaybeAsyncIterator(collections.abc.AsyncIterator[_T], collections.abc.Iterator[_T], metaclass=abc.ABCMeta): ...
+
+class _ServicerContext(grpc.ServicerContext, grpc.aio.ServicerContext):  # type: ignore[misc, type-arg]
+    ...
 
 class ResourceMonitorStub:
     """ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution."""
 
-    def __init__(self, channel: grpc.Channel) -> None: ...
+    def __init__(self, channel: typing.Union[grpc.Channel, grpc.aio.Channel]) -> None: ...
     SupportsFeature: grpc.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.SupportsFeatureRequest,
         pulumi.resource_pb2.SupportsFeatureResponse,
     ]
+
     Invoke: grpc.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.ResourceInvokeRequest,
         pulumi.provider_pb2.InvokeResponse,
     ]
+
     Call: grpc.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.ResourceCallRequest,
         pulumi.provider_pb2.CallResponse,
     ]
+
     ReadResource: grpc.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.ReadResourceRequest,
         pulumi.resource_pb2.ReadResourceResponse,
     ]
+
     RegisterResource: grpc.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.RegisterResourceRequest,
         pulumi.resource_pb2.RegisterResourceResponse,
     ]
+
     RegisterResourceOutputs: grpc.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.RegisterResourceOutputsRequest,
         google.protobuf.empty_pb2.Empty,
     ]
+
     RegisterStackTransform: grpc.UnaryUnaryMultiCallable[
         pulumi.callback_pb2.Callback,
         google.protobuf.empty_pb2.Empty,
     ]
     """Register a resource transform for the stack"""
+
     RegisterStackInvokeTransform: grpc.UnaryUnaryMultiCallable[
         pulumi.callback_pb2.Callback,
         google.protobuf.empty_pb2.Empty,
     ]
     """Register an invoke transform for the stack"""
+
+    RegisterResourceHook: grpc.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.RegisterResourceHookRequest,
+        google.protobuf.empty_pb2.Empty,
+    ]
+    """Register a resource hook that can be called by the engine during certain
+    steps of a resource's lifecycle.
+    """
+
     RegisterPackage: grpc.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.RegisterPackageRequest,
         pulumi.resource_pb2.RegisterPackageResponse,
     ]
     """Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
     Multiple requests are idempotent and guaranteed to return the same result.
+    """
+
+    SignalAndWaitForShutdown: grpc.UnaryUnaryMultiCallable[
+        google.protobuf.empty_pb2.Empty,
+        google.protobuf.empty_pb2.Empty,
+    ]
+    """SignalAndWaitForShutdown lets the resource monitor know that no more
+    events will be generated. This call blocks until the resource monitor is
+    finished, which will happen once all the steps have executed. This allows
+    the language runtime to stay running and handle callback requests, even
+    after the user program has completed. Runtime SDKs should call this after
+    executing the user's program. This can only be called once.
+    """
+
+class ResourceMonitorAsyncStub:
+    """ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution."""
+
+    SupportsFeature: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.SupportsFeatureRequest,
+        pulumi.resource_pb2.SupportsFeatureResponse,
+    ]
+
+    Invoke: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.ResourceInvokeRequest,
+        pulumi.provider_pb2.InvokeResponse,
+    ]
+
+    Call: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.ResourceCallRequest,
+        pulumi.provider_pb2.CallResponse,
+    ]
+
+    ReadResource: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.ReadResourceRequest,
+        pulumi.resource_pb2.ReadResourceResponse,
+    ]
+
+    RegisterResource: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.RegisterResourceRequest,
+        pulumi.resource_pb2.RegisterResourceResponse,
+    ]
+
+    RegisterResourceOutputs: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.RegisterResourceOutputsRequest,
+        google.protobuf.empty_pb2.Empty,
+    ]
+
+    RegisterStackTransform: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.callback_pb2.Callback,
+        google.protobuf.empty_pb2.Empty,
+    ]
+    """Register a resource transform for the stack"""
+
+    RegisterStackInvokeTransform: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.callback_pb2.Callback,
+        google.protobuf.empty_pb2.Empty,
+    ]
+    """Register an invoke transform for the stack"""
+
+    RegisterResourceHook: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.RegisterResourceHookRequest,
+        google.protobuf.empty_pb2.Empty,
+    ]
+    """Register a resource hook that can be called by the engine during certain
+    steps of a resource's lifecycle.
+    """
+
+    RegisterPackage: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.RegisterPackageRequest,
+        pulumi.resource_pb2.RegisterPackageResponse,
+    ]
+    """Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
+    Multiple requests are idempotent and guaranteed to return the same result.
+    """
+
+    SignalAndWaitForShutdown: grpc.aio.UnaryUnaryMultiCallable[
+        google.protobuf.empty_pb2.Empty,
+        google.protobuf.empty_pb2.Empty,
+    ]
+    """SignalAndWaitForShutdown lets the resource monitor know that no more
+    events will be generated. This call blocks until the resource monitor is
+    finished, which will happen once all the steps have executed. This allows
+    the language runtime to stay running and handle callback requests, even
+    after the user program has completed. Runtime SDKs should call this after
+    executing the user's program. This can only be called once.
     """
 
 class ResourceMonitorServicer(metaclass=abc.ABCMeta):
@@ -77,60 +189,92 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
     def SupportsFeature(
         self,
         request: pulumi.resource_pb2.SupportsFeatureRequest,
-        context: grpc.ServicerContext,
-    ) -> pulumi.resource_pb2.SupportsFeatureResponse: ...
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.resource_pb2.SupportsFeatureResponse, collections.abc.Awaitable[pulumi.resource_pb2.SupportsFeatureResponse]]: ...
+
     
     def Invoke(
         self,
         request: pulumi.resource_pb2.ResourceInvokeRequest,
-        context: grpc.ServicerContext,
-    ) -> pulumi.provider_pb2.InvokeResponse: ...
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.provider_pb2.InvokeResponse, collections.abc.Awaitable[pulumi.provider_pb2.InvokeResponse]]: ...
+
     
     def Call(
         self,
         request: pulumi.resource_pb2.ResourceCallRequest,
-        context: grpc.ServicerContext,
-    ) -> pulumi.provider_pb2.CallResponse: ...
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.provider_pb2.CallResponse, collections.abc.Awaitable[pulumi.provider_pb2.CallResponse]]: ...
+
     
     def ReadResource(
         self,
         request: pulumi.resource_pb2.ReadResourceRequest,
-        context: grpc.ServicerContext,
-    ) -> pulumi.resource_pb2.ReadResourceResponse: ...
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.resource_pb2.ReadResourceResponse, collections.abc.Awaitable[pulumi.resource_pb2.ReadResourceResponse]]: ...
+
     
     def RegisterResource(
         self,
         request: pulumi.resource_pb2.RegisterResourceRequest,
-        context: grpc.ServicerContext,
-    ) -> pulumi.resource_pb2.RegisterResourceResponse: ...
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.resource_pb2.RegisterResourceResponse, collections.abc.Awaitable[pulumi.resource_pb2.RegisterResourceResponse]]: ...
+
     
     def RegisterResourceOutputs(
         self,
         request: pulumi.resource_pb2.RegisterResourceOutputsRequest,
-        context: grpc.ServicerContext,
-    ) -> google.protobuf.empty_pb2.Empty: ...
+        context: _ServicerContext,
+    ) -> typing.Union[google.protobuf.empty_pb2.Empty, collections.abc.Awaitable[google.protobuf.empty_pb2.Empty]]: ...
+
     
     def RegisterStackTransform(
         self,
         request: pulumi.callback_pb2.Callback,
-        context: grpc.ServicerContext,
-    ) -> google.protobuf.empty_pb2.Empty:
+        context: _ServicerContext,
+    ) -> typing.Union[google.protobuf.empty_pb2.Empty, collections.abc.Awaitable[google.protobuf.empty_pb2.Empty]]:
         """Register a resource transform for the stack"""
+
     
     def RegisterStackInvokeTransform(
         self,
         request: pulumi.callback_pb2.Callback,
-        context: grpc.ServicerContext,
-    ) -> google.protobuf.empty_pb2.Empty:
+        context: _ServicerContext,
+    ) -> typing.Union[google.protobuf.empty_pb2.Empty, collections.abc.Awaitable[google.protobuf.empty_pb2.Empty]]:
         """Register an invoke transform for the stack"""
+
+    
+    def RegisterResourceHook(
+        self,
+        request: pulumi.resource_pb2.RegisterResourceHookRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[google.protobuf.empty_pb2.Empty, collections.abc.Awaitable[google.protobuf.empty_pb2.Empty]]:
+        """Register a resource hook that can be called by the engine during certain
+        steps of a resource's lifecycle.
+        """
+
     
     def RegisterPackage(
         self,
         request: pulumi.resource_pb2.RegisterPackageRequest,
-        context: grpc.ServicerContext,
-    ) -> pulumi.resource_pb2.RegisterPackageResponse:
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.resource_pb2.RegisterPackageResponse, collections.abc.Awaitable[pulumi.resource_pb2.RegisterPackageResponse]]:
         """Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
         Multiple requests are idempotent and guaranteed to return the same result.
+        """
+
+    
+    def SignalAndWaitForShutdown(
+        self,
+        request: google.protobuf.empty_pb2.Empty,
+        context: _ServicerContext,
+    ) -> typing.Union[google.protobuf.empty_pb2.Empty, collections.abc.Awaitable[google.protobuf.empty_pb2.Empty]]:
+        """SignalAndWaitForShutdown lets the resource monitor know that no more
+        events will be generated. This call blocks until the resource monitor is
+        finished, which will happen once all the steps have executed. This allows
+        the language runtime to stay running and handle callback requests, even
+        after the user program has completed. Runtime SDKs should call this after
+        executing the user's program. This can only be called once.
         """
 
 def add_ResourceMonitorServicer_to_server(servicer: ResourceMonitorServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

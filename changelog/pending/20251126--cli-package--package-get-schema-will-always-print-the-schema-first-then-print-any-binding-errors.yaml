@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/package
+  description: Always print the schema first in `package get-schema`, then print any binding errors

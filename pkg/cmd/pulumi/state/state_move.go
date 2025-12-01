@@ -25,6 +25,7 @@ import (
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -41,6 +42,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
+
+const providerPrefix = "pulumi:providers:"
 
 type stateMoveCmd struct {
 	Stdin          io.Reader
@@ -111,10 +114,10 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 			stateMove.Yes = yes
 			stateMove.IncludeParents = includeParents
 
-			sourceSecretsProvider := stack.NamedStackSecretsProvider{
+			sourceSecretsProvider := backend_secrets.NamedStackProvider{
 				StackName: sourceStack.Ref().FullyQualifiedName().String(),
 			}
-			destSecretsProvider := stack.NamedStackSecretsProvider{
+			destSecretsProvider := backend_secrets.NamedStackProvider{
 				StackName: destStack.Ref().FullyQualifiedName().String(),
 			}
 
@@ -216,7 +219,7 @@ func (cmd *stateMoveCmd) Run(
 	for _, res := range sourceSnapshot.Resources {
 		matchedArg := resourceMatches(res, args)
 		if matchedArg != "" {
-			if strings.HasPrefix(string(res.Type), "pulumi:providers:") {
+			if strings.HasPrefix(string(res.Type), providerPrefix) {
 				//nolint:lll
 				return errors.New("cannot move providers. Only resources can be moved, and providers will be included automatically")
 			}
@@ -243,8 +246,10 @@ func (cmd *stateMoveCmd) Run(
 	if cmd.IncludeParents {
 		for _, res := range resourcesToMove {
 			for _, parent := range sourceDepGraph.ParentsOf(res) {
-				if res.Type == resource.RootStackType && res.Parent == "" {
-					// We don't move the root stack explicitly, the code below will take care of dealing with that correctly.
+				if (parent.Type == resource.RootStackType && parent.Parent == "") ||
+					strings.HasPrefix(string(parent.Type), providerPrefix) {
+					// We don't move the root stack or providers explicitly, the code below
+					// will take care of dealing with that correctly.
 					continue
 				}
 				resourcesToMove[string(parent.URN)] = parent
@@ -256,6 +261,9 @@ func (cmd *stateMoveCmd) Run(
 	// include all children in the list of resources to move
 	for _, res := range resourcesToMove {
 		for _, dep := range sourceDepGraph.ChildrenOf(res) {
+			if strings.HasPrefix(string(dep.Type), providerPrefix) {
+				continue
+			}
 			resourcesToMove[string(dep.URN)] = dep
 			providersToCopy[dep.Provider] = true
 		}
@@ -510,6 +518,7 @@ const (
 	dependency dependencyType = iota
 	propertyDependency
 	deletedWith
+	replaceWith
 )
 
 type brokenDependency struct {
@@ -525,6 +534,7 @@ func breakDependencies(res *resource.State, resourcesToMove map[string]*resource
 	var preservedDeps []urn.URN
 	preservedPropDeps := map[resource.PropertyKey][]urn.URN{}
 	preservedDeletedWith := urn.URN("")
+	preservedReplaceWith := []urn.URN{}
 
 	// Providers are always moved, so we don't need to break the dependency and can ignore them here.
 	_, allDeps := res.GetAllDependencies()
@@ -564,12 +574,23 @@ func breakDependencies(res *resource.State, resourcesToMove map[string]*resource
 			} else {
 				preservedDeletedWith = dep.URN
 			}
+		case resource.ResourceReplaceWith:
+			if _, ok := resourcesToMove[string(dep.URN)]; ok {
+				brokenDeps = append(brokenDeps, brokenDependency{
+					dependencyURN:  dep.URN,
+					dependencyType: replaceWith,
+					resourceURN:    res.URN,
+				})
+			} else {
+				preservedReplaceWith = append(preservedReplaceWith, dep.URN)
+			}
 		}
 	}
 
 	res.Dependencies = preservedDeps
 	res.PropertyDependencies = preservedPropDeps
 	res.DeletedWith = preservedDeletedWith
+	res.ReplaceWith = preservedReplaceWith
 
 	return brokenDeps
 }
@@ -623,6 +644,8 @@ func rewriteURNs(res *resource.State, dest backend.Stack, rewriteMap map[string]
 			rewrittenPropDeps[dep.Key] = append(rewrittenPropDeps[dep.Key], rewrittenURN)
 		case resource.ResourceDeletedWith:
 			res.DeletedWith = rewrittenURN
+		case resource.ResourceReplaceWith:
+			res.ReplaceWith = append(res.ReplaceWith, rewrittenURN)
 		}
 	}
 
@@ -642,6 +665,8 @@ func (cmd *stateMoveCmd) printBrokenDependencyRelationships(brokenDeps []brokenD
 				res.resourceURN, res.propdepKey, res.dependencyURN)
 		case deletedWith:
 			fmt.Fprintf(cmd.Stdout, "  - %s is marked as deleted with %s\n", res.resourceURN, res.dependencyURN)
+		case replaceWith:
+			fmt.Fprintf(cmd.Stdout, "  - %s is marked as replace with %s\n", res.resourceURN, res.dependencyURN)
 		}
 	}
 }

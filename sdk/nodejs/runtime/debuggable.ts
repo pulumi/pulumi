@@ -92,7 +92,16 @@ export function debuggablePromise<T>(p: Promise<T>, ctx: any): Promise<T> {
             //
             // process.exitCode is undefined unless set, in which case it's the exit code that was
             // passed to process.exit.
-            if ((process.exitCode === undefined || process.exitCode === 0) && !log.hasErrors()) {
+            //
+            // If `localStore.terminated` is true, the monitor was terminated while we were waiting
+            // for an operation to complete. In this case we have in flight promises (the ones tied
+            // to the operation), but we don't to report the leaks message. Pulumi will already have
+            // notified the user of the error reason that lead to the monitor shutdown.
+            if (
+                (process.exitCode === undefined || process.exitCode === 0) &&
+                !log.hasErrors() &&
+                !localStore.terminated
+            ) {
                 const [leaks, message] = leakedPromises();
                 if (leaks.size === 0) {
                     // No leaks - proceed with the exit.

@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -39,19 +40,14 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 
 	cases, err := readTestCases("testdata/cases.json")
-	if !assert.NoError(t, err) {
-		t.Fatal()
-	}
+	require.NoError(t, err)
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, s := range cases.Resources {
-		s := s
 		t.Run(string(s.URN), func(t *testing.T) {
 			t.Parallel()
 			state, err := stack.DeserializeResource(s, config.NopDecrypter)
-			if !assert.NoError(t, err) {
-				t.Fatal()
-			}
+			require.NoError(t, err)
 
 			snapshot := []*resource.State{
 				{
@@ -76,9 +72,7 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 
 			var actualState *resource.State
 			err = GenerateLanguageDefinitions(io.Discard, loader, func(_ io.Writer, p *pcl.Program) error {
-				if !assert.Len(t, p.Nodes, 1) {
-					t.Fatal()
-				}
+				require.Len(t, p.Nodes, 1)
 
 				res, isResource := p.Nodes[0].(*pcl.Resource)
 				if !assert.True(t, isResource) {
@@ -88,9 +82,7 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 				actualState = renderResource(t, res)
 				return nil
 			}, []*resource.State{state}, snapshot, names)
-			if !assert.NoError(t, err) {
-				t.Fatal()
-			}
+			require.NoError(t, err)
 
 			assert.Equal(t, state.Type, actualState.Type)
 			assert.Equal(t, state.URN, actualState.URN)
@@ -145,7 +137,7 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 			ID:     "bucket-object-1",
 			Custom: true,
 			Type:   "aws:s3/bucketObject:BucketObject",
-			Inputs: map[string]interface{}{
+			Inputs: map[string]any{
 				"bucket": "bucket-object-2",
 			},
 			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
@@ -155,7 +147,7 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 			ID:     "bucket-object-2",
 			Custom: true,
 			Type:   "aws:s3/bucketObject:BucketObject",
-			Inputs: map[string]interface{}{
+			Inputs: map[string]any{
 				"bucket": "bucket-object-1",
 			},
 			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
@@ -165,15 +157,13 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 	states := make([]*resource.State, 0)
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
-		if !assert.NoError(t, err) {
-			t.Fatal()
-		}
+		require.NoError(t, err)
 		states = append(states, state)
 	}
 
 	var names NameTable
 	err := GenerateLanguageDefinitions(io.Discard, loader, generator, states, snapshot, names)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// notice here the generated program doesn't have any references because
 	// we retried the codegen without guessing the dependencies between the resources.
 	expectedCode := `package aws {
@@ -241,14 +231,12 @@ func TestGenerateLanguageDefinitionsAllowsGeneratingParentVariables(t *testing.T
 	states := make([]*resource.State, 0)
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
-		if !assert.NoError(t, err) {
-			t.Fatal()
-		}
+		require.NoError(t, err)
 		states = append(states, state)
 	}
 
 	err := GenerateLanguageDefinitions(io.Discard, loader, generator, states, snapshot, nameTable)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	expectedCode := `package random {
     baseProviderName = "random"
 

@@ -19,14 +19,16 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	deployProviders "github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/require"
 )
 
 func init() {
 	LanguageTests["l2-resource-option-retain-on-delete"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.SimpleProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SimpleProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
@@ -50,7 +52,7 @@ func init() {
 					defaultProvider := RequireSingleNamedResource(l, snap.Resources, "default_2_0_0")
 					require.Equal(l, "pulumi:providers:simple", defaultProvider.Type.String(), "expected default simple provider")
 
-					defaultProviderRef, err := deployProviders.NewReference(defaultProvider.URN, defaultProvider.ID)
+					defaultProviderRef, err := sdkproviders.NewReference(defaultProvider.URN, defaultProvider.ID)
 					require.NoError(l, err, "expected to create default provider reference")
 
 					retainOnDeleteResource := RequireSingleNamedResource(l, snap.Resources, "retainOnDelete")

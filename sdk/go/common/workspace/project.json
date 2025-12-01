@@ -321,7 +321,8 @@
                 "string",
                 "integer",
                 "boolean",
-                "array"
+                "array",
+                "object"
             ]
         },
         "configItemsType":{

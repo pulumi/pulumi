@@ -26,7 +26,9 @@ import (
 
 func init() {
 	LanguageTests["l2-component-call-simple"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.ComponentProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.ComponentProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
@@ -76,8 +78,8 @@ func init() {
 					// * from_prefixed, whose value should be the value output of component1, prefixed with "foo-".
 					outputs := stack.Outputs
 					require.Len(l, outputs, 2, "expected 2 outputs")
-					AssertPropertyMapMember(l, outputs, "from_identity", resource.NewStringProperty("bar"))
-					AssertPropertyMapMember(l, outputs, "from_prefixed", resource.NewStringProperty("foo-bar"))
+					AssertPropertyMapMember(l, outputs, "from_identity", resource.NewProperty("bar"))
+					AssertPropertyMapMember(l, outputs, "from_prefixed", resource.NewProperty("foo-bar"))
 				},
 			},
 		},

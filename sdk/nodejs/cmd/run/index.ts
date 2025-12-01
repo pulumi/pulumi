@@ -15,7 +15,10 @@
 // Enable source map support so we get good stack traces.
 import "source-map-support/register";
 
+import * as grpc from "@grpc/grpc-js";
+import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
 import * as log from "../../log";
+import * as settings from "../../runtime/settings";
 
 // The very first thing we do is set up unhandled exception and rejection hooks to ensure that these
 // events cause us to exit with a non-zero code. It is critically important that we do this early:
@@ -77,6 +80,73 @@ process.on("exit", (code: number) => {
         process.exitCode = nodeJSProcessExitedAfterLoggingUserActionableMessage;
     }
 });
+
+// `beforeExit` handlers are run in FIFO order, but we want ours to run last. To
+// ensure this, we have a first handler that registers the real handler in
+// `process.nextTick`.
+//
+//   process.on('beforeExit', () => {                                // registered first
+//     if (hasRegisteredOnExit) { return };
+//     hasRegisteredOnExit = true;
+//     process.nextTick(() => {
+//       setImmediate(() => {});                                     // force another eventloop run
+//       process.on('beforeExit', () => console.log('Our Handler')); // register our real handler
+//     });
+//   });
+//   process.on('beforeExit', () => console.log('Other 1'));         // registered second
+//   process.on('beforeExit', () => console.log('Other 2'));         // registered third
+//
+// First beforeExit: schedules nextTick callback, Other 1, Other 2, runs nextTick callback to register our handler
+// ~ async work happens ~
+// Second beforeExit: Other1, Other 2, Our Handler
+//
+// Having our handler run last ensures that if any work happens in a library or
+// user provided `beforeExit` handler, we wait for that work to complete before
+// our handler is called. Our trick with `process.nextTick` does not work if
+// someone else tries the same trick. That would be very naughty.
+//
+// Concretly, aws has a handler that creates `BucketNotification` objects, see
+// https://github.com/pulumi/pulumi-aws/blob/df45f46766be1d304a5fcf7d6dc192846f7433a8/sdk/nodejs/s3/s3Mixins.ts#L187
+let hasRegisteredOnExit = false;
+process.on("beforeExit", () => {
+    process.nextTick(() => {
+        if (hasRegisteredOnExit) {
+            return;
+        }
+        hasRegisteredOnExit = true;
+        // We need to schedule more work on the event loop to ensure we call
+        // `beforeExit` handlers again.
+        setImmediate(() => {
+            return;
+        });
+        process.on("beforeExit", beforeExitHandler);
+    });
+});
+
+let hasSignaled = false;
+async function beforeExitHandler(code: number) {
+    // Signal and wait for shutdown means a succesful program execution, so
+    // first check if there were any errors and bail out immediately if so.
+    if (uncaughtErrors.size > 0) {
+        return;
+    }
+    // Similarly, if we're exiting with with a non-zero code, bail out.
+    if (code !== 0) {
+        return;
+    }
+    // `beforeExit` is called when Node.js's event loop is empty. We call
+    // `signalAndWaitForShutdown`, which is async, so it schedules more
+    // eventloop work. We have to bail out here the next time the eventloop
+    // is empty, otherwise we end up in a loop where this handler is called
+    // forever.
+    if (hasSignaled) {
+        return;
+    }
+    hasSignaled = true;
+    settings.signalAndWaitForShutdown().catch((err) => {
+        console.error(`Error while signaling shutdown: ${err}`);
+    });
+}
 
 // As the second thing we do, ensure that we're connected to v8's inspector API.  We need to do
 // this as some information is only sent out as events, without any way to query for it after the

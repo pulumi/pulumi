@@ -73,6 +73,11 @@ service LanguageRuntime {
     // ask during `pulumi new`.
     rpc RuntimeOptionsPrompts(RuntimeOptionsRequest) returns (RuntimeOptionsResponse) {}
 
+    // `Template` allows the language runtime to perform additional templating on a newly instantiated project template.
+    // For example the Python runtime might want to convert a requirements.txt into a pyproject.toml suitable for use
+    // with uv or poetry.
+    rpc Template(TemplateRequest) returns (TemplateResponse) {}
+
     // `About` returns information about the language runtime being used.
     rpc About(AboutRequest) returns (AboutResponse) {}
 
@@ -113,8 +118,15 @@ service LanguageRuntime {
     // to standardise e.g. provider publishing workflows.
     rpc Pack(PackRequest) returns (PackResponse) {}
 
-    // `Link` links a local dependency into a project.
+    // `Link` links local dependencies into a project (program or plugin). The dependencies can be binary artifacts such
+    // as wheel or tar.gz files, or source directories. `Link` will update the language specific project files, such as
+    // `package.json`, `pyproject.toml`, `go.mod`, etc, to include the dependency. `Link` returns instructions for the
+    // user on how to use the linked package in the project.
     rpc Link(LinkRequest) returns (LinkResponse) {}
+
+    // `Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
+    // Operations aborted in this way will return an error.
+    rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
 
 // A `ProgramInfo` struct specifies a Pulumi program, and is built typically based on the location of a `Pulumi.yaml`
@@ -303,7 +315,7 @@ message RunRequest {
     // registrations](resource-registration) and other calls to.
     string monitor_address = 9;
 
-    // This is deprecated, query mode is no longer a supported feature. 
+    // This is deprecated, query mode is no longer a supported feature.
     bool queryMode = 10 [deprecated = true];
 
     // A list of configuration keys whose values should be treated as secrets.
@@ -429,6 +441,18 @@ message RuntimeOptionsResponse {
     // Prompts to ask the user.
     repeated RuntimeOptionPrompt prompts = 1;
 }
+
+// `TemplateRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Template) call.
+message TemplateRequest {
+    // The [plugin program](pulumirpc.ProgramInfo) to use.
+    ProgramInfo info = 1;
+
+    // The name of the project we are templating.
+    string project_name = 2;
+}
+
+// `TemplateResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Template) call.
+message TemplateResponse {}
 
 // `RunPluginRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.RunPlugin) call.
 message RunPluginRequest{
@@ -606,14 +630,24 @@ message LinkRequest {
     // The program to use.
     ProgramInfo info = 1;
 
-    // Local dependencies that the program should reference explicitly, instead of e.g. using the language's
-    // package system. This is a map of package names to local paths of language-specific artifacts that
-    // should be used. For instance, in the case of a NodeJS package, this might be a map of NPM package names
-    // to local paths to be used, such as `{ "@pulumi/aws": "/some/path/to/aws.tgz" }` if a local tarball is
-    // to be used instead of the published `@pulumi/aws` package.
-    map<string, string> local_dependencies = 2;
+    // The target of a codegen.LoaderServer to use for loading schemas.
+    string loader_target = 2;
+
+    message LinkDependency {
+        PackageDependency package = 1;
+        string path = 2;
+    }
+
+    // Local dependencies that should be linked into the program or plugin's language specific project files.
+    // Each dependency has a path to a a language specific artifact. This can be a binary artifact like a
+    // Python wheel or a tar.gz for Node.js, or a source directory.
+    repeated LinkDependency packages = 3;
 }
 
 // `LinkResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Link) call.
 message LinkResponse {
+    // The instructions on how to use a linked package in a program or plugin. These instructions are meant
+    // to be displayed to the user. For example when linking a local Python dependency, this might return
+    // `import my_namespace_mypkg as mypkg`.
+    string import_instructions = 1;
 }

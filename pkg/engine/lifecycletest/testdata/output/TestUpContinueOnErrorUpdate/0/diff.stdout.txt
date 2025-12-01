@@ -3,7 +3,10 @@
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgB:m:typB: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgB:m:typB::failing]
 <{%reset%}><{%fg 2%}>    foo: <{%reset%}><{%fg 2%}>"bar"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgB:m:typB: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgB:m:typB::failing2]
+<{%reset%}><{%fg 2%}>    foo: <{%reset%}><{%fg 2%}>"bar"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    <{%fg 2%}>+ 1 created<{%reset%}>
+    <{%fg 2%}>+ 2 created<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

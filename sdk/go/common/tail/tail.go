@@ -49,15 +49,15 @@ type SeekInfo struct {
 }
 
 type logger interface {
-	Fatal(v ...interface{})
-	Fatalf(format string, v ...interface{})
-	Fatalln(v ...interface{})
-	Panic(v ...interface{})
-	Panicf(format string, v ...interface{})
-	Panicln(v ...interface{})
-	Print(v ...interface{})
-	Printf(format string, v ...interface{})
-	Println(v ...interface{})
+	Fatal(v ...any)
+	Fatalf(format string, v ...any)
+	Fatalln(v ...any)
+	Panic(v ...any)
+	Panicf(format string, v ...any)
+	Panicln(v ...any)
+	Print(v ...any)
+	Printf(format string, v ...any)
+	Println(v ...any)
 }
 
 // Config is used to specify how a file must be tailed.
@@ -154,21 +154,21 @@ func File(filename string, config Config) (*Tail, error) {
 // the chan(tail.Lines) may have been read already.
 func (tail *Tail) Tell() (offset int64, err error) {
 	if tail.file == nil {
-		return
+		return offset, err
 	}
 	offset, err = tail.file.Seek(0, io.SeekCurrent)
 	if err != nil {
-		return
+		return offset, err
 	}
 
 	tail.lk.Lock()
 	defer tail.lk.Unlock()
 	if tail.reader == nil {
-		return
+		return offset, err
 	}
 
 	offset -= int64(tail.reader.Buffered())
-	return
+	return offset, err
 }
 
 // Stop stops the tailing activity.

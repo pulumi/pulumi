@@ -180,7 +180,7 @@ func CopyDir(src, dst string) error {
 // and evaluate its response.
 func AssertHTTPResultWithRetry(
 	t *testing.T,
-	output interface{},
+	output any,
 	headers map[string]string,
 	maxWait time.Duration,
 	check func(string) bool,
@@ -199,9 +199,7 @@ func AssertHTTPResultWithRetry(
 	for {
 		now := time.Now()
 		req, err := http.NewRequest("GET", hostname, nil)
-		if !assert.NoError(t, err, "error reading request: %v", err) {
-			return false
-		}
+		require.NoError(t, err, "error reading request: %v", err)
 
 		for k, v := range headers {
 			// Host header cannot be set via req.Header.Set(), and must be set
@@ -234,26 +232,22 @@ func AssertHTTPResultWithRetry(
 		t.Logf("Http Error: %v\n", err)
 		t.Logf("  Retry: %v, elapsed wait: %v, max wait %v\n", count, now.Sub(startTime), maxWait)
 	}
-	if !assert.NoError(t, err) {
-		return false
-	}
+	require.NoError(t, err)
 	// Read the body
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
-	if !assert.NoError(t, err) {
-		return false
-	}
+	require.NoError(t, err)
 	// Verify it matches expectations
 	return check(string(body))
 }
 
-func CheckRuntimeOptions(t *testing.T, root string, expected map[string]interface{}) {
+func CheckRuntimeOptions(t *testing.T, root string, expected map[string]any) {
 	t.Helper()
 
 	var config struct {
 		Runtime struct {
-			Name    string                 `yaml:"name"`
-			Options map[string]interface{} `yaml:"options"`
+			Name    string         `yaml:"name"`
+			Options map[string]any `yaml:"options"`
 		} `yaml:"runtime"`
 	}
 	yamlFile, err := os.ReadFile(filepath.Join(root, "Pulumi.yaml"))

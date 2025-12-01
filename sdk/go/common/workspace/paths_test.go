@@ -31,27 +31,23 @@ import (
 func mkTempDir(t *testing.T) string {
 	tmpDir := t.TempDir()
 	result, err := filepath.EvalSymlinks(tmpDir)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return result
 }
 
 //nolint:paralleltest // Theses test use and change the current working directory
 func TestDetectProjectAndPath(t *testing.T) {
 	tmpDir := mkTempDir(t)
-	cwd, err := os.Getwd()
-	assert.NoError(t, err)
-	defer func() { err := os.Chdir(cwd); assert.NoError(t, err) }()
-	err = os.Chdir(tmpDir)
-	assert.NoError(t, err)
+	t.Chdir(tmpDir)
 
 	yamlPath := filepath.Join(tmpDir, "Pulumi.yaml")
 	yamlContents := "name: some_project\ndescription: Some project\nruntime: nodejs\n"
 
-	err = os.WriteFile(yamlPath, []byte(yamlContents), 0o600)
-	assert.NoError(t, err)
+	err := os.WriteFile(yamlPath, []byte(yamlContents), 0o600)
+	require.NoError(t, err)
 
 	project, path, err := DetectProjectAndPath()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, yamlPath, path)
 	assert.Equal(t, tokens.PackageName("some_project"), project.Name)
 	assert.Equal(t, "Some project", *project.Description)
@@ -62,7 +58,7 @@ func TestDetectProjectAndPath(t *testing.T) {
 func TestProjectStackPath(t *testing.T) {
 	expectedPath := func(expectedPath string) func(t *testing.T, projectDir, path string, err error) {
 		return func(t *testing.T, projectDir, path string, err error) {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, filepath.Join(projectDir, expectedPath), path)
 		}
 	}
@@ -94,20 +90,15 @@ func TestProjectStackPath(t *testing.T) {
 	}}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			tmpDir := mkTempDir(t)
-			cwd, err := os.Getwd()
-			assert.NoError(t, err)
-			defer func() { err := os.Chdir(cwd); assert.NoError(t, err) }()
-			err = os.Chdir(tmpDir)
-			assert.NoError(t, err)
+			t.Chdir(tmpDir)
 
-			err = os.WriteFile(
+			err := os.WriteFile(
 				filepath.Join(tmpDir, "Pulumi.yaml"),
 				[]byte(tt.yamlContents),
 				0o600)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, path, err := DetectProjectStackPath("my_stack")
 			tt.validate(t, tmpDir, path, err)
@@ -120,23 +111,20 @@ func TestDetectProjectUnreadableParent(t *testing.T) {
 	// Regression test for https://github.com/pulumi/pulumi/issues/12481
 
 	tmpDir := mkTempDir(t)
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() { err := os.Chdir(cwd); assert.NoError(t, err) }()
 
 	// unreadable parent directory
 	parentDir := filepath.Join(tmpDir, "root")
-	err = os.Mkdir(parentDir, 0o300)
+	err := os.Mkdir(parentDir, 0o300)
 	require.NoError(t, err)
 	// Make it readable so we can clean it up later
-	defer func() { err := os.Chmod(parentDir, 0o700); assert.NoError(t, err) }()
+	defer func() { err := os.Chmod(parentDir, 0o700); require.NoError(t, err) }()
 
 	// readable current directory
 	currentDir := filepath.Join(parentDir, "current")
 	err = os.Mkdir(currentDir, 0o700)
 	require.NoError(t, err)
 
-	err = os.Chdir(currentDir)
+	t.Chdir(currentDir)
 	require.NoError(t, err)
 
 	_, _, err = DetectProjectAndPath()
@@ -146,11 +134,7 @@ func TestDetectProjectUnreadableParent(t *testing.T) {
 //nolint:paralleltest // These tests use and change the current working directory
 func TestDetectProjectStackDeploymentPath(t *testing.T) {
 	tmpDir := mkTempDir(t)
-	cwd, err := os.Getwd()
-	assert.NoError(t, err)
-	defer func() { err := os.Chdir(cwd); assert.NoError(t, err) }()
-	err = os.Chdir(tmpDir)
-	assert.NoError(t, err)
+	t.Chdir(tmpDir)
 
 	yamlPath := filepath.Join(tmpDir, "Pulumi.yaml")
 	yamlContents := `
@@ -158,17 +142,17 @@ name: some_project
 description: Some project
 runtime: nodejs`
 
-	err = os.WriteFile(yamlPath, []byte(yamlContents), 0o600)
-	assert.NoError(t, err)
+	err := os.WriteFile(yamlPath, []byte(yamlContents), 0o600)
+	require.NoError(t, err)
 
 	yamlDeployPath := filepath.Join(tmpDir, "Pulumi.stack.deploy.yaml")
 	yamlDeployContents := ""
 
 	err = os.WriteFile(yamlDeployPath, []byte(yamlDeployContents), 0o600)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	path, err := DetectProjectStackDeploymentPath("stack")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, yamlDeployPath, path)
 }
 
@@ -211,7 +195,7 @@ func TestDetectProjectPathFrom(t *testing.T) {
 	tmpDir := mkTempDir(t)
 
 	d1, err := filepath.Abs(tmpDir)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	d2 := filepath.Join(d1, "a")
 	d3 := filepath.Join(d2, "b")
 	d4 := filepath.Join(d3, "c")
@@ -221,11 +205,11 @@ func TestDetectProjectPathFrom(t *testing.T) {
 
 	indexTs := filepath.Join(d4, "index.ts")
 	err = os.WriteFile(indexTs, []byte("..."), 0o600)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	f1 := filepath.Join(d2, "Pulumi.yaml")
 	err = os.WriteFile(f1, []byte("..."), 0o600)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	for _, path := range []string{
 		filepath.Join(d4, "index.ts"),
@@ -234,7 +218,7 @@ func TestDetectProjectPathFrom(t *testing.T) {
 		d2,
 	} {
 		pulumiYamlPath, err := DetectProjectPathFrom(path)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, f1, pulumiYamlPath)
 	}
 

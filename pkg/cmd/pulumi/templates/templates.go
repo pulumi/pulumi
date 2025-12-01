@@ -26,6 +26,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -97,7 +98,7 @@ func (s *Source) addErrorOnEmpty(err error) {
 
 func (s *Source) lockOpen(action string) {
 	s.m.Lock()
-	contract.Assertf(!s.closed, "Attempted to act on closed source: "+action)
+	contract.Assertf(!s.closed, "%s", "Attempted to act on closed source: "+action)
 }
 
 // Close cleans up the [Source] and any associated templates.
@@ -118,11 +119,13 @@ func (s *Source) Close() error {
 	return errors.Join(errs...)
 }
 
+// A template entry to show in the chooser.
 type Template interface {
 	Name() string
+	DisplayName() string
 	Description() string
-	ProjectDescription() string
 	Error() error
+	// Download the template and return an instantiable [workspace.Template] for this template.
 	Download(ctx context.Context) (workspace.Template, error)
 }
 
@@ -139,12 +142,13 @@ var (
 // Create a new [Template] [Source] associated with a given [SearchScope].
 func New(
 	ctx context.Context, templateNamePathOrURL string, scope SearchScope,
-	templateKind workspace.TemplateKind,
+	templateKind workspace.TemplateKind, e env.Env,
 ) *Source {
 	return newImpl(
 		ctx, templateNamePathOrURL, scope,
 		templateKind,
 		workspace.RetrieveTemplates,
+		e,
 	)
 }
 
@@ -155,6 +159,7 @@ func newImpl(
 	ctx context.Context, templateNamePathOrURL string, scope SearchScope,
 	templateKind workspace.TemplateKind,
 	getWorkspaceTemplates getWorkspaceTemplateFunc,
+	e env.Env,
 ) *Source {
 	var source Source
 	ctx, cancel := context.WithCancel(ctx)
@@ -171,7 +176,7 @@ func newImpl(
 	if scope == ScopeAll && templateKind == workspace.TemplateKindPulumiProject && isTemplateName(templateNamePathOrURL) {
 		source.wg.Add(1)
 		go func() {
-			source.getOrgTemplates(ctx, templateNamePathOrURL, &source.wg)
+			source.getCloudTemplates(ctx, templateNamePathOrURL, &source.wg, e)
 			source.wg.Done()
 		}()
 	}
@@ -180,7 +185,7 @@ func newImpl(
 }
 
 func isTemplateName(templateNamePathOrURL string) bool {
-	return !workspace.IsTemplateURL(templateNamePathOrURL) &&
+	return !workspace.IsGitRepoTemplateURL(templateNamePathOrURL) &&
 		!isTemplatePath(templateNamePathOrURL)
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +17,10 @@ package plugin
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -46,10 +48,15 @@ func NewPluginCmd() *cobra.Command {
 		Args: cmdutil.NoArgs,
 	}
 
-	cmd.AddCommand(newPluginInstallCmd())
+	packageResolutionOptions := packageresolution.Options{
+		DisableRegistryResolve:      env.DisableRegistryResolve.Value(),
+		Experimental:                env.Experimental.Value(),
+		IncludeInstalledInWorkspace: false,
+	}
+	cmd.AddCommand(newPluginInstallCmd(packageResolutionOptions))
 	cmd.AddCommand(newPluginLsCmd())
 	cmd.AddCommand(newPluginRmCmd())
-	cmd.AddCommand(newPluginRunCmd())
+	cmd.AddCommand(newPluginRunCmd(pkgWorkspace.Instance))
 
 	return cmd
 }

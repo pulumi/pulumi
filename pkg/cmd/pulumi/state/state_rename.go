@@ -22,10 +22,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -102,6 +102,11 @@ func stateReurnOperation(
 						dep.URN = newURN
 					}
 					existingResource.DeletedWith = dep.URN
+				case resource.ResourceReplaceWith:
+					if dep.URN == oldURN {
+						dep.URN = newURN
+					}
+					existingResource.ReplaceWith = append(existingResource.ReplaceWith, dep.URN)
 				}
 			}
 
@@ -195,11 +200,11 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 						if err != nil {
 							err = fmt.Errorf("failed to select resource: %w", err)
 						}
-						return
+						return err
 					},
 					func() (err error) {
 						newResourceName, err = getNewResourceName()
-						return
+						return err
 					},
 				)
 				if err != nil {

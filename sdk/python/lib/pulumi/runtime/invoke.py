@@ -17,14 +17,10 @@ import traceback
 from typing import (
     TYPE_CHECKING,
     Any,
-    Awaitable,
-    Dict,
-    List,
     Optional,
-    Set,
-    Tuple,
     Union,
 )
+from collections.abc import Awaitable
 
 import grpc
 from google.protobuf import struct_pb2
@@ -93,7 +89,7 @@ class InvokeResult:
         value: Any,
         is_secret: bool = False,
         is_known: bool = True,
-        dependencies: Optional[List["Resource"]] = None,
+        dependencies: Optional[list["Resource"]] = None,
     ):
         self.value = value
         self.is_secret = is_secret
@@ -133,12 +129,17 @@ def invoke_single(
     opts: Optional[InvokeOptions] = None,
     typ: Optional[type] = None,
     package_ref: Optional[Awaitable[Optional[str]]] = None,
-) -> Any:
+) -> InvokeResult:
     """
     Similar to `invoke`, but extracts a singular value from the result (eg { "foo": "bar" } => "bar").
     """
     result = invoke(tok, props, opts, typ, package_ref)
-    return _extract_single_value(result)
+    return InvokeResult(
+        _extract_single_value(result.value),
+        result.is_secret,
+        result.is_known,
+        result.dependencies,
+    )
 
 
 def invoke_output(
@@ -155,10 +156,10 @@ def invoke_output(
     """
 
     # Setup the futures for the output.
-    resolve_value: "asyncio.Future" = asyncio.Future()
-    resolve_is_known: "asyncio.Future[bool]" = asyncio.Future()
-    resolve_is_secret: "asyncio.Future[bool]" = asyncio.Future()
-    resolve_deps: "asyncio.Future[Set[Resource]]" = asyncio.Future()
+    resolve_value: asyncio.Future = asyncio.Future()
+    resolve_is_known: asyncio.Future[bool] = asyncio.Future()
+    resolve_is_secret: asyncio.Future[bool] = asyncio.Future()
+    resolve_deps: asyncio.Future[set[Resource]] = asyncio.Future()
 
     from .. import Output
 
@@ -235,7 +236,7 @@ def _invoke(
     if typ and not _types.is_output_type(typ):
         raise TypeError("Expected typ to be decorated with @output_type")
 
-    async def do_invoke() -> Tuple[InvokeResult, Optional[Exception]]:
+    async def do_invoke() -> tuple[InvokeResult, Optional[Exception]]:
         # If a parent was provided, but no provider was provided, use the parent's provider if one was specified.
         if opts is not None and opts.parent is not None and opts.provider is None:
             opts.provider = opts.parent.get_provider(tok)
@@ -261,7 +262,7 @@ def _invoke(
 
         monitor = get_monitor()
         # keep track of the dependencies of the inputs
-        property_dependencies: Dict[str, List["Resource"]] = {}
+        property_dependencies: dict[str, list[Resource]] = {}
         inputs = await rpc.serialize_properties(props, property_dependencies)
         if rpc.struct_contains_unknowns(inputs):
             return (InvokeResult(None, is_secret=False, is_known=False), None)
@@ -274,7 +275,7 @@ def _invoke(
         )
 
         # The direct dependencies of the invoke.
-        depends_on_dependencies: Set["Resource"] = set()
+        depends_on_dependencies: set[Resource] = set()
         # Only check the resource dependencies for output form invokes. For
         # plain invokes, we do not want to check the dependencies. Technically,
         # these should only receive plain arguments, but this is not strictly
@@ -287,7 +288,7 @@ def _invoke(
             # If we depend on any CustomResources, we need to ensure that their
             # ID is known before proceeding. If it is not known, we will return
             # an unknown result.
-            resources_to_wait_for: Set["Resource"] = set(depends_on_dependencies)
+            resources_to_wait_for: set[Resource] = set(depends_on_dependencies)
             # Add the dependencies from the inputs to the set of resources to wait for.
             for deps in property_dependencies.values():
                 resources_to_wait_for = resources_to_wait_for.union(deps)
@@ -363,7 +364,7 @@ def _invoke(
             )
 
         invoke_output_secret = is_secret or inputs_contain_secrets
-        dependencies: Set["Resource"] = depends_on_dependencies
+        dependencies: set[Resource] = depends_on_dependencies
         for _, property_deps in property_dependencies.items():
             for dep in property_deps:
                 dependencies.add(dep)
@@ -416,10 +417,10 @@ def call(
         raise TypeError("Expected typ to be decorated with @output_type")
 
     # Setup the futures for the output.
-    resolve_value: "asyncio.Future" = asyncio.Future()
-    resolve_is_known: "asyncio.Future[bool]" = asyncio.Future()
-    resolve_is_secret: "asyncio.Future[bool]" = asyncio.Future()
-    resolve_deps: "asyncio.Future[Set[Resource]]" = asyncio.Future()
+    resolve_value: asyncio.Future = asyncio.Future()
+    resolve_is_known: asyncio.Future[bool] = asyncio.Future()
+    resolve_is_secret: asyncio.Future[bool] = asyncio.Future()
+    resolve_deps: asyncio.Future[set[Resource]] = asyncio.Future()
 
     from .. import Output
 
@@ -442,7 +443,7 @@ def call(
 
             # Serialize out all props to their final values. In doing so, we'll also collect all the Resources pointed to
             # by any Dependency objects we encounter, adding them to 'implicit_dependencies'.
-            property_dependencies_resources: Dict[str, List["Resource"]] = {}
+            property_dependencies_resources: dict[str, list[Resource]] = {}
 
             inputs = await rpc.serialize_properties(
                 props,
@@ -494,7 +495,6 @@ def call(
                     return monitor.Call(req)
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
-                    return None
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
             if resp is None:
@@ -510,7 +510,7 @@ def call(
             value = None
             is_known = True
             is_secret = False
-            deps: Set["Resource"] = set()
+            deps: set[Resource] = set()
             ret_obj = getattr(resp, "return")
             if ret_obj:
                 deserialized = rpc.deserialize_properties(ret_obj)
@@ -525,7 +525,7 @@ def call(
 
                 # Combine the individual dependencies into a single set of dependency resources.
                 rpc_deps = resp.returnDependencies
-                deps_urns: Set[str] = (
+                deps_urns: set[str] = (
                     {urn for v in rpc_deps.values() for urn in v.urns}
                     if rpc_deps
                     else set()
@@ -587,4 +587,4 @@ def _extract_single_value(out: Any) -> Any:
     if not isinstance(out, dict):
         return out
 
-    return out[list(out.keys())[0]]
+    return list(out.values())[0]

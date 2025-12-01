@@ -245,7 +245,6 @@ func TestParseImportFile_errors(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -272,7 +271,7 @@ func TestParseImportFileJustLogicalName(t *testing.T) {
 		},
 	}
 	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []deploy.Import{
 		{
 			Type: "foo:bar:bar",
@@ -299,7 +298,7 @@ func TestParseImportFileLogicalName(t *testing.T) {
 		},
 	}
 	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	v := semver.MustParse("0.0.0")
 	assert.Equal(t, []deploy.Import{
 		{
@@ -337,6 +336,7 @@ func TestParseImportFileSameName(t *testing.T) {
 		"resource 'thing' of type 'foo:bar:bar' has an ambiguous URN, set name (or logical name) to be unique")
 }
 
+// shows that we disambiguate duplicate resource names by their resource type
 func TestParseImportFileSameNameDifferentType(t *testing.T) {
 	t.Parallel()
 	f := importFile{
@@ -351,10 +351,15 @@ func TestParseImportFileSameNameDifferentType(t *testing.T) {
 				ID:   "thing",
 				Type: "foo:bar:baz",
 			},
+			{
+				Name: "thing",
+				ID:   "thing",
+				Type: "foo:moo:baz",
+			},
 		},
 	}
 	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []deploy.Import{
 		{
 			Type: "foo:bar:bar",
@@ -366,10 +371,16 @@ func TestParseImportFileSameNameDifferentType(t *testing.T) {
 			Name: "thing",
 			ID:   "thing",
 		},
+		{
+			Type: "foo:moo:baz",
+			Name: "thing",
+			ID:   "thing",
+		},
 	}, imports)
 	assert.Equal(t, importer.NameTable{
 		"urn:pulumi:stack::proj::foo:bar:bar::thing": "thing",
-		"urn:pulumi:stack::proj::foo:bar:baz::thing": "thing",
+		"urn:pulumi:stack::proj::foo:bar:baz::thing": "thingBaz",
+		"urn:pulumi:stack::proj::foo:moo:baz::thing": "thingBaz2",
 	}, names)
 }
 
@@ -400,7 +411,7 @@ func TestParseImportFileAutoURN(t *testing.T) {
 		},
 	}
 	imports, nt, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check the parent URN was auto filled in.
 	assert.Equal(t, resource.URN("urn:pulumi:stack::proj::foo:bar:a$foo:bar:a::otherThing"), imports[0].Parent)

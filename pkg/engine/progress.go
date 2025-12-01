@@ -89,7 +89,7 @@ func (d *progressReportingCloser) Read(p []byte) (n int, err error) {
 		}
 	}
 
-	return
+	return n, err
 }
 
 func (d *progressReportingCloser) Close() error {

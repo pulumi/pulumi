@@ -1,0 +1,11 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pulumi default <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 14%}>> <{%reset%}> pulumi:pulumi:StackReference other <{%bold%}><{%fg 14%}>reading<{%reset%}> [diff: <{%fg 3%}>~name<{%reset%}><{%reset%}>]
+ <{%fg 14%}>> <{%reset%}> pulumi:pulumi:StackReference other <{%fg 14%}>read<{%reset%}> [diff: <{%fg 3%}>~name<{%reset%}><{%reset%}>]
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

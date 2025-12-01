@@ -16,6 +16,7 @@ package testing
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -27,7 +28,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -77,13 +78,13 @@ func WriteYarnRCForTest(root string) error {
 func NewEnvironment(t *testing.T) *Environment {
 	//nolint:usetesting // We control the lifecycle of the environment.
 	root, err := os.MkdirTemp("", "test-env")
-	assert.NoError(t, err, "creating temp directory")
-	assert.NoError(t, WriteYarnRCForTest(root), "writing .yarnrc file")
+	require.NoError(t, err, "creating temp directory")
+	require.NoError(t, WriteYarnRCForTest(root), "writing .yarnrc file")
 
 	// We always use a clean PULUMI_HOME for each environment to avoid any potential conflicts with plugins or config.
 	//nolint:usetesting // We control the lifecycle of the environment.
 	home, err := os.MkdirTemp("", "test-env-home")
-	assert.NoError(t, err, "creating temp PULUMI_HOME directory")
+	require.NoError(t, err, "creating temp PULUMI_HOME directory")
 
 	t.Logf("Created new test environment:  %v", root)
 	return &Environment{
@@ -167,6 +168,36 @@ func (e *Environment) RunCommand(cmd string, args ...string) (string, string) {
 	return stdout, stderr
 }
 
+func (e *Environment) RunCommandWithRetry(cmd string, args ...string) (string, string) {
+	// We don't want to time out on yarn installs.
+	if cmd == "yarn" {
+		YarnInstallMutex.Lock()
+		defer YarnInstallMutex.Unlock()
+	}
+
+	e.Helper()
+	var stdout, stderr string
+	var err error
+	for i := range 3 {
+		stdout, stderr, err = e.GetCommandResults(cmd, args...)
+		if err == nil {
+			return stdout, stderr
+		}
+		e.Logf("Run Error: %v", err)
+		e.Logf("STDOUT: %v", stdout)
+		e.Logf("STDERR: %v", stderr)
+		if i == 2 {
+			e.Logf("Giving up after 3 retries.")
+		} else {
+			e.Logf("Retrying command %v args %v (%d/3)", cmd, args, i+1)
+		}
+	}
+	if err != nil {
+		e.Fatalf("Ran command %v args %v and expected success. Instead got failure after 3 retries.", cmd, args)
+	}
+	return stdout, stderr
+}
+
 // RunCommandExpectError runs the command expecting a non-zero exit code, returning stdout and stderr.
 func (e *Environment) RunCommandExpectError(cmd string, args ...string) (string, string) {
 	stdout, stderr, _ := e.RunCommandReturnExpectedError(cmd, args...)
@@ -202,7 +233,7 @@ func (e *Environment) GetCommandResults(command string, args ...string) (string,
 func (e *Environment) GetCommandResultsIn(dir string, command string, args ...string) (string, string, error) {
 	e.Helper()
 
-	cmd := e.SetupCommandIn(dir, command, args...)
+	cmd := e.SetupCommandIn(context.TODO(), dir, command, args...)
 	e.Logf("Running command %v %v", cmd.Path, strings.Join(args, " "))
 
 	// Buffer STDOUT and STDERR so we can return them later.
@@ -217,7 +248,7 @@ func (e *Environment) GetCommandResultsIn(dir string, command string, args ...st
 
 // SetupCommandIn creates a new exec.Cmd that's ready to run in the given
 // directory, with the given command and args.
-func (e *Environment) SetupCommandIn(dir string, command string, args ...string) *exec.Cmd {
+func (e *Environment) SetupCommandIn(ctx context.Context, dir string, command string, args ...string) *exec.Cmd {
 	e.Helper()
 
 	passphrase := "correct horse battery staple"
@@ -229,7 +260,7 @@ func (e *Environment) SetupCommandIn(dir string, command string, args ...string)
 		command = e.resolvePulumiPath()
 	}
 
-	cmd := exec.Command(command, args...)
+	cmd := exec.CommandContext(ctx, command, args...)
 	cmd.Dir = dir
 	if e.Stdin != nil {
 		cmd.Stdin = e.Stdin

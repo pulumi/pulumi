@@ -21,9 +21,9 @@ import (
 	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -56,7 +56,7 @@ func (ex *deploymentExecutor) checkTargets(targets UrnTargets) error {
 		return nil
 	}
 
-	olds := ex.deployment.olds
+	olds := ex.deployment.allOlds
 	var news map[resource.URN]bool
 	if ex.stepGen != nil {
 		news = ex.stepGen.urns
@@ -128,7 +128,7 @@ func (ex *deploymentExecutor) reportError(urn resource.URN, err error) {
 
 // Execute executes a deployment to completion, using the given cancellation context and running a preview
 // or update.
-func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) {
+func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err error) {
 	// Set up a goroutine that will signal cancellation to the deployment's plugins if the caller context is cancelled.
 	// We do not hang this off of the context we create below because we do not want the failure of a single step to
 	// cause other steps to fail.
@@ -150,6 +150,12 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 
 	// Close the deployment when we're finished.
 	defer contract.IgnoreClose(ex.deployment)
+	if ex.deployment.writeSnapshot && ex.deployment.events != nil {
+		err := ex.deployment.events.OnSnapshotWrite(ex.deployment.prev)
+		if err != nil {
+			return nil, result.BailErrorf("failed to rebase deployment: %v", err)
+		}
+	}
 
 	// If this deployment is an import, run the imports and exit.
 	if ex.deployment.isImport {
@@ -188,7 +194,18 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 	if err != nil {
 		return nil, err
 	}
-	defer src.Close()
+	defer func() {
+		// If we didn't see any earlier error, close the source iterator and
+		// report any errors encountered during the close.
+		if err == nil {
+			closeErr := src.Cancel(callerCtx)
+			if closeErr != nil {
+				logging.V(4).Infof("deploymentExecutor.Execute(...): source iterator closed with error: %s", closeErr)
+				ex.reportError("", closeErr)
+				err = result.BailError(closeErr)
+			}
+		}
+	}()
 
 	// Set up a step generator for this deployment.
 	mode := updateMode
@@ -456,7 +473,7 @@ func (ex *deploymentExecutor) performPostSteps(
 		// At this point we have generated the set of resources above that we would normally want to
 		// delete.  However, if the user provided -target's we will only actually delete the specific
 		// resources that are in the set explicitly asked for.
-		deleteSteps, err := ex.stepGen.GenerateDeletes(targetsOpt, excludesOpt)
+		sameSteps, deleteSteps, err := ex.stepGen.GenerateDeletes(targetsOpt, excludesOpt)
 		// Regardless of if this error'd or not the step executor needs unlocking
 		ex.stepExec.Unlock()
 		if err != nil {
@@ -464,7 +481,17 @@ func (ex *deploymentExecutor) performPostSteps(
 			return err
 		}
 
+		// Execute all the same steps together. TODO: We _could_ parallelize these if we worked out the
+		// dependency graph between them, but for now we just run them serially, same steps are guaranteed to
+		// be fast.
+		tok := ex.stepExec.ExecuteSerial(sameSteps)
+		tok.Wait(ctx)
+
+		// Then schedule the deletions
 		deleteChains := ex.stepGen.ScheduleDeletes(deleteSteps)
+
+		dg := ex.deployment.depGraph
+		deleteGraph := graph.NewDependencyGraph(ex.stepGen.toDelete)
 
 		// ScheduleDeletes gives us a list of lists of steps. Each list of steps can safely be executed
 		// in parallel, but each list must execute completes before the next list can safely begin
@@ -488,8 +515,14 @@ func (ex *deploymentExecutor) performPostSteps(
 					continue
 				}
 				for _, r := range []*resource.State{step.Res(), step.Old()} {
-					if r != nil && ex.deployment.depGraph.Contains(r) {
-						deps := ex.deployment.depGraph.TransitiveDependenciesOf(r)
+					if r != nil && dg.Contains(r) {
+						deps := dg.TransitiveDependenciesOf(r)
+						erroredDeps = erroredDeps.Union(deps)
+					} else if r != nil && deleteGraph.Contains(r) {
+						// For destroyV2, we might have resources in the delete graph that
+						// aren't in the main dep graph. This happens if there is a previous
+						// same step for the resource.
+						deps := deleteGraph.TransitiveDependenciesOf(r)
 						erroredDeps = erroredDeps.Union(deps)
 					}
 				}
@@ -782,6 +815,11 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, refreshBeforeUp
 
 	ex.rebuildBaseState(resourceToStep)
 
+	err := ex.deployment.events.OnRebuiltBaseState()
+	if err != nil {
+		return err
+	}
+
 	// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
 	// cancellation from internally-initiated cancellation.
 	canceled := callerCtx.Err() != nil
@@ -829,6 +867,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 	resources := []*resource.State{}
 	referenceable := make(map[resource.URN]bool)
 	olds := make(map[resource.URN]*resource.State)
+	allOlds := make(map[resource.URN][]*resource.State)
 	oldViews := make(map[resource.URN][]*resource.State)
 	for _, s := range ex.deployment.prev.Resources {
 		var old, new *resource.State
@@ -846,7 +885,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 
 		if new == nil {
 			contract.Assertf(old.Custom || old.ViewOf != "", "expected custom or view resource")
-			contract.Assertf(!providers.IsProviderType(old.Type), "expected non-provider resource")
+			contract.Assertf(!sdkproviders.IsProviderType(old.Type), "expected non-provider resource")
 			continue
 		}
 
@@ -872,6 +911,10 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 				if !referenceable[dep.URN] {
 					new.DeletedWith = ""
 				}
+			case resource.ResourceReplaceWith:
+				if !referenceable[dep.URN] {
+					new.ReplaceWith = nil
+				}
 			}
 		}
 
@@ -891,6 +934,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 		resources = append(resources, new)
 		referenceable[new.URN] = true
 
+		allOlds[new.URN] = append(allOlds[new.URN], new)
 		// Do not record resources that are pending deletion in the "olds" lookup table.
 		if !new.Delete {
 			olds[new.URN] = new
@@ -902,15 +946,16 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 		}
 	}
 
-	undangleParentResources(olds, resources)
+	undangleParentResources(referenceable, resources)
 
 	ex.deployment.prev.Resources = resources
 	ex.deployment.depGraph = graph.NewDependencyGraph(resources)
 	ex.deployment.olds = olds
+	ex.deployment.allOlds = allOlds
 	ex.deployment.oldViews = oldViews
 }
 
-func undangleParentResources(undeleted map[resource.URN]*resource.State, resources []*resource.State) {
+func undangleParentResources(undeleted map[resource.URN]bool, resources []*resource.State) {
 	// Since a refresh may delete arbitrary resources, we need to handle the case where
 	// the parent of a still existing resource is deleted.
 	//

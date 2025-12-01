@@ -99,7 +99,7 @@ func TestNewApplier_errors(t *testing.T) {
 	stringType := reflect.TypeOf("")
 	tests := []struct {
 		desc string
-		give interface{}
+		give any
 
 		// Part of the error message expected in return.
 		wantErr string
@@ -147,7 +147,6 @@ func TestNewApplier_errors(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -162,7 +161,7 @@ func TestOutputState_nil(t *testing.T) {
 
 	var os *OutputState
 
-	assert.NotNil(t, os.elementType())
+	require.NotNil(t, os.elementType())
 	assert.Empty(t, os.dependencies())
 
 	// should be a no-op

@@ -35,13 +35,13 @@ func Test_WalkUpDirs(t *testing.T) {
 			}
 			return checkDir(dir)
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return found, result
 	}
 
 	setup := func(t *testing.T) (string, string, string, string) {
 		d1, err := filepath.Abs(t.TempDir())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		d2 := filepath.Join(d1, "a")
 		d3 := filepath.Join(d2, "b")
 		d4 := filepath.Join(d3, "c")

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -167,7 +167,7 @@ func GetProviderAttachPort(pkg tokens.Package) (*int, error) {
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
-	options map[string]interface{}, disableProviderPreview bool, jsonConfig string,
+	options map[string]any, disableProviderPreview bool, jsonConfig string,
 	projectName tokens.PackageName,
 ) (Provider, error) {
 	// See if this is a provider we just want to attach to
@@ -197,6 +197,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 				ConfigureWithUrn:            true,
 				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
+				InvokeWithPreview:           true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -253,6 +254,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 				ConfigureWithUrn:            true,
 				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
+				InvokeWithPreview:           true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -322,6 +324,7 @@ func handshake(
 		ConfigureWithUrn:            req.ConfigureWithUrn,
 		SupportsViews:               req.SupportsViews,
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
+		InvokeWithPreview:           req.InvokeWithPreview,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -350,7 +353,7 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 	)
 
 	if ctx.DialOptions != nil {
-		metadata := map[string]interface{}{
+		metadata := map[string]any{
 			"mode": "client",
 			"kind": "resource",
 		}
@@ -381,6 +384,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			ConfigureWithUrn:            true,
 			SupportsViews:               true,
 			SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
+			InvokeWithPreview:           true,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -496,6 +500,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		ConfigureWithUrn:            req.ConfigureWithUrn,
 		SupportsViews:               req.SupportsViews,
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
+		InvokeWithPreview:           req.InvokeWithPreview,
 	})
 	if err != nil {
 		return nil, err
@@ -587,6 +592,7 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 	molds, err := MarshalProperties(req.Olds, MarshalOptions{
 		Label:        label + ".olds",
 		KeepUnknowns: req.AllowUnknowns,
+		PropagateNil: true,
 	})
 	if err != nil {
 		return CheckConfigResponse{}, err
@@ -595,6 +601,7 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 	mnews, err := MarshalProperties(req.News, MarshalOptions{
 		Label:        label + ".news",
 		KeepUnknowns: req.AllowUnknowns,
+		PropagateNil: true,
 	})
 	if err != nil {
 		return CheckConfigResponse{}, err
@@ -629,6 +636,7 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 			RejectUnknowns: !req.AllowUnknowns,
 			KeepSecrets:    true,
 			KeepResources:  true,
+			PropagateNil:   true,
 		})
 		if err != nil {
 			return CheckConfigResponse{}, err
@@ -696,6 +704,7 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 	mOldInputs, err := MarshalProperties(req.OldInputs, MarshalOptions{
 		Label:        label + ".oldInputs",
 		KeepUnknowns: true,
+		PropagateNil: true,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -704,6 +713,7 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 	mOldOutputs, err := MarshalProperties(req.OldOutputs, MarshalOptions{
 		Label:        label + ".oldOutputs",
 		KeepUnknowns: true,
+		PropagateNil: true,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -712,6 +722,7 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 	mNewInputs, err := MarshalProperties(req.NewInputs, MarshalOptions{
 		Label:        label + ".newInputs",
 		KeepUnknowns: true,
+		PropagateNil: true,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -823,7 +834,7 @@ func annotateSecrets(outs, ins resource.PropertyMap) {
 	}
 }
 
-func removeSecrets(v resource.PropertyValue) interface{} {
+func removeSecrets(v resource.PropertyValue) any {
 	switch {
 	case v.IsNull():
 		return nil
@@ -834,7 +845,7 @@ func removeSecrets(v resource.PropertyValue) interface{} {
 	case v.IsString():
 		return v.StringValue()
 	case v.IsArray():
-		arr := []interface{}{}
+		arr := []any{}
 		for _, v := range v.ArrayValue() {
 			arr = append(arr, removeSecrets(v))
 		}
@@ -851,7 +862,7 @@ func removeSecrets(v resource.PropertyValue) interface{} {
 		return removeSecrets(v.SecretValue().Element)
 	default:
 		contract.Assertf(v.IsObject(), "v is not Object '%v' instead", v.TypeString())
-		obj := map[string]interface{}{}
+		obj := map[string]any{}
 		for k, v := range v.ObjectValue() {
 			obj[string(k)] = removeSecrets(v)
 		}
@@ -985,6 +996,7 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 		KeepUnknowns:  true,
 		KeepSecrets:   true,
 		KeepResources: true,
+		PropagateNil:  true,
 	})
 	if err != nil {
 		err := fmt.Errorf("marshaling provider inputs: %w", err)
@@ -1054,6 +1066,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		"req.Name (%s) != req.URN.Name() (%s)", req.Name, req.URN.Name())
 	contract.Assertf(req.Type == "" || req.Type == req.URN.Type(),
 		"req.Type (%s) != req.URN.Type() (%s)", req.Type, req.URN.Type())
+	contract.Assertf(req.News != nil, "Check requires new properties")
 
 	label := fmt.Sprintf("%s.Check(%s)", p.label(), req.URN)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(req.Olds), len(req.News))
@@ -1076,6 +1089,12 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		KeepUnknowns:  req.AllowUnknowns,
 		KeepSecrets:   protocol.acceptSecrets,
 		KeepResources: protocol.acceptResources,
+		// Technically, olds can be nil and we ought to be able to send it as nil so that provivders could distinguish
+		// between no old state (as in the case of create) vs the old state being empty (an unlikely but possible
+		// scenario for a resource with no set inputs). However, we have been unconditionally forcing this to empty
+		// instead of nil for a long time and at least the NodeJS provider implementation relies on this behavior, so we
+		// must continue to do so for compatibility.
+		PropagateNil: false,
 	})
 	if err != nil {
 		return CheckResponse{}, err
@@ -1085,6 +1104,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		KeepUnknowns:  req.AllowUnknowns,
 		KeepSecrets:   protocol.acceptSecrets,
 		KeepResources: protocol.acceptResources,
+		PropagateNil:  true,
 	})
 	if err != nil {
 		return CheckResponse{}, err
@@ -1129,6 +1149,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 			RejectUnknowns: !req.AllowUnknowns,
 			KeepSecrets:    true,
 			KeepResources:  true,
+			PropagateNil:   true,
 		})
 		if err != nil {
 			return CheckResponse{}, err
@@ -1193,6 +1214,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		KeepUnknowns:       req.AllowUnknowns,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		PropagateNil:       true,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -1204,6 +1226,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		KeepUnknowns:       req.AllowUnknowns,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		PropagateNil:       true,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -1215,6 +1238,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		KeepUnknowns:       req.AllowUnknowns,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		PropagateNil:       true,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -1272,6 +1296,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		"req.Name (%s) != req.URN.Name() (%s)", req.Name, req.URN.Name())
 	contract.Assertf(req.Type == "" || req.Type == req.URN.Type(),
 		"req.Type (%s) != req.URN.Type() (%s)", req.Type, req.URN.Type())
+	contract.Assertf(req.Properties != nil, "Create requires new input properties")
 
 	contract.Assertf(req.URN != "", "Create requires a URN")
 	contract.Assertf(req.Properties != nil, "Create requires properties")
@@ -1317,6 +1342,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		KeepUnknowns:  req.Preview,
 		KeepSecrets:   protocol.acceptSecrets,
 		KeepResources: protocol.acceptResources,
+		PropagateNil:  true,
 	})
 	if err != nil {
 		return CreateResponse{}, err
@@ -1324,6 +1350,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 
 	var id resource.ID
 	var liveObject *structpb.Struct
+	var refreshBeforeUpdate bool
 	var resourceError error
 	resourceStatus := resource.StatusOK
 	resp, err := client.Create(p.requestContext(), &pulumirpc.CreateRequest{
@@ -1337,7 +1364,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		ResourceStatusToken:   req.ResourceStatusToken,
 	})
 	if err != nil {
-		resourceStatus, id, liveObject, _, resourceError = parseError(err)
+		resourceStatus, id, liveObject, _, refreshBeforeUpdate, resourceError = parseError(err)
 		logging.V(7).Infof("%s failed: %v", label, resourceError)
 
 		if resourceStatus != resource.StatusPartialFailure {
@@ -1347,6 +1374,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	} else {
 		id = resource.ID(resp.GetId())
 		liveObject = resp.GetProperties()
+		refreshBeforeUpdate = resp.GetRefreshBeforeUpdate()
 	}
 
 	if id == "" && !req.Preview {
@@ -1360,6 +1388,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		KeepUnknowns:   req.Preview,
 		KeepSecrets:    true,
 		KeepResources:  true,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return CreateResponse{Status: resourceStatus}, err
@@ -1374,16 +1403,11 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 
 	logging.V(7).Infof("%s success: id=%s; #outs=%d", label, id, len(outs))
 
-	var refreshBeforeUpdate bool
-	if resp != nil {
-		refreshBeforeUpdate = resp.RefreshBeforeUpdate && supportsRefreshBeforeUpdate
-	}
-
 	return CreateResponse{
 		ID:                  id,
 		Properties:          outs,
 		Status:              resourceStatus,
-		RefreshBeforeUpdate: refreshBeforeUpdate,
+		RefreshBeforeUpdate: refreshBeforeUpdate && supportsRefreshBeforeUpdate,
 	}, resourceError
 }
 
@@ -1425,6 +1449,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 			ElideAssetContents: true,
 			KeepSecrets:        protocol.acceptSecrets,
 			KeepResources:      protocol.acceptResources,
+			PropagateNil:       true,
 		})
 		if err != nil {
 			return ReadResponse{Status: resource.StatusUnknown}, err
@@ -1436,6 +1461,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		PropagateNil:       true,
 	})
 	if err != nil {
 		return ReadResponse{Status: resource.StatusUnknown}, err
@@ -1445,6 +1471,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		Label:         label,
 		KeepSecrets:   protocol.acceptSecrets,
 		KeepResources: protocol.acceptResources,
+		PropagateNil:  true,
 	})
 	if err != nil {
 		return ReadResponse{Status: resource.StatusUnknown}, err
@@ -1454,6 +1481,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	var readID resource.ID
 	var liveObject *structpb.Struct
 	var liveInputs *structpb.Struct
+	var refreshBeforeUpdate bool
 	var resourceError error
 	resourceStatus := resource.StatusOK
 	resp, err := client.Read(p.requestContext(), &pulumirpc.ReadRequest{
@@ -1468,7 +1496,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		OldViews:              oldViews,
 	})
 	if err != nil {
-		resourceStatus, readID, liveObject, liveInputs, resourceError = parseError(err)
+		resourceStatus, readID, liveObject, liveInputs, refreshBeforeUpdate, resourceError = parseError(err)
 		logging.V(7).Infof("%s failed: %v", label, err)
 
 		if resourceStatus != resource.StatusPartialFailure {
@@ -1479,11 +1507,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		readID = resource.ID(resp.GetId())
 		liveObject = resp.GetProperties()
 		liveInputs = resp.GetInputs()
-	}
-
-	// If the resource was missing, simply return a nil property map.
-	if string(readID) == "" {
-		return ReadResponse{Status: resourceStatus}, nil
+		refreshBeforeUpdate = resp.GetRefreshBeforeUpdate()
 	}
 
 	// Finally, unmarshal the resulting state properties and return them.
@@ -1492,6 +1516,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		RejectUnknowns: true,
 		KeepSecrets:    true,
 		KeepResources:  true,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return ReadResponse{Status: resourceStatus}, err
@@ -1504,6 +1529,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 			RejectUnknowns: true,
 			KeepSecrets:    true,
 			KeepResources:  true,
+			PropagateNil:   true,
 		})
 		if err != nil {
 			return ReadResponse{Status: resourceStatus}, err
@@ -1522,17 +1548,12 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	restoreElidedAssetContents(req.Inputs, newInputs)
 	restoreElidedAssetContents(req.Inputs, newState)
 
-	var refreshBeforeUpdate bool
-	if resp != nil {
-		refreshBeforeUpdate = resp.RefreshBeforeUpdate && supportsRefreshBeforeUpdate
-	}
-
-	logging.V(7).Infof("%s success; #outs=%d, #inputs=%d", label, len(newState), len(newInputs))
+	logging.V(7).Infof("%s success; id=%q, #outs=%d, #inputs=%d", label, readID, len(newState), len(newInputs))
 	return ReadResponse{ReadResult{
 		ID:                  readID,
 		Outputs:             newState,
 		Inputs:              newInputs,
-		RefreshBeforeUpdate: refreshBeforeUpdate,
+		RefreshBeforeUpdate: refreshBeforeUpdate && supportsRefreshBeforeUpdate,
 	}, resourceStatus}, resourceError
 }
 
@@ -1592,6 +1613,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		PropagateNil:       true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
@@ -1601,6 +1623,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		PropagateNil:       true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
@@ -1610,6 +1633,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		KeepUnknowns:  req.Preview,
 		KeepSecrets:   protocol.acceptSecrets,
 		KeepResources: protocol.acceptResources,
+		PropagateNil:  true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
@@ -1619,12 +1643,14 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		Label:         label + ".oldViews",
 		KeepSecrets:   protocol.acceptSecrets,
 		KeepResources: protocol.acceptResources,
+		PropagateNil:  true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
 	}
 
 	var liveObject *structpb.Struct
+	var refreshBeforeUpdate bool
 	var resourceError error
 	resourceStatus := resource.StatusOK
 	resp, err := client.Update(p.requestContext(), &pulumirpc.UpdateRequest{
@@ -1643,7 +1669,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		OldViews:              oldViews,
 	})
 	if err != nil {
-		resourceStatus, _, liveObject, _, resourceError = parseError(err)
+		resourceStatus, _, liveObject, _, refreshBeforeUpdate, resourceError = parseError(err)
 		logging.V(7).Infof("%s failed: %v", label, resourceError)
 
 		if resourceStatus != resource.StatusPartialFailure {
@@ -1652,6 +1678,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		// Else it's a `StatusPartialFailure`.
 	} else {
 		liveObject = resp.GetProperties()
+		refreshBeforeUpdate = resp.GetRefreshBeforeUpdate()
 	}
 
 	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
@@ -1660,6 +1687,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		KeepUnknowns:   req.Preview,
 		KeepSecrets:    true,
 		KeepResources:  true,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resourceStatus}, err
@@ -1673,15 +1701,10 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	}
 	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
 
-	var refreshBeforeUpdate bool
-	if resp != nil {
-		refreshBeforeUpdate = resp.RefreshBeforeUpdate && supportsRefreshBeforeUpdate
-	}
-
 	return UpdateResponse{
 		Properties:          outs,
 		Status:              resourceStatus,
-		RefreshBeforeUpdate: refreshBeforeUpdate,
+		RefreshBeforeUpdate: refreshBeforeUpdate && supportsRefreshBeforeUpdate,
 	}, resourceError
 }
 
@@ -1695,6 +1718,9 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 
 	contract.Assertf(req.URN != "", "Delete requires a URN")
 	contract.Assertf(req.ID != "", "Delete requires an ID")
+
+	contract.Assertf(req.Inputs != nil, "Delete requires input properties")
+	contract.Assertf(req.Outputs != nil, "Delete requires output properties")
 
 	label := fmt.Sprintf("%s.Delete(%s,%s)", p.label(), req.URN, req.ID)
 	logging.V(7).Infof("%s executing (#inputs=%d, #outputs=%d)", label, len(req.Inputs), len(req.Outputs))
@@ -1714,6 +1740,7 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		PropagateNil:       true,
 	})
 	if err != nil {
 		return DeleteResponse{}, err
@@ -1724,6 +1751,7 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		PropagateNil:       true,
 	})
 	if err != nil {
 		return DeleteResponse{}, err
@@ -1733,6 +1761,7 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 		Label:         label + ".oldViews",
 		KeepSecrets:   protocol.acceptSecrets,
 		KeepResources: protocol.acceptResources,
+		PropagateNil:  true,
 	})
 	if err != nil {
 		return DeleteResponse{}, err
@@ -1819,6 +1848,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
 		KeepOutputValues: protocol.acceptOutputs,
+		PropagateNil:     true,
 	})
 	if err != nil {
 		return ConstructResult{}, err
@@ -1856,6 +1886,24 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		configSecretKeys = append(configSecretKeys, k.String())
 	}
 
+	// Marshal the replace with.
+	replaceWithURNs := make([]string, len(req.Options.ReplaceWith))
+	for i, urn := range req.Options.ReplaceWith {
+		replaceWithURNs[i] = string(urn)
+	}
+
+	// Marshal the resource hook bindings.
+	var resourceHook *pulumirpc.ConstructRequest_ResourceHooksBinding
+	if len(req.Options.ResourceHooks) > 0 {
+		resourceHook = &pulumirpc.ConstructRequest_ResourceHooksBinding{}
+		resourceHook.BeforeCreate = req.Options.ResourceHooks[resource.BeforeCreate]
+		resourceHook.AfterCreate = req.Options.ResourceHooks[resource.AfterCreate]
+		resourceHook.BeforeUpdate = req.Options.ResourceHooks[resource.BeforeUpdate]
+		resourceHook.AfterUpdate = req.Options.ResourceHooks[resource.AfterUpdate]
+		resourceHook.BeforeDelete = req.Options.ResourceHooks[resource.BeforeDelete]
+		resourceHook.AfterDelete = req.Options.ResourceHooks[resource.AfterDelete]
+	}
+
 	rpcReq := &pulumirpc.ConstructRequest{
 		Project:                 req.Info.Project,
 		Stack:                   req.Info.Stack,
@@ -1875,11 +1923,14 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		Dependencies:            dependencies,
 		AdditionalSecretOutputs: req.Options.AdditionalSecretOutputs,
 		DeletedWith:             string(req.Options.DeletedWith),
+		ReplaceWith:             replaceWithURNs,
 		DeleteBeforeReplace:     req.Options.DeleteBeforeReplace,
 		IgnoreChanges:           req.Options.IgnoreChanges,
 		ReplaceOnChanges:        req.Options.ReplaceOnChanges,
 		RetainOnDelete:          req.Options.RetainOnDelete,
 		AcceptsOutputValues:     true,
+		ResourceHooks:           resourceHook,
+		StackTraceHandle:        req.Info.StackTraceHandle,
 	}
 	if ct := req.Options.CustomTimeouts; ct != nil {
 		rpcReq.CustomTimeouts = &pulumirpc.ConstructRequest_CustomTimeouts{
@@ -1900,6 +1951,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		KeepSecrets:      true,
 		KeepResources:    true,
 		KeepOutputValues: true,
+		PropagateNil:     true,
 	})
 	if err != nil {
 		return ConstructResult{}, err
@@ -1945,14 +1997,16 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 		Label:         label + ".args",
 		KeepSecrets:   protocol.acceptSecrets,
 		KeepResources: protocol.acceptResources,
+		PropagateNil:  true,
 	})
 	if err != nil {
 		return InvokeResponse{}, err
 	}
 
 	resp, err := client.Invoke(p.requestContext(), &pulumirpc.InvokeRequest{
-		Tok:  string(req.Tok),
-		Args: margs,
+		Tok:     string(req.Tok),
+		Args:    margs,
+		Preview: req.Preview,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -1966,6 +2020,7 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 		RejectUnknowns: true,
 		KeepSecrets:    true,
 		KeepResources:  true,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return InvokeResponse{}, err
@@ -2011,6 +2066,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
 		KeepOutputValues: protocol.acceptOutputs,
+		PropagateNil:     true,
 	})
 	if err != nil {
 		return CallResult{}, err
@@ -2043,6 +2099,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 		Parallel:            req.Info.Parallel,
 		MonitorEndpoint:     req.Info.MonitorAddress,
 		AcceptsOutputValues: true,
+		StackTraceHandle:    req.Info.StackTraceHandle,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -2057,6 +2114,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 		KeepSecrets:      true,
 		KeepResources:    true,
 		KeepOutputValues: true,
+		PropagateNil:     true,
 	})
 	if err != nil {
 		return CallResult{}, err
@@ -2220,7 +2278,12 @@ func resourceStateAndError(err error) (resource.Status, *rpcerror.Error) {
 // object was created, but app code is continually crashing and the resource never achieves
 // liveness).
 func parseError(err error) (
-	resourceStatus resource.Status, id resource.ID, liveInputs, liveObject *structpb.Struct, resourceErr error,
+	resourceStatus resource.Status,
+	id resource.ID,
+	liveInputs,
+	liveObject *structpb.Struct,
+	refreshBeforeUpdate bool,
+	resourceErr error,
 ) {
 	var responseErr *rpcerror.Error
 	resourceStatus, responseErr = resourceStateAndError(err)
@@ -2234,13 +2297,14 @@ func parseError(err error) (
 			id = resource.ID(initErr.GetId())
 			liveObject = initErr.GetProperties()
 			liveInputs = initErr.GetInputs()
+			refreshBeforeUpdate = initErr.GetRefreshBeforeUpdate()
 			resourceStatus = resource.StatusPartialFailure
 			resourceErr = &InitError{Reasons: initErr.Reasons}
 			break
 		}
 	}
 
-	return resourceStatus, id, liveObject, liveInputs, resourceErr
+	return resourceStatus, id, liveObject, liveInputs, refreshBeforeUpdate, resourceErr
 }
 
 // InitError represents a failure to initialize a resource, i.e., the resource has been successfully
@@ -2268,7 +2332,7 @@ func decorateSpanWithType(span opentracing.Span, urn string) {
 	}
 }
 
-func decorateProviderSpans(span opentracing.Span, method string, req, resp interface{}, grpcError error) {
+func decorateProviderSpans(span opentracing.Span, method string, req, resp any, grpcError error) {
 	if req == nil {
 		return
 	}

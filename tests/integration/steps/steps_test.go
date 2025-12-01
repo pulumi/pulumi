@@ -12,18 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build nodejs || all
-
 package ints
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
@@ -67,7 +66,7 @@ func TestSteps(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 			validateResources(t, stackInfo.Deployment.Resources, "a", "b", "c", "d")
 		},
 		EditDirs: []integration.EditDir{
@@ -75,7 +74,7 @@ func TestSteps(t *testing.T) {
 				Dir:      "step2",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					assert.NotNil(t, stackInfo.Deployment)
+					require.NotNil(t, stackInfo.Deployment)
 					validateResources(t, stackInfo.Deployment.Resources, "a", "b", "c", "e")
 				},
 			},
@@ -83,7 +82,7 @@ func TestSteps(t *testing.T) {
 				Dir:      "step3",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					assert.NotNil(t, stackInfo.Deployment)
+					require.NotNil(t, stackInfo.Deployment)
 					validateResources(t, stackInfo.Deployment.Resources, "a", "c", "e")
 				},
 			},
@@ -91,7 +90,7 @@ func TestSteps(t *testing.T) {
 				Dir:      "step4",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					assert.NotNil(t, stackInfo.Deployment)
+					require.NotNil(t, stackInfo.Deployment)
 					validateResources(t, stackInfo.Deployment.Resources, "a", "c", "e")
 				},
 			},
@@ -99,7 +98,7 @@ func TestSteps(t *testing.T) {
 				Dir:      "step5",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					assert.NotNil(t, stackInfo.Deployment)
+					require.NotNil(t, stackInfo.Deployment)
 					validateResources(t, stackInfo.Deployment.Resources, "a", "c", "e")
 				},
 			},
@@ -107,7 +106,7 @@ func TestSteps(t *testing.T) {
 				Dir:      "step6",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					assert.NotNil(t, stackInfo.Deployment)
+					require.NotNil(t, stackInfo.Deployment)
 					validateResources(t, stackInfo.Deployment.Resources)
 				},
 			},

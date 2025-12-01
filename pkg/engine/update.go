@@ -219,7 +219,6 @@ func HasChanges(changes display.ResourceChanges) bool {
 func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 	*deploy.Plan, display.ResourceChanges, error,
 ) {
-	contract.Requiref(u != nil, "update", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 	defer func() { ctx.Events <- NewCancelEvent() }()
 
@@ -247,6 +246,7 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 		Diag:          newEventSink(emitter, false),
 		StatusDiag:    newEventSink(emitter, true),
 		DryRun:        dryRun,
+		pluginManager: ctx.PluginManager,
 	})
 }
 
@@ -457,7 +457,7 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context,
 
 func newUpdateSource(ctx context.Context,
 	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
-	target *deploy.Target, plugctx *plugin.Context,
+	target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks,
 ) (deploy.Source, error) {
 	//
 	// Step 1: Install and load plugins.
@@ -501,6 +501,7 @@ func newUpdateSource(ctx context.Context,
 		Config:           config,
 		ConfigSecretKeys: target.Config.SecureKeys(),
 		DryRun:           opts.DryRun,
+		Tags:             target.Tags,
 	}
 	if err := installAndLoadPolicyPlugins(plugctx, opts, analyzerOpts); err != nil {
 		return nil, err
@@ -520,7 +521,7 @@ func newUpdateSource(ctx context.Context,
 		ProjectRoot: projectRoot,
 		Args:        args,
 		Target:      target,
-	}, defaultProviderVersions, deploy.EvalSourceOptions{
+	}, defaultProviderVersions, resourceHooks, deploy.EvalSourceOptions{
 		DryRun:                    opts.DryRun,
 		Parallel:                  opts.Parallel,
 		DisableResourceReferences: opts.DisableResourceReferences,
@@ -537,7 +538,7 @@ func update(
 	// Create an appropriate set of event listeners.
 	var actions runActions
 	if opts.DryRun {
-		actions = newPreviewActions(opts)
+		actions = newPreviewActions(ctx, opts)
 	} else {
 		actions = newUpdateActions(ctx, info.Update, opts)
 	}
@@ -550,7 +551,13 @@ func update(
 	defer contract.IgnoreClose(deployment)
 
 	// Execute the deployment.
-	return deployment.run(ctx)
+	plan, changes, err := deployment.run(ctx)
+
+	if ctx.FinalizeUpdateFunc != nil {
+		ctx.FinalizeUpdateFunc()
+	}
+
+	return plan, changes, err
 }
 
 // abbreviateFilePath is a helper function that cleans up and shortens a provided file path.
@@ -602,7 +609,15 @@ func newUpdateActions(context *Context, u UpdateInfo, opts *deploymentOptions) *
 	}
 }
 
-func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
+func (acts *updateActions) OnSnapshotWrite(step *deploy.Snapshot) error {
+	return acts.Context.SnapshotManager.Write(step)
+}
+
+func (acts *updateActions) OnRebuiltBaseState() error {
+	return acts.Context.SnapshotManager.RebuiltBaseState()
+}
+
+func (acts *updateActions) OnResourceStepPre(step deploy.Step) (any, error) {
 	// Ensure we've marked this step as observed.
 	acts.MapLock.Lock()
 	acts.Seen[step.URN()] = step
@@ -619,7 +634,7 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 }
 
 func (acts *updateActions) OnResourceStepPost(
-	ctx interface{}, step deploy.Step,
+	ctx any, step deploy.Step,
 	status resource.Status, err error,
 ) error {
 	acts.MapLock.Lock()
@@ -653,13 +668,18 @@ func (acts *updateActions) OnResourceStepPost(
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
 			// Refreshes are handled specially.
-			resultOp, ok := step.(interface{ ResultOp() display.StepOp })
-			contract.Assertf(ok, "step should implement ResultOp() for refreshes")
-			op, record = resultOp.ResultOp(), true
+			switch s := step.(type) {
+			case *deploy.RefreshStep:
+				op, record = s.ResultOp(), true
+			case *deploy.ViewStep:
+				op, record = s.ResultOp(), true
+			default:
+				contract.Failf("step should implement ResultOp() for refreshes")
+			}
 		}
 
 		if step.Op() == deploy.OpRead {
-			record = ShouldRecordReadStep(step)
+			record = shouldRecordReadStep(step)
 		}
 
 		if record && !isInternalStep {
@@ -751,6 +771,18 @@ func (acts *updateActions) OnPolicyRemediation(urn resource.URN, t plugin.Remedi
 	acts.Opts.Events.policyRemediationEvent(urn, t, before, after)
 }
 
+func (acts *updateActions) OnPolicyAnalyzeSummary(s plugin.PolicySummary) {
+	acts.Opts.Events.policyAnalyzeSummaryEvent(s)
+}
+
+func (acts *updateActions) OnPolicyRemediateSummary(s plugin.PolicySummary) {
+	acts.Opts.Events.policyRemediateSummaryEvent(s)
+}
+
+func (acts *updateActions) OnPolicyAnalyzeStackSummary(s plugin.PolicySummary) {
+	acts.Opts.Events.policyAnalyzeStackSummaryEvent(s)
+}
+
 func (acts *updateActions) MaybeCorrupt() bool {
 	return acts.maybeCorrupt
 }
@@ -760,6 +792,7 @@ func (acts *updateActions) Changes() display.ResourceChanges {
 }
 
 type previewActions struct {
+	Context *Context
 	Ops     map[display.StepOp]int
 	Opts    *deploymentOptions
 	Seen    map[resource.URN]deploy.Step
@@ -770,7 +803,7 @@ func isInternalStep(step deploy.Step) bool {
 	return step.Op() == deploy.OpRemovePendingReplace || isDefaultProviderStep(step)
 }
 
-func ShouldRecordReadStep(step deploy.Step) bool {
+func shouldRecordReadStep(step deploy.Step) bool {
 	contract.Assertf(step.Op() == deploy.OpRead, "Only call this on a Read step")
 
 	// If reading a resource didn't result in any change to the resource, we then want to
@@ -783,15 +816,24 @@ func ShouldRecordReadStep(step deploy.Step) bool {
 		step.Old().Outputs.Diff(step.New().Outputs) != nil
 }
 
-func newPreviewActions(opts *deploymentOptions) *previewActions {
+func newPreviewActions(ctx *Context, opts *deploymentOptions) *previewActions {
 	return &previewActions{
-		Ops:  make(map[display.StepOp]int),
-		Opts: opts,
-		Seen: make(map[resource.URN]deploy.Step),
+		Context: ctx,
+		Ops:     make(map[display.StepOp]int),
+		Opts:    opts,
+		Seen:    make(map[resource.URN]deploy.Step),
 	}
 }
 
-func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
+func (acts *previewActions) OnSnapshotWrite(base *deploy.Snapshot) error {
+	return nil
+}
+
+func (acts *previewActions) OnRebuiltBaseState() error {
+	return nil
+}
+
+func (acts *previewActions) OnResourceStepPre(step deploy.Step) (any, error) {
 	acts.MapLock.Lock()
 	acts.Seen[step.URN()] = step
 	acts.MapLock.Unlock()
@@ -806,7 +848,7 @@ func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, er
 	return nil, nil
 }
 
-func (acts *previewActions) OnResourceStepPost(ctx interface{},
+func (acts *previewActions) OnResourceStepPost(ctx any,
 	step deploy.Step, status resource.Status, err error,
 ) error {
 	acts.MapLock.Lock()
@@ -828,13 +870,18 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
 			// Refreshes are handled specially.
-			resultOp, ok := step.(interface{ ResultOp() display.StepOp })
-			contract.Assertf(ok, "step should implement ResultOp() for refreshes")
-			op, record = resultOp.ResultOp(), true
+			switch s := step.(type) {
+			case *deploy.RefreshStep:
+				op, record = s.ResultOp(), true
+			case *deploy.ViewStep:
+				op, record = s.ResultOp(), true
+			default:
+				contract.Failf("step should implement ResultOp() for refreshes")
+			}
 		}
 
 		if step.Op() == deploy.OpRead {
-			record = ShouldRecordReadStep(step)
+			record = shouldRecordReadStep(step)
 		}
 
 		// Track the operation if shown and/or if it is a logically meaningful operation.
@@ -883,6 +930,18 @@ func (acts *previewActions) OnPolicyRemediation(urn resource.URN, t plugin.Remed
 	before resource.PropertyMap, after resource.PropertyMap,
 ) {
 	acts.Opts.Events.policyRemediationEvent(urn, t, before, after)
+}
+
+func (acts *previewActions) OnPolicyAnalyzeSummary(s plugin.PolicySummary) {
+	acts.Opts.Events.policyAnalyzeSummaryEvent(s)
+}
+
+func (acts *previewActions) OnPolicyRemediateSummary(s plugin.PolicySummary) {
+	acts.Opts.Events.policyRemediateSummaryEvent(s)
+}
+
+func (acts *previewActions) OnPolicyAnalyzeStackSummary(s plugin.PolicySummary) {
+	acts.Opts.Events.policyAnalyzeStackSummaryEvent(s)
 }
 
 func (acts *previewActions) MaybeCorrupt() bool {

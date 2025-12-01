@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
@@ -234,7 +235,7 @@ func TestListStacksJsonProgress(t *testing.T) {
 		stdout:    &buff,
 	}
 	err := runStackLS(ctx, args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.JSONEq(t, `[
 			{
@@ -292,7 +293,7 @@ func TestListStacksJsonNoProgress(t *testing.T) {
 		stdout:    &buff,
 	}
 	err := runStackLS(ctx, args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.JSONEq(t, `[
 			{

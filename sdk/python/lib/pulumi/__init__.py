@@ -59,6 +59,7 @@ from .metadata import (
     get_organization,
     get_project,
     get_stack,
+    get_root_directory,
 )
 
 from .resource import (
@@ -90,6 +91,14 @@ from .output import (
     deferred_output,
 )
 
+from .resource_hooks import (
+    ResourceHookArgs,
+    ResourceHookFunction,
+    ResourceHook,
+    ResourceHookBinding,
+    ResourceHookOptions,
+)
+
 from .log import (
     debug,
     info,
@@ -100,6 +109,10 @@ from .log import (
 from .stack_reference import (
     StackReference,
     StackReferenceOutputDetails,
+)
+
+from .stash import (
+    Stash,
 )
 
 from .type_token import get_type_token, type_token
@@ -147,6 +160,7 @@ __all__ = [
     "get_organization",
     "get_project",
     "get_stack",
+    "get_root_directory",
     # resource
     "Alias",
     "Resource",
@@ -172,6 +186,12 @@ __all__ = [
     "UNKNOWN",
     "contains_unknowns",
     "deferred_output",
+    # resource_hooks
+    "ResourceHookArgs",
+    "ResourceHookFunction",
+    "ResourceHook",
+    "ResourceHookBinding",
+    "ResourceHookOptions",
     # log
     "debug",
     "info",
@@ -180,6 +200,8 @@ __all__ = [
     # stack_reference
     "StackReference",
     "StackReferenceOutputDetails",
+    # stash
+    "Stash",
     # type_token
     "get_type_token",
     "type_token",

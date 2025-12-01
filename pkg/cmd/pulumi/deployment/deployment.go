@@ -15,11 +15,12 @@
 package deployment
 
 import (
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
 
-func NewDeploymentCmd() *cobra.Command {
+func NewDeploymentCmd(ws pkgWorkspace.Context) *cobra.Command {
 	cmd := &cobra.Command{
 		// This is temporarily hidden while we iterate over the new set of commands,
 		// we will remove before releasing these new set of features.
@@ -40,7 +41,7 @@ func NewDeploymentCmd() *cobra.Command {
 		"Override the file name where the deployment settings are specified. Default is Pulumi.[stack].deploy.yaml")
 
 	cmd.AddCommand(newDeploymentSettingsCmd())
-	cmd.AddCommand(newDeploymentRunCmd())
+	cmd.AddCommand(newDeploymentRunCmd(ws))
 
 	return cmd
 }

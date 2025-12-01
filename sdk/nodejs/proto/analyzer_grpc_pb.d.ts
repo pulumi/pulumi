@@ -19,6 +19,7 @@ interface IAnalyzerService extends grpc.ServiceDefinition<grpc.UntypedServiceImp
     configure: IAnalyzerService_IConfigure;
     handshake: IAnalyzerService_IHandshake;
     configureStack: IAnalyzerService_IConfigureStack;
+    cancel: IAnalyzerService_ICancel;
 }
 
 interface IAnalyzerService_IAnalyze extends grpc.MethodDefinition<pulumi_analyzer_pb.AnalyzeRequest, pulumi_analyzer_pb.AnalyzeResponse> {
@@ -93,6 +94,15 @@ interface IAnalyzerService_IConfigureStack extends grpc.MethodDefinition<pulumi_
     responseSerialize: grpc.serialize<pulumi_analyzer_pb.AnalyzerStackConfigureResponse>;
     responseDeserialize: grpc.deserialize<pulumi_analyzer_pb.AnalyzerStackConfigureResponse>;
 }
+interface IAnalyzerService_ICancel extends grpc.MethodDefinition<google_protobuf_empty_pb.Empty, google_protobuf_empty_pb.Empty> {
+    path: "/pulumirpc.Analyzer/Cancel";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<google_protobuf_empty_pb.Empty>;
+    requestDeserialize: grpc.deserialize<google_protobuf_empty_pb.Empty>;
+    responseSerialize: grpc.serialize<google_protobuf_empty_pb.Empty>;
+    responseDeserialize: grpc.deserialize<google_protobuf_empty_pb.Empty>;
+}
 
 export const AnalyzerService: IAnalyzerService;
 
@@ -105,6 +115,7 @@ export interface IAnalyzerServer extends grpc.UntypedServiceImplementation {
     configure: grpc.handleUnaryCall<pulumi_analyzer_pb.ConfigureAnalyzerRequest, google_protobuf_empty_pb.Empty>;
     handshake: grpc.handleUnaryCall<pulumi_analyzer_pb.AnalyzerHandshakeRequest, pulumi_analyzer_pb.AnalyzerHandshakeResponse>;
     configureStack: grpc.handleUnaryCall<pulumi_analyzer_pb.AnalyzerStackConfigureRequest, pulumi_analyzer_pb.AnalyzerStackConfigureResponse>;
+    cancel: grpc.handleUnaryCall<google_protobuf_empty_pb.Empty, google_protobuf_empty_pb.Empty>;
 }
 
 export interface IAnalyzerClient {
@@ -132,6 +143,9 @@ export interface IAnalyzerClient {
     configureStack(request: pulumi_analyzer_pb.AnalyzerStackConfigureRequest, callback: (error: grpc.ServiceError | null, response: pulumi_analyzer_pb.AnalyzerStackConfigureResponse) => void): grpc.ClientUnaryCall;
     configureStack(request: pulumi_analyzer_pb.AnalyzerStackConfigureRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_analyzer_pb.AnalyzerStackConfigureResponse) => void): grpc.ClientUnaryCall;
     configureStack(request: pulumi_analyzer_pb.AnalyzerStackConfigureRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_analyzer_pb.AnalyzerStackConfigureResponse) => void): grpc.ClientUnaryCall;
+    cancel(request: google_protobuf_empty_pb.Empty, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
+    cancel(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
+    cancel(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
 }
 
 export class AnalyzerClient extends grpc.Client implements IAnalyzerClient {
@@ -160,4 +174,7 @@ export class AnalyzerClient extends grpc.Client implements IAnalyzerClient {
     public configureStack(request: pulumi_analyzer_pb.AnalyzerStackConfigureRequest, callback: (error: grpc.ServiceError | null, response: pulumi_analyzer_pb.AnalyzerStackConfigureResponse) => void): grpc.ClientUnaryCall;
     public configureStack(request: pulumi_analyzer_pb.AnalyzerStackConfigureRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_analyzer_pb.AnalyzerStackConfigureResponse) => void): grpc.ClientUnaryCall;
     public configureStack(request: pulumi_analyzer_pb.AnalyzerStackConfigureRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_analyzer_pb.AnalyzerStackConfigureResponse) => void): grpc.ClientUnaryCall;
+    public cancel(request: google_protobuf_empty_pb.Empty, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
+    public cancel(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
+    public cancel(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
 }

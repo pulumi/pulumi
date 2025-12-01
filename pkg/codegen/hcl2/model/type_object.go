@@ -37,21 +37,28 @@ type ObjectType struct {
 	// Properties records the types of the object's properties.
 	Properties map[string]Type
 	// Annotations records any annotations associated with the object type.
-	Annotations []interface{}
+	Annotations []any
 
 	propertyUnion Type
 	s             atomic.Value // Value<string>
 
 	cache *gsync.Map[Type, cacheEntry]
+	// Whether typechecking and traversal emit error or warning diagnostics. Non-strict mode returns warnings.
+	Strict bool
 }
 
 // NewObjectType creates a new object type with the given properties and annotations.
-func NewObjectType(properties map[string]Type, annotations ...interface{}) *ObjectType {
-	return &ObjectType{Properties: properties, Annotations: annotations, cache: &gsync.Map[Type, cacheEntry]{}}
+func NewObjectType(properties map[string]Type, annotations ...any) *ObjectType {
+	return &ObjectType{
+		Properties:  properties,
+		Annotations: annotations,
+		cache:       &gsync.Map[Type, cacheEntry]{},
+		Strict:      true,
+	}
 }
 
 // Annotate adds annotations to the object type. Annotations may be retrieved by GetObjectTypeAnnotation.
-func (t *ObjectType) Annotate(annotations ...interface{}) {
+func (t *ObjectType) Annotate(annotations ...any) {
 	t.Annotations = append(t.Annotations, annotations...)
 }
 
@@ -106,7 +113,11 @@ func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 	key, keyType := GetTraverserKey(traverser)
 
 	if !InputType(StringType).ConversionFrom(keyType).Exists() {
-		return DynamicType, hcl.Diagnostics{unsupportedObjectProperty(traverser.SourceRange())}
+		diags := unsupportedObjectProperty(traverser.SourceRange())
+		if !t.Strict {
+			diags.Severity = hcl.DiagWarning
+		}
+		return DynamicType, hcl.Diagnostics{diags}
 	}
 
 	if key == cty.DynamicVal {
@@ -148,7 +159,13 @@ func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 		for k := range t.Properties {
 			props = append(props, k)
 		}
-		return DynamicType, hcl.Diagnostics{unknownObjectProperty(propertyName, traverser.SourceRange(), props)}
+
+		diag := unknownObjectProperty(propertyName, traverser.SourceRange(), props)
+		if !t.Strict {
+			diag.Severity = hcl.DiagWarning
+		}
+
+		return DynamicType, hcl.Diagnostics{diag}
 	}
 	return propertyType, nil
 }

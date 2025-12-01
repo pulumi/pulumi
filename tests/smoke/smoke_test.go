@@ -15,6 +15,7 @@
 package tests
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -175,7 +176,6 @@ func TestLanguageConvertComponentSmoke(t *testing.T) {
 	t.Parallel()
 
 	for _, runtime := range Runtimes {
-		runtime := runtime
 		t.Run(runtime, func(t *testing.T) {
 			t.Parallel()
 
@@ -220,7 +220,6 @@ func TestLanguageGenerateSmoke(t *testing.T) {
 			continue
 		}
 
-		runtime := runtime
 		t.Run(runtime, func(t *testing.T) {
 			t.Parallel()
 
@@ -449,19 +448,19 @@ func TestPreviewImportFile(t *testing.T) {
 	e.RunCommand("pulumi", "install")
 	e.RunCommand("pulumi", "preview", "--import-file", "import.json")
 
-	expectedResources := []interface{}{
-		map[string]interface{}{
+	expectedResources := []any{
+		map[string]any{
 			"id":      "<PLACEHOLDER>",
 			"name":    "username",
 			"type":    "random:index/randomPet:RandomPet",
 			"version": "4.12.0",
 		},
-		map[string]interface{}{
+		map[string]any{
 			"name":      "component",
 			"type":      "pkg:index:MyComponent",
 			"component": true,
 		},
-		map[string]interface{}{
+		map[string]any{
 			"id":          "<PLACEHOLDER>",
 			"logicalName": "username",
 			// This isn't ideal, we don't really need to change the "name" here because it isn't used as a
@@ -476,7 +475,7 @@ func TestPreviewImportFile(t *testing.T) {
 
 	importBytes, err := os.ReadFile(filepath.Join(e.CWD, "import.json"))
 	require.NoError(t, err)
-	var actual map[string]interface{}
+	var actual map[string]any
 	err = json.Unmarshal(importBytes, &actual)
 	require.NoError(t, err)
 	assert.ElementsMatch(t, expectedResources, actual["resources"])
@@ -519,8 +518,32 @@ func TestPluginRun(t *testing.T) {
 
 	_, stderr := e.RunCommandExpectError("pulumi", "plugin", "run", "--kind=resource", "random", "--", "--help")
 	assert.Contains(t, stderr, "flag: help requested")
-	_, stderr = e.RunCommandExpectError("pulumi", "plugin", "run", "--kind=resource", "random", "--", "--help")
-	assert.Contains(t, stderr, "flag: help requested")
+}
+
+// Test that we can run a local file plugin via `pulumi plugin run`.
+func TestPluginRunFile(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// build the test provider to a binary
+	providerDir, err := filepath.Abs("../testprovider")
+	require.NoError(t, err)
+	binaryPath := filepath.Join(e.CWD, "pulumi-resource-testprovider")
+	if runtime.GOOS == "windows" {
+		binaryPath += ".exe"
+	}
+
+	cmd := exec.Command("go", "build", "-o", binaryPath, ".")
+	cmd.Dir = providerDir
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, "Building the test provider should work: %s", string(output))
+
+	_, stderr := e.RunCommand("pulumi", "plugin", "run", "--kind=resource", binaryPath, "--", "--help")
+
+	expect := fmt.Sprintf("Usage of %s:", binaryPath)
+	assert.Contains(t, stderr, expect)
 }
 
 func TestInstall(t *testing.T) {
@@ -528,7 +551,6 @@ func TestInstall(t *testing.T) {
 
 	for _, runtime := range Runtimes {
 		// Reassign runtime before capture since it changes while looping.
-		runtime := runtime
 
 		t.Run(runtime, func(t *testing.T) {
 			t.Parallel()
@@ -608,7 +630,6 @@ func TestSecretsProvidersInitializationSmoke(t *testing.T) {
 	//nolint:paralleltest
 	for _, runtime := range Runtimes {
 		for _, c := range cases {
-			c := c
 			name := fmt.Sprintf("%s %s", runtime, c.name)
 
 			t.Run(name, func(t *testing.T) {
@@ -969,16 +990,16 @@ func testImportParameterizedSmoke(t *testing.T, withUp bool) {
 
 	// Check this used the right provider, i.e. one with parameterization
 	stack, _ := e.RunCommand("pulumi", "stack", "export")
-	var state map[string]interface{}
+	var state map[string]any
 	err = json.Unmarshal([]byte(stack), &state)
 	require.NoError(t, err)
 
-	resources := state["deployment"].(map[string]interface{})["resources"].([]interface{})
+	resources := state["deployment"].(map[string]any)["resources"].([]any)
 
-	var resource map[string]interface{}
-	var provider map[string]interface{}
+	var resource map[string]any
+	var provider map[string]any
 	for _, res := range resources {
-		res := res.(map[string]interface{})
+		res := res.(map[string]any)
 		if res["type"] == "random:index/id:Id" {
 			assert.Nil(t, resource) // only expect one
 			resource = res
@@ -991,7 +1012,7 @@ func testImportParameterizedSmoke(t *testing.T, withUp bool) {
 	require.NotNil(t, resource)
 	require.NotNil(t, provider)
 
-	inputs := provider["inputs"].(map[string]interface{})
+	inputs := provider["inputs"].(map[string]any)
 	assert.Equal(t, "3.6.3", inputs["version"])
 	ref := provider["urn"].(string) + "::" + provider["id"].(string)
 
@@ -1013,6 +1034,11 @@ func TestImportParameterizedSmoke(t *testing.T) {
 //
 //nolint:paralleltest // pulumi new is not parallel safe
 func TestImportParameterizedSmokeFreshState(t *testing.T) {
+	testImportParameterizedSmoke(t, false)
+}
+
+func TestImportParameterizedSmokeFreshStateWithExperimental(t *testing.T) {
+	t.Setenv("PULUMI_EXPERIMENTAL", "true")
 	testImportParameterizedSmoke(t, false)
 }
 
@@ -1056,4 +1082,105 @@ func TestParallelCgroups(t *testing.T) {
 
 	// Assert that the limited parallel count is 4, i.e. 1 CPU x 4.
 	assert.Equal(t, 4, limitedParallel, "Expected --parallel=4 in limited CPU context")
+}
+
+// Test for https://github.com/pulumi/pulumi/issues/20035 check --stack missing doesn't panic for the console command
+func TestConsoleCommandMissingStack(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	stdout, _ := e.RunCommand("pulumi", "console", "--stack", "no-org/no-project/this-does-not-exist")
+	assert.Contains(t, stdout,
+		"Stack 'this-does-not-exist' does not exist. Run `pulumi stack init` to create a new stack.")
+}
+
+// TestPulumiPackageAddForTerraformProvider checks that the CLI can correctly resolve a
+// parameterized provider all the way from the registry to a python environment.
+//
+//nolint:paralleltest // pulumi new is not parallel safe
+func TestPulumiPackageAddForTerraformProvider(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	projectDir := filepath.Join(e.RootPath, "project")
+	err := os.Mkdir(projectDir, 0o700)
+	require.NoError(t, err)
+
+	e.CWD = projectDir
+	e.Env = append(e.Env,
+		"PULUMI_EXPERIMENTAL=true",
+		"PULUMI_DISABLE_REGISTRY_RESOLVE=false",
+		"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false",
+	)
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	// Create a new python project based of the local random template
+	e.RunCommand("pulumi", "new", "python", "--yes")
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "package", "add", "opentofu/airbytehq/airbyte@0.13.0")
+
+	e.WriteTestFile("__main__.py", `import pulumi_airbyte as airbyte
+
+example = airbyte.Provider("provider")`)
+
+	e.RunCommand("pulumi", "up", "--yes")
+
+	// Remove files that wouldn't be checked in:
+	require.NoError(t, os.RemoveAll(filepath.Join(e.CWD, "sdks")))
+	require.NoError(t, os.RemoveAll(filepath.Join(e.CWD, "venv")))
+
+	// Create a new venv
+	e.RunCommand("python3", "-m", "venv", "venv")
+
+	// This should create the "sdks" folder, populate it and install the generated
+	// package into the new venv.
+	e.RunCommand("pulumi", "install")
+
+	e.RunCommand("pulumi", "up", "--yes", "--expect-no-changes")
+}
+
+// Test that `destroy --exclude-protected --remove` removes the stack if the stack is empty.
+func TestDestroyProtectedEmpty(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "new", "python", "--force", "--yes")
+	// Init a new empty stack
+	e.RunCommand("pulumi", "stack", "init", "empty-test-stack")
+	// Then immediately destroy it
+	e.RunCommand("pulumi", "destroy", "--yes", "--exclude-protected", "--remove")
+	// It should be removed
+	stdout, _ := e.RunCommand("pulumi", "stack", "ls")
+	assert.NotContains(t, stdout, "empty-test-stack")
+}
+
+func TestPrintLogfilePath(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	stdout, _ := e.RunCommand("pulumi", "about", "-v", "10")
+	var logFilePath string
+	message := "The log file for this run is at "
+	scanner := bufio.NewScanner(strings.NewReader(stdout))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, message) {
+			parts := strings.Split(line, message)
+			if len(parts) > 1 {
+				logFilePath = strings.TrimSpace(parts[1])
+				break
+			}
+		}
+	}
+	require.NotEmpty(t, logFilePath, "log file path should be found in output")
+	_, err := os.Stat(logFilePath)
+	require.NoError(t, err, "log file should exist at %s", logFilePath)
 }

@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -58,12 +59,27 @@ func addOrGetInternal(inputs resource.PropertyMap) resource.PropertyMap {
 	internalInputs := inputs[internalKey]
 	if !internalInputs.IsObject() {
 		newMap := resource.PropertyMap{}
-		internalInputs = resource.NewObjectProperty(newMap)
+		internalInputs = resource.NewProperty(newMap)
 		inputs[internalKey] = internalInputs
 		return newMap
 	}
 	return internalInputs.ObjectValue()
 }
+
+func mustNewReference(urn resource.URN, id resource.ID) providers.Reference {
+	ref, err := providers.NewReference(urn, id)
+	contract.AssertNoErrorf(err, "could not create reference with URN '%v' and ID '%v'", urn, id)
+	return ref
+}
+
+// UnknownID is a distinguished token used to indicate that a provider's ID is not known (e.g. because we are
+// performing a preview).
+const UnknownID = plugin.UnknownStringValue
+
+// UnconfiguredID is a distinguished token used to indicate that a provider doesn't yet have an ID because it hasn't
+// been configured yet. This should never be returned back to SDKs by the engine but is used for internal tracking so we
+// maximally reuse provider instances but only configure them once.
+const UnconfiguredID = "unconfigured"
 
 func getInternal(inputs resource.PropertyMap) (resource.PropertyMap, error) {
 	internalInputs := inputs[internalKey]
@@ -85,10 +101,10 @@ func SetProviderChecksums(inputs resource.PropertyMap, value map[string][]byte) 
 	propMap := make(resource.PropertyMap)
 	for key, checksum := range value {
 		hex := hex.EncodeToString(checksum)
-		propMap[resource.PropertyKey(key)] = resource.NewStringProperty(hex)
+		propMap[resource.PropertyKey(key)] = resource.NewProperty(hex)
 	}
 
-	internalInputs[pluginChecksumsKey] = resource.NewObjectProperty(propMap)
+	internalInputs[pluginChecksumsKey] = resource.NewProperty(propMap)
 }
 
 // GetProviderChecksums fetches a provider plugin checksums from the given property map.
@@ -121,7 +137,7 @@ func GetProviderChecksums(inputs resource.PropertyMap) (map[string][]byte, error
 // SetProviderURL sets the provider plugin download server URL in the given property map.
 func SetProviderURL(inputs resource.PropertyMap, value string) {
 	internalInputs := addOrGetInternal(inputs)
-	internalInputs[pluginDownloadKey] = resource.NewStringProperty(value)
+	internalInputs[pluginDownloadKey] = resource.NewProperty(value)
 }
 
 // GetProviderDownloadURL fetches a provider plugin download server URL from the given property map.
@@ -148,7 +164,7 @@ func SetProviderVersion(inputs resource.PropertyMap, value *semver.Version) {
 	// __internal, and don't try and look up the key from the root config where a provider may just have a config key
 	// itself of the same text.
 	addOrGetInternal(inputs)
-	inputs[versionKey] = resource.NewStringProperty(value.String())
+	inputs[versionKey] = resource.NewProperty(value.String())
 }
 
 // GetProviderVersion fetches and parses a provider version from the given property map. If the
@@ -184,7 +200,7 @@ func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
 // Sets the provider name in the given property map.
 func SetProviderName(inputs resource.PropertyMap, name tokens.Package) {
 	internalInputs := addOrGetInternal(inputs)
-	internalInputs[nameKey] = resource.NewStringProperty(name.String())
+	internalInputs[nameKey] = resource.NewProperty(name.String())
 }
 
 // GetProviderName fetches and parses a provider name from the given property map. If the
@@ -219,9 +235,9 @@ func SetProviderParameterization(inputs resource.PropertyMap, value *workspace.P
 	// SetVersion will have written the base plugin version to inputs["version"], if we're parameterized we need to move
 	// it, and replace it with our package version.
 	internalInputs[versionKey] = inputs[versionKey]
-	inputs[versionKey] = resource.NewStringProperty(value.Version.String())
+	inputs[versionKey] = resource.NewProperty(value.Version.String())
 	// We don't write name here because we can reconstruct that from the providers type token
-	internalInputs[parameterizationKey] = resource.NewStringProperty(
+	internalInputs[parameterizationKey] = resource.NewProperty(
 		base64.StdEncoding.EncodeToString(value.Value))
 }
 
@@ -283,7 +299,7 @@ type Registry struct {
 
 	host      plugin.Host
 	isPreview bool
-	providers map[Reference]plugin.Provider
+	providers map[providers.Reference]plugin.Provider
 	builtins  plugin.Provider
 	aliases   map[resource.URN]resource.URN
 	m         sync.RWMutex
@@ -390,14 +406,14 @@ func NewRegistry(host plugin.Host, isPreview bool, builtins plugin.Provider) *Re
 	return &Registry{
 		host:      host,
 		isPreview: isPreview,
-		providers: make(map[Reference]plugin.Provider),
+		providers: make(map[providers.Reference]plugin.Provider),
 		builtins:  builtins,
 		aliases:   make(map[resource.URN]resource.URN),
 	}
 }
 
 // GetProvider returns the provider plugin that is currently registered under the given reference, if any.
-func (r *Registry) GetProvider(ref Reference) (plugin.Provider, bool) {
+func (r *Registry) GetProvider(ref providers.Reference) (plugin.Provider, bool) {
 	r.m.RLock()
 	defer r.m.RUnlock()
 
@@ -407,7 +423,7 @@ func (r *Registry) GetProvider(ref Reference) (plugin.Provider, bool) {
 	return provider, ok
 }
 
-func (r *Registry) setProvider(ref Reference, provider plugin.Provider) {
+func (r *Registry) setProvider(ref providers.Reference, provider plugin.Provider) {
 	r.m.Lock()
 	defer r.m.Unlock()
 
@@ -420,15 +436,17 @@ func (r *Registry) setProvider(ref Reference, provider plugin.Provider) {
 	}
 }
 
-func (r *Registry) deleteProvider(ref Reference) (plugin.Provider, bool) {
+func (r *Registry) deleteProvider(ref providers.Reference) (plugin.Provider, bool) {
 	r.m.Lock()
 	defer r.m.Unlock()
 
 	provider, ok := r.providers[ref]
 	if !ok {
+		logging.V(7).Infof("deleteProvider(%v): false", ref)
 		return nil, false
 	}
 	delete(r.providers, ref)
+	logging.V(7).Infof("deleteProvider(%v): true", ref)
 	return provider, true
 }
 
@@ -505,13 +523,13 @@ func (r *Registry) Configure(context.Context, plugin.ConfigureRequest) (plugin.C
 //   - if we are running a preview, we need to configure the provider, as its corresponding CRUD operations will not run
 //     (we would normally configure the provider in Create or Update).
 func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
-	contract.Requiref(IsProviderType(req.URN.Type()), "urn", "must be a provider type, got %v", req.URN.Type())
+	contract.Requiref(providers.IsProviderType(req.URN.Type()), "urn", "must be a provider type, got %v", req.URN.Type())
 
 	label := fmt.Sprintf("%s.Check(%s)", r.label(), req.URN)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(req.Olds), len(req.News))
 
 	// Parse the version from the provider properties and load the provider.
-	providerPkg := GetProviderPackage(req.URN.Type())
+	providerPkg := providers.GetProviderPackage(req.URN.Type())
 	name, err := GetProviderName(providerPkg, req.News)
 	if err != nil {
 		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
@@ -561,14 +579,34 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 
 	// Create a provider reference using the URN and the unconfigured ID and register the provider.
 	r.setProvider(mustNewReference(req.URN, UnconfiguredID), provider)
-
-	// We stripped __internal off of "News" when we passed it to CheckConfig, we need to readd it
-	// the checked properties returned from the plugin.
 	if resp.Properties == nil {
 		resp.Properties = resource.PropertyMap{}
 	}
-	// Only add __internal back if it was originally in the inputs.
+
+	// If the provider tries to drop the versions field reset it back to the original value.
+	if _, ok := resp.Properties[versionKey]; !ok {
+		// Only set it if we had it originally
+		if _, ok := req.News[versionKey]; ok {
+			resp.Properties[versionKey] = req.News[versionKey]
+		}
+	}
+	// If the provider tries to change the version field return an error
+	if newV, ok := resp.Properties[versionKey]; ok {
+		if oldV, ok := req.News[versionKey]; ok {
+			if !oldV.DeepEquals(newV) {
+				return plugin.CheckResponse{}, fmt.Errorf("provider %q attempted to change version from %q to %q",
+					req.URN, oldV.StringValue(), newV.StringValue())
+			}
+		}
+	}
+
+	// We stripped __internal off of "News" when we passed it to CheckConfig, we need to readd it the checked
+	// properties returned from the plugin. Only add __internal back if it was originally in the inputs.
 	if _, has := req.News[internalKey]; has {
+		// Before we reset it warn the user that the providers data is being discarded
+		if _, has := resp.Properties[internalKey]; has {
+			r.host.Log(diag.Warning, req.URN, "provider attempted to use __internal key that is reserved by the engine", 0)
+		}
 		resp.Properties[internalKey] = req.News[internalKey]
 	}
 
@@ -642,7 +680,7 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 // instance with the given state and fixes up aliases.
 func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 	urn := res.URN
-	if !IsProviderType(urn.Type()) {
+	if !providers.IsProviderType(urn.Type()) {
 		return fmt.Errorf("urn %v is not a provider type", urn)
 	}
 
@@ -666,7 +704,7 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 	provider, ok := r.deleteProvider(mustNewReference(urn, UnconfiguredID))
 	if !ok {
 		// Else we need to load it fresh
-		providerPkg := GetProviderPackage(urn.Type())
+		providerPkg := providers.GetProviderPackage(urn.Type())
 
 		// Parse the provider version, then load, configure, and register the provider.
 		name, err := GetProviderName(providerPkg, res.Inputs)
@@ -733,7 +771,7 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 		// The unconfigured provider may have been Same'd after Check and this provider could be a replacement create.
 		// In which case we need to start up a fresh copy.
 
-		providerPkg := GetProviderPackage(req.URN.Type())
+		providerPkg := providers.GetProviderPackage(req.URN.Type())
 
 		// Parse the provider version, then load, configure, and register the provider.
 		name, err := GetProviderName(providerPkg, req.Properties)

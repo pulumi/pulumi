@@ -35,18 +35,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func chdir(t *testing.T, dir string) {
-	cwd, err := os.Getwd()
-	assert.NoError(t, err)
-	assert.NoError(t, os.Chdir(dir)) // Set directory
-	t.Cleanup(func() {
-		assert.NoError(t, os.Chdir(cwd)) // Restore directory
-		restoredDir, err := os.Getwd()
-		assert.NoError(t, err)
-		assert.Equal(t, cwd, restoredDir)
-	})
-}
-
 // TestRegress13774 checks that you can run `pulumi new` on an existing project as described in the
 // Pulumi Cloud new project instructions.
 
@@ -58,7 +46,7 @@ func TestRegress13774(t *testing.T) {
 	projectName := genUniqueName(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	args := newArgs{
 		interactive:       false,
@@ -68,18 +56,19 @@ func TestRegress13774(t *testing.T) {
 		description:       "description", // Needs special escaping for YAML
 		templateNameOrURL: "typescript",
 		force:             true,
+		languageTemplate:  languageTemplateMock,
 	}
 
 	// Create new project.
 	err := runNew(context.Background(), args)
 	defer removeStack(t, tempdir, args.stack)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create new stack on an existing project.
 	args.stack = strings.Join([]string{orgName, projectName, "dev"}, "/")
 	err = runNew(context.Background(), args)
 	defer removeStack(t, tempdir, args.stack)
-	assert.NoError(t, err, "should be able to run `pulumi new` successfully on an existing project")
+	require.NoError(t, err, "should be able to run `pulumi new` successfully on an existing project")
 }
 
 //nolint:paralleltest // changes directory for process
@@ -87,7 +76,7 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	fullStackName := fmt.Sprintf("%s/%s/%s", currentUser(t), filepath.Base(tempdir), stackName)
 	orgStackName := fmt.Sprintf("%s/%s", currentUser(t), stackName)
@@ -100,10 +89,11 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 		description:       "foo: bar", // Needs special escaping for YAML
 		stack:             orgStackName,
 		templateNameOrURL: "typescript",
+		languageTemplate:  languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, fullStackName, loadStackName(t))
 	removeStack(t, tempdir, orgStackName)
@@ -111,10 +101,11 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 
 //nolint:paralleltest // changes directory for process
 func TestCreatingStackWithNumericName(t *testing.T) {
+	t.Skip("https://github.com/pulumi/pulumi/issues/20410")
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	// This test requires a numeric project name.
 	// Project names have to be unique or this test will fail.
@@ -133,13 +124,14 @@ func TestCreatingStackWithNumericName(t *testing.T) {
 		secretsProvider:   "default",
 		stack:             orgStackName,
 		templateNameOrURL: "yaml",
+		languageTemplate:  languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	p := loadProject(t, tempdir)
-	assert.NotNil(t, p)
+	require.NotNil(t, p)
 
 	assert.Equal(t, p.Name.String(), numericProjectName)
 
@@ -152,7 +144,7 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 	uniqueProjectName := filepath.Base(tempdir)
 
 	fullStackName := fmt.Sprintf("%s/%s/%s", currentUser(t), filepath.Base(tempdir), stackName)
@@ -163,10 +155,11 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 		prompt:            promptMock(uniqueProjectName, orgStackName),
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
+		languageTemplate:  languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, fullStackName, loadStackName(t))
 	removeStack(t, tempdir, orgStackName)
@@ -177,7 +170,7 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 	defaultProjectName := filepath.Base(tempdir)
 
 	args := newArgs{
@@ -187,10 +180,11 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 		stack:             stackName,
 		templateNameOrURL: "typescript",
 		yes:               true,
+		languageTemplate:  languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	removeStack(t, tempdir, stackName)
 
@@ -215,7 +209,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	t.Setenv(env.BackendURL.Var().Name(), backendURL)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 	defaultProjectName := filepath.Base(tempdir)
 
 	args := newArgs{
@@ -225,19 +219,89 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 		stack:             stackName,
 		templateNameOrURL: "typescript",
 		yes:               true,
+		languageTemplate:  languageTemplateMock,
 	}
 
-	assert.NoError(t, runNew(context.Background(), args))
+	require.NoError(t, runNew(context.Background(), args))
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, defaultProjectName, proj.Name.String())
 	// Expect the stack directory to have a checkpoint file for the stack.
 	_, err = os.Stat(filepath.Join(
 		backendDir, workspace.BookkeepingDir, workspace.StackDir, defaultProjectName, stackName+".json"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	b, err = backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, nil, display.Options{})
 	require.NoError(t, err)
 	assert.Equal(t, backendURL, b.URL())
+}
+
+//nolint:paralleltest // changes directory for process
+func TestRunNewYesNoTemplate(t *testing.T) {
+	tempdir := tempProjectDir(t)
+	t.Chdir(tempdir)
+
+	args := newArgs{
+		yes:               true,
+		interactive:       false,
+		templateNameOrURL: "", // empty
+		prompt:            ui.PromptForValue,
+		chooseTemplate:    ChooseTemplate,
+		secretsProvider:   "default",
+		stack:             stackName,
+		generateOnly:      true,
+		languageTemplate:  languageTemplateMock,
+	}
+
+	err := runNew(context.Background(), args)
+	require.ErrorContains(t, err, "template or url is required when running in non-interactive mode")
+}
+
+//nolint:paralleltest // changes directory for process
+func TestRunNewYesWithTemplate(t *testing.T) {
+	tempdir := tempProjectDir(t)
+	t.Chdir(tempdir)
+
+	args := newArgs{
+		yes:               true,
+		interactive:       false,
+		templateNameOrURL: "yaml",
+		prompt:            ui.PromptForValue,
+		secretsProvider:   "default",
+		stack:             stackName,
+		generateOnly:      true,
+		languageTemplate:  languageTemplateMock,
+	}
+
+	err := runNew(context.Background(), args)
+	require.NoError(t, err)
+	proj := loadProject(t, args.dir)
+	require.Equal(t, "yaml", proj.Runtime.Name())
+}
+
+// pulumi new --language yaml --yes --non-interactive
+//
+//nolint:paralleltest // changes directory for process
+func TestRunNewYesWithAILanguage(t *testing.T) {
+	tempdir := tempProjectDir(t)
+	t.Chdir(tempdir)
+
+	args := newArgs{
+		yes:                   true,
+		interactive:           false,
+		aiLanguage:            "yaml",
+		aiPrompt:              "", // empty
+		prompt:                ui.PromptForValue,
+		chooseTemplate:        ChooseTemplate,
+		secretsProvider:       "default",
+		stack:                 stackName,
+		generateOnly:          true,
+		promptForAIProjectURL: promptForAIProjectURL,
+		languageTemplate:      languageTemplateMock,
+	}
+
+	err := runNew(context.Background(), args)
+	require.ErrorContains(t, err,
+		"the --ai <prompt> flag is required when running in non-interactive mode with the --language flag")
 }
 
 const (
@@ -264,23 +328,23 @@ func promptMock(name string, stackName string) promptForValueFunc {
 
 func loadProject(t *testing.T, dir string) *workspace.Project {
 	path, err := workspace.DetectProjectPathFrom(dir)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	proj, err := workspace.LoadProject(path)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return proj
 }
 
 func currentUser(t *testing.T) string {
 	ctx := context.Background()
 	b, err := backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, nil, display.Options{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	currentUser, _, _, err := b.CurrentUser()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return currentUser
 }
 
 func loadStackName(t *testing.T) string {
-	w, err := workspace.New()
+	w, err := pkgWorkspace.Instance.New()
 	require.NoError(t, err)
 	return w.Settings().Stack
 }
@@ -289,13 +353,13 @@ func removeStack(t *testing.T, dir, name string) {
 	project := loadProject(t, dir)
 	ctx := context.Background()
 	b, err := backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, project, display.Options{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	ref, err := b.ParseStackReference(name)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	stack, err := b.GetStack(context.Background(), ref)
-	assert.NoError(t, err)
-	_, err = b.RemoveStack(context.Background(), stack, false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
+	_, err = b.RemoveStack(context.Background(), stack, false /*force*/, false /*removeBackups*/)
+	require.NoError(t, err)
 }
 
 func skipIfShortOrNoPulumiAccessToken(t *testing.T) {

@@ -192,7 +192,7 @@ func TestGetPackagePrivatePackage(t *testing.T) {
 	assert.ErrorIs(t, err, registry.ErrNotFound)
 }
 
-func TestSearchByName(t *testing.T) {
+func TestListPackages(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -251,7 +251,7 @@ func TestSearchByName(t *testing.T) {
 	}))
 
 	results := []apitype.PackageMetadata{}
-	for pkg, err := range client.SearchByName(ctx, ref("castai")) {
+	for pkg, err := range client.ListPackages(ctx, ref("castai")) {
 		require.NoError(t, err)
 		results = append(results, pkg)
 	}
@@ -293,7 +293,7 @@ func TestSearchByName(t *testing.T) {
 	}, results)
 }
 
-func TestSearchByNameNoMatches(t *testing.T) {
+func TestListPackagesNoMatches(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -309,7 +309,7 @@ func TestSearchByNameNoMatches(t *testing.T) {
 	}))
 
 	results := []apitype.PackageMetadata{}
-	for pkg, err := range client.SearchByName(ctx, ref("404-not-found")) {
+	for pkg, err := range client.ListPackages(ctx, ref("404-not-found")) {
 		require.NoError(t, err)
 		results = append(results, pkg)
 	}

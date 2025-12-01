@@ -21,12 +21,12 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
 
 // CurrentStack reads the current stack and returns an instance connected to its backend provider.
-func CurrentStack(ctx context.Context, b backend.Backend) (backend.Stack, error) {
-	stackName, err := getCurrentStackName()
+func CurrentStack(ctx context.Context, ws pkgWorkspace.Context, b backend.Backend) (backend.Stack, error) {
+	stackName, err := getCurrentStackName(ws)
 	if err != nil {
 		return nil, err
 	} else if stackName == "" {
@@ -46,13 +46,13 @@ func CurrentStack(ctx context.Context, b backend.Backend) (backend.Stack, error)
 	return b.GetStack(ctx, ref)
 }
 
-func getCurrentStackName() (string, error) {
+func getCurrentStackName(ws pkgWorkspace.Context) (string, error) {
 	// PULUMI_STACK environment variable overrides any stack name in the workspace settings
 	if stackName, ok := os.LookupEnv("PULUMI_STACK"); ok {
 		return stackName, nil
 	}
 
-	w, err := workspace.New()
+	w, err := ws.New()
 	if err != nil {
 		return "", err
 	}
@@ -82,9 +82,9 @@ func getStackNameWithLegacyOrgNameIfNeeded(b backend.Backend, stackName string) 
 }
 
 // SetCurrentStack changes the current stack to the given stack name.
-func SetCurrentStack(name string) error {
+func SetCurrentStack(ws pkgWorkspace.Context, name string) error {
 	// Switch the current workspace to that stack.
-	w, err := workspace.New()
+	w, err := ws.New()
 	if err != nil {
 		return err
 	}

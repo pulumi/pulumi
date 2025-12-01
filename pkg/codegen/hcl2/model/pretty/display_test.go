@@ -27,7 +27,6 @@ type test struct {
 
 func testFormatter(t *testing.T, tests []test) {
 	for _, tt := range tests {
-		tt := tt
 		t.Run("", func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, tt.expected, tt.formatter.String())

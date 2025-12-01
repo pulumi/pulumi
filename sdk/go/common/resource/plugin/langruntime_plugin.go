@@ -56,7 +56,7 @@ type langhost struct {
 
 // NewLanguageRuntime binds to a language's runtime plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
-func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory string, info ProgramInfo,
+func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory string,
 ) (LanguageRuntime, error) {
 	attachPort, err := GetLanguageAttachPort(runtime)
 	if err != nil {
@@ -120,7 +120,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 
 		contract.Assertf(path != "", "unexpected empty path for language plugin %s", runtime)
 
-		args, err := buildArgsForNewPlugin(host, info.RootDirectory(), info.Options())
+		args, err := buildArgsForNewPlugin(host)
 		if err != nil {
 			return nil, err
 		}
@@ -193,7 +193,7 @@ func langRuntimePluginDialOptions(ctx *Context, runtime string) []grpc.DialOptio
 	)
 
 	if ctx.DialOptions != nil {
-		metadata := map[string]interface{}{
+		metadata := map[string]any{
 			"mode": "client",
 			"kind": "language",
 		}
@@ -206,22 +206,10 @@ func langRuntimePluginDialOptions(ctx *Context, runtime string) []grpc.DialOptio
 	return dialOpts
 }
 
-func buildArgsForNewPlugin(host Host, root string, options map[string]interface{}) ([]string, error) {
-	root, err := filepath.Abs(root)
-	if err != nil {
-		return nil, err
-	}
-	args := slice.Prealloc[string](len(options))
-
-	for k, v := range options {
-		args = append(args, fmt.Sprintf("-%s=%v", k, v))
-	}
-
-	args = append(args, "-root="+filepath.Clean(root))
-
+func buildArgsForNewPlugin(host Host) ([]string, error) {
+	args := []string{}
 	// NOTE: positional argument for the server addresss must come last
 	args = append(args, host.ServerAddr())
-
 	return args, nil
 }
 
@@ -390,11 +378,6 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 	for i, k := range info.ConfigSecretKeys {
 		configSecretKeys[i] = k.String()
 	}
-	configPropertyMap, err := MarshalProperties(info.ConfigPropertyMap,
-		MarshalOptions{RejectUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
-	if err != nil {
-		return "", false, err
-	}
 
 	minfo, err := info.Info.Marshal()
 	if err != nil {
@@ -402,22 +385,21 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 	}
 
 	resp, err := h.client.Run(h.ctx.Request(), &pulumirpc.RunRequest{
-		MonitorAddress:    info.MonitorAddress,
-		Pwd:               info.Pwd,
-		Program:           info.Info.EntryPoint(),
-		Args:              info.Args,
-		Project:           info.Project,
-		Stack:             info.Stack,
-		Config:            config,
-		ConfigSecretKeys:  configSecretKeys,
-		ConfigPropertyMap: configPropertyMap,
-		DryRun:            info.DryRun,
-		QueryMode:         info.QueryMode,
-		Parallel:          info.Parallel,
-		Organization:      info.Organization,
-		Info:              minfo,
-		LoaderTarget:      info.LoaderAddress,
-		AttachDebugger:    info.AttachDebugger,
+		MonitorAddress:   info.MonitorAddress,
+		Pwd:              info.Pwd,
+		Program:          info.Info.EntryPoint(),
+		Args:             info.Args,
+		Project:          info.Project,
+		Stack:            info.Stack,
+		Config:           config,
+		ConfigSecretKeys: configSecretKeys,
+		DryRun:           info.DryRun,
+		QueryMode:        info.QueryMode,
+		Parallel:         info.Parallel,
+		Organization:     info.Organization,
+		Info:             minfo,
+		LoaderTarget:     info.LoaderAddress,
+		AttachDebugger:   info.AttachDebugger,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -600,6 +582,32 @@ func (h *langhost) RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPromp
 
 	logging.V(7).Infof("langhost[%v].RuntimeOptionsPrompts() success", h.runtime)
 	return prompts, nil
+}
+
+func (h *langhost) Template(info ProgramInfo, projectName tokens.PackageName) error {
+	logging.V(7).Infof("langhost[%v].Template() executing", h.runtime)
+
+	minfo, err := info.Marshal()
+	if err != nil {
+		return err
+	}
+
+	_, err = h.client.Template(h.ctx.Request(), &pulumirpc.TemplateRequest{
+		Info:        minfo,
+		ProjectName: string(projectName),
+	})
+	if err != nil {
+		if status.Code(err) == codes.Unimplemented {
+			logging.V(7).Infof("langhost[%v].Template() not implemented", h.runtime)
+			return nil
+		}
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("langhost[%v].Template() failed: err=%v", h.runtime, rpcError)
+		return rpcError
+	}
+
+	logging.V(7).Infof("langhost[%v].Template() success", h.runtime)
+	return nil
 }
 
 func (h *langhost) About(info ProgramInfo) (AboutInfo, error) {
@@ -889,24 +897,72 @@ func languageHandshake(
 }
 
 func (h *langhost) Link(
-	info ProgramInfo, localDependencies map[string]string,
-) error {
-	label := fmt.Sprintf("langhost[%v].Link(%v, %v)", h.runtime, info, localDependencies)
+	info ProgramInfo, deps []workspace.LinkablePackageDescriptor, loaderTarget string,
+) (string, error) {
+	label := fmt.Sprintf("langhost[%v].Link(%v, %v)", h.runtime, info, deps)
 	logging.V(7).Infof("%s executing", label)
 
 	minfo, err := info.Marshal()
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	_, err = h.client.Link(h.ctx.Request(), &pulumirpc.LinkRequest{
-		Info:              minfo,
-		LocalDependencies: localDependencies,
+	packages := []*pulumirpc.LinkRequest_LinkDependency{}
+	for _, dep := range deps {
+		version := ""
+		if dep.Descriptor.Version != nil {
+			version = dep.Descriptor.Version.String()
+		}
+
+		var parameterization *pulumirpc.PackageParameterization
+		if dep.Descriptor.Parameterization != nil {
+			parameterization = &pulumirpc.PackageParameterization{
+				Name:    dep.Descriptor.Parameterization.Name,
+				Version: dep.Descriptor.Parameterization.Version.String(),
+				Value:   dep.Descriptor.Parameterization.Value,
+			}
+		}
+
+		packages = append(packages, &pulumirpc.LinkRequest_LinkDependency{
+			Path: dep.Path,
+			Package: &pulumirpc.PackageDependency{
+				Name:             dep.Descriptor.Name,
+				Version:          version,
+				Server:           dep.Descriptor.PluginDownloadURL,
+				Kind:             string(dep.Descriptor.Kind),
+				Parameterization: parameterization,
+			},
+		})
+	}
+
+	res, err := h.client.Link(h.ctx.Request(), &pulumirpc.LinkRequest{
+		Info:         minfo,
+		Packages:     packages,
+		LoaderTarget: loaderTarget,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
-		return rpcError
+		return "", rpcError
+	}
+
+	logging.V(7).Infof("%s success", label)
+	return res.ImportInstructions, nil
+}
+
+func (h *langhost) Cancel() error {
+	label := fmt.Sprintf("langhost[%v].Cancel()", h.runtime)
+	logging.V(7).Infof("%s executing", label)
+
+	_, err := h.client.Cancel(h.ctx.Request(), &emptypb.Empty{})
+	if err != nil {
+		status, ok := status.FromError(err)
+		if ok && status.Code() == codes.Unimplemented {
+			logging.V(7).Infof("%s not implemented by language runtime, skipping", label)
+			return nil
+		}
+
+		return fmt.Errorf("failed to cancel language runtime: %w", err)
 	}
 
 	logging.V(7).Infof("%s success", label)

@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
     "foo_bar/README.md",
     "foo_bar/__init__.py",
     "foo_bar/_utilities.py",

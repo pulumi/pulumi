@@ -62,6 +62,10 @@ type ProviderHandshakeRequest struct {
 
 	// If true the engine supports letting the provider mark resource states as requiring refresh before update.
 	SupportsRefreshBeforeUpdate bool
+
+	// If true the engine will send `Preview` to `Invoke` methods to let them know if the current operation is a preview
+	// or up.
+	InvokeWithPreview bool
 }
 
 // The type of responses sent as part of a Handshake call.
@@ -87,6 +91,9 @@ type ProviderHandshakeResponse struct {
 // a provider from either the command line or from within a Pulumi program, respectively.
 type ParameterizeParameters interface {
 	isParameterizeParameters()
+
+	// Empty returns true if the parameterization is empty or nil.
+	Empty() bool
 }
 
 type (
@@ -112,8 +119,18 @@ type (
 // isParameterizeParameters is a no-op method that marks ParameterizeArgs as implementing ParameterizeParameters.
 func (*ParameterizeArgs) isParameterizeParameters() {}
 
+// Empty returns true if the parameterization is empty or nil.
+func (p *ParameterizeArgs) Empty() bool {
+	return p == nil || len(p.Args) == 0
+}
+
 // isParameterizeParameters is a no-op method that marks ParameterizeValue as implementing ParameterizeParameters.
 func (*ParameterizeValue) isParameterizeParameters() {}
+
+// Empty returns true if the parameterization is empty or nil.
+func (p *ParameterizeValue) Empty() bool {
+	return p == nil || len(p.Value) == 0
+}
 
 // The type of requests sent as part of a Parameterize call.
 type ParameterizeRequest struct {
@@ -333,8 +350,9 @@ type ConstructRequest struct {
 type ConstructResponse = ConstructResult
 
 type InvokeRequest struct {
-	Tok  tokens.ModuleMember
-	Args resource.PropertyMap
+	Tok     tokens.ModuleMember
+	Args    resource.PropertyMap
+	Preview bool
 }
 
 type InvokeResponse struct {
@@ -758,6 +776,9 @@ type ConstructInfo struct {
 	DryRun           bool                  // true if we are performing a dry-run (preview).
 	Parallel         int32                 // the degree of parallelism for resource operations (<=1 for serial).
 	MonitorAddress   string                // the RPC address to the host resource monitor.
+
+	// A handle to the stack trace that originated the Construct. Used to stitch together stack traces across plugins.
+	StackTraceHandle string
 }
 
 // ConstructOptions captures options for a call to Construct.
@@ -788,6 +809,10 @@ type ConstructOptions struct {
 	// it will also delete this resource.
 	DeletedWith resource.URN
 
+	// ReplaceWith specifies that if any of the given resources are replaced,
+	// this resource will also be replaced.
+	ReplaceWith []resource.URN
+
 	// DeleteBeforeReplace specifies that replacements of this resource
 	// should delete the old resource before creating the new resource.
 	DeleteBeforeReplace *bool
@@ -800,9 +825,17 @@ type ConstructOptions struct {
 	// the resource to be replaced.
 	ReplaceOnChanges []string
 
+	// ReplacementTrigger specifies that if set, the engine will diff this with
+	// the last recorded value, and trigger a replace if they are not equal.
+	ReplacementTrigger resource.PropertyValue
+
 	// RetainOnDelete is true if deletion of the resource should not
 	// delete the resource in the provider.
 	RetainOnDelete *bool
+
+	// ResourceHooks specifies hooks to be executed before and after
+	// resource operations.
+	ResourceHooks map[resource.HookType][]string
 }
 
 // CustomTimeouts overrides default timeouts for resource operations.
@@ -831,6 +864,9 @@ type CallInfo struct {
 	DryRun         bool                  // true if we are performing a dry-run (preview).
 	Parallel       int32                 // the degree of parallelism for resource operations (<=1 for serial).
 	MonitorAddress string                // the RPC address to the host resource monitor.
+
+	// A handle to the stack trace that originated the Call. Used to stitch together stack traces across plugins.
+	StackTraceHandle string
 }
 
 // CallOptions captures options for a call to Call.

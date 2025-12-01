@@ -27,7 +27,9 @@ import (
 
 func init() {
 	LanguageTests["l2-provider-call"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.CallProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.CallProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Config: config.Map{
@@ -71,7 +73,7 @@ func init() {
 					require.Len(l, outputs, 1, "expected 1 output")
 					AssertPropertyMapMember(
 						l, outputs,
-						"defaultProviderValue", resource.NewStringProperty("defaultProvValuedefaultValue"),
+						"defaultProviderValue", resource.NewProperty("defaultProvValuedefaultValue"),
 					)
 				},
 			},

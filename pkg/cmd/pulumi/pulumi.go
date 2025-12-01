@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -70,15 +71,18 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schema"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templatecmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/trace"
 	cmdVersion "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/version"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/whoami"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -190,12 +194,26 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		logging.Flush()
 		cmdutil.CloseTracing()
 
+		if logging.Verbose > 0 && !logging.LogToStderr {
+			logFile, err := logging.GetLogfilePath()
+			if err != nil {
+				logging.Warningf("could not find the log file: %s", err)
+				logging.Flush()
+			} else {
+				fmt.Printf("The log file for this run is at %s\n", logFile)
+			}
+		}
+
 		if profiling != "" {
 			if err := cmdutil.CloseProfiling(profiling); err != nil {
 				logging.Warningf("could not close profiling: %v", err)
 			}
 		}
 	}
+
+	// We run this method for its side-effects. On windows, this will enable the windows terminal
+	// to understand ANSI escape codes.
+	_, _, _ = term.StdStreams()
 
 	cmd := &cobra.Command{
 		Use:           "pulumi",
@@ -219,10 +237,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			"\n" +
 			"For more information, please visit the project page: https://www.pulumi.com/docs/",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			// We run this method for its side-effects. On windows, this will enable the windows terminal
-			// to understand ANSI escape codes.
-			_, _, _ = term.StdStreams()
-
 			// If we fail before we start the async update check, go ahead and close the
 			// channel since we know it will never receive a value.
 			var waitForUpdateCheck bool
@@ -272,6 +286,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			}
 			cmd.SetContext(ctx)
 
+			cmdutil.InitPprofServer(ctx)
+
 			if logging.Verbose >= 11 {
 				logging.Warningf("log level 11 will print sensitive information such as api tokens and request headers")
 			}
@@ -280,6 +296,15 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			// that so that log messages go to the logging package that we use everywhere else instead.
 			loggingWriter := &loggingWriter{}
 			log.SetOutput(loggingWriter)
+
+			ver, err := semver.ParseTolerant(version.Version)
+			if err != nil {
+				logging.V(3).Infof("error parsing current version: %s", err)
+			} else {
+				logging.V(3).Info("Pulumi " + ver.String())
+			}
+			metadata := getCLIMetadata(cmd, os.Environ())
+			logging.V(9).Infof("CLI Metadata: %v", metadata)
 
 			if profiling != "" {
 				if err := cmdutil.InitProfiling(profiling, memProfileRate); err != nil {
@@ -293,7 +318,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				// Run the version check in parallel so that it doesn't block executing the command.
 				// If there is a new version to report, we will do so after the command has finished.
 				waitForUpdateCheck = true
-				metadata := getCLIMetadata(cmd)
 				go func() {
 					updateCheckResult <- checkForUpdate(ctx, httpstate.PulumiCloudURL, metadata)
 					close(updateCheckResult)
@@ -345,13 +369,13 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			Name: "Stack Management Commands",
 			Commands: []*cobra.Command{
 				newcmd.NewNewCmd(),
-				config.NewConfigCmd(),
+				config.NewConfigCmd(pkgWorkspace.Instance),
 				cmdStack.NewStackCmd(),
-				console.NewConsoleCmd(),
+				console.NewConsoleCmd(pkgWorkspace.Instance),
 				operations.NewImportCmd(),
 				operations.NewRefreshCmd(),
 				state.NewStateCmd(),
-				install.NewInstallCmd(),
+				install.NewInstallCmd(pkgWorkspace.Instance),
 			},
 		},
 		{
@@ -360,7 +384,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				operations.NewUpCmd(),
 				operations.NewDestroyCmd(),
 				operations.NewPreviewCmd(),
-				cancel.NewCancelCmd(),
+				cancel.NewCancelCmd(pkgWorkspace.Instance),
 			},
 		},
 		{
@@ -372,12 +396,12 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		{
 			Name: "Pulumi Cloud Commands",
 			Commands: []*cobra.Command{
-				auth.NewLoginCmd(),
-				auth.NewLogoutCmd(),
+				auth.NewLoginCmd(pkgWorkspace.Instance),
+				auth.NewLogoutCmd(pkgWorkspace.Instance),
 				whoami.NewWhoAmICmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager),
 				org.NewOrgCmd(),
 				project.NewProjectCmd(),
-				deployment.NewDeploymentCmd(),
+				deployment.NewDeploymentCmd(pkgWorkspace.Instance),
 			},
 		},
 		{
@@ -392,13 +416,14 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				plugin.NewPluginCmd(),
 				schema.NewSchemaCmd(),
 				packagecmd.NewPackageCmd(),
+				templatecmd.NewTemplateCmd(),
 			},
 		},
 		{
 			Name: "Other Commands",
 			Commands: []*cobra.Command{
 				cmdVersion.NewVersionCmd(),
-				about.NewAboutCmd(),
+				about.NewAboutCmd(pkgWorkspace.Instance),
 				completion.NewGenCompletionCmd(cmd),
 			},
 		},
@@ -416,9 +441,9 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		{
 			Name: "Experimental Commands",
 			Commands: []*cobra.Command{
-				convert.NewConvertCmd(),
+				convert.NewConvertCmd(pkgWorkspace.Instance),
 				operations.NewWatchCmd(),
-				logs.NewLogsCmd(),
+				logs.NewLogsCmd(pkgWorkspace.Instance),
 			},
 		},
 		// We have a set of options that are useful for developers of pulumi
@@ -454,6 +479,9 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	// completion command as a recommended best practice.
 	cmd.CompletionOptions.DisableDefaultCmd = true
 
+	// With all the commands registered, we can walk the tree to build the
+	// environment variable declarations.
+	declareFlagsAsEnvironmentVariables(cmd)
 	return cmd, cleanup
 }
 
@@ -509,53 +537,51 @@ func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]st
 	}
 
 	isCurVerDev := isDevVersion(curVer)
-	shouldQuery, canPrompt, lastPromptTimestampMS := checkVersionCache(isCurVerDev)
+	canPrompt, lastPromptTimestampMS := checkVersionPrompt(isCurVerDev)
 
-	if shouldQuery {
-		latestVer, oldestAllowedVer, devVer, cacheMS, err := getCLIVersionInfo(ctx, cloudURL, metadata)
-		if err != nil {
-			logging.V(3).Infof("error fetching latest version information "+
-				"(set `%s=true` to skip update checks): %s", env.SkipUpdateCheck.Var().Name(), err)
+	latestVer, oldestAllowedVer, devVer, err := getCLIVersionInfo(ctx, cloudURL, metadata)
+	if err != nil {
+		logging.V(3).Infof("error fetching latest version information "+
+			"(set `%s=true` to skip update checks): %s", env.SkipUpdateCheck.Var().Name(), err)
+	}
+
+	willPrompt := canPrompt &&
+		((isCurVerDev && haveNewerDevVersion(devVer, curVer)) ||
+			(!isCurVerDev && oldestAllowedVer.GT(curVer)))
+
+	if willPrompt {
+		lastPromptTimestampMS = time.Now().UnixMilli() // We're prompting, update the timestamp
+	}
+
+	err = cacheVersionInfo(cachedVersionInfo{
+		LatestVersion:         latestVer.String(),
+		OldestWithoutWarning:  oldestAllowedVer.String(),
+		LatestDevVersion:      devVer.String(),
+		LastPromptTimeStampMS: lastPromptTimestampMS,
+	})
+	if err != nil {
+		logging.V(3).Infof("failed to cache version info: %s", err)
+	}
+
+	if willPrompt {
+		if isCurVerDev {
+			latestVer = devVer
 		}
 
-		willPrompt := canPrompt &&
-			((isCurVerDev && haveNewerDevVersion(devVer, curVer)) ||
-				(!isCurVerDev && oldestAllowedVer.GT(curVer)))
-		if willPrompt {
-			lastPromptTimestampMS = time.Now().UnixMilli() // We're prompting, update the timestamp
-		}
-
-		err = cacheVersionInfo(cachedVersionInfo{
-			LatestVersion:         latestVer.String(),
-			OldestWithoutWarning:  oldestAllowedVer.String(),
-			LatestDevVersion:      devVer.String(),
-			CacheMS:               int64(cacheMS),
-			LastPromptTimeStampMS: lastPromptTimestampMS,
-		})
-		if err != nil {
-			logging.V(3).Infof("failed to cache version info: %s", err)
-		}
-
-		if willPrompt {
-			if isCurVerDev {
-				latestVer = devVer
-			}
-
-			msg := getUpgradeMessage(latestVer, curVer, isCurVerDev)
-			return diag.RawMessage("", msg)
-		}
+		msg := getUpgradeMessage(latestVer, curVer, isCurVerDev)
+		return diag.RawMessage("", msg)
 	}
 
 	return nil
 }
 
 // getCLIMetadata returns a map of metadata about the given CLI command.
-func getCLIMetadata(cmd *cobra.Command) map[string]string {
+func getCLIMetadata(cmd *cobra.Command, environ []string) map[string]string {
 	if cmd == nil {
 		return nil
 	}
 
-	command := cmd.Name()
+	command := cmd.CommandPath()
 
 	var flags strings.Builder
 	i := 0
@@ -569,9 +595,19 @@ func getCLIMetadata(cmd *cobra.Command) map[string]string {
 		}
 	})
 
+	env := []string{}
+	for _, e := range environ {
+		parts := strings.Split(e, "=")
+		if len(parts) == 2 && strings.HasPrefix(parts[0], "PULUMI_") {
+			env = append(env, parts[0])
+		}
+	}
+	envString := strings.Join(env, " ")
+
 	metadata := map[string]string{
-		"Command": command,
-		"Flags":   flags.String(),
+		"Command":     command,
+		"Flags":       flags.String(),
+		"Environment": envString,
 	}
 
 	return metadata
@@ -583,7 +619,7 @@ func getCLIVersionInfo(
 	ctx context.Context,
 	cloudURL string,
 	metadata map[string]string,
-) (semver.Version, semver.Version, semver.Version, int, error) {
+) (semver.Version, semver.Version, semver.Version, error) {
 	creds, err := workspace.GetStoredCredentials()
 	apiToken := creds.AccessTokens[creds.Current]
 
@@ -595,9 +631,9 @@ func getCLIVersionInfo(
 	client := client.NewClient(cloudURL, apiToken, false, cmdutil.Diag())
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	latest, oldest, dev, cacheMS, err := client.GetCLIVersionInfo(ctx, metadata)
+	latest, oldest, dev, err := client.GetCLIVersionInfo(ctx, metadata)
 	if err != nil {
-		return semver.Version{}, semver.Version{}, semver.Version{}, 0, err
+		return semver.Version{}, semver.Version{}, semver.Version{}, err
 	}
 
 	brewLatest, isBrew, err := getLatestBrewFormulaVersion()
@@ -610,7 +646,7 @@ func getCLIVersionInfo(
 	}
 
 	// Don't return the err from getLatestBrewFormulaVersion here, we just log that above.
-	return latest, oldest, dev, cacheMS, nil
+	return latest, oldest, dev, nil
 }
 
 // cacheVersionInfo saves version information in a cache file to be looked up later.
@@ -650,27 +686,26 @@ func readVersionInfo() (cachedVersionInfo, error) {
 	return info, nil
 }
 
-// checkVersionCache determines if
-//   - we should query for the latest version
+// checkVersionPrompt determines if
 //   - enough time has passed since we last prompted the user
 //   - the timestamp when we last prompted the user
 //
-// If we can't read the cached versions file, we return true, true and a zero time,
-// indicating that we want to query and possibly prompt the user for an upgrade.
-func checkVersionCache(devVersion bool) (bool, bool, int64) {
+// If we can't read the cached versions file, we return true and a zero time,
+// indicating that we want to possibly prompt the user for an upgrade.
+func checkVersionPrompt(devVersion bool) (bool, int64) {
 	updateCheckFile, err := workspace.GetCachedVersionFilePath()
 	if err != nil {
-		return true, true, 0
+		return true, 0
 	}
 
 	ts, err := times.Stat(updateCheckFile)
 	if err != nil {
-		return true, true, 0
+		return true, 0
 	}
 
 	info, err := readVersionInfo()
 	if err != nil {
-		return true, true, 0
+		return true, 0
 	}
 
 	// Prompt at most once a day for regular versions, and at most once an hour for dev versions.
@@ -688,15 +723,7 @@ func checkVersionCache(devVersion bool) (bool, bool, int64) {
 	nextPrompt := lastPrompt.Add(promptCacheTime)
 	expired := nextPrompt.Before(time.Now())
 
-	query := true
-	// If we have a cache duration stored, see if the file was modified after
-	// that duration has elapsed.
-	if info.CacheMS > 0 {
-		cacheDuration := time.Duration(info.CacheMS) * time.Millisecond
-		query = time.Now().After(ts.ModTime().Add(cacheDuration))
-	}
-
-	return query, expired, lastPrompt.UnixMilli()
+	return expired, lastPrompt.UnixMilli()
 }
 
 // cachedVersionInfo is the on disk format of the version information the CLI caches between runs.
@@ -705,7 +732,6 @@ type cachedVersionInfo struct {
 	OldestWithoutWarning  string `json:"oldestWithoutWarning"`
 	LatestDevVersion      string `json:"latestDevVersion"`
 	LastPromptTimeStampMS int64  `json:"LastPromptMS,omitempty"`
-	CacheMS               int64  `json:"CacheMS,omitempty"`
 }
 
 // getUpgradeMessage gets a message to display to a user instructing them they are out of date and how to move from
@@ -713,13 +739,38 @@ type cachedVersionInfo struct {
 func getUpgradeMessage(latest semver.Version, current semver.Version, isDevVersion bool) string {
 	cmd := getUpgradeCommand(isDevVersion)
 
-	msg := fmt.Sprintf("A new version of Pulumi is available. To upgrade from version '%s' to '%s', ", current, latest)
+	// If the current version is "very old", we'll return a more urgent message. "Very old" is defined as more than 24
+	// minor versions behind when the major versions are the same. Assuming a release cadence of on average 1 minor
+	// version per week, this translates to roughly 6 months. Note that we don't consider major version differences, since
+	// it's hard to know what we'd want to do in those cases. E.g. it might be that a new version of Pulumi is radically
+	// different, rather than "just improved", and so we don't want to warn about that.
+	prefix := "A new version of Pulumi is available."
+
+	minorDiff := diffMinorVersions(current, latest)
+	if minorDiff > 24 {
+		prefix = colors.SpecAttention +
+			"You are running a very old version of Pulumi and should upgrade as soon as possible." + colors.Reset
+	}
+
+	msg := fmt.Sprintf("%s To upgrade from version '%s' to '%s', ", prefix, current, latest)
 	if cmd != "" {
 		msg += "run \n   " + cmd + "\nor "
 	}
 
 	msg += "visit https://pulumi.com/docs/install/ for manual instructions and release notes."
 	return msg
+}
+
+// diffMinorVersions compares two semver versions.
+//   - If the major versions of the two versions are the same, it returns the difference in their minor versions. This
+//     difference will be a positive number if v2 is greater than v1 and a negative number if v1 is greater than v2.
+//   - If the major versions differ, it returns 0.
+func diffMinorVersions(v1 semver.Version, v2 semver.Version) int64 {
+	if v1.Major != v2.Major {
+		return 0
+	}
+
+	return (int64)(v2.Minor - v1.Minor) //nolint:gosec
 }
 
 // getUpgradeCommand returns a command that will upgrade the CLI to the newest version. If we can not determine how
@@ -871,4 +922,81 @@ func isDevVersion(s semver.Version) bool {
 
 	devRegex := regexp.MustCompile(`\d*-g[0-9a-f]*$`)
 	return !s.Pre[0].IsNum && devRegex.MatchString(s.Pre[0].VersionStr)
+}
+
+// We want to expose all the flags on all the commands as configurable with
+// environment variables. To do this, we walk the Cobra command tree, and
+// declare an environment variable for each flag. Because the Cobra arguments
+// have some basic type information, we can use it to do things like accepting 1
+// and 0 as boolean values.
+func declareFlagsAsEnvironmentVariables(cmd *cobra.Command) {
+	convertToEnvironmentVariable := func(name string) string {
+		name = strings.ReplaceAll(name, "-", "_")
+		name = "OPTION_" + strings.ToUpper(name)
+
+		return name
+	}
+
+	exposeAsEnvironmentVariable := func(f *pflag.Flag) {
+		name := convertToEnvironmentVariable(f.Name)
+
+		var env declared.Value
+		switch f.Value.Type() {
+		case "int", "int32":
+			env = declared.Int(name, f.Usage)
+		case "bool":
+			env = declared.Bool(name, f.Usage)
+		default:
+			env = declared.String(name, f.Usage)
+		}
+
+		value, present := env.Underlying()
+		if f.Changed || !present {
+			return
+		}
+
+		switch f.Value.Type() {
+		case "bool":
+			switch strings.ToLower(value) {
+			case "true", "1":
+				_ = f.Value.Set("true")
+			case "false", "0":
+				_ = f.Value.Set("false")
+			}
+		case "stringArray", "stringSlice":
+			csv, err := parseArrayAsCSV(value)
+			if err != nil {
+				csv = []string{value}
+			}
+
+			for _, v := range csv {
+				_ = f.Value.Set(v)
+			}
+		case "string", "int":
+			_ = f.Value.Set(value)
+		default:
+			// Hello! If you're reading this, you've found a new CLI type and we don't
+			// know how to express it as an environment variable. Please add a case
+			// above to handle it.
+			panic("unexpected CLI type: " + f.Value.Type())
+		}
+
+		f.Changed = true
+	}
+
+	cmd.PersistentFlags().VisitAll(exposeAsEnvironmentVariable)
+	cmd.Flags().VisitAll(exposeAsEnvironmentVariable)
+
+	for _, command := range cmd.Commands() {
+		declareFlagsAsEnvironmentVariables(command)
+	}
+}
+
+func parseArrayAsCSV(val string) ([]string, error) {
+	if val == "" {
+		return []string{}, nil
+	}
+	stringReader := strings.NewReader(val)
+	csvReader := csv.NewReader(stringReader)
+	return csvReader.Read()
 }

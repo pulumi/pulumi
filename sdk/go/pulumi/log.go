@@ -17,10 +17,10 @@
 package pulumi
 
 import (
+	"context"
 	"strings"
 
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"golang.org/x/net/context"
 )
 
 // Log is a group of logging functions that can be called from a Go application that will be logged

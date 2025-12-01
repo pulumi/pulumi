@@ -59,7 +59,7 @@ func TestCounts(t *testing.T) {
 func TestEscape(t *testing.T) {
 	t.Parallel()
 
-	sink := discardSink()
+	sink := discardSink().(*defaultSink)
 
 	// Passing % chars in the argument should not yield %!(MISSING)s.
 	p, s := sink.Stringify(Error, Message("", "%s"), "lots of %v %s %d chars")

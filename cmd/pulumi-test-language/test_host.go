@@ -21,6 +21,7 @@ import (
 	"io"
 	"slices"
 	"strings"
+	"sync"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"google.golang.org/grpc"
@@ -45,11 +46,13 @@ type testHost struct {
 	host        plugin.Host
 	runtime     plugin.LanguageRuntime
 	runtimeName string
-	providers   map[string]plugin.Provider
+	providers   map[string]func() plugin.Provider
 
 	connections map[plugin.Provider]io.Closer
 
 	policies []plugin.Analyzer
+
+	closeMutex sync.Mutex
 }
 
 var _ plugin.Host = (*testHost)(nil)
@@ -130,14 +133,14 @@ func (h *testHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Prov
 			if parts[0] == key {
 				v := semver.MustParse(parts[1])
 				if provider == nil || v.GT(version) {
-					provider = p
+					provider = p()
 					version = v
 				}
 			}
 		}
 	} else {
 		key = fmt.Sprintf("%s@%s", descriptor.Name, descriptor.Version)
-		provider = h.providers[key]
+		provider = h.providers[key]()
 	}
 
 	if provider == nil {
@@ -164,7 +167,7 @@ func (h *testHost) CloseProvider(provider plugin.Provider) error {
 
 // LanguageRuntime returns the language runtime initialized by the test host.
 // ProgramInfo is only used here for compatibility reasons and will be removed from this function.
-func (h *testHost) LanguageRuntime(runtime string, info plugin.ProgramInfo) (plugin.LanguageRuntime, error) {
+func (h *testHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, error) {
 	if runtime != h.runtimeName {
 		return nil, fmt.Errorf("unexpected runtime %s", runtime)
 	}
@@ -172,12 +175,23 @@ func (h *testHost) LanguageRuntime(runtime string, info plugin.ProgramInfo) (plu
 }
 
 func (h *testHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Flags) error {
+	// Remove the builtin "pulumi" provider, as that's always available.
+	filtered := make([]workspace.PluginSpec, 0, len(plugins))
+	for _, plugin := range plugins {
+		if plugin.Kind == apitype.ResourcePlugin && plugin.Name == "pulumi" {
+			continue
+		}
+		filtered = append(filtered, plugin)
+	}
+	plugins = filtered
+
 	// EnsurePlugins will be called with the result of GetRequiredPlugins, so we can use this to check
 	// that that returned the expected plugins (with expected versions).
 	expected := mapset.NewSet[string]()
 	for _, provider := range h.providers {
-		pkg := provider.Pkg()
-		version, err := getProviderVersion(provider)
+		p := provider()
+		pkg := p.Pkg()
+		version, err := getProviderVersion(p)
 		if err != nil {
 			return fmt.Errorf("get provider version %s: %w", pkg, err)
 		}
@@ -207,8 +221,9 @@ func (h *testHost) ResolvePlugin(
 ) (*workspace.PluginInfo, error) {
 	if spec.Kind == apitype.ResourcePlugin {
 		for _, provider := range h.providers {
-			pkg := provider.Pkg()
-			providerVersion, err := getProviderVersion(provider)
+			p := provider()
+			pkg := p.Pkg()
+			providerVersion, err := getProviderVersion(p)
 			if err != nil {
 				return nil, fmt.Errorf("get provider version %s: %w", pkg, err)
 			}
@@ -241,6 +256,8 @@ func (h *testHost) SignalCancellation() error {
 }
 
 func (h *testHost) Close() error {
+	h.closeMutex.Lock()
+	defer h.closeMutex.Unlock()
 	errs := make([]error, 0)
 	for _, closer := range h.connections {
 		if err := closer.Close(); err != nil {

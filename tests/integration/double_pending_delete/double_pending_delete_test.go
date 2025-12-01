@@ -12,17 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build nodejs || all
-
 package ints
 
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Test that the engine tolerates two deletions of the same URN in the same plan.
@@ -39,10 +38,10 @@ func TestDoublePendingDelete(t *testing.T) {
 				Additive:      true,
 				ExpectFailure: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					assert.NotNil(t, stackInfo.Deployment)
+					require.NotNil(t, stackInfo.Deployment)
 
 					// Four resources in this deployment: the root resource, A, B, and A (pending delete)
-					assert.Equal(t, 5, len(stackInfo.Deployment.Resources))
+					require.Len(t, stackInfo.Deployment.Resources, 5)
 					stackRes := stackInfo.Deployment.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 					providerRes := stackInfo.Deployment.Resources[1]
@@ -67,9 +66,9 @@ func TestDoublePendingDelete(t *testing.T) {
 				ExpectFailure: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					// There is still two pending delete resources in this snapshot.
-					assert.NotNil(t, stackInfo.Deployment)
+					require.NotNil(t, stackInfo.Deployment)
 
-					assert.Equal(t, 6, len(stackInfo.Deployment.Resources))
+					require.Len(t, stackInfo.Deployment.Resources, 6)
 					stackRes := stackInfo.Deployment.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 					providerRes := stackInfo.Deployment.Resources[1]
@@ -97,9 +96,9 @@ func TestDoublePendingDelete(t *testing.T) {
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					// We should have cleared out all of the pending deletes now.
-					assert.NotNil(t, stackInfo.Deployment)
+					require.NotNil(t, stackInfo.Deployment)
 
-					assert.Equal(t, 4, len(stackInfo.Deployment.Resources))
+					require.Len(t, stackInfo.Deployment.Resources, 4)
 					stackRes := stackInfo.Deployment.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 					providerRes := stackInfo.Deployment.Resources[1]

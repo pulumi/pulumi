@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build nodejs || all
-
 package ints
 
 import (
@@ -31,13 +29,14 @@ import (
 	"time"
 
 	"github.com/acarl005/stripansi"
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -106,7 +105,7 @@ func TestEngineEvents(t *testing.T) {
 				}
 			}
 
-			assert.Equal(t, 3, len(preEventResourceTypes))
+			require.Len(t, preEventResourceTypes, 3)
 			assert.Contains(t, preEventResourceTypes, "pulumi:pulumi:Stack")
 			assert.Contains(t, preEventResourceTypes, "pulumi-nodejs:dynamic:Resource")
 			assert.Contains(t, preEventResourceTypes, "pulumi:providers:pulumi-nodejs")
@@ -121,7 +120,7 @@ func TestProjectMainNodejs(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Simple runtime validation that just ensures the checkpoint was written and read.
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 		},
 	}
 	integration.ProgramTest(t, &test)
@@ -217,16 +216,15 @@ func TestStackOutputsNodeJS(t *testing.T) {
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
 			fmt.Printf("Deployment: %v", stackInfo.Deployment)
-			assert.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 1, len(stackInfo.Deployment.Resources)) {
-				stackRes := stackInfo.Deployment.Resources[0]
-				assert.NotNil(t, stackRes)
-				assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-				assert.Equal(t, 0, len(stackRes.Inputs))
-				assert.Equal(t, 2, len(stackRes.Outputs))
-				assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
-				assert.Equal(t, float64(42), stackRes.Outputs["foo"])
-			}
+			require.NotNil(t, stackInfo.Deployment)
+			require.Len(t, stackInfo.Deployment.Resources, 1)
+			stackRes := stackInfo.Deployment.Resources[0]
+			require.NotNil(t, stackRes)
+			assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
+			assert.Empty(t, stackRes.Inputs)
+			require.Len(t, stackRes.Outputs, 2)
+			assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
+			assert.Equal(t, float64(42), stackRes.Outputs["foo"])
 		},
 	})
 }
@@ -239,7 +237,7 @@ func TestStackOutputsProgramErrorNodeJS(t *testing.T) {
 	d := filepath.Join("stack_outputs_program_error", "nodejs")
 
 	validateOutputs := func(
-		expected map[string]interface{},
+		expected map[string]any,
 	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
@@ -250,7 +248,7 @@ func TestStackOutputsProgramErrorNodeJS(t *testing.T) {
 		Dir:          filepath.Join(d, "step1"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
-		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+		ExtraRuntimeValidation: validateOutputs(map[string]any{
 			"xyz": "ABC",
 			"foo": float64(42),
 		}),
@@ -261,7 +259,7 @@ func TestStackOutputsProgramErrorNodeJS(t *testing.T) {
 				ExpectFailure: true,
 				// A program error in TypeScript means we won't get any new stack outputs from the module exports,
 				// so we expect the values to remain the same.
-				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+				ExtraRuntimeValidation: validateOutputs(map[string]any{
 					"xyz": "ABC",
 					"foo": float64(42),
 				}),
@@ -278,7 +276,7 @@ func TestStackOutputsResourceErrorNodeJS(t *testing.T) {
 	d := filepath.Join("stack_outputs_resource_error", "nodejs")
 
 	validateOutputs := func(
-		expected map[string]interface{},
+		expected map[string]any,
 	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
@@ -292,7 +290,7 @@ func TestStackOutputsResourceErrorNodeJS(t *testing.T) {
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
 		Quick: true,
-		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+		ExtraRuntimeValidation: validateOutputs(map[string]any{
 			"xyz": "ABC",
 			"foo": float64(42),
 		}),
@@ -303,7 +301,7 @@ func TestStackOutputsResourceErrorNodeJS(t *testing.T) {
 				ExpectFailure: true,
 				// Expect the values to remain the same because the deployment ends before RegisterResourceOutputs is
 				// called for the stack.
-				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+				ExtraRuntimeValidation: validateOutputs(map[string]any{
 					"xyz": "ABC",
 					"foo": float64(42),
 				}),
@@ -313,7 +311,7 @@ func TestStackOutputsResourceErrorNodeJS(t *testing.T) {
 				Additive:      true,
 				ExpectFailure: true,
 				// Expect the values to be updated.
-				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+				ExtraRuntimeValidation: validateOutputs(map[string]any{
 					"xyz": "DEF",
 					"foo": float64(1),
 				}),
@@ -400,35 +398,34 @@ func TestStackParenting(t *testing.T) {
 			//
 			// with the caveat, of course, that A and F will share a common parent, the implicit stack.
 
-			assert.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 9, len(stackInfo.Deployment.Resources)) {
-				stackRes := stackInfo.Deployment.Resources[0]
-				assert.NotNil(t, stackRes)
-				assert.Equal(t, resource.RootStackType, stackRes.Type)
-				assert.Equal(t, "", string(stackRes.Parent))
+			require.NotNil(t, stackInfo.Deployment)
+			require.Len(t, stackInfo.Deployment.Resources, 9)
+			stackRes := stackInfo.Deployment.Resources[0]
+			require.NotNil(t, stackRes)
+			assert.Equal(t, resource.RootStackType, stackRes.Type)
+			assert.Equal(t, "", string(stackRes.Parent))
 
-				urns := make(map[string]resource.URN)
-				for _, res := range stackInfo.Deployment.Resources[1:] {
-					assert.NotNil(t, res)
+			urns := make(map[string]resource.URN)
+			for _, res := range stackInfo.Deployment.Resources[1:] {
+				require.NotNil(t, res)
 
-					urns[res.URN.Name()] = res.URN
-					switch res.URN.Name() {
-					case "a", "f":
-						assert.NotEqual(t, "", res.Parent)
-						assert.Equal(t, stackRes.URN, res.Parent)
-					case "b", "c":
-						assert.Equal(t, urns["a"], res.Parent)
-					case "d", "e":
-						assert.Equal(t, urns["c"], res.Parent)
-					case "g":
-						assert.Equal(t, urns["f"], res.Parent)
-					case "default":
-						// Default providers should have the stack as a parent, but auto-parenting has been
-						// disabled so they won't have a parent for now.
-						assert.Equal(t, resource.URN(""), res.Parent)
-					default:
-						t.Fatalf("unexpected name %s", res.URN.Name())
-					}
+				urns[res.URN.Name()] = res.URN
+				switch res.URN.Name() {
+				case "a", "f":
+					assert.NotEqual(t, "", res.Parent)
+					assert.Equal(t, stackRes.URN, res.Parent)
+				case "b", "c":
+					assert.Equal(t, urns["a"], res.Parent)
+				case "d", "e":
+					assert.Equal(t, urns["c"], res.Parent)
+				case "g":
+					assert.Equal(t, urns["f"], res.Parent)
+				case "default":
+					// Default providers should have the stack as a parent, but auto-parenting has been
+					// disabled so they won't have a parent for now.
+					assert.Equal(t, resource.URN(""), res.Parent)
+				default:
+					t.Fatalf("unexpected name %s", res.URN.Name())
 				}
 			}
 		},
@@ -455,7 +452,7 @@ func TestStackDependencyGraph(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 			latest := stackInfo.Deployment
 			assert.True(t, len(latest.Resources) >= 2)
 			sawFirst := false
@@ -464,12 +461,12 @@ func TestStackDependencyGraph(t *testing.T) {
 				urn := string(res.URN)
 				if strings.Contains(urn, "dynamic:Resource::first") {
 					// The first resource doesn't depend on anything.
-					assert.Equal(t, 0, len(res.Dependencies))
+					assert.Empty(t, res.Dependencies)
 					sawFirst = true
 				} else if strings.Contains(urn, "dynamic:Resource::second") {
 					// The second resource uses an Output property of the first resource, so it
 					// depends directly on first.
-					assert.Equal(t, 1, len(res.Dependencies))
+					require.Len(t, res.Dependencies, 1)
 					assert.True(t, strings.Contains(string(res.Dependencies[0]), "dynamic:Resource::first"))
 					sawSecond = true
 				}
@@ -692,7 +689,7 @@ func TestExplicitProvider(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 			latest := stackInfo.Deployment
 
 			// Expect one stack resource, two provider resources, and two custom resources.
@@ -717,24 +714,24 @@ func TestExplicitProvider(t *testing.T) {
 
 				case "a":
 					prov, err := providers.ParseReference(res.Provider)
-					assert.NoError(t, err)
-					assert.NotNil(t, defaultProvider)
+					require.NoError(t, err)
+					require.NotNil(t, defaultProvider)
 					defaultRef, err := providers.NewReference(defaultProvider.URN, defaultProvider.ID)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					assert.Equal(t, defaultRef.String(), prov.String())
 
 				case "b":
 					prov, err := providers.ParseReference(res.Provider)
-					assert.NoError(t, err)
-					assert.NotNil(t, explicitProvider)
+					require.NoError(t, err)
+					require.NotNil(t, explicitProvider)
 					explicitRef, err := providers.NewReference(explicitProvider.URN, explicitProvider.ID)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					assert.Equal(t, explicitRef.String(), prov.String())
 				}
 			}
 
-			assert.NotNil(t, defaultProvider)
-			assert.NotNil(t, explicitProvider)
+			require.NotNil(t, defaultProvider)
+			require.NotNil(t, explicitProvider)
 		},
 	})
 }
@@ -774,22 +771,22 @@ func TestResourceWithSecretSerializationNodejs(t *testing.T) {
 			//      additionalSecretOutputs.
 			//   3. One named `withoutSecret` which should not be a secret.
 			// We serialize both of the these as POJO objects, so they appear as maps in the output.
-			withSecretProps, ok := stackInfo.Outputs["withSecret"].(map[string]interface{})
+			withSecretProps, ok := stackInfo.Outputs["withSecret"].(map[string]any)
 			assert.Truef(t, ok, "POJO output was not serialized as a map")
 
-			withSecretAdditionalProps, ok := stackInfo.Outputs["withSecretAdditional"].(map[string]interface{})
+			withSecretAdditionalProps, ok := stackInfo.Outputs["withSecretAdditional"].(map[string]any)
 			assert.Truef(t, ok, "POJO output was not serialized as a map")
 
-			withoutSecretProps, ok := stackInfo.Outputs["withoutSecret"].(map[string]interface{})
+			withoutSecretProps, ok := stackInfo.Outputs["withoutSecret"].(map[string]any)
 			assert.Truef(t, ok, "POJO output was not serialized as a map")
 
 			// The secret prop should have been serialized as a secret
-			secretPropValue, ok := withSecretProps["prefix"].(map[string]interface{})
+			secretPropValue, ok := withSecretProps["prefix"].(map[string]any)
 			assert.Truef(t, ok, "secret output was not serialized as a secret")
 			assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
 
 			// The other secret prop should have been serialized as a secret
-			secretAdditionalPropValue, ok := withSecretAdditionalProps["prefix"].(map[string]interface{})
+			secretAdditionalPropValue, ok := withSecretAdditionalProps["prefix"].(map[string]any)
 			assert.Truef(t, ok, "secret output was not serialized as a secret")
 			assert.Equal(t, resource.SecretSig, secretAdditionalPropValue[resource.SigKey].(string))
 
@@ -818,13 +815,13 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			t.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
 			secretsProvider := stackInfo.Deployment.SecretsProviders
-			assert.NotNil(t, secretsProvider)
+			require.NotNil(t, secretsProvider)
 			assert.Equal(t, secretsProvider.Type, "passphrase")
 
 			_, err := passphrase.NewPromptingPassphraseSecretsManagerFromState(secretsProvider.State)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
-			out, ok := stackInfo.Outputs["out"].(map[string]interface{})
+			out, ok := stackInfo.Outputs["out"].(map[string]any)
 			assert.True(t, ok)
 
 			_, ok = out["ciphertext"]
@@ -835,7 +832,7 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 	brokenTestOptions := testOptions.With(integration.ProgramTestOptions{
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			secretsProvider := stackInfo.Deployment.SecretsProviders
-			assert.NotNil(t, secretsProvider)
+			require.NotNil(t, secretsProvider)
 			assert.Equal(t, secretsProvider.Type, "passphrase")
 
 			_, err := passphrase.NewPromptingPassphraseSecretsManagerFromState(secretsProvider.State)
@@ -880,13 +877,13 @@ func TestCloudSecretProvider(t *testing.T) {
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			secretsProvider := stackInfo.Deployment.SecretsProviders
-			assert.NotNil(t, secretsProvider)
+			require.NotNil(t, secretsProvider)
 			assert.Equal(t, secretsProvider.Type, "cloud")
 
 			_, err := cloud.NewCloudSecretsManagerFromState(secretsProvider.State)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
-			out, ok := stackInfo.Outputs["out"].(map[string]interface{})
+			out, ok := stackInfo.Outputs["out"].(map[string]any)
 			assert.True(t, ok)
 
 			_, ok = out["ciphertext"]
@@ -945,7 +942,7 @@ func TestEnumOutputNode(t *testing.T) {
 		Dir:          filepath.Join("enums", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stack.Outputs)
+			require.NotNil(t, stack.Outputs)
 			assert.Equal(t, "Burgundy", stack.Outputs["myTreeType"])
 			assert.Equal(t, "Pulumi Planters Inc.foo", stack.Outputs["myTreeFarmChanged"])
 			assert.Equal(t, "My Burgundy Rubber tree is from Pulumi Planters Inc.", stack.Outputs["mySentence"])
@@ -971,13 +968,12 @@ func TestConstructSlowNode(t *testing.T) {
 		Quick:          true,
 		NoParallel:     true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
-				stackRes := stackInfo.Deployment.Resources[0]
-				assert.NotNil(t, stackRes)
-				assert.Equal(t, resource.RootStackType, stackRes.Type)
-				assert.Equal(t, "", string(stackRes.Parent))
-			}
+			require.NotNil(t, stackInfo.Deployment)
+			require.Len(t, stackInfo.Deployment.Resources, 5)
+			stackRes := stackInfo.Deployment.Resources[0]
+			require.NotNil(t, stackRes)
+			assert.Equal(t, resource.RootStackType, stackRes.Type)
+			assert.Equal(t, "", string(stackRes.Parent))
 		},
 	}
 	integration.ProgramTest(t, opts)
@@ -1010,7 +1006,6 @@ func TestConstructPlainNode(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -1030,7 +1025,7 @@ func optsForConstructPlainNode(
 		LocalProviders: localProviders,
 		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
 		},
 	}
@@ -1065,7 +1060,6 @@ func TestConstructMethodsNode(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProvider := integration.LocalDependency{
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
@@ -1125,7 +1119,6 @@ func TestConstructProviderNode(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProvider := integration.LocalDependency{
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
@@ -1150,10 +1143,10 @@ func TestGetResourceNode(t *testing.T) {
 		Dependencies:             []string{"@pulumi/pulumi"},
 		AllowEmptyPreviewChanges: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stack.Outputs)
+			require.NotNil(t, stack.Outputs)
 			assert.Equal(t, "foo", stack.Outputs["foo"])
 
-			out, ok := stack.Outputs["secret"].(map[string]interface{})
+			out, ok := stack.Outputs["secret"].(map[string]any)
 			assert.True(t, ok)
 
 			_, ok = out["ciphertext"]
@@ -1287,6 +1280,148 @@ func TestESMTS(t *testing.T) {
 	})
 }
 
+func TestESMTSX(t *testing.T) {
+	t.Parallel()
+	dir := filepath.Join("nodejs", "esm-tsx")
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(dir)
+	stackName := ptesting.RandomStackName()
+	// For this test we need to properly install the core SDK instead of yarn
+	// linkining, because yarn link breaks finding an alternative ts-node
+	// installation. This would cause the test to fallback to the vendored
+	// ts-node, which does not provide ts-node/esm.
+	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
+	require.NoError(t, err)
+	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommand("yarn", "add", coreSDK)
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("pulumi", "stack", "select", stackName)
+	e.RunCommand("pulumi", "up", "--yes")
+	// Validate the stack outputs
+	stdout, _ := e.RunCommand("pulumi", "stack", "export")
+	var stackExport map[string]any
+	err = json.Unmarshal([]byte(stdout), &stackExport)
+	require.NoError(t, err)
+	resources, ok := stackExport["deployment"].(map[string]any)["resources"].([]any)
+	require.True(t, ok)
+	require.Greater(t, len(resources), 0)
+	stack := resources[0].(map[string]any)
+	outputs, ok := stack["outputs"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, 42.0, outputs["otherx"])
+	require.Contains(t,
+		outputs["res"],
+		"Use ECMAScript modules for a TS program using TSX to handle loading of TS files.",
+	)
+	e.RunCommand("pulumi", "destroy", "--skip-preview")
+}
+
+func TestESMTSAuto(t *testing.T) {
+	t.Parallel()
+	dir := filepath.Join("nodejs", "esm-ts-auto")
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(dir)
+	stackName := ptesting.RandomStackName()
+	// For this test we need to properly install the core SDK instead of yarn
+	// linkining, because yarn link breaks finding an alternative ts-node
+	// installation. This would cause the test to fallback to the vendored
+	// ts-node, which does not provide ts-node/esm.
+	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
+	require.NoError(t, err)
+	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommand("yarn", "add", coreSDK)
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("pulumi", "stack", "select", stackName)
+	e.RunCommand("pulumi", "up", "--yes")
+	// Validate the stack outputs
+	stdout, _ := e.RunCommand("pulumi", "stack", "export")
+	var stackExport map[string]any
+	err = json.Unmarshal([]byte(stdout), &stackExport)
+	require.NoError(t, err)
+	resources, ok := stackExport["deployment"].(map[string]any)["resources"].([]any)
+	require.True(t, ok)
+	require.Greater(t, len(resources), 0)
+	stack := resources[0].(map[string]any)
+	outputs, ok := stack["outputs"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, 42.0, outputs["otherx"])
+	require.Contains(t,
+		outputs["res"],
+		"Use ECMAScript modules for a TS program, without explicitly setting ts-node/esm as a --loader option",
+	)
+	e.RunCommand("pulumi", "destroy", "--skip-preview")
+}
+
+func TestESMTSAutoTypeCheck(t *testing.T) {
+	t.Parallel()
+	dir := filepath.Join("nodejs", "esm-ts-auto-typecheck")
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(dir)
+	stackName := ptesting.RandomStackName()
+	// For this test we need to properly install the core SDK instead of yarn
+	// linkining, because yarn link breaks finding an alternative ts-node
+	// installation. This would cause the test to fallback to the vendored
+	// ts-node, which does not provide ts-node/esm.
+	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
+	require.NoError(t, err)
+	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommand("yarn", "add", coreSDK)
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("pulumi", "stack", "select", stackName)
+	stdout, _ := e.RunCommandExpectError("pulumi", "up", "--yes")
+	require.Contains(t, stdout, "index.ts(3,14): error TS2322: Type 'number' is not assignable to type 'string'.")
+	// Type errors are not always easily stringified. If we simply call
+	// toString() on them, either directly or just try to print them, we can get
+	// an `Cannot convert object to primitive value` error.
+	require.NotContains(t, stdout, "Cannot convert object to primitive value")
+	e.RunCommand("pulumi", "destroy", "--skip-preview", "--refresh=true")
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestTSWithPackageExports(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "ts-with-package-exports"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestESMWithPackageExports(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "esm-with-package-exports"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
+func TestTSTypeStripping(t *testing.T) {
+	t.Parallel()
+	// Skip this test if Node.js version is too old for automatic type stripping
+	nodeVersionOutput, err := exec.Command("node", "--version").Output()
+	require.NoError(t, err, "unable to determine Node.js version: %v", nodeVersionOutput)
+	nodeVersionStr := strings.TrimSpace(string(nodeVersionOutput))
+	nodeVersionStr = strings.TrimPrefix(nodeVersionStr, "v")
+	var major, minor int
+	_, err = fmt.Sscanf(nodeVersionStr, "%d.%d", &major, &minor)
+	require.NoError(t, err, "unable to parse Node.js version %s", nodeVersionStr)
+	if major < 23 || (major == 23 && minor < 6) {
+		t.Skipf("Skipping: Node.js version %d.%d is less than 23.6", major, minor)
+	}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		NoParallel:   true,
+		Dir:          filepath.Join("nodejs", "ts-type-stripping"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestTSWithPackageJsonInParentDir(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -1337,7 +1472,7 @@ func TestESMTSNestedSrc(t *testing.T) {
 			"test": "hello world",
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			assert.Len(t, stack.Outputs, 1)
+			require.Len(t, stack.Outputs, 1)
 			test, ok := stack.Outputs["test"]
 			assert.True(t, ok)
 			assert.Equal(t, "hello world", test)
@@ -1352,7 +1487,7 @@ func TestESMTSDefaultExport(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			assert.Len(t, stack.Outputs, 1)
+			require.Len(t, stack.Outputs, 1)
 			helloWorld, ok := stack.Outputs["helloWorld"]
 			assert.True(t, ok)
 			assert.Equal(t, helloWorld, 123.0)
@@ -1386,7 +1521,7 @@ func TestMainOverridesPackageJSON(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stack.Outputs)
+			require.NotNil(t, stack.Outputs)
 			assert.Equal(t, "This is the entrypoint from Pulumi.yaml", stack.Outputs["text"])
 		},
 	})
@@ -1517,6 +1652,70 @@ func TestNestedPackageJSON(t *testing.T) {
 }
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestBunNotAWorkspace(t *testing.T) {
+	prepareProject := func(projinfo *engine.Projinfo) error {
+		// The default nodejs prepare uses yarn to link dependencies.
+		// For this test we don't want to test the current SDK, instead we
+		// want to test `pulumi install` and ensure that it works with bun
+		// workspaces.
+		return nil
+	}
+	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("nodejs", "bun-not-a-workspace"),
+		Quick:           true,
+		RelativeWorkDir: "infra",
+		PrepareProject:  prepareProject,
+	})
+
+	t.Cleanup(func() {
+		pt.TestFinished = true
+		pt.TestCleanUp()
+	})
+
+	require.NoError(t, pt.TestLifeCyclePrepare(), "prepare")
+	require.NoError(t, pt.RunPulumiCommand("install"), "install")
+
+	_, err := os.Stat(filepath.Join(pt.GetTmpDir(), "infra", "bun.lock"))
+	require.NoError(t, err)
+
+	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
+	require.NoError(t, pt.TestPreviewUpdateAndEdits(), "update")
+	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestBunWorkspace(t *testing.T) {
+	prepareProject := func(projinfo *engine.Projinfo) error {
+		// The default nodejs prepare uses yarn to link dependencies.
+		// For this test we don't want to test the current SDK, instead we
+		// want to test `pulumi install` and ensure that it works with bun
+		// workspaces.
+		return nil
+	}
+	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("nodejs", "bun-workspaces"),
+		Quick:           true,
+		RelativeWorkDir: "infra",
+		PrepareProject:  prepareProject,
+	})
+
+	t.Cleanup(func() {
+		pt.TestFinished = true
+		pt.TestCleanUp()
+	})
+
+	require.NoError(t, pt.TestLifeCyclePrepare(), "prepare")
+	require.NoError(t, pt.RunPulumiCommand("install"), "install")
+
+	_, err := os.Stat(filepath.Join(pt.GetTmpDir(), "bun.lock"))
+	require.NoError(t, err)
+
+	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
+	require.NoError(t, pt.TestPreviewUpdateAndEdits(), "update")
+	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPnpmWorkspace(t *testing.T) {
 	preparePropject := func(projinfo *engine.Projinfo) error {
 		// The default nodejs prepare uses yarn to link dependencies.
@@ -1583,7 +1782,6 @@ func TestTranspileOnly(t *testing.T) {
 	t.Parallel()
 
 	for _, test := range []string{"tsconfig-no-check", "swc"} {
-		test := test
 		t.Run(test, func(t *testing.T) {
 			t.Parallel()
 			dir := filepath.Join("nodejs", test)
@@ -1599,7 +1797,7 @@ func TestTranspileOnly(t *testing.T) {
 			// the `noCheck` option.
 			coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
 			require.NoError(t, err)
-			e.RunCommand("yarn", "install")
+			e.RunCommandWithRetry("yarn", "install")
 			e.RunCommand("yarn", "add", coreSDK)
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand("pulumi", "stack", "init", stackName)
@@ -1682,7 +1880,7 @@ func TestNoNegativeTimingsOnRefresh(t *testing.T) {
 	e.ImportDirectory(dir)
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "negative-timings")
 	e.RunCommand("pulumi", "stack", "select", "negative-timings")
@@ -1708,7 +1906,7 @@ func TestAboutNodeJS(t *testing.T) {
 	e.ImportDirectory(dir)
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "about-nodejs")
 	e.RunCommand("pulumi", "stack", "select", "about-nodejs")
@@ -1737,7 +1935,7 @@ func TestTSConfigOption(t *testing.T) {
 	e.ImportDirectory("tsconfig")
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "select", "tsconfg", "--create")
 	e.RunCommand("pulumi", "preview")
@@ -1766,8 +1964,8 @@ func TestUnsafeSnapshotManagerRetainsResourcesOnError(t *testing.T) {
 				// - `base` resource
 				// - 1000 resources(via a for loop)
 				// - NOT a resource that failed to be created dependent on the `base` resource output
-				assert.NotNil(t, stackInfo.Deployment)
-				assert.Equal(t, 3+1000, len(stackInfo.Deployment.Resources))
+				require.NotNil(t, stackInfo.Deployment)
+				require.Len(t, stackInfo.Deployment.Resources, 3+1000)
 			},
 		})
 	})
@@ -1791,8 +1989,8 @@ func TestUnsafeSnapshotManagerRetainsResourcesOnError(t *testing.T) {
 				// - `base` resource
 				// - 1000 resources(via a for loop)
 				// - NOT a resource that failed to be created dependent on the `base` resource output
-				assert.NotNil(t, stackInfo.Deployment)
-				assert.Equal(t, 3+1000, len(stackInfo.Deployment.Resources))
+				require.NotNil(t, stackInfo.Deployment)
+				require.Len(t, stackInfo.Deployment.Resources, 3+1000)
 			},
 		})
 	})
@@ -1900,7 +2098,7 @@ func TestRegression12301Node(t *testing.T) {
 			return os.Rename(jsonPath, newPath)
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			assert.Len(t, stack.Outputs, 1)
+			require.Len(t, stack.Outputs, 1)
 			assert.Contains(t, stack.Outputs, "bar")
 			assert.Equal(t, 3.0, stack.Outputs["bar"].(float64))
 		},
@@ -1918,7 +2116,7 @@ func TestPulumiConfig(t *testing.T) {
 			"pulumi-nodejs:id": "testing123",
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			assert.Len(t, stack.Outputs, 1)
+			require.Len(t, stack.Outputs, 1)
 			assert.Contains(t, stack.Outputs, "rid")
 			assert.Equal(t, "testing123", stack.Outputs["rid"].(string))
 		},
@@ -1946,8 +2144,8 @@ func TestUndefinedStackOutputNode(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, nil, stack.Outputs["nil"])
-			assert.Equal(t, []interface{}{0.0, nil, nil}, stack.Outputs["list"])
-			assert.Equal(t, map[string]interface{}{
+			assert.Equal(t, []any{0.0, nil, nil}, stack.Outputs["list"])
+			assert.Equal(t, map[string]any{
 				"nil2":    nil,
 				"number2": 0.0,
 			}, stack.Outputs["map"])
@@ -2149,6 +2347,7 @@ func TestParameterizedNode(t *testing.T) {
 		Verbose:       true,
 		DebugLogLevel: 10,
 		Dir:           filepath.Join("nodejs", "parameterized"),
+		Dependencies:  []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
@@ -2161,19 +2360,16 @@ func TestParameterizedNode(t *testing.T) {
 			}
 			packageJSON := filepath.Join(project.Root, "sdk", "nodejs", "package.json")
 
-			fmt.Println("coreSDK", coreSDK)
-			fmt.Println("packagejson", packageJSON)
-
 			data, err := os.ReadFile(packageJSON)
 			if err != nil {
 				return err
 			}
-			var pkgJSON map[string]interface{}
+			var pkgJSON map[string]any
 			err = json.Unmarshal(data, &pkgJSON)
 			if err != nil {
 				return err
 			}
-			deps := pkgJSON["dependencies"].(map[string]interface{})
+			deps := pkgJSON["dependencies"].(map[string]any)
 			deps["@pulumi/pulumi"] = "file:" + coreSDK
 			data, err = json.MarshalIndent(pkgJSON, "", "  ")
 			if err != nil {
@@ -2198,12 +2394,14 @@ func TestParameterizedNode(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // mutates environment
 func TestPackageAddNode(t *testing.T) {
-	e := ptesting.NewEnvironment(t)
+	t.Parallel()
 
-	for _, packageManager := range []string{"npm", "yarn", "pnpm"} {
+	for _, packageManager := range []string{"npm", "yarn", "pnpm", "bun"} {
 		t.Run(packageManager, func(t *testing.T) {
+			t.Parallel()
+			e := ptesting.NewEnvironment(t)
+
 			var err error
 			templatePath, err := filepath.Abs("nodejs/packageadd_" + packageManager)
 			require.NoError(t, err)
@@ -2215,19 +2413,31 @@ func TestPackageAddNode(t *testing.T) {
 			assert.True(t, e.PathExists(filepath.Join("sdks", "random")))
 
 			packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "package.json"))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			packagesJSON := make(map[string]any)
 			err = json.Unmarshal(packagesJSONBytes, &packagesJSON)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			dependencies, ok := packagesJSON["dependencies"].(map[string]any)
-			assert.True(t, ok)
+			require.True(t, ok)
 			cf, ok := dependencies["@pulumi/random"]
-			assert.True(t, ok)
+			require.True(t, ok)
 			cf, ok = cf.(string)
-			assert.True(t, ok)
+			require.True(t, ok)
 
-			assert.Equal(t, "file:sdks/random", filepath.ToSlash(cf.(string)))
+			require.Equal(t, "file:sdks/random", filepath.ToSlash(cf.(string)))
+
+			require.FileExists(t, filepath.Join(e.CWD, "sdks", "random", ".gitignore"))
+			b, err := os.ReadFile(filepath.Join(e.CWD, "sdks", "random", ".gitignore"))
+			require.NoError(t, err)
+			require.Equal(t, "node_modules/\nbin/\n", string(b))
+
+			stackName := ptesting.RandomStackName()
+			e.RunCommand("pulumi", "login", "--local")
+			e.RunCommand("pulumi", "stack", "init", stackName)
+			e.RunCommand("pulumi", "stack", "select", stackName)
+			e.RunCommand("pulumi", "up", "--skip-preview")
+			e.RunCommand("pulumi", "destroy", "--skip-preview")
 		})
 	}
 }
@@ -2247,10 +2457,10 @@ func TestConvertTerraformProviderNode(t *testing.T) {
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "typescript", "--out", "nodedir")
 
 	packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "nodedir", "package.json"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	packagesJSON := make(map[string]any)
 	err = json.Unmarshal(packagesJSONBytes, &packagesJSON)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	dependencies, ok := packagesJSON["dependencies"].(map[string]any)
 	assert.True(t, ok)
@@ -2265,7 +2475,7 @@ func TestConvertTerraformProviderNode(t *testing.T) {
 	// `--generate-only`).
 	nodeModulesPath := filepath.Join(e.CWD, "nodedir", "node_modules")
 	_, err = os.Stat(nodeModulesPath)
-	assert.NoError(t, err, "node_modules directory should exist after pulumi convert")
+	require.NoError(t, err, "node_modules directory should exist after pulumi convert")
 }
 
 //nolint:paralleltest // mutates environment
@@ -2289,10 +2499,10 @@ func TestConvertTerraformProviderNodeGenerateOnly(t *testing.T) {
 	)
 
 	packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "nodedir", "package.json"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	packagesJSON := make(map[string]any)
 	err = json.Unmarshal(packagesJSONBytes, &packagesJSON)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	dependencies, ok := packagesJSON["dependencies"].(map[string]any)
 	assert.True(t, ok)
@@ -2378,7 +2588,6 @@ func TestAutonaming(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		orderedConfig := []integration.ConfigValue{}
 		for k, v := range tc.config {
 			orderedConfig = append(orderedConfig, integration.ConfigValue{Key: k, Value: v, Path: true})
@@ -2410,10 +2619,19 @@ func TestNodejsSourcemapTest(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory("nodejs/sourcemap-in-test")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
 	require.NoError(t, err)
 	e.RunCommand("yarn", "add", coreSDK)
+
+	// TODO(https://github.com/jestjs/jest/issues/15888): Remove the need to specify --localstorage-file when jest works
+	// around the Node.js v25.2.0 breaking change that requires it to be set when localStorage is accessed.
+	output, _ := e.RunCommand("node", "--version")
+	nodeVersion, err := semver.ParseTolerant(output)
+	require.NoError(t, err)
+	if nodeVersion.GTE(semver.MustParse("25.2.0")) {
+		e.SetEnvVars("NODE_OPTIONS=--localstorage-file=./jest-storage")
+	}
 
 	_, stderr := e.RunCommandExpectError("yarn", "test")
 
@@ -2554,6 +2772,59 @@ func TestInstallLocalPlugin(t *testing.T) {
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
 
+func TestInstallLocalPluginRecursive(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("packages-install-recursive")
+	e.CWD = filepath.Join(e.RootPath, "example")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	// TODO[https://github.com/pulumi/pulumi/issues/20963]: `pulumi install` should
+	// install plugins used by components to the degree possible.
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.18.4")
+
+	// `pulumi install` must build and then generate SDKs for 3 component
+	// providers. Dependencies are as follows:
+	//
+	//	example         : python-provider typescript-b
+	//	python-provider : typescript-a
+	//
+	// Both the Python and TypeScript providers need to have their dependencies
+	// installed before they can be used.
+	e.RunCommand("pulumi", "install")
+
+	// Run pulumi up to verify the entire chain works
+	e.RunCommand("pulumi", "stack", "select", "organization/install-recursive", "--create")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+}
+
+func TestInstallLocalPluginCycle(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("packages-install-cycle")
+	e.CWD = filepath.Join(e.RootPath, "example")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	// Plugin dependencies form a cycle:
+	//
+	//	example      : typescript-a
+	//	typescript-a : typescript-b
+	//	typescript-b : typescript-a
+	//
+	// This creates a cycle: typescript-a -> typescript-b -> typescript-a.
+	// The install command should detect and report this cycle.
+	stdout, stderr := e.RunCommandExpectError("pulumi", "install")
+	require.Containsf(t, stderr,
+		"Cycle found: typescript-a -> typescript-b -> typescript-a\n",
+		"Stdout is %q", stdout)
+}
+
 func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	t.Parallel()
 
@@ -2601,29 +2872,6 @@ func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
 
-func TestPackageAddWithPublisherSetNodeJS(t *testing.T) {
-	t.Parallel()
-
-	e := ptesting.NewEnvironment(t)
-	defer e.DeleteIfNotFailed()
-
-	e.ImportDirectory("packageadd-namespace")
-	e.CWD = filepath.Join(e.RootPath, "nodejs")
-	stdout, _ := e.RunCommand("pulumi", "package", "add", "../provider/schema.json")
-	require.Contains(t, stdout,
-		"You can then import the SDK in your TypeScript code with:\n\n  import * as mypkg from \"@my-namespace/mypkg\"")
-
-	yamlContent, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi.yaml"))
-	require.NoError(t, err)
-	yamlString := string(yamlContent)
-	require.Contains(t, yamlString, "packages:")
-	require.Contains(t, yamlString, "mypkg: ../provider")
-
-	// Make sure the SDK was generated in the expected directory
-	_, err = os.Stat(filepath.Join(e.CWD, "sdks", "my-namespace-mypkg", "index.ts"))
-	require.NoError(t, err)
-}
-
 // Tests that we can get the schema for a Node.js component provider using component_provider_host.
 func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	t.Parallel()
@@ -2641,7 +2889,7 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	e.CWD = t.TempDir()
 	stdout, stderr := e.RunCommand("pulumi", "package", "get-schema", e.RootPath)
 	require.Empty(t, stderr)
-	var schema map[string]interface{}
+	var schema map[string]any
 	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
 	require.Equal(t, "nodejs-component-provider", schema["name"].(string))
 	require.Equal(t, "0.0.0", schema["version"].(string))
@@ -2698,9 +2946,9 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 		"required": ["aBooleanOutput", "aComplexTypeOutput", "aNumberOutput", "aResourceOutput", "aString"]
 	}
 	`
-	expected := make(map[string]interface{})
-	resources := schema["resources"].(map[string]interface{})
-	component := resources["nodejs-component-provider:index:MyComponent"].(map[string]interface{})
+	expected := make(map[string]any)
+	resources := schema["resources"].(map[string]any)
+	component := resources["nodejs-component-provider:index:MyComponent"].(map[string]any)
 	require.NoError(t, json.Unmarshal([]byte(expectedJSON), &expected))
 	require.Equal(t, expected, component)
 
@@ -2730,15 +2978,15 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 			"required": ["aNumber"]
 		}
 	}`
-	expectedTypes := make(map[string]interface{})
-	types := schema["types"].(map[string]interface{})
+	expectedTypes := make(map[string]any)
+	types := schema["types"].(map[string]any)
 	require.NoError(t, json.Unmarshal([]byte(expectedTypesJSON), &expectedTypes))
 	require.Equal(t, expectedTypes, types)
 }
 
 // Tests that we can run a Node.js component provider using component_provider_host
 func TestNodejsComponentProviderRun(t *testing.T) {
-	for _, runtime := range []string{"yaml", "python"} {
+	for _, runtime := range []string{"yaml", "python", "nodejs-pnpm", "nodejs-npm"} {
 		t.Run(runtime, func(t *testing.T) {
 			// This uses the random plugin so needs to be able to download it
 			t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
@@ -2748,10 +2996,19 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 				PrepareProject: func(info *engine.Projinfo) error {
 					providerPath := filepath.Join(info.Root, "..", "provider")
 					installNodejsProviderDependencies(t, providerPath)
+
 					cmd := exec.Command("pulumi", "package", "add", providerPath)
 					cmd.Dir = info.Root
 					out, err := cmd.CombinedOutput()
 					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
+
+					if runtime != "yaml" {
+						cmd := exec.Command("pulumi", "install")
+						cmd.Dir = info.Root
+						out, err := cmd.CombinedOutput()
+						require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
+					}
+
 					return nil
 				},
 				Dir:             filepath.Join("component_provider", "nodejs", "component-provider-host"),
@@ -2760,24 +3017,31 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 					t.Logf("Outputs: %v", stack.Outputs)
 					urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
 					require.NoError(t, err)
-					require.Equal(t, tokens.Type("nodejs-component-provider:index:MyComponent"), urn.Type())
+					expectedType := tokens.Type("nodejs-component-provider:index:MyComponent")
+					expectedQualifiedType := "ParentComponent$" + expectedType
+					if runtime == "yaml" {
+						// yaml doesn't have components
+						expectedQualifiedType = expectedType
+					}
+					require.Equal(t, expectedQualifiedType, urn.QualifiedType())
+					require.Equal(t, expectedType, urn.Type())
 					require.Equal(t, "comp", urn.Name())
 					t.Logf("stack.Outputs = %+v", stack.Outputs)
 					require.Equal(t, float64(246), stack.Outputs["aNumberOutput"].(float64))
 					require.Equal(t, "Hello, Bonnie!", stack.Outputs["anOptionalStringOutput"].(string))
 					require.Equal(t, false, stack.Outputs["aBooleanOutput"].(bool))
-					aComplexTypeOutput := stack.Outputs["aComplexTypeOutput"].(map[string]interface{})
+					aComplexTypeOutput := stack.Outputs["aComplexTypeOutput"].(map[string]any)
 					require.Contains(t, stack.Outputs["aResourceOutputUrn"], "RandomPet::comp-pet")
 					require.Equal(t, "hello", stack.Outputs["aString"].(string))
 					if runtime == "python" {
 						// The output is stored in the stack as a plain object,
 						// but that means for Python the keys are snake_case.
 						require.Equal(t, float64(14), aComplexTypeOutput["a_number"].(float64))
-						nestedComplexType := aComplexTypeOutput["nested_complex_type"].(map[string]interface{})
+						nestedComplexType := aComplexTypeOutput["nested_complex_type"].(map[string]any)
 						require.Equal(t, float64(18), nestedComplexType["a_number"].(float64))
 					} else {
 						require.Equal(t, float64(14), aComplexTypeOutput["aNumber"].(float64))
-						nestedComplexType := aComplexTypeOutput["nestedComplexType"].(map[string]interface{})
+						nestedComplexType := aComplexTypeOutput["nestedComplexType"].(map[string]any)
 						require.Equal(t, float64(18), nestedComplexType["aNumber"].(float64))
 					}
 				},
@@ -2823,6 +3087,19 @@ func TestNodeComponentNamespaceInference(t *testing.T) {
 	require.Equal(t, "#/types/namespaced-component:index:Nested", input.Ref)
 }
 
+func TestNodeInvalidComponentName(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("namespaced_component_invalid_name")
+	installNodejsProviderDependencies(t, e.CWD)
+	_, stderr := e.RunCommandExpectError("pulumi", "package", "get-schema", ".")
+	require.Contains(t, stderr,
+		"Error: Invalid provider name '-namespaced-component' in package.json. Provider names must start with a letter")
+}
+
 func TestNodeCanConstructNamespacedComponent(t *testing.T) {
 	t.Parallel()
 
@@ -2837,4 +3114,176 @@ func TestNodeCanConstructNamespacedComponent(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "select", "organization/namespaced_component", "--create")
 	e.RunCommand("pulumi", "install")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+}
+
+// Test that we use the `tsc` version from the provider's dependencies when compiling the provider.
+func TestNodePackageAddTSC(t *testing.T) {
+	t.Parallel()
+	for _, pm := range []string{"npm", "pnpm", "yarn", "bun"} {
+		t.Run(pm, func(t *testing.T) {
+			t.Parallel()
+			e := ptesting.NewEnvironment(t)
+			defer e.DeleteIfNotFailed()
+			e.ImportDirectory("packageadd-tsc")
+			provider := filepath.Join(e.RootPath, "provider")
+			program := filepath.Join(e.RootPath, "program-"+pm)
+			bin := filepath.Join(e.RootPath, "bin")
+			e.CWD = provider
+			installNodejsProviderDependencies(t, provider)
+			e.CWD = program
+			// `bin` has a fake `tsc` executable that exits with an error code. If we
+			// execute this instead of the tsc that ships with the package, the
+			// installation will fail.
+			path := os.Getenv("PATH")
+			e.SetEnvVars(fmt.Sprintf("PATH=%s:%s", bin, path))
+
+			e.RunCommand("pulumi", "package", "add", provider)
+			e.RunCommand("pulumi", "install")
+
+			stackName := ptesting.RandomStackName()
+			e.RunCommand("pulumi", "login", "--local")
+			e.RunCommand("pulumi", "stack", "init", stackName)
+			e.RunCommand("pulumi", "stack", "select", stackName)
+			e.RunCommand("pulumi", "up", "--skip-preview")
+			e.RunCommand("pulumi", "destroy", "--skip-preview")
+		})
+	}
+}
+
+// Test that `tsc` does not pick up the project's @types packages when compiling the local SDK
+func TestNodePackageAddTypes(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("packageadd-types")
+	provider := filepath.Join(e.RootPath, "provider")
+	program := filepath.Join(e.RootPath, "program")
+	e.CWD = provider
+	installNodejsProviderDependencies(t, provider)
+	e.CWD = program
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "package", "add", provider)
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/20068
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodejsOnBeforeExit(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "before-exit"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			require.Len(t, stack.Deployment.Resources, 3)
+			require.Equal(t, tokens.Type("pulumi:pulumi:Stack"), stack.Deployment.Resources[0].Type)
+			require.Equal(t, tokens.Type("pulumi:providers:testprovider"), stack.Deployment.Resources[1].Type)
+			require.Equal(t, tokens.Type("testprovider:index:Named"), stack.Deployment.Resources[2].Type)
+			require.Equal(t, "beforeExit", stack.Deployment.Resources[2].URN.Name())
+		},
+	})
+}
+
+// Test that we show a message about leaked promises and exit with an error
+// status if the program exits otherwise normally.
+//
+// //nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodejsPromiseMessage(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "promise-message"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+		Quick:         true,
+		ExpectFailure: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			foundError := false
+			for _, event := range stack.Events {
+				if event.DiagnosticEvent != nil {
+					if strings.Contains(event.DiagnosticEvent.Message, "PULUMI_DEBUG_PROMISE_LEAKS") {
+						foundError = true
+					}
+				}
+			}
+			events, err := json.Marshal(stack.Events)
+			require.NoError(t, err)
+			assert.True(t, foundError, "Did not see the expected message error, got %s", events)
+		},
+	})
+}
+
+// Test that we do not show a message about leaked promises when we exit with a
+// non-zero exit code.
+//
+// //nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodejsExitError(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "exit-error"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+		Quick:         true,
+		ExpectFailure: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			foundError := false
+			foundPromiseMessage := false
+			for _, event := range stack.Events {
+				if event.DiagnosticEvent != nil {
+					if strings.Contains(event.DiagnosticEvent.Message, "Program exited with non-zero exit code: 123") {
+						foundError = true
+					} else if strings.Contains(event.DiagnosticEvent.Message, "PULUMI_DEBUG_PROMISE_LEAKS") {
+						foundPromiseMessage = true
+					}
+				}
+			}
+			events, err := json.Marshal(stack.Events)
+			require.NoError(t, err)
+			assert.True(t, foundError, "Did not see the expected message error, got %s", events)
+			assert.False(t, foundPromiseMessage, "Should not have found the promise message, got %s", events)
+		},
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestTsExecute(t *testing.T) {
+	testProviderPath, err := filepath.Abs(filepath.Join("..", "testprovider"))
+	contract.AssertNoErrorf(err, "Test provider path must be resolvable to absolute path")
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "ts-execute"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: testProviderPath},
+		},
+		PrePrepareProject: func(project *engine.Projinfo) error {
+			// Do NOT provide "-- provider" arguments on purpose.
+			// This will make the provider require that Pulumi runtime is supporting parameterization.
+			// And I haven't yet figured out how to do so in these tests.
+			cmd := exec.Command("pulumi", "package", "add", testProviderPath)
+			cmd.Dir = project.Root
+			out, err := cmd.CombinedOutput()
+			require.NoError(t, err, "output: %s", out)
+			// Remove the bin folder generated by "pulumi package add" command on purpose.
+			// This will ensure that the TS code will be loaded, instead of JS code.
+			// Otherwise, test won't fail when it should.
+			err = os.RemoveAll(filepath.Join(project.Root, "sdks", "testprovider", "bin"))
+			require.NoError(t, err, "Failed to delete folder with JS files")
+			return err
+		},
+		Quick:         true,
+		ExpectFailure: false,
+		// We run actual test via build command
+		RunBuild: true,
+		// Skip all Pulumi things - the yarn-linked Pulumi SDK will always end up using bundled ts-node and TS versions.
+		// That causes errors since they don't support target "ES2022", which is minimum target for this test.
+		// And we must use yarn-linked Pulumi SDK, as we are testing the result of its codegeneration.
+		// This test ONLY verifies generated TypeScript functionality, so skipping these is okay.
+		SkipRefresh: true,
+		SkipPreview: true,
+		SkipUpdate:  true,
+	})
 }

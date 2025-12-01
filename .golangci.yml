@@ -7,6 +7,7 @@ linters:
     - depguard
     - durationcheck
     - exhaustive
+    - forbidigo
     - goheader
     - goprintffuncname
     - gosec
@@ -23,6 +24,7 @@ linters:
     - usetesting
     - wastedassign
     - whitespace
+    - copyloopvar
   settings:
     depguard:
       rules:
@@ -69,6 +71,19 @@ linters:
       max-func-lines: 60
     nolintlint:
       allow-unused: true
+    forbidigo:
+      forbid:
+        - pattern: ^assert.NoError$
+          msg: Use require.NoError instead
+        - pattern: ^assert.NotNil$
+          msg: Use require.NotNil instead
+        - pattern: ^assert.Len$
+          msg: Use require.Len instead
+        - pattern: ^resource.New(String|Bool|Number|Array|Asset|Archive|Object|Computed|Output|Secret|ResourceReference)Property$
+          msg: Use resource.NewProperty instead
+    revive:
+      rules:
+        - name: use-any
   exclusions:
     generated: lax
     presets:

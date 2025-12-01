@@ -116,11 +116,11 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 
 	defer func() {
 		err := os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
-		assert.NoError(t, err, "failed to unset EnvVar.")
+		require.NoError(t, err, "failed to unset EnvVar.")
 
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	passwordVal := "Password1234!"
@@ -204,17 +204,17 @@ func TestRemoveWithForce(t *testing.T) {
 		"barfoo": "foobar",
 	}
 	err = s.Workspace().SetEnvVars(envvars)
-	assert.NoError(t, err, "failed to set environment values")
+	require.NoError(t, err, "failed to set environment values")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after setting many")
+	require.NotNil(t, envvars, "failed to get environment values after setting many")
 
 	s.Workspace().SetEnvVar("bar", "buzz")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment value after setting")
+	require.NotNil(t, envvars, "failed to get environment value after setting")
 
 	s.Workspace().UnsetEnvVar("bar")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
+	require.NotNil(t, envvars, "failed to get environment values after unsetting.")
 
 	// -- pulumi up --
 	res, err := s.Up(ctx)
@@ -223,7 +223,7 @@ func TestRemoveWithForce(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	require.Len(t, res.Outputs, 3, "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 	assert.False(t, res.Outputs["exp_static"].Secret)
 	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
@@ -236,7 +236,7 @@ func TestRemoveWithForce(t *testing.T) {
 	const permalinkSearchStr = "https://app.pulumi.com"
 	startRegex := regexp.MustCompile(permalinkSearchStr)
 	permalink, err := GetPermalink(res.StdOut)
-	assert.NoError(t, err, "failed to get permalink.")
+	require.NoError(t, err, "failed to get permalink.")
 	assert.True(t, startRegex.MatchString(permalink))
 
 	if err = s.Workspace().RemoveStack(ctx, stackName, optremove.Force()); err != nil {
@@ -275,7 +275,7 @@ func TestNewStackLocalSource(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -290,17 +290,17 @@ func TestNewStackLocalSource(t *testing.T) {
 		"barfoo": "foobar",
 	}
 	err = s.Workspace().SetEnvVars(envvars)
-	assert.NoError(t, err, "failed to set environment values")
+	require.NoError(t, err, "failed to set environment values")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after setting many")
+	require.NotNil(t, envvars, "failed to get environment values after setting many")
 
 	s.Workspace().SetEnvVar("bar", "buzz")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment value after setting")
+	require.NotNil(t, envvars, "failed to get environment value after setting")
 
 	s.Workspace().UnsetEnvVar("bar")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
+	require.NotNil(t, envvars, "failed to get environment values after unsetting.")
 
 	// -- pulumi up --
 	res, err := s.Up(ctx, optup.UserAgent(agent))
@@ -309,7 +309,7 @@ func TestNewStackLocalSource(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	require.Len(t, res.Outputs, 3, "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 	assert.False(t, res.Outputs["exp_static"].Secret)
 	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
@@ -322,7 +322,7 @@ func TestNewStackLocalSource(t *testing.T) {
 	const permalinkSearchStr = "https://app.pulumi.com"
 	startRegex := regexp.MustCompile(permalinkSearchStr)
 	permalink, err := GetPermalink(res.StdOut)
-	assert.NoError(t, err, "failed to get permalink.")
+	require.NoError(t, err, "failed to get permalink.")
 	assert.True(t, startRegex.MatchString(permalink))
 
 	// -- pulumi preview --
@@ -388,7 +388,7 @@ func TestUpsertStackLocalSource(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -403,17 +403,17 @@ func TestUpsertStackLocalSource(t *testing.T) {
 		"barfoo": "foobar",
 	}
 	err = s.Workspace().SetEnvVars(envvars)
-	assert.NoError(t, err, "failed to set environment values")
+	require.NoError(t, err, "failed to set environment values")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after setting many")
+	require.NotNil(t, envvars, "failed to get environment values after setting many")
 
 	s.Workspace().SetEnvVar("bar", "buzz")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment value after setting")
+	require.NotNil(t, envvars, "failed to get environment value after setting")
 
 	s.Workspace().UnsetEnvVar("bar")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
+	require.NotNil(t, envvars, "failed to get environment values after unsetting.")
 
 	// -- pulumi up --
 	res, err := s.Up(ctx)
@@ -422,7 +422,7 @@ func TestUpsertStackLocalSource(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	require.Len(t, res.Outputs, 3, "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 	assert.False(t, res.Outputs["exp_static"].Secret)
 	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
@@ -500,7 +500,7 @@ func TestNewStackRemoteSource(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -516,7 +516,7 @@ func TestNewStackRemoteSource(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	require.Len(t, res.Outputs, 3, "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 	assert.False(t, res.Outputs["exp_static"].Secret)
 	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
@@ -594,7 +594,7 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -610,7 +610,7 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	require.Len(t, res.Outputs, 3, "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 	assert.False(t, res.Outputs["exp_static"].Secret)
 	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
@@ -688,7 +688,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 	}
 	project := workspace.Project{
 		Name: tokens.PackageName(pName),
-		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{
+		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]any{
 			"binary": binName,
 		}),
 	}
@@ -703,7 +703,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -719,7 +719,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	require.Len(t, res.Outputs, 3, "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 	assert.False(t, res.Outputs["exp_static"].Secret)
 	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
@@ -797,7 +797,7 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 	}
 	project := workspace.Project{
 		Name: tokens.PackageName(pName),
-		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{
+		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]any{
 			"binary": binName,
 		}),
 	}
@@ -812,7 +812,7 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -828,7 +828,7 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	require.Len(t, res.Outputs, 3, "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 	assert.False(t, res.Outputs["exp_static"].Secret)
 	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
@@ -907,7 +907,7 @@ func TestNewStackInlineSource(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	require.NoError(t, s.SetAllConfig(ctx, cfg))
@@ -916,7 +916,7 @@ func TestNewStackInlineSource(t *testing.T) {
 	res, err := s.Up(ctx, optup.UserAgent(agent), optup.Refresh())
 	require.NoError(t, err, "up failed")
 
-	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	require.Len(t, res.Outputs, 3, "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 	assert.False(t, res.Outputs["exp_static"].Secret)
 	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
@@ -942,7 +942,7 @@ func TestNewStackInlineSource(t *testing.T) {
 	// -- pulumi refresh --preview-only --
 
 	pref, err := s.PreviewRefresh(ctx, optrefresh.UserAgent(agent))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, pref.ChangeSummary[apitype.OpSame])
 
 	// -- pulumi refresh --
@@ -955,7 +955,7 @@ func TestNewStackInlineSource(t *testing.T) {
 	// -- pulumi destroy --preview-only --
 
 	pdRes, err := s.PreviewDestroy(ctx, optdestroy.UserAgent(agent), optdestroy.Refresh())
-	assert.NoError(t, err, "preview-only destroy failed")
+	require.NoError(t, err, "preview-only destroy failed")
 	assert.Equal(t, map[apitype.OpType]int{apitype.OpDelete: 1}, pdRes.ChangeSummary)
 
 	// -- pulumi destroy --
@@ -988,7 +988,7 @@ func TestStackLifecycleInlineProgramRemoveWithoutDestroy(t *testing.T) {
 	}
 
 	_, err = s.Up(ctx, optup.UserAgent(agent), optup.Refresh())
-	assert.NoError(t, err, "up failed")
+	require.NoError(t, err, "up failed")
 
 	// Act.
 	err = s.Workspace().RemoveStack(ctx, s.Name())
@@ -1019,11 +1019,11 @@ func TestStackLifecycleInlineProgramDestroyWithRemove(t *testing.T) {
 	}
 
 	_, err = s.Up(ctx, optup.UserAgent(agent), optup.Refresh())
-	assert.NoError(t, err, "up failed")
+	require.NoError(t, err, "up failed")
 
 	// Act.
 	_, err = s.Destroy(ctx, optdestroy.Remove())
-	assert.NoError(t, err, "destroy failed")
+	require.NoError(t, err, "destroy failed")
 	err = s.Workspace().SelectStack(ctx, s.Name())
 
 	// Assert.
@@ -1066,7 +1066,7 @@ func TestUpsertStackInlineSourceParallel(t *testing.T) {
 			t.Cleanup(func() {
 				// -- pulumi stack rm --
 				err = s.Workspace().RemoveStack(ctx, s.Name())
-				assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+				require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 			})
 
 			err = s.SetAllConfig(ctx, cfg)
@@ -1082,7 +1082,7 @@ func TestUpsertStackInlineSourceParallel(t *testing.T) {
 				t.FailNow()
 			}
 
-			assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+			require.Len(t, res.Outputs, 3, "expected two plain outputs")
 			assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 			assert.False(t, res.Outputs["exp_static"].Secret)
 			assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
@@ -1161,10 +1161,10 @@ func TestNestedStackFails(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(testCtx, s.Name())
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 
 		err = nestedStack.Workspace().RemoveStack(testCtx, nestedStack.Name())
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	result, err := s.Up(testCtx)
@@ -1218,7 +1218,7 @@ func TestErrorProgressStreams(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err := s.Workspace().RemoveStack(ctx, s.Name(), optremove.Force())
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	// -- pulumi up --
@@ -1285,7 +1285,7 @@ func TestProgressStreams(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -1356,7 +1356,7 @@ func TestImportExportStack(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -1430,7 +1430,7 @@ func TestConfigFlagLike(t *testing.T) {
 	assert.Equalf(t, true, cm["testproj:secret-key"].Secret, "secret-key should be secret")
 
 	err = s.Workspace().RemoveStack(ctx, stackName)
-	assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+	require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 }
 
 func TestGetAllConfigCorrectArgs(t *testing.T) {
@@ -1456,7 +1456,7 @@ func TestGetAllConfigCorrectArgs(t *testing.T) {
 
 	_, err = workspace.GetAllConfig(ctx, stackName)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []string{"config", "--show-secrets", "--json", "--stack", stackName}, m.capturedArgs)
 }
 
@@ -1479,11 +1479,11 @@ func TestConfigWithOptions(t *testing.T) {
 
 	defer func() {
 		err = s.Workspace().RemoveStack(ctx, stackName)
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 		err = os.RemoveAll(filepath.Join(s.Workspace().WorkDir(), configJSON))
-		assert.NoError(t, err, "failed to remove test.json. File has leaked.")
+		require.NoError(t, err, "failed to remove test.json. File has leaked.")
 		err = os.RemoveAll(filepath.Join(s.Workspace().WorkDir(), configYAML))
-		assert.NoError(t, err, "failed to remove test.yaml. File has leaked.")
+		require.NoError(t, err, "failed to remove test.yaml. File has leaked.")
 	}()
 
 	// test backward compatibility
@@ -1894,11 +1894,11 @@ func TestConfigAllWithOptions(t *testing.T) {
 
 	defer func() {
 		err = s.Workspace().RemoveStack(ctx, stackName)
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 		err = os.RemoveAll(filepath.Join(s.Workspace().WorkDir(), configJSON))
-		assert.NoError(t, err, "failed to remove test.json. File has leaked.")
+		require.NoError(t, err, "failed to remove test.json. File has leaked.")
 		err = os.RemoveAll(filepath.Join(s.Workspace().WorkDir(), configYAML))
-		assert.NoError(t, err, "failed to remove test.yaml. File has leaked.")
+		require.NoError(t, err, "failed to remove test.yaml. File has leaked.")
 	}()
 
 	err = s.SetAllConfigWithOptions(ctx, ConfigMap{
@@ -2166,6 +2166,69 @@ func TestConfigAllWithOptions(t *testing.T) {
 		"{\"subKey3\":\"value17\"}", cfgYAML["testproj:key11"].Value, "keys other than subKey3 have been removed")
 }
 
+func TestSetAllConfigJson(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	// initialize
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
+	require.NoError(t, err, "failed to initialize stack")
+
+	defer func() {
+		err = s.Workspace().RemoveStack(ctx, stackName)
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
+	// Set config using JSON format
+	configJSON := `{
+		"testproj:plainKey": {
+			"value": "plainValue",
+			"secret": false
+		},
+		"testproj:secretKey": {
+			"value": "secretValue",
+			"secret": true
+		},
+		"testproj:numberKey": {
+			"value": "42",
+			"secret": false
+		}
+	}`
+
+	err = s.SetAllConfigJson(ctx, configJSON, nil)
+	require.NoError(t, err, "failed to set config from JSON")
+
+	// Verify the config was set correctly
+	allConfig, err := s.GetAllConfig(ctx)
+	require.NoError(t, err, "failed to get all config")
+
+	// Check plain key
+	plainKey, ok := allConfig["testproj:plainKey"]
+	assert.True(t, ok, "plainKey should exist")
+	assert.Equal(t, "plainValue", plainKey.Value, "plainKey should have correct value")
+	assert.False(t, plainKey.Secret, "plainKey should not be secret")
+
+	// Check secret key
+	secretKey, ok := allConfig["testproj:secretKey"]
+	assert.True(t, ok, "secretKey should exist")
+	assert.True(t, secretKey.Secret, "secretKey should be secret")
+
+	// Verify secret value by getting config with ShowSecrets
+	allConfigWithSecrets, err := s.GetAllConfigWithOptions(ctx, &GetAllConfigOptions{ShowSecrets: true})
+	require.NoError(t, err, "failed to get all config with secrets")
+	secretKeyValue := allConfigWithSecrets["testproj:secretKey"]
+	assert.Equal(t, "secretValue", secretKeyValue.Value, "secretKey should have correct decrypted value")
+
+	// Check number key
+	numberKey, ok := allConfig["testproj:numberKey"]
+	assert.True(t, ok, "numberKey should exist")
+	assert.Equal(t, "42", numberKey.Value, "numberKey should have correct value")
+	assert.False(t, numberKey.Secret, "numberKey should not be secret")
+}
+
 // This test requires the existence of a Pulumi.dev.yaml file because we are reading the nested
 // config from the file. This means we can't remove the stack at the end of the test.
 // We should also not include secrets in this config, because the secret encryption is only valid within
@@ -2246,7 +2309,7 @@ func TestEnvFunctions(t *testing.T) {
 
 	defer func() {
 		err = s.Workspace().RemoveStack(ctx, stackName)
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	// Errors when trying to add a non-existent env
@@ -2280,7 +2343,7 @@ func TestEnvFunctions(t *testing.T) {
 	err = s.RemoveEnvironment(ctx, "automation-api-test-env-2")
 	envs, err = s.ListEnvironments(ctx)
 	require.NoError(t, err, "listing environments failed, err: %v", err)
-	assert.Len(t, envs, 0)
+	require.Len(t, envs, 0)
 	require.NoError(t, err, "removing environment failed, err: %v", err)
 	_, err = s.GetConfig(ctx, "also")
 	assert.Error(t, err)
@@ -2345,7 +2408,7 @@ func TestTagFunctions(t *testing.T) {
 	assert.NotContains(t, tags, "foo", "failed to remove tag")
 
 	err = s.Workspace().RemoveStack(ctx, stackName)
-	assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+	require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 }
 
 //nolint:paralleltest // mutates environment variables
@@ -2374,7 +2437,7 @@ func TestStructuredOutput(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -2389,17 +2452,17 @@ func TestStructuredOutput(t *testing.T) {
 		"barfoo": "foobar",
 	}
 	err = s.Workspace().SetEnvVars(envvars)
-	assert.NoError(t, err, "failed to set environment values")
+	require.NoError(t, err, "failed to set environment values")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after setting many")
+	require.NotNil(t, envvars, "failed to get environment values after setting many")
 
 	s.Workspace().SetEnvVar("bar", "buzz")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment value after setting")
+	require.NotNil(t, envvars, "failed to get environment value after setting")
 
 	s.Workspace().UnsetEnvVar("bar")
 	envvars = s.Workspace().GetEnvVars()
-	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
+	require.NotNil(t, envvars, "failed to get environment values after unsetting.")
 
 	// -- pulumi up --
 	var upEvents []events.EngineEvent
@@ -2412,7 +2475,7 @@ func TestStructuredOutput(t *testing.T) {
 	}
 	wg.Wait()
 
-	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	require.Len(t, res.Outputs, 3, "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 	assert.False(t, res.Outputs["exp_static"].Secret)
 	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
@@ -2485,7 +2548,7 @@ func TestStackImportResources(t *testing.T) {
 
 	randomPluginVersion := "4.16.3"
 	err = stack.Workspace().InstallPlugin(ctx, "random", randomPluginVersion)
-	assert.NoError(t, err, "failed to install plugin")
+	require.NoError(t, err, "failed to install plugin")
 	resourcesToImport := []*optimport.ImportResource{
 		{
 			Type: "random:index/randomPassword:RandomPassword",
@@ -2498,17 +2561,17 @@ func TestStackImportResources(t *testing.T) {
 		optimport.Resources(resourcesToImport),
 		optimport.Protect(false))
 
-	assert.NoError(t, err, "failed to import resources")
+	require.NoError(t, err, "failed to import resources")
 	assert.Equal(t, "succeeded", importResult.Summary.Result)
 	expectedGeneratedCode, err := os.ReadFile(filepath.Join(pDir, "expected_generated_code.yaml"))
-	assert.NoError(t, err, "failed to read expected generated code")
+	require.NoError(t, err, "failed to read expected generated code")
 	normalize := func(s string) string {
 		return strings.ReplaceAll(s, "\r\n", "\n")
 	}
 
 	assert.Equal(t, normalize(string(expectedGeneratedCode)), normalize(importResult.GeneratedCode))
 	_, err = stack.Destroy(ctx)
-	assert.NoError(t, err, "failed to destroy stack")
+	require.NoError(t, err, "failed to destroy stack")
 }
 
 func TestSupportsStackOutputs(t *testing.T) {
@@ -2549,7 +2612,7 @@ func TestSupportsStackOutputs(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -2559,14 +2622,14 @@ func TestSupportsStackOutputs(t *testing.T) {
 	}
 
 	assertOutputs := func(t *testing.T, outputs OutputMap) {
-		assert.Equal(t, 4, len(outputs), "expected four outputs")
+		require.Len(t, outputs, 4, "expected four outputs")
 		assert.Equal(t, "foo", outputs["exp_static"].Value)
 		assert.False(t, outputs["exp_static"].Secret)
 		assert.Equal(t, "abc", outputs["exp_cfg"].Value)
 		assert.False(t, outputs["exp_cfg"].Secret)
 		assert.Equal(t, "secret", outputs["exp_secret"].Value)
 		assert.True(t, outputs["exp_secret"].Secret)
-		assert.Equal(t, map[string]interface{}{
+		assert.Equal(t, map[string]any{
 			"is_a_secret":  "iamsecret",
 			"not_a_secret": "foo",
 		}, outputs["nested_obj"].Value)
@@ -2579,7 +2642,7 @@ func TestSupportsStackOutputs(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 0, len(initialOutputs))
+	assert.Empty(t, initialOutputs)
 
 	// -- pulumi up --
 	res, err := s.Up(ctx)
@@ -2617,7 +2680,7 @@ func TestSupportsStackOutputs(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 0, len(outputsAfterDestroy))
+	assert.Empty(t, outputsAfterDestroy)
 }
 
 func TestShallowClone(t *testing.T) {
@@ -2648,7 +2711,6 @@ func TestShallowClone(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -2668,7 +2730,7 @@ func TestShallowClone(t *testing.T) {
 			hashes, err := r.Storer.Shallow()
 			require.NoError(t, err)
 
-			assert.Equal(t, 1, len(hashes))
+			require.Len(t, hashes, 1)
 		})
 	}
 }
@@ -2742,12 +2804,12 @@ func TestProjectSettingsRespected(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = stack.Workspace().RemoveStack(ctx, stack.Name())
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	projectSettings, err := stack.workspace.ProjectSettings(ctx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, projectSettings.Name, tokens.PackageName("correct_project"))
 	assert.Equal(t, *projectSettings.Description, "This is a description")
 }
@@ -2779,7 +2841,7 @@ func TestSaveStackSettings(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	// first load settings for created stack
@@ -2787,7 +2849,7 @@ func TestSaveStackSettings(t *testing.T) {
 	require.NoError(t, err)
 	// Set the config value and save it
 	stackConfig.Config[resourceConfig.MustMakeKey(pName, "bar")] = resourceConfig.NewValue("baz")
-	assert.NoError(t, s.Workspace().SaveStackSettings(ctx, stackName, stackConfig))
+	require.NoError(t, s.Workspace().SaveStackSettings(ctx, stackName, stackConfig))
 
 	// -- pulumi up --
 
@@ -2801,7 +2863,7 @@ func TestSaveStackSettings(t *testing.T) {
 	assert.Equal(t, "baz", res.Outputs["exp_cfg"].Value)
 
 	reloaded, err := s.workspace.StackSettings(ctx, stackName)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// Check each field because if we check the whole struct it picks up the 'raw' field which does differ.
 	assert.Equal(t, stackConfig.SecretsProvider, reloaded.SecretsProvider)
 	assert.Equal(t, stackConfig.EncryptedKey, reloaded.EncryptedKey)
@@ -3007,7 +3069,7 @@ func TestConfigSecretWarnings(t *testing.T) {
 		c.RequireSecretFloat64("plainfloat11")
 		c.TrySecretFloat64("plainfloat12")
 
-		var obj interface{}
+		var obj any
 		config.GetObject(ctx, "plainobjj1", &obj)
 		config.RequireObject(ctx, "plainobj2", &obj)
 		config.TryObject(ctx, "plainobj3", &obj)
@@ -3096,7 +3158,7 @@ func TestConfigSecretWarnings(t *testing.T) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)
@@ -3270,8 +3332,8 @@ func TestWhoAmIDetailed(t *testing.T) {
 		t.Errorf("failed to get WhoAmIDetailedInfo, err: %v", err)
 		t.FailNow()
 	}
-	assert.NotNil(t, whoAmIDetailedInfo.User, "failed to get WhoAmIDetailedInfo user")
-	assert.NotNil(t, whoAmIDetailedInfo.URL, "failed to get WhoAmIDetailedInfo url")
+	require.NotNil(t, whoAmIDetailedInfo.User, "failed to get WhoAmIDetailedInfo user")
+	require.NotNil(t, whoAmIDetailedInfo.URL, "failed to get WhoAmIDetailedInfo url")
 
 	// cleanup
 	_, err = s.Destroy(ctx)
@@ -3309,8 +3371,8 @@ func TestListStacks(t *testing.T) {
 
 	stacks, err := workspace.ListStacks(ctx)
 
-	assert.NoError(t, err)
-	assert.Len(t, stacks, 2)
+	require.NoError(t, err)
+	require.Len(t, stacks, 2)
 	assert.Equal(t, "testorg1/testproj1/teststack1", stacks[0].Name)
 	assert.Equal(t, false, stacks[0].Current)
 	assert.Equal(t, "https://app.pulumi.com/testorg1/testproj1/teststack1", stacks[0].URL)
@@ -3342,7 +3404,7 @@ func TestListStacksCorrectArgs(t *testing.T) {
 
 	_, err = workspace.ListStacks(ctx)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []string{"stack", "ls", "--json"}, m.capturedArgs)
 }
 
@@ -3369,8 +3431,8 @@ func TestListAllStacks(t *testing.T) {
 
 	stacks, err := workspace.ListStacks(ctx, optlist.All())
 
-	assert.NoError(t, err)
-	assert.Len(t, stacks, 2)
+	require.NoError(t, err)
+	require.Len(t, stacks, 2)
 	assert.Equal(t, "testorg1/testproj1/teststack1", stacks[0].Name)
 	assert.Equal(t, false, stacks[0].Current)
 	assert.Equal(t, "https://app.pulumi.com/testorg1/testproj1/teststack1", stacks[0].URL)
@@ -3402,7 +3464,7 @@ func TestListStacksAllCorrectArgs(t *testing.T) {
 
 	_, err = workspace.ListStacks(ctx, optlist.All())
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []string{"stack", "ls", "--json", "--all"}, m.capturedArgs)
 }
 
@@ -3585,7 +3647,7 @@ func BenchmarkBulkSetConfigMixed(b *testing.B) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.NoError(b, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(b, err, "failed to remove stack. Resources have leaked.")
 	}()
 }
 
@@ -3652,7 +3714,7 @@ func BenchmarkBulkSetConfigPlain(b *testing.B) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.NoError(b, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(b, err, "failed to remove stack. Resources have leaked.")
 	}()
 }
 
@@ -3719,7 +3781,7 @@ func BenchmarkBulkSetConfigSecret(b *testing.B) {
 	defer func() {
 		// -- pulumi stack rm --
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.NoError(b, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(b, err, "failed to remove stack. Resources have leaked.")
 	}()
 }
 
@@ -3775,4 +3837,34 @@ func NewMyResource(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOpti
 	}
 
 	return myResource, nil
+}
+
+func TestStackLifecycleInlineProgramRunProgram(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+
+	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
+		_, err := NewMyResource(ctx, "res")
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	_, err = s.Up(ctx, optup.UserAgent(agent), optup.Refresh())
+	require.NoError(t, err, "up failed")
+
+	_, err = s.Refresh(ctx, optrefresh.RunProgram(true))
+	require.NoError(t, err, "refresh failed")
+
+	_, err = s.Destroy(ctx, optdestroy.RunProgram(true))
+	require.NoError(t, err, "destroy failed")
 }

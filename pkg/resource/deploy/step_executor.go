@@ -273,6 +273,43 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 		}
 	}
 
+	if !reg.Res().Custom {
+		// Run the after hooks for Create/Update/Delete steps for
+		// `ComponentResources `now that `RegisterResourceOutputs `is about to
+		// complete.
+		if s, ok := reg.(*CreateStep); ok {
+			if err := s.Deployment().RunHooks(
+				s.new.ResourceHooks[resource.AfterCreate],
+				false, /* isBeforeHook */
+				s.new.ID,
+				s.new.URN,
+				s.new.URN.Name(),
+				s.Type(),
+				s.new.Inputs,
+				nil, /* oldInputs */
+				s.new.Outputs,
+				nil, /* oldOutputs */
+			); err != nil {
+				return err
+			}
+		} else if s, ok := reg.(*UpdateStep); ok {
+			if err := s.Deployment().RunHooks(
+				s.new.ResourceHooks[resource.AfterUpdate],
+				false, /* isBeforeHook */
+				s.new.ID,
+				s.new.URN,
+				s.new.URN.Name(),
+				s.Type(),
+				s.new.Inputs,
+				s.old.Inputs,
+				s.new.Outputs,
+				s.old.Outputs,
+			); err != nil {
+				return err
+			}
+		}
+	}
+
 	// If there is an event subscription for finishing the resource, execute them.
 	if e := se.deployment.events; e != nil {
 		if eventerr := e.OnResourceOutputs(reg); eventerr != nil {
@@ -398,14 +435,14 @@ func (se *stepExecutor) cancelDueToError(err error, step Step) {
 //   2. If successful, the step is executed (if not a preview)
 //   3. The post-step event is raised, if there are any attached callbacks to the engine
 //
-// The pre-step event returns an interface{}, which is some arbitrary context that must be passed
+// The pre-step event returns an any, which is some arbitrary context that must be passed
 // verbatim to the post-step event.
 //
 
 // executeStep executes a single step, returning true if the step execution was successful and
 // false if it was not.
 func (se *stepExecutor) executeStep(workerID int, step Step) error {
-	var payload interface{}
+	var payload any
 	events := se.deployment.events
 
 	// DiffSteps are special, we just use them for step worker parallelism but they shouldn't be passed to the rest of
@@ -424,7 +461,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 	return se.continueExecuteStep(payload, workerID, step)
 }
 
-func (se *stepExecutor) continueExecuteStep(payload interface{}, workerID int, step Step) error {
+func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step) error {
 	events := se.deployment.events
 
 	se.log(workerID, "applying step %v on %v (preview %v)", step.Op(), step.URN(), se.deployment.opts.DryRun)
@@ -502,10 +539,13 @@ func (se *stepExecutor) continueExecuteStep(payload interface{}, workerID int, s
 		// references using pulumi:pulumi:getResource. If it's a resource managed by Pulumi (i.e. it's the result of a
 		// resource registration with a goal state), we'll record it in news. If it's not managed by Pulumi (i.e. it's the
 		// result of a Read, perhaps caused by a .get in an SDK, for instance), we'll record it in reads.
-		if _, hasGoal := se.deployment.goals.Load(newState.URN); hasGoal {
-			se.deployment.news.Store(newState.URN, newState)
-		} else if step.Op() == OpRead || step.Op() == OpReadReplacement {
+		if step.Op() == OpRead || step.Op() == OpReadReplacement {
 			se.deployment.reads.Store(newState.URN, newState)
+		} else {
+			// Read tells us a state was for an external, but we can't check deployment.goals to see if a
+			// resource is managed because untargetted but removed from program resources are still considered
+			// managed but don't have a goal state.
+			se.deployment.news.Store(newState.URN, newState)
 		}
 
 		// If we're generating plans update the resource's outputs in the generated plan.
@@ -570,7 +610,7 @@ func (se *stepExecutor) continueExecuteStep(payload interface{}, workerID int, s
 }
 
 // log is a simple logging helper for the step executor.
-func (se *stepExecutor) log(workerID int, msg string, args ...interface{}) {
+func (se *stepExecutor) log(workerID int, msg string, args ...any) {
 	if logging.V(stepExecutorLogLevel) {
 		message := fmt.Sprintf(msg, args...)
 		logging.V(stepExecutorLogLevel).Infof("StepExecutor worker(%d): %s", workerID, message)

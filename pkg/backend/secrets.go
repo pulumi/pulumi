@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
@@ -61,6 +62,12 @@ func (p *errorCatchingSecretsProvider) OfType(ty string, state json.RawMessage) 
 	manager := &errorCatchingSecretsManager{
 		delegateManager: delegateManager,
 		onDecryptError:  p.onDecryptError,
+	}
+
+	// If the underlying manager implements BatchingSecretsManager,
+	// wrap our error-catching manager in a batching caching manager.
+	if _, ok := delegateManager.(stack.BatchingSecretsManager); ok {
+		return stack.NewBatchingCachingSecretsManager(manager), nil
 	}
 
 	return manager, nil

@@ -43,6 +43,69 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestPluginNameRegexp(t *testing.T) {
+	t.Parallel()
+
+	type expect struct{ Source, Publisher, Name string }
+	tests := []struct {
+		input    string
+		expected *expect
+	}{
+		{
+			input:    "",
+			expected: nil,
+		},
+		{
+			input:    "plain",
+			expected: &expect{Name: "plain"},
+		},
+		{
+			input:    "publisher/name",
+			expected: &expect{Publisher: "publisher", Name: "name"},
+		},
+		{
+			input:    "source/publisher/name",
+			expected: &expect{Source: "source", Publisher: "publisher", Name: "name"},
+		},
+		{
+			input:    "extra/source/publisher/name",
+			expected: nil,
+		},
+		{
+			input:    "long-name",
+			expected: &expect{Name: "long-name"},
+		},
+		{
+			input:    "./some/path",
+			expected: nil,
+		},
+		{
+			input:    "/leading/slash",
+			expected: nil,
+		},
+		{
+			input:    "../file",
+			expected: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run("", func(t *testing.T) {
+			t.Parallel()
+
+			match := PluginNameRegexp.FindStringSubmatch(tt.input)
+			if match == nil {
+				require.Nil(t, tt.expected)
+				return
+			}
+
+			assert.Equal(t, tt.expected.Name, match[PluginNameRegexp.SubexpIndex("Name")], "Name")
+			assert.Equal(t, tt.expected.Publisher, match[PluginNameRegexp.SubexpIndex("Publisher")], "Publisher")
+			assert.Equal(t, tt.expected.Source, match[PluginNameRegexp.SubexpIndex("Source")], "Source")
+		})
+	}
+}
+
 func TestLegacyPluginSelection_Prerelease(t *testing.T) {
 	t.Parallel()
 
@@ -79,7 +142,7 @@ func TestLegacyPluginSelection_Prerelease(t *testing.T) {
 
 	result := LegacySelectCompatiblePlugin(candidatePlugins,
 		PluginSpec{Kind: apitype.ResourcePlugin, Name: "myplugin", Version: nil})
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.2.0", result.Version.String())
 }
@@ -121,7 +184,7 @@ func TestLegacyPluginSelection_PrereleaseRequested(t *testing.T) {
 	v := semver.MustParse("0.2.0")
 	result := LegacySelectCompatiblePlugin(candidatePlugins,
 		PluginSpec{Kind: apitype.ResourcePlugin, Name: "myplugin", Version: &v})
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.3.0-alpha", result.Version.String())
 }
@@ -163,7 +226,7 @@ func TestPluginSelection_ExactMatch(t *testing.T) {
 	version := semver.MustParse("0.2.0")
 	result := SelectCompatiblePlugin(candidatePlugins,
 		PluginSpec{Kind: apitype.ResourcePlugin, Name: "myplugin", Version: &version})
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.2.0", result.Version.String())
 }
@@ -250,7 +313,7 @@ func TestPluginSelection_EmptyVersionNoAlternatives(t *testing.T) {
 	version := semver.MustParse("0.2.0")
 	result := SelectCompatiblePlugin(candidatePlugins,
 		PluginSpec{Kind: apitype.ResourcePlugin, Name: "myplugin", Version: &version})
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Nil(t, result.Version)
 }
@@ -302,7 +365,7 @@ func TestPluginSelection_EmptyVersionWithAlternatives(t *testing.T) {
 	version := semver.MustParse("0.2.0")
 	result := SelectCompatiblePlugin(candidatePlugins,
 		PluginSpec{Kind: apitype.ResourcePlugin, Name: "myplugin", Version: &version})
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.2.0", result.Version.String())
 }
@@ -581,7 +644,7 @@ func TestPluginDownload(t *testing.T) {
 
 		t.Run("Valid Checksum", func(t *testing.T) {
 			checksum, err := hex.DecodeString(chksum)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			spec := PluginSpec{
 				PluginDownloadURL: "",
@@ -773,7 +836,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		}
 		expectedVersion := semver.MustParse("4.37.5")
 		source, err := spec.GetSource()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			assert.Equal(t,
 				"https://api.github.com/repos/pulumi/pulumi-mock-latest/releases/latest",
@@ -846,7 +909,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		}
 		expectedVersion := semver.MustParse("4.37.5")
 		source, err := spec.GetSource()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			if req.URL.String() == "https://api.git.org/repos/ourorg/mock/releases/latest" {
 				assert.Equal(t, "token "+token, req.Header.Get("Authorization"))
@@ -898,7 +961,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 			Kind:              apitype.PluginKind("resource"),
 		}
 		source, err := spec.GetSource()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			return nil, 0, newDownloadError(403, req.URL, http.Header{"X-Ratelimit-Remaining": []string{"0"}})
 		}
@@ -1040,7 +1103,6 @@ func TestParsePluginDownloadURLOverride(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
@@ -1048,7 +1110,7 @@ func TestParsePluginDownloadURLOverride(t *testing.T) {
 			if tt.expectedError != "" {
 				assert.EqualError(t, err, tt.expectedError)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			assert.Equal(t, tt.expected, actual)
 
@@ -1136,7 +1198,6 @@ func TestPluginDownloadOverrideArray_Get(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1227,12 +1288,12 @@ plugins:
   - name: aws
     version: 1.0.0
     path: ../bin/aws`), 0o600)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	proj, err := LoadProject(pyaml)
-	assert.NoError(t, err)
-	assert.NotNil(t, proj.Plugins)
-	assert.Equal(t, 1, len(proj.Plugins.Providers))
+	require.NoError(t, err)
+	require.NotNil(t, proj.Plugins)
+	require.Len(t, proj.Plugins.Providers, 1)
 	assert.Equal(t, "aws", proj.Plugins.Providers[0].Name)
 	assert.Equal(t, "1.0.0", proj.Plugins.Providers[0].Version)
 	assert.Equal(t, "../bin/aws", proj.Plugins.Providers[0].Path)
@@ -1445,7 +1506,6 @@ func TestMissingErrorText(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.Name, func(t *testing.T) {
 			t.Parallel()
 			err := NewMissingError(
@@ -1681,7 +1741,7 @@ func TestPluginInfoShimless(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, pluginPath, info.Path)
-	assert.Equal(t, uint64(23), info.Size)
+	assert.Equal(t, uint64(23), info.Size())
 	assert.Equal(t, stat.ModTime(), info.InstallTime)
 	assert.Equal(t, stat.ModTime(), info.SchemaTime)
 	// schemaPaths are odd, they're one directory up from the plugin directory
@@ -1919,10 +1979,20 @@ func TestNewPluginSpec(t *testing.T) {
 			kind:   apitype.ResourcePlugin,
 			Error:  errors.New("VERSION must be valid semver or git commit hash: v1.0.0.0"),
 		},
+		{
+			name:   "url with auth info",
+			source: "https://abc:token@github.com/pulumi/pulumi-example@v1.0.0",
+			kind:   apitype.ResourcePlugin,
+			ExpectedPluginSpec: PluginSpec{
+				Name:              "github.com_pulumi_pulumi-example.git",
+				Kind:              apitype.ResourcePlugin,
+				Version:           &v1,
+				PluginDownloadURL: "git://abc:token@github.com/pulumi/pulumi-example",
+			},
+		},
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -2130,7 +2200,6 @@ func TestLocalName(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			spec := PluginSpec{

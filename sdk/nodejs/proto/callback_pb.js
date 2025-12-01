@@ -113,8 +113,8 @@ proto.pulumirpc.Callback.prototype.toObject = function(opt_includeInstance) {
  */
 proto.pulumirpc.Callback.toObject = function(includeInstance, msg) {
   var f, obj = {
-    target: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    token: jspb.Message.getFieldWithDefault(msg, 2, "")
+target: jspb.Message.getFieldWithDefault(msg, 1, ""),
+token: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -273,8 +273,8 @@ proto.pulumirpc.CallbackInvokeRequest.prototype.toObject = function(opt_includeI
  */
 proto.pulumirpc.CallbackInvokeRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    token: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    request: msg.getRequest_asB64()
+token: jspb.Message.getFieldWithDefault(msg, 1, ""),
+request: msg.getRequest_asB64()
   };
 
   if (includeInstance) {
@@ -457,7 +457,7 @@ proto.pulumirpc.CallbackInvokeResponse.prototype.toObject = function(opt_include
  */
 proto.pulumirpc.CallbackInvokeResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    response: msg.getResponse_asB64()
+response: msg.getResponse_asB64()
   };
 
   if (includeInstance) {

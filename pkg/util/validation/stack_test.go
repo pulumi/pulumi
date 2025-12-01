@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateStackTag(t *testing.T) {
@@ -39,7 +40,6 @@ func TestValidateStackTag(t *testing.T) {
 		}
 
 		for _, name := range names {
-			name := name
 			//nolint:paralleltest // golangci-lint v2 upgrade
 			t.Run(name, func(t *testing.T) {
 				tags := map[apitype.StackTagName]string{
@@ -47,7 +47,7 @@ func TestValidateStackTag(t *testing.T) {
 				}
 
 				err := ValidateStackTags(tags)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			})
 		}
 	})
@@ -64,7 +64,6 @@ func TestValidateStackTag(t *testing.T) {
 		}
 
 		for _, name := range names {
-			name := name
 			t.Run(name, func(t *testing.T) {
 				t.Parallel()
 

@@ -19,7 +19,7 @@ import (
 	"time"
 
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMainContext(t *testing.T) {
@@ -35,5 +35,5 @@ func TestMainContext(t *testing.T) {
 	)
 
 	// The provider should have respected our context's timeout.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }

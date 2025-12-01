@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ import { randomUUID } from "crypto";
 import * as jspb from "google-protobuf";
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as log from "../log";
-import { output } from "../output";
+import { output, Inputs, secret } from "../output";
 import * as callrpc from "../proto/callback_grpc_pb";
 import * as callproto from "../proto/callback_pb";
 import { Callback, CallbackInvokeRequest, CallbackInvokeResponse } from "../proto/callback_pb";
@@ -31,6 +31,7 @@ import {
     DependencyResource,
     ProviderResource,
     Resource,
+    ResourceHook,
     ResourceOptions,
     ResourceTransform,
     ResourceTransformArgs,
@@ -39,15 +40,11 @@ import {
 } from "../resource";
 import { InvokeOptions, InvokeTransform, InvokeTransformArgs } from "../invoke";
 
-import { mapAliasesForRequest } from "./resource";
-import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
-
-/**
- * Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
- *
- * @internal
- */
-const maxRPCMessageSize: number = 1024 * 1024 * 400;
+import { hookBindingFromProto, mapAliasesForRequest, prepareHooks } from "./resource";
+import { deserializeProperties, serializeProperties, unknownValue, isRpcSecret, unwrapRpcSecret } from "./rpc";
+import { debuggablePromise } from "./debuggable";
+import { grpcChannelOptions, rpcKeepAlive } from "./settings";
+import { Http2Server, Http2Session } from "http2";
 
 type CallbackFunction = (args: Uint8Array) => Promise<jspb.Message>;
 
@@ -56,6 +53,7 @@ export interface ICallbackServer {
     registerStackTransform(callback: ResourceTransform): void;
     registerStackInvokeTransform(callback: InvokeTransform): void;
     registerStackInvokeTransformAsync(callback: InvokeTransform): Promise<callproto.Callback>;
+    registerResourceHook(hook: ResourceHook): Promise<void>;
     shutdown(): void;
     // Wait for any pendind registerStackTransform calls to complete.
     awaitStackRegistrations(): Promise<void>;
@@ -73,7 +71,7 @@ export class CallbackServer implements ICallbackServer {
         this._monitor = monitor;
 
         this._server = new grpc.Server({
-            "grpc.max_receive_message_length": maxRPCMessageSize,
+            ...grpcChannelOptions,
         });
 
         const implementation: callrpc.ICallbacksServer = {
@@ -87,6 +85,43 @@ export class CallbackServer implements ICallbackServer {
                 if (err !== null) {
                     reject(err);
                     return;
+                }
+
+                // The running callbacks server keeps the Node.js eventloop
+                // active, so we will never exit the process. Normally we would
+                // shutdown the server when we're done, however we don't have a
+                // good way to tell when that is the case. Consider a user
+                // provider Pulumi program:
+                //
+                // setTimeout(() => new random.RandomPet(
+                //      "username", {}, { transforms: [...] }), 2000);
+                //
+                // When we import the user program (module really), it will
+                // return immediately, but we have to wait for the timeout to
+                // trigger and then the resource registration to complete.
+                //
+                // Usually the best indication that no more work is outstanding
+                // is `process.on("beforeExit", ...)`, which will be emitted
+                // when there is no more work waiting in the eventloop. However
+                // if we have a server running, we'll never get to that event.
+                //
+                // To break out of this catch-22, we `unref` the server, and the
+                // sessions created by the server.
+                //
+                // https://nodejs.org/api/net.html#serverunref
+                // https://nodejs.org/api/http2.html#http2sessionunref
+                try {
+                    // https://github.com/grpc/grpc-node/blob/01db2bc6206963a6678ee05fa4651fd2ee40068c/packages/grpc-js/src/server.ts#L271
+                    // @ts-ignore 2341 // http2Servers is private
+                    const httpServer: Http2Server = Array.from(self._server.http2Servers.keys())[0];
+                    if (httpServer) {
+                        httpServer.unref();
+                        httpServer.on("session", (session: Http2Session) => {
+                            session.unref();
+                        });
+                    }
+                } catch (error) {
+                    log.debug(`failed to unref the callback server: ${error}`);
                 }
 
                 // The server takes a while to _actually_ startup so we need to keep trying to send an invoke
@@ -176,6 +211,7 @@ export class CallbackServer implements ICallbackServer {
                 ropts = {
                     deleteBeforeReplace: opts.getDeleteBeforeReplace(),
                     additionalSecretOutputs: opts.getAdditionalSecretOutputsList(),
+                    import: opts.getImport(),
                 } as CustomResourceOptions;
             } else {
                 const providers: Record<string, ProviderResource> = {};
@@ -218,8 +254,10 @@ export class CallbackServer implements ICallbackServer {
                     delete: timeouts.getDelete(),
                 };
             }
+            ropts.hooks = hookBindingFromProto(opts.getHooks());
             ropts.deletedWith =
                 opts.getDeletedWith() !== "" ? new DependencyResource(opts.getDeletedWith()) : undefined;
+            ropts.replaceWith = opts.getReplaceWithList().map((dep) => new DependencyResource(dep));
             ropts.dependsOn = opts.getDependsOnList().map((dep) => new DependencyResource(dep));
             ropts.ignoreChanges = opts.getIgnoreChangesList();
             ropts.parent = request.getParent() !== "" ? new DependencyResource(request.getParent()) : undefined;
@@ -283,6 +321,11 @@ export class CallbackServer implements ICallbackServer {
                     if (result.opts.deletedWith !== undefined) {
                         opts.setDeletedWith(await result.opts.deletedWith.urn.promise());
                     }
+                    if (result.opts.replaceWith !== undefined) {
+                        opts.setReplaceWithList(
+                            await Promise.all(result.opts.replaceWith.map(async (dep) => await dep.urn.promise())),
+                        );
+                    }
                     if (result.opts.dependsOn !== undefined) {
                         const resolvedDeps = await output(result.opts.dependsOn).promise();
                         const deps = [];
@@ -318,6 +361,9 @@ export class CallbackServer implements ICallbackServer {
                     if (result.opts.version !== undefined) {
                         opts.setVersion(result.opts.version);
                     }
+                    if (result.opts.hooks !== undefined) {
+                        opts.setHooks(await prepareHooks(result.opts.hooks, request.getName()));
+                    }
 
                     if (request.getCustom()) {
                         const copts = result.opts as CustomResourceOptions;
@@ -326,6 +372,9 @@ export class CallbackServer implements ICallbackServer {
                         }
                         if (copts.additionalSecretOutputs !== undefined) {
                             opts.setAdditionalSecretOutputsList(copts.additionalSecretOutputs);
+                        }
+                        if (copts.import !== undefined) {
+                            opts.setImport(copts.import);
                         }
                     } else {
                         const copts = result.opts as ComponentResourceOptions;
@@ -502,4 +551,79 @@ export class CallbackServer implements ICallbackServer {
                 }
             });
     }
+
+    async registerResourceHook(hook: ResourceHook): Promise<void> {
+        const cb = async (bytes: Uint8Array): Promise<jspb.Message> => {
+            try {
+                const request = resproto.ResourceHookRequest.deserializeBinary(bytes);
+                const newInputs = request.getNewInputs();
+                const oldInputs = request.getOldInputs();
+                const newOutputs = request.getNewOutputs();
+                const oldOutputs = request.getOldOutputs();
+                await hook.callback({
+                    urn: request.getUrn(),
+                    id: request.getId(),
+                    name: request.getName(),
+                    type: request.getType(),
+                    newInputs: newInputs
+                        ? outputtifySecrets(deserializeProperties(newInputs, true /*keepUnknowns */))
+                        : undefined,
+                    oldInputs: oldInputs
+                        ? outputtifySecrets(deserializeProperties(oldInputs, true /*keepUnknowns */))
+                        : undefined,
+                    newOutputs: newOutputs
+                        ? outputtifySecrets(deserializeProperties(newOutputs, true /*keepUnknowns */))
+                        : undefined,
+                    oldOutputs: oldOutputs
+                        ? outputtifySecrets(deserializeProperties(oldOutputs, true /*keepUnknowns */))
+                        : undefined,
+                });
+            } catch (error) {
+                const response = new resproto.ResourceHookResponse();
+                response.setError(error.message);
+                return response;
+            }
+            return new resproto.ResourceHookResponse();
+        };
+
+        const uuid = randomUUID();
+        this._callbacks.set(uuid, cb);
+        const callback = new Callback();
+        callback.setToken(uuid);
+        callback.setTarget(await this._target);
+
+        const req = new resproto.RegisterResourceHookRequest();
+        req.setCallback(callback);
+        req.setName(hook.name);
+        req.setOnDryRun(hook.opts?.onDryRun ?? false);
+
+        const done = rpcKeepAlive();
+        return debuggablePromise(
+            new Promise((resolve, reject) => {
+                this._monitor.registerResourceHook(req, (err, _) => {
+                    if (err !== null) {
+                        // Remove this from the list of callbacks given we didn't manage to actually register it.
+                        this._callbacks.delete(uuid);
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                    done();
+                });
+            }),
+            `resourceHook:${hook.name}`,
+        );
+    }
+}
+
+function outputtifySecrets(props: Inputs): Inputs {
+    const outputs: Inputs = {};
+    for (const [key, value] of Object.entries(props)) {
+        if (isRpcSecret(value)) {
+            outputs[key] = secret(unwrapRpcSecret(value));
+        } else {
+            outputs[key] = value;
+        }
+    }
+    return outputs;
 }

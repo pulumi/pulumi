@@ -45,11 +45,6 @@ const pulumiEnvKeys = {
 /**
  * @internal
  */
-export const asyncLocalStorage = new AsyncLocalStorage<Store>();
-
-/**
- * @internal
- */
 export interface WriteableOptions {
     /**
      * The name of the current project.
@@ -130,6 +125,7 @@ export interface Store {
     stackResource?: Stack;
     leakCandidates: Set<Promise<any>>;
     logErrorCount: number;
+    terminated: boolean;
 
     /**
      * Tells us if the resource monitor we are connected to is able to support
@@ -160,6 +156,12 @@ export interface Store {
 
     /**
      * Tells us if the resource monitor we are connected to is able to support
+     * the `replaceWith` resource option across its RPC interface.
+     */
+    supportsReplaceWith: boolean;
+
+    /**
+     * Tells us if the resource monitor we are connected to is able to support
      * alias specs across its RPC interface. When it does, we marshal aliases in
      * a special way.
      */
@@ -184,6 +186,12 @@ export interface Store {
      * package references and parameterized providers.
      */
     supportsParameterization: boolean;
+
+    /**
+     * Tells us if the resource monitor we are connected to is able to support
+     * resource hooks.
+     */
+    supportsResourceHooks: boolean;
 
     /**
      * The callback service running for this deployment. This registers
@@ -236,14 +244,19 @@ export class LocalStore implements Store {
 
     logErrorCount = 0;
 
+    /* Tracks whether the monitor was terminated while we were waiting for an operation to complete */
+    terminated = false;
+
     supportsSecrets = false;
     supportsResourceReferences = false;
     supportsOutputValues = false;
     supportsDeletedWith = false;
+    supportsReplaceWith = false;
     supportsAliasSpecs = false;
     supportsTransforms = false;
     supportsInvokeTransforms = false;
     supportsParameterization = false;
+    supportsResourceHooks = false;
     resourcePackages = new Map<string, ResourcePackage[]>();
     resourceModules = new Map<string, ResourceModule[]>();
 }
@@ -299,15 +312,34 @@ export function setStackResource(newStackResource?: Stack) {
 
 declare global {
     /* eslint-disable no-var */
+
+    // globalStore & asyncLocalStorage need to be in the global namespace to work with
+    // multiple versions of the runtime module, as we might see in pre-compiled local
+    // SDKs.
     var globalStore: Store;
+    var asyncLocalStorage: AsyncLocalStorage<Store>;
     var stackResource: Stack | undefined;
+}
+
+// Ensure there is a global.asyncLocalStorage if this is the first copy of `runtime` to
+// load.
+if (global.asyncLocalStorage === undefined) {
+    global.asyncLocalStorage = new AsyncLocalStorage<Store>();
+}
+
+/**
+ * @internal
+ */
+export function withLocalStorage<R>(callback: (...args1: any[]) => R, ...args: any[]): R {
+    const store = new LocalStore();
+    return global.asyncLocalStorage.run(store, callback, ...args);
 }
 
 /**
  * @internal
  */
 export function getLocalStore(): Store | undefined {
-    return asyncLocalStorage.getStore();
+    return global.asyncLocalStorage.getStore();
 }
 
 (<any>getLocalStore).captureReplacement = () => {

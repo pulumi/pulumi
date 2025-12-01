@@ -18,6 +18,8 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"fmt"
+	"io"
 	"iter"
 	"slices"
 	"strings"
@@ -29,14 +31,17 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 //
@@ -64,7 +69,7 @@ type MockBackend struct {
 		*apitype.UntypedDeployment,
 		*CreateStackOptions,
 	) (Stack, error)
-	RemoveStackF func(context.Context, Stack, bool) (bool, error)
+	RemoveStackF func(context.Context, Stack, bool, bool) (bool, error)
 	ListStacksF  func(context.Context, ListStacksFilter, ContinuationToken) (
 		[]StackSummary, ContinuationToken, error)
 	ListStackNamesF func(context.Context, ListStackNamesFilter, ContinuationToken) (
@@ -102,11 +107,11 @@ type MockBackend struct {
 
 	DefaultSecretManagerF func(ps *workspace.ProjectStack) (secrets.Manager, error)
 
-	SupportsTemplatesF          func() bool
-	ListTemplatesF              func(_ context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error)
-	DownloadTemplateF           func(_ context.Context, orgName, templateSource string) (TarReaderCloser, error)
-	GetPackageRegistryF         func() (PackageRegistry, error)
-	GetReadOnlyPackageRegistryF func() registry.Registry
+	SupportsTemplatesF        func() bool
+	ListTemplatesF            func(_ context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error)
+	DownloadTemplateF         func(_ context.Context, orgName, templateSource string) (TarReaderCloser, error)
+	GetCloudRegistryF         func() (CloudRegistry, error)
+	GetReadOnlyCloudRegistryF func() registry.Registry
 }
 
 var _ Backend = (*MockBackend)(nil)
@@ -257,9 +262,9 @@ func (be *MockBackend) CreateStack(
 	panic("not implemented")
 }
 
-func (be *MockBackend) RemoveStack(ctx context.Context, stack Stack, force bool) (bool, error) {
+func (be *MockBackend) RemoveStack(ctx context.Context, stack Stack, force, removeBackups bool) (bool, error) {
 	if be.RemoveStackF != nil {
-		return be.RemoveStackF(ctx, stack, force)
+		return be.RemoveStackF(ctx, stack, force, removeBackups)
 	}
 	panic("not implemented")
 }
@@ -493,16 +498,16 @@ func (be *MockBackend) DownloadTemplate(ctx context.Context, orgName, templateSo
 	panic("not implemented")
 }
 
-func (be *MockBackend) GetPackageRegistry() (PackageRegistry, error) {
-	if be.GetPackageRegistryF != nil {
-		return be.GetPackageRegistryF()
+func (be *MockBackend) GetCloudRegistry() (CloudRegistry, error) {
+	if be.GetCloudRegistryF != nil {
+		return be.GetCloudRegistryF()
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) GetReadOnlyPackageRegistry() registry.Registry {
-	if be.GetReadOnlyPackageRegistryF != nil {
-		return be.GetReadOnlyPackageRegistryF()
+func (be *MockBackend) GetReadOnlyCloudRegistry() registry.Registry {
+	if be.GetReadOnlyCloudRegistryF != nil {
+		return be.GetReadOnlyCloudRegistryF()
 	}
 	panic("not implemented")
 }
@@ -637,6 +642,23 @@ func (ms *MockStack) Snapshot(ctx context.Context, secretsProvider secrets.Provi
 		return ms.SnapshotF(ctx, secretsProvider)
 	}
 	panic("not implemented: MockStack.Snapshot")
+}
+
+func (ms *MockStack) SnapshotStackOutputs(
+	ctx context.Context, secretsProvider secrets.Provider,
+) (property.Map, error) {
+	snapshot, err := ms.Snapshot(ctx, secretsProvider)
+	if err != nil {
+		return property.Map{}, err
+	}
+	res, err := stack.GetRootStackResource(snapshot)
+	if err != nil {
+		return property.Map{}, fmt.Errorf("getting root stack resources: %w", err)
+	}
+	if res == nil {
+		return property.Map{}, nil
+	}
+	return resource.FromResourcePropertyMap(res.Outputs), nil
 }
 
 func (ms *MockStack) Tags() map[apitype.StackTagName]string {
@@ -806,24 +828,30 @@ func (m MockTarReader) Tar() *tar.Reader {
 	return tar.NewReader(&b)
 }
 
-type MockPackageRegistry struct {
-	PublishF    func(context.Context, apitype.PackagePublishOp) error
-	GetPackageF func(
+type MockCloudRegistry struct {
+	PublishPackageF  func(context.Context, apitype.PackagePublishOp) error
+	PublishTemplateF func(context.Context, apitype.TemplatePublishOp) error
+	GetPackageF      func(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.PackageMetadata, error)
-	SearchByNameF func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
+	ListPackagesF func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
+	GetTemplateF  func(
+		ctx context.Context, source, publisher, name string, version *semver.Version,
+	) (apitype.TemplateMetadata, error)
+	ListTemplatesF    func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error]
+	DownloadTemplateF func(ctx context.Context, downloadURL string) (io.ReadCloser, error)
 }
 
-var _ PackageRegistry = (*MockPackageRegistry)(nil)
+var _ CloudRegistry = (*MockCloudRegistry)(nil)
 
-func (mr *MockPackageRegistry) Publish(ctx context.Context, op apitype.PackagePublishOp) error {
-	if mr.PublishF != nil {
-		return mr.PublishF(ctx, op)
+func (mr *MockCloudRegistry) PublishPackage(ctx context.Context, op apitype.PackagePublishOp) error {
+	if mr.PublishPackageF != nil {
+		return mr.PublishPackageF(ctx, op)
 	}
-	panic("not implemented: MockPackageRegistry.Publish")
+	panic("not implemented: MockCloudRegistry.PublishPackage")
 }
 
-func (mr *MockPackageRegistry) GetPackage(
+func (mr *MockCloudRegistry) GetPackage(
 	ctx context.Context, source, publisher, name string, version *semver.Version,
 ) (apitype.PackageMetadata, error) {
 	if mr.GetPackageF != nil {
@@ -832,11 +860,43 @@ func (mr *MockPackageRegistry) GetPackage(
 	panic("not implemented")
 }
 
-func (mr *MockPackageRegistry) SearchByName(
+func (mr *MockCloudRegistry) ListPackages(
 	ctx context.Context, name *string,
 ) iter.Seq2[apitype.PackageMetadata, error] {
-	if mr.SearchByNameF != nil {
-		return mr.SearchByNameF(ctx, name)
+	if mr.ListPackagesF != nil {
+		return mr.ListPackagesF(ctx, name)
 	}
 	panic("not implemented")
+}
+
+func (mr *MockCloudRegistry) GetTemplate(
+	ctx context.Context, source, publisher, name string, version *semver.Version,
+) (apitype.TemplateMetadata, error) {
+	if mr.GetTemplateF != nil {
+		return mr.GetTemplateF(ctx, source, publisher, name, version)
+	}
+	panic("not implemented")
+}
+
+func (mr *MockCloudRegistry) ListTemplates(
+	ctx context.Context, name *string,
+) iter.Seq2[apitype.TemplateMetadata, error] {
+	if mr.ListTemplatesF != nil {
+		return mr.ListTemplatesF(ctx, name)
+	}
+	panic("not implemented")
+}
+
+func (mr *MockCloudRegistry) PublishTemplate(ctx context.Context, op apitype.TemplatePublishOp) error {
+	if mr.PublishTemplateF != nil {
+		return mr.PublishTemplateF(ctx, op)
+	}
+	panic("not implemented: MockCloudRegistry.PublishTemplate")
+}
+
+func (mr *MockCloudRegistry) DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
+	if mr.DownloadTemplateF != nil {
+		return mr.DownloadTemplateF(ctx, downloadURL)
+	}
+	panic("not implemented: MockCloudRegistry.DownloadTemplate")
 }

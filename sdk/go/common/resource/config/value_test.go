@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -30,11 +31,11 @@ func TestMarshallNormalValueYAML(t *testing.T) {
 	v := NewValue("value")
 
 	b, err := yaml.Marshal(v)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("value\n"), b)
 
 	newV, err := roundtripValueYAML(v)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, v, newV)
 }
 
@@ -44,11 +45,11 @@ func TestMarshallSecureValueYAML(t *testing.T) {
 	v := NewSecureValue("value")
 
 	b, err := yaml.Marshal(v)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("secure: value\n"), b)
 
 	newV, err := roundtripValueYAML(v)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, v, newV)
 }
 
@@ -58,11 +59,11 @@ func TestMarshallNormalValueJSON(t *testing.T) {
 	v := NewValue("value")
 
 	b, err := json.Marshal(v)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("\"value\""), b)
 
 	newV, err := roundtripValueJSON(v)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, v, newV)
 }
 
@@ -72,11 +73,11 @@ func TestMarshallSecureValueJSON(t *testing.T) {
 	v := NewSecureValue("value")
 
 	b, err := json.Marshal(v)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("{\"secure\":\"value\"}"), b)
 
 	newV, err := roundtripValueJSON(v)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, v, newV)
 }
 
@@ -84,44 +85,44 @@ func TestHasSecureValue(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Value    interface{}
+		Value    any
 		Expected bool
 	}{
 		{
-			Value:    []interface{}{"a", "b", "c"},
+			Value:    []any{"a", "b", "c"},
 			Expected: false,
 		},
 		{
-			Value: map[string]interface{}{
+			Value: map[string]any{
 				"foo": "bar",
-				"hi":  map[string]interface{}{"secure": "securevalue", "but": "not"},
+				"hi":  map[string]any{"secure": "securevalue", "but": "not"},
 			},
 			Expected: false,
 		},
 		{
-			Value:    []interface{}{"a", "b", map[string]interface{}{"secure": "securevalue"}},
+			Value:    []any{"a", "b", map[string]any{"secure": "securevalue"}},
 			Expected: true,
 		},
 		{
-			Value: map[string]interface{}{
+			Value: map[string]any{
 				"foo": "bar",
-				"hi":  map[string]interface{}{"secure": "securevalue"},
+				"hi":  map[string]any{"secure": "securevalue"},
 			},
 			Expected: true,
 		},
 		{
-			Value: map[string]interface{}{
+			Value: map[string]any{
 				"foo":   "bar",
-				"array": []interface{}{"a", "b", map[string]interface{}{"secure": "securevalue"}},
+				"array": []any{"a", "b", map[string]any{"secure": "securevalue"}},
 			},
 			Expected: true,
 		},
 		{
-			Value: map[string]interface{}{
+			Value: map[string]any{
 				"foo": "bar",
-				"map": map[string]interface{}{
+				"map": map[string]any{
 					"nest": "blah",
-					"hi":   map[string]interface{}{"secure": "securevalue"},
+					"hi":   map[string]any{"secure": "securevalue"},
 				},
 			},
 			Expected: true,
@@ -130,16 +131,15 @@ func TestHasSecureValue(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test.Value), func(t *testing.T) {
 			t.Parallel()
 
 			jsonBytes, err := json.Marshal(test.Value)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			var val object
 			err = json.Unmarshal(jsonBytes, &val)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			assert.Equal(t, test.Expected, val.Secure())
 		})
@@ -191,17 +191,16 @@ func TestDecryptingValue(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test.Value), func(t *testing.T) {
 			t.Parallel()
 
 			actual, err := test.Value.Value(decrypter)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.Expected, actual)
 
 			// Ensure the same value is returned when the NopDecrypter is used.
 			actualNop, err := test.Value.Value(NopDecrypter)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.Value.value, actualNop)
 		})
 	}
@@ -262,12 +261,11 @@ func TestSecureValues(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test.Value), func(t *testing.T) {
 			t.Parallel()
 
 			actual, err := test.Value.SecureValues(decrypter)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.Expected, actual)
 		})
 	}
@@ -304,12 +302,11 @@ func TestCopyValue(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
 			newConfig, err := test.Val.Copy(newPrefixCrypter("stackA"), newPrefixCrypter("stackB"))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			assert.Equal(t, test.Expected, newConfig)
 		})
@@ -324,8 +321,8 @@ func roundtripValueJSON(v Value) (Value, error) {
 	return roundtripValue(v, json.Marshal, json.Unmarshal)
 }
 
-func roundtripValue(v Value, marshal func(v interface{}) ([]byte, error),
-	unmarshal func([]byte, interface{}) error,
+func roundtripValue(v Value, marshal func(v any) ([]byte, error),
+	unmarshal func([]byte, any) error,
 ) (Value, error) {
 	b, err := marshal(v)
 	if err != nil {

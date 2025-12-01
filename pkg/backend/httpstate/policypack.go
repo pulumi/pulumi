@@ -137,7 +137,7 @@ func (pr *cloudBackendPolicyPackReference) Name() tokens.QName {
 }
 
 func (pr *cloudBackendPolicyPackReference) CloudConsoleURL() string {
-	return fmt.Sprintf("%s/%s/policypacks/%s", pr.cloudConsoleURL, pr.orgName, pr.Name())
+	return fmt.Sprintf("%s/%s/insights/policypacks/%s", pr.cloudConsoleURL, pr.orgName, pr.Name())
 }
 
 // cloudPolicyPack is a the Pulumi service implementation of the PolicyPack interface.
@@ -215,7 +215,8 @@ func (pack *cloudPolicyPack) Publish(
 
 	fmt.Println("Uploading policy pack to Pulumi service")
 
-	publishedVersion, err := pack.cl.PublishPolicyPack(ctx, pack.ref.orgName, analyzerInfo, bytes.NewReader(packTarball))
+	publishedVersion, err := pack.cl.PublishPolicyPack(
+		ctx, pack.ref.orgName, analyzerInfo, bytes.NewReader(packTarball), op.Metadata)
 	if err != nil {
 		return err
 	}
@@ -317,17 +318,17 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 		}
 	}
 
-	info := plugin.NewProgramInfo(finalDir, finalDir, ".", proj.Runtime.Options())
-	language, err := ctx.Host.LanguageRuntime(proj.Runtime.Name(), info)
+	language, err := ctx.Host.LanguageRuntime(proj.Runtime.Name())
 	if err != nil {
 		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
 	}
 
+	info := plugin.NewProgramInfo(finalDir, finalDir, ".", proj.Runtime.Options())
 	err = pkgCmdUtil.InstallDependencies(language, plugin.InstallDependenciesRequest{
 		Info:                    info,
 		UseLanguageVersionTools: false,
 		IsPlugin:                true,
-	})
+	}, os.Stdout, os.Stderr)
 	if err != nil {
 		return fmt.Errorf("installing dependencies: %w", err)
 	}

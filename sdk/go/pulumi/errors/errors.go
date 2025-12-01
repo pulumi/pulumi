@@ -42,7 +42,7 @@ func NewInputPropertyError(propertyPath string, reason string) *InputPropertiesE
 }
 
 // Create a new InputPropertiesError with a single property error.
-func InputPropertyErrorf(propertyPath string, format string, args ...interface{}) *InputPropertiesError {
+func InputPropertyErrorf(propertyPath string, format string, args ...any) *InputPropertiesError {
 	return NewInputPropertiesError("", InputPropertyErrorDetails{
 		PropertyPath: propertyPath,
 		Reason:       fmt.Sprintf(format, args...),
@@ -58,7 +58,7 @@ func NewInputPropertiesError(message string, details ...InputPropertyErrorDetail
 }
 
 // Create a new InputPropertiesError with a message.
-func InputPropertiesErrorf(format string, args ...interface{}) *InputPropertiesError {
+func InputPropertiesErrorf(format string, args ...any) *InputPropertiesError {
 	return NewInputPropertiesError(fmt.Sprintf(format, args...))
 }
 

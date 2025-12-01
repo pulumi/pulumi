@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTarget(t *testing.T) {
@@ -59,7 +60,7 @@ func TestTarget(t *testing.T) {
 					Decrypter: &decrypterMock{},
 				}
 				_, err := target.GetPackageConfig("something-else")
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			})
 		})
 
@@ -82,7 +83,7 @@ func TestTarget(t *testing.T) {
 				},
 			}
 			res, err := target.GetPackageConfig("test")
-			assert.NoError(t, err, expectedErr)
+			require.NoError(t, err, expectedErr)
 
 			cfg := res.Mappable()
 			assert.Equal(t, "regular-value", cfg["regular"])

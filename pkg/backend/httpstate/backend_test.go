@@ -15,11 +15,14 @@ package httpstate
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -35,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -43,6 +47,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// testJWT is a test JWT token used in tests.
+//
+//nolint:lll // JWT token is long
+const testJWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
 
 //nolint:paralleltest // mutates global configuration
 func TestEnabledFullyQualifiedStackNames(t *testing.T) {
@@ -66,7 +75,7 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 	s, err := b.CreateStack(ctx, ref, "", nil, nil)
 	require.NoError(t, err)
 	defer func() {
-		_, err := b.RemoveStack(ctx, s, true)
+		_, err := b.RemoveStack(ctx, s, true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err)
 	}()
 
@@ -126,7 +135,7 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 	s, err := b.CreateStack(ctx, ref, "", nil, nil)
 	require.NoError(t, err)
 	defer func() {
-		_, err := b.RemoveStack(ctx, s, true)
+		_, err := b.RemoveStack(ctx, s, true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err)
 	}()
 
@@ -250,14 +259,13 @@ func TestDefaultOrganizationPriority(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			org, err := inferOrg(context.Background(), tt.getDefaultOrg, tt.getUserOrg)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			assert.Equal(t, tt.wantOrg, org)
 		})
@@ -285,7 +293,7 @@ func TestDisableIntegrityChecking(t *testing.T) {
 	s, err := b.CreateStack(ctx, ref, "", nil, nil)
 	require.NoError(t, err)
 	defer func() {
-		_, err := b.RemoveStack(ctx, s, true)
+		_, err := b.RemoveStack(ctx, s, true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err)
 	}()
 
@@ -320,10 +328,10 @@ func TestDisableIntegrityChecking(t *testing.T) {
 	backend.DisableIntegrityChecking = true
 	snap, err = s.Snapshot(ctx, b64.Base64SecretsProvider)
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 }
 
-func TestCloudBackend_GetPackageRegistry(t *testing.T) {
+func TestCloudBackend_GetCloudRegistry(t *testing.T) {
 	t.Parallel()
 	mockClient := &client.Client{}
 	b := &cloudBackend{
@@ -331,12 +339,12 @@ func TestCloudBackend_GetPackageRegistry(t *testing.T) {
 		d:      diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
 	}
 
-	registry, err := b.GetPackageRegistry()
-	assert.NoError(t, err)
-	assert.NotNil(t, registry)
+	registry, err := b.GetCloudRegistry()
+	require.NoError(t, err)
+	require.NotNil(t, registry)
 
-	_, ok := registry.(*cloudPackageRegistry)
-	assert.True(t, ok, "expected registry to be a cloudPackageRegistry")
+	_, ok := registry.(*cloudRegistry)
+	assert.True(t, ok, "expected registry to be a cloudRegistry")
 }
 
 // Bit of an integration test.
@@ -353,7 +361,7 @@ func TestCopilotExplainer(t *testing.T) {
 			},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create a mock transport that
 	// 1. captures the request to assert on
@@ -452,7 +460,7 @@ func TestListStackNames(t *testing.T) {
 	// Cleanup stacks
 	defer func() {
 		for _, s := range stacks {
-			_, err := b.RemoveStack(ctx, s, true)
+			_, err := b.RemoveStack(ctx, s, true /*force*/, false /*removeBackups*/)
 			require.NoError(t, err)
 		}
 	}()
@@ -556,7 +564,7 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 	s, err := b.CreateStack(ctx, ref, "", nil, nil)
 	require.NoError(t, err)
 	defer func() {
-		_, err := b.RemoveStack(ctx, s, true)
+		_, err := b.RemoveStack(ctx, s, true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err)
 	}()
 
@@ -664,4 +672,589 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 	// (both should either have more pages or both should be done)
 	assert.IsType(t, []backend.StackSummary{}, allSummaries)
 	assert.IsType(t, []backend.StackReference{}, allStackRefs)
+}
+
+func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	var lastRequest *http.Request
+
+	var lastUntypedDeployment *apitype.UntypedDeployment
+
+	handleLastRequest := func() {
+		var req apitype.CreateStackRequest
+		err := json.NewDecoder(lastRequest.Body).Decode(&req)
+		assert.Equal(t, "/api/stacks/owner/project", lastRequest.URL.Path)
+		require.NoError(t, err)
+		require.NotNil(t, req.State)
+		lastUntypedDeployment = req.State
+	}
+
+	var v4 bool
+
+	capabilities := func() []apitype.APICapabilityConfig {
+		if v4 {
+			return []apitype.APICapabilityConfig{{
+				Capability:    apitype.DeploymentSchemaVersion,
+				Version:       1,
+				Configuration: json.RawMessage(`{"version":4}`),
+			}}
+		}
+		return nil
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/capabilities":
+			resp := apitype.CapabilitiesResponse{Capabilities: capabilities()}
+			err := json.NewEncoder(rw).Encode(resp)
+			require.NoError(t, err)
+		case "/api/user/organizations/default":
+			resp := apitype.GetDefaultOrganizationResponse{
+				GitHubLogin: "owner",
+			}
+			err := json.NewEncoder(rw).Encode(resp)
+			require.NoError(t, err)
+		case "/api/stacks/owner/project":
+			lastRequest = req
+			rw.WriteHeader(200)
+			message := `{}`
+			rbytes, err := io.ReadAll(req.Body)
+			require.NoError(t, err)
+			_, err = rw.Write([]byte(message))
+			require.NoError(t, err)
+			req.Body = io.NopCloser(bytes.NewBuffer(rbytes))
+		default:
+			panic(fmt.Sprintf("Path not supported: %v", req.URL.Path))
+		}
+	}))
+	defer server.Client()
+
+	b, err := New(ctx, nil, server.URL, nil, false)
+	require.NoError(t, err)
+
+	ref, err := b.ParseStackReference("owner/project/stack")
+	require.NoError(t, err)
+
+	// Test 1: v4 not supported: send v3 expect v3.
+
+	_, err = b.CreateStack(ctx, ref, "", &apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: json.RawMessage("{}"),
+	}, nil)
+	require.NoError(t, err)
+
+	handleLastRequest()
+	assert.Equal(t, 3, lastUntypedDeployment.Version)
+	assert.Empty(t, lastUntypedDeployment.Features)
+
+	// Test 2: v4 not supported: send v4 expect v3.
+
+	_, err = b.CreateStack(ctx, ref, "", &apitype.UntypedDeployment{
+		Version:    4,
+		Features:   []string{"refreshBeforeUpdate"},
+		Deployment: json.RawMessage("{}"),
+	}, nil)
+	require.NoError(t, err)
+
+	handleLastRequest()
+	assert.Equal(t, 3, lastUntypedDeployment.Version)
+	assert.Empty(t, lastUntypedDeployment.Features)
+
+	// Test 3: v4 supported: send v3 expect v3.
+
+	v4 = true
+	b, err = New(ctx, nil, server.URL, nil, false)
+	require.NoError(t, err)
+
+	_, err = b.CreateStack(ctx, ref, "", &apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: json.RawMessage("{}"),
+	}, nil)
+	require.NoError(t, err)
+
+	handleLastRequest()
+	assert.Equal(t, 3, lastUntypedDeployment.Version)
+	assert.Empty(t, lastUntypedDeployment.Features)
+
+	// Test 4: v4 supported: send v4 expect v4.
+
+	_, err = b.CreateStack(ctx, ref, "", &apitype.UntypedDeployment{
+		Version:    4,
+		Features:   []string{"refreshBeforeUpdate"},
+		Deployment: json.RawMessage("{}"),
+	}, nil)
+	require.NoError(t, err)
+
+	handleLastRequest()
+	assert.Equal(t, 4, lastUntypedDeployment.Version)
+	assert.Equal(t, []string{"refreshBeforeUpdate"}, lastUntypedDeployment.Features)
+}
+
+func TestImportDeploymentSchemaVersion(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	var lastRequest *http.Request
+
+	var lastUntypedDeployment *apitype.UntypedDeployment
+
+	handleLastRequest := func() {
+		var req apitype.UntypedDeployment
+		err := json.NewDecoder(lastRequest.Body).Decode(&req)
+		assert.Equal(t, "/api/stacks/owner/project/stack/import", lastRequest.URL.Path)
+		require.NoError(t, err)
+		lastUntypedDeployment = &req
+	}
+
+	var v4 bool
+
+	capabilities := func() []apitype.APICapabilityConfig {
+		if v4 {
+			return []apitype.APICapabilityConfig{{
+				Capability:    apitype.DeploymentSchemaVersion,
+				Version:       1,
+				Configuration: json.RawMessage(`{"version":4}`),
+			}}
+		}
+		return nil
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/capabilities":
+			resp := apitype.CapabilitiesResponse{Capabilities: capabilities()}
+			err := json.NewEncoder(rw).Encode(resp)
+			require.NoError(t, err)
+		case "/api/user/organizations/default":
+			resp := apitype.GetDefaultOrganizationResponse{
+				GitHubLogin: "owner",
+			}
+			err := json.NewEncoder(rw).Encode(resp)
+			require.NoError(t, err)
+		case "/api/stacks/owner/project":
+			rw.WriteHeader(200)
+			_, err := rw.Write([]byte("{}"))
+			require.NoError(t, err)
+		case "/api/stacks/owner/project/stack/import":
+			lastRequest = req
+			rw.WriteHeader(200)
+			message := `{}`
+			reader, err := gzip.NewReader(req.Body)
+			require.NoError(t, err)
+			defer reader.Close()
+			rbytes, err := io.ReadAll(reader)
+			require.NoError(t, err)
+			_, err = rw.Write([]byte(message))
+			require.NoError(t, err)
+			req.Body = io.NopCloser(bytes.NewBuffer(rbytes))
+		case "/api/stacks/owner/project/stack/update":
+			resp := apitype.UpdateResults{
+				Status: apitype.StatusSucceeded,
+			}
+			err := json.NewEncoder(rw).Encode(resp)
+			require.NoError(t, err)
+		default:
+			panic(fmt.Sprintf("Path not supported: %v", req.URL.Path))
+		}
+	}))
+	defer server.Client()
+
+	b, err := New(ctx, nil, server.URL, nil, false)
+	require.NoError(t, err)
+
+	ref, err := b.ParseStackReference("owner/project/stack")
+	require.NoError(t, err)
+
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
+	require.NoError(t, err)
+
+	// Test 1: v4 not supported: send v3 expect v3.
+
+	err = b.ImportDeployment(ctx, s, &apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: json.RawMessage("{}"),
+	})
+	require.NoError(t, err)
+
+	handleLastRequest()
+	assert.Equal(t, 3, lastUntypedDeployment.Version)
+	assert.Empty(t, lastUntypedDeployment.Features)
+
+	// Test 2: v4 not supported: send v4 expect v3.
+
+	err = b.ImportDeployment(ctx, s, &apitype.UntypedDeployment{
+		Version:    4,
+		Features:   []string{"refreshBeforeUpdate"},
+		Deployment: json.RawMessage("{}"),
+	})
+	require.NoError(t, err)
+
+	handleLastRequest()
+	assert.Equal(t, 3, lastUntypedDeployment.Version)
+	assert.Empty(t, lastUntypedDeployment.Features)
+
+	// Test 3: v4 supported: send v3 expect v3.
+
+	v4 = true
+	b, err = New(ctx, nil, server.URL, nil, false)
+	require.NoError(t, err)
+
+	err = b.ImportDeployment(ctx, s, &apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: json.RawMessage("{}"),
+	})
+	require.NoError(t, err)
+
+	handleLastRequest()
+	assert.Equal(t, 3, lastUntypedDeployment.Version)
+	assert.Empty(t, lastUntypedDeployment.Features)
+
+	// Test 4: v4 supported: send v4 expect v4.
+
+	err = b.ImportDeployment(ctx, s, &apitype.UntypedDeployment{
+		Version:    4,
+		Features:   []string{"refreshBeforeUpdate"},
+		Deployment: json.RawMessage("{}"),
+	})
+	require.NoError(t, err)
+
+	handleLastRequest()
+	assert.Equal(t, 4, lastUntypedDeployment.Version)
+	assert.Equal(t, []string{"refreshBeforeUpdate"}, lastUntypedDeployment.Features)
+}
+
+func TestIsExplainPreviewEnabled(t *testing.T) {
+	t.Parallel()
+
+	enabled := true
+	b := &cloudBackend{
+		neoEnabledForCurrentProject: &enabled,
+		capabilities: promise.Run(func() (apitype.Capabilities, error) {
+			return apitype.Capabilities{CopilotExplainPreviewV1: true}, nil
+		}),
+		d: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
+	}
+
+	result := b.IsExplainPreviewEnabled(context.Background(), display.Options{})
+	assert.True(t, result)
+}
+
+func TestIsExpectedTokenFormat(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		token      string
+		isExpected bool
+	}{
+		{
+			name:       "JWT token",
+			token:      testJWT,
+			isExpected: true,
+		},
+		{
+			name:       "empty token",
+			token:      "",
+			isExpected: false,
+		},
+		{
+			name:       "unexpected token",
+			token:      "unexpected-token",
+			isExpected: false,
+		},
+		{
+			name:       "random string",
+			token:      "randomstring123",
+			isExpected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			result := isExpectedTokenFormat(tt.token)
+			if tt.isExpected {
+				assert.True(t, result)
+			} else {
+				assert.False(t, result)
+			}
+		})
+	}
+}
+
+//nolint:paralleltest // Cannot use t.Parallel() because subtests use t.Setenv
+func TestGetTokenValue(t *testing.T) {
+	tests := []struct {
+		name        string
+		token       string
+		setupEnv    func(*testing.T)
+		setupFile   func(*testing.T) string
+		wantValue   string
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:      "direct JWT token",
+			token:     testJWT,
+			wantValue: testJWT,
+			wantErr:   false,
+		},
+		{
+			name:  "token from file",
+			token: "file://",
+			setupFile: func(t *testing.T) string {
+				tmpFile, err := os.CreateTemp(t.TempDir(), "token-*.txt")
+				require.NoError(t, err)
+				t.Cleanup(func() { os.Remove(tmpFile.Name()) })
+				_, err = fmt.Fprintf(tmpFile, "  %s  \n", testJWT)
+				require.NoError(t, err)
+				tmpFile.Close()
+				return tmpFile.Name()
+			},
+			wantValue: testJWT,
+			wantErr:   false,
+		},
+		{
+			name:        "token from nonexistent file",
+			token:       "file:///nonexistent/path/to/token.txt",
+			wantErr:     true,
+			errContains: "reading token from file",
+		},
+		{
+			name:  "empty file",
+			token: "file://",
+			setupFile: func(t *testing.T) string {
+				tmpFile, err := os.CreateTemp(t.TempDir(), "token-*.txt")
+				require.NoError(t, err)
+				t.Cleanup(func() { os.Remove(tmpFile.Name()) })
+				tmpFile.Close()
+				return tmpFile.Name()
+			},
+			wantErr:     true,
+			errContains: "is empty",
+		},
+		{
+			name:  "file with unexpected token format",
+			token: "file://",
+			setupFile: func(t *testing.T) string {
+				tmpFile, err := os.CreateTemp(t.TempDir(), "token-*.txt")
+				require.NoError(t, err)
+				t.Cleanup(func() { os.Remove(tmpFile.Name()) })
+				_, err = tmpFile.WriteString("unexpected-token-format\n")
+				require.NoError(t, err)
+				tmpFile.Close()
+				return tmpFile.Name()
+			},
+			wantErr:     true,
+			errContains: "token format in file",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Cannot use t.Parallel() here because some tests use t.Setenv or create temp files
+
+			token := tt.token
+			if tt.setupEnv != nil {
+				tt.setupEnv(t)
+			}
+			if tt.setupFile != nil {
+				filePath := tt.setupFile(t)
+				token = "file://" + filePath
+			}
+
+			value, err := getTokenValue(token)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantValue, value)
+			}
+		})
+	}
+}
+
+func TestExchangeOidcToken(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		oidcToken    string
+		organization string
+		scope        string
+		expiration   time.Duration
+		setupServer  func() *httptest.Server
+		wantErr      bool
+		errContains  string
+		checkResult  func(*testing.T, string, time.Time)
+	}{
+		{
+			name:         "empty oidc token",
+			oidcToken:    "",
+			organization: "test-org",
+			scope:        "org:test-org",
+			expiration:   1 * time.Hour,
+			wantErr:      true,
+			errContains:  "Unauthorized: No credentials provided or are invalid",
+		},
+		{
+			name:         "invalid oidc token format",
+			oidcToken:    "invalid-token-format",
+			organization: "test-org",
+			scope:        "org:test-org",
+			expiration:   1 * time.Hour,
+			wantErr:      true,
+			errContains:  "Failed to read OIDC token",
+		},
+		{
+			name:         "successful token exchange",
+			oidcToken:    testJWT,
+			organization: "test-org",
+			scope:        "org:test-org",
+			expiration:   1 * time.Hour,
+			setupServer: func() *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.Path == "/api/oauth/token" {
+						resp := apitype.TokenExchangeGrantResponse{
+							AccessToken: "pul-jwt-access-token",
+							ExpiresIn:   3600,
+							TokenType:   "Bearer",
+							Scope:       "org:test-org",
+						}
+						w.WriteHeader(http.StatusOK)
+						_ = json.NewEncoder(w).Encode(resp)
+					}
+				}))
+			},
+			wantErr: false,
+			checkResult: func(t *testing.T, accessToken string, expiresAt time.Time) {
+				assert.Equal(t, "pul-jwt-access-token", accessToken)
+				assert.False(t, expiresAt.IsZero())
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cloudURL := ""
+			if tt.setupServer != nil {
+				server := tt.setupServer()
+				defer server.Close()
+				cloudURL = server.URL
+			}
+
+			accessToken, expiresAt, err := exchangeOidcToken(
+				diagtest.LogSink(t), cloudURL, false, tt.oidcToken, tt.organization, tt.scope, tt.expiration,
+			)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+			} else {
+				require.NoError(t, err)
+				if tt.checkResult != nil {
+					tt.checkResult(t, accessToken, expiresAt)
+				}
+			}
+		})
+	}
+}
+
+func TestGetAccountDetails(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		accessToken  string
+		setupServer  func() *httptest.Server
+		wantErr      bool
+		wantUsername string
+		wantOrgs     []string
+		checkErr     func(*testing.T, error)
+	}{
+		{
+			name:        "successful account details fetch",
+			accessToken: "pul-valid-token",
+			setupServer: func() *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.Path == "/api/user" {
+						// Create a response matching the serviceUser structure
+						resp := map[string]any{
+							"githubLogin": "testuser",
+							"organizations": []map[string]any{
+								{"githubLogin": "org1"},
+								{"githubLogin": "org2"},
+							},
+						}
+						w.WriteHeader(http.StatusOK)
+						_ = json.NewEncoder(w).Encode(resp)
+					}
+				}))
+			},
+			wantErr:      false,
+			wantUsername: "testuser",
+			wantOrgs:     []string{"org1", "org2"},
+		},
+		{
+			name:        "unauthorized access",
+			accessToken: "pul-invalid-token",
+			setupServer: func() *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.Path == "/api/user" {
+						w.WriteHeader(http.StatusUnauthorized)
+						_ = json.NewEncoder(w).Encode(apitype.ErrorResponse{
+							Code:    401,
+							Message: "Unauthorized",
+						})
+					}
+				}))
+			},
+			wantErr: true,
+			checkErr: func(t *testing.T, err error) {
+				assert.True(t, errors.Is(err, ErrUnauthorized))
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cloudURL := ""
+			if tt.setupServer != nil {
+				server := tt.setupServer()
+				defer server.Close()
+				cloudURL = server.URL
+			}
+
+			username, orgs, tokenInfo, err := getAccountDetails(
+				context.Background(), cloudURL, false, tt.accessToken,
+			)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.checkErr != nil {
+					tt.checkErr(t, err)
+				}
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantUsername, username)
+				assert.Equal(t, tt.wantOrgs, orgs)
+				// tokenInfo might be nil for old services
+				_ = tokenInfo
+			}
+		})
+	}
 }

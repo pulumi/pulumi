@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from asyncio import ensure_future
-from typing import Optional, Dict, Any, List
+from typing import Optional, Any
 
 from .output import Output, Input
 from .resource import CustomResource, ResourceOptions
@@ -62,12 +62,12 @@ class StackReference(CustomResource):
     The name of the referenced stack.
     """
 
-    outputs: Output[Dict[str, Any]]
+    outputs: Output[dict[str, Any]]
     """
     The outputs of the referenced stack.
     """
 
-    secret_output_names: Output[List[str]]
+    secret_output_names: Output[list[str]]
     """
     The names of any stack outputs which contain secrets.
     """
@@ -138,7 +138,7 @@ class StackReference(CustomResource):
         """
 
         is_secret = await ensure_future(self.__is_secret_name(name))
-        output_val = self.outputs.apply(lambda os: os[name])
+        output_val = self.outputs.apply(lambda os: os.get(name))
         if not await output_val.is_known():
             return StackReferenceOutputDetails()
 

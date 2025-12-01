@@ -17,15 +17,11 @@ from enum import Enum
 import types
 from typing import (
     Any,
-    Dict,
     Optional,
-    Set,
     Union,
     cast,
-    Iterable,
-    Sequence,
-    Mapping,
 )
+from collections.abc import Iterable, Sequence, Mapping
 from dataclasses import dataclass
 
 from google.protobuf import struct_pb2
@@ -119,10 +115,63 @@ class PropertyValue:
         :param is_secret: Whether the value is secret.
         :param dependencies: The dependencies of the property value.
         """
-        # Wrap Sequence and Mapping types in immutable types to ensure they are hashable.
+        # Validate that value is a supported type.
+        if not (
+            value is None
+            or isinstance(value, bool)
+            or isinstance(value, float)
+            or isinstance(value, str)
+            or isinstance(value, pulumi.Asset)
+            or isinstance(value, pulumi.Archive)
+            or isinstance(value, Sequence)
+            or isinstance(value, Mapping)
+            or isinstance(value, ResourceReference)
+            or isinstance(value, Computed)
+        ):
+            raise TypeError(
+                f"Unsupported value type: {type(value).__name__}. "
+                f"Expected one of: None, bool, float, str, Asset, Archive, Sequence, Mapping, ResourceReference, or Computed."
+            )
+
+        # Validate is_secret parameter.
+        if not isinstance(is_secret, bool):
+            raise TypeError(
+                f"is_secret must be a bool, got {type(is_secret).__name__}."
+            )
+
+        # Validate dependencies parameter.
+        if dependencies is not None:
+            if not isinstance(dependencies, Iterable):
+                raise TypeError(
+                    f"dependencies must be an Iterable[str] or None, got {type(dependencies).__name__}."
+                )
+            # Validate that all items in dependencies are strings.
+            for dep in dependencies:
+                if not isinstance(dep, str):
+                    raise TypeError(
+                        f"All dependencies must be strings, found {type(dep).__name__}."
+                    )
+
+        # Validate Sequence and Mapping types and wrap in immutable types to ensure they are hashable.
         if isinstance(value, Sequence) and not isinstance(value, str):
+            # Validate all items in the sequence are PropertyValue instances.
+            for i, item in enumerate(value):
+                if not isinstance(item, PropertyValue):
+                    raise TypeError(
+                        f"Sequence items must be PropertyValue instances, found {type(item).__name__} at index {i}."
+                    )
             value = tuple(value)
         elif isinstance(value, Mapping):
+            # Validate all keys are strings and all values are PropertyValue instances.
+            for key, item in value.items():
+                if not isinstance(key, str):
+                    raise TypeError(
+                        f"Mapping keys must be strings, found {type(key).__name__}."
+                    )
+                if not isinstance(item, PropertyValue):
+                    raise TypeError(
+                        f"Mapping values must be PropertyValue instances, found {type(item).__name__} for key '{key}'."
+                    )
             value = types.MappingProxyType(value)
         elif isinstance(value, pulumi.Asset) or isinstance(value, pulumi.Archive):
             # Ensure the Asset/Archive is immutable by deep copying
@@ -188,7 +237,7 @@ class PropertyValue:
             return PropertyValueType.NULL
         if isinstance(self.value, bool):
             return PropertyValueType.BOOL
-        if isinstance(self.value, (int, float)):
+        if isinstance(self.value, float):
             return PropertyValueType.NUMBER
         if isinstance(self.value, str):
             return PropertyValueType.STRING
@@ -228,7 +277,7 @@ class PropertyValue:
             v = f"{v} (dependencies: {deps})"
         return v
 
-    def all_dependencies(self) -> Set[str]:
+    def all_dependencies(self) -> set[str]:
         """
         Returns all dependencies of the property value, including dependencies of nested values.
         """
@@ -522,7 +571,7 @@ class PropertyValue:
     @staticmethod
     def unmarshal_map(
         value: struct_pb2.Struct,
-    ) -> Dict[str, "PropertyValue"]:
+    ) -> dict[str, "PropertyValue"]:
         """
         Unmarshals a protobuf struct value into a dictionary of PropertyValues.
 
@@ -532,14 +581,14 @@ class PropertyValue:
         if not isinstance(value, struct_pb2.Struct):
             raise ValueError("Expected a protobuf struct.")
 
-        result: Dict[str, PropertyValue] = {}
+        result: dict[str, PropertyValue] = {}
         for key, item in value.fields.items():
             result[key] = PropertyValue.unmarshal(item)
         return result
 
     @staticmethod
     def marshal_map(
-        value: Dict[str, "PropertyValue"],
+        value: dict[str, "PropertyValue"],
     ) -> struct_pb2.Struct:
         """
         Marshals a dictionary of PropertyValues into a protobuf struct value.

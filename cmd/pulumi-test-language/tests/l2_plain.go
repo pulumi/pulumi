@@ -27,7 +27,9 @@ import (
 
 func init() {
 	LanguageTests["l2-plain"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.PlainProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.PlainProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
@@ -50,8 +52,8 @@ func init() {
 								"float":     2.17,
 								"integer":   -12,
 								"string":    "Goodbye",
-								"boolArray": []interface{}{false, true},
-								"stringMap": map[string]interface{}{
+								"boolArray": []any{false, true},
+								"stringMap": map[string]any{
 									"two":   "turtle doves",
 									"three": "french hens",
 								},
@@ -60,8 +62,8 @@ func init() {
 							"float":     4.5,
 							"integer":   1024,
 							"string":    "Hello",
-							"boolArray": []interface{}{true, false},
-							"stringMap": map[string]interface{}{
+							"boolArray": []any{true, false},
+							"stringMap": map[string]any{
 								"x": "100",
 								"y": "200",
 							},

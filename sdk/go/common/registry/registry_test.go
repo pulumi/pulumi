@@ -17,6 +17,7 @@ package registry
 import (
 	"context"
 	"errors"
+	"io"
 	"iter"
 	"testing"
 
@@ -31,7 +32,14 @@ type mockRegistry struct {
 	getPackage func(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.PackageMetadata, error)
-	searchByName func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
+	listPackages func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
+
+	getTemplate func(
+		ctx context.Context, source, publisher, name string, version *semver.Version,
+	) (apitype.TemplateMetadata, error)
+	listTemplates func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error]
+
+	downloadTemplate func(ctx context.Context, downloadURL string) (io.ReadCloser, error)
 }
 
 func (r mockRegistry) GetPackage(
@@ -40,8 +48,22 @@ func (r mockRegistry) GetPackage(
 	return r.getPackage(ctx, source, publisher, name, version)
 }
 
-func (r mockRegistry) SearchByName(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
-	return r.searchByName(ctx, name)
+func (r mockRegistry) ListPackages(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+	return r.listPackages(ctx, name)
+}
+
+func (r mockRegistry) GetTemplate(
+	ctx context.Context, source, publisher, name string, version *semver.Version,
+) (apitype.TemplateMetadata, error) {
+	return r.getTemplate(ctx, source, publisher, name, version)
+}
+
+func (r mockRegistry) ListTemplates(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+	return r.listTemplates(ctx, name)
+}
+
+func (r mockRegistry) DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
+	return r.downloadTemplate(ctx, downloadURL)
 }
 
 func TestOnDemandRegistry(t *testing.T) {
@@ -109,11 +131,10 @@ func TestOnDemandRegistry(t *testing.T) {
 
 		call := func() {
 			result, err := r.GetPackage(ctx, "src", "pub", "nm", nil)
-			if assert.NoError(t, err) {
-				assert.Equal(t, "src", result.Source)
-				assert.Equal(t, "pub", result.Publisher)
-				assert.Equal(t, "nm", result.Name)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, "src", result.Source)
+			assert.Equal(t, "pub", result.Publisher)
+			assert.Equal(t, "nm", result.Name)
 		}
 
 		call()

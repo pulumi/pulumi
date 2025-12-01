@@ -69,7 +69,7 @@ func TestNoProject(t *testing.T) {
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
 			ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
 		) (backend.Backend, error) {
 			assert.Equal(t, "", url)
 			return mockBackend, nil
@@ -79,7 +79,7 @@ func TestNoProject(t *testing.T) {
 	cmd := newStateDeleteCommand(ws, lm)
 	cmd.SetArgs([]string{"urn:pulumi:proj::stk::pkg:index:typ::res"})
 	err := cmd.ExecuteContext(context.Background())
-	assert.ErrorContains(t, err, "no Pulumi.yaml project file found")
+	assert.ErrorContains(t, err, "no project file found")
 }
 
 func TestStateDeleteURN(t *testing.T) {
@@ -123,7 +123,7 @@ func TestStateDeleteURN(t *testing.T) {
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
-			url string, project *workspace.Project, _ bool, _ colors.Colorization,
+			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
 		) (backend.Backend, error) {
 			assert.Equal(t, "", url)
 			assert.Equal(t, tokens.PackageName("proj"), project.Name)
@@ -134,7 +134,7 @@ func TestStateDeleteURN(t *testing.T) {
 	cmd := newStateDeleteCommand(ws, lm)
 	cmd.SetArgs([]string{"--stack=stk", "urn:pulumi:proj::stk::pkg:index:typ::res"})
 	err := cmd.ExecuteContext(context.Background())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 3, savedDeployment.Version)
 	assert.Equal(t,
 		`{"manifest":{"time":"0001-01-01T00:00:00Z","magic":"","version":""},"metadata":{}}`,
@@ -177,7 +177,7 @@ func TestStateDeleteDependency(t *testing.T) {
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
-			url string, project *workspace.Project, _ bool, _ colors.Colorization,
+			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
 		) (backend.Backend, error) {
 			assert.Equal(t, "", url)
 			assert.Equal(t, tokens.PackageName("proj"), project.Name)
@@ -236,7 +236,7 @@ func TestStateDeleteProtected(t *testing.T) {
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
-			url string, project *workspace.Project, _ bool, _ colors.Colorization,
+			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
 		) (backend.Backend, error) {
 			assert.Equal(t, "", url)
 			assert.Equal(t, tokens.PackageName("proj"), project.Name)
@@ -253,7 +253,7 @@ func TestStateDeleteProtected(t *testing.T) {
 
 	cmd.SetArgs([]string{"--force", "--stack=stk", "urn:pulumi:proj::stk::pkg:index:typ::res"})
 	err = cmd.ExecuteContext(context.Background())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 3, savedDeployment.Version)
 	assert.Equal(t,
 		"{\"manifest\":{\"time\":\"0001-01-01T00:00:00Z\",\"magic\":\"\",\"version\":\"\"},\"metadata\":{}}",
@@ -309,7 +309,7 @@ func TestStateDeleteAll(t *testing.T) {
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
-			url string, project *workspace.Project, _ bool, _ colors.Colorization,
+			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
 		) (backend.Backend, error) {
 			assert.Equal(t, "", url)
 			assert.Equal(t, tokens.PackageName("proj"), project.Name)
@@ -325,5 +325,5 @@ func TestStateDeleteAll(t *testing.T) {
 	deployment := apitype.DeploymentV3{}
 	err = json.Unmarshal(mockDeployment.Deployment, &deployment)
 	require.NoError(t, err)
-	assert.Len(t, deployment.Resources, 0)
+	require.Len(t, deployment.Resources, 0)
 }

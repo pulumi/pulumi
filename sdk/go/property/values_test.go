@@ -185,7 +185,7 @@ func TestAny(t *testing.T) {
 				assert.ErrorContains(t, err, tt.expectedErr)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -196,7 +196,7 @@ func TestAsset(t *testing.T) {
 
 	originalText := "original text"
 	a, err := asset.FromText(originalText)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	v := New(a)
 
@@ -223,7 +223,7 @@ func TestArchive(t *testing.T) {
 				"f3": must(asset.FromText("nested text")),
 			})),
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return archive
 	}
 

@@ -118,8 +118,9 @@ func newCloudSecretsManager(url string, encryptedDataKey []byte) (*Manager, erro
 		return nil, fmt.Errorf("marshalling state: %w", err)
 	}
 	crypter := config.NewSymmetricCrypter(plaintextDataKey)
+	cachedCrypter := config.NewCiphertextToPlaintextCachedCrypter(crypter, crypter)
 	return &Manager{
-		crypter: crypter,
+		crypter: cachedCrypter,
 		state:   state,
 	}, nil
 }

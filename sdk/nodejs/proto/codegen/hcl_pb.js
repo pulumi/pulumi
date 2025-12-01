@@ -114,9 +114,9 @@ proto.pulumirpc.codegen.Pos.prototype.toObject = function(opt_includeInstance) {
  */
 proto.pulumirpc.codegen.Pos.toObject = function(includeInstance, msg) {
   var f, obj = {
-    line: jspb.Message.getFieldWithDefault(msg, 1, 0),
-    column: jspb.Message.getFieldWithDefault(msg, 2, 0),
-    pb_byte: jspb.Message.getFieldWithDefault(msg, 3, 0)
+line: jspb.Message.getFieldWithDefault(msg, 1, 0),
+column: jspb.Message.getFieldWithDefault(msg, 2, 0),
+pb_byte: jspb.Message.getFieldWithDefault(msg, 3, 0)
   };
 
   if (includeInstance) {
@@ -304,9 +304,9 @@ proto.pulumirpc.codegen.Range.prototype.toObject = function(opt_includeInstance)
  */
 proto.pulumirpc.codegen.Range.toObject = function(includeInstance, msg) {
   var f, obj = {
-    filename: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    start: (f = msg.getStart()) && proto.pulumirpc.codegen.Pos.toObject(includeInstance, f),
-    end: (f = msg.getEnd()) && proto.pulumirpc.codegen.Pos.toObject(includeInstance, f)
+filename: jspb.Message.getFieldWithDefault(msg, 1, ""),
+start: (f = msg.getStart()) && proto.pulumirpc.codegen.Pos.toObject(includeInstance, f),
+end: (f = msg.getEnd()) && proto.pulumirpc.codegen.Pos.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -536,11 +536,11 @@ proto.pulumirpc.codegen.Diagnostic.prototype.toObject = function(opt_includeInst
  */
 proto.pulumirpc.codegen.Diagnostic.toObject = function(includeInstance, msg) {
   var f, obj = {
-    severity: jspb.Message.getFieldWithDefault(msg, 1, 0),
-    summary: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    detail: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    subject: (f = msg.getSubject()) && proto.pulumirpc.codegen.Range.toObject(includeInstance, f),
-    context: (f = msg.getContext()) && proto.pulumirpc.codegen.Range.toObject(includeInstance, f)
+severity: jspb.Message.getFieldWithDefault(msg, 1, 0),
+summary: jspb.Message.getFieldWithDefault(msg, 2, ""),
+detail: jspb.Message.getFieldWithDefault(msg, 3, ""),
+subject: (f = msg.getSubject()) && proto.pulumirpc.codegen.Range.toObject(includeInstance, f),
+context: (f = msg.getContext()) && proto.pulumirpc.codegen.Range.toObject(includeInstance, f)
   };
 
   if (includeInstance) {

@@ -614,7 +614,7 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 		if p.Version != nil && p.Version.Major > 1 {
 			vPath = fmt.Sprintf("/v%d", p.Version.Major)
 		}
-		packageName := extractModulePath(p.Reference())
+		packageName := ExtractModulePath(p.Reference())
 		if langInfo, found := p.Language["go"]; found {
 			goInfo, ok := langInfo.(GoPackageInfo)
 			if ok && goInfo.ImportBasePath != "" {
@@ -985,7 +985,7 @@ func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
 		} else {
 			p, ok := g.packages[pkg]
 			if ok {
-				importBasePath = extractImportBasePath(p.Reference())
+				importBasePath = ExtractImportBasePath(p.Reference())
 			}
 		}
 
@@ -1080,13 +1080,13 @@ var resourceType = model.NewOpaqueType("pulumi.Resource")
 
 var providerResourceType = model.NewOpaqueType("pulumi.ProviderResource")
 
-func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Block, []interface{}) {
+func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Block, []any) {
 	if opts == nil {
 		return nil, nil
 	}
 
 	var block *model.Block
-	var temps []interface{}
+	var temps []any
 	appendOption := func(name string, value model.Expression, destType model.Type) {
 		if block == nil {
 			block = &model.Block{
@@ -1158,8 +1158,18 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.IgnoreChanges != nil {
 		appendOption("IgnoreChanges", opts.IgnoreChanges, model.NewListType(model.StringType))
 	}
+	if opts.HideDiffs != nil {
+		appendOption("HideDiffs", opts.HideDiffs, model.NewListType(model.StringType))
+	}
 	if opts.DeletedWith != nil {
 		appendOption("DeletedWith", opts.DeletedWith, model.DynamicType)
+	}
+	if opts.ReplaceWith != nil {
+		appendOption("ReplaceWith", opts.ReplaceWith, model.NewListType(resourceType))
+	}
+	if opts.ReplacementTrigger != nil {
+		destType := model.NewOutputType(model.DynamicType)
+		appendOption("ReplacementTrigger", opts.ReplacementTrigger, destType)
 	}
 	if opts.ImportID != nil {
 		appendOption("Import", opts.ImportID, model.StringType)
@@ -1181,6 +1191,18 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 		switch attr.Name {
 		case "Import":
 			g.Fgenf(valBuffer, "pulumi.ID(%v)", attr.Value)
+		case "ReplacementTrigger":
+			// Non-Input values can be lifted using `pulumi.Any`
+			if isInputty(attr.Value.Type()) {
+				g.Fgenf(valBuffer, "%v", attr.Value)
+			} else {
+				wrapperFunc := g.argumentTypeName(attr.Value.Type(), true)
+				if wrapperFunc != "" {
+					g.Fgenf(valBuffer, "%s(%v)", wrapperFunc, attr.Value)
+				} else {
+					g.Fgenf(valBuffer, "pulumi.Any(%v)", attr.Value)
+				}
+			}
 		default:
 			g.Fgenf(valBuffer, "%v", attr.Value)
 		}
@@ -1643,19 +1665,39 @@ func liftValueToOutput(value model.Expression) (model.Expression, model.Type) {
 	switch expr := value.(type) {
 	case *model.TupleConsExpression:
 		// if the value is a tuple, then lift each element to Output[T] as well
+		// Create a new tuple instead of mutating the original
+		liftedExprs := make([]model.Expression, len(expr.Expressions))
 		for i, elem := range expr.Expressions {
 			lifted, _ := liftValueToOutput(elem)
-			expr.Expressions[i] = lifted
+			liftedExprs[i] = lifted
 		}
+		newTuple := &model.TupleConsExpression{
+			Syntax:      expr.Syntax,
+			Tokens:      expr.Tokens,
+			Expressions: liftedExprs,
+		}
+		// Typecheck the new tuple to set its type
+		_ = newTuple.Typecheck(false)
+		value = newTuple
 	case *model.ObjectConsExpression:
 		// if the value is a map, then lift each value to Output[T] as well
+		// Create a new object instead of mutating the original
+		liftedItems := make([]model.ObjectConsItem, len(expr.Items))
 		for i, item := range expr.Items {
 			lifted, _ := liftValueToOutput(item.Value)
-			expr.Items[i] = model.ObjectConsItem{
+			liftedItems[i] = model.ObjectConsItem{
 				Key:   item.Key,
 				Value: lifted,
 			}
 		}
+		newObj := &model.ObjectConsExpression{
+			Syntax: expr.Syntax,
+			Tokens: expr.Tokens,
+			Items:  liftedItems,
+		}
+		// Typecheck the new object to set its type
+		_ = newObj.Typecheck(false)
+		value = newObj
 	}
 
 	return pcl.NewConvertCall(value, destType), destType
@@ -1670,12 +1712,12 @@ func (g *generator) genOutputAssignment(w io.Writer, v *pcl.OutputVariable) {
 	g.Fgenf(w, "ctx.Export(%q, %.3v)\n", v.LogicalName(), expr)
 }
 
-func (g *generator) genTemps(w io.Writer, temps []interface{}) {
+func (g *generator) genTemps(w io.Writer, temps []any) {
 	singleReturn := ""
 	g.genTempsMultiReturn(w, temps, singleReturn)
 }
 
-func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroValueType string) {
+func (g *generator) genTempsMultiReturn(w io.Writer, temps []any, zeroValueType string) {
 	genZeroValueDecl := false
 
 	if zeroValueType != "" {

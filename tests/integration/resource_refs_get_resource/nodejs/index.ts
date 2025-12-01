@@ -5,7 +5,7 @@ import * as assert from "assert";
 import * as pulumi from "@pulumi/pulumi";
 
 class Child extends pulumi.ComponentResource {
-    public readonly message!: pulumi.Output<string>;
+    declare public readonly message: pulumi.Output<string>;
     constructor(name: string, message?: string, opts?: pulumi.ResourceOptions) {
         const args = { message }
         super("test:index:Child", name, args, opts);
@@ -17,7 +17,7 @@ class Child extends pulumi.ComponentResource {
 }
 
 class Container extends pulumi.ComponentResource {
-    public readonly child!: pulumi.Output<Child>;
+    declare public readonly child: pulumi.Output<Child>;
     constructor(name: string, child?: Child, opts?: pulumi.ResourceOptions) {
         const args = { child };
         super("test:index:Container", name, args, opts);
@@ -29,27 +29,27 @@ class Container extends pulumi.ComponentResource {
 }
 
 async function waitForContainer(container: Container): Promise<void> {
-    // Wait for a maximum of 500ms for the resource outputs to be registered.
-    const end = Date.now() + 500;
+    // Wait for a maximum of 5s for the resource outputs to be registered.
+    const end = Date.now() + 5000;
     for (let i = 0; ; i++) {
-	let foundURN = false;
-	let success = new Promise((resolve, reject) => {
-	    container.urn.apply(urn => {
-		const roundTrippedContainer = new Container("mycontainer", undefined, { urn })
-		roundTrippedContainer.child.apply(c => {
-		    if (c != undefined) {
-			foundURN = true;
-		    }
-		    resolve();
-		});
-	    });
-	});
-	await success;
-	if (foundURN) {
-	    break;
-	} else if (Date.now() > end) {
-	    throw new Error("resource outputs not registered correctly");
-	}
+        let foundURN = false;
+        let success = new Promise((resolve, reject) => {
+            container.urn.apply(urn => {
+                const roundTrippedContainer = new Container("mycontainer", undefined, { urn })
+                roundTrippedContainer.child.apply(c => {
+                    if (c != undefined) {
+                        foundURN = true;
+                    }
+                    resolve();
+                });
+            });
+        });
+        await success;
+        if (foundURN) {
+            break;
+        } else if (Date.now() > end) {
+            throw new Error("resource outputs not registered correctly");
+        }
     }
 }
 
@@ -81,14 +81,14 @@ waitForContainer(container).then(() => {
     console.log(child, container);
 
     pulumi.all([child.urn, container.urn]).apply(([childUrn, urn]) => {
-	const roundTrippedContainer = new Container("mycontainer", undefined, { urn })
-	const roundTrippedContainerChildUrn = roundTrippedContainer.child.apply(c => c.urn);
-	const roundTrippedContainerChildMessage = roundTrippedContainer.child.apply(c => c.message);
-	return pulumi.all([childUrn, roundTrippedContainerChildUrn, roundTrippedContainerChildMessage])
-	    .apply(([expectedUrn, actualUrn, actualMessage]) => {
-		assert.strictEqual(actualUrn, expectedUrn);
-		assert.strictEqual(actualMessage, "hello world!");
-		return expectedUrn;
-	    });
+        const roundTrippedContainer = new Container("mycontainer", undefined, { urn })
+        const roundTrippedContainerChildUrn = roundTrippedContainer.child.apply(c => c.urn);
+        const roundTrippedContainerChildMessage = roundTrippedContainer.child.apply(c => c.message);
+        return pulumi.all([childUrn, roundTrippedContainerChildUrn, roundTrippedContainerChildMessage])
+            .apply(([expectedUrn, actualUrn, actualMessage]) => {
+                assert.strictEqual(actualUrn, expectedUrn);
+                assert.strictEqual(actualMessage, "hello world!");
+                return expectedUrn;
+            });
     });
 });

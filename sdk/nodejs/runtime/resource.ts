@@ -29,7 +29,11 @@ import {
     ProviderResource,
     Resource,
     ResourceOptions,
+    ResourceHook,
+    ResourceHookBinding,
+    ResourceHookOptions,
     URN,
+    ResourceHookFunction,
 } from "../resource";
 import { debuggablePromise, debugPromiseLeaks } from "./debuggable";
 import { gatherExplicitDependencies, getAllTransitivelyReferencedResourceURNs } from "./dependsOn";
@@ -84,6 +88,21 @@ function marshalSourcePosition(sourcePosition?: SourcePosition) {
     pos.setLine(sourcePosition.line);
     pos.setColumn(sourcePosition.column);
     return pos;
+}
+
+function marshalStackTrace(stackTrace?: (SourcePosition | undefined)[]) {
+    if (stackTrace === undefined) {
+        return undefined;
+    }
+    const trace = new sourceproto.StackTrace();
+    trace.setFramesList(
+        stackTrace.map((pos) => {
+            const frame = new sourceproto.StackFrame();
+            frame.setPc(marshalSourcePosition(pos)!);
+            return frame;
+        }),
+    );
+    return trace;
 }
 
 interface ResourceResolverOperation {
@@ -156,6 +175,12 @@ interface ResourceResolverOperation {
      * resource if the URN specified is being deleted as well.
      */
     deletedWithURN: URN | undefined;
+
+    /**
+     * If set, contains the resources whose replacement should trigger a replace
+     * of this resource.
+     */
+    replaceWithResources: Resource[] | undefined;
 }
 
 /**
@@ -300,6 +325,7 @@ export function readResource(
     props: Inputs,
     opts: ResourceOptions,
     sourcePosition?: SourcePosition,
+    stackTrace?: (SourcePosition | undefined)[],
     packageRef?: Promise<string | undefined>,
 ): void {
     if (!opts.id) {
@@ -349,6 +375,7 @@ export function readResource(
                 req.setAcceptresources(!utils.disableResourceReferences);
                 req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
                 req.setSourceposition(marshalSourcePosition(sourcePosition));
+                req.setStacktrace(marshalStackTrace(stackTrace));
                 req.setPackageref(packageRefStr || "");
 
                 // Now run the operation, serializing the invocation if necessary.
@@ -498,6 +525,7 @@ export function registerResource(
     props: Inputs,
     opts: ResourceOptions,
     sourcePosition?: SourcePosition,
+    stackTrace?: (SourcePosition | undefined)[],
     packageRef?: Promise<string | undefined>,
 ): void {
     const label = `resource:${name}[${t}]`;
@@ -551,6 +579,9 @@ export function registerResource(
                     }
                 }
 
+                const hookPrefix = `${t}_${name}`;
+                const hooks = await prepareHooks(opts.hooks, hookPrefix);
+
                 const req = new resproto.RegisterResourceRequest();
                 req.setPackageref(packageRefStr || "");
                 req.setType(t);
@@ -590,11 +621,34 @@ export function registerResource(
                 if (opts.retainOnDelete !== undefined) {
                     req.setRetainondelete(opts.retainOnDelete);
                 }
+                if (opts.hideDiffs !== undefined) {
+                    req.setHidediffsList(opts.hideDiffs);
+                }
                 req.setDeletedwith(resop.deletedWithURN || "");
+                const replaceWithURNs: string[] = [];
+                const replaceWithResources = resop.replaceWithResources ?? [];
+                for (const dependency of replaceWithResources) {
+                    const urn = await dependency.urn.promise();
+                    if (urn) {
+                        replaceWithURNs.push(urn);
+                    }
+                }
+                if (replaceWithURNs.length > 0) {
+                    if (!getStore().supportsReplaceWith) {
+                        throw new Error(
+                            "The Pulumi CLI does not support the ReplaceWith option. Please update the Pulumi CLI.",
+                        );
+                    }
+                    req.setReplaceWithList(replaceWithURNs);
+                } else {
+                    req.setReplaceWithList([]);
+                }
                 req.setAliasspecs(true);
                 req.setSourceposition(marshalSourcePosition(sourcePosition));
+                req.setStacktrace(marshalStackTrace(stackTrace));
                 req.setTransformsList(callbacks);
                 req.setSupportsresultreporting(true);
+                req.setHooks(hooks);
 
                 if (resop.deletedWithURN && !getStore().supportsDeletedWith) {
                     throw new Error(
@@ -726,6 +780,7 @@ export function registerResource(
                 });
             })
             .catch((err) => {
+                log.debug(`RegisterResource RPC failed: t=${t}, name=${name}, err=${err}`);
                 // If we fail to prepare the resource, we need to ensure that we still call done to prevent a hang.
                 done();
                 throw err;
@@ -851,7 +906,11 @@ export async function prepareResource(
     /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
 
     // Before we can proceed, all our dependencies must be finished.
+    const replaceWithDependencies = await gatherExplicitDependencies(opts.replaceWith);
     const explicitDirectDependencies = new Set(await gatherExplicitDependencies(opts.dependsOn));
+    for (const dependency of replaceWithDependencies) {
+        explicitDirectDependencies.add(dependency);
+    }
 
     // Serialize out all our props to their final values.  In doing so, we'll also collect all
     // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
@@ -961,6 +1020,8 @@ export async function prepareResource(
     }
 
     const deletedWithURN = opts?.deletedWith ? await opts.deletedWith.urn.promise() : undefined;
+    const replaceWithResources =
+        replaceWithDependencies.length > 0 ? Array.from(new Set(replaceWithDependencies)) : undefined;
 
     return {
         resolveURN: resolveURN,
@@ -976,7 +1037,106 @@ export async function prepareResource(
         import: importID,
         monitorSupportsStructuredAliases,
         deletedWithURN,
+        replaceWithResources,
     };
+}
+
+/**
+ * Prepare the hooks to bind to the resource. This ensures that all hook required registrations have completed.
+ * Hooks that are plain functions get wrapped in a `ResourceHook`.
+ *
+ * @param binding The resource hook binding.
+ * @param namePrefix The name prefix to use for plain function hooks.
+ *
+ * @internal
+ */
+export async function prepareHooks(
+    binding: ResourceHookBinding | undefined,
+    namePrefix: string,
+): Promise<resproto.RegisterResourceRequest.ResourceHooksBinding | undefined> {
+    if (!binding || Object.keys(binding).length === 0) {
+        return Promise.resolve(undefined);
+    }
+
+    const req = new resproto.RegisterResourceRequest.ResourceHooksBinding();
+
+    const hookTypes = [
+        { bindingKey: "beforeCreate", addMethod: "addBeforeCreate" },
+        { bindingKey: "afterCreate", addMethod: "addAfterCreate" },
+        { bindingKey: "beforeUpdate", addMethod: "addBeforeUpdate" },
+        { bindingKey: "afterUpdate", addMethod: "addAfterUpdate" },
+        { bindingKey: "beforeDelete", addMethod: "addBeforeDelete" },
+        { bindingKey: "afterDelete", addMethod: "addAfterDelete" },
+    ] as const;
+    for (const { bindingKey, addMethod } of hookTypes) {
+        let i = 0;
+        for (let hook of binding[bindingKey] ?? []) {
+            if (!ResourceHook.isInstance(hook)) {
+                hook = new ResourceHook(`${namePrefix}_${bindingKey}_${i}`, hook);
+            }
+            await hook.__registered;
+            req[addMethod](hook.name);
+            i++;
+        }
+    }
+
+    return req;
+}
+
+/**
+ * StubResourceHook is a resource hook that does nothing.
+ *
+ * Note that we do not subclass {@link ResourceHook} here, because we do
+ * not want to call the super constructor, which would cause a hook
+ * registration.
+ *
+ * We need to reconstruct {@link ResourceHook} instances to set on the
+ * {@link ResourceOption}, but we only have the name available to us. We also
+ * know that these hooks have already been registered, so we can construct
+ * dummy hooks here, that will later be serialized back into list of hook
+ * names.
+ *
+ * @internal
+ */
+export class StubResourceHook {
+    public name: string;
+    public callback: ResourceHookFunction;
+    public opts?: ResourceHookOptions;
+    public __registered: Promise<void>;
+    public readonly __pulumiResourceHook: boolean = true;
+
+    constructor(name: string) {
+        this.name = name;
+        this.callback = () => {
+            return;
+        };
+        this.__registered = Promise.resolve();
+    }
+
+    public static isInstance(obj: any): obj is ResourceHook {
+        return utils.isInstance<ResourceHook>(obj, "__pulumiResourceHook");
+    }
+}
+
+/**
+ * Convert a hook binding from a protobuf message to an {@link ResourceHookBinding} with {@link StubHook}s.
+ *
+ * @internal
+ */
+export function hookBindingFromProto(
+    protoBinding: resproto.RegisterResourceRequest.ResourceHooksBinding | undefined,
+): ResourceHookBinding | undefined {
+    if (protoBinding) {
+        const resourceHooks: ResourceHookBinding = {};
+        resourceHooks.beforeCreate = protoBinding.getBeforeCreateList().map((n) => new StubResourceHook(n));
+        resourceHooks.afterCreate = protoBinding.getAfterCreateList().map((n) => new StubResourceHook(n));
+        resourceHooks.beforeUpdate = protoBinding.getBeforeUpdateList().map((n) => new StubResourceHook(n));
+        resourceHooks.afterUpdate = protoBinding.getAfterUpdateList().map((n) => new StubResourceHook(n));
+        resourceHooks.beforeDelete = protoBinding.getBeforeDeleteList().map((n) => new StubResourceHook(n));
+        resourceHooks.afterDelete = protoBinding.getAfterDeleteList().map((n) => new StubResourceHook(n));
+        return resourceHooks;
+    }
+    return;
 }
 
 function addAll<T>(to: Set<T>, from: Set<T>) {
@@ -1147,4 +1307,17 @@ function runAsyncResourceOp(label: string, callback: () => Promise<void>, serial
             log.debug(`Resource RPC serialization requested: ${label} is behind ${resourceChainLabel}`);
         }
     }
+}
+
+export async function registerResourceHook(hook: ResourceHook) {
+    if (!getStore().supportsResourceHooks) {
+        throw new Error("The Pulumi CLI does not support resource hooks. Please update the Pulumi CLI");
+    }
+
+    const callbackServer = getCallbacks();
+    if (callbackServer === undefined) {
+        throw new Error("Callback server could not initialize");
+    }
+
+    return callbackServer.registerResourceHook(hook);
 }

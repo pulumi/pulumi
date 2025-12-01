@@ -658,7 +658,7 @@ func (g *generator) genCan(w io.Writer, expr *model.FunctionCallExpression) {
 }
 
 func (g *generator) genRootDirectory(w io.Writer) {
-	g.Fgen(w, "pulumi.runtime.getRootDirectory()")
+	g.Fgen(w, "pulumi.getRootDirectory()")
 }
 
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {
@@ -825,7 +825,7 @@ func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, p
 			indexPrefix = "."
 		}
 
-		genIndex := func(inner string, value interface{}) {
+		genIndex := func(inner string, value any) {
 			g.Fgenf(w, "%s["+inner+"]", indexPrefix, value)
 		}
 

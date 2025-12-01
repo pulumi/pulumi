@@ -14,25 +14,25 @@
 
 from __future__ import annotations
 
+import asyncio
+import traceback
+import uuid
+from collections.abc import Awaitable, Callable, Mapping
 from typing import (
     TYPE_CHECKING,
-    Awaitable,
-    Callable,
-    Dict,
-    List,
-    Mapping,
+    Any,
+    Optional,
     Union,
     cast,
-    Optional,
 )
-import uuid
 
 import grpc
-from grpc import aio
-
 from google.protobuf.message import Message
+from grpc import aio
+from grpc.experimental.aio import init_grpc_aio
 
 from .. import log
+from ..invoke import InvokeOptions, InvokeTransform
 from .proto import (
     alias_pb2,
     callback_pb2,
@@ -40,30 +40,40 @@ from .proto import (
     resource_pb2,
     resource_pb2_grpc,
 )
-from .rpc import deserialize_properties, serialize_properties
-from ..invoke import InvokeOptions, InvokeTransform
+from .rpc import (
+    deserialize_properties,
+    is_rpc_secret,
+    serialize_properties,
+    unwrap_rpc_secret,
+)
+from ._grpc_settings import _GRPC_CHANNEL_OPTIONS
 
 if TYPE_CHECKING:
-    from ..resource import Alias, ResourceOptions, ResourceTransform
+    from ..resource import (
+        Alias,
+        ResourceOptions,
+        ResourceTransform,
+    )
+    from ..resource_hooks import ResourceHook
 
 
-# _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-_MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
-_GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
-
+# Workaround for https://github.com/grpc/grpc/issues/38679,
+# https://github.com/grpc/grpc/issues/22365#issuecomment-2254278769
+# This will be fixed in grpcio 1.75.1 with https://github.com/grpc/grpc/pull/40649
+init_grpc_aio()
 
 _CallbackFunction = Callable[[bytes], Awaitable[Message]]
 
 
 class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
-    _servicers: List[_CallbackServicer] = []
+    _servicers: list[_CallbackServicer] = []
 
-    _callbacks: Dict[str, _CallbackFunction]
+    _callbacks: dict[str, _CallbackFunction]
     _monitor: resource_pb2_grpc.ResourceMonitorStub
     _server: aio.Server
     _target: str
 
-    _transforms: Dict[Union[ResourceTransform, InvokeTransform], str]
+    _transforms: dict[Union[ResourceTransform, InvokeTransform], str]
 
     def __init__(self, monitor: resource_pb2_grpc.ResourceMonitorStub):
         log.debug("Creating CallbackServicer")
@@ -82,25 +92,61 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
     @classmethod
     async def shutdown(cls):
         for servicer in cls._servicers:
-            await servicer._server.wait_for_termination(timeout=0)
+            await servicer._server.stop(grace=0)
 
-    # aio handles this being async but the pyi typings don't expect it.
     async def Invoke(
-        self, request: callback_pb2.CallbackInvokeRequest, context
+        self,
+        request: callback_pb2.CallbackInvokeRequest,
+        context: aio.ServicerContext[
+            callback_pb2.CallbackInvokeRequest, callback_pb2.CallbackInvokeResponse
+        ],
     ) -> callback_pb2.CallbackInvokeResponse:
         log.debug(f"Invoke callback {request.token}")
         callback = self._callbacks.get(request.token)
         if callback is None:
-            context.abort(
+            await context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT,
                 f"Callback with token {request.token} not found!",
             )
-            raise Exception("Callback not found!")
+            raise Exception("Unreachable, abort never returns")
 
-        response = await callback(request.request)
-        return callback_pb2.CallbackInvokeResponse(
-            response=response.SerializeToString()
-        )
+        try:
+            response = await callback(request.request)
+            return callback_pb2.CallbackInvokeResponse(
+                response=response.SerializeToString()
+            )
+        except Exception as e:  # noqa: BLE001 catch blind exception
+            log.debug(
+                f"Invoke callback {request.token} error: {traceback.format_exc()}"
+            )
+            details = self.pretty_error(e)
+            await context.abort(
+                grpc.StatusCode.UNKNOWN,
+                f"Invoke callback {request.token} error: {details}",
+            )
+        except asyncio.CancelledError as e:
+            log.debug(
+                f"Invoke callback {request.token} was cancelled: {traceback.format_exc()}"
+            )
+            details = self.pretty_error(e)
+            await context.abort(
+                grpc.StatusCode.CANCELLED,
+                f"Callback with token {request.token} was cancelled: {details}",
+            )
+
+    def pretty_error(self, e: BaseException) -> str:
+        """
+        pretty_error filters a stack trace down to user code and formats it for display
+        """
+        stack = traceback.extract_tb(e.__traceback__)
+        # Drop internal stack frames
+        filtered_stack = [f for f in stack if f.filename != __file__]
+        # If there are no stack frames left after dropping internal frames,
+        # use the original stack, this is likely an internal error.
+        filtered_stack = filtered_stack if len(filtered_stack) > 0 else stack
+        pretty_stack = "".join(traceback.format_list(filtered_stack))
+        details = f"{str(e)}:\n{pretty_stack}"
+        return details
 
     def register_transform(self, transform: ResourceTransform) -> callback_pb2.Callback:
         # If this transform function has already been registered, return it.
@@ -142,7 +188,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             result_props = await serialize_properties(result.props, {})
 
             result_opts = (
-                await self._transformation_resource_options(result.opts)
+                await self._transformation_resource_options(result.opts, request.name)
                 if result.opts is not None
                 else None
             )
@@ -238,6 +284,112 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             self._callbacks.pop(callback.token)
             raise
 
+    def do_register_resource_hook(
+        self, hook: ResourceHook
+    ) -> resource_pb2.RegisterResourceHookRequest:
+        log.debug(f"do_register_resource_hook {hook.name}")
+
+        async def cb(s: bytes) -> Message:
+            request: resource_pb2.ResourceHookRequest = (
+                resource_pb2.ResourceHookRequest.FromString(s)
+            )
+
+            try:
+                from ..resource_hooks import ResourceHookArgs
+
+                new_inputs = (
+                    outputtify_secrets(
+                        cast(
+                            dict[str, Any],
+                            deserialize_properties(
+                                request.new_inputs,
+                                keep_unknowns=True,
+                            ),
+                        )
+                    )
+                    if request.new_inputs
+                    else None
+                )
+                old_inputs = (
+                    outputtify_secrets(
+                        cast(
+                            dict[str, Any],
+                            deserialize_properties(
+                                request.old_inputs,
+                                keep_unknowns=True,
+                            ),
+                        )
+                    )
+                    if request.old_inputs
+                    else None
+                )
+                new_outputs = (
+                    outputtify_secrets(
+                        cast(
+                            dict[str, Any],
+                            deserialize_properties(
+                                request.new_outputs,
+                                keep_unknowns=True,
+                            ),
+                        )
+                    )
+                    if request.new_outputs
+                    else None
+                )
+                old_outputs = (
+                    outputtify_secrets(
+                        cast(
+                            dict[str, Any],
+                            deserialize_properties(
+                                request.old_outputs,
+                                keep_unknowns=True,
+                            ),
+                        )
+                    )
+                    if request.old_outputs
+                    else None
+                )
+
+                maybeAwaitable = hook(
+                    ResourceHookArgs(
+                        urn=request.urn,
+                        id=request.id,
+                        name=request.name,
+                        type=request.type,
+                        new_inputs=new_inputs,
+                        old_inputs=old_inputs,
+                        new_outputs=new_outputs,
+                        old_outputs=old_outputs,
+                    )
+                )
+                if isinstance(maybeAwaitable, Awaitable):
+                    await maybeAwaitable
+                return resource_pb2.ResourceHookResponse()
+            except Exception as e:  # noqa: BLE001 catch blind exception
+                log.debug(f"Exception while executing hook: {str(e)}")
+                return resource_pb2.ResourceHookResponse(error=str(e))
+
+        token = str(uuid.uuid4())
+        self._callbacks[token] = cb
+        callback = callback_pb2.Callback(
+            token=token,
+            target=self._target,
+        )
+        return resource_pb2.RegisterResourceHookRequest(
+            name=hook.name,
+            callback=callback,
+            on_dry_run=hook.opts.on_dry_run if hook.opts else False,
+        )
+
+    def register_resource_hook(self, hook: ResourceHook) -> None:
+        req = self.do_register_resource_hook(hook)
+        try:
+            self._monitor.RegisterResourceHook(req)
+        except:
+            # Remove the hook since we didn't manage to actually register it.
+            self._callbacks.pop(req.callback.token)
+            raise
+
     def _resource_options(
         self, request: resource_pb2.TransformRequest
     ) -> ResourceOptions:
@@ -258,6 +410,10 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
 
         if opts.HasField("delete_before_replace"):
             ropts.delete_before_replace = opts.delete_before_replace
+
+        id = getattr(opts, "import", None)
+        if id:
+            ropts.import_ = id
 
         additional_secret_outputs = list(opts.additional_secret_outputs)
         if additional_secret_outputs:
@@ -316,6 +472,11 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         if opts.version:
             ropts.version = opts.version
 
+        if opts.hooks:
+            from .resource_hooks import _binding_from_proto
+
+            ropts.hooks = _binding_from_proto(opts.hooks)
+
         return ropts
 
     def _alias(self, alias: alias_pb2.Alias) -> Union[str, Alias]:
@@ -340,7 +501,9 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         return a
 
     async def _transformation_resource_options(
-        self, opts: ResourceOptions
+        self,
+        opts: ResourceOptions,
+        resource_name: str,
     ) -> resource_pb2.TransformResourceOptions:
         from ._depends_on import (
             _resolve_depends_on_urns,
@@ -349,6 +512,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             _create_custom_timeouts,
             _create_provider_ref,
             create_alias_spec,
+            _prepare_resource_hooks,
         )
         from ..resource import (
             Alias,
@@ -357,7 +521,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         )
         from ..output import Output
 
-        aliases: List[alias_pb2.Alias] = []
+        aliases: list[alias_pb2.Alias] = []
         if opts.aliases:
             for alias in opts.aliases:
                 resolved = await Output.from_input(alias).future()
@@ -387,6 +551,8 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         if opts.additional_secret_outputs:
             additional_secret_outputs = list(opts.additional_secret_outputs)
 
+        hooks = await _prepare_resource_hooks(opts.hooks, resource_name)
+
         result = resource_pb2.TransformResourceOptions(
             aliases=aliases or None,
             custom_timeouts=custom_timeouts,
@@ -394,10 +560,18 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             ignore_changes=ignore_changes,
             replace_on_changes=replace_on_changes,
             additional_secret_outputs=additional_secret_outputs,
+            hooks=hooks,
         )
 
+        if opts.import_ is not None:
+            setattr(result, "import", opts.import_)
         if opts.deleted_with is not None:
             result.deleted_with = cast(str, await opts.deleted_with.urn.future())
+        if opts.replace_with:
+            for dependency in opts.replace_with:
+                urn = await dependency.urn.future()
+                if urn:
+                    result.replace_with.append(cast(str, urn))
         if opts.plugin_download_url:
             result.plugin_download_url = opts.plugin_download_url
         if opts.protect is not None:
@@ -462,3 +636,13 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             result.provider = await _create_provider_ref(opts.provider)
 
         return result
+
+
+def outputtify_secrets(props: dict[str, Any]) -> dict[str, Any]:
+    from ..output import Output
+
+    for k, v in props.items():
+        if is_rpc_secret(v):
+            props[k] = Output.secret(unwrap_rpc_secret(v))
+
+    return props

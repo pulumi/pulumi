@@ -1,0 +1,12 @@
+{
+    "main": "index.ts",
+    "dependencies": {
+        "@pulumi/pulumi": "latest",
+        "@pulumi/random": "latest"
+    },
+    "devDependencies": {
+        "@types/node": "^18",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.8.0"
+    }
+}
