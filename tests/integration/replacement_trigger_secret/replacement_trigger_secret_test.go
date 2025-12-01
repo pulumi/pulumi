@@ -44,14 +44,13 @@ func TestReplacementTriggerWithSecret(t *testing.T) {
 					require.NotNil(t, res.ReplacementTrigger)
 
 					secret, ok := res.ReplacementTrigger.(map[string]any)
-					assert.True(t, ok)
-					if ok {
-						assert.Equal(t, resource.SecretSig, secret[resource.SigKey])
+					require.True(t, ok)
 
-						_, hasCiphertext := secret["ciphertext"]
-						_, hasValue := secret["value"]
-						assert.True(t, hasCiphertext || hasValue)
-					}
+					assert.Equal(t, resource.SecretSig, secret[resource.SigKey])
+
+					_, hasCiphertext := secret["ciphertext"]
+					_, hasValue := secret["value"]
+					assert.True(t, hasCiphertext || hasValue)
 				}
 			}
 			assert.True(t, foundRes, "expected to find resource 'res'")
