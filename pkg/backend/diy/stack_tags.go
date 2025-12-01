@@ -42,7 +42,7 @@ func (b *diyBackend) stackTagsPath(ref *diyBackendReference) string {
 }
 
 // loadStackTags loads tags for a stack from the storage backend.
-// Returns an empty map if no tags file exists (backward compatibility).
+// Returns an empty map if no tags file exists.
 func (b *diyBackend) loadStackTags(
 	ctx context.Context, ref *diyBackendReference,
 ) (map[apitype.StackTagName]string, error) {
@@ -82,11 +82,18 @@ func (b *diyBackend) loadStackTags(
 }
 
 // saveStackTags saves tags for a stack to the storage backend.
+// If tags is empty, this is a no-op to avoid unnecessary file writes.
 func (b *diyBackend) saveStackTags(
 	ctx context.Context, ref *diyBackendReference, tags map[apitype.StackTagName]string,
 ) error {
 	contract.Requiref(ref != nil, "ref", "ref cannot be nil")
 	contract.Requiref(tags != nil, "tags", "tags cannot be nil")
+
+	// Don't write a tags file if there are no tags
+	if len(tags) == 0 {
+		logging.V(9).Infof("No tags to save for stack %s, skipping write", ref.String())
+		return nil
+	}
 
 	tagsPath := b.stackTagsPath(ref)
 	logging.V(9).Infof("Saving %d stack tags to %s", len(tags), tagsPath)
@@ -141,7 +148,4 @@ func (b *diyBackend) updateStackTagsFromMetadata(tags map[apitype.StackTagName]s
 			tags["pulumi:project"] = string(stackRef.project)
 		}
 	}
-
-	// Additional system tags could be added here in the future
-	// by reading from the checkpoint or project files
 }

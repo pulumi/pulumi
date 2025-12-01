@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // setupTestBackend creates a test backend with in-memory storage
@@ -436,6 +437,10 @@ func (m *mockStackForTesting) SaveRemoteConfig(context.Context, *workspace.Proje
 
 func (m *mockStackForTesting) Snapshot(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
 	return nil, nil
+}
+
+func (m *mockStackForTesting) SnapshotStackOutputs(context.Context, secrets.Provider) (property.Map, error) {
+	return property.Map{}, nil
 }
 func (m *mockStackForTesting) Backend() backend.Backend              { return nil }
 func (m *mockStackForTesting) Tags() map[apitype.StackTagName]string { return nil }

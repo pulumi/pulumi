@@ -12,14 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build integration
-// +build integration
-
 package diy
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -37,11 +33,7 @@ import (
 func TestStackTagsWithFileBackend(t *testing.T) {
 	t.Parallel()
 
-	// Create temporary directory for backend storage
-	tmpDir, err := ioutil.TempDir("", "pulumi-test-backend-*")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
-
+	tmpDir := t.TempDir()
 	ctx := context.Background()
 
 	// Create file-based backend
@@ -122,7 +114,7 @@ func TestStackTagsWithFileBackend(t *testing.T) {
 	assert.NoError(t, err, "Tags file should exist at %s", expectedTagsPath)
 
 	// Verify file content
-	content, err := ioutil.ReadFile(expectedTagsPath)
+	content, err := os.ReadFile(expectedTagsPath)
 	require.NoError(t, err)
 	assert.Contains(t, string(content), "environment")
 	assert.Contains(t, string(content), "production")
@@ -133,11 +125,7 @@ func TestStackTagsWithFileBackend(t *testing.T) {
 func TestStackTagsFilteringIntegration(t *testing.T) {
 	t.Parallel()
 
-	// Create temporary directory for backend storage
-	tmpDir, err := ioutil.TempDir("", "pulumi-test-filtering-*")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
-
+	tmpDir := t.TempDir()
 	ctx := context.Background()
 
 	// Create file-based backend
@@ -230,7 +218,7 @@ func TestStackTagsFilteringIntegration(t *testing.T) {
 	}
 
 	// Should match dev-api and dev-ui
-	assert.Len(t, devStacks, 2)
+	require.Len(t, devStacks, 2)
 	devNames := make([]string, len(devStacks))
 	for i, ref := range devStacks {
 		devNames[i] = ref.name.String()
@@ -250,7 +238,7 @@ func TestStackTagsFilteringIntegration(t *testing.T) {
 	}
 
 	// Should match dev-api and prod-api
-	assert.Len(t, backendStacks, 2)
+	require.Len(t, backendStacks, 2)
 	backendNames := make([]string, len(backendStacks))
 	for i, ref := range backendStacks {
 		backendNames[i] = ref.name.String()
@@ -263,11 +251,7 @@ func TestStackTagsFilteringIntegration(t *testing.T) {
 func TestStackTagsWithLegacyBackend(t *testing.T) {
 	t.Parallel()
 
-	// Create temporary directory for backend storage
-	tmpDir, err := ioutil.TempDir("", "pulumi-test-legacy-*")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
-
+	tmpDir := t.TempDir()
 	ctx := context.Background()
 
 	// Create file-based backend
@@ -317,11 +301,7 @@ func TestStackTagsWithLegacyBackend(t *testing.T) {
 func TestStackDeletionCleansUpTags(t *testing.T) {
 	t.Parallel()
 
-	// Create temporary directory for backend storage
-	tmpDir, err := ioutil.TempDir("", "pulumi-test-deletion-*")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
-
+	tmpDir := t.TempDir()
 	ctx := context.Background()
 
 	// Create file-based backend
@@ -359,7 +339,7 @@ func TestStackDeletionCleansUpTags(t *testing.T) {
 	require.NoError(t, err, "Tags file should exist before deletion")
 
 	// Delete the stack (simulate removal)
-	err = backend.removeStack(ctx, ref)
+	err = backend.removeStack(ctx, ref, false)
 	require.NoError(t, err)
 
 	// Verify tags file was deleted

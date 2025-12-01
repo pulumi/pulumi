@@ -89,13 +89,19 @@ func (b *diyBackend) getTarget(
 	if err != nil {
 		return nil, err
 	}
+	// Load stack tags
+	tags, err := b.loadStackTags(ctx, ref)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load stack tags: %w", err)
+	}
+
 	return &deploy.Target{
 		Name:         ref.Name(),
 		Organization: "organization", // diy has no organizations really, but we just always say it's "organization"
 		Config:       cfg,
 		Decrypter:    dec,
 		Snapshot:     snapshot,
-		Tags:         nil, // TODO: diy backend does not support tags yet, so we just return nil here.
+		Tags:         tags,
 	}, nil
 }
 
