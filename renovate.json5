@@ -2,7 +2,8 @@
   // Everything requires triggering via the dependency dashboard, except:
   // * security updates
   // * first party (aka pulumi) packages
-  // * pinning of devDependencies & github actions tags, ie actions/checkout@v4 gets converted to actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+  // * pinning of all dependencies in test projects, devDependencies in library code, github actions tags,
+  //   ie actions/checkout@v4 -> actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: [
     "github>pulumi/renovate-config//default.json5"
