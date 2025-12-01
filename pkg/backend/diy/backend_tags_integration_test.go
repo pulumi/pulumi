@@ -49,9 +49,6 @@ func TestStackTagsWithFileBackend(t *testing.T) {
 		}),
 	}
 
-	// Test SupportsTags
-	assert.True(t, backend.SupportsTags())
-
 	// Create a stack reference
 	ref := &diyBackendReference{
 		project: tokens.Name("integration-test"),

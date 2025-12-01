@@ -99,7 +99,6 @@ func TestPostgresBackend(t *testing.T) {
 	assert.NotEmpty(t, b.Name(), "Backend name should not be empty")
 
 	// Test feature support flags
-	assert.False(t, b.SupportsTags(), "DIY backend should not support tags")
 	assert.False(t, b.SupportsTemplates(), "DIY backend should not support templates")
 	assert.False(t, b.SupportsOrganizations(), "DIY backend should not support organizations")
 	assert.False(t, b.SupportsProgress(), "DIY backend should not support progress")

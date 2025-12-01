@@ -224,9 +224,6 @@ func TestBackendUpdateStackTags(t *testing.T) {
 	// Create a stack
 	stack := newStack(ref, b)
 
-	// Test SupportsTags returns true
-	assert.True(t, b.SupportsTags())
-
 	// Test UpdateStackTags
 	testTags := map[apitype.StackTagName]string{
 		"env":   "dev",

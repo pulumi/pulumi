@@ -649,10 +649,6 @@ func (b *diyBackend) ListPolicyPacks(ctx context.Context, orgName string, _ back
 	return apitype.ListPolicyPacksResponse{}, nil, errors.New("DIY backend does not support resource policy")
 }
 
-func (b *diyBackend) SupportsTags() bool {
-	return true
-}
-
 func (b *diyBackend) SupportsTemplates() bool {
 	return false
 }
