@@ -902,7 +902,7 @@ export async function prepareResource(
     // passed to.  However, those promises won't actually resolve until the registerResource
     // RPC returns. We don't do this for local component resources as their outputs are
     // manually setup in their constructors.
-    var resolvers: OutputResolvers = {};
+    let resolvers: OutputResolvers = {};
     if (remote || custom) {
         resolvers = transferProperties(res, label, props);
     }
