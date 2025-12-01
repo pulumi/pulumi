@@ -2892,7 +2892,7 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	var schema map[string]any
 	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
 	require.Equal(t, "nodejs-component-provider", schema["name"].(string))
-	require.Equal(t, "0.0.0", schema["version"].(string))
+	require.Equal(t, "1.0.0", schema["version"].(string))
 	require.Equal(t, "Node.js Sample Components", schema["description"].(string))
 
 	// Check the dependencies
