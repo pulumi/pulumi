@@ -900,8 +900,12 @@ export async function prepareResource(
     // Now "transfer" all input properties into unresolved Promises on res.  This way,
     // this resource will look like it has all its output properties to anyone it is
     // passed to.  However, those promises won't actually resolve until the registerResource
-    // RPC returns
-    const resolvers = transferProperties(res, label, props);
+    // RPC returns. We don't do this for local component resources as their outputs are
+    // manually setup in their constructors.
+    var resolvers: OutputResolvers = {};
+    if (remote || custom) {
+        resolvers = transferProperties(res, label, props);
+    }
 
     /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
 
