@@ -903,7 +903,7 @@ export async function prepareResource(
     // RPC returns. We don't do this for local component resources as their outputs are
     // manually setup in their constructors.
     let resolvers: OutputResolvers = {};
-    if (remote || custom) {
+    if (remote || custom || opts.urn !== undefined) {
         resolvers = transferProperties(res, label, props);
     }
 
