@@ -74,5 +74,11 @@
       matchFileNames: ["tests/**", "sdk/python/lib/test/**", "sdk/nodejs/tests/**", "sdk/go/auto/test/**"],
       rangeStrategy: "pin",
     },
+    // Don't pin requires-python in test pyproject.toml files, we need the test projects to be installable in a range of Python versions
+    {
+      matchFileNames: ["tests/**", "sdk/python/lib/test/**", "sdk/nodejs/tests/**", "sdk/go/auto/test/**"],
+      matchDepTypes: ["project.requires-python"],
+      rangeStrategy: "replace"
+    },
   ]
 }
