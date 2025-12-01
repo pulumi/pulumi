@@ -790,7 +790,10 @@ func (source *fallbackSource) Download(
 	// Fallback to get.pulumi.com
 	pulumi := newGetPulumiSource(source.name, source.kind)
 
-	// Check if there's a URL override for the get.pulumi.com URL
+	// Check if there's a URL override for the get.pulumi.com URL.
+	// Note: This check is necessary because GetSource() checks overrides against fallbackSource.URL()
+	// which returns the GitHub URL, not the get.pulumi.com URL. When we actually fall back to
+	// get.pulumi.com here, we need to check if there's an override for that specific URL.
 	if overrideURL, ok := pluginDownloadURLOverridesParsed.get(pulumi.URL()); ok {
 		logging.V(1).Infof("Applying URL override for %s: %s -> %s", source.name, pulumi.URL(), overrideURL)
 		// Create a new plugin source with the override URL
