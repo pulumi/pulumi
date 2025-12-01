@@ -40,6 +40,7 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 	foundRes7 := false
 	foundRes8 := false
 	foundRes9 := false
+	foundRes10 := false
 	for _, res := range stack.Deployment.Resources {
 		// "res1" has a transformation which adds additionalSecretOutputs
 		if res.URN.Name() == "res1" {
@@ -113,6 +114,23 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			foundRes9 = true
 			assert.Equal(t, resource.ID("stackDefault:test-id"), res.ImportID)
 		}
+		// "res10" has a transformation which sets replacementTrigger with a secret value
+		if res.URN.Name() == "res10" {
+			foundRes10 = true
+
+			assert.Equal(t, res.Type, tokens.Type(randomResName))
+			require.NotNil(t, res.ReplacementTrigger)
+
+			secret, ok := res.ReplacementTrigger.(map[string]any)
+			assert.True(t, ok)
+			if ok {
+				assert.Equal(t, resource.SecretSig, secret[resource.SigKey])
+
+				_, hasCiphertext := secret["ciphertext"]
+				_, hasValue := secret["value"]
+				assert.True(t, hasCiphertext || hasValue)
+			}
+		}
 	}
 	assert.True(t, foundRes1)
 	assert.True(t, foundRes2Child)
@@ -123,4 +141,5 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 	assert.True(t, foundRes7)
 	assert.True(t, foundRes8)
 	assert.True(t, foundRes9)
+	assert.True(t, foundRes10)
 }

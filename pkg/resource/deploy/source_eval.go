@@ -2453,9 +2453,13 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	replaceOnChanges := opts.ReplaceOnChanges
 
 	replacementTrigger := resource.NewNullProperty()
-	if req.GetReplacementTrigger() != nil {
+	replacementTriggerValue := opts.GetReplacementTrigger()
+	if replacementTriggerValue == nil {
+		replacementTriggerValue = req.GetReplacementTrigger()
+	}
+	if replacementTriggerValue != nil {
 		t, err := plugin.UnmarshalPropertyValue(
-			"replacementTrigger", req.GetReplacementTrigger(), plugin.MarshalOptions{
+			"replacementTrigger", replacementTriggerValue, plugin.MarshalOptions{
 				Label:              label,
 				KeepUnknowns:       true,
 				ComputeAssetHashes: true,

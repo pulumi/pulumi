@@ -166,3 +166,12 @@ async () => {
         },
     ],
 });
+
+const res10 = new Random("res10", { length: 7 }, {
+    transforms: [
+        async ({ props, opts }) => {
+            opts.replacementTrigger = pulumi.secret("secret-trigger-value");
+            return { props: props, opts: opts };
+        },
+    ],
+});

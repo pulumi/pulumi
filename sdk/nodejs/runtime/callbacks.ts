@@ -45,6 +45,7 @@ import {
     deserializeProperties,
     deserializeProperty,
     serializeProperties,
+    serializeProperty,
     unknownValue,
     isRpcSecret,
     unwrapRpcSecret,
@@ -367,7 +368,7 @@ export class CallbackServer implements ICallbackServer {
                         opts.setReplaceOnChangesList(result.opts.replaceOnChanges);
                     }
                     if (result.opts.replacementTrigger !== undefined) {
-                        const triggerValue = await output(result.opts.replacementTrigger).promise();
+                        const triggerValue = await serializeProperty("replacementTrigger", result.opts.replacementTrigger);
                         opts.setReplacementTrigger(gstruct.Value.fromJavaScript(triggerValue));
                     }
                     if (result.opts.retainOnDelete !== undefined) {
