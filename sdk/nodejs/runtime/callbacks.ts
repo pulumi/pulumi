@@ -368,7 +368,10 @@ export class CallbackServer implements ICallbackServer {
                         opts.setReplaceOnChangesList(result.opts.replaceOnChanges);
                     }
                     if (result.opts.replacementTrigger !== undefined) {
-                        const triggerValue = await serializeProperty("replacementTrigger", result.opts.replacementTrigger);
+                        const triggerValue = await serializeProperty(
+                            "replacementTrigger",
+                            result.opts.replacementTrigger,
+                        );
                         opts.setReplacementTrigger(gstruct.Value.fromJavaScript(triggerValue));
                     }
                     if (result.opts.retainOnDelete !== undefined) {
