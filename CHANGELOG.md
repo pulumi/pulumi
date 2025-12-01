@@ -5,8 +5,6 @@
 
 ### Features
 
-- [cli/plugin] Add `PULUMI_PLUGIN_SERVER` environment variable support to force plugin downloads from a specific server, bypassing GitHub entirely. Can be used as an alternative to the `--server` flag in `pulumi plugin install`.
-
 - [cli] Add native support for OIDC token exchange when logging into Pulumi Cloud. Run `pulumi login --help` for more information.
   [#20974](https://github.com/pulumi/pulumi/pull/20974)
 
@@ -18,8 +16,6 @@
 
 
 ### Bug Fixes
-
-- [cli/plugin] Fix `PULUMI_PLUGIN_DOWNLOAD_URL_OVERRIDES` environment variable not being applied during plugin downloads. The override was only checked against the GitHub API URL, but Pulumi falls back to get.pulumi.com when GitHub fails (rate limits, network issues, etc). The fix ensures URL overrides are applied to the get.pulumi.com fallback URL, enabling users to redirect plugin downloads to custom CDN/mirrors/proxies. This is critical for CI/CD environments that frequently hit GitHub rate limits.
 
 - [cli/install] Correctly install non-standard plugins. See https://github.com/pulumi/pulumi/issues/20953 for more information
   [#20983](https://github.com/pulumi/pulumi/pull/20983)
