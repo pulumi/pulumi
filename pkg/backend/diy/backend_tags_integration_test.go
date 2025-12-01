@@ -108,7 +108,7 @@ func TestStackTagsWithFileBackend(t *testing.T) {
 	// Test that tags file was created in the correct location
 	expectedTagsPath := filepath.Join(tmpDir, ".pulumi", "stacks", "integration-test", "test-stack.pulumi-tags")
 	_, err = os.Stat(expectedTagsPath)
-	assert.NoError(t, err, "Tags file should exist at %s", expectedTagsPath)
+	require.NoError(t, err, "Tags file should exist at %s", expectedTagsPath)
 
 	// Verify file content
 	content, err := os.ReadFile(expectedTagsPath)
@@ -193,7 +193,7 @@ func TestStackTagsFilteringIntegration(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	// Test filtering by environment=development  
+	// Test filtering by environment=development
 	// We'll test the filtering logic directly by simulating the tag check
 	allRefs := []*diyBackendReference{
 		{project: "filter-test", name: tokens.MustParseStackName("dev-api"), store: backend.store},
@@ -291,7 +291,7 @@ func TestStackTagsWithLegacyBackend(t *testing.T) {
 	// Test that tags file was created in the correct location (legacy path)
 	expectedTagsPath := filepath.Join(tmpDir, ".pulumi", "stacks", "legacy-stack.pulumi-tags")
 	_, err = os.Stat(expectedTagsPath)
-	assert.NoError(t, err, "Tags file should exist at %s", expectedTagsPath)
+	require.NoError(t, err, "Tags file should exist at %s", expectedTagsPath)
 }
 
 // TestStackDeletionCleansUpTags tests that deleting a stack also removes its tags

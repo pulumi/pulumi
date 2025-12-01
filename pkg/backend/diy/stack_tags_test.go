@@ -327,7 +327,7 @@ func TestStackTagsFiltering(t *testing.T) {
 			matchedRefs = append(matchedRefs, ref)
 		}
 	}
-	assert.Len(t, matchedRefs, 3) // stack1, stack2, stack3 have "env" tag
+	require.Len(t, matchedRefs, 3) // stack1, stack2, stack3 have "env" tag
 
 	// Test filtering by tag name and value
 	tagValue := "dev"
@@ -339,7 +339,7 @@ func TestStackTagsFiltering(t *testing.T) {
 			matchedRefs = append(matchedRefs, ref)
 		}
 	}
-	assert.Len(t, matchedRefs, 2) // stack1, stack3 have env=dev
+	require.Len(t, matchedRefs, 2) // stack1, stack3 have env=dev
 
 	// Test filtering by tag value only (search all tags)
 	tagValue = "backend"
@@ -358,7 +358,7 @@ func TestStackTagsFiltering(t *testing.T) {
 			matchedRefs = append(matchedRefs, ref)
 		}
 	}
-	assert.Len(t, matchedRefs, 2) // stack1, stack3 have team=backend
+	require.Len(t, matchedRefs, 2) // stack1, stack3 have team=backend
 }
 
 func TestStackTagsJSONFormat(t *testing.T) {
