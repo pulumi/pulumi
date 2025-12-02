@@ -51,13 +51,6 @@
       minimumReleaseAge: "3 days",
       prCreation: "not-pending"
     },
-    // Pin all test dependencies
-    // https://github.com/pulumi/renovate-config/blob/5a711294b6b86c30f210802d7dc5b7bdbadd8629/default.json5#L131-L139
-    {
-      matchPackageNames: ["*"],
-      matchFileNames: ["tests/**", "sdk/python/lib/test/**", "sdk/nodejs/tests/**", "sdk/go/auto/test/**"],
-      rangeStrategy: "pin"
-    },
     // Don't update requires-python in pyproject.toml files, we need the test projects to be installable in a range of Python versions
     {
       matchDatasources: ["python-version"],
@@ -86,6 +79,13 @@
       matchDatasources: ["pypi"],
       matchPackageNames: ["pulumi"],
       enabled: false
+    },
+    // Pin all test dependencies
+    // https://github.com/pulumi/renovate-config/blob/5a711294b6b86c30f210802d7dc5b7bdbadd8629/default.json5#L131-L139
+    {
+      matchPackageNames: ["*"],
+      matchFileNames: ["tests/**", "sdk/python/lib/test/**", "sdk/nodejs/tests/**", "sdk/go/auto/test/**"],
+      rangeStrategy: "pin"
     },
   ]
 }
