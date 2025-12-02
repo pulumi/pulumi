@@ -109,7 +109,7 @@ func TestJournalerBasicBatching(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify that all entries were sent individually to the client
-	assert.Len(t, batches, numEntries)
+	require.Len(t, batches, numEntries)
 
 	// Count total entries sent
 	totalSent := 0
@@ -266,7 +266,7 @@ func TestJournaler413ErrorHandling(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify that all entries were sent individually to the client
-	assert.Len(t, batches, numEntries)
+	require.Len(t, batches, numEntries)
 
 	// Count total entries sent
 	totalSent := 0
