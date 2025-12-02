@@ -275,3 +275,40 @@ func TestJournaler413ErrorHandling(t *testing.T) {
 	}
 	assert.Equal(t, numEntries, totalSent, "All entries should be sent")
 }
+
+// TestJournaler413MinimumBatchSize tests that 413 errors do not split when the batch size is too small.
+func TestJournaler413MinimumBatchSize(t *testing.T) {
+	t.Parallel()
+
+	c := startTestServer(t, func(w http.ResponseWriter, body apitype.JournalEntries) {
+		w.WriteHeader(http.StatusRequestEntityTooLarge)
+	})
+
+	numEntries := 5
+	journaler := newJournaler(
+		t.Context(),
+		c,
+		updateIdentifier,
+		&mockTokenSource{},
+		b64.NewBase64SecretsManager(),
+		numEntries,
+		50,
+	)
+
+	// Add some journal entries
+	var wg sync.WaitGroup
+	wg.Add(numEntries)
+	for i := 0; i < numEntries; i++ {
+		go func() {
+			defer wg.Done()
+			entry := engine.JournalEntry{SequenceID: int64(i)}
+			err := journaler.AddJournalEntry(entry)
+			require.Error(t, err)
+		}()
+	}
+	wg.Wait()
+
+	// Close the journaler to flush all entries
+	err := journaler.Close()
+	require.NoError(t, err)
+}

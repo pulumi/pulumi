@@ -109,10 +109,10 @@ func sendBatch(
 	batch []apitype.JournalEntry,
 ) error {
 	// Try to send the batch as-is. If there's no error or if the error is _not_ a 413 Content Too Large,
-	// we're done. Otherwise, try to send two smaller batches.
+	// we're done. Otherwise, try to send two smaller batches. If the batch is too small to split, we're done.
 	var apiError *apitype.ErrorResponse
 	err := client.SaveJournalEntries(ctx, update, batch, tokenSource)
-	if err == nil || !errors.As(err, &apiError) || apiError.Code != http.StatusRequestEntityTooLarge {
+	if err == nil || !errors.As(err, &apiError) || apiError.Code != http.StatusRequestEntityTooLarge || len(batch) <= 1 {
 		return err
 	}
 
