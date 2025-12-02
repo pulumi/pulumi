@@ -240,7 +240,7 @@ func TestPackageDeleteCmd_NonInteractiveRequiresYes(t *testing.T) {
 		DeletePackageVersionF: func(
 			ctx context.Context, source, publisher, name string, version semver.Version,
 		) error {
-			t.Fatal("DeletePackageVersion should not be called without --yes in non-interactive mode")
+			require.Fail(t, "DeletePackageVersion should not be called without --yes in non-interactive mode")
 			return nil
 		},
 	}
@@ -258,7 +258,5 @@ func TestPackageDeleteCmd_NonInteractiveRequiresYes(t *testing.T) {
 	// In non-interactive mode without --yes, should fail
 	// Note: This test assumes the test environment is non-interactive.
 	// The actual behavior depends on cmdutil.Interactive() which checks if stdin is a terminal.
-	if err != nil {
-		assert.Contains(t, err.Error(), "non-interactive mode requires --yes flag")
-	}
+	assert.ErrorContains(t, err, "non-interactive mode requires --yes flag")
 }

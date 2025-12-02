@@ -66,18 +66,15 @@ You must have publish permissions for the package to delete it.`,
 				Stderr: cmd.ErrOrStderr(),
 			}
 
-			// Check non-interactive mode before doing any backend work
 			if !cmdutil.Interactive() && !yes {
 				return errors.New("non-interactive mode requires --yes flag")
 			}
 
-			// Confirm deletion if not using --yes
 			prompt := fmt.Sprintf("This will permanently delete package version '%s'!", packageVersion)
 			if !yes && !ui.ConfirmPrompt(prompt, packageVersion.String(), opts) {
 				return result.FprintBailf(cmd.ErrOrStderr(), "confirmation declined")
 			}
 
-			// Get backend and registry
 			project, _, err := pkgWorkspace.Instance.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return fmt.Errorf("failed to determine current project: %w", err)
@@ -93,7 +90,6 @@ You must have publish permissions for the package to delete it.`,
 				return fmt.Errorf("failed to get the registry backend: %w", err)
 			}
 
-			// Delete the package version
 			if err := registry.DeletePackageVersion(ctx,
 				packageVersion.source,
 				packageVersion.publisher,
@@ -130,7 +126,6 @@ func (pv PackageVersion) String() string {
 // parsePackageVersion parses a package version string in the format
 // <source>/<publisher>/<name>@<version> and returns its components.
 func parsePackageVersion(input string) (PackageVersion, error) {
-	// Split by @ to separate name from version
 	parts := strings.SplitN(input, "@", 2)
 	if len(parts) != 2 || parts[1] == "" {
 		return PackageVersion{}, errors.New("invalid package version format\n" +
@@ -138,7 +133,6 @@ func parsePackageVersion(input string) (PackageVersion, error) {
 			"  Example: private/myorg/my-package@1.0.0")
 	}
 
-	// Split the name part by /
 	nameParts := strings.Split(parts[0], "/")
 	if len(nameParts) != 3 {
 		return PackageVersion{}, errors.New("invalid package name format\n" +
@@ -150,7 +144,6 @@ func parsePackageVersion(input string) (PackageVersion, error) {
 	publisher := nameParts[1]
 	name := nameParts[2]
 
-	// Validate that none of the parts are empty
 	if source == "" || publisher == "" || name == "" {
 		return PackageVersion{}, errors.New(
 			"invalid package version format: source, publisher, and name cannot be empty\n" +
@@ -158,7 +151,6 @@ func parsePackageVersion(input string) (PackageVersion, error) {
 				"  Example: private/myorg/my-package@1.0.0")
 	}
 
-	// Validate semantic version
 	version, err := semver.Parse(parts[1])
 	if err != nil {
 		return PackageVersion{}, fmt.Errorf(

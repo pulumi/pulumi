@@ -15,7 +15,7 @@
 package ints
 
 import (
-	"strings"
+	"os"
 	"testing"
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
@@ -30,9 +30,8 @@ func TestPackagePublishLifecycle(t *testing.T) {
     "name": "test-publish",
     "version": "1.2.3"
 }`)
-	stdout, _ := e.RunCommand("pulumi", "org", "get-default")
-	org := strings.TrimSpace(stdout)
-	require.NotEmpty(t, org, "default org should not be empty")
+	org := os.Getenv("PULUMI_TEST_ORG")
+	require.NotEmpty(t, org, "Missing PULUMI_TEST_ORG")
 	e.WriteTestFile("README.md", "# test-publish\n")
 	e.RunCommand("pulumi", "package", "publish", "./schema.json", "--readme", "./README.md")
 	e.RunCommand("pulumi", "package", "delete", "--yes", // non-interactive mode requires --yes flag
