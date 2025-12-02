@@ -45,47 +45,60 @@
     dependencyDashboardApproval: true,
   },
   packageRules: [
-    // Don't propose updates for packages that are less than 3 days old. Security vulnerabilities bypass this setting.
     {
+      description: "Pin all test dependencies",
+      matchPackageNames: ["*"],
+      matchFileNames: ["tests/**", "sdk/python/lib/test/**", "sdk/nodejs/tests/**", "sdk/go/auto/test/**"],
+      rangeStrategy: "pin"
+    },
+    {
+      description: "Don't propose updates for packages that are less than 3 days old. Security vulnerabilities bypass this setting.",
       matchDatasources: ["npm", "pypi", "go"],
       minimumReleaseAge: "3 days",
       prCreation: "not-pending"
     },
-    // Don't update requires-python in pyproject.toml files, we need the test projects to be installable in a range of Python versions
     {
+      description: "Don't update requires-python in pyproject.toml files, we want to run against the full range of supported Python versions.",
       matchDatasources: ["python-version"],
       enabled: false
     },
-    // Don't update the python version in poetry dependencies in test pyproject.toml files, we need the test projects to be installable in a range of Python versions
     {
-      matchManagers: ["poetry"],
+      description: "Don't update the python version in poetry dependencies in pyproject.toml files, we want to run against the full range of supported Python versions",
       matchPackageNames: ["python"],
-      matchFileNames: ["tests/**"],
       enabled: false
     },
-    // Disable auto-update for pulumi/pulumi - our base config auto-updates first party packages, but we don't want
-    // this for dependencies that come from this repo, i.e. don't update the core SDK in tests.
     {
+      description: "Disable auto-update for pulumi/pulumi - our base config auto-updates first party packages, but we don't want this for dependencies that come from this repo, i.e. don't update the core SDK in tests.",
       matchDatasources: ["go"],
       matchPackageNames: ["github.com/pulumi/pulumi/**"],
       enabled: false
     },
     {
+      description: "Disable auto-update for @pulumi/pulumi - our base config auto-updates first party packages, but we don't want this for dependencies that come from this repo, i.e. don't update the core SDK in tests.",
       matchDatasources: ["npm"],
       matchPackageNames: ["@pulumi/pulumi"],
       enabled: false
     },
     {
+      description: "Disable auto-update for pulumi - our base config auto-updates first party packages, but we don't want this for dependencies that come from this repo, i.e. don't update the core SDK in tests.",
       matchDatasources: ["pypi"],
       matchPackageNames: ["pulumi"],
       enabled: false
     },
-    // Pin all test dependencies
-    // https://github.com/pulumi/renovate-config/blob/5a711294b6b86c30f210802d7dc5b7bdbadd8629/default.json5#L131-L139
     {
-      matchPackageNames: ["*"],
-      matchFileNames: ["tests/**", "sdk/python/lib/test/**", "sdk/nodejs/tests/**", "sdk/go/auto/test/**"],
-      rangeStrategy: "pin"
+      description: "Disable some tests that renovate can't handle",
+      matchDatasources: ["go"],
+      matchFileNames: [
+        // Uses `pulumi package add`
+        // github.com/my-namespace/pulumi-mypkg/sdk/go/mypkg: cannot find module providing package github.com/my-namespace/pulumi-mypkg/sdk/go/mypkg
+        "tests/integration/package-add/namespace/go/**",
+        // Fails to find file for replace:
+        // Command failed: go get -d -t ./...
+        // go: -d flag is deprecated. -d=true is a no-op
+        // go: github.com/pulumi/pulumi/tests/testdata/codegen/methods-return-plain-resource/go@v0.0.0 (replaced by ../../../testdata/codegen/methods-return-plain-resource/go): reading ../../../testdata/codegen/methods-return-plain-resource/go/go.mod: open /tmp/renovate/repos/github/pulumi/pulumi/tests/testdata/codegen/methods-return-plain-resource/go/go.mod: no such file or directory
+        "tests/integration/construct_component_configure_provider/go/**"
+      ],
+      enabled: false
     },
   ]
 }
