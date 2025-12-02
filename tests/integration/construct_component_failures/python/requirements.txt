@@ -1,0 +1,2 @@
+# TEST: remove again, this should be pinned
+urllib>=2

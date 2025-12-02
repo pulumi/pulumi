@@ -73,12 +73,19 @@
     {
       matchPackageNames: ["*"],
       matchFileNames: ["tests/**", "sdk/python/lib/test/**", "sdk/nodejs/tests/**", "sdk/go/auto/test/**"],
-      rangeStrategy: "pin",
+      rangeStrategy: "pin"
     },
-    // Don't update requires-python in test pyproject.toml files, we need the test projects to be installable in a range of Python versions
+    // Don't update requires-python in pyproject.toml files, we need the test projects to be installable in a range of Python versions
     {
       matchDatasources: ["python-version"],
       enabled: false
     },
+    // Don't update the python version in poetry dependencies in test pyproject.toml files, we need the test projects to be installable in a range of Python versions
+    {
+      matchDepTypes: ["dependencies"],
+      matchManagers: ["poetry"],
+      matchPackageNames: ["python"],
+      enabled: false
+    }
   ]
 }
