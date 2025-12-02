@@ -31,101 +31,90 @@ func TestParsePackageVersion(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name            string
-		input           string
-		expectedSource  string
-		expectedPub     string
-		expectedName    string
-		expectedVersion semver.Version
-		expectErr       bool
-		errContains     string
+		name        string
+		input       string
+		expected    PackageVersion
+		expectedErr error
 	}{
 		{
-			name:            "valid package version",
-			input:           "private/myorg/my-package@1.0.0",
-			expectedSource:  "private",
-			expectedPub:     "myorg",
-			expectedName:    "my-package",
-			expectedVersion: semver.MustParse("1.0.0"),
-			expectErr:       false,
+			name:  "valid package version",
+			input: "private/myorg/my-package@1.0.0",
+			expected: PackageVersion{
+				source:    "private",
+				publisher: "myorg",
+				name:      "my-package",
+				version:   semver.MustParse("1.0.0"),
+			},
 		},
 		{
-			name:            "valid package version with prerelease",
-			input:           "pulumi/pulumi/aws@6.0.0-alpha.1",
-			expectedSource:  "pulumi",
-			expectedPub:     "pulumi",
-			expectedName:    "aws",
-			expectedVersion: semver.MustParse("6.0.0-alpha.1"),
-			expectErr:       false,
+			name:  "valid package version with prerelease",
+			input: "pulumi/pulumi/aws@6.0.0-alpha.1",
+			expected: PackageVersion{
+				source:    "pulumi",
+				publisher: "pulumi",
+				name:      "aws",
+				version:   semver.MustParse("6.0.0-alpha.1"),
+			},
 		},
 		{
-			name:            "valid package version with build metadata",
-			input:           "private/org/pkg@1.2.3+build.456",
-			expectedSource:  "private",
-			expectedPub:     "org",
-			expectedName:    "pkg",
-			expectedVersion: semver.MustParse("1.2.3+build.456"),
-			expectErr:       false,
+			name:  "valid package version with build metadata",
+			input: "private/org/pkg@1.2.3+build.456",
+			expected: PackageVersion{
+				source:    "private",
+				publisher: "org",
+				name:      "pkg",
+				version:   semver.MustParse("1.2.3+build.456"),
+			},
 		},
 		{
 			name:        "missing version",
 			input:       "private/myorg/my-package",
-			expectErr:   true,
-			errContains: "invalid package version format",
+			expectedErr: errors.New("invalid package version format"),
 		},
 		{
 			name:        "empty version after @",
 			input:       "private/myorg/my-package@",
-			expectErr:   true,
-			errContains: "invalid package version format",
+			expectedErr: errors.New("invalid package version format"),
 		},
 		{
 			name:        "too few path components",
 			input:       "myorg/my-package@1.0.0",
-			expectErr:   true,
-			errContains: "invalid package name format",
+			expectedErr: errors.New("invalid package name format"),
 		},
 		{
 			name:        "too many path components",
 			input:       "private/extra/myorg/my-package@1.0.0",
-			expectErr:   true,
-			errContains: "invalid package name format",
+			expectedErr: errors.New("invalid package name format"),
 		},
 		{
 			name:        "invalid semantic version",
 			input:       "private/myorg/my-package@invalid",
-			expectErr:   true,
-			errContains: "invalid semantic version",
+			expectedErr: errors.New("invalid semantic version"),
 		},
 		{
 			name:        "empty input",
 			input:       "",
-			expectErr:   true,
-			errContains: "invalid package version format",
+			expectedErr: errors.New("invalid package version format"),
 		},
 		{
 			name:        "only @",
 			input:       "@1.0.0",
-			expectErr:   true,
-			errContains: "invalid package name format",
+			expectedErr: errors.New("invalid package name format"),
 		},
 		{
 			name:        "empty source",
 			input:       "/myorg/my-package@1.0.0",
-			expectErr:   true,
-			errContains: "source, publisher, and name cannot be empty",
+			expectedErr: errors.New("source, publisher, and name cannot be empty"),
 		},
 		{
 			name:        "empty publisher",
 			input:       "private//my-package@1.0.0",
-			expectErr:   true,
-			errContains: "source, publisher, and name cannot be empty",
+			expectedErr: errors.New("source, publisher, and name cannot be empty"),
 		},
 		{
 			name:        "empty name",
 			input:       "private/myorg/@1.0.0",
-			expectErr:   true,
-			errContains: "source, publisher, and name cannot be empty",
+			expectedErr: errors.New("source, publisher, and name cannot be empty"),
 		},
 	}
 
@@ -133,20 +122,15 @@ func TestParsePackageVersion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			source, publisher, name, version, err := parsePackageVersion(tt.input)
+			packageVersion, err := parsePackageVersion(tt.input)
 
-			if tt.expectErr {
-				require.Error(t, err)
-				if tt.errContains != "" {
-					assert.Contains(t, err.Error(), tt.errContains)
-				}
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tt.expectedSource, source)
-				assert.Equal(t, tt.expectedPub, publisher)
-				assert.Equal(t, tt.expectedName, name)
-				assert.Equal(t, tt.expectedVersion, version)
+			if tt.expectedErr != nil {
+				require.ErrorContains(t, err, tt.expectedErr.Error())
+				return
 			}
+
+			require.Nil(t, err)
+			require.Equal(t, tt.expected, packageVersion)
 		})
 	}
 }
@@ -232,11 +216,9 @@ func TestPackageDeleteCmd_Run(t *testing.T) {
 				GetReadOnlyCloudRegistryF: func() registry.Registry { return mockCloudRegistry },
 			})
 
-			cmd := &packageDeleteCmd{
-				yes: true, // Skip confirmation for tests
-			}
-
-			err := cmd.Run(context.Background(), tt.packageVersion)
+			cmd := newPackageDeleteCmd()
+			cmd.SetArgs([]string{tt.packageVersion, "--yes" /* Skip confirmation for tests */})
+			err := cmd.ExecuteContext(t.Context())
 
 			if tt.expectedErr != "" {
 				require.Error(t, err)
@@ -270,11 +252,9 @@ func TestPackageDeleteCmd_NonInteractiveRequiresYes(t *testing.T) {
 		GetReadOnlyCloudRegistryF: func() registry.Registry { return mockCloudRegistry },
 	})
 
-	cmd := &packageDeleteCmd{
-		yes: false,
-	}
-
-	err := cmd.Run(context.Background(), "private/myorg/my-package@1.0.0")
+	cmd := newPackageDeleteCmd()
+	cmd.SetArgs([]string{"private/myorg/my-package@1.0.0"})
+	err := cmd.ExecuteContext(t.Context())
 	// In non-interactive mode without --yes, should fail
 	// Note: This test assumes the test environment is non-interactive.
 	// The actual behavior depends on cmdutil.Interactive() which checks if stdin is a terminal.
