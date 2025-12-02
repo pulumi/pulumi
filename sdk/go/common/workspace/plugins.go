@@ -1114,7 +1114,7 @@ func parsePluginSpecFromURL(
 	}
 	// We're purposely dropping any authentication info from the URL here. The name is used as
 	// the folder name for writing the plugin to disk, and we 1) don't want to write secrets
-	// in the folder name, 2) want to be able to reuse the same plugin even if the auth infoo
+	// in the folder name, 2) want to be able to reuse the same plugin even if the auth info
 	// changes and 3) avoid issues with the auth info being too long for a folder name.
 	urlWithoutAuth := &url.URL{
 		Scheme: parsedURL.Scheme,
