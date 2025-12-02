@@ -84,6 +84,7 @@
     {
       matchManagers: ["poetry"],
       matchPackageNames: ["python"],
+      matchFileNames: ["tests/**"],
       enabled: false
     }
   ]
