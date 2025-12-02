@@ -41,17 +41,20 @@ type saveJournalEntry struct {
 }
 
 type cloudJournaler struct {
-	context context.Context // The context to use for client requests.
-	sm      secrets.Manager // Secrets manager for encrypting values when serializing the journal entries.
-	wg      sync.WaitGroup  // Wait group to ensure all operations are completed before closing.
-	entries chan<- saveJournalEntry
-	done    <-chan struct{}
+	context context.Context         // The context to use for client requests.
+	sm      secrets.Manager         // Secrets manager for encrypting values when serializing the journal entries.
+	wg      sync.WaitGroup          // Wait group to ensure all operations are completed before closing.
+	entries chan<- saveJournalEntry // Channel for sending journal entries to the batch worker.
+	done    <-chan struct{}         // Channel for tracking whether or not the batch worker has finished.
 
-	m      sync.Mutex
-	closed bool
+	m      sync.Mutex // Controls access to the closed field.
+	closed bool       // True if the journaler is closed.
 }
 
 func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
+	// Return an error if the journal is closed.
+	//
+	// Note that we also add this call to the j.wg under the lock to avoid races between this method and Close.
 	err := func() error {
 		j.m.Lock()
 		defer j.m.Unlock()
@@ -87,12 +90,15 @@ func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 
 func (j *cloudJournaler) Close() error {
 	j.m.Lock()
+	if j.closed {
+		return nil
+	}
 	j.closed = true
 	j.m.Unlock()
 
-	j.wg.Wait() // Wait for all operations to complete before closing.
-	close(j.entries)
-	<-j.done
+	j.wg.Wait()      // Wait for all operations to complete before closing.
+	close(j.entries) // Notify the batch worker that there's nothing more to do.
+	<-j.done         // Wait for the batch worker to finish.
 
 	return nil
 }
@@ -123,6 +129,8 @@ func sendBatch(
 	return sendBatch(ctx, client, update, tokenSource, batch[len(batch)/2:])
 }
 
+// sendBatches reads journal entries off of the entries channel and sends batches when either the maximum batch size
+// or the maximum period between batches is reached. Batches are sent sequentially.
 func sendBatches(
 	ctx context.Context,
 	client *client.Client,
@@ -131,10 +139,7 @@ func sendBatches(
 	maxBatchSize int,
 	period time.Duration,
 	entries <-chan saveJournalEntry,
-	done chan<- struct{},
 ) {
-	defer close(done)
-
 	ticker := time.NewTicker(period)
 
 	results := make([]chan<- error, 0, maxBatchSize)
@@ -151,10 +156,13 @@ func sendBatches(
 		}
 	}
 
+	// Wait for the entries channel to close, a journal entry to arrive, or a periodic send. Then flush the current
+	// batch if necessary.
 	for {
 		select {
 		case req, ok := <-entries:
 			if !ok {
+				// Channel closed, we're done
 				flush()
 				return
 			}
@@ -178,10 +186,14 @@ func newJournaler(
 	maxBatchSize int,
 	period time.Duration,
 ) *cloudJournaler {
+	// Start the batch worker.
 	entries := make(chan saveJournalEntry, maxBatchSize)
 	done := make(chan struct{})
+	go func() {
+		defer close(done)
 
-	go sendBatches(ctx, client, update, tokenSource, maxBatchSize, period, entries, done)
+		sendBatches(ctx, client, update, tokenSource, maxBatchSize, period, entries)
+	}()
 
 	return &cloudJournaler{
 		context: ctx,
