@@ -3,7 +3,7 @@
     "version": "0.0.1",
     "dependencies": {
         "@pulumi/pulumi": "latest",
-        "@types/jest": "^30"
+        "@types/jest": "30.0.0"
     },
     "//": "@types/jest@30 is not compatible with the tsconfig of the generated provider SDK"
 }
