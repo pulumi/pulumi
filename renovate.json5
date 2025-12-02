@@ -82,7 +82,6 @@
     },
     // Don't update the python version in poetry dependencies in test pyproject.toml files, we need the test projects to be installable in a range of Python versions
     {
-      matchDepTypes: ["dependencies"],
       matchManagers: ["poetry"],
       matchPackageNames: ["python"],
       enabled: false
