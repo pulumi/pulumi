@@ -167,7 +167,6 @@ func sendBatches(
 			flush()
 		}
 	}
-
 }
 
 func newJournaler(
