@@ -1242,9 +1242,11 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 			input.Value = expr
 			g.genTemps(w, temps)
 		}
-	}
-
-	if r.Schema == nil {
+		pkg, mod, _, _ := r.DecomposeToken()
+		if pkgCtx := g.contexts[pkg][mod]; pkgCtx != nil {
+			typ = disambiguatedResourceName(r.Schema, pkgCtx)
+		}
+	} else {
 		// for unknown resource the type name of the resource should be upper-case
 		typ = Title(typ)
 	}
@@ -1979,7 +1981,7 @@ func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 		needsAliasing := strings.Contains(mod, "-")
 		if needsAliasing {
 			moduleAlias := ""
-			for _, part := range strings.Split(mod, "-") {
+			for part := range strings.SplitSeq(mod, "-") {
 				moduleAlias += strcase.ToLowerCamel(part)
 			}
 			return moduleAlias
@@ -1989,6 +1991,9 @@ func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 
 	importPath := func(mod string) string {
 		importBasePath := info.ImportBasePath
+		if importBasePath == "" {
+			importBasePath = ExtractImportBasePath(g.packages[pkg].Reference())
+		}
 		if mod != "" && mod != IndexToken {
 			if info.ImportPathPattern != "" {
 				importedPath := strings.ReplaceAll(info.ImportPathPattern, "{module}", mod)
