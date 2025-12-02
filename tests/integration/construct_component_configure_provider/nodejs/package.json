@@ -7,6 +7,6 @@
        "@pulumi/tls": "4.10.0"
     },
     "devDependencies": {
-        "@types/node": "^16"
+        "@types/node": "16.18.126"
     }
 }
