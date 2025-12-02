@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Fix ComponentResources transfering input arguments to output properties automatically
