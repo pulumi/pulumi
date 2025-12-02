@@ -24,117 +24,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestParsePackageVersion(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name        string
-		input       string
-		expected    PackageVersion
-		expectedErr error
-	}{
-		{
-			name:  "valid package version",
-			input: "private/myorg/my-package@1.0.0",
-			expected: PackageVersion{
-				source:    "private",
-				publisher: "myorg",
-				name:      "my-package",
-				version:   semver.MustParse("1.0.0"),
-			},
-		},
-		{
-			name:  "valid package version with prerelease",
-			input: "pulumi/pulumi/aws@6.0.0-alpha.1",
-			expected: PackageVersion{
-				source:    "pulumi",
-				publisher: "pulumi",
-				name:      "aws",
-				version:   semver.MustParse("6.0.0-alpha.1"),
-			},
-		},
-		{
-			name:  "valid package version with build metadata",
-			input: "private/org/pkg@1.2.3+build.456",
-			expected: PackageVersion{
-				source:    "private",
-				publisher: "org",
-				name:      "pkg",
-				version:   semver.MustParse("1.2.3+build.456"),
-			},
-		},
-		{
-			name:        "missing version",
-			input:       "private/myorg/my-package",
-			expectedErr: errors.New("invalid package version format"),
-		},
-		{
-			name:        "empty version after @",
-			input:       "private/myorg/my-package@",
-			expectedErr: errors.New("invalid package version format"),
-		},
-		{
-			name:        "too few path components",
-			input:       "myorg/my-package@1.0.0",
-			expectedErr: errors.New("invalid package name format"),
-		},
-		{
-			name:        "too many path components",
-			input:       "private/extra/myorg/my-package@1.0.0",
-			expectedErr: errors.New("invalid package name format"),
-		},
-		{
-			name:        "invalid semantic version",
-			input:       "private/myorg/my-package@invalid",
-			expectedErr: errors.New("invalid semantic version"),
-		},
-		{
-			name:        "empty input",
-			input:       "",
-			expectedErr: errors.New("invalid package version format"),
-		},
-		{
-			name:        "only @",
-			input:       "@1.0.0",
-			expectedErr: errors.New("invalid package name format"),
-		},
-		{
-			name:        "empty source",
-			input:       "/myorg/my-package@1.0.0",
-			expectedErr: errors.New("source, publisher, and name cannot be empty"),
-		},
-		{
-			name:        "empty publisher",
-			input:       "private//my-package@1.0.0",
-			expectedErr: errors.New("source, publisher, and name cannot be empty"),
-		},
-		{
-			name:        "empty name",
-			input:       "private/myorg/@1.0.0",
-			expectedErr: errors.New("source, publisher, and name cannot be empty"),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			packageVersion, err := parsePackageVersion(tt.input)
-
-			if tt.expectedErr != nil {
-				require.ErrorContains(t, err, tt.expectedErr.Error())
-				return
-			}
-
-			require.Nil(t, err)
-			require.Equal(t, tt.expected, packageVersion)
-		})
-	}
-}
 
 //nolint:paralleltest // This test uses the global backendInstance variable
 func TestPackageDeleteCmd_Run(t *testing.T) {
@@ -278,11 +171,11 @@ func TestPackageDeleteCmd_NonInteractiveRequiresYes(t *testing.T) {
 		GetReadOnlyCloudRegistryF: func() registry.Registry { return mockCloudRegistry },
 	})
 
+	defer func(old bool) { cmdutil.DisableInteractive = old }(cmdutil.DisableInteractive)
+	cmdutil.DisableInteractive = true
 	cmd := newPackageDeleteCmd()
 	cmd.SetArgs([]string{"private/myorg/my-package@1.0.0"})
 	err := cmd.ExecuteContext(t.Context())
 	// In non-interactive mode without --yes, should fail
-	// Note: This test assumes the test environment is non-interactive.
-	// The actual behavior depends on cmdutil.Interactive() which checks if stdin is a terminal.
 	assert.ErrorContains(t, err, "non-interactive mode requires --yes flag")
 }

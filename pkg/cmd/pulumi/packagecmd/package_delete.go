@@ -112,7 +112,7 @@ You must have publish permissions for the package to delete it.`,
 							colors.SpecInfo, formatPkg(suggested[0]), colors.Reset,
 						)))
 					}
-					fmt.Fprintln(cmd.ErrOrStderr(), " on of:")
+					fmt.Fprintln(cmd.ErrOrStderr(), " one of:")
 					for _, pkg := range suggested {
 						fmt.Println(cmd.ErrOrStderr(), opts.Color.Colorize(fmt.Sprintf("- %s%s%s",
 							colors.SpecInfo, formatPkg(pkg), colors.Reset,
@@ -151,57 +151,4 @@ You must have publish permissions for the package to delete it.`,
 		"Skip confirmation prompts, and proceed with deletion anyway")
 
 	return cmd
-}
-
-type PackageVersion struct {
-	source, publisher, name string
-	version                 semver.Version
-}
-
-func (pv PackageVersion) String() string {
-	return fmt.Sprintf("%s/%s/%s@%s", pv.source, pv.publisher, pv.name, pv.version)
-}
-
-// parsePackageVersion parses a package version string in the format
-// <source>/<publisher>/<name>@<version> and returns its components.
-func parsePackageVersion(input string) (PackageVersion, error) {
-	parts := strings.SplitN(input, "@", 2)
-	if len(parts) != 2 || parts[1] == "" {
-		return PackageVersion{}, errors.New("invalid package version format\n" +
-			"  Expected format: <source>/<publisher>/<name>@<version>\n" +
-			"  Example: private/myorg/my-package@1.0.0")
-	}
-
-	nameParts := strings.Split(parts[0], "/")
-	if len(nameParts) != 3 {
-		return PackageVersion{}, errors.New("invalid package name format\n" +
-			"  Expected format: <source>/<publisher>/<name>@<version>\n" +
-			"  Example: private/myorg/my-package@1.0.0")
-	}
-
-	source := nameParts[0]
-	publisher := nameParts[1]
-	name := nameParts[2]
-
-	if source == "" || publisher == "" || name == "" {
-		return PackageVersion{}, errors.New(
-			"invalid package version format: source, publisher, and name cannot be empty\n" +
-				"  Expected format: <source>/<publisher>/<name>@<version>\n" +
-				"  Example: private/myorg/my-package@1.0.0")
-	}
-
-	version, err := semver.Parse(parts[1])
-	if err != nil {
-		return PackageVersion{}, fmt.Errorf(
-			"invalid semantic version: %q\n"+
-				"  Version must follow semantic versioning (e.g., 1.0.0, 2.1.3)",
-			parts[1])
-	}
-
-	return PackageVersion{
-		source:    source,
-		publisher: publisher,
-		name:      name,
-		version:   version,
-	}, nil
 }
