@@ -15,6 +15,7 @@
 package ints
 
 import (
+	"math/rand/v2"
 	"os"
 	"testing"
 
@@ -25,15 +26,26 @@ import (
 func TestPackagePublishLifecycle(t *testing.T) {
 	t.Parallel()
 
+	name := "test-publish" + randomSuffix()
 	e := ptesting.NewEnvironment(t)
 	e.WriteTestFile("schema.json", `{
-    "name": "test-publish",
+    "name": "`+name+`",
     "version": "1.2.3"
 }`)
 	org := os.Getenv("PULUMI_TEST_ORG")
 	require.NotEmpty(t, org, "Missing PULUMI_TEST_ORG")
 	e.WriteTestFile("README.md", "# test-publish\n")
-	e.RunCommand("pulumi", "package", "publish", "./schema.json", "--readme", "./README.md")
+	e.RunCommand("pulumi", "package", "publish", "./schema.json", "--readme", "./README.md", "--publisher", org)
 	e.RunCommand("pulumi", "package", "delete", "--yes", // non-interactive mode requires --yes flag
-		"private/"+org+"/test-publish@1.2.3")
+		org+"/"+name+"@1.2.3")
+}
+
+func randomSuffix() string {
+	const letters = "abcdefghijklmnopqrstuvwxyz"
+	result := make([]byte, 7)
+	result[0] = '-'
+	for i := range result[1:] {
+		result[i+1] = letters[rand.IntN(len(letters))] //nolint:gosec
+	}
+	return string(result)
 }

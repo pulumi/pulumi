@@ -17,6 +17,7 @@ package packagecmd
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/blang/semver"
@@ -25,8 +26,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -42,7 +45,7 @@ func newPackageDeleteCmd() *cobra.Command {
 		Long: `Delete a package version from the Pulumi Registry.
 
 The package version must be specified in the format:
-  <source>/<publisher>/<name>@<version>
+  [[<source>/]<publisher>/]<name>[@<version>]
 
 Example:
   pulumi package delete private/myorg/my-package@1.0.0
@@ -54,10 +57,6 @@ You must have publish permissions for the package to delete it.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			yes = yes || env.SkipConfirmations.Value()
-			packageVersion, err := parsePackageVersion(args[0])
-			if err != nil {
-				return err
-			}
 
 			opts := display.Options{
 				Color:  cmdutil.GetGlobalColorization(),
@@ -70,11 +69,6 @@ You must have publish permissions for the package to delete it.`,
 				return errors.New("non-interactive mode requires --yes flag")
 			}
 
-			prompt := fmt.Sprintf("This will permanently delete package version '%s'!", packageVersion)
-			if !yes && !ui.ConfirmPrompt(prompt, packageVersion.String(), opts) {
-				return result.FprintBailf(cmd.ErrOrStderr(), "confirmation declined")
-			}
-
 			project, _, err := pkgWorkspace.Instance.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return fmt.Errorf("failed to determine current project: %w", err)
@@ -85,16 +79,61 @@ You must have publish permissions for the package to delete it.`,
 				return err
 			}
 
-			registry, err := b.GetCloudRegistry()
+			r, err := b.GetCloudRegistry()
 			if err != nil {
 				return fmt.Errorf("failed to get the registry backend: %w", err)
 			}
 
-			if err := registry.DeletePackageVersion(ctx,
-				packageVersion.source,
-				packageVersion.publisher,
-				packageVersion.name,
-				packageVersion.version,
+			packageName, packageVersion := args[0], (*semver.Version)(nil)
+			if parts := strings.SplitN(packageName, "@", 2); len(parts) > 1 {
+				pv, err := semver.ParseTolerant(parts[1])
+				if err != nil {
+					return fmt.Errorf("invalid version %q: %w", parts[1], err)
+				}
+				packageName = parts[0]
+				packageVersion = &pv
+			}
+
+			formatPkg := func(pkg apitype.PackageMetadata) string {
+				return fmt.Sprintf("%s/%s/%s@%s", pkg.Source, pkg.Publisher, pkg.Name, pkg.Version)
+			}
+
+			pkg, err := registry.ResolvePackageFromName(ctx, r, packageName, packageVersion)
+			if err != nil {
+				filterPrivate := func(arr []apitype.PackageMetadata) []apitype.PackageMetadata {
+					return slices.DeleteFunc(arr, func(pkg apitype.PackageMetadata) bool {
+						return pkg.Source != "private"
+					})
+				}
+				if suggested := filterPrivate(registry.GetSuggestedPackages(err)); len(suggested) > 0 {
+					fmt.Fprintf(cmd.ErrOrStderr(), "No matching package was found. Did you mean")
+					if len(suggested) == 1 {
+						fmt.Println(cmd.ErrOrStderr(), opts.Color.Colorize(fmt.Sprintf(" %s%s%s?",
+							colors.SpecInfo, formatPkg(suggested[0]), colors.Reset,
+						)))
+					}
+					fmt.Fprintln(cmd.ErrOrStderr(), " on of:")
+					for _, pkg := range suggested {
+						fmt.Println(cmd.ErrOrStderr(), opts.Color.Colorize(fmt.Sprintf("- %s%s%s",
+							colors.SpecInfo, formatPkg(pkg), colors.Reset,
+						)))
+					}
+				}
+				return err
+			}
+
+			prompt := opts.Color.Colorize(fmt.Sprintf("This will permanently delete package version %s%s%s!",
+				colors.SpecAttention, formatPkg(pkg), colors.Reset,
+			))
+			if !yes && !ui.ConfirmPrompt(prompt, packageVersion.String(), opts) {
+				return result.FprintBailf(cmd.ErrOrStderr(), "confirmation declined")
+			}
+
+			if err := r.DeletePackageVersion(ctx,
+				pkg.Source,
+				pkg.Publisher,
+				pkg.Name,
+				pkg.Version,
 			); err != nil {
 				return fmt.Errorf("failed to delete package version: %w", err)
 			}

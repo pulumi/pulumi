@@ -22,6 +22,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -140,6 +141,7 @@ func TestPackageDeleteCmd_Run(t *testing.T) {
 	tests := []struct {
 		name              string
 		packageVersion    string
+		resolveErr        error
 		deleteErr         error
 		registryErr       error
 		expectedErr       string
@@ -172,14 +174,15 @@ func TestPackageDeleteCmd_Run(t *testing.T) {
 			expectedErr:    "failed to delete package version",
 		},
 		{
-			name:           "invalid package version format",
-			packageVersion: "invalid-format",
-			expectedErr:    "invalid package version format",
-		},
-		{
 			name:           "invalid semantic version",
 			packageVersion: "private/myorg/my-package@not-semver",
-			expectedErr:    "invalid semantic version",
+			expectedErr:    "invalid version",
+		},
+		{
+			name:           "package not found",
+			packageVersion: "private/myorg/nonexistent@1.0.0",
+			resolveErr:     errors.New("package not found"),
+			expectedErr:    "package not found",
 		},
 		{
 			name:           "registry backend error",
@@ -203,6 +206,19 @@ func TestPackageDeleteCmd_Run(t *testing.T) {
 					deletedName = name
 					deletedVersion = version
 					return tt.deleteErr
+				},
+				GetPackageF: func(
+					ctx context.Context, source, publisher, name string, version *semver.Version,
+				) (apitype.PackageMetadata, error) {
+					if tt.resolveErr != nil {
+						return apitype.PackageMetadata{}, tt.resolveErr
+					}
+					return apitype.PackageMetadata{
+						Source:    "private",
+						Publisher: "myorg",
+						Name:      "my-package",
+						Version:   semver.MustParse("1.0.0"),
+					}, nil
 				},
 			}
 
@@ -242,6 +258,16 @@ func TestPackageDeleteCmd_NonInteractiveRequiresYes(t *testing.T) {
 		) error {
 			require.Fail(t, "DeletePackageVersion should not be called without --yes in non-interactive mode")
 			return nil
+		},
+		GetPackageF: func(
+			ctx context.Context, source, publisher, name string, version *semver.Version,
+		) (apitype.PackageMetadata, error) {
+			return apitype.PackageMetadata{
+				Source:    "private",
+				Publisher: "myorg",
+				Name:      "my-package",
+				Version:   semver.MustParse("1.0.0"),
+			}, nil
 		},
 	}
 
