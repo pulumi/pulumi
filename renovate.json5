@@ -65,7 +65,7 @@
       description: "Don't update the python version in poetry dependencies in pyproject.toml files, we want to run against the full range of supported Python versions",
       matchManagers: ["poetry"],
       matchPackageNames: ["python"],
-      rangeStrategy: "replace"
+      rangeStrategy: "auto"
     },
     {
       description: "Disable auto-update for pulumi/pulumi - our base config auto-updates first party packages, but we don't want this for dependencies that come from this repo, i.e. don't update the core SDK in tests.",
