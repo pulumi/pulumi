@@ -180,6 +180,32 @@ func TestJournalerSendAfterClose(t *testing.T) {
 	require.Error(t, err)
 }
 
+// TestJournalerCloseAfterClose tests that Close() after Close() does not fail.
+func TestJournalerCloseAfterClose(t *testing.T) {
+	t.Parallel()
+
+	c := startTestServer(t, func(w http.ResponseWriter, body apitype.JournalEntries) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	journaler := newJournaler(
+		t.Context(),
+		c,
+		updateIdentifier,
+		&mockTokenSource{},
+		b64.NewBase64SecretsManager(),
+		1, // Send each entry individually
+		50,
+	)
+
+	// Close the journaler twice.
+	err := journaler.Close()
+	require.NoError(t, err)
+
+	err = journaler.Close()
+	require.NoError(t, err)
+}
+
 // TestJournalerErrorHandling tests that errors from SaveJournalEntries are propagated.
 func TestJournalerErrorHandling(t *testing.T) {
 	t.Parallel()
