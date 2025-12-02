@@ -51,23 +51,6 @@
       minimumReleaseAge: "3 days",
       prCreation: "not-pending"
     },
-    // Disable auto-update for pulumi/pulumi - our base config auto-updates first party packages, but we don't want
-    // this for dependencies that come from this repo, i.e. don't update the core SDK in tests.
-    {
-      matchManagers: ["gomod"],
-      matchPackageNames: ["github.com/pulumi/pulumi/**"],
-      enabled: false
-    },
-    {
-      matchManagers: ["npm"],
-      matchPackageNames: ["@pulumi/pulumi"],
-      enabled: false
-    },
-    {
-      matchManagers: ["pep621"],
-      matchPackageNames: ["pulumi"],
-      enabled: false
-    },
     // Pin all test dependencies
     // https://github.com/pulumi/renovate-config/blob/5a711294b6b86c30f210802d7dc5b7bdbadd8629/default.json5#L131-L139
     {
@@ -86,6 +69,23 @@
       matchPackageNames: ["python"],
       matchFileNames: ["tests/**"],
       enabled: false
-    }
+    },
+    // Disable auto-update for pulumi/pulumi - our base config auto-updates first party packages, but we don't want
+    // this for dependencies that come from this repo, i.e. don't update the core SDK in tests.
+    {
+      matchDatasources: ["go"],
+      matchPackageNames: ["github.com/pulumi/pulumi/**"],
+      enabled: false
+    },
+    {
+      matchDatasources: ["npm"],
+      matchPackageNames: ["@pulumi/pulumi"],
+      enabled: false
+    },
+    {
+      matchDatasources: ["pypi"],
+      matchPackageNames: ["pulumi"],
+      enabled: false
+    },
   ]
 }
