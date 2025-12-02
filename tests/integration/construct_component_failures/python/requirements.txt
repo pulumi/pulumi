@@ -1,2 +1,2 @@
 # TEST: remove again, this should be pinned
-urllib3>=2
+urllib3==2.5.0
