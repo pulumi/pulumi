@@ -7,6 +7,6 @@ build-backend = "poetry.core.masonry.api"
 package-mode = false
 [tool.poetry.dependencies]
 pulumi = ">=3.0.0,<4.0.0"
-pulumi-gcp = ">=8.0.0,<9.0.0"
+pulumi-gcp = "==8.41.1"
 python = "^3.9"
 pulumi-random = {path = "sdks/random"}
