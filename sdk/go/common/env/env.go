@@ -234,3 +234,8 @@ var (
 
 var EnableJournaling = env.Bool("ENABLE_JOURNALING",
 	"Enable journaling of engine operations to the backend (if the backend supports it)")
+
+var JournalingBatchSize = env.Int("JOURNALING_BATCH_SIZE", "Maximum batch size for journal entries")
+
+var JournalingBatchPeriod = env.Int("JOURNALING_BATCH_PERIOD",
+	"Maximum period in milliseconds between batches of journal entries")
