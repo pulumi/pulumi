@@ -45,6 +45,16 @@
   },
   packageRules: [
     {
+      description: "Disable config:best-practices pinning because it's too broad for us",
+      matchDepTypes: [
+        "devDependencies",
+        "dev-dependencies",
+        "dev",
+      ],
+      rangeStrategy: "pin",
+      enabled: false,
+    },
+    {
       description: "Pin all test dependencies",
       matchPackageNames: ["*"],
       matchFileNames: ["tests/**", "sdk/python/lib/test/**", "sdk/nodejs/tests/**", "sdk/go/auto/test/**"],
