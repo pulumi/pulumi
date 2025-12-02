@@ -1,6 +1,10 @@
 version = 1
 revision = 3
 requires-python = ">=3.10"
+resolution-markers = [
+    "python_full_version >= '3.14'",
+    "python_full_version < '3.14'",
+]
 
 [[package]]
 name = "backports-asyncio-runner"
@@ -392,7 +396,7 @@ name = "importlib-metadata"
 version = "8.6.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "zipp" },
+    { name = "zipp", marker = "python_full_version < '3.14'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/33/08/c1395a292bb23fd03bdf572a1357c5a733d3eecbab877641ceacab23db6e/importlib_metadata-8.6.1.tar.gz", hash = "sha256:310b41d755445d74569f993ccfc22838295d9fe005425094fad953d7f15c8580", size = 55767, upload-time = "2025-01-20T22:21:30.429Z" }
 wheels = [
@@ -681,7 +685,8 @@ dev = [
 requires-dist = [
     { name = "debugpy", specifier = "~=1.8.7" },
     { name = "dill", specifier = "~=0.4" },
-    { name = "grpcio", specifier = ">=1.68.1,<2" },
+    { name = "grpcio", marker = "python_full_version < '3.14'", specifier = ">=1.68.1,<2" },
+    { name = "grpcio", marker = "python_full_version >= '3.14'", specifier = ">=1.75.1,<2" },
     { name = "pip", specifier = ">=24.3.1,<26" },
     { name = "protobuf", specifier = ">=3.20.3,<6" },
     { name = "pyyaml", specifier = "~=6.0" },
