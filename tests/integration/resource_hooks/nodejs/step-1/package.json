@@ -5,6 +5,6 @@
     "@pulumi/pulumi": "latest"
   },
   "dependencies": {
-    "@types/node": "^20"
+    "@types/node": "20.19.25"
   }
 }

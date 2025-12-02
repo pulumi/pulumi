@@ -6,7 +6,7 @@
         "typescript": "^3.0.0"
     },
     "dependencies": {
-        "@grpc/grpc-js": "^1.11.0"
+        "@grpc/grpc-js": "1.14.2"
     },
     "peerDependencies": {
         "@pulumi/pulumi": "latest"
