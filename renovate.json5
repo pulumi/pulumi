@@ -21,8 +21,10 @@
     // Python
     "pip_requirements",
     "pip_setup",
-    // "poetry",
     "pep621",
+    // We don't want to update poetry pyproject.toml files. This is currently updating the `python` version in `tool.poetry.dependencies`, which we don't want.
+
+    // "poetry"
 
     // GitHub
     "github-actions",
@@ -67,17 +69,13 @@
       matchFileNames: ["tests/**", "sdk/python/lib/test/**", "sdk/nodejs/tests/**", "sdk/go/auto/test/**"],
       enabled: false
     },
-    // {
-    //   description: "Don't update the python version in poetry dependencies in pyproject.toml files, we want to run against the full range of supported Python versions, override from base company config",
-    //   matchDepTypes: [
-    //     "dependencies",
-    //     "devDependencies",
-    //     "optionalDependencies",
-    //   ],
-    //   matchPackageNames: ["python"],
-    //   matchFileNames: ["examples/**", "test/**", "tests/**", "integration/**"],
-    //   enabled: false
-    // },
+    {
+      // This does not seem to be working, `poetry` is disabled in `enabledManagers` for now
+      description: "Don't update the python version in poetry dependencies in pyproject.toml files, we want to run against the full range of supported Python versions, override from base company config",
+      matchManagers: ["poetry"],
+      matchPackageNames: ["python"],
+      enabled: false
+    },
     {
       description: "Disable auto-update for pulumi/pulumi - our base config auto-updates first party packages, but we don't want this for dependencies that come from this repo, i.e. don't update the core SDK in tests.",
       matchDatasources: ["go"],
@@ -97,8 +95,17 @@
       enabled: false
     },
     {
-      description: "Disable some tests that renovate can't handle",
-      matchDatasources: ["go"],
+      description: "Disable updating dependency files in tests that check for specific versions",
+      matchFileNames: [
+        "tests/integration/new/python/random/requirements.txt",
+        "tests/smoke/testdata/random_typescript/package.json",
+        "tests/smoke/testdata/import_node/package.json",
+        "tests/integration/component_provider/nodejs/component-provider-host/provider/package.json",
+      ],
+      enabled: false
+    },
+    {
+      description: "Disable updating for tests that trip up renovate",
       matchFileNames: [
         // Uses `pulumi package add`
         // github.com/my-namespace/pulumi-mypkg/sdk/go/mypkg: cannot find module providing package github.com/my-namespace/pulumi-mypkg/sdk/go/mypkg
