@@ -35,6 +35,8 @@ func Global() env.Env {
 	return env.NewEnv(env.Global)
 }
 
+var Home = env.String("HOME", "The directory where Pulumi stores global configuration and plugins in.")
+
 // That Pulumi is running in experimental mode.
 //
 // This is our standard gate for an existing feature that's not quite ready to be stable
