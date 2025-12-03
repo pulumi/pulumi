@@ -81,6 +81,14 @@
       enabled: false
     },
     {
+      description: "Auto-update esc"
+      matchDatasources: ["go"],
+      matchPackageNames: [
+        "github.com/pulumi/esc"",
+      ],
+      enabled: true
+    },
+    {
       description: "Disable updating for tests that trip up renovate",
       matchFileNames: [
         // Uses `pulumi package add`
