@@ -445,10 +445,12 @@ func TestCheckForUpdate_AlwaysChecksVersion(t *testing.T) {
 	t.Setenv("PULUMI_HOME", pulumiHome)
 
 	callCount := 0
+	callChan := make(chan struct{})
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/cli/version":
 			callCount++
+			callChan <- struct{}{}
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte(`{
 				"latestVersion": "v1.2.3",
@@ -470,6 +472,15 @@ func TestCheckForUpdate_AlwaysChecksVersion(t *testing.T) {
 	checkForUpdate(ctx, srv.URL, nil)
 	checkForUpdate(ctx, srv.URL, nil)
 	checkForUpdate(ctx, srv.URL, nil)
+
+	timeout := time.After(200 * time.Millisecond)
+	for i := range 3 {
+		select {
+		case <-callChan:
+		case <-timeout:
+			t.Fatalf("timeout waiting for API call %d", i+1)
+		}
+	}
 
 	// Assert.
 	require.Equal(t, 3, callCount, "should call API every time")
@@ -542,10 +553,12 @@ func TestCheckForUpdate_HandlesAPIFailures(t *testing.T) {
 	t.Setenv("PULUMI_HOME", pulumiHome)
 
 	callCount := 0
+	callChan := make(chan struct{})
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/cli/version":
 			callCount++
+			callChan <- struct{}{}
 			http.NotFound(w, r)
 
 		default:
@@ -561,6 +574,16 @@ func TestCheckForUpdate_HandlesAPIFailures(t *testing.T) {
 	// Act.
 	first := checkForUpdate(ctx, srv.URL, nil)
 	second := checkForUpdate(ctx, srv.URL, nil)
+
+	// Wait for all 2 calls to complete with a timeout.
+	timeout := time.After(200 * time.Millisecond)
+	for i := range 2 {
+		select {
+		case <-callChan:
+		case <-timeout:
+			t.Fatalf("timeout waiting for API call %d", i+1)
+		}
+	}
 
 	// Assert.
 	require.Equal(t, 2, callCount, "should call API every time")
@@ -752,10 +775,12 @@ func TestCheckForUpdate_WorksCorrectlyWithVeryOldMinorVersions(t *testing.T) {
 	t.Setenv("PULUMI_HOME", pulumiHome)
 
 	callCount := 0
+	callChan := make(chan struct{})
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/cli/version":
 			callCount++
+			callChan <- struct{}{}
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte(`{
 				"latestVersion": "v1.40.3",
@@ -779,6 +804,16 @@ func TestCheckForUpdate_WorksCorrectlyWithVeryOldMinorVersions(t *testing.T) {
 	cached := checkForUpdate(ctx, srv.URL, nil)
 	cachedAgain := checkForUpdate(ctx, srv.URL, nil)
 
+	// Wait for the first 3 calls to complete.
+	timeout := time.After(200 * time.Millisecond)
+	for i := range 3 {
+		select {
+		case <-callChan:
+		case <-timeout:
+			t.Fatalf("timeout waiting for API call %d", i+1)
+		}
+	}
+
 	// Store an expired last prompt timesamp
 	expiredTime := time.Now().Add(-25 * time.Hour)
 	info, err := readVersionInfo()
@@ -787,6 +822,14 @@ func TestCheckForUpdate_WorksCorrectlyWithVeryOldMinorVersions(t *testing.T) {
 	require.NoError(t, cacheVersionInfo(info))
 
 	expired := checkForUpdate(ctx, srv.URL, nil)
+
+	// Wait for the 4th call to complete.
+	timeout = time.After(200 * time.Millisecond)
+	select {
+	case <-callChan:
+	case <-timeout:
+		t.Fatalf("timeout waiting for API call 4")
+	}
 
 	// Assert.
 	require.Equal(t, 4, callCount, "should call API every time")

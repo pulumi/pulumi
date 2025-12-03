@@ -588,7 +588,6 @@ func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]st
 		logging.V(5).Infof("skipping update prompt; either recently prompted or non-interactive terminal")
 		go getAndCacheVersionInfo(ctx, cloudURL, metadata, curVer, isCurVerDev, canPrompt, lastPromptTimestampMS)
 		return nil
-
 	}
 
 	return getAndCacheVersionInfo(ctx, cloudURL, metadata, curVer, isCurVerDev, canPrompt, lastPromptTimestampMS)
