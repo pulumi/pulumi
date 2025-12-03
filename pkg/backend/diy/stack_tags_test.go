@@ -233,12 +233,12 @@ func TestBackendUpdateStackTags(t *testing.T) {
 	err := b.UpdateStackTags(ctx, stack, testTags)
 	require.NoError(t, err)
 
-	// Verify tags were saved and system tags were added
+	// Verify tags were saved exactly as provided (no automatic system tags added)
 	savedTags, err := b.loadStackTags(ctx, ref)
 	require.NoError(t, err)
 	assert.Equal(t, "dev", savedTags["env"])
 	assert.Equal(t, "team-foo", savedTags["owner"])
-	assert.Equal(t, "myproject", savedTags["pulumi:project"]) // System tag should be added
+	assert.Len(t, savedTags, 2) // Only the explicitly provided tags
 
 	// Test that stack caching works
 	stackTags := stack.Tags()
@@ -255,8 +255,8 @@ func TestBackendUpdateStackTags(t *testing.T) {
 	// Verify cache was updated
 	stackTags = stack.Tags()
 	assert.Equal(t, "prod", stackTags["env"])
-	assert.Equal(t, "myproject", stackTags["pulumi:project"])
 	assert.NotContains(t, stackTags, "owner") // Should be gone
+	assert.Len(t, stackTags, 1)               // Only the explicitly provided tag
 }
 
 func TestStackTagsFiltering(t *testing.T) {
@@ -513,11 +513,11 @@ func TestStackTagsDoNotInterfereWithStackDiscovery(t *testing.T) {
 	assert.Contains(t, actualStackPath, "dev.json", "Stack path should point to the .json checkpoint file")
 	assert.NotContains(t, actualStackPath, ".pulumi-tags", "Stack path should not point to tags file")
 
-	// Verify that tags still work correctly
+	// Verify that tags still work correctly (only explicitly set tags)
 	stackTags := stack.Tags()
 	assert.Equal(t, "development", stackTags["environment"])
 	assert.Equal(t, "test-team", stackTags["owner"])
-	assert.Equal(t, "test-project", stackTags["pulumi:project"])
+	assert.Len(t, stackTags, 2) // Only the explicitly provided tags
 
 	// Verify that the tags file exists but doesn't interfere
 	tagsPath := backend.stackTagsPath(ref)

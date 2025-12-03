@@ -74,13 +74,13 @@ func TestStackTagsWithFileBackend(t *testing.T) {
 	err = backend.UpdateStackTags(ctx, stack, testTags)
 	require.NoError(t, err)
 
-	// Verify tags were set
+	// Verify tags were set exactly as provided (no automatic system tags)
 	updatedTags := stack.Tags()
 	assert.Equal(t, "test", updatedTags["environment"])
 	assert.Equal(t, "integration-tests", updatedTags["owner"])
 	assert.Equal(t, "engineering", updatedTags["cost-center"])
 	assert.Equal(t, "1.0.0", updatedTags["version"])
-	assert.Equal(t, "integration-test", updatedTags["pulumi:project"]) // System tag
+	assert.Len(t, updatedTags, 4) // Only the explicitly provided tags
 
 	// Verify tags persist after recreating the stack
 	newStack := newStack(ref, backend)
@@ -101,9 +101,9 @@ func TestStackTagsWithFileBackend(t *testing.T) {
 	assert.Equal(t, "production", finalTags["environment"])
 	assert.Equal(t, "ops-team", finalTags["owner"])
 	assert.Equal(t, "v2.0", finalTags["release"])
-	assert.Equal(t, "integration-test", finalTags["pulumi:project"])
 	assert.NotContains(t, finalTags, "cost-center") // Should be removed
 	assert.NotContains(t, finalTags, "version")     // Should be removed
+	assert.Len(t, finalTags, 3)                     // Only the explicitly provided tags
 
 	// Test that tags file was created in the correct location
 	expectedTagsPath := filepath.Join(tmpDir, ".pulumi", "stacks", "integration-test", "test-stack.pulumi-tags")

@@ -1473,19 +1473,16 @@ func (b *diyBackend) UpdateStackTags(ctx context.Context,
 		return errors.New("invalid stack reference type")
 	}
 
-	newTags := make(map[apitype.StackTagName]string)
-	for k, v := range tags {
-		newTags[k] = v
-	}
-
-	b.updateStackTagsFromMetadata(newTags, ref)
-
-	if err := b.saveStackTags(ctx, ref, newTags); err != nil {
+	if err := b.saveStackTags(ctx, ref, tags); err != nil {
 		return fmt.Errorf("failed to save stack tags: %w", err)
 	}
 
 	if diyStack, ok := stack.(*diyStack); ok {
-		diyStack.tags.Store(&newTags)
+		tagsCopy := make(map[apitype.StackTagName]string, len(tags))
+		for k, v := range tags {
+			tagsCopy[k] = v
+		}
+		diyStack.tags.Store(&tagsCopy)
 	}
 
 	return nil
