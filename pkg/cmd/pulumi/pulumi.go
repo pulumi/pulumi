@@ -523,22 +523,15 @@ func haveNewerDevVersion(devVersion semver.Version, curVersion semver.Version) b
 	return devCommits > curCommits
 }
 
-// checkForUpdate checks to see if the CLI needs to be updated, and if so emits a warning, as well as information
-// as to how it can be upgraded.
-func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]string) *diag.Diag {
-	curVer, err := semver.ParseTolerant(version.Version)
-	if err != nil {
-		logging.V(3).Infof("error parsing current version: %s", err)
-	}
-
-	// We don't care about warning about updates if this is a locally-compiled version
-	if isLocalVersion(curVer) {
-		return nil
-	}
-
-	isCurVerDev := isDevVersion(curVer)
-	canPrompt, lastPromptTimestampMS := checkVersionPrompt(isCurVerDev)
-
+func getAndCacheVersionInfo(
+	ctx context.Context,
+	cloudURL string,
+	metadata map[string]string,
+	curVer semver.Version,
+	isCurVerDev bool,
+	canPrompt bool,
+	lastPromptTimestampMS int64,
+) *diag.Diag {
 	latestVer, oldestAllowedVer, devVer, err := getCLIVersionInfo(ctx, cloudURL, metadata)
 	if err != nil {
 		logging.V(3).Infof("error fetching latest version information "+
@@ -573,6 +566,32 @@ func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]st
 	}
 
 	return nil
+}
+
+// checkForUpdate checks to see if the CLI needs to be updated, and if so emits a warning, as well as information
+// as to how it can be upgraded.
+func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]string) *diag.Diag {
+	curVer, err := semver.ParseTolerant(version.Version)
+	if err != nil {
+		logging.V(3).Infof("error parsing current version: %s", err)
+	}
+
+	// We don't care about warning about updates if this is a locally-compiled version
+	if isLocalVersion(curVer) {
+		return nil
+	}
+
+	isCurVerDev := isDevVersion(curVer)
+	canPrompt, lastPromptTimestampMS := checkVersionPrompt(isCurVerDev)
+
+	if !canPrompt {
+		logging.V(5).Infof("skipping update prompt; either recently prompted or non-interactive terminal")
+		go getAndCacheVersionInfo(ctx, cloudURL, metadata, curVer, isCurVerDev, canPrompt, lastPromptTimestampMS)
+		return nil
+
+	}
+
+	return getAndCacheVersionInfo(ctx, cloudURL, metadata, curVer, isCurVerDev, canPrompt, lastPromptTimestampMS)
 }
 
 // getCLIMetadata returns a map of metadata about the given CLI command.
