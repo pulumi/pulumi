@@ -52,6 +52,7 @@ require (
 	github.com/pulumi/esc v0.17.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
+	golang.org/x/sync v0.12.0
 	golang.org/x/term v0.37.0
 	lukechampine.com/frand v1.4.2
 )
@@ -83,7 +84,6 @@ require (
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/skeema/knownhosts v1.3.0 // indirect
 	github.com/zclconf/go-cty v1.13.2 // indirect
-	golang.org/x/sync v0.12.0 // indirect
 	golang.org/x/tools v0.23.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
 )
