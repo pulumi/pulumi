@@ -280,30 +280,28 @@ func login(ctx context.Context, project *workspace.Project) (backend.Backend, er
 // 2. The installed plugin directory
 // If no readme is found, an empty string is returned.
 func (cmd *packagePublishCmd) findReadme(ctx context.Context, packageSrc string) (string, error) {
-	findReadmeInDir := func(dir string) (string, error) {
+	findReadmeInDir := func(dir string) string {
 		info, err := os.Stat(dir)
-		if errors.Is(err, os.ErrNotExist) {
-			return "", nil
+		if err != nil && errors.Is(err, os.ErrNotExist) {
+			return ""
 		} else if err != nil {
-			return "", err
+			return ""
 		}
 		if !info.IsDir() {
-			return "", nil
+			return ""
 		}
 		entries, err := os.ReadDir(dir)
-		if err != nil {
-			return "", err
-		}
-		for _, entry := range entries {
-			if entry.IsDir() {
-				continue
-			}
-			name := strings.ToLower(entry.Name())
-			if name == "readme.md" {
-				return filepath.Join(dir, entry.Name()), nil
+		if err == nil {
+			for _, entry := range entries {
+				if !entry.IsDir() {
+					name := strings.ToLower(entry.Name())
+					if name == "readme.md" {
+						return filepath.Join(dir, entry.Name())
+					}
+				}
 			}
 		}
-		return "", nil
+		return ""
 	}
 
 	if ext := filepath.Ext(packageSrc); ext == ".json" || ext == ".yaml" || ext == ".yml" {
@@ -311,8 +309,8 @@ func (cmd *packagePublishCmd) findReadme(ctx context.Context, packageSrc string)
 		return "", nil
 	}
 	// If the source is a directory, check if it contains a readme.
-	if readmeFromPackage, err := findReadmeInDir(packageSrc); readmeFromPackage != "" || err != nil {
-		return readmeFromPackage, err
+	if readmeFromPackage := findReadmeInDir(packageSrc); readmeFromPackage != "" {
+		return readmeFromPackage, nil
 	}
 
 	// Otherwise, try to retrieve the readme from the installed plugin.
@@ -328,5 +326,9 @@ func (cmd *packagePublishCmd) findReadme(ctx context.Context, packageSrc string)
 	path := pluginSpec.SubDir()
 	dir := filepath.Join(pluginDir, path)
 
-	return findReadmeInDir(dir)
+	if readmeFromPlugin := findReadmeInDir(dir); readmeFromPlugin != "" {
+		return readmeFromPlugin, nil
+	}
+
+	return "", nil
 }
