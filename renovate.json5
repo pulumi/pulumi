@@ -1,7 +1,6 @@
 {
   // Everything requires triggering via the dependency dashboard, except:
   // * security updates
-  // * first party (aka pulumi) packages
   // * pinning of all dependencies in test projects, devDependencies in library code, github actions tags,
   //   ie actions/checkout@v4 -> actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
@@ -71,30 +70,13 @@
       enabled: false
     },
     {
-      description: "Disable auto-update for pulumi/pulumi - our base config auto-updates first party packages, but we don't want this for dependencies that come from this repo, i.e. don't update the core SDK in tests.",
-      matchDatasources: ["go"],
-      matchPackageNames: ["github.com/pulumi/pulumi/**"],
-      enabled: false
-    },
-    {
-      description: "Disable auto-update for @pulumi/pulumi - our base config auto-updates first party packages, but we don't want this for dependencies that come from this repo, i.e. don't update the core SDK in tests.",
-      matchDatasources: ["npm"],
-      matchPackageNames: ["@pulumi/pulumi"],
-      enabled: false
-    },
-    {
-      description: "Disable auto-update for pulumi - our base config auto-updates first party packages, but we don't want this for dependencies that come from this repo, i.e. don't update the core SDK in tests.",
-      matchDatasources: ["pypi"],
-      matchPackageNames: ["pulumi"],
-      enabled: false
-    },
-    {
-      description: "Disable updating dependency files in tests that check for specific versions",
-      matchFileNames: [
-        "tests/integration/new/python/random/requirements.txt",
-        "tests/smoke/testdata/random_typescript/package.json",
-        "tests/smoke/testdata/import_node/package.json",
-        "tests/integration/component_provider/nodejs/component-provider-host/provider/package.json",
+      description: "Disable auto-update for first party packages"
+      matchDatasources: ["go", "npm", "pypi"],
+      matchPackageNames: [
+        "github.com/pulumi/**"",
+        "@pulumi/**",
+        "pulumi",
+        "pulumi-**",
       ],
       enabled: false
     },
