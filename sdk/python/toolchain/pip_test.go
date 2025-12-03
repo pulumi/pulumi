@@ -24,6 +24,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -214,6 +215,69 @@ func TestPipLinkPackages(t *testing.T) {
 			require.NoError(t, err)
 			lines := strings.Split(string(b), "\n")
 			require.Equal(t, test.expectedLines, lines)
+		})
+	}
+}
+
+func TestParsePipVersion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		versionString  string
+		expectedSemver string
+		expectError    bool
+	}{
+		{
+			name:           "pip with patch version",
+			versionString:  "pip 25.3.1 from /Users/julien/.local/share/mise/installs/python/3.11.14/lib/python3.11/site-packages/pip (python 3.11)", //nolint:lll
+			expectedSemver: "25.3.1",
+			expectError:    false,
+		},
+		{
+			name:           "pip without patch version",
+			versionString:  "pip 25.3 from /Users/julien/.local/share/mise/installs/python/3.11.14/lib/python3.11/site-packages/pip (python 3.11)", //nolint:lll
+			expectedSemver: "25.3.0",
+			expectError:    false,
+		},
+		{
+			name:           "pip simple version",
+			versionString:  "pip 20.0.2",
+			expectedSemver: "20.0.2",
+			expectError:    false,
+		},
+		{
+			name:           "pip with extra spaces",
+			versionString:  "  pip 22.1    from /some/path  ",
+			expectedSemver: "22.1.0",
+			expectError:    false,
+		},
+		{
+			name:           "pip dev version",
+			versionString:  "pip 26.0.dev0 from /Users/julien/tmp/pip-v/.venv/lib/python3.13/site-packages/pip (python 3.13)", //nolint:lll
+			expectedSemver: "26.0.0",
+			expectError:    false,
+		},
+		{
+			name:          "invalid pip version format",
+			versionString: "invalid output",
+			expectError:   true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			version, err := ParsePipVersion(test.versionString)
+
+			if test.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				expected := semver.MustParse(test.expectedSemver)
+				assert.Equal(t, expected, version)
+			}
 		})
 	}
 }
