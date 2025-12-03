@@ -1,7 +1,7 @@
 {
   "name": "website-and-lambda",
   "devDependencies": {
-    "@types/node": "^10.0.0"
+    "@types/node": "10.17.60"
   },
   "dependencies": {
     "@pulumi/pulumi": "latest"
