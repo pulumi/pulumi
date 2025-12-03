@@ -63,7 +63,6 @@ type packagePublishCmd struct {
 	extractSchema func(
 		pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
 	) (*schema.PackageSpec, *workspace.PackageSpec, error)
-	pluginDir string
 }
 
 func newPackagePublishCmd() *cobra.Command {
@@ -281,28 +280,30 @@ func login(ctx context.Context, project *workspace.Project) (backend.Backend, er
 // 2. The installed plugin directory
 // If no readme is found, an empty string is returned.
 func (cmd *packagePublishCmd) findReadme(ctx context.Context, packageSrc string) (string, error) {
-	findReadmeInDir := func(dir string) string {
+	findReadmeInDir := func(dir string) (string, error) {
 		info, err := os.Stat(dir)
-		if err != nil && errors.Is(err, os.ErrNotExist) {
-			return ""
+		if errors.Is(err, os.ErrNotExist) {
+			return "", nil
 		} else if err != nil {
-			return ""
+			return "", err
 		}
 		if !info.IsDir() {
-			return ""
+			return "", nil
 		}
 		entries, err := os.ReadDir(dir)
-		if err == nil {
-			for _, entry := range entries {
-				if !entry.IsDir() {
-					name := strings.ToLower(entry.Name())
-					if name == "readme.md" {
-						return filepath.Join(dir, entry.Name())
-					}
-				}
+		if err != nil {
+			return "", err
+		}
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			name := strings.ToLower(entry.Name())
+			if name == "readme.md" {
+				return filepath.Join(dir, entry.Name()), nil
 			}
 		}
-		return ""
+		return "", nil
 	}
 
 	if ext := filepath.Ext(packageSrc); ext == ".json" || ext == ".yaml" || ext == ".yml" {
@@ -310,8 +311,8 @@ func (cmd *packagePublishCmd) findReadme(ctx context.Context, packageSrc string)
 		return "", nil
 	}
 	// If the source is a directory, check if it contains a readme.
-	if readmeFromPackage := findReadmeInDir(packageSrc); readmeFromPackage != "" {
-		return readmeFromPackage, nil
+	if readmeFromPackage, err := findReadmeInDir(packageSrc); readmeFromPackage != "" || err != nil {
+		return readmeFromPackage, err
 	}
 
 	// Otherwise, try to retrieve the readme from the installed plugin.
@@ -319,7 +320,6 @@ func (cmd *packagePublishCmd) findReadme(ctx context.Context, packageSrc string)
 	if err != nil {
 		return "", fmt.Errorf("failed to create plugin spec: %w", err)
 	}
-	pluginSpec.PluginDir = cmd.pluginDir
 
 	pluginDir, err := pluginSpec.DirPath()
 	if err != nil {
@@ -328,9 +328,5 @@ func (cmd *packagePublishCmd) findReadme(ctx context.Context, packageSrc string)
 	path := pluginSpec.SubDir()
 	dir := filepath.Join(pluginDir, path)
 
-	if readmeFromPlugin := findReadmeInDir(dir); readmeFromPlugin != "" {
-		return readmeFromPlugin, nil
-	}
-
-	return "", nil
+	return findReadmeInDir(dir)
 }
