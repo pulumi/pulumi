@@ -29,7 +29,7 @@ download_release() {
 #
 LANGUAGES=(
   "dotnet v3.94.1"
-  "java v1.17.1"
+  "java v1.18.0"
   "yaml v1.25.1"
 )
 
