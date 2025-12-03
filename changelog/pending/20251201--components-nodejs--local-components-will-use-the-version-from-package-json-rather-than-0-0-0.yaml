@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: components/nodejs
-  description: Local components will use the version from package.json rather than 0.0.0
