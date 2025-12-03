@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -148,7 +149,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				t.Helper()
 
 				pulumiHomeDir := t.TempDir() // Create an isolated PULUMI_HOME directory to install into
-				t.Setenv(workspace.PulumiHomeEnvVar, pulumiHomeDir)
+				t.Setenv(env.Home.Var().Name(), pulumiHomeDir)
 
 				installResourcePluginFromFiles(t, workspace.PluginSpec{
 					Name: "testpackage",
@@ -608,7 +609,7 @@ func TestFindReadme(t *testing.T) {
 	ctx := t.Context()
 
 	pulumiHomeDir := t.TempDir() // Create an isolated PULUMI_HOME directory to install into
-	t.Setenv(workspace.PulumiHomeEnvVar, pulumiHomeDir)
+	t.Setenv(env.Home.Var().Name(), pulumiHomeDir)
 
 	cmd := packagePublishCmd{}
 

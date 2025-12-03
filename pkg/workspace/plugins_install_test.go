@@ -28,6 +28,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -160,7 +161,7 @@ func testDeletePlugin(t *testing.T, plugin workspace.PluginInfo) {
 }
 
 func TestInstallNoDeps(t *testing.T) {
-	t.Setenv(workspace.PulumiHomeEnvVar, t.TempDir())
+	t.Setenv(env.Home.Var().Name(), t.TempDir())
 
 	name := "foo.txt"
 	content := []byte("hello\n")
@@ -180,7 +181,7 @@ func TestInstallNoDeps(t *testing.T) {
 }
 
 func TestReinstall(t *testing.T) {
-	t.Setenv(workspace.PulumiHomeEnvVar, t.TempDir())
+	t.Setenv(env.Home.Var().Name(), t.TempDir())
 
 	name := "foo.txt"
 	content := []byte("hello\n")
@@ -212,7 +213,7 @@ func TestReinstall(t *testing.T) {
 }
 
 func TestConcurrentInstalls(t *testing.T) {
-	t.Setenv(workspace.PulumiHomeEnvVar, t.TempDir())
+	t.Setenv(env.Home.Var().Name(), t.TempDir())
 
 	name := "foo.txt"
 	content := []byte("hello\n")
@@ -251,7 +252,7 @@ func TestConcurrentInstalls(t *testing.T) {
 }
 
 func TestInstallCleansOldFiles(t *testing.T) {
-	t.Setenv(workspace.PulumiHomeEnvVar, t.TempDir())
+	t.Setenv(env.Home.Var().Name(), t.TempDir())
 
 	dir, tarball, plugin := prepareTestDir(t, nil)
 
@@ -286,7 +287,7 @@ func TestInstallCleansOldFiles(t *testing.T) {
 }
 
 func TestGetPluginsSkipsPartial(t *testing.T) {
-	t.Setenv(workspace.PulumiHomeEnvVar, t.TempDir())
+	t.Setenv(env.Home.Var().Name(), t.TempDir())
 
 	dir, tarball, plugin := prepareTestDir(t, nil)
 
