@@ -198,8 +198,11 @@ func TestJournalerCloseAfterClose(t *testing.T) {
 		50,
 	)
 
-	// Close the journaler twice.
+	// Close the journaler thrice.
 	err := journaler.Close()
+	require.NoError(t, err)
+
+	err = journaler.Close()
 	require.NoError(t, err)
 
 	err = journaler.Close()

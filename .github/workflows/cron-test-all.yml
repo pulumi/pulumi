@@ -43,6 +43,7 @@ jobs:
       # data on every merge to main, so getting it in the daily cro
       # job is not important.
       enable-coverage: false
+      enable-journaling: false
     secrets: inherit
 
   performance-gate:

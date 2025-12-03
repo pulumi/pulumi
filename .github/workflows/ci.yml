@@ -45,6 +45,11 @@ on:
         default: false
         required: false
         type: boolean
+      enable-journaling:
+        description: "Whether journaling is enabled in tests"
+        default: true
+        required: false
+        type: boolean
       fail-fast:
         required: false
         default: false
@@ -360,6 +365,7 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: false
       enable-coverage: ${{ inputs.enable-coverage }}
+      enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -386,6 +392,7 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: true
       enable-coverage: ${{ inputs.enable-coverage }}
+      enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -413,6 +420,7 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: true
       enable-coverage: false
+      enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -440,6 +448,7 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: true
       enable-coverage: false
+      enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 

@@ -91,6 +91,7 @@ func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 func (j *cloudJournaler) Close() error {
 	j.m.Lock()
 	if j.closed {
+		j.m.Unlock()
 		return nil
 	}
 	j.closed = true

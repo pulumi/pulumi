@@ -1378,8 +1378,13 @@ func (host *pythonLanguageHost) About(ctx context.Context,
 	}
 
 	return &pulumirpc.AboutResponse{
-		Executable: info.Executable,
-		Version:    info.Version,
+		Executable: info.PythonExecutable,
+		Version:    info.PythonVersion.String(),
+		Metadata: map[string]string{
+			"toolchain":        toolchain.Name(opts.Toolchain),
+			"toolchainVersion": info.ToolchainVersion.String(),
+			"typechecker":      toolchain.TypeCheckerName(opts.Typechecker),
+		},
 	}, nil
 }
 

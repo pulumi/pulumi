@@ -126,7 +126,7 @@ func CompilePython(t *testing.T, codeDir string) {
 	require.NoError(t, err)
 	info, err := tc.About(context.Background())
 	require.NoError(t, err)
-	pythonCmdPath := info.Executable
+	pythonCmdPath := info.PythonExecutable
 	// Run `python -m py_compile` on all python files
 	args := append([]string{"-m", "py_compile"}, pythonFiles...)
 	RunCommand(t, "python syntax check", codeDir, pythonCmdPath, args...)
