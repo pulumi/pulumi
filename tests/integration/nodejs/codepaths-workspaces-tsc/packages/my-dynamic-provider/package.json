@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "dependencies": {
     "@pulumi/pulumi": "latest",
-    "path-exists": "4.0.0"
+    "path-exists": "^4.0.0"
   },
   "devDependencies": {
     "typescript": "^3.8.3",
