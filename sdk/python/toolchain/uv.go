@@ -30,6 +30,8 @@ import (
 	"slices"
 	"strings"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -43,6 +45,8 @@ type uv struct {
 	virtualenvPath string
 	// The root directory of the project.
 	root string
+	// The version of uv.
+	version semver.Version
 }
 
 var minUvVersion = semver.MustParse("0.4.26")
@@ -87,17 +91,22 @@ func newUv(root, virtualenv string) (*uv, error) {
 		virtualenv = filepath.Join(root, virtualenv)
 	}
 
-	u := &uv{
-		virtualenvPath: virtualenv,
-		root:           root,
+	cmd := exec.Command("uv", "--version")
+	versionString, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get uv version: %w", err)
 	}
-
-	// Validate the version
-	version, err := u.uvVersion()
+	version, err := ParseUvVersion(string(versionString))
 	if err != nil {
 		return nil, err
 	}
 	logging.V(9).Infof("Python toolchain: using uv version %s", version)
+
+	u := &uv{
+		virtualenvPath: virtualenv,
+		root:           root,
+		version:        version,
+	}
 
 	return u, nil
 }
@@ -181,11 +190,7 @@ func (u *uv) PrepareProject(
 
 	args := []string{"init", "--bare", "--no-package", "--no-pin-python"}
 	deleteHello := false
-	uvVersion, err := u.uvVersion()
-	if err != nil {
-		return fmt.Errorf("error getting uv version: %s", err)
-	}
-	if uvVersion.LT(semver.MustParse("0.6.0")) {
+	if u.version.LT(semver.MustParse("0.6.0")) {
 		// The `--bare` option prevents `uv init` from creating a
 		// `main.py` file, but this is only available in uv 0.6. Prior
 		// to 0.6, uv always creates a `hello.py` file, which we
@@ -370,29 +375,34 @@ func (u *uv) ModuleCommand(ctx context.Context, module string, args ...string) (
 }
 
 func (u *uv) About(ctx context.Context) (Info, error) {
-	cmd, err := u.Command(ctx, "--version")
-	if err != nil {
-		return Info{}, err
-	}
-	var out []byte
-	if out, err = cmd.Output(); err != nil {
-		return Info{}, fmt.Errorf("failed to get version: %w", err)
-	}
-	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
+	var executable string
+	var pythonVersion semver.Version
 
-	cmd, err = u.Command(ctx, "-c", "import sys; print(sys.executable)")
-	if err != nil {
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		version, err := getPythonVersion(ctx, u.Command)
+		if err != nil {
+			logging.V(9).Infof("Python toolchain: %v", err)
+		} else {
+			pythonVersion = version
+		}
+		// Don't fail if we could not parse the python version
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		executable, err = getPythonExecutablePath(ctx, u.Command)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return Info{}, err
 	}
-	out, err = cmd.Output()
-	if err != nil {
-		return Info{}, fmt.Errorf("failed to get python executable path: %w", err)
-	}
-	executable := strings.TrimSpace(string(out))
 
 	return Info{
-		Executable: executable,
-		Version:    version,
+		PythonExecutable: executable,
+		PythonVersion:    pythonVersion,
+		ToolchainVersion: u.version,
 	}, nil
 }
 
@@ -409,15 +419,6 @@ func (u *uv) uvCommand(ctx context.Context, cwd string, showOutput bool,
 	}
 	cmd.Env = append(cmd.Environ(), "UV_PROJECT_ENVIRONMENT="+u.virtualenvPath)
 	return cmd
-}
-
-func (u *uv) uvVersion() (semver.Version, error) {
-	cmd := u.uvCommand(context.Background(), "", false, nil, nil, "--version")
-	versionString, err := cmd.Output()
-	if err != nil {
-		return semver.Version{}, fmt.Errorf("failed to get uv version: %w", err)
-	}
-	return ParseUvVersion(string(versionString))
 }
 
 func (u *uv) pythonExecutable() (string, string) {
@@ -437,16 +438,7 @@ func (u *uv) needsNoWorkspacesFlag(ctx context.Context) (bool, error) {
 	// the generated SDK might not have a `pyproject.toml`, which is required for uv workspace members. To add the
 	// generated SDK as a normal dependency, we can run `uv add --no-workspace`, but this flag is only available on
 	// version 0.8.0 and up.
-	versionCheckCmd := u.uvCommand(ctx, "", false, nil, nil, "--version")
-	versionString, err := versionCheckCmd.Output()
-	if err != nil {
-		return false, fmt.Errorf("failed to get uv version: %w", err)
-	}
-	version, err := ParseUvVersion(string(versionString))
-	if err != nil {
-		return false, err
-	}
-	if version.GE(semver.MustParse("0.8.0")) {
+	if u.version.GE(semver.MustParse("0.8.0")) {
 		return true, nil
 	}
 	return false, nil
