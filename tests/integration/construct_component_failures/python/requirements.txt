@@ -1,2 +1,0 @@
-# TEST: remove again, this should be pinned
-urllib3>=2
