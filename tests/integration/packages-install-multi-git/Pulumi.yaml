@@ -1,0 +1,9 @@
+name: packages-install-multi-git
+description: A TypeScript program that installs multiple components from same git repo
+packages:
+  test-provider: git://github.com/pulumi/component-test-providers/test-provider@52a8a71555d964542b308da197755c64dbe63352
+  test-provider-2: git://github.com/pulumi/component-test-providers/test-provider-2@52a8a71555d964542b308da197755c64dbe63352
+runtime:
+  name: nodejs
+  options:
+    packagemanager: yarn

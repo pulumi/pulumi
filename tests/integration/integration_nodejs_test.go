@@ -2825,6 +2825,37 @@ func TestInstallLocalPluginCycle(t *testing.T) {
 		"Stdout is %q", stdout)
 }
 
+func TestInstallMultiComponentGitRepo(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("packages-install-multi-git")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+	e.RunCommand("pulumi", "stack", "select", "organization/multi-git-test", "--create")
+
+	e.RunCommand("pulumi", "install")
+
+	// Install additional dependencies (TLS provider needed by test-provider &
+	// test-provider-2 components)
+	//
+	// TODO[https://github.com/pulumi/pulumi/issues/20963]: Remove the need for this
+	// install.
+	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true"}
+	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.1")
+
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+
+	// Verify outputs exist from both components, confirming both resources were created
+	stdout, _ := e.RunCommand("pulumi", "stack", "output", "cert1Pem")
+	require.NotEmpty(t, stdout)
+
+	stdout, _ = e.RunCommand("pulumi", "stack", "output", "cert2Pem")
+	require.NotEmpty(t, stdout)
+}
+
 func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	t.Parallel()
 
