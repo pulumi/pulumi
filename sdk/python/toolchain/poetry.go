@@ -299,7 +299,7 @@ func (p *poetry) About(ctx context.Context) (Info, error) {
 	g.Go(func() error {
 		version, err := getPythonVersion(ctx, p.Command)
 		if err != nil {
-			logging.V(9).Infof("Python toolchain: %v", err)
+			logging.V(9).Infof("getPythonVersion: %v", err)
 		} else {
 			pythonVersion = version
 		}
