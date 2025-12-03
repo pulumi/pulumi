@@ -8,6 +8,6 @@
         "@pulumi/pulumi": "latest"
     },
     "dependencies": {
-        "@types/node": "18.19.130"
+        "@types/node": "^18.7.17"
     }
 }
