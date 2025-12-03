@@ -106,7 +106,7 @@ func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginSpec,
 	}
 
 	logging.V(1).Infof("Automatically installing provider %s", pluginSpec.Name)
-	err = InstallPluginContent(context.Background(), pluginSpec, tarPlugin{downloadedFile}, false)
+	err = InstallPluginContent(ctx, pluginSpec, tarPlugin{downloadedFile}, false)
 	if err != nil {
 		return nil, &InstallPluginError{
 			Spec: pluginSpec,
