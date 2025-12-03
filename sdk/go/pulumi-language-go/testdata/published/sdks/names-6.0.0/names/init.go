@@ -24,7 +24,7 @@ func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi
 	case "names:index:Resource":
 		r = &Resource{}
 	case "names:index:ResourceMap":
-		r = &ResourceMapResource{}
+		r = &ResourceMap{}
 	default:
 		return nil, fmt.Errorf("unknown resource type: %s", typ)
 	}

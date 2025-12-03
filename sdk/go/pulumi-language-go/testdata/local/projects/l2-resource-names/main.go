@@ -7,7 +7,7 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		_, err := names.NewResourceMapResource(ctx, "res2", &names.ResourceMapResourceArgs{
+		_, err := names.NewResourceMap(ctx, "res2", &names.ResourceMapArgs{
 			Value: pulumi.Bool(true),
 		})
 		if err != nil {

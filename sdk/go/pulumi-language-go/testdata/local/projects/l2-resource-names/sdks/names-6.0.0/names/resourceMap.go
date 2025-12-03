@@ -12,15 +12,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-type ResourceMapResource struct {
+type ResourceMap struct {
 	pulumi.CustomResourceState
 
 	Value pulumi.BoolOutput `pulumi:"value"`
 }
 
-// NewResourceMapResource registers a new resource with the given unique name, arguments, and options.
-func NewResourceMapResource(ctx *pulumi.Context,
-	name string, args *ResourceMapResourceArgs, opts ...pulumi.ResourceOption) (*ResourceMapResource, error) {
+// NewResourceMap registers a new resource with the given unique name, arguments, and options.
+func NewResourceMap(ctx *pulumi.Context,
+	name string, args *ResourceMapArgs, opts ...pulumi.ResourceOption) (*ResourceMap, error) {
 	if args == nil {
 		return nil, errors.New("missing one or more required arguments")
 	}
@@ -29,7 +29,7 @@ func NewResourceMapResource(ctx *pulumi.Context,
 		return nil, errors.New("invalid value for required argument 'Value'")
 	}
 	opts = internal.PkgResourceDefaultOpts(opts)
-	var resource ResourceMapResource
+	var resource ResourceMap
 	err := ctx.RegisterResource("names:index:ResourceMap", name, args, &resource, opts...)
 	if err != nil {
 		return nil, err
@@ -37,11 +37,11 @@ func NewResourceMapResource(ctx *pulumi.Context,
 	return &resource, nil
 }
 
-// GetResourceMapResource gets an existing ResourceMapResource resource's state with the given name, ID, and optional
+// GetResourceMap gets an existing ResourceMap resource's state with the given name, ID, and optional
 // state properties that are used to uniquely qualify the lookup (nil if not required).
-func GetResourceMapResource(ctx *pulumi.Context,
-	name string, id pulumi.IDInput, state *ResourceMapResourceState, opts ...pulumi.ResourceOption) (*ResourceMapResource, error) {
-	var resource ResourceMapResource
+func GetResourceMap(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *ResourceMapState, opts ...pulumi.ResourceOption) (*ResourceMap, error) {
+	var resource ResourceMap
 	err := ctx.ReadResource("names:index:ResourceMap", name, id, state, &resource, opts...)
 	if err != nil {
 		return nil, err
@@ -49,162 +49,68 @@ func GetResourceMapResource(ctx *pulumi.Context,
 	return &resource, nil
 }
 
-// Input properties used for looking up and filtering ResourceMapResource resources.
-type resourceMapResourceState struct {
+// Input properties used for looking up and filtering ResourceMap resources.
+type resourceMapState struct {
 }
 
-type ResourceMapResourceState struct {
+type ResourceMapState struct {
 }
 
-func (ResourceMapResourceState) ElementType() reflect.Type {
-	return reflect.TypeOf((*resourceMapResourceState)(nil)).Elem()
+func (ResourceMapState) ElementType() reflect.Type {
+	return reflect.TypeOf((*resourceMapState)(nil)).Elem()
 }
 
-type resourceMapResourceArgs struct {
+type resourceMapArgs struct {
 	Value bool `pulumi:"value"`
 }
 
-// The set of arguments for constructing a ResourceMapResource resource.
-type ResourceMapResourceArgs struct {
+// The set of arguments for constructing a ResourceMap resource.
+type ResourceMapArgs struct {
 	Value pulumi.BoolInput
 }
 
-func (ResourceMapResourceArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*resourceMapResourceArgs)(nil)).Elem()
+func (ResourceMapArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*resourceMapArgs)(nil)).Elem()
 }
 
-type ResourceMapResourceInput interface {
+type ResourceMapInput interface {
 	pulumi.Input
 
-	ToResourceMapResourceOutput() ResourceMapResourceOutput
-	ToResourceMapResourceOutputWithContext(ctx context.Context) ResourceMapResourceOutput
+	ToResourceMapOutput() ResourceMapOutput
+	ToResourceMapOutputWithContext(ctx context.Context) ResourceMapOutput
 }
 
-func (*ResourceMapResource) ElementType() reflect.Type {
-	return reflect.TypeOf((**ResourceMapResource)(nil)).Elem()
+func (*ResourceMap) ElementType() reflect.Type {
+	return reflect.TypeOf((**ResourceMap)(nil)).Elem()
 }
 
-func (i *ResourceMapResource) ToResourceMapResourceOutput() ResourceMapResourceOutput {
-	return i.ToResourceMapResourceOutputWithContext(context.Background())
+func (i *ResourceMap) ToResourceMapOutput() ResourceMapOutput {
+	return i.ToResourceMapOutputWithContext(context.Background())
 }
 
-func (i *ResourceMapResource) ToResourceMapResourceOutputWithContext(ctx context.Context) ResourceMapResourceOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(ResourceMapResourceOutput)
+func (i *ResourceMap) ToResourceMapOutputWithContext(ctx context.Context) ResourceMapOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(ResourceMapOutput)
 }
 
-// ResourceMapResourceArrayInput is an input type that accepts ResourceMapResourceArray and ResourceMapResourceArrayOutput values.
-// You can construct a concrete instance of `ResourceMapResourceArrayInput` via:
-//
-//	ResourceMapResourceArray{ ResourceMapResourceArgs{...} }
-type ResourceMapResourceArrayInput interface {
-	pulumi.Input
+type ResourceMapOutput struct{ *pulumi.OutputState }
 
-	ToResourceMapResourceArrayOutput() ResourceMapResourceArrayOutput
-	ToResourceMapResourceArrayOutputWithContext(context.Context) ResourceMapResourceArrayOutput
+func (ResourceMapOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**ResourceMap)(nil)).Elem()
 }
 
-type ResourceMapResourceArray []ResourceMapResourceInput
-
-func (ResourceMapResourceArray) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]*ResourceMapResource)(nil)).Elem()
-}
-
-func (i ResourceMapResourceArray) ToResourceMapResourceArrayOutput() ResourceMapResourceArrayOutput {
-	return i.ToResourceMapResourceArrayOutputWithContext(context.Background())
-}
-
-func (i ResourceMapResourceArray) ToResourceMapResourceArrayOutputWithContext(ctx context.Context) ResourceMapResourceArrayOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(ResourceMapResourceArrayOutput)
-}
-
-// ResourceMapResourceMapInput is an input type that accepts ResourceMapResourceMap and ResourceMapResourceMapOutput values.
-// You can construct a concrete instance of `ResourceMapResourceMapInput` via:
-//
-//	ResourceMapResourceMap{ "key": ResourceMapResourceArgs{...} }
-type ResourceMapResourceMapInput interface {
-	pulumi.Input
-
-	ToResourceMapResourceMapOutput() ResourceMapResourceMapOutput
-	ToResourceMapResourceMapOutputWithContext(context.Context) ResourceMapResourceMapOutput
-}
-
-type ResourceMapResourceMap map[string]ResourceMapResourceInput
-
-func (ResourceMapResourceMap) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]*ResourceMapResource)(nil)).Elem()
-}
-
-func (i ResourceMapResourceMap) ToResourceMapResourceMapOutput() ResourceMapResourceMapOutput {
-	return i.ToResourceMapResourceMapOutputWithContext(context.Background())
-}
-
-func (i ResourceMapResourceMap) ToResourceMapResourceMapOutputWithContext(ctx context.Context) ResourceMapResourceMapOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(ResourceMapResourceMapOutput)
-}
-
-type ResourceMapResourceOutput struct{ *pulumi.OutputState }
-
-func (ResourceMapResourceOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**ResourceMapResource)(nil)).Elem()
-}
-
-func (o ResourceMapResourceOutput) ToResourceMapResourceOutput() ResourceMapResourceOutput {
+func (o ResourceMapOutput) ToResourceMapOutput() ResourceMapOutput {
 	return o
 }
 
-func (o ResourceMapResourceOutput) ToResourceMapResourceOutputWithContext(ctx context.Context) ResourceMapResourceOutput {
+func (o ResourceMapOutput) ToResourceMapOutputWithContext(ctx context.Context) ResourceMapOutput {
 	return o
 }
 
-func (o ResourceMapResourceOutput) Value() pulumi.BoolOutput {
-	return o.ApplyT(func(v *ResourceMapResource) pulumi.BoolOutput { return v.Value }).(pulumi.BoolOutput)
-}
-
-type ResourceMapResourceArrayOutput struct{ *pulumi.OutputState }
-
-func (ResourceMapResourceArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]*ResourceMapResource)(nil)).Elem()
-}
-
-func (o ResourceMapResourceArrayOutput) ToResourceMapResourceArrayOutput() ResourceMapResourceArrayOutput {
-	return o
-}
-
-func (o ResourceMapResourceArrayOutput) ToResourceMapResourceArrayOutputWithContext(ctx context.Context) ResourceMapResourceArrayOutput {
-	return o
-}
-
-func (o ResourceMapResourceArrayOutput) Index(i pulumi.IntInput) ResourceMapResourceOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *ResourceMapResource {
-		return vs[0].([]*ResourceMapResource)[vs[1].(int)]
-	}).(ResourceMapResourceOutput)
-}
-
-type ResourceMapResourceMapOutput struct{ *pulumi.OutputState }
-
-func (ResourceMapResourceMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]*ResourceMapResource)(nil)).Elem()
-}
-
-func (o ResourceMapResourceMapOutput) ToResourceMapResourceMapOutput() ResourceMapResourceMapOutput {
-	return o
-}
-
-func (o ResourceMapResourceMapOutput) ToResourceMapResourceMapOutputWithContext(ctx context.Context) ResourceMapResourceMapOutput {
-	return o
-}
-
-func (o ResourceMapResourceMapOutput) MapIndex(k pulumi.StringInput) ResourceMapResourceOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *ResourceMapResource {
-		return vs[0].(map[string]*ResourceMapResource)[vs[1].(string)]
-	}).(ResourceMapResourceOutput)
+func (o ResourceMapOutput) Value() pulumi.BoolOutput {
+	return o.ApplyT(func(v *ResourceMap) pulumi.BoolOutput { return v.Value }).(pulumi.BoolOutput)
 }
 
 func init() {
-	pulumi.RegisterInputType(reflect.TypeOf((*ResourceMapResourceInput)(nil)).Elem(), &ResourceMapResource{})
-	pulumi.RegisterInputType(reflect.TypeOf((*ResourceMapResourceArrayInput)(nil)).Elem(), ResourceMapResourceArray{})
-	pulumi.RegisterInputType(reflect.TypeOf((*ResourceMapResourceMapInput)(nil)).Elem(), ResourceMapResourceMap{})
-	pulumi.RegisterOutputType(ResourceMapResourceOutput{})
-	pulumi.RegisterOutputType(ResourceMapResourceArrayOutput{})
-	pulumi.RegisterOutputType(ResourceMapResourceMapOutput{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ResourceMapInput)(nil)).Elem(), &ResourceMap{})
+	pulumi.RegisterOutputType(ResourceMapOutput{})
 }

@@ -16,7 +16,6 @@ package tests
 
 import (
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -28,19 +27,7 @@ import (
 
 func init() {
 	LanguageTests["l2-resource-names"] = LanguageTest{
-		Providers: []func() plugin.Provider{
-			func() plugin.Provider {
-				return &providers.NamesProvider{
-					Language: map[string]schema.RawMessage{
-						"go": []byte(`{
-                            "respectSchemaVersion": true,
-                            "generateResourceContainerTypes": true,
-                            "generateExtraInputTypes": true
-                        }`),
-					},
-				}
-			},
-		},
+		Providers: []func() plugin.Provider{func() plugin.Provider { return &providers.NamesProvider{} }},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,

@@ -28,9 +28,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// This provider offers resources with names that could potentially cause problems in go
+// code.
 type NamesProvider struct {
 	plugin.UnimplementedProvider
-	Language map[string]schema.RawMessage
 }
 
 var _ plugin.Provider = (*NamesProvider)(nil)
@@ -84,7 +85,6 @@ func (p *NamesProvider) GetSchema(
 				RequiredInputs:  resourceRequired,
 			},
 		},
-		Language: p.Language,
 	}
 
 	jsonBytes, err := json.Marshal(pkg)
