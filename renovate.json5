@@ -64,12 +64,6 @@
       enabled: false
     },
     {
-      description: "Don't update the python version in poetry dependencies in pyproject.toml files, we want to run against the full range of supported Python versions",
-      matchPackageNames: ["python"],
-      matchFileNames: ["tests/**", "sdk/python/lib/test/**", "sdk/nodejs/tests/**", "sdk/go/auto/test/**"],
-      enabled: false
-    },
-    {
       // This does not seem to be working, `poetry` is disabled in `enabledManagers` for now
       description: "Don't update the python version in poetry dependencies in pyproject.toml files, we want to run against the full range of supported Python versions, override from base company config",
       matchManagers: ["poetry"],
