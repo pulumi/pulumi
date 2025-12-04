@@ -7,7 +7,25 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		_, err := names.NewResourceMap(ctx, "res2", &names.ResourceMapArgs{
+		_, err := names.NewResMap(ctx, "res1", &names.ResMapArgs{
+			Value: pulumi.Bool(true),
+		})
+		if err != nil {
+			return err
+		}
+		_, err = names.NewResArray(ctx, "res2", &names.ResArrayArgs{
+			Value: pulumi.Bool(true),
+		})
+		if err != nil {
+			return err
+		}
+		_, err = names.NewResList(ctx, "res3", &names.ResListArgs{
+			Value: pulumi.Bool(true),
+		})
+		if err != nil {
+			return err
+		}
+		_, err = names.NewResResource(ctx, "res4", &names.ResResourceArgs{
 			Value: pulumi.Bool(true),
 		})
 		if err != nil {

@@ -14,14 +14,14 @@ else:
     from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
 
-__all__ = ['ResourceMapArgs', 'ResourceMap']
+__all__ = ['ResResourceArgs', 'ResResource']
 
 @pulumi.input_type
-class ResourceMapArgs:
+class ResResourceArgs:
     def __init__(__self__, *,
                  value: pulumi.Input[_builtins.bool]):
         """
-        The set of arguments for constructing a ResourceMap resource.
+        The set of arguments for constructing a ResResource resource.
         """
         pulumi.set(__self__, "value", value)
 
@@ -35,8 +35,8 @@ class ResourceMapArgs:
         pulumi.set(self, "value", value)
 
 
-@pulumi.type_token("names:index:ResourceMap")
-class ResourceMap(pulumi.CustomResource):
+@pulumi.type_token("names:index:ResResource")
+class ResResource(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
@@ -44,7 +44,7 @@ class ResourceMap(pulumi.CustomResource):
                  value: Optional[pulumi.Input[_builtins.bool]] = None,
                  __props__=None):
         """
-        Create a ResourceMap resource with the given unique name, props, and options.
+        Create a ResResource resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
@@ -52,17 +52,17 @@ class ResourceMap(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: ResourceMapArgs,
+                 args: ResResourceArgs,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
-        Create a ResourceMap resource with the given unique name, props, and options.
+        Create a ResResource resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param ResourceMapArgs args: The arguments to use to populate this resource's properties.
+        :param ResResourceArgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(ResourceMapArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(ResResourceArgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -79,13 +79,13 @@ class ResourceMap(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = ResourceMapArgs.__new__(ResourceMapArgs)
+            __props__ = ResResourceArgs.__new__(ResResourceArgs)
 
             if value is None and not opts.urn:
                 raise TypeError("Missing required property 'value'")
             __props__.__dict__["value"] = value
-        super(ResourceMap, __self__).__init__(
-            'names:index:ResourceMap',
+        super(ResResource, __self__).__init__(
+            'names:index:ResResource',
             resource_name,
             __props__,
             opts)
@@ -93,9 +93,9 @@ class ResourceMap(pulumi.CustomResource):
     @staticmethod
     def get(resource_name: str,
             id: pulumi.Input[str],
-            opts: Optional[pulumi.ResourceOptions] = None) -> 'ResourceMap':
+            opts: Optional[pulumi.ResourceOptions] = None) -> 'ResResource':
         """
-        Get an existing ResourceMap resource's state with the given name, id, and optional extra
+        Get an existing ResResource resource's state with the given name, id, and optional extra
         properties used to qualify the lookup.
 
         :param str resource_name: The unique name of the resulting resource.
@@ -104,10 +104,10 @@ class ResourceMap(pulumi.CustomResource):
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
 
-        __props__ = ResourceMapArgs.__new__(ResourceMapArgs)
+        __props__ = ResResourceArgs.__new__(ResResourceArgs)
 
         __props__.__dict__["value"] = None
-        return ResourceMap(resource_name, opts=opts, __props__=__props__)
+        return ResResource(resource_name, opts=opts, __props__=__props__)
 
     @_builtins.property
     @pulumi.getter

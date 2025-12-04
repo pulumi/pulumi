@@ -15,8 +15,10 @@
     "files": [
         "index.ts",
         "provider.ts",
-        "resource.ts",
-        "resourceMap.ts",
+        "resArray.ts",
+        "resList.ts",
+        "resMap.ts",
+        "resResource.ts",
         "utilities.ts"
     ]
 }

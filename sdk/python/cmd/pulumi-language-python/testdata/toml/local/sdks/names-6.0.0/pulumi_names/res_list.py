@@ -14,14 +14,14 @@ else:
     from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
 
-__all__ = ['ResourceArgs', 'Resource']
+__all__ = ['ResListArgs', 'ResList']
 
 @pulumi.input_type
-class ResourceArgs:
+class ResListArgs:
     def __init__(__self__, *,
                  value: pulumi.Input[_builtins.bool]):
         """
-        The set of arguments for constructing a Resource resource.
+        The set of arguments for constructing a ResList resource.
         """
         pulumi.set(__self__, "value", value)
 
@@ -35,8 +35,8 @@ class ResourceArgs:
         pulumi.set(self, "value", value)
 
 
-@pulumi.type_token("names:index:Resource")
-class Resource(pulumi.CustomResource):
+@pulumi.type_token("names:index:ResList")
+class ResList(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
@@ -44,7 +44,7 @@ class Resource(pulumi.CustomResource):
                  value: Optional[pulumi.Input[_builtins.bool]] = None,
                  __props__=None):
         """
-        Create a Resource resource with the given unique name, props, and options.
+        Create a ResList resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
@@ -52,17 +52,17 @@ class Resource(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: ResourceArgs,
+                 args: ResListArgs,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
-        Create a Resource resource with the given unique name, props, and options.
+        Create a ResList resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
-        :param ResourceArgs args: The arguments to use to populate this resource's properties.
+        :param ResListArgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(ResourceArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(ResListArgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -79,13 +79,13 @@ class Resource(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = ResourceArgs.__new__(ResourceArgs)
+            __props__ = ResListArgs.__new__(ResListArgs)
 
             if value is None and not opts.urn:
                 raise TypeError("Missing required property 'value'")
             __props__.__dict__["value"] = value
-        super(Resource, __self__).__init__(
-            'names:index:Resource',
+        super(ResList, __self__).__init__(
+            'names:index:ResList',
             resource_name,
             __props__,
             opts)
@@ -93,9 +93,9 @@ class Resource(pulumi.CustomResource):
     @staticmethod
     def get(resource_name: str,
             id: pulumi.Input[str],
-            opts: Optional[pulumi.ResourceOptions] = None) -> 'Resource':
+            opts: Optional[pulumi.ResourceOptions] = None) -> 'ResList':
         """
-        Get an existing Resource resource's state with the given name, id, and optional extra
+        Get an existing ResList resource's state with the given name, id, and optional extra
         properties used to qualify the lookup.
 
         :param str resource_name: The unique name of the resulting resource.
@@ -104,10 +104,10 @@ class Resource(pulumi.CustomResource):
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
 
-        __props__ = ResourceArgs.__new__(ResourceArgs)
+        __props__ = ResListArgs.__new__(ResListArgs)
 
         __props__.__dict__["value"] = None
-        return Resource(resource_name, opts=opts, __props__=__props__)
+        return ResList(resource_name, opts=opts, __props__=__props__)
 
     @_builtins.property
     @pulumi.getter

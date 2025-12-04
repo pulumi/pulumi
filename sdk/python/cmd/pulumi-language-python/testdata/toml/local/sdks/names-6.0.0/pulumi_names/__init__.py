@@ -7,8 +7,10 @@ from . import _utilities
 import typing
 # Export this package's modules as members:
 from .provider import *
-from .resource import *
-from .resource_map import *
+from .res_array import *
+from .res_list import *
+from .res_map import *
+from .res_resource import *
 _utilities.register(
     resource_modules="""
 [
@@ -17,8 +19,10 @@ _utilities.register(
   "mod": "index",
   "fqn": "pulumi_names",
   "classes": {
-   "names:index:Resource": "Resource",
-   "names:index:ResourceMap": "ResourceMap"
+   "names:index:ResArray": "ResArray",
+   "names:index:ResList": "ResList",
+   "names:index:ResMap": "ResMap",
+   "names:index:ResResource": "ResResource"
   }
  }
 ]

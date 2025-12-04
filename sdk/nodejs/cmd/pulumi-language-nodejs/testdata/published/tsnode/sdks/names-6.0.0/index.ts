@@ -10,25 +10,39 @@ export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
 utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 
-export { ResourceArgs } from "./resource";
-export type Resource = import("./resource").Resource;
-export const Resource: typeof import("./resource").Resource = null as any;
-utilities.lazyLoad(exports, ["Resource"], () => require("./resource"));
+export { ResArrayArgs } from "./resArray";
+export type ResArray = import("./resArray").ResArray;
+export const ResArray: typeof import("./resArray").ResArray = null as any;
+utilities.lazyLoad(exports, ["ResArray"], () => require("./resArray"));
 
-export { ResourceMapArgs } from "./resourceMap";
-export type ResourceMap = import("./resourceMap").ResourceMap;
-export const ResourceMap: typeof import("./resourceMap").ResourceMap = null as any;
-utilities.lazyLoad(exports, ["ResourceMap"], () => require("./resourceMap"));
+export { ResListArgs } from "./resList";
+export type ResList = import("./resList").ResList;
+export const ResList: typeof import("./resList").ResList = null as any;
+utilities.lazyLoad(exports, ["ResList"], () => require("./resList"));
+
+export { ResMapArgs } from "./resMap";
+export type ResMap = import("./resMap").ResMap;
+export const ResMap: typeof import("./resMap").ResMap = null as any;
+utilities.lazyLoad(exports, ["ResMap"], () => require("./resMap"));
+
+export { ResResourceArgs } from "./resResource";
+export type ResResource = import("./resResource").ResResource;
+export const ResResource: typeof import("./resResource").ResResource = null as any;
+utilities.lazyLoad(exports, ["ResResource"], () => require("./resResource"));
 
 
 const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
         switch (type) {
-            case "names:index:Resource":
-                return new Resource(name, <any>undefined, { urn })
-            case "names:index:ResourceMap":
-                return new ResourceMap(name, <any>undefined, { urn })
+            case "names:index:ResArray":
+                return new ResArray(name, <any>undefined, { urn })
+            case "names:index:ResList":
+                return new ResList(name, <any>undefined, { urn })
+            case "names:index:ResMap":
+                return new ResMap(name, <any>undefined, { urn })
+            case "names:index:ResResource":
+                return new ResResource(name, <any>undefined, { urn })
             default:
                 throw new Error(`unknown resource type ${type}`);
         }
