@@ -194,22 +194,25 @@ func (p dirPlugin) writeToDir(dstRoot string) error {
 			return os.Mkdir(dstPath, 0o700)
 		}
 
-		src, err := os.Open(srcPath)
-		if err != nil {
-			return err
-		}
-
 		info, err := d.Info()
 		if err != nil {
 			return err
 		}
 
-		bytes, err := io.ReadAll(src)
+		src, err := os.Open(srcPath)
 		if err != nil {
 			return err
 		}
+		defer src.Close()
 
-		return os.WriteFile(dstPath, bytes, info.Mode())
+		dst, err := os.OpenFile(dstPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, info.Mode())
+		if err != nil {
+			return err
+		}
+		defer dst.Close()
+
+		_, err = io.Copy(dst, src)
+		return err
 	})
 }
 

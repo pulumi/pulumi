@@ -148,10 +148,8 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				testPlugin := path.Join(dir, "resource-testpackage")
 				err := os.MkdirAll(testPlugin, 0o755)
 				require.NoError(t, err)
-				readmeFile, err := os.Create(path.Join(testPlugin, "README.md"))
-				require.NoError(t, err)
-				defer contract.IgnoreClose(readmeFile)
-				_, err = readmeFile.WriteString("# README from the installed plugin\nThis is a test readme.")
+				err = os.WriteFile(path.Join(testPlugin, "README.md"),
+					[]byte("# README from the installed plugin\nThis is a test readme."), 0o600)
 				require.NoError(t, err)
 				return dir
 			},
@@ -392,7 +390,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				pluginDir: pluginDir,
 			}
 
-			err := cmd.Run(context.Background(), tt.args, packageSource, tt.packageParams)
+			err := cmd.Run(t.Context(), tt.args, packageSource, tt.packageParams)
 			if tt.expectedErr != "" {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.expectedErr)
