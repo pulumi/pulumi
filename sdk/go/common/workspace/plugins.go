@@ -1002,7 +1002,6 @@ type PluginSpec struct {
 	Kind              apitype.PluginKind // the kind of the plugin (language, resource, etc).
 	Version           *semver.Version    // the plugin's semantic version, if present.
 	PluginDownloadURL string             // an optional server to use when downloading this plugin.
-	PluginDir         string             // if set, will be used as the root plugin dir instead of ~/.pulumi/plugins.
 
 	// if set will be used to validate the plugin downloaded matches. This is keyed by "$os-$arch", e.g. "linux-x64".
 	Checksums map[string][]byte
@@ -1114,7 +1113,7 @@ func parsePluginSpecFromURL(
 	}
 	// We're purposely dropping any authentication info from the URL here. The name is used as
 	// the folder name for writing the plugin to disk, and we 1) don't want to write secrets
-	// in the folder name, 2) want to be able to reuse the same plugin even if the auth infoo
+	// in the folder name, 2) want to be able to reuse the same plugin even if the auth info
 	// changes and 3) avoid issues with the auth info being too long for a folder name.
 	urlWithoutAuth := &url.URL{
 		Scheme: parsedURL.Scheme,
@@ -1218,13 +1217,9 @@ func (spec PluginSpec) File() string {
 
 // DirPath returns the directory where this plugin should be installed.
 func (spec PluginSpec) DirPath() (string, error) {
-	var err error
-	dir := spec.PluginDir
-	if dir == "" {
-		dir, err = GetPluginDir()
-		if err != nil {
-			return "", err
-		}
+	dir, err := GetPluginDir()
+	if err != nil {
+		return "", err
 	}
 
 	return filepath.Join(dir, spec.Dir()), nil
