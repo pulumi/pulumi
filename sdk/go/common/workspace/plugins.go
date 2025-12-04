@@ -998,10 +998,21 @@ type Parameterization struct {
 
 // PluginSpec provides basic specification for a plugin.
 type PluginSpec struct {
-	Name              string             // the simple name of the plugin.
-	Kind              apitype.PluginKind // the kind of the plugin (language, resource, etc).
-	Version           *semver.Version    // the plugin's semantic version, if present.
-	PluginDownloadURL string             // an optional server to use when downloading this plugin.
+	Name    string             // the simple name of the plugin.
+	Kind    apitype.PluginKind // the kind of the plugin (language, resource, etc).
+	Version *semver.Version    // the plugin's semantic version, if present.
+
+	// A path into the folder that the plugin relies on for downloads.
+	StoragePath string
+	// The spec for the underlying files that the plugin depends on.
+	//
+	// Multiple plugins may share a single storage.
+	Storage StorageSpec
+}
+
+type StorageSpec struct {
+	ID                string // The unique ID of the object to download
+	PluginDownloadURL string // an optional server to use when downloading this plugin.
 
 	// if set will be used to validate the plugin downloaded matches. This is keyed by "$os-$arch", e.g. "linux-x64".
 	Checksums map[string][]byte
@@ -1046,9 +1057,9 @@ func NewPluginSpec(
 		if inference.explicitPluginDownloadURL {
 			return PluginSpec{}, errors.New("cannot specify a plugin download URL when the plugin name is a URL")
 		}
-		spec.PluginDownloadURL = pluginDownloadURL
+		spec.Storage.PluginDownloadURL = pluginDownloadURL
 	}
-	spec.Checksums = checksums
+	spec.Storage.Checksums = checksums
 
 	return spec, nil
 }
@@ -1120,16 +1131,20 @@ func parsePluginSpecFromURL(
 		Host:   parsedURL.Host,
 		Path:   parsedURL.Path,
 	}
-	nameURL, _, err := gitutil.ParseGitRepoURL(urlWithoutAuth.String())
+	nameURL, path, err := gitutil.ParseGitRepoURL(urlWithoutAuth.String())
 	if err != nil {
 		return PluginSpec{}, inference, err
 	}
 	pluginSpec := PluginSpec{
-		Name:    strings.ReplaceAll(strings.TrimPrefix(nameURL, "https://"), "/", "_"),
-		Kind:    kind,
-		Version: version,
-		// Prefix the url with `git://`, so we can later recognize this as a git URL.
-		PluginDownloadURL: func(url url.URL) string { url.Scheme = "git"; return url.String() }(*parsedURL),
+		Name:        strings.ReplaceAll(strings.TrimPrefix(urlWithoutAuth.String(), "https://"), "/", "_"),
+		Kind:        kind,
+		Version:     version,
+		StoragePath: path,
+		Storage: StorageSpec{
+			// Prefix the url with `git://`, so we can later recognize this as a git URL.
+			PluginDownloadURL: func(url url.URL) string { url.Scheme = "git"; return url.String() }(*parsedURL),
+			ID:                strings.ReplaceAll(strings.TrimPrefix(nameURL, "https://"), "/", "_"),
+		},
 	}
 	inference.explicitPluginDownloadURL = true
 
@@ -1168,29 +1183,25 @@ func parsePluginSpecFromName(
 	})
 
 	return PluginSpec{
-		Name:    spec,
-		Kind:    kind,
-		Version: version,
+		Name:        spec,
+		Kind:        kind,
+		Version:     version,
+		StoragePath: ".",
+		Storage: StorageSpec{
+			ID: spec,
+		},
 	}, inference, err
 }
 
 // IsGitPlugin returns if the plugin comes from the git source
 func (spec PluginSpec) IsGitPlugin() bool {
-	return strings.HasPrefix(spec.PluginDownloadURL, "git://")
+	return strings.HasPrefix(spec.Storage.PluginDownloadURL, "git://")
 }
 
 // LocalName returns the local name of the plugin, which is used in the directory name, and a path
 // within that directory if the plugin is located in a subdirectory.
 func (spec PluginSpec) LocalName() (string, string) {
-	if spec.IsGitPlugin() {
-		trimmed := strings.TrimPrefix(spec.PluginDownloadURL, "git://")
-		url, path, err := gitutil.ParseGitRepoURL("https://" + strings.TrimPrefix(trimmed, "git://"))
-		if err != nil {
-			return strings.ReplaceAll(trimmed, "/", "_"), ""
-		}
-		return strings.ReplaceAll(strings.TrimPrefix(url, "https://"), "/", "_"), path
-	}
-	return spec.Name, ""
+	return spec.Name, spec.StoragePath
 }
 
 // Dir gets the expected plugin directory for this plugin.
