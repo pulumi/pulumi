@@ -148,7 +148,7 @@ func (p *poetry) InstallDependencies(ctx context.Context,
 		}
 	}
 
-	poetryCmd := exec.Command(p.poetryExecutable, "install", "--no-ansi") //nolint:gosec
+	poetryCmd := exec.CommandContext(ctx, p.poetryExecutable, "install", "--no-ansi") //nolint:gosec
 	if useLanguageVersionTools {
 		// For poetry to work nicely with pyenv, we need to make poetry use the active python,
 		// otherwise poetry will use the python version used to run poetry itself.
@@ -236,7 +236,7 @@ func (p *poetry) LinkPackages(ctx context.Context, packages map[string]string) e
 	args := []string{"add", "--lock"} // Add package to lockfile only
 	paths := slices.Collect(maps.Values(packages))
 	args = append(args, paths...)
-	cmd := exec.Command("poetry", args...)
+	cmd := exec.CommandContext(ctx, "poetry", args...)
 	if err := cmd.Run(); err != nil {
 		return errutil.ErrorWithStderr(err, "linking packages")
 	}
