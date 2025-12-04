@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,14 +39,16 @@ func init() {
 					RequireStackResource(l, err, changes)
 
 					// Check we have the one simple resource in the snapshot, its provider and the stack.
-					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+					require.Len(l, snap.Resources, 6, "expected 6 resources in snapshot")
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:names")
-					simple := RequireSingleResource(l, snap.Resources, "names:index:ResourceMap")
 
-					want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
-					assert.Equal(l, want, simple.Inputs, "expected inputs to be {value: true}")
-					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
+					for _, typ := range (&providers.NamesProvider{}).Types() {
+						simple := RequireSingleResource(l, snap.Resources, tokens.Type(typ))
+						want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
+						assert.Equal(l, want, simple.Inputs, "expected inputs to be {value: true}")
+						assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
+					}
 				},
 			},
 		},

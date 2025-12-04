@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 
 	"github.com/blang/semver"
 
@@ -36,7 +37,17 @@ type NamesProvider struct {
 
 var _ plugin.Provider = (*NamesProvider)(nil)
 
-func (p *NamesProvider) Close() error {
+func (p *NamesProvider) Types() []string {
+	prefix := p.Pkg().Name().String() + ":index:"
+	return []string{
+		prefix + "ResMap",
+		prefix + "ResArray",
+		prefix + "ResList",
+		prefix + "ResResource",
+	}
+}
+
+func (*NamesProvider) Close() error {
 	return nil
 }
 
@@ -62,29 +73,23 @@ func (p *NamesProvider) GetSchema(
 	}
 	resourceRequired := []string{"value"}
 
+	resources := map[string]schema.ResourceSpec{}
+	for _, urn := range p.Types() {
+		resources[urn] = schema.ResourceSpec{
+			ObjectTypeSpec: schema.ObjectTypeSpec{
+				Type:       "object",
+				Properties: resourceProperties,
+				Required:   resourceRequired,
+			},
+			InputProperties: resourceProperties,
+			RequiredInputs:  resourceRequired,
+		}
+	}
+
 	pkg := schema.PackageSpec{
-		Name:    p.Pkg().String(),
-		Version: "6.0.0",
-		Resources: map[string]schema.ResourceSpec{
-			p.Pkg().String() + ":index:Resource": {
-				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Type:       "object",
-					Properties: resourceProperties,
-					Required:   resourceRequired,
-				},
-				InputProperties: resourceProperties,
-				RequiredInputs:  resourceRequired,
-			},
-			p.Pkg().String() + ":index:ResourceMap": {
-				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Type:       "object",
-					Properties: resourceProperties,
-					Required:   resourceRequired,
-				},
-				InputProperties: resourceProperties,
-				RequiredInputs:  resourceRequired,
-			},
-		},
+		Name:      p.Pkg().String(),
+		Version:   "6.0.0",
+		Resources: resources,
 	}
 
 	jsonBytes, err := json.Marshal(pkg)
@@ -124,9 +129,7 @@ func (p *NamesProvider) CheckConfig(
 func (p *NamesProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
-	switch req.URN.Type().String() { //nolint:exhaustive
-	case p.Pkg().String() + ":index:Resource", p.Pkg().String() + ":index:ResourceMap":
-	default:
+	if !slices.Contains(p.Types(), req.URN.Type().String()) {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
 		}, nil
@@ -156,10 +159,7 @@ func (p *NamesProvider) Check(
 func (p *NamesProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
-	switch req.URN.Type().String() { //nolint:exhaustive
-	case p.Pkg().String() + ":index:Resource",
-		p.Pkg().String() + ":index:ResourceMap":
-	default:
+	if !slices.Contains(p.Types(), req.URN.Type().String()) {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
@@ -180,10 +180,7 @@ func (p *NamesProvider) Create(
 func (p *NamesProvider) Update(
 	_ context.Context, req plugin.UpdateRequest,
 ) (plugin.UpdateResponse, error) {
-	switch req.URN.Type().String() { //nolint:exhaustive
-	case p.Pkg().String() + ":index:Resource",
-		p.Pkg().String() + ":index:ResourceMap":
-	default:
+	if !slices.Contains(p.Types(), req.URN.Type().String()) {
 		return plugin.UpdateResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
@@ -237,10 +234,7 @@ func (p *NamesProvider) Delete(
 }
 
 func (p *NamesProvider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-	switch req.URN.Type().String() { //nolint:exhaustive
-	case p.Pkg().String() + ":index:Resource",
-		p.Pkg().String() + ":index:ResourceMap":
-	default:
+	if !slices.Contains(p.Types(), req.URN.Type().String()) {
 		return plugin.ReadResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
