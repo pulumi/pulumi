@@ -561,9 +561,9 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             from .. import output as output_mod
             from .rpc import serialize_property
 
-            resolved = await output_mod.Output.from_input(
+            resolved = output_mod.Output.from_input(
                 opts.replacement_trigger
-            ).future()
+            )
             replacement_trigger = await serialize_property(resolved, [], "replacement_trigger", None, None, None, False, False)
 
         result = resource_pb2.TransformResourceOptions(

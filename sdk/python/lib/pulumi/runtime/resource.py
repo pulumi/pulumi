@@ -255,7 +255,7 @@ async def prepare_resource(
 
     replacement_trigger: Optional[Any] = None
     if opts is not None and opts.replacement_trigger is not None:
-        replacement_trigger = await Output.from_input(opts.replacement_trigger).future()
+        replacement_trigger = Output.from_input(opts.replacement_trigger)
 
     supports_alias_specs = await settings.monitor_supports_alias_specs()
     aliases = await prepare_aliases(res, opts, supports_alias_specs)
