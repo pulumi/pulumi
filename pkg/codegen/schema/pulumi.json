@@ -685,6 +685,10 @@
                     "description": "Indicates that the implementation of the function should not be generated from the schema, and is instead provided out-of-band by the package author",
                     "type": "boolean"
                 },
+                "liftSingleValueMethodReturns": {
+                    "description": "Determines whether to make single-return-value methods return an output struct or the value.",
+                    "type": "boolean"
+                },
                 "overlaySupportedLanguages": {
                     "description": "A list of languages that the overlay supports. This only has an effect if the Resource is an Overlay (isOverlay == true).  Supported values are 'nodejs', 'python', 'go', 'csharp', 'java', 'yaml'.",
                     "type": "array",

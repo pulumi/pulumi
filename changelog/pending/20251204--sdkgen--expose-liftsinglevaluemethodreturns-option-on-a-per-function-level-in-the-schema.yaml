@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdkgen
+  description: Expose liftSingleValueMethodReturns option on a per function level in the schema

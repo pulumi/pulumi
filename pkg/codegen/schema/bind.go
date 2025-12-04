@@ -1883,19 +1883,20 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 	}
 
 	fn := &Function{
-		PackageReference:          t.externalPackage(),
-		Token:                     token,
-		Comment:                   spec.Description,
-		Inputs:                    inputs,
-		MultiArgumentInputs:       len(spec.MultiArgumentInputs) > 0,
-		InlineObjectAsReturnType:  inlineObjectAsReturnType,
-		Outputs:                   outputs,
-		ReturnType:                returnType,
-		ReturnTypePlain:           returnTypePlain,
-		DeprecationMessage:        spec.DeprecationMessage,
-		Language:                  makeLanguageMap(spec.Language),
-		IsOverlay:                 spec.IsOverlay,
-		OverlaySupportedLanguages: spec.OverlaySupportedLanguages,
+		PackageReference:             t.externalPackage(),
+		Token:                        token,
+		Comment:                      spec.Description,
+		Inputs:                       inputs,
+		MultiArgumentInputs:          len(spec.MultiArgumentInputs) > 0,
+		InlineObjectAsReturnType:     inlineObjectAsReturnType,
+		Outputs:                      outputs,
+		ReturnType:                   returnType,
+		ReturnTypePlain:              returnTypePlain,
+		DeprecationMessage:           spec.DeprecationMessage,
+		Language:                     makeLanguageMap(spec.Language),
+		IsOverlay:                    spec.IsOverlay,
+		OverlaySupportedLanguages:    spec.OverlaySupportedLanguages,
+		LiftSingleValueMethodReturns: spec.LiftSingleValueMethodReturns,
 	}
 	t.functionDefs[token] = fn
 

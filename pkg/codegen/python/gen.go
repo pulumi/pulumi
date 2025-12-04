@@ -1729,7 +1729,8 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 		fun := method.Function
 
 		returnType := returnTypeObject(fun)
-		shouldLiftReturn := mod.liftSingleValueMethodReturns && returnType != nil && len(returnType.Properties) == 1
+		singleValueReturn := mod.liftSingleValueMethodReturns || fun.LiftSingleValueMethodReturns
+		shouldLiftReturn := singleValueReturn && returnType != nil && len(returnType.Properties) == 1
 
 		// If there is a return type, emit it.
 		var retTypeName, retTypeNameQualified, retTypeNameQualifiedOutput, methodRetType string

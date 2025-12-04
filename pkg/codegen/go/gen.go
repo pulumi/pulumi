@@ -2490,7 +2490,8 @@ func (pkg *pkgContext) genResource(
 			}
 		}
 
-		liftReturn := pkg.liftSingleValueMethodReturns && objectReturnType != nil && len(objectReturnType.Properties) == 1
+		singleValueReturn := pkg.liftSingleValueMethodReturns || f.LiftSingleValueMethodReturns
+		liftReturn := singleValueReturn && objectReturnType != nil && len(objectReturnType.Properties) == 1
 
 		var args []*schema.Property
 		if f.Inputs != nil {

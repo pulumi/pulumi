@@ -569,6 +569,8 @@ type Function struct {
 	// the Resource is an Overlay (IsOverlay == true).
 	// Supported values are "nodejs", "python", "go", "csharp", "java", "yaml"
 	OverlaySupportedLanguages []string
+	// Determines whether to make single-return-value methods return an output struct or the value.
+	LiftSingleValueMethodReturns bool
 }
 
 // NeedsOutputVersion determines if codegen should emit a ${fn}Output version that
@@ -1271,15 +1273,16 @@ func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
 	}
 
 	return FunctionSpec{
-		Description:               f.Comment,
-		DeprecationMessage:        f.DeprecationMessage,
-		IsOverlay:                 f.IsOverlay,
-		OverlaySupportedLanguages: f.OverlaySupportedLanguages,
-		Inputs:                    inputs,
-		MultiArgumentInputs:       multiArgumentInputs,
-		Outputs:                   outputs,
-		ReturnType:                returnType,
-		Language:                  lang,
+		Description:                  f.Comment,
+		DeprecationMessage:           f.DeprecationMessage,
+		IsOverlay:                    f.IsOverlay,
+		LiftSingleValueMethodReturns: f.LiftSingleValueMethodReturns,
+		OverlaySupportedLanguages:    f.OverlaySupportedLanguages,
+		Inputs:                       inputs,
+		MultiArgumentInputs:          multiArgumentInputs,
+		Outputs:                      outputs,
+		ReturnType:                   returnType,
+		Language:                     lang,
 	}, nil
 }
 
@@ -1863,6 +1866,8 @@ type FunctionSpec struct {
 	// the Resource is an Overlay (IsOverlay == true).
 	// Supported values are "nodejs", "python", "go", "csharp", "java", "yaml"
 	OverlaySupportedLanguages []string `json:"overlaySupportedLanguages,omitempty" yaml:"overlaySupportedLanguages,omitempty"` //nolint:lll
+	// Determines whether to make single-return-value methods return an output struct or the value.
+	LiftSingleValueMethodReturns bool `json:"liftSingleValueMethodReturns,omitempty" yaml:"liftSingleValueMethodReturns,omitempty"`
 }
 
 func emptyObject(data RawMessage) (bool, error) {
@@ -1930,6 +1935,12 @@ func unmarshalFunctionSpec(funcSpec *FunctionSpec, data map[string]RawMessage) e
 		}
 	}
 
+	if liftSingleValueMethodReturns, ok := data["liftSingleValueMethodReturns"]; ok {
+		if err := json.Unmarshal(liftSingleValueMethodReturns, &funcSpec.LiftSingleValueMethodReturns); err != nil {
+			return err
+		}
+	}
+
 	if overlaySupportedLanguages, ok := data["overlaySupportedLanguages"]; ok {
 		if err := json.Unmarshal(overlaySupportedLanguages, &funcSpec.OverlaySupportedLanguages); err != nil {
 			return err
@@ -1993,6 +2004,10 @@ func (funcSpec FunctionSpec) marshalFunctionSpec() (map[string]any, error) {
 	if funcSpec.IsOverlay {
 		// the default is false, so only write the property when it is true
 		data["isOverlay"] = true
+	}
+
+	if funcSpec.LiftSingleValueMethodReturns {
+		data["liftSingleValueMethodReturns"] = true
 	}
 
 	if len(funcSpec.OverlaySupportedLanguages) > 0 {

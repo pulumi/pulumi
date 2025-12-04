@@ -2016,6 +2016,23 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "lift-single-value-enabled",
+			fspec: FunctionSpec{
+				LiftSingleValueMethodReturns: true,
+				ReturnType: &ReturnTypeSpec{
+					TypeSpec: &TypeSpec{
+						Type: "integer",
+					},
+				},
+			},
+			serial: map[string]any{
+				"liftSingleValueMethodReturns": true,
+				"outputs": map[string]any{
+					"type": "integer",
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {

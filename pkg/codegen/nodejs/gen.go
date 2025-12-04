@@ -951,7 +951,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 			}
 		}
 
-		liftReturn := mod.liftSingleValueMethodReturns && objectReturnType != nil && len(objectReturnType.Properties) == 1
+		singleValueReturn := mod.liftSingleValueMethodReturns || fun.LiftSingleValueMethodReturns
+		liftReturn := singleValueReturn && objectReturnType != nil && len(objectReturnType.Properties) == 1
 
 		// Write the TypeDoc/JSDoc for the data source function.
 		fmt.Fprint(w, "\n")

@@ -1153,7 +1153,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			}
 		}
 
-		liftReturn := mod.liftSingleValueMethodReturns && objectReturnType != nil && len(objectReturnType.Properties) == 1
+		singleValueReturn := mod.liftSingleValueMethodReturns || fun.LiftSingleValueMethodReturns
+		liftReturn := singleValueReturn && objectReturnType != nil && len(objectReturnType.Properties) == 1
 
 		fmt.Fprintf(w, "\n")
 
