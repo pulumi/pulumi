@@ -203,18 +203,50 @@ func TestProviderSchemas(t *testing.T) {
 			resp, err := provider.GetSchema(t.Context(), plugin.GetSchemaRequest{})
 			require.NoError(t, err)
 
-			var pkg schema.PackageSpec
-			err = json.Unmarshal(resp.Schema, &pkg)
+			var spec schema.PackageSpec
+			err = json.Unmarshal(resp.Schema, &spec)
 			require.NoError(t, err)
 
-			_, diags, err := schema.BindSpec(pkg, loader, schema.ValidationOptions{
+			pkg, diags, err := schema.BindSpec(spec, loader, schema.ValidationOptions{
 				AllowDanglingReferences: true,
 			})
 			for _, diag := range diags {
-				t.Logf("%s: %v", pkg.Name, diag)
+				t.Logf("%s: %v", spec.Name, diag)
 			}
-			require.NoError(t, err, "bind schema for provider %s: %v", pkg.Name, err)
-			require.False(t, diags.HasErrors(), "bind schema for provider %s: %v", pkg.Name, diags)
+			require.NoError(t, err, "bind schema for provider %s: %v", spec.Name, err)
+			require.False(t, diags.HasErrors(), "bind schema for provider %s: %v", spec.Name, diags)
+
+			// Ensure that none of the language options are set, conformance tests are supposed to be language
+			// agnostic.
+			assert.Empty(t, pkg.Language,
+				"provider %s has language options set in schema", pkg.Name)
+			for name, res := range pkg.Resources {
+				assert.Empty(t, res.Language,
+					"provider %s resource %s has language options set in schema", pkg.Name, name)
+				for propertyName, prop := range res.Properties {
+					assert.Empty(t, prop.Language,
+						"provider %s resource %s property %s has language options set in schema", pkg.Name, name, propertyName)
+				}
+				for propertyName, prop := range res.InputProperties {
+					assert.Empty(t, prop.Language,
+						"provider %s resource %s input property %s has language options set in schema", pkg.Name, name, propertyName)
+				}
+			}
+			for name, data := range pkg.Functions {
+				assert.Empty(t, data.Language,
+					"provider %s data source %s has language options set in schema", pkg.Name, name)
+
+				check := func(obj *schema.ObjectType) {
+					if obj != nil {
+						for propertyName, prop := range obj.Properties {
+							assert.Empty(t, prop.Language,
+								"provider %s resource %s property %s has language options set in schema", pkg.Name, name, propertyName)
+						}
+					}
+				}
+				check(data.Inputs)
+				check(data.Outputs)
+			}
 		}
 	}
 }

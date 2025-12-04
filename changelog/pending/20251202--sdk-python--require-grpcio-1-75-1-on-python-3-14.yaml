@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/python
-  description: Require `grpcio>=1.75.1` on Python 3.14

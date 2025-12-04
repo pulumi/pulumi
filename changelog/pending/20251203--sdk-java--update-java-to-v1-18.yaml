@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/java
-  description: Update java to v1.18

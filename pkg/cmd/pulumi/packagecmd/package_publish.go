@@ -63,7 +63,6 @@ type packagePublishCmd struct {
 	extractSchema func(
 		pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
 	) (*schema.PackageSpec, *workspace.PackageSpec, error)
-	pluginDir string
 }
 
 func newPackagePublishCmd() *cobra.Command {
@@ -319,7 +318,6 @@ func (cmd *packagePublishCmd) findReadme(ctx context.Context, packageSrc string)
 	if err != nil {
 		return "", fmt.Errorf("failed to create plugin spec: %w", err)
 	}
-	pluginSpec.PluginDir = cmd.pluginDir
 
 	pluginDir, err := pluginSpec.DirPath()
 	if err != nil {

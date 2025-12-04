@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/package
-  description: Add `pulumi package delete` command to delete package versions from the Pulumi Registry
