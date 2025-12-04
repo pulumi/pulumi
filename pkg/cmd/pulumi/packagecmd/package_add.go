@@ -86,7 +86,12 @@ from the parameters, as in:
   pulumi package add <provider> -- --provider-parameter-flag value
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			pluginOrProject, err := detectEnclosingPluginOrProject(cmd.Context())
+			wd, err := os.Getwd()
+			if err != nil {
+				return err
+			}
+
+			pluginOrProject, err := detectEnclosingPluginOrProject(cmd.Context(), wd)
 			if err != nil {
 				return err
 			}
@@ -180,20 +185,10 @@ func schemaDisplayName(schema *schema.Package) string {
 }
 
 // Detect the nearest enclosing Pulumi Project or Pulumi Plugin root directory.
-func detectEnclosingPluginOrProject(ctx context.Context) (pluginOrProject, error) {
-	wd, err := os.Getwd()
-	if err != nil {
-		return pluginOrProject{}, err
-	}
-
+func detectEnclosingPluginOrProject(ctx context.Context, wd string) (pluginOrProject, error) {
 	pluginPath, detectPluginErr := workspace.DetectPluginPathFrom(wd)
 	if detectPluginErr != nil && !errors.Is(detectPluginErr, workspace.ErrPluginNotFound) {
-		return pluginOrProject{}, fmt.Errorf("unable to detect if %q is in a plugin path: %w", wd, err)
-	}
-
-	projectPath, detectProjectErr := workspace.DetectProjectPathFrom(wd)
-	if detectProjectErr != nil && !errors.Is(detectProjectErr, workspace.ErrProjectNotFound) {
-		return pluginOrProject{}, fmt.Errorf("unable to detect if %q is in a plugin path: %w", wd, err)
+		return pluginOrProject{}, fmt.Errorf("unable to detect if %q is in a plugin path: %w", wd, detectPluginErr)
 	}
 
 	loadPlugin := func() (pluginOrProject, error) {
@@ -211,6 +206,12 @@ func detectEnclosingPluginOrProject(ctx context.Context) (pluginOrProject, error
 			reg: unauthenticatedregistry.New(cmdutil.Diag(), env.Global()),
 		}, nil
 	}
+
+	projectPath, detectProjectErr := workspace.DetectProjectPathFrom(wd)
+	if detectProjectErr != nil && !errors.Is(detectProjectErr, workspace.ErrProjectNotFound) {
+		return pluginOrProject{}, fmt.Errorf("unable to detect if %q is in a plugin path: %w", wd, detectProjectErr)
+	}
+
 	loadProject := func() (pluginOrProject, error) {
 		project, err := workspace.LoadProject(projectPath)
 		if err != nil {
