@@ -42,7 +42,6 @@ from .proto import (
 )
 from .rpc import (
     deserialize_properties,
-    deserialize_property,
     is_rpc_secret,
     serialize_properties,
     unwrap_rpc_secret,
