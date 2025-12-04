@@ -238,7 +238,7 @@ func TestBackendUpdateStackTags(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "dev", savedTags["env"])
 	assert.Equal(t, "team-foo", savedTags["owner"])
-	assert.Len(t, savedTags, 2) // Only the explicitly provided tags
+	require.Len(t, savedTags, 2) // Only the explicitly provided tags
 
 	// Test that stack caching works
 	stackTags := stack.Tags()
@@ -256,7 +256,7 @@ func TestBackendUpdateStackTags(t *testing.T) {
 	stackTags = stack.Tags()
 	assert.Equal(t, "prod", stackTags["env"])
 	assert.NotContains(t, stackTags, "owner") // Should be gone
-	assert.Len(t, stackTags, 1)               // Only the explicitly provided tag
+	require.Len(t, stackTags, 1)               // Only the explicitly provided tag
 }
 
 func TestStackTagsFiltering(t *testing.T) {
@@ -517,7 +517,7 @@ func TestStackTagsDoNotInterfereWithStackDiscovery(t *testing.T) {
 	stackTags := stack.Tags()
 	assert.Equal(t, "development", stackTags["environment"])
 	assert.Equal(t, "test-team", stackTags["owner"])
-	assert.Len(t, stackTags, 2) // Only the explicitly provided tags
+	require.Len(t, stackTags, 2) // Only the explicitly provided tags
 
 	// Verify that the tags file exists but doesn't interfere
 	tagsPath := backend.stackTagsPath(ref)
