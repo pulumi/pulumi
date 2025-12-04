@@ -19,3 +19,10 @@ resource "unknownReplacementTrigger" "simple:index:Resource" {
 resource "notReplacementTrigger" "simple:index:Resource" {
     value = true
 }
+
+resource "secretReplacementTrigger" "simple:index:Resource" {
+    value = true
+    options {
+        replacementTrigger = secret([3, 2, 1])
+    }
+}
