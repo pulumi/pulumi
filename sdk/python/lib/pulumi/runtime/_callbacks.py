@@ -562,10 +562,10 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             from .. import output as output_mod
             from .rpc import serialize_property
 
-            resolved = output_mod.Output.from_input(
-                opts.replacement_trigger
+            resolved = output_mod.Output.from_input(opts.replacement_trigger)
+            replacement_trigger = await serialize_property(
+                resolved, [], "replacement_trigger", None, None, None, False, False
             )
-            replacement_trigger = await serialize_property(resolved, [], "replacement_trigger", None, None, None, False, False)
 
         result = resource_pb2.TransformResourceOptions(
             aliases=aliases or None,

@@ -1098,7 +1098,7 @@ def register_resource(
                     None,
                     None,
                     False,
-                    False
+                    False,
                 )
                 if resolver.replacement_trigger
                 else None,
