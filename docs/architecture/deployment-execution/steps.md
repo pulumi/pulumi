@@ -244,9 +244,8 @@ step error handling.
 
 ### ViewStep
 
-`ViewStep`s are virtual steps for view resources (auxiliary resources that providers
-create alongside primary resources). They communicate what happened to views for
-display and analysis, but don't perform provider operations.
+`ViewStep`s are virtual steps for [view resources](resources#view-resources). They communicate
+what happened to views for display and analysis, but don't perform provider operations.
 
 #### Application
 
