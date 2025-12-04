@@ -131,10 +131,13 @@ func DetectProjectStackDeploymentPath(stackName tokens.QName) (string, error) {
 	return filepath.Join(filepath.Dir(projPath), fileName), nil
 }
 
-var ErrProjectNotFound = errors.New("no project file found")
+var (
+	ErrProjectNotFound = errors.New("no project file found")
+	ErrPluginNotFound  = errors.New("no plugin file found")
+)
 
 // DetectProjectPathFrom locates the closest project from the given path, searching "upwards" in the directory
-// hierarchy.  If no project is found, an empty path is returned.
+// hierarchy.  If no project is found, ErrProjectNotFound is returned.
 func DetectProjectPathFrom(dir string) (string, error) {
 	var path string
 	_, err := fsutil.WalkUpDirs(dir, func(dir string) bool {
@@ -172,7 +175,7 @@ func DetectPolicyPackPathFrom(path string) (string, error) {
 }
 
 // DetectPluginPathFrom locates the closest plugin from the given path, searching "upwards" in the directory
-// hierarchy.  If no project is found, an empty path is returned.
+// hierarchy.  If no project is found, ErrPluginNotFound is returned.
 func DetectPluginPathFrom(dir string) (string, error) {
 	var path string
 	_, err := fsutil.WalkUpDirs(dir, func(dir string) bool {
@@ -181,7 +184,7 @@ func DetectPluginPathFrom(dir string) (string, error) {
 		return ok
 	})
 
-	// We special case permission errors to cause ErrProjectNotFound to return from this function. This is so
+	// We special case permission errors to cause ErrPluginNotFound to return from this function. This is so
 	// users can run pulumi with unreadable root directories.
 	if errors.Is(err, fs.ErrPermission) {
 		err = nil
@@ -189,6 +192,10 @@ func DetectPluginPathFrom(dir string) (string, error) {
 
 	if err != nil {
 		return "", fmt.Errorf("failed to locate PulumiPlugin.yaml file: %w", err)
+	}
+
+	if path == "" {
+		return "", ErrPluginNotFound
 	}
 
 	return path, nil

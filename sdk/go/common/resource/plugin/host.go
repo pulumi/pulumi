@@ -149,10 +149,11 @@ func collectPluginsFromPackages(
 			return nil, err
 		}
 		pluginProjectFile, err := workspace.DetectPluginPathFrom(path)
-		if err != nil {
+		pluginProjectFileNotFound := errors.Is(err, workspace.ErrPluginNotFound)
+		if err != nil && !pluginProjectFileNotFound {
 			return nil, err
 		}
-		if pluginProjectFile != "" {
+		if !pluginProjectFileNotFound {
 			pp, err := workspace.LoadPluginProject(pluginProjectFile)
 			if err != nil {
 				return nil, err
