@@ -375,12 +375,13 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 	defer pluginCtx.Close()
 
-	programInfo := plugin.NewProgramInfo(pluginCtx.Root, pluginCtx.Pwd, entryPoint, proj.Runtime.Options())
-	lang, err := pluginCtx.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
+	lang, err := pluginCtx.Host.LanguageRuntime(proj.Runtime.Name())
 	if err != nil {
 		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
 	}
 	defer lang.Close()
+
+	programInfo := plugin.NewProgramInfo(pluginCtx.Root, pluginCtx.Pwd, entryPoint, proj.Runtime.Options())
 
 	// Query the language runtime for additional options.
 	if args.promptRuntimeOptions != nil {

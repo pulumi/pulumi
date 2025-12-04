@@ -86,7 +86,7 @@ func (host *testPluginHost) CloseProvider(provider plugin.Provider) error {
 	return host.closeProvider(provider)
 }
 
-func (host *testPluginHost) LanguageRuntime(root string, info plugin.ProgramInfo) (plugin.LanguageRuntime, error) {
+func (host *testPluginHost) LanguageRuntime(root string) (plugin.LanguageRuntime, error) {
 	return nil, errors.New("unsupported")
 }
 

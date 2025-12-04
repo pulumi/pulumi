@@ -68,7 +68,6 @@ empty string.`,
 			if err != nil {
 				return fmt.Errorf("load provider: %w", err)
 			}
-			defer p.Provider.Close()
 
 			// If provider parameters have been provided, parameterize the provider with them before requesting a mapping.
 			if len(args) > 3 {

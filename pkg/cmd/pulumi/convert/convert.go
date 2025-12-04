@@ -237,8 +237,7 @@ func runConvert(
 		) (hcl.Diagnostics, error) {
 			contract.Requiref(proj != nil, "proj", "must not be nil")
 
-			programInfo := plugin.NewProgramInfo(cwd, cwd, ".", nil)
-			languagePlugin, err := pCtx.Host.LanguageRuntime(language, programInfo)
+			languagePlugin, err := pCtx.Host.LanguageRuntime(language)
 			if err != nil {
 				return nil, err
 			}
@@ -554,7 +553,7 @@ func generateAndLinkSdksForPackages(
 			continue
 		}
 
-		pkgSchema, _, err := packages.SchemaFromSchemaSource(
+		pkgSpec, _, err := packages.SchemaFromSchemaSource(
 			pctx,
 			pkg.Name,
 			&plugin.ParameterizeValue{Value: pkg.Parameterization.Value},
@@ -562,6 +561,11 @@ func generateAndLinkSdksForPackages(
 		)
 		if err != nil {
 			return fmt.Errorf("creating package schema: %w", err)
+		}
+
+		pkgSchema, err := packages.BindSpec(*pkgSpec)
+		if err != nil {
+			return fmt.Errorf("binding package schema: %w", err)
 		}
 
 		diags, err := packages.GenSDK(

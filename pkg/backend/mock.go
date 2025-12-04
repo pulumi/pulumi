@@ -829,9 +829,10 @@ func (m MockTarReader) Tar() *tar.Reader {
 }
 
 type MockCloudRegistry struct {
-	PublishPackageF  func(context.Context, apitype.PackagePublishOp) error
-	PublishTemplateF func(context.Context, apitype.TemplatePublishOp) error
-	GetPackageF      func(
+	PublishPackageF       func(context.Context, apitype.PackagePublishOp) error
+	PublishTemplateF      func(context.Context, apitype.TemplatePublishOp) error
+	DeletePackageVersionF func(ctx context.Context, source, publisher, name string, version semver.Version) error
+	GetPackageF           func(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.PackageMetadata, error)
 	ListPackagesF func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
@@ -849,6 +850,15 @@ func (mr *MockCloudRegistry) PublishPackage(ctx context.Context, op apitype.Pack
 		return mr.PublishPackageF(ctx, op)
 	}
 	panic("not implemented: MockCloudRegistry.PublishPackage")
+}
+
+func (mr *MockCloudRegistry) DeletePackageVersion(
+	ctx context.Context, source, publisher, name string, version semver.Version,
+) error {
+	if mr.DeletePackageVersionF != nil {
+		return mr.DeletePackageVersionF(ctx, source, publisher, name, version)
+	}
+	panic("not implemented: MockCloudRegistry.DeletePackageVersion")
 }
 
 func (mr *MockCloudRegistry) GetPackage(

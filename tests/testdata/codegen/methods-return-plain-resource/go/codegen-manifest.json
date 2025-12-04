@@ -1,5 +1,6 @@
 {
   "emittedFiles": [
+    ".gitattributes",
     "metaprovider/configurer.go",
     "metaprovider/doc.go",
     "metaprovider/init.go",

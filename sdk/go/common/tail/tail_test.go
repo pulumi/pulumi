@@ -100,12 +100,7 @@ func TestWaitsForFileToExistRelativePath(t *testing.T) {
 	tailTest, cleanup := NewTailTest("waits-for-file-to-exist-relative", t)
 	defer cleanup()
 
-	oldWD, err := os.Getwd()
-	if err != nil {
-		tailTest.Fatal(err)
-	}
-	require.NoError(t, os.Chdir(tailTest.path))
-	defer contract.IgnoreError(os.Chdir(oldWD))
+	t.Chdir(tailTest.path)
 
 	tail, err := File("test.txt", Config{})
 	if err != nil {

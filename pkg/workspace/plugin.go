@@ -16,6 +16,7 @@ package workspace
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -29,9 +30,12 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/util"
+	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
+	diagutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -190,22 +194,25 @@ func (p dirPlugin) writeToDir(dstRoot string) error {
 			return os.Mkdir(dstPath, 0o700)
 		}
 
-		src, err := os.Open(srcPath)
-		if err != nil {
-			return err
-		}
-
 		info, err := d.Info()
 		if err != nil {
 			return err
 		}
 
-		bytes, err := io.ReadAll(src)
+		src, err := os.Open(srcPath)
 		if err != nil {
 			return err
 		}
+		defer src.Close()
 
-		return os.WriteFile(dstPath, bytes, info.Mode())
+		dst, err := os.OpenFile(dstPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, info.Mode())
+		if err != nil {
+			return err
+		}
+		defer dst.Close()
+
+		_, err = io.Copy(dst, src)
+		return err
 	})
 }
 
@@ -315,13 +322,67 @@ func InstallPluginContent(ctx context.Context, spec workspace.PluginSpec, conten
 	// the progress bar.
 	contract.IgnoreClose(content)
 
-	err = spec.InstallDependencies(ctx)
+	err = InstallDependenciesForPluginSpec(ctx, spec, os.Stderr /* redirect stdout to stderr */, os.Stderr)
 	if err != nil {
 		return err
 	}
 
 	// Installation is complete. Remove the partial file.
 	return os.Remove(partialFilePath)
+}
+
+func InstallDependenciesForPluginSpec(ctx context.Context, spec workspace.PluginSpec, stdout, stderr io.Writer) error {
+	dir, err := spec.DirPath()
+	if err != nil {
+		return err
+	}
+	subdir := filepath.Join(dir, spec.SubDir())
+
+	// Install dependencies, if needed.
+	proj, err := workspace.LoadPluginProject(filepath.Join(subdir, "PulumiPlugin.yaml"))
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
+	}
+	if proj == nil {
+		return nil
+	}
+
+	pctx, err := plugin.NewContextWithRoot(ctx,
+		diagutil.Diag(),
+		diagutil.Diag(),
+		nil,    // host
+		subdir, // pwd
+		subdir, // root
+		proj.RuntimeInfo().Options(),
+		false, // disableProviderPreview
+		nil,   // tracingSpan
+		nil,   // Plugins
+		proj.GetPackageSpecs(),
+		nil, // config
+		nil, // debugging
+	)
+	if err != nil {
+		return err
+	}
+
+	return errors.Join(InstallPluginAtPath(pctx, proj, stdout, stderr), pctx.Close())
+}
+
+func InstallPluginAtPath(pctx *plugin.Context, proj *workspace.PluginProject, stdout, stderr io.Writer) error {
+	if err := proj.Validate(); err != nil {
+		return err
+	}
+	runtime, err := pctx.Host.LanguageRuntime(proj.Runtime.Name())
+	if err != nil {
+		return err
+	}
+	entryPoint := "." // Plugin's are not able to set a non-standard entry point.
+	pInfo := plugin.NewProgramInfo(pctx.Root, pctx.Pwd, entryPoint, proj.Runtime.Options())
+	return cmdutil.InstallDependencies(runtime, plugin.InstallDependenciesRequest{
+		Info:                    pInfo,
+		UseLanguageVersionTools: false,
+		IsPlugin:                true,
+	}, stdout, stderr)
 }
 
 // installingPluginRegexp matches the name of temporary folders. Previous versions of Pulumi first extracted

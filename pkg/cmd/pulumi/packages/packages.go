@@ -43,19 +43,38 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// BindSpec binds a PackageSpec into a Package, returning any error or error diagnostics encountered.
+func BindSpec(spec schema.PackageSpec) (*schema.Package, error) {
+	pkg, diags, err := schema.BindSpec(spec, nil, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	return pkg, nil
+}
+
 // InstallPackage installs a package to the project by generating an SDK and linking it.
 // It returns the path to the installed package.
 func InstallPackage(proj workspace.BaseProject, pctx *plugin.Context, language, root,
 	schemaSource string, parameters plugin.ParameterizeParameters,
 	registry registry.Registry,
 ) (*schema.Package, *workspace.PackageSpec, hcl.Diagnostics, error) {
-	pkg, specOverride, err := SchemaFromSchemaSource(pctx, schemaSource, parameters, registry)
+	pkgSpec, specOverride, err := SchemaFromSchemaSource(pctx, schemaSource, parameters, registry)
 	if err != nil {
 		var diagErr hcl.Diagnostics
 		if errors.As(err, &diagErr) {
 			return nil, nil, nil, fmt.Errorf("failed to get schema. Diagnostics: %w", errors.Join(diagErr.Errs()...))
 		}
 		return nil, nil, nil, fmt.Errorf("failed to get schema: %w", err)
+	}
+
+	pkg, err := BindSpec(*pkgSpec)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to bind schema: %w", err)
 	}
 
 	tempOut, err := os.MkdirTemp("", "pulumi-package-")
@@ -150,9 +169,8 @@ func GenSDK(language, out string, pkg *schema.Package, overlays string, local bo
 		if err != nil {
 			return nil, fmt.Errorf("create plugin context: %w", err)
 		}
-		defer contract.IgnoreClose(pCtx.Host)
-		programInfo := plugin.NewProgramInfo(cwd, cwd, ".", nil)
-		languagePlugin, err := pCtx.Host.LanguageRuntime(language, programInfo)
+		defer contract.IgnoreClose(pCtx)
+		languagePlugin, err := pCtx.Host.LanguageRuntime(language)
 		if err != nil {
 			return nil, err
 		}
@@ -241,8 +259,7 @@ func linkPackage(ctx *LinkPackagesContext) error {
 	if err != nil {
 		return err
 	}
-	programInfo := plugin.NewProgramInfo(root, root, ".", ctx.Project.RuntimeInfo().Options())
-	languagePlugin, err := ctx.PluginContext.Host.LanguageRuntime(ctx.Project.RuntimeInfo().Name(), programInfo)
+	languagePlugin, err := ctx.PluginContext.Host.LanguageRuntime(ctx.Project.RuntimeInfo().Name())
 	if err != nil {
 		return err
 	}
@@ -280,6 +297,7 @@ func linkPackage(ctx *LinkPackagesContext) error {
 			Descriptor: packageDescriptor,
 		})
 	}
+	programInfo := plugin.NewProgramInfo(root, root, ".", ctx.Project.RuntimeInfo().Options())
 	instructions, err := languagePlugin.Link(programInfo, deps, grpcServer.Addr())
 	if err != nil {
 		return fmt.Errorf("linking package: %w", err)
@@ -288,7 +306,7 @@ func linkPackage(ctx *LinkPackagesContext) error {
 	if ctx.Install {
 		if err = pkgCmdUtil.InstallDependencies(languagePlugin, plugin.InstallDependenciesRequest{
 			Info: programInfo,
-		}); err != nil {
+		}, ctx.Writer, ctx.Writer); err != nil {
 			return fmt.Errorf("installing dependencies: %w", err)
 		}
 	}
@@ -364,22 +382,8 @@ func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginSpec)
 //	FILE.[json|y[a]ml] | PLUGIN[@VERSION] | PATH_TO_PLUGIN
 func SchemaFromSchemaSource(
 	pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
-) (*schema.Package, *workspace.PackageSpec, error) {
+) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 	var spec schema.PackageSpec
-	bind := func(
-		spec schema.PackageSpec, specOverride *workspace.PackageSpec,
-	) (*schema.Package, *workspace.PackageSpec, error) {
-		pkg, diags, err := schema.BindSpec(spec, nil, schema.ValidationOptions{
-			AllowDanglingReferences: true,
-		})
-		if err != nil {
-			return nil, nil, err
-		}
-		if diags.HasErrors() {
-			return nil, nil, diags
-		}
-		return pkg, specOverride, nil
-	}
 	if ext := filepath.Ext(packageSource); ext == ".yaml" || ext == ".yml" {
 		if !parameters.Empty() {
 			return nil, nil, errors.New("parameterization arguments are not supported for yaml files")
@@ -392,7 +396,7 @@ func SchemaFromSchemaSource(
 		if err != nil {
 			return nil, nil, err
 		}
-		return bind(spec, nil)
+		return &spec, nil, nil
 	} else if ext == ".json" {
 		if !parameters.Empty() {
 			return nil, nil, errors.New("parameterization arguments are not supported for json files")
@@ -406,7 +410,7 @@ func SchemaFromSchemaSource(
 		if err != nil {
 			return nil, nil, err
 		}
-		return bind(spec, nil)
+		return &spec, nil, nil
 	}
 
 	p, specOverride, err := ProviderFromSource(pctx, packageSource, registry)
@@ -452,7 +456,7 @@ func SchemaFromSchemaSource(
 		spec.PluginDownloadURL = pluginSpec.PluginDownloadURL
 	}
 	setSpecNamespace(&spec, pluginSpec)
-	return bind(spec, specOverride)
+	return &spec, specOverride, nil
 }
 
 type Provider struct {
@@ -499,7 +503,8 @@ func ProviderFromSource(
 				// we previously installed a plugin in a different subdirectory of the same repository.
 				// This is why the provider might have failed to start up.  Install the dependencies
 				// and try again.
-				depErr := descriptor.InstallDependencies(pctx.Base())
+				depErr := pkgWorkspace.InstallDependenciesForPluginSpec(pctx.Base(), descriptor.PluginSpec,
+					os.Stderr /* pipe stdout and stderr to stderr */, os.Stderr)
 				if depErr != nil {
 					return Provider{}, fmt.Errorf("installing plugin dependencies: %w", depErr)
 				}

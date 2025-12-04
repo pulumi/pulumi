@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitingore",
     "FuncWithAllOptionalInputs.cs",
     "FuncWithConstInput.cs",
     "FuncWithDefaultValue.cs",

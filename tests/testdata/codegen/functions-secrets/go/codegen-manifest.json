@@ -1,5 +1,6 @@
 {
   "emittedFiles": [
+    ".gitattributes",
     "mypkg/doc.go",
     "mypkg/funcWithSecrets.go",
     "mypkg/init.go",

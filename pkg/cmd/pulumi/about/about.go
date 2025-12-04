@@ -151,11 +151,11 @@ func getSummaryAbout(
 				result.Plugins = plugins
 			}
 
-			programInfo := plugin.NewProgramInfo(projinfo.Root, pwd, program, proj.Runtime.Options())
-			lang, err := pluginContext.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
+			lang, err := pluginContext.Host.LanguageRuntime(proj.Runtime.Name())
 			if err != nil {
 				addError(err, "Failed to load language plugin "+proj.Runtime.Name())
 			} else {
+				programInfo := plugin.NewProgramInfo(projinfo.Root, pwd, program, proj.Runtime.Options())
 				aboutResponse, err := lang.About(programInfo)
 				if err != nil {
 					addError(err, "Failed to get information about the project runtime")

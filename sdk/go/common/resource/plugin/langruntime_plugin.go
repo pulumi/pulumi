@@ -56,7 +56,7 @@ type langhost struct {
 
 // NewLanguageRuntime binds to a language's runtime plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
-func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory string, info ProgramInfo,
+func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory string,
 ) (LanguageRuntime, error) {
 	attachPort, err := GetLanguageAttachPort(runtime)
 	if err != nil {
@@ -120,7 +120,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 
 		contract.Assertf(path != "", "unexpected empty path for language plugin %s", runtime)
 
-		args, err := buildArgsForNewPlugin(host, info.RootDirectory(), info.Options())
+		args, err := buildArgsForNewPlugin(host)
 		if err != nil {
 			return nil, err
 		}
@@ -206,22 +206,10 @@ func langRuntimePluginDialOptions(ctx *Context, runtime string) []grpc.DialOptio
 	return dialOpts
 }
 
-func buildArgsForNewPlugin(host Host, root string, options map[string]any) ([]string, error) {
-	root, err := filepath.Abs(root)
-	if err != nil {
-		return nil, err
-	}
-	args := slice.Prealloc[string](len(options))
-
-	for k, v := range options {
-		args = append(args, fmt.Sprintf("-%s=%v", k, v))
-	}
-
-	args = append(args, "-root="+filepath.Clean(root))
-
+func buildArgsForNewPlugin(host Host) ([]string, error) {
+	args := []string{}
 	// NOTE: positional argument for the server addresss must come last
 	args = append(args, host.ServerAddr())
-
 	return args, nil
 }
 

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pulumi"
-version = "3.209.0"
+version = "3.211.0"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.10"
@@ -19,8 +19,12 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    'protobuf~=5.29.5',
-    'grpcio>=1.75.1,<2',
+    # We deliberately allow older versions of protobuf and grpcio (3.20.3 and 1.68.1 respectively)
+    # to support users who require older versions of these dependencies.
+    # grpcio 1.75.1 is needed for Python 3.14.
+    'protobuf>=3.20.3,<6',
+    'grpcio>=1.68.1,<2; python_version < "3.14"',
+    'grpcio>=1.75.1,<2; python_version >= "3.14"',
     'dill~=0.4',
     'semver~=3.0',
     'pyyaml~=6.0',
@@ -33,13 +37,13 @@ dev = [
     'mypy==1.17.1',
     'pyright==1.1.404',
     'pytest~=8.4.0',
-    'pytest-timeout',
-    'pytest-xdist',
-    'types-pyyaml',
-    'types-protobuf',
+    'pytest-timeout>=2.3.1',
+    'pytest-xdist>=3.8.0',
+    'types-pyyaml>=6.0.12.20241230',
+    'types-protobuf>=5.29.1.20241207',
     'pytest-asyncio~=1.2.0',
     'coverage>=6.0.2',
-    'wheel',
+    'wheel>=0.45.1',
     'ruff==0.13.2',
     "build>=1.2.2.post1",
     "twine>=6.0.1",

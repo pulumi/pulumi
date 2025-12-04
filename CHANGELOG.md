@@ -1,5 +1,75 @@
 # Changelog
 
+## 3.210.0 (2025-12-03)
+
+
+### Features
+
+- [cli/about] Print python toolchain information in `pulumi about`
+
+- [sdk/java] Update java to v1.18
+
+- [components/nodejs] Local components will use the version from package.json rather than 0.0.0
+  [#21100](https://github.com/pulumi/pulumi/pull/21100)
+
+- [cli/package] Add `pulumi package delete` command to delete package versions from the Pulumi Registry
+  [#21069](https://github.com/pulumi/pulumi/pull/21069)
+
+- [cli/package] Always print the schema first in `package get-schema`, then print any binding errors
+  [#21080](https://github.com/pulumi/pulumi/pull/21080)
+
+- [sdk/python] Require `grpcio>=1.75.1` on Python 3.14
+  [#21113](https://github.com/pulumi/pulumi/pull/21113)
+
+
+### Bug Fixes
+
+- [sdk/nodejs] Fix ComponentResources transfering input arguments to output properties automatically
+  [#21094](https://github.com/pulumi/pulumi/pull/21094)
+
+
+### Miscellaneous
+
+- [sdk/nodejs] Remove @types/uuid type declarations dev dependency
+  [#21077](https://github.com/pulumi/pulumi/pull/21077)
+
+## 3.209.0 (2025-11-26)
+
+
+### Features
+
+- [cli] Add native support for OIDC token exchange when logging into Pulumi Cloud. Run `pulumi login --help` for more information.
+  [#20974](https://github.com/pulumi/pulumi/pull/20974)
+
+- [sdk/python] Allow older grpcio and protobuf dependencies
+  [#21007](https://github.com/pulumi/pulumi/pull/21007)
+
+- [sdkgen/{dotnet,go,nodejs,python}] Generate .gitignore and .gitattributes files for generated SDKs
+  [#21034](https://github.com/pulumi/pulumi/pull/21034)
+
+
+### Bug Fixes
+
+- [cli/install] Correctly install non-standard plugins. See https://github.com/pulumi/pulumi/issues/20953 for more information
+  [#20983](https://github.com/pulumi/pulumi/pull/20983)
+
+- [cli/new] Create pyproject.toml for uv and poetry projects when using --generate-only
+  [#20979](https://github.com/pulumi/pulumi/pull/20979)
+
+- [sdk/nodejs] Fix serialization errors due to SxS copies of the SDK
+  [#21029](https://github.com/pulumi/pulumi/pull/21029)
+
+- [sdk/python] Add `PropertyValue` runtime validation checks
+  [#21058](https://github.com/pulumi/pulumi/pull/21058)
+
+
+### Miscellaneous
+
+- [engine] Don't send root directory and runtime options to language plugins as command line arguments
+  [#21054](https://github.com/pulumi/pulumi/pull/21054)
+
+- [sdk/{dotnet,java,yaml}] Bump language runtimes for yaml, dotnet and java
+
 ## 3.208.0 (2025-11-20)
 
 

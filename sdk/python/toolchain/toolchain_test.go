@@ -26,6 +26,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/stretchr/testify/require"
 )
@@ -260,6 +261,9 @@ func TestAbout(t *testing.T) {
 		{
 			Toolchain: Poetry,
 		},
+		{
+			Toolchain: Uv,
+		},
 	} {
 		t.Run(Name(opts.Toolchain), func(t *testing.T) {
 			t.Parallel()
@@ -271,8 +275,127 @@ func TestAbout(t *testing.T) {
 			require.NoError(t, err)
 			info, err := tc.About(context.Background())
 			require.NoError(t, err)
-			require.Regexp(t, "[0-9]+\\.[0-9]+\\.[0-9]+", info.Version)
-			require.Regexp(t, "python$", info.Executable)
+			require.NotEqual(t, semver.Version{}, info.PythonVersion)
+			require.True(t, info.PythonVersion.Major > 0)
+			require.False(t, info.ToolchainVersion.EQ(semver.Version{}),
+				"the toolchain version should not be empty")
+			require.Regexp(t, "python$", info.PythonExecutable)
+		})
+	}
+}
+
+func TestParsePythonVersion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		versionString  string
+		expectedSemver string
+		expectError    bool
+	}{
+		{
+			name:           "standard version format",
+			versionString:  "3.11.4",
+			expectedSemver: "3.11.4",
+			expectError:    false,
+		},
+		{
+			name:           "python --version output",
+			versionString:  "Python 3.11.4",
+			expectedSemver: "3.11.4",
+			expectError:    false,
+		},
+		{
+			name:           "version without patch",
+			versionString:  "3.11",
+			expectedSemver: "3.11.0",
+			expectError:    false,
+		},
+		{
+			name:           "python --version without patch",
+			versionString:  "Python 3.11",
+			expectedSemver: "3.11.0",
+			expectError:    false,
+		},
+		{
+			name:           "version with extra spaces",
+			versionString:  "  Python 3.9.16  ",
+			expectedSemver: "3.9.16",
+			expectError:    false,
+		},
+		{
+			name:          "invalid format",
+			versionString: "invalid version",
+			expectError:   true,
+		},
+		{
+			name:          "empty string",
+			versionString: "",
+			expectError:   true,
+		},
+		{
+			name:           "alpha pre-release",
+			versionString:  "3.15.0a1",
+			expectedSemver: "3.15.0-alpha.1",
+			expectError:    false,
+		},
+		{
+			name:           "beta pre-release",
+			versionString:  "3.11.0b3",
+			expectedSemver: "3.11.0-beta.3",
+			expectError:    false,
+		},
+		{
+			name:           "release candidate",
+			versionString:  "3.10.0rc2",
+			expectedSemver: "3.10.0-rc.2",
+			expectError:    false,
+		},
+		{
+			name:           "python --version with alpha",
+			versionString:  "Python 3.15.0a1",
+			expectedSemver: "3.15.0-alpha.1",
+			expectError:    false,
+		},
+		{
+			name:           "python --version with rc",
+			versionString:  "Python 3.12.0rc1",
+			expectedSemver: "3.12.0-rc.1",
+			expectError:    false,
+		},
+		{
+			name:           "alpha without patch version",
+			versionString:  "3.14a5",
+			expectedSemver: "3.14.0-alpha.5",
+			expectError:    false,
+		},
+		{
+			name:           "development version",
+			versionString:  "3.13.0dev1",
+			expectedSemver: "3.13.0-dev.1",
+			expectError:    false,
+		},
+		{
+			name:           "pre-release with extra text",
+			versionString:  "3.11.0a7+ (default, Oct 10 2022, 12:34:56)",
+			expectedSemver: "3.11.0-alpha.7",
+			expectError:    false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			version, err := ParsePythonVersion(test.versionString)
+
+			if test.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				expected := semver.MustParse(test.expectedSemver)
+				require.Equal(t, expected, version)
+			}
 		})
 	}
 }

@@ -435,7 +435,7 @@ func TestParseAuthURL(t *testing.T) {
 	//nolint: gosec
 	generateSSHKey := func(t *testing.T, passphrase string) string {
 		r := rand.New(rand.NewSource(0))
-		key, err := rsa.GenerateKey(r, 256)
+		key, err := rsa.GenerateKey(r, 1024)
 		require.NoError(t, err)
 
 		block := &pem.Block{

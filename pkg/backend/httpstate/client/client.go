@@ -269,6 +269,10 @@ func completePackagePublishPath(source, publisher, name, version string) string 
 	return fmt.Sprintf("/api/preview/registry/packages/%s/%s/%s/versions/%s/complete", source, publisher, name, version)
 }
 
+func deletePackageVersionPath(source, publisher, name, version string) string {
+	return fmt.Sprintf("/api/registry/packages/%s/%s/%s/versions/%s", source, publisher, name, version)
+}
+
 func publishTemplatePath(source, publisher, name string) string {
 	return fmt.Sprintf("/api/registry/templates/%s/%s/%s/versions", source, publisher, name)
 }
@@ -303,6 +307,52 @@ type serviceTokenInfo struct {
 	Name         string `json:"name"`
 	Organization string `json:"organization,omitempty"`
 	Team         string `json:"team,omitempty"`
+}
+
+//nolint:gosec
+const (
+	pulumiAccessTokenTypeOrganization = "urn:pulumi:token-type:access_token:organization"
+	pulumiAccessTokenTypeTeam         = "urn:pulumi:token-type:access_token:team"
+	pulumiAccessTokenTypePersonal     = "urn:pulumi:token-type:access_token:personal"
+)
+
+func (pc *Client) ExchangeOidcToken(
+	oidcToken string, org string, scope string, expiration time.Duration,
+) (*apitype.TokenExchangeGrantResponse, error) {
+	requestedTokenType := pulumiAccessTokenTypeOrganization
+	if strings.HasPrefix(scope, "team:") {
+		requestedTokenType = pulumiAccessTokenTypeTeam
+	}
+	if strings.HasPrefix(scope, "user:") {
+		requestedTokenType = pulumiAccessTokenTypePersonal
+	}
+	tokenUrl := pc.apiURL + "/api/oauth/token"
+	data := url.Values{
+		"audience":             {"urn:pulumi:org:" + org},
+		"grant_type":           {"urn:ietf:params:oauth:grant-type:token-exchange"},
+		"requested_token_type": {requestedTokenType},
+		"scope":                {scope},
+		"subject_token_type":   {"urn:ietf:params:oauth:token-type:id_token"},
+		"subject_token":        {oidcToken},
+		"expiration":           {strconv.Itoa(int(expiration.Seconds()))},
+	}
+	resp, err := pc.httpClient.PostForm(tokenUrl, data)
+	if err != nil {
+		return nil, err
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("%s", string(body))
+	}
+	var unmarshalledResp apitype.TokenExchangeGrantResponse
+	err = json.Unmarshal(body, &unmarshalledResp)
+	if err != nil {
+		return nil, err
+	}
+	return &unmarshalledResp, nil
 }
 
 // GetPulumiAccountDetails returns the user implied by the API token associated with this client.
@@ -1727,6 +1777,15 @@ func (pc *Client) GetPackage(
 	var resp apitype.PackageMetadata
 	err := pc.restCall(ctx, "GET", url, nil, nil, &resp)
 	return resp, err
+}
+
+// DeletePackageVersion deletes a specific version of a package from the registry.
+func (pc *Client) DeletePackageVersion(
+	ctx context.Context, source, publisher, name string, version semver.Version,
+) error {
+	url := deletePackageVersionPath(source, publisher, name, version.String())
+	err := pc.restCall(ctx, "DELETE", url, nil, nil, nil)
+	return err
 }
 
 func (pc *Client) GetTemplate(
