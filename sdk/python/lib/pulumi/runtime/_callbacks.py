@@ -42,6 +42,7 @@ from .proto import (
 )
 from .rpc import (
     deserialize_properties,
+    deserialize_property,
     is_rpc_secret,
     serialize_properties,
     unwrap_rpc_secret,
@@ -466,8 +467,8 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         if replace_on_changes:
             ropts.replace_on_changes = replace_on_changes
 
-        if opts.replacement_trigger:
-            ropts.replacement_trigger = opts.replacement_trigger
+        if opts.HasField("replacement_trigger"):
+            ropts.replacement_trigger = deserialize_property(opts.replacement_trigger)
 
         if opts.retain_on_delete:
             ropts.retain_on_delete = opts.retain_on_delete
