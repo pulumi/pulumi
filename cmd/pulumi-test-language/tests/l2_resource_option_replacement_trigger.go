@@ -125,10 +125,11 @@ func init() {
 						}
 					}
 					require.NotNil(l, ops, "expected to find step event metadata for unknownReplacementTrigger resource")
-					require.Contains(l, ops, deploy.OpReplace, "expected unknownReplacementTrigger resource to be replaced during preview")
+					require.Contains(l, ops, deploy.OpReplace,
+						"expected unknownReplacementTrigger resource to be replaced during preview")
 				},
 				Assert: func(l *L,
-					projectDirectory string, err error,
+					projectDirectory string, _ error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 					events []engine.Event,
 				) {
@@ -203,7 +204,8 @@ func init() {
 						}
 					}
 					require.NotNil(l, ops, "expected to find step event metadata for unknownReplacementTrigger resource")
-					require.NotContains(l, ops, deploy.OpReplace, "expected unknownReplacementTrigger resource to not be replaced during update")
+					require.NotContains(l, ops, deploy.OpReplace,
+						"expected unknownReplacementTrigger resource to not be replaced during update")
 				},
 			},
 		},
