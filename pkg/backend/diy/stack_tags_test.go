@@ -256,7 +256,7 @@ func TestBackendUpdateStackTags(t *testing.T) {
 	stackTags = stack.Tags()
 	assert.Equal(t, "prod", stackTags["env"])
 	assert.NotContains(t, stackTags, "owner") // Should be gone
-	require.Len(t, stackTags, 1)               // Only the explicitly provided tag
+	require.Len(t, stackTags, 1)              // Only the explicitly provided tag
 }
 
 func TestStackTagsFiltering(t *testing.T) {

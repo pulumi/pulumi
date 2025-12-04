@@ -103,7 +103,7 @@ func TestStackTagsWithFileBackend(t *testing.T) {
 	assert.Equal(t, "v2.0", finalTags["release"])
 	assert.NotContains(t, finalTags, "cost-center") // Should be removed
 	assert.NotContains(t, finalTags, "version")     // Should be removed
-	require.Len(t, finalTags, 3)                     // Only the explicitly provided tags
+	require.Len(t, finalTags, 3)                    // Only the explicitly provided tags
 
 	// Test that tags file was created in the correct location
 	expectedTagsPath := filepath.Join(tmpDir, ".pulumi", "stacks", "integration-test", "test-stack.pulumi-tags")
