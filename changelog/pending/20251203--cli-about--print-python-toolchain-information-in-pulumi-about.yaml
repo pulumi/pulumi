@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/about
-  description: Print python toolchain information in `pulumi about`

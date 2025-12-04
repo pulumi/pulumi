@@ -1,5 +1,38 @@
 # Changelog
 
+## 3.210.0 (2025-12-03)
+
+
+### Features
+
+- [cli/about] Print python toolchain information in `pulumi about`
+
+- [sdk/java] Update java to v1.18
+
+- [components/nodejs] Local components will use the version from package.json rather than 0.0.0
+  [#21100](https://github.com/pulumi/pulumi/pull/21100)
+
+- [cli/package] Add `pulumi package delete` command to delete package versions from the Pulumi Registry
+  [#21069](https://github.com/pulumi/pulumi/pull/21069)
+
+- [cli/package] Always print the schema first in `package get-schema`, then print any binding errors
+  [#21080](https://github.com/pulumi/pulumi/pull/21080)
+
+- [sdk/python] Require `grpcio>=1.75.1` on Python 3.14
+  [#21113](https://github.com/pulumi/pulumi/pull/21113)
+
+
+### Bug Fixes
+
+- [sdk/nodejs] Fix ComponentResources transfering input arguments to output properties automatically
+  [#21094](https://github.com/pulumi/pulumi/pull/21094)
+
+
+### Miscellaneous
+
+- [sdk/nodejs] Remove @types/uuid type declarations dev dependency
+  [#21077](https://github.com/pulumi/pulumi/pull/21077)
+
 ## 3.209.0 (2025-11-26)
 
 
