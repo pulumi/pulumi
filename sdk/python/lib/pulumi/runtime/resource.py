@@ -1090,8 +1090,15 @@ def register_resource(
                 supportsPartialValues=True,
                 remote=remote,
                 replaceOnChanges=replace_on_changes or [],
-                replacement_trigger=rpc.python_value_to_proto_value(
-                    resolver.replacement_trigger
+                replacement_trigger=await rpc.serialize_property(
+                    resolver.replacement_trigger,
+                    [],
+                    "replacement_trigger",
+                    res,
+                    None,
+                    None,
+                    False,
+                    False
                 )
                 if resolver.replacement_trigger
                 else None,

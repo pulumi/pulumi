@@ -559,12 +559,12 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         replacement_trigger = None
         if opts.replacement_trigger is not None:
             from .. import output as output_mod
-            from .rpc import python_value_to_proto_value
+            from .rpc import serialize_property
 
             resolved = await output_mod.Output.from_input(
                 opts.replacement_trigger
             ).future()
-            replacement_trigger = python_value_to_proto_value(resolved)
+            replacement_trigger = await serialize_property(resolved, [], "replacement_trigger", None, None, None, False, False)
 
         result = resource_pb2.TransformResourceOptions(
             aliases=aliases or None,
