@@ -1867,7 +1867,7 @@ type FunctionSpec struct {
 	// Supported values are "nodejs", "python", "go", "csharp", "java", "yaml"
 	OverlaySupportedLanguages []string `json:"overlaySupportedLanguages,omitempty" yaml:"overlaySupportedLanguages,omitempty"` //nolint:lll
 	// Determines whether to make single-return-value methods return an output struct or the value.
-	LiftSingleValueMethodReturns bool `json:"liftSingleValueMethodReturns,omitempty" yaml:"liftSingleValueMethodReturns,omitempty"`
+	LiftSingleValueMethodReturns bool `json:"liftSingleValueMethodReturns,omitempty" yaml:"liftSingleValueMethodReturns,omitempty"` //nolint:lll
 }
 
 func emptyObject(data RawMessage) (bool, error) {
