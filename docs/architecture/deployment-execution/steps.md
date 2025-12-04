@@ -9,8 +9,8 @@ applied using the `Apply()` function, it interacts with backing providers to pro
 function that will ultimately register the resource against Pulumi's desired state graph.
 
 Each step also has an old and a new state, the old state representing the state
-we read from the snapshot, and the new state representing the state that the
-step should have after the `Apply()`.
+we read from the snapshot, or the result of a previous step, and the new state
+representing the state that the step should have after the `Apply()`.
 
 Pulumi's deployment system uses different step types to represent the various
 operations that can be performed on resources. These steps fall into several
