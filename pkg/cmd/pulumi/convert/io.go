@@ -25,7 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/plugininstall"
 )
 
 func LoadConverterPlugin(
@@ -54,7 +54,7 @@ func LoadConverterPlugin(
 			return nil, fmt.Errorf("load %q: %w", name, err)
 		}
 
-		_, err = pkgWorkspace.InstallPlugin(ctx.Base(), pluginSpec, log)
+		_, err = plugininstall.InstallPlugin(ctx.Base(), pluginSpec, log)
 		if err != nil {
 			return nil, fmt.Errorf("install %q: %w", name, err)
 		}

@@ -51,6 +51,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
+	"github.com/pulumi/pulumi/pkg/v3/plugininstall"
 	aferoUtil "github.com/pulumi/pulumi/pkg/v3/util/afero"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
@@ -333,7 +334,7 @@ func runConvert(
 			return nil
 		}
 
-		version, err := pkgWorkspace.InstallPlugin(pCtx.Base(), pluginSpec, log)
+		version, err := plugininstall.InstallPlugin(pCtx.Base(), pluginSpec, log)
 		if err != nil {
 			pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), pluginName, err)
 			return nil
