@@ -15,6 +15,8 @@
 package packagecmd
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -24,6 +26,7 @@ import (
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
@@ -83,42 +86,18 @@ from the parameters, as in:
   pulumi package add <provider> -- --provider-parameter-flag value
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var language, installRoot, projectFilePath string
-			var reg registry.Registry
-			var proj workspace.BaseProject
-
 			wd, err := os.Getwd()
 			if err != nil {
 				return err
 			}
 
-			if pluginPath, err := workspace.DetectPluginPathFrom(wd); err == nil && pluginPath != "" {
-				pluginProj, err := workspace.LoadPluginProject(pluginPath)
-				if err != nil {
-					return err
-				}
-				proj = pluginProj
-				language = pluginProj.Runtime.Name()
-				installRoot = wd
-				projectFilePath = pluginPath
-				// Cloud registry is linked to a backend, but we don't have one
-				// available in a plugin. Use the unauthenticated registry.
-				reg = unauthenticatedregistry.New(cmdutil.Diag(), env.Global())
-			} else {
-				project, path, err := workspace.DetectProjectAndPath()
-				if err != nil {
-					return err
-				}
-				proj = project
-				language = project.Runtime.Name()
-				installRoot = filepath.Dir(path)
-				reg = cmdCmd.NewDefaultRegistry(
-					cmd.Context(), pkgWorkspace.Instance, project, cmdutil.Diag(), env.Global())
-				projectFilePath = path
+			pluginOrProject, err := detectEnclosingPluginOrProject(cmd.Context(), wd)
+			if err != nil {
+				return err
 			}
 
 			sink := cmdutil.Diag()
-			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, nil, nil, wd, nil, false, nil)
+			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, nil, nil, pluginOrProject.installRoot, nil, false, nil)
 			if err != nil {
 				return err
 			}
@@ -129,8 +108,15 @@ from the parameters, as in:
 			pluginSource := args[0]
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
 
-			pkg, packageSpec, diags, err := packages.InstallPackage(proj, pctx, language, installRoot, pluginSource,
-				parameters, reg)
+			pkg, packageSpec, diags, err := packages.InstallPackage(
+				pluginOrProject.proj,
+				pctx,
+				pluginOrProject.proj.RuntimeInfo().Name(),
+				pluginOrProject.installRoot,
+				pluginSource,
+				parameters,
+				pluginOrProject.reg,
+			)
 			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
 				return err
@@ -165,18 +151,108 @@ from the parameters, as in:
 					Parameters: parameters.Args,
 				}
 			}
-			proj.AddPackage(pkg.Name, *packageSpec)
+			pluginOrProject.proj.AddPackage(pkg.Name, *packageSpec)
 
-			fileName := filepath.Base(projectFilePath)
+			fileName := filepath.Base(pluginOrProject.projectFilePath)
 			// Save the updated project
-			if err := proj.Save(projectFilePath); err != nil {
+			if err := pluginOrProject.proj.Save(pluginOrProject.projectFilePath); err != nil {
 				return fmt.Errorf("failed to update %s: %w", fileName, err)
 			}
 
-			fmt.Printf("Added package %q to %s\n", fileName, pkg.Name)
+			fmt.Fprintf(cmd.ErrOrStderr(), "Added package %s\n", schemaDisplayName(pkg))
 			return nil
 		},
 	}
 
 	return cmd
+}
+
+type pluginOrProject struct {
+	installRoot, projectFilePath string
+	reg                          registry.Registry
+	proj                         workspace.BaseProject
+}
+
+func schemaDisplayName(schema *schema.Package) string {
+	name := schema.DisplayName
+	if name == "" {
+		name = schema.Name
+	}
+	if schema.Namespace != "" {
+		name = schema.Namespace + "/" + name
+	}
+	return name
+}
+
+// Detect the nearest enclosing Pulumi Project or Pulumi Plugin root directory.
+func detectEnclosingPluginOrProject(ctx context.Context, wd string) (pluginOrProject, error) {
+	pluginPath, detectPluginErr := workspace.DetectPluginPathFrom(wd)
+	if detectPluginErr != nil && !errors.Is(detectPluginErr, workspace.ErrPluginNotFound) {
+		return pluginOrProject{}, fmt.Errorf("unable to detect if %q is in a plugin path: %w", wd, detectPluginErr)
+	}
+
+	loadPlugin := func() (pluginOrProject, error) {
+		pluginProj, err := workspace.LoadPluginProject(pluginPath)
+		if err != nil {
+			return pluginOrProject{}, err
+		}
+
+		return pluginOrProject{
+			installRoot:     filepath.Dir(pluginPath),
+			projectFilePath: pluginPath,
+			proj:            pluginProj,
+			// Cloud registry is linked to a backend, but we don't have one
+			// available in a plugin. Use the unauthenticated registry.
+			reg: unauthenticatedregistry.New(cmdutil.Diag(), env.Global()),
+		}, nil
+	}
+
+	projectPath, detectProjectErr := workspace.DetectProjectPathFrom(wd)
+	if detectProjectErr != nil && !errors.Is(detectProjectErr, workspace.ErrProjectNotFound) {
+		return pluginOrProject{}, fmt.Errorf("unable to detect if %q is in a plugin path: %w", wd, detectProjectErr)
+	}
+
+	loadProject := func() (pluginOrProject, error) {
+		project, err := workspace.LoadProject(projectPath)
+		if err != nil {
+			return pluginOrProject{}, err
+		}
+		return pluginOrProject{
+			installRoot:     filepath.Dir(projectPath),
+			projectFilePath: projectPath,
+			reg:             cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, project, cmdutil.Diag(), env.Global()),
+			proj:            project,
+		}, nil
+	}
+
+	switch {
+	// If both are missing, signal an error.
+	case errors.Is(detectPluginErr, workspace.ErrPluginNotFound) &&
+		errors.Is(detectProjectErr, workspace.ErrProjectNotFound):
+		return pluginOrProject{}, errors.New("unable to find an enclosing plugin or project")
+	// We didn't find a plugin, which means we found a project.
+	case errors.Is(detectPluginErr, workspace.ErrPluginNotFound):
+		return loadProject()
+	// We didn't find a project, which means we found a plugin.
+	case errors.Is(detectProjectErr, workspace.ErrProjectNotFound):
+		return loadPlugin()
+	// We found both a plugin and a project.
+	//
+	// We want to load the innermost one. Since we know that both paths enclose wd,
+	// the innermost one is just the longest one.
+	default:
+		countSegments := func(path string) int { return strings.Count(path, string(filepath.Separator)) }
+
+		pluginDepth := countSegments(filepath.Clean(pluginPath))
+		projectDepth := countSegments(filepath.Clean(projectPath))
+		switch {
+		case pluginDepth > projectDepth:
+			return loadPlugin()
+		case projectDepth > pluginDepth:
+			return loadProject()
+		default:
+			return pluginOrProject{}, fmt.Errorf("detected both %s and %s in %s",
+				filepath.Base(pluginPath), filepath.Base(projectPath), filepath.Dir(pluginPath))
+		}
+	}
 }
