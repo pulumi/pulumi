@@ -569,8 +569,6 @@ func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]st
 		lastPromptTimestampMS = time.Now().UnixMilli() // We're prompting, update the timestamp
 	}
 
-	err = cacheVersionInfo(cachedVersionInfo{})
-
 	if willPrompt {
 		if isCurVerDev {
 			latestVer = devVer
