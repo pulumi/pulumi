@@ -2683,11 +2683,6 @@ func TestNodejsSourcemapProgramJavascript(t *testing.T) {
 func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	t.Parallel()
 
-	// TODO[pulumi/pulumi#18437]: Run this test on windows
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping on windows")
-	}
-
 	e := ptesting.NewEnvironment(t)
 
 	e.ImportDirectory("packageadd-remote")
@@ -2728,10 +2723,6 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 
 func TestPackagesInstall(t *testing.T) {
 	t.Parallel()
-	// TODO[pulumi/pulumi#18437]: Run this test on windows
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping on windows")
-	}
 
 	e := ptesting.NewEnvironment(t)
 
@@ -2827,11 +2818,6 @@ func TestInstallLocalPluginCycle(t *testing.T) {
 
 func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	t.Parallel()
-
-	// TODO[pulumi/pulumi#18437]: Run this test on windows
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping on windows")
-	}
 
 	e := ptesting.NewEnvironment(t)
 
