@@ -487,33 +487,10 @@ func ProviderFromSource(
 				AlreadyParameterized: descriptor.Parameterization != nil,
 			}, nil
 		}
+
 		// There is an executable or directory with the same name, so suggest that
 		if info, statErr := os.Stat(descriptor.Name); statErr == nil && (isExecutable(info) || info.IsDir()) {
 			return Provider{}, fmt.Errorf("could not find installed plugin %s, did you mean ./%[1]s: %w", descriptor.Name, err)
-		}
-
-		if descriptor.SubDir() != "" {
-			path, err := descriptor.DirPath()
-			if err != nil {
-				return Provider{}, err
-			}
-			info, statErr := os.Stat(filepath.Join(path, descriptor.SubDir()))
-			if statErr == nil && info.IsDir() {
-				// The plugin is already installed.  But since it is in a subdirectory, it could be that
-				// we previously installed a plugin in a different subdirectory of the same repository.
-				// This is why the provider might have failed to start up.  Install the dependencies
-				// and try again.
-				depErr := pkgWorkspace.InstallDependenciesForPluginSpec(pctx.Base(), descriptor.PluginSpec,
-					os.Stderr /* pipe stdout and stderr to stderr */, os.Stderr)
-				if depErr != nil {
-					return Provider{}, fmt.Errorf("installing plugin dependencies: %w", depErr)
-				}
-				p, err := pctx.Host.Provider(descriptor)
-				if err != nil {
-					return Provider{}, err
-				}
-				return Provider{Provider: p}, nil
-			}
 		}
 
 		// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
