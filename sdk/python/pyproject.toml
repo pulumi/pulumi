@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pulumi"
-version = "3.210.0"
+version = "3.211.0"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.10"
@@ -21,8 +21,10 @@ classifiers = [
 dependencies = [
     # We deliberately allow older versions of protobuf and grpcio (3.20.3 and 1.68.1 respectively)
     # to support users who require older versions of these dependencies.
+    # grpcio 1.75.1 is needed for Python 3.14.
     'protobuf>=3.20.3,<6',
-    'grpcio>=1.68.1,<2',
+    'grpcio>=1.68.1,<2; python_version < "3.14"',
+    'grpcio>=1.75.1,<2; python_version >= "3.14"',
     'dill~=0.4',
     'semver~=3.0',
     'pyyaml~=6.0',

@@ -148,7 +148,7 @@ export class ComponentProvider implements Provider {
         this.packageJSON = JSON.parse(packStr);
         this.path = absDir;
         this.name = options.name;
-        this.version = options.version ?? "0.0.0";
+        this.version = options.version ?? this.packageJSON.version ?? "0.0.0";
         this.namespace = options.namespace;
         this.componentConstructors = options.components.reduce(
             (acc, component) => {
@@ -236,9 +236,6 @@ export function componentProviderHost(options: ComponentProviderOptions): Promis
             throw new Error("Could not determine caller directory");
         }
     }
-    // Default the version to "0.0.0" for now, otherwise SDK codegen gets
-    // confused without a version.
-    const version = "0.0.0";
     const prov = new ComponentProvider(options);
     return main(prov, args);
 }

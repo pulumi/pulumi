@@ -15,18 +15,18 @@
 /* eslint-disable */
 
 import * as assert from "assert";
-import { all } from "../output";
-import * as runtime from "../runtime";
+import { all, Input, output } from "../output";
 import {
     allAliases,
-    createUrn,
-    ProviderResource,
-    CustomResource,
     ComponentResource,
     ComponentResourceOptions,
+    createUrn,
+    CustomResource,
     CustomResourceOptions,
     DependencyProviderResource,
+    ProviderResource,
 } from "../resource";
+import * as runtime from "../runtime";
 
 class MyResource extends ComponentResource {
     constructor(name: string, opts?: ComponentResourceOptions) {
@@ -196,6 +196,24 @@ describe("CustomResource", () => {
     });
 });
 
+interface MyCustomComponentResourceArgs {
+    X: Input<boolean>;
+}
+
+class MyCustomComponentResource extends ComponentResource {
+    constructor(name: string, args: MyCustomComponentResourceArgs, opts?: ComponentResourceOptions) {
+        super("my:mod:MyCustomComponentResource", name, args, opts);
+
+        this.Y = args.X;
+    }
+
+    readonly Y: Input<boolean>;
+
+    public get X() {
+        return true;
+    }
+}
+
 describe("ComponentResource", () => {
     runtime.setMocks({
         call: (_) => {
@@ -220,6 +238,14 @@ describe("ComponentResource", () => {
         const component = new MyResource("comp", { providers: [provider] });
         const custom = new MyCustomResource("custom", { parent: component });
         assert.strictEqual(custom.__prov, provider);
+    });
+
+    // https://github.com/pulumi/pulumi/issues/21090
+    it("does not transfer inputs to outputs", async () => {
+        const component = new MyCustomComponentResource("comp", { X: true });
+        assert.strictEqual(component.X, true);
+        const y = await output(component.Y).promise();
+        assert.strictEqual(y, true);
     });
 });
 
