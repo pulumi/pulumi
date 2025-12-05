@@ -653,6 +653,7 @@ func ProviderFromSource(
 			return Provider{}, fmt.Errorf("could not find installed plugin %s, did you mean ./%[1]s: %w", descriptor.Name, err)
 		}
 
+		// TOOD: This block shouldn't be necessary after https://github.com/pulumi/pulumi/pull/21119
 		if descriptor.SubDir() != "" {
 			path, err := descriptor.DirPath()
 			if err != nil {
