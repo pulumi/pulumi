@@ -188,7 +188,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	var color string
 	var memProfileRate int
 
-	updateCheckResult := make(chan *diag.Diag)
+	updateCheckResult := make(chan *updateCheckResult)
 
 	cleanup := func() {
 		logging.Flush()
@@ -331,9 +331,20 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			jsonFlag := cmd.Flag("json")
 			isJSON := jsonFlag != nil && jsonFlag.Value.String() == "true"
 
-			checkVersionMsg, ok := <-updateCheckResult
-			if ok && checkVersionMsg != nil && !isJSON {
-				cmdutil.Diag().Warningf(checkVersionMsg)
+			if !isJSON {
+				select {
+				case result, ok := <-updateCheckResult:
+					if ok && result != nil {
+						cmdutil.Diag().Warningf(result.diag)
+						err := cacheVersionInfo(result.versionInfo)
+						if err != nil {
+							logging.V(3).Infof("failed to cache version info: %s", err)
+						}
+
+					}
+				default:
+					// The version didn't make it in time, so don't block the user
+				}
 			}
 		},
 	}
@@ -523,9 +534,14 @@ func haveNewerDevVersion(devVersion semver.Version, curVersion semver.Version) b
 	return devCommits > curCommits
 }
 
+type updateCheckResult struct {
+	diag        *diag.Diag
+	versionInfo cachedVersionInfo
+}
+
 // checkForUpdate checks to see if the CLI needs to be updated, and if so emits a warning, as well as information
 // as to how it can be upgraded.
-func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]string) *diag.Diag {
+func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]string) *updateCheckResult {
 	curVer, err := semver.ParseTolerant(version.Version)
 	if err != nil {
 		logging.V(3).Infof("error parsing current version: %s", err)
@@ -553,15 +569,7 @@ func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]st
 		lastPromptTimestampMS = time.Now().UnixMilli() // We're prompting, update the timestamp
 	}
 
-	err = cacheVersionInfo(cachedVersionInfo{
-		LatestVersion:         latestVer.String(),
-		OldestWithoutWarning:  oldestAllowedVer.String(),
-		LatestDevVersion:      devVer.String(),
-		LastPromptTimeStampMS: lastPromptTimestampMS,
-	})
-	if err != nil {
-		logging.V(3).Infof("failed to cache version info: %s", err)
-	}
+	err = cacheVersionInfo(cachedVersionInfo{})
 
 	if willPrompt {
 		if isCurVerDev {
@@ -569,7 +577,15 @@ func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]st
 		}
 
 		msg := getUpgradeMessage(latestVer, curVer, isCurVerDev)
-		return diag.RawMessage("", msg)
+		return &updateCheckResult{
+			diag: diag.RawMessage("", msg),
+			versionInfo: cachedVersionInfo{
+				LatestVersion:         latestVer.String(),
+				OldestWithoutWarning:  oldestAllowedVer.String(),
+				LatestDevVersion:      devVer.String(),
+				LastPromptTimeStampMS: lastPromptTimestampMS,
+			},
+		}
 	}
 
 	return nil
