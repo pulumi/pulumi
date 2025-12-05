@@ -2847,7 +2847,7 @@ func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 		"github.com/pulumi/component-test-providers/broken-test-provider")
 	stdout, _ := e.RunCommand("pulumi", "plugin", "ls")
 	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
-	require.Contains(t, stdout, "0.0.0-xb39e20e4e33600e33073ccb2df0ddb46388641dc")
+	require.Contains(t, stdout, "0.0.0-x52a8a71555d964542b308da197755c64dbe63352")
 
 	e.RunCommand("pulumi", "package", "add",
 		"github.com/pulumi/component-test-providers/test-provider")
@@ -2859,7 +2859,7 @@ func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	require.Contains(t, yamlString, "packages:")
 	require.Contains(t, yamlString,
 		"tls-self-signed-cert: github.com/pulumi/component-test-providers/test-provider@"+
-			"0.0.0-xb39e20e4e33600e33073ccb2df0ddb46388641dc")
+			"0.0.0-x52a8a71555d964542b308da197755c64dbe63352")
 
 	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"}
 	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
@@ -2868,7 +2868,7 @@ func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.1")
 	stdout, _ = e.RunCommand("pulumi", "plugin", "ls")
 	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
-	require.Contains(t, stdout, "0.0.0-xb39e20e4e33600e33073ccb2df0ddb46388641dc")
+	require.Contains(t, stdout, "0.0.0-x52a8a71555d964542b308da197755c64dbe63352")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
 
