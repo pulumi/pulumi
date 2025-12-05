@@ -37,6 +37,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/plugininstall"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -312,7 +313,7 @@ func installPackagesFromProject(
 				return err
 			}
 
-			if err := pkgWorkspace.InstallPluginAtPath(pctx, proj, stdout, stderr); err != nil {
+			if err := plugininstall.InstallPluginAtPath(pctx, proj, stdout, stderr); err != nil {
 				return errors.Join(fmt.Errorf("installing at '%s': %w", pctx.Pwd, err), pctx.Close())
 			}
 			return pctx.Close()

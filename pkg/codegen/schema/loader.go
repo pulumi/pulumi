@@ -25,7 +25,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/segmentio/encoding/json"
 
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/plugininstall"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -416,7 +416,7 @@ func (l *pluginLoader) loadSchemaBytes(
 			l.host.Log(sev, "", msg, 0)
 		}
 
-		_, err = pkgWorkspace.InstallPlugin(ctx, spec, log)
+		_, err = plugininstall.InstallPlugin(ctx, spec, log)
 		if err != nil {
 			return nil, nil, err
 		}
