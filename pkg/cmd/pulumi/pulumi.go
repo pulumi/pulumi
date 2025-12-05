@@ -340,7 +340,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 						if err != nil {
 							logging.V(3).Infof("failed to cache version info: %s", err)
 						}
-
 					}
 				default:
 					// The version didn't make it in time, so don't block the user
