@@ -15,10 +15,13 @@
 package stack
 
 import (
+	"encoding/json"
+	"math"
 	"os"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
@@ -181,4 +184,86 @@ func TestSerializeCheckpoint(t *testing.T) {
 			require.Equal(t, tt.expectedFeatures, checkpoint.Features)
 		})
 	}
+}
+
+// TestRoundtripCheckpoint tests that various values survive a roundtrip of serialization
+// and deserialization.
+func TestRoundtripCheckpoint(t *testing.T) {
+	t.Parallel()
+
+	originalSnap := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				URN:     "pulumi:stack::project::pulumi:root::project-stack",
+				Type:    resource.RootStackType,
+				Inputs:  resource.PropertyMap{},
+				Outputs: resource.PropertyMap{},
+			},
+			{
+				URN:    "pulumi:stack::project::custom:resource:MyResource::res1",
+				Type:   "custom:resource:MyResource",
+				ID:     "res1-id",
+				Custom: true,
+				Inputs: resource.PropertyMap{
+					"stringProp": resource.NewProperty("inputValue"),
+					"numberProp": resource.NewProperty(42.0),
+					"boolProp":   resource.NewProperty(true),
+					"nullProp":   resource.NewNullProperty(),
+					"infProp":    resource.NewProperty(math.Inf(1)),
+					"negInfProp": resource.NewProperty(math.Inf(-1)),
+				},
+				Outputs: resource.PropertyMap{
+					"outputProp": resource.NewProperty("outputValue"),
+				},
+				Parent: "pulumi:stack::project::pulumi:root::project-stack",
+			},
+		},
+	}
+	checkpoint, err := SerializeCheckpoint("stack", originalSnap, false /*showSecrets*/)
+	require.NoError(t, err)
+	require.NotNil(t, checkpoint)
+
+	var v3checkpoint apitype.CheckpointV3
+	err = json.Unmarshal(checkpoint.Checkpoint, &v3checkpoint)
+	require.NoError(t, err)
+
+	loadedSnap, err := DeserializeCheckpoint(t.Context(), nil, &v3checkpoint)
+	require.NoError(t, err)
+	require.NotNil(t, loadedSnap)
+	require.Equal(t, originalSnap, loadedSnap)
+}
+
+// TestRoundtripNaNCheckpoint tests that NaN values survive a roundtrip of serialization and deserialization.
+func TestRoundtripNanCheckpoint(t *testing.T) {
+	t.Parallel()
+
+	originalSnap := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				URN:  "pulumi:stack::project::pulumi:root::project-stack",
+				Type: resource.RootStackType,
+				Inputs: resource.PropertyMap{
+					"nan": resource.NewProperty(math.NaN()),
+				},
+				Outputs: resource.PropertyMap{},
+			},
+		},
+	}
+	checkpoint, err := SerializeCheckpoint("stack", originalSnap, false /*showSecrets*/)
+	require.NoError(t, err)
+	require.NotNil(t, checkpoint)
+
+	var v3checkpoint apitype.CheckpointV3
+	err = json.Unmarshal(checkpoint.Checkpoint, &v3checkpoint)
+	require.NoError(t, err)
+
+	loadedSnap, err := DeserializeCheckpoint(t.Context(), nil, &v3checkpoint)
+	require.NoError(t, err)
+	require.NotNil(t, loadedSnap)
+
+	// We can't just use require.Equal because NaN != NaN, so we need to check the property specifically.
+	loadedProp, ok := loadedSnap.Resources[0].Inputs["nan"]
+	require.True(t, ok)
+	require.True(t, loadedProp.IsNumber())
+	require.True(t, math.IsNaN(loadedProp.NumberValue()))
 }

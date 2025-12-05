@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
     "pulumi_kubernetes/README.md",
     "pulumi_kubernetes/__init__.py",
     "pulumi_kubernetes/_inputs.py",

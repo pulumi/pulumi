@@ -55,8 +55,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
-	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
-	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
 
 const (
@@ -1004,7 +1002,6 @@ type PluginSpec struct {
 	Kind              apitype.PluginKind // the kind of the plugin (language, resource, etc).
 	Version           *semver.Version    // the plugin's semantic version, if present.
 	PluginDownloadURL string             // an optional server to use when downloading this plugin.
-	PluginDir         string             // if set, will be used as the root plugin dir instead of ~/.pulumi/plugins.
 
 	// if set will be used to validate the plugin downloaded matches. This is keyed by "$os-$arch", e.g. "linux-x64".
 	Checksums map[string][]byte
@@ -1116,19 +1113,22 @@ func parsePluginSpecFromURL(
 	}
 	// We're purposely dropping any authentication info from the URL here. The name is used as
 	// the folder name for writing the plugin to disk, and we 1) don't want to write secrets
-	// in the folder name, 2) want to be able to reuse the same plugin even if the auth infoo
+	// in the folder name, 2) want to be able to reuse the same plugin even if the auth info
 	// changes and 3) avoid issues with the auth info being too long for a folder name.
 	urlWithoutAuth := &url.URL{
 		Scheme: parsedURL.Scheme,
 		Host:   parsedURL.Host,
 		Path:   parsedURL.Path,
 	}
-	nameURL, _, err := gitutil.ParseGitRepoURL(urlWithoutAuth.String())
+	nameURL, path, err := gitutil.ParseGitRepoURL(urlWithoutAuth.String())
 	if err != nil {
 		return PluginSpec{}, inference, err
 	}
+	if path != "" {
+		path = "_" + path
+	}
 	pluginSpec := PluginSpec{
-		Name:    strings.ReplaceAll(strings.TrimPrefix(nameURL, "https://"), "/", "_"),
+		Name:    strings.ReplaceAll(strings.TrimPrefix(nameURL, "https://")+path, "/", "_"),
 		Kind:    kind,
 		Version: version,
 		// Prefix the url with `git://`, so we can later recognize this as a git URL.
@@ -1191,7 +1191,11 @@ func (spec PluginSpec) LocalName() (string, string) {
 		if err != nil {
 			return strings.ReplaceAll(trimmed, "/", "_"), ""
 		}
-		return strings.ReplaceAll(strings.TrimPrefix(url, "https://"), "/", "_"), path
+		pathWithPrefix := path
+		if path != "" {
+			pathWithPrefix = "_" + path
+		}
+		return strings.ReplaceAll(strings.TrimPrefix(url, "https://")+pathWithPrefix, "/", "_"), path
 	}
 	return spec.Name, ""
 }
@@ -1220,13 +1224,9 @@ func (spec PluginSpec) File() string {
 
 // DirPath returns the directory where this plugin should be installed.
 func (spec PluginSpec) DirPath() (string, error) {
-	var err error
-	dir := spec.PluginDir
-	if dir == "" {
-		dir, err = GetPluginDir()
-		if err != nil {
-			return "", err
-		}
+	dir, err := GetPluginDir()
+	if err != nil {
+		return "", err
 	}
 
 	return filepath.Join(dir, spec.Dir()), nil
@@ -1726,113 +1726,6 @@ func DownloadToFile(
 		WrapStream: wrapper,
 		OnRetry:    retry,
 	}).DownloadToFile(ctx, pkgPlugin)
-}
-
-func (spec PluginSpec) InstallDependencies(ctx context.Context) error {
-	dir, err := spec.DirPath()
-	if err != nil {
-		return err
-	}
-	subdir := filepath.Join(dir, spec.SubDir())
-
-	// Install dependencies, if needed.
-	proj, err := LoadPluginProject(filepath.Join(subdir, "PulumiPlugin.yaml"))
-	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
-	}
-	if proj != nil {
-		runtime := strings.ToLower(proj.Runtime.Name())
-		// For now, we only do this for Node.js and Python. For Go, the expectation is the binary is
-		// already built. For .NET, similarly, a single self-contained binary could be used, but
-		// otherwise `dotnet run` will implicitly run `dotnet restore`.
-		// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
-		switch runtime {
-		case "nodejs":
-			var b bytes.Buffer
-			if _, err := npm.Install(ctx, npm.AutoPackageManager, subdir, true /* production */, &b, &b); err != nil {
-				os.Stderr.Write(b.Bytes())
-				return fmt.Errorf("installing plugin dependencies: %w", err)
-			}
-		case "python":
-			// We support two types of Python based plugins: bare directories or
-			// buildable packages.
-			//
-			// If the plugin directory is a bare directory (that is not a Python
-			// package), we expect it to have a `__main__.py` file that's the
-			// entrypoint to the plugin. Dependencies must be specified in
-			// `requirements.txt`.
-			//
-			// Plugins can also be Python packages, with a pyproject.toml. The
-			// package needs to be buildable [1]. We expect the package to
-			// include a module with the name of the project.
-			//
-			// See also sdk/python/cmd/pulumi-language-python/main.go#RunPlugin.
-			//
-			// 1: https://packaging.python.org/en/latest/tutorials/packaging-projects/#choosing-a-build-backend
-			mainPy := filepath.Join(subdir, "__main__.py")
-			_, err := os.Stat(mainPy)
-			if os.IsNotExist(err) {
-				// There is no `__main__.py` file. Check for pyproject.toml and if it's a buildable package.
-				buildable, err := toolchain.IsBuildablePackage(subdir)
-				if err != nil {
-					return fmt.Errorf("checking if plugin is a buildable package: %w", err)
-				}
-				if !buildable {
-					return errors.New("plugin is not runnable, it provides neither __main__.py nor a buildable pyproject.toml")
-				}
-
-				logging.V(6).Infof("Plugin at %s is a buildable Python package, installing it in package mode.", subdir)
-
-				// We have a pyproject.toml and it's a buildable package. We'll create a virtualenv
-				// and install the package into it.
-				ambientTc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{})
-				if err != nil {
-					return fmt.Errorf("getting ambient toolchain: %w", err)
-				}
-				cmd, err := ambientTc.ModuleCommand(ctx, "venv", "venv")
-				cmd.Dir = subdir
-				if err != nil {
-					return fmt.Errorf("preparing venv command: %w", err)
-				}
-				if out, err := cmd.CombinedOutput(); err != nil {
-					return fmt.Errorf("creating venv: %w; output %s", err, out)
-				}
-
-				tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-					Toolchain:  toolchain.Pip,
-					Root:       subdir,
-					Virtualenv: "venv",
-				})
-				if err != nil {
-					return fmt.Errorf("getting python toolchain: %w", err)
-				}
-				cmd, err = tc.ModuleCommand(ctx, "pip", "install", ".")
-				cmd.Dir = subdir
-				if err != nil {
-					return fmt.Errorf("preparing pip install command: %w", err)
-				}
-				if out, err := cmd.CombinedOutput(); err != nil {
-					return fmt.Errorf("installing package: %w; output %s", err, out)
-				}
-				return nil
-			}
-
-			// TODO[pulumi/pulumi/issues/16287]: Support toolchain options for installing plugins.
-			tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-				Toolchain:  toolchain.Pip,
-				Root:       subdir,
-				Virtualenv: "venv",
-			})
-			if err != nil {
-				return fmt.Errorf("getting python toolchain: %w", err)
-			}
-			if err := tc.InstallDependencies(ctx, subdir, false, /*useLanguageVersionTools */
-				false /*showOutput*/, os.Stdout, os.Stderr); err != nil {
-				return fmt.Errorf("installing plugin dependencies: %w", err)
-			}
-		}
-	}
-	return nil
 }
 
 // Re exporting PluginKind to keep backward compatibility, this should be kept in sync with

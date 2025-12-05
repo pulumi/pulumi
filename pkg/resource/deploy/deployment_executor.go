@@ -21,9 +21,9 @@ import (
 	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -56,7 +56,7 @@ func (ex *deploymentExecutor) checkTargets(targets UrnTargets) error {
 		return nil
 	}
 
-	olds := ex.deployment.olds
+	olds := ex.deployment.allOlds
 	var news map[resource.URN]bool
 	if ex.stepGen != nil {
 		news = ex.stepGen.urns
@@ -867,6 +867,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 	resources := []*resource.State{}
 	referenceable := make(map[resource.URN]bool)
 	olds := make(map[resource.URN]*resource.State)
+	allOlds := make(map[resource.URN][]*resource.State)
 	oldViews := make(map[resource.URN][]*resource.State)
 	for _, s := range ex.deployment.prev.Resources {
 		var old, new *resource.State
@@ -884,7 +885,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 
 		if new == nil {
 			contract.Assertf(old.Custom || old.ViewOf != "", "expected custom or view resource")
-			contract.Assertf(!providers.IsProviderType(old.Type), "expected non-provider resource")
+			contract.Assertf(!sdkproviders.IsProviderType(old.Type), "expected non-provider resource")
 			continue
 		}
 
@@ -910,6 +911,10 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 				if !referenceable[dep.URN] {
 					new.DeletedWith = ""
 				}
+			case resource.ResourceReplaceWith:
+				if !referenceable[dep.URN] {
+					new.ReplaceWith = nil
+				}
 			}
 		}
 
@@ -929,6 +934,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 		resources = append(resources, new)
 		referenceable[new.URN] = true
 
+		allOlds[new.URN] = append(allOlds[new.URN], new)
 		// Do not record resources that are pending deletion in the "olds" lookup table.
 		if !new.Delete {
 			olds[new.URN] = new
@@ -940,15 +946,16 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 		}
 	}
 
-	undangleParentResources(olds, resources)
+	undangleParentResources(referenceable, resources)
 
 	ex.deployment.prev.Resources = resources
 	ex.deployment.depGraph = graph.NewDependencyGraph(resources)
 	ex.deployment.olds = olds
+	ex.deployment.allOlds = allOlds
 	ex.deployment.oldViews = oldViews
 }
 
-func undangleParentResources(undeleted map[resource.URN]*resource.State, resources []*resource.State) {
+func undangleParentResources(undeleted map[resource.URN]bool, resources []*resource.State) {
 	// Since a refresh may delete arbitrary resources, we need to handle the case where
 	// the parent of a still existing resource is deleted.
 	//

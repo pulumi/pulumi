@@ -15,6 +15,7 @@
 package pulumi
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -24,7 +25,6 @@ import (
 
 	"github.com/blang/semver"
 	"golang.org/x/exp/maps"
-	"golang.org/x/net/context"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	rarchive "github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"

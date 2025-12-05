@@ -46,6 +46,7 @@ from .rpc import (
     serialize_properties,
     unwrap_rpc_secret,
 )
+from ._grpc_settings import _GRPC_CHANNEL_OPTIONS
 
 if TYPE_CHECKING:
     from ..resource import (
@@ -55,10 +56,6 @@ if TYPE_CHECKING:
     )
     from ..resource_hooks import ResourceHook
 
-
-# _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-_MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
-_GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
 
 # Workaround for https://github.com/grpc/grpc/issues/38679,
 # https://github.com/grpc/grpc/issues/22365#issuecomment-2254278769
@@ -570,6 +567,11 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             setattr(result, "import", opts.import_)
         if opts.deleted_with is not None:
             result.deleted_with = cast(str, await opts.deleted_with.urn.future())
+        if opts.replace_with:
+            for dependency in opts.replace_with:
+                urn = await dependency.urn.future()
+                if urn:
+                    result.replace_with.append(cast(str, urn))
         if opts.plugin_download_url:
             result.plugin_download_url = opts.plugin_download_url
         if opts.protect is not None:

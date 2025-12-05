@@ -1,0 +1,12 @@
+{
+  "emittedFiles": [
+    ".gitattributes",
+    "anyfunc/doc.go",
+    "anyfunc/init.go",
+    "anyfunc/internal/pulumiUtilities.go",
+    "anyfunc/internal/pulumiVersion.go",
+    "anyfunc/provider.go",
+    "anyfunc/pulumi-plugin.json",
+    "go.mod"
+  ]
+}

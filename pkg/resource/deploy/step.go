@@ -22,10 +22,10 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -1266,7 +1266,11 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// Component, provider, and pending-replace resources never change with a refresh; just return the current state.
 	if !s.old.Custom || providers.IsProviderType(s.old.Type) || s.old.PendingReplacement {
 		if s.cts != nil {
-			s.cts.MustFulfill(nil)
+			// for persisted refreshes, we need to make a copy of the state, and pretend we
+			// refreshed using that new state. This ensures that further steps will see the
+			// new state correctly.
+			s.new = s.old.Copy()
+			s.cts.MustFulfill(s.new)
 		}
 		return resource.StatusOK, nil, nil
 	}
@@ -1690,6 +1694,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		ImportID:                s.new.ImportID,
 		RetainOnDelete:          s.new.RetainOnDelete,
 		DeletedWith:             s.new.DeletedWith,
+		ReplaceWith:             s.new.ReplaceWith,
 		Created:                 nil,
 		Modified:                nil,
 		SourcePosition:          s.new.SourcePosition,
@@ -1697,6 +1702,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		IgnoreChanges:           s.new.IgnoreChanges,
 		HideDiff:                s.new.HideDiff,
 		ReplaceOnChanges:        s.new.ReplaceOnChanges,
+		ReplacementTrigger:      resource.NewNullProperty(),
 		RefreshBeforeUpdate:     s.new.RefreshBeforeUpdate,
 		ViewOf:                  s.new.ViewOf,
 		ResourceHooks:           nil,

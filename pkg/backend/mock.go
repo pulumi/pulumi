@@ -18,6 +18,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"iter"
 	"slices"
@@ -30,14 +31,17 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 //
@@ -640,6 +644,23 @@ func (ms *MockStack) Snapshot(ctx context.Context, secretsProvider secrets.Provi
 	panic("not implemented: MockStack.Snapshot")
 }
 
+func (ms *MockStack) SnapshotStackOutputs(
+	ctx context.Context, secretsProvider secrets.Provider,
+) (property.Map, error) {
+	snapshot, err := ms.Snapshot(ctx, secretsProvider)
+	if err != nil {
+		return property.Map{}, err
+	}
+	res, err := stack.GetRootStackResource(snapshot)
+	if err != nil {
+		return property.Map{}, fmt.Errorf("getting root stack resources: %w", err)
+	}
+	if res == nil {
+		return property.Map{}, nil
+	}
+	return resource.FromResourcePropertyMap(res.Outputs), nil
+}
+
 func (ms *MockStack) Tags() map[apitype.StackTagName]string {
 	if ms.TagsF != nil {
 		return ms.TagsF()
@@ -808,9 +829,10 @@ func (m MockTarReader) Tar() *tar.Reader {
 }
 
 type MockCloudRegistry struct {
-	PublishPackageF  func(context.Context, apitype.PackagePublishOp) error
-	PublishTemplateF func(context.Context, apitype.TemplatePublishOp) error
-	GetPackageF      func(
+	PublishPackageF       func(context.Context, apitype.PackagePublishOp) error
+	PublishTemplateF      func(context.Context, apitype.TemplatePublishOp) error
+	DeletePackageVersionF func(ctx context.Context, source, publisher, name string, version semver.Version) error
+	GetPackageF           func(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.PackageMetadata, error)
 	ListPackagesF func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
@@ -828,6 +850,15 @@ func (mr *MockCloudRegistry) PublishPackage(ctx context.Context, op apitype.Pack
 		return mr.PublishPackageF(ctx, op)
 	}
 	panic("not implemented: MockCloudRegistry.PublishPackage")
+}
+
+func (mr *MockCloudRegistry) DeletePackageVersion(
+	ctx context.Context, source, publisher, name string, version semver.Version,
+) error {
+	if mr.DeletePackageVersionF != nil {
+		return mr.DeletePackageVersionF(ctx, source, publisher, name, version)
+	}
+	panic("not implemented: MockCloudRegistry.DeletePackageVersion")
 }
 
 func (mr *MockCloudRegistry) GetPackage(

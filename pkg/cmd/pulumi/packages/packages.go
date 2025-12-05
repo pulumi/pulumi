@@ -21,10 +21,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"net/url"
 	"os"
-	"os/exec"
-	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -32,7 +29,6 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
-	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -44,11 +40,22 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"golang.org/x/mod/modfile"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	"gopkg.in/yaml.v2"
 )
+
+// BindSpec binds a PackageSpec into a Package, returning any error or error diagnostics encountered.
+func BindSpec(spec schema.PackageSpec) (*schema.Package, error) {
+	pkg, diags, err := schema.BindSpec(spec, nil, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	return pkg, nil
+}
 
 // InstallPackage installs a package to the project by generating an SDK and linking it.
 // It returns the path to the installed package.
@@ -56,13 +63,18 @@ func InstallPackage(proj workspace.BaseProject, pctx *plugin.Context, language, 
 	schemaSource string, parameters plugin.ParameterizeParameters,
 	registry registry.Registry,
 ) (*schema.Package, *workspace.PackageSpec, hcl.Diagnostics, error) {
-	pkg, specOverride, err := SchemaFromSchemaSource(pctx, schemaSource, parameters, registry)
+	pkgSpec, specOverride, err := SchemaFromSchemaSource(pctx, schemaSource, parameters, registry)
 	if err != nil {
 		var diagErr hcl.Diagnostics
 		if errors.As(err, &diagErr) {
 			return nil, nil, nil, fmt.Errorf("failed to get schema. Diagnostics: %w", errors.Join(diagErr.Errs()...))
 		}
 		return nil, nil, nil, fmt.Errorf("failed to get schema: %w", err)
+	}
+
+	pkg, err := BindSpec(*pkgSpec)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to bind schema: %w", err)
 	}
 
 	tempOut, err := os.MkdirTemp("", "pulumi-package-")
@@ -90,6 +102,8 @@ func InstallPackage(proj workspace.BaseProject, pctx *plugin.Context, language, 
 	}
 
 	out := filepath.Join(root, "sdks")
+	fmt.Printf("Successfully generated an SDK for the %s package at %s\n", pkg.Name, out)
+
 	err = os.MkdirAll(out, 0o755)
 	if err != nil {
 		return nil, nil, diags, fmt.Errorf("failed to create directory for SDK: %w", err)
@@ -113,22 +127,15 @@ func InstallPackage(proj workspace.BaseProject, pctx *plugin.Context, language, 
 		return nil, nil, diags, fmt.Errorf("failed to move SDK to project: %w", err)
 	}
 
-	packageDescriptor, err := pkg.Descriptor(pctx.Base())
-	if err != nil {
-		return nil, nil, diags, err
-	}
-
 	// Link the package to the project
-	if err := LinkPackage(&LinkPackageContext{
-		Writer:            os.Stdout,
-		Project:           proj,
-		Language:          language,
-		Root:              root,
-		Pkg:               pkg,
-		PluginContext:     pctx,
-		PackageDescriptor: packageDescriptor,
-		Out:               out,
-		Install:           true,
+	if err := LinkPackages(&LinkPackagesContext{
+		Writer:        os.Stdout,
+		Project:       proj,
+		Language:      language,
+		Root:          root,
+		Packages:      []PackageToLink{{Pkg: pkg, Out: out}},
+		PluginContext: pctx,
+		Install:       true,
 	}); err != nil {
 		return nil, nil, diags, err
 	}
@@ -162,9 +169,8 @@ func GenSDK(language, out string, pkg *schema.Package, overlays string, local bo
 		if err != nil {
 			return nil, fmt.Errorf("create plugin context: %w", err)
 		}
-		defer contract.IgnoreClose(pCtx.Host)
-		programInfo := plugin.NewProgramInfo(cwd, cwd, ".", nil)
-		languagePlugin, err := pCtx.Host.LanguageRuntime(language, programInfo)
+		defer contract.IgnoreClose(pCtx)
+		languagePlugin, err := pCtx.Host.LanguageRuntime(language)
 		if err != nil {
 			return nil, err
 		}
@@ -214,21 +220,23 @@ func GenSDK(language, out string, pkg *schema.Package, overlays string, local bo
 	return generatePackage(root, pkg, extraFiles)
 }
 
-type LinkPackageContext struct {
+type PackageToLink struct {
+	// The output directory where the SDK package to be linked is located.
+	Out string
+	Pkg *schema.Package
+}
+
+type LinkPackagesContext struct {
 	// The project into which the SDK package is being linked.
 	Project workspace.BaseProject
 	// The programming language of the SDK package being linked.
 	Language string
 	// The root directory of the project to which the SDK package is being linked.
 	Root string
-	// The schema of the Pulumi package from which the SDK being linked was generated.
-	Pkg *schema.Package
+	// The packages to link to the project.
+	Packages []PackageToLink
 	// A plugin context to load languages and providers.
 	PluginContext *plugin.Context
-	// The descriptor for the package to link.
-	PackageDescriptor workspace.PackageDescriptor
-	// The output directory where the SDK package to be linked is located.
-	Out string
 	// True if the linked SDK package should be installed into the project it is being added to. If this is false, the
 	// package will be linked (e.g. an entry added to package.json), but not installed (e.g. its contents unpacked into
 	// node_modules).
@@ -236,44 +244,33 @@ type LinkPackageContext struct {
 	Writer  io.Writer
 }
 
-// LinkPackage links a locally generated SDK to an existing project.
+// LinkPackages links a locally generated SDK to an existing project.
 // Currently Java is not supported and will print instructions for manual linking.
-func LinkPackage(ctx *LinkPackageContext) error {
-	switch ctx.Language {
-	case "go":
-		return linkGoPackage(ctx)
-	case "dotnet":
-		return linkDotnetPackage(ctx)
-	case "java":
-		return printJavaLinkInstructions(ctx)
-	case "yaml":
+func LinkPackages(ctx *LinkPackagesContext) error {
+	if ctx.Language == "yaml" {
 		return nil // Nothing to do for YAML
-	default:
-		return linkPackage(ctx)
 	}
+	return linkPackage(ctx)
 }
 
 // linkPackage links a locally generated SDK into a project using `Language.Link`.
-func linkPackage(ctx *LinkPackageContext) error {
-	fmt.Fprintf(ctx.Writer, "Successfully generated an SDK for the %s package at %s\n", ctx.Pkg.Name, ctx.Out)
-	fmt.Fprintf(ctx.Writer, "\n")
+func linkPackage(ctx *LinkPackagesContext) error {
 	root, err := filepath.Abs(ctx.Root)
 	if err != nil {
 		return err
 	}
-	programInfo := plugin.NewProgramInfo(root, root, ".", ctx.Project.RuntimeInfo().Options())
-	languagePlugin, err := ctx.PluginContext.Host.LanguageRuntime(ctx.Project.RuntimeInfo().Name(), programInfo)
+	languagePlugin, err := ctx.PluginContext.Host.LanguageRuntime(ctx.Project.RuntimeInfo().Name())
 	if err != nil {
 		return err
 	}
 
-	// Pre-load the schema into the cached loader. This allows the loader to respond to GetSchema requests for file
+	// Pre-load the schemas into the cached loader. This allows the loader to respond to GetSchema requests for file
 	// based schemas.
-	loader := schema.NewCachedLoaderWithEntries(
-		schema.NewPluginLoader(ctx.PluginContext.Host),
-		map[string]schema.PackageReference{
-			ctx.Pkg.Identity(): ctx.Pkg.Reference(),
-		})
+	entries := make(map[string]schema.PackageReference, len(ctx.Packages))
+	for _, pkg := range ctx.Packages {
+		entries[pkg.Pkg.Identity()] = pkg.Pkg.Reference()
+	}
+	loader := schema.NewCachedLoaderWithEntries(schema.NewPluginLoader(ctx.PluginContext.Host), entries)
 	loaderServer := schema.NewLoaderServer(loader)
 	grpcServer, err := plugin.NewServer(ctx.PluginContext, schema.LoaderRegistration(loaderServer))
 	if err != nil {
@@ -281,19 +278,26 @@ func linkPackage(ctx *LinkPackageContext) error {
 	}
 	defer contract.IgnoreClose(grpcServer)
 
-	out, err := filepath.Abs(ctx.Out)
-	if err != nil {
-		return err
+	deps := make([]workspace.LinkablePackageDescriptor, 0, len(ctx.Packages))
+	for _, packageToLink := range ctx.Packages {
+		out, err := filepath.Abs(packageToLink.Out)
+		if err != nil {
+			return err
+		}
+		packagePath, err := filepath.Rel(root, out)
+		if err != nil {
+			return err
+		}
+		packageDescriptor, err := packageToLink.Pkg.Descriptor(ctx.PluginContext.Base())
+		if err != nil {
+			return fmt.Errorf("getting package descriptor: %w", err)
+		}
+		deps = append(deps, workspace.LinkablePackageDescriptor{
+			Path:       packagePath,
+			Descriptor: packageDescriptor,
+		})
 	}
-	packagePath, err := filepath.Rel(root, out)
-	if err != nil {
-		return err
-	}
-	deps := []workspace.LinkablePackageDescriptor{{
-		Path:       packagePath,
-		Descriptor: ctx.PackageDescriptor,
-	}}
-
+	programInfo := plugin.NewProgramInfo(root, root, ".", ctx.Project.RuntimeInfo().Options())
 	instructions, err := languagePlugin.Link(programInfo, deps, grpcServer.Addr())
 	if err != nil {
 		return fmt.Errorf("linking package: %w", err)
@@ -302,7 +306,7 @@ func linkPackage(ctx *LinkPackageContext) error {
 	if ctx.Install {
 		if err = pkgCmdUtil.InstallDependencies(languagePlugin, plugin.InstallDependenciesRequest{
 			Info: programInfo,
-		}); err != nil {
+		}, ctx.Writer, ctx.Writer); err != nil {
 			return fmt.Errorf("installing dependencies: %w", err)
 		}
 	}
@@ -506,38 +510,6 @@ func CopyAll(dst string, src string) error {
 	return nil
 }
 
-func extractModulePath(pkgRef schema.PackageReference) string {
-	var vPath string
-	version := pkgRef.Version()
-	name := pkgRef.Name()
-	if version != nil && version.Major > 1 {
-		vPath = fmt.Sprintf("/v%d", version.Major)
-	}
-
-	// Default to example.com/pulumi-pkg if we have no other information.
-	root := "example.com/pulumi-" + name
-	// But if we have a publisher use that instead, assuming it's from github
-	if pkgRef.Publisher() != "" {
-		root = fmt.Sprintf("github.com/%s/pulumi-%s", pkgRef.Publisher(), name)
-	}
-	// And if we have a repository, use that instead of the publisher
-	if pkgRef.Repository() != "" {
-		url, err := url.Parse(pkgRef.Repository())
-		if err == nil {
-			// If there's any errors parsing the URL ignore it. Else use the host and path as go doesn't expect http://
-			root = url.Host + url.Path
-		}
-	}
-
-	// Support pack sdks write a go mod inside the go folder. Old legacy sdks would manually write a go.mod in the sdk
-	// folder. This happened to mean that sdk/dotnet, sdk/nodejs etc where also considered part of the go sdk module.
-	if pkgRef.SupportPack() {
-		return fmt.Sprintf("%s/sdk/go%s", root, vPath)
-	}
-
-	return fmt.Sprintf("%s/sdk%s", root, vPath)
-}
-
 func NewPluginContext(cwd string) (*plugin.Context, error) {
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: cmdutil.GetGlobalColorization(),
@@ -566,22 +538,8 @@ func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginSpec)
 //	FILE.[json|y[a]ml] | PLUGIN[@VERSION] | PATH_TO_PLUGIN
 func SchemaFromSchemaSource(
 	pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
-) (*schema.Package, *workspace.PackageSpec, error) {
+) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 	var spec schema.PackageSpec
-	bind := func(
-		spec schema.PackageSpec, specOverride *workspace.PackageSpec,
-	) (*schema.Package, *workspace.PackageSpec, error) {
-		pkg, diags, err := schema.BindSpec(spec, nil, schema.ValidationOptions{
-			AllowDanglingReferences: true,
-		})
-		if err != nil {
-			return nil, nil, err
-		}
-		if diags.HasErrors() {
-			return nil, nil, diags
-		}
-		return pkg, specOverride, nil
-	}
 	if ext := filepath.Ext(packageSource); ext == ".yaml" || ext == ".yml" {
 		if !parameters.Empty() {
 			return nil, nil, errors.New("parameterization arguments are not supported for yaml files")
@@ -594,7 +552,7 @@ func SchemaFromSchemaSource(
 		if err != nil {
 			return nil, nil, err
 		}
-		return bind(spec, nil)
+		return &spec, nil, nil
 	} else if ext == ".json" {
 		if !parameters.Empty() {
 			return nil, nil, errors.New("parameterization arguments are not supported for json files")
@@ -608,7 +566,7 @@ func SchemaFromSchemaSource(
 		if err != nil {
 			return nil, nil, err
 		}
-		return bind(spec, nil)
+		return &spec, nil, nil
 	}
 
 	p, specOverride, err := ProviderFromSource(pctx, packageSource, registry)
@@ -654,7 +612,7 @@ func SchemaFromSchemaSource(
 		spec.PluginDownloadURL = pluginSpec.PluginDownloadURL
 	}
 	setSpecNamespace(&spec, pluginSpec)
-	return bind(spec, specOverride)
+	return &spec, specOverride, nil
 }
 
 type Provider struct {
@@ -685,32 +643,10 @@ func ProviderFromSource(
 				AlreadyParameterized: descriptor.Parameterization != nil,
 			}, nil
 		}
+
 		// There is an executable or directory with the same name, so suggest that
 		if info, statErr := os.Stat(descriptor.Name); statErr == nil && (isExecutable(info) || info.IsDir()) {
 			return Provider{}, fmt.Errorf("could not find installed plugin %s, did you mean ./%[1]s: %w", descriptor.Name, err)
-		}
-
-		if descriptor.SubDir() != "" {
-			path, err := descriptor.DirPath()
-			if err != nil {
-				return Provider{}, err
-			}
-			info, statErr := os.Stat(filepath.Join(path, descriptor.SubDir()))
-			if statErr == nil && info.IsDir() {
-				// The plugin is already installed.  But since it is in a subdirectory, it could be that
-				// we previously installed a plugin in a different subdirectory of the same repository.
-				// This is why the provider might have failed to start up.  Install the dependencies
-				// and try again.
-				depErr := descriptor.InstallDependencies(pctx.Base())
-				if depErr != nil {
-					return Provider{}, fmt.Errorf("installing plugin dependencies: %w", depErr)
-				}
-				p, err := pctx.Host.Provider(descriptor)
-				if err != nil {
-					return Provider{}, err
-				}
-				return Provider{Provider: p}, nil
-			}
 		}
 
 		// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.

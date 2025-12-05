@@ -294,7 +294,7 @@ func TestRemoteTransformBadResponse(t *testing.T) {
 				"foo": resource.NewProperty(1.0),
 			},
 		})
-		assert.ErrorContains(t, err, "unmarshaling response: proto:")
+		assert.ErrorContains(t, err, "invoke transform: unmarshaling transform response: proto:")
 		assert.ErrorContains(t, err, "cannot parse invalid wire-format data")
 		return err
 	})
@@ -306,7 +306,7 @@ func TestRemoteTransformBadResponse(t *testing.T) {
 
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.ErrorContains(t, err, "unmarshaling response: proto:")
+	assert.ErrorContains(t, err, "invoke transform: unmarshaling transform response: proto:")
 	assert.ErrorContains(t, err, "cannot parse invalid wire-format data")
 	require.Len(t, snap.Resources, 0)
 }

@@ -26,6 +26,7 @@ import (
 	"path"
 	"reflect"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -67,6 +68,7 @@ type contextState struct {
 	keepResources            bool         // true if resources should be marshaled as strongly-typed references.
 	keepOutputValues         bool         // true if outputs should be marshaled as strongly-type output values.
 	supportsDeletedWith      bool         // true if deletedWith supported by pulumi
+	supportsReplaceWith      bool         // true if replaceWith supported by pulumi
 	supportsAliasSpecs       bool         // true if full alias specification is supported by pulumi
 	supportsTransforms       bool         // true if remote transforms are supported by pulumi
 	supportsInvokeTransforms bool         // true if remote invoke transforms are supported by pulumi
@@ -160,6 +162,11 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		return nil, err
 	}
 
+	supportsReplaceWith, err := supportsFeature("replaceWith")
+	if err != nil {
+		return nil, err
+	}
+
 	supportsAliasSpecs, err := supportsFeature("aliasSpecs")
 	if err != nil {
 		return nil, err
@@ -195,6 +202,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		keepResources:            keepResources,
 		keepOutputValues:         keepOutputValues,
 		supportsDeletedWith:      supportsDeletedWith,
+		supportsReplaceWith:      supportsReplaceWith,
 		supportsAliasSpecs:       supportsAliasSpecs,
 		supportsTransforms:       supportsTransforms,
 		supportsInvokeTransforms: supportsInvokeTransforms,
@@ -1348,6 +1356,10 @@ func (ctx *Context) readPackageResource(
 		return errors.New("the Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI")
 	}
 
+	if options.ReplaceWith != nil && !ctx.state.supportsReplaceWith {
+		return errors.New("the Pulumi CLI does not support the ReplaceWith option. Please update the Pulumi CLI")
+	}
+
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	if err := ctx.beginRPC(); err != nil {
 		return err
@@ -1766,8 +1778,10 @@ func (ctx *Context) registerResource(
 				PluginDownloadURL:          inputs.pluginDownloadURL,
 				Remote:                     remote,
 				ReplaceOnChanges:           inputs.replaceOnChanges,
+				ReplacementTrigger:         inputs.replacementTrigger,
 				RetainOnDelete:             inputs.retainOnDelete,
 				DeletedWith:                inputs.deletedWith,
+				ReplaceWith:                inputs.replaceWith,
 				HideDiffs:                  inputs.hideDiffs,
 				SourcePosition:             sourcePosition,
 				StackTrace:                 stackTrace,
@@ -2242,6 +2256,8 @@ type resourceInputs struct {
 	retainOnDelete          *bool
 	deletedWith             string
 	hideDiffs               []string
+	replaceWith             []string
+	replacementTrigger      *structpb.Value
 }
 
 func (ctx *Context) resolveAliasParent(alias Alias, spec *pulumirpc.Alias_Spec) error {
@@ -2470,20 +2486,68 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		}
 	}
 
-	// Merge all dependencies with what we got earlier from property marshaling, and remove duplicates.
-	var deps []string
-	depSet := map[URN]struct{}{}
-	for _, dep := range append(resOpts.depURNs, rpcDeps...) {
-		if _, ok := depSet[dep]; !ok {
-			deps = append(deps, string(dep))
-			depSet[dep] = struct{}{}
+	var replacementTriggerDeps []URN
+	var replacementTriggerValue *structpb.Value
+	if opts.ReplacementTrigger != nil {
+		rtValue, rtDepResources, err := marshalInput(opts.ReplacementTrigger, anyType)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling replacementTrigger option: %w", err)
+		}
+
+		if len(rtDepResources) > 0 {
+			depMap, err := expandDependencies(ctx.Context(), rtDepResources)
+			if err != nil {
+				return nil, fmt.Errorf("expanding replacementTrigger dependencies: %w", err)
+			}
+			replacementTriggerDeps = maps.Keys(depMap)
+		}
+
+		if !rtValue.IsNull() {
+			marshaled, err := plugin.MarshalPropertyValue(
+				resource.PropertyKey("replacementTrigger"),
+				rtValue,
+				plugin.MarshalOptions{
+					KeepUnknowns:     true,
+					KeepSecrets:      true,
+					KeepResources:    ctx.state.keepResources,
+					KeepOutputValues: remote && ctx.state.keepOutputValues,
+				},
+			)
+			if err != nil {
+				return nil, fmt.Errorf("marshaling replacementTrigger option: %w", err)
+			}
+			replacementTriggerValue = marshaled
 		}
 	}
-	sort.Strings(deps)
+
+	// Merge all dependencies with what we got earlier from property marshaling, and remove duplicates.
+	deps := make([]string, 0, len(resOpts.depURNs)+len(rpcDeps)+len(replacementTriggerDeps))
+	for _, dep := range resOpts.depURNs {
+		deps = append(deps, string(dep))
+	}
+	for _, dep := range rpcDeps {
+		deps = append(deps, string(dep))
+	}
+	for _, dep := range replacementTriggerDeps {
+		deps = append(deps, string(dep))
+	}
+	slices.Sort(deps)
+	deps = slices.Compact(deps)
 
 	aliases, err := ctx.mapAliases(opts.Aliases, t, state.name, opts.Parent)
 	if err != nil {
 		return nil, fmt.Errorf("mapping aliases: %w", err)
+	}
+
+	var replaceWithURNs []string
+	if opts.ReplaceWith != nil {
+		for _, r := range opts.ReplaceWith {
+			urn, _, _, err := r.URN().awaitURN(context.Background())
+			if err != nil {
+				return nil, fmt.Errorf("error waiting for ReplaceWith URN to resolve: %w", err)
+			}
+			replaceWithURNs = append(replaceWithURNs, string(urn))
+		}
 	}
 
 	var deletedWithURN URN
@@ -2516,6 +2580,8 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		replaceOnChanges:        resOpts.replaceOnChanges,
 		retainOnDelete:          opts.RetainOnDelete,
 		deletedWith:             string(deletedWithURN),
+		replaceWith:             replaceWithURNs,
+		replacementTrigger:      replacementTriggerValue,
 	}, nil
 }
 

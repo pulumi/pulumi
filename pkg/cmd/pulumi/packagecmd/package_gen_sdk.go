@@ -65,11 +65,16 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			}()
 
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
-			pkg, _, err := packages.SchemaFromSchemaSource(pctx, source, parameters,
+			spec, _, err := packages.SchemaFromSchemaSource(pctx, source, parameters,
 				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()))
 			if err != nil {
 				return err
 			}
+			pkg, err := packages.BindSpec(*spec)
+			if err != nil {
+				return err
+			}
+
 			if version != "" {
 				pkgVersion, err := semver.Parse(version)
 				if err != nil {

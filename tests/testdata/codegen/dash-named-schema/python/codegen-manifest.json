@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
     "pulumi_foo_bar/README.md",
     "pulumi_foo_bar/__init__.py",
     "pulumi_foo_bar/_inputs.py",

@@ -56,7 +56,7 @@ type langhost struct {
 
 // NewLanguageRuntime binds to a language's runtime plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
-func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory string, info ProgramInfo,
+func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory string,
 ) (LanguageRuntime, error) {
 	attachPort, err := GetLanguageAttachPort(runtime)
 	if err != nil {
@@ -120,7 +120,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 
 		contract.Assertf(path != "", "unexpected empty path for language plugin %s", runtime)
 
-		args, err := buildArgsForNewPlugin(host, info.RootDirectory(), info.Options())
+		args, err := buildArgsForNewPlugin(host)
 		if err != nil {
 			return nil, err
 		}
@@ -206,22 +206,10 @@ func langRuntimePluginDialOptions(ctx *Context, runtime string) []grpc.DialOptio
 	return dialOpts
 }
 
-func buildArgsForNewPlugin(host Host, root string, options map[string]any) ([]string, error) {
-	root, err := filepath.Abs(root)
-	if err != nil {
-		return nil, err
-	}
-	args := slice.Prealloc[string](len(options))
-
-	for k, v := range options {
-		args = append(args, fmt.Sprintf("-%s=%v", k, v))
-	}
-
-	args = append(args, "-root="+filepath.Clean(root))
-
+func buildArgsForNewPlugin(host Host) ([]string, error) {
+	args := []string{}
 	// NOTE: positional argument for the server addresss must come last
 	args = append(args, host.ServerAddr())
-
 	return args, nil
 }
 
@@ -390,11 +378,6 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 	for i, k := range info.ConfigSecretKeys {
 		configSecretKeys[i] = k.String()
 	}
-	configPropertyMap, err := MarshalProperties(info.ConfigPropertyMap,
-		MarshalOptions{RejectUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
-	if err != nil {
-		return "", false, err
-	}
 
 	minfo, err := info.Info.Marshal()
 	if err != nil {
@@ -402,22 +385,21 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 	}
 
 	resp, err := h.client.Run(h.ctx.Request(), &pulumirpc.RunRequest{
-		MonitorAddress:    info.MonitorAddress,
-		Pwd:               info.Pwd,
-		Program:           info.Info.EntryPoint(),
-		Args:              info.Args,
-		Project:           info.Project,
-		Stack:             info.Stack,
-		Config:            config,
-		ConfigSecretKeys:  configSecretKeys,
-		ConfigPropertyMap: configPropertyMap,
-		DryRun:            info.DryRun,
-		QueryMode:         info.QueryMode,
-		Parallel:          info.Parallel,
-		Organization:      info.Organization,
-		Info:              minfo,
-		LoaderTarget:      info.LoaderAddress,
-		AttachDebugger:    info.AttachDebugger,
+		MonitorAddress:   info.MonitorAddress,
+		Pwd:              info.Pwd,
+		Program:          info.Info.EntryPoint(),
+		Args:             info.Args,
+		Project:          info.Project,
+		Stack:            info.Stack,
+		Config:           config,
+		ConfigSecretKeys: configSecretKeys,
+		DryRun:           info.DryRun,
+		QueryMode:        info.QueryMode,
+		Parallel:         info.Parallel,
+		Organization:     info.Organization,
+		Info:             minfo,
+		LoaderTarget:     info.LoaderAddress,
+		AttachDebugger:   info.AttachDebugger,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -600,6 +582,32 @@ func (h *langhost) RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPromp
 
 	logging.V(7).Infof("langhost[%v].RuntimeOptionsPrompts() success", h.runtime)
 	return prompts, nil
+}
+
+func (h *langhost) Template(info ProgramInfo, projectName tokens.PackageName) error {
+	logging.V(7).Infof("langhost[%v].Template() executing", h.runtime)
+
+	minfo, err := info.Marshal()
+	if err != nil {
+		return err
+	}
+
+	_, err = h.client.Template(h.ctx.Request(), &pulumirpc.TemplateRequest{
+		Info:        minfo,
+		ProjectName: string(projectName),
+	})
+	if err != nil {
+		if status.Code(err) == codes.Unimplemented {
+			logging.V(7).Infof("langhost[%v].Template() not implemented", h.runtime)
+			return nil
+		}
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("langhost[%v].Template() failed: err=%v", h.runtime, rpcError)
+		return rpcError
+	}
+
+	logging.V(7).Infof("langhost[%v].Template() success", h.runtime)
+	return nil
 }
 
 func (h *langhost) About(info ProgramInfo) (AboutInfo, error) {

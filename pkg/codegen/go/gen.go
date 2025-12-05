@@ -823,7 +823,7 @@ func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, 
 	if info, ok := extDef.Language["go"].(GoPackageInfo); ok {
 		goInfo = info
 	} else {
-		goInfo.ImportBasePath = extractImportBasePath(extPkg)
+		goInfo.ImportBasePath = ExtractImportBasePath(extPkg)
 	}
 
 	pkgImportAliases := goInfo.PackageImportAliases
@@ -2561,7 +2561,11 @@ func (pkg *pkgContext) genResource(
 		if def.Parameterization != nil {
 			packageRef = "Package"
 			packageArg = ", ref"
-			err = pkg.GenPkgGetPackageRefCall(w, outputsType+"{}")
+			callOutput := outputsType
+			if liftReturn {
+				callOutput = pkg.outputType(objectReturnType.Properties[0].Type)
+			}
+			err = pkg.GenPkgGetPackageRefCall(w, callOutput+"{}")
 			if err != nil {
 				return err
 			}
@@ -3836,7 +3840,8 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 	}
 }
 
-func extractModulePath(extPkg schema.PackageReference) string {
+// ExtractModulePath creates a go module path for a given package.
+func ExtractModulePath(extPkg schema.PackageReference) string {
 	var vPath string
 	version := extPkg.Version()
 	name := extPkg.Name()
@@ -3868,8 +3873,11 @@ func extractModulePath(extPkg schema.PackageReference) string {
 	return fmt.Sprintf("%s/sdk%s", root, vPath)
 }
 
-func extractImportBasePath(extPkg schema.PackageReference) string {
-	modpath := extractModulePath(extPkg)
+// ExtractImportBasePath returns the import path to be used in Go code for a package reference. For example we might
+// have the module path "github.com/pulumi/pulumi-aws/sdk/v7" as returned by `ExtractModulePath` and the matching import
+// path "github.com/pulumi/pulumi-aws/sdk/v7/go/aws" returned by `ExtractImportBasePath`.
+func ExtractImportBasePath(extPkg schema.PackageReference) string {
+	modpath := ExtractModulePath(extPkg)
 	name := extPkg.Name()
 
 	// Support pack sdks write a go mod inside the go folder. Old legacy sdks would manually write a go.mod in the sdk
@@ -4199,7 +4207,7 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 			importBasePath := goInfo.ImportBasePath
 			if importBasePath == "" {
 				// Default to a path based on the package name.
-				importBasePath = extractImportBasePath(pkg)
+				importBasePath = ExtractImportBasePath(pkg)
 			}
 
 			pack = &pkgContext{
@@ -4749,7 +4757,7 @@ func GeneratePackage(tool string,
 	}
 
 	if goPkgInfo.ImportBasePath == "" {
-		goPkgInfo.ImportBasePath = extractImportBasePath(pkg.Reference())
+		goPkgInfo.ImportBasePath = ExtractImportBasePath(pkg.Reference())
 	}
 
 	packages, err := generatePackageContextMap(tool, pkg.Reference(), goPkgInfo, NewCache())
@@ -4771,6 +4779,8 @@ func GeneratePackage(tool string,
 	}
 
 	files := codegen.Fs{}
+
+	files.Add(".gitattributes", codegen.GenGitAttributesFile())
 
 	// Generate pulumi-plugin.json
 	pulumiPlugin := &plugin.PulumiPluginJSON{
@@ -5145,7 +5155,7 @@ func GeneratePackage(tool string,
 
 	// create a go.mod file with references to local dependencies
 	if pkg.SupportPack {
-		modulePath := extractModulePath(pkg.Reference())
+		modulePath := ExtractModulePath(pkg.Reference())
 		if langInfo, found := pkg.Language["go"]; found {
 			goInfo, ok := langInfo.(GoPackageInfo)
 			if ok && goInfo.ModulePath != "" {

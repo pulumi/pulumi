@@ -17,6 +17,7 @@ import asyncio
 import os
 import unittest
 import pytest
+import pytest_asyncio
 
 from pulumi.resource import DependencyProviderResource
 from pulumi.runtime import settings, mocks
@@ -29,12 +30,12 @@ import pulumi
 T = TypeVar("T")
 
 
-class DependencyProviderResourceTests(unittest.TestCase):
-    def test_get_package(self):
-        res = DependencyProviderResource(
-            "urn:pulumi:stack::project::pulumi:providers:aws::default_4_13_0"
-        )
-        self.assertEqual("aws", res.package)
+@pytest.mark.asyncio
+async def test_get_package():
+    res = DependencyProviderResource(
+        "urn:pulumi:stack::project::pulumi:providers:aws::default_4_13_0"
+    )
+    assert "aws" == res.package
 
 
 @pytest.fixture(autouse=True)
@@ -46,6 +47,7 @@ def clean_up_env_vars():
 
 
 @pulumi.runtime.test
+@pytest.mark.asyncio
 def test_depends_on_accepts_outputs(dep_tracker):
     dep1 = MockResource(name="dep1")
     dep2 = MockResource(name="dep2")
@@ -66,6 +68,7 @@ def test_depends_on_accepts_outputs(dep_tracker):
 
 
 @pulumi.runtime.test
+@pytest.mark.asyncio
 def test_depends_on_outputs_works_in_presence_of_unknowns(dep_tracker_preview):
     dep1 = MockResource(name="dep1")
     dep2 = MockResource(name="dep2")
@@ -84,6 +87,7 @@ def test_depends_on_outputs_works_in_presence_of_unknowns(dep_tracker_preview):
 
 
 @pulumi.runtime.test
+@pytest.mark.asyncio
 def test_depends_on_respects_top_level_implicit_dependencies(dep_tracker):
     dep1 = MockResource(name="dep1")
     dep2 = MockResource(name="dep2")
@@ -124,6 +128,7 @@ def depends_on_variations(dep: pulumi.Resource) -> List[pulumi.ResourceOptions]:
 
 
 @pulumi.runtime.test
+@pytest.mark.asyncio
 def test_depends_on_typing_variations(dep_tracker) -> None:
     dep: pulumi.Resource = MockResource(name="dep1")
 
@@ -234,14 +239,14 @@ def output_depending_on_resource(
     return pulumi.Output(resources=set([r]), is_known=is_known_fut, future=o.future())
 
 
-@pytest.fixture
-def dep_tracker():
+@pytest_asyncio.fixture
+async def dep_tracker():
     for dt in build_dep_tracker():
         yield dt
 
 
-@pytest.fixture
-def dep_tracker_preview():
+@pytest_asyncio.fixture
+async def dep_tracker_preview():
     for dt in build_dep_tracker(preview=True):
         yield dt
 

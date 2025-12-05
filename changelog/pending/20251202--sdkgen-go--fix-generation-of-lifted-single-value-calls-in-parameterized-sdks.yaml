@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/go
+  description: Fix generation of lifted single-value calls in parameterized SDKs

@@ -17,6 +17,7 @@ package packagecmd
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -61,8 +62,7 @@ type packagePublishCmd struct {
 	defaultOrg    func(context.Context, backend.Backend, *workspace.Project) (string, error)
 	extractSchema func(
 		pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
-	) (*schema.Package, *workspace.PackageSpec, error)
-	pluginDir string
+	) (*schema.PackageSpec, *workspace.PackageSpec, error)
 }
 
 func newPackagePublishCmd() *cobra.Command {
@@ -191,13 +191,16 @@ func (cmd *packagePublishCmd) Run(
 		return errors.New("no package name specified, please set one in the package schema")
 	}
 	var version semver.Version
-	if pkg.Version != nil {
-		version = *pkg.Version
+	if pkg.Version != "" {
+		version, err = semver.Parse(pkg.Version)
+		if err != nil {
+			return fmt.Errorf("invalid version %q in package schema: %w", pkg.Version, err)
+		}
 	} else {
 		return errors.New("no version specified, please set a version in the package schema")
 	}
 
-	json, err := pkg.MarshalJSON()
+	jsonData, err := json.Marshal(pkg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal schema: %w", err)
 	}
@@ -233,7 +236,7 @@ func (cmd *packagePublishCmd) Run(
 		Publisher: publisher,
 		Name:      name,
 		Version:   version,
-		Schema:    bytes.NewReader(json),
+		Schema:    bytes.NewReader(jsonData),
 		Readme:    readmeBytes,
 	}
 
@@ -315,7 +318,6 @@ func (cmd *packagePublishCmd) findReadme(ctx context.Context, packageSrc string)
 	if err != nil {
 		return "", fmt.Errorf("failed to create plugin spec: %w", err)
 	}
-	pluginSpec.PluginDir = cmd.pluginDir
 
 	pluginDir, err := pluginSpec.DirPath()
 	if err != nil {

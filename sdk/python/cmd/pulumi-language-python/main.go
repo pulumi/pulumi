@@ -1243,6 +1243,34 @@ func (host *pythonLanguageHost) InstallDependencies(
 	if err != nil {
 		return err
 	}
+
+	// For plugins with pyproject.toml (bootstrap-less mode), we need to install the package itself
+	// in addition to any dependencies listed in requirements.txt.
+	if req.IsPlugin {
+		buildable, err := toolchain.IsBuildablePackage(req.Info.ProgramDirectory)
+		if err != nil {
+			return fmt.Errorf("checking if plugin is a buildable package: %w", err)
+		}
+		if buildable {
+			// Ensure the virtual environment exists first
+			if err := tc.EnsureVenv(server.Context(), req.Info.ProgramDirectory, req.UseLanguageVersionTools,
+				true /*showOutput*/, stdout, stderr); err != nil {
+				return fmt.Errorf("creating virtual environment: %w", err)
+			}
+
+			// Install the package itself (pip install .)
+			cmd, err := tc.ModuleCommand(server.Context(), "pip", "install", req.Info.ProgramDirectory)
+			if err != nil {
+				return fmt.Errorf("preparing pip install command: %w", err)
+			}
+			cmd.Stdout = stdout
+			cmd.Stderr = stderr
+			if err := cmd.Run(); err != nil {
+				return fmt.Errorf("installing package: %w", err)
+			}
+		}
+	}
+
 	if err := tc.InstallDependencies(server.Context(), req.Info.ProgramDirectory, req.UseLanguageVersionTools,
 		true /*showOutput*/, stdout, stderr); err != nil {
 		return err
@@ -1303,6 +1331,29 @@ func (host *pythonLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 	}, nil
 }
 
+func (host *pythonLanguageHost) Template(
+	ctx context.Context, req *pulumirpc.TemplateRequest,
+) (*pulumirpc.TemplateResponse, error) {
+	logging.V(5).Infof("Template(%+v)", req)
+
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
+	if err != nil {
+		return nil, err
+	}
+
+	tc, err := toolchain.ResolveToolchain(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tc.PrepareProject(ctx, req.ProjectName, req.Info.ProgramDirectory, false, /*showOutput*/
+		nil /* infoWriter */, nil /* errWriter */); err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.TemplateResponse{}, nil
+}
+
 func (host *pythonLanguageHost) About(ctx context.Context,
 	req *pulumirpc.AboutRequest,
 ) (*pulumirpc.AboutResponse, error) {
@@ -1327,8 +1378,13 @@ func (host *pythonLanguageHost) About(ctx context.Context,
 	}
 
 	return &pulumirpc.AboutResponse{
-		Executable: info.Executable,
-		Version:    info.Version,
+		Executable: info.PythonExecutable,
+		Version:    info.PythonVersion.String(),
+		Metadata: map[string]string{
+			"toolchain":        toolchain.Name(opts.Toolchain),
+			"toolchainVersion": info.ToolchainVersion.String(),
+			"typechecker":      toolchain.TypeCheckerName(opts.Typechecker),
+		},
 	}, nil
 }
 
@@ -1721,6 +1777,9 @@ func (host *pythonLanguageHost) Link(
 	cachedLoader := schema.NewCachedLoader(loader)
 
 	instructions := "You can import the SDK in your Python code with:\n\n"
+	if len(req.Packages) > 1 {
+		instructions = "You can import the SDKs in your Python code with:\n\n"
+	}
 
 	// Map of python package names to paths
 	packages := map[string]string{}
@@ -1763,21 +1822,24 @@ func (host *pythonLanguageHost) Link(
 		if err != nil {
 			return nil, err
 		}
-
-		info, err := pkgRef.Language("python")
+		pkg, err := pkgRef.Definition()
 		if err != nil {
 			return nil, err
 		}
-		pyInfo, ok := info.(python.PackageInfo)
+		if err := pkg.ImportLanguages(map[string]schema.Language{"python": codegen.Importer}); err != nil {
+			return nil, err
+		}
 		var importName string
 		var packageName string
-		if ok && pyInfo.PackageName != "" {
-			importName = pyInfo.PackageName
-			packageName = pyInfo.PackageName
-		} else {
+		if info, ok := pkg.Language["go"]; ok {
+			if info, ok := info.(codegen.PackageInfo); ok && info.PackageName != "" {
+				importName = info.PackageName
+				packageName = info.PackageName
+			}
+		}
+		if importName == "" {
 			importName = strings.ReplaceAll(pkgRef.Name(), "-", "_")
 		}
-
 		if packageName == "" {
 			packageName = python.PyPack(pkgRef.Namespace(), pkgRef.Name())
 		}

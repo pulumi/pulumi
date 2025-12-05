@@ -42,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -150,11 +151,11 @@ func getSummaryAbout(
 				result.Plugins = plugins
 			}
 
-			programInfo := plugin.NewProgramInfo(projinfo.Root, pwd, program, proj.Runtime.Options())
-			lang, err := pluginContext.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
+			lang, err := pluginContext.Host.LanguageRuntime(proj.Runtime.Name())
 			if err != nil {
 				addError(err, "Failed to load language plugin "+proj.Runtime.Name())
 			} else {
+				programInfo := plugin.NewProgramInfo(projinfo.Root, pwd, program, proj.Runtime.Options())
 				aboutResponse, err := lang.About(programInfo)
 				if err != nil {
 					addError(err, "Failed to get information about the project runtime")
@@ -189,7 +190,7 @@ func getSummaryAbout(
 		addError(err, "Could not access the backend")
 	} else if backend != nil {
 		var stack currentStackAbout
-		if stack, err = getCurrentStackAbout(ctx, backend, selectedStack); err != nil {
+		if stack, err = getCurrentStackAbout(ctx, ws, backend, selectedStack); err != nil {
 			addError(err, "Failed to get information about the current stack")
 		} else {
 			result.CurrentStack = &stack
@@ -218,6 +219,7 @@ func (summary *summaryAbout) Print() {
 	if summary.Backend != nil {
 		fmt.Println(summary.Backend)
 	}
+	formatEnvironmentVariables(declared.Variables())
 	if summary.Dependencies != nil {
 		fmt.Println(formatProgramDependenciesAbout(summary.Dependencies))
 	}
@@ -372,11 +374,13 @@ type aboutState struct {
 	URN  string `json:"urn"`
 }
 
-func getCurrentStackAbout(ctx context.Context, b backend.Backend, selectedStack string) (currentStackAbout, error) {
+func getCurrentStackAbout(
+	ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, selectedStack string,
+) (currentStackAbout, error) {
 	var s backend.Stack
 	var err error
 	if selectedStack == "" {
-		s, err = state.CurrentStack(ctx, b)
+		s, err = state.CurrentStack(ctx, ws, b)
 	} else {
 		var ref backend.StackReference
 		ref, err = b.ParseStackReference(selectedStack)
@@ -476,6 +480,26 @@ func simpleTableRows(arr [][]string) []cmdutil.TableRow {
 type programDependencyAbout struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
+}
+
+func formatEnvironmentVariables(vars []declared.Var) {
+	table := cmdutil.Table{
+		Headers: []string{"Name", "Value"},
+		Rows:    []cmdutil.TableRow{},
+	}
+
+	for _, v := range vars {
+		if _, present := v.Value.Underlying(); present {
+			table.Rows = append(table.Rows, cmdutil.TableRow{
+				Columns: []string{v.Name(), v.Value.String()},
+			})
+		}
+	}
+
+	if len(table.Rows) > 0 {
+		fmt.Println("Environment Variables:")
+		fmt.Println(table.String())
+	}
 }
 
 func formatProgramDependenciesAbout(deps []programDependencyAbout) string {

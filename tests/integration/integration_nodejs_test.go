@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build nodejs || all
-
 package ints
 
 import (
@@ -31,13 +29,14 @@ import (
 	"time"
 
 	"github.com/acarl005/stripansi"
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -2625,6 +2624,15 @@ func TestNodejsSourcemapTest(t *testing.T) {
 	require.NoError(t, err)
 	e.RunCommand("yarn", "add", coreSDK)
 
+	// TODO(https://github.com/jestjs/jest/issues/15888): Remove the need to specify --localstorage-file when jest works
+	// around the Node.js v25.2.0 breaking change that requires it to be set when localStorage is accessed.
+	output, _ := e.RunCommand("node", "--version")
+	nodeVersion, err := semver.ParseTolerant(output)
+	require.NoError(t, err)
+	if nodeVersion.GTE(semver.MustParse("25.2.0")) {
+		e.SetEnvVars("NODE_OPTIONS=--localstorage-file=./jest-storage")
+	}
+
 	_, stderr := e.RunCommandExpectError("yarn", "test")
 
 	expectedTrace := `a failing test so we can inspect the stacktrace reported by jest
@@ -2764,6 +2772,95 @@ func TestInstallLocalPlugin(t *testing.T) {
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
 
+func TestInstallLocalPluginRecursive(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("packages-install-recursive")
+	e.CWD = filepath.Join(e.RootPath, "example")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	// TODO[https://github.com/pulumi/pulumi/issues/20963]: `pulumi install` should
+	// install plugins used by components to the degree possible.
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.18.4")
+
+	// `pulumi install` must build and then generate SDKs for 3 component
+	// providers. Dependencies are as follows:
+	//
+	//	example         : python-provider typescript-b
+	//	python-provider : typescript-a
+	//
+	// Both the Python and TypeScript providers need to have their dependencies
+	// installed before they can be used.
+	e.RunCommand("pulumi", "install")
+
+	// Run pulumi up to verify the entire chain works
+	e.RunCommand("pulumi", "stack", "select", "organization/install-recursive", "--create")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+}
+
+func TestInstallLocalPluginCycle(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("packages-install-cycle")
+	e.CWD = filepath.Join(e.RootPath, "example")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	// Plugin dependencies form a cycle:
+	//
+	//	example      : typescript-a
+	//	typescript-a : typescript-b
+	//	typescript-b : typescript-a
+	//
+	// This creates a cycle: typescript-a -> typescript-b -> typescript-a.
+	// The install command should detect and report this cycle.
+	stdout, stderr := e.RunCommandExpectError("pulumi", "install")
+	require.Containsf(t, stderr,
+		"Cycle found: typescript-a -> typescript-b -> typescript-a\n",
+		"Stdout is %q", stdout)
+}
+
+func TestInstallMultiComponentGitRepo(t *testing.T) {
+	t.Parallel()
+	// TODO[pulumi/pulumi#21154]: This test doesn't work on windows due to exceeding
+	// the 255 character limit when installing the plugin.
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on windows")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("packages-install-multi-git")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+	e.RunCommand("pulumi", "stack", "select", "organization/multi-git-test", "--create")
+
+	e.RunCommand("pulumi", "install")
+
+	// Install additional dependencies (TLS provider needed by test-provider &
+	// test-provider-2 components)
+	//
+	// TODO[https://github.com/pulumi/pulumi/issues/20963]: Remove the need for this
+	// install.
+	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true"}
+	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.1")
+
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+
+	// Verify outputs exist from both components, confirming both resources were created
+	stdout, _ := e.RunCommand("pulumi", "stack", "output", "cert1Pem")
+	require.NotEmpty(t, stdout)
+
+	stdout, _ = e.RunCommand("pulumi", "stack", "output", "cert2Pem")
+	require.NotEmpty(t, stdout)
+}
+
 func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	t.Parallel()
 
@@ -2786,7 +2883,7 @@ func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 		"github.com/pulumi/component-test-providers/broken-test-provider")
 	stdout, _ := e.RunCommand("pulumi", "plugin", "ls")
 	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
-	require.Contains(t, stdout, "0.0.0-xb39e20e4e33600e33073ccb2df0ddb46388641dc")
+	require.Contains(t, stdout, "0.0.0-x52a8a71555d964542b308da197755c64dbe63352")
 
 	e.RunCommand("pulumi", "package", "add",
 		"github.com/pulumi/component-test-providers/test-provider")
@@ -2798,7 +2895,7 @@ func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	require.Contains(t, yamlString, "packages:")
 	require.Contains(t, yamlString,
 		"tls-self-signed-cert: github.com/pulumi/component-test-providers/test-provider@"+
-			"0.0.0-xb39e20e4e33600e33073ccb2df0ddb46388641dc")
+			"0.0.0-x52a8a71555d964542b308da197755c64dbe63352")
 
 	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"}
 	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
@@ -2807,25 +2904,8 @@ func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.1")
 	stdout, _ = e.RunCommand("pulumi", "plugin", "ls")
 	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
-	require.Contains(t, stdout, "0.0.0-xb39e20e4e33600e33073ccb2df0ddb46388641dc")
+	require.Contains(t, stdout, "0.0.0-x52a8a71555d964542b308da197755c64dbe63352")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
-}
-
-func TestPackageAddWithPublisherSetNodeJS(t *testing.T) {
-	t.Parallel()
-
-	e := ptesting.NewEnvironment(t)
-	defer e.DeleteIfNotFailed()
-
-	e.ImportDirectory("packageadd-namespace")
-	e.CWD = filepath.Join(e.RootPath, "nodejs")
-	stdout, _ := e.RunCommand("pulumi", "package", "add", "../provider/schema.json")
-	require.Contains(t, stdout,
-		"You can import the SDK in your TypeScript code with:\n\n  import * as mypkg from \"@my-namespace/mypkg\"")
-
-	// Make sure the SDK was generated in the expected directory
-	_, err := os.Stat(filepath.Join(e.CWD, "sdks", "my-namespace-mypkg", "index.ts"))
-	require.NoError(t, err)
 }
 
 // Tests that we can get the schema for a Node.js component provider using component_provider_host.
@@ -2848,7 +2928,7 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	var schema map[string]any
 	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
 	require.Equal(t, "nodejs-component-provider", schema["name"].(string))
-	require.Equal(t, "0.0.0", schema["version"].(string))
+	require.Equal(t, "1.0.0", schema["version"].(string))
 	require.Equal(t, "Node.js Sample Components", schema["description"].(string))
 
 	// Check the dependencies

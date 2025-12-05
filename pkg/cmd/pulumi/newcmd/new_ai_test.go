@@ -106,6 +106,7 @@ func TestGeneratingProjectWithAIPromptSucceeds(t *testing.T) {
 		},
 		secretsProvider:   "default",
 		templateNameOrURL: "", // <-- must be empty to trigger the AI flow
+		languageTemplate:  languageTemplateMock,
 	}
 
 	err := runNew(context.Background(), args)

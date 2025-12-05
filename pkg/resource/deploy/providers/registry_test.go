@@ -30,6 +30,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -85,7 +86,7 @@ func (host *testPluginHost) CloseProvider(provider plugin.Provider) error {
 	return host.closeProvider(provider)
 }
 
-func (host *testPluginHost) LanguageRuntime(root string, info plugin.ProgramInfo) (plugin.LanguageRuntime, error) {
+func (host *testPluginHost) LanguageRuntime(root string) (plugin.LanguageRuntime, error) {
 	return nil, errors.New("unsupported")
 }
 
@@ -259,7 +260,7 @@ func newSimpleLoader(t *testing.T, pkg, version string, config func(resource.Pro
 }
 
 func newProviderState(pkg, name, id string, del bool, inputs resource.PropertyMap) *resource.State {
-	typ := MakeProviderType(tokens.Package(pkg))
+	typ := providers.MakeProviderType(tokens.Package(pkg))
 	urn := resource.NewURN("test", "test", "", typ, name)
 	if inputs == nil {
 		inputs = resource.PropertyMap{}
@@ -314,7 +315,7 @@ func TestNewRegistryOldState(t *testing.T) {
 	require.NotNil(t, r)
 
 	for _, old := range olds {
-		ref, err := NewReference(old.URN, old.ID)
+		ref, err := providers.NewReference(old.URN, old.ID)
 		require.NoError(t, err)
 
 		p, ok := r.GetProvider(ref)
@@ -332,7 +333,7 @@ func TestNewRegistryOldState(t *testing.T) {
 
 		assert.True(t, p.(*testProvider).configured)
 
-		assert.Equal(t, GetProviderPackage(old.Type), p.Pkg())
+		assert.Equal(t, providers.GetProviderPackage(old.Type), p.Pkg())
 
 		ver, err := GetProviderVersion(old.Inputs)
 		require.NoError(t, err)
@@ -363,7 +364,7 @@ func TestCRUD(t *testing.T) {
 	require.NotNil(t, r)
 
 	for _, old := range olds {
-		ref, err := NewReference(old.URN, old.ID)
+		ref, err := providers.NewReference(old.URN, old.ID)
 		require.NoError(t, err)
 
 		p, ok := r.GetProvider(ref)
@@ -379,12 +380,12 @@ func TestCRUD(t *testing.T) {
 		assert.True(t, ok)
 		require.NotNil(t, p)
 
-		assert.Equal(t, GetProviderPackage(old.Type), p.Pkg())
+		assert.Equal(t, providers.GetProviderPackage(old.Type), p.Pkg())
 	}
 
 	// Create a new provider for each package.
 	for _, l := range loaders {
-		typ := MakeProviderType(l.pkg)
+		typ := providers.MakeProviderType(l.pkg)
 		urn := resource.NewURN("test", "test", "", typ, "b")
 		olds, news := resource.PropertyMap{}, resource.PropertyMap{}
 		timeout := float64(120)
@@ -400,7 +401,7 @@ func TestCRUD(t *testing.T) {
 		assert.Empty(t, check.Failures)
 
 		// Since this is not a preview, the provider should not yet be configured.
-		p, ok := r.GetProvider(Reference{urn: urn, id: UnconfiguredID})
+		p, ok := r.GetProvider(mustNewReference(urn, UnconfiguredID))
 		assert.True(t, ok)
 		assert.False(t, p.(*testProvider).configured)
 
@@ -419,7 +420,7 @@ func TestCRUD(t *testing.T) {
 		assert.Equal(t, resource.PropertyMap{}, create.Properties)
 		assert.Equal(t, resource.StatusOK, create.Status)
 
-		p2, ok := r.GetProvider(Reference{urn: urn, id: create.ID})
+		p2, ok := r.GetProvider(mustNewReference(urn, create.ID))
 		assert.True(t, ok)
 		assert.Equal(t, p, p2)
 		assert.True(t, p2.(*testProvider).configured)
@@ -432,7 +433,7 @@ func TestCRUD(t *testing.T) {
 		timeout := float64(120)
 
 		// Fetch the old provider instance.
-		old, ok := r.GetProvider(Reference{urn: urn, id: id})
+		old, ok := r.GetProvider(mustNewReference(urn, id))
 		assert.True(t, ok)
 
 		// Check
@@ -446,7 +447,7 @@ func TestCRUD(t *testing.T) {
 		assert.Empty(t, check.Failures)
 
 		// Since this is not a preview, the provider should not yet be configured.
-		p, ok := r.GetProvider(Reference{urn: urn, id: UnconfiguredID})
+		p, ok := r.GetProvider(mustNewReference(urn, UnconfiguredID))
 		assert.True(t, ok)
 		assert.False(t, p == old)
 		assert.False(t, p.(*testProvider).configured)
@@ -462,7 +463,7 @@ func TestCRUD(t *testing.T) {
 		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
 
 		// The old provider should still be registered.
-		p2, ok := r.GetProvider(Reference{urn: urn, id: id})
+		p2, ok := r.GetProvider(mustNewReference(urn, id))
 		assert.True(t, ok)
 		assert.Equal(t, old, p2)
 
@@ -478,7 +479,7 @@ func TestCRUD(t *testing.T) {
 		assert.Equal(t, resource.PropertyMap{}, update.Properties)
 		assert.Equal(t, resource.StatusOK, update.Status)
 
-		p3, ok := r.GetProvider(Reference{urn: urn, id: id})
+		p3, ok := r.GetProvider(mustNewReference(urn, id))
 		assert.True(t, ok)
 		assert.True(t, p3 == p)
 		assert.True(t, p3.(*testProvider).configured)
@@ -490,7 +491,7 @@ func TestCRUD(t *testing.T) {
 		timeout := float64(120)
 
 		// Fetch the old provider instance.
-		_, ok := r.GetProvider(Reference{urn: urn, id: id})
+		_, ok := r.GetProvider(mustNewReference(urn, id))
 		assert.True(t, ok)
 
 		// Delete
@@ -504,7 +505,7 @@ func TestCRUD(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, resource.StatusOK, resp.Status)
 
-		_, ok = r.GetProvider(Reference{urn: urn, id: id})
+		_, ok = r.GetProvider(mustNewReference(urn, id))
 		assert.False(t, ok)
 	}
 }
@@ -549,7 +550,7 @@ func TestCRUDPreview(t *testing.T) {
 	require.NotNil(t, r)
 
 	for _, old := range olds {
-		ref, err := NewReference(old.URN, old.ID)
+		ref, err := providers.NewReference(old.URN, old.ID)
 		require.NoError(t, err)
 
 		p, ok := r.GetProvider(ref)
@@ -565,12 +566,12 @@ func TestCRUDPreview(t *testing.T) {
 		assert.True(t, ok)
 		require.NotNil(t, p)
 
-		assert.Equal(t, GetProviderPackage(old.Type), p.Pkg())
+		assert.Equal(t, providers.GetProviderPackage(old.Type), p.Pkg())
 	}
 
 	// Create a new provider for each package.
 	for _, l := range loaders {
-		typ := MakeProviderType(l.pkg)
+		typ := providers.MakeProviderType(l.pkg)
 		urn := resource.NewURN("test", "test", "", typ, "b")
 		olds, news := resource.PropertyMap{}, resource.PropertyMap{}
 
@@ -585,7 +586,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.Empty(t, check.Failures)
 
 		// The provider should not be configured: configuration will occur during the previewed Create.
-		p, ok := r.GetProvider(Reference{urn: urn, id: UnconfiguredID})
+		p, ok := r.GetProvider(mustNewReference(urn, UnconfiguredID))
 		assert.True(t, ok)
 		assert.False(t, p.(*testProvider).configured)
 	}
@@ -596,7 +597,7 @@ func TestCRUDPreview(t *testing.T) {
 		olds, news := olds[0].Inputs, olds[0].Inputs
 
 		// Fetch the old provider instance.
-		old, ok := r.GetProvider(Reference{urn: urn, id: id})
+		old, ok := r.GetProvider(mustNewReference(urn, id))
 		assert.True(t, ok)
 
 		// Check
@@ -610,7 +611,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.Empty(t, check.Failures)
 
 		// The provider should remain unconfigured.
-		p, ok := r.GetProvider(Reference{urn: urn, id: UnconfiguredID})
+		p, ok := r.GetProvider(mustNewReference(urn, UnconfiguredID))
 		assert.True(t, ok)
 		assert.False(t, p == old)
 		assert.False(t, p.(*testProvider).configured)
@@ -626,7 +627,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
 
 		// The original provider should be used because the config did not change.
-		p2, ok := r.GetProvider(Reference{urn: urn, id: id})
+		p2, ok := r.GetProvider(mustNewReference(urn, id))
 		assert.True(t, ok)
 		assert.True(t, p2 == old)
 		assert.False(t, p2 == p)
@@ -638,7 +639,7 @@ func TestCRUDPreview(t *testing.T) {
 		olds, news := olds[len(olds)-1].Inputs, olds[len(olds)-1].Inputs
 
 		// Fetch the old provider instance.
-		old, ok := r.GetProvider(Reference{urn: urn, id: id})
+		old, ok := r.GetProvider(mustNewReference(urn, id))
 		assert.True(t, ok)
 
 		// Check
@@ -652,7 +653,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.Empty(t, check.Failures)
 
 		// The provider should remain unconfigured.
-		p, ok := r.GetProvider(Reference{urn: urn, id: UnconfiguredID})
+		p, ok := r.GetProvider(mustNewReference(urn, UnconfiguredID))
 		assert.True(t, ok)
 		assert.False(t, p == old)
 		assert.False(t, p.(*testProvider).configured)
@@ -668,7 +669,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.True(t, diff.Replace())
 
 		// The new provider should be not be registered; the registered provider should still be the original.
-		p2, ok := r.GetProvider(Reference{urn: urn, id: id})
+		p2, ok := r.GetProvider(mustNewReference(urn, id))
 		assert.True(t, ok)
 		assert.True(t, p2 == old)
 		assert.False(t, p2 == p)
@@ -683,7 +684,7 @@ func TestCRUDNoProviders(t *testing.T) {
 	r := NewRegistry(host, false, nil)
 	require.NotNil(t, r)
 
-	typ := MakeProviderType("pkgA")
+	typ := providers.MakeProviderType("pkgA")
 	urn := resource.NewURN("test", "test", "", typ, "b")
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{}
 
@@ -709,7 +710,7 @@ func TestCRUDWrongPackage(t *testing.T) {
 	r := NewRegistry(host, false, nil)
 	require.NotNil(t, r)
 
-	typ := MakeProviderType("pkgA")
+	typ := providers.MakeProviderType("pkgA")
 	urn := resource.NewURN("test", "test", "", typ, "b")
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{}
 
@@ -735,7 +736,7 @@ func TestCRUDWrongVersion(t *testing.T) {
 	r := NewRegistry(host, false, nil)
 	require.NotNil(t, r)
 
-	typ := MakeProviderType("pkgA")
+	typ := providers.MakeProviderType("pkgA")
 	urn := resource.NewURN("test", "test", "", typ, "b")
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewProperty("1.0.0")}
 
@@ -761,7 +762,7 @@ func TestCRUDBadVersionNotString(t *testing.T) {
 	r := NewRegistry(host, false, nil)
 	require.NotNil(t, r)
 
-	typ := MakeProviderType("pkgA")
+	typ := providers.MakeProviderType("pkgA")
 	urn := resource.NewURN("test", "test", "", typ, "b")
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewProperty(true)}
 
@@ -788,7 +789,7 @@ func TestCRUDBadVersion(t *testing.T) {
 	r := NewRegistry(host, false, nil)
 	require.NotNil(t, r)
 
-	typ := MakeProviderType("pkgA")
+	typ := providers.MakeProviderType("pkgA")
 	urn := resource.NewURN("test", "test", "", typ, "b")
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewProperty("foo")}
 
@@ -874,7 +875,7 @@ func TestConcurrentRegistryUsage(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 
-			typ := MakeProviderType("pkgA")
+			typ := providers.MakeProviderType("pkgA")
 			providerURN := resource.NewURN("test", "test", "", typ, fmt.Sprintf("p%d", i))
 
 			for j := 0; j < 1000; j++ {

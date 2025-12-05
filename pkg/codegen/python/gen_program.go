@@ -804,6 +804,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.DeletedWith != nil {
 		appendOption("deleted_with", opts.DeletedWith)
 	}
+	if opts.ReplaceWith != nil {
+		appendOption("replace_with", opts.ReplaceWith)
+	}
 	if opts.ImportID != nil {
 		appendOption("import_", opts.ImportID)
 	}

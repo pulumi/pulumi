@@ -47,7 +47,6 @@ func connectToLanguageRuntime(ctx *plugin.Context, address string) (plugin.Host,
 
 func (host *clientLanguageRuntimeHost) LanguageRuntime(
 	runtime string,
-	info plugin.ProgramInfo,
 ) (plugin.LanguageRuntime, error) {
 	// If the system has asked for the special "client" runtime, return the connection we have to the language runtime
 	// plugin. Else, delegate to the host's LanguageRuntime method for loading other actual runtimes like
@@ -55,7 +54,7 @@ func (host *clientLanguageRuntimeHost) LanguageRuntime(
 	if runtime == clientRuntimeName {
 		return host.languageRuntime, nil
 	}
-	return host.Host.LanguageRuntime(runtime, info)
+	return host.Host.LanguageRuntime(runtime)
 }
 
 func langRuntimePluginDialOptions(ctx *plugin.Context, address string) []grpc.DialOption {

@@ -21,8 +21,8 @@ import (
 	"strings"
 
 	"github.com/mitchellh/copystructure"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"pgregory.net/rapid"
@@ -47,6 +47,7 @@ type ResourceSpec struct {
 	Dependencies         []resource.URN
 	PropertyDependencies map[resource.PropertyKey][]resource.URN
 	DeletedWith          resource.URN
+	ReplaceWith          []resource.URN
 	Aliases              []resource.URN
 
 	// A set of tags associated with the resource. These have no bearing on any tests but are included to aid in debugging

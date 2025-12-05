@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitingore",
     "Enums.cs",
     "Example_resource.cs",
     "HTTP_module/Inputs/RequestArgs.cs",

@@ -19,6 +19,7 @@ import (
 	"slices"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -40,7 +41,9 @@ func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ..
 }
 
 func ExprNotConvertible(destType Type, expr Expression) *hcl.Diagnostic {
-	_, whyF := destType.conversionFrom(expr.Type(), false, map[Type]struct{}{})
+	conversionKind, whyF := destType.conversionFrom(expr.Type(), false, map[Type]struct{}{})
+	contract.Assertf(whyF != nil, "destType.conversionFrom (kind: %#v) should always have a reason: %T\n",
+		conversionKind, destType)
 	why := whyF()
 	if len(why) != 0 {
 		return errorf(expr.SyntaxNode().Range(), "%s", why[0].Summary)

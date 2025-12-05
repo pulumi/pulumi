@@ -35,6 +35,8 @@ func Global() env.Env {
 	return env.NewEnv(env.Global)
 }
 
+var Home = env.String("HOME", "The directory where Pulumi stores global configuration and plugins in.")
+
 // That Pulumi is running in experimental mode.
 //
 // This is our standard gate for an existing feature that's not quite ready to be stable
@@ -98,21 +100,30 @@ var ContinueOnError = env.Bool("CONTINUE_ON_ERROR",
 var BackendURL = env.String("BACKEND_URL",
 	"Set the backend that will be used instead of the currently logged in backend or the current project's backend.")
 
-var SuppressCopilotLink = env.Bool("SUPPRESS_COPILOT_LINK",
-	"Suppress showing the 'explainFailure' link to Copilot in the CLI output.")
+// Neo environment variables
 
-var CopilotEnabled = env.Bool("COPILOT",
-	"Enable Pulumi Copilot's assistance for improved CLI experience and insights.")
+var SuppressNeoLink = env.Bool("SUPPRESS_NEO_LINK",
+	"Suppress showing the 'explainFailure' link to Neo in the CLI output.",
+	env.Alternative("SUPPRESS_COPILOT_LINK"))
+
+var NeoEnabled = env.Bool("NEO",
+	"Enable Pulumi Neo's assistance for improved CLI experience and insights.",
+	env.Alternative("COPILOT"))
 
 // TODO: This is a soft-release feature and will be removed after the feature flag is launched
 // https://github.com/pulumi/pulumi/issues/19065
-var CopilotSummaryModel = env.String("COPILOT_SUMMARY_MODEL",
-	"The LLM model to use for the Copilot summary in diagnostics. Allowed values: 'gpt-4o-mini', 'gpt-4o'.")
+var NeoSummaryModel = env.String("NEO_SUMMARY_MODEL",
+	"The LLM model to use for the Neo summary in diagnostics. Allowed values: 'gpt-4o-mini', 'gpt-4o'.",
+	env.Alternative("COPILOT_SUMMARY_MODEL"))
 
 // TODO: This is a soft-release feature and will be removed after the feature flag is launched
 // https://github.com/pulumi/pulumi/issues/19065
-var CopilotSummaryMaxLen = env.Int("COPILOT_SUMMARY_MAXLEN",
-	"Max allowed length of Copilot summary in diagnostics. Allowed values are from 20 to 1920.")
+var NeoSummaryMaxLen = env.Int("NEO_SUMMARY_MAXLEN",
+	"Max allowed length of Neo summary in diagnostics. Allowed values are from 20 to 1920.",
+	env.Alternative("COPILOT_SUMMARY_MAXLEN"))
+
+// Deprecated: Use NeoSummaryMaxLen instead
+var CopilotSummaryMaxLen = NeoSummaryMaxLen
 
 var FallbackToStateSecretsManager = env.Bool("FALLBACK_TO_STATE_SECRETS_MANAGER",
 	"Use the snapshot secrets manager as a fallback when the stack configuration is missing or incomplete.")
@@ -225,3 +236,8 @@ var (
 
 var EnableJournaling = env.Bool("ENABLE_JOURNALING",
 	"Enable journaling of engine operations to the backend (if the backend supports it)")
+
+var JournalingBatchSize = env.Int("JOURNALING_BATCH_SIZE", "Maximum batch size for journal entries")
+
+var JournalingBatchPeriod = env.Int("JOURNALING_BATCH_PERIOD",
+	"Maximum period in milliseconds between batches of journal entries")

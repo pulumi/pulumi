@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build go || all
-
 package ints
 
 import (
@@ -1270,6 +1268,7 @@ func appendLines(name string, lines []string) error {
 
 //nolint:paralleltest // mutates environment
 func TestPackageAddGo(t *testing.T) {
+	// xx move this
 	e := ptesting.NewEnvironment(t)
 
 	var err error

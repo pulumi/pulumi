@@ -68,7 +68,7 @@ class ResourceWithAssets(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  archive: Optional[pulumi.Input[pulumi.Archive]] = None,
-                 nested: Optional[pulumi.Input[pulumi.InputType['TypeWithAssetsArgs']]] = None,
+                 nested: Optional[pulumi.Input[Union['TypeWithAssetsArgs', 'TypeWithAssetsArgsDict']]] = None,
                  source: Optional[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]] = None,
                  __props__=None):
         """
@@ -100,7 +100,7 @@ class ResourceWithAssets(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  archive: Optional[pulumi.Input[pulumi.Archive]] = None,
-                 nested: Optional[pulumi.Input[pulumi.InputType['TypeWithAssetsArgs']]] = None,
+                 nested: Optional[pulumi.Input[Union['TypeWithAssetsArgs', 'TypeWithAssetsArgsDict']]] = None,
                  source: Optional[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)

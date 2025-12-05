@@ -614,7 +614,7 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 		if p.Version != nil && p.Version.Major > 1 {
 			vPath = fmt.Sprintf("/v%d", p.Version.Major)
 		}
-		packageName := extractModulePath(p.Reference())
+		packageName := ExtractModulePath(p.Reference())
 		if langInfo, found := p.Language["go"]; found {
 			goInfo, ok := langInfo.(GoPackageInfo)
 			if ok && goInfo.ImportBasePath != "" {
@@ -985,7 +985,7 @@ func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
 		} else {
 			p, ok := g.packages[pkg]
 			if ok {
-				importBasePath = extractImportBasePath(p.Reference())
+				importBasePath = ExtractImportBasePath(p.Reference())
 			}
 		}
 
@@ -1164,6 +1164,13 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.DeletedWith != nil {
 		appendOption("DeletedWith", opts.DeletedWith, model.DynamicType)
 	}
+	if opts.ReplaceWith != nil {
+		appendOption("ReplaceWith", opts.ReplaceWith, model.NewListType(resourceType))
+	}
+	if opts.ReplacementTrigger != nil {
+		destType := model.NewOutputType(model.DynamicType)
+		appendOption("ReplacementTrigger", opts.ReplacementTrigger, destType)
+	}
 	if opts.ImportID != nil {
 		appendOption("Import", opts.ImportID, model.StringType)
 	}
@@ -1184,6 +1191,18 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 		switch attr.Name {
 		case "Import":
 			g.Fgenf(valBuffer, "pulumi.ID(%v)", attr.Value)
+		case "ReplacementTrigger":
+			// Non-Input values can be lifted using `pulumi.Any`
+			if isInputty(attr.Value.Type()) {
+				g.Fgenf(valBuffer, "%v", attr.Value)
+			} else {
+				wrapperFunc := g.argumentTypeName(attr.Value.Type(), true)
+				if wrapperFunc != "" {
+					g.Fgenf(valBuffer, "%s(%v)", wrapperFunc, attr.Value)
+				} else {
+					g.Fgenf(valBuffer, "pulumi.Any(%v)", attr.Value)
+				}
+			}
 		default:
 			g.Fgenf(valBuffer, "%v", attr.Value)
 		}
@@ -1223,9 +1242,11 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 			input.Value = expr
 			g.genTemps(w, temps)
 		}
-	}
-
-	if r.Schema == nil {
+		pkg, mod, _, _ := r.DecomposeToken()
+		if pkgCtx := g.contexts[pkg][mod]; pkgCtx != nil {
+			typ = disambiguatedResourceName(r.Schema, pkgCtx)
+		}
+	} else {
 		// for unknown resource the type name of the resource should be upper-case
 		typ = Title(typ)
 	}
@@ -1646,19 +1667,39 @@ func liftValueToOutput(value model.Expression) (model.Expression, model.Type) {
 	switch expr := value.(type) {
 	case *model.TupleConsExpression:
 		// if the value is a tuple, then lift each element to Output[T] as well
+		// Create a new tuple instead of mutating the original
+		liftedExprs := make([]model.Expression, len(expr.Expressions))
 		for i, elem := range expr.Expressions {
 			lifted, _ := liftValueToOutput(elem)
-			expr.Expressions[i] = lifted
+			liftedExprs[i] = lifted
 		}
+		newTuple := &model.TupleConsExpression{
+			Syntax:      expr.Syntax,
+			Tokens:      expr.Tokens,
+			Expressions: liftedExprs,
+		}
+		// Typecheck the new tuple to set its type
+		_ = newTuple.Typecheck(false)
+		value = newTuple
 	case *model.ObjectConsExpression:
 		// if the value is a map, then lift each value to Output[T] as well
+		// Create a new object instead of mutating the original
+		liftedItems := make([]model.ObjectConsItem, len(expr.Items))
 		for i, item := range expr.Items {
 			lifted, _ := liftValueToOutput(item.Value)
-			expr.Items[i] = model.ObjectConsItem{
+			liftedItems[i] = model.ObjectConsItem{
 				Key:   item.Key,
 				Value: lifted,
 			}
 		}
+		newObj := &model.ObjectConsExpression{
+			Syntax: expr.Syntax,
+			Tokens: expr.Tokens,
+			Items:  liftedItems,
+		}
+		// Typecheck the new object to set its type
+		_ = newObj.Typecheck(false)
+		value = newObj
 	}
 
 	return pcl.NewConvertCall(value, destType), destType
@@ -1940,7 +1981,7 @@ func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 		needsAliasing := strings.Contains(mod, "-")
 		if needsAliasing {
 			moduleAlias := ""
-			for _, part := range strings.Split(mod, "-") {
+			for part := range strings.SplitSeq(mod, "-") {
 				moduleAlias += strcase.ToLowerCamel(part)
 			}
 			return moduleAlias
@@ -1950,6 +1991,9 @@ func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 
 	importPath := func(mod string) string {
 		importBasePath := info.ImportBasePath
+		if importBasePath == "" {
+			importBasePath = ExtractImportBasePath(g.packages[pkg].Reference())
+		}
 		if mod != "" && mod != IndexToken {
 			if info.ImportPathPattern != "" {
 				importedPath := strings.ReplaceAll(info.ImportPathPattern, "{module}", mod)

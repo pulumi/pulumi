@@ -45,6 +45,11 @@ on:
         default: false
         required: false
         type: boolean
+      enable-journaling:
+        description: "Whether journaling is enabled in tests"
+        default: true
+        required: false
+        type: boolean
       fail-fast:
         required: false
         default: false
@@ -183,6 +188,22 @@ jobs:
             --partition-module tests 2 \
             --partition-package github.com/pulumi/pulumi/tests/smoke tests/smoke 4 \
             --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
+          )
+
+          LOWEST_PYTHON_DEPS_TEST_MATRIX=$(
+            ./scripts/get-job-matrix.py \
+            -vvv \
+            generate-matrix \
+            --kind lowest-python-deps-test \
+            --platform ubuntu-latest \
+            --version-set minimum
+          )
+
+          INTEGRATION_TEST_MATRIX=$(
+            ./scripts/get-job-matrix.py \
+            combine-matrices \
+            "${INTEGRATION_TEST_MATRIX}" \
+            "${LOWEST_PYTHON_DEPS_TEST_MATRIX}"
           )
 
           ACCEPTANCE_TEST_MATRIX_WIN="{}"
@@ -344,6 +365,7 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: false
       enable-coverage: ${{ inputs.enable-coverage }}
+      enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -370,6 +392,7 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: true
       enable-coverage: ${{ inputs.enable-coverage }}
+      enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -397,6 +420,7 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: true
       enable-coverage: false
+      enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -424,6 +448,7 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: true
       enable-coverage: false
+      enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 

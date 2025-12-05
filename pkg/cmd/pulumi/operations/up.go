@@ -120,8 +120,8 @@ func NewUpCmd() *cobra.Command {
 	var planFilePath string
 	var attachDebugger []string
 
-	// Flags for Copilot.
-	var copilotEnabled bool
+	// Flags for Neo.
+	var neoEnabled bool
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(
@@ -508,7 +508,10 @@ func NewUpCmd() *cobra.Command {
 			"afterwards so that the stack may be updated incrementally again later on.\n" +
 			"\n" +
 			"The program to run is loaded from the project in the current directory by default. Use the `-C` or\n" +
-			"`--cwd` flag to use a different directory.",
+			"`--cwd` flag to use a different directory.\n" +
+			"\n" +
+			"Note: An optional template name or URL can be provided to deploy from a template. When used, a temporary\n" +
+			" project is created, deployed, and then deleted, leaving only the stack state.",
 		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -606,12 +609,12 @@ func NewUpCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			// Link to Copilot will be shown for orgs that have Copilot enabled, unless the user explicitly suppressed it.
+			// Link to Neo will be shown for orgs that have Neo enabled, unless the user explicitly suppressed it.
 			// Currently only available for `pulumi up`.
-			logging.V(7).Infof("PULUMI_SUPPRESS_COPILOT_LINK=%v", env.SuppressCopilotLink.Value())
-			opts.Display.ShowLinkToCopilot = !env.SuppressCopilotLink.Value()
+			logging.V(7).Infof("PULUMI_SUPPRESS_NEO_LINK=%v", env.SuppressNeoLink.Value())
+			opts.Display.ShowLinkToNeo = !env.SuppressNeoLink.Value()
 
-			configureCopilotOptions(copilotEnabled, cmd, &opts.Display, isDIYBackend)
+			configureNeoOptions(neoEnabled, cmd, &opts.Display, isDIYBackend)
 
 			if len(args) > 0 {
 				return upTemplateNameOrURL(
@@ -778,9 +781,16 @@ func NewUpCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVar(
-		&copilotEnabled, "copilot", false,
-		"Enable Pulumi Copilot's assistance for improved CLI experience and insights."+
+		&neoEnabled, "neo", false,
+		"Enable Pulumi Neo's assistance for improved CLI experience and insights "+
+			"(can also be set with PULUMI_NEO environment variable)")
+
+	// Keep --copilot flag for backwards compatibility, but hide it
+	cmd.PersistentFlags().BoolVar(
+		&neoEnabled, "copilot", false,
+		"[DEPRECATED] Use --neo instead. Enable Pulumi Neo's assistance for improved CLI experience and insights "+
 			"(can also be set with PULUMI_COPILOT environment variable)")
+	_ = cmd.PersistentFlags().MarkDeprecated("copilot", "please use --neo instead")
 
 	// Currently, we can't mix `--target` and `--exclude`.
 	cmd.MarkFlagsMutuallyExclusive("target", "exclude")

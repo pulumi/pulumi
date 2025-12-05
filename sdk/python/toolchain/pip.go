@@ -29,6 +29,9 @@ import (
 	"sort"
 	"strings"
 
+	"golang.org/x/sync/errgroup"
+
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -174,7 +177,7 @@ func (p *pip) Command(ctx context.Context, arg ...string) (*exec.Cmd, error) {
 		name = name + ".exe"
 	}
 	cmdPath := filepath.Join(p.virtualenvPath, virtualEnvBinDirName(), name)
-	cmd = exec.Command(cmdPath, arg...)
+	cmd = exec.CommandContext(ctx, cmdPath, arg...)
 
 	cmd.Env = ActivateVirtualEnv(os.Environ(), p.virtualenvPath)
 
@@ -187,20 +190,43 @@ func (p *pip) ModuleCommand(ctx context.Context, module string, args ...string) 
 }
 
 func (p *pip) About(ctx context.Context) (Info, error) {
-	var cmd *exec.Cmd
-	cmd, err := p.Command(ctx, "--version")
-	if err != nil {
+	var executable string
+	var pythonVersion semver.Version
+	var toolchainVersion semver.Version
+
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		version, err := getPythonVersion(ctx, p.Command)
+		if err != nil {
+			logging.V(9).Infof("getPythonVersion: %v", err)
+		} else {
+			pythonVersion = version
+		}
+		// Don't fail if we could not parse the python version
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		executable, err = getPythonExecutablePath(ctx, p.Command)
+		return err
+	})
+	g.Go(func() error {
+		version, err := p.getPipVersion(ctx)
+		if err == nil {
+			toolchainVersion = version
+		}
+		// Don't fail if we could not get the pip version
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
 		return Info{}, err
 	}
-	var out []byte
-	if out, err = cmd.Output(); err != nil {
-		return Info{}, fmt.Errorf("failed to get version: %w", err)
-	}
-	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
 
 	return Info{
-		Executable: cmd.Path,
-		Version:    version,
+		PythonExecutable: executable,
+		PythonVersion:    pythonVersion,
+		ToolchainVersion: toolchainVersion,
 	}, nil
 }
 
@@ -405,6 +431,8 @@ func NewVirtualEnvError(dir, fullPath string) error {
 }
 
 // InstallDependencies will create a new virtual environment and install dependencies in the root directory.
+//
+// venvDir must be an absolute path.
 func InstallDependencies(ctx context.Context, cwd, venvDir string, useLanguageVersionTools, showOutput bool,
 	infoWriter, errorWriter io.Writer,
 ) error {
@@ -510,6 +538,14 @@ func InstallDependencies(ctx context.Context, cwd, venvDir string, useLanguageVe
 	return nil
 }
 
+func (p *pip) PrepareProject(
+	ctx context.Context, projectName, cwd string, showOutput bool, infoWriter, errorWriter io.Writer,
+) error {
+	// pip with requirements.txt is currently the canonical representation for templates, so there is nothing to do
+	// here.
+	return nil
+}
+
 func resolveVirtualEnvironmentPath(root, virtualenv string) string {
 	if virtualenv == "" {
 		return ""
@@ -518,4 +554,35 @@ func resolveVirtualEnvironmentPath(root, virtualenv string) string {
 		return filepath.Join(root, virtualenv)
 	}
 	return virtualenv
+}
+
+func (p *pip) getPipVersion(ctx context.Context) (semver.Version, error) {
+	cmd, err := p.ModuleCommand(ctx, "pip", "--version")
+	if err != nil {
+		return semver.Version{}, err
+	}
+	output, err := cmd.Output()
+	if err != nil {
+		return semver.Version{}, fmt.Errorf("failed to execute command: %w", err)
+	}
+
+	return ParsePipVersion(string(output))
+}
+
+func ParsePipVersion(versionString string) (semver.Version, error) {
+	versionString = strings.TrimSpace(versionString)
+	// Match "pip X.Y.Z" or "pip X.Y" at the beginning in `pip 25.3 from /path/to/pip (python 3.11)`
+	re := regexp.MustCompile(`^pip\s+(\d+(?:\.\d+)*(?:\.\d+)?)`)
+	matches := re.FindStringSubmatch(versionString)
+	if len(matches) < 2 {
+		return semver.Version{}, fmt.Errorf("unexpected output from pip --version: %q", versionString)
+	}
+
+	versionStr := matches[1]
+	sem, err := semver.ParseTolerant(versionStr)
+	if err != nil {
+		return semver.Version{}, fmt.Errorf("failed to parse pip version %q: %w", versionStr, err)
+	}
+
+	return sem, nil
 }

@@ -13,13 +13,7 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var global =
-    (typeof globalThis !== 'undefined' && globalThis) ||
-    (typeof window !== 'undefined' && window) ||
-    (typeof global !== 'undefined' && global) ||
-    (typeof self !== 'undefined' && self) ||
-    (function () { return this; }).call(null) ||
-    Function('return this')();
+var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
 
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 goog.object.extend(proto, google_protobuf_empty_pb);
@@ -1775,7 +1769,7 @@ proto.pulumirpc.ReadResourceResponse.prototype.hasProperties = function() {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.RegisterResourceRequest.repeatedFields_ = [7,12,14,15,23,26,31,37];
+proto.pulumirpc.RegisterResourceRequest.repeatedFields_ = [7,12,14,15,23,26,38,31,37];
 
 
 
@@ -1837,6 +1831,8 @@ retainondelete: (f = jspb.Message.getBooleanField(msg, 25)) == null ? undefined 
 aliasesList: jspb.Message.toObjectList(msg.getAliasesList(),
     pulumi_alias_pb.Alias.toObject, includeInstance),
 deletedwith: jspb.Message.getFieldWithDefault(msg, 27, ""),
+replaceWithList: (f = jspb.Message.getRepeatedField(msg, 38)) == null ? undefined : f,
+replacementTrigger: (f = msg.getReplacementTrigger()) && google_protobuf_struct_pb.Value.toObject(includeInstance, f),
 aliasspecs: jspb.Message.getBooleanFieldWithDefault(msg, 28, false),
 sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
 stacktrace: (f = msg.getStacktrace()) && pulumi_source_pb.StackTrace.toObject(includeInstance, f),
@@ -2003,6 +1999,15 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 27:
       var value = /** @type {string} */ (reader.readString());
       msg.setDeletedwith(value);
+      break;
+    case 38:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addReplaceWith(value);
+      break;
+    case 39:
+      var value = new google_protobuf_struct_pb.Value;
+      reader.readMessage(value,google_protobuf_struct_pb.Value.deserializeBinaryFromReader);
+      msg.setReplacementTrigger(value);
       break;
     case 28:
       var value = /** @type {boolean} */ (reader.readBool());
@@ -2261,6 +2266,21 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
     writer.writeString(
       27,
       f
+    );
+  }
+  f = message.getReplaceWithList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      38,
+      f
+    );
+  }
+  f = message.getReplacementTrigger();
+  if (f != null) {
+    writer.writeMessage(
+      39,
+      f,
+      google_protobuf_struct_pb.Value.serializeBinaryToWriter
     );
   }
   f = message.getAliasspecs();
@@ -3785,6 +3805,80 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getDeletedwith = function() {
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.setDeletedwith = function(value) {
   return jspb.Message.setProto3StringField(this, 27, value);
+};
+
+
+/**
+ * repeated string replace_with = 38;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getReplaceWithList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 38));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setReplaceWithList = function(value) {
+  return jspb.Message.setField(this, 38, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.addReplaceWith = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 38, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.clearReplaceWithList = function() {
+  return this.setReplaceWithList([]);
+};
+
+
+/**
+ * optional google.protobuf.Value replacement_trigger = 39;
+ * @return {?proto.google.protobuf.Value}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getReplacementTrigger = function() {
+  return /** @type{?proto.google.protobuf.Value} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Value, 39));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Value|undefined} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+*/
+proto.pulumirpc.RegisterResourceRequest.prototype.setReplacementTrigger = function(value) {
+  return jspb.Message.setWrapperField(this, 39, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.clearReplacementTrigger = function() {
+  return this.setReplacementTrigger(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.hasReplacementTrigger = function() {
+  return jspb.Message.getField(this, 39) != null;
 };
 
 
@@ -5904,7 +5998,7 @@ proto.pulumirpc.ResourceCallRequest.prototype.setPackageref = function(value) {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.TransformResourceOptions.repeatedFields_ = [1,3,4,6,13,18];
+proto.pulumirpc.TransformResourceOptions.repeatedFields_ = [1,3,4,6,13,18,19];
 
 
 
@@ -5955,7 +6049,9 @@ providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefine
 pluginChecksumsMap: (f = msg.getPluginChecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
 hooks: (f = msg.getHooks()) && proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.toObject(includeInstance, f),
 pb_import: jspb.Message.getFieldWithDefault(msg, 17, ""),
-hideDiffList: (f = jspb.Message.getRepeatedField(msg, 18)) == null ? undefined : f
+hideDiffList: (f = jspb.Message.getRepeatedField(msg, 18)) == null ? undefined : f,
+replaceWithList: (f = jspb.Message.getRepeatedField(msg, 19)) == null ? undefined : f,
+replacementTrigger: (f = msg.getReplacementTrigger()) && google_protobuf_struct_pb.Value.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -6070,6 +6166,15 @@ proto.pulumirpc.TransformResourceOptions.deserializeBinaryFromReader = function(
     case 18:
       var value = /** @type {string} */ (reader.readString());
       msg.addHideDiff(value);
+      break;
+    case 19:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addReplaceWith(value);
+      break;
+    case 20:
+      var value = new google_protobuf_struct_pb.Value;
+      reader.readMessage(value,google_protobuf_struct_pb.Value.deserializeBinaryFromReader);
+      msg.setReplacementTrigger(value);
       break;
     default:
       reader.skipField();
@@ -6221,6 +6326,21 @@ proto.pulumirpc.TransformResourceOptions.serializeBinaryToWriter = function(mess
     writer.writeRepeatedString(
       18,
       f
+    );
+  }
+  f = message.getReplaceWithList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      19,
+      f
+    );
+  }
+  f = message.getReplacementTrigger();
+  if (f != null) {
+    writer.writeMessage(
+      20,
+      f,
+      google_protobuf_struct_pb.Value.serializeBinaryToWriter
     );
   }
 };
@@ -6764,6 +6884,80 @@ proto.pulumirpc.TransformResourceOptions.prototype.addHideDiff = function(value,
  */
 proto.pulumirpc.TransformResourceOptions.prototype.clearHideDiffList = function() {
   return this.setHideDiffList([]);
+};
+
+
+/**
+ * repeated string replace_with = 19;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.getReplaceWithList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 19));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.setReplaceWithList = function(value) {
+  return jspb.Message.setField(this, 19, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.addReplaceWith = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 19, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.clearReplaceWithList = function() {
+  return this.setReplaceWithList([]);
+};
+
+
+/**
+ * optional google.protobuf.Value replacement_trigger = 20;
+ * @return {?proto.google.protobuf.Value}
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.getReplacementTrigger = function() {
+  return /** @type{?proto.google.protobuf.Value} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Value, 20));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Value|undefined} value
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+*/
+proto.pulumirpc.TransformResourceOptions.prototype.setReplacementTrigger = function(value) {
+  return jspb.Message.setWrapperField(this, 20, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.clearReplacementTrigger = function() {
+  return this.setReplacementTrigger(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.hasReplacementTrigger = function() {
+  return jspb.Message.getField(this, 20) != null;
 };
 
 

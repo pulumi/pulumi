@@ -33,10 +33,10 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -205,56 +205,56 @@ func (cmd *configEnvInitCmd) getStackConfig(
 	sink diag.Sink,
 	project *workspace.Project,
 	stack backend.Stack,
-) (*workspace.ProjectStack, resource.PropertyMap, error) {
+) (*workspace.ProjectStack, property.Map, error) {
 	ps, err := cmd.parent.loadProjectStack(ctx, sink, project, stack)
 	if err != nil {
-		return nil, nil, err
+		return nil, property.Map{}, err
 	}
 
 	decrypter, state, err := cmd.parent.ssml.GetDecrypter(ctx, stack, ps)
 	if err != nil {
-		return nil, nil, err
+		return nil, property.Map{}, err
 	}
 	// This may have setup the stack's secrets provider, so save the stack if needed.
 	if state != cmdStack.SecretsManagerUnchanged {
 		if err = cmd.parent.saveProjectStack(ctx, stack, ps); err != nil {
-			return nil, nil, fmt.Errorf("saving stack config: %w", err)
+			return nil, property.Map{}, fmt.Errorf("saving stack config: %w", err)
 		}
 	}
 
 	m, err := ps.Config.AsDecryptedPropertyMap(ctx, decrypter)
 	if err != nil {
-		return nil, nil, err
+		return nil, property.Map{}, err
 	}
 	return ps, m, nil
 }
 
-func (cmd *configEnvInitCmd) render(v resource.PropertyValue) any {
+func (cmd *configEnvInitCmd) render(v property.Value) any {
 	switch {
+	case v.Secret():
+		return map[string]any{
+			"fn::secret": cmd.render(v.WithSecret(false)),
+		}
 	case v.IsBool():
-		return v.BoolValue()
+		return v.AsBool()
 	case v.IsNumber():
-		return v.NumberValue()
+		return v.AsNumber()
 	case v.IsString():
-		return v.StringValue()
+		return v.AsString()
 	case v.IsArray():
-		arrV := v.ArrayValue()
-		rendered := make([]any, len(arrV))
-		for i, v := range arrV {
+		arrV := v.AsArray()
+		rendered := make([]any, arrV.Len())
+		for i, v := range arrV.All {
 			rendered[i] = cmd.render(v)
 		}
 		return rendered
-	case v.IsObject():
-		objV := v.ObjectValue()
-		rendered := make(map[string]any, len(objV))
-		for k, v := range objV {
-			rendered[string(k)] = cmd.render(v)
+	case v.IsMap():
+		objV := v.AsMap()
+		rendered := make(map[string]any, objV.Len())
+		for k, v := range objV.All {
+			rendered[k] = cmd.render(v)
 		}
 		return rendered
-	case v.IsSecret():
-		return map[string]any{
-			"fn::secret": cmd.render(v.SecretValue().Element),
-		}
 	default:
 		return nil
 	}
@@ -264,7 +264,7 @@ func (cmd *configEnvInitCmd) renderEnvironmentDefinition(
 	ctx context.Context,
 	envName string,
 	encrypter eval.Encrypter,
-	config resource.PropertyMap,
+	config property.Map,
 	showSecrets bool,
 ) ([]byte, error) {
 	var b bytes.Buffer
@@ -272,7 +272,7 @@ func (cmd *configEnvInitCmd) renderEnvironmentDefinition(
 	enc.SetIndent(2)
 	err := enc.Encode(map[string]any{
 		"values": map[string]any{
-			"pulumiConfig": cmd.render(resource.NewProperty(config)),
+			"pulumiConfig": cmd.render(property.New(config)),
 		},
 	})
 	if err != nil {

@@ -17,6 +17,7 @@ package plugin
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,7 +34,6 @@ import (
 
 	multierror "github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
@@ -185,7 +185,8 @@ func dialPlugin[T any](
 	// TODO[pulumi/pulumi#337]: in theory, this should be unnecessary.  gRPC's default WaitForReady behavior
 	//     should auto-retry appropriately.  On Linux, however, we are observing different behavior.  In the meantime
 	//     while this bug exists, we'll simply do a bit of waiting of our own up front.
-	timeout, _ := context.WithTimeout(context.Background(), pluginRPCConnectionTimeout)
+	timeout, cancel := context.WithTimeout(context.Background(), pluginRPCConnectionTimeout)
+	defer cancel()
 	for {
 		s := conn.GetState()
 		if s == connectivity.Ready {
@@ -482,14 +483,14 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			return nil, fmt.Errorf("getting absolute path for plugin directory: %w", err)
 		}
 
-		info := NewProgramInfo(pluginDir, pluginDir, ".", runtimeInfo.Options())
-		runtime, err := ctx.Host.LanguageRuntime(runtimeInfo.Name(), info)
+		runtime, err := ctx.Host.LanguageRuntime(runtimeInfo.Name())
 		if err != nil {
 			return nil, fmt.Errorf("loading runtime: %w", err)
 		}
 
-		rctx, kill := context.WithCancel(ctx.Request())
+		rctx, kill := context.WithCancel(ctx.Request()) //nolint:govet // lostcancel
 
+		info := NewProgramInfo(pluginDir, pluginDir, ".", runtimeInfo.Options())
 		stdout, stderr, done, err := runtime.RunPlugin(rctx, RunPluginInfo{
 			Info:             info,
 			WorkingDirectory: ctx.Pwd,
@@ -499,7 +500,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			AttachDebugger:   attachDebugger,
 		})
 		if err != nil {
-			return nil, err
+			return nil, err //nolint:govet // lostcancel
 		}
 
 		return &Plugin{

@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -31,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -221,8 +223,8 @@ func (r *JournalReplayer) Add(entry apitype.JournalEntry) {
 	case apitype.JournalEntryKindRebuiltBaseState:
 		// We need to build the snapshot from the current state here and discard the
 		// current journal entries. This happens after a refresh operation.
-		deployment, _, _ := r.GenerateDeployment()
-		r.base = deployment
+		deployment := r.GenerateDeployment()
+		r.base = deployment.Deployment
 		r.toRemove = make(map[int64]struct{})
 		r.toDeleteInSnapshot = make(map[int64]struct{})
 		r.toReplaceInSnapshot = make(map[int64]*apitype.ResourceV3)
@@ -259,6 +261,11 @@ func rebuildDependencies(resources []apitype.ResourceV3) {
 				}
 			}
 		}
+		for i, r := range resources[i].ReplaceWith {
+			if !referenceable[r] {
+				resources[i].ReplaceWith = append(resources[i].ReplaceWith, "")
+			}
+		}
 		if !referenceable[resources[i].DeletedWith] {
 			resources[i].DeletedWith = ""
 		}
@@ -287,7 +294,7 @@ func undangleParentResources(undeleted map[resource.URN]bool, resources []apityp
 	}
 }
 
-func (r *JournalReplayer) GenerateDeployment() (*apitype.DeploymentV3, int, []string) {
+func (r *JournalReplayer) GenerateDeployment() apitype.TypedDeployment {
 	features := make(map[string]bool)
 	removeIndices := make(map[int64]struct{})
 	for k := range r.toRemove {
@@ -376,12 +383,16 @@ func (r *JournalReplayer) GenerateDeployment() (*apitype.DeploymentV3, int, []st
 		version = apitype.DeploymentSchemaVersionLatest
 	}
 
-	return deployment, version, maputil.SortedKeys(features)
+	return apitype.TypedDeployment{
+		Deployment: deployment,
+		Version:    version,
+		Features:   maputil.SortedKeys(features),
+	}
 }
 
 // snap produces a new Snapshot given the base snapshot and a list of resources that the current
 // plan has created.
-func (sj *SnapshotJournaler) snap(ctx context.Context) (*deploy.Snapshot, error) {
+func (sj *SnapshotJournaler) snap() apitype.TypedDeployment {
 	// At this point we have two resource DAGs. One of these is the base DAG for this plan; the other is the current DAG
 	// for this plan. Any resource r may be present in both DAGs. In order to produce a snapshot, we need to merge these
 	// DAGs such that all resource dependencies are correctly preserved. Conceptually, the merge proceeds as follows:
@@ -429,9 +440,7 @@ func (sj *SnapshotJournaler) snap(ctx context.Context) (*deploy.Snapshot, error)
 		}
 	}
 
-	deploymentV3, _, _ := replayer.GenerateDeployment()
-
-	return stack.DeserializeDeploymentV3(ctx, *deploymentV3, sj.secretsProvider)
+	return replayer.GenerateDeployment()
 }
 
 // saveSnapshot persists the current snapshot. If integrity checking is enabled,
@@ -439,12 +448,10 @@ func (sj *SnapshotJournaler) snap(ctx context.Context) (*deploy.Snapshot, error)
 // metadata about this write operation is added to the snapshot before it is
 // written, in order to aid debugging should future operations fail with an
 // error.
-func (sj *SnapshotJournaler) saveSnapshot(ctx context.Context) error {
-	snap, err := sj.snap(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to generate snapshot: %w", err)
-	}
-	snap, err = snap.NormalizeURNReferences()
+func (sj *SnapshotJournaler) saveSnapshot() error {
+	deployment := sj.snap()
+	var err error
+	deployment.Deployment, err = deployment.Deployment.NormalizeURNReferences()
 	if err != nil {
 		return fmt.Errorf("failed to normalize URN references: %w", err)
 	}
@@ -462,18 +469,18 @@ func (sj *SnapshotJournaler) saveSnapshot(ctx context.Context) error {
 	//
 	// Metadata will be cleared out by a successful operation (even if integrity
 	// checking is being enforced).
-	integrityError := snap.VerifyIntegrity()
+	integrityError := snapshot.VerifyIntegrity(deployment.Deployment)
 	if integrityError == nil {
-		snap.Metadata.IntegrityErrorMetadata = nil
+		deployment.Deployment.Metadata.IntegrityErrorMetadata = nil
 	} else {
-		snap.Metadata.IntegrityErrorMetadata = &deploy.SnapshotIntegrityErrorMetadata{
-			Version: version.Version,
+		deployment.Deployment.Metadata.IntegrityErrorMetadata = &apitype.SnapshotIntegrityErrorMetadataV1{
+			Version: strconv.FormatInt(int64(deployment.Version), 10),
 			Command: strings.Join(os.Args, " "),
 			Error:   integrityError.Error(),
 		}
 	}
 	persister := sj.persister
-	if err := persister.Save(snap); err != nil {
+	if err := persister.Save(deployment); err != nil {
 		return fmt.Errorf("failed to save snapshot: %w", err)
 	}
 	if !DisableIntegrityChecking && integrityError != nil {
@@ -484,7 +491,6 @@ func (sj *SnapshotJournaler) saveSnapshot(ctx context.Context) error {
 
 // defaultServiceLoop saves a Snapshot whenever a mutation occurs
 func (sj *SnapshotJournaler) defaultServiceLoop(
-	ctx context.Context,
 	journalEvents chan writeJournalEntryRequest, done chan error,
 ) {
 	// True if we have elided writes since the last actual write.
@@ -507,7 +513,7 @@ serviceLoop:
 				continue
 			}
 			hasElidedWrites = false
-			request.result <- sj.saveSnapshot(ctx)
+			request.result <- sj.saveSnapshot()
 		case <-sj.cancel:
 			break serviceLoop
 		}
@@ -517,7 +523,7 @@ serviceLoop:
 	var err error
 	if hasElidedWrites {
 		logging.V(9).Infof("SnapshotManager: flushing elided writes...")
-		err = sj.saveSnapshot(ctx)
+		err = sj.saveSnapshot()
 	}
 	done <- err
 }
@@ -526,7 +532,6 @@ serviceLoop:
 // SnapshotManager.Close() is invoked. It trades reliability for speed as every mutation does not
 // cause a Snapshot to be serialized to the user's state backend.
 func (sj *SnapshotJournaler) unsafeServiceLoop(
-	ctx context.Context,
 	journalEvents chan writeJournalEntryRequest, done chan error,
 ) {
 	for {
@@ -535,7 +540,7 @@ func (sj *SnapshotJournaler) unsafeServiceLoop(
 			sj.journalEntries = append(sj.journalEntries, request.journalEntry)
 			request.result <- nil
 		case <-sj.cancel:
-			done <- sj.saveSnapshot(ctx)
+			done <- sj.saveSnapshot()
 			return
 		}
 	}
@@ -636,7 +641,7 @@ func NewSnapshotJournaler(
 		serviceLoop = journaler.unsafeServiceLoop
 	}
 
-	go serviceLoop(ctx, journalEvents, done)
+	go serviceLoop(journalEvents, done)
 
 	return &journaler, nil
 }
@@ -652,21 +657,14 @@ type writeJournalEntryRequest struct {
 }
 
 func (sj *SnapshotJournaler) journalMutation(entry engine.JournalEntry) error {
-	var completeBatch stack.CompleteCrypterBatch
-	enc := sj.secretsManager.Encrypter()
-
-	if batchingSecretsManager, ok := sj.secretsManager.(stack.BatchingSecretsManager); ok {
-		enc, completeBatch = batchingSecretsManager.BeginBatchEncryption()
-	}
-	serializedEntry, err := SerializeJournalEntry(
-		sj.ctx, entry, enc)
+	serializedEntry, err := stack.BatchEncrypt(
+		sj.ctx,
+		sj.secretsManager,
+		func(ctx context.Context, enc config.Encrypter) (apitype.JournalEntry, error) {
+			return SerializeJournalEntry(ctx, entry, enc)
+		})
 	if err != nil {
 		return fmt.Errorf("failed to serialize journal entry: %w", err)
-	}
-	if completeBatch != nil {
-		if err := completeBatch(sj.ctx); err != nil {
-			return fmt.Errorf("failed to complete batch encryption: %w", err)
-		}
 	}
 
 	result := make(chan error)
@@ -778,21 +776,14 @@ func NewJournaler(
 }
 
 func (sj *journaler) AddJournalEntry(entry engine.JournalEntry) error {
-	var completeBatch stack.CompleteCrypterBatch
-	enc := sj.secretsManager.Encrypter()
-
-	if batchingSecretsManager, ok := sj.secretsManager.(stack.BatchingSecretsManager); ok {
-		enc, completeBatch = batchingSecretsManager.BeginBatchEncryption()
-	}
-	serializedEntry, err := SerializeJournalEntry(
-		sj.ctx, entry, enc)
+	serializedEntry, err := stack.BatchEncrypt(
+		sj.ctx,
+		sj.secretsManager,
+		func(ctx context.Context, enc config.Encrypter) (apitype.JournalEntry, error) {
+			return SerializeJournalEntry(ctx, entry, enc)
+		})
 	if err != nil {
 		return fmt.Errorf("failed to serialize journal entry: %w", err)
-	}
-	if completeBatch != nil {
-		if err := completeBatch(sj.ctx); err != nil {
-			return fmt.Errorf("failed to complete batch encryption: %w", err)
-		}
 	}
 	return sj.persister.Append(sj.ctx, serializedEntry)
 }

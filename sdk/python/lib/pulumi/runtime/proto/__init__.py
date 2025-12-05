@@ -20,6 +20,8 @@ from .analyzer_pb2 import *
 from .analyzer_pb2_grpc import *
 from .engine_pb2 import *
 from .engine_pb2_grpc import *
+from .events_pb2 import *
+from .events_pb2_grpc import *
 from .language_pb2 import *
 from .language_pb2_grpc import *
 from .plugin_pb2 import *

@@ -126,6 +126,7 @@ well as discussing how they are verified and tested.
 /docs/architecture/providers/README
 /docs/architecture/languages
 /docs/architecture/converters
+/docs/architecture/resources
 /pkg/codegen/README
 /docs/architecture/testing/README
 :::

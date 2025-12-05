@@ -16,7 +16,7 @@ jobs:
       - name: Add Homebrew to the PATH
         run: |
           echo "/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin" >> "${GITHUB_PATH}"
-      - uses: dawidd6/action-homebrew-bump-formula@v3
+      - uses: dawidd6/action-homebrew-bump-formula@v7
         with:
           token: ${{secrets.PULUMI_BOT_HOMEBREW_TOKEN}}
           formula: pulumi

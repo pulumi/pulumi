@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -301,7 +302,7 @@ func GetRequiredPlugins(
 
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-	lang, err := host.LanguageRuntime(runtime, info)
+	lang, err := host.LanguageRuntime(runtime)
 	if lang == nil || err != nil {
 		return nil, fmt.Errorf("failed to load language plugin %s: %w", runtime, err)
 	}
@@ -342,7 +343,7 @@ func GetRequiredPlugins(
 func gatherPackagesFromProgram(plugctx *plugin.Context, runtime string, info plugin.ProgramInfo) (PackageSet, error) {
 	logging.V(preparePluginLog).Infof("gatherPackagesFromProgram(): gathering plugins from language host")
 
-	lang, err := plugctx.Host.LanguageRuntime(runtime, info)
+	lang, err := plugctx.Host.LanguageRuntime(runtime)
 	if lang == nil || err != nil {
 		return nil, fmt.Errorf("failed to load language plugin %s: %w", runtime, err)
 	}
@@ -374,12 +375,12 @@ func gatherPackagesFromSnapshot(plugctx *plugin.Context, target *deploy.Target) 
 	}
 	for _, res := range target.Snapshot.Resources {
 		urn := res.URN
-		if !providers.IsProviderType(urn.Type()) {
+		if !sdkproviders.IsProviderType(urn.Type()) {
 			logging.V(preparePluginVerboseLog).Infof(
 				"gatherPackagesFromSnapshot(): skipping %q, not a provider", urn)
 			continue
 		}
-		pkg := providers.GetProviderPackage(urn.Type())
+		pkg := sdkproviders.GetProviderPackage(urn.Type())
 
 		name, err := providers.GetProviderName(pkg, res.Inputs)
 		if err != nil {

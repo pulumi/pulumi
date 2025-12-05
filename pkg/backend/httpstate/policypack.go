@@ -318,17 +318,17 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 		}
 	}
 
-	info := plugin.NewProgramInfo(finalDir, finalDir, ".", proj.Runtime.Options())
-	language, err := ctx.Host.LanguageRuntime(proj.Runtime.Name(), info)
+	language, err := ctx.Host.LanguageRuntime(proj.Runtime.Name())
 	if err != nil {
 		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
 	}
 
+	info := plugin.NewProgramInfo(finalDir, finalDir, ".", proj.Runtime.Options())
 	err = pkgCmdUtil.InstallDependencies(language, plugin.InstallDependenciesRequest{
 		Info:                    info,
 		UseLanguageVersionTools: false,
 		IsPlugin:                true,
-	})
+	}, os.Stdout, os.Stderr)
 	if err != nil {
 		return fmt.Errorf("installing dependencies: %w", err)
 	}

@@ -12,11 +12,11 @@ package tail
 
 import (
 	"fmt"
-	_ "fmt"
 	"io"
 	"os"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -100,12 +100,7 @@ func TestWaitsForFileToExistRelativePath(t *testing.T) {
 	tailTest, cleanup := NewTailTest("waits-for-file-to-exist-relative", t)
 	defer cleanup()
 
-	oldWD, err := os.Getwd()
-	if err != nil {
-		tailTest.Fatal(err)
-	}
-	require.NoError(t, os.Chdir(tailTest.path))
-	defer contract.IgnoreError(os.Chdir(oldWD))
+	t.Chdir(tailTest.path)
 
 	tail, err := File("test.txt", Config{})
 	if err != nil {
@@ -651,13 +646,14 @@ func TestIncompleteLinesWithReopens(t *testing.T) {
 	}
 	tail := tailTest.StartTail(filename, config)
 	go func() {
-		time.Sleep(100 * time.Millisecond)
 		tailTest.CreateFile(filename, "hello world\nhi")
-		time.Sleep(100 * time.Millisecond)
+		require.Eventually(t, func() bool {
+			return tailTest.matchCount.Load() > 0
+		}, 500*time.Millisecond, 50*time.Millisecond)
 		tailTest.TruncateFile(filename, "rewriting\n")
 	}()
 
-	// not that the "hi" gets lost, because it was never a complete line
+	// note that the "hi" gets lost, because it was never a complete line
 	lines := []string{"hello world", "rewriting"}
 
 	tailTest.ReadLines(tail, lines, false)
@@ -669,6 +665,9 @@ func TestIncompleteLinesWithReopens(t *testing.T) {
 
 func TestIncompleteLinesWithoutFollow(t *testing.T) {
 	t.Parallel()
+
+	// TODO[pulumi/pulumi#19888]: Skipping flaky test
+	t.Skip("Skipping because the tail library is flaky.  See pulumi/pulumi#19888")
 
 	tailTest, cleanup := NewTailTest("incomplete-lines-no-follow", t)
 	defer cleanup()
@@ -733,41 +732,42 @@ type TailTest struct {
 	path string
 	done chan struct{}
 	*testing.T
+	matchCount atomic.Int32 // number of lines that's matched
 }
 
-func NewTailTest(name string, t *testing.T) (TailTest, func()) {
+func NewTailTest(name string, t *testing.T) (*TailTest, func()) {
 	testdir, err := os.MkdirTemp(os.TempDir(), "tail-test-"+name)
 	require.NoError(t, err)
 
-	return TailTest{name, testdir, make(chan struct{}), t}, func() {
+	return &TailTest{name, testdir, make(chan struct{}), t, atomic.Int32{}}, func() {
 		if err := os.RemoveAll(testdir); err != nil {
 			t.Logf("failed to remove test directory: %v", testdir)
 		}
 	}
 }
 
-func (t TailTest) CreateFile(name string, contents string) {
+func (t *TailTest) CreateFile(name string, contents string) {
 	err := os.WriteFile(t.path+"/"+name, []byte(contents), 0o600)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func (t TailTest) AppendToFile(name string, contents string) {
+func (t *TailTest) AppendToFile(name string, contents string) {
 	err := os.WriteFile(t.path+"/"+name, []byte(contents), 0o600|os.ModeAppend)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func (t TailTest) RemoveFile(name string) {
+func (t *TailTest) RemoveFile(name string) {
 	err := os.Remove(t.path + "/" + name)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func (t TailTest) RenameFile(oldname string, newname string) {
+func (t *TailTest) RenameFile(oldname string, newname string) {
 	oldname = t.path + "/" + oldname
 	newname = t.path + "/" + newname
 	err := os.Rename(oldname, newname)
@@ -776,7 +776,7 @@ func (t TailTest) RenameFile(oldname string, newname string) {
 	}
 }
 
-func (t TailTest) AppendFile(name string, contents string) {
+func (t *TailTest) AppendFile(name string, contents string) {
 	f, err := os.OpenFile(t.path+"/"+name, os.O_APPEND|os.O_WRONLY, 0o600)
 	if err != nil {
 		t.Fatal(err)
@@ -788,7 +788,7 @@ func (t TailTest) AppendFile(name string, contents string) {
 	}
 }
 
-func (t TailTest) TruncateFile(name string, contents string) {
+func (t *TailTest) TruncateFile(name string, contents string) {
 	f, err := os.OpenFile(t.path+"/"+name, os.O_TRUNC|os.O_WRONLY, 0o600)
 	if err != nil {
 		t.Fatal(err)
@@ -800,7 +800,7 @@ func (t TailTest) TruncateFile(name string, contents string) {
 	}
 }
 
-func (t TailTest) StartTail(name string, config Config) *Tail {
+func (t *TailTest) StartTail(name string, config Config) *Tail {
 	tail, err := File(t.path+"/"+name, config)
 	if err != nil {
 		t.Fatal(err)
@@ -808,7 +808,7 @@ func (t TailTest) StartTail(name string, config Config) *Tail {
 	return tail
 }
 
-func (t TailTest) VerifyTailOutput(tail *Tail, lines []string, expectEOF bool) {
+func (t *TailTest) VerifyTailOutput(tail *Tail, lines []string, expectEOF bool) {
 	defer close(t.done)
 	t.ReadLines(tail, lines, false)
 	// It is important to do this if only EOF is expected
@@ -821,7 +821,7 @@ func (t TailTest) VerifyTailOutput(tail *Tail, lines []string, expectEOF bool) {
 	}
 }
 
-func (t TailTest) VerifyTailOutputUsingCursor(tail *Tail, lines []string, expectEOF bool) {
+func (t *TailTest) VerifyTailOutputUsingCursor(tail *Tail, lines []string, expectEOF bool) {
 	defer close(t.done)
 	t.ReadLines(tail, lines, true)
 	// It is important to do this if only EOF is expected
@@ -834,15 +834,15 @@ func (t TailTest) VerifyTailOutputUsingCursor(tail *Tail, lines []string, expect
 	}
 }
 
-func (t TailTest) ReadLines(tail *Tail, lines []string, useCursor bool) {
+func (t *TailTest) ReadLines(tail *Tail, lines []string, useCursor bool) {
 	t.readLines(tail, lines, useCursor, nil)
 }
 
-func (t TailTest) ReadLinesWithError(tail *Tail, lines []string, useCursor bool, err error) {
+func (t *TailTest) ReadLinesWithError(tail *Tail, lines []string, useCursor bool, err error) {
 	t.readLines(tail, lines, useCursor, err)
 }
 
-func (t TailTest) readLines(tail *Tail, lines []string, useCursor bool, expectedErr error) {
+func (t *TailTest) readLines(tail *Tail, lines []string, useCursor bool, expectedErr error) {
 	cursor := 1
 
 	for _, line := range lines {
@@ -873,14 +873,14 @@ func (t TailTest) readLines(tail *Tail, lines []string, useCursor bool, expected
 						"expecting <<%s>>>, but got <<<%s>>>",
 					line, tailedLine.Text)
 			}
-
+			t.matchCount.Add(1)
 			cursor++
 			break
 		}
 	}
 }
 
-func (t TailTest) Cleanup(tail *Tail, stop bool) {
+func (t *TailTest) Cleanup(tail *Tail, stop bool) {
 	<-t.done
 	if stop {
 		_ = tail.Stop()

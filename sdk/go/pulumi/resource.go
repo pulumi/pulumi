@@ -467,6 +467,13 @@ type ResourceOptions struct {
 	// replacements.
 	ReplaceOnChanges []string
 
+	// If set, the engine will diff this with the last recorded value, and trigger
+	// a replace if they are not equal.  Note that if either value is null, no
+	// comparison is done and no replacement is triggered. This means that the
+	// replacement trigger only applies to two subsequent deployments with defined
+	// triggers.
+	ReplacementTrigger Input
+
 	// Transformations is a list of functions that transform
 	// the resource's properties during construction.
 	Transformations []ResourceTransformation
@@ -495,6 +502,10 @@ type ResourceOptions struct {
 	// DeletedWith holds a container resource that, if deleted,
 	// also deletes this resource.
 	DeletedWith Resource
+
+	// ReplaceWith holds a list of container resources that, if replaced,
+	// also trigger a replace of this resource.
+	ReplaceWith []Resource
 
 	// Hooks are the optional resource hooks to bind to this resource. The hooks
 	// will be invoked during the lifecycle of the resource.
@@ -528,6 +539,7 @@ type resourceOptions struct {
 	Provider                ProviderResource
 	Providers               map[string]ProviderResource
 	ReplaceOnChanges        []string
+	ReplacementTrigger      Input
 	Transformations         []ResourceTransformation
 	Transforms              []ResourceTransform
 	URN                     string
@@ -535,6 +547,7 @@ type resourceOptions struct {
 	PluginDownloadURL       string
 	RetainOnDelete          *bool
 	DeletedWith             Resource
+	ReplaceWith             []Resource
 	Parameterization        []byte
 	Hooks                   *ResourceHookBinding
 }
@@ -594,6 +607,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		Provider:                ro.Provider,
 		Providers:               providers,
 		ReplaceOnChanges:        ro.ReplaceOnChanges,
+		ReplacementTrigger:      ro.ReplacementTrigger,
 		Transformations:         ro.Transformations,
 		Transforms:              ro.Transforms,
 		URN:                     ro.URN,
@@ -601,6 +615,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		PluginDownloadURL:       ro.PluginDownloadURL,
 		RetainOnDelete:          flatten(ro.RetainOnDelete),
 		DeletedWith:             ro.DeletedWith,
+		ReplaceWith:             ro.ReplaceWith,
 		Hooks:                   ro.Hooks,
 	}
 }
@@ -1024,6 +1039,13 @@ func ReplaceOnChanges(o []string) ResourceOption {
 	})
 }
 
+// If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
+func ReplacementTrigger(o Input) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.ReplacementTrigger = o
+	})
+}
+
 // Timeouts is an optional configuration block used for CRUD operations
 func Timeouts(o *CustomTimeouts) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
@@ -1094,6 +1116,14 @@ func RetainOnDelete(b bool) ResourceOption {
 func DeletedWith(r Resource) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.DeletedWith = r
+	})
+}
+
+// If set, the providers Replace method will not be called for this resource if
+// any of the specified resources is replaced.
+func ReplaceWith(r []Resource) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.ReplaceWith = r
 	})
 }
 

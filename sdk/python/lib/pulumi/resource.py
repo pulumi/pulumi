@@ -49,6 +49,11 @@ if TYPE_CHECKING:
 
 
 class CustomTimeouts:
+    """
+    CustomTimeouts allows specifying custom timeouts for resource operations. Timeouts can
+    be specified separately for create, update, and delete operations.
+    """
+
     create: Optional[str]
     """
     create is the optional create timout represented as a string e.g. 5m, 40s, 1d.
@@ -466,6 +471,12 @@ class ResourceOptions:
     if specified resource is being deleted as well.
     """
 
+    replace_with: Optional[list["Resource"]]
+    """
+    If set, this resource will also be replaced whenever any of the provided
+    resources are replaced.
+    """
+
     hide_diffs: Optional[list[str]]
     """
     If set, diffs from the included property paths will not be shown.
@@ -499,6 +510,7 @@ class ResourceOptions:
         plugin_download_url: Optional[str] = None,
         retain_on_delete: Optional[bool] = None,
         deleted_with: Optional["Resource"] = None,
+        replace_with: Optional[list["Resource"]] = None,
         hide_diffs: Optional[list[str]] = None,
     ) -> None:
         """
@@ -544,6 +556,7 @@ class ResourceOptions:
         :param Optional[bool] retain_on_delete: If set to True, the providers Delete method will not be called for this resource.
         :param Optional[Resource] deleted_with: If set, the providers Delete method will not be called for this resource
                if specified resource is being deleted as well.
+        :param Optional[List[Resource]] replace_with: If set, this resource will also be replaced whenever any of the provided resources are replaced.
         :param Optional[ResourceHookBinding] hooks: Optional resource hooks to bind to this resource. The hooks will be
                 invoked during certain step of the lifecycle of the resource.
         """
@@ -569,6 +582,7 @@ class ResourceOptions:
         self.depends_on = depends_on
         self.retain_on_delete = retain_on_delete
         self.deleted_with = deleted_with
+        self.replace_with = replace_with
         self.hide_diffs = hide_diffs
 
         # Proactively check that `depends_on` values are of type
@@ -731,6 +745,7 @@ class ResourceOptions:
         dest.deleted_with = (
             dest.deleted_with if source.deleted_with is None else source.deleted_with
         )
+        dest.replace_with = _merge_lists(dest.replace_with, source.replace_with)
         dest.hide_diffs = _merge_lists(dest.hide_diffs, source.hide_diffs)
 
         # Now, if we are left with a .providers that is just a single key/value pair, then

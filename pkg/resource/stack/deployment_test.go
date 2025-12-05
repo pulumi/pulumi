@@ -29,6 +29,7 @@ import (
 	"pgregory.net/rapid"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -104,6 +105,7 @@ func TestDeploymentSerialization(t *testing.T) {
 		ImportID:                "",
 		RetainOnDelete:          false,
 		DeletedWith:             "",
+		ReplaceWith:             nil,
 		Created:                 nil,
 		Modified:                nil,
 		SourcePosition:          "",
@@ -111,6 +113,7 @@ func TestDeploymentSerialization(t *testing.T) {
 		StackTrace:              nil,
 		IgnoreChanges:           nil,
 		ReplaceOnChanges:        nil,
+		ReplacementTrigger:      resource.NewNullProperty(),
 		RefreshBeforeUpdate:     false,
 		ViewOf:                  "",
 		ResourceHooks: map[resource.HookType][]string{
@@ -992,4 +995,108 @@ func TestSecretInputRoundTrip(t *testing.T) {
 		"normal": "hello",
 		"secret": resource.MakeSecret(resource.NewProperty("there")),
 	}), deserialized.Inputs)
+}
+
+// Tests that when a deployment has no root stack resource, DeserializeStackOutputs returns nil outputs.
+func TestDeserializeStackOutputs_NoRootStackResource_ReturnsNil(t *testing.T) {
+	t.Parallel()
+
+	deployment := apitype.DeploymentV3{}
+
+	outputs, err := DeserializeStackOutputs(t.Context(), deployment, b64.Base64SecretsProvider)
+	require.NoError(t, err)
+	require.Nil(t, outputs)
+}
+
+// Tests that when there are secrets in the deployment, but not in the stack outputs, no decrypt calls are made
+// when calling DeserializeStackOutputs.
+func TestDeserializeStackOutputs_SecretsInSnapshotButNotInStackOutputs_NoDecryptCalls(t *testing.T) {
+	t.Parallel()
+
+	urn := "urn:pulumi:urn:pulumi:test_stack::test_project::pkg:index:type::name"
+	deployment := apitype.DeploymentV3{
+		Resources: []apitype.ResourceV3{
+			{
+				URN:  resource.URN(urn),
+				Type: "pkg:index:type",
+				Outputs: map[string]any{
+					"secret": map[string]any{
+						"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+						"ciphertext":                       "v1:xRi3+sQJSJHR8sha:RM8BfzSAJI84QMl+zLGjzPvwSqV6zOSdd/I/V34h",
+					},
+				},
+			},
+			{
+				URN:  resource.DefaultRootStackURN("test_stack", "test_project"),
+				Type: resource.RootStackType,
+				Outputs: map[string]any{
+					"foo":   42.0,
+					"hello": "world",
+				},
+			},
+		},
+	}
+
+	provider := (&secrets.MockProvider{}).Add(
+		"mock", func(_ json.RawMessage) (secrets.Manager, error) {
+			return &secrets.MockSecretsManager{
+				TypeF: func() string { return "mock" },
+				DecrypterF: func() config.Decrypter {
+					return &secrets.MockDecrypter{
+						DecryptValueF: func(_ string) string {
+							panic("should not be called")
+						},
+						BatchDecryptF: func(_ []string) []string {
+							panic("should not be called")
+						},
+					}
+				},
+			}, nil
+		},
+	)
+
+	outputs, err := DeserializeStackOutputs(t.Context(), deployment, provider)
+	require.NoError(t, err)
+	assert.Equal(t, resource.PropertyMap{
+		"foo":   resource.NewProperty(42.0),
+		"hello": resource.NewProperty("world"),
+	}, outputs)
+}
+
+// Test that DeserializeStackOutputs correctly decrypts secrets found in the stack outputs.
+func TestDeserializeStackOutputs_SecretsInStackOutputs_Decrypted(t *testing.T) {
+	t.Parallel()
+
+	manager, err := b64.Base64SecretsProvider.OfType("b64", nil)
+	require.NoError(t, err)
+	ciphertext, err := manager.Encrypter().EncryptValue(t.Context(), "\"super secret\"")
+	require.NoError(t, err)
+
+	deployment := apitype.DeploymentV3{
+		Resources: []apitype.ResourceV3{
+			{
+				URN:  resource.DefaultRootStackURN("test_stack", "test_project"),
+				Type: resource.RootStackType,
+				Outputs: map[string]any{
+					"foo":   42.0,
+					"hello": "world",
+					"secret": map[string]any{
+						"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+						"ciphertext":                       ciphertext,
+					},
+				},
+			},
+		},
+		SecretsProviders: &apitype.SecretsProvidersV1{
+			Type: "b64",
+		},
+	}
+
+	outputs, err := DeserializeStackOutputs(t.Context(), deployment, b64.Base64SecretsProvider)
+	require.NoError(t, err)
+	assert.Equal(t, resource.PropertyMap{
+		"foo":    resource.NewProperty(42.0),
+		"hello":  resource.NewProperty("world"),
+		"secret": resource.MakeSecret(resource.NewProperty("super secret")),
+	}, outputs)
 }

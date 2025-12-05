@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -136,12 +137,17 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
+	snapshotStackOutputs, err := s.SnapshotStackOutputs(ctx, secrets.DefaultProvider)
 	if err != nil {
 		return err
 	}
+	snapshotStackOutputsMap := resource.ToResourcePropertyMap(snapshotStackOutputs)
 
-	outputs, err := getStackOutputs(snap, cmd.showSecrets)
+	// massageSecrets will remove all the secrets from the property map, so it should be safe to pass a panic
+	// crypter. This also ensures that if for some reason we didn't remove everything, we don't accidentally disclose
+	// secret values!
+	outputs, err := stack.SerializeProperties(ctx, display.MassageSecrets(snapshotStackOutputsMap, cmd.showSecrets),
+		config.NewPanicCrypter(), cmd.showSecrets)
 	if err != nil {
 		return fmt.Errorf("getting outputs: %w", err)
 	}
@@ -292,7 +298,7 @@ func getStackOutputs(snap *deploy.Snapshot, showSecrets bool) (map[string]any, e
 	}
 
 	// massageSecrets will remove all the secrets from the property map, so it should be safe to pass a panic
-	// crypter. This also ensure that if for some reason we didn't remove everything, we don't accidentally disclose
+	// crypter. This also ensures that if for some reason we didn't remove everything, we don't accidentally disclose
 	// secret values!
 	ctx := context.TODO()
 	return stack.SerializeProperties(ctx, display.MassageSecrets(state.Outputs, showSecrets),

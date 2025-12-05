@@ -1577,7 +1577,18 @@ func (x *ObjectConsExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics
 		elementType, _ := UnifyTypes(types...)
 		typ = NewMapType(elementType)
 	} else {
-		typ = NewObjectType(properties)
+		// If x was previously typed as an object, and the object has annotations,
+		// Typecheck should preserve these annotations.
+		//
+		// This is necessary to make it safe to call
+		// x.Typecheck(typecheckOperands) on already typed objects without loosing
+		// information.
+		var annotations []any
+		if typ, ok := x.exprType.(*ObjectType); ok {
+			annotations = typ.Annotations
+		}
+
+		typ = NewObjectType(properties, annotations...)
 	}
 
 	x.exprType = liftOperationType(typ, keys...)

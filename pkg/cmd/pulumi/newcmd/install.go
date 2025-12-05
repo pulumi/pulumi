@@ -16,6 +16,7 @@ package newcmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -26,16 +27,16 @@ import (
 func InstallDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeInfo, main string) error {
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-	programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, runtime.Options())
-	lang, err := ctx.Host.LanguageRuntime(runtime.Name(), programInfo)
+	lang, err := ctx.Host.LanguageRuntime(runtime.Name())
 	if err != nil {
 		return fmt.Errorf("failed to load language plugin %s: %w", runtime.Name(), err)
 	}
 
+	programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, runtime.Options())
 	err = cmdutil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
 		Info:     programInfo,
 		IsPlugin: false,
-	})
+	}, os.Stdout, os.Stderr)
 	if err != nil {
 		//revive:disable-next-line:error-strings // This error message is user facing.
 		return fmt.Errorf("installing dependencies failed: %w\nRun `pulumi install` to complete the installation.", err)

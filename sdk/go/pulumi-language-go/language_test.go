@@ -16,6 +16,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os/exec"
@@ -24,6 +25,7 @@ import (
 	"sync"
 	"testing"
 
+	gocodegen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/sdk/v3"
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
@@ -152,8 +154,35 @@ func TestLanguage(t *testing.T) {
 	tests, err := engine.GetLanguageTests(t.Context(), &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
 
-	for _, local := range []bool{false, true} {
-		t.Run(fmt.Sprintf("local=%v", local), func(t *testing.T) {
+	configs := []struct {
+		name         string
+		local        bool
+		languageInfo *gocodegen.GoPackageInfo
+	}{
+		{
+			name: "published",
+		},
+		{
+			name:  "local",
+			local: true,
+		},
+		{
+			name: "extra-types",
+			// We don't expect extra-types to interact with "local", so we
+			// don't believe it is worth it to test independently.
+			languageInfo: &gocodegen.GoPackageInfo{
+				GenerateResourceContainerTypes: true,
+				// TODO[https://github.com/pulumi/pulumi/issues/21116]:
+				// l2-resource-config requires that RespectSchemaVersion
+				// is set if any language option is set.
+				RespectSchemaVersion: true,
+			},
+		},
+	}
+
+	for _, config := range configs {
+		t.Run(config.name, func(t *testing.T) {
+			t.Parallel()
 			cancel := make(chan bool)
 			// Run the language plugin
 			handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
@@ -169,12 +198,7 @@ func TestLanguage(t *testing.T) {
 			// Create a temp project dir for the test to run in
 			rootDir := t.TempDir()
 
-			snapshotDir := "./testdata"
-			if local {
-				snapshotDir += "/local"
-			} else {
-				snapshotDir += "/published"
-			}
+			snapshotDir := filepath.Join("./testdata", config.name)
 
 			// Prepare to run the tests
 			prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
@@ -185,7 +209,7 @@ func TestLanguage(t *testing.T) {
 				CoreSdkDirectory:     "../..",
 				CoreSdkVersion:       sdk.Version.String(),
 				PolicyPackDirectory:  "./testdata/policies",
-				Local:                local,
+				Local:                config.local,
 				SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
 					{
 						Path:        "(.+/)?go\\.mod",
@@ -194,6 +218,14 @@ func TestLanguage(t *testing.T) {
 					},
 				},
 				ProgramOverrides: programOverrides,
+				LanguageInfo: func() string {
+					if config.languageInfo == nil {
+						return ""
+					}
+					b, err := json.Marshal(*config.languageInfo)
+					require.NoError(t, err)
+					return string(b)
+				}(),
 			})
 			require.NoError(t, err)
 
@@ -202,7 +234,7 @@ func TestLanguage(t *testing.T) {
 					t.Parallel()
 
 					// We can skip the l1- local tests without any SDK there's nothing new being tested here.
-					if local && strings.HasPrefix(tt, "l1-") {
+					if config.local && strings.HasPrefix(tt, "l1-") {
 						t.Skip("Skipping l1- tests in local mode")
 					}
 
@@ -210,7 +242,7 @@ func TestLanguage(t *testing.T) {
 						t.Skipf("Skipping known failure: %s", expected)
 					}
 
-					if _, has := programOverrides[tt]; local && has {
+					if _, has := programOverrides[tt]; config.local && has {
 						t.Skip("Skipping override tests in local mode")
 					}
 

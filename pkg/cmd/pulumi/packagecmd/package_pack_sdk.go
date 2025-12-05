@@ -19,7 +19,6 @@ import (
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/spf13/cobra"
@@ -48,8 +47,7 @@ func newPackagePackSdkCmd() *cobra.Command {
 			language := args[0]
 			path := args[1]
 
-			programInfo := plugin.NewProgramInfo(pCtx.Root, cwd, ".", nil)
-			languagePlugin, err := pCtx.Host.LanguageRuntime(language, programInfo)
+			languagePlugin, err := pCtx.Host.LanguageRuntime(language)
 			if err != nil {
 				return err
 			}
