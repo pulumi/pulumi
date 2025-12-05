@@ -24,10 +24,11 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -108,16 +109,67 @@ from the parameters, as in:
 			pluginSource := args[0]
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
 
-			pkg, packageSpec, diags, err := packages.InstallPackage(
-				pluginOrProject.proj,
-				pctx,
-				pluginOrProject.proj.RuntimeInfo().Name(),
-				pluginOrProject.installRoot,
-				pluginSource,
-				parameters,
+			// We need to call workspace.InstallPlugin to install the plugin
+			// itself onto disk, then run packages.InstallPackageV2 to run the install step, then this should work.
+
+			spec, err := workspace.NewPluginSpec(cmd.Context(), pluginSource, apitype.ResourcePlugin, nil, "", nil)
+			if err != nil {
+				return err
+			}
+
+			version, err := pkgWorkspace.InstallPlugin(cmd.Context(), spec, func(sev diag.Severity, msg string) {
+				cmdutil.Diag().Logf(sev, diag.RawMessage("", msg))
+			})
+			if err != nil {
+				return err
+			}
+			spec.Version = version
+			pluginDir, err := spec.DirPath()
+			if err != nil {
+				return err
+			}
+
+			proj, err := workspace.LoadPluginProject(pluginDir)
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintf(cmd.ErrOrStderr(), "Now attempting to install dependencies\n")
+
+			err = packages.InstallPackageV2( // TODO: Rename to install dependencies of, then run install in
+				cmd.Context(),
+				proj,
+				pluginDir,
 				pluginOrProject.reg,
+				4,
+				cmd.OutOrStdout(),
+				cmd.ErrOrStderr(),
 			)
-			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
+			if err != nil {
+				return err
+			}
+
+			pkg, packageSpec, err := func() (*schema.PackageSpec, *workspace.PackageSpec, error) {
+				pctx, err := plugin.NewContextWithRoot(cmd.Context(),
+					cmdutil.Diag(),
+					cmdutil.Diag(),
+					nil,                         // host
+					pluginOrProject.installRoot, // pwd
+					pluginOrProject.installRoot, // root
+					pluginOrProject.proj.RuntimeInfo().Options(),
+					false, // disableProviderPreview
+					nil,   // tracingSpan
+					nil,   // Plugins
+					pluginOrProject.proj.GetPackageSpecs(),
+					nil, // config
+					nil, // debugging
+				)
+				if err != nil {
+					return nil, nil, err
+				}
+				defer contract.IgnoreClose(pctx)
+				return packages.SchemaFromSchemaSource(pctx, pluginSource, parameters, pluginOrProject.reg)
+			}()
 			if err != nil {
 				return err
 			}
@@ -132,25 +184,6 @@ from the parameters, as in:
 				return nil
 			}
 
-			version := ""
-			if pkg.Version != nil {
-				version = pkg.Version.String()
-			} else if len(pluginSplit) == 2 {
-				version = pluginSplit[1]
-			}
-			if pkg.Parameterization != nil {
-				source = pkg.Parameterization.BaseProvider.Name
-				version = pkg.Parameterization.BaseProvider.Version.String()
-			}
-			if len(parameters.Args) > 0 && packageSpec != nil {
-				packageSpec.Parameters = parameters.Args
-			} else if packageSpec == nil {
-				packageSpec = &workspace.PackageSpec{
-					Source:     source,
-					Version:    version,
-					Parameters: parameters.Args,
-				}
-			}
 			pluginOrProject.proj.AddPackage(pkg.Name, *packageSpec)
 
 			fileName := filepath.Base(pluginOrProject.projectFilePath)
@@ -173,7 +206,7 @@ type pluginOrProject struct {
 	proj                         workspace.BaseProject
 }
 
-func schemaDisplayName(schema *schema.Package) string {
+func schemaDisplayName(schema *schema.PackageSpec) string {
 	name := schema.DisplayName
 	if name == "" {
 		name = schema.Name

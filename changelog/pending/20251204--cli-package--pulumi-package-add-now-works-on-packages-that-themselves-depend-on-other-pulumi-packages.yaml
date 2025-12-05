@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/package
+  description: `pulumi package add` now works on packages that themselves depend on other Pulumi packages
