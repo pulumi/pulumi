@@ -39,27 +39,86 @@ type PluginManager interface {
 
 type pluginManager struct{}
 
+type step interface {
+	run(ctx context.Context) error
+}
+
 func (pm pluginManager) EnsureSpec(ctx context.Context, spec workspace.PluginSpec) (string, error) {
-	if workspace.HasPlugin(spec) {
+	dag := pdag.New[step]()
+	root, rootReady := dag.NewNode(noOpStep{})
+	ensureSpec(dag, &spec, root)
+	rootReady() // Now that at least one spec has been added, it's safe to mark the root as ready.
+	err := dag.Walk(ctx, func(ctx context.Context, step step) error {
+		return step.run(ctx)
+	}, pdag.MaxProcs(4))
+	if err != nil {
+		return "", err
+	}
+	return spec.DirPath()
+}
+
+type noOpStep struct{}
+
+func (noOpStep) run(context.Context) error { return nil }
+
+func ensureSpec(dag *pdag.DAG[step], spec *workspace.PluginSpec, root pdag.Node) {
+	specInstall, specInstallReady := dag.NewNode(installSpecAfterDependencies{
+		dag:      dag,
+		depsRoot: root,
+		spec:     spec,
+	})
+
+	downloadSpec, downloadSpecReady := dag.NewNode(downloadAndUnpackSpecStep{
+		dag:       dag,
+		depsRoot:  specInstall,
+		depsAdded: specInstallReady,
+		spec:      spec, // We allow spec to be mutated, updating its version as necessary
+	})
+	contract.AssertNoErrorf(dag.NewEdge(downloadSpec, specInstall), "a new edge is always a-cyclic")
+	downloadSpecReady()
+}
+
+type installSpecAfterDependencies struct {
+	dag      *pdag.DAG[step]
+	depsRoot pdag.Node             // The node that newly discovered dependencies should target
+	spec     *workspace.PluginSpec // The spec to run the install in
+}
+
+// run the install for a spec. We can assume that all local dependencies have already been
+// installed.
+func (step installSpecAfterDependencies) run(ctx context.Context) error {
+	panic("TODO")
+}
+
+type downloadAndUnpackSpecStep struct {
+	dag       *pdag.DAG[step]
+	depsRoot  pdag.Node             // The node that newly discovered dependencies should target
+	depsAdded pdag.Done             // Indicate that all dependencies have been discovered and added
+	spec      *workspace.PluginSpec // The spec to download and unpack
+}
+
+func (step downloadAndUnpackSpecStep) run(ctx context.Context) error {
+	defer step.depsAdded()
+	if workspace.HasPlugin(*step.spec) {
 		// TODO: It's possible that the install failed even if download has
 		// succeeded in the past. We should check on that and re-run the install
 		// here as necessary.
-		return spec.DirPath()
+		return nil
 	}
 
-	content, err := downloadPluginFromSpecToTarball(ctx, &spec)
+	content, err := downloadPluginFromSpecToTarball(ctx, step.spec)
 	if err != nil {
-		return "", fmt.Errorf("failed to download plugin: %w", err)
+		return fmt.Errorf("failed to download plugin: %w", err)
 	}
 
-	if err := unpackTarball(ctx, spec, content, false /* reinstall */); err != nil {
-		return "", fmt.Errorf("failed to unpack plugin: %w", err)
+	if err := unpackTarball(ctx, *step.spec, content, false /* reinstall */); err != nil {
+		return fmt.Errorf("failed to unpack plugin: %w", err)
 	}
 
 	// Create a file lock file at <pluginsdir>/<kind>-<name>-<version>.lock.
-	unlock, err := installLock(spec)
+	unlock, err := installLock(*step.spec)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer unlock()
 
@@ -67,41 +126,36 @@ func (pm pluginManager) EnsureSpec(ctx context.Context, spec workspace.PluginSpe
 	// now need to install it's dependencies and then run the final install for the
 	// spec.
 
-	dir, err := spec.DirPath()
+	dir, err := step.spec.DirPath()
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	// We only care about the directory that has the plugin itself.
-	dir = filepath.Join(dir, spec.SubDir())
+	dir = filepath.Join(dir, step.spec.SubDir())
 
 	pulumiPluginPath, err := workspace.DetectPluginPathFrom(dir)
 	if errors.Is(err, workspace.ErrPluginNotFound) ||
 		(err == nil && filepath.Dir(pulumiPluginPath) != dir) {
 		// There are multiple valid extensions for "PulumiPlugin.<ext>", but
 		// "yaml" is standard so that's what we say in our error message.
-		return "", errors.New("invalid plugin: does not contain a PulumiPlugin.yaml")
+		return errors.New("invalid plugin: does not contain a PulumiPlugin.yaml")
 	}
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	pluginProject, err := workspace.LoadPluginProject(dir)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	err = pm.EnsureInProject(ctx, pluginProject)
-	if err != nil {
-		// TODO: At this point, we need to have an "install failed" marker so
-		// future installations know that install needs to be re-run but download
-		// does not.
-		return "", err
+	for _, spec := range pluginProject.GetPackageSpecs() {
+		// TODO: Create specInstalled nodes for package specs, then link them to step.depsRoot
+		panic(spec)
 	}
 
-	// We have successfully downloaded and unpacked the plugin, along with all of it's
-	// dependencies.
-	return dir, nil
+	return nil
 }
 
 func downloadPluginFromSpecToTarball(ctx context.Context, spec *workspace.PluginSpec) (PluginContent, error) {
@@ -211,5 +265,5 @@ func unpackTarball(ctx context.Context, spec workspace.PluginSpec, content Plugi
 }
 
 func (pluginManager) EnsureInProject(ctx context.Context, plugin workspace.BaseProject) error {
-	var p pdag.DAG[node]
+	panic("TODO")
 }
