@@ -18,17 +18,23 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"iter"
-	"slices"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func extractFromDAG[T any](t *testing.T, dag pdag.DAG[T]) []T {
+func newFinishedNode[T any](g *pdag.DAG[T], v T) pdag.Node {
+	node, done := g.NewNode(v)
+	done()
+	return node
+}
+
+func extractFromDAG[T any](t *testing.T, dag *pdag.DAG[T]) []T {
 	var actualElems []T
 	require.NoError(t, dag.Walk(t.Context(), func(_ context.Context, v T) error {
 		actualElems = append(actualElems, v)
@@ -40,10 +46,10 @@ func extractFromDAG[T any](t *testing.T, dag pdag.DAG[T]) []T {
 func TestDAG_NewNode(t *testing.T) {
 	t.Parallel()
 
-	var dag pdag.DAG[string]
-	dag.NewNode("node1")
-	dag.NewNode("node2")
-	dag.NewNode("node3")
+	dag := pdag.New[string]()
+	newFinishedNode(dag, "node1")
+	newFinishedNode(dag, "node2")
+	newFinishedNode(dag, "node3")
 
 	assert.ElementsMatch(t, extractFromDAG(t, dag), []string{
 		"node1", "node2", "node3",
@@ -53,9 +59,9 @@ func TestDAG_NewNode(t *testing.T) {
 func TestDAG_NewEdge_Simple(t *testing.T) {
 	t.Parallel()
 
-	var dag pdag.DAG[string]
-	h1 := dag.NewNode("node1")
-	h2 := dag.NewNode("node2")
+	dag := pdag.New[string]()
+	h1 := newFinishedNode(dag, "node1")
+	h2 := newFinishedNode(dag, "node2")
 
 	err := dag.NewEdge(h2, h1)
 	require.NoError(t, err)
@@ -69,10 +75,10 @@ func TestDAG_NewEdge_Simple(t *testing.T) {
 func TestDAG_NewEdge_MultipleEdges(t *testing.T) {
 	t.Parallel()
 
-	var dag pdag.DAG[string]
-	a := dag.NewNode("a")
-	b := dag.NewNode("b")
-	c := dag.NewNode("c")
+	dag := pdag.New[string]()
+	a := newFinishedNode(dag, "a")
+	b := newFinishedNode(dag, "b")
+	c := newFinishedNode(dag, "c")
 
 	require.NoError(t, dag.NewEdge(b, a))
 	require.NoError(t, dag.NewEdge(b, c))
@@ -84,62 +90,28 @@ func TestDAG_NewEdge_MultipleEdges(t *testing.T) {
 }
 
 func testEdgeCycle[T comparable](t *testing.T, graph []struct{ to, from T }, expectedCycle []T) {
-	var dag pdag.DAG[T]
+	dag := pdag.New[T]()
 	handles := map[T]pdag.Node{}
 	for _, v := range graph {
 		toH, ok := handles[v.to]
 		if !ok {
-			toH = dag.NewNode(v.to)
+			toH = newFinishedNode(dag, v.to)
 			handles[v.to] = toH
 		}
 		fromH, ok := handles[v.from]
 		if !ok {
-			fromH = dag.NewNode(v.from)
+			fromH = newFinishedNode(dag, v.from)
 			handles[v.from] = fromH
 		}
 		err := dag.NewEdge(fromH, toH)
 		if err != nil {
 			var errC pdag.ErrorCycle[T]
 			require.ErrorAs(t, err, &errC)
-
-			// errC.Cycle matches expectedCycle if a rotation of errC.Cycle is
-			// equal to expectedCycle.
-			for rotation := range rotationsOf(expectedCycle) {
-				if slices.Equal(rotation, errC.Cycle) {
-					return
-				}
-			}
-
-			slices.Reverse(errC.Cycle)
-
-			require.Equal(t, expectedCycle, errC.Cycle,
-				"A cycle was detected but doesn't match the expected cycle under rotation")
+			require.Equal(t, expectedCycle, errC.Cycle)
 			return
 		}
 	}
 	require.FailNow(t, "No cycle detected")
-}
-
-func rotationsOf[E any](arr []E) iter.Seq[[]E] {
-	return func(yield func([]E) bool) {
-		if len(arr) == 0 {
-			return
-		}
-
-		// Allocate one slice that will be reused for all rotations
-		rotation := make([]E, len(arr))
-
-		for i := range arr {
-			// Build rotation starting at index i
-			for j := range arr {
-				rotation[j] = arr[(i+j)%len(arr)]
-			}
-
-			if !yield(rotation) {
-				return
-			}
-		}
-	}
 }
 
 func TestDAG_NewEdge_DetectsCycle(t *testing.T) {
@@ -147,8 +119,27 @@ func TestDAG_NewEdge_DetectsCycle(t *testing.T) {
 
 	testEdgeCycle(t, []struct{ to, from string }{
 		{"node2", "node1"},
-		{"node1", "node2"}, // This creates the cycle
+		{"node1", "node2"},
 	}, []string{"node2", "node1"})
+}
+
+func TestDAG_NewEdge_CycleFormat(t *testing.T) {
+	t.Parallel()
+
+	testEdgeCycle(t, []struct{ to, from string }{
+		{"b", "a"},
+		{"a", "b"},
+	}, []string{"b", "a"})
+}
+
+func TestDAG_NewEdge_ComplexCycle(t *testing.T) {
+	t.Parallel()
+
+	testEdgeCycle(t, []struct{ to, from string }{
+		{"c", "a"},
+		{"a", "b"},
+		{"b", "a"},
+	}, []string{"a", "b"})
 }
 
 func TestDAG_NewEdge_DetectsIndirectCycle(t *testing.T) {
@@ -157,15 +148,27 @@ func TestDAG_NewEdge_DetectsIndirectCycle(t *testing.T) {
 	testEdgeCycle(t, []struct{ to, from string }{
 		{"node2", "node1"},
 		{"node3", "node2"},
-		{"node1", "node3"}, // This creates the cycle
+		{"node1", "node3"},
 	}, []string{"node3", "node1", "node2"})
+}
+
+func TestDAG_NewEdge_LargeCycle(t *testing.T) {
+	t.Parallel()
+
+	testEdgeCycle(t, []struct{ to, from string }{
+		{"b", "a"},
+		{"c", "b"},
+		{"d", "c"},
+		{"e", "d"},
+		{"a", "e"},
+	}, []string{"e", "a", "b", "c", "d"})
 }
 
 func TestDAG_NewEdge_SelfLoop(t *testing.T) {
 	t.Parallel()
 
-	var dag pdag.DAG[string]
-	h1 := dag.NewNode("node1")
+	dag := pdag.New[string]()
+	h1 := newFinishedNode(dag, "node1")
 
 	// Self-loop should be a no-op (no error)
 	err := dag.NewEdge(h1, h1)
@@ -178,9 +181,9 @@ func TestDAG_NewEdge_SelfLoop(t *testing.T) {
 func TestDAG_NewEdge_DuplicateEdge(t *testing.T) {
 	t.Parallel()
 
-	var dag pdag.DAG[string]
-	h1 := dag.NewNode("node1")
-	h2 := dag.NewNode("node2")
+	dag := pdag.New[string]()
+	h1 := newFinishedNode(dag, "node1")
+	h2 := newFinishedNode(dag, "node2")
 
 	err := dag.NewEdge(h1, h2)
 	require.NoError(t, err)
@@ -196,7 +199,7 @@ func TestDAG_NewEdge_DuplicateEdge(t *testing.T) {
 func TestDAG_Walk_EmptyDAG(t *testing.T) {
 	t.Parallel()
 
-	var dag pdag.DAG[struct{}]
+	dag := pdag.New[struct{}]()
 
 	err := dag.Walk(t.Context(), func(context.Context, struct{}) error {
 		t.Fatal("should not be called")
@@ -209,9 +212,9 @@ func TestDAG_Walk_EmptyDAG(t *testing.T) {
 func TestDAG_Walk_TwoIndependentNodes(t *testing.T) {
 	t.Parallel()
 
-	var dag pdag.DAG[int]
+	dag := pdag.New[int]()
 	for range 20 {
-		dag.NewNode(0)
+		newFinishedNode(dag, 0)
 	}
 
 	var count atomic.Int32
@@ -228,10 +231,10 @@ func TestDAG_Walk_TwoIndependentNodes(t *testing.T) {
 func TestDAG_Walk_WithDependency(t *testing.T) {
 	t.Parallel()
 
-	var dag pdag.DAG[int32]
-	h0 := dag.NewNode(0)
-	h1 := dag.NewNode(1)
-	h2 := dag.NewNode(2)
+	dag := pdag.New[int32]()
+	h0 := newFinishedNode(dag, 0)
+	h1 := newFinishedNode(dag, 1)
+	h2 := newFinishedNode(dag, 2)
 
 	require.NoError(t, dag.NewEdge(h0, h1))
 	require.NoError(t, dag.NewEdge(h1, h2))
@@ -248,10 +251,10 @@ func TestDAG_Walk_WithDependency(t *testing.T) {
 func TestDAG_Walk_ErrorPropogation(t *testing.T) {
 	t.Parallel()
 
-	var dag pdag.DAG[int]
-	h0 := dag.NewNode(0)
-	h1 := dag.NewNode(1)
-	h2 := dag.NewNode(2)
+	dag := pdag.New[int]()
+	h0 := newFinishedNode(dag, 0)
+	h1 := newFinishedNode(dag, 1)
+	h2 := newFinishedNode(dag, 2)
 
 	// Create a chain: 0 -> 1 -> 2
 	require.NoError(t, dag.NewEdge(h0, h1))
@@ -274,22 +277,6 @@ func TestDAG_Walk_ErrorPropogation(t *testing.T) {
 	assert.Equal(t, int(completed.Load()), 2)
 }
 
-func TestDAG_Walk_ContextCancellation(t *testing.T) {
-	t.Parallel()
-
-	var dag pdag.DAG[string]
-	dag.NewNode("node1")
-
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel() // Cancel immediately
-
-	err := dag.Walk(ctx, func(ctx context.Context, v string) error {
-		return ctx.Err()
-	})
-
-	assert.ErrorIs(t, err, context.Canceled)
-}
-
 // TestDAG_Walk_MaxProcs checks that we saturate up to the maximum allows procs, but no
 // further.
 //
@@ -299,16 +286,16 @@ func TestDAG_Walk_ContextCancellation(t *testing.T) {
 func TestDAG_Walk_MaxProcs(t *testing.T) {
 	t.Parallel()
 
-	var dag pdag.DAG[string]
+	dag := pdag.New[string]()
 
 	const maxConcurrency = 4
 
-	r := dag.NewNode("root")
-	a := dag.NewNode("a")
-	b := dag.NewNode("b")
-	a1, a2, a3 := dag.NewNode("a1"), dag.NewNode("a2"), dag.NewNode("a3")
-	b1, b2, b3 := dag.NewNode("b1"), dag.NewNode("b2"), dag.NewNode("b3")
-	s1, s2 := dag.NewNode("s1"), dag.NewNode("s2")
+	r := newFinishedNode(dag, "root")
+	a := newFinishedNode(dag, "a")
+	b := newFinishedNode(dag, "b")
+	a1, a2, a3 := newFinishedNode(dag, "a1"), newFinishedNode(dag, "a2"), newFinishedNode(dag, "a3")
+	b1, b2, b3 := newFinishedNode(dag, "b1"), newFinishedNode(dag, "b2"), newFinishedNode(dag, "b3")
+	s1, s2 := newFinishedNode(dag, "s1"), newFinishedNode(dag, "s2")
 
 	require.NoError(t, errors.Join(
 		dag.NewEdge(a, r),
@@ -378,17 +365,21 @@ func TestDAG_Walk_MaxProcs(t *testing.T) {
 }
 
 func TestDAG_DiamondDependency(t *testing.T) {
-	var dag pdag.DAG[string]
-	h1 := dag.NewNode("root")
-	h2 := dag.NewNode("left")
-	h3 := dag.NewNode("right")
-	h4 := dag.NewNode("bottom")
+	dag := func() *pdag.DAG[string] {
+		dag := pdag.New[string]()
+		h1 := newFinishedNode(dag, "root")
+		h2 := newFinishedNode(dag, "left")
+		h3 := newFinishedNode(dag, "right")
+		h4 := newFinishedNode(dag, "bottom")
 
-	// Create diamond: root -> left -> bottom, root -> right -> bottom
-	require.NoError(t, dag.NewEdge(h2, h1))
-	require.NoError(t, dag.NewEdge(h3, h1))
-	require.NoError(t, dag.NewEdge(h4, h2))
-	require.NoError(t, dag.NewEdge(h4, h3))
+		// Create diamond: root -> left -> bottom, root -> right -> bottom
+		require.NoError(t, dag.NewEdge(h2, h1))
+		require.NoError(t, dag.NewEdge(h3, h1))
+		require.NoError(t, dag.NewEdge(h4, h2))
+		require.NoError(t, dag.NewEdge(h4, h3))
+
+		return dag
+	}
 
 	// Depending on the order that functions execute, we can guarantee that we see
 	// right before left or vice versa.
@@ -398,7 +389,7 @@ func TestDAG_DiamondDependency(t *testing.T) {
 
 		found := []string{}
 		leftDone := make(chan struct{})
-		err := dag.Walk(t.Context(), func(ctx context.Context, v string) error {
+		err := dag().Walk(t.Context(), func(ctx context.Context, v string) error {
 			switch v {
 			case "left":
 				found = append(found, v)
@@ -420,7 +411,7 @@ func TestDAG_DiamondDependency(t *testing.T) {
 
 		found := []string{}
 		rightDone := make(chan struct{})
-		err := dag.Walk(t.Context(), func(ctx context.Context, v string) error {
+		err := dag().Walk(t.Context(), func(ctx context.Context, v string) error {
 			switch v {
 			case "right":
 				found = append(found, v)
@@ -441,12 +432,12 @@ func TestDAG_DiamondDependency(t *testing.T) {
 func TestDAG_ComplexTopology(t *testing.T) {
 	t.Parallel()
 
-	dag := &pdag.DAG[int]{}
-	h1 := dag.NewNode(1)
-	h2 := dag.NewNode(2)
-	h3 := dag.NewNode(3)
-	h4 := dag.NewNode(4)
-	h5 := dag.NewNode(5)
+	dag := pdag.New[int]()
+	h1 := newFinishedNode(dag, 1)
+	h2 := newFinishedNode(dag, 2)
+	h3 := newFinishedNode(dag, 3)
+	h4 := newFinishedNode(dag, 4)
+	h5 := newFinishedNode(dag, 5)
 
 	// Create: 1->2, 1->3, 2->4, 3->4, 4->5
 	err := dag.NewEdge(h1, h2)
@@ -483,10 +474,10 @@ func BenchmarkDAG_NewEdge_DenseGraph(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				b.StopTimer()
-				var dag pdag.DAG[int]
+				dag := pdag.New[int]()
 				nodes := make([]pdag.Node, size)
 				for j := 0; j < size; j++ {
-					nodes[j] = dag.NewNode(j)
+					nodes[j] = newFinishedNode(dag, j)
 				}
 				b.StartTimer()
 
@@ -519,10 +510,10 @@ func BenchmarkDAG_NewEdge_CycleDetection(b *testing.B) {
 	for _, size := range sizes {
 		b.Run(fmt.Sprintf("size-%d", size), func(b *testing.B) {
 			// Build a long chain once
-			var dag pdag.DAG[int]
+			dag := pdag.New[int]()
 			nodes := make([]pdag.Node, size)
 			for j := 0; j < size; j++ {
-				nodes[j] = dag.NewNode(j)
+				nodes[j] = newFinishedNode(dag, j)
 			}
 			// Create chain: 0 -> 1 -> 2 -> ... -> size-1
 			for j := 0; j < size-1; j++ {
@@ -543,4 +534,321 @@ func BenchmarkDAG_NewEdge_CycleDetection(b *testing.B) {
 			}
 		})
 	}
+}
+
+// TestNewNode_BlocksUntilDone tests that nodes are not processed until Done is called
+func TestNewNode_BlocksUntilDone(t *testing.T) {
+	t.Parallel()
+
+	dag := pdag.New[string]()
+	n1, done1 := dag.NewNode("n1")
+	n2, done2 := dag.NewNode("n2")
+
+	require.NoError(t, dag.NewEdge(n1, n2))
+
+	// Leave both nodes unfinished - don't call done1() or done2() yet
+
+	n1Done := make(chan struct{})
+	n2Done := make(chan struct{})
+	walkDone := make(chan struct{})
+
+	go func() { // Walk will be blocking, so it must be in a separate thread
+		err := dag.Walk(t.Context(), func(ctx context.Context, v string) error {
+			switch v {
+			case "n1":
+				close(n1Done)
+			case "n2":
+				close(n2Done)
+			}
+			return nil
+		})
+		require.NoError(t, err)
+		close(walkDone)
+	}()
+
+	// Make sure that no nodes will be processed before we call close.
+	select {
+	case <-n1Done:
+		t.Fatal("n1 should not be processed before done1() is called")
+	case <-n2Done:
+		t.Fatal("n2 should not be processed before done1() is called")
+	case <-time.After(100 * time.Millisecond): // no nodes processed
+	}
+
+	done1()
+
+	select {
+	case <-n1Done: // n1 was processed
+	case <-time.After(1 * time.Second):
+		t.Fatal("n1 should be processed after done1() is called")
+	}
+
+	// n2 is still not done, so we need to wait
+	select {
+	case <-n2Done:
+		t.Fatal("n2 should not be processed before done2() is called")
+	case <-time.After(100 * time.Millisecond): // Wait
+	}
+
+	done2()
+	<-n2Done   // Make sure that n2 was processed
+	<-walkDone // Ensure the walk function returns
+}
+
+// TestNewNode_DoneIsIdempotent tests that Done can be called multiple times safely
+func TestNewNode_DoneIsIdempotent(t *testing.T) {
+	t.Parallel()
+
+	dag := pdag.New[string]()
+	_, done := dag.NewNode("node")
+
+	done()
+	done()
+	done()
+
+	var processCount atomic.Int32
+	err := dag.Walk(t.Context(), func(ctx context.Context, v string) error {
+		processCount.Add(1)
+		return nil
+	})
+
+	require.NoError(t, err)
+	assert.EqualValues(t, 1, processCount.Load(), "node should be processed exactly once")
+}
+
+// TestNewNode_WaitsForPrerequisiteDone tests that nodes wait for prerequisite Done even if their own Done is called
+func TestNewNode_WaitsForPrerequisiteDone(t *testing.T) {
+	t.Parallel()
+
+	dag := pdag.New[string]()
+	n1, done1 := dag.NewNode("n1")
+	n2, done2 := dag.NewNode("n2")
+
+	require.NoError(t, dag.NewEdge(n1, n2))
+
+	done2()
+
+	n1Done := make(chan struct{})
+	n2Done := make(chan struct{})
+	walkDone := make(chan struct{})
+
+	go func() {
+		err := dag.Walk(t.Context(), func(ctx context.Context, v string) error {
+			switch v {
+			case "n1":
+				close(n1Done)
+			case "n2":
+				close(n2Done)
+			}
+			return nil
+		})
+		require.NoError(t, err)
+		close(walkDone)
+	}()
+
+	// Verify that no nodes are processed even though done2() was called
+	select {
+	case <-n1Done:
+		t.Fatal("n1 should not be processed before done1() is called")
+	case <-n2Done:
+		t.Fatal("n2 should not be processed before done1() is called (even though done2() was called)")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	// Now call done1 to unblock the walk
+	done1()
+
+	<-n1Done
+	<-n2Done
+	<-walkDone
+}
+
+// TestNewEdge_ErrorReentrant tests that NewEdge returns ErrorReentrant appropriately
+func TestNewEdge_ErrorReentrant(t *testing.T) {
+	t.Parallel()
+
+	t.Run("preparing to processing", func(t *testing.T) {
+		t.Parallel()
+
+		dag := pdag.New[string]()
+		n1, done1 := dag.NewNode("n1")
+		done1()
+
+		// Start walk to put n1 in processing state
+		n1Processing := make(chan struct{})
+		n1CanFinish := make(chan struct{})
+
+		go func() {
+			err := dag.Walk(t.Context(), func(ctx context.Context, v string) error {
+				close(n1Processing)
+				<-n1CanFinish
+				return nil
+			})
+			require.NoError(t, err)
+		}()
+
+		<-n1Processing // Wait for n1 to be processing
+
+		// Try to add edge from preparing node to processing n1
+		n2, _ := dag.NewNode("n2") // n2 is in preparing state (done not called)
+		err := dag.NewEdge(n2, n1)
+
+		var errReentrant pdag.ErrorReentrant
+		assert.ErrorAs(t, err, &errReentrant)
+
+		close(n1CanFinish)
+	})
+
+	t.Run("preparing to done", func(t *testing.T) {
+		t.Parallel()
+
+		dag := pdag.New[string]()
+		n1, done1 := dag.NewNode("n1")
+		done1()
+
+		// Walk n1 so it becomes done
+		err := dag.Walk(t.Context(), func(ctx context.Context, v string) error {
+			return nil
+		})
+		require.NoError(t, err)
+
+		// Try to add edge from preparing node to done n1
+		n2, _ := dag.NewNode("n2") // n2 is in preparing state
+		err = dag.NewEdge(n2, n1)
+
+		var errReentrant pdag.ErrorReentrant
+		assert.ErrorAs(t, err, &errReentrant)
+	})
+
+	t.Run("done to processing", func(t *testing.T) {
+		t.Parallel()
+
+		dag := pdag.New[string]()
+		n1, done1 := dag.NewNode("n1")
+		done1()
+
+		// Walk n1 to completion
+		err := dag.Walk(t.Context(), func(ctx context.Context, v string) error {
+			return nil
+		})
+		require.NoError(t, err)
+
+		// n1 is now done. Create n2 and start processing it
+		n2, done2 := dag.NewNode("n2")
+		done2()
+
+		n2Processing := make(chan struct{})
+		n2CanFinish := make(chan struct{})
+
+		go func() {
+			err := dag.Walk(t.Context(), func(ctx context.Context, v string) error {
+				close(n2Processing)
+				<-n2CanFinish
+				return nil
+			})
+			require.NoError(t, err)
+		}()
+
+		<-n2Processing // Wait for n2 to be processing
+
+		// Try to add edge from done n1 to processing n2
+		err = dag.NewEdge(n1, n2)
+		require.NoError(t, err, "should allow edge from done to processing")
+
+		close(n2CanFinish)
+	})
+
+	t.Run("done to done", func(t *testing.T) {
+		t.Parallel()
+
+		dag := pdag.New[string]()
+		n1, done1 := dag.NewNode("n1")
+		n2, done2 := dag.NewNode("n2")
+		done1()
+		done2()
+
+		// Walk both to completion
+		err := dag.Walk(t.Context(), func(ctx context.Context, v string) error {
+			return nil
+		})
+		require.NoError(t, err)
+
+		// Both are done, should allow edge
+		err = dag.NewEdge(n1, n2)
+		require.NoError(t, err, "should allow edge from done to done")
+	})
+}
+
+func TestWalk_DynamicNodeAddition(t *testing.T) {
+	t.Parallel()
+
+	dag := pdag.New[string]()
+
+	root, doneRoot := dag.NewNode("root")
+	doneRoot()
+
+	// Track processing order
+	var processed []string
+	var processingMu sync.Mutex
+
+	// Channels to coordinate test
+	rootProcessingStarted := make(chan struct{})
+	childrenReady := make(chan struct{})
+	walkComplete := make(chan struct{})
+
+	go func() {
+		err := dag.Walk(t.Context(), func(ctx context.Context, v string) error {
+			processingMu.Lock()
+			processed = append(processed, v)
+			processingMu.Unlock()
+
+			if v == "root" {
+				close(rootProcessingStarted)
+				<-childrenReady
+			}
+			return nil
+		})
+		require.NoError(t, err)
+		close(walkComplete)
+	}()
+
+	<-rootProcessingStarted
+
+	child1, doneChild1 := dag.NewNode("child1")
+	child2, doneChild2 := dag.NewNode("child2")
+	close(childrenReady)
+
+	require.NoError(t, dag.NewEdge(root, child1))
+	require.NoError(t, dag.NewEdge(child1, child2))
+
+	doneChild1()
+	doneChild2()
+
+	<-walkComplete
+
+	assert.Equal(t, []string{"root", "child1", "child2"}, processed)
+}
+
+func TestWalk_ContextCancellation(t *testing.T) {
+	t.Parallel()
+
+	dag := pdag.New[string]()
+	n1, done1 := dag.NewNode("n1")
+	n2, done2 := dag.NewNode("n2")
+	require.NoError(t, dag.NewEdge(n1, n2))
+	done1()
+	done2()
+
+	ctx, cancel := context.WithCancel(t.Context())
+
+	err := dag.Walk(ctx, func(ctx context.Context, v string) error {
+		switch v {
+		case "n1":
+			cancel()
+		case "n2":
+			assert.Fail(t, "n2 should never be processed")
+		}
+		return nil
+	})
+	assert.ErrorIs(t, err, context.Canceled)
 }
