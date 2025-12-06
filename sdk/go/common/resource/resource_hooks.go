@@ -14,14 +14,14 @@
 
 package resource
 
-// HookType represents the different types of resource hooks
-type HookType string
+// ResourceHookType represents the different types of resource hooks
+type ResourceHookType string
 
 const (
-	BeforeCreate HookType = "BeforeCreate"
-	AfterCreate  HookType = "AfterCreate"
-	BeforeUpdate HookType = "BeforeUpdate"
-	AfterUpdate  HookType = "AfterUpdate"
-	BeforeDelete HookType = "BeforeDelete"
-	AfterDelete  HookType = "AfterDelete"
+	BeforeCreate ResourceHookType = "BeforeCreate"
+	AfterCreate  ResourceHookType = "AfterCreate"
+	BeforeUpdate ResourceHookType = "BeforeUpdate"
+	AfterUpdate  ResourceHookType = "AfterUpdate"
+	BeforeDelete ResourceHookType = "BeforeDelete"
+	AfterDelete  ResourceHookType = "AfterDelete"
 )

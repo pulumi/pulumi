@@ -281,6 +281,11 @@ export class RegisterResourceRequest extends jspb.Message {
     clearHooks(): void;
     getHooks(): RegisterResourceRequest.ResourceHooksBinding | undefined;
     setHooks(value?: RegisterResourceRequest.ResourceHooksBinding): RegisterResourceRequest;
+
+    hasErrorHooks(): boolean;
+    clearErrorHooks(): void;
+    getErrorHooks(): RegisterResourceRequest.ErrorHooksBinding | undefined;
+    setErrorHooks(value?: RegisterResourceRequest.ErrorHooksBinding): RegisterResourceRequest;
     clearHidediffsList(): void;
     getHidediffsList(): Array<string>;
     setHidediffsList(value: Array<string>): RegisterResourceRequest;
@@ -339,6 +344,7 @@ export namespace RegisterResourceRequest {
         supportsresultreporting: boolean,
         packageref: string,
         hooks?: RegisterResourceRequest.ResourceHooksBinding.AsObject,
+        errorHooks?: RegisterResourceRequest.ErrorHooksBinding.AsObject,
         hidediffsList: Array<string>,
     }
 
@@ -435,6 +441,41 @@ export namespace RegisterResourceRequest {
             afterUpdateList: Array<string>,
             beforeDeleteList: Array<string>,
             afterDeleteList: Array<string>,
+        }
+    }
+
+    export class ErrorHooksBinding extends jspb.Message { 
+
+        hasOnErrorCreate(): boolean;
+        clearOnErrorCreate(): void;
+        getOnErrorCreate(): string | undefined;
+        setOnErrorCreate(value: string): ErrorHooksBinding;
+
+        hasOnErrorUpdate(): boolean;
+        clearOnErrorUpdate(): void;
+        getOnErrorUpdate(): string | undefined;
+        setOnErrorUpdate(value: string): ErrorHooksBinding;
+
+        hasOnErrorDelete(): boolean;
+        clearOnErrorDelete(): void;
+        getOnErrorDelete(): string | undefined;
+        setOnErrorDelete(value: string): ErrorHooksBinding;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): ErrorHooksBinding.AsObject;
+        static toObject(includeInstance: boolean, msg: ErrorHooksBinding): ErrorHooksBinding.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: ErrorHooksBinding, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): ErrorHooksBinding;
+        static deserializeBinaryFromReader(message: ErrorHooksBinding, reader: jspb.BinaryReader): ErrorHooksBinding;
+    }
+
+    export namespace ErrorHooksBinding {
+        export type AsObject = {
+            onErrorCreate?: string,
+            onErrorUpdate?: string,
+            onErrorDelete?: string,
         }
     }
 
@@ -1142,6 +1183,113 @@ export namespace RegisterResourceHookRequest {
         name: string,
         callback?: pulumi_callback_pb.Callback.AsObject,
         onDryRun: boolean,
+    }
+}
+
+export class RegisterErrorHookRequest extends jspb.Message { 
+    getName(): string;
+    setName(value: string): RegisterErrorHookRequest;
+
+    hasCallback(): boolean;
+    clearCallback(): void;
+    getCallback(): pulumi_callback_pb.Callback | undefined;
+    setCallback(value?: pulumi_callback_pb.Callback): RegisterErrorHookRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RegisterErrorHookRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: RegisterErrorHookRequest): RegisterErrorHookRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RegisterErrorHookRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RegisterErrorHookRequest;
+    static deserializeBinaryFromReader(message: RegisterErrorHookRequest, reader: jspb.BinaryReader): RegisterErrorHookRequest;
+}
+
+export namespace RegisterErrorHookRequest {
+    export type AsObject = {
+        name: string,
+        callback?: pulumi_callback_pb.Callback.AsObject,
+    }
+}
+
+export class ErrorHookRequest extends jspb.Message { 
+    getUrn(): string;
+    setUrn(value: string): ErrorHookRequest;
+    getId(): string;
+    setId(value: string): ErrorHookRequest;
+    getName(): string;
+    setName(value: string): ErrorHookRequest;
+    getType(): string;
+    setType(value: string): ErrorHookRequest;
+
+    hasNewInputs(): boolean;
+    clearNewInputs(): void;
+    getNewInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setNewInputs(value?: google_protobuf_struct_pb.Struct): ErrorHookRequest;
+
+    hasOldInputs(): boolean;
+    clearOldInputs(): void;
+    getOldInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setOldInputs(value?: google_protobuf_struct_pb.Struct): ErrorHookRequest;
+
+    hasNewOutputs(): boolean;
+    clearNewOutputs(): void;
+    getNewOutputs(): google_protobuf_struct_pb.Struct | undefined;
+    setNewOutputs(value?: google_protobuf_struct_pb.Struct): ErrorHookRequest;
+
+    hasOldOutputs(): boolean;
+    clearOldOutputs(): void;
+    getOldOutputs(): google_protobuf_struct_pb.Struct | undefined;
+    setOldOutputs(value?: google_protobuf_struct_pb.Struct): ErrorHookRequest;
+    clearErrorsList(): void;
+    getErrorsList(): Array<string>;
+    setErrorsList(value: Array<string>): ErrorHookRequest;
+    addErrors(value: string, index?: number): string;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ErrorHookRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: ErrorHookRequest): ErrorHookRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ErrorHookRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ErrorHookRequest;
+    static deserializeBinaryFromReader(message: ErrorHookRequest, reader: jspb.BinaryReader): ErrorHookRequest;
+}
+
+export namespace ErrorHookRequest {
+    export type AsObject = {
+        urn: string,
+        id: string,
+        name: string,
+        type: string,
+        newInputs?: google_protobuf_struct_pb.Struct.AsObject,
+        oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
+        newOutputs?: google_protobuf_struct_pb.Struct.AsObject,
+        oldOutputs?: google_protobuf_struct_pb.Struct.AsObject,
+        errorsList: Array<string>,
+    }
+}
+
+export class ErrorHookResponse extends jspb.Message { 
+    getRetry(): boolean;
+    setRetry(value: boolean): ErrorHookResponse;
+    getError(): string;
+    setError(value: string): ErrorHookResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ErrorHookResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: ErrorHookResponse): ErrorHookResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ErrorHookResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ErrorHookResponse;
+    static deserializeBinaryFromReader(message: ErrorHookResponse, reader: jspb.BinaryReader): ErrorHookResponse;
+}
+
+export namespace ErrorHookResponse {
+    export type AsObject = {
+        retry: boolean,
+        error: string,
     }
 }
 
