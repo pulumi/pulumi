@@ -25,6 +25,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	diagutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -34,7 +36,7 @@ func New() PluginManager { return pluginManager{} }
 
 type PluginManager interface {
 	EnsureSpec(ctx context.Context, spec workspace.PluginSpec) (string, error)
-	EnsureInProject(ctx context.Context, plugin workspace.BaseProject) error
+	EnsureInPluginProject(ctx context.Context, plugin *workspace.PluginProject, path string) error
 }
 
 type pluginManager struct{}
@@ -57,44 +59,92 @@ func (pm pluginManager) EnsureSpec(ctx context.Context, spec workspace.PluginSpe
 	return spec.DirPath()
 }
 
+func (pluginManager) EnsureInPluginProject(ctx context.Context, plugin *workspace.PluginProject, path string) error {
+	dag := pdag.New[step]()
+	root, rootReady := dag.NewNode(installPluginAtPathStep{
+		plugin: plugin,
+		path:   path,
+	})
+	ensureProjectDependencies(dag, plugin, root)
+	rootReady() // Now that at least one spec has been added, it's safe to mark the root as ready.
+	return dag.Walk(ctx, func(ctx context.Context, step step) error {
+		return step.run(ctx)
+	}, pdag.MaxProcs(4))
+}
+
+type installPluginAtPathStep struct {
+	plugin *workspace.PluginProject
+	path   string
+}
+
+func (step installPluginAtPathStep) run(ctx context.Context) error {
+	pctx, err := plugin.NewContextWithRoot(ctx,
+		diagutil.Diag(),
+		diagutil.Diag(),
+		nil,       // host
+		step.path, // pwd
+		step.path, // root
+		step.plugin.RuntimeInfo().Options(),
+		false, // disableProviderPreview
+		nil,   // tracingSpan
+		nil,   // Plugins
+		step.plugin.GetPackageSpecs(),
+		nil, // config
+		nil, // debugging
+	)
+	if err != nil {
+		return err
+	}
+
+	return errors.Join(InstallPluginAtPath(pctx, step.plugin, os.Stdout, os.Stderr), pctx.Close())
+}
+
 type noOpStep struct{}
 
 func (noOpStep) run(context.Context) error { return nil }
 
 func ensureSpec(dag *pdag.DAG[step], spec *workspace.PluginSpec, root pdag.Node) {
 	specInstall, specInstallReady := dag.NewNode(installSpecAfterDependencies{
-		dag:      dag,
-		depsRoot: root,
-		spec:     spec,
+		spec: spec,
 	})
+	contract.AssertNoErrorf(dag.NewEdge(specInstall, root), "a new edge is always a-cyclic")
 
 	downloadSpec, downloadSpecReady := dag.NewNode(downloadAndUnpackSpecStep{
 		dag:       dag,
 		depsRoot:  specInstall,
 		depsAdded: specInstallReady,
-		spec:      spec, // We allow spec to be mutated, updating its version as necessary
+		spec:      spec,
 	})
 	contract.AssertNoErrorf(dag.NewEdge(downloadSpec, specInstall), "a new edge is always a-cyclic")
 	downloadSpecReady()
 }
 
 type installSpecAfterDependencies struct {
-	dag      *pdag.DAG[step]
-	depsRoot pdag.Node             // The node that newly discovered dependencies should target
-	spec     *workspace.PluginSpec // The spec to run the install in
+	spec *workspace.PluginSpec // The spec to run the install for
 }
 
 // run the install for a spec. We can assume that all local dependencies have already been
 // installed.
 func (step installSpecAfterDependencies) run(ctx context.Context) error {
-	panic("TODO")
+	dir, err := step.spec.DirPath()
+	if err != nil {
+		return err
+	}
+
+	// We only care about the directory that has the plugin itself.
+	dir = filepath.Join(dir, step.spec.SubDir())
+
+	return installDependenciesForPluginSpec(ctx, *step.spec, os.Stdout, os.Stderr)
 }
 
 type downloadAndUnpackSpecStep struct {
 	dag       *pdag.DAG[step]
-	depsRoot  pdag.Node             // The node that newly discovered dependencies should target
-	depsAdded pdag.Done             // Indicate that all dependencies have been discovered and added
-	spec      *workspace.PluginSpec // The spec to download and unpack
+	depsRoot  pdag.Node // The node that newly discovered dependencies should target
+	depsAdded pdag.Done // Indicate that all dependencies have been discovered and added
+
+	// The spec to download and unpack, we allow spec to be mutated, updating its
+	// version as necessary.
+	spec *workspace.PluginSpec
 }
 
 func (step downloadAndUnpackSpecStep) run(ctx context.Context) error {
@@ -150,12 +200,16 @@ func (step downloadAndUnpackSpecStep) run(ctx context.Context) error {
 		return err
 	}
 
-	for _, spec := range pluginProject.GetPackageSpecs() {
+	ensureProjectDependencies(step.dag, pluginProject, step.depsRoot)
+
+	return nil
+}
+
+func ensureProjectDependencies(dag *pdag.DAG[step], project workspace.BaseProject, root pdag.Node) {
+	for _, spec := range project.GetPackageSpecs() {
 		// TODO: Create specInstalled nodes for package specs, then link them to step.depsRoot
 		panic(spec)
 	}
-
-	return nil
 }
 
 func downloadPluginFromSpecToTarball(ctx context.Context, spec *workspace.PluginSpec) (PluginContent, error) {
@@ -194,7 +248,7 @@ func downloadPluginFromSpecToTarball(ctx context.Context, spec *workspace.Plugin
 	return SingleFilePlugin(downloadedFile, *spec), nil
 }
 
-func unpackTarball(ctx context.Context, spec workspace.PluginSpec, content PluginContent, reinstall bool) error {
+func unpackTarball(_ context.Context, spec workspace.PluginSpec, content PluginContent, reinstall bool) error {
 	defer contract.IgnoreClose(content)
 
 	// Fetch the directory into which we will expand this tarball.
@@ -262,8 +316,4 @@ func unpackTarball(ctx context.Context, spec workspace.PluginSpec, content Plugi
 
 	// Installation is complete. Remove the partial file.
 	return os.Remove(partialFilePath)
-}
-
-func (pluginManager) EnsureInProject(ctx context.Context, plugin workspace.BaseProject) error {
-	panic("TODO")
 }
