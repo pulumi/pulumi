@@ -319,7 +319,8 @@ func installPackagesFromProject(
 		}
 	}
 
-	var wg pdag.DAG[node]
+	wg := pdag.New[node]()
+	newNode := func(n node) pdag.Node { node, done := wg.NewNode(n); done(); return node }
 	seen := map[string]pdag.Node{}
 	var findPlugins func(root pdag.Node, cwd string, proj workspace.BaseProject) error
 	findPlugins = func(root pdag.Node, cwd string, proj workspace.BaseProject) error {
@@ -341,7 +342,7 @@ func installPackagesFromProject(
 				if n, ok := seen[absPluginSource]; ok {
 					pluginInstall = &n
 				} else {
-					pkg := wg.NewNode(node{name, installPlugin(absPluginSource, pluginProject)})
+					pkg := newNode(node{name, installPlugin(absPluginSource, pluginProject)})
 					if err := wg.NewEdge(pkg, root); err != nil {
 						return err
 					}
@@ -353,7 +354,7 @@ func installPackagesFromProject(
 				}
 			}
 
-			installPkg := wg.NewNode(node{name, installPackage(cwd, name, proj, packageSpec)})
+			installPkg := newNode(node{name, installPackage(cwd, name, proj, packageSpec)})
 			if pluginInstall != nil {
 				if err := wg.NewEdge(*pluginInstall, installPkg); err != nil {
 					return err
@@ -369,7 +370,7 @@ func installPackagesFromProject(
 
 	// Search for plugins
 	if err := findPlugins(
-		wg.NewNode(node{name: "root", packageSpec: func(context.Context) error { return nil }}),
+		newNode(node{name: "root", packageSpec: func(context.Context) error { return nil }}),
 		root,
 		proj,
 	); err != nil {
