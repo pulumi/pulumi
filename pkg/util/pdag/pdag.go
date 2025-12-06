@@ -18,24 +18,57 @@ package pdag
 
 import (
 	"context"
+	"errors"
 	"iter"
 	"sync"
-	"sync/atomic"
 
 	"golang.org/x/sync/errgroup"
 )
 
-type DAG[T any] struct{ nodes []node[T] }
+func New[T any]() *DAG[T] {
+	return &DAG[T]{m: *sync.NewCond(&sync.Mutex{})}
+}
+
+type DAG[T any] struct {
+	m     sync.Cond
+	nodes []node[T]
+}
 
 type node[T any] struct {
 	v T
-	// the list edge destinations for edges originating from this node.
-	to []int
+
+	// the non-transitive list of nodes that must be processed before this node.
+	prerequsites []int
+
+	status status
 }
 
-func (g *DAG[T]) NewNode(v T) Node {
+// Create a new node. The node will not be processed until Done is called, and all nodes
+// with edges leading to it have been processed.
+func (g *DAG[T]) NewNode(v T) (Node, Done) {
+	g.m.L.Lock()
+	defer g.m.L.Unlock()
+	idx := len(g.nodes)
 	g.nodes = append(g.nodes, node[T]{v: v})
-	return Node{len(g.nodes) - 1}
+	return Node{idx}, func() { g.markReady(idx) }
+}
+
+func (g *DAG[T]) markReady(idx int) {
+	g.m.L.Lock()
+	defer g.m.L.Unlock()
+	if g.nodes[idx].status != preparing {
+		// The node has already been marked ready.
+		return
+	}
+	g.nodes[idx].status = ready
+	g.m.Broadcast()
+}
+
+func (g *DAG[T]) markDone(idx int) {
+	g.m.L.Lock()
+	defer g.m.L.Unlock()
+	g.nodes[idx].status = done
+	g.m.Broadcast()
 }
 
 type ErrorCycle[T any] struct {
@@ -46,6 +79,26 @@ func (err ErrorCycle[T]) Error() string {
 	return "Cycle found"
 }
 
+// ErrorReentrant indicates that [NewEdge] attempted to create a "from->to" connection
+// where "to" was already walked (or currently being walked) and "from" was not yet walked
+// (or currently is being walked). This would violate the [DAG]s traversal guarantees,
+// since it guarantees that nodes will only be seen after all of their from edges have
+// been seen.
+type ErrorReentrant struct{}
+
+func (err ErrorReentrant) Error() string {
+	return "connection is re-entrant"
+}
+
+type status int
+
+const (
+	preparing  = iota // A node is still having it's dependencies defined
+	ready             // A node is ready to be processed
+	processing        // A node is currently being processed
+	done              // A node has been processed successfully
+)
+
 // NewEdge creates a new edge FROM -> TO, ensuring that FROM comes before TO in a traversal of g.
 func (g *DAG[T]) NewEdge(from, to Node) error {
 	// Self-loops are a no-op
@@ -53,36 +106,45 @@ func (g *DAG[T]) NewEdge(from, to Node) error {
 		return nil
 	}
 
+	g.m.L.Lock() // Ensure that the graph shape doesn't change while we verify that our new edge is OK.
+	defer g.m.L.Unlock()
+
+	switch g.nodes[to.i].status {
+	case processing, done:
+		if g.nodes[from.i].status != done {
+			return ErrorReentrant{}
+		}
+	}
+
 	// Check if adding edge from->to would create a cycle by checking if there's already
 	// a path from 'to' to 'from' in the existing graph.
-	// The adjacency list is maintained incrementally, so we use it directly for cycle detection.
+	// Since we store prerequisites (incoming edges), we need to traverse backwards from 'from'
+	// to see if we can reach 'to'. If we can, then adding 'from->to' would create a cycle.
 
-	// DFS from 'to' to check if we can reach 'from' in the existing graph.
-	// If we can, then adding 'from->to' would create a cycle.
 	visited := make([]bool, len(g.nodes))
 	parent := make([]int, len(g.nodes))
 	for i := range parent {
 		parent[i] = -1
 	}
 
-	// Stack-based DFS from 'to' following forward edges
-	stack := []int{to.i}
-	visited[to.i] = true
+	// Stack-based DFS from 'from' following prerequisite edges backwards
+	stack := []int{from.i}
+	visited[from.i] = true
 
 	for len(stack) > 0 {
 		current := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
 
-		for _, neighbor := range g.nodes[current].to {
-			if neighbor == from.i {
-				// Cycle detected: there's already a path from 'to' to 'from'.
+		for _, prereq := range g.nodes[current].prerequsites {
+			if prereq == to.i {
+				// Cycle detected: there's already a path from 'from' to 'to' via prerequisites.
 				// Adding 'from->to' would complete the cycle.
-				// Reconstruct cycle as: from -> to -> ... -> current -> from
+				// Reconstruct cycle as: from -> to -> ... -> current
 
-				// Build path from 'to' to 'current' (the node that reaches 'from')
+				// Build path from 'to' to 'current' (via parent pointers back through from)
 				pathFromTo := []T{g.nodes[to.i].v}
-				node := current
-				for node != to.i {
+
+				for node := current; node != from.i; {
 					pathFromTo = append(pathFromTo, g.nodes[node].v)
 					node = parent[node]
 				}
@@ -93,28 +155,101 @@ func (g *DAG[T]) NewEdge(from, to Node) error {
 				return ErrorCycle[T]{Cycle: cycle}
 			}
 
-			if !visited[neighbor] {
-				visited[neighbor] = true
-				parent[neighbor] = current
-				stack = append(stack, neighbor)
+			if !visited[prereq] {
+				visited[prereq] = true
+				parent[prereq] = current
+				stack = append(stack, prereq)
 			}
 		}
 	}
 
-	// No cycle detected, we can now update the edge & adjacency list to include the
-	// new edge.
+	// No cycle detected, we can now update the prerequisites to include the new edge.
+	// Since from->to, 'to' has 'from' as a prerequisite.
 
-	g.nodes[from.i].to = append(g.nodes[from.i].to, to.i)
+	g.nodes[to.i].prerequsites = append(g.nodes[to.i].prerequsites, from.i)
 
 	return nil
 }
 
+// Drain nodes from the dag. Nodes will always come after their dependents.
+//
+// Any returned Done func **must** be called. Failing to do so may cause other iterators
+// to block indefinitely or leak memory.
+//
+// The returned iterator may be called in parallel. When called in parallel, the iterator
+// may block when no nodes are available. The returned iterator will not return until the
+// entire graph has been walked.
+//
+// Drain will stop the iterator when the passed in ctx is canceled. If the caller is
+// concerned about the context being canceled, they **must** check ctx.Err() to determine
+// if Drain finished.
+func (g *DAG[T]) Drain(ctx context.Context) iter.Seq2[T, Done] {
+	// should wait on a broadcast if no nodes are found
+	//
+	// the lock for g.m.L should be held when findNextNode is called.
+	findNextNode := func() int {
+		var pending bool
+		for {
+		search:
+			for idx, node := range g.nodes {
+				switch node.status {
+				case ready:
+					for _, prereq := range node.prerequsites {
+						if g.nodes[prereq].status != done {
+							continue search
+						}
+					}
+					// All pre-requsites are done, so node is safe to work on.
+					return idx
+				case preparing, processing:
+					pending = true
+					continue
+				case done:
+					continue
+				default:
+					panic("impossible - there are only 4 valid values")
+				}
+			}
+
+			if pending {
+				pending = false
+				g.m.Wait()
+			} else {
+				return -1
+			}
+		}
+	}
+
+	iterate := func(yield func(T, Done) bool) bool {
+		g.m.L.Lock()
+
+		node := findNextNode()
+		if node == -1 {
+			// No nodes are available, so we are done
+			g.m.L.Unlock()
+			return false
+		}
+		// Mark the node as processing so it won't be picked up again
+		g.nodes[node].status = processing
+		v := g.nodes[node].v
+		g.m.L.Unlock()
+
+		return yield(v, func() { g.markDone(node) })
+	}
+
+	return func(yield func(T, Done) bool) {
+		for iterate(yield) {
+		}
+	}
+}
+
+// Calling marks a process as done.
+type Done = func()
+
 // Walk the DAG in parallel, blocking until all nodes have been processed or an error is
 // returned.
 //
-// Walk does not mutate the [DAG] it's called on, and so is safe to call in parallel.
-//
-// It is not safe to add nodes or edges to the [DAG] while Walk is running.
+// [Node]s added during a Walk will be observed during the walk.
 func (g *DAG[T]) Walk(ctx context.Context, process func(context.Context, T) error, options ...WalkOption) error {
 	var opts walkOptions
 	for _, o := range options {
@@ -125,57 +260,20 @@ func (g *DAG[T]) Walk(ctx context.Context, process func(context.Context, T) erro
 	if opts.maxProcs > 0 {
 		wg.SetLimit(opts.maxProcs)
 	}
-	isDone := make([]chan struct{}, len(g.nodes))
-	for i := range isDone {
-		isDone[i] = make(chan struct{})
-	}
-	var sent sync.WaitGroup
-	var didError atomic.Bool
-	sent.Add(len(g.nodes))
-	for i, node := range g.nodes {
-		mustBefore := []chan struct{}{}
-		for edge := range g.edges() {
-			if edge.to == i {
-				mustBefore = append(mustBefore, isDone[edge.from])
-			}
-		}
-		go func() {
-			for _, wait := range mustBefore {
-				<-wait
-			}
-			wg.Go(func() error {
-				defer close(isDone[i])
-				if didError.Load() {
-					return nil
-				}
-				err := process(ctx, node.v)
-				didError.CompareAndSwap(false, err != nil)
-				return err
-			})
-			sent.Done()
-		}()
-	}
-	sent.Wait()
-	return wg.Wait()
-}
 
-func (g *DAG[T]) edges() iter.Seq[edge] {
-	return func(yield func(edge) bool) {
-		for from, node := range g.nodes {
-			for _, to := range node.to {
-				if !yield(edge{
-					from: from,
-					to:   to,
-				}) {
-					return
-				}
-			}
+	var cancelError error
+	for node, done := range g.Drain(ctx) {
+		if err := ctx.Err(); err != nil {
+			cancelError = err
+			break
 		}
+		wg.Go(func() error {
+			defer done()
+			return process(ctx, node)
+		})
 	}
-}
 
-type edge struct {
-	from, to int
+	return errors.Join(wg.Wait(), cancelError)
 }
 
 // Node is a reference to a node in a [DAG].
