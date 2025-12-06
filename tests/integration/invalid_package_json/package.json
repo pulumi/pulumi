@@ -11,7 +11,7 @@
         "typescript": "^2.5.3"
     },
     "peerDependencies": {
-        "pulumi": "latest"
+        "@pulumi/pulumi": "latest"
     },
     "dependencies": {
         "@types/node": "^8.0.0"

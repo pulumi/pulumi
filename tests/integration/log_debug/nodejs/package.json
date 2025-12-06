@@ -7,6 +7,6 @@
         "typescript": "^5.0.0"
     },
     "peerDependencies": {
-        "pulumi": "*"
+        "@pulumi/pulumi": "latest"
     }
 }
