@@ -761,10 +761,6 @@ func (b *cloudBackend) DownloadTemplate(
 	return t, nil
 }
 
-func (b *cloudBackend) SupportsTags() bool {
-	return true
-}
-
 func (b *cloudBackend) SupportsOrganizations() bool {
 	return true
 }
