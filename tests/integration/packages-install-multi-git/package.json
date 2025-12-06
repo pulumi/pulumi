@@ -1,0 +1,13 @@
+{
+    "name": "packages-install-multi-git",
+    "main": "index.ts",
+    "devDependencies": {
+        "@types/node": "^18",
+        "typescript": "^5.0.0"
+    },
+    "dependencies": {
+        "@pulumi/pulumi": "^3.113.0",
+        "tls-self-signed-cert": "file:sdks/pulumi-tls-self-signed-cert",
+        "test-provider-2": "file:sdks/pulumi-test-provider-2"
+    }
+}
