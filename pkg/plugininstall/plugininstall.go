@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	diagutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -65,7 +66,7 @@ func (pluginManager) EnsureInPluginProject(ctx context.Context, plugin *workspac
 		plugin: plugin,
 		path:   path,
 	})
-	ensureProjectDependencies(dag, plugin, root)
+	ensureProjectDependencies(ctx, dag, plugin, path, root)
 	rootReady() // Now that at least one spec has been added, it's safe to mark the root as ready.
 	return dag.Walk(ctx, func(ctx context.Context, step step) error {
 		return step.run(ctx)
@@ -78,12 +79,16 @@ type installPluginAtPathStep struct {
 }
 
 func (step installPluginAtPathStep) run(ctx context.Context) error {
+	path, err := filepath.Abs(step.path)
+	if err != nil {
+		return err
+	}
 	pctx, err := plugin.NewContextWithRoot(ctx,
 		diagutil.Diag(),
 		diagutil.Diag(),
-		nil,       // host
-		step.path, // pwd
-		step.path, // root
+		nil,  // host
+		path, // pwd
+		path, // root
 		step.plugin.RuntimeInfo().Options(),
 		false, // disableProviderPreview
 		nil,   // tracingSpan
@@ -200,15 +205,141 @@ func (step downloadAndUnpackSpecStep) run(ctx context.Context) error {
 		return err
 	}
 
-	ensureProjectDependencies(step.dag, pluginProject, step.depsRoot)
+	return ensureProjectDependencies(ctx, step.dag, pluginProject, dir, step.depsRoot)
+}
+
+func detectPluginPathAtDir(dir string) (string, error) {
+	pluginPath, err := workspace.DetectPluginPathFrom(dir)
+	if err != nil {
+		return "", err
+	}
+	if filepath.Dir(pluginPath) != dir {
+		return "", workspace.ErrPluginNotFound
+	}
+	return pluginPath, nil
+}
+
+func ensureProjectDependencies(
+	ctx context.Context, dag *pdag.DAG[step],
+	project workspace.BaseProject, projectDir string,
+	root pdag.Node,
+) error {
+	for name, spec := range project.GetPackageSpecs() {
+		var specIsInstalled pdag.Node
+		// If the package is local, then that means it is already on
+		// disk. We can load the plugin and install it's dependencies,
+		// then install the plugin.
+		if plugin.IsLocalPluginPath(ctx, spec.Source) {
+			pulumiPluginFile, err := detectPluginPathAtDir(spec.Source)
+			if err != nil {
+				return err
+			}
+			pluginProject, err := workspace.LoadPluginProject(pulumiPluginFile)
+			if err != nil {
+				return fmt.Errorf("Failed to load plugin project '%s': %w", name, err)
+			}
+
+			var installReady pdag.Done
+			specIsInstalled, installReady = dag.NewNode(installPluginAtPathStep{
+				plugin: pluginProject,
+				path:   spec.Source,
+			})
+			defer installReady() // Make sure we don't leak this
+			err = ensureProjectDependencies(ctx, dag, pluginProject, spec.Source, specIsInstalled)
+			if err != nil {
+				return err
+			}
+			installReady() // We have added our dependencies, so install is now safe to run.
+			if err := dag.NewEdge(specIsInstalled, root); err != nil {
+				return err
+			}
+		} else if isFileBasedSource(spec.Source) {
+			var ready pdag.Done
+			specIsInstalled, ready = dag.NewNode(noOpStep{})
+			ready()
+		} else {
+			// spec needs to be downloaded
+			pluginSpec, err := workspace.NewPluginSpec(ctx, spec.Source, apitype.ResourcePlugin,
+				nil /* version */, "" /* pluginDownloadURL */, nil /* checksum */)
+			if err != nil {
+				return fmt.Errorf("invalid plugin spec '%s' for '%s': %w", spec.Source, name, err)
+			}
+
+			var ready pdag.Done
+			specIsInstalled, ready = dag.NewNode(noOpStep{})
+			ensureSpec(dag, &pluginSpec, specIsInstalled)
+			ready()
+		}
+
+		// After specIsInstalled, spec.Source will be available on the local file
+		// system. An SDK needs to be generated and linked into project.
+
+		linked, linkReady := dag.NewNode(genAndLinkInstalledPackageSpecStep{
+			projectDir: projectDir,
+			project:    project,
+			spec:       spec,
+		})
+		err := dag.NewEdge(specIsInstalled, linked) // Don't run the link step before the plugin is installed
+		contract.AssertNoErrorf(err, "new nodes can't have cycles")
+		linkReady()
+		err = dag.NewEdge(linked, root) // root isn't done until spec is linked
+		contract.AssertNoErrorf(err, "new nodes can't have cycles")
+	}
 
 	return nil
 }
 
-func ensureProjectDependencies(dag *pdag.DAG[step], project workspace.BaseProject, root pdag.Node) {
-	for _, spec := range project.GetPackageSpecs() {
-		// TODO: Create specInstalled nodes for package specs, then link them to step.depsRoot
-		panic(spec)
+// Launch an already downloaded plugin, maybe parameterize it, generate a schema and link
+// in the local SDK.
+type genAndLinkInstalledPackageSpecStep struct {
+	projectDir string                // The project directory that we are linking spec into.
+	project    workspace.BaseProject // The project that we are linking spec into.
+	spec       workspace.PackageSpec // The spec we are linking into the project.
+}
+
+func (step genAndLinkInstalledPackageSpecStep) run(ctx context.Context) error {
+	panic(`TODO: We need to call packages.InstallPackage here (at least by
+	functionality), but we can't link it in as is because packages.InstallPackage does
+	it's own plugin downloading (and thus depends on this package).
+
+	The next step is to refactor out a version of InstallPackage and it's dependents
+	(SchemaFromSchemaSource, GenSDK and LinkPackage) to a separate package that
+	doesn't handle installation, only loading.
+
+	I'm starting to think we will need to make this a bigger refactor: 3 new packages:
+
+		pkg/pulumipackage/
+			install (this package; depends on link)
+			link (links already installed plugins into workspaces; depends on gensdk)
+			gensdk (packages.GenSDK)
+
+	We can wrap the complexity of "pkg/pulumipackage/install" with wrapper functions in "pkg/pulumipackage":
+
+		func GetSchema(
+			ctx context.Context, packageSource string, parameters plugin.ParameterizeParameters,
+			registry registry.Registry, host *plugin.Host,
+		)
+
+		func GetProvider(
+			ctx context.Context, packageSource string, parameters plugin.ParameterizeParameters,
+			registry registry.Registry, host *plugin.Host,
+		)
+
+		func GenSDK(
+			ctx context.Context, packageSource string, parameters plugin.ParameterizeParameters,
+			registry registry.Registry, host *plugin.Host,
+
+			language, outDir, overlays string, local bool,
+		)
+`)
+}
+
+func isFileBasedSource(source string) bool {
+	switch filepath.Ext(source) {
+	case ".yaml", ".yml", ".json":
+		return true
+	default:
+		return false
 	}
 }
 
