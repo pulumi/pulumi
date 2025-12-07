@@ -185,6 +185,29 @@ var (
 
 	DIYBackendParallel = env.Int("DIY_BACKEND_PARALLEL",
 		"Number of parallel operations when fetching stacks and resources from the DIY backend.")
+
+	// Git LFS backend environment variables
+	DIYBackendGitLFSToken = env.String("DIY_BACKEND_GITLFS_TOKEN",
+		"Bearer token for Git LFS authentication.",
+		env.Secret,
+		env.Alternative("GITLFS_TOKEN"))
+
+	DIYBackendGitLFSUsername = env.String("DIY_BACKEND_GITLFS_USERNAME",
+		"Username for Git LFS basic authentication.",
+		env.Alternative("GITLFS_USERNAME"))
+
+	DIYBackendGitLFSPassword = env.String("DIY_BACKEND_GITLFS_PASSWORD",
+		"Password for Git LFS basic authentication.",
+		env.Secret,
+		env.Alternative("GITLFS_PASSWORD"))
+
+	DIYBackendGitLFSSizeThreshold = env.Int("DIY_BACKEND_GITLFS_SIZE_THRESHOLD",
+		"Size threshold in bytes for using LFS (default: 102400 = 100KB).",
+		env.Alternative("GITLFS_SIZE_THRESHOLD"))
+
+	DIYBackendGitLFSCacheDir = env.String("DIY_BACKEND_GITLFS_CACHE_DIR",
+		"Directory for caching Git LFS repository clones.",
+		env.Alternative("GITLFS_CACHE_DIR"))
 )
 
 // Environment variables which affect Pulumi AI integrations
