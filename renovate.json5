@@ -21,8 +21,7 @@
     "pip_requirements",
     "pip_setup",
     "pep621",
-    // We don't want to update poetry pyproject.toml files. This is currently updating the `python` version in `tool.poetry.dependencies`, which we don't want.
-
+    // We don't want to update poetry pyproject.toml files. This is currently updating the `python` version in `tool.poetry.dependencies`, likely a bug in our current renovate version.
     // "poetry"
 
     // GitHub
@@ -63,7 +62,7 @@
       enabled: false
     },
     {
-      // This does not seem to be working, `poetry` is disabled in `enabledManagers` for now
+      // This does not seem to be working, `poetry` is disabled in `enabledManagers` above for now
       description: "Don't update the python version in poetry dependencies in pyproject.toml files, we want to run against the full range of supported Python versions, override from base company config",
       matchManagers: ["poetry"],
       matchPackageNames: ["python"],
