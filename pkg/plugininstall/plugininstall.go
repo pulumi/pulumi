@@ -1,4 +1,5 @@
 // Copyright 2025, Pulumi Corporation.
+
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,28 +24,40 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/loadpackage"
 	"github.com/pulumi/pulumi/pkg/v3/packagelink"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	diagutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func New() PluginManager { return pluginManager{} }
+func New(host plugin.Host, registry registry.Registry) PluginManager {
+	return pluginManager{
+		host:     noCloseHost{host},
+		registry: registry,
+	}
+}
 
 type PluginManager interface {
 	EnsureSpec(ctx context.Context, spec workspace.PluginSpec) (string, error)
 	EnsureInPluginProject(ctx context.Context, plugin *workspace.PluginProject, path string) error
 }
 
-type pluginManager struct{}
+type pluginManager struct {
+	host     plugin.Host
+	registry registry.Registry
+}
 
 type step interface {
-	run(ctx context.Context) error
+	run(ctx context.Context, pm pluginManager) error
 }
 
 func (pm pluginManager) EnsureSpec(ctx context.Context, spec workspace.PluginSpec) (string, error) {
@@ -53,7 +66,7 @@ func (pm pluginManager) EnsureSpec(ctx context.Context, spec workspace.PluginSpe
 	ensureSpec(dag, &spec, root)
 	rootReady() // Now that at least one spec has been added, it's safe to mark the root as ready.
 	err := dag.Walk(ctx, func(ctx context.Context, step step) error {
-		return step.run(ctx)
+		return step.run(ctx, pm)
 	}, pdag.MaxProcs(4))
 	if err != nil {
 		return "", err
@@ -61,7 +74,7 @@ func (pm pluginManager) EnsureSpec(ctx context.Context, spec workspace.PluginSpe
 	return spec.DirPath()
 }
 
-func (pluginManager) EnsureInPluginProject(ctx context.Context, plugin *workspace.PluginProject, path string) error {
+func (pm pluginManager) EnsureInPluginProject(ctx context.Context, plugin *workspace.PluginProject, path string) error {
 	dag := pdag.New[step]()
 	root, rootReady := dag.NewNode(installPluginAtPathStep{
 		plugin: plugin,
@@ -73,7 +86,7 @@ func (pluginManager) EnsureInPluginProject(ctx context.Context, plugin *workspac
 	}
 	rootReady() // Now that at least one spec has been added, it's safe to mark the root as ready.
 	return dag.Walk(ctx, func(ctx context.Context, step step) error {
-		return step.run(ctx)
+		return step.run(ctx, pm)
 	}, pdag.MaxProcs(4))
 }
 
@@ -82,15 +95,16 @@ type installPluginAtPathStep struct {
 	path   string
 }
 
-func (step installPluginAtPathStep) run(ctx context.Context) error {
+func (step installPluginAtPathStep) run(ctx context.Context, pm pluginManager) error {
 	path, err := filepath.Abs(step.path)
 	if err != nil {
 		return err
 	}
+
 	pctx, err := plugin.NewContextWithRoot(ctx,
 		diagutil.Diag(),
 		diagutil.Diag(),
-		nil,  // host
+		pm.host,
 		path, // pwd
 		path, // root
 		step.plugin.RuntimeInfo().Options(),
@@ -110,7 +124,7 @@ func (step installPluginAtPathStep) run(ctx context.Context) error {
 
 type noOpStep struct{}
 
-func (noOpStep) run(context.Context) error { return nil }
+func (noOpStep) run(context.Context, pluginManager) error { return nil }
 
 func ensureSpec(dag *pdag.DAG[step], spec *workspace.PluginSpec, root pdag.Node) {
 	specInstall, specInstallReady := dag.NewNode(installSpecAfterDependencies{
@@ -134,7 +148,7 @@ type installSpecAfterDependencies struct {
 
 // run the install for a spec. We can assume that all local dependencies have already been
 // installed.
-func (step installSpecAfterDependencies) run(ctx context.Context) error {
+func (step installSpecAfterDependencies) run(ctx context.Context, _ pluginManager) error {
 	return installDependenciesForPluginSpec(ctx, *step.spec, os.Stdout, os.Stderr)
 }
 
@@ -148,7 +162,7 @@ type downloadAndUnpackSpecStep struct {
 	spec *workspace.PluginSpec
 }
 
-func (step downloadAndUnpackSpecStep) run(ctx context.Context) error {
+func (step downloadAndUnpackSpecStep) run(ctx context.Context, _ pluginManager) error {
 	defer step.depsAdded()
 	if workspace.HasPlugin(*step.spec) {
 		// TODO: It's possible that the install failed even if download has
@@ -273,7 +287,7 @@ func ensureProjectDependencies(
 		linked, linkReady := dag.NewNode(genAndLinkInstalledPackageSpecStep{
 			projectDir: projectDir,
 			project:    project,
-			spec:       spec,
+			spec:       &spec,
 		})
 		err := dag.NewEdge(specIsInstalled, linked) // Don't run the link step before the plugin is installed
 		contract.AssertNoErrorf(err, "new nodes can't have cycles")
@@ -288,13 +302,23 @@ func ensureProjectDependencies(
 // Launch an already downloaded plugin, maybe parameterize it, generate a schema and link
 // in the local SDK.
 type genAndLinkInstalledPackageSpecStep struct {
-	projectDir string                // The project directory that we are linking spec into.
-	project    workspace.BaseProject // The project that we are linking spec into.
-	spec       workspace.PackageSpec // The spec we are linking into the project.
+	projectDir string                 // The project directory that we are linking spec into.
+	project    workspace.BaseProject  // The project that we are linking spec into.
+	spec       *workspace.PackageSpec // The spec we are linking into the project.
 }
 
-func (step genAndLinkInstalledPackageSpecStep) run(ctx context.Context) error {
-	return packagelink.LinkInto(ctx, step.project, step.projectDir, TODO, TODO, TODO)
+func (step genAndLinkInstalledPackageSpecStep) run(ctx context.Context, pm pluginManager) error {
+	sink := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
+		Color: cmdutil.GetGlobalColorization(),
+	})
+	schema, spec, err := loadpackage.SchemaFromSchemaSource(ctx, step.spec.Source,
+		&plugin.ParameterizeArgs{Args: step.spec.Parameters}, pm.registry, step.projectDir, pm.host, sink)
+	if err != nil {
+		return nil
+	}
+	*step.spec = *spec
+
+	return packagelink.LinkInto(ctx, step.project, step.projectDir, schema, sink, pm.host)
 }
 
 func isFileBasedSource(source string) bool {
@@ -411,3 +435,9 @@ func unpackTarball(_ context.Context, spec workspace.PluginSpec, content PluginC
 	// Installation is complete. Remove the partial file.
 	return os.Remove(partialFilePath)
 }
+
+type noCloseHost struct {
+	plugin.Host
+}
+
+func (host noCloseHost) Close() error { return nil }

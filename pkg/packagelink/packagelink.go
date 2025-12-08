@@ -72,7 +72,10 @@ func genSDK(
 	// `package add` we know that this is just a local package and it's ok for module paths and similar to be different.
 	pkg.SupportPack = true
 
-	err = gensdk.GenSDK(ctx, pluginOrProjectDir, pluginOrProjectLanguage, tempOut, pkg, "" /*overlays*/, true /*local*/, sink, host)
+	err = gensdk.GenSDK(ctx, pluginOrProjectDir, pluginOrProjectLanguage, tempOut, pkg,
+		"",   /*overlays*/
+		true, /*local*/
+		sink, host)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate SDK: %w", err)
 	}
@@ -128,7 +131,10 @@ func linkPackage(
 	entries[pkgToLink.Identity()] = pkgToLink.Reference()
 	loader := schema.NewCachedLoaderWithEntries(schema.NewPluginLoader(host), entries)
 	loaderServer := schema.NewLoaderServer(loader)
-	pctx, err := plugin.NewContext(ctx, sink, sink, host, nil, pluginOrProjectDir, pluginOrProject.RuntimeInfo().Options(), false, nil)
+	pctx, err := plugin.NewContext(
+		ctx, sink, sink, host, nil,
+		pluginOrProjectDir, pluginOrProject.RuntimeInfo().Options(),
+		false, nil)
 	if err != nil {
 		return err
 	}

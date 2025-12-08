@@ -28,7 +28,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func GenSDK(ctx context.Context, wd, language, out string, pkg *schema.Package, overlays string, local bool, sink diag.Sink, host plugin.Host) error {
+func GenSDK(
+	ctx context.Context,
+	wd, language, out string,
+	pkg *schema.Package, overlays string, local bool,
+	sink diag.Sink, host plugin.Host,
+) error {
 	generatePackage := func(directory string, pkg *schema.Package, extraFiles map[string][]byte) error {
 		// Ensure the target directory is clean, but created.
 		err := os.RemoveAll(directory)
@@ -45,7 +50,11 @@ func GenSDK(ctx context.Context, wd, language, out string, pkg *schema.Package, 
 			return err
 		}
 
-		pCtx, err := plugin.NewContext(ctx, sink, sink, host, nil, wd, nil /* runtimeOptions */, false /* disableProviderPreview */, nil /* parentSpan */)
+		pCtx, err := plugin.NewContext(ctx, sink, sink, host, nil, wd,
+			nil,   /* runtimeOptions */
+			false, /* disableProviderPreview */
+			nil,   /* parentSpan */
+		)
 		if err != nil {
 			return fmt.Errorf("create plugin context: %w", err)
 		}
