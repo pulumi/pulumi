@@ -1,3 +1,1 @@
 ../../sdk/python
-# Test renovate, this should be pinned
-urllib3>=2.0.0
