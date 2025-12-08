@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/packagelink"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -66,7 +67,10 @@ func (pluginManager) EnsureInPluginProject(ctx context.Context, plugin *workspac
 		plugin: plugin,
 		path:   path,
 	})
-	ensureProjectDependencies(ctx, dag, plugin, path, root)
+	defer rootReady()
+	if err := ensureProjectDependencies(ctx, dag, plugin, path, root); err != nil {
+		return err
+	}
 	rootReady() // Now that at least one spec has been added, it's safe to mark the root as ready.
 	return dag.Walk(ctx, func(ctx context.Context, step step) error {
 		return step.run(ctx)
@@ -131,14 +135,6 @@ type installSpecAfterDependencies struct {
 // run the install for a spec. We can assume that all local dependencies have already been
 // installed.
 func (step installSpecAfterDependencies) run(ctx context.Context) error {
-	dir, err := step.spec.DirPath()
-	if err != nil {
-		return err
-	}
-
-	// We only care about the directory that has the plugin itself.
-	dir = filepath.Join(dir, step.spec.SubDir())
-
 	return installDependenciesForPluginSpec(ctx, *step.spec, os.Stdout, os.Stderr)
 }
 
@@ -298,40 +294,7 @@ type genAndLinkInstalledPackageSpecStep struct {
 }
 
 func (step genAndLinkInstalledPackageSpecStep) run(ctx context.Context) error {
-	panic(`TODO: We need to call packages.InstallPackage here (at least by
-	functionality), but we can't link it in as is because packages.InstallPackage does
-	it's own plugin downloading (and thus depends on this package).
-
-	The next step is to refactor out a version of InstallPackage and it's dependents
-	(SchemaFromSchemaSource, GenSDK and LinkPackage) to a separate package that
-	doesn't handle installation, only loading.
-
-	I'm starting to think we will need to make this a bigger refactor: 3 new packages:
-
-		pkg/pulumipackage/
-			install (this package; depends on link)
-			link (links already installed plugins into workspaces; depends on gensdk)
-			gensdk (packages.GenSDK)
-
-	We can wrap the complexity of "pkg/pulumipackage/install" with wrapper functions in "pkg/pulumipackage":
-
-		func GetSchema(
-			ctx context.Context, packageSource string, parameters plugin.ParameterizeParameters,
-			registry registry.Registry, host *plugin.Host,
-		)
-
-		func GetProvider(
-			ctx context.Context, packageSource string, parameters plugin.ParameterizeParameters,
-			registry registry.Registry, host *plugin.Host,
-		)
-
-		func GenSDK(
-			ctx context.Context, packageSource string, parameters plugin.ParameterizeParameters,
-			registry registry.Registry, host *plugin.Host,
-
-			language, outDir, overlays string, local bool,
-		)
-`)
+	return packagelink.LinkInto(ctx, step.project, step.projectDir, TODO, TODO, TODO)
 }
 
 func isFileBasedSource(source string) bool {
