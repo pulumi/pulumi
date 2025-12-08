@@ -3,9 +3,6 @@
   extends: [
     "github>pulumi/renovate-config//default.json5"
   ],
-  // TODO: Remove baseBranches and useBaseBranchConfig settings once we're happy with the configuration
-  baseBranches: ["renovate-dev"],
-  useBaseBranchConfig: "merge",
   enabledManagers: [
     // Go
     "gomod",
