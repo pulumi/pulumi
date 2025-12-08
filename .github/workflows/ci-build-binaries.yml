@@ -77,7 +77,7 @@ jobs:
           echo "$TOOL_BIN" | tee -a "$GITHUB_PATH"
           command -v tar
           tar --version
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 # Test renovate, this should be pinned
+      - uses: actions/checkout@v4 # Test renovate, this should be pinned
         with:
           ref: ${{ inputs.ref }}
       - name: Configure Go Cache Key
