@@ -3,12 +3,12 @@
     "version": "0.0.9",
     "license": "Apache-2.0",
     "devDependencies": {
-        "typescript": "^2.5.3"
+        "typescript": "2.9.2"
     },
     "peerDependencies": {
         "@pulumi/pulumi": "latest"
     },
     "dependencies": {
-        "@types/node": "^8.0.0"
+        "@types/node": "8.10.66"
     }
 }
