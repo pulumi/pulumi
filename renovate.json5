@@ -38,11 +38,6 @@
     "tests/testdata/codegen/**",
     "pkg/codegen/testing/test/**",
   ],
-  // Override for https://github.com/pulumi/renovate-config/blob/main/default.json5#L89
-  // TODO: just for now, while developing, we probably want to have this on `false` so security PRs are created automatically
-  vulnerabilityAlerts: {
-    dependencyDashboardApproval: true,
-  },
   packageRules: [
     {
       description: "Pin all test dependencies",
