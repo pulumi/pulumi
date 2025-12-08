@@ -2,8 +2,8 @@
     "name": "${PROJECT}",
     "main": "index.ts",
     "devDependencies": {
-        "@types/node": "18.19.130",
-        "typescript": "5.9.3"
+        "@types/node": "^18",
+        "typescript": "^5.0.0"
     },
     "dependencies": {
         "@pulumi/random": "^4.13.0",

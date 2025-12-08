@@ -89,7 +89,7 @@ jobs:
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Configure Go Cache Key
@@ -97,14 +97,14 @@ jobs:
           CACHE_KEY: "matrix-setup"
         run: echo "$CACHE_KEY" > .gocache.tmp
       - name: Setup Go Caching
-        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5 # only used by gotestsum
+        uses: actions/setup-go@v5 # only used by gotestsum
         with:
           go-version: '>=1.19.0' # decoupled from version sets, only used by gotestsum
           cache: true
           cache-dependency-path: |
             pkg/go.sum
             .gocache.tmp
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@v4
         with:
           repository: dnephin/gotestsum
           ref: d09768c81065b404caed0855eb3ab8f11a2a4431
@@ -112,7 +112,7 @@ jobs:
       - run: |
           cd vendor/gotestsum
           go install .
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      - uses: actions/cache@v4
         with:
           path: test-results
           key: read-gotestsum-timing-${{ github.run_number }}
@@ -460,12 +460,12 @@ jobs:
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      - uses: actions/cache@v4
         with:
           path: test-results
           key: gotestsum-timing-${{ github.run_number }}
           restore-keys: gotestsum-timing-
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@v4
         continue-on-error: true
         with:
           pattern: gotestsum-test-results-*
@@ -492,11 +492,11 @@ jobs:
               exit 1
           fi
       # Checkout repository to upload coverage results.
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Retrieve code coverage reports
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@v4
         with:
           pattern: coverage-*
           merge-multiple: true
@@ -509,7 +509,7 @@ jobs:
           sudo chmod +x codecov
           ./codecov pr-base-picking --base-sha "$(git merge-base origin/master HEAD)" --pr ${{ github.event.number }} --slug pulumi/pulumi --token ${{ secrets.CODECOV_TOKEN }} --service github
       - name: Upload code coverage
-        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
+        uses: codecov/codecov-action@v4
         with:
           directory: coverage/
           files: "*,!.gitkeep"

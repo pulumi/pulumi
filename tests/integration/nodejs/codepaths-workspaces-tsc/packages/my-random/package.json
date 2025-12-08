@@ -6,8 +6,8 @@
     "@pulumi/pulumi": "latest"
   },
   "devDependencies": {
-    "typescript": "3.9.10",
-    "@types/node": "14.18.63"
+    "typescript": "^3.8.3",
+    "@types/node": "^14.14.20"
   },
   "scripts": {
     "build": "tsc"

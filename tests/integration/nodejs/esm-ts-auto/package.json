@@ -3,13 +3,13 @@
     "license": "Apache-2.0",
     "type": "module",
     "devDependencies": {
-        "@types/node": "20.19.25"
+        "@types/node": "^20.0.0"
     },
     "peerDependencies": {
         "@pulumi/pulumi": "latest"
     },
     "dependencies": {
-        "ts-node": "10.9.2",
-        "typescript": "5.9.3"
+        "ts-node": "^10.9.2",
+        "typescript": "^5.8.3"
     }
 }

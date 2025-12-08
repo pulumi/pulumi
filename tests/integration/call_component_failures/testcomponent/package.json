@@ -3,10 +3,10 @@
     "main": "index.js",
     "devDependencies": {
         "@types/node": "ts3.9",
-        "typescript": "3.9.10"
+        "typescript": "^3.0.0"
     },
     "dependencies": {
-        "@grpc/grpc-js": "1.14.2"
+        "@grpc/grpc-js": "^1.11.0"
     },
     "peerDependencies": {
         "@pulumi/pulumi": "latest"

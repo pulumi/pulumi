@@ -1,7 +1,7 @@
 {
     "name": "tsruntimeerr",
     "devDependencies": {
-        "@types/node": "10.17.60"
+        "@types/node": "^10.0.0"
     },
     "dependencies": {
         "@pulumi/pulumi": "^3.73.0"

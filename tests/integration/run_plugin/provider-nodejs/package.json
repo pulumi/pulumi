@@ -6,7 +6,7 @@
         "@pulumi/pulumi": "^3.38.0"
     },
     "devDependencies": {
-        "@types/node": "10.17.60",
-        "typescript": "4.9.5"
+        "@types/node": "^10.0.0",
+        "typescript": "^4.0.0"
     }
 }

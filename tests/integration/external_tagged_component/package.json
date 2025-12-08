@@ -2,8 +2,8 @@
     "name": "external_tagged_component",
     "main": "index.ts",
     "devDependencies": {
-        "@types/node": "18.19.130",
-        "typescript": "5.9.3"
+        "@types/node": "^18",
+        "typescript": "^5.0.0"
     },
     "dependencies": {
         "@pulumi/pulumi": "^3.113.0",

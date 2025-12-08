@@ -5,6 +5,6 @@
         "@pulumi/policy": "^0.4.0"
     },
     "devDependencies": {
-        "@types/node": "10.17.60"
+        "@types/node": "^10.12.7"
     }
 }

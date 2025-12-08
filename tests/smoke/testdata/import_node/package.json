@@ -2,7 +2,7 @@
   "name": "import_node",
   "main": "index.ts",
   "devDependencies": {
-    "@types/node": "16.18.126"
+    "@types/node": "^16"
   },
   "dependencies": {
     "@pulumi/pulumi": "^3.19.0",

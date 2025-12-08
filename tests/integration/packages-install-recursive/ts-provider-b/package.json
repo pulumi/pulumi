@@ -7,7 +7,7 @@
         "@pulumi/random": "4.18.4"
     },
     "devDependencies": {
-        "@types/node": "20.19.25",
-        "typescript": "5.9.3"
+        "@types/node": "^20.0.0",
+        "typescript": "^5.0.0"
     }
 }
