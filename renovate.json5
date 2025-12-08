@@ -70,10 +70,10 @@
       enabled: false
     },
     {
-      description: "Disable auto-update for first party packages"
+      description: "Disable auto-update for first party packages",
       matchDatasources: ["go", "npm", "pypi"],
       matchPackageNames: [
-        "github.com/pulumi/**"",
+        "github.com/pulumi/**",
         "@pulumi/**",
         "pulumi",
         "pulumi-**",
@@ -81,10 +81,10 @@
       enabled: false
     },
     {
-      description: "Auto-update esc"
+      description: "Auto-update esc",
       matchDatasources: ["go"],
       matchPackageNames: [
-        "github.com/pulumi/esc"",
+        "github.com/pulumi/esc",
       ],
       enabled: true
     },
