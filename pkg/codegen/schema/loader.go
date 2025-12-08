@@ -106,7 +106,8 @@ type ReferenceLoader interface {
 type pluginLoader struct {
 	host plugin.Host
 
-	cacheOptions pluginLoaderCacheOptions
+	pluginInstaller PluginInstaller
+	cacheOptions    pluginLoaderCacheOptions
 }
 
 // Caching options intended for benchmarking or debugging:
@@ -120,15 +121,23 @@ type pluginLoaderCacheOptions struct {
 }
 
 func NewPluginLoader(host plugin.Host) ReferenceLoader {
-	return newPluginLoaderWithOptions(host, pluginLoaderCacheOptions{})
+	return newPluginLoaderWithOptions(host, nil, pluginLoaderCacheOptions{})
 }
 
-func newPluginLoaderWithOptions(host plugin.Host, cacheOptions pluginLoaderCacheOptions) ReferenceLoader {
+type PluginInstaller interface {
+	InstallPlugin(ctx context.Context, spec workspace.PluginSpec) error
+}
+
+func NewPluginLoaderV2(host plugin.Host, installer PluginInstaller) ReferenceLoader {
+	return newPluginLoaderWithOptions(host, installer, pluginLoaderCacheOptions{})
+}
+
+func newPluginLoaderWithOptions(host plugin.Host, installer PluginInstaller, cacheOptions pluginLoaderCacheOptions) ReferenceLoader {
 	var l ReferenceLoader
 	l = &pluginLoader{
-		host: host,
-
-		cacheOptions: cacheOptions,
+		host:            host,
+		pluginInstaller: installer,
+		cacheOptions:    cacheOptions,
 	}
 	if !cacheOptions.disableEntryCache {
 		l = NewCachedLoader(l)
@@ -412,13 +421,20 @@ func (l *pluginLoader) loadSchemaBytes(
 			PluginDownloadURL: descriptor.DownloadURL,
 		}
 
-		log := func(sev diag.Severity, msg string) {
-			l.host.Log(sev, "", msg, 0)
-		}
+		if l.pluginInstaller != nil {
+			err := l.pluginInstaller.InstallPlugin(ctx, spec)
+			if err != nil {
+				return nil, nil, err
+			}
+		} else {
+			log := func(sev diag.Severity, msg string) {
+				l.host.Log(sev, "", msg, 0)
+			}
 
-		_, err = plugininstall.InstallPlugin(ctx, spec, log)
-		if err != nil {
-			return nil, nil, err
+			_, err = plugininstall.InstallPlugin(ctx, spec, log)
+			if err != nil {
+				return nil, nil, err
+			}
 		}
 
 		pluginInfo, err = l.host.ResolvePlugin(pluginSpecFromPackageDescriptor(descriptor))
@@ -465,13 +481,9 @@ func (l *pluginLoader) loadSchemaBytes(
 func (l *pluginLoader) loadPluginSchemaBytes(
 	ctx context.Context, descriptor *PackageDescriptor,
 ) ([]byte, plugin.Provider, error) {
+
 	wsDescriptor := workspace.PackageDescriptor{
-		PluginSpec: workspace.PluginSpec{
-			Name:              descriptor.Name,
-			Version:           descriptor.Version,
-			PluginDownloadURL: descriptor.DownloadURL,
-			Kind:              apitype.ResourcePlugin,
-		},
+		PluginSpec: pluginSpecFromPackageDescriptor(descriptor),
 	}
 	if descriptor.Parameterization != nil {
 		wsDescriptor.Parameterization = &workspace.Parameterization{
