@@ -91,6 +91,21 @@ func TestPackageDeleteCmd_Run(t *testing.T) {
 			var deletedVersion semver.Version
 
 			mockCloudRegistry := &backend.MockCloudRegistry{
+				Mock: registry.Mock{
+					GetPackageF: func(
+						ctx context.Context, source, publisher, name string, version *semver.Version,
+					) (apitype.PackageMetadata, error) {
+						if tt.resolveErr != nil {
+							return apitype.PackageMetadata{}, tt.resolveErr
+						}
+						return apitype.PackageMetadata{
+							Source:    "private",
+							Publisher: "myorg",
+							Name:      "my-package",
+							Version:   semver.MustParse("1.0.0"),
+						}, nil
+					},
+				},
 				DeletePackageVersionF: func(
 					ctx context.Context, source, publisher, name string, version semver.Version,
 				) error {
@@ -99,19 +114,6 @@ func TestPackageDeleteCmd_Run(t *testing.T) {
 					deletedName = name
 					deletedVersion = version
 					return tt.deleteErr
-				},
-				GetPackageF: func(
-					ctx context.Context, source, publisher, name string, version *semver.Version,
-				) (apitype.PackageMetadata, error) {
-					if tt.resolveErr != nil {
-						return apitype.PackageMetadata{}, tt.resolveErr
-					}
-					return apitype.PackageMetadata{
-						Source:    "private",
-						Publisher: "myorg",
-						Name:      "my-package",
-						Version:   semver.MustParse("1.0.0"),
-					}, nil
 				},
 			}
 
@@ -146,21 +148,23 @@ func TestPackageDeleteCmd_Run(t *testing.T) {
 //nolint:paralleltest // This test uses the global backendInstance variable
 func TestPackageDeleteCmd_NonInteractiveRequiresYes(t *testing.T) {
 	mockCloudRegistry := &backend.MockCloudRegistry{
+		Mock: registry.Mock{
+			GetPackageF: func(
+				ctx context.Context, source, publisher, name string, version *semver.Version,
+			) (apitype.PackageMetadata, error) {
+				return apitype.PackageMetadata{
+					Source:    "private",
+					Publisher: "myorg",
+					Name:      "my-package",
+					Version:   semver.MustParse("1.0.0"),
+				}, nil
+			},
+		},
 		DeletePackageVersionF: func(
 			ctx context.Context, source, publisher, name string, version semver.Version,
 		) error {
 			require.Fail(t, "DeletePackageVersion should not be called without --yes in non-interactive mode")
 			return nil
-		},
-		GetPackageF: func(
-			ctx context.Context, source, publisher, name string, version *semver.Version,
-		) (apitype.PackageMetadata, error) {
-			return apitype.PackageMetadata{
-				Source:    "private",
-				Publisher: "myorg",
-				Name:      "my-package",
-				Version:   semver.MustParse("1.0.0"),
-			}, nil
 		},
 	}
 
