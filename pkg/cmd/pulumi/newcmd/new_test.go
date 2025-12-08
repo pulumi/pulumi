@@ -237,8 +237,10 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 		},
 		GetReadOnlyCloudRegistryF: func() registry.Registry {
 			return &backend.MockCloudRegistry{
-				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				Mock: registry.Mock{
+					ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					},
 				},
 			}
 		},
@@ -276,7 +278,9 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 		NameF: func() string { return "mock" },
 		GetReadOnlyCloudRegistryF: func() registry.Registry {
 			return &backend.MockCloudRegistry{
-				ListTemplatesF: listTemplates,
+				Mock: registry.Mock{
+					ListTemplatesF: listTemplates,
+				},
 			}
 		},
 	})
@@ -306,9 +310,11 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 		},
 		GetReadOnlyCloudRegistryF: func() registry.Registry {
 			return &backend.MockCloudRegistry{
-				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-					assert.Nil(t, name)
-					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				Mock: registry.Mock{
+					ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+						assert.Nil(t, name)
+						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					},
 				},
 			}
 		},
@@ -347,9 +353,11 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 		},
 		GetReadOnlyCloudRegistryF: func() registry.Registry {
 			return &backend.MockCloudRegistry{
-				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-					assert.Nil(t, name)
-					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				Mock: registry.Mock{
+					ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+						assert.Nil(t, name)
+						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					},
 				},
 			}
 		},
@@ -426,8 +434,10 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 		},
 		GetReadOnlyCloudRegistryF: func() registry.Registry {
 			return &backend.MockCloudRegistry{
-				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				Mock: registry.Mock{
+					ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					},
 				},
 			}
 		},
@@ -462,9 +472,11 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 		},
 		GetReadOnlyCloudRegistryF: func() registry.Registry {
 			return &backend.MockCloudRegistry{
-				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-					assert.Nil(t, name)
-					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				Mock: registry.Mock{
+					ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+						assert.Nil(t, name)
+						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					},
 				},
 			}
 		},
@@ -598,8 +610,10 @@ func TestValidateStackRefAndProjectName(t *testing.T) {
 		},
 		GetReadOnlyCloudRegistryF: func() registry.Registry {
 			return &backend.MockCloudRegistry{
-				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				Mock: registry.Mock{
+					ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					},
 				},
 			}
 		},
@@ -672,8 +686,10 @@ func TestProjectExists(t *testing.T) {
 		},
 		GetReadOnlyCloudRegistryF: func() registry.Registry {
 			return &backend.MockCloudRegistry{
-				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				Mock: registry.Mock{
+					ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					},
 				},
 			}
 		},
@@ -769,8 +785,10 @@ func TestPulumiNewConflictingProject(t *testing.T) {
 		},
 		GetReadOnlyCloudRegistryF: func() registry.Registry {
 			return &backend.MockCloudRegistry{
-				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				Mock: registry.Mock{
+					ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					},
 				},
 			}
 		},
@@ -956,8 +974,10 @@ func TestPulumiNewWithOrgTemplates(t *testing.T) {
 		},
 		GetReadOnlyCloudRegistryF: func() registry.Registry {
 			return &backend.MockCloudRegistry{
-				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				Mock: registry.Mock{
+					ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					},
 				},
 			}
 		},
@@ -1018,19 +1038,21 @@ func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_REGISTRY_RESOLVE", "false")
 	t.Setenv("PULUMI_EXPERIMENTAL", "true")
 	mockRegistry := &backend.MockCloudRegistry{
-		ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-			return func(yield func(apitype.TemplateMetadata, error) bool) {
-				if !yield(apitype.TemplateMetadata{
-					Name: "template-1", Description: ref("Describe 1"), Publisher: "Some org",
-				}, nil) {
-					return
+		Mock: registry.Mock{
+			ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+				return func(yield func(apitype.TemplateMetadata, error) bool) {
+					if !yield(apitype.TemplateMetadata{
+						Name: "template-1", Description: ref("Describe 1"), Publisher: "Some org",
+					}, nil) {
+						return
+					}
+					if !yield(apitype.TemplateMetadata{
+						Name: "template-2", Description: ref("Describe 2"), RepoSlug: ref("some-org/repo"), Source: "github",
+					}, nil) {
+						return
+					}
 				}
-				if !yield(apitype.TemplateMetadata{
-					Name: "template-2", Description: ref("Describe 2"), RepoSlug: ref("some-org/repo"), Source: "github",
-				}, nil) {
-					return
-				}
-			}
+			},
 		},
 	}
 	mockBackend := &backend.MockBackend{
@@ -1121,9 +1143,11 @@ func TestPulumiNewWithoutTemplateSupport(t *testing.T) {
 	testutil.MockBackendInstance(t, &backend.MockBackend{
 		GetReadOnlyCloudRegistryF: func() registry.Registry {
 			return &backend.MockCloudRegistry{
-				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-					assert.Nil(t, name)
-					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				Mock: registry.Mock{
+					ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+						assert.Nil(t, name)
+						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					},
 				},
 			}
 		},
@@ -1204,8 +1228,10 @@ resources:
 		},
 		GetReadOnlyCloudRegistryF: func() registry.Registry {
 			return &backend.MockCloudRegistry{
-				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				Mock: registry.Mock{
+					ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					},
 				},
 			}
 		},
@@ -1275,9 +1301,11 @@ func TestNoPromptWithYes(t *testing.T) {
 			mockBackend := &backend.MockBackend{
 				GetReadOnlyCloudRegistryF: func() registry.Registry {
 					return &backend.MockCloudRegistry{
-						ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-							assert.Nil(t, name)
-							return func(yield func(apitype.TemplateMetadata, error) bool) {}
+						Mock: registry.Mock{
+							ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+								assert.Nil(t, name)
+								return func(yield func(apitype.TemplateMetadata, error) bool) {}
+							},
 						},
 					}
 				},

@@ -19,8 +19,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
-	"iter"
 	"slices"
 	"strings"
 	"time"
@@ -821,18 +819,10 @@ func (m MockTarReader) Tar() *tar.Reader {
 }
 
 type MockCloudRegistry struct {
+	registry.Mock
 	PublishPackageF       func(context.Context, apitype.PackagePublishOp) error
 	PublishTemplateF      func(context.Context, apitype.TemplatePublishOp) error
 	DeletePackageVersionF func(ctx context.Context, source, publisher, name string, version semver.Version) error
-	GetPackageF           func(
-		ctx context.Context, source, publisher, name string, version *semver.Version,
-	) (apitype.PackageMetadata, error)
-	ListPackagesF func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
-	GetTemplateF  func(
-		ctx context.Context, source, publisher, name string, version *semver.Version,
-	) (apitype.TemplateMetadata, error)
-	ListTemplatesF    func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error]
-	DownloadTemplateF func(ctx context.Context, downloadURL string) (io.ReadCloser, error)
 }
 
 var _ CloudRegistry = (*MockCloudRegistry)(nil)
@@ -853,52 +843,9 @@ func (mr *MockCloudRegistry) DeletePackageVersion(
 	panic("not implemented: MockCloudRegistry.DeletePackageVersion")
 }
 
-func (mr *MockCloudRegistry) GetPackage(
-	ctx context.Context, source, publisher, name string, version *semver.Version,
-) (apitype.PackageMetadata, error) {
-	if mr.GetPackageF != nil {
-		return mr.GetPackageF(ctx, source, publisher, name, version)
-	}
-	panic("not implemented")
-}
-
-func (mr *MockCloudRegistry) ListPackages(
-	ctx context.Context, name *string,
-) iter.Seq2[apitype.PackageMetadata, error] {
-	if mr.ListPackagesF != nil {
-		return mr.ListPackagesF(ctx, name)
-	}
-	panic("not implemented")
-}
-
-func (mr *MockCloudRegistry) GetTemplate(
-	ctx context.Context, source, publisher, name string, version *semver.Version,
-) (apitype.TemplateMetadata, error) {
-	if mr.GetTemplateF != nil {
-		return mr.GetTemplateF(ctx, source, publisher, name, version)
-	}
-	panic("not implemented")
-}
-
-func (mr *MockCloudRegistry) ListTemplates(
-	ctx context.Context, name *string,
-) iter.Seq2[apitype.TemplateMetadata, error] {
-	if mr.ListTemplatesF != nil {
-		return mr.ListTemplatesF(ctx, name)
-	}
-	panic("not implemented")
-}
-
 func (mr *MockCloudRegistry) PublishTemplate(ctx context.Context, op apitype.TemplatePublishOp) error {
 	if mr.PublishTemplateF != nil {
 		return mr.PublishTemplateF(ctx, op)
 	}
 	panic("not implemented: MockCloudRegistry.PublishTemplate")
-}
-
-func (mr *MockCloudRegistry) DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
-	if mr.DownloadTemplateF != nil {
-		return mr.DownloadTemplateF(ctx, downloadURL)
-	}
-	panic("not implemented: MockCloudRegistry.DownloadTemplate")
 }
