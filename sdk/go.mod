@@ -33,7 +33,7 @@ require (
 	google.golang.org/grpc v1.71.1
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
-	pgregory.net/rapid v0.5.5
+	pgregory.net/rapid v0.7.2
 )
 
 require (
