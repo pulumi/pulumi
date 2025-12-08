@@ -51,6 +51,7 @@ import (
 	"github.com/google/shlex"
 	"github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -1164,31 +1165,60 @@ func (host *nodeLanguageHost) Template(ctx context.Context,
 func (host *nodeLanguageHost) About(ctx context.Context,
 	req *pulumirpc.AboutRequest,
 ) (*pulumirpc.AboutResponse, error) {
-	getResponse := func(execString string, args ...string) (string, string, error) {
-		ex, err := executable.FindExecutable(execString)
-		if err != nil {
-			return "", "", fmt.Errorf("could not find executable '%s': %w", execString, err)
-		}
-		cmd := exec.Command(ex, args...)
-		var out []byte
-		if out, err = cmd.Output(); err != nil {
-			cmd := ex
-			if len(args) != 0 {
-				cmd += " " + strings.Join(args, " ")
-			}
-			return "", "", fmt.Errorf("failed to execute '%s'", cmd)
-		}
-		return ex, strings.TrimSpace(string(out)), nil
+	opts, err := parseOptions(req.Info.Options.AsMap())
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse options: %w", err)
+	}
+	pm, err := npm.ResolvePackageManager(opts.packagemanager, req.Info.ProgramDirectory)
+	if err != nil {
+		return nil, fmt.Errorf("could not resolve packagemanager: %w", err)
 	}
 
-	node, version, err := getResponse("node", "--version")
+	nodeExecutable, err := executable.FindExecutable("node")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not find executable 'node': %w", err)
+	}
+
+	var nodeVersion, pmVersion string
+
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		cmd := exec.CommandContext(ctx, "node", "--version")
+		var out []byte
+		if out, err = cmd.Output(); err != nil {
+			// Don't fail if we could not determine the node version
+			return nil
+		}
+		nodeVersion = strings.TrimSpace(string(out))
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		version, err := pm.Version()
+		if err != nil {
+			// Don't fail if we could not parse package manager version
+			return nil
+		}
+		pmVersion = version.String()
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return &pulumirpc.AboutResponse{
+			Executable: nodeExecutable,
+			Metadata: map[string]string{
+				"packagemanager": pm.Name(),
+			},
+		}, nil
 	}
 
 	return &pulumirpc.AboutResponse{
-		Executable: node,
-		Version:    version,
+		Executable: nodeExecutable,
+		Version:    nodeVersion,
+		Metadata: map[string]string{
+			"packagemanager":        pm.Name(),
+			"packagemanagerVersion": pmVersion,
+		},
 	}, nil
 }
 
