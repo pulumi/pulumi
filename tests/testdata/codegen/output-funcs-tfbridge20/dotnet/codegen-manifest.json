@@ -1,7 +1,7 @@
 {
   "emittedFiles": [
     ".gitattributes",
-    ".gitingore",
+    ".gitignore",
     "GetAmiIds.cs",
     "Inputs/GetAmiIdsFilter.cs",
     "Inputs/GetAmiIdsFilterArgs.cs",

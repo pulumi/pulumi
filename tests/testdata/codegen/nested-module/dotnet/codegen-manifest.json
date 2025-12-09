@@ -1,7 +1,7 @@
 {
   "emittedFiles": [
     ".gitattributes",
-    ".gitingore",
+    ".gitignore",
     "Nested/Module/README.md",
     "Nested/Module/Resource.cs",
     "Nested/README.md",

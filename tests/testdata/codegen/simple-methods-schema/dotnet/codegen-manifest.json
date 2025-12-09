@@ -1,7 +1,7 @@
 {
   "emittedFiles": [
     ".gitattributes",
-    ".gitingore",
+    ".gitignore",
     "Foo.cs",
     "Nested/Inputs/Baz.cs",
     "Nested/Inputs/BazArgs.cs",

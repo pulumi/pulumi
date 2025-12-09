@@ -1,7 +1,7 @@
 {
   "emittedFiles": [
     ".gitattributes",
-    ".gitingore",
+    ".gitignore",
     "GetCustomDbRoles.cs",
     "Outputs/GetCustomDbRolesResult.cs",
     "Provider.cs",
