@@ -56,7 +56,8 @@ func init() {
 					// 4. A resource that does not have a replacement trigger
 					// 5. A resource with an unknown output
 					// 6. A resource that has a replacement trigger with an known value for this first run
-					require.Len(l, snap.Resources, 7, "expected 7 resources in snapshot")
+					// 7. A resource that has a replacement trigger with a secret value
+					require.Len(l, snap.Resources, 8, "expected 8 resources in snapshot")
 
 					defaultProvider := RequireSingleNamedResource(l, snap.Resources, "default_2_0_0")
 					require.Equal(l, "pulumi:providers:simple", defaultProvider.Type.String(), "expected default simple provider")
@@ -67,6 +68,7 @@ func init() {
 					replacementTrigger := RequireSingleNamedResource(l, snap.Resources, "replacementTrigger")
 					notReplacementTrigger := RequireSingleNamedResource(l, snap.Resources, "notReplacementTrigger")
 					unknownReplacementTrigger := RequireSingleNamedResource(l, snap.Resources, "unknownReplacementTrigger")
+					secretReplacementTrigger := RequireSingleNamedResource(l, snap.Resources, "secretReplacementTrigger")
 
 					// The resource that has a replacement trigger should:
 					//
@@ -106,6 +108,23 @@ func init() {
 						l, resource.NewProperty("hellohello"), unknownReplacementTrigger.ReplacementTrigger,
 						"expected replacement trigger resource to have the replacement trigger value from the program",
 					)
+
+					// The resource that has a secret replacement trigger should:
+					//
+					// * use the default provider
+					// * have its replacementTrigger property set to the secret value specified in the program
+					require.Equal(
+						l, defaultProviderRef.String(), secretReplacementTrigger.Provider,
+						"expected secret replacement trigger resource to use default provider",
+					)
+					require.Equal(
+						l, resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
+							resource.NewProperty(1.0),
+							resource.NewProperty(2.0),
+							resource.NewProperty(3.0),
+						})), secretReplacementTrigger.ReplacementTrigger,
+						"expected replacement trigger resource to have a secret replacement trigger value",
+					)
 				},
 			},
 			{
@@ -142,7 +161,8 @@ func init() {
 					// 4. A resource that does not have a replacement trigger
 					// 5. A resource with an unknown output
 					// 6. A resource that has a replacement trigger with an unknown value
-					require.Len(l, snap.Resources, 7, "expected 7 resources in snapshot")
+					// 7. A resource that has a replacement trigger with a secret value
+					require.Len(l, snap.Resources, 8, "expected 8 resources in snapshot")
 
 					defaultProvider := RequireSingleNamedResource(l, snap.Resources, "default_2_0_0")
 					require.Equal(l, "pulumi:providers:simple", defaultProvider.Type.String(), "expected default simple provider")
@@ -153,6 +173,7 @@ func init() {
 					replacementTrigger := RequireSingleNamedResource(l, snap.Resources, "replacementTrigger")
 					notReplacementTrigger := RequireSingleNamedResource(l, snap.Resources, "notReplacementTrigger")
 					unknownReplacementTrigger := RequireSingleNamedResource(l, snap.Resources, "unknownReplacementTrigger")
+					secretReplacementTrigger := RequireSingleNamedResource(l, snap.Resources, "secretReplacementTrigger")
 
 					// The resource that has a replacement trigger should:
 					//
@@ -193,7 +214,7 @@ func init() {
 						"expected replacement trigger resource to have the replacement trigger value from the program",
 					)
 
-					// Updateshould show that the resource with an unknown trigger wasn't replaced.
+					// Update should show that the resource with an unknown trigger wasn't replaced.
 					var ops []display.StepOp
 					for _, evt := range events {
 						switch e := evt.Payload().(type) {
@@ -206,6 +227,37 @@ func init() {
 					require.NotNil(l, ops, "expected to find step event metadata for unknownReplacementTrigger resource")
 					require.NotContains(l, ops, deploy.OpReplace,
 						"expected unknownReplacementTrigger resource to not be replaced during update")
+
+					// The resource that has a secret replacement trigger should:
+					//
+					// * use the default provider
+					// * have its replacementTrigger property set to the secret value specified in the program
+					require.Equal(
+						l, defaultProviderRef.String(), secretReplacementTrigger.Provider,
+						"expected secret replacement trigger resource to use default provider",
+					)
+					require.Equal(
+						l, resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
+							resource.NewProperty(3.0),
+							resource.NewProperty(2.0),
+							resource.NewProperty(1.0),
+						})), secretReplacementTrigger.ReplacementTrigger,
+						"expected replacement trigger resource to have a secret replacement trigger value",
+					)
+
+					// Update should show that the resource with an secret trigger was replaced.
+					ops = []display.StepOp{}
+					for _, evt := range events {
+						switch e := evt.Payload().(type) {
+						case engine.ResourcePreEventPayload:
+							if e.Metadata.URN.Name() == "secretReplacementTrigger" {
+								ops = append(ops, e.Metadata.Op)
+							}
+						}
+					}
+					require.NotNil(l, ops, "expected to find step event metadata for secretReplacementTrigger resource")
+					require.Contains(l, ops, deploy.OpReplace,
+						"expected secretReplacementTrigger resource to not be replaced during update")
 				},
 			},
 		},

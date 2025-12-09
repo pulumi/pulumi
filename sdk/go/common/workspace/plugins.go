@@ -1120,12 +1120,15 @@ func parsePluginSpecFromURL(
 		Host:   parsedURL.Host,
 		Path:   parsedURL.Path,
 	}
-	nameURL, _, err := gitutil.ParseGitRepoURL(urlWithoutAuth.String())
+	nameURL, path, err := gitutil.ParseGitRepoURL(urlWithoutAuth.String())
 	if err != nil {
 		return PluginSpec{}, inference, err
 	}
+	if path != "" {
+		path = "_" + path
+	}
 	pluginSpec := PluginSpec{
-		Name:    strings.ReplaceAll(strings.TrimPrefix(nameURL, "https://"), "/", "_"),
+		Name:    strings.ReplaceAll(strings.TrimPrefix(nameURL, "https://")+path, "/", "_"),
 		Kind:    kind,
 		Version: version,
 		// Prefix the url with `git://`, so we can later recognize this as a git URL.
@@ -1188,7 +1191,11 @@ func (spec PluginSpec) LocalName() (string, string) {
 		if err != nil {
 			return strings.ReplaceAll(trimmed, "/", "_"), ""
 		}
-		return strings.ReplaceAll(strings.TrimPrefix(url, "https://"), "/", "_"), path
+		pathWithPrefix := path
+		if path != "" {
+			pathWithPrefix = "_" + path
+		}
+		return strings.ReplaceAll(strings.TrimPrefix(url, "https://")+pathWithPrefix, "/", "_"), path
 	}
 	return spec.Name, ""
 }

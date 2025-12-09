@@ -2164,32 +2164,32 @@ func TestLocalName(t *testing.T) {
 		name              string
 		pluginName        string
 		pluginDownloadURL string
-		expected          string
+		expectedName      string
 		expectedPath      string
 	}{
 		{
-			name:       "simple",
-			pluginName: "pulumi-example",
-			expected:   "pulumi-example",
+			name:         "simple",
+			pluginName:   "pulumi-example",
+			expectedName: "pulumi-example",
 		},
 		{
 			name:              "git plugin download url",
 			pluginName:        "pulumi-example",
 			pluginDownloadURL: "git://github.com/pulumi/pulumi-example",
-			expected:          "github.com_pulumi_pulumi-example.git",
+			expectedName:      "github.com_pulumi_pulumi-example.git",
 		},
 		{
 			name:              "git plugin download url with path",
 			pluginName:        "pulumi-example",
 			pluginDownloadURL: "git://github.com/pulumi/pulumi-example/path",
-			expected:          "github.com_pulumi_pulumi-example.git",
+			expectedName:      "github.com_pulumi_pulumi-example.git_path",
 			expectedPath:      "path",
 		},
 		{
 			name:              "invalid git plugin download url",
 			pluginName:        "pulumi-example",
 			pluginDownloadURL: "git://github",
-			expected:          "github",
+			expectedName:      "github",
 		},
 	}
 	for _, c := range cases {
@@ -2200,7 +2200,7 @@ func TestLocalName(t *testing.T) {
 				PluginDownloadURL: c.pluginDownloadURL,
 			}
 			name, path := spec.LocalName()
-			require.Equal(t, c.expected, name)
+			require.Equal(t, c.expectedName, name)
 			require.Equal(t, c.expectedPath, path)
 		})
 	}
