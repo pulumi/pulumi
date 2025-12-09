@@ -88,9 +88,28 @@ func (ExternalSourceResult) isResult()       {}
 func (InstalledInWorkspaceResult) isResult() {}
 
 type (
-	RegistryResult             struct{ Metadata apitype.PackageMetadata }
-	LocalPathResult            struct{ LocalPath string }
-	ExternalSourceResult       struct{ Spec workspace.PluginSpec }
+	// The package should be downloaded with information from the registry.
+	RegistryResult struct {
+		Metadata apitype.PackageMetadata
+	}
+	// The package is referenced by a local path.
+	//
+	// For example:
+	//
+	//	/a/nice/absolute/path/to/pulumi-resource-example
+	LocalPathResult struct {
+		// The path to the plugin on disk.
+		//
+		// LocalPath may be relative or absolute. If it is relative,
+		// RelativeToWorkspace **must** be used to resolve the path.
+		LocalPath string
+		// RelativeToWorkspace is true if the local path was taken from the passed
+		// in workspace.BaseProject.
+		RelativeToWorkspace bool
+	}
+	ExternalSourceResult struct {
+		Spec workspace.PluginSpec
+	}
 	InstalledInWorkspaceResult struct{}
 )
 
@@ -105,25 +124,29 @@ func Resolve(
 	sourceToCheck := pluginSpec.Name
 
 	if options.IncludeInstalledInWorkspace {
-		if pluginSpec.Version != nil && ws.HasPlugin(pluginSpec) {
-			return InstalledInWorkspaceResult{}, nil
+		installed, err := isAlreadyInstalled(ws, pluginSpec)
+		if err != nil {
+			return nil, err
 		}
-
-		has, _ := ws.HasPluginGTE(pluginSpec)
-		if pluginSpec.Version == nil && has {
+		if installed {
 			return InstalledInWorkspaceResult{}, nil
 		}
 	}
 
+	var localPathIsFromProjectOrPlugin bool
 	if projectOrPlugin != nil {
 		localSource, ok := projectOrPlugin.GetPackageSpecs()[pluginSpec.Name]
 		if ok {
 			sourceToCheck = localSource.Source
+			localPathIsFromProjectOrPlugin = true
 		}
 	}
 
 	if plugin.IsLocalPluginPath(ctx, sourceToCheck) {
-		return LocalPathResult{LocalPath: sourceToCheck}, nil
+		return LocalPathResult{
+			LocalPath:           sourceToCheck,
+			RelativeToWorkspace: localPathIsFromProjectOrPlugin,
+		}, nil
 	}
 
 	if ws.IsExternalURL(sourceToCheck) || pluginSpec.IsGitPlugin() {
@@ -133,9 +156,19 @@ func Resolve(
 	var registryNotFoundErr error
 	var registryQueryErr error
 
-	if !options.DisableRegistryResolve && options.Experimental {
+	if options.includeRegistryResolve() {
 		metadata, err := registry.ResolvePackageFromName(ctx, reg, pluginSpec.Name, pluginSpec.Version)
 		if err == nil {
+			if options.IncludeInstalledInWorkspace {
+				installed, err := isAlreadyInstalled(ws, pluginSpec)
+				if err != nil {
+					return nil, err
+				}
+				if installed {
+					return InstalledInWorkspaceResult{}, nil
+				}
+			}
+
 			return RegistryResult{Metadata: metadata}, nil
 		}
 		if errors.Is(err, registry.ErrNotFound) {
@@ -158,6 +191,15 @@ func Resolve(
 		Version:     pluginSpec.Version,
 		OriginalErr: registryNotFoundErr,
 	}
+}
+
+func (o Options) includeRegistryResolve() bool { return !o.DisableRegistryResolve && o.Experimental }
+
+func isAlreadyInstalled(ws PluginWorkspace, spec workspace.PluginSpec) (bool, error) {
+	if spec.Version != nil {
+		return ws.HasPlugin(spec), nil
+	}
+	return ws.HasPluginGTE(spec)
 }
 
 // PluginWorkspace dictates how resolution interacts with globally installed plugins.

@@ -116,7 +116,7 @@ packages:
 					},
 				}, nil
 			},
-			expected: ExternalSourceResult{},
+			expected: ExternalSourceResult{Spec: workspace.PluginSpec{Name: "aws"}},
 		},
 		{
 			name:       "local project package resolves to local path",
@@ -129,7 +129,19 @@ packages:
 				}, nil
 			},
 			setupProject: true,
-			expected:     LocalPathResult{LocalPath: "./local-path"},
+			expected:     LocalPathResult{LocalPath: "./local-path", RelativeToWorkspace: true},
+		},
+		{
+			name:       "local path directly in spec (not from project)",
+			pluginSpec: workspace.PluginSpec{Name: "./direct-local-path"},
+			registryResponse: func() (registry.Registry, error) {
+				return registry.Mock{
+					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+						return func(yield func(apitype.PackageMetadata, error) bool) {} // empty - not found
+					},
+				}, nil
+			},
+			expected: LocalPathResult{LocalPath: "./direct-local-path", RelativeToWorkspace: false},
 		},
 		{
 			name:       "local project package resolves to Git URL",
@@ -142,7 +154,7 @@ packages:
 				}, nil
 			},
 			setupProject: true,
-			expected:     ExternalSourceResult{},
+			expected:     ExternalSourceResult{Spec: workspace.PluginSpec{Name: "another-local"}},
 		},
 		{
 			name:       "Git URL plugin",
@@ -154,7 +166,12 @@ packages:
 					},
 				}, nil
 			},
-			expected: ExternalSourceResult{},
+			expected: ExternalSourceResult{
+				Spec: workspace.PluginSpec{
+					Name:              "example-plugin",
+					PluginDownloadURL: "git://github.com/example/plugin",
+				},
+			},
 		},
 		{
 			name:       "not found + no fallback available",
@@ -195,7 +212,7 @@ packages:
 					},
 				}, nil
 			},
-			expected: ExternalSourceResult{},
+			expected: ExternalSourceResult{Spec: workspace.PluginSpec{Name: "aws"}},
 		},
 		{
 			name:       "registry disabled ignores available registry package",
@@ -208,7 +225,7 @@ packages:
 					},
 				}, nil
 			},
-			expected: ExternalSourceResult{},
+			expected: ExternalSourceResult{Spec: workspace.PluginSpec{Name: "aws"}},
 		},
 
 		// Environment combination tests for unknown packages
@@ -249,7 +266,7 @@ packages:
 				}, nil
 			},
 			setupProject: true,
-			expected:     LocalPathResult{LocalPath: "./local-path"},
+			expected:     LocalPathResult{LocalPath: "./local-path", RelativeToWorkspace: true},
 		},
 		{
 			name:       "installed in workspace with exact version",
@@ -461,5 +478,5 @@ packages:
 	)
 	require.NoError(t, err)
 
-	assert.Equal(t, LocalPathResult{LocalPath: "./local-aws-override"}, result)
+	assert.Equal(t, LocalPathResult{LocalPath: "./local-aws-override", RelativeToWorkspace: true}, result)
 }
