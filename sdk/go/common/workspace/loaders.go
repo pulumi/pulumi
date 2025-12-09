@@ -15,8 +15,10 @@
 package workspace
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -288,6 +290,74 @@ func LoadPluginProject(path string) (*PluginProject, error) {
 	}
 
 	return &pluginProject, nil
+}
+
+// Detect the nearest enclosing Pulumi Project or Pulumi Plugin root directory.
+//
+// The returned [BaseProject] will be one of:
+// - *[PluginProject]
+// - *[Project]
+//
+// The returned string is the path to the returned file. If no plugin or project is found
+// upwards of wd, then [ErrBaseProjectNotFound] will be returned.
+func LoadBaseProjectFrom(wd string) (BaseProject, string, error) {
+	pluginPath, detectPluginErr := DetectPluginPathFrom(wd)
+	if detectPluginErr != nil && !errors.Is(detectPluginErr, ErrPluginNotFound) {
+		return nil, "", fmt.Errorf("unable to detect if %q is in a plugin path: %w", wd, detectPluginErr)
+	}
+
+	loadPlugin := func() (BaseProject, string, error) {
+		pluginProj, err := LoadPluginProject(pluginPath)
+		if err != nil {
+			return nil, "", err
+		}
+
+		return pluginProj, pluginPath, nil
+	}
+
+	projectPath, detectProjectErr := DetectProjectPathFrom(wd)
+	if detectProjectErr != nil && !errors.Is(detectProjectErr, ErrProjectNotFound) {
+		return nil, "", fmt.Errorf("unable to detect if %q is in a plugin path: %w", wd, detectProjectErr)
+	}
+
+	loadProject := func() (BaseProject, string, error) {
+		project, err := LoadProject(projectPath)
+		if err != nil {
+			return nil, "", err
+		}
+		return project, projectPath, nil
+	}
+
+	switch {
+	// If both are missing, signal an error.
+	case errors.Is(detectPluginErr, ErrPluginNotFound) &&
+		errors.Is(detectProjectErr, ErrProjectNotFound):
+		return nil, "", ErrBaseProjectNotFound
+	// We didn't find a plugin, which means we found a project.
+	case errors.Is(detectPluginErr, ErrPluginNotFound):
+		return loadProject()
+	// We didn't find a project, which means we found a plugin.
+	case errors.Is(detectProjectErr, ErrProjectNotFound):
+		return loadPlugin()
+	// We found both a plugin and a project.
+	//
+	// We want to load the innermost one. Since we know that both paths enclose wd,
+	// the innermost one is just the longest one.
+	default:
+		countSegments := func(path string) int { return strings.Count(path, string(filepath.Separator)) }
+
+		pluginDepth := countSegments(filepath.Clean(pluginPath))
+		projectDepth := countSegments(filepath.Clean(projectPath))
+		switch {
+		case pluginDepth > projectDepth:
+			return loadPlugin()
+		case projectDepth > pluginDepth:
+			return loadProject()
+		default:
+			return nil, "", fmt.Errorf("detected both %s and %s in %s",
+				filepath.Base(pluginPath), filepath.Base(projectPath), filepath.Dir(pluginPath))
+		}
+	}
 }
 
 // LoadPolicyPack reads a policy pack definition from a file.

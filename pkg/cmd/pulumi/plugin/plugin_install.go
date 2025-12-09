@@ -190,7 +190,15 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 			if err != nil {
 				return fmt.Errorf("getting current working directory: %w", err)
 			}
-			updatedSpec, err := cmd.resolvePluginSpec(ctx, pluginSpec, cwd)
+
+			var project workspace.BaseProject
+			if bp, _, err := workspace.LoadBaseProjectFrom(cwd); err == nil {
+				project = bp
+			} else if !errors.Is(err, workspace.ErrBaseProjectNotFound) {
+				return err
+			}
+
+			updatedSpec, err := cmd.resolvePluginSpec(ctx, pluginSpec, project)
 			if err != nil {
 				return err
 			}
@@ -335,11 +343,11 @@ func getFilePayload(file string, spec workspace.PluginSpec) (pkgWorkspace.Plugin
 
 // resolvePluginSpec resolves plugin specifications using various resolution strategies.
 func (cmd *pluginInstallCmd) resolvePluginSpec(
-	ctx context.Context, pluginSpec workspace.PluginSpec, absProjectDir string,
+	ctx context.Context, pluginSpec workspace.PluginSpec, project workspace.BaseProject,
 ) (workspace.PluginSpec, error) {
 	resolutionEnv := cmd.packageResolutionOptions
 	result, err := packageresolution.Resolve(
-		ctx, cmd.registry, packageresolution.DefaultWorkspace(), pluginSpec, resolutionEnv, absProjectDir)
+		ctx, cmd.registry, packageresolution.DefaultWorkspace(), pluginSpec, resolutionEnv, project)
 	if err != nil {
 		var packageNotFoundErr *packageresolution.PackageNotFoundError
 		if errors.As(err, &packageNotFoundErr) {
@@ -350,7 +358,7 @@ func (cmd *pluginInstallCmd) resolvePluginSpec(
 				)
 			}
 		}
-		return pluginSpec, fmt.Errorf("Unable to resolve package from name: %w", err)
+		return workspace.PluginSpec{}, fmt.Errorf("Unable to resolve package from name: %w", err)
 	}
 
 	switch res := result.(type) {
