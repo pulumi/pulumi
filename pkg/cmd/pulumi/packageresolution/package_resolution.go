@@ -100,8 +100,24 @@ type (
 	LocalPathResult struct {
 		// The path to the plugin on disk.
 		//
-		// LocalPath may be relative or absolute. If it is relative,
-		// RelativeToWorkspace **must** be used to resolve the path.
+		// If LocalPath is "./foo", that can mean one of 2 things:
+		// 1. That the spec contained workspace.PluginSpec{Name: "./foo"}.
+		//
+		// 2. That the spec contained workspace.PluginSpec{Name: "foo"} but the
+		//    Pulumi.yaml file that defined the packages contains
+		//
+		// 	packages: [ { name: foo, path: "./foo" } ]
+		//
+		// In the first case, the caller should resolve "./foo" as:
+		//
+		//	cwd, _ :=os.Getwd()
+		//	filepath.Join(cwd, "./foo")
+		//
+		// In the second case, the caller should resolve "./foo" as
+		//
+		//
+		//	filepath.Join(projectRootDirectory, "./foo")
+		//
 		LocalPath string
 		// RelativeToWorkspace is true if the local path was taken from the passed
 		// in workspace.BaseProject.
