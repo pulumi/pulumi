@@ -10,3 +10,10 @@ const unknownReplacementTrigger = new simple.Resource("unknownReplacementTrigger
     replacementTrigger: unknown.output,
 });
 const notReplacementTrigger = new simple.Resource("notReplacementTrigger", {value: true});
+const secretReplacementTrigger = new simple.Resource("secretReplacementTrigger", {value: true}, {
+    replacementTrigger: pulumi.secret([
+        3,
+        2,
+        1,
+    ]),
+});
