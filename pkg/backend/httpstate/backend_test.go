@@ -711,6 +711,13 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 			resp := apitype.CapabilitiesResponse{Capabilities: capabilities()}
 			err := json.NewEncoder(rw).Encode(resp)
 			require.NoError(t, err)
+		case "/api/user":
+			resp := map[string]interface{}{
+				"githubLogin":   "test-user",
+				"organizations": []map[string]string{},
+			}
+			err := json.NewEncoder(rw).Encode(resp)
+			require.NoError(t, err)
 		case "/api/user/organizations/default":
 			resp := apitype.GetDefaultOrganizationResponse{
 				GitHubLogin: "owner",
@@ -827,6 +834,13 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 		switch req.URL.Path {
 		case "/api/capabilities":
 			resp := apitype.CapabilitiesResponse{Capabilities: capabilities()}
+			err := json.NewEncoder(rw).Encode(resp)
+			require.NoError(t, err)
+		case "/api/user":
+			resp := map[string]interface{}{
+				"githubLogin":   "test-user",
+				"organizations": []map[string]string{},
+			}
 			err := json.NewEncoder(rw).Encode(resp)
 			require.NoError(t, err)
 		case "/api/user/organizations/default":

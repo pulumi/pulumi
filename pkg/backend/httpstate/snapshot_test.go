@@ -158,6 +158,21 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 			err := json.NewEncoder(rw).Encode(resp)
 			require.NoError(t, err)
 			return
+		case "/api/user":
+			resp := map[string]interface{}{
+				"githubLogin":   "test-user",
+				"organizations": []map[string]string{},
+			}
+			err := json.NewEncoder(rw).Encode(resp)
+			require.NoError(t, err)
+			return
+		case "/api/user/organizations/default":
+			resp := apitype.GetDefaultOrganizationResponse{
+				GitHubLogin: "test-org",
+			}
+			err := json.NewEncoder(rw).Encode(resp)
+			require.NoError(t, err)
+			return
 		case "/api/stacks/owner/project/stack/update/update-id/checkpoint",
 			"/api/stacks/owner/project/stack/update/update-id/checkpointverbatim",
 			"/api/stacks/owner/project/stack/update/update-id/checkpointdelta":
@@ -654,6 +669,21 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 						Configuration: json.RawMessage(`{"version":4}`),
 					},
 				}}
+				err := json.NewEncoder(rw).Encode(resp)
+				require.NoError(t, err)
+				return
+			case "/api/user":
+				resp := map[string]interface{}{
+					"githubLogin":   "test-user",
+					"organizations": []map[string]string{},
+				}
+				err := json.NewEncoder(rw).Encode(resp)
+				require.NoError(t, err)
+				return
+			case "/api/user/organizations/default":
+				resp := apitype.GetDefaultOrganizationResponse{
+					GitHubLogin: "test-org",
+				}
 				err := json.NewEncoder(rw).Encode(resp)
 				require.NoError(t, err)
 				return
