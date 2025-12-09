@@ -46,6 +46,7 @@ import {
     deserializeProperty,
     OutputResolvers,
     resolveProperties,
+    SerializationOptions,
     serializeProperties,
     serializeProperty,
     serializeResourceProperties,
@@ -623,7 +624,15 @@ export function registerResource(
                 req.setRemote(remote);
                 req.setReplaceonchangesList(opts.replaceOnChanges || []);
                 if (resop.replacementTrigger !== undefined) {
-                    req.setReplacementTrigger(gstruct.Value.fromJavaScript(resop.replacementTrigger));
+                    let options: SerializationOptions = {};
+
+                    if (Output.isInstance(resop.replacementTrigger)) {
+                        const isKnown = await resop.replacementTrigger.isKnown;
+                        options.keepOutputValues = !isKnown || isDryRun();
+                    }
+
+                    const serializedTrigger = await serializeProperty(`${label}.replacementTrigger`, resop.replacementTrigger, new Set(), options);
+                    req.setReplacementTrigger(gstruct.Value.fromJavaScript(serializedTrigger));
                 }
                 req.setPlugindownloadurl(opts.pluginDownloadURL || "");
                 if (opts.retainOnDelete !== undefined) {
@@ -1031,7 +1040,7 @@ export async function prepareResource(
         }
     }
 
-    const replacementTrigger = opts?.replacementTrigger ? await output(opts.replacementTrigger).promise() : undefined;
+    const replacementTrigger = opts?.replacementTrigger;
     const deletedWithURN = opts?.deletedWith ? await opts.deletedWith.urn.promise() : undefined;
     const replaceWithResources =
         replaceWithDependencies.length > 0 ? Array.from(new Set(replaceWithDependencies)) : undefined;
