@@ -37,6 +37,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/plugininstall"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -312,14 +313,15 @@ func installPackagesFromProject(
 				return err
 			}
 
-			if err := pkgWorkspace.InstallPluginAtPath(pctx, proj, stdout, stderr); err != nil {
+			if err := plugininstall.InstallPluginAtPath(pctx, proj, stdout, stderr); err != nil {
 				return errors.Join(fmt.Errorf("installing at '%s': %w", pctx.Pwd, err), pctx.Close())
 			}
 			return pctx.Close()
 		}
 	}
 
-	var wg pdag.DAG[node]
+	wg := pdag.New[node]()
+	newNode := func(n node) pdag.Node { node, done := wg.NewNode(n); done(); return node }
 	seen := map[string]pdag.Node{}
 	var findPlugins func(root pdag.Node, cwd string, proj workspace.BaseProject) error
 	findPlugins = func(root pdag.Node, cwd string, proj workspace.BaseProject) error {
@@ -341,7 +343,7 @@ func installPackagesFromProject(
 				if n, ok := seen[absPluginSource]; ok {
 					pluginInstall = &n
 				} else {
-					pkg := wg.NewNode(node{name, installPlugin(absPluginSource, pluginProject)})
+					pkg := newNode(node{name, installPlugin(absPluginSource, pluginProject)})
 					if err := wg.NewEdge(pkg, root); err != nil {
 						return err
 					}
@@ -353,7 +355,7 @@ func installPackagesFromProject(
 				}
 			}
 
-			installPkg := wg.NewNode(node{name, installPackage(cwd, name, proj, packageSpec)})
+			installPkg := newNode(node{name, installPackage(cwd, name, proj, packageSpec)})
 			if pluginInstall != nil {
 				if err := wg.NewEdge(*pluginInstall, installPkg); err != nil {
 					return err
@@ -369,7 +371,7 @@ func installPackagesFromProject(
 
 	// Search for plugins
 	if err := findPlugins(
-		wg.NewNode(node{name: "root", packageSpec: func(context.Context) error { return nil }}),
+		newNode(node{name: "root", packageSpec: func(context.Context) error { return nil }}),
 		root,
 		proj,
 	); err != nil {
