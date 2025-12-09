@@ -71,7 +71,7 @@ providers](component-providers), responding to
 ## Step generation
 
 The *step generator* (<gh-file:pulumi#pkg/resource/deploy/step_generator.go>)
-converts RegisterResourceEvents and ReadResourceEvents from the Pulumi program
+converts `RegisterResourceEvents` and `ReadResourceEvents` from the Pulumi program
 into executable [steps](steps).  Steps are the internal representation of
 everything that needs to happen to fulfill the goals of that program. The steps
 are passed to the step executor, which will do the actual work encoded in the
@@ -129,7 +129,7 @@ When a `RegisterResourceEvent` is received:
 6. Decision Point:
    - No existing state: Generate `CreateStep`
    - Has existing state: Proceed to diff
-7. Diff: Compute differences between old and new state
+7. Diff: Compute differences between old and new state (can happen async, see below)
 8. Generate Steps:
    - No changes: `SameStep`
    - Update: `UpdateStep`
@@ -191,13 +191,6 @@ flowchart TD
    - Existing managed, different ID: "Read replacement" - generate
      `ReadReplacementStep` to delete old managed resource and `ReplaceStep`
      marker
-
-Key Differences from Register:
-- No `Check` or analyzer calls
-- No diffing required
-- Always marked `External`
-- Simpler decision tree
-- Enables referencing existing infrastructure without managing it
 
 (step-generation-diff)=
 ### Diffing
@@ -397,6 +390,8 @@ necessary.
 ### Creating a resource
 
 ```mermaid
+:zoom:
+
 sequenceDiagram
     participant LH as Language host
     box Engine
@@ -420,6 +415,8 @@ sequenceDiagram
 ### Updating a resource
 
 ```mermaid
+:zoom:
+
 sequenceDiagram
     participant LH as Language host
     box Engine
@@ -445,6 +442,8 @@ sequenceDiagram
 ### Replacing a resource (create-before-replace)
 
 ```mermaid
+:zoom:
+
 sequenceDiagram
     participant LH as Language host
     box Engine
@@ -477,6 +476,8 @@ sequenceDiagram
 ### Replacing a resource (delete-before-replace)
 
 ```mermaid
+:zoom:
+
 sequenceDiagram
     participant LH as Language host
     box Engine
@@ -504,6 +505,8 @@ sequenceDiagram
 ### Importing a resource
 
 ```mermaid
+:zoom:
+
 sequenceDiagram
     participant LH as Language host
     box Engine
@@ -529,6 +532,8 @@ sequenceDiagram
 ### Leaving a resource unchanged
 
 ```mermaid
+:zoom:
+
 sequenceDiagram
     participant LH as Language host
     box Engine
@@ -552,6 +557,8 @@ sequenceDiagram
 ### Reading an external resource
 
 ```mermaid
+:zoom:
+
 sequenceDiagram
     participant LH as Language host
     box Engine
