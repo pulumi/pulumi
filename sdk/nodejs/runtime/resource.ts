@@ -624,14 +624,19 @@ export function registerResource(
                 req.setRemote(remote);
                 req.setReplaceonchangesList(opts.replaceOnChanges || []);
                 if (resop.replacementTrigger !== undefined) {
-                    let options: SerializationOptions = {};
+                    const options: SerializationOptions = {};
 
                     if (Output.isInstance(resop.replacementTrigger)) {
                         const isKnown = await resop.replacementTrigger.isKnown;
                         options.keepOutputValues = !isKnown || isDryRun();
                     }
 
-                    const serializedTrigger = await serializeProperty(`${label}.replacementTrigger`, resop.replacementTrigger, new Set(), options);
+                    const serializedTrigger = await serializeProperty(
+                        `${label}.replacementTrigger`,
+                        resop.replacementTrigger,
+                        new Set(),
+                        options,
+                    );
                     req.setReplacementTrigger(gstruct.Value.fromJavaScript(serializedTrigger));
                 }
                 req.setPlugindownloadurl(opts.pluginDownloadURL || "");
