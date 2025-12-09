@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/about
+  description: Print Node.js package manager information in `pulumi about`

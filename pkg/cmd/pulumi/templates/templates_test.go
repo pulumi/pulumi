@@ -143,7 +143,9 @@ func TestFilterOnName(t *testing.T) {
 		mockBackend := &backend.MockBackend{
 			GetReadOnlyCloudRegistryF: func() registry.Registry {
 				return &backend.MockCloudRegistry{
-					ListTemplatesF: listTemplates,
+					Mock: registry.Mock{
+						ListTemplatesF: listTemplates,
+					},
 				}
 			},
 		}
@@ -298,10 +300,12 @@ func TestSurfaceListTemplateErrors_RegistryTemplates(t *testing.T) {
 	somethingWentWrong := errors.New("something went wrong")
 
 	mockRegistry := &backend.MockCloudRegistry{
-		ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-			return func(yield func(apitype.TemplateMetadata, error) bool) {
-				yield(apitype.TemplateMetadata{}, somethingWentWrong)
-			}
+		Mock: registry.Mock{
+			ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+				return func(yield func(apitype.TemplateMetadata, error) bool) {
+					yield(apitype.TemplateMetadata{}, somethingWentWrong)
+				}
+			},
 		},
 	}
 
@@ -383,8 +387,10 @@ func TestSurfaceOnEmptyError_RegistryTemplates(t *testing.T) {
 	ctx := testContext(t)
 
 	mockRegistry := &backend.MockCloudRegistry{
-		ListTemplatesF: func(_ context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-			return func(func(apitype.TemplateMetadata, error) bool) {}
+		Mock: registry.Mock{
+			ListTemplatesF: func(_ context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+				return func(func(apitype.TemplateMetadata, error) bool) {}
+			},
 		},
 	}
 	mockBackend := &backend.MockBackend{
@@ -552,15 +558,17 @@ func createMockRegistrySource(
 	downloadFunc func(context.Context, string) (io.ReadCloser, error),
 ) *Source {
 	mockRegistry := &backend.MockCloudRegistry{
-		ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-			return func(yield func(apitype.TemplateMetadata, error) bool) {
-				yield(apitype.TemplateMetadata{
-					Name:        "name1",
-					DownloadURL: "example.com/download/name",
-				}, nil)
-			}
+		Mock: registry.Mock{
+			ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+				return func(yield func(apitype.TemplateMetadata, error) bool) {
+					yield(apitype.TemplateMetadata{
+						Name:        "name1",
+						DownloadURL: "example.com/download/name",
+					}, nil)
+				}
+			},
+			DownloadTemplateF: downloadFunc,
 		},
-		DownloadTemplateF: downloadFunc,
 	}
 	mockBackend := &backend.MockBackend{
 		GetReadOnlyCloudRegistryF: func() registry.Registry { return mockRegistry },
@@ -641,33 +649,35 @@ func TestTemplateDownload_Registry_Gzipped(t *testing.T) {
 func TestVCSBasedTemplateNames(t *testing.T) {
 	ctx := testContext(t)
 	mockRegistry := &backend.MockCloudRegistry{
-		ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-			assert.Nil(t, name)
-			return func(yield func(apitype.TemplateMetadata, error) bool) {
-				if !yield(apitype.TemplateMetadata{
-					Name:      "gh-org/repo/name",
-					Source:    "github",
-					Publisher: "pulumi-org",
-					RepoSlug:  ref("gh-org/repo"),
-				}, nil) {
-					return
+		Mock: registry.Mock{
+			ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+				assert.Nil(t, name)
+				return func(yield func(apitype.TemplateMetadata, error) bool) {
+					if !yield(apitype.TemplateMetadata{
+						Name:      "gh-org/repo/name",
+						Source:    "github",
+						Publisher: "pulumi-org",
+						RepoSlug:  ref("gh-org/repo"),
+					}, nil) {
+						return
+					}
+					if !yield(apitype.TemplateMetadata{
+						Name:      "gl-org/repo/name",
+						Source:    "gitlab",
+						Publisher: "pulumi-org",
+						RepoSlug:  ref("gl-org/repo"),
+					}, nil) {
+						return
+					}
+					if !yield(apitype.TemplateMetadata{
+						Name:      "just/has/slashes",
+						Source:    "private",
+						Publisher: "pulumi-org",
+					}, nil) {
+						return
+					}
 				}
-				if !yield(apitype.TemplateMetadata{
-					Name:      "gl-org/repo/name",
-					Source:    "gitlab",
-					Publisher: "pulumi-org",
-					RepoSlug:  ref("gl-org/repo"),
-				}, nil) {
-					return
-				}
-				if !yield(apitype.TemplateMetadata{
-					Name:      "just/has/slashes",
-					Source:    "private",
-					Publisher: "pulumi-org",
-				}, nil) {
-					return
-				}
-			}
+			},
 		},
 	}
 	mockBackend := &backend.MockBackend{
@@ -699,35 +709,37 @@ func TestVCSBasedTemplateNames(t *testing.T) {
 func TestVCSBasedTemplateNameFilter(t *testing.T) {
 	ctx := testContext(t)
 	mockRegistry := &backend.MockCloudRegistry{
-		ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-			assert.Nil(t, name)
-			return func(yield func(apitype.TemplateMetadata, error) bool) {
-				if !yield(apitype.TemplateMetadata{
-					Name:        "gh-org/repo/target",
-					Source:      "github",
-					Description: ref("This is from GH"),
-					Publisher:   "pulumi-org",
-					RepoSlug:    ref("gh-org/repo"),
-				}, nil) {
-					return
+		Mock: registry.Mock{
+			ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+				assert.Nil(t, name)
+				return func(yield func(apitype.TemplateMetadata, error) bool) {
+					if !yield(apitype.TemplateMetadata{
+						Name:        "gh-org/repo/target",
+						Source:      "github",
+						Description: ref("This is from GH"),
+						Publisher:   "pulumi-org",
+						RepoSlug:    ref("gh-org/repo"),
+					}, nil) {
+						return
+					}
+					if !yield(apitype.TemplateMetadata{
+						Name:      "gl-org/repo/name",
+						Source:    "gitlab",
+						Publisher: "pulumi-org",
+						RepoSlug:  ref("gl-org/repo"),
+					}, nil) {
+						return
+					}
+					if !yield(apitype.TemplateMetadata{
+						Name:        "target",
+						Source:      "private",
+						Description: ref("This is from the registry"),
+						Publisher:   "pulumi-org",
+					}, nil) {
+						return
+					}
 				}
-				if !yield(apitype.TemplateMetadata{
-					Name:      "gl-org/repo/name",
-					Source:    "gitlab",
-					Publisher: "pulumi-org",
-					RepoSlug:  ref("gl-org/repo"),
-				}, nil) {
-					return
-				}
-				if !yield(apitype.TemplateMetadata{
-					Name:        "target",
-					Source:      "private",
-					Description: ref("This is from the registry"),
-					Publisher:   "pulumi-org",
-				}, nil) {
-					return
-				}
-			}
+			},
 		},
 	}
 	mockBackend := &backend.MockBackend{
@@ -777,33 +789,35 @@ func TestRegistryTemplateResolution(t *testing.T) {
 	ctx := testContext(t)
 
 	mockRegistry := &backend.MockCloudRegistry{
-		ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-			return func(yield func(apitype.TemplateMetadata, error) bool) {
-				yield(apitype.TemplateMetadata{
-					Name:        "csharp-documented",
-					Source:      "private",
-					Publisher:   "pulumi_local",
-					Description: ref("A C# template"),
-				}, nil)
-				yield(apitype.TemplateMetadata{
-					Name:      "csharp-documented",
-					Source:    "github",
-					Publisher: "different-org",
-				}, nil)
-				yield(apitype.TemplateMetadata{
-					Name:        "gh-org/repo/target",
-					Source:      "github",
-					Publisher:   "pulumi-org",
-					RepoSlug:    ref("gh-org/repo"),
-					Description: ref("A template from VCS"),
-				}, nil)
-				yield(apitype.TemplateMetadata{
-					Name:        "whatever-template",
-					Source:      "private",
-					Publisher:   "test-org",
-					Description: ref("A template with special chars"),
-				}, nil)
-			}
+		Mock: registry.Mock{
+			ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+				return func(yield func(apitype.TemplateMetadata, error) bool) {
+					yield(apitype.TemplateMetadata{
+						Name:        "csharp-documented",
+						Source:      "private",
+						Publisher:   "pulumi_local",
+						Description: ref("A C# template"),
+					}, nil)
+					yield(apitype.TemplateMetadata{
+						Name:      "csharp-documented",
+						Source:    "github",
+						Publisher: "different-org",
+					}, nil)
+					yield(apitype.TemplateMetadata{
+						Name:        "gh-org/repo/target",
+						Source:      "github",
+						Publisher:   "pulumi-org",
+						RepoSlug:    ref("gh-org/repo"),
+						Description: ref("A template from VCS"),
+					}, nil)
+					yield(apitype.TemplateMetadata{
+						Name:        "whatever-template",
+						Source:      "private",
+						Publisher:   "test-org",
+						Description: ref("A template with special chars"),
+					}, nil)
+				}
+			},
 		},
 	}
 	mockBackend := &backend.MockBackend{

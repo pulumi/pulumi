@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli
+  description: Don't attempt to re-install plugin dependencies on load failure for plugins based on git with a nested path

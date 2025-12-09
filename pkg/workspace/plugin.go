@@ -322,7 +322,7 @@ func InstallPluginContent(ctx context.Context, spec workspace.PluginSpec, conten
 	// the progress bar.
 	contract.IgnoreClose(content)
 
-	err = InstallDependenciesForPluginSpec(ctx, spec, os.Stderr /* redirect stdout to stderr */, os.Stderr)
+	err = installDependenciesForPluginSpec(ctx, spec, os.Stderr /* redirect stdout to stderr */, os.Stderr)
 	if err != nil {
 		return err
 	}
@@ -331,7 +331,7 @@ func InstallPluginContent(ctx context.Context, spec workspace.PluginSpec, conten
 	return os.Remove(partialFilePath)
 }
 
-func InstallDependenciesForPluginSpec(ctx context.Context, spec workspace.PluginSpec, stdout, stderr io.Writer) error {
+func installDependenciesForPluginSpec(ctx context.Context, spec workspace.PluginSpec, stdout, stderr io.Writer) error {
 	dir, err := spec.DirPath()
 	if err != nil {
 		return err

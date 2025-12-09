@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Allow referencing multiple git/github/gitlab components from the same repo

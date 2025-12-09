@@ -83,11 +83,6 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			b := s.Backend()
-			if !b.SupportsTags() {
-				return fmt.Errorf("the current backend (%s) does not support stack tags", b.Name())
-			}
-
 			tags := s.Tags()
 			if value, ok := tags[name]; ok {
 				fmt.Printf("%v\n", value)
@@ -124,11 +119,6 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 			)
 			if err != nil {
 				return err
-			}
-
-			b := s.Backend()
-			if !b.SupportsTags() {
-				return fmt.Errorf("the current backend (%s) does not support stack tags", b.Name())
 			}
 
 			tags := s.Tags()
@@ -193,11 +183,6 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			b := s.Backend()
-			if !b.SupportsTags() {
-				return fmt.Errorf("the current backend (%s) does not support stack tags", b.Name())
-			}
-
 			tags := s.Tags()
 			delete(tags, name)
 
@@ -232,11 +217,6 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 			)
 			if err != nil {
 				return err
-			}
-
-			b := s.Backend()
-			if !b.SupportsTags() {
-				return fmt.Errorf("the current backend (%s) does not support stack tags", b.Name())
 			}
 
 			tags := s.Tags()

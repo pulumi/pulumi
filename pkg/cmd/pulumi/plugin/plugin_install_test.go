@@ -139,18 +139,20 @@ func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
 			return nil, nil
 		},
 		registry: &backend.MockCloudRegistry{
-			ListPackagesF: func(
-				ctx context.Context, name *string,
-			) iter.Seq2[apitype.PackageMetadata, error] {
-				return func(yield func(apitype.PackageMetadata, error) bool) {
-					yield(apitype.PackageMetadata{
-						Name:              "foo",
-						Publisher:         "pulumi",
-						Source:            "pulumi",
-						Version:           semver.Version{Major: 2},
-						PluginDownloadURL: "http://example.com/download",
-					}, nil)
-				}
+			Mock: registry.Mock{
+				ListPackagesF: func(
+					ctx context.Context, name *string,
+				) iter.Seq2[apitype.PackageMetadata, error] {
+					return func(yield func(apitype.PackageMetadata, error) bool) {
+						yield(apitype.PackageMetadata{
+							Name:              "foo",
+							Publisher:         "pulumi",
+							Source:            "pulumi",
+							Version:           semver.Version{Major: 2},
+							PluginDownloadURL: "http://example.com/download",
+						}, nil)
+					}
+				},
 			},
 		},
 		installPluginSpec: func(
@@ -191,28 +193,30 @@ func TestGetPluginDownloadFromKnownUnpublishedPackage(t *testing.T) {
 			return nil, nil
 		},
 		registry: &backend.MockCloudRegistry{
-			GetPackageF: func(
-				_ context.Context, source, publisher, name string, version *semver.Version,
-			) (apitype.PackageMetadata, error) {
-				switch version.String() {
-				case "1.48.0":
-					return apitype.PackageMetadata{}, registry.ErrNotFound
-				default:
-					require.Failf(t, "unknown version requested", "found %s", version)
-					return apitype.PackageMetadata{}, nil
-				}
-			},
-			ListPackagesF: func(
-				ctx context.Context, name *string,
-			) iter.Seq2[apitype.PackageMetadata, error] {
-				return func(yield func(apitype.PackageMetadata, error) bool) {
-					yield(apitype.PackageMetadata{
-						Name:      "random",
-						Publisher: "pulumi",
-						Source:    "pulumi",
-						Version:   semver.Version{Major: 2},
-					}, nil)
-				}
+			Mock: registry.Mock{
+				GetPackageF: func(
+					_ context.Context, source, publisher, name string, version *semver.Version,
+				) (apitype.PackageMetadata, error) {
+					switch version.String() {
+					case "1.48.0":
+						return apitype.PackageMetadata{}, registry.ErrNotFound
+					default:
+						require.Failf(t, "unknown version requested", "found %s", version)
+						return apitype.PackageMetadata{}, nil
+					}
+				},
+				ListPackagesF: func(
+					ctx context.Context, name *string,
+				) iter.Seq2[apitype.PackageMetadata, error] {
+					return func(yield func(apitype.PackageMetadata, error) bool) {
+						yield(apitype.PackageMetadata{
+							Name:      "random",
+							Publisher: "pulumi",
+							Source:    "pulumi",
+							Version:   semver.Version{Major: 2},
+						}, nil)
+					}
+				},
 			},
 		},
 		installPluginSpec: func(
@@ -254,10 +258,12 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 				return nil, nil
 			},
 			registry: &backend.MockCloudRegistry{
-				ListPackagesF: func(
-					ctx context.Context, name *string,
-				) iter.Seq2[apitype.PackageMetadata, error] {
-					return func(yield func(apitype.PackageMetadata, error) bool) {}
+				Mock: registry.Mock{
+					ListPackagesF: func(
+						ctx context.Context, name *string,
+					) iter.Seq2[apitype.PackageMetadata, error] {
+						return func(yield func(apitype.PackageMetadata, error) bool) {}
+					},
 				},
 			},
 		}
@@ -281,10 +287,12 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 				return nil, nil
 			},
 			registry: &backend.MockCloudRegistry{
-				ListPackagesF: func(
-					ctx context.Context, name *string,
-				) iter.Seq2[apitype.PackageMetadata, error] {
-					return func(yield func(apitype.PackageMetadata, error) bool) {}
+				Mock: registry.Mock{
+					ListPackagesF: func(
+						ctx context.Context, name *string,
+					) iter.Seq2[apitype.PackageMetadata, error] {
+						return func(yield func(apitype.PackageMetadata, error) bool) {}
+					},
 				},
 			},
 		}
@@ -353,8 +361,10 @@ packages:
 			return &semver.Version{Major: 1}, nil
 		},
 		registry: &backend.MockCloudRegistry{
-			ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
-				return func(yield func(apitype.PackageMetadata, error) bool) {}
+			Mock: registry.Mock{
+				ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+					return func(yield func(apitype.PackageMetadata, error) bool) {}
+				},
 			},
 		},
 		installPluginSpec: func(
@@ -389,23 +399,25 @@ func TestSuggestedPackagesDisplay(t *testing.T) {
 			return nil, nil
 		},
 		registry: &backend.MockCloudRegistry{
-			ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
-				return func(yield func(apitype.PackageMetadata, error) bool) {
-					if !yield(apitype.PackageMetadata{
-						Source:    "community",
-						Publisher: "example",
-						Name:      "similar-pkg",
-						Version:   semver.Version{Major: 1, Minor: 0, Patch: 0},
-					}, nil) {
-						return
+			Mock: registry.Mock{
+				ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+					return func(yield func(apitype.PackageMetadata, error) bool) {
+						if !yield(apitype.PackageMetadata{
+							Source:    "community",
+							Publisher: "example",
+							Name:      "similar-pkg",
+							Version:   semver.Version{Major: 1, Minor: 0, Patch: 0},
+						}, nil) {
+							return
+						}
+						yield(apitype.PackageMetadata{
+							Source:    "github",
+							Publisher: "someuser",
+							Name:      "another-similar-pkg",
+							Version:   semver.Version{Major: 2, Minor: 1, Patch: 0},
+						}, nil)
 					}
-					yield(apitype.PackageMetadata{
-						Source:    "github",
-						Publisher: "someuser",
-						Name:      "another-similar-pkg",
-						Version:   semver.Version{Major: 2, Minor: 1, Patch: 0},
-					}, nil)
-				}
+				},
 			},
 		},
 		installPluginSpec: func(

@@ -65,6 +65,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -569,7 +570,7 @@ func massageBlobPath(path string) (string, error) {
 	if strings.HasPrefix(path, "~") {
 		usr, err := user.Current()
 		if err != nil {
-			return "", fmt.Errorf("Could not determine current user to resolve `file://~` path.: %w", err)
+			return "", fmt.Errorf("could not determine current user to resolve `file://~` path.: %w", err)
 		}
 
 		if path == "~" {
@@ -582,7 +583,7 @@ func massageBlobPath(path string) (string, error) {
 	// For file:// backend, ensure a relative path is resolved. fileblob only supports absolute paths.
 	path, err = filepath.Abs(path)
 	if err != nil {
-		return "", fmt.Errorf("An IO error occurred while building the absolute path: %w", err)
+		return "", fmt.Errorf("an IO error occurred while building the absolute path: %w", err)
 	}
 
 	// Using example from https://godoc.org/gocloud.dev/blob/fileblob#example-package--OpenBucket
@@ -646,10 +647,6 @@ func (b *diyBackend) ListPolicyPacks(ctx context.Context, orgName string, _ back
 	apitype.ListPolicyPacksResponse, backend.ContinuationToken, error,
 ) {
 	return apitype.ListPolicyPacksResponse{}, nil, errors.New("DIY backend does not support resource policy")
-}
-
-func (b *diyBackend) SupportsTags() bool {
-	return false
 }
 
 func (b *diyBackend) SupportsTemplates() bool {
@@ -787,8 +784,8 @@ func (b *diyBackend) ListStacks(
 	// Get the parallel value from environment variable or use a default value
 	parallel := b.getParallel()
 
-	// Note that the provided stack filter is only partially honored, since fields like organizations and tags
-	// aren't persisted in the diy backend.
+	// First pass: filter by project and organizations
+	// Note that organization filtering is not supported for DIY backends
 	filteredStacks := slice.Prealloc[*diyBackendReference](len(stacks))
 	for _, stackRef := range stacks {
 		// We can check for project name filter here, but be careful about legacy stores where project is always blank.
@@ -797,6 +794,47 @@ func (b *diyBackend) ListStacks(
 			continue
 		}
 		filteredStacks = append(filteredStacks, stackRef)
+	}
+
+	// Second pass: filter by tags if requested
+	// This requires loading tags for each stack, so we do it separately
+	if filter.TagName != nil || filter.TagValue != nil {
+		tagFilteredStacks := slice.Prealloc[*diyBackendReference](len(filteredStacks))
+		for _, stackRef := range filteredStacks {
+			tags, err := b.loadStackTags(ctx, stackRef)
+			if err != nil {
+				// Skip stacks where we can't load tags, but log the error
+				logging.V(7).Infof("Failed to load tags for stack %s: %v", stackRef.String(), err)
+				continue
+			}
+
+			// Apply tag filtering
+			if filter.TagName != nil {
+				tagValue, exists := tags[*filter.TagName]
+				if !exists {
+					continue // Stack doesn't have the requested tag
+				}
+				if filter.TagValue != nil && tagValue != *filter.TagValue {
+					continue // Stack has the tag but with wrong value
+				}
+			}
+			// If we're only filtering by TagValue without TagName, search all tags
+			if filter.TagName == nil && filter.TagValue != nil {
+				found := false
+				for _, value := range tags {
+					if value == *filter.TagValue {
+						found = true
+						break
+					}
+				}
+				if !found {
+					continue
+				}
+			}
+
+			tagFilteredStacks = append(tagFilteredStacks, stackRef)
+		}
+		filteredStacks = tagFilteredStacks
 	}
 
 	// Create a worker pool to process stacks in parallel
@@ -1430,8 +1468,24 @@ func (b *diyBackend) getStacks(ctx context.Context) ([]*diyBackendReference, err
 func (b *diyBackend) UpdateStackTags(ctx context.Context,
 	stack backend.Stack, tags map[apitype.StackTagName]string,
 ) error {
-	// The diy backend does not currently persist tags.
-	return errors.New("stack tags not supported in diy mode")
+	ref, ok := stack.Ref().(*diyBackendReference)
+	if !ok {
+		return errors.New("invalid stack reference type")
+	}
+
+	if err := b.saveStackTags(ctx, ref, tags); err != nil {
+		return fmt.Errorf("failed to save stack tags: %w", err)
+	}
+
+	if diyStack, ok := stack.(*diyStack); ok {
+		tagsCopy := make(map[apitype.StackTagName]string, len(tags))
+		for k, v := range tags {
+			tagsCopy[k] = v
+		}
+		diyStack.tags.Store(&tagsCopy)
+	}
+
+	return nil
 }
 
 func (b *diyBackend) EncryptStackDeploymentSettingsSecret(ctx context.Context,
