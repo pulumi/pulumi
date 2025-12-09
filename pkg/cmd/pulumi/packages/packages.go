@@ -538,6 +538,17 @@ func ProviderFromSource(
 		return p, specOverride, nil
 	}
 
+	var project workspace.BaseProject
+	if bp, path, err := workspace.LoadBaseProjectFrom(pctx.Root); err == nil {
+		// We have found the right base project if and only if its located at the
+		// root of the passed in plugin.
+		if filepath.Dir(path) == pctx.Root {
+			project = bp
+		}
+	} else if !errors.Is(err, workspace.ErrBaseProjectNotFound) {
+		return Provider{}, nil, err
+	}
+
 	result, err := packageresolution.Resolve(
 		pctx.Base(),
 		reg,
@@ -548,7 +559,7 @@ func ProviderFromSource(
 			Experimental:                env.Experimental.Value(),
 			IncludeInstalledInWorkspace: true,
 		},
-		pctx.Root,
+		project,
 	)
 	if err != nil {
 		var packageNotFoundErr *packageresolution.PackageNotFoundError
@@ -563,7 +574,7 @@ func ProviderFromSource(
 
 	switch res := result.(type) {
 	case packageresolution.LocalPathResult:
-		return setupProviderFromPath(res.LocalPluginPathAbs, pctx)
+		return setupProviderFromPath(res.LocalPath, pctx)
 	case packageresolution.ExternalSourceResult, packageresolution.InstalledInWorkspaceResult:
 		return setupProvider(descriptor, nil)
 	case packageresolution.RegistryResult:

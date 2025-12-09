@@ -132,8 +132,9 @@ func DetectProjectStackDeploymentPath(stackName tokens.QName) (string, error) {
 }
 
 var (
-	ErrProjectNotFound = errors.New("no project file found")
-	ErrPluginNotFound  = errors.New("no plugin file found")
+	ErrProjectNotFound     = errors.New("no project file found")
+	ErrPluginNotFound      = errors.New("no plugin file found")
+	ErrBaseProjectNotFound = fmt.Errorf("%w and %w", ErrProjectNotFound, ErrPluginNotFound)
 )
 
 // DetectProjectPathFrom locates the closest project from the given path, searching "upwards" in the directory

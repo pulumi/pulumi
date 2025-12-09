@@ -16,7 +16,7 @@
 // when the source location is unknown beforehand. This is used throughout the
 // CLI to determine where to fetch packages from (registry, local paths, or external sources).
 //
-// This differs from registry.ResolvePackageFromName which specifically queries
+// This differs from [registry.ResolvePackageFromName] which specifically queries
 // the Pulumi registry. This package determines the resolution strategy first,
 // then may delegate to registry functions, local file operations, or external
 // source handling as appropriate.
@@ -26,7 +26,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -71,29 +70,29 @@ type Options struct {
 	IncludeInstalledInWorkspace bool
 }
 
+// The result of running [Resolve].
+//
+// Result will be one of 4 types:
+//
+// - [RegistryResult]: The package was resolved using Pulumi's Registry.
+// - [LocalPathResult]: The package is local and already on disk.
+// - [ExternalSourceResult]: The package is external, and should be downloaded normally.
+// - [InstalledInWorkspaceResult]: The package is already installed.
 type Result interface {
 	isResult()
 }
 
-type RegistryResult struct {
-	Metadata apitype.PackageMetadata
-}
-
-func (RegistryResult) isResult() {}
-
-type LocalPathResult struct {
-	LocalPluginPathAbs string
-}
-
-func (LocalPathResult) isResult() {}
-
-type ExternalSourceResult struct{}
-
-func (ExternalSourceResult) isResult() {}
-
-type InstalledInWorkspaceResult struct{}
-
+func (RegistryResult) isResult()             {}
+func (LocalPathResult) isResult()            {}
+func (ExternalSourceResult) isResult()       {}
 func (InstalledInWorkspaceResult) isResult() {}
+
+type (
+	RegistryResult             struct{ Metadata apitype.PackageMetadata }
+	LocalPathResult            struct{ LocalPath string }
+	ExternalSourceResult       struct{ Spec workspace.PluginSpec }
+	InstalledInWorkspaceResult struct{}
+)
 
 func Resolve(
 	ctx context.Context,
@@ -101,7 +100,7 @@ func Resolve(
 	ws PluginWorkspace,
 	pluginSpec workspace.PluginSpec,
 	options Options,
-	projectRoot string, // Pass "" for 'not in a project context'
+	projectOrPlugin workspace.BaseProject, // Pass nil for 'not in a project context'
 ) (Result, error) {
 	sourceToCheck := pluginSpec.Name
 
@@ -116,19 +115,19 @@ func Resolve(
 		}
 	}
 
-	if projectRoot != "" {
-		localSource := getLocalProjectPackageSource(projectRoot, pluginSpec.Name)
-		if localSource != "" {
-			sourceToCheck = localSource
+	if projectOrPlugin != nil {
+		localSource, ok := projectOrPlugin.GetPackageSpecs()[pluginSpec.Name]
+		if ok {
+			sourceToCheck = localSource.Source
 		}
 	}
 
 	if plugin.IsLocalPluginPath(ctx, sourceToCheck) {
-		return LocalPathResult{LocalPluginPathAbs: sourceToCheck}, nil
+		return LocalPathResult{LocalPath: sourceToCheck}, nil
 	}
 
 	if ws.IsExternalURL(sourceToCheck) || pluginSpec.IsGitPlugin() {
-		return ExternalSourceResult{}, nil
+		return ExternalSourceResult{Spec: pluginSpec}, nil
 	}
 
 	var registryNotFoundErr error
@@ -147,41 +146,21 @@ func Resolve(
 	}
 
 	if registry.IsPreRegistryPackage(pluginSpec.Name) {
-		return ExternalSourceResult{}, nil
+		return ExternalSourceResult{Spec: pluginSpec}, nil
 	}
 
 	if registryQueryErr != nil {
-		return RegistryResult{}, registryQueryErr
+		return nil, registryQueryErr
 	}
 
-	return ExternalSourceResult{}, &PackageNotFoundError{
+	return nil, &PackageNotFoundError{
 		Package:     pluginSpec.Name,
 		Version:     pluginSpec.Version,
 		OriginalErr: registryNotFoundErr,
 	}
 }
 
-func getLocalProjectPackageSource(
-	projectRoot string,
-	packageName string,
-) string {
-	projPath := filepath.Join(projectRoot, "Pulumi.yaml")
-	project, err := workspace.LoadProject(projPath)
-	if err != nil {
-		return ""
-	}
-
-	packages := project.GetPackageSpecs()
-	if packages == nil {
-		return ""
-	}
-
-	if packageSpec, exists := packages[packageName]; exists {
-		return packageSpec.Source
-	}
-	return ""
-}
-
+// PluginWorkspace dictates how resolution interacts with globally installed plugins.
 type PluginWorkspace interface {
 	HasPlugin(spec workspace.PluginSpec) bool
 	HasPluginGTE(spec workspace.PluginSpec) (bool, error)

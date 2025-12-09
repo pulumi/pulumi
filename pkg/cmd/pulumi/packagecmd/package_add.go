@@ -16,7 +16,6 @@ package packagecmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -186,73 +185,30 @@ func schemaDisplayName(schema *schema.Package) string {
 
 // Detect the nearest enclosing Pulumi Project or Pulumi Plugin root directory.
 func detectEnclosingPluginOrProject(ctx context.Context, wd string) (pluginOrProject, error) {
-	pluginPath, detectPluginErr := workspace.DetectPluginPathFrom(wd)
-	if detectPluginErr != nil && !errors.Is(detectPluginErr, workspace.ErrPluginNotFound) {
-		return pluginOrProject{}, fmt.Errorf("unable to detect if %q is in a plugin path: %w", wd, detectPluginErr)
+	baseProject, filePath, err := workspace.LoadBaseProjectFrom(wd)
+	if err != nil {
+		return pluginOrProject{}, err
 	}
 
-	loadPlugin := func() (pluginOrProject, error) {
-		pluginProj, err := workspace.LoadPluginProject(pluginPath)
-		if err != nil {
-			return pluginOrProject{}, err
-		}
-
+	switch baseProject := baseProject.(type) {
+	case *workspace.Project:
 		return pluginOrProject{
-			installRoot:     filepath.Dir(pluginPath),
-			projectFilePath: pluginPath,
-			proj:            pluginProj,
+			installRoot:     filepath.Dir(filePath),
+			projectFilePath: filePath,
+			reg:             cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, baseProject, cmdutil.Diag(), env.Global()),
+			proj:            baseProject,
+		}, nil
+	case *workspace.PluginProject:
+		return pluginOrProject{
+			installRoot:     filepath.Dir(filePath),
+			projectFilePath: filePath,
+			proj:            baseProject,
 			// Cloud registry is linked to a backend, but we don't have one
 			// available in a plugin. Use the unauthenticated registry.
 			reg: unauthenticatedregistry.New(cmdutil.Diag(), env.Global()),
 		}, nil
-	}
-
-	projectPath, detectProjectErr := workspace.DetectProjectPathFrom(wd)
-	if detectProjectErr != nil && !errors.Is(detectProjectErr, workspace.ErrProjectNotFound) {
-		return pluginOrProject{}, fmt.Errorf("unable to detect if %q is in a plugin path: %w", wd, detectProjectErr)
-	}
-
-	loadProject := func() (pluginOrProject, error) {
-		project, err := workspace.LoadProject(projectPath)
-		if err != nil {
-			return pluginOrProject{}, err
-		}
-		return pluginOrProject{
-			installRoot:     filepath.Dir(projectPath),
-			projectFilePath: projectPath,
-			reg:             cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, project, cmdutil.Diag(), env.Global()),
-			proj:            project,
-		}, nil
-	}
-
-	switch {
-	// If both are missing, signal an error.
-	case errors.Is(detectPluginErr, workspace.ErrPluginNotFound) &&
-		errors.Is(detectProjectErr, workspace.ErrProjectNotFound):
-		return pluginOrProject{}, errors.New("unable to find an enclosing plugin or project")
-	// We didn't find a plugin, which means we found a project.
-	case errors.Is(detectPluginErr, workspace.ErrPluginNotFound):
-		return loadProject()
-	// We didn't find a project, which means we found a plugin.
-	case errors.Is(detectProjectErr, workspace.ErrProjectNotFound):
-		return loadPlugin()
-	// We found both a plugin and a project.
-	//
-	// We want to load the innermost one. Since we know that both paths enclose wd,
-	// the innermost one is just the longest one.
 	default:
-		countSegments := func(path string) int { return strings.Count(path, string(filepath.Separator)) }
-
-		pluginDepth := countSegments(filepath.Clean(pluginPath))
-		projectDepth := countSegments(filepath.Clean(projectPath))
-		switch {
-		case pluginDepth > projectDepth:
-			return loadPlugin()
-		case projectDepth > pluginDepth:
-			return loadProject()
-		default:
-			return pluginOrProject{}, fmt.Errorf("detected both %s and %s in %s",
-				filepath.Base(pluginPath), filepath.Base(projectPath), filepath.Dir(pluginPath))
-		}
+		panic(fmt.Sprintf("workspace.LoadBaseProjectFrom promises that it will return "+
+			"either *workspace.Project or *workspace.PluginProject, found %T", baseProject))
 	}
 }
