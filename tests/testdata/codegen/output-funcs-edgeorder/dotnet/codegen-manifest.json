@@ -1,7 +1,7 @@
 {
   "emittedFiles": [
     ".gitattributes",
-    ".gitingore",
+    ".gitignore",
     "Enums.cs",
     "Inputs/ConfigurationFilters.cs",
     "Inputs/ConfigurationFiltersArgs.cs",

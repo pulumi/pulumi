@@ -2675,7 +2675,7 @@ func GeneratePackage(
 	files := codegen.Fs{}
 
 	files.Add(".gitattributes", codegen.GenGitAttributesFile())
-	files.Add(".gitingore", genGitignoreFile())
+	files.Add(".gitignore", genGitignoreFile())
 
 	for p, f := range extraFiles {
 		files.Add(p, f)

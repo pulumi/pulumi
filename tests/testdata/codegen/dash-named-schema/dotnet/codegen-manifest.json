@@ -1,7 +1,7 @@
 {
   "emittedFiles": [
     ".gitattributes",
-    ".gitingore",
+    ".gitignore",
     "Inputs/TopLevelArgs.cs",
     "Outputs/TopLevel.cs",
     "Provider.cs",

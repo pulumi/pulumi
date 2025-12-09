@@ -1,7 +1,7 @@
 {
   "emittedFiles": [
     ".gitattributes",
-    ".gitingore",
+    ".gitignore",
     "ArgFunction.cs",
     "Cat.cs",
     "Component.cs",

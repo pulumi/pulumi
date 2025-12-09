@@ -1,7 +1,7 @@
 {
   "emittedFiles": [
     ".gitattributes",
-    ".gitingore",
+    ".gitignore",
     "Outputs/InnerType.cs",
     "Provider.cs",
     "Pulumi.Urnid.csproj",
