@@ -218,6 +218,8 @@ tidy::
 tidy_fix::
 	./scripts/tidy.sh
 
+renovate:: tidy_fix
+
 validate_codecov_yaml::
 	curl --data-binary @codecov.yml https://codecov.io/validate
 
