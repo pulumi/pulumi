@@ -1917,6 +1917,8 @@ func TestAboutNodeJS(t *testing.T) {
 		"Did not contain expected output. stderr: \n%q", stderr)
 	// Assert we parsed the language plugin, we don't assert against the minor version number
 	assert.Regexp(t, regexp.MustCompile(`language\W+nodejs\W+3\.`), stdout)
+	assert.Contains(t, stdout, "packagemanager='yarn'")
+	assert.Regexp(t, regexp.MustCompile(`packagemanagerVersion='\d+\.\d+.\d+'`), stdout)
 }
 
 func TestConstructOutputValuesNode(t *testing.T) {

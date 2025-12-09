@@ -23,8 +23,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 )
 
 // yarnClassic is an implementation of PackageManager that uses Yarn Classic,
@@ -52,6 +55,20 @@ func newYarnClassic() (*yarnClassic, error) {
 
 func (yarn *yarnClassic) Name() string {
 	return "yarn"
+}
+
+func (yarn *yarnClassic) Version() (semver.Version, error) {
+	cmd := exec.Command(yarn.executable, "--version") //nolint:gosec
+	output, err := cmd.Output()
+	if err != nil {
+		return semver.Version{}, errutil.ErrorWithStderr(err, cmd.String())
+	}
+	versionStr := strings.TrimSpace(string(output))
+	version, err := semver.Parse(versionStr)
+	if err != nil {
+		return semver.Version{}, err
+	}
+	return version, nil
 }
 
 func (yarn *yarnClassic) Install(ctx context.Context, dir string, production bool, stdout, stderr io.Writer) error {

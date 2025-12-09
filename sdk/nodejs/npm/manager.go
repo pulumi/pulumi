@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -51,6 +52,8 @@ type PackageManager interface {
 	// Name is the name of the binary executable used to invoke this package manager.
 	// e.g. yarn or npm
 	Name() string
+	// Version returns the version of the package manager.
+	Version() (semver.Version, error)
 }
 
 // Pack runs `npm pack` in the given directory, packaging the Node.js app located there into a

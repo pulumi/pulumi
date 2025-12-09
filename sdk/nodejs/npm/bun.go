@@ -25,6 +25,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strings"
+
+	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 )
 
 type bunManager struct {
@@ -50,6 +54,20 @@ func newBun() (*bunManager, error) {
 
 func (bun *bunManager) Name() string {
 	return "bun"
+}
+
+func (bun *bunManager) Version() (semver.Version, error) {
+	cmd := exec.Command(bun.executable, "--version") //nolint:gosec
+	output, err := cmd.Output()
+	if err != nil {
+		return semver.Version{}, errutil.ErrorWithStderr(err, cmd.String())
+	}
+	versionStr := strings.TrimSpace(string(output))
+	version, err := semver.Parse(versionStr)
+	if err != nil {
+		return semver.Version{}, err
+	}
+	return version, nil
 }
 
 func (bun *bunManager) Install(ctx context.Context, dir string, production bool, stdout, stderr io.Writer) error {
