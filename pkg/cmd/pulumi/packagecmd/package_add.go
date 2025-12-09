@@ -24,9 +24,9 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/plugins"
+	"github.com/pulumi/pulumi/pkg/v3/plugins/link"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
@@ -97,61 +97,37 @@ from the parameters, as in:
 			}
 
 			sink := cmdutil.Diag()
-			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, nil, nil, pluginOrProject.installRoot, nil, false, nil)
+			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, nil, nil,
+				pluginOrProject.installRoot, pluginOrProject.proj.RuntimeInfo().Options(),
+				false, nil)
 			if err != nil {
 				return err
 			}
-			defer func() {
-				contract.IgnoreError(pctx.Close())
-			}()
+			defer contract.IgnoreClose(pctx)
 
 			pluginSource := args[0]
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
-
-			pkg, packageSpec, diags, err := packages.InstallPackage(
-				pluginOrProject.proj,
-				pctx,
-				pluginOrProject.proj.RuntimeInfo().Name(),
+			pkg, spec, err := plugins.GetSchemaFromSchemaSource(cmd.Context(),
+				pluginSource, parameters,
+				pctx.Host, pluginOrProject.reg,
 				pluginOrProject.installRoot,
-				pluginSource,
-				parameters,
-				pluginOrProject.reg,
-			)
-			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
+				sink)
 			if err != nil {
 				return err
 			}
 
-			// Build and add the package spec to the project
-			pluginSplit := strings.Split(pluginSource, "@")
-			source := pluginSplit[0]
+			if err := link.LinkInto(cmd.Context(),
+				pluginOrProject.proj, pluginOrProject.installRoot,
+				pkg, sink, pctx.Host); err != nil {
+				return err
+			}
 
-			if ext := filepath.Ext(source); ext == ".yaml" || ext == ".yml" || ext == ".json" {
+			if ext := filepath.Ext(strings.Split(pluginSource, "@")[0]); ext == ".yaml" || ext == ".yml" || ext == ".json" {
 				// We don't add file based schemas to the project's packages, since there is no actual underlying
 				// provider for them.
 				return nil
 			}
-
-			version := ""
-			if pkg.Version != nil {
-				version = pkg.Version.String()
-			} else if len(pluginSplit) == 2 {
-				version = pluginSplit[1]
-			}
-			if pkg.Parameterization != nil {
-				source = pkg.Parameterization.BaseProvider.Name
-				version = pkg.Parameterization.BaseProvider.Version.String()
-			}
-			if len(parameters.Args) > 0 && packageSpec != nil {
-				packageSpec.Parameters = parameters.Args
-			} else if packageSpec == nil {
-				packageSpec = &workspace.PackageSpec{
-					Source:     source,
-					Version:    version,
-					Parameters: parameters.Args,
-				}
-			}
-			pluginOrProject.proj.AddPackage(pkg.Name, *packageSpec)
+			pluginOrProject.proj.AddPackage(pkg.Name, spec)
 
 			fileName := filepath.Base(pluginOrProject.projectFilePath)
 			// Save the updated project
@@ -173,7 +149,7 @@ type pluginOrProject struct {
 	proj                         workspace.BaseProject
 }
 
-func schemaDisplayName(schema *schema.Package) string {
+func schemaDisplayName(schema *schema.PackageSpec) string {
 	name := schema.DisplayName
 	if name == "" {
 		name = schema.Name
