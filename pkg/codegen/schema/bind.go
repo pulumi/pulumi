@@ -1896,6 +1896,7 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 		Language:                  makeLanguageMap(spec.Language),
 		IsOverlay:                 spec.IsOverlay,
 		OverlaySupportedLanguages: spec.OverlaySupportedLanguages,
+		OutputStyleOnly:           spec.OutputStyleOnly,
 	}
 	t.functionDefs[token] = fn
 

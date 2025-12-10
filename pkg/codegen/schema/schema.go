@@ -569,6 +569,9 @@ type Function struct {
 	// the Resource is an Overlay (IsOverlay == true).
 	// Supported values are "nodejs", "python", "go", "csharp", "java", "yaml"
 	OverlaySupportedLanguages []string
+	// OutputStyleOnly is a marker field to indicate that this function should only generate output style methods, not
+	// plain invokes.
+	OutputStyleOnly bool
 }
 
 // NeedsOutputVersion determines if codegen should emit a ${fn}Output version that
@@ -1280,6 +1283,7 @@ func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
 		Outputs:                   outputs,
 		ReturnType:                returnType,
 		Language:                  lang,
+		OutputStyleOnly:           f.OutputStyleOnly,
 	}, nil
 }
 
@@ -1863,6 +1867,9 @@ type FunctionSpec struct {
 	// the Resource is an Overlay (IsOverlay == true).
 	// Supported values are "nodejs", "python", "go", "csharp", "java", "yaml"
 	OverlaySupportedLanguages []string `json:"overlaySupportedLanguages,omitempty" yaml:"overlaySupportedLanguages,omitempty"` //nolint:lll
+	// OutputStyleOnly is a marker field to indicate that this function should only generate output style methods, not
+	// plain invokes.
+	OutputStyleOnly bool `json:"outputStyleOnly,omitempty" yaml:"outputStyleOnly,omitempty"`
 }
 
 func emptyObject(data RawMessage) (bool, error) {
@@ -1936,6 +1943,12 @@ func unmarshalFunctionSpec(funcSpec *FunctionSpec, data map[string]RawMessage) e
 		}
 	}
 
+	if outputStyleOnly, ok := data["outputStyleOnly"]; ok {
+		if err := json.Unmarshal(outputStyleOnly, &funcSpec.OutputStyleOnly); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -2002,6 +2015,10 @@ func (funcSpec FunctionSpec) marshalFunctionSpec() (map[string]any, error) {
 
 	if len(funcSpec.Language) > 0 {
 		data["language"] = funcSpec.Language
+	}
+
+	if funcSpec.OutputStyleOnly {
+		data["outputStyleOnly"] = funcSpec.OutputStyleOnly
 	}
 
 	return data, nil
