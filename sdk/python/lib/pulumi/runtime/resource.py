@@ -921,6 +921,28 @@ def _create_custom_timeouts(
     return result
 
 
+def _serialized_value_to_struct_value(value: Any) -> struct_pb2.Value:
+    """
+    Converts a serialized Python value (from serialize_property) to a struct_pb2.Value.
+    """
+    if isinstance(value, struct_pb2.Value):
+        return value
+    if value is None or value == rpc.UNKNOWN:
+        return struct_pb2.Value(null_value=struct_pb2.NULL_VALUE)
+    if isinstance(value, bool):
+        return struct_pb2.Value(bool_value=value)
+    if isinstance(value, (int, float)):
+        return struct_pb2.Value(number_value=float(value))
+    if isinstance(value, str):
+        return struct_pb2.Value(string_value=value)
+    if isinstance(value, dict):
+        return struct_pb2.Value(struct_value=value)
+    if isinstance(value, (list, tuple)):
+        return struct_pb2.Value(list_value=value)
+
+    return struct_pb2.Value(string_value=str(value))
+
+
 def register_resource(
     res: "Resource",
     ty: str,
@@ -1064,6 +1086,14 @@ def register_resource(
             hook_prefix = f"{ty}_{name}"
             hooks = await _prepare_resource_hooks(opts.hooks, hook_prefix)
 
+            keep_output_values_for_trigger = False
+            if resolver.replacement_trigger and known_types.is_output(
+                resolver.replacement_trigger
+            ):
+                is_known = await resolver.replacement_trigger._is_known
+                is_dry_run = settings.is_dry_run()
+                keep_output_values_for_trigger = not is_known or is_dry_run
+
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
                 name=name,
@@ -1090,15 +1120,17 @@ def register_resource(
                 supportsPartialValues=True,
                 remote=remote,
                 replaceOnChanges=replace_on_changes or [],
-                replacement_trigger=await rpc.serialize_property(
-                    resolver.replacement_trigger,
-                    [],
-                    "replacement_trigger",
-                    res,
-                    None,
-                    None,
-                    False,
-                    False,
+                replacement_trigger=_serialized_value_to_struct_value(
+                    await rpc.serialize_property(
+                        resolver.replacement_trigger,
+                        [],
+                        "replacement_trigger",
+                        res,
+                        None,
+                        None,
+                        keep_output_values_for_trigger,
+                        False,
+                    )
                 )
                 if resolver.replacement_trigger
                 else None,
