@@ -39,11 +39,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -2561,4 +2563,24 @@ func TestOrganization(t *testing.T) {
 		},
 		Quick: true,
 	})
+}
+
+func TestGetLanguageRuntimeMetadata(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	e.ImportDirectory(filepath.Join("python", "uv"))
+	defer e.DeleteIfNotFailed()
+	project, err := workspace.LoadProject(filepath.Join(e.RootPath, "Pulumi.yaml"))
+	require.NoError(t, err)
+
+	meta, err := metadata.GetLanguageRuntimeMetadata(e.RootPath, project)
+
+	require.NoError(t, err)
+	require.Equal(t, meta["runtime.name"], "python")
+	require.Contains(t, meta, "runtime.version")
+	require.Contains(t, meta, "runtime.executable")
+	require.Equal(t, meta["runtime.metadata.toolchain"], "Uv")
+	require.Equal(t, meta["runtime.metadata.typechecker"], "None")
+	require.Contains(t, meta, "runtime.metadata.toolchainVersion")
 }
