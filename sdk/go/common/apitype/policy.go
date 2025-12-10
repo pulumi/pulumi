@@ -206,6 +206,28 @@ func (et EntityType) IsValid() bool {
 	return false
 }
 
+// PolicyGroupMode indicates the enforcement mode of a policy group
+type PolicyGroupMode string
+
+const (
+	// PolicyGroupModePreventative enforces policies during pulumi up/preview operations,
+	// potentially blocking resource changes when mandatory policies fail
+	PolicyGroupModePreventative PolicyGroupMode = "preventative"
+
+	// PolicyGroupModeAudit monitors resource compliance without blocking operations,
+	// reporting policy violations for continuous compliance monitoring
+	PolicyGroupModeAudit PolicyGroupMode = "audit"
+)
+
+// IsValid returns true if the PolicyGroupMode is a valid value.
+func (m PolicyGroupMode) IsValid() bool {
+	switch m {
+	case PolicyGroupModePreventative, PolicyGroupModeAudit:
+		return true
+	}
+	return false
+}
+
 // GetPolicyPackResponse is the response to get a specific Policy Pack's
 // metadata and policies.
 type GetPolicyPackResponse struct {
@@ -276,12 +298,13 @@ type ListPolicyGroupsResponse struct {
 // PolicyGroupSummary details the name, applicable stacks and the applied Policy
 // Packs for an organization's Policy Group.
 type PolicyGroupSummary struct {
-	Name                  string     `json:"name"`
-	IsOrgDefault          bool       `json:"isOrgDefault"`
-	NumStacks             int        `json:"numStacks"`
-	NumAccounts           int        `json:"numAccounts,omitempty"`
-	EntityType            EntityType `json:"entityType"`
-	NumEnabledPolicyPacks int        `json:"numEnabledPolicyPacks"`
+	Name                  string          `json:"name"`
+	IsOrgDefault          bool            `json:"isOrgDefault"`
+	NumStacks             int             `json:"numStacks"`
+	NumAccounts           int             `json:"numAccounts,omitempty"`
+	EntityType            EntityType      `json:"entityType"`
+	Mode                  PolicyGroupMode `json:"mode"`
+	NumEnabledPolicyPacks int             `json:"numEnabledPolicyPacks"`
 }
 
 // GetPolicyPackConfigSchemaResponse is the response that includes the JSON
