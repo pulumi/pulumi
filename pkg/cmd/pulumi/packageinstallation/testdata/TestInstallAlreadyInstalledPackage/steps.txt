@@ -1,0 +1,3 @@
+0. HasPluginGTE{PluginSpec{Name:"already-installed", Kind:"resource"}} -> {true, nil}
+1. GetPluginPath{PluginSpec{Name:"already-installed", Kind:"resource"}} -> {"/path/to/plugin", nil}
+2. RunPackage{"/path/to/plugin", nil} -> {nil, nil}
