@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -90,6 +91,7 @@ func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 		result: result,
 	}
 	if entry.ElideWrite {
+		contract.Assertf(result == nil, "expected elided write to have nil result channel")
 		return nil
 	}
 	return <-result
