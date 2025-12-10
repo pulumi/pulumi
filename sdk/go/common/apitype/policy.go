@@ -219,6 +219,15 @@ const (
 	PolicyGroupModeAudit PolicyGroupMode = "audit"
 )
 
+// IsValid returns true if the PolicyGroupMode is a valid value.
+func (m PolicyGroupMode) IsValid() bool {
+	switch m {
+	case PolicyGroupModePreventative, PolicyGroupModeAudit:
+		return true
+	}
+	return false
+}
+
 // GetPolicyPackResponse is the response to get a specific Policy Pack's
 // metadata and policies.
 type GetPolicyPackResponse struct {
