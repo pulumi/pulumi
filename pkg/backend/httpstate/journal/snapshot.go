@@ -72,9 +72,9 @@ func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 	}
 	defer j.wg.Done()
 
-	result := make(chan error, 1)
-	if entry.ElideWrite {
-		result = nil
+	var result chan error
+	if !entry.ElideWrite {
+		result = make(chan error, 1)
 	}
 
 	serialized, err := stack.BatchEncrypt(
