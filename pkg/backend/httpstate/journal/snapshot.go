@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -71,6 +72,11 @@ func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 	}
 	defer j.wg.Done()
 
+	var result chan error
+	if !entry.ElideWrite {
+		result = make(chan error, 1)
+	}
+
 	serialized, err := stack.BatchEncrypt(
 		j.context, j.sm, func(ctx context.Context, enc config.Encrypter,
 		) (apitype.JournalEntry, error) {
@@ -80,10 +86,13 @@ func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 		return fmt.Errorf("serializing journal entry: %w", err)
 	}
 
-	result := make(chan error, 1)
 	j.entries <- saveJournalEntry{
 		entry:  serialized,
 		result: result,
+	}
+	if entry.ElideWrite {
+		contract.Assertf(result == nil, "expected elided write to have nil result channel")
+		return nil
 	}
 	return <-result
 }
@@ -168,8 +177,11 @@ func sendBatches(
 				return
 			}
 
-			batch, results = append(batch, req.entry), append(results, req.result)
-			if cap(batch) == 0 {
+			batch = append(batch, req.entry)
+			if req.result != nil {
+				results = append(results, req.result)
+			}
+			if len(batch) == cap(batch) {
 				flush()
 			}
 		case <-ticker.C:
