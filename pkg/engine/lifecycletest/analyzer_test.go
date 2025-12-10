@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"testing"
 	"time"
 
@@ -49,8 +50,27 @@ func (p *testRequiredPolicy) Version() string {
 	return p.version
 }
 
-func (p *testRequiredPolicy) Install(_ *plugin.Context) (string, error) {
+func (p *testRequiredPolicy) Installed() bool {
+	// For tests, we consider the policy already installed
+	return true
+}
+
+func (p *testRequiredPolicy) LocalPath() (string, error) {
+	// Return empty path for tests - the analyzer loader will handle it
 	return "", nil
+}
+
+func (p *testRequiredPolicy) Download(
+	_ context.Context,
+	_ func(stream io.ReadCloser, size int64) io.ReadCloser,
+) (io.ReadCloser, int64, error) {
+	// Not used in tests since Installed() returns true
+	return nil, 0, nil
+}
+
+func (p *testRequiredPolicy) Install(_ *plugin.Context, _ io.ReadCloser, _, _ io.Writer) error {
+	// Not used in tests since Installed() returns true
+	return nil
 }
 
 func (p *testRequiredPolicy) Config() map[string]*json.RawMessage {
@@ -745,7 +765,8 @@ func TestAnalyzerCancellation(t *testing.T) {
 	op := lt.TestOp(Update)
 	_, err := op.RunWithContext(ctx, project, target, p.Options, false, nil, nil)
 
-	assert.ErrorContains(t, err, "BAIL: canceled")
+	assert.ErrorContains(t, err, "BAIL:")
+	assert.ErrorContains(t, err, "canceled")
 	assert.True(t, gracefulShutdown)
 }
 

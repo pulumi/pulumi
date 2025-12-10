@@ -243,6 +243,7 @@ func newDeployment(
 			opts,
 			plugctx,
 			false, /*returnInstallErrors*/
+			nil,   /*installTasks*/
 		)
 		if pluginErr != nil {
 			return nil, pluginErr
