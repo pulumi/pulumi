@@ -160,9 +160,7 @@ func sendBatches(
 
 			err := sendBatch(ctx, client, update, tokenSource, batch)
 			for _, r := range results {
-				if r != nil {
-					r <- err
-				}
+				r <- err
 			}
 			results, batch = results[:0], batch[:0]
 		}
@@ -179,7 +177,10 @@ func sendBatches(
 				return
 			}
 
-			batch, results = append(batch, req.entry), append(results, req.result)
+			batch = append(batch, req.entry)
+			if req.result != nil {
+				results = append(results, req.result)
+			}
 			if cap(batch) == 0 {
 				flush()
 			}
