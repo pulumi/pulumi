@@ -91,17 +91,6 @@ function deserialize_pulumirpc_ReadResourceResponse(buffer_arg) {
   return pulumi_resource_pb.ReadResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_RegisterErrorHookRequest(arg) {
-  if (!(arg instanceof pulumi_resource_pb.RegisterErrorHookRequest)) {
-    throw new Error('Expected argument of type pulumirpc.RegisterErrorHookRequest');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_RegisterErrorHookRequest(buffer_arg) {
-  return pulumi_resource_pb.RegisterErrorHookRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_pulumirpc_RegisterPackageRequest(arg) {
   if (!(arg instanceof pulumi_resource_pb.RegisterPackageRequest)) {
     throw new Error('Expected argument of type pulumirpc.RegisterPackageRequest');
@@ -306,7 +295,7 @@ registerStackInvokeTransform: {
     responseDeserialize: deserialize_google_protobuf_Empty,
   },
   // Register a resource hook that can be called by the engine during certain
-// steps of a resource's lifecycle.
+// steps of a resource's lifecycle or when errors occur during resource operations.
 registerResourceHook: {
     path: '/pulumirpc.ResourceMonitor/RegisterResourceHook',
     requestStream: false,
@@ -315,19 +304,6 @@ registerResourceHook: {
     responseType: google_protobuf_empty_pb.Empty,
     requestSerialize: serialize_pulumirpc_RegisterResourceHookRequest,
     requestDeserialize: deserialize_pulumirpc_RegisterResourceHookRequest,
-    responseSerialize: serialize_google_protobuf_Empty,
-    responseDeserialize: deserialize_google_protobuf_Empty,
-  },
-  // Register an error hook that can be called by the engine when errors occur
-// during resource operations.
-registerErrorHook: {
-    path: '/pulumirpc.ResourceMonitor/RegisterErrorHook',
-    requestStream: false,
-    responseStream: false,
-    requestType: pulumi_resource_pb.RegisterErrorHookRequest,
-    responseType: google_protobuf_empty_pb.Empty,
-    requestSerialize: serialize_pulumirpc_RegisterErrorHookRequest,
-    requestDeserialize: deserialize_pulumirpc_RegisterErrorHookRequest,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },

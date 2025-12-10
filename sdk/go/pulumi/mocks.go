@@ -373,12 +373,6 @@ func (m *mockMonitor) RegisterResourceHook(ctx context.Context, in *pulumirpc.Re
 	panic("not implemented")
 }
 
-func (m *mockMonitor) RegisterErrorHook(ctx context.Context, in *pulumirpc.RegisterErrorHookRequest,
-	opts ...grpc.CallOption,
-) (*emptypb.Empty, error) {
-	panic("not implemented")
-}
-
 func (m *mockMonitor) RegisterPackage(ctx context.Context, in *pulumirpc.RegisterPackageRequest,
 	opts ...grpc.CallOption,
 ) (*pulumirpc.RegisterPackageResponse, error) {

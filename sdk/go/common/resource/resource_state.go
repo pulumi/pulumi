@@ -69,8 +69,7 @@ type State struct {
 	HideDiff                []PropertyPath                // If set, the list of property paths to compact the diff for.
 	RefreshBeforeUpdate     bool                          // true if this resource should always be refreshed prior to updates.
 	ViewOf                  URN                           // If set, the URN of the resource this resource is a view of.
-	ResourceHooks           map[ResourceHookType][]string // The resource hooks attached to the resource, by type.
-	ErrorHooks              map[ErrorHookType]string      // The error hooks attached to the resource, by type. Single hook per type.
+	ResourceHooks           map[ResourceHookType][]string // The resource hooks attached to the resource, by type (includes both lifecycle and error hooks).
 }
 
 func cloneMapOfSlices[M ~map[K]V, K comparable, V ~[]E, E any](m M) M {
@@ -132,7 +131,6 @@ func (s *State) Copy() *State {
 		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,
 		ViewOf:                  s.ViewOf,
 		ResourceHooks:           cloneMapOfSlices(s.ResourceHooks),
-		ErrorHooks:              cloneMap(s.ErrorHooks),
 	}
 }
 
@@ -252,11 +250,10 @@ type NewState struct {
 	// If set, the URN of the resource this resource is a view of.
 	ViewOf URN // required
 
-	// The resource hooks attached to the resource, by type.
+	// The resource hooks attached to the resource, by type (includes both lifecycle and error hooks).
+	// For lifecycle hooks, multiple hooks per type are allowed.
+	// For error hooks, only one hook per type is allowed (first in the slice).
 	ResourceHooks map[ResourceHookType][]string // required
-
-	// The error hooks attached to the resource, by type.
-	ErrorHooks map[ErrorHookType]string // required
 }
 
 // Make consumes the NewState to create a *State.
@@ -304,7 +301,6 @@ func (s NewState) Make() *State {
 		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,
 		ViewOf:                  s.ViewOf,
 		ResourceHooks:           s.ResourceHooks,
-		ErrorHooks:              s.ErrorHooks,
 	}
 }
 

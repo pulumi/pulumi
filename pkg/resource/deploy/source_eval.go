@@ -103,7 +103,6 @@ func NewEvalSource(
 	runinfo *EvalRunInfo,
 	defaultProviderInfo map[tokens.Package]workspace.PackageDescriptor,
 	resourceHooks *ResourceHooks,
-	errorHooks *ErrorHooks,
 	opts EvalSourceOptions,
 ) Source {
 	return &evalSource{
@@ -111,7 +110,6 @@ func NewEvalSource(
 		runinfo:             runinfo,
 		defaultProviderInfo: defaultProviderInfo,
 		resourceHooks:       resourceHooks,
-		errorHooks:          errorHooks,
 		opts:                opts,
 	}
 }
@@ -120,8 +118,7 @@ type evalSource struct {
 	plugctx             *plugin.Context                                // the plugin context.
 	runinfo             *EvalRunInfo                                   // the directives to use when running the program.
 	defaultProviderInfo map[tokens.Package]workspace.PackageDescriptor // the default provider versions for this source.
-	resourceHooks       *ResourceHooks                                 // the resource hook registry.
-	errorHooks          *ErrorHooks                                    // the error hook registry.
+	resourceHooks       *ResourceHooks                                 // the resource hook registry (includes both lifecycle and error hooks).
 	opts                EvalSourceOptions                              // options for the evaluation source.
 }
 
@@ -726,7 +723,6 @@ type resmon struct {
 	resourceTransformsLock    sync.Mutex
 	resourceTransforms        map[resource.URN][]TransformFunction // option transformation functions per resource
 	resourceHooks             *ResourceHooks
-	errorHooks                *ErrorHooks
 	callbacksLock             sync.Mutex
 	callbacks                 map[string]*CallbacksClient // callbacks clients per target address
 	grpcDialOptions           DialOptions
@@ -788,7 +784,6 @@ func newResourceMonitor(
 		opts:                src.opts,
 		callbacks:           map[string]*CallbacksClient{},
 		resourceHooks:       src.resourceHooks,
-		errorHooks:          src.errorHooks,
 		resourceTransforms:  map[resource.URN][]TransformFunction{},
 		packageRefMap:       map[string]providers.ProviderRequest{},
 		grpcDialOptions:     src.plugctx.DialOptions,
@@ -1701,11 +1696,18 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 
 	return func(ctx context.Context, urn resource.URN, id resource.ID,
 		name string, typ tokens.Type, newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
-	) error {
-		logging.V(6).Infof("ResourceHook calling hook %q for urn %s", name, urn)
+		errs []error,
+	) (bool, error) {
+		isErrorHook := errs != nil
+		hookType := "ResourceHook"
+		if isErrorHook {
+			hookType = "ErrorHook"
+		}
+		logging.V(6).Infof("%s calling hook %q for urn %s", hookType, name, urn)
+
 		var mNewInputs, mOldInputs, mNewOutputs, mOldOutputs *structpb.Struct
 		mOpts := plugin.MarshalOptions{
-			Label:            fmt.Sprintf("ResourceMonitor.ResourceHook(%s, %s)", name, urn),
+			Label:            fmt.Sprintf("ResourceMonitor.%s(%s, %s)", hookType, name, urn),
 			KeepUnknowns:     true,
 			KeepSecrets:      true,
 			KeepResources:    true,
@@ -1714,27 +1716,49 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 		if newInputs != nil {
 			mNewInputs, err = plugin.MarshalProperties(newInputs, mOpts)
 			if err != nil {
-				return fmt.Errorf("marshaling new inputs for resource hook %q: %w", name, err)
+				if isErrorHook {
+					return false, fmt.Errorf("marshaling new inputs for %s %q: %w", hookType, name, err)
+				}
+				return false, fmt.Errorf("marshaling new inputs for %s %q: %w", hookType, name, err)
 			}
 		}
 		if oldInputs != nil {
 			mOldInputs, err = plugin.MarshalProperties(oldInputs, mOpts)
 			if err != nil {
-				return fmt.Errorf("marshaling old inputs for resource hook %q: %w", name, err)
+				if isErrorHook {
+					return false, fmt.Errorf("marshaling old inputs for %s %q: %w", hookType, name, err)
+				}
+				return false, fmt.Errorf("marshaling old inputs for %s %q: %w", hookType, name, err)
 			}
 		}
 		if newOutputs != nil {
 			mNewOutputs, err = plugin.MarshalProperties(newOutputs, mOpts)
 			if err != nil {
-				return fmt.Errorf("marshaling new outputs for resource hook %q: %w", name, err)
+				if isErrorHook {
+					return false, fmt.Errorf("marshaling new outputs for %s %q: %w", hookType, name, err)
+				}
+				return false, fmt.Errorf("marshaling new outputs for %s %q: %w", hookType, name, err)
 			}
 		}
 		if oldOutputs != nil {
 			mOldOutputs, err = plugin.MarshalProperties(oldOutputs, mOpts)
 			if err != nil {
-				return fmt.Errorf("marshaling old outputs for resource hook %q: %w", name, err)
+				if isErrorHook {
+					return false, fmt.Errorf("marshaling old outputs for %s %q: %w", hookType, name, err)
+				}
+				return false, fmt.Errorf("marshaling old outputs for %s %q: %w", hookType, name, err)
 			}
 		}
+
+		// Convert errors to strings for error hooks
+		var errorsSoFar []string
+		if isErrorHook {
+			errorsSoFar = make([]string, len(errs))
+			for i, err := range errs {
+				errorsSoFar[i] = err.Error()
+			}
+		}
+
 		reqBytes, err := proto.Marshal(&pulumirpc.ResourceHookRequest{
 			Urn:        string(urn),
 			Id:         string(id),
@@ -1744,28 +1768,37 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 			OldInputs:  mOldInputs,
 			NewOutputs: mNewOutputs,
 			OldOutputs: mOldOutputs,
+			Errors:     errorsSoFar,
 		})
 		if err != nil {
-			return fmt.Errorf("marshaling resource hook request for %q: %w", name, err)
+			if isErrorHook {
+				return false, fmt.Errorf("marshaling %s request for %q: %w", hookType, name, err)
+			}
+			return false, fmt.Errorf("marshaling %s request for %q: %w", hookType, name, err)
 		}
 		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
 			Token:   cb.Token,
 			Request: reqBytes,
 		})
 		if err != nil {
-			logging.V(6).Infof("ResourceHook %q call error: %v", name, err)
-			return err
+			logging.V(6).Infof("%s %q call error: %v", hookType, name, err)
+			return false, err
 		}
 		var response pulumirpc.ResourceHookResponse
 		err = proto.Unmarshal(resp.Response, &response)
 		if err != nil {
-			return fmt.Errorf("unmarshaling resource hook response for %q: %w", name, err)
+			return false, fmt.Errorf("unmarshaling %s response for %q: %w", hookType, name, err)
 		}
-		logging.V(6).Infof("ResourceHook %s returned %q", name, response.Error)
+		if isErrorHook {
+			logging.V(6).Infof("%s %s returned retry=%v error=%q", hookType, name, response.Retry, response.Error)
+		} else {
+			logging.V(6).Infof("%s %s returned error=%q", hookType, name, response.Error)
+		}
 		if response.Error != "" {
-			return errors.New(response.Error)
+			return false, errors.New(response.Error)
 		}
-		return nil
+
+		return response.Retry, nil
 	}, nil
 }
 
@@ -1786,111 +1819,8 @@ func (rm *resmon) RegisterResourceHook(ctx context.Context, req *pulumirpc.Regis
 	return nil, err
 }
 
-// Wrap the error hook callback so the engine can call the callback server in
-// the language runtime, which will then execute the hook. The wrapper takes
-// care of all the necessary marshalling and unmarshalling.
-func (rm *resmon) wrapErrorHookCallback(name string, cb *pulumirpc.Callback) (ErrorHookFunction, error) {
-	client, err := rm.GetCallbacksClient(cb.Target)
-	if err != nil {
-		return nil, err
-	}
-
-	return func(ctx context.Context, urn resource.URN, id resource.ID,
-		name string, typ tokens.Type, newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
-		errs []error,
-	) (bool, error) {
-		logging.V(6).Infof("ErrorHook calling hook %q for urn %s", name, urn)
-		var mNewInputs, mOldInputs, mNewOutputs, mOldOutputs *structpb.Struct
-		mOpts := plugin.MarshalOptions{
-			Label:            fmt.Sprintf("ResourceMonitor.ErrorHook(%s, %s)", name, urn),
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepOutputValues: true,
-		}
-		if newInputs != nil {
-			mNewInputs, err = plugin.MarshalProperties(newInputs, mOpts)
-			if err != nil {
-				return false, fmt.Errorf("marshaling new inputs for error hook %q: %w", name, err)
-			}
-		}
-		if oldInputs != nil {
-			mOldInputs, err = plugin.MarshalProperties(oldInputs, mOpts)
-			if err != nil {
-				return false, fmt.Errorf("marshaling old inputs for error hook %q: %w", name, err)
-			}
-		}
-		if newOutputs != nil {
-			mNewOutputs, err = plugin.MarshalProperties(newOutputs, mOpts)
-			if err != nil {
-				return false, fmt.Errorf("marshaling new outputs for error hook %q: %w", name, err)
-			}
-		}
-		if oldOutputs != nil {
-			mOldOutputs, err = plugin.MarshalProperties(oldOutputs, mOpts)
-			if err != nil {
-				return false, fmt.Errorf("marshaling old outputs for error hook %q: %w", name, err)
-			}
-		}
-
-		errorsSoFar := make([]string, len(errs))
-		for i, err := range errs {
-			errorsSoFar[i] = err.Error()
-		}
-
-		reqBytes, err := proto.Marshal(&pulumirpc.ErrorHookRequest{
-			Urn:        string(urn),
-			Id:         string(id),
-			Name:       name,
-			Type:       string(typ),
-			NewInputs:  mNewInputs,
-			OldInputs:  mOldInputs,
-			NewOutputs: mNewOutputs,
-			OldOutputs: mOldOutputs,
-			Errors:     errorsSoFar,
-		})
-		if err != nil {
-			return false, fmt.Errorf("marshaling error hook request for %q: %w", name, err)
-		}
-		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
-			Token:   cb.Token,
-			Request: reqBytes,
-		})
-		if err != nil {
-			logging.V(6).Infof("ErrorHook %q call error: %v", name, err)
-			return false, err
-		}
-		var response pulumirpc.ErrorHookResponse
-		err = proto.Unmarshal(resp.Response, &response)
-		if err != nil {
-			return false, fmt.Errorf("unmarshaling error hook response for %q: %w", name, err)
-		}
-		logging.V(6).Infof("ErrorHook %s returned retry=%v error=%q", name, response.Retry, response.Error)
-		if response.Error != "" {
-			return false, errors.New(response.Error)
-		}
-		return response.Retry, nil
-	}, nil
-}
-
-func (rm *resmon) RegisterErrorHook(ctx context.Context, req *pulumirpc.RegisterErrorHookRequest) (
-	*emptypb.Empty, error,
-) {
-	logging.V(6).Infof("RegisterErrorHook %q", req.Name)
-	wrapped, err := rm.wrapErrorHookCallback(req.Name, req.Callback)
-	if err != nil {
-		return nil, err
-	}
-	hook := ErrorHook{
-		Name:     req.Name,
-		Callback: wrapped,
-	}
-	err = rm.errorHooks.RegisterErrorHook(hook)
-	return nil, err
-}
-
 // inheritFromParent returns a new goal that inherits from the given parent goal.
-// Currently inherits DeletedWith, Protect, RetainOnDelete, and ErrorHooks from parent.
+// Currently inherits DeletedWith, Protect, RetainOnDelete, and error hooks from parent.
 func inheritFromParent(child resource.Goal, parent resource.Goal) *resource.Goal {
 	goal := child
 	if goal.DeletedWith == "" {
@@ -1902,12 +1832,20 @@ func inheritFromParent(child resource.Goal, parent resource.Goal) *resource.Goal
 	if goal.RetainOnDelete == nil {
 		goal.RetainOnDelete = parent.RetainOnDelete
 	}
-	if goal.ErrorHooks == nil {
-		goal.ErrorHooks = make(map[resource.ErrorHookType]string)
+	if goal.ResourceHooks == nil {
+		goal.ResourceHooks = make(map[resource.ResourceHookType][]string)
 	}
-	for hookType, hookName := range parent.ErrorHooks {
-		if _, exists := goal.ErrorHooks[hookType]; !exists {
-			goal.ErrorHooks[hookType] = hookName
+	// Inherit only error hooks from parent
+	errorHookTypes := []resource.ResourceHookType{
+		resource.OnErrorCreate,
+		resource.OnErrorUpdate,
+		resource.OnErrorDelete,
+	}
+	for _, hookType := range errorHookTypes {
+		if parentHooks, has := parent.ResourceHooks[hookType]; has && len(parentHooks) > 0 {
+			if _, exists := goal.ResourceHooks[hookType]; !exists {
+				goal.ResourceHooks[hookType] = parentHooks
+			}
 		}
 	}
 	return &goal
@@ -2608,10 +2546,23 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 		hooksValue := reflect.ValueOf(hooks)
 		if hooksValue.IsValid() {
-			hooks := reflect.Indirect(hooksValue).FieldByName(string(hookType))
-			if hooks.IsValid() {
-				hooks := hooks.Interface().([]string)
-				names = append(names, hooks...)
+			field := reflect.Indirect(hooksValue).FieldByName(string(hookType))
+			if field.IsValid() {
+				// Error hooks are optional strings (*string), lifecycle hooks are repeated strings ([]string)
+				if hookType.IsErrorHook() {
+					if field.Kind() == reflect.Ptr && !field.IsNil() {
+						hookName := field.Elem().String()
+						if hookName != "" {
+							names = append(names, hookName)
+						}
+					}
+				} else {
+					// Lifecycle hooks are slices
+					if field.Kind() == reflect.Slice {
+						hooksSlice := field.Interface().([]string)
+						names = append(names, hooksSlice...)
+					}
+				}
 			}
 		}
 		return names
@@ -2625,6 +2576,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		resource.AfterUpdate,
 		resource.BeforeDelete,
 		resource.AfterDelete,
+		resource.OnErrorCreate,
+		resource.OnErrorUpdate,
+		resource.OnErrorDelete,
 	} {
 		names := getHookNames(hookType)
 		if len(names) > 0 {
@@ -2632,21 +2586,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				resourceHooks = make(map[resource.ResourceHookType][]string)
 			}
 			resourceHooks[hookType] = append(resourceHooks[hookType], names...)
-		}
-	}
-
-	var errorHooks map[resource.ErrorHookType]string
-	errorHooksBinding := req.GetErrorHooks()
-	if errorHooksBinding != nil {
-		errorHooks = make(map[resource.ErrorHookType]string)
-		if errorHooksBinding.OnErrorCreate != nil && *errorHooksBinding.OnErrorCreate != "" {
-			errorHooks[resource.OnErrorCreate] = *errorHooksBinding.OnErrorCreate
-		}
-		if errorHooksBinding.OnErrorUpdate != nil && *errorHooksBinding.OnErrorUpdate != "" {
-			errorHooks[resource.OnErrorUpdate] = *errorHooksBinding.OnErrorUpdate
-		}
-		if errorHooksBinding.OnErrorDelete != nil && *errorHooksBinding.OnErrorDelete != "" {
-			errorHooks[resource.OnErrorDelete] = *errorHooksBinding.OnErrorDelete
 		}
 	}
 
@@ -2833,7 +2772,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			SourcePosition:          sourcePosition,
 			StackTrace:              stackTrace,
 			ResourceHooks:           resourceHooks,
-			ErrorHooks:              errorHooks,
 		}.Make()
 		if goal.Parent != "" {
 			rm.resGoalsLock.Lock()

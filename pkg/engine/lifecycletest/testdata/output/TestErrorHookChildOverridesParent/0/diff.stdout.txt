@@ -1,0 +1,11 @@
+<{%fg 2%}>+ my_component: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::my_component::parent]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typB: (create)
+<{%fg 2%}>        [urn=urn:pulumi:test::test::my_component$pkgA:m:typB::childWithOwnHook]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+    <{%fg 1%}>1 errored<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

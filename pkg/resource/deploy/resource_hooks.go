@@ -25,6 +25,9 @@ import (
 )
 
 // ResourceHookFunction is the shape of a resource hook.
+// For resource hooks, `errors` is nil and the `retry` return is ignored. For error hooks,
+// the `errors` list contains all the errors encountered (most recent first), and `retry`
+// indicates whether to retry the operation.
 type ResourceHookFunction func(
 	ctx context.Context,
 	urn resource.URN,
@@ -35,7 +38,8 @@ type ResourceHookFunction func(
 	oldInputs resource.PropertyMap,
 	newOutputs resource.PropertyMap,
 	oldOutputs resource.PropertyMap,
-) error
+	errors []error,
+) (retry bool, err error)
 
 // ResourceHook represents a resource hook with its (wrapped) callback and options.
 type ResourceHook struct {

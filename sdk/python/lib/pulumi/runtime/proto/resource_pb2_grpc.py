@@ -63,11 +63,6 @@ class ResourceMonitorStub(object):
                 request_serializer=pulumi_dot_resource__pb2.RegisterResourceHookRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
-        self.RegisterErrorHook = channel.unary_unary(
-                '/pulumirpc.ResourceMonitor/RegisterErrorHook',
-                request_serializer=pulumi_dot_resource__pb2.RegisterErrorHookRequest.SerializeToString,
-                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-                )
         self.RegisterPackage = channel.unary_unary(
                 '/pulumirpc.ResourceMonitor/RegisterPackage',
                 request_serializer=pulumi_dot_resource__pb2.RegisterPackageRequest.SerializeToString,
@@ -136,15 +131,7 @@ class ResourceMonitorServicer(object):
 
     def RegisterResourceHook(self, request, context):
         """Register a resource hook that can be called by the engine during certain
-        steps of a resource's lifecycle.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def RegisterErrorHook(self, request, context):
-        """Register an error hook that can be called by the engine when errors occur
-        during resource operations.
+        steps of a resource's lifecycle or when errors occur during resource operations.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -216,11 +203,6 @@ def add_ResourceMonitorServicer_to_server(servicer, server):
             'RegisterResourceHook': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterResourceHook,
                     request_deserializer=pulumi_dot_resource__pb2.RegisterResourceHookRequest.FromString,
-                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-            ),
-            'RegisterErrorHook': grpc.unary_unary_rpc_method_handler(
-                    servicer.RegisterErrorHook,
-                    request_deserializer=pulumi_dot_resource__pb2.RegisterErrorHookRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'RegisterPackage': grpc.unary_unary_rpc_method_handler(
@@ -393,23 +375,6 @@ class ResourceMonitor(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/RegisterResourceHook',
             pulumi_dot_resource__pb2.RegisterResourceHookRequest.SerializeToString,
-            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
-
-    @staticmethod
-    def RegisterErrorHook(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/RegisterErrorHook',
-            pulumi_dot_resource__pb2.RegisterErrorHookRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

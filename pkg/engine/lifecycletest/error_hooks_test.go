@@ -62,12 +62,12 @@ func TestErrorHookNotCalledOnSuccessCreate(t *testing.T) {
 			hookCalled = true
 			return false, nil
 		}
-		errorHook, err := deploytest.NewErrorHook(monitor, callbacks, "myErrorHook", hookFun)
+		errorHook, err := deploytest.NewHook(monitor, callbacks, "myErrorHook", hookFun, false)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
-			ErrorHookBindings: deploytest.ErrorHookBindings{
+			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnErrorCreate: errorHook,
 			},
 		})
@@ -129,12 +129,12 @@ func TestErrorHookNotCalledOnSuccessUpdate(t *testing.T) {
 			hookCalled = true
 			return false, nil
 		}
-		errorHook, err := deploytest.NewErrorHook(monitor, callbacks, "myErrorHook", hookFun)
+		errorHook, err := deploytest.NewHook(monitor, callbacks, "myErrorHook", hookFun, false)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
-			ErrorHookBindings: deploytest.ErrorHookBindings{
+			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnErrorUpdate: errorHook,
 			},
 		})
@@ -199,11 +199,11 @@ func TestErrorHookNotCalledOnSuccessDelete(t *testing.T) {
 			hookCalled = true
 			return false, nil
 		}
-		errorHook, err := deploytest.NewErrorHook(monitor, callbacks, "myErrorHook", hookFun)
+		errorHook, err := deploytest.NewHook(monitor, callbacks, "myErrorHook", hookFun, false)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			ErrorHookBindings: deploytest.ErrorHookBindings{
+			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnErrorDelete: errorHook,
 			},
 		})
@@ -263,12 +263,12 @@ func TestErrorHookFailWithoutRetryCreate(t *testing.T) {
 			hookErrors = errors
 			return false, nil
 		}
-		errorHook, err := deploytest.NewErrorHook(monitor, callbacks, "myErrorHook", hookFun)
+		errorHook, err := deploytest.NewHook(monitor, callbacks, "myErrorHook", hookFun, false)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
-			ErrorHookBindings: deploytest.ErrorHookBindings{
+			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnErrorCreate: errorHook,
 			},
 		})
@@ -332,12 +332,12 @@ func TestErrorHookFailWithoutRetryUpdate(t *testing.T) {
 			hookErrors = errors
 			return false, nil
 		}
-		errorHook, err := deploytest.NewErrorHook(monitor, callbacks, "myErrorHook", hookFun)
+		errorHook, err := deploytest.NewHook(monitor, callbacks, "myErrorHook", hookFun, false)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
-			ErrorHookBindings: deploytest.ErrorHookBindings{
+			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnErrorUpdate: errorHook,
 			},
 		})
@@ -401,11 +401,11 @@ func TestErrorHookFailWithoutRetryDelete(t *testing.T) {
 			hookErrors = errors
 			return false, nil
 		}
-		errorHook, err := deploytest.NewErrorHook(monitor, callbacks, "myErrorHook", hookFun)
+		errorHook, err := deploytest.NewHook(monitor, callbacks, "myErrorHook", hookFun, false)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			ErrorHookBindings: deploytest.ErrorHookBindings{
+			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnErrorDelete: errorHook,
 			},
 		})
@@ -464,12 +464,12 @@ func TestErrorHookMaxRetriesCreate(t *testing.T) {
 			require.Len(t, errors, hookCallCount, "hook should receive all errors so far")
 			return true, nil
 		}
-		errorHook, err := deploytest.NewErrorHook(monitor, callbacks, "myErrorHook", hookFun)
+		errorHook, err := deploytest.NewHook(monitor, callbacks, "myErrorHook", hookFun, false)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
-			ErrorHookBindings: deploytest.ErrorHookBindings{
+			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnErrorCreate: errorHook,
 			},
 		})
@@ -534,12 +534,12 @@ func TestErrorHookMaxRetriesUpdate(t *testing.T) {
 			require.Len(t, errors, hookCallCount, "hook should receive all errors so far")
 			return true, nil
 		}
-		errorHook, err := deploytest.NewErrorHook(monitor, callbacks, "myErrorHook", hookFun)
+		errorHook, err := deploytest.NewHook(monitor, callbacks, "myErrorHook", hookFun, false)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
-			ErrorHookBindings: deploytest.ErrorHookBindings{
+			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnErrorUpdate: errorHook,
 			},
 		})
@@ -606,11 +606,11 @@ func TestErrorHookMaxRetriesDelete(t *testing.T) {
 			require.Len(t, errors, hookCallCount, "hook should receive all errors so far")
 			return true, nil
 		}
-		errorHook, err := deploytest.NewErrorHook(monitor, callbacks, "myErrorHook", hookFun)
+		errorHook, err := deploytest.NewHook(monitor, callbacks, "myErrorHook", hookFun, false)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			ErrorHookBindings: deploytest.ErrorHookBindings{
+			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnErrorDelete: errorHook,
 			},
 		})
@@ -679,12 +679,12 @@ func TestErrorHookRetryOnceThenSucceedCreate(t *testing.T) {
 			require.Len(t, errors, 1, "hook should receive one error on first call")
 			return true, nil
 		}
-		errorHook, err := deploytest.NewErrorHook(monitor, callbacks, "myErrorHook", hookFun)
+		errorHook, err := deploytest.NewHook(monitor, callbacks, "myErrorHook", hookFun, false)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
-			ErrorHookBindings: deploytest.ErrorHookBindings{
+			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnErrorCreate: errorHook,
 			},
 		})
@@ -756,12 +756,12 @@ func TestErrorHookRetryOnceThenSucceedUpdate(t *testing.T) {
 			require.Len(t, errors, 1, "hook should receive one error on first call")
 			return true, nil
 		}
-		errorHook, err := deploytest.NewErrorHook(monitor, callbacks, "myErrorHook", hookFun)
+		errorHook, err := deploytest.NewHook(monitor, callbacks, "myErrorHook", hookFun, false)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
-			ErrorHookBindings: deploytest.ErrorHookBindings{
+			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnErrorUpdate: errorHook,
 			},
 		})
@@ -833,11 +833,11 @@ func TestErrorHookRetryOnceThenSucceedDelete(t *testing.T) {
 			require.Len(t, errors, 1, "hook should receive one error on first call")
 			return true, nil
 		}
-		errorHook, err := deploytest.NewErrorHook(monitor, callbacks, "myErrorHook", hookFun)
+		errorHook, err := deploytest.NewHook(monitor, callbacks, "myErrorHook", hookFun, false)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			ErrorHookBindings: deploytest.ErrorHookBindings{
+			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnErrorDelete: errorHook,
 			},
 		})
@@ -910,7 +910,7 @@ func TestErrorHookTwoSeparateResources(t *testing.T) {
 			require.Equal(t, "resA", name, "hook1 should only be called for resA")
 			return true, nil
 		}
-		errorHook1, err := deploytest.NewErrorHook(monitor, callbacks, "hook1", hook1Fun)
+		errorHook1, err := deploytest.NewHook(monitor, callbacks, "hook1", hook1Fun, false)
 		require.NoError(t, err)
 
 		hook2Fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
@@ -922,18 +922,18 @@ func TestErrorHookTwoSeparateResources(t *testing.T) {
 			return true, nil
 		}
 
-		errorHook2, err := deploytest.NewErrorHook(monitor, callbacks, "hook2", hook2Fun)
+		errorHook2, err := deploytest.NewHook(monitor, callbacks, "hook2", hook2Fun, false)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			ErrorHookBindings: deploytest.ErrorHookBindings{
+			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnErrorCreate: errorHook1,
 			},
 		})
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			ErrorHookBindings: deploytest.ErrorHookBindings{
+			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnErrorCreate: errorHook2,
 			},
 		})
@@ -1003,7 +1003,7 @@ func TestErrorHookRetryDoesNotAffectSubsequent(t *testing.T) {
 			require.Equal(t, "resA", name, "hook1 should only be called for resA")
 			return true, nil
 		}
-		errorHook1, err := deploytest.NewErrorHook(monitor, callbacks, "hook1", hook1Fun)
+		errorHook1, err := deploytest.NewHook(monitor, callbacks, "hook1", hook1Fun, false)
 		require.NoError(t, err)
 
 		hook2Fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
@@ -1014,18 +1014,18 @@ func TestErrorHookRetryDoesNotAffectSubsequent(t *testing.T) {
 			require.Fail(t, "hook2 should never be called since resB succeeds")
 			return false, nil
 		}
-		errorHook2, err := deploytest.NewErrorHook(monitor, callbacks, "hook2", hook2Fun)
+		errorHook2, err := deploytest.NewHook(monitor, callbacks, "hook2", hook2Fun, false)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			ErrorHookBindings: deploytest.ErrorHookBindings{
+			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnErrorCreate: errorHook1,
 			},
 		})
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			ErrorHookBindings: deploytest.ErrorHookBindings{
+			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnErrorCreate: errorHook2,
 			},
 		})
@@ -1052,4 +1052,159 @@ func TestErrorHookRetryDoesNotAffectSubsequent(t *testing.T) {
 
 	require.Equal(t, 1, hook1Count, "hook1 should be called exactly once for resA")
 	require.Equal(t, 0, hook2Count, "hook2 should never be called since resB succeeds")
+}
+
+func TestErrorHookInheritance(t *testing.T) {
+	t.Parallel()
+
+	parentHookCalled := false
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					// child inherits parent hook
+					if req.URN.Name() == "child" {
+						return plugin.CreateResponse{}, errors.New("create failed")
+					}
+					return plugin.CreateResponse{
+						ID:         resource.ID("123"),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		parentHookFun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errors []error,
+		) (bool, error) {
+			parentHookCalled = true
+			require.Equal(t, "child", name, "inherited hook should be called for child resource")
+			require.Len(t, errors, 1, "hook should receive the error")
+			return false, nil
+		}
+		parentErrorHook, err := deploytest.NewHook(monitor, callbacks, "parentErrorHook", parentHookFun, false)
+		require.NoError(t, err)
+
+		parentResp, err := monitor.RegisterResource("my_component", "parent", false, deploytest.ResourceOptions{
+			ResourceHookBindings: deploytest.ResourceHookBindings{
+				OnErrorCreate: parentErrorHook,
+			},
+		})
+		require.NoError(t, err)
+
+		// child has no hooks - should inherit parent's error hook
+		_, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
+			Parent: parentResp.URN,
+		})
+		require.NoError(t, err)
+
+		err = monitor.SignalAndWaitForShutdown(context.Background())
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+	project := p.GetProject()
+
+	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+
+	require.Error(t, err, "operation should fail because child resource creation fails")
+	require.True(t, parentHookCalled, "parent error hook should be called for child resource (inherited)")
+}
+
+func TestErrorHookChildOverridesParent(t *testing.T) {
+	t.Parallel()
+
+	parentHookCalled := false
+	childHookCalled := false
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					// childWithOwnHook uses its own hook, not parent's
+					if req.URN.Name() == "childWithOwnHook" {
+						return plugin.CreateResponse{}, errors.New("create failed")
+					}
+					return plugin.CreateResponse{
+						ID:         resource.ID("123"),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		parentHookFun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errors []error,
+		) (bool, error) {
+			parentHookCalled = true
+			require.Fail(t, "parent hook should NOT be called when child has its own hook")
+			return false, nil
+		}
+		parentErrorHook, err := deploytest.NewHook(monitor, callbacks, "parentErrorHook", parentHookFun, false)
+		require.NoError(t, err)
+
+		childHookFun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errors []error,
+		) (bool, error) {
+			childHookCalled = true
+			require.Equal(t, "childWithOwnHook", name, "child's own hook should be called, not parent's")
+			require.Len(t, errors, 1, "hook should receive the error")
+			return false, nil
+		}
+		childErrorHook, err := deploytest.NewHook(monitor, callbacks, "childErrorHook", childHookFun, false)
+		require.NoError(t, err)
+
+		parentResp, err := monitor.RegisterResource("my_component", "parent", false, deploytest.ResourceOptions{
+			ResourceHookBindings: deploytest.ResourceHookBindings{
+				OnErrorCreate: parentErrorHook,
+			},
+		})
+		require.NoError(t, err)
+
+		// childWithOwnHook has its own hook - should NOT inherit parent's hook (child overrides)
+		_, err = monitor.RegisterResource("pkgA:m:typB", "childWithOwnHook", true, deploytest.ResourceOptions{
+			Parent: parentResp.URN,
+			ResourceHookBindings: deploytest.ResourceHookBindings{
+				OnErrorCreate: childErrorHook,
+			},
+		})
+		require.NoError(t, err)
+
+		err = monitor.SignalAndWaitForShutdown(context.Background())
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+	project := p.GetProject()
+
+	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+
+	require.Error(t, err, "operation should fail because childWithOwnHook resource creation fails")
+	require.False(t, parentHookCalled, "parent error hook should NOT be called when child has its own hook")
+	require.True(t, childHookCalled, "childWithOwnHook's own hook should be called (not parent's)")
 }

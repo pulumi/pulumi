@@ -16,7 +16,7 @@ package lifecycletest
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"strings"
 	"testing"
 
@@ -56,34 +56,36 @@ func TestResourceHookDryRun(t *testing.T) {
 
 		// Create hook that runs on a dry run (and non-dry run)
 		funTrue := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
-			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
-		) error {
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errors []error,
+		) (bool, error) {
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			require.Equal(t, name, "resA")
 			require.Equal(t, typ, tokens.Type("pkgA:m:typA"))
+			require.Nil(t, errors, "lifecycle hooks should have nil errors")
 			if info.DryRun {
 				hookTrueCalledOnDryRun = true
 			} else {
 				hookTrueCalled = true
 			}
-			return nil
+			return false, nil
 		}
 		myHookTrue, err := deploytest.NewHook(monitor, callbacks, "myHookTrue", funTrue, true)
 		require.NoError(t, err)
 
 		// Create hook that does not run on a dry run
 		funFalse := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
-			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
-		) error {
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errors []error,
+		) (bool, error) {
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			require.Equal(t, name, "resA")
 			require.Equal(t, typ, tokens.Type("pkgA:m:typA"))
+			require.Nil(t, errors, "lifecycle hooks should have nil errors")
 			if info.DryRun {
 				require.Fail(t, "The hook should not have been called")
 			} else {
 				hookFalseCalled = true
 			}
-			return nil
+			return false, nil
 		}
 		myHookFalse, err := deploytest.NewHook(monitor, callbacks, "myHookFalse", funFalse, false)
 		require.NoError(t, err)
@@ -155,8 +157,9 @@ func TestResourceHooksAfterCreate(t *testing.T) {
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
-			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
-		) error {
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errors []error,
+		) (bool, error) {
+			require.Nil(t, errors, "lifecycle hooks should have nil errors")
 			hookCalled = true
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			require.Equal(t, name, "resA")
@@ -165,7 +168,7 @@ func TestResourceHooksAfterCreate(t *testing.T) {
 			require.Nil(t, oldInputs, "there are no old inputs for creates")
 			require.Equal(t, map[string]any{"a": "A", "b": "B", "c": "C"}, newOutputs.Mappable())
 			require.Nil(t, oldOutputs, "there are no old outputs for creates")
-			return nil
+			return false, nil
 		}
 		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
 		require.NoError(t, err)
@@ -211,8 +214,9 @@ func TestResourceHookBeforeCreateError(t *testing.T) {
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
-			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
-		) error {
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errors []error,
+		) (bool, error) {
+			require.Nil(t, errors, "lifecycle hooks should have nil errors")
 			hookCalled = true
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			require.Equal(t, name, "resA")
@@ -221,7 +225,7 @@ func TestResourceHookBeforeCreateError(t *testing.T) {
 			require.Nil(t, oldInputs)
 			require.Nil(t, oldOutputs)
 			require.Nil(t, newOutputs)
-			return errors.New("Oh no")
+			return false, stderrors.New("Oh no")
 		}
 		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
 		require.NoError(t, err)
@@ -298,8 +302,9 @@ func TestResourceHookAfterDelete(t *testing.T) {
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
-			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
-		) error {
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errors []error,
+		) (bool, error) {
+			require.Nil(t, errors, "lifecycle hooks should have nil errors")
 			hookCalled = true
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			require.Equal(t, name, "resA")
@@ -308,7 +313,7 @@ func TestResourceHookAfterDelete(t *testing.T) {
 			require.Equal(t, map[string]any{"a": "A"}, oldInputs.Mappable(), "reveives the old inputs")
 			require.Nil(t, newOutputs, "deletes have no new outputs")
 			require.Equal(t, map[string]any{"a": "A"}, oldOutputs.Mappable(), "receives the old outputs")
-			return nil
+			return false, nil
 		}
 		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
 		require.NoError(t, err)
@@ -408,8 +413,9 @@ func TestResourceHookComponentAfterDelete(t *testing.T) {
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
-			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
-		) error {
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errors []error,
+		) (bool, error) {
+			require.Nil(t, errors, "lifecycle hooks should have nil errors")
 			hookCalled = true
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typB::resA"))
 			require.Equal(t, name, "resA")
@@ -421,7 +427,7 @@ func TestResourceHookComponentAfterDelete(t *testing.T) {
 			require.Equal(t, map[string]any{"a": "A"}, oldInputs.Mappable(), "reveives the old inputs")
 			require.Nil(t, newOutputs, "deletes have no new outputs")
 			require.Equal(t, map[string]any{"outA": "outA"}, oldOutputs.Mappable(), "receives the old outputs")
-			return nil
+			return false, nil
 		}
 		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
 		require.NoError(t, err)
@@ -498,8 +504,9 @@ func TestResourceHookBeforeDeleteError(t *testing.T) {
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
-			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
-		) error {
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errors []error,
+		) (bool, error) {
+			require.Nil(t, errors, "lifecycle hooks should have nil errors")
 			hookCalled = true
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			require.Equal(t, name, "resA")
@@ -508,7 +515,7 @@ func TestResourceHookBeforeDeleteError(t *testing.T) {
 			require.Equal(t, map[string]any{"a": "A"}, oldInputs.Mappable(), "receives old inputs")
 			require.Nil(t, newOutputs, "deletes have no new outputs")
 			require.Equal(t, map[string]any{"a": "A"}, oldOutputs.Mappable(), "receives old outputs")
-			return errors.New("Oh no")
+			return false, stderrors.New("Oh no")
 		}
 		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
 		require.NoError(t, err)
@@ -611,17 +618,19 @@ func TestResourceHookBeforeUpdate(t *testing.T) {
 		// then update the resource to use a different hook. We expect this hook
 		// to not be called during the update.
 		shouldNotBeCalled := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
-			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
-		) error {
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errors []error,
+		) (bool, error) {
+			require.Nil(t, errors, "lifecycle hooks should have nil errors")
 			require.Fail(t, "Hook should not be called")
-			return nil
+			return false, nil
 		}
 		shouldNotBeCalledHook, err := deploytest.NewHook(monitor, callbacks, "shouldNotBeCalled", shouldNotBeCalled, true)
 		require.NoError(t, err)
 
 		shouldBeCalled := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
-			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
-		) error {
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errors []error,
+		) (bool, error) {
+			require.Nil(t, errors, "lifecycle hooks should have nil errors")
 			hookCalled = true
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			require.Equal(t, name, "resA")
@@ -640,7 +649,7 @@ func TestResourceHookBeforeUpdate(t *testing.T) {
 				"baz":  float64(24),
 			}, oldOutputs.Mappable(), "Hook receieves the old outputs")
 			require.Nil(t, newOutputs, "there are no new outputs for before update hooks")
-			return nil
+			return false, nil
 		}
 		shouldBeCalledHook, err := deploytest.NewHook(monitor, callbacks, "shouldBeCalled", shouldBeCalled, true)
 		require.NoError(t, err)
@@ -737,8 +746,9 @@ func TestResourceHookBeforeUpdateError(t *testing.T) {
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
 		hookFun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
-			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
-		) error {
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errors []error,
+		) (bool, error) {
+			require.Nil(t, errors, "lifecycle hooks should have nil errors")
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			require.Equal(t, name, "resA")
 			require.Equal(t, typ, tokens.Type("pkgA:m:typA"))
@@ -746,7 +756,7 @@ func TestResourceHookBeforeUpdateError(t *testing.T) {
 			require.Equal(t, map[string]any{"foo": "bar"}, oldInputs.Mappable(), "receives old inputs")
 			require.Equal(t, map[string]any{"foo": "bar"}, oldOutputs.Mappable(), "receives old outputs")
 			require.Nil(t, newOutputs, "there are no new outputs")
-			return errors.New("this hook returns an error")
+			return false, stderrors.New("this hook returns an error")
 		}
 		hook, err := deploytest.NewHook(monitor, callbacks, "hook", hookFun, true)
 		require.NoError(t, err)
@@ -819,13 +829,14 @@ func TestResourceHookDeleteCalledOnDestroyRunProgram(t *testing.T) {
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
-			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
-		) error {
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errors []error,
+		) (bool, error) {
+			require.Nil(t, errors, "lifecycle hooks should have nil errors")
 			hookCalled = true
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			require.Equal(t, name, "resA")
 			require.Equal(t, typ, tokens.Type("pkgA:m:typA"))
-			return nil
+			return false, nil
 		}
 		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
 		require.NoError(t, err)
@@ -883,13 +894,14 @@ func TestResourceHookDeleteErrorWhenNoRunProgram(t *testing.T) {
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
-			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
-		) error {
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errors []error,
+		) (bool, error) {
+			require.Nil(t, errors, "lifecycle hooks should have nil errors")
 			hookCalled = true
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			require.Equal(t, name, "resA")
 			require.Equal(t, typ, tokens.Type("pkgA:m:typA"))
-			return nil
+			return false, nil
 		}
 		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
 		require.NoError(t, err)
@@ -984,13 +996,14 @@ func TestResourceHookComponent(t *testing.T) {
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
-			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
-		) error {
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errors []error,
+		) (bool, error) {
+			require.Nil(t, errors, "lifecycle hooks should have nil errors")
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typB::resA"))
 			require.Equal(t, name, "resA")
 			require.Equal(t, typ, tokens.Type("pkgA:m:typB"))
 			hookCalled = true
-			return nil
+			return false, nil
 		}
 		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
 		require.NoError(t, err)
@@ -1044,11 +1057,12 @@ func TestResourceHookTransform(t *testing.T) {
 		require.NoError(t, err)
 
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
-			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
-		) error {
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errors []error,
+		) (bool, error) {
+			require.Nil(t, errors, "lifecycle hooks should have nil errors")
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			hookCalled = true
-			return nil
+			return false, nil
 		}
 
 		_, err = deploytest.NewHook(monitor, callbacks, "myHook", fun, true)

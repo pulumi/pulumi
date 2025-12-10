@@ -171,21 +171,15 @@ type ResourceHookBindings struct {
 	AfterUpdate  []*ResourceHook
 	BeforeDelete []*ResourceHook
 	AfterDelete  []*ResourceHook
-}
 
-type ErrorHook struct {
-	Name     string
-	callback *pulumirpc.Callback
-}
-
-type ErrorHookBindings struct {
-	OnErrorCreate *ErrorHook
-	OnErrorUpdate *ErrorHook
-	OnErrorDelete *ErrorHook
+	// Error hooks (single hook per type)
+	OnErrorCreate *ResourceHook
+	OnErrorUpdate *ResourceHook
+	OnErrorDelete *ResourceHook
 }
 
 type ResourceHookFunc func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
-	newInputs, oldInpts, newOutputs, oldOutputs resource.PropertyMap) error
+	newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errors []error) (retry bool, err error)
 
 func (binding ResourceHookBindings) marshal() *pulumirpc.RegisterResourceRequest_ResourceHooksBinding {
 	m := &pulumirpc.RegisterResourceRequest_ResourceHooksBinding{}
@@ -207,11 +201,6 @@ func (binding ResourceHookBindings) marshal() *pulumirpc.RegisterResourceRequest
 	for _, hook := range binding.AfterDelete {
 		m.AfterDelete = append(m.AfterDelete, hook.Name)
 	}
-	return m
-}
-
-func (binding ErrorHookBindings) marshal() *pulumirpc.RegisterResourceRequest_ErrorHooksBinding {
-	m := &pulumirpc.RegisterResourceRequest_ErrorHooksBinding{}
 	if binding.OnErrorCreate != nil {
 		m.OnErrorCreate = &binding.OnErrorCreate.Name
 	}
@@ -222,95 +211,6 @@ func (binding ErrorHookBindings) marshal() *pulumirpc.RegisterResourceRequest_Er
 		m.OnErrorDelete = &binding.OnErrorDelete.Name
 	}
 	return m
-}
-
-type ErrorHookFunc func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
-	newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errors []error) (bool, error)
-
-func NewErrorHook(monitor *ResourceMonitor, callbacks *CallbackServer, name string, f ErrorHookFunc,
-) (*ErrorHook, error) {
-	req, err := prepareErrorHook(callbacks, name, f)
-	if err != nil {
-		return nil, err
-	}
-	err = monitor.RegisterErrorHook(context.Background(), req)
-	if err != nil {
-		return nil, err
-	}
-	return &ErrorHook{
-		Name:     name,
-		callback: req.Callback,
-	}, nil
-}
-
-func prepareErrorHook(callbacks *CallbackServer, name string, f ErrorHookFunc) (
-	*pulumirpc.RegisterErrorHookRequest, error,
-) {
-	wrapped := func(request []byte) (proto.Message, error) {
-		var req pulumirpc.ErrorHookRequest
-		err := proto.Unmarshal(request, &req)
-		if err != nil {
-			return nil, fmt.Errorf("unmarshaling request: %w", err)
-		}
-		var newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap
-		mOpts := plugin.MarshalOptions{
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepOutputValues: true,
-		}
-		if req.NewInputs != nil {
-			newInputs, err = plugin.UnmarshalProperties(req.NewInputs, mOpts)
-			if err != nil {
-				return nil, fmt.Errorf("unmarshaling new inputs: %w", err)
-			}
-		}
-		if req.OldInputs != nil {
-			oldInputs, err = plugin.UnmarshalProperties(req.OldInputs, mOpts)
-			if err != nil {
-				return nil, fmt.Errorf("unmarshaling old inputs: %w", err)
-			}
-		}
-		if req.NewOutputs != nil {
-			newOutputs, err = plugin.UnmarshalProperties(req.NewOutputs, mOpts)
-			if err != nil {
-				return nil, fmt.Errorf("unmarshaling new outputs: %w", err)
-			}
-		}
-		if req.OldOutputs != nil {
-			oldOutputs, err = plugin.UnmarshalProperties(req.OldOutputs, mOpts)
-			if err != nil {
-				return nil, fmt.Errorf("unmarshaling old outputs: %w", err)
-			}
-		}
-
-		// Convert error strings to error slice
-		errors := make([]error, len(req.Errors))
-		for i, errStr := range req.Errors {
-			errors[i] = fmt.Errorf("%s", errStr)
-		}
-
-		retry, err := f(context.Background(), resource.URN(req.Urn), resource.ID(req.Id), req.Name, tokens.Type(req.Type),
-			newInputs, oldInputs, newOutputs, oldOutputs, errors)
-		if err != nil {
-			return &pulumirpc.ErrorHookResponse{
-				Retry: false,
-				Error: err.Error(),
-			}, nil
-		}
-		return &pulumirpc.ErrorHookResponse{
-			Retry: retry,
-		}, nil
-	}
-	callback, err := callbacks.Allocate(wrapped)
-	if err != nil {
-		return nil, err
-	}
-	req := &pulumirpc.RegisterErrorHookRequest{
-		Name:     name,
-		Callback: callback,
-	}
-	return req, nil
 }
 
 func NewHook(monitor *ResourceMonitor, callbacks *CallbackServer, name string, f ResourceHookFunc, onDryRun bool,
@@ -369,13 +269,24 @@ func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onD
 				return nil, fmt.Errorf("unmarshaling old outputs: %w", err)
 			}
 		}
-		if err := f(context.Background(), resource.URN(req.Urn), resource.ID(req.Id), req.Name, tokens.Type(req.Type),
-			newInputs, oldInputs, newOutputs, oldOutputs); err != nil {
+
+		// Convert error strings to error slice
+		errors := make([]error, len(req.Errors))
+		for i, errStr := range req.Errors {
+			errors[i] = fmt.Errorf("%s", errStr)
+		}
+
+		retry, err := f(context.Background(), resource.URN(req.Urn), resource.ID(req.Id), req.Name, tokens.Type(req.Type),
+			newInputs, oldInputs, newOutputs, oldOutputs, errors)
+		if err != nil {
 			return &pulumirpc.ResourceHookResponse{
+				Retry: false,
 				Error: err.Error(),
 			}, nil
 		}
-		return &pulumirpc.ResourceHookResponse{}, nil
+		return &pulumirpc.ResourceHookResponse{
+			Retry: retry,
+		}, nil
 	}
 	callback, err := callbacks.Allocate(wrapped)
 	if err != nil {
@@ -427,7 +338,6 @@ type ResourceOptions struct {
 
 	Transforms           []*pulumirpc.Callback
 	ResourceHookBindings ResourceHookBindings
-	ErrorHookBindings    ErrorHookBindings
 
 	SupportsResultReporting bool
 	PackageRef              string
@@ -540,7 +450,6 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	}
 
 	resourceHooks := opts.ResourceHookBindings.marshal()
-	errorHooks := opts.ErrorHookBindings.marshal()
 
 	hideDiffs := slice.Prealloc[string](len(opts.HideDiffs))
 	for _, v := range opts.HideDiffs {
@@ -587,7 +496,6 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		SupportsResultReporting:    opts.SupportsResultReporting,
 		PackageRef:                 opts.PackageRef,
 		Hooks:                      resourceHooks,
-		ErrorHooks:                 errorHooks,
 	}
 
 	ctx := context.Background()
@@ -846,12 +754,6 @@ func (rm *ResourceMonitor) SignalAndWaitForShutdown(ctx context.Context) error {
 func (rm *ResourceMonitor) RegisterResourceHook(ctx context.Context, req *pulumirpc.RegisterResourceHookRequest,
 ) error {
 	_, err := rm.resmon.RegisterResourceHook(ctx, req)
-	return err
-}
-
-func (rm *ResourceMonitor) RegisterErrorHook(ctx context.Context, req *pulumirpc.RegisterErrorHookRequest,
-) error {
-	_, err := rm.resmon.RegisterErrorHook(ctx, req)
 	return err
 }
 

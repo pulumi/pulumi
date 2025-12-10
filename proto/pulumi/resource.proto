@@ -40,12 +40,8 @@ service ResourceMonitor {
     rpc RegisterStackInvokeTransform(Callback) returns (google.protobuf.Empty) {}
 
     // Register a resource hook that can be called by the engine during certain
-    // steps of a resource's lifecycle.
+    // steps of a resource's lifecycle or when errors occur during resource operations.
     rpc RegisterResourceHook(RegisterResourceHookRequest) returns (google.protobuf.Empty) {}
-
-    // Register an error hook that can be called by the engine when errors occur
-    // during resource operations.
-    rpc RegisterErrorHook(RegisterErrorHookRequest) returns (google.protobuf.Empty) {}
 
     // Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
     // Multiple requests are idempotent and guaranteed to return the same result.
@@ -174,24 +170,23 @@ message RegisterResourceRequest {
     string packageRef = 33; // a reference from RegisterPackageRequest.
 
     message ResourceHooksBinding {
+        // Lifecycle hooks
         repeated string before_create = 1;
         repeated string after_create = 2;
         repeated string before_update = 3;
         repeated string after_update = 4;
         repeated string before_delete = 5;
         repeated string after_delete = 6;
+        
+        // Error hooks (single hook per type)
+        optional string on_error_create = 7;
+        optional string on_error_update = 8;
+        optional string on_error_delete = 9;
     }
 
-    message ErrorHooksBinding {
-        optional string on_error_create = 1;
-        optional string on_error_update = 2;
-        optional string on_error_delete = 3;
-    }
-
-    // The resource hooks that should run at certain points in the resource's lifecycle.
+    // The resource hooks that should run at certain points in the resource's lifecycle
+    // and when errors occur during resource operations.
     optional ResourceHooksBinding hooks = 34;
-    // The error hooks that should run when errors occur during resource operations.
-    optional ErrorHooksBinding error_hooks = 40;
     repeated string hideDiffs = 37;
 }
 
@@ -336,11 +331,13 @@ message ResourceHookRequest {
     google.protobuf.Struct old_inputs = 6; // the optional checked old inputs of the resource.
     google.protobuf.Struct new_outputs = 7; // the optional new outputs of the resource.
     google.protobuf.Struct old_outputs = 8; // the optional old outputs of the resource.
+    repeated string errors = 9; // For error hooks: error messages that occurred (most recent first).
 }
 
 // ResourceHookResponse is the response object for resource hook callbacks in CallbackInvokeResponse.
 message ResourceHookResponse {
     string error = 1; // an optional error message to return from the hook.
+    bool retry = 2; // For error hooks: whether to retry the operation.
 }
 
 message RegisterPackageRequest {
@@ -370,26 +367,4 @@ message RegisterResourceHookRequest {
     string name = 1;
     Callback callback = 2; // the callback that the engine can call to run the hook.
     bool on_dry_run = 3; // whether to run the hook on dry runs.
-}
-
-message RegisterErrorHookRequest {
-    string name = 1;
-    Callback callback = 2;
-}
-
-message ErrorHookRequest {
-    string urn = 1;
-    string id = 2;
-    string name = 3;
-    string type = 4;
-    google.protobuf.Struct new_inputs = 5;
-    google.protobuf.Struct old_inputs = 6;
-    google.protobuf.Struct new_outputs = 7;
-    google.protobuf.Struct old_outputs = 8;
-    repeated string errors = 9; // error messages, with the most recent first
-}
-
-message ErrorHookResponse {
-    bool retry = 1;
-    string error = 2;
 }

@@ -741,7 +741,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		RefreshBeforeUpdate:     refreshBeforeUpdate,
 		ViewOf:                  "",
 		ResourceHooks:           goal.ResourceHooks,
-		ErrorHooks:              goal.ErrorHooks,
 	}.Make()
 	if sdkproviders.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
