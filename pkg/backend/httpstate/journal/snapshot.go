@@ -71,6 +71,11 @@ func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 	}
 	defer j.wg.Done()
 
+	result := make(chan error, 1)
+	if entry.ElideWrite {
+		result = nil
+	}
+
 	serialized, err := stack.BatchEncrypt(
 		j.context, j.sm, func(ctx context.Context, enc config.Encrypter,
 		) (apitype.JournalEntry, error) {
@@ -80,10 +85,12 @@ func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 		return fmt.Errorf("serializing journal entry: %w", err)
 	}
 
-	result := make(chan error, 1)
 	j.entries <- saveJournalEntry{
 		entry:  serialized,
 		result: result,
+	}
+	if entry.ElideWrite {
+		return nil
 	}
 	return <-result
 }
@@ -151,7 +158,9 @@ func sendBatches(
 
 			err := sendBatch(ctx, client, update, tokenSource, batch)
 			for _, r := range results {
-				r <- err
+				if r != nil {
+					r <- err
+				}
 			}
 			results, batch = results[:0], batch[:0]
 		}
