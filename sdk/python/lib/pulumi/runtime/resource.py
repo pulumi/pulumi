@@ -936,9 +936,9 @@ def _serialized_value_to_struct_value(value: Any) -> struct_pb2.Value:
     if isinstance(value, str):
         return struct_pb2.Value(string_value=value)
     if isinstance(value, dict):
-        return struct_pb2.Value(struct_value=value)
+        return struct_pb2.Value(struct_value=value) # type: ignore[arg-type]
     if isinstance(value, (list, tuple)):
-        return struct_pb2.Value(list_value=value)
+        return struct_pb2.Value(list_value=value) # type: ignore[arg-type]
 
     return struct_pb2.Value(string_value=str(value))
 
