@@ -270,7 +270,6 @@ func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onD
 			}
 		}
 
-		// Convert error strings to error slice
 		errors := make([]error, len(req.Errors))
 		for i, errStr := range req.Errors {
 			errors[i] = fmt.Errorf("%s", errStr)

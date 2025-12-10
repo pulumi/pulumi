@@ -340,7 +340,7 @@ type Deployment struct {
 	reads *gsync.Map[resource.URN, *resource.State]
 	// the resource status server.
 	resourceStatus *resourceStatusServer
-	// the resource hook registry for this deployment (includes both lifecycle and error hooks)
+	// the resource hook registry for this deployment
 	resourceHooks *ResourceHooks
 }
 
@@ -710,15 +710,14 @@ func (d *Deployment) generateEventURN(event SourceEvent) resource.URN {
 // GetErrorHook looks up an error hook for the given resource and error hook type.
 // It first checks the resource itself, then walks up the parent chain to find the nearest ancestor's error hook.
 // Returns the hook name if found, or empty string if not found.
-func (d *Deployment) GetErrorHook(urn resource.URN, hookType resource.ResourceHookType) string {
+func (d *Deployment) GetErrorHook(urn resource.URN, hookType resource.HookType) string {
 	if !hookType.IsErrorHook() {
 		return ""
 	}
 
-	// For error hooks, we look for a single hook name (first in the slice if multiple exist)
 	getHookName := func(hooks []string) string {
 		if len(hooks) > 0 {
-			return hooks[0]
+			return hooks[0] // There should only ever be one
 		}
 		return ""
 	}
@@ -747,51 +746,7 @@ func (d *Deployment) GetErrorHook(urn resource.URN, hookType resource.ResourceHo
 		}
 	}
 
-	var currentURN resource.URN
-	if goal, ok := d.goals.Load(urn); ok && goal != nil {
-		currentURN = goal.Parent
-	} else if state, ok := d.news.Load(urn); ok && state != nil {
-		currentURN = state.Parent
-	} else if state, ok := d.olds[urn]; ok && state != nil {
-		currentURN = state.Parent
-	} else {
-		return ""
-	}
-
-	for currentURN != "" {
-		if goal, ok := d.goals.Load(currentURN); ok && goal != nil {
-			if hooks, has := goal.ResourceHooks[hookType]; has {
-				if hookName := getHookName(hooks); hookName != "" {
-					return hookName
-				}
-			}
-			currentURN = goal.Parent
-			continue
-		}
-
-		if state, ok := d.news.Load(currentURN); ok && state != nil {
-			if hooks, has := state.ResourceHooks[hookType]; has {
-				if hookName := getHookName(hooks); hookName != "" {
-					return hookName
-				}
-			}
-			currentURN = state.Parent
-			continue
-		}
-
-		if state, ok := d.olds[currentURN]; ok && state != nil {
-			if hooks, has := state.ResourceHooks[hookType]; has {
-				if hookName := getHookName(hooks); hookName != "" {
-					return hookName
-				}
-			}
-			currentURN = state.Parent
-			continue
-		}
-
-		break
-	}
-
+	// No need to check parents - inheritFromParent copies parent hooks to children.
 	return ""
 }
 
@@ -800,7 +755,7 @@ func (d *Deployment) GetErrorHook(urn resource.URN, hookType resource.ResourceHo
 // Returns the retry decision (true = retry, false = fail) and any error from hook execution.
 func (d *Deployment) RunErrorHook(
 	hookName string,
-	hookType resource.ResourceHookType,
+	hookType resource.HookType,
 	id resource.ID,
 	urn resource.URN,
 	name string,
@@ -868,7 +823,6 @@ func (d *Deployment) RunHooks(hooks []string, isBeforeHook bool, id resource.ID,
 			continue
 		}
 		logging.V(9).Infof("calling hook %q for urn %s", hookName, urn)
-		// For lifecycle hooks, pass nil for errors and ignore retry return value
 		_, err = hook.Callback(d.Ctx().Base(), urn, id, name, typ, newInputs, oldInputs, newOutputs, oldOutputs, nil)
 		if err != nil {
 			if isBeforeHook {

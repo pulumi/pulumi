@@ -118,7 +118,7 @@ type evalSource struct {
 	plugctx             *plugin.Context                                // the plugin context.
 	runinfo             *EvalRunInfo                                   // the directives to use when running the program.
 	defaultProviderInfo map[tokens.Package]workspace.PackageDescriptor // the default provider versions for this source.
-	resourceHooks       *ResourceHooks                                 // the resource hook registry (includes both lifecycle and error hooks).
+	resourceHooks       *ResourceHooks                                 // the resource hook registry.
 	opts                EvalSourceOptions                              // options for the evaluation source.
 }
 
@@ -1716,36 +1716,24 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 		if newInputs != nil {
 			mNewInputs, err = plugin.MarshalProperties(newInputs, mOpts)
 			if err != nil {
-				if isErrorHook {
-					return false, fmt.Errorf("marshaling new inputs for %s %q: %w", hookType, name, err)
-				}
 				return false, fmt.Errorf("marshaling new inputs for %s %q: %w", hookType, name, err)
 			}
 		}
 		if oldInputs != nil {
 			mOldInputs, err = plugin.MarshalProperties(oldInputs, mOpts)
 			if err != nil {
-				if isErrorHook {
-					return false, fmt.Errorf("marshaling old inputs for %s %q: %w", hookType, name, err)
-				}
 				return false, fmt.Errorf("marshaling old inputs for %s %q: %w", hookType, name, err)
 			}
 		}
 		if newOutputs != nil {
 			mNewOutputs, err = plugin.MarshalProperties(newOutputs, mOpts)
 			if err != nil {
-				if isErrorHook {
-					return false, fmt.Errorf("marshaling new outputs for %s %q: %w", hookType, name, err)
-				}
 				return false, fmt.Errorf("marshaling new outputs for %s %q: %w", hookType, name, err)
 			}
 		}
 		if oldOutputs != nil {
 			mOldOutputs, err = plugin.MarshalProperties(oldOutputs, mOpts)
 			if err != nil {
-				if isErrorHook {
-					return false, fmt.Errorf("marshaling old outputs for %s %q: %w", hookType, name, err)
-				}
 				return false, fmt.Errorf("marshaling old outputs for %s %q: %w", hookType, name, err)
 			}
 		}
@@ -1771,9 +1759,6 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 			Errors:     errorsSoFar,
 		})
 		if err != nil {
-			if isErrorHook {
-				return false, fmt.Errorf("marshaling %s request for %q: %w", hookType, name, err)
-			}
 			return false, fmt.Errorf("marshaling %s request for %q: %w", hookType, name, err)
 		}
 		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
@@ -1833,10 +1818,10 @@ func inheritFromParent(child resource.Goal, parent resource.Goal) *resource.Goal
 		goal.RetainOnDelete = parent.RetainOnDelete
 	}
 	if goal.ResourceHooks == nil {
-		goal.ResourceHooks = make(map[resource.ResourceHookType][]string)
+		goal.ResourceHooks = make(map[resource.HookType][]string)
 	}
 	// Inherit only error hooks from parent
-	errorHookTypes := []resource.ResourceHookType{
+	errorHookTypes := []resource.HookType{
 		resource.OnErrorCreate,
 		resource.OnErrorUpdate,
 		resource.OnErrorDelete,
@@ -2538,7 +2523,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	additionalSecretOutputs := opts.GetAdditionalSecretOutputs()
 
 	// Grab the names for all of the hooks of a given type.
-	getHookNames := func(hookType resource.ResourceHookType) []string {
+	getHookNames := func(hookType resource.HookType) []string {
 		names := []string{}
 		hooks := opts.GetHooks()
 		if hooks == nil {
@@ -2568,8 +2553,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return names
 	}
 
-	var resourceHooks map[resource.ResourceHookType][]string
-	for _, hookType := range []resource.ResourceHookType{
+	var resourceHooks map[resource.HookType][]string
+	for _, hookType := range []resource.HookType{
 		resource.BeforeCreate,
 		resource.AfterCreate,
 		resource.BeforeUpdate,
@@ -2583,7 +2568,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		names := getHookNames(hookType)
 		if len(names) > 0 {
 			if resourceHooks == nil {
-				resourceHooks = make(map[resource.ResourceHookType][]string)
+				resourceHooks = make(map[resource.HookType][]string)
 			}
 			resourceHooks[hookType] = append(resourceHooks[hookType], names...)
 		}

@@ -36,40 +36,40 @@ type State struct {
 	// just locking in these two places is sufficient to stop the race detector from firing on integration tests.
 	Lock sync.Mutex
 
-	Type                    tokens.Type                   // the resource's type.
-	URN                     URN                           // the resource's object urn, a human-friendly, unique name for the resource.
-	Custom                  bool                          // true if the resource is custom, managed by a plugin.
-	Delete                  bool                          // true if this resource is pending deletion due to a replacement.
-	ID                      ID                            // the resource's unique ID, assigned by the resource provider (or blank if none/uncreated).
-	Inputs                  PropertyMap                   // the resource's input properties (as specified by the program).
-	Outputs                 PropertyMap                   // the resource's complete output state (as returned by the resource provider).
-	Parent                  URN                           // an optional parent URN that this resource belongs to.
-	Protect                 bool                          // true to "protect" this resource (protected resources cannot be deleted).
-	Taint                   bool                          // true to force replacement of this resource during the next update.
-	External                bool                          // true if this resource is "external" to Pulumi and we don't control the lifecycle.
-	Dependencies            []URN                         // the resource's dependencies.
-	InitErrors              []string                      // the set of errors encountered in the process of initializing resource.
-	Provider                string                        // the provider to use for this resource.
-	PropertyDependencies    map[PropertyKey][]URN         // the set of dependencies that affect each property.
-	PendingReplacement      bool                          // true if this resource was deleted and is awaiting replacement.
-	AdditionalSecretOutputs []PropertyKey                 // an additional set of outputs that should be treated as secrets.
-	Aliases                 []URN                         // an optional set of URNs for which this resource is an alias.
-	CustomTimeouts          CustomTimeouts                // A config block that will be used to configure timeouts for CRUD operations.
-	ImportID                ID                            // the resource's import id, if this was an imported resource.
-	RetainOnDelete          bool                          // if set to True, the providers Delete method will not be called for this resource.
-	DeletedWith             URN                           // If set, the providers Delete method will not be called for this resource if specified resource is being deleted as well.
-	ReplaceWith             []URN                         // If set, the URNs of the resources whose replaces will also trigger a replace of this resource.
-	Created                 *time.Time                    // If set, the time when the state was initially added to the state file. (i.e. Create, Import)
-	Modified                *time.Time                    // If set, the time when the state was last modified in the state file.
-	SourcePosition          string                        // If set, the source location of the resource registration
-	StackTrace              []StackFrame                  // If set, the stack trace at time of registration
-	IgnoreChanges           []string                      // If set, the list of properties to ignore changes for.
-	ReplaceOnChanges        []string                      // If set, the list of properties that if changed trigger a replace.
-	ReplacementTrigger      PropertyValue                 // If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
-	HideDiff                []PropertyPath                // If set, the list of property paths to compact the diff for.
-	RefreshBeforeUpdate     bool                          // true if this resource should always be refreshed prior to updates.
-	ViewOf                  URN                           // If set, the URN of the resource this resource is a view of.
-	ResourceHooks           map[ResourceHookType][]string // The resource hooks attached to the resource, by type (includes both lifecycle and error hooks).
+	Type                    tokens.Type           // the resource's type.
+	URN                     URN                   // the resource's object urn, a human-friendly, unique name for the resource.
+	Custom                  bool                  // true if the resource is custom, managed by a plugin.
+	Delete                  bool                  // true if this resource is pending deletion due to a replacement.
+	ID                      ID                    // the resource's unique ID, assigned by the resource provider (or blank if none/uncreated).
+	Inputs                  PropertyMap           // the resource's input properties (as specified by the program).
+	Outputs                 PropertyMap           // the resource's complete output state (as returned by the resource provider).
+	Parent                  URN                   // an optional parent URN that this resource belongs to.
+	Protect                 bool                  // true to "protect" this resource (protected resources cannot be deleted).
+	Taint                   bool                  // true to force replacement of this resource during the next update.
+	External                bool                  // true if this resource is "external" to Pulumi and we don't control the lifecycle.
+	Dependencies            []URN                 // the resource's dependencies.
+	InitErrors              []string              // the set of errors encountered in the process of initializing resource.
+	Provider                string                // the provider to use for this resource.
+	PropertyDependencies    map[PropertyKey][]URN // the set of dependencies that affect each property.
+	PendingReplacement      bool                  // true if this resource was deleted and is awaiting replacement.
+	AdditionalSecretOutputs []PropertyKey         // an additional set of outputs that should be treated as secrets.
+	Aliases                 []URN                 // an optional set of URNs for which this resource is an alias.
+	CustomTimeouts          CustomTimeouts        // A config block that will be used to configure timeouts for CRUD operations.
+	ImportID                ID                    // the resource's import id, if this was an imported resource.
+	RetainOnDelete          bool                  // if set to True, the providers Delete method will not be called for this resource.
+	DeletedWith             URN                   // If set, the providers Delete method will not be called for this resource if specified resource is being deleted as well.
+	ReplaceWith             []URN                 // If set, the URNs of the resources whose replaces will also trigger a replace of this resource.
+	Created                 *time.Time            // If set, the time when the state was initially added to the state file. (i.e. Create, Import)
+	Modified                *time.Time            // If set, the time when the state was last modified in the state file.
+	SourcePosition          string                // If set, the source location of the resource registration
+	StackTrace              []StackFrame          // If set, the stack trace at time of registration
+	IgnoreChanges           []string              // If set, the list of properties to ignore changes for.
+	ReplaceOnChanges        []string              // If set, the list of properties that if changed trigger a replace.
+	ReplacementTrigger      PropertyValue         // If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
+	HideDiff                []PropertyPath        // If set, the list of property paths to compact the diff for.
+	RefreshBeforeUpdate     bool                  // true if this resource should always be refreshed prior to updates.
+	ViewOf                  URN                   // If set, the URN of the resource this resource is a view of.
+	ResourceHooks           map[HookType][]string // The resource hooks attached to the resource, by type (includes both lifecycle and error hooks).
 }
 
 func cloneMapOfSlices[M ~map[K]V, K comparable, V ~[]E, E any](m M) M {
@@ -253,7 +253,7 @@ type NewState struct {
 	// The resource hooks attached to the resource, by type (includes both lifecycle and error hooks).
 	// For lifecycle hooks, multiple hooks per type are allowed.
 	// For error hooks, only one hook per type is allowed (first in the slice).
-	ResourceHooks map[ResourceHookType][]string // required
+	ResourceHooks map[HookType][]string // required
 }
 
 // Make consumes the NewState to create a *State.

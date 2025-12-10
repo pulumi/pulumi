@@ -819,10 +819,10 @@ func (p *providerServer) Construct(ctx context.Context,
 		propertyDependencies[resource.PropertyKey(name)] = urns
 	}
 
-	var hooks map[resource.ResourceHookType][]string
+	var hooks map[resource.HookType][]string
 	binding := req.GetResourceHooks()
 	if binding != nil {
-		hooks = make(map[resource.ResourceHookType][]string)
+		hooks = make(map[resource.HookType][]string)
 		hooks[resource.BeforeCreate] = binding.GetBeforeCreate()
 		hooks[resource.AfterCreate] = binding.GetAfterCreate()
 		hooks[resource.BeforeUpdate] = binding.GetBeforeUpdate()
