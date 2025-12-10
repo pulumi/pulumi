@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Add the `OnErrorCreate`, `OnErrorUpdate`, and `OnErrorDelete` resource hooks to allow for custom retry policies
