@@ -69,7 +69,7 @@ type State struct {
 	HideDiff                []PropertyPath        // If set, the list of property paths to compact the diff for.
 	RefreshBeforeUpdate     bool                  // true if this resource should always be refreshed prior to updates.
 	ViewOf                  URN                   // If set, the URN of the resource this resource is a view of.
-	ResourceHooks           map[HookType][]string // The resource hooks attached to the resource, by type (includes both lifecycle and error hooks).
+	ResourceHooks           map[HookType][]string // The resource hooks attached to the resource, by type.
 }
 
 func cloneMapOfSlices[M ~map[K]V, K comparable, V ~[]E, E any](m M) M {
@@ -79,17 +79,6 @@ func cloneMapOfSlices[M ~map[K]V, K comparable, V ~[]E, E any](m M) M {
 	result := make(M, len(m))
 	for k, v := range m {
 		result[k] = slices.Clone(v)
-	}
-	return result
-}
-
-func cloneMap[M ~map[K]V, K comparable, V any](m M) M {
-	if m == nil {
-		return nil
-	}
-	result := make(M, len(m))
-	for k, v := range m {
-		result[k] = v
 	}
 	return result
 }
@@ -250,7 +239,7 @@ type NewState struct {
 	// If set, the URN of the resource this resource is a view of.
 	ViewOf URN // required
 
-	// The resource hooks attached to the resource, by type (includes both lifecycle and error hooks).
+	// The resource hooks attached to the resource, by type
 	// For lifecycle hooks, multiple hooks per type are allowed.
 	// For error hooks, only one hook per type is allowed (first in the slice).
 	ResourceHooks map[HookType][]string // required

@@ -248,12 +248,6 @@ func (p *monitorProxy) RegisterResourceHook(
 	return p.target.RegisterResourceHook(ctx, req)
 }
 
-func (p *monitorProxy) RegisterErrorHook(
-	ctx context.Context, req *pulumirpc.RegisterErrorHookRequest,
-) (*emptypb.Empty, error) {
-	return p.target.RegisterErrorHook(ctx, req)
-}
-
 func (p *monitorProxy) RegisterPackage(
 	ctx context.Context, req *pulumirpc.RegisterPackageRequest,
 ) (*pulumirpc.RegisterPackageResponse, error) {
