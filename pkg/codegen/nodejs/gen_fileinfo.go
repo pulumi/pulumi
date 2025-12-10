@@ -51,7 +51,7 @@ func (ri resourceFileInfo) interfaces() []string {
 }
 
 type functionFileInfo struct {
-	functionName                           string
+	functionName                           string // may be empty
 	functionArgsInterfaceName              string // may be empty
 	functionResultInterfaceName            string // may be empty
 	functionOutputVersionName              string // may be empty
