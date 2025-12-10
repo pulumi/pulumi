@@ -10520,7 +10520,10 @@ afterCreateList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined
 beforeUpdateList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f,
 afterUpdateList: (f = jspb.Message.getRepeatedField(msg, 4)) == null ? undefined : f,
 beforeDeleteList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
-afterDeleteList: (f = jspb.Message.getRepeatedField(msg, 6)) == null ? undefined : f
+afterDeleteList: (f = jspb.Message.getRepeatedField(msg, 6)) == null ? undefined : f,
+onErrorCreate: (f = jspb.Message.getField(msg, 7)) == null ? undefined : f,
+onErrorUpdate: (f = jspb.Message.getField(msg, 8)) == null ? undefined : f,
+onErrorDelete: (f = jspb.Message.getField(msg, 9)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -10580,6 +10583,18 @@ proto.pulumirpc.ConstructRequest.ResourceHooksBinding.deserializeBinaryFromReade
     case 6:
       var value = /** @type {string} */ (reader.readString());
       msg.addAfterDelete(value);
+      break;
+    case 7:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setOnErrorCreate(value);
+      break;
+    case 8:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setOnErrorUpdate(value);
+      break;
+    case 9:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setOnErrorDelete(value);
       break;
     default:
       reader.skipField();
@@ -10649,6 +10664,27 @@ proto.pulumirpc.ConstructRequest.ResourceHooksBinding.serializeBinaryToWriter = 
   if (f.length > 0) {
     writer.writeRepeatedString(
       6,
+      f
+    );
+  }
+  f = /** @type {string} */ (jspb.Message.getField(message, 7));
+  if (f != null) {
+    writer.writeString(
+      7,
+      f
+    );
+  }
+  f = /** @type {string} */ (jspb.Message.getField(message, 8));
+  if (f != null) {
+    writer.writeString(
+      8,
+      f
+    );
+  }
+  f = /** @type {string} */ (jspb.Message.getField(message, 9));
+  if (f != null) {
+    writer.writeString(
+      9,
       f
     );
   }
@@ -10874,6 +10910,114 @@ proto.pulumirpc.ConstructRequest.ResourceHooksBinding.prototype.addAfterDelete =
  */
 proto.pulumirpc.ConstructRequest.ResourceHooksBinding.prototype.clearAfterDeleteList = function() {
   return this.setAfterDeleteList([]);
+};
+
+
+/**
+ * optional string on_error_create = 7;
+ * @return {string}
+ */
+proto.pulumirpc.ConstructRequest.ResourceHooksBinding.prototype.getOnErrorCreate = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 7, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ConstructRequest.ResourceHooksBinding} returns this
+ */
+proto.pulumirpc.ConstructRequest.ResourceHooksBinding.prototype.setOnErrorCreate = function(value) {
+  return jspb.Message.setField(this, 7, value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.pulumirpc.ConstructRequest.ResourceHooksBinding} returns this
+ */
+proto.pulumirpc.ConstructRequest.ResourceHooksBinding.prototype.clearOnErrorCreate = function() {
+  return jspb.Message.setField(this, 7, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ConstructRequest.ResourceHooksBinding.prototype.hasOnErrorCreate = function() {
+  return jspb.Message.getField(this, 7) != null;
+};
+
+
+/**
+ * optional string on_error_update = 8;
+ * @return {string}
+ */
+proto.pulumirpc.ConstructRequest.ResourceHooksBinding.prototype.getOnErrorUpdate = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 8, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ConstructRequest.ResourceHooksBinding} returns this
+ */
+proto.pulumirpc.ConstructRequest.ResourceHooksBinding.prototype.setOnErrorUpdate = function(value) {
+  return jspb.Message.setField(this, 8, value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.pulumirpc.ConstructRequest.ResourceHooksBinding} returns this
+ */
+proto.pulumirpc.ConstructRequest.ResourceHooksBinding.prototype.clearOnErrorUpdate = function() {
+  return jspb.Message.setField(this, 8, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ConstructRequest.ResourceHooksBinding.prototype.hasOnErrorUpdate = function() {
+  return jspb.Message.getField(this, 8) != null;
+};
+
+
+/**
+ * optional string on_error_delete = 9;
+ * @return {string}
+ */
+proto.pulumirpc.ConstructRequest.ResourceHooksBinding.prototype.getOnErrorDelete = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 9, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ConstructRequest.ResourceHooksBinding} returns this
+ */
+proto.pulumirpc.ConstructRequest.ResourceHooksBinding.prototype.setOnErrorDelete = function(value) {
+  return jspb.Message.setField(this, 9, value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.pulumirpc.ConstructRequest.ResourceHooksBinding} returns this
+ */
+proto.pulumirpc.ConstructRequest.ResourceHooksBinding.prototype.clearOnErrorDelete = function() {
+  return jspb.Message.setField(this, 9, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ConstructRequest.ResourceHooksBinding.prototype.hasOnErrorDelete = function() {
+  return jspb.Message.getField(this, 9) != null;
 };
 
 
