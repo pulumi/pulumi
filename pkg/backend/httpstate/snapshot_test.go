@@ -159,7 +159,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 			require.NoError(t, err)
 			return
 		case "/api/user":
-			resp := map[string]interface{}{
+			resp := map[string]any{
 				"githubLogin":   "test-user",
 				"organizations": []map[string]string{},
 			}
@@ -673,7 +673,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 				require.NoError(t, err)
 				return
 			case "/api/user":
-				resp := map[string]interface{}{
+				resp := map[string]any{
 					"githubLogin":   "test-user",
 					"organizations": []map[string]string{},
 				}

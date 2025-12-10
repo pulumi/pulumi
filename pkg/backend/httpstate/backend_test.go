@@ -712,7 +712,7 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 			err := json.NewEncoder(rw).Encode(resp)
 			require.NoError(t, err)
 		case "/api/user":
-			resp := map[string]interface{}{
+			resp := map[string]any{
 				"githubLogin":   "test-user",
 				"organizations": []map[string]string{},
 			}
@@ -837,7 +837,7 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 			err := json.NewEncoder(rw).Encode(resp)
 			require.NoError(t, err)
 		case "/api/user":
-			resp := map[string]interface{}{
+			resp := map[string]any{
 				"githubLogin":   "test-user",
 				"organizations": []map[string]string{},
 			}
