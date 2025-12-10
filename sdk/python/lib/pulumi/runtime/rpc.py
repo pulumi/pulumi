@@ -720,6 +720,20 @@ async def serialize_property(
 
         return obj
 
+    if isinstance(value, struct_pb2.Value):
+        from .resource import _struct_value_to_python
+
+        return await serialize_property(
+            _struct_value_to_python(value),
+            deps,
+            property_key,
+            resource_obj,
+            input_transformer,
+            typ,
+            keep_output_values,
+            exclude_resource_refs_from_deps,
+        )
+
     # Ensure that we have a value that Protobuf understands.
     if not isLegalProtobufValue(value):
         if property_key is not None and resource_obj is not None:

@@ -255,6 +255,8 @@ async def prepare_resource(
 
     replacement_trigger: Optional[Any] = None
     if opts is not None and opts.replacement_trigger is not None:
+        if isinstance(opts.replacement_trigger, struct_pb2.Value):
+            opts.replacement_trigger = _struct_value_to_python(opts.replacement_trigger)
         replacement_trigger = Output.from_input(opts.replacement_trigger)
 
     supports_alias_specs = await settings.monitor_supports_alias_specs()
@@ -921,6 +923,33 @@ def _create_custom_timeouts(
     return result
 
 
+def _struct_value_to_python(value: struct_pb2.Value) -> Any:
+    """
+    Converts a struct_pb2.Value to Python native types recursively.
+    This is used when we receive a struct_pb2.Value from transforms and need to re-serialize it.
+    """
+    kind = value.WhichOneof("kind")
+    if kind == "null_value":
+        return None
+    elif kind == "number_value":
+        return value.number_value
+    elif kind == "string_value":
+        return value.string_value
+    elif kind == "bool_value":
+        return value.bool_value
+    elif kind == "struct_value":
+        # Recursively convert all nested struct_pb2.Value objects
+        result = {}
+        for k, v in value.struct_value.fields.items():
+            result[k] = _struct_value_to_python(v)
+        return result
+    elif kind == "list_value":
+        # Recursively convert all nested struct_pb2.Value objects
+        return [_struct_value_to_python(v) for v in value.list_value.values]
+    else:
+        return None
+
+
 def _serialized_value_to_struct_value(value: Any) -> struct_pb2.Value:
     """
     Converts a serialized Python value (from serialize_property) to a struct_pb2.Value.
@@ -1086,11 +1115,24 @@ def register_resource(
             hook_prefix = f"{ty}_{name}"
             hooks = await _prepare_resource_hooks(opts.hooks, hook_prefix)
 
-            keep_output_values_for_trigger = False
-            if resolver.replacement_trigger and known_types.is_output(
-                resolver.replacement_trigger
+            replacement_trigger_to_serialize = resolver.replacement_trigger
+            if replacement_trigger_to_serialize and known_types.is_output(
+                replacement_trigger_to_serialize
             ):
-                is_known = await resolver.replacement_trigger._is_known
+                unwrapped_value = await replacement_trigger_to_serialize.future()
+                if isinstance(unwrapped_value, struct_pb2.Value):
+                    from .. import output as output_mod
+
+                    python_value = _struct_value_to_python(unwrapped_value)
+                    replacement_trigger_to_serialize = output_mod.Output.from_input(
+                        python_value
+                    )
+
+            keep_output_values_for_trigger = False
+            if replacement_trigger_to_serialize and known_types.is_output(
+                replacement_trigger_to_serialize
+            ):
+                is_known = await replacement_trigger_to_serialize._is_known
                 is_dry_run = settings.is_dry_run()
                 keep_output_values_for_trigger = not is_known or is_dry_run
 
@@ -1122,7 +1164,7 @@ def register_resource(
                 replaceOnChanges=replace_on_changes or [],
                 replacement_trigger=_serialized_value_to_struct_value(
                     await rpc.serialize_property(
-                        resolver.replacement_trigger,
+                        replacement_trigger_to_serialize,
                         [],
                         "replacement_trigger",
                         res,
@@ -1132,7 +1174,7 @@ def register_resource(
                         False,
                     )
                 )
-                if resolver.replacement_trigger
+                if replacement_trigger_to_serialize
                 else None,
                 retainOnDelete=opts.retain_on_delete,
                 deletedWith=resolver.deleted_with_urn or "",
