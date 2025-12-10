@@ -181,7 +181,7 @@ func sendBatches(
 			if req.result != nil {
 				results = append(results, req.result)
 			}
-			if cap(batch) == 0 {
+			if len(batch) == cap(batch) {
 				flush()
 			}
 		case <-ticker.C:
