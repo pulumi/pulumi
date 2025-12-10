@@ -202,6 +202,17 @@ func DetectPluginPathFrom(dir string) (string, error) {
 	return path, nil
 }
 
+// DetectPluginPathAt locates the PulumiPlugin file in the given directory. If no project
+// is found, [ErrPluginNotFound]. Unlike [DetectPluginPathFrom], this function does not
+// search upwards in the directory hierarchy.
+func DetectPluginPathAt(dir string) (string, error) {
+	path, ok := findPluginInDir(dir)
+	if ok {
+		return path, nil
+	}
+	return "", ErrPluginNotFound
+}
+
 // DetectPolicyPackPathAt locates the PulumiPolicy file at the given path. If no project is found, an empty path is
 // returned. Unlike DetectPolicyPackPathFrom, this function does not search upwards in the directory hierarchy.
 func DetectPolicyPackPathAt(path string) (string, error) {
