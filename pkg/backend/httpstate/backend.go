@@ -1477,7 +1477,6 @@ func (b *cloudBackend) createAndStartUpdate(
 	ctx context.Context, action apitype.UpdateKind, stack backend.Stack,
 	op *backend.UpdateOperation, dryRun bool,
 ) (client.UpdateIdentifier, updateMetadata, error) {
-	// Once we start an update we want to keep the machine from sleeping.
 	stackRef := stack.Ref()
 
 	stackID, err := b.getCloudStackIdentifier(stackRef)
