@@ -46,6 +46,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -133,7 +134,7 @@ func NewUpCmd() *cobra.Command {
 		lm cmdBackend.LoginManager,
 		opts backend.UpdateOptions,
 		cmd *cobra.Command,
-		waitForMetadata chan map[string]string,
+		meta *promise.Promise[map[string]string],
 	) error {
 		s, err := cmdStack.RequireStack(
 			ctx,
@@ -239,10 +240,15 @@ func NewUpCmd() *cobra.Command {
 			}
 			opts.Engine.Plan = p
 		}
+
 		start := time.Now()
-		metadata := <-waitForMetadata
+		metadata, err := meta.Result(ctx)
 		logging.V(9).Infof("Waiting for language runtime metadata for %s", time.Since(start))
-		maps.Copy(m.Environment, metadata)
+		if err != nil {
+			logging.V(9).Infof("Could not retrieve language runtime metadata: %s", err)
+		} else {
+			maps.Copy(m.Environment, metadata)
+		}
 
 		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
 			Proj:               proj,
@@ -275,7 +281,7 @@ func NewUpCmd() *cobra.Command {
 		templateNameOrURL string,
 		opts backend.UpdateOptions,
 		cmd *cobra.Command,
-		waitForMetadata chan map[string]string,
+		meta *promise.Promise[map[string]string],
 	) error {
 		// Retrieve the template repo.
 		templateSource := cmdTemplates.New(ctx,
@@ -475,9 +481,13 @@ func NewUpCmd() *cobra.Command {
 		}
 
 		start := time.Now()
-		metadata := <-waitForMetadata
+		metadata, err := meta.Result(ctx)
 		logging.V(9).Infof("Waiting for language runtime metadata for %s", time.Since(start))
-		maps.Copy(m.Environment, metadata)
+		if err != nil {
+			logging.V(9).Infof("Could not retrieve language runtime metadata: %s", err)
+		} else {
+			maps.Copy(m.Environment, metadata)
+		}
 
 		// TODO for the URL case:
 		// - suppress preview display/prompt unless error.
@@ -535,15 +545,7 @@ func NewUpCmd() *cobra.Command {
 				return err
 			}
 
-			// Retrieve language runtime metadata async so we can continue with the other work in the meantime.
-			waitForMetadata := make(chan map[string]string, 1)
-			go func() {
-				env, err := metadata.GetLanguageRuntimeMetadata(root, proj)
-				if err != nil {
-					logging.V(1).Infof("Could not retrieve language runtime metadata: %s", err)
-				}
-				waitForMetadata <- env
-			}()
+			meta := metadata.GetLanguageRuntimeMetadata(root, proj)
 
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
@@ -653,7 +655,7 @@ func NewUpCmd() *cobra.Command {
 					args[0],
 					opts,
 					cmd,
-					waitForMetadata,
+					meta,
 				)
 			}
 
@@ -664,7 +666,7 @@ func NewUpCmd() *cobra.Command {
 				cmdBackend.DefaultLoginManager,
 				opts,
 				cmd,
-				waitForMetadata,
+				meta,
 			)
 		},
 	}

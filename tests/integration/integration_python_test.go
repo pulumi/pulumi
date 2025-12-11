@@ -17,6 +17,7 @@ package ints
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -2574,7 +2575,8 @@ func TestGetLanguageRuntimeMetadata(t *testing.T) {
 	project, err := workspace.LoadProject(filepath.Join(e.RootPath, "Pulumi.yaml"))
 	require.NoError(t, err)
 
-	meta, err := metadata.GetLanguageRuntimeMetadata(e.RootPath, project)
+	p := metadata.GetLanguageRuntimeMetadata(e.RootPath, project)
+	meta, err := p.Result(context.Background())
 
 	require.NoError(t, err)
 	require.Equal(t, meta["runtime.name"], "python")

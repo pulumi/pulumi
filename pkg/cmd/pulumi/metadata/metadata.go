@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -61,37 +62,39 @@ func GetPolicyPublishMetadata(root string) map[string]string {
 }
 
 // Call `Language.About` to retrieve metadata about the project's runtime.
-func GetLanguageRuntimeMetadata(root string, proj *workspace.Project) (map[string]string, error) {
-	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	pwd, main, pctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer pctx.Close()
+func GetLanguageRuntimeMetadata(root string, proj *workspace.Project) *promise.Promise[map[string]string] {
+	return promise.Run(func() (map[string]string, error) {
+		projinfo := &engine.Projinfo{Proj: proj, Root: root}
+		pwd, main, pctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		defer pctx.Close()
 
-	programInfo := plugin.NewProgramInfo(root, pwd, main, proj.Runtime.Options())
-	lang, err := pctx.Host.LanguageRuntime(proj.Runtime.Name())
-	if err != nil {
-		return nil, err
-	}
+		programInfo := plugin.NewProgramInfo(root, pwd, main, proj.Runtime.Options())
+		lang, err := pctx.Host.LanguageRuntime(proj.Runtime.Name())
+		if err != nil {
+			return nil, err
+		}
 
-	res, err := lang.About(programInfo)
-	if err != nil {
-		return nil, err
-	}
+		res, err := lang.About(programInfo)
+		if err != nil {
+			return nil, err
+		}
 
-	env := make(map[string]string)
-	env["runtime.name"] = proj.Runtime.Name()
-	if res.Executable != "" {
-		env["runtime.executable"] = res.Executable
-	}
-	if res.Version != "" {
-		env["runtime.version"] = res.Version
-	}
-	for k, v := range res.Metadata {
-		env["runtime.metadata."+k] = v
-	}
-	return env, nil
+		env := make(map[string]string)
+		env["runtime.name"] = proj.Runtime.Name()
+		if res.Executable != "" {
+			env["runtime.executable"] = res.Executable
+		}
+		if res.Version != "" {
+			env["runtime.version"] = res.Version
+		}
+		for k, v := range res.Metadata {
+			env["runtime.metadata."+k] = v
+		}
+		return env, nil
+	})
 }
 
 // GetUpdateMetadata returns an UpdateMetadata object, with optional data about the environment

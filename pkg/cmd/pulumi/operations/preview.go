@@ -323,15 +323,7 @@ func NewPreviewCmd() *cobra.Command {
 				return err
 			}
 
-			// Retrieve language runtime metadata async so we can continue with the other work in the meantime.
-			waitForMetadata := make(chan map[string]string, 1)
-			go func() {
-				env, err := metadata.GetLanguageRuntimeMetadata(root, proj)
-				if err != nil {
-					logging.V(1).Infof("Could not retrieve language runtime metadata: %s", err)
-				}
-				waitForMetadata <- env
-			}()
+			meta := metadata.GetLanguageRuntimeMetadata(root, proj)
 
 			if err := validateAttachDebuggerFlag(attachDebugger); err != nil {
 				return err
@@ -514,9 +506,13 @@ func NewPreviewCmd() *cobra.Command {
 			}
 
 			start := time.Now()
-			metadata := <-waitForMetadata
+			metadata, err := meta.Result(ctx)
 			logging.V(9).Infof("Waiting for language runtime metadata for %s", time.Since(start))
-			maps.Copy(m.Environment, metadata)
+			if err != nil {
+				logging.V(9).Infof("Could not retrieve language runtime metadata: %s", err)
+			} else {
+				maps.Copy(m.Environment, metadata)
+			}
 
 			plan, changes, res := backend.PreviewStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
