@@ -22,7 +22,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -340,4 +342,215 @@ func TestJournaler413MinimumBatchSize(t *testing.T) {
 	// Close the journaler to flush all entries
 	err := journaler.Close()
 	require.NoError(t, err)
+}
+
+// mockTicker is a manually controlled ticker for testing.
+type mockTicker struct {
+	c      chan time.Time
+	mu     sync.Mutex
+	period time.Duration
+}
+
+func newMockTicker() *mockTicker {
+	return &mockTicker{
+		c: make(chan time.Time, 1),
+	}
+}
+
+func (m *mockTicker) C() <-chan time.Time {
+	return m.c
+}
+
+func (m *mockTicker) Stop() {
+	// no-op for testing
+}
+
+func (m *mockTicker) Reset(d time.Duration) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.period = d
+}
+
+func (m *mockTicker) Tick() {
+	m.c <- time.Now()
+}
+
+// TestSendBatchesOneBatchAtATime ensures only one batch is being sent at a time.
+func TestSendBatchesOneBatchAtATime(t *testing.T) {
+	t.Parallel()
+
+	entries := make(chan saveJournalEntry, 10)
+	tick := newMockTicker()
+
+	// Track concurrent sends
+	var activeSends int32
+	var maxConcurrentSends int32
+	var sendCount int32
+	var mu sync.Mutex
+	sendDelay := 50 * time.Millisecond
+
+	sender := func(batch []apitype.JournalEntry) error {
+		current := atomic.AddInt32(&activeSends, 1)
+		defer atomic.AddInt32(&activeSends, -1)
+
+		mu.Lock()
+		maxConcurrentSends = max(maxConcurrentSends, current)
+		atomic.AddInt32(&sendCount, 1)
+		mu.Unlock()
+
+		// Simulate slow send to make concurrency issues more apparent
+		time.Sleep(sendDelay)
+
+		return nil
+	}
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		sendBatches(1, 100*time.Millisecond, entries, sender, tick)
+	}()
+
+	results := make([]chan error, 3)
+	for i := 0; i < 3; i++ {
+		results[i] = make(chan error, 1)
+		entries <- saveJournalEntry{
+			entry:  apitype.JournalEntry{SequenceID: int64(i)},
+			result: results[i],
+		}
+	}
+
+	for _, result := range results {
+		<-result
+	}
+
+	close(entries)
+	<-done
+
+	assert.EqualValues(t, 1, maxConcurrentSends, "Only one batch should be sent at a time")
+	assert.EqualValues(t, 3, sendCount, "Expected 3 batches to be sent")
+}
+
+// TestSendBatchesSendsAfterTimerTick ensures batches are sent when the timer ticks.
+func TestSendBatchesSendsAfterTimerTick(t *testing.T) {
+	t.Parallel()
+
+	entries := make(chan saveJournalEntry, 10)
+	tick := newMockTicker()
+
+	var batchesSent int
+	batches := [][]apitype.JournalEntry{}
+
+	sender := func(batch []apitype.JournalEntry) error {
+		batches = append(batches, batch)
+		batchesSent++
+		return nil
+	}
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		sendBatches(5, 100*time.Millisecond, entries, sender, tick)
+	}()
+
+	result := make(chan error, 2)
+	for i := 0; i < 2; i++ {
+		entries <- saveJournalEntry{
+			entry:  apitype.JournalEntry{SequenceID: int64(i)},
+			result: result,
+		}
+	}
+
+	// Spin until all entries have been received from the channel
+	timeout := time.After(50 * time.Millisecond)
+	for len(entries) > 0 {
+		select {
+		case <-timeout:
+			break
+		default:
+			continue
+		}
+	}
+
+	assert.EqualValues(t, 0, batchesSent, "No batches should be sent before timer tick")
+
+	tick.Tick()
+
+	timeout = time.After(200 * time.Millisecond)
+	for range 2 {
+		select {
+		case <-result:
+			t.Log("Received result for entry")
+			continue
+		case <-timeout:
+			require.Fail(t, "Timed out waiting for batch send after timer tick")
+		}
+	}
+	assert.Equal(t, 1, batchesSent, "One batch should be sent after timer tick")
+
+	require.Len(t, batches, 1)
+	require.Len(t, batches[0], 2, "Batch should contain 2 entries")
+
+	close(entries)
+	<-done
+}
+
+// TestSendBatchesWaitsForInFlightBatches ensures the function doesn't return before all in-flight batches are done.
+func TestSendBatchesWaitsForInFlightBatches(t *testing.T) {
+	t.Parallel()
+
+	entries := make(chan saveJournalEntry, 10)
+	tick := newMockTicker()
+
+	sendStarted := make(chan struct{})
+	sendComplete := make(chan struct{})
+	sentJournalEntries := 0
+	sentBatches := 0
+
+	sender := func(batch []apitype.JournalEntry) error {
+		if sentJournalEntries == 0 {
+			close(sendStarted)
+		}
+		// Simulate slow send
+		time.Sleep(200 * time.Millisecond)
+		sentJournalEntries += len(batch)
+		sentBatches += 1
+		if sentJournalEntries >= 9 {
+			close(sendComplete)
+		}
+		return nil
+	}
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		sendBatches(3, 100*time.Millisecond, entries, sender, tick)
+	}()
+
+	for i := range 9 {
+		result := make(chan error, 1)
+		entries <- saveJournalEntry{
+			entry:  apitype.JournalEntry{SequenceID: int64(i)},
+			result: result,
+		}
+	}
+
+	<-sendStarted
+
+	close(entries)
+
+	select {
+	case <-done:
+		t.Fatal("sendBatches returned before send completed")
+	case <-time.After(10 * time.Millisecond):
+	}
+
+	<-sendComplete
+	require.Equal(t, 9, sentJournalEntries, "All journal entries should be sent")
+	require.Equal(t, 3, sentBatches, "Three batches should be sent")
+
+	select {
+	case <-done:
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("sendBatches did not return after send completed")
+	}
 }
