@@ -470,18 +470,16 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 		return true
 	}
 
-	if len(old.PropertyDependencies) > 0 || len(new.PropertyDependencies) > 0 {
-		for key, oldDeps := range old.PropertyDependencies {
-			newDeps, ok := new.PropertyDependencies[key]
-			if !ok {
-				logging.V(9).Infof("SnapshotManager: mustWrite() true because of PropertyDependencies")
-				return true
-			}
-			if (len(oldDeps) > 0 || len(newDeps) > 0) &&
-				!reflect.DeepEqual(oldDeps, newDeps) {
-				logging.V(9).Infof("SnapshotManager: mustWrite() true because of PropertyDependencies")
-				return true
-			}
+	for key, oldDeps := range old.PropertyDependencies {
+		newDeps, ok := new.PropertyDependencies[key]
+		if !ok {
+			logging.V(9).Infof("SnapshotManager: mustWrite() true because of PropertyDependencies")
+			return true
+		}
+		if (len(oldDeps) > 0 || len(newDeps) > 0) &&
+			!reflect.DeepEqual(oldDeps, newDeps) {
+			logging.V(9).Infof("SnapshotManager: mustWrite() true because of PropertyDependencies")
+			return true
 		}
 	}
 
