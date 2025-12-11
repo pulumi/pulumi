@@ -32,7 +32,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"golang.org/x/sync/semaphore"
 )
 
 var _ engine.Journal = (*cloudJournaler)(nil)
@@ -140,38 +139,49 @@ func sendBatch(
 	return sendBatch(ctx, client, update, tokenSource, batch[len(batch)/2:])
 }
 
+// batchSender is a function type for sending batches of journal entries.
+type batchSender func(batch []apitype.JournalEntry) error
+
+// ticker is an interface for time-based triggers.
+type ticker interface {
+	C() <-chan time.Time
+	Stop()
+	Reset(d time.Duration)
+}
+
+// realTicker wraps time.Ticker to implement the ticker interface.
+type realTicker struct {
+	*time.Ticker
+}
+
+func (t *realTicker) C() <-chan time.Time {
+	return t.Ticker.C
+}
+
+func (t *realTicker) Reset(d time.Duration) {
+	t.Ticker.Reset(d)
+}
+
 // sendBatches reads journal entries off of the entries channel and sends batches when either the maximum batch size
 // or the maximum period between batches is reached. Batches are sent sequentially.
 func sendBatches(
-	ctx context.Context,
-	client *client.Client,
-	update client.UpdateIdentifier,
-	tokenSource tokenSourceCapability,
-	sm secrets.Manager,
 	maxBatchSize int,
 	period time.Duration,
 	entries <-chan saveJournalEntry,
+	sender batchSender,
+	ticker ticker,
 ) {
-	ticker := time.NewTicker(period)
-
 	results := make([]chan<- error, 0, maxBatchSize)
 	batch := make([]apitype.JournalEntry, 0, maxBatchSize)
-	sem := semaphore.NewWeighted(1)
+	lock := sync.Mutex{}
 	flush := func(batch []apitype.JournalEntry, results []chan<- error) {
 		if len(batch) != 0 {
-			err := sem.Acquire(ctx, 1)
-			defer sem.Release(1)
-
-			if err != nil {
-				for _, r := range results {
-					r <- err
-				}
-				return
-			}
+			lock.Lock()
+			defer lock.Unlock()
 
 			logging.V(11).Infof("flushing journal entries: len=%v, cap=%v", len(batch), cap(batch))
 
-			err = sendBatch(ctx, client, update, tokenSource, batch)
+			err := sender(batch)
 			for _, r := range results {
 				r <- err
 			}
@@ -207,7 +217,7 @@ func sendBatches(
 					ticker.Reset(period)
 				}()
 			}
-		case <-ticker.C:
+		case <-ticker.C():
 			ticker.Stop()
 			sendBatch, sendResults := batch, results
 			batch, results = make([]apitype.JournalEntry, 0, maxBatchSize), make([]chan<- error, 0, maxBatchSize)
@@ -233,10 +243,19 @@ func newJournaler(
 	// Start the batch worker.
 	entries := make(chan saveJournalEntry, maxBatchSize)
 	done := make(chan struct{})
+
+	// Create the sender function that calls sendBatch with the context and client.
+	sender := func(batch []apitype.JournalEntry) error {
+		return sendBatch(ctx, client, update, tokenSource, batch)
+	}
+
+	// Create the ticker.
+	tick := &realTicker{time.NewTicker(period)}
+
 	go func() {
 		defer close(done)
 
-		sendBatches(ctx, client, update, tokenSource, sm, maxBatchSize, period, entries)
+		sendBatches(maxBatchSize, period, entries, sender, tick)
 	}()
 
 	return &cloudJournaler{
