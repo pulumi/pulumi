@@ -98,8 +98,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l2-invoke-options-depends-on":           "not implemented yet",
-	"l2-resource-option-replacement-trigger": "To be added in #20939",
+	"l2-invoke-options-depends-on": "not implemented yet",
 }
 
 func TestLanguage(t *testing.T) {
