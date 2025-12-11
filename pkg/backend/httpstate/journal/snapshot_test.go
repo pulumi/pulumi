@@ -491,7 +491,7 @@ func TestSendBatchesSendsAfterTimerTick(t *testing.T) {
 	assert.Equal(t, int32(1), atomic.LoadInt32(&batchesSent), "One batch should be sent after timer tick")
 
 	require.Len(t, batches, 1)
-	assert.Len(t, batches[0], 2, "Batch should contain 2 entries")
+	require.Len(t, batches[0], 2, "Batch should contain 2 entries")
 
 	close(entries)
 	<-done
