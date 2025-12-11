@@ -357,6 +357,7 @@ async def serialize_property(
     typ: Optional[type] = None,
     keep_output_values: bool = False,
     exclude_resource_refs_from_deps: bool = False,
+    return_protobuf_value: bool = False,
 ) -> Any:
     """
     Serializes a single Input into a form suitable for remoting to the engine, awaiting
@@ -385,7 +386,40 @@ async def serialize_property(
     `deps` during serialization (only if the monitor supports resource references). This is
     useful for remote components (i.e. MLCs) and resource method calls where we want property
     dependencies to be empty for a property that only contains resource references.
+
+    :param bool return_protobuf_value: If true, the serialized value will be returned as a protobuf Value, rather
+    than just a value that is google.protobuf compatible.
     """
+
+    if return_protobuf_value:
+        serialized = await serialize_property(
+            value,
+            deps,
+            property_key,
+            resource_obj,
+            input_transformer,
+            typ,
+            keep_output_values,
+            exclude_resource_refs_from_deps,
+            return_protobuf_value=False,
+        )
+
+        if isinstance(serialized, struct_pb2.Value):
+            return value
+        if serialized is None or serialized == UNKNOWN:
+            return struct_pb2.Value(null_value=struct_pb2.NULL_VALUE)
+        if isinstance(serialized, bool):
+            return struct_pb2.Value(bool_value=serialized)
+        if isinstance(serialized, (int, float)):
+            return struct_pb2.Value(number_value=float(serialized))
+        if isinstance(serialized, str):
+            return struct_pb2.Value(string_value=serialized)
+        if isinstance(serialized, dict):
+            return struct_pb2.Value(struct_value=serialized)  # type: ignore[arg-type]
+        if isinstance(serialized, (list, tuple)):
+            return struct_pb2.Value(list_value=serialized)  # type: ignore[arg-type]
+
+        return struct_pb2.Value(string_value=str(serialized))
 
     # Set typ to T if it's Optional[T], Input[T], or InputType[T].
     typ = _types.unwrap_type(typ) if typ else typ

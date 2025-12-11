@@ -255,8 +255,6 @@ async def prepare_resource(
 
     replacement_trigger: Optional[Any] = None
     if opts is not None and opts.replacement_trigger is not None:
-        if isinstance(opts.replacement_trigger, struct_pb2.Value):
-            opts.replacement_trigger = await serialize_property(opts.replacement_trigger)
         replacement_trigger = opts.replacement_trigger
 
     supports_alias_specs = await settings.monitor_supports_alias_specs()
@@ -950,28 +948,6 @@ def _struct_value_to_python(value: struct_pb2.Value) -> Any:
         return None
 
 
-def _serialized_value_to_struct_value(value: Any) -> struct_pb2.Value:
-    """
-    Converts a serialized Python value (from serialize_property) to a struct_pb2.Value.
-    """
-    if isinstance(value, struct_pb2.Value):
-        return value
-    if value is None or value == rpc.UNKNOWN:
-        return struct_pb2.Value(null_value=struct_pb2.NULL_VALUE)
-    if isinstance(value, bool):
-        return struct_pb2.Value(bool_value=value)
-    if isinstance(value, (int, float)):
-        return struct_pb2.Value(number_value=float(value))
-    if isinstance(value, str):
-        return struct_pb2.Value(string_value=value)
-    if isinstance(value, dict):
-        return struct_pb2.Value(struct_value=value)  # type: ignore[arg-type]
-    if isinstance(value, (list, tuple)):
-        return struct_pb2.Value(list_value=value)  # type: ignore[arg-type]
-
-    return struct_pb2.Value(string_value=str(value))
-
-
 def register_resource(
     res: "Resource",
     ty: str,
@@ -1119,12 +1095,17 @@ def register_resource(
             keep_output_values = False
 
             if replacement_trigger and known_types.is_output(replacement_trigger):
-              is_known = await replacement_trigger._is_known
-              is_dry_run = settings.is_dry_run()
-              keep_output_values = not is_known or is_dry_run
+                is_known = await replacement_trigger._is_known
+                is_dry_run = settings.is_dry_run()
+                keep_output_values = not is_known or is_dry_run
 
-            replacement_trigger = _serialized_value_to_struct_value(
-              await serialize_property(replacement_trigger, [], "replacement_trigger", res, None, None, keep_output_values, False)
+            replacement_trigger = await serialize_property(
+                replacement_trigger,
+                [],
+                property_key="replacement_trigger",
+                resource_obj=res,
+                keep_output_values=keep_output_values,
+                return_protobuf_value=True,
             )
 
             req = resource_pb2.RegisterResourceRequest(
