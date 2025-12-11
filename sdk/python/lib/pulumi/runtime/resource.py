@@ -34,7 +34,7 @@ from ..output import Input, Output, _safe_str
 from ..runtime.proto import alias_pb2, resource_pb2, source_pb2, callback_pb2
 from . import known_types, rpc, settings
 from ._depends_on import _resolve_depends_on_urns
-from .rpc import _expand_dependencies
+from .rpc import _expand_dependencies, serialize_property
 from .settings import (
     _get_callbacks,
     _get_rpc_manager,
@@ -256,8 +256,8 @@ async def prepare_resource(
     replacement_trigger: Optional[Any] = None
     if opts is not None and opts.replacement_trigger is not None:
         if isinstance(opts.replacement_trigger, struct_pb2.Value):
-            opts.replacement_trigger = _struct_value_to_python(opts.replacement_trigger)
-        replacement_trigger = Output.from_input(opts.replacement_trigger)
+            opts.replacement_trigger = await serialize_property(opts.replacement_trigger)
+        replacement_trigger = opts.replacement_trigger
 
     supports_alias_specs = await settings.monitor_supports_alias_specs()
     aliases = await prepare_aliases(res, opts, supports_alias_specs)
@@ -1115,26 +1115,17 @@ def register_resource(
             hook_prefix = f"{ty}_{name}"
             hooks = await _prepare_resource_hooks(opts.hooks, hook_prefix)
 
-            replacement_trigger_to_serialize = resolver.replacement_trigger
-            if replacement_trigger_to_serialize and known_types.is_output(
-                replacement_trigger_to_serialize
-            ):
-                unwrapped_value = await replacement_trigger_to_serialize.future()
-                if isinstance(unwrapped_value, struct_pb2.Value):
-                    from .. import output as output_mod
+            replacement_trigger = resolver.replacement_trigger
+            keep_output_values = False
 
-                    python_value = _struct_value_to_python(unwrapped_value)
-                    replacement_trigger_to_serialize = output_mod.Output.from_input(
-                        python_value
-                    )
+            if replacement_trigger and known_types.is_output(replacement_trigger):
+              is_known = await replacement_trigger._is_known
+              is_dry_run = settings.is_dry_run()
+              keep_output_values = not is_known or is_dry_run
 
-            keep_output_values_for_trigger = False
-            if replacement_trigger_to_serialize and known_types.is_output(
-                replacement_trigger_to_serialize
-            ):
-                is_known = await replacement_trigger_to_serialize._is_known
-                is_dry_run = settings.is_dry_run()
-                keep_output_values_for_trigger = not is_known or is_dry_run
+            replacement_trigger = _serialized_value_to_struct_value(
+              await serialize_property(replacement_trigger, [], "replacement_trigger", res, None, None, keep_output_values, False)
+            )
 
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
@@ -1162,20 +1153,7 @@ def register_resource(
                 supportsPartialValues=True,
                 remote=remote,
                 replaceOnChanges=replace_on_changes or [],
-                replacement_trigger=_serialized_value_to_struct_value(
-                    await rpc.serialize_property(
-                        replacement_trigger_to_serialize,
-                        [],
-                        "replacement_trigger",
-                        res,
-                        None,
-                        None,
-                        keep_output_values_for_trigger,
-                        False,
-                    )
-                )
-                if replacement_trigger_to_serialize
-                else None,
+                replacement_trigger=replacement_trigger,
                 retainOnDelete=opts.retain_on_delete,
                 deletedWith=resolver.deleted_with_urn or "",
                 replace_with=resolver.replace_with_urns or [],
