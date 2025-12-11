@@ -442,7 +442,7 @@ func TestSendBatchesSendsAfterTimerTick(t *testing.T) {
 
 	sender := func(batch []apitype.JournalEntry) error {
 		batches = append(batches, batch)
-		atomic.AddInt32(&batchesSent, 1)
+		batchesSent++
 		return nil
 	}
 
@@ -471,7 +471,7 @@ func TestSendBatchesSendsAfterTimerTick(t *testing.T) {
 		}
 	}
 
-	assert.Equal(t, int32(0), atomic.LoadInt32(&batchesSent), "No batches should be sent before timer tick")
+	assert.EqualValues(t, 0, batchesSent, "No batches should be sent before timer tick")
 
 	tick.Tick()
 
@@ -485,7 +485,7 @@ func TestSendBatchesSendsAfterTimerTick(t *testing.T) {
 			require.Fail(t, "Timed out waiting for batch send after timer tick")
 		}
 	}
-	assert.Equal(t, int32(1), atomic.LoadInt32(&batchesSent), "One batch should be sent after timer tick")
+	assert.Equal(t, 1, batchesSent, "One batch should be sent after timer tick")
 
 	require.Len(t, batches, 1)
 	require.Len(t, batches[0], 2, "Batch should contain 2 entries")

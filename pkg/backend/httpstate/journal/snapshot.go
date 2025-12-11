@@ -168,7 +168,7 @@ func sendBatches(
 	maxBatchSize int,
 	period time.Duration,
 	entries <-chan saveJournalEntry,
-	sender batchSender,
+	sender batchSend,
 	ticker ticker,
 ) {
 	results := make([]chan<- error, 0, maxBatchSize)
