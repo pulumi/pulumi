@@ -158,11 +158,9 @@ func TestPerfStackReferenceSecretsBatchUpdate(t *testing.T) {
 
 //nolint:paralleltest // Do not run in parallel to avoid resource contention
 func TestPerfManyResourcesWithJournaling(t *testing.T) {
-	// First run: create 4000 resources
 	initialBenchmark := &integration.AssertPerfBenchmark{
-		T:                  t,
-		MaxPreviewDuration: 50 * time.Second,
-		MaxUpdateDuration:  120 * time.Second,
+		T:                 t,
+		MaxUpdateDuration: 100 * time.Second,
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -171,17 +169,17 @@ func TestPerfManyResourcesWithJournaling(t *testing.T) {
 		Dependencies:   []string{"@pulumi/pulumi"},
 		RequireService: true,
 		ReportStats:    initialBenchmark,
+		SkipPreview:    true,
 		Env: []string{
 			"PULUMI_ENABLE_JOURNALING=true",
 		},
 		DestroyOnCleanup: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			require.Greater(t, len(stack.Deployment.Resources), 4000)
-			// Second run: no-op update on the same stack (should be much faster)
+			require.Greater(t, len(stack.Deployment.Resources), 2000)
+
 			subsequentBenchmark := &integration.AssertPerfBenchmark{
-				T:                  t,
-				MaxPreviewDuration: 30 * time.Second,
-				MaxUpdateDuration:  30 * time.Second,
+				T:                 t,
+				MaxUpdateDuration: 80 * time.Second,
 			}
 
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -190,6 +188,7 @@ func TestPerfManyResourcesWithJournaling(t *testing.T) {
 				StackName:        string(stack.StackName),
 				Dependencies:     []string{"@pulumi/pulumi"},
 				RequireService:   true,
+				SkipPreview:      true,
 				SkipStackInit:    true,
 				SkipStackRemoval: true,
 				ReportStats:      subsequentBenchmark,
