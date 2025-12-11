@@ -1104,7 +1104,7 @@ def register_resource(
                 [],
                 property_key="replacement_trigger",
                 resource_obj=res,
-                keep_output_values=keep_output_values,
+                keep_output_values=True,
                 return_protobuf_value=True,
             )
 
