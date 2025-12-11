@@ -1092,12 +1092,6 @@ def register_resource(
             hooks = await _prepare_resource_hooks(opts.hooks, hook_prefix)
 
             replacement_trigger = resolver.replacement_trigger
-            keep_output_values = False
-
-            if replacement_trigger and known_types.is_output(replacement_trigger):
-                is_known = await replacement_trigger._is_known
-                is_dry_run = settings.is_dry_run()
-                keep_output_values = not is_known or is_dry_run
 
             replacement_trigger = await serialize_property(
                 replacement_trigger,
