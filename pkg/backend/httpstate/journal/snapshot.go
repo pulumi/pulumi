@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"golang.org/x/sync/semaphore"
 )
 
 var _ engine.Journal = (*cloudJournaler)(nil)
@@ -146,6 +147,7 @@ func sendBatches(
 	client *client.Client,
 	update client.UpdateIdentifier,
 	tokenSource tokenSourceCapability,
+	sm secrets.Manager,
 	maxBatchSize int,
 	period time.Duration,
 	entries <-chan saveJournalEntry,
@@ -154,17 +156,29 @@ func sendBatches(
 
 	results := make([]chan<- error, 0, maxBatchSize)
 	batch := make([]apitype.JournalEntry, 0, maxBatchSize)
-	flush := func() {
+	sem := semaphore.NewWeighted(1)
+	flush := func(batch []apitype.JournalEntry, results []chan<- error) {
 		if len(batch) != 0 {
+			err := sem.Acquire(ctx, 1)
+			defer sem.Release(1)
+
+			if err != nil {
+				for _, r := range results {
+					r <- err
+				}
+				return
+			}
+
 			logging.V(11).Infof("flushing journal entries: len=%v, cap=%v", len(batch), cap(batch))
 
-			err := sendBatch(ctx, client, update, tokenSource, batch)
+			err = sendBatch(ctx, client, update, tokenSource, batch)
 			for _, r := range results {
 				r <- err
 			}
-			results, batch = results[:0], batch[:0]
 		}
 	}
+
+	var wg sync.WaitGroup
 
 	// Wait for the entries channel to close, a journal entry to arrive, or a periodic send. Then flush the current
 	// batch if necessary.
@@ -173,7 +187,8 @@ func sendBatches(
 		case req, ok := <-entries:
 			if !ok {
 				// Channel closed, we're done
-				flush()
+				flush(batch, results)
+				wg.Wait()
 				return
 			}
 
@@ -182,10 +197,26 @@ func sendBatches(
 				results = append(results, req.result)
 			}
 			if len(batch) == cap(batch) {
-				flush()
+				ticker.Stop()
+				sendBatch, sendResults := batch, results
+				batch, results = make([]apitype.JournalEntry, 0, maxBatchSize), make([]chan<- error, 0, maxBatchSize)
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					flush(sendBatch, sendResults)
+					ticker.Reset(period)
+				}()
 			}
 		case <-ticker.C:
-			flush()
+			ticker.Stop()
+			sendBatch, sendResults := batch, results
+			batch, results = make([]apitype.JournalEntry, 0, maxBatchSize), make([]chan<- error, 0, maxBatchSize)
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				flush(sendBatch, sendResults)
+				ticker.Reset(period)
+			}()
 		}
 	}
 }
@@ -205,7 +236,7 @@ func newJournaler(
 	go func() {
 		defer close(done)
 
-		sendBatches(ctx, client, update, tokenSource, maxBatchSize, period, entries)
+		sendBatches(ctx, client, update, tokenSource, sm, maxBatchSize, period, entries)
 	}()
 
 	return &cloudJournaler{
