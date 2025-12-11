@@ -247,6 +247,33 @@ func TestMustWrite(t *testing.T) {
 			new:       &resource.State{URN: defaultURN, SourcePosition: "pos2"},
 			mustWrite: false,
 		},
+		{
+			name: "nothing changed",
+			old: &resource.State{
+				URN:          defaultURN,
+				Type:         "pulumi:providers:aws",
+				Inputs:       resource.PropertyMap{"key": resource.NewProperty("value")},
+				Outputs:      resource.PropertyMap{"key": resource.NewProperty("value")},
+				Dependencies: []resource.URN{"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1"},
+				PropertyDependencies: map[resource.PropertyKey][]resource.URN{
+					"prop1": {"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1"},
+				},
+				ResourceHooks:  map[resource.HookType][]string{resource.BeforeCreate: {"hook1"}},
+				SourcePosition: "pos1",
+			},
+			new: &resource.State{
+				URN:          defaultURN,
+				Type:         "pulumi:providers:aws",
+				Inputs:       resource.PropertyMap{"key": resource.NewProperty("value")},
+				Outputs:      resource.PropertyMap{"key": resource.NewProperty("value")},
+				Dependencies: []resource.URN{"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1"},
+				PropertyDependencies: map[resource.PropertyKey][]resource.URN{
+					"prop1": {"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1"},
+				},
+				ResourceHooks:  map[resource.HookType][]string{resource.BeforeCreate: {"hook1"}},
+				SourcePosition: "pos1",
+			},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
