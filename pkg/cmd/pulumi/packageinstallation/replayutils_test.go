@@ -38,7 +38,9 @@ var StandardRunPackage RunPackage = func(
 	return nil, nil
 }
 
-var StandardInstallPluginAt InstallPluginAt = func(ctx context.Context, dirPath string, project *workspace.PluginProject) error {
+var StandardInstallPluginAt InstallPluginAt = func(
+	ctx context.Context, dirPath string, project *workspace.PluginProject,
+) error {
 	return nil
 }
 

@@ -338,7 +338,9 @@ type IsExternalURL func(source string) bool
 
 func (IsExternalURL) isReplayStep() {}
 
-func (ws *replayWorkspace) InstallPluginAt(ctx context.Context, dirPath string, project *workspace.PluginProject) error {
+func (ws *replayWorkspace) InstallPluginAt(
+	ctx context.Context, dirPath string, project *workspace.PluginProject,
+) error {
 	next, idx := ws.pop("InstallPluginAt", []any{dirPath, project})
 	step, ok := next.(InstallPluginAt)
 	require.True(ws.t, ok, "%d: Expected step %T but found %T", idx, step, next)
