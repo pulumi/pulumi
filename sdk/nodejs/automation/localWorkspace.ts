@@ -433,7 +433,7 @@ export class LocalWorkspace implements Workspace {
         if (foundExt === ".json") {
             contents = JSON.stringify(settings, null, 4);
         } else {
-            contents = yaml.safeDump(settings, { skipInvalid: true });
+            contents = yaml.dump(settings, { skipInvalid: true });
         }
         return fs.writeFileSync(path, contents);
     }
@@ -459,7 +459,7 @@ export class LocalWorkspace implements Workspace {
             if (isJSON) {
                 stackSettings = JSON.parse(contents);
             }
-            stackSettings = yaml.safeLoad(contents) as StackSettings;
+            stackSettings = yaml.load(contents) as StackSettings;
 
             // Transform the serialized representation back to what we expect.
             for (const key of stackSettingsSerDeKeys) {
@@ -508,7 +508,7 @@ export class LocalWorkspace implements Workspace {
         if (foundExt === ".json") {
             contents = JSON.stringify(serializeSettings, null, 4);
         } else {
-            contents = yaml.safeDump(serializeSettings, { skipInvalid: true });
+            contents = yaml.dump(serializeSettings, { skipInvalid: true });
         }
         return fs.writeFileSync(path, contents);
     }
@@ -1373,7 +1373,7 @@ function loadProjectSettings(workDir: string) {
         if (isJSON) {
             return JSON.parse(contents);
         }
-        return yaml.safeLoad(contents) as ProjectSettings;
+        return yaml.load(contents) as ProjectSettings;
     }
     throw new Error(`failed to find project settings file in workdir: ${workDir}`);
 }
