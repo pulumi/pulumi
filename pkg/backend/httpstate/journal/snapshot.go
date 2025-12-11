@@ -158,10 +158,6 @@ func (t *realTicker) C() <-chan time.Time {
 	return t.Ticker.C
 }
 
-func (t *realTicker) Reset(d time.Duration) {
-	t.Ticker.Reset(d)
-}
-
 // sendBatches reads journal entries off of the entries channel and sends batches when either the maximum batch size
 // or the maximum period between batches is reached. Batches are sent sequentially.
 func sendBatches(

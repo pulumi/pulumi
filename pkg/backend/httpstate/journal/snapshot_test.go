@@ -437,7 +437,7 @@ func TestSendBatchesSendsAfterTimerTick(t *testing.T) {
 	entries := make(chan saveJournalEntry, 10)
 	tick := newMockTicker()
 
-	var batchesSent int32
+	var batchesSent int
 	batches := [][]apitype.JournalEntry{}
 
 	sender := func(batch []apitype.JournalEntry) error {
