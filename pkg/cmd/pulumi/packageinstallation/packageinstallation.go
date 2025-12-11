@@ -47,7 +47,7 @@ type Workspace interface {
 	//
 	// InstallPlugin should assume that all dependencies of the plugin are already
 	// installed.
-	InstallPluginAt(ctx context.Context, dirPath string) error
+	InstallPluginAt(ctx context.Context, dirPath string, project *workspace.PluginProject) error
 
 	// IsExecutable returns if the file at binaryPath can be executed.
 	//
@@ -612,8 +612,10 @@ func (step downloadStep) run(ctx context.Context, p state) error {
 		ctx, p, step.parent, step.spec.Name, pluginDir)
 }
 
-type installStep struct{ dirPath string }
+type installStep struct {
+	project project[*workspace.PluginProject]
+}
 
 func (step installStep) run(ctx context.Context, p state) error {
-	return p.ws.InstallPluginAt(ctx, step.dirPath)
+	return p.ws.InstallPluginAt(ctx, step.project.projectDir, step.project.proj)
 }
