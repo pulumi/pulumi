@@ -22,11 +22,16 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/require"
 )
+
+// Check that [packageworkspace.Workspace] implements [packageinstallation.Workspace]
+// without importing [packageworkspace] from [packageinstallation].
+var _ packageinstallation.Workspace = packageworkspace.Workspace{}
 
 func TestInstallAlreadyInstalledPackage(t *testing.T) {
 	t.Parallel()
