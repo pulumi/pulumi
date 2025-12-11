@@ -62,7 +62,7 @@ func replayInstallPlugin(t *testing.T, args replayInstallPluginArgs, steps ...re
 		args.options, &ws /* registry */, &ws /* workspace */)
 	require.NoError(t, err)
 
-	_, err = runPlugin(t.Context())
+	_, err = runPlugin(t.Context(), "/plugin/launch/dir")
 	require.NoError(t, err)
 
 	var b bytes.Buffer
@@ -338,16 +338,16 @@ type IsExternalURL func(source string) bool
 
 func (IsExternalURL) isReplayStep() {}
 
-func (ws *replayWorkspace) InstallPluginAt(ctx context.Context, dirPath string) error {
-	next, idx := ws.pop("InstallPluginAt", []any{dirPath})
+func (ws *replayWorkspace) InstallPluginAt(ctx context.Context, dirPath string, project *workspace.PluginProject) error {
+	next, idx := ws.pop("InstallPluginAt", []any{dirPath, project})
 	step, ok := next.(InstallPluginAt)
 	require.True(ws.t, ok, "%d: Expected step %T but found %T", idx, step, next)
-	result := step(ctx, dirPath)
+	result := step(ctx, dirPath, project)
 	ws.record(idx, []any{result})
 	return result
 }
 
-type InstallPluginAt func(ctx context.Context, dirPath string) error
+type InstallPluginAt func(ctx context.Context, dirPath string, project *workspace.PluginProject) error
 
 func (InstallPluginAt) isReplayStep() {}
 
@@ -425,18 +425,18 @@ type LinkPackage func(
 func (LinkPackage) isReplayStep() {}
 
 func (ws *replayWorkspace) RunPackage(
-	ctx context.Context, pluginDir string, params plugin.ParameterizeParameters,
+	ctx context.Context, rootDir, pluginDir string, params plugin.ParameterizeParameters,
 ) (plugin.Provider, error) {
-	next, idx := ws.pop("RunPackage", []any{pluginDir, params})
+	next, idx := ws.pop("RunPackage", []any{rootDir, pluginDir, params})
 	step, ok := next.(RunPackage)
 	require.True(ws.t, ok, "%d: Expected step %T but found %T", idx, step, next)
-	result1, result2 := step(ctx, pluginDir, params)
+	result1, result2 := step(ctx, rootDir, pluginDir, params)
 	ws.record(idx, []any{result1, result2})
 	return result1, result2
 }
 
 type RunPackage func(
-	ctx context.Context, pluginDir string, params plugin.ParameterizeParameters,
+	ctx context.Context, rootDir, pluginDir string, params plugin.ParameterizeParameters,
 ) (plugin.Provider, error)
 
 func (RunPackage) isReplayStep() {}

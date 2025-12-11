@@ -3,4 +3,4 @@
 2. DownloadPlugin{PluginSpec{Name:"external-package", Kind:"resource", PluginDownloadURL:"https://example.com/external-package.tar.gz"}} -> {"/tmp/plugins/resource-external-package", nil}
 3. DetectPluginPathAt{"/tmp/plugins/resource-external-package"} -> {"", errorString{s:"no plugin file found"}}
 4. IsExecutable{"/tmp/plugins/resource-external-package/pulumi-resource-external-package"} -> {true, nil}
-5. RunPackage{"/tmp/plugins/resource-external-package", nil} -> {nil, nil}
+5. RunPackage{"/plugin/launch/dir", "/tmp/plugins/resource-external-package", nil} -> {nil, nil}

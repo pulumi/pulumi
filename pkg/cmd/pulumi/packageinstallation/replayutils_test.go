@@ -33,12 +33,12 @@ var StandardDetectPluginPathAt DetectPluginPathAt = func(ctx context.Context, di
 }
 
 var StandardRunPackage RunPackage = func(
-	ctx context.Context, pluginDir string, params plugin.ParameterizeParameters,
+	ctx context.Context, rootDir, pluginDir string, params plugin.ParameterizeParameters,
 ) (plugin.Provider, error) {
 	return nil, nil
 }
 
-var StandardInstallPluginAt InstallPluginAt = func(ctx context.Context, dirPath string) error {
+var StandardInstallPluginAt InstallPluginAt = func(ctx context.Context, dirPath string, project *workspace.PluginProject) error {
 	return nil
 }
 

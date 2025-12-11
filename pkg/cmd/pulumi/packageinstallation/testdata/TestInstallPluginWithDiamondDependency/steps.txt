@@ -14,12 +14,12 @@
 13. DownloadPlugin{PluginSpec{Name:"plugin-d", Kind:"resource"}} -> {"/tmp/plugins/resource-plugin-d", nil}
 14. DetectPluginPathAt{"/tmp/plugins/resource-plugin-d"} -> {"/tmp/plugins/resource-plugin-d/PulumiPlugin.yaml", nil}
 15. LoadPluginProject{"/tmp/plugins/resource-plugin-d/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}, nil}
-16. InstallPluginAt{"/tmp/plugins/resource-plugin-d"} -> {nil}
+16. InstallPluginAt{"/tmp/plugins/resource-plugin-d", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}} -> {nil}
 17. LinkPackage{ProjectRuntimeInfo{name:"go"}, "/tmp/plugins/resource-plugin-b", "plugin-d", "/tmp/plugins/resource-plugin-d", nil} -> {nil}
-18. InstallPluginAt{"/tmp/plugins/resource-plugin-b"} -> {nil}
+18. InstallPluginAt{"/tmp/plugins/resource-plugin-b", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-d":packageValue{value:"plugin-d"}}}} -> {nil}
 19. LinkPackage{ProjectRuntimeInfo{name:"go"}, "/tmp/plugins/resource-plugin-a", "plugin-b", "/tmp/plugins/resource-plugin-b", nil} -> {nil}
 20. LinkPackage{ProjectRuntimeInfo{name:"go"}, "/tmp/plugins/resource-plugin-c", "plugin-d", "/tmp/plugins/resource-plugin-d", nil} -> {nil}
-21. InstallPluginAt{"/tmp/plugins/resource-plugin-c"} -> {nil}
+21. InstallPluginAt{"/tmp/plugins/resource-plugin-c", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-d":packageValue{value:"plugin-d"}}}} -> {nil}
 22. LinkPackage{ProjectRuntimeInfo{name:"go"}, "/tmp/plugins/resource-plugin-a", "plugin-c", "/tmp/plugins/resource-plugin-c", nil} -> {nil}
-23. InstallPluginAt{"/tmp/plugins/resource-plugin-a"} -> {nil}
-24. RunPackage{"/tmp/plugins/resource-plugin-a", nil} -> {nil, nil}
+23. InstallPluginAt{"/tmp/plugins/resource-plugin-a", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[2]{"plugin-b":packageValue{value:"plugin-b"}, "plugin-c":packageValue{value:"plugin-c"}}}} -> {nil}
+24. RunPackage{"/plugin/launch/dir", "/tmp/plugins/resource-plugin-a", nil} -> {nil, nil}
