@@ -831,7 +831,7 @@ func TestResourceHookDeleteCalledOnDestroyRunProgram(t *testing.T) {
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
 			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errs []error,
 		) (bool, error) {
-			require.Nil(t, errs, "lifecycle hooks should have nil errors")
+			require.Empty(t, errs, "lifecycle hooks should have nil errors")
 			hookCalled = true
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			require.Equal(t, name, "resA")
@@ -896,7 +896,7 @@ func TestResourceHookDeleteErrorWhenNoRunProgram(t *testing.T) {
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
 			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errs []error,
 		) (bool, error) {
-			require.Nil(t, errs, "lifecycle hooks should have nil errors")
+			require.Empty(t, errs, "lifecycle hooks should have nil errors")
 			hookCalled = true
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 			require.Equal(t, name, "resA")
@@ -998,7 +998,7 @@ func TestResourceHookComponent(t *testing.T) {
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
 			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errs []error,
 		) (bool, error) {
-			require.Nil(t, errs, "lifecycle hooks should have nil errors")
+			require.Empty(t, errs, "lifecycle hooks should have nil errors")
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typB::resA"))
 			require.Equal(t, name, "resA")
 			require.Equal(t, typ, tokens.Type("pkgA:m:typB"))
