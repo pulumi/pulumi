@@ -35,6 +35,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// Workspace represents the way that [InstallPlugin] and [InstallInProject] interact with
+// the environment.
 type Workspace interface {
 	packageresolution.PluginWorkspace
 
@@ -91,7 +93,10 @@ type Options struct {
 // [workspace.PluginSpec] specified parameterization (via the Pulumi registry).
 type RunPlugin = func(context.Context) (plugin.Provider, error)
 
-// Install a plugin into a project.
+// InstallPlugin installs a plugin into a project.
+//
+// If baseProject & projectDir are zero values, then InstallPlugin will just install the
+// plugin.
 //
 // IO operations are intermediates by the passed in [Workspace] and
 // [registry.Registry]. Both may be operated on in parallel if options.Concurrency > 1 or
@@ -100,18 +105,63 @@ type RunPlugin = func(context.Context) (plugin.Provider, error)
 // If a cyclic dependency is found, then an instance of [ErrorCyclicDependencies] will be
 // returned. It can be accessed with [errors.As]:
 //
-//	_, err := packageinstallation.Install(...)
+//	_, err := packageinstallation.InstallPlugin(...)
 //	var cycle packageinstallation.ErrorCyclicDependencies
 //	if errros.As(err, &cycle) {
 //		fmt.Println(cycle.Cycle)
 //	}
-func Install(
+func InstallPlugin(
 	ctx context.Context,
 	spec workspace.PluginSpec,
 	baseProject workspace.BaseProject, projectDir string,
 	options Options,
 	registry registry.Registry, ws Workspace,
 ) (RunPlugin, error) {
+	var runBundle runBundle
+
+	setup := func(ctx context.Context, state state, root pdag.Node) error {
+		return ensureUnresolvedSpec(ctx, state, root, spec, project[workspace.BaseProject]{
+			proj:       baseProject,
+			projectDir: projectDir,
+		}, &runBundle)
+	}
+
+	err := runInstall(ctx, options, registry, ws, setup)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(ctx context.Context) (plugin.Provider, error) {
+		return ws.RunPackage(ctx, runBundle.pluginDir, runBundle.params)
+	}, nil
+}
+
+// Install all plugins in a project, linking them in as necessary.
+//
+// This is conceptually equivalent to calling [InstallPlugin] for each plugin in a
+// project. InstallInProject should be preferred because it deduplicates installs across
+// the whole project installation and shares concurrency limit across all project
+// dependencies.
+func InstallInProject(
+	ctx context.Context,
+	project_ workspace.BaseProject, projectDir string,
+	options Options, registry registry.Registry, ws Workspace,
+) error {
+	setup := func(ctx context.Context, state state, root pdag.Node) error {
+		return ensureProjectDependencies(ctx, state, root, project[workspace.BaseProject]{
+			proj:       project_,
+			projectDir: projectDir,
+		})
+	}
+
+	return runInstall(ctx, options, registry, ws, setup)
+}
+
+func runInstall(
+	ctx context.Context,
+	options Options, registry registry.Registry, ws Workspace,
+	setup func(ctx context.Context, state state, root pdag.Node) error,
+) error {
 	dag := pdag.New[step]()
 	root, rootReady := dag.NewNode(noOpStep{})
 
@@ -128,25 +178,15 @@ func Install(
 		seenM: new(sync.Mutex),
 	}
 
-	var runBundle runBundle
-	err := ensureUnresolvedSpec(ctx, state, root, spec, project[workspace.BaseProject]{
-		proj:       baseProject,
-		projectDir: projectDir,
-	}, &runBundle)
-	if err != nil {
-		return nil, err
+	if err := setup(ctx, state, root); err != nil {
+		return err
 	}
 
 	rootReady() // Now that at least one spec has been added, it's safe to mark the root as ready.
-	err = dag.Walk(ctx, func(ctx context.Context, step step) error {
+	err := dag.Walk(ctx, func(ctx context.Context, step step) error {
 		return step.run(ctx, state)
 	}, pdag.MaxProcs(options.Concurrency))
-	if err != nil {
-		return nil, wrapCycleError(err)
-	}
-	return func(ctx context.Context) (plugin.Provider, error) {
-		return ws.RunPackage(ctx, runBundle.pluginDir, runBundle.params)
-	}, nil
+	return wrapCycleError(err)
 }
 
 type ErrorCyclicDependencies struct {
