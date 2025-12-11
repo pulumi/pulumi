@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/stretchr/testify/require"
 )
 
 // TODO: add tests using other languages https://github.com/pulumi/pulumi/issues/17669
@@ -153,4 +154,49 @@ func TestPerfStackReferenceSecretsBatchUpdate(t *testing.T) {
 			})
 		},
 	})
+}
+
+//nolint:paralleltest // Do not run in parallel to avoid resource contention
+func TestPerfManyResourcesWithJournaling(t *testing.T) {
+	// First run: create 4000 resources
+	initialBenchmark := &integration.AssertPerfBenchmark{
+		T:                  t,
+		MaxPreviewDuration: 120 * time.Second,
+		MaxUpdateDuration:  120 * time.Second,
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		NoParallel:     true,
+		Dir:            filepath.Join("typescript", "many_resources"),
+		Dependencies:   []string{"@pulumi/pulumi"},
+		RequireService: true,
+		ReportStats:    initialBenchmark,
+		Env: []string{
+			"PULUMI_ENABLE_JOURNALING=true",
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			require.Greater(t, 4000, len(stack.Deployment.Resources))
+			// Second run: no-op update on the same stack (should be much faster)
+			subsequentBenchmark := &integration.AssertPerfBenchmark{
+				T:                  t,
+				MaxPreviewDuration: 30 * time.Second,
+				MaxUpdateDuration:  30 * time.Second,
+			}
+
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				NoParallel: true,
+				Dir:        filepath.Join("typescript", "many_resources"),
+				StackName:  string(stack.StackName),
+				Dependencies: []string{
+					filepath.Join("..", "..", "sdk", "nodejs"),
+				},
+				RequireService: true,
+				ReportStats:    subsequentBenchmark,
+				Env: []string{
+					"PULUMI_ENABLE_JOURNALING=true",
+				},
+			})
+		},
+	})
+	require.True(t, false)
 }
