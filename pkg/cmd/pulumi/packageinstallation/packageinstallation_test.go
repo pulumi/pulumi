@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/require"
 )
@@ -54,12 +53,7 @@ func TestInstallAlreadyInstalledPackage(t *testing.T) {
 		GetPluginPath(func(ctx context.Context, spec workspace.PluginSpec) (string, error) {
 			return "/path/to/plugin", nil
 		}),
-		RunPackage(func(
-			ctx context.Context, pluginDir string,
-			params plugin.ParameterizeParameters,
-		) (plugin.Provider, error) {
-			return nil, nil
-		}),
+		StandardRunPackage,
 	)
 }
 

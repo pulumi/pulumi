@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -245,7 +246,14 @@ func installPackagesFromProject(
 	ws := packageworkspace.New(pctx.Host, stdout, stderr, d, d, nil, packageworkspace.Options{
 		UseLanguageVersionTools: false, // TODO: Is this correct?
 	})
-	opts := packageinstallation.Options{}
+	opts := packageinstallation.Options{
+		Options: packageresolution.Options{
+			DisableRegistryResolve:      env.DisableRegistryResolve.Value(),
+			Experimental:                env.Experimental.Value(),
+			IncludeInstalledInWorkspace: false, // TODO: Is this correct?
+		},
+		Concurrency: parallelism,
+	}
 	return errors.Join(
 		packageinstallation.InstallInProject(ctx, proj, root, opts, registry, ws),
 		pctx.Close(),

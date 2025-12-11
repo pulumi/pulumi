@@ -78,7 +78,7 @@ type Workspace interface {
 	) error
 
 	// Run a package from a directory, parameterized by params.
-	RunPackage(ctx context.Context, pluginDir string, params plugin.ParameterizeParameters) (plugin.Provider, error)
+	RunPackage(ctx context.Context, rootDir, pluginDir string, params plugin.ParameterizeParameters) (plugin.Provider, error)
 }
 
 type Options struct {
@@ -91,7 +91,9 @@ type Options struct {
 //
 // The returned plugin *may* already be parameterized, depending on if the requested
 // [workspace.PluginSpec] specified parameterization (via the Pulumi registry).
-type RunPlugin = func(context.Context) (plugin.Provider, error)
+//
+// The plugin will be launched in wd.
+type RunPlugin = func(ctx context.Context, wd string) (plugin.Provider, error)
 
 // InstallPlugin installs a plugin into a project.
 //
@@ -131,8 +133,8 @@ func InstallPlugin(
 		return nil, err
 	}
 
-	return func(ctx context.Context) (plugin.Provider, error) {
-		return ws.RunPackage(ctx, runBundle.pluginDir, runBundle.params)
+	return func(ctx context.Context, wd string) (plugin.Provider, error) {
+		return ws.RunPackage(ctx, wd, runBundle.pluginDir, runBundle.params)
 	}, nil
 }
 
@@ -409,7 +411,10 @@ func ensureDownloadedPluginDirHasDependenciesAndIsInstalled(
 		}
 
 		install, installReady := state.dag.NewNode(installStep{
-			dirPath: projectDir,
+			project: project[*workspace.PluginProject]{
+				proj:       pluginProject,
+				projectDir: projectDir,
+			},
 		})
 		contract.AssertNoErrorf(state.dag.NewEdge(install, parent), "new nodes cannot be cyclic")
 		defer installReady()
