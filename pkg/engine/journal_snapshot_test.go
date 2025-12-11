@@ -198,6 +198,22 @@ func TestMustWrite(t *testing.T) {
 			mustWrite: true,
 		},
 		{
+			name: "PropertyDependencies changed - missing property",
+			old: &resource.State{
+				URN: defaultURN,
+				PropertyDependencies: map[resource.PropertyKey][]resource.URN{
+					"prop1": {"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1"},
+				},
+			},
+			new: &resource.State{
+				URN: defaultURN,
+				PropertyDependencies: map[resource.PropertyKey][]resource.URN{
+					"prop2": {"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1"},
+				},
+			},
+			mustWrite: true,
+		},
+		{
 			name: "PropertyDependencies changed - different dependencies for same property",
 			old: &resource.State{
 				URN: defaultURN,
