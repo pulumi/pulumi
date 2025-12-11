@@ -35,7 +35,10 @@ type Options struct {
 	UseLanguageVersionTools bool
 }
 
-func New(host plugin.Host, stdout, stderr io.Writer, sink, statusSink diag.Sink, parentSPan opentracing.Span, options Options) Workspace {
+func New(
+	host plugin.Host, stdout, stderr io.Writer, sink, statusSink diag.Sink,
+	parentSPan opentracing.Span, options Options,
+) Workspace {
 	return Workspace{host, stdout, stderr, options, sink, statusSink, parentSPan}
 }
 
@@ -155,11 +158,12 @@ func (w Workspace) LinkPackage(
 	// a generated SDK every time that combination is requested. This will help in
 	// cases where the same provider is needed by multiple other plugins.
 	panic("TODO: Generate the SDK into a temp directory, if successful, then link it into the current directory.")
-	panic(boundSchema)
 }
 
 // Run a package from a directory, parameterized by params.
-func (w Workspace) RunPackage(ctx context.Context, rootDir, pluginDir string, params plugin.ParameterizeParameters) (plugin.Provider, error) {
+func (w Workspace) RunPackage(
+	ctx context.Context, rootDir, pluginDir string, params plugin.ParameterizeParameters,
+) (plugin.Provider, error) {
 	p, _, err := w.runPackage(ctx, rootDir, pluginDir, params)
 	return p, err
 }
@@ -178,7 +182,9 @@ func bindSpec(spec schema.PackageSpec, loader schema.Loader) (*schema.Package, e
 }
 
 // Run a package from a directory, parameterized by params.
-func (w Workspace) runPackage(ctx context.Context, rootDir, pluginDir string, params plugin.ParameterizeParameters) (plugin.Provider, *plugin.ParameterizeResponse, error) {
+func (w Workspace) runPackage(
+	ctx context.Context, rootDir, pluginDir string, params plugin.ParameterizeParameters,
+) (plugin.Provider, *plugin.ParameterizeResponse, error) {
 	pctx := plugin.NewContextWithHost(ctx, w.sink, w.statusSink, noCloseHost{w.host}, rootDir, rootDir, w.parentSpan)
 	p, err := plugin.NewProviderFromPath(w.host, pctx, pluginDir)
 	if err != nil {

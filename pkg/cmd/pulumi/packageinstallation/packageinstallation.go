@@ -78,7 +78,10 @@ type Workspace interface {
 	) error
 
 	// Run a package from a directory, parameterized by params.
-	RunPackage(ctx context.Context, rootDir, pluginDir string, params plugin.ParameterizeParameters) (plugin.Provider, error)
+	RunPackage(
+		ctx context.Context,
+		rootDir, pluginDir string, params plugin.ParameterizeParameters,
+	) (plugin.Provider, error)
 }
 
 type Options struct {
