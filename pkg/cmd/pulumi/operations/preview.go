@@ -18,7 +18,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/text/cases"
@@ -48,6 +50,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -313,14 +316,20 @@ func NewPreviewCmd() *cobra.Command {
 		Args: cmdArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 
-			err := validateAttachDebuggerFlag(attachDebugger)
+			proj, root, err := readProjectForUpdate(ws, client)
 			if err != nil {
 				return err
 			}
 
+			meta := metadata.GetLanguageRuntimeMetadata(root, proj)
+
+			if err := validateAttachDebuggerFlag(attachDebugger); err != nil {
+				return err
+			}
+
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-			ws := pkgWorkspace.Instance
 			displayType := display.DisplayProgress
 			if diffDisplay {
 				displayType = display.DisplayDiff
@@ -405,11 +414,6 @@ func NewPreviewCmd() *cobra.Command {
 
 			// Save any config values passed via flags.
 			if err = parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, configPath); err != nil {
-				return err
-			}
-
-			proj, root, err := readProjectForUpdate(ws, client)
-			if err != nil {
 				return err
 			}
 
@@ -499,6 +503,15 @@ func NewPreviewCmd() *cobra.Command {
 			if importFilePath != "" {
 				events = make(chan engine.Event)
 				importFilePromise = buildImportFile(events)
+			}
+
+			start := time.Now()
+			metadata, err := meta.Result(ctx)
+			logging.V(9).Infof("Waiting for language runtime metadata for %s", time.Since(start))
+			if err != nil {
+				logging.V(9).Infof("Could not retrieve language runtime metadata: %s", err)
+			} else {
+				maps.Copy(m.Environment, metadata)
 			}
 
 			plan, changes, res := backend.PreviewStack(ctx, s, backend.UpdateOperation{
