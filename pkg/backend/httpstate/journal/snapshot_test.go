@@ -394,9 +394,7 @@ func TestSendBatchesOneBatchAtATime(t *testing.T) {
 		defer atomic.AddInt32(&activeSends, -1)
 
 		mu.Lock()
-		if current > maxConcurrentSends {
-			maxConcurrentSends = current
-		}
+		maxConcurrentSends = max(maxConcurrentSends, current)
 		atomic.AddInt32(&sendCount, 1)
 		mu.Unlock()
 
@@ -428,8 +426,8 @@ func TestSendBatchesOneBatchAtATime(t *testing.T) {
 	close(entries)
 	<-done
 
-	assert.Equal(t, int32(1), maxConcurrentSends, "Only one batch should be sent at a time")
-	assert.Equal(t, int32(3), sendCount, "Expected 3 batches to be sent")
+	assert.EqualValues(t, 1, maxConcurrentSends, "Only one batch should be sent at a time")
+	assert.EqualValues(t, 3, sendCount, "Expected 3 batches to be sent")
 }
 
 // TestSendBatchesSendsAfterTimerTick ensures batches are sent when the timer ticks.
@@ -462,12 +460,11 @@ func TestSendBatchesSendsAfterTimerTick(t *testing.T) {
 		}
 	}
 
-	// Make sure the entries have been sent to the channel
+	// Spin until all entries have been received from the channel
 	timeout := time.After(50 * time.Millisecond)
 	for len(entries) > 0 {
 		select {
 		case <-timeout:
-			t.Log("Timeout reached while waiting for batch send")
 			break
 		default:
 			continue
@@ -529,7 +526,7 @@ func TestSendBatchesWaitsForInFlightBatches(t *testing.T) {
 		sendBatches(3, 100*time.Millisecond, entries, sender, tick)
 	}()
 
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		result := make(chan error, 1)
 		entries <- saveJournalEntry{
 			entry:  apitype.JournalEntry{SequenceID: int64(i)},

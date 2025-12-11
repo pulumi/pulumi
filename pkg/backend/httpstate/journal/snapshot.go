@@ -139,8 +139,8 @@ func sendBatch(
 	return sendBatch(ctx, client, update, tokenSource, batch[len(batch)/2:])
 }
 
-// batchSender is a function type for sending batches of journal entries.
-type batchSender func(batch []apitype.JournalEntry) error
+// batchSend is a function type for sending batches of journal entries.
+type batchSend = func(batch []apitype.JournalEntry) error
 
 // ticker is an interface for time-based triggers.
 type ticker interface {
@@ -173,7 +173,7 @@ func sendBatches(
 ) {
 	results := make([]chan<- error, 0, maxBatchSize)
 	batch := make([]apitype.JournalEntry, 0, maxBatchSize)
-	lock := sync.Mutex{}
+	var lock sync.Mutex
 	flush := func(batch []apitype.JournalEntry, results []chan<- error) {
 		if len(batch) != 0 {
 			lock.Lock()
