@@ -31,7 +31,7 @@ import (
 func TestInstallAlreadyInstalledPackage(t *testing.T) {
 	t.Parallel()
 
-	testReplay(t, testReplayArgs{
+	replayInstallPlugin(t, replayInstallPluginArgs{
 		spec: workspace.PluginSpec{
 			Name: "already-installed",
 			Kind: apitype.ResourcePlugin,
@@ -61,7 +61,7 @@ func TestInstallAlreadyInstalledPackage(t *testing.T) {
 func TestInstallExternalBinaryPackage(t *testing.T) {
 	t.Parallel()
 
-	testReplay(t, testReplayArgs{
+	replayInstallPlugin(t, replayInstallPluginArgs{
 		spec: workspace.PluginSpec{
 			Name:              "external-package",
 			Kind:              apitype.ResourcePlugin,
@@ -94,7 +94,7 @@ func TestInstallExternalBinaryPackage(t *testing.T) {
 func TestInstallPluginWithParameterizedDependency(t *testing.T) {
 	t.Parallel()
 
-	testReplay(t, testReplayArgs{
+	replayInstallPlugin(t, replayInstallPluginArgs{
 		spec: workspace.PluginSpec{
 			Name:              "plugin-a",
 			Kind:              apitype.ResourcePlugin,
@@ -155,7 +155,7 @@ func TestInstallPluginWithParameterizedDependency(t *testing.T) {
 func TestInstallPluginWithDiamondDependency(t *testing.T) {
 	t.Parallel()
 
-	testReplay(t, testReplayArgs{
+	replayInstallPlugin(t, replayInstallPluginArgs{
 		spec: workspace.PluginSpec{
 			Name:              "plugin-a",
 			Kind:              apitype.ResourcePlugin,
@@ -295,7 +295,7 @@ func TestInstallPluginWithCyclicDependency(t *testing.T) {
 		},
 	}
 
-	_, err := packageinstallation.Install(
+	_, err := packageinstallation.InstallPlugin(
 		t.Context(),
 		workspace.PluginSpec{
 			Name:              "plugin-a",
@@ -325,7 +325,7 @@ func TestInstallPluginWithCyclicDependency(t *testing.T) {
 func TestInstallRegistryPackage(t *testing.T) {
 	t.Parallel()
 
-	testReplay(t, testReplayArgs{
+	replayInstallPlugin(t, replayInstallPluginArgs{
 		spec: workspace.PluginSpec{
 			Name: "registry-package",
 			Kind: apitype.ResourcePlugin,
@@ -359,5 +359,60 @@ func TestInstallRegistryPackage(t *testing.T) {
 		),
 		StandardInstallPluginAt,
 		StandardRunPackage,
+	)
+}
+
+// TestInstallInProjectWithSharedDependency tests installing dependencies in a project where
+// the project depends on both a git-based plugin and a binary plugin, and the git-based
+// plugin also depends on the same binary plugin.
+//
+// Dependency graph:
+//
+//	P -> A -> B
+//	P -> B
+//
+// Where P is the project, A is a git-based plugin, and B is a binary plugin.
+func TestInstallInProjectWithSharedDependency(t *testing.T) {
+	t.Parallel()
+
+	replayInstallInProject(t, replayInstallInProjectArgs{
+		project: &workspace.Project{
+			Name:    "test-project",
+			Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+		},
+		projectDir: "/project",
+		options: packageinstallation.Options{
+			Concurrency: 1,
+		},
+		packages: map[string]workspace.PackageSpec{
+			"plugin-a": {Source: "plugin-a"},
+			"plugin-b": {Source: "plugin-b"},
+		},
+	},
+		IsExternalURL(func(source string) bool {
+			return true
+		}),
+		IsExternalURL(func(source string) bool {
+			return true
+		}),
+		StandardDownloadPlugin,
+		StandardDetectPluginPathAt,
+		StandardLoadPluginProject(
+			workspace.NewProjectRuntimeInfo("go", nil),
+			map[string]workspace.PackageSpec{
+				"plugin-b": {Source: "plugin-b"},
+			},
+		),
+		StandardDownloadPlugin,
+		DetectPluginPathAt(func(ctx context.Context, path string) (string, error) {
+			return "", workspace.ErrPluginNotFound
+		}),
+		IsExecutable(func(ctx context.Context, binaryPath string) (bool, error) {
+			return true, nil
+		}),
+		StandardLinkPackage,
+		StandardLinkPackage,
+		StandardInstallPluginAt,
+		StandardLinkPackage,
 	)
 }

@@ -40,29 +40,81 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Args to [packageinstallation.Install]
-type testReplayArgs struct {
+// Args to [packageinstallation.InstallPlugin]
+type replayInstallPluginArgs struct {
 	spec        workspace.PluginSpec
 	baseProject workspace.BaseProject
 	projectDir  string
 	options     packageinstallation.Options
 }
 
-// Run [packageinstallation.Install] against a known set of steps, with a known outcome.
+// Run [packageinstallation.InstallPlugin] against a known set of steps, with a known outcome.
 //
 // To change the expected outcome, run with `PULUMI_ACCEPT=1`.
-func testReplay(t *testing.T, args testReplayArgs, steps ...replayStep) {
+func replayInstallPlugin(t *testing.T, args replayInstallPluginArgs, steps ...replayStep) {
 	t.Helper()
 	ws := replayWorkspace{
 		t:     t,
 		steps: steps,
 	}
-	runPlugin, err := packageinstallation.Install(
+	runPlugin, err := packageinstallation.InstallPlugin(
 		t.Context(), args.spec, args.baseProject, args.projectDir,
 		args.options, &ws /* registry */, &ws /* workspace */)
 	require.NoError(t, err)
 
 	_, err = runPlugin(t.Context())
+	require.NoError(t, err)
+
+	var b bytes.Buffer
+	padding := int(math.Ceil(math.Log10(float64(len(ws.stepsTaken)))))
+	for i, s := range ws.stepsTaken {
+		b.WriteString(fmt.Sprintf("%0*d. %s\n", padding, i, s))
+	}
+	f := filepath.Join("testdata", t.Name(), "steps.txt")
+
+	if cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT")) {
+		require.NoError(t, os.MkdirAll(filepath.Dir(f), 0o700))
+
+		f, err := os.Create(f)
+		require.NoError(t, err)
+		defer contract.IgnoreClose(f)
+		_, err = io.Copy(f, &b)
+		require.NoError(t, err)
+		return
+	}
+
+	expected, err := os.ReadFile(f)
+	require.NoError(t, err, "Unable to read golden file, run PULUMI_ACCEPT=1 to overwrite the golden file")
+
+	assert.Equal(t, string(expected), b.String(), "%s did not match test output", f)
+}
+
+// Args to [packageinstallation.InstallInProject]
+type replayInstallInProjectArgs struct {
+	project    workspace.BaseProject
+	projectDir string
+	options    packageinstallation.Options
+	packages   map[string]workspace.PackageSpec
+}
+
+// Run [packageinstallation.InstallInProject] against a known set of steps, with a known outcome.
+//
+// To change the expected outcome, run with `PULUMI_ACCEPT=1`.
+func replayInstallInProject(t *testing.T, args replayInstallInProjectArgs, steps ...replayStep) {
+	t.Helper()
+	ws := replayWorkspace{
+		t:     t,
+		steps: steps,
+	}
+
+	proj := args.project
+	for name, spec := range args.packages {
+		proj.AddPackage(name, spec)
+	}
+
+	err := packageinstallation.InstallInProject(
+		t.Context(), proj, args.projectDir,
+		args.options, &ws /* registry */, &ws /* workspace */)
 	require.NoError(t, err)
 
 	var b bytes.Buffer
