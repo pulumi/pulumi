@@ -55,7 +55,7 @@
         "eslint": "7.32.0",
         "eslint-plugin-header": "3.1.1",
         "eslint-plugin-import": "2.30.0",
-        "mocha": "11.1.0",
+        "mocha": "11.7.5",
         "nyc": "15.1.0",
         "sinon": "14.0.2",
         "ts-node": "7.0.1",
