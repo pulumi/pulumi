@@ -161,7 +161,7 @@ func TestPerfManyResourcesWithJournaling(t *testing.T) {
 	// First run: create 4000 resources
 	initialBenchmark := &integration.AssertPerfBenchmark{
 		T:                  t,
-		MaxPreviewDuration: 120 * time.Second,
+		MaxPreviewDuration: 50 * time.Second,
 		MaxUpdateDuration:  120 * time.Second,
 	}
 
@@ -174,8 +174,9 @@ func TestPerfManyResourcesWithJournaling(t *testing.T) {
 		Env: []string{
 			"PULUMI_ENABLE_JOURNALING=true",
 		},
+		DestroyOnCleanup: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			require.Greater(t, 4000, len(stack.Deployment.Resources))
+			require.Greater(t, len(stack.Deployment.Resources), 4000)
 			// Second run: no-op update on the same stack (should be much faster)
 			subsequentBenchmark := &integration.AssertPerfBenchmark{
 				T:                  t,
@@ -184,19 +185,18 @@ func TestPerfManyResourcesWithJournaling(t *testing.T) {
 			}
 
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				NoParallel: true,
-				Dir:        filepath.Join("typescript", "many_resources"),
-				StackName:  string(stack.StackName),
-				Dependencies: []string{
-					filepath.Join("..", "..", "sdk", "nodejs"),
-				},
-				RequireService: true,
-				ReportStats:    subsequentBenchmark,
+				NoParallel:       true,
+				Dir:              filepath.Join("typescript", "many_resources"),
+				StackName:        string(stack.StackName),
+				Dependencies:     []string{"@pulumi/pulumi"},
+				RequireService:   true,
+				SkipStackInit:    true,
+				SkipStackRemoval: true,
+				ReportStats:      subsequentBenchmark,
 				Env: []string{
 					"PULUMI_ENABLE_JOURNALING=true",
 				},
 			})
 		},
 	})
-	require.True(t, false)
 }

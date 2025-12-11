@@ -219,6 +219,8 @@ type ProgramTestOptions struct {
 	// SkipStackRemoval indicates that the stack should not be removed. (And so the test's results could be inspected
 	// in the Pulumi Service after the test has completed.)
 	SkipStackRemoval bool
+	// SkipStackInit allows skipping initialization of the stack. This way an existing stack can be re-used.
+	SkipStackInit bool
 	// Destroy on cleanup defers stack destruction until the test cleanup step, rather than after
 	// program test execution. This is useful for more realistic stack reference testing, allowing one
 	// project and stack to be stood up and a second to be run before the first is destroyed.
@@ -1382,12 +1384,19 @@ func (pt *ProgramTester) TestLifeCycleInitialize() error {
 	}
 
 	// Stack init
-	stackInitArgs := []string{"stack", "init", stackInitName}
-	if pt.opts.SecretsProvider != "" {
-		stackInitArgs = append(stackInitArgs, "--secrets-provider", pt.opts.SecretsProvider)
-	}
-	if err := pt.runPulumiCommand("pulumi-stack-init", stackInitArgs, dir, false); err != nil {
-		return err
+	if !pt.opts.SkipStackInit {
+		stackInitArgs := []string{"stack", "init", stackInitName}
+		if pt.opts.SecretsProvider != "" {
+			stackInitArgs = append(stackInitArgs, "--secrets-provider", pt.opts.SecretsProvider)
+		}
+		if err := pt.runPulumiCommand("pulumi-stack-init", stackInitArgs, dir, false); err != nil {
+			return err
+		}
+	} else {
+		stackSelectArgs := []string{"stack", "select", stackInitName}
+		if err := pt.runPulumiCommand("pulumi-stack-select", stackSelectArgs, dir, false); err != nil {
+			return err
+		}
 	}
 
 	if len(pt.opts.Config)+len(pt.opts.Secrets) > 0 {
