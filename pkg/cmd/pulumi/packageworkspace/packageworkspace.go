@@ -35,6 +35,9 @@ type Options struct {
 	UseLanguageVersionTools bool
 }
 
+// New creates a new workspace.
+//
+// The returned workspace must be closed after use.
 func New(
 	host plugin.Host, stdout, stderr io.Writer, sink, statusSink diag.Sink,
 	parentSPan opentracing.Span, options Options,
@@ -49,6 +52,8 @@ type Workspace struct {
 	sink, statusSink diag.Sink
 	parentSpan       opentracing.Span
 }
+
+func (w Workspace) Close() error { return nil }
 
 func (Workspace) HasPlugin(spec workspace.PluginSpec) bool { return workspace.HasPlugin(spec) }
 func (Workspace) HasPluginGTE(spec workspace.PluginSpec) (bool, error) {
