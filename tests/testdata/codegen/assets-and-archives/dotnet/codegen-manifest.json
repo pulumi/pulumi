@@ -1,7 +1,7 @@
 {
   "emittedFiles": [
     ".gitattributes",
-    ".gitingore",
+    ".gitignore",
     "GetAssets.cs",
     "Inputs/TypeWithAssetsArgs.cs",
     "Outputs/TypeWithAssets.cs",

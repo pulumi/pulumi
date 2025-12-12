@@ -57,6 +57,14 @@
       enabled: false
     },
     {
+      description: "Run our gomod tidy script whenever go packages are updated",
+      matchManagers: ["gomod"],
+      postUpgradeTasks: {
+        commands: ["make renovate"],
+        executionMode: "branch", // Only run once per PR.
+      }
+    },
+    {
       description: "Disable auto-update for first party packages",
       matchDatasources: ["go", "npm", "pypi"],
       matchPackageNames: [

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/package
-  description: Correctly identify the innermost Project/Plugin when running `pulumi package add`

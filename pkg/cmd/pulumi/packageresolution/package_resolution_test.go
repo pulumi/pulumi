@@ -19,12 +19,12 @@ import (
 	"errors"
 	"fmt"
 	"iter"
-	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -57,17 +57,15 @@ func (m mockWorkspace) IsExternalURL(source string) bool {
 func TestResolvePackage(t *testing.T) {
 	t.Parallel()
 
-	createTestProject := func(t *testing.T) string {
-		tmpDir := t.TempDir()
+	createTestProject := func(t *testing.T) workspace.BaseProject {
 		pulumiYaml := `name: test-project
 runtime: nodejs
 packages:
   my-local-pkg: ./local-path
   another-local: https://github.com/example/another`
-
-		err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte(pulumiYaml), 0o600)
+		bp, err := workspace.LoadProjectBytes([]byte(pulumiYaml), filepath.Join("test", "Pulumi.yaml"), encoding.YAML)
 		require.NoError(t, err)
-		return tmpDir
+		return bp
 	}
 
 	tests := []struct {
@@ -118,7 +116,7 @@ packages:
 					},
 				}, nil
 			},
-			expected: ExternalSourceResult{},
+			expected: ExternalSourceResult{Spec: workspace.PluginSpec{Name: "aws"}},
 		},
 		{
 			name:       "local project package resolves to local path",
@@ -131,7 +129,19 @@ packages:
 				}, nil
 			},
 			setupProject: true,
-			expected:     LocalPathResult{LocalPluginPathAbs: "./local-path"},
+			expected:     LocalPathResult{LocalPath: "./local-path", RelativeToWorkspace: true},
+		},
+		{
+			name:       "local path directly in spec (not from project)",
+			pluginSpec: workspace.PluginSpec{Name: "./direct-local-path"},
+			registryResponse: func() (registry.Registry, error) {
+				return registry.Mock{
+					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+						return func(yield func(apitype.PackageMetadata, error) bool) {} // empty - not found
+					},
+				}, nil
+			},
+			expected: LocalPathResult{LocalPath: "./direct-local-path", RelativeToWorkspace: false},
 		},
 		{
 			name:       "local project package resolves to Git URL",
@@ -144,7 +154,7 @@ packages:
 				}, nil
 			},
 			setupProject: true,
-			expected:     ExternalSourceResult{},
+			expected:     ExternalSourceResult{Spec: workspace.PluginSpec{Name: "another-local"}},
 		},
 		{
 			name:       "Git URL plugin",
@@ -156,7 +166,12 @@ packages:
 					},
 				}, nil
 			},
-			expected: ExternalSourceResult{},
+			expected: ExternalSourceResult{
+				Spec: workspace.PluginSpec{
+					Name:              "example-plugin",
+					PluginDownloadURL: "git://github.com/example/plugin",
+				},
+			},
 		},
 		{
 			name:       "not found + no fallback available",
@@ -197,7 +212,7 @@ packages:
 					},
 				}, nil
 			},
-			expected: ExternalSourceResult{},
+			expected: ExternalSourceResult{Spec: workspace.PluginSpec{Name: "aws"}},
 		},
 		{
 			name:       "registry disabled ignores available registry package",
@@ -210,7 +225,7 @@ packages:
 					},
 				}, nil
 			},
-			expected: ExternalSourceResult{},
+			expected: ExternalSourceResult{Spec: workspace.PluginSpec{Name: "aws"}},
 		},
 
 		// Environment combination tests for unknown packages
@@ -251,7 +266,7 @@ packages:
 				}, nil
 			},
 			setupProject: true,
-			expected:     LocalPathResult{LocalPluginPathAbs: "./local-path"},
+			expected:     LocalPathResult{LocalPath: "./local-path", RelativeToWorkspace: true},
 		},
 		{
 			name:       "installed in workspace with exact version",
@@ -330,11 +345,9 @@ packages:
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			var projectRoot string
+			var project workspace.BaseProject
 			if tt.setupProject {
-				projectRoot = createTestProject(t)
-			} else {
-				projectRoot = t.TempDir()
+				project = createTestProject(t)
 			}
 
 			reg, expectedErr := tt.registryResponse()
@@ -348,11 +361,6 @@ packages:
 				env = *tt.env
 			}
 
-			var projectRootArg string
-			if tt.setupProject {
-				projectRootArg = projectRoot
-			}
-
 			ws := tt.workspace
 			if ws == nil {
 				ws = DefaultWorkspace()
@@ -364,7 +372,7 @@ packages:
 				ws,
 				tt.pluginSpec,
 				env,
-				projectRootArg,
+				project,
 			)
 
 			if tt.expectedErr != nil {
@@ -427,7 +435,7 @@ func TestResolvePackage_WithVersion(t *testing.T) {
 			DisableRegistryResolve: false,
 			Experimental:           true,
 		},
-		t.TempDir(),
+		nil,
 	)
 	require.NoError(t, err)
 
@@ -440,13 +448,12 @@ func TestResolutionStrategyPrecedence(t *testing.T) {
 	t.Parallel()
 
 	// Test that local packages take precedence over pre-registry packages
-	tmpDir := t.TempDir()
 	pulumiYaml := `name: test-project
 runtime: nodejs
 packages:
   aws: ./local-aws-override`
 
-	err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte(pulumiYaml), 0o600)
+	project, err := workspace.LoadProjectBytes([]byte(pulumiYaml), filepath.Join("/test", "Pulumi.yaml"), encoding.YAML)
 	require.NoError(t, err)
 
 	reg := registry.Mock{
@@ -467,39 +474,9 @@ packages:
 			DisableRegistryResolve: true,
 			Experimental:           false,
 		},
-		tmpDir,
+		project,
 	)
 	require.NoError(t, err)
 
-	assert.Equal(t, LocalPathResult{LocalPluginPathAbs: "./local-aws-override"}, result)
-}
-
-func TestGetLocalProjectPackageSource_NilPackages(t *testing.T) {
-	t.Parallel()
-
-	tmpDir := t.TempDir()
-	pulumiYaml := `name: test-project
-runtime: nodejs`
-
-	err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte(pulumiYaml), 0o600)
-	require.NoError(t, err)
-
-	source := getLocalProjectPackageSource(tmpDir, "some-package")
-	assert.Empty(t, source)
-}
-
-func TestGetLocalProjectPackageSource_PackageNotFound(t *testing.T) {
-	t.Parallel()
-
-	tmpDir := t.TempDir()
-	pulumiYaml := `name: test-project
-runtime: nodejs
-packages:
-  existing-package: ./local-path`
-
-	err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte(pulumiYaml), 0o600)
-	require.NoError(t, err)
-
-	source := getLocalProjectPackageSource(tmpDir, "non-existent-package")
-	assert.Empty(t, source)
+	assert.Equal(t, LocalPathResult{LocalPath: "./local-aws-override", RelativeToWorkspace: true}, result)
 }

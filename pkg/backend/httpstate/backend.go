@@ -191,12 +191,21 @@ type Backend interface {
 	Capabilities(ctx context.Context) apitype.Capabilities
 }
 
+// userInfo holds the user account details fetched from the backend.
+type userInfo struct {
+	username      string
+	organizations []string
+	tokenInfo     *workspace.TokenInformation
+}
+
 type cloudBackend struct {
 	d            diag.Sink
 	url          string
 	client       *client.Client
 	escClient    esc_client.Client
 	capabilities *promise.Promise[apitype.Capabilities]
+	userInfo     *promise.Promise[userInfo]
+	defaultOrg   *promise.Promise[string]
 
 	// The current project, if any.
 	currentProject              *workspace.Project
@@ -226,6 +235,8 @@ func New(ctx context.Context, d diag.Sink,
 		client:         apiClient,
 		escClient:      escClient,
 		capabilities:   detectCapabilities(d, apiClient),
+		userInfo:       detectUserInfo(d, cloudURL, apiClient),
+		defaultOrg:     detectDefaultOrg(d, apiClient),
 		currentProject: project,
 	}, nil
 }
@@ -680,16 +691,11 @@ func (b *cloudBackend) CurrentUser() (string, []string, *workspace.TokenInformat
 }
 
 func (b *cloudBackend) currentUser(ctx context.Context) (string, []string, *workspace.TokenInformation, error) {
-	account, err := workspace.GetAccount(b.CloudURL())
+	info, err := b.userInfo.Result(ctx)
 	if err != nil {
 		return "", nil, nil, err
 	}
-	if account.Username != "" {
-		logging.V(1).Infof("found username for access token")
-		return account.Username, account.Organizations, account.TokenInformation, nil
-	}
-	logging.V(1).Infof("no username for access token")
-	return b.client.GetPulumiAccountDetails(ctx)
+	return info.username, info.organizations, info.tokenInfo, nil
 }
 
 func (b *cloudBackend) CloudURL() string { return b.url }
@@ -1477,7 +1483,6 @@ func (b *cloudBackend) createAndStartUpdate(
 	ctx context.Context, action apitype.UpdateKind, stack backend.Stack,
 	op *backend.UpdateOperation, dryRun bool,
 ) (client.UpdateIdentifier, updateMetadata, error) {
-	// Once we start an update we want to keep the machine from sleeping.
 	stackRef := stack.Ref()
 
 	stackID, err := b.getCloudStackIdentifier(stackRef)
@@ -2503,11 +2508,11 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 }
 
 func (b *cloudBackend) GetDefaultOrg(ctx context.Context) (string, error) {
-	resp, err := b.client.GetDefaultOrg(ctx)
+	org, err := b.defaultOrg.Result(ctx)
 	if err != nil {
 		return "", err
 	}
-	return resp.GitHubLogin, nil
+	return org, nil
 }
 
 type httpstateBackendClient struct {
@@ -2565,6 +2570,45 @@ func doDetectCapabilities(ctx context.Context, d diag.Sink, client *client.Clien
 	}
 
 	return caps
+}
+
+// Builds a lazy wrapper around fetching user info.
+func detectUserInfo(d diag.Sink, cloudURL string, client *client.Client) *promise.Promise[userInfo] {
+	return promise.Run(func() (userInfo, error) {
+		account, err := workspace.GetAccount(cloudURL)
+		if err == nil && account.Username != "" {
+			logging.V(1).Infof("found cached username for access token")
+			return userInfo{
+				username:      account.Username,
+				organizations: account.Organizations,
+				tokenInfo:     account.TokenInformation,
+			}, nil
+		}
+
+		logging.V(1).Infof("no username for access token")
+		username, orgs, tokenInfo, err := client.GetPulumiAccountDetails(context.Background())
+		if err != nil {
+			d.Warningf(diag.Message("" /*urn*/, "failed to get user account details: %v"), err)
+			return userInfo{}, err
+		}
+		return userInfo{
+			username:      username,
+			organizations: orgs,
+			tokenInfo:     tokenInfo,
+		}, nil
+	})
+}
+
+// Builds a lazy wrapper around fetching default org.
+func detectDefaultOrg(d diag.Sink, client *client.Client) *promise.Promise[string] {
+	return promise.Run(func() (string, error) {
+		resp, err := client.GetDefaultOrg(context.Background())
+		if err != nil {
+			logging.V(1).Infof("failed to get default org: %v", err)
+			return "", err
+		}
+		return resp.GitHubLogin, nil
+	})
 }
 
 func (b *cloudBackend) DefaultSecretManager(*workspace.ProjectStack) (secrets.Manager, error) {

@@ -18,10 +18,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -44,6 +46,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -131,6 +134,7 @@ func NewUpCmd() *cobra.Command {
 		lm cmdBackend.LoginManager,
 		opts backend.UpdateOptions,
 		cmd *cobra.Command,
+		meta *promise.Promise[map[string]string],
 	) error {
 		s, err := cmdStack.RequireStack(
 			ctx,
@@ -237,6 +241,15 @@ func NewUpCmd() *cobra.Command {
 			opts.Engine.Plan = p
 		}
 
+		start := time.Now()
+		metadata, err := meta.Result(ctx)
+		logging.V(9).Infof("Waiting for language runtime metadata for %s", time.Since(start))
+		if err != nil {
+			logging.V(9).Infof("Could not retrieve language runtime metadata: %s", err)
+		} else {
+			maps.Copy(m.Environment, metadata)
+		}
+
 		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
 			Proj:               proj,
 			Root:               root,
@@ -268,6 +281,7 @@ func NewUpCmd() *cobra.Command {
 		templateNameOrURL string,
 		opts backend.UpdateOptions,
 		cmd *cobra.Command,
+		meta *promise.Promise[map[string]string],
 	) error {
 		// Retrieve the template repo.
 		templateSource := cmdTemplates.New(ctx,
@@ -466,6 +480,15 @@ func NewUpCmd() *cobra.Command {
 			AttachDebugger: attachDebugger,
 		}
 
+		start := time.Now()
+		metadata, err := meta.Result(ctx)
+		logging.V(9).Infof("Waiting for language runtime metadata for %s", time.Since(start))
+		if err != nil {
+			logging.V(9).Infof("Could not retrieve language runtime metadata: %s", err)
+		} else {
+			maps.Copy(m.Environment, metadata)
+		}
+
 		// TODO for the URL case:
 		// - suppress preview display/prompt unless error.
 		// - attempt `destroy` on any update errors.
@@ -515,8 +538,16 @@ func NewUpCmd() *cobra.Command {
 		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
+
+			proj, root, err := readProjectForUpdate(ws, client)
+			if err != nil {
+				return err
+			}
+
+			meta := metadata.GetLanguageRuntimeMetadata(root, proj)
+
+			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
 			// Remote implies we're skipping previews.
 			if remoteArgs.Remote {
@@ -532,8 +563,7 @@ func NewUpCmd() *cobra.Command {
 				)
 			}
 
-			err := validateAttachDebuggerFlag(attachDebugger)
-			if err != nil {
+			if err := validateAttachDebuggerFlag(attachDebugger); err != nil {
 				return err
 			}
 
@@ -625,6 +655,7 @@ func NewUpCmd() *cobra.Command {
 					args[0],
 					opts,
 					cmd,
+					meta,
 				)
 			}
 
@@ -635,6 +666,7 @@ func NewUpCmd() *cobra.Command {
 				cmdBackend.DefaultLoginManager,
 				opts,
 				cmd,
+				meta,
 			)
 		},
 	}

@@ -1,6 +1,6 @@
 {
     "name": "@pulumi/pulumi",
-    "version": "3.211.0",
+    "version": "3.212.0",
     "description": "Pulumi's Node.js SDK",
     "license": "Apache-2.0",
     "repository": {
@@ -51,11 +51,11 @@
         "@types/split2": "2.1.6",
         "@typescript-eslint/eslint-plugin": "4.33.0",
         "@typescript-eslint/parser": "4.33.0",
-        "corepack": "0.31.0",
+        "corepack": "0.34.5",
         "eslint": "7.32.0",
         "eslint-plugin-header": "3.1.1",
         "eslint-plugin-import": "2.30.0",
-        "mocha": "11.1.0",
+        "mocha": "11.7.5",
         "nyc": "15.1.0",
         "sinon": "14.0.2",
         "ts-node": "7.0.1",

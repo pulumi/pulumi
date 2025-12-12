@@ -46,6 +46,7 @@ import {
     deserializeProperty,
     OutputResolvers,
     resolveProperties,
+    SerializationOptions,
     serializeProperties,
     serializeProperty,
     serializeResourceProperties,
@@ -181,6 +182,11 @@ interface ResourceResolverOperation {
      * of this resource.
      */
     replaceWithResources: Resource[] | undefined;
+
+    /**
+     * If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
+     */
+    replacementTrigger: any | undefined;
 }
 
 /**
@@ -617,6 +623,22 @@ export function registerResource(
                 req.setSupportspartialvalues(true);
                 req.setRemote(remote);
                 req.setReplaceonchangesList(opts.replaceOnChanges || []);
+                if (resop.replacementTrigger !== undefined) {
+                    const options: SerializationOptions = {};
+
+                    if (Output.isInstance(resop.replacementTrigger)) {
+                        const isKnown = await resop.replacementTrigger.isKnown;
+                        options.keepOutputValues = !isKnown || isDryRun();
+                    }
+
+                    const serializedTrigger = await serializeProperty(
+                        `${label}.replacementTrigger`,
+                        resop.replacementTrigger,
+                        new Set(),
+                        options,
+                    );
+                    req.setReplacementTrigger(gstruct.Value.fromJavaScript(serializedTrigger));
+                }
                 req.setPlugindownloadurl(opts.pluginDownloadURL || "");
                 if (opts.retainOnDelete !== undefined) {
                     req.setRetainondelete(opts.retainOnDelete);
@@ -1023,6 +1045,7 @@ export async function prepareResource(
         }
     }
 
+    const replacementTrigger = opts?.replacementTrigger;
     const deletedWithURN = opts?.deletedWith ? await opts.deletedWith.urn.promise() : undefined;
     const replaceWithResources =
         replaceWithDependencies.length > 0 ? Array.from(new Set(replaceWithDependencies)) : undefined;
@@ -1042,6 +1065,7 @@ export async function prepareResource(
         monitorSupportsStructuredAliases,
         deletedWithURN,
         replaceWithResources,
+        replacementTrigger,
     };
 }
 
