@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -49,7 +50,11 @@ func newPluginLsCmd() *cobra.Command {
 					return fmt.Errorf("loading project plugins: %w", err)
 				}
 			} else {
-				if plugins, err = workspace.GetPluginsWithMetadata(); err != nil {
+				store, err := pluginstorage.Default()
+				if err != nil {
+					return fmt.Errorf("loading plugin root: %w", err)
+				}
+				if plugins, err = store.List(cmd.Context()); err != nil {
 					return fmt.Errorf("loading plugins: %w", err)
 				}
 			}
