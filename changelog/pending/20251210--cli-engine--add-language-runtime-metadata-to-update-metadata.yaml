@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: cli/engine
-  description: Add language runtime metadata to update metadata

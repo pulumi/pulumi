@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: backend/service
-  description: Improve startup performance with the service as backend
