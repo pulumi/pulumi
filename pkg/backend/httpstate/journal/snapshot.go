@@ -176,6 +176,9 @@ func sendBatches(
 	results := make([]chan<- error, 0, maxBatchSize)
 	batch := make([]apitype.JournalEntry, 0, maxBatchSize)
 
+	// Use a buffered channel, so we can queue up multiple batches
+	// that can then be sent as quickly as the network allows. This
+	// unblocks the engine and allows it to continue working.
 	flushCh := make(chan flushRequest, 100)
 
 	flushDone := make(chan struct{})
