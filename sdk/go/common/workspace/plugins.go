@@ -1223,6 +1223,8 @@ func (spec PluginSpec) File() string {
 }
 
 // DirPath returns the directory where this plugin should be installed.
+//
+// Deprecated: Use [(pluginstore.Store).Dir] instead.
 func (spec PluginSpec) DirPath() (string, error) {
 	dir, err := GetPluginDir()
 	if err != nil {
@@ -1234,6 +1236,8 @@ func (spec PluginSpec) DirPath() (string, error) {
 
 // LockFilePath returns the full path to the plugin's lock file used during installation
 // to prevent concurrent installs.
+//
+// Deprecated: Use [(pluginstore.Store).Lock] instead.
 func (spec PluginSpec) LockFilePath() (string, error) {
 	dir, err := spec.DirPath()
 	if err != nil {
@@ -1244,6 +1248,8 @@ func (spec PluginSpec) LockFilePath() (string, error) {
 
 // PartialFilePath returns the full path to the plugin's partial file used during installation
 // to indicate installation of the plugin hasn't completed yet.
+//
+// Deprecated: Use [(pluginstore.Store).SetPartial] instead.
 func (spec PluginSpec) PartialFilePath() (string, error) {
 	dir, err := spec.DirPath()
 	if err != nil {
@@ -1770,14 +1776,14 @@ func HasPlugin(spec PluginSpec) bool {
 }
 
 // HasPluginGTE returns true if the given plugin exists at the given version number or greater.
-func HasPluginGTE(spec PluginSpec) (bool, error) {
+func HasPluginGTE(ctx context.Context, store PluginStore, spec PluginSpec) (bool, error) {
 	// If an exact match, return true right away.
 	if HasPlugin(spec) {
 		return true, nil
 	}
 
 	// Otherwise, load up the list of plugins and find one with the same name/type and >= version.
-	plugs, err := GetPlugins()
+	plugs, err := store.List(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -1827,10 +1833,17 @@ func GetPluginDir() (string, error) {
 	return GetPulumiPath(PluginDir)
 }
 
+type PluginStore interface {
+	List(ctx context.Context) ([]PluginInfo, error)
+	IsPartial(ctx context.Context, spec PluginSpec) (bool, error)
+}
+
 // GetPlugins returns a list of installed plugins without size info and last accessed metadata.
 // Plugin size requires recursively traversing the plugin directory, which can be extremely
 // expensive with the introduction of nodejs multilang components that have
 // deeply nested node_modules folders.
+//
+// Deprecated: Use [(pluginstore.Store).List]
 func GetPlugins() ([]PluginInfo, error) {
 	// To get the list of plugins, simply scan the directory in the usual place.
 	dir, err := GetPluginDir()
@@ -1840,19 +1853,7 @@ func GetPlugins() ([]PluginInfo, error) {
 	return GetPluginsFromDir(dir)
 }
 
-// getPluginsWithMetadata returns a list of installed plugins with metadata about size,
-// and last access (POOR RUNTIME PERF). Plugin size requires recursively traversing the
-// plugin directory, which can be extremely expensive with the introduction of
-// nodejs multilang components that have deeply nested node_modules folders.
-func getPluginsWithMetadata() ([]PluginInfo, error) {
-	// To get the list of plugins, simply scan the directory in the usual place.
-	dir, err := GetPluginDir()
-	if err != nil {
-		return nil, err
-	}
-	return GetPluginsFromDir(dir)
-}
-
+// Deprecated: Use [(pluginstore.Store).List]
 func GetPluginsFromDir(dir string) ([]PluginInfo, error) {
 	files, err := os.ReadDir(dir)
 	if err != nil {
@@ -1908,9 +1909,9 @@ func IsPluginBundled(kind apitype.PluginKind, name string) bool {
 // is >= the version specified.  If no version is supplied, the latest plugin for that given kind/name pair is loaded,
 // using standard semver sorting rules.  A plugin may be overridden entirely by placing it on your $PATH, though it is
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
-func GetPluginPath(ctx context.Context, d diag.Sink, spec PluginSpec, projectPlugins []ProjectPlugin,
+func GetPluginPath(ctx context.Context, store PluginStore, d diag.Sink, spec PluginSpec, projectPlugins []ProjectPlugin,
 ) (string, error) {
-	info, path, err := getPluginInfoAndPath(ctx, d, spec, true /* skipMetadata */, projectPlugins)
+	info, path, err := getPluginInfoAndPath(ctx, store, d, spec, true /* skipMetadata */, projectPlugins)
 	if err != nil {
 		return "", err
 	}
@@ -1920,9 +1921,9 @@ func GetPluginPath(ctx context.Context, d diag.Sink, spec PluginSpec, projectPlu
 	return path, err
 }
 
-func GetPluginInfo(ctx context.Context, d diag.Sink, spec PluginSpec, projectPlugins []ProjectPlugin,
+func GetPluginInfo(ctx context.Context, store PluginStore, d diag.Sink, spec PluginSpec, projectPlugins []ProjectPlugin,
 ) (*PluginInfo, error) {
-	info, path, err := getPluginInfoAndPath(ctx, d, spec, false, projectPlugins)
+	info, path, err := getPluginInfoAndPath(ctx, store, d, spec, false, projectPlugins)
 	if err != nil {
 		return nil, err
 	}
@@ -1955,6 +1956,7 @@ func getPluginPath(info *PluginInfo) string {
 //   - an error in all other cases.
 func getPluginInfoAndPath(
 	ctx context.Context,
+	store PluginStore,
 	d diag.Sink,
 	spec PluginSpec, skipMetadata bool,
 	projectPlugins []ProjectPlugin,
@@ -2091,13 +2093,7 @@ func getPluginInfoAndPath(
 	}
 
 	// Wasn't ambient, and wasn't bundled, so now check the plugin cache.
-	var plugins []PluginInfo
-	var err error
-	if skipMetadata {
-		plugins, err = GetPlugins()
-	} else {
-		plugins, err = getPluginsWithMetadata()
-	}
+	plugins, err := store.List(ctx)
 	if err != nil {
 		return nil, "", fmt.Errorf("loading plugin list: %w", err)
 	}
