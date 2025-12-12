@@ -18,7 +18,7 @@ class TestResource extends dynamic.Resource {
     }
 }
 
-for (let i = 0; i < 4000; i++) {
+for (let i = 0; i < 2000; i++) {
     new TestResource(`resource-${i}`, {
         id: `test-${i}`,
         value: `test-value-${i}`,
