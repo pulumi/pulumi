@@ -16,6 +16,7 @@ package fuzzing
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -24,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/maps"
 )
 
 // GenerateReproTest generates a string containing Go code for a set of lifecycle tests that reproduce the scenario
@@ -631,8 +631,7 @@ func writeSnapshotStatements(t require.TestingT, snapSpec *SnapshotSpec) func(g 
 //	...
 func writeSetupLoaderElements(provSpec *ProviderSpec) func(g *generator) {
 	return func(g *generator) {
-		pkgs := maps.Keys(provSpec.Packages)
-		slices.Sort(pkgs)
+		pkgs := slices.Sorted(maps.Keys(provSpec.Packages))
 
 		for _, pkg := range pkgs {
 			g.writeBlock(
@@ -981,8 +980,7 @@ func writeUpdateFStatements(provSpec *ProviderSpec) func(g *generator) {
 
 func writeReproLoaderElements(provSpec *ProviderSpec) func(g *generator) {
 	return func(g *generator) {
-		pkgs := maps.Keys(provSpec.Packages)
-		slices.Sort(pkgs)
+		pkgs := slices.Sorted(maps.Keys(provSpec.Packages))
 
 		for _, pkg := range pkgs {
 			g.writeBlock(

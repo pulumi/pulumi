@@ -102,7 +102,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.36.0
 	go.pennock.tech/tabular v1.1.3
 	go.uber.org/automaxprocs v1.6.0
-	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	golang.org/x/mod v0.29.0
 	golang.org/x/sys v0.38.0
 	golang.org/x/term v0.37.0
@@ -266,6 +265,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.36.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.6.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
+	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
 	golang.org/x/time v0.12.0 // indirect
 	golang.org/x/tools v0.38.0 // indirect
 	golang.org/x/tools/godoc v0.1.0-deprecated // indirect

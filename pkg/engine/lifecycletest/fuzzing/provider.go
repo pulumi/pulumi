@@ -17,6 +17,7 @@ package fuzzing
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 
 	"github.com/blang/semver"
@@ -25,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"golang.org/x/exp/maps"
 	"pgregory.net/rapid"
 )
 
@@ -70,9 +70,7 @@ func (ps *ProviderSpec) AsProviderLoaders() []*deploytest.ProviderLoader {
 
 	loaders := make([]*deploytest.ProviderLoader, len(ps.Packages))
 
-	pkgs := maps.Keys(ps.Packages)
-	slices.Sort(pkgs)
-	for i, pkg := range pkgs {
+	for i, pkg := range slices.Sorted(maps.Keys(ps.Packages)) {
 		loaders[i] = deploytest.NewProviderLoader(pkg, version, load)
 	}
 
@@ -88,10 +86,7 @@ func (ps *ProviderSpec) Pretty(indent string) string {
 	} else {
 		rendered += fmt.Sprintf("\n%s  Packages (%d):", indent, len(ps.Packages))
 
-		pkgs := maps.Keys(ps.Packages)
-		slices.Sort(pkgs)
-
-		for _, p := range pkgs {
+		for _, p := range slices.Sorted(maps.Keys(ps.Packages)) {
 			rendered += fmt.Sprintf("\n%s    %s", indent, p)
 		}
 	}

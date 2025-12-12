@@ -18,7 +18,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 
@@ -29,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"golang.org/x/exp/maps"
 
 	"google.golang.org/grpc"
 )
@@ -247,8 +248,7 @@ func (ci constructInput) Dependencies(ctx *Context) []Resource {
 	if ci.deps == nil {
 		return nil
 	}
-	urns := maps.Keys(ci.deps)
-	sort.Slice(urns, func(i, j int) bool { return urns[i] < urns[j] })
+	urns := slices.Sorted(maps.Keys(ci.deps))
 	var result []Resource
 	if len(urns) > 0 {
 		result = make([]Resource, len(urns))

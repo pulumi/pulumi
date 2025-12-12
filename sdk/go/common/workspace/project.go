@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
@@ -42,7 +43,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/santhosh-tekuri/jsonschema/v5"
-	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
 )
 
@@ -603,10 +603,7 @@ func findClosestKey(
 	match := ""
 	closest := maxDistance + 1
 
-	keys := maps.Keys(haystack)
-	slices.Sort(keys)
-
-	for _, key := range keys {
+	for _, key := range slices.Sorted(maps.Keys(haystack)) {
 		d := levenshtein.DistanceForStrings(
 			[]rune(strings.ToLower(needle)),
 			[]rune(strings.ToLower(key)),
@@ -1069,7 +1066,7 @@ func (e *Environment) Remove(env string) *Environment {
 					case string:
 						match = e == env
 					case map[string]any:
-						match = len(e) == 1 && maps.Keys(e)[0] == env
+						match = len(e) == 1 && slices.Collect(maps.Keys(e))[0] == env
 					}
 					if match {
 						m["imports"] = append(imports[:i], imports[i+1:]...)
