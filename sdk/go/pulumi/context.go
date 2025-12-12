@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"net/url"
 	"os"
@@ -43,7 +44,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"golang.org/x/exp/maps"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
@@ -1222,7 +1222,7 @@ func (ctx *Context) CallPackageSingle(
 			return zeroType, errors.New("result must have exactly one element")
 		}
 
-		result := maps.Values(asMap)[0]
+		result := slices.Collect(maps.Values(asMap))[0]
 		if resultType := reflect.TypeOf(result); resultType != output.ElementType() {
 			return zeroType, fmt.Errorf("result field type %s does not match expected type %s", resultType, output.ElementType())
 		}
@@ -2499,7 +2499,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 			if err != nil {
 				return nil, fmt.Errorf("expanding replacementTrigger dependencies: %w", err)
 			}
-			replacementTriggerDeps = maps.Keys(depMap)
+			replacementTriggerDeps = slices.Collect(maps.Keys(depMap))
 		}
 
 		if !rtValue.IsNull() {
@@ -2642,7 +2642,7 @@ func (ctx *Context) getOpts(
 				return resourceOpts{}, err
 			}
 		}
-		depURNs = maps.Keys(depSet)
+		depURNs = slices.Collect(maps.Keys(depSet))
 	}
 
 	var providerRef string

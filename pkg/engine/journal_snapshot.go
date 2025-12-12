@@ -16,10 +16,9 @@ package engine
 
 import (
 	"reflect"
+	"slices"
 	"sync"
 	"sync/atomic"
-
-	"golang.org/x/exp/slices"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
