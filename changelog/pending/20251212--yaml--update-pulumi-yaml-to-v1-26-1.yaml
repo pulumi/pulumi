@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: yaml
+  description: Update pulumi-yaml to v1.26.1
