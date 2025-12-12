@@ -23,13 +23,16 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -81,6 +84,7 @@ func (w Workspace) InstallPluginAt(ctx context.Context, dirPath string, project 
 	if err != nil {
 		return err
 	}
+
 	info := plugin.NewProgramInfo(dirPath, dirPath, ".", project.Runtime.Options())
 	return cmdutil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
 		Info:                    info,
@@ -110,8 +114,49 @@ func (Workspace) LoadPluginProject(ctx context.Context, path string) (*workspace
 }
 
 // Download a plugin onto disk, returning the path the plugin was downloaded to.
-func (Workspace) DownloadPlugin(ctx context.Context, plugin workspace.PluginSpec) (string, error) {
-	panic("TODO")
+func (w Workspace) DownloadPlugin(
+	ctx context.Context, pluginSpec workspace.PluginSpec,
+) (string, func(done bool), error) {
+	util.SetKnownPluginDownloadURL(&pluginSpec)
+	util.SetKnownPluginVersion(&pluginSpec)
+	if pluginSpec.Version == nil {
+		var err error
+		pluginSpec.Version, err = pluginSpec.GetLatestVersion(ctx)
+		if err != nil {
+			return "", nil, fmt.Errorf("could not find latest version for provider %s: %w", pluginSpec.Name, err)
+		}
+	}
+
+	wrapper := func(stream io.ReadCloser, size int64) io.ReadCloser {
+		// Log at info but to stderr so we don't pollute stdout for commands like `package get-schema`
+		w.statusSink.Infoerrf(&diag.Diag{Message: "Downloading provider: %s"}, pluginSpec.Name)
+		return stream
+	}
+
+	retry := func(err error, attempt int, limit int, delay time.Duration) {
+		w.statusSink.Warningf(&diag.Diag{Message: "error downloading provider: %s\n" +
+			"Will retry in %v [%d/%d]"}, err, delay, attempt, limit)
+	}
+
+	logging.V(1).Infof("downloading provider %s", pluginSpec.Name)
+	downloadedFile, err := workspace.DownloadToFile(ctx, pluginSpec, wrapper, retry)
+	if err != nil {
+		return "", nil, err
+	}
+
+	logging.V(1).Infof("unpacking provider %s", pluginSpec.Name)
+	cleanup, err := workspace.DownloadPluginContent(
+		ctx, pluginSpec, workspace.TarPlugin(downloadedFile), true, /* reinstall */
+	)
+	if err != nil {
+		return "", nil, err
+	}
+	outDir, err := pluginSpec.DirPath()
+	if err != nil {
+		cleanup(false)
+		return "", nil, err
+	}
+	return filepath.Join(outDir, pluginSpec.SubDir()), cleanup, nil
 }
 
 func (Workspace) DetectPluginPathAt(ctx context.Context, path string) (string, error) {
