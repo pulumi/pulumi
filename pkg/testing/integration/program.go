@@ -2712,6 +2712,10 @@ type AssertPerfBenchmark struct {
 	T                  *testing.T
 	MaxPreviewDuration time.Duration
 	MaxUpdateDuration  time.Duration
+	// MaxLowerPercent is the maximum allowed percentage that a test step can be faster
+	// than the benchmark. This is to catch cases where a test step is significantly
+	// faster than expected, which indicates that we should update the benchmark.
+	MaxLowerPercent float64
 }
 
 func (t AssertPerfBenchmark) ReportCommand(stats TestCommandStats) {
@@ -2732,6 +2736,15 @@ func (t AssertPerfBenchmark) ReportCommand(stats TestCommandStats) {
 			t.T.Errorf(
 				"Test step %q took longer than expected. %.2fs vs. max %.2fs",
 				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
+		}
+
+		if t.MaxLowerPercent != 0 {
+			lowerBound := maxDuration.Seconds() * (1 - t.MaxLowerPercent/100)
+			if stats.ElapsedSeconds < lowerBound {
+				t.T.Errorf(
+					"Test step %q was significantly faster than expected. %.2fs vs. min %.2fs",
+					stats.StepName, stats.ElapsedSeconds, lowerBound)
+			}
 		}
 	}
 }
