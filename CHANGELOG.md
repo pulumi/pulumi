@@ -1,5 +1,76 @@
 # Changelog
 
+## 3.211.0 (2025-12-11)
+
+
+### Features
+
+- [cli/about] Print Node.js package manager information in `pulumi about`
+  [#21163](https://github.com/pulumi/pulumi/pull/21163)
+
+- [backend/diy] Add stack tags support for DIY backends (S3, Postgres, file-based, etc.).
+
+DIY backends now support stack tags functionality, bringing feature parity with cloud backends.
+This includes:
+
+- Full CRUD operations for stack tags (create, read, update, delete)
+- Automatic system tag injection (e.g., `pulumi:project`)
+- Tag filtering support in stack listing operations
+- Backward compatibility with existing stacks (no tags file required)
+- Atomic operations with caching for performance
+- Automatic cleanup of tag files when stacks are deleted
+
+Tags are stored as separate `.pulumi-tags` files alongside stack checkpoints, using a versioned
+JSON format. The implementation works across all DIY backend storage types including S3, Azure Blob,
+Google Cloud Storage, PostgreSQL, and local file systems.
+
+Example usage:
+```bash
+pulumi stack tag set environment production
+pulumi stack tag set owner backend-team
+pulumi stack ls --tag-filter environment=production
+```
+  [#19882](https://github.com/pulumi/pulumi/pull/19882)
+
+- [backend/service] Improve startup performance with the service as backend
+  [#21176](https://github.com/pulumi/pulumi/pull/21176)
+
+- [sdk/nodejs] Add support for `replacement_trigger` in the NodeJS SDK
+  [#20939](https://github.com/pulumi/pulumi/pull/20939)
+
+- [sdk/python] Allow setting version for python component providers
+  [#21149](https://github.com/pulumi/pulumi/pull/21149)
+
+
+### Bug Fixes
+
+- [cli/package] Correctly identify the innermost Project/Plugin when running `pulumi package add`
+  [#21137](https://github.com/pulumi/pulumi/pull/21137)
+
+- [engine] Allow referencing multiple git/github/gitlab components from the same repo
+  [#21119](https://github.com/pulumi/pulumi/pull/21119)
+
+- [programgen/go] Account for name conflicts in resource creation functions
+  [#21107](https://github.com/pulumi/pulumi/pull/21107)
+
+- [sdk/python] Fix cancellation handling in a few places in the python language host
+  [#21145](https://github.com/pulumi/pulumi/pull/21145)
+
+- [sdkgen/go] Fix generation of lifted single-value calls in parameterized SDKs
+  [#21115](https://github.com/pulumi/pulumi/pull/21115)
+
+
+### Miscellaneous
+
+- [cli] Don't attempt to re-install plugin dependencies on load failure for plugins based on git with a nested path
+  [#21148](https://github.com/pulumi/pulumi/pull/21148)
+
+- [sdk/{dotnet,java,yaml}] Bump language runtimes for dotnet, java, and yaml
+  [#21201](https://github.com/pulumi/pulumi/pull/21201)
+
+- [cli/engine] Add language runtime metadata to update metadata
+  [#21186](https://github.com/pulumi/pulumi/pull/21186)
+
 ## 3.210.0 (2025-12-03)
 
 
