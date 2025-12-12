@@ -50,6 +50,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -1887,6 +1888,152 @@ func GetPluginsFromDir(dir string) ([]PluginInfo, error) {
 		}
 	}
 	return plugins, nil
+}
+
+// DownloadPluginContent installs a plugin's tarball into the cache. It validates that plugin names are in the expected
+// format. Previous versions of Pulumi extracted the tarball to a temp directory first, and then renamed the temp
+// directory to the final directory. The rename operation fails often enough on Windows due to aggressive virus scanners
+// opening files in the temp directory. To address this, we now extract the tarball directly into the final directory,
+// and use file locks to prevent concurrent installs.
+//
+// Each plugin has its own file lock, with the same name as the plugin directory, with a `.lock` suffix.
+// During installation an empty file with a `.partial` suffix is created, indicating that installation is in-progress.
+// The `.partial` file is deleted when installation is complete, indicating that the plugin has finished installing.
+// If a failure occurs during installation, the `.partial` file will remain, indicating the plugin wasn't fully
+// installed. The next time the plugin is installed, the old installation directory will be removed and replaced with
+// a fresh installation.
+func DownloadPluginContent(
+	ctx context.Context, spec PluginSpec, content PluginContent, reinstall bool,
+) (cleanup func(success bool), err error) {
+	defer contract.IgnoreClose(content)
+
+	// Fetch the directory into which we will expand this tarball.
+	finalDir, err := spec.DirPath()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a file lock file at <pluginsdir>/<kind>-<name>-<version>.lock.
+	unlock, err := lockPluginForInstall(spec)
+	if err != nil {
+		return nil, err
+	}
+	// If we are not passing back a cleaup function, then we need to close the lock.
+	defer func() {
+		if cleanup == nil {
+			unlock()
+		}
+	}()
+
+	// Cleanup any temp dirs from failed installations of this plugin from previous versions of Pulumi.
+	if err := cleanupTempDirs(finalDir); err != nil {
+		// We don't want to fail the installation if there was an error cleaning up these old temp dirs.
+		// Instead, log the error and continue on.
+		logging.V(5).Infof("Install: Error cleaning up temp dirs: %s", err)
+	}
+
+	// Get the partial file path (e.g. <pluginsdir>/<kind>-<name>-<version>.partial).
+	partialFilePath, err := spec.PartialFilePath()
+	if err != nil {
+		return nil, err
+	}
+
+	// Check whether the directory exists while we were waiting on the lock.
+	_, finalDirStatErr := os.Stat(finalDir)
+	if finalDirStatErr == nil {
+		_, partialFileStatErr := os.Stat(partialFilePath)
+		if partialFileStatErr != nil {
+			if !os.IsNotExist(partialFileStatErr) {
+				return nil, partialFileStatErr
+			}
+			if !reinstall {
+				// finalDir exists, there's no partial file, and we're not reinstalling, so the plugin is already
+				// installed.
+				unlock()
+				return func(bool) {}, nil
+			}
+		}
+
+		// Either the partial file exists--meaning a previous attempt at installing the plugin failed--or we're
+		// deliberately reinstalling the plugin. Delete finalDir so we can try installing again. There's no need to
+		// delete the partial file since we'd just be recreating it again below anyway.
+		if err := os.RemoveAll(finalDir); err != nil {
+			return nil, err
+		}
+	} else if !os.IsNotExist(finalDirStatErr) {
+		return nil, finalDirStatErr
+	}
+
+	// Create an empty partial file to indicate installation is in-progress.
+	if err := os.WriteFile(partialFilePath, nil, 0o600); err != nil {
+		return nil, err
+	}
+
+	// Create the final directory.
+	if err := os.MkdirAll(finalDir, 0o700); err != nil {
+		return nil, err
+	}
+
+	if err := content.writeToDir(finalDir); err != nil {
+		return nil, err
+	}
+
+	// Even though we deferred closing the tarball at the beginning of this function, go ahead and explicitly close
+	// it now since we're finished extracting it, to prevent subsequent output from being displayed oddly with
+	// the progress bar.
+	contract.IgnoreClose(content)
+
+	// The download is complete.
+	return func(success bool) {
+		if success {
+			contract.IgnoreError(os.Remove(partialFilePath))
+		}
+		unlock()
+	}, nil
+}
+
+// cleanupTempDirs cleans up leftover temp dirs from failed installs with previous versions of Pulumi.
+func cleanupTempDirs(finalDir string) error {
+	dir := filepath.Dir(finalDir)
+
+	infos, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+
+	for _, info := range infos {
+		// Temp dirs have a suffix of `.tmpXXXXXX` (where `XXXXXX`) is a random number,
+		// from os.CreateTemp.
+		if info.IsDir() && installingPluginRegexp.MatchString(info.Name()) {
+			path := filepath.Join(dir, info.Name())
+			if err := os.RemoveAll(path); err != nil {
+				return fmt.Errorf("cleaning up temp dir %s: %w", path, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// LockPluginForInstall acquires a file lock used to prevent concurrent installs.
+func lockPluginForInstall(spec PluginSpec) (func(), error) {
+	finalDir, err := spec.DirPath()
+	if err != nil {
+		return nil, err
+	}
+	lockFilePath := finalDir + ".lock"
+
+	if err := os.MkdirAll(filepath.Dir(lockFilePath), 0o700); err != nil {
+		return nil, fmt.Errorf("creating plugin root: %w", err)
+	}
+
+	mutex := fsutil.NewFileMutex(lockFilePath)
+	if err := mutex.Lock(); err != nil {
+		return nil, err
+	}
+	return func() {
+		contract.IgnoreError(mutex.Unlock())
+	}, nil
 }
 
 // We currently bundle some plugins with "pulumi" and thus expect them to be next to the pulumi binary.

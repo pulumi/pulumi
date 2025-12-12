@@ -68,7 +68,7 @@ type PluginManager interface {
 	InstallPlugin(
 		ctx context.Context,
 		plugin workspace.PluginSpec,
-		content pkgWorkspace.PluginContent,
+		content workspace.PluginContent,
 		reinstall bool,
 	) error
 }
@@ -133,7 +133,7 @@ func (defaultPluginManager) DownloadPlugin(
 func (defaultPluginManager) InstallPlugin(
 	ctx context.Context,
 	plugin workspace.PluginSpec,
-	content pkgWorkspace.PluginContent,
+	content workspace.PluginContent,
 	reinstall bool,
 ) error {
 	return pkgWorkspace.InstallPluginContent(ctx, plugin, content, reinstall)
@@ -611,7 +611,7 @@ func installPlugin(
 	if err := pluginManager.InstallPlugin(
 		ctx,
 		plugin,
-		pkgWorkspace.TarPlugin(withInstallProgress(tarball)),
+		workspace.TarPlugin(withInstallProgress(tarball)),
 		false,
 	); err != nil {
 		return fmt.Errorf("installing plugin; run `pulumi plugin install %s %s v%s` to retry manually: %w",

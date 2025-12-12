@@ -274,7 +274,7 @@ func installPluginSpec(
 ) error {
 	// If we got here, actually try to do the download.
 	var source string
-	var payload pkgWorkspace.PluginContent
+	var payload workspace.PluginContent
 	var err error
 	if file == "" {
 		withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
@@ -291,7 +291,7 @@ func installPluginSpec(
 		}
 		defer func() { contract.IgnoreError(os.Remove(r.Name())) }()
 
-		payload = pkgWorkspace.TarPlugin(r)
+		payload = workspace.TarPlugin(r)
 	} else {
 		source = file
 		logging.V(1).Infof("%s opening tarball from %s", label, file)
@@ -307,7 +307,7 @@ func installPluginSpec(
 	return nil
 }
 
-func getFilePayload(file string, spec workspace.PluginSpec) (pkgWorkspace.PluginContent, error) {
+func getFilePayload(file string, spec workspace.PluginSpec) (workspace.PluginContent, error) {
 	source := file
 	stat, err := os.Stat(file)
 	if err != nil {
@@ -315,7 +315,7 @@ func getFilePayload(file string, spec workspace.PluginSpec) (pkgWorkspace.Plugin
 	}
 
 	if stat.IsDir() {
-		return pkgWorkspace.DirPlugin(file), nil
+		return workspace.DirPlugin(file), nil
 	}
 
 	f, err := os.Open(file)
@@ -336,9 +336,9 @@ func getFilePayload(file string, spec workspace.PluginSpec) (pkgWorkspace.Plugin
 		if runtime.GOOS != "windows" && (stat.Mode()&0o100) == 0 {
 			return nil, fmt.Errorf("%s is not executable", source)
 		}
-		return pkgWorkspace.SingleFilePlugin(f, spec), nil
+		return workspace.SingleFilePlugin(f, spec), nil
 	}
-	return pkgWorkspace.TarPlugin(f), nil
+	return workspace.TarPlugin(f), nil
 }
 
 // resolvePluginSpec resolves plugin specifications using various resolution strategies.
