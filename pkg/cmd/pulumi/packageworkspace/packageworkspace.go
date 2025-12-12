@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -28,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -53,7 +55,7 @@ type Workspace struct {
 	parentSpan       opentracing.Span
 }
 
-func (w Workspace) Close() error { return nil }
+func (w Workspace) Close() error { return w.host.Close() }
 
 func (Workspace) HasPlugin(spec workspace.PluginSpec) bool { return workspace.HasPlugin(spec) }
 func (Workspace) HasPluginGTE(spec workspace.PluginSpec) (bool, error) {
@@ -127,7 +129,7 @@ func (Workspace) DetectPluginPathAt(ctx context.Context, path string) (string, e
 // should be run from pluginDir.
 func (w Workspace) LinkPackage(
 	ctx context.Context,
-	project *workspace.ProjectRuntimeInfo, projectDir string, packageName string,
+	runtimeInfo *workspace.ProjectRuntimeInfo, projectDir string, packageName string,
 	pluginDir string, params plugin.ParameterizeParameters,
 ) error {
 	p, paramResp, err := w.runPackage(ctx, projectDir, pluginDir, params)
@@ -159,10 +161,115 @@ func (w Workspace) LinkPackage(
 	// `package add` we know that this is just a local package and it's ok for module paths and similar to be different.
 	boundSchema.SupportPack = true
 
-	// TODO: Perf optimization. Given a unique (pluginDir, params) key, we can re-use
-	// a generated SDK every time that combination is requested. This will help in
-	// cases where the same provider is needed by multiple other plugins.
-	panic("TODO: Generate the SDK into a temp directory, if successful, then link it into the current directory.")
+	tmpDir, servers, err := w.genSDK(ctx, runtimeInfo.Name(), boundSchema)
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(servers)
+
+	pkgName := boundSchema.Name
+	if boundSchema.Namespace != "" {
+		pkgName = boundSchema.Namespace + "-" + pkgName
+	}
+	out := filepath.Join(projectDir, "sdks", pkgName)
+
+	// Make sure the out directory doesn't exist anymore.
+	//
+	// [os.RemoveAll] handles the case  where out doesn't exist.
+	if err := os.RemoveAll(out); err != nil {
+		return err
+	}
+
+	// Now move the temp directory to it's final home.
+	if err := os.Rename(tmpDir, out); err != nil {
+		// If this failed, we still need to clean up tmpDir.
+		return errors.Join(err, os.RemoveAll(tmpDir))
+	}
+
+	// We have now generated a SDK, the only thing left to do is link it into the existing project.
+
+	// TODO: Copied from [packages.LinkPackage]. This might be true, but we should
+	// still call into the YAML language host (which can then do nothing). Languages
+	// should not be special here.
+	if runtimeInfo.Name() == "yaml" {
+		return nil // Nothing to do for YAML
+	}
+
+	sdkPath, err := filepath.Rel(projectDir, out)
+	if err != nil {
+		return err
+	}
+	descriptor, err := boundSchema.Descriptor(ctx)
+	if err != nil {
+		return err
+	}
+	instructions, err := servers.lang.Link(
+		plugin.NewProgramInfo(projectDir, projectDir, ".", runtimeInfo.Options()),
+		[]workspace.LinkablePackageDescriptor{{
+			Path:       sdkPath,
+			Descriptor: descriptor,
+		}},
+		servers.grpc.Addr(),
+	)
+	if err != nil {
+		return fmt.Errorf("linking package: %w", err)
+	}
+	fmt.Fprintln(w.stderr, instructions)
+	return nil
+}
+
+type servers struct {
+	pctx *plugin.Context
+	lang plugin.LanguageRuntime
+	grpc *plugin.GrpcServer
+}
+
+func (s servers) Close() error { return errors.Join(s.lang.Close(), s.grpc.Close()) }
+
+func (w Workspace) servers(ctx context.Context, language string, dir string) (servers, error) {
+	languageRuntime, err := w.host.LanguageRuntime(language)
+	if err != nil {
+		return servers{}, err
+	}
+
+	pctx := plugin.NewContextWithHost(ctx, w.sink, w.statusSink, noCloseHost{w.host}, dir, dir, w.parentSpan)
+	loader := schema.NewPluginLoader(pctx.Host)
+	loaderServer := schema.NewLoaderServer(loader)
+	grpcServer, err := plugin.NewServer(pctx, schema.LoaderRegistration(loaderServer))
+	if err != nil {
+		return servers{}, errors.Join(err, languageRuntime.Close(), pctx.Close())
+	}
+	return servers{
+		pctx: pctx,
+		lang: languageRuntime,
+		grpc: grpcServer,
+	}, nil
+}
+
+func (w Workspace) genSDK(ctx context.Context, language string, pkg *schema.Package) (string, servers, error) {
+	jsonBytes, err := pkg.MarshalJSON()
+	if err != nil {
+		return "", servers{}, err
+	}
+	tmpDir, err := os.MkdirTemp("", "pulumi-package-")
+	if err != nil {
+		return "", servers{}, fmt.Errorf("unable to make temp dir: %w", err)
+	}
+	s, err := w.servers(ctx, language, tmpDir)
+	if err != nil {
+		return "", servers{}, errors.Join(err, os.RemoveAll(tmpDir))
+	}
+
+	diags, err := s.lang.GeneratePackage(tmpDir, string(jsonBytes), nil, s.grpc.Addr(), nil, true /* local */)
+	if err != nil {
+		return "", servers{}, errors.Join(err, os.RemoveAll(tmpDir), s.Close())
+	}
+
+	if diags.HasErrors() {
+		return "", servers{}, errors.Join(fmt.Errorf("generation failed: %w", diags), os.RemoveAll(tmpDir), s.Close())
+	}
+
+	return tmpDir, s, nil
 }
 
 // Run a package from a directory, parameterized by params.
