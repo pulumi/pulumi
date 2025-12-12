@@ -113,50 +113,67 @@ func compareDirectories(actualDir, expectedDir string, allowNewFiles bool) ([]st
 	// files are present, but also that no unexpected files are present.
 
 	var validations []string
-	// Check that every file in expected is also in actual with the same content
-	err := filepath.WalkDir(expectedDir, func(path string, d iofs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// No need to check directories, just recurse into them
-		if d.IsDir() {
-			return nil
-		}
-
-		relativePath, err := filepath.Rel(expectedDir, path)
-		contract.AssertNoErrorf(err, "path %s should be relative to %s", path, expectedDir)
-
-		// Check that the file is present in the expected directory and has the same contents
-		expectedContents, err := os.ReadFile(filepath.Join(expectedDir, relativePath))
-		if err != nil {
-			return fmt.Errorf("read expected file: %w", err)
-		}
-
-		actualPath := filepath.Join(actualDir, relativePath)
-		actualContents, err := os.ReadFile(actualPath)
-		// An error here is a test failure rather than an error, add this to the validation list
-		if err != nil {
-			validations = append(validations, fmt.Sprintf("expected file %s could not be read", relativePath))
-			// Move on to the next file
-			return nil
-		}
-
-		if !bytes.Equal(actualContents, expectedContents) {
-			edits := myers.ComputeEdits(
-				span.URIFromPath("expected"), string(expectedContents), string(actualContents),
-			)
-			diff := gotextdiff.ToUnified("expected", "actual", string(expectedContents), edits)
-
-			validations = append(validations, fmt.Sprintf(
-				"expected file %s does not match actual file:\n\n%s", relativePath, diff),
-			)
-		}
-
-		return nil
-	})
+	expectedDirExists := true
+	expectedDirInfo, err := os.Stat(expectedDir)
 	if err != nil {
-		return nil, fmt.Errorf("walk expected dir: %w", err)
+		if os.IsNotExist(err) {
+			expectedDirExists = false
+		} else {
+			return nil, fmt.Errorf("stat expected dir: %w", err)
+		}
+	} else if !expectedDirInfo.IsDir() {
+		return nil, fmt.Errorf("expected dir %s is not a directory", expectedDir)
+	}
+
+	// Check that every file in expected is also in actual with the same content
+	if expectedDirExists {
+		err := filepath.WalkDir(expectedDir, func(path string, d iofs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+
+			// No need to check directories, just recurse into them
+			if d.IsDir() {
+				return nil
+			}
+
+			relativePath, err := filepath.Rel(expectedDir, path)
+			contract.AssertNoErrorf(err, "path %s should be relative to %s", path, expectedDir)
+
+			// Check that the file is present in the expected directory and has the same contents
+			expectedContents, err := os.ReadFile(filepath.Join(expectedDir, relativePath))
+			if err != nil {
+				return fmt.Errorf("read expected file: %w", err)
+			}
+
+			actualPath := filepath.Join(actualDir, relativePath)
+			actualContents, err := os.ReadFile(actualPath)
+			// An error here is a test failure rather than an error, add this to the validation list
+			if err != nil {
+				validations = append(validations, fmt.Sprintf("expected file %s could not be read", relativePath))
+				// Move on to the next file
+				return nil
+			}
+
+			if !bytes.Equal(actualContents, expectedContents) {
+				edits := myers.ComputeEdits(
+					span.URIFromPath("expected"), string(expectedContents), string(actualContents),
+				)
+				diff := gotextdiff.ToUnified("expected", "actual", string(expectedContents), edits)
+
+				validations = append(validations, fmt.Sprintf(
+					"expected file %s does not match actual file:\n\n%s", relativePath, diff),
+				)
+			}
+
+			return nil
+		})
+		if err != nil {
+			return nil, fmt.Errorf("walk expected dir: %w", err)
+		}
+	} else {
+		// Expected directory doesn't exist, so all files in actual are unexpected
+		validations = append(validations, fmt.Sprintf("snapshot directory %s does not exist", expectedDir))
 	}
 
 	// Now walk the actual directory and check every file found is present in the expected directory, i.e.
