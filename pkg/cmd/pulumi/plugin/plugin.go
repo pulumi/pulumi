@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -107,9 +108,13 @@ func resolvePlugins(plugins []workspace.PluginSpec) ([]workspace.PluginInfo, err
 
 	// Get the required plugins and then ensure they have metadata populated about them.  Because it's possible
 	// a plugin required by the project hasn't yet been installed, we will simply skip any errors we encounter.
+	store, err := pluginstorage.Default()
+	if err != nil {
+		return nil, err
+	}
 	var results []workspace.PluginInfo
 	for _, plugin := range plugins {
-		info, err := workspace.GetPluginInfo(ctx.Base(), d, plugin, ctx.Host.GetProjectPlugins())
+		info, err := workspace.GetPluginInfo(ctx.Base(), store, d, plugin, ctx.Host.GetProjectPlugins())
 		if err != nil {
 			contract.IgnoreError(err)
 		}

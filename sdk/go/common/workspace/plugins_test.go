@@ -43,6 +43,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testPluginStore is a simple PluginStore implementation for tests.
+// It can't use pluginstorage package due to import cycles.
+type testPluginStore struct {
+	pluginDir string
+}
+
+func newTestPluginStore(t *testing.T) PluginStore {
+	pluginDir, err := GetPluginDir()
+	require.NoError(t, err)
+	return &testPluginStore{pluginDir: pluginDir}
+}
+
+func (s *testPluginStore) List(ctx context.Context) ([]PluginInfo, error) {
+	return GetPluginsFromDir(s.pluginDir)
+}
+
+func (s *testPluginStore) IsPartial(ctx context.Context, spec PluginSpec) (bool, error) {
+	return false, nil
+}
+
+func (s *testPluginStore) Dir(ctx context.Context, spec PluginSpec) (string, error) {
+	return filepath.Join(s.pluginDir, spec.Dir()), nil
+}
+
 func TestPluginNameRegexp(t *testing.T) {
 	t.Parallel()
 
@@ -1544,16 +1568,17 @@ func TestBundledPluginSearch(t *testing.T) {
 	require.NoError(t, err)
 
 	d := diagtest.LogSink(t)
+	store := newTestPluginStore(t)
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(ctx, d, PluginSpec{Name: "nodejs", Kind: apitype.LanguagePlugin}, nil)
+	path, err := GetPluginPath(ctx, store, d, PluginSpec{Name: "nodejs", Kind: apitype.LanguagePlugin}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, ambientPath, path)
 
 	// Lookup the plugin with ambient search turned off
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "true")
-	path, err = GetPluginPath(ctx, d, PluginSpec{Name: "nodejs", Kind: apitype.LanguagePlugin}, nil)
+	path, err = GetPluginPath(ctx, store, d, PluginSpec{Name: "nodejs", Kind: apitype.LanguagePlugin}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, bundledPath, path)
 }
@@ -1573,10 +1598,11 @@ func TestAmbientPluginsWarn(t *testing.T) {
 		&stderr,
 		diag.FormatOptions{Color: "never"},
 	)
+	store := newTestPluginStore(t)
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(ctx, d, PluginSpec{Name: "mock", Kind: apitype.ResourcePlugin}, nil)
+	path, err := GetPluginPath(ctx, store, d, PluginSpec{Name: "mock", Kind: apitype.ResourcePlugin}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, ambientPath, path)
 
@@ -1617,10 +1643,11 @@ func TestAmbientBundledPluginsWarn(t *testing.T) {
 		&stderr,
 		diag.FormatOptions{Color: "never"},
 	)
+	store := newTestPluginStore(t)
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(ctx, d, PluginSpec{Name: "nodejs", Kind: apitype.LanguagePlugin}, nil)
+	path, err := GetPluginPath(ctx, store, d, PluginSpec{Name: "nodejs", Kind: apitype.LanguagePlugin}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, ambientPath, path)
 
@@ -1654,10 +1681,11 @@ func TestBundledPluginsDoNotWarn(t *testing.T) {
 		&stderr,
 		diag.FormatOptions{Color: "never"},
 	)
+	store := newTestPluginStore(t)
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(ctx, d, PluginSpec{Name: "nodejs", Kind: apitype.LanguagePlugin}, nil)
+	path, err := GetPluginPath(ctx, store, d, PluginSpec{Name: "nodejs", Kind: apitype.LanguagePlugin}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, bundledPath, path)
 
@@ -1694,10 +1722,11 @@ func TestSymlinkPathPluginsDoNotWarn(t *testing.T) {
 		&stderr,
 		diag.FormatOptions{Color: "never"},
 	)
+	store := newTestPluginStore(t)
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(ctx, d, PluginSpec{Name: "nodejs", Kind: apitype.LanguagePlugin}, nil)
+	path, err := GetPluginPath(ctx, store, d, PluginSpec{Name: "nodejs", Kind: apitype.LanguagePlugin}, nil)
 	require.NoError(t, err)
 	// We expect the ambient path to be returned, but not to warn because it resolves to the same file as the
 	// bundled path.
@@ -1730,8 +1759,9 @@ func TestPluginInfoShimless(t *testing.T) {
 		&stderr,
 		diag.FormatOptions{Color: "never"},
 	)
+	store := newTestPluginStore(t)
 
-	info, err := GetPluginInfo(ctx, d, PluginSpec{Kind: apitype.ResourcePlugin, Name: "mock"}, []ProjectPlugin{
+	info, err := GetPluginInfo(ctx, store, d, PluginSpec{Kind: apitype.ResourcePlugin, Name: "mock"}, []ProjectPlugin{
 		{
 			Name: "mock",
 			Kind: apitype.ResourcePlugin,
@@ -1754,8 +1784,10 @@ func TestProjectPluginsWithUncleanPath(t *testing.T) {
 	err := os.WriteFile(filepath.Join(tempdir, "pulumi-resource-aws"), []byte{}, 0o600)
 	require.NoError(t, err)
 
+	store := newTestPluginStore(t)
+
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(ctx, diagtest.LogSink(t), PluginSpec{Kind: apitype.ResourcePlugin, Name: "aws"},
+	path, err := GetPluginPath(ctx, store, diagtest.LogSink(t), PluginSpec{Kind: apitype.ResourcePlugin, Name: "aws"},
 		[]ProjectPlugin{
 			{
 				Name: "aws",
@@ -1778,8 +1810,10 @@ func TestProjectPluginsWithSymlink(t *testing.T) {
 	err = os.WriteFile(filepath.Join(tempdir, "subdir", "pulumi-resource-aws"), []byte{}, 0o600)
 	require.NoError(t, err)
 
+	store := newTestPluginStore(t)
+
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(ctx, diagtest.LogSink(t), PluginSpec{Kind: apitype.ResourcePlugin, Name: "aws"},
+	path, err := GetPluginPath(ctx, store, diagtest.LogSink(t), PluginSpec{Kind: apitype.ResourcePlugin, Name: "aws"},
 		[]ProjectPlugin{
 			{
 				Name: "aws",

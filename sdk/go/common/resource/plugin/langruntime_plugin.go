@@ -32,6 +32,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
@@ -106,8 +107,12 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 
 		client = pulumirpc.NewLanguageRuntimeClient(plug.Conn)
 	} else {
+		pluginstore, err := pluginstorage.Default()
+		if err != nil {
+			return nil, err
+		}
 		path, err := workspace.GetPluginPath(
-			ctx.baseContext, ctx.Diag,
+			ctx.baseContext, pluginstore, ctx.Diag,
 			workspace.PluginSpec{
 				Name: strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"),
 				Kind: apitype.LanguagePlugin,

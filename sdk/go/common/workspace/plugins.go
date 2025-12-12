@@ -1759,18 +1759,10 @@ func IsPluginKind(k string) bool {
 }
 
 // HasPlugin returns true if the given plugin exists.
-func HasPlugin(spec PluginSpec) bool {
-	dir, err := spec.DirPath()
-	if err == nil {
-		_, err := os.Stat(dir)
-		if err == nil {
-			partialFilePath, err := spec.PartialFilePath()
-			if err == nil {
-				if _, err := os.Stat(partialFilePath); os.IsNotExist(err) {
-					return true
-				}
-			}
-		}
+func HasPlugin(ctx context.Context, store PluginStore, spec PluginSpec) bool {
+	if _, err := store.Dir(ctx, spec); err == nil {
+		isPartial, err := store.IsPartial(ctx, spec)
+		return (err == nil && !isPartial)
 	}
 	return false
 }
@@ -1778,7 +1770,7 @@ func HasPlugin(spec PluginSpec) bool {
 // HasPluginGTE returns true if the given plugin exists at the given version number or greater.
 func HasPluginGTE(ctx context.Context, store PluginStore, spec PluginSpec) (bool, error) {
 	// If an exact match, return true right away.
-	if HasPlugin(spec) {
+	if HasPlugin(ctx, store, spec) {
 		return true, nil
 	}
 
@@ -1836,6 +1828,8 @@ func GetPluginDir() (string, error) {
 type PluginStore interface {
 	List(ctx context.Context) ([]PluginInfo, error)
 	IsPartial(ctx context.Context, spec PluginSpec) (bool, error)
+	// Dir returns the absolute file path to an installed plugin.
+	Dir(ctx context.Context, spec PluginSpec) (string, error)
 }
 
 // GetPlugins returns a list of installed plugins without size info and last accessed metadata.

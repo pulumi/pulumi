@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -82,7 +83,11 @@ func newPluginRmCmd() *cobra.Command {
 
 			// Now build a list of plugins that match.
 			var deletes []workspace.PluginInfo
-			plugins, err := workspace.GetPlugins()
+			store, err := pluginstorage.Default()
+			if err != nil {
+				return err
+			}
+			plugins, err := store.List(cmd.Context())
 			if err != nil {
 				return fmt.Errorf("loading plugins: %w", err)
 			}

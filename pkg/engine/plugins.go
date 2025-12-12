@@ -26,6 +26,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -97,15 +98,27 @@ func (defaultPluginManager) GetPluginPath(
 	spec workspace.PluginSpec,
 	projectPlugins []workspace.ProjectPlugin,
 ) (string, error) {
-	return workspace.GetPluginPath(ctx, d, spec, projectPlugins)
+	store, err := pluginstorage.Default()
+	if err != nil {
+		return "", err
+	}
+	return workspace.GetPluginPath(ctx, store, d, spec, projectPlugins)
 }
 
 func (defaultPluginManager) HasPlugin(spec workspace.PluginSpec) bool {
-	return workspace.HasPlugin(spec)
+	store, err := pluginstorage.Default()
+	if err != nil {
+		return false
+	}
+	return workspace.HasPlugin(context.TODO(), store, spec)
 }
 
 func (defaultPluginManager) HasPluginGTE(spec workspace.PluginSpec) (bool, error) {
-	return workspace.HasPluginGTE(spec)
+	store, err := pluginstorage.Default()
+	if err != nil {
+		return false, err
+	}
+	return workspace.HasPluginGTE(context.TODO(), store, spec)
 }
 
 func (defaultPluginManager) GetLatestPluginVersion(

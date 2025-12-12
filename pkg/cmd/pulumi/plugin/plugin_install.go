@@ -27,6 +27,7 @@ import (
 	"github.com/blang/semver"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -244,13 +245,17 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		// If the plugin already exists, don't download it unless --reinstall was passed.  Note that
 		// by default we accept plugins with >= constraints, unless --exact was passed which requires ==.
 		if !cmd.reinstall {
+			store, err := pluginstorage.Default()
+			if err != nil {
+				return err
+			}
 			if cmd.exact {
-				if workspace.HasPlugin(install) {
+				if workspace.HasPlugin(ctx, store, install) {
 					logging.V(1).Infof("%s skipping install (existing == match)", label)
 					continue
 				}
 			} else {
-				if has, _ := workspace.HasPluginGTE(install); has {
+				if has, _ := workspace.HasPluginGTE(ctx, store, install); has {
 					logging.V(1).Infof("%s skipping install (existing >= match)", label)
 					continue
 				}

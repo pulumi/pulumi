@@ -120,13 +120,14 @@ func assertPluginInstalled(t *testing.T, dir string, plugin workspace.PluginSpec
 	_, err = os.Stat(filepath.Join(dir, plugin.Dir()+".partial"))
 	assert.Truef(t, os.IsNotExist(err), "err was not IsNotExists, but was %s", err)
 
-	assert.True(t, workspace.HasPlugin(plugin))
+	store := pluginstorage.NewFs(dir)
+	assert.True(t, workspace.HasPlugin(t.Context(), store, plugin))
 
-	has, err := workspace.HasPluginGTE(plugin)
+	has, err := workspace.HasPluginGTE(t.Context(), store, plugin)
 	require.NoError(t, err)
 	assert.True(t, has)
 
-	plugins, err := workspace.GetPluginsFromDir(dir)
+	plugins, err := store.List(t.Context())
 	require.NoError(t, err)
 	require.Len(t, plugins, 1)
 	assert.Equal(t, plugin.Name, plugins[0].Name)
@@ -290,19 +291,20 @@ func TestGetPluginsSkipsPartial(t *testing.T) {
 
 	dir, tarball, plugin := prepareTestDir(t, nil)
 
-	err := InstallPluginContent(context.Background(), plugin, pluginstorage.TarPlugin(tarball), false)
+	err := InstallPluginContent(t.Context(), plugin, pluginstorage.TarPlugin(tarball), false)
 	require.NoError(t, err)
 
 	err = os.WriteFile(filepath.Join(dir, plugin.Dir()+".partial"), nil, 0o600)
 	require.NoError(t, err)
 
-	assert.False(t, workspace.HasPlugin(plugin))
+	store := pluginstorage.NewFs(dir)
+	assert.False(t, workspace.HasPlugin(t.Context(), store, plugin))
 
-	has, err := workspace.HasPluginGTE(plugin)
+	has, err := workspace.HasPluginGTE(t.Context(), store, plugin)
 	require.NoError(t, err)
 	assert.False(t, has)
 
-	plugins, err := workspace.GetPluginsFromDir(dir)
+	plugins, err := store.List(t.Context())
 	require.NoError(t, err)
 	assert.Empty(t, plugins)
 }

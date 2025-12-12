@@ -28,6 +28,7 @@ import (
 	"fmt"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -228,11 +229,19 @@ type PluginWorkspace interface {
 type defaultWorkspace struct{}
 
 func (defaultWorkspace) HasPlugin(spec workspace.PluginSpec) bool {
-	return workspace.HasPlugin(spec)
+	store, err := pluginstorage.Default()
+	if err != nil {
+		return false
+	}
+	return workspace.HasPlugin(context.TODO(), store, spec)
 }
 
 func (defaultWorkspace) HasPluginGTE(spec workspace.PluginSpec) (bool, error) {
-	return workspace.HasPluginGTE(spec)
+	store, err := pluginstorage.Default()
+	if err != nil {
+		return false, err
+	}
+	return workspace.HasPluginGTE(context.TODO(), store, spec)
 }
 
 func (defaultWorkspace) IsExternalURL(source string) bool {

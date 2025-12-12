@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -102,7 +103,11 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 				d := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{Color: cmdutil.GetGlobalColorization()})
 
-				pluginPath, err = workspace.GetPluginPath(ctx, d, pluginSpec, nil)
+				store, err := pluginstorage.Default()
+				if err != nil {
+					return err
+				}
+				pluginPath, err = workspace.GetPluginPath(ctx, store, d, pluginSpec, nil)
 				if err != nil {
 					// Try to install the plugin, unless auto plugin installs are turned off.
 					var me *workspace.MissingError
@@ -120,7 +125,7 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 						return err
 					}
 
-					pluginPath, err = workspace.GetPluginPath(ctx, d, pluginSpec, nil)
+					pluginPath, err = workspace.GetPluginPath(ctx, store, d, pluginSpec, nil)
 					if err != nil {
 						return fmt.Errorf("could not get plugin path: %w", err)
 					}

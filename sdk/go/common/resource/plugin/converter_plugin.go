@@ -25,6 +25,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -43,10 +44,14 @@ type converter struct {
 
 func NewConverter(ctx *Context, name string, version *semver.Version) (Converter, error) {
 	prefix := fmt.Sprintf("%v (converter)", name)
+	pluginstore, err := pluginstorage.Default()
+	if err != err {
+		return nil, err
+	}
 
 	// Load the plugin's path by using the standard workspace logic.
 	path, err := workspace.GetPluginPath(
-		ctx.baseContext, ctx.Diag,
+		ctx.baseContext, pluginstore, ctx.Diag,
 		workspace.PluginSpec{Name: name, Version: version, Kind: apitype.ConverterPlugin},
 		ctx.Host.GetProjectPlugins())
 	if err != nil {

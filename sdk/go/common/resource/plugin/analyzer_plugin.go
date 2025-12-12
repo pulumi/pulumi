@@ -33,6 +33,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -67,9 +68,14 @@ var _ Analyzer = (*analyzer)(nil)
 // NewAnalyzer binds to a given analyzer's plugin by name and creates a gRPC connection to it.  If the associated plugin
 // could not be found by name on the PATH, or an error occurs while creating the child process, an error is returned.
 func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
+	pluginstore, err := pluginstorage.Default()
+	if err != err {
+		return nil, err
+	}
 	// Load the plugin's path by using the standard workspace logic.
 	path, err := workspace.GetPluginPath(
 		ctx.baseContext,
+		pluginstore,
 		ctx.Diag,
 		workspace.PluginSpec{
 			Name: strings.ReplaceAll(string(name), tokens.QNameDelimiter, "_"),
@@ -150,6 +156,12 @@ func NewPolicyAnalyzer(
 
 	var plug *Plugin
 	var foundLanguagePlugin bool
+
+	pluginstore, err := pluginstorage.Default()
+	if err != err {
+		return nil, err
+	}
+
 	// Try to load the language plugin for the runtime, except for python and node that _for now_ continue using the
 	// legacy behavior.
 	if proj.Runtime.Name() != "python" && proj.Runtime.Name() != "nodejs" {
@@ -157,6 +169,7 @@ func NewPolicyAnalyzer(
 			hasPlugin = func(spec workspace.PluginSpec) bool {
 				path, err := workspace.GetPluginPath(
 					ctx.baseContext,
+					pluginstore,
 					ctx.Diag,
 					spec,
 					host.GetProjectPlugins())
@@ -179,7 +192,7 @@ func NewPolicyAnalyzer(
 		// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
 		var pluginPath string
 		pluginPath, err = workspace.GetPluginPath(
-			ctx.baseContext, ctx.Diag,
+			ctx.baseContext, pluginstore, ctx.Diag,
 			workspace.PluginSpec{Name: policyAnalyzerName, Kind: apitype.AnalyzerPlugin}, host.GetProjectPlugins())
 
 		var e *workspace.MissingError

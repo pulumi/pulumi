@@ -23,6 +23,7 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -66,7 +67,11 @@ type Workspace interface {
 type defaultWorkspace struct{}
 
 func (defaultWorkspace) GetPlugins() ([]workspace.PluginInfo, error) {
-	return workspace.GetPlugins()
+	s, err := pluginstorage.Default()
+	if err != nil {
+		return nil, err
+	}
+	return s.List(context.TODO())
 }
 
 // DefaultWorkspace returns a default workspace implementation that uses the workspace module directly to get plugin
