@@ -661,8 +661,11 @@ func TestFindReadme(t *testing.T) {
 		require.NoError(t, os.WriteFile(readmePath, []byte("# Test Readme"), 0o600))
 
 		found, err := cmd.findReadme(ctx, dirPath)
-		assert.Equal(t, readmePath, found)
 		require.NoError(t, err)
+		require.NotNil(t, found)
+		actualReadme, err := io.ReadAll(found)
+		require.NoError(t, err)
+		assert.Equal(t, "# Test Readme", string(actualReadme))
 	})
 
 	t.Run("InvalidPluginSpec", func(t *testing.T) {
@@ -696,7 +699,7 @@ func TestFindReadme(t *testing.T) {
 
 		readme, err := cmd.findReadme(ctx, pluginDownloadURL)
 		require.NoError(t, err)
-		actualReadme, err := os.ReadFile(readme)
+		actualReadme, err := io.ReadAll(readme)
 		require.NoError(t, err)
 		assert.Equal(t, "# Test Readme", string(actualReadme))
 	})
@@ -714,7 +717,7 @@ func TestFindReadme(t *testing.T) {
 
 		readme, err := cmd.findReadme(ctx, pluginDownloadURL)
 		require.NoError(t, err)
-		actualReadme, err := os.ReadFile(readme)
+		actualReadme, err := io.ReadAll(readme)
 		require.NoError(t, err)
 		assert.Equal(t, "# Subdir Readme", string(actualReadme))
 	})

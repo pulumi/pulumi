@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,6 +32,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -156,17 +158,25 @@ func (cmd *packagePublishCmd) Run(
 		return fmt.Errorf("failed to get schema: %w", err)
 	}
 
-	// If no readme path is provided, check if there's a readme in the package source or plugin directory we can slurp up.
-	if args.readmePath == "" {
-		readmePath, err := cmd.findReadme(ctx, packageSrc)
+	var readme fs.File
+	if args.readmePath != "" {
+		f, err := os.Open(args.readmePath)
+		if err != nil {
+			return fmt.Errorf("failed to open readme file: %w", err)
+		}
+		defer contract.IgnoreClose(f)
+		readme = f
+	} else {
+		f, err := cmd.findReadme(ctx, packageSrc)
 		if err != nil {
 			return fmt.Errorf("failed to find readme: %w", err)
 		}
-		args.readmePath = readmePath
-	}
-	if args.readmePath == "" {
-		return errors.New("no README found. Please add one named README.md to the package, " +
-			"or use --readme to specify the path")
+		if f == nil {
+			return errors.New("no README found. Please add one named README.md to the package, " +
+				"or use --readme to specify the path")
+		}
+		defer contract.IgnoreClose(f)
+		readme = f
 	}
 
 	var publisher string
@@ -221,11 +231,6 @@ func (cmd *packagePublishCmd) Run(
 	// on performance, as these files are typically small (likely less than one MB).
 
 	// In the future we could slurp up the readme from the package source and add the necessary markdown headers.
-	readme, err := os.Open(args.readmePath)
-	if err != nil {
-		return fmt.Errorf("failed to open readme file: %w", err)
-	}
-	defer contract.IgnoreClose(readme)
 	readmeBytes := bytes.NewBuffer(nil)
 	if _, err := io.Copy(readmeBytes, readme); err != nil {
 		return fmt.Errorf("failed to read readme file: %w", err)
@@ -279,16 +284,11 @@ func login(ctx context.Context, project *workspace.Project) (backend.Backend, er
 // 1. The package source if it is a directory
 // 2. The installed plugin directory
 // If no readme is found, an empty string is returned.
-func (cmd *packagePublishCmd) findReadme(ctx context.Context, packageSrc string) (string, error) {
-	findReadmeInDir := func(dir string) string {
+func (cmd *packagePublishCmd) findReadme(ctx context.Context, packageSrc string) (fs.File, error) {
+	findReadmeInDir := func(dir string) (fs.File, error) {
 		info, err := os.Stat(dir)
-		if err != nil && errors.Is(err, os.ErrNotExist) {
-			return ""
-		} else if err != nil {
-			return ""
-		}
-		if !info.IsDir() {
-			return ""
+		if err != nil || !info.IsDir() {
+			return nil, nil
 		}
 		entries, err := os.ReadDir(dir)
 		if err == nil {
@@ -296,39 +296,41 @@ func (cmd *packagePublishCmd) findReadme(ctx context.Context, packageSrc string)
 				if !entry.IsDir() {
 					name := strings.ToLower(entry.Name())
 					if name == "readme.md" {
-						return filepath.Join(dir, entry.Name())
+						return os.Open(filepath.Join(dir, entry.Name()))
 					}
 				}
 			}
 		}
-		return ""
+		return nil, nil
 	}
 
 	if ext := filepath.Ext(packageSrc); ext == ".json" || ext == ".yaml" || ext == ".yml" {
 		// If the package source is a schema file, there's no README.md to be found.
-		return "", nil
+		return nil, nil
 	}
 	// If the source is a directory, check if it contains a readme.
-	if readmeFromPackage := findReadmeInDir(packageSrc); readmeFromPackage != "" {
-		return readmeFromPackage, nil
+	if readmeFromPackage, err := findReadmeInDir(packageSrc); readmeFromPackage != nil || err != nil {
+		return readmeFromPackage, err
 	}
 
 	// Otherwise, try to retrieve the readme from the installed plugin.
 	pluginSpec, err := workspace.NewPluginSpec(ctx, packageSrc, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
-		return "", fmt.Errorf("failed to create plugin spec: %w", err)
+		return nil, fmt.Errorf("failed to create plugin spec: %w", err)
 	}
 
-	pluginDir, err := pluginSpec.DirPath()
+	s, err := pluginstorage.Default()
 	if err != nil {
-		return "", fmt.Errorf("failed to get plugin directory: %w", err)
-	}
-	path := pluginSpec.SubDir()
-	dir := filepath.Join(pluginDir, path)
-
-	if readmeFromPlugin := findReadmeInDir(dir); readmeFromPlugin != "" {
-		return readmeFromPlugin, nil
+		return nil, err
 	}
 
-	return "", nil
+	dir, err := s.Dir(ctx, pluginSpec)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get plugin directory: %w", err)
+	}
+
+	return findReadmeInDir(dir)
 }
