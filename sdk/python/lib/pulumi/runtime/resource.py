@@ -1091,16 +1091,16 @@ def register_resource(
             hook_prefix = f"{ty}_{name}"
             hooks = await _prepare_resource_hooks(opts.hooks, hook_prefix)
 
-            replacement_trigger = resolver.replacement_trigger
-
-            replacement_trigger = await serialize_property(
-                replacement_trigger,
-                [],
-                property_key="replacement_trigger",
-                resource_obj=res,
-                keep_output_values=True,
-                return_protobuf_value=True,
-            )
+            replacement_trigger: Optional[Any] = None
+            if resolver.replacement_trigger is not None:
+                replacement_trigger = await serialize_property(
+                    resolver.replacement_trigger,
+                    [],
+                    property_key="replacement_trigger",
+                    resource_obj=res,
+                    keep_output_values=False,
+                    return_protobuf_value=True,
+                )
 
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
