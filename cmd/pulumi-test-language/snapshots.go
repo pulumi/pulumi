@@ -172,7 +172,6 @@ func compareDirectories(actualDir, expectedDir string, allowNewFiles bool) ([]st
 			return nil, fmt.Errorf("walk expected dir: %w", err)
 		}
 	} else {
-		// Expected directory doesn't exist, so all files in actual are unexpected
 		validations = append(validations, fmt.Sprintf("snapshot directory %s does not exist", expectedDir))
 	}
 
