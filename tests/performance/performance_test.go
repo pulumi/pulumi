@@ -179,7 +179,7 @@ func TestPerfManyResourcesWithJournaling(t *testing.T) {
 
 			subsequentBenchmark := &integration.AssertPerfBenchmark{
 				T:                 t,
-				MaxUpdateDuration: 80 * time.Second,
+				MaxUpdateDuration: 38 * time.Second,
 			}
 
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
