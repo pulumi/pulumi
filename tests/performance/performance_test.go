@@ -159,8 +159,9 @@ func TestPerfStackReferenceSecretsBatchUpdate(t *testing.T) {
 //nolint:paralleltest // Do not run in parallel to avoid resource contention
 func TestPerfManyResourcesWithJournaling(t *testing.T) {
 	initialBenchmark := &integration.AssertPerfBenchmark{
-		T:                 t,
-		MaxUpdateDuration: 100 * time.Second,
+		T:                      t,
+		MaxUpdateDuration:      90 * time.Second,
+		MaxEmptyUpdateDuration: 50 * time.Second,
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -176,26 +177,6 @@ func TestPerfManyResourcesWithJournaling(t *testing.T) {
 		DestroyOnCleanup: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			require.Greater(t, len(stack.Deployment.Resources), 2000)
-
-			subsequentBenchmark := &integration.AssertPerfBenchmark{
-				T:                 t,
-				MaxUpdateDuration: 38 * time.Second,
-			}
-
-			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				NoParallel:       true,
-				Dir:              filepath.Join("typescript", "many_resources"),
-				StackName:        string(stack.StackName),
-				Dependencies:     []string{"@pulumi/pulumi"},
-				RequireService:   true,
-				SkipPreview:      true,
-				SkipStackInit:    true,
-				SkipStackRemoval: true,
-				ReportStats:      subsequentBenchmark,
-				Env: []string{
-					"PULUMI_ENABLE_JOURNALING=true",
-				},
-			})
 		},
 	})
 }
