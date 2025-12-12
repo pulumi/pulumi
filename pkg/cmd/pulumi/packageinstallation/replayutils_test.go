@@ -24,8 +24,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-var StandardDownloadPlugin DownloadPlugin = func(_ context.Context, plugin workspace.PluginSpec) (string, error) {
-	return "/tmp/plugins/" + plugin.Dir(), nil
+var StandardDownloadPlugin DownloadPlugin = func(
+	_ context.Context, plugin workspace.PluginSpec,
+) (string, func(bool), error) {
+	return "/tmp/plugins/" + plugin.Dir(), func(bool) {}, nil
 }
 
 var StandardDetectPluginPathAt DetectPluginPathAt = func(ctx context.Context, dir string) (string, error) {

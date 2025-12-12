@@ -379,16 +379,26 @@ type LoadPluginProject func(ctx context.Context, path string) (*workspace.Plugin
 
 func (LoadPluginProject) isReplayStep() {}
 
-func (ws *replayWorkspace) DownloadPlugin(ctx context.Context, plugin workspace.PluginSpec) (string, error) {
+func (ws *replayWorkspace) DownloadPlugin(
+	ctx context.Context, plugin workspace.PluginSpec,
+) (string, packageinstallation.MarkInstallationDone, error) {
 	next, idx := ws.pop("DownloadPlugin", []any{plugin})
 	step, ok := next.(DownloadPlugin)
 	require.True(ws.t, ok, "%d: Expected step %T but found %T", idx, step, next)
-	result1, result2 := step(ctx, plugin)
-	ws.record(idx, []any{result1, result2})
-	return result1, result2
+	result1, result2, result3 := step(ctx, plugin)
+	ws.record(idx, []any{result1, result2, result3})
+
+	wrappedCleanup := func(success bool) {
+		ws.stepsTaken = append(ws.stepsTaken, "MarkInstallationDone"+formatArgs([]any{plugin, success}))
+		result2(success)
+	}
+
+	return result1, wrappedCleanup, result3
 }
 
-type DownloadPlugin func(ctx context.Context, plugin workspace.PluginSpec) (string, error)
+type DownloadPlugin func(
+	ctx context.Context, plugin workspace.PluginSpec,
+) (string, packageinstallation.MarkInstallationDone, error)
 
 func (DownloadPlugin) isReplayStep() {}
 

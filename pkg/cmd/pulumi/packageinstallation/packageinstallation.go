@@ -58,7 +58,7 @@ type Workspace interface {
 	LoadPluginProject(ctx context.Context, path string) (*workspace.PluginProject, error)
 
 	// Download a plugin onto disk, returning the path the plugin was downloaded to.
-	DownloadPlugin(ctx context.Context, plugin workspace.PluginSpec) (string, error)
+	DownloadPlugin(ctx context.Context, plugin workspace.PluginSpec) (string, MarkInstallationDone, error)
 
 	DetectPluginPathAt(ctx context.Context, path string) (string, error)
 
@@ -83,6 +83,8 @@ type Workspace interface {
 		rootDir, pluginDir string, params plugin.ParameterizeParameters,
 	) (plugin.Provider, error)
 }
+
+type MarkInstallationDone = func(success bool)
 
 type Options struct {
 	packageresolution.Options
@@ -181,7 +183,16 @@ func runInstall(
 		// for that.
 		seen:  make(map[pluginSpecHash]cachedPlugin, 1),
 		seenM: new(sync.Mutex),
+
+		cleanupFuncs: nil,
+		cleanupM:     new(sync.Mutex),
 	}
+
+	defer func() {
+		for _, f := range state.cleanupFuncs {
+			f()
+		}
+	}()
 
 	if err := setup(ctx, state, root); err != nil {
 		return err
@@ -191,6 +202,7 @@ func runInstall(
 	err := dag.Walk(ctx, func(ctx context.Context, step step) error {
 		return step.run(ctx, state)
 	}, pdag.MaxProcs(options.Concurrency))
+
 	return wrapCycleError(err)
 }
 
@@ -273,6 +285,9 @@ type state struct {
 	// A mapping of plugins already managed by dag.
 	seen  map[pluginSpecHash]cachedPlugin
 	seenM *sync.Mutex
+
+	cleanupFuncs []func()
+	cleanupM     *sync.Mutex
 }
 
 type cachedPlugin struct {
@@ -401,6 +416,7 @@ func ensureProjectDependencies(
 func ensureDownloadedPluginDirHasDependenciesAndIsInstalled(
 	ctx context.Context, state state,
 	parent pdag.Node, name, projectDir string,
+	downloadCleanup *downloadCleanup,
 ) error {
 	filePath, err := state.ws.DetectPluginPathAt(ctx, projectDir)
 	switch {
@@ -414,6 +430,7 @@ func ensureDownloadedPluginDirHasDependenciesAndIsInstalled(
 		}
 
 		install, installReady := state.dag.NewNode(installStep{
+			downloadCleanup: downloadCleanup,
 			project: project[*workspace.PluginProject]{
 				proj:       pluginProject,
 				projectDir: projectDir,
@@ -512,7 +529,7 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 		// We don't need to download what's at a local path result, but we might
 		// need to download it's dependencies.
 
-		return ensureDownloadedPluginDirHasDependenciesAndIsInstalled(ctx, p, step.parent, "", projectDir)
+		return ensureDownloadedPluginDirHasDependenciesAndIsInstalled(ctx, p, step.parent, "", projectDir, nil)
 
 	// We have a normal spec to download and install, so let's run that process.
 	//
@@ -534,10 +551,11 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 		// Start with the download. The downloadStep will take care of attaching
 		// steps for (2) and (3) to specFinished.
 		download, downloadReady := p.dag.NewNode(downloadStep{
-			spec:         result.Spec,
-			parent:       specFinished,
-			done:         specReady,
-			runBundleOut: step.runBundleOut,
+			spec:            result.Spec,
+			parent:          specFinished,
+			done:            specReady,
+			runBundleOut:    step.runBundleOut,
+			downloadCleanup: new(downloadCleanup),
 		})
 		downloadReady()
 		contract.AssertNoErrorf(p.dag.NewEdge(download, specFinished), "new nodes cannot be cyclic")
@@ -568,10 +586,11 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 		// Start with the download. The downloadStep will take care of attaching
 		// steps for (2) and (3) to specFinished.
 		download, downloadReady := p.dag.NewNode(downloadStep{
-			spec:         spec,
-			parent:       specFinished,
-			done:         specReady,
-			runBundleOut: step.runBundleOut,
+			spec:            spec,
+			parent:          specFinished,
+			done:            specReady,
+			runBundleOut:    step.runBundleOut,
+			downloadCleanup: new(downloadCleanup),
 		})
 		downloadReady()
 		contract.AssertNoErrorf(p.dag.NewEdge(download, specFinished), "new nodes cannot be cyclic")
@@ -606,24 +625,51 @@ type downloadStep struct {
 	parent       pdag.Node
 	done         pdag.Done
 	runBundleOut *runBundle
+
+	downloadCleanup *downloadCleanup
+}
+
+type downloadCleanup struct {
+	f      func(success bool)
+	called bool
 }
 
 func (step downloadStep) run(ctx context.Context, p state) error {
 	defer step.done()
-	pluginDir, err := p.ws.DownloadPlugin(ctx, step.spec)
+	pluginDir, doneF, err := p.ws.DownloadPlugin(ctx, step.spec)
 	if err != nil {
 		return err
 	}
+	step.downloadCleanup.f = doneF
+
+	// Add a hook to cleanup the download after usage.
+	p.cleanupM.Lock()
+	p.cleanupFuncs = append(p.cleanupFuncs, func() {
+		if step.downloadCleanup.called {
+			return
+		}
+		step.downloadCleanup.f(false)
+	})
+	p.cleanupM.Unlock()
 
 	step.runBundleOut.pluginDir = pluginDir
 	return ensureDownloadedPluginDirHasDependenciesAndIsInstalled(
-		ctx, p, step.parent, step.spec.Name, pluginDir)
+		ctx, p, step.parent, step.spec.Name, pluginDir, step.downloadCleanup)
 }
 
 type installStep struct {
-	project project[*workspace.PluginProject]
+	downloadCleanup *downloadCleanup
+	project         project[*workspace.PluginProject]
 }
 
 func (step installStep) run(ctx context.Context, p state) error {
-	return p.ws.InstallPluginAt(ctx, step.project.projectDir, step.project.proj)
+	err := p.ws.InstallPluginAt(ctx, step.project.projectDir, step.project.proj)
+
+	// If the location we are installing was downloaded, then we need to call the
+	// cleanup function.
+	if step.downloadCleanup != nil {
+		step.downloadCleanup.called = true
+		step.downloadCleanup.f(err == nil)
+	}
+	return err
 }
