@@ -735,6 +735,6 @@ func installResourcePluginFromFiles(t *testing.T, spec workspace.PluginSpec, fil
 		err = os.WriteFile(path, []byte(content), 0o600)
 		require.NoError(t, err)
 	}
-	err := pkgWorkspace.InstallPluginContent(t.Context(), spec, pkgWorkspace.DirPlugin(dir), true)
+	err := pkgWorkspace.InstallPluginContent(t.Context(), spec, workspace.DirPlugin(dir), true)
 	require.NoError(t, err)
 }
