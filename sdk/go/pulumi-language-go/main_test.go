@@ -62,27 +62,6 @@ func TestParseRunParams(t *testing.T) {
 			},
 		},
 		{
-			desc: "binary",
-			give: []string{"-binary", "foo", "localhost:1234"},
-			want: runParams{
-				engineAddress: "localhost:1234",
-			},
-		},
-		{
-			desc: "buildTarget",
-			give: []string{"-buildTarget", "foo", "localhost:1234"},
-			want: runParams{
-				engineAddress: "localhost:1234",
-			},
-		},
-		{
-			desc: "root",
-			give: []string{"-root", "path/to/root", "localhost:1234"},
-			want: runParams{
-				engineAddress: "localhost:1234",
-			},
-		},
-		{
 			desc:    "unknown option",
 			give:    []string{"-unknown-option", "bar", "localhost:1234"},
 			wantErr: "flag provided but not defined: -unknown-option",

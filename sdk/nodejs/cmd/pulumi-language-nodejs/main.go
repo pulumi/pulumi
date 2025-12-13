@@ -114,13 +114,6 @@ func main() {
 	var tracing string
 	flag.StringVar(&tracing, "tracing", "",
 		"Emit tracing to a Zipkin-compatible tracing endpoint")
-	flag.Bool("typescript", true,
-		"[obsolete] Use ts-node at runtime to support typescript source natively")
-	flag.String("root", "", "[obsolete] Project root path to use")
-	flag.String("tsconfig", "",
-		"[obsolete] Path to tsconfig.json to use")
-	flag.String("nodeargs", "", "[obsolete] Arguments for the Node process")
-	flag.String("packagemanager", "", "[obsolete] Packagemanager to use (auto, npm, yarn, pnpm or bun)")
 	showVersion := flag.Bool("version", false, "Print the current plugin version and exit")
 	flag.Parse()
 
