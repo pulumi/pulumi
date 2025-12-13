@@ -466,6 +466,9 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         if replace_on_changes:
             ropts.replace_on_changes = replace_on_changes
 
+        if opts.replacement_trigger:
+            ropts.replacement_trigger = opts.replacement_trigger
+
         if opts.retain_on_delete:
             ropts.retain_on_delete = opts.retain_on_delete
 
@@ -553,6 +556,16 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
 
         hooks = await _prepare_resource_hooks(opts.hooks, resource_name)
 
+        replacement_trigger = None
+        if opts.replacement_trigger is not None:
+            from .. import output as output_mod
+            from .rpc import serialize_property
+
+            resolved = output_mod.Output.from_input(opts.replacement_trigger)
+            replacement_trigger = await serialize_property(
+                resolved, [], "replacement_trigger", None, None, None, False, False
+            )
+
         result = resource_pb2.TransformResourceOptions(
             aliases=aliases or None,
             custom_timeouts=custom_timeouts,
@@ -561,6 +574,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             replace_on_changes=replace_on_changes,
             additional_secret_outputs=additional_secret_outputs,
             hooks=hooks,
+            replacement_trigger=replacement_trigger,
         )
 
         if opts.import_ is not None:

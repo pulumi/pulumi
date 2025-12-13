@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/python
+  description: Add support for `replacement_trigger` in the Python SDK
