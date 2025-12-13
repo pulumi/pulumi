@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/stretchr/testify/require"
 )
 
 // TODO: add tests using other languages https://github.com/pulumi/pulumi/issues/17669
@@ -151,6 +152,31 @@ func TestPerfStackReferenceSecretsBatchUpdate(t *testing.T) {
 				RequireService: true,
 				ReportStats:    benchmarkEnforcer,
 			})
+		},
+	})
+}
+
+//nolint:paralleltest // Do not run in parallel to avoid resource contention
+func TestPerfManyResourcesWithJournaling(t *testing.T) {
+	initialBenchmark := &integration.AssertPerfBenchmark{
+		T:                      t,
+		MaxUpdateDuration:      90 * time.Second,
+		MaxEmptyUpdateDuration: 50 * time.Second,
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		NoParallel:     true,
+		Dir:            filepath.Join("typescript", "many_resources"),
+		Dependencies:   []string{"@pulumi/pulumi"},
+		RequireService: true,
+		ReportStats:    initialBenchmark,
+		SkipPreview:    true,
+		Env: []string{
+			"PULUMI_ENABLE_JOURNALING=true",
+		},
+		DestroyOnCleanup: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			require.Greater(t, len(stack.Deployment.Resources), 2000)
 		},
 	})
 }
