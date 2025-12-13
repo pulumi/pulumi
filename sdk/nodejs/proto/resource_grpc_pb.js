@@ -295,7 +295,7 @@ registerStackInvokeTransform: {
     responseDeserialize: deserialize_google_protobuf_Empty,
   },
   // Register a resource hook that can be called by the engine during certain
-// steps of a resource's lifecycle.
+// steps of a resource's lifecycle or when errors occur during resource operations.
 registerResourceHook: {
     path: '/pulumirpc.ResourceMonitor/RegisterResourceHook',
     requestStream: false,

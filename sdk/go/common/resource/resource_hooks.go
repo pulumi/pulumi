@@ -18,10 +18,21 @@ package resource
 type HookType string
 
 const (
+	// Lifecycle hooks - called at specific points in the resource lifecycle
 	BeforeCreate HookType = "BeforeCreate"
 	AfterCreate  HookType = "AfterCreate"
 	BeforeUpdate HookType = "BeforeUpdate"
 	AfterUpdate  HookType = "AfterUpdate"
 	BeforeDelete HookType = "BeforeDelete"
 	AfterDelete  HookType = "AfterDelete"
+
+	// Error hooks - called when errors occur during resource operations
+	OnErrorCreate HookType = "OnErrorCreate"
+	OnErrorUpdate HookType = "OnErrorUpdate"
+	OnErrorDelete HookType = "OnErrorDelete"
 )
+
+// IsErrorHook returns true if this hook type is an error hook
+func (t HookType) IsErrorHook() bool {
+	return t == OnErrorCreate || t == OnErrorUpdate || t == OnErrorDelete
+}

@@ -1700,8 +1700,17 @@ class ConstructRequest(google.protobuf.message.Message):
         AFTER_UPDATE_FIELD_NUMBER: builtins.int
         BEFORE_DELETE_FIELD_NUMBER: builtins.int
         AFTER_DELETE_FIELD_NUMBER: builtins.int
+        ON_ERROR_CREATE_FIELD_NUMBER: builtins.int
+        ON_ERROR_UPDATE_FIELD_NUMBER: builtins.int
+        ON_ERROR_DELETE_FIELD_NUMBER: builtins.int
+        on_error_create: builtins.str
+        """Error hooks (single hook per type)"""
+        on_error_update: builtins.str
+        on_error_delete: builtins.str
         @property
-        def before_create(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+        def before_create(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+            """Lifecycle hooks"""
+
         @property
         def after_create(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
         @property
@@ -1721,8 +1730,18 @@ class ConstructRequest(google.protobuf.message.Message):
             after_update: collections.abc.Iterable[builtins.str] | None = ...,
             before_delete: collections.abc.Iterable[builtins.str] | None = ...,
             after_delete: collections.abc.Iterable[builtins.str] | None = ...,
+            on_error_create: builtins.str | None = ...,
+            on_error_update: builtins.str | None = ...,
+            on_error_delete: builtins.str | None = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing.Literal["after_create", b"after_create", "after_delete", b"after_delete", "after_update", b"after_update", "before_create", b"before_create", "before_delete", b"before_delete", "before_update", b"before_update"]) -> None: ...
+        def HasField(self, field_name: typing.Literal["_on_error_create", b"_on_error_create", "_on_error_delete", b"_on_error_delete", "_on_error_update", b"_on_error_update", "on_error_create", b"on_error_create", "on_error_delete", b"on_error_delete", "on_error_update", b"on_error_update"]) -> builtins.bool: ...
+        def ClearField(self, field_name: typing.Literal["_on_error_create", b"_on_error_create", "_on_error_delete", b"_on_error_delete", "_on_error_update", b"_on_error_update", "after_create", b"after_create", "after_delete", b"after_delete", "after_update", b"after_update", "before_create", b"before_create", "before_delete", b"before_delete", "before_update", b"before_update", "on_error_create", b"on_error_create", "on_error_delete", b"on_error_delete", "on_error_update", b"on_error_update"]) -> None: ...
+        @typing.overload
+        def WhichOneof(self, oneof_group: typing.Literal["_on_error_create", b"_on_error_create"]) -> typing.Literal["on_error_create"] | None: ...
+        @typing.overload
+        def WhichOneof(self, oneof_group: typing.Literal["_on_error_delete", b"_on_error_delete"]) -> typing.Literal["on_error_delete"] | None: ...
+        @typing.overload
+        def WhichOneof(self, oneof_group: typing.Literal["_on_error_update", b"_on_error_update"]) -> typing.Literal["on_error_update"] | None: ...
 
     PROJECT_FIELD_NUMBER: builtins.int
     STACK_FIELD_NUMBER: builtins.int

@@ -707,6 +707,88 @@ func (d *Deployment) generateEventURN(event SourceEvent) resource.URN {
 	}
 }
 
+// GetErrorHook looks up an error hook for the given resource and error hook type.
+// It first checks the resource itself, then walks up the parent chain to find the nearest ancestor's error hook.
+// Returns the hook name if found, or empty string if not found.
+func (d *Deployment) GetErrorHook(urn resource.URN, hookType resource.HookType) string {
+	if !hookType.IsErrorHook() {
+		return ""
+	}
+
+	getHookName := func(hooks []string) string {
+		if len(hooks) > 0 {
+			return hooks[0] // There should only ever be one
+		}
+		return ""
+	}
+
+	if goal, ok := d.goals.Load(urn); ok && goal != nil {
+		if hooks, has := goal.ResourceHooks[hookType]; has {
+			if hookName := getHookName(hooks); hookName != "" {
+				return hookName
+			}
+		}
+	}
+
+	if state, ok := d.news.Load(urn); ok && state != nil {
+		if hooks, has := state.ResourceHooks[hookType]; has {
+			if hookName := getHookName(hooks); hookName != "" {
+				return hookName
+			}
+		}
+	}
+
+	if state, ok := d.olds[urn]; ok && state != nil {
+		if hooks, has := state.ResourceHooks[hookType]; has {
+			if hookName := getHookName(hooks); hookName != "" {
+				return hookName
+			}
+		}
+	}
+
+	// No need to check parents - inheritFromParent copies parent hooks to children.
+	return ""
+}
+
+// RunErrorHook runs an error hook for the given resource and error hook type.
+// It looks up the hook using GetErrorHook and invokes it with the provided errors.
+// Returns the retry decision (true = retry, false = fail) and any error from hook execution.
+func (d *Deployment) RunErrorHook(
+	hookName string,
+	hookType resource.HookType,
+	id resource.ID,
+	urn resource.URN,
+	name string,
+	typ tokens.Type,
+	newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+	errors []error,
+) (bool, error) {
+	if hookName == "" {
+		return false, nil // No hook found, fail by default
+	}
+
+	if !hookType.IsErrorHook() {
+		return false, fmt.Errorf("hook type %q is not an error hook", hookType)
+	}
+
+	hook, err := d.resourceHooks.GetResourceHook(hookName)
+	if err != nil {
+		return false, fmt.Errorf("error hook %q was not registered", hookName)
+	}
+
+	logging.V(9).Infof("calling error hook %q for urn %s", hookName, urn)
+	retry, err := hook.Callback(d.Ctx().Base(), urn, id, name, typ, newInputs, oldInputs, newOutputs, oldOutputs, errors)
+	if err != nil {
+		d.Diag().Warningf(&diag.Diag{
+			URN:     urn,
+			Message: fmt.Sprintf("error hook %q execution failed: %s", hookName, err),
+		})
+		return false, fmt.Errorf("error hook %q execution failed: %w", hookName, err)
+	}
+
+	return retry, nil
+}
+
 // Execute executes a deployment to completion, using the given cancellation context and running a preview or update.
 func (d *Deployment) Execute(ctx context.Context) (*Plan, error) {
 	deploymentExec := &deploymentExecutor{deployment: d}
@@ -741,7 +823,7 @@ func (d *Deployment) RunHooks(hooks []string, isBeforeHook bool, id resource.ID,
 			continue
 		}
 		logging.V(9).Infof("calling hook %q for urn %s", hookName, urn)
-		err = hook.Callback(d.Ctx().Base(), urn, id, name, typ, newInputs, oldInputs, newOutputs, oldOutputs)
+		_, err = hook.Callback(d.Ctx().Base(), urn, id, name, typ, newInputs, oldInputs, newOutputs, oldOutputs, nil)
 		if err != nil {
 			if isBeforeHook {
 				return fmt.Errorf("before hook %q failed: %w", hookName, err)

@@ -86,7 +86,7 @@ class ResourceMonitorStub:
         google.protobuf.empty_pb2.Empty,
     ]
     """Register a resource hook that can be called by the engine during certain
-    steps of a resource's lifecycle.
+    steps of a resource's lifecycle or when errors occur during resource operations.
     """
 
     RegisterPackage: grpc.UnaryUnaryMultiCallable[
@@ -159,7 +159,7 @@ class ResourceMonitorAsyncStub:
         google.protobuf.empty_pb2.Empty,
     ]
     """Register a resource hook that can be called by the engine during certain
-    steps of a resource's lifecycle.
+    steps of a resource's lifecycle or when errors occur during resource operations.
     """
 
     RegisterPackage: grpc.aio.UnaryUnaryMultiCallable[
@@ -250,7 +250,7 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
         context: _ServicerContext,
     ) -> typing.Union[google.protobuf.empty_pb2.Empty, collections.abc.Awaitable[google.protobuf.empty_pb2.Empty]]:
         """Register a resource hook that can be called by the engine during certain
-        steps of a resource's lifecycle.
+        steps of a resource's lifecycle or when errors occur during resource operations.
         """
 
     
