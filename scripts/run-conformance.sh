@@ -8,6 +8,9 @@ ROOT=$(git rev-parse --show-toplevel)
 # This script is a helper to do that. It takes a single argument which is the name of the test to run and goes and runs
 # that test for each language.
 
+# We nearly always want the full output when developing tests.
+export PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT=true
+
 cd "$ROOT/sdk/go/pulumi-language-go" && go test ./... -v -count=1 -run "TestLanguage/published/$1"
 cd "$ROOT/sdk/go/pulumi-language-go" && go test ./... -v -count=1 -run "TestLanguage/local/$1"
 cd "$ROOT/sdk/go/pulumi-language-go" && go test ./... -v -count=1 -run "TestLanguage/extra-types/$1"

@@ -178,6 +178,7 @@ func TestLanguage(t *testing.T) {
 							Replacement: "ROOT/artifacts",
 						},
 					},
+					ProvidersDirectory: "testdata/providers",
 				})
 				require.NoError(t, err)
 
