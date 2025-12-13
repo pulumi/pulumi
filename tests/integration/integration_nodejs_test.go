@@ -2658,6 +2658,7 @@ func TestNodejsSourcemapTest(t *testing.T) {
 func TestNodejsSourcemapProgramTypescript(t *testing.T) {
 	stderr := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Verbose:       true,
 		Dir:           filepath.Join("nodejs", "sourcemap-in-program"),
 		Dependencies:  []string{"@pulumi/pulumi"},
 		ExpectFailure: true,
@@ -2666,6 +2667,7 @@ func TestNodejsSourcemapProgramTypescript(t *testing.T) {
 			require.Regexp(t, "Error: this is a test error\n.*at willThrow.*index.ts:6:15", stderr.String())
 		},
 	})
+	t.Logf("stderr: %s", stderr.String())
 }
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
