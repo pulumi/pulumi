@@ -1,5 +1,6 @@
 {
   "emittedFiles": [
+    ".gitattributes",
     "repro/doc.go",
     "repro/elementtype/elementType.go",
     "repro/elementtype/init.go",

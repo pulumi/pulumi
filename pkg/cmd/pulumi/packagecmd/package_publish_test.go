@@ -24,12 +24,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -40,23 +40,22 @@ import (
 
 //nolint:paralleltest // This test uses the global backendInstance variable
 func TestPackagePublishCmd_Run(t *testing.T) {
-	version := semver.MustParse("1.0.0")
-
 	tests := []struct {
-		name                string
-		args                publishPackageArgs
-		packageSource       string
-		packageParams       plugin.ParameterizeParameters
-		mockSchema          *schema.Package
-		schemaExtractionErr error
-		mockOrg             string
-		mockOrgErr          error
-		publishErr          error
-		expectedErr         string
-		readmeContent       string
-		installContent      string
-		sourceDir           func(t *testing.T) string
-		pluginDir           func(t *testing.T) string
+		name                  string
+		args                  publishPackageArgs
+		packageSource         string
+		packageParams         plugin.ParameterizeParameters
+		mockSchema            *schema.PackageSpec
+		schemaExtractionErr   error
+		mockOrg               string
+		mockOrgErr            error
+		publishErr            error
+		expectedErr           string
+		readmeContent         string
+		installContent        string
+		sourceDir             func(t *testing.T) string
+		installPlugin         func(t *testing.T)
+		expectedReadmeContent string
 	}{
 		{
 			name: "successful publish with publisher from schema",
@@ -64,11 +63,10 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				source: "pulumi",
 			},
 			packageSource: "testpackage",
-			mockSchema: &schema.Package{
+			mockSchema: &schema.PackageSpec{
 				Name:      "testpkg",
 				Publisher: "testpublisher",
-				Version:   &version,
-				Provider:  &schema.Resource{},
+				Version:   "1.0.0",
 			},
 			readmeContent:  "# Test README\nThis is a test readme.",
 			installContent: "# Installation\nHow to install this package.",
@@ -80,10 +78,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "cmdpublisher",
 			},
 			packageSource: "testpackage",
-			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name:    "testpkg",
+				Version: "1.0.0",
 			},
 			readmeContent:  "# Test README\nThis is a test readme.",
 			installContent: "# Installation\nHow to install this package.",
@@ -94,10 +91,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				source: "pulumi",
 			},
 			packageSource: "testpackage",
-			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name:    "testpkg",
+				Version: "1.0.0",
 			},
 			mockOrg:        "defaultorg",
 			readmeContent:  "# Test README\nThis is a test readme.",
@@ -110,10 +106,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource: "testpackage",
-			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name:    "testpkg",
+				Version: "1.0.0",
 			},
 			readmeContent: "# Test README\nThis is a test readme.",
 		},
@@ -123,10 +118,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				source:    "pulumi",
 				publisher: "publisher",
 			},
-			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name:    "testpkg",
+				Version: "1.0.0",
 			},
 			sourceDir: func(t *testing.T) string {
 				t.Helper()
@@ -146,23 +140,23 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource: "testpackage",
-			mockSchema: &schema.Package{
-				Name:     "testpackage",
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name:    "testpackage",
+				Version: "1.0.0",
 			},
-			pluginDir: func(t *testing.T) string {
+			expectedReadmeContent: "# README from the installed plugin\nThis is a test readme.",
+			installPlugin: func(t *testing.T) {
 				t.Helper()
-				dir := t.TempDir()
-				testPlugin := path.Join(dir, "resource-testpackage")
-				err := os.MkdirAll(testPlugin, 0o755)
-				require.NoError(t, err)
-				readmeFile, err := os.Create(path.Join(testPlugin, "README.md"))
-				require.NoError(t, err)
-				defer contract.IgnoreClose(readmeFile)
-				_, err = readmeFile.WriteString("# README from the installed plugin\nThis is a test readme.")
-				require.NoError(t, err)
-				return dir
+
+				pulumiHomeDir := t.TempDir() // Create an isolated PULUMI_HOME directory to install into
+				t.Setenv(env.Home.Var().Name(), pulumiHomeDir)
+
+				installResourcePluginFromFiles(t, workspace.PluginSpec{
+					Name: "testpackage",
+					Kind: apitype.ResourcePlugin,
+				}, map[string]string{
+					"README.md": "# README from the installed plugin\nThis is a test readme.",
+				})
 			},
 		},
 		{
@@ -171,10 +165,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				source: "pulumi",
 			},
 			packageSource: "testpackage",
-			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name:    "testpkg",
+				Version: "1.0.0",
 			},
 			expectedErr:    "no publisher specified and no default organization found",
 			readmeContent:  "# Test README\nThis is a test readme.",
@@ -186,10 +179,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				source: "pulumi",
 			},
 			packageSource: "testpackage",
-			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name:    "testpkg",
+				Version: "1.0.0",
 			},
 			mockOrgErr:     errors.New("unexpected error"),
 			expectedErr:    "failed to determine default organization: unexpected error",
@@ -215,9 +207,8 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource: "testpackage",
-			mockSchema: &schema.Package{
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Version: "1.0.0",
 			},
 			expectedErr:    "no package name specified",
 			readmeContent:  "# Test README\nThis is a test readme.",
@@ -230,9 +221,8 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource: "testpackage",
-			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name: "testpkg",
 			},
 			expectedErr:    "no version specified",
 			readmeContent:  "# Test README\nThis is a test readme.",
@@ -245,10 +235,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource: "testpackage",
-			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name:    "testpkg",
+				Version: "1.0.0",
 			},
 			expectedErr: "no README found. Please add one named README.md to the package, or use --readme to specify the path",
 		},
@@ -259,10 +248,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource: "testpackage",
-			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name:    "testpkg",
+				Version: "1.0.0",
 			},
 			publishErr:     errors.New("publish failed"),
 			expectedErr:    "failed to publish package",
@@ -276,10 +264,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource: "testpackage",
-			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name:    "testpkg",
+				Version: "1.0.0",
 			},
 			schemaExtractionErr: errors.New("schema extraction failed"),
 			expectedErr:         "failed to get schema: schema extraction failed",
@@ -293,10 +280,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource: "testpackage@not-a-valid-version",
-			mockSchema: &schema.Package{
-				Name:     "testpkg",
-				Version:  &version,
-				Provider: &schema.Resource{},
+			mockSchema: &schema.PackageSpec{
+				Name:    "testpkg",
+				Version: "1.0.0",
 			},
 			expectedErr: "failed to find readme: failed to create plugin spec: VERSION must be valid semver",
 		},
@@ -308,14 +294,11 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 
 			packageSource := tt.packageSource
 			var readmePath string
-			var expectedReadmeContent string
+			expectedReadmeContent := tt.expectedReadmeContent
 			if tt.readmeContent != "" {
-				readmeFile, err := os.Create(path.Join(tempDir, "readme.md"))
+				readmePath = filepath.Join(tempDir, "readme.md")
+				err := os.WriteFile(filepath.Join(tempDir, "readme.md"), []byte(tt.readmeContent), 0o600)
 				require.NoError(t, err)
-				_, err = readmeFile.WriteString(tt.readmeContent)
-				require.NoError(t, err)
-				require.NoError(t, readmeFile.Close())
-				readmePath = readmeFile.Name()
 				tt.args.readmePath = readmePath
 				expectedReadmeContent = tt.readmeContent
 			}
@@ -329,15 +312,8 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 					expectedReadmeContent = string(readmeData)
 				}
 			}
-			var pluginDir string
-			if tt.pluginDir != nil {
-				pluginDir = tt.pluginDir(t)
-				readmePath = path.Join(pluginDir, "resource-"+tt.packageSource, "README.md")
-				if readmeFile, err := os.Stat(readmePath); err == nil && !readmeFile.IsDir() {
-					readmeData, err := os.ReadFile(readmePath)
-					require.NoError(t, err)
-					expectedReadmeContent = string(readmeData)
-				}
+			if tt.installPlugin != nil {
+				tt.installPlugin(t)
 			}
 
 			var installDocsPath string
@@ -357,30 +333,19 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 					require.NoError(t, err)
 					packageSpec, err := unmarshalSchema(schemaBytes)
 
-					if len(packageSpec.Types) == 0 {
-						packageSpec.Types = map[string]schema.ComplexTypeSpec{}
-					}
-					if len(packageSpec.Resources) == 0 {
-						packageSpec.Resources = map[string]schema.ResourceSpec{}
-					}
-					if len(packageSpec.Functions) == 0 {
-						packageSpec.Functions = map[string]schema.FunctionSpec{}
-					}
 					require.NoError(t, err)
-					expectedSpec, err := tt.mockSchema.MarshalSpec()
-					require.NoError(t, err)
-					assert.Equal(t, expectedSpec, packageSpec, "package schema should match input package spec")
+					assert.Equal(t, tt.mockSchema, packageSpec, "package schema should match input package spec")
 
 					// Verify readme and install docs content
-					if tt.args.readmePath != "" {
-						actualContents, err := io.ReadAll(op.Readme)
-						require.NoError(t, err)
-						assert.Equal(t, expectedReadmeContent, string(actualContents), "readme should match the provided markdown file")
-					}
+					actualReadme, err := io.ReadAll(op.Readme)
+					require.NoError(t, err)
+					assert.Equal(t, expectedReadmeContent, string(actualReadme), "readme should match the provided markdown file")
+
 					if tt.args.installDocsPath != "" {
-						actualContents, err := io.ReadAll(op.InstallDocs)
+						actualInstallDocs, err := io.ReadAll(op.InstallDocs)
 						require.NoError(t, err)
-						assert.Equal(t, tt.installContent, string(actualContents), "install docs should match the provided markdown file")
+						assert.Equal(t, tt.installContent, string(actualInstallDocs),
+							"install docs should match the provided markdown file")
 					}
 
 					// Verify publisher is set correctly
@@ -411,16 +376,15 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				defaultOrg: defaultOrg,
 				extractSchema: func(
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
-				) (*schema.Package, *workspace.PackageSpec, error) {
+				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 					if tt.mockSchema == nil && tt.schemaExtractionErr == nil {
 						return nil, nil, errors.New("mock schema extraction failed")
 					}
 					return tt.mockSchema, nil, tt.schemaExtractionErr
 				},
-				pluginDir: pluginDir,
 			}
 
-			err := cmd.Run(context.Background(), tt.args, packageSource, tt.packageParams)
+			err := cmd.Run(t.Context(), tt.args, packageSource, tt.packageParams)
 			if tt.expectedErr != "" {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.expectedErr)
@@ -434,18 +398,16 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 //nolint:paralleltest // This test uses the global backendInstance variable
 func TestPackagePublishCmd_IOErrors(t *testing.T) {
 	t.Parallel()
-	version := semver.MustParse("1.0.0")
-	validSchema := &schema.Package{
+	validSchema := &schema.PackageSpec{
 		Name:      "testpkg",
 		Publisher: "testpublisher",
-		Version:   &version,
-		Provider:  &schema.Resource{},
+		Version:   "1.0.0",
 	}
 
 	tests := []struct {
 		name           string
 		args           publishPackageArgs
-		mockSchema     *schema.Package
+		mockSchema     *schema.PackageSpec
 		setupTest      func(*testing.T) (string, string)
 		expectedErrStr string
 	}{
@@ -510,7 +472,7 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 				},
 				extractSchema: func(
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
-				) (*schema.Package, *workspace.PackageSpec, error) {
+				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 					return tt.mockSchema, nil, nil
 				},
 			}
@@ -524,12 +486,10 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 
 //nolint:paralleltest // This test uses the global backendInstance variable
 func TestPackagePublishCmd_BackendErrors(t *testing.T) {
-	version := semver.MustParse("1.0.0")
-	validSchema := &schema.Package{
+	validSchema := &schema.PackageSpec{
 		Name:      "testpkg",
 		Publisher: "testpublisher",
-		Version:   &version,
-		Provider:  &schema.Resource{},
+		Version:   "1.0.0",
 	}
 
 	tests := []struct {
@@ -570,7 +530,7 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 				},
 				extractSchema: func(
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
-				) (*schema.Package, *workspace.PackageSpec, error) {
+				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 					return validSchema, nil, nil
 				},
 			}
@@ -616,10 +576,10 @@ func TestPackagePublishCmd_Run_ReadProjectError(t *testing.T) {
 			packageSource string,
 			parameters plugin.ParameterizeParameters,
 			registry registry.Registry,
-		) (*schema.Package, *workspace.PackageSpec, error) {
-			pkg := &schema.Package{
+		) (*schema.PackageSpec, *workspace.PackageSpec, error) {
+			pkg := &schema.PackageSpec{
 				Name:    "test-package",
-				Version: &semver.Version{Major: 1, Minor: 0, Patch: 0},
+				Version: "1.0.0",
 			}
 			return pkg, nil, nil
 		},
@@ -645,13 +605,13 @@ func unmarshalSchema(schemaBytes []byte) (*schema.PackageSpec, error) {
 }
 
 func TestFindReadme(t *testing.T) {
-	t.Parallel()
 	tmpDir := t.TempDir()
-	ctx := context.Background()
+	ctx := t.Context()
 
-	cmd := packagePublishCmd{
-		pluginDir: tmpDir,
-	}
+	pulumiHomeDir := t.TempDir() // Create an isolated PULUMI_HOME directory to install into
+	t.Setenv(env.Home.Var().Name(), pulumiHomeDir)
+
+	cmd := packagePublishCmd{}
 
 	t.Run("NonExistentDirectory", func(t *testing.T) {
 		t.Parallel()
@@ -729,16 +689,16 @@ func TestFindReadme(t *testing.T) {
 		pluginDownloadURL := "git://github.com/pulumi/pulumi-example@v1.2.3"
 		pluginSpec, err := workspace.NewPluginSpec(ctx, pluginDownloadURL, apitype.ResourcePlugin, nil, "", nil)
 		require.NoError(t, err)
-		pluginSpec.PluginDir = cmd.pluginDir
 
-		dirPath := filepath.Join(tmpDir, pluginSpec.Dir())
-		require.NoError(t, os.Mkdir(dirPath, 0o755))
-		readmePath := filepath.Join(dirPath, "README.md")
-		require.NoError(t, os.WriteFile(readmePath, []byte("# Test Readme"), 0o600))
+		installResourcePluginFromFiles(t, pluginSpec, map[string]string{
+			"README.md": "# Test Readme",
+		})
 
 		readme, err := cmd.findReadme(ctx, pluginDownloadURL)
-		assert.Equal(t, readmePath, readme)
 		require.NoError(t, err)
+		actualReadme, err := os.ReadFile(readme)
+		require.NoError(t, err)
+		assert.Equal(t, "# Test Readme", string(actualReadme))
 	})
 
 	t.Run("Git Plugin Download URL with subdirectory", func(t *testing.T) {
@@ -746,19 +706,35 @@ func TestFindReadme(t *testing.T) {
 		pluginDownloadURL := "git://github.com/pulumi/pulumi-subdir-example/path@v1.2.3"
 		pluginSpec, err := workspace.NewPluginSpec(ctx, pluginDownloadURL, apitype.ResourcePlugin, nil, "", nil)
 		require.NoError(t, err)
-		pluginSpec.PluginDir = cmd.pluginDir
 
-		dirPath := filepath.Join(tmpDir, pluginSpec.Dir())
-		require.NoError(t, os.Mkdir(dirPath, 0o755))
-		readmePath := filepath.Join(dirPath, "README.md")
-		require.NoError(t, os.WriteFile(readmePath, []byte("# Root Readme"), 0o600))
-		subdirPath := filepath.Join(dirPath, "path")
-		require.NoError(t, os.Mkdir(subdirPath, 0o755))
-		subdirReadmePath := filepath.Join(subdirPath, "README.md")
-		require.NoError(t, os.WriteFile(subdirReadmePath, []byte("# Subdir Readme"), 0o600))
+		installResourcePluginFromFiles(t, pluginSpec, map[string]string{
+			"README.md":      "# Root Readme",
+			"path/README.md": "# Subdir Readme",
+		})
 
 		readme, err := cmd.findReadme(ctx, pluginDownloadURL)
-		assert.Equal(t, subdirReadmePath, readme)
 		require.NoError(t, err)
+		actualReadme, err := os.ReadFile(readme)
+		require.NoError(t, err)
+		assert.Equal(t, "# Subdir Readme", string(actualReadme))
 	})
+}
+
+// installResourcePluginFromFiles installs into the **global** PULUMI_HOME the files
+// described as spec.
+//
+// This function should only be used after t.Setenv(workspace.PulumiHomeEnvVar,
+// pulumiHomeDir) has been called.
+func installResourcePluginFromFiles(t *testing.T, spec workspace.PluginSpec, files map[string]string) {
+	t.Helper()
+	dir := t.TempDir()
+	for path, content := range files {
+		path = filepath.Join(dir, path)
+		err := os.MkdirAll(filepath.Dir(path), 0o755)
+		require.NoError(t, err)
+		err = os.WriteFile(path, []byte(content), 0o600)
+		require.NoError(t, err)
+	}
+	err := pkgWorkspace.InstallPluginContent(t.Context(), spec, pkgWorkspace.DirPlugin(dir), true)
+	require.NoError(t, err)
 }

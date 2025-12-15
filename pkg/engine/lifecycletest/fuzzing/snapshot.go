@@ -16,13 +16,14 @@ package fuzzing
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"golang.org/x/exp/maps"
 	"pgregory.net/rapid"
 )
 
@@ -179,7 +180,7 @@ func GeneratedResourceDependencies(
 				rds.Dependencies = append(rds.Dependencies, sr.URN())
 			case resource.ResourcePropertyDependency:
 				k := rapid.SampledFrom(append(
-					maps.Keys(rds.PropertyDependencies),
+					slices.Collect(maps.Keys(rds.PropertyDependencies)),
 					resource.PropertyKey(
 						rapid.StringMatching("^prop-[a-z][A-Za-z0-9]{3}$").Draw(t, "SnapshotDependencies.NewPropertyKey"),
 					),

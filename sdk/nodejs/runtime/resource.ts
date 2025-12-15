@@ -46,6 +46,7 @@ import {
     deserializeProperty,
     OutputResolvers,
     resolveProperties,
+    SerializationOptions,
     serializeProperties,
     serializeProperty,
     serializeResourceProperties,
@@ -181,6 +182,11 @@ interface ResourceResolverOperation {
      * of this resource.
      */
     replaceWithResources: Resource[] | undefined;
+
+    /**
+     * If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
+     */
+    replacementTrigger: any | undefined;
 }
 
 /**
@@ -206,7 +212,7 @@ export function getResource(
     const done = rpcKeepAlive();
 
     const monitor = getMonitor();
-    const resopAsync = prepareResource(label, res, parent, custom, false, props, {});
+    const resopAsync = prepareResource(label, res, parent, custom, false, props, { urn: urn });
 
     const preallocError = new Error();
     debuggablePromise(
@@ -617,6 +623,22 @@ export function registerResource(
                 req.setSupportspartialvalues(true);
                 req.setRemote(remote);
                 req.setReplaceonchangesList(opts.replaceOnChanges || []);
+                if (resop.replacementTrigger !== undefined) {
+                    const options: SerializationOptions = {};
+
+                    if (Output.isInstance(resop.replacementTrigger)) {
+                        const isKnown = await resop.replacementTrigger.isKnown;
+                        options.keepOutputValues = !isKnown || isDryRun();
+                    }
+
+                    const serializedTrigger = await serializeProperty(
+                        `${label}.replacementTrigger`,
+                        resop.replacementTrigger,
+                        new Set(),
+                        options,
+                    );
+                    req.setReplacementTrigger(gstruct.Value.fromJavaScript(serializedTrigger));
+                }
                 req.setPlugindownloadurl(opts.pluginDownloadURL || "");
                 if (opts.retainOnDelete !== undefined) {
                     req.setRetainondelete(opts.retainOnDelete);
@@ -900,8 +922,12 @@ export async function prepareResource(
     // Now "transfer" all input properties into unresolved Promises on res.  This way,
     // this resource will look like it has all its output properties to anyone it is
     // passed to.  However, those promises won't actually resolve until the registerResource
-    // RPC returns
-    const resolvers = transferProperties(res, label, props);
+    // RPC returns.  We don't do this for local component resources as their outputs are
+    // manually setup in their constructors.
+    let resolvers: OutputResolvers = {};
+    if (remote || custom || opts.urn !== undefined) {
+        resolvers = transferProperties(res, label, props);
+    }
 
     /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
 
@@ -1019,6 +1045,7 @@ export async function prepareResource(
         }
     }
 
+    const replacementTrigger = opts?.replacementTrigger;
     const deletedWithURN = opts?.deletedWith ? await opts.deletedWith.urn.promise() : undefined;
     const replaceWithResources =
         replaceWithDependencies.length > 0 ? Array.from(new Set(replaceWithDependencies)) : undefined;
@@ -1038,6 +1065,7 @@ export async function prepareResource(
         monitorSupportsStructuredAliases,
         deletedWithURN,
         replaceWithResources,
+        replacementTrigger,
     };
 }
 

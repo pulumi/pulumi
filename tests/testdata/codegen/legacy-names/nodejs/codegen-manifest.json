@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
     "README.md",
     "example_resource.ts",
     "index.ts",

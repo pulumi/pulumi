@@ -31,25 +31,12 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/blang/semver"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// chdir temporarily changes the current directory of the program.
-// It restores it to the original directory when the test is done.
-func chdir(t *testing.T, dir string) {
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	require.NoError(t, os.Chdir(dir)) // Set directory
-	t.Cleanup(func() {
-		require.NoError(t, os.Chdir(cwd)) // Restore directory
-		restoredDir, err := os.Getwd()
-		require.NoError(t, err)
-		assert.Equal(t, cwd, restoredDir)
-	})
-}
 
 //nolint:paralleltest // changes working directory
 func TestNPMInstall(t *testing.T) {
@@ -216,6 +203,29 @@ func TestBunPackNonExistentPackageJSON(t *testing.T) {
 	require.Contains(t, stderr.String(), errorMessage)
 }
 
+//nolint:paralleltest // chdir
+func TestManagerVersion(t *testing.T) {
+	for _, pmType := range []PackageManagerType{
+		NpmPackageManager,
+		YarnPackageManager,
+		PnpmPackageManager,
+		BunPackageManager,
+	} {
+		t.Run(string(pmType), func(t *testing.T) {
+			//nolint:paralleltest // chdir
+			dir := t.TempDir()
+			t.Chdir(dir)
+
+			pm, err := ResolvePackageManager(pmType, dir)
+			require.NoError(t, err)
+
+			version, err := pm.Version()
+			require.NoError(t, err)
+			require.NotEqual(t, version, semver.Version{})
+		})
+	}
+}
+
 // writeLockFile writes a mock lockfile for the selected package manager
 func writeLockFile(t *testing.T, dir string, packageManager string) {
 	t.Helper()
@@ -258,7 +268,7 @@ func testInstall(t *testing.T, packageManager string, production bool) {
 
 	// Create a new empty test directory and change the current working directory to it.
 	tempdir := t.TempDir()
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	// Create a package directory to install dependencies into.
 	pkgdir := filepath.Join(tempdir, "package")

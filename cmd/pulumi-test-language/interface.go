@@ -91,8 +91,12 @@ func installDependencies(
 	installStdout, installStderr, installDone, err := languageClient.InstallDependencies(
 		plugin.InstallDependenciesRequest{Info: programInfo, IsPlugin: isPlugin},
 	)
+	programOrPlugin := "program"
+	if isPlugin {
+		programOrPlugin = "plugin"
+	}
 	if err != nil {
-		return makeTestResponse(fmt.Sprintf("install dependencies: %v", err))
+		return makeTestResponse(fmt.Sprintf("install %s dependencies: %v", programOrPlugin, err))
 	}
 
 	// We'll use a WaitGroup to wait for the stdout (1) and stderr (2) readers to be fully drained, as well as for the
@@ -141,7 +145,7 @@ func installDependencies(
 	if err != nil {
 		return &testingrpc.RunLanguageTestResponse{
 			Success:  false,
-			Messages: []string{fmt.Sprintf("install dependencies: %v", err)},
+			Messages: []string{fmt.Sprintf("install %s dependencies: %v", programOrPlugin, err)},
 			Stdout:   string(installStdoutBytes),
 			Stderr:   string(installStderrBytes),
 		}
@@ -652,6 +656,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
+	defer contract.IgnoreClose(pctx)
 
 	// NewContextWithRoot will make a default plugin host, but we want to make sure we never actually use that
 	pctx.Host = nil

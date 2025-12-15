@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
     "BasicResource.cs",
     "BasicResourceV2.cs",
     "BasicResourceV3.cs",

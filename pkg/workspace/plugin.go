@@ -106,7 +106,7 @@ func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginSpec,
 	}
 
 	logging.V(1).Infof("Automatically installing provider %s", pluginSpec.Name)
-	err = InstallPluginContent(context.Background(), pluginSpec, tarPlugin{downloadedFile}, false)
+	err = InstallPluginContent(ctx, pluginSpec, tarPlugin{downloadedFile}, false)
 	if err != nil {
 		return nil, &InstallPluginError{
 			Spec: pluginSpec,
@@ -194,22 +194,25 @@ func (p dirPlugin) writeToDir(dstRoot string) error {
 			return os.Mkdir(dstPath, 0o700)
 		}
 
-		src, err := os.Open(srcPath)
-		if err != nil {
-			return err
-		}
-
 		info, err := d.Info()
 		if err != nil {
 			return err
 		}
 
-		bytes, err := io.ReadAll(src)
+		src, err := os.Open(srcPath)
 		if err != nil {
 			return err
 		}
+		defer src.Close()
 
-		return os.WriteFile(dstPath, bytes, info.Mode())
+		dst, err := os.OpenFile(dstPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, info.Mode())
+		if err != nil {
+			return err
+		}
+		defer dst.Close()
+
+		_, err = io.Copy(dst, src)
+		return err
 	})
 }
 
@@ -319,7 +322,7 @@ func InstallPluginContent(ctx context.Context, spec workspace.PluginSpec, conten
 	// the progress bar.
 	contract.IgnoreClose(content)
 
-	err = InstallDependenciesForPluginSpec(ctx, spec, os.Stderr /* redirect stdout to stderr */, os.Stderr)
+	err = installDependenciesForPluginSpec(ctx, spec, os.Stderr /* redirect stdout to stderr */, os.Stderr)
 	if err != nil {
 		return err
 	}
@@ -328,7 +331,7 @@ func InstallPluginContent(ctx context.Context, spec workspace.PluginSpec, conten
 	return os.Remove(partialFilePath)
 }
 
-func InstallDependenciesForPluginSpec(ctx context.Context, spec workspace.PluginSpec, stdout, stderr io.Writer) error {
+func installDependenciesForPluginSpec(ctx context.Context, spec workspace.PluginSpec, stdout, stderr io.Writer) error {
 	dir, err := spec.DirPath()
 	if err != nil {
 		return err
@@ -369,12 +372,12 @@ func InstallPluginAtPath(pctx *plugin.Context, proj *workspace.PluginProject, st
 	if err := proj.Validate(); err != nil {
 		return err
 	}
-	entryPoint := "." // Plugin's are not able to set a non-standard entry point.
-	pInfo := plugin.NewProgramInfo(pctx.Root, pctx.Pwd, entryPoint, proj.Runtime.Options())
-	runtime, err := plugin.NewLanguageRuntime(pctx.Host, pctx, proj.Runtime.Name(), pctx.Pwd, pInfo)
+	runtime, err := pctx.Host.LanguageRuntime(proj.Runtime.Name())
 	if err != nil {
 		return err
 	}
+	entryPoint := "." // Plugin's are not able to set a non-standard entry point.
+	pInfo := plugin.NewProgramInfo(pctx.Root, pctx.Pwd, entryPoint, proj.Runtime.Options())
 	return cmdutil.InstallDependencies(runtime, plugin.InstallDependenciesRequest{
 		Info:                    pInfo,
 		UseLanguageVersionTools: false,

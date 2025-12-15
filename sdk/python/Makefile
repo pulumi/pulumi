@@ -20,6 +20,10 @@ ensure:: .make/ensure/uv
 	../../scripts/retry uv venv --allow-existing
 	../../scripts/retry uv sync --dev
 
+ensure_lowest:: .make/ensure/uv
+	../../scripts/retry uv venv --allow-existing
+	../../scripts/retry uv sync --dev --resolution lowest-direct
+
 build_package:: ensure
 	uv run -m build --outdir ./build --installer uv
 
@@ -74,6 +78,14 @@ test_auto:: $(TEST_ALL_DEPS)
 	. .venv/*/activate && ./scripts/test_auto.sh
 
 test_all:: test_fast test_auto test_go
+
+test_fast_lowest_deps:: ensure_lowest
+	. .venv/*/activate && ./scripts/test_fast.sh
+
+test_auto_lowest_deps:: ensure_lowest
+	. .venv/*/activate && ./scripts/test_auto.sh
+
+test_all_lowest_deps:: test_fast_lowest_deps test_auto_lowest_deps
 
 PULUMI_TEST_ORG ?= $(shell pulumi whoami --json | jq ".organizations[0]")
 

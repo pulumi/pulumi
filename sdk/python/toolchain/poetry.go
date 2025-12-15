@@ -31,6 +31,8 @@ import (
 	"slices"
 	"strings"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/BurntSushi/toml"
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -45,6 +47,8 @@ type poetry struct {
 	poetryExecutable string
 	// The directory that contains the poetry project.
 	directory string
+	// The version of poetry.
+	version semver.Version
 }
 
 var _ Toolchain = &poetry{}
@@ -61,18 +65,21 @@ func newPoetry(directory string) (*poetry, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := validateVersion(versionOut); err != nil {
+	version, err := validateVersion(versionOut)
+	if err != nil {
 		return nil, err
 	}
 	logging.V(9).Infof("Python toolchain: using poetry at %s in %s", poetryPath, directory)
 	return &poetry{
 		poetryExecutable: poetryPath,
 		directory:        directory,
+		version:          version,
 	}, nil
 }
 
 func poetryVersionOutput(poetryPath string) (string, error) {
-	cmd := exec.Command(poetryPath, "--version", "--no-ansi") //nolint:gosec
+	// Passing `--no-plugins` makes this a fair bit faster
+	cmd := exec.Command(poetryPath, "--version", "--no-ansi", "--no-plugins") //nolint:gosec
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	if err := cmd.Run(); err != nil {
@@ -81,23 +88,24 @@ func poetryVersionOutput(poetryPath string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func validateVersion(versionOut string) error {
+func validateVersion(versionOut string) (semver.Version, error) {
 	re := regexp.MustCompile(`Poetry \(version (?P<version>\d+\.\d+(.\d+)?).*\)`)
 	matches := re.FindStringSubmatch(versionOut)
 	i := re.SubexpIndex("version")
 	if i < 0 || len(matches) < i {
-		return fmt.Errorf("unexpected output from poetry --version: %q", versionOut)
+		return semver.Version{}, fmt.Errorf("unexpected output from poetry --version: %q", versionOut)
 	}
 	version := matches[i]
 	sem, err := semver.ParseTolerant(version)
 	if err != nil {
-		return fmt.Errorf("failed to parse poetry version %q: %w", version, err)
+		return semver.Version{}, fmt.Errorf("failed to parse poetry version %q: %w", version, err)
 	}
 	if sem.LT(minPoetryVersion) {
-		return fmt.Errorf("poetry version %s is less than the minimum required version %s", version, minPoetryVersion)
+		return semver.Version{}, fmt.Errorf("poetry version %s is less than the minimum required version %s",
+			version, minPoetryVersion)
 	}
 	logging.V(9).Infof("Python toolchain: using poetry version %s", sem)
-	return nil
+	return sem, nil
 }
 
 func (p *poetry) InstallDependencies(ctx context.Context,
@@ -140,7 +148,7 @@ func (p *poetry) InstallDependencies(ctx context.Context,
 		}
 	}
 
-	poetryCmd := exec.Command(p.poetryExecutable, "install", "--no-ansi") //nolint:gosec
+	poetryCmd := exec.CommandContext(ctx, p.poetryExecutable, "install", "--no-ansi") //nolint:gosec
 	if useLanguageVersionTools {
 		// For poetry to work nicely with pyenv, we need to make poetry use the active python,
 		// otherwise poetry will use the python version used to run poetry itself.
@@ -228,7 +236,7 @@ func (p *poetry) LinkPackages(ctx context.Context, packages map[string]string) e
 	args := []string{"add", "--lock"} // Add package to lockfile only
 	paths := slices.Collect(maps.Values(packages))
 	args = append(args, paths...)
-	cmd := exec.Command("poetry", args...)
+	cmd := exec.CommandContext(ctx, "poetry", args...)
 	if err := cmd.Run(); err != nil {
 		return errutil.ErrorWithStderr(err, "linking packages")
 	}
@@ -284,20 +292,34 @@ func (p *poetry) ModuleCommand(ctx context.Context, module string, args ...strin
 }
 
 func (p *poetry) About(ctx context.Context) (Info, error) {
-	cmd, err := p.Command(ctx, "--version")
-	if err != nil {
+	var executable string
+	var pythonVersion semver.Version
+
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		version, err := getPythonVersion(ctx, p.Command)
+		if err != nil {
+			logging.V(9).Infof("getPythonVersion: %v", err)
+		} else {
+			pythonVersion = version
+		}
+		// Don't fail if we could not parse the python version
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		executable, err = getPythonExecutablePath(ctx, p.Command)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return Info{}, err
 	}
-	executable := cmd.Path
-	var out []byte
-	if out, err = cmd.Output(); err != nil {
-		return Info{}, fmt.Errorf("failed to get version: %w", err)
-	}
-	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
 
 	return Info{
-		Executable: executable,
-		Version:    version,
+		PythonExecutable: executable,
+		PythonVersion:    pythonVersion,
+		ToolchainVersion: p.version,
 	}, nil
 }
 

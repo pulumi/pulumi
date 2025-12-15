@@ -2561,7 +2561,11 @@ func (pkg *pkgContext) genResource(
 		if def.Parameterization != nil {
 			packageRef = "Package"
 			packageArg = ", ref"
-			err = pkg.GenPkgGetPackageRefCall(w, outputsType+"{}")
+			callOutput := outputsType
+			if liftReturn {
+				callOutput = pkg.outputType(objectReturnType.Properties[0].Type)
+			}
+			err = pkg.GenPkgGetPackageRefCall(w, callOutput+"{}")
 			if err != nil {
 				return err
 			}
@@ -4775,6 +4779,8 @@ func GeneratePackage(tool string,
 	}
 
 	files := codegen.Fs{}
+
+	files.Add(".gitattributes", codegen.GenGitAttributesFile())
 
 	// Generate pulumi-plugin.json
 	pulumiPlugin := &plugin.PulumiPluginJSON{

@@ -69,12 +69,8 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			}
 
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
-			pkg, _, err := packages.SchemaFromSchemaSource(pctx, args[0], parameters,
+			spec, _, err := packages.SchemaFromSchemaSource(pctx, args[0], parameters,
 				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()))
-			if err != nil {
-				return err
-			}
-			spec, err := pkg.MarshalSpec()
 			if err != nil {
 				return err
 			}

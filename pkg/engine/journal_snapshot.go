@@ -16,10 +16,9 @@ package engine
 
 import (
 	"reflect"
+	"slices"
 	"sync"
 	"sync/atomic"
-
-	"golang.org/x/exp/slices"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -461,6 +460,24 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 		newDeps := sortDeps(new.Dependencies)
 		if !reflect.DeepEqual(oldDeps, newDeps) {
 			logging.V(9).Infof("SnapshotManager: mustWrite() true because of Dependencies")
+			return true
+		}
+	}
+
+	if len(old.PropertyDependencies) != len(new.PropertyDependencies) {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of PropertyDependencies")
+		return true
+	}
+
+	for key, oldDeps := range old.PropertyDependencies {
+		newDeps, ok := new.PropertyDependencies[key]
+		if !ok {
+			logging.V(9).Infof("SnapshotManager: mustWrite() true because of PropertyDependencies")
+			return true
+		}
+		if (len(oldDeps) > 0 || len(newDeps) > 0) &&
+			!reflect.DeepEqual(oldDeps, newDeps) {
+			logging.V(9).Infof("SnapshotManager: mustWrite() true because of PropertyDependencies")
 			return true
 		}
 	}

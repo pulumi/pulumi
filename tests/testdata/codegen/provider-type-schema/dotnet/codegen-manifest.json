@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
     "Provider.cs",
     "Pulumi.ProviderType.csproj",
     "README.md",

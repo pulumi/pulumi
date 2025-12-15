@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
     "pulumi_legacy_names/README.md",
     "pulumi_legacy_names/__init__.py",
     "pulumi_legacy_names/_enums.py",

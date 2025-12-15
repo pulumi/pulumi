@@ -1721,7 +1721,7 @@ func TestPulumiInstallInstallsPackagesIntoTheCorrectDirectory(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "select", "organization/packageadd-remote", "--create")
 
 	e.RunCommand("pulumi", "package", "add",
-		"github.com/pulumi/component-test-providers/test-provider@b39e20e4e33600e33073ccb2df0ddb46388641dc")
+		"github.com/pulumi/component-test-providers/test-provider@52a8a71555d964542b308da197755c64dbe63352")
 
 	// Remove the plugin from the local cache and try to install it using `pulumi install`
 	e.RunCommand("pulumi", "plugin", "rm", "--all", "--yes")
@@ -1731,7 +1731,7 @@ func TestPulumiInstallInstallsPackagesIntoTheCorrectDirectory(t *testing.T) {
 	e.RunCommand("pulumi", "install")
 	stdout, _ = e.RunCommand("pulumi", "plugin", "ls")
 	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
-	require.Contains(t, stdout, "0.0.0-xb39e20e4e33600e33073ccb2df0ddb46388641dc")
+	require.Contains(t, stdout, "0.0.0-x52a8a71555d964542b308da197755c64dbe63352")
 
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
@@ -1754,7 +1754,7 @@ runtime:
   options:
     packagemanager: yarn
 packages:
-  test-provider: github.com/pulumi/component-test-providers/test-provider@b39e20e4e33600e33073ccb2df0ddb46388641dc
+  test-provider: github.com/pulumi/component-test-providers/test-provider@52a8a71555d964542b308da197755c64dbe63352
 `
 	e.WriteTestFile("Pulumi.yaml", pulumiYamlContent)
 
@@ -1766,7 +1766,7 @@ packages:
 	e.RunCommand("pulumi", "install")
 	stdout, _ = e.RunCommand("pulumi", "plugin", "ls")
 	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
-	require.Contains(t, stdout, "0.0.0-xb39e20e4e33600e33073ccb2df0ddb46388641dc")
+	require.Contains(t, stdout, "0.0.0-x52a8a71555d964542b308da197755c64dbe63352")
 }
 
 func TestOverrideComponentNamespace(t *testing.T) {
@@ -1775,7 +1775,7 @@ func TestOverrideComponentNamespace(t *testing.T) {
 
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 	stdout, _ := e.RunCommand("pulumi", "package", "get-schema",
-		"github.com/pulumi/component-test-providers/test-provider@b39e20e4e33600e33073ccb2df0ddb46388641dc")
+		"github.com/pulumi/component-test-providers/test-provider@52a8a71555d964542b308da197755c64dbe63352")
 	var packageSpec schema.PackageSpec
 	err := json.Unmarshal([]byte(stdout), &packageSpec)
 	require.NoError(t, err)
@@ -1790,7 +1790,7 @@ func TestOverrideNamespaceLowercase(t *testing.T) {
 
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 	stdout, _ := e.RunCommand("pulumi", "package", "get-schema",
-		"github.com/Pulumi/component-test-providers/test-provider@b39e20e4e33600e33073ccb2df0ddb46388641dc")
+		"github.com/Pulumi/component-test-providers/test-provider@52a8a71555d964542b308da197755c64dbe63352")
 	var packageSpec schema.PackageSpec
 	err := json.Unmarshal([]byte(stdout), &packageSpec)
 	require.NoError(t, err)

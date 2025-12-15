@@ -1,5 +1,153 @@
 # Changelog
 
+## 3.212.0 (2025-12-12)
+
+
+### Bug Fixes
+
+- [yaml] Update pulumi-yaml to v1.26.1
+
+## 3.211.0 (2025-12-11)
+
+
+### Features
+
+- [cli/about] Print Node.js package manager information in `pulumi about`
+  [#21163](https://github.com/pulumi/pulumi/pull/21163)
+
+- [backend/diy] Add stack tags support for DIY backends (S3, Postgres, file-based, etc.).
+
+DIY backends now support stack tags functionality, bringing feature parity with cloud backends.
+This includes:
+
+- Full CRUD operations for stack tags (create, read, update, delete)
+- Automatic system tag injection (e.g., `pulumi:project`)
+- Tag filtering support in stack listing operations
+- Backward compatibility with existing stacks (no tags file required)
+- Atomic operations with caching for performance
+- Automatic cleanup of tag files when stacks are deleted
+
+Tags are stored as separate `.pulumi-tags` files alongside stack checkpoints, using a versioned
+JSON format. The implementation works across all DIY backend storage types including S3, Azure Blob,
+Google Cloud Storage, PostgreSQL, and local file systems.
+
+Example usage:
+```bash
+pulumi stack tag set environment production
+pulumi stack tag set owner backend-team
+pulumi stack ls --tag-filter environment=production
+```
+  [#19882](https://github.com/pulumi/pulumi/pull/19882)
+
+- [backend/service] Improve startup performance with the service as backend
+  [#21176](https://github.com/pulumi/pulumi/pull/21176)
+
+- [sdk/nodejs] Add support for `replacement_trigger` in the NodeJS SDK
+  [#20939](https://github.com/pulumi/pulumi/pull/20939)
+
+- [sdk/python] Allow setting version for python component providers
+  [#21149](https://github.com/pulumi/pulumi/pull/21149)
+
+
+### Bug Fixes
+
+- [cli/package] Correctly identify the innermost Project/Plugin when running `pulumi package add`
+  [#21137](https://github.com/pulumi/pulumi/pull/21137)
+
+- [engine] Allow referencing multiple git/github/gitlab components from the same repo
+  [#21119](https://github.com/pulumi/pulumi/pull/21119)
+
+- [programgen/go] Account for name conflicts in resource creation functions
+  [#21107](https://github.com/pulumi/pulumi/pull/21107)
+
+- [sdk/python] Fix cancellation handling in a few places in the python language host
+  [#21145](https://github.com/pulumi/pulumi/pull/21145)
+
+- [sdkgen/go] Fix generation of lifted single-value calls in parameterized SDKs
+  [#21115](https://github.com/pulumi/pulumi/pull/21115)
+
+
+### Miscellaneous
+
+- [cli] Don't attempt to re-install plugin dependencies on load failure for plugins based on git with a nested path
+  [#21148](https://github.com/pulumi/pulumi/pull/21148)
+
+- [sdk/{dotnet,java,yaml}] Bump language runtimes for dotnet, java, and yaml
+  [#21201](https://github.com/pulumi/pulumi/pull/21201)
+
+- [cli/engine] Add language runtime metadata to update metadata
+  [#21186](https://github.com/pulumi/pulumi/pull/21186)
+
+## 3.210.0 (2025-12-03)
+
+
+### Features
+
+- [cli/about] Print python toolchain information in `pulumi about`
+
+- [sdk/java] Update java to v1.18
+
+- [components/nodejs] Local components will use the version from package.json rather than 0.0.0
+  [#21100](https://github.com/pulumi/pulumi/pull/21100)
+
+- [cli/package] Add `pulumi package delete` command to delete package versions from the Pulumi Registry
+  [#21069](https://github.com/pulumi/pulumi/pull/21069)
+
+- [cli/package] Always print the schema first in `package get-schema`, then print any binding errors
+  [#21080](https://github.com/pulumi/pulumi/pull/21080)
+
+- [sdk/python] Require `grpcio>=1.75.1` on Python 3.14
+  [#21113](https://github.com/pulumi/pulumi/pull/21113)
+
+
+### Bug Fixes
+
+- [sdk/nodejs] Fix ComponentResources transfering input arguments to output properties automatically
+  [#21094](https://github.com/pulumi/pulumi/pull/21094)
+
+
+### Miscellaneous
+
+- [sdk/nodejs] Remove @types/uuid type declarations dev dependency
+  [#21077](https://github.com/pulumi/pulumi/pull/21077)
+
+## 3.209.0 (2025-11-26)
+
+
+### Features
+
+- [cli] Add native support for OIDC token exchange when logging into Pulumi Cloud. Run `pulumi login --help` for more information.
+  [#20974](https://github.com/pulumi/pulumi/pull/20974)
+
+- [sdk/python] Allow older grpcio and protobuf dependencies
+  [#21007](https://github.com/pulumi/pulumi/pull/21007)
+
+- [sdkgen/{dotnet,go,nodejs,python}] Generate .gitignore and .gitattributes files for generated SDKs
+  [#21034](https://github.com/pulumi/pulumi/pull/21034)
+
+
+### Bug Fixes
+
+- [cli/install] Correctly install non-standard plugins. See https://github.com/pulumi/pulumi/issues/20953 for more information
+  [#20983](https://github.com/pulumi/pulumi/pull/20983)
+
+- [cli/new] Create pyproject.toml for uv and poetry projects when using --generate-only
+  [#20979](https://github.com/pulumi/pulumi/pull/20979)
+
+- [sdk/nodejs] Fix serialization errors due to SxS copies of the SDK
+  [#21029](https://github.com/pulumi/pulumi/pull/21029)
+
+- [sdk/python] Add `PropertyValue` runtime validation checks
+  [#21058](https://github.com/pulumi/pulumi/pull/21058)
+
+
+### Miscellaneous
+
+- [engine] Don't send root directory and runtime options to language plugins as command line arguments
+  [#21054](https://github.com/pulumi/pulumi/pull/21054)
+
+- [sdk/{dotnet,java,yaml}] Bump language runtimes for yaml, dotnet and java
+
 ## 3.208.0 (2025-11-20)
 
 

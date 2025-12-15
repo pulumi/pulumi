@@ -15,11 +15,11 @@
 package pulumi
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"golang.org/x/net/context"
 )
 
 // marshalResourceHooks marshals a `ResourceHookBinding` to a protobuf message.

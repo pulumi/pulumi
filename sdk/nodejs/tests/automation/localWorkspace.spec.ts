@@ -2041,8 +2041,12 @@ function withCloudBackend(
     description?: string,
     runtime?: string,
 ): LocalWorkspaceOptions {
+    let url = "https://api.pulumi.com";
+    if (process.env.PULUMI_BACKEND_URL) {
+        url = process.env.PULUMI_BACKEND_URL;
+    }
     const backend = {
-        url: "https://api.pulumi.com",
+        url: url,
     };
     if (name === undefined) {
         name = "node_test";

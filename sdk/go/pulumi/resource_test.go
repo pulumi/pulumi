@@ -19,15 +19,15 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"maps"
 	"reflect"
-	"sort"
+	"slices"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/maps"
 	grpc "google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -211,9 +211,7 @@ func TestResourceOptionMergingDependsOn(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		urns := maps.Keys(allDeps)
-		sort.Slice(urns, func(i, j int) bool { return urns[i] < urns[j] })
-		return urns
+		return slices.Sorted(maps.Keys(allDeps))
 	}
 
 	// two singleton options

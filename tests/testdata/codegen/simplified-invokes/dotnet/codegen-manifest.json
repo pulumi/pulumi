@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
     "Abs.cs",
     "AbsMultiArgs.cs",
     "AbsMultiArgsReducedOutput.cs",

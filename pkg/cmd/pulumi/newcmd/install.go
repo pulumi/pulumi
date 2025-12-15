@@ -27,12 +27,12 @@ import (
 func InstallDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeInfo, main string) error {
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-	programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, runtime.Options())
-	lang, err := ctx.Host.LanguageRuntime(runtime.Name(), programInfo)
+	lang, err := ctx.Host.LanguageRuntime(runtime.Name())
 	if err != nil {
 		return fmt.Errorf("failed to load language plugin %s: %w", runtime.Name(), err)
 	}
 
+	programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, runtime.Options())
 	err = cmdutil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
 		Info:     programInfo,
 		IsPlugin: false,

@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
     "ArgFunction.cs",
     "Enums.cs",
     "Inputs/ConfigMapArgs.cs",

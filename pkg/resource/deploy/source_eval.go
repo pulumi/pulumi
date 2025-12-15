@@ -282,18 +282,18 @@ func (iter *evalSourceIterator) forkRun(
 
 			rt := iter.src.runinfo.Proj.Runtime.Name()
 
+			langhost, err := iter.src.plugctx.Host.LanguageRuntime(rt)
+			if err != nil {
+				return fmt.Errorf("failed to launch language host %s: %w", rt, err)
+			}
+			contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
+
 			rtopts := iter.src.runinfo.Proj.Runtime.Options()
 			programInfo := plugin.NewProgramInfo(
 				/* rootDirectory */ iter.src.runinfo.ProjectRoot,
 				/* programDirectory */ iter.src.runinfo.Pwd,
 				/* entryPoint */ iter.src.runinfo.Program,
 				/* options */ rtopts)
-
-			langhost, err := iter.src.plugctx.Host.LanguageRuntime(rt, programInfo)
-			if err != nil {
-				return fmt.Errorf("failed to launch language host %s: %w", rt, err)
-			}
-			contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
 
 			// Now run the actual program.
 			progerr, bail, err := langhost.Run(plugin.RunInfo{
@@ -2453,9 +2453,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	replaceOnChanges := opts.ReplaceOnChanges
 
 	replacementTrigger := resource.NewNullProperty()
-	if req.GetReplacementTrigger() != nil {
+	replacementTriggerValue := opts.GetReplacementTrigger()
+	if replacementTriggerValue != nil {
 		t, err := plugin.UnmarshalPropertyValue(
-			"replacementTrigger", req.GetReplacementTrigger(), plugin.MarshalOptions{
+			"replacementTrigger", replacementTriggerValue, plugin.MarshalOptions{
 				Label:              label,
 				KeepUnknowns:       true,
 				ComputeAssetHashes: true,

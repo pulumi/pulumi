@@ -424,7 +424,7 @@ func (host *pluginHost) Provider(descriptor workspace.PackageDescriptor) (plugin
 	return plug.(plugin.Provider), nil
 }
 
-func (host *pluginHost) LanguageRuntime(root string, info plugin.ProgramInfo) (plugin.LanguageRuntime, error) {
+func (host *pluginHost) LanguageRuntime(root string) (plugin.LanguageRuntime, error) {
 	if host.isClosed() {
 		return nil, ErrHostIsClosed
 	}
