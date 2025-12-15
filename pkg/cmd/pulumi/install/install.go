@@ -236,7 +236,6 @@ func installPackagesFromProject(
 	}
 	return errors.Join(
 		packageinstallation.InstallInProject(ctx, proj, root, opts, registry, ws),
-		ws.Close(),
 		pctx.Close(),
 	)
 }

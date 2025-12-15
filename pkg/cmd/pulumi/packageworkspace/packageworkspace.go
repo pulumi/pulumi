@@ -31,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -57,8 +56,6 @@ type Workspace struct {
 	sink, statusSink diag.Sink
 	parentSpan       opentracing.Span
 }
-
-func (w Workspace) Close() error { return w.host.Close() }
 
 func (Workspace) HasPlugin(spec workspace.PluginSpec) bool { return workspace.HasPlugin(spec) }
 func (Workspace) HasPluginGTE(spec workspace.PluginSpec) (bool, error) {
@@ -188,7 +185,6 @@ func (w Workspace) LinkPackage(
 	if err != nil {
 		return fmt.Errorf("failed to run package for linking: %w", err)
 	}
-	defer contract.IgnoreClose(p)
 
 	var schemaRequest plugin.GetSchemaRequest
 	if paramResp != nil {
@@ -204,7 +200,7 @@ func (w Workspace) LinkPackage(
 		return err
 	}
 
-	boundSchema, err := bindSpec(schemaSpec, schema.NewPluginLoader(noCloseHost{w.host}))
+	boundSchema, err := bindSpec(schemaSpec, schema.NewPluginLoader(w.host))
 	if err != nil {
 		return err
 	}
@@ -218,7 +214,6 @@ func (w Workspace) LinkPackage(
 	if err != nil {
 		return err
 	}
-	defer contract.IgnoreClose(servers)
 
 	pkgName := boundSchema.Name
 	if boundSchema.Namespace != "" {
@@ -281,20 +276,18 @@ type servers struct {
 	grpc *plugin.GrpcServer
 }
 
-func (s servers) Close() error { return errors.Join(s.lang.Close(), s.grpc.Close(), s.pctx.Close()) }
-
 func (w Workspace) servers(ctx context.Context, language string, dir string) (servers, error) {
 	languageRuntime, err := w.host.LanguageRuntime(language)
 	if err != nil {
 		return servers{}, err
 	}
 
-	pctx := plugin.NewContextWithHost(ctx, w.sink, w.statusSink, noCloseHost{w.host}, dir, dir, w.parentSpan)
+	pctx := plugin.NewContextWithHost(ctx, w.sink, w.statusSink, w.host, dir, dir, w.parentSpan)
 	loader := schema.NewPluginLoader(pctx.Host)
 	loaderServer := schema.NewLoaderServer(loader)
 	grpcServer, err := plugin.NewServer(pctx, schema.LoaderRegistration(loaderServer))
 	if err != nil {
-		return servers{}, errors.Join(err, languageRuntime.Close(), pctx.Close())
+		return servers{}, err
 	}
 	return servers{
 		pctx: pctx,
@@ -319,11 +312,11 @@ func (w Workspace) genSDK(ctx context.Context, language string, pkg *schema.Pack
 
 	diags, err := s.lang.GeneratePackage(tmpDir, string(jsonBytes), nil, s.grpc.Addr(), nil, true /* local */)
 	if err != nil {
-		return "", servers{}, errors.Join(err, os.RemoveAll(tmpDir), s.Close())
+		return "", servers{}, errors.Join(err, os.RemoveAll(tmpDir))
 	}
 
 	if diags.HasErrors() {
-		return "", servers{}, errors.Join(fmt.Errorf("generation failed: %w", diags), os.RemoveAll(tmpDir), s.Close())
+		return "", servers{}, errors.Join(fmt.Errorf("generation failed: %w", diags), os.RemoveAll(tmpDir))
 	}
 
 	return tmpDir, s, nil
@@ -354,8 +347,8 @@ func bindSpec(spec schema.PackageSpec, loader schema.Loader) (*schema.Package, e
 func (w Workspace) runPackage(
 	ctx context.Context, rootDir, pluginPath string, params plugin.ParameterizeParameters,
 ) (plugin.Provider, *plugin.ParameterizeResponse, error) {
-	pctx := plugin.NewContextWithHost(ctx, w.sink, w.statusSink, noCloseHost{w.host}, rootDir, rootDir, w.parentSpan)
-	p, err := plugin.NewProviderFromPath(noCloseHost{w.host}, pctx, pluginPath)
+	pctx := plugin.NewContextWithHost(ctx, w.sink, w.statusSink, w.host, rootDir, rootDir, w.parentSpan)
+	p, err := plugin.NewProviderFromPath(w.host, pctx, pluginPath)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -366,7 +359,7 @@ func (w Workspace) runPackage(
 			Parameters: params,
 		})
 		if err != nil {
-			return nil, nil, errors.Join(err, p.Close())
+			return nil, nil, err
 		}
 		pluginResp = &resp
 	}
@@ -377,16 +370,3 @@ type providerWithEmbeddedContext struct {
 	plugin.Provider
 	pctx *plugin.Context
 }
-
-func (p providerWithEmbeddedContext) Close() error {
-	return errors.Join(
-		p.pctx.Host.CloseProvider(p.Provider),
-		p.pctx.Close(),
-	)
-}
-
-type noCloseHost struct {
-	plugin.Host
-}
-
-func (noCloseHost) Close() error { return nil }
