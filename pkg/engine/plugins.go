@@ -26,6 +26,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -68,7 +69,7 @@ type PluginManager interface {
 	InstallPlugin(
 		ctx context.Context,
 		plugin workspace.PluginSpec,
-		content workspace.PluginContent,
+		content pluginstorage.PluginContent,
 		reinstall bool,
 	) error
 }
@@ -133,7 +134,7 @@ func (defaultPluginManager) DownloadPlugin(
 func (defaultPluginManager) InstallPlugin(
 	ctx context.Context,
 	plugin workspace.PluginSpec,
-	content workspace.PluginContent,
+	content pluginstorage.PluginContent,
 	reinstall bool,
 ) error {
 	return pkgWorkspace.InstallPluginContent(ctx, plugin, content, reinstall)
@@ -611,7 +612,7 @@ func installPlugin(
 	if err := pluginManager.InstallPlugin(
 		ctx,
 		plugin,
-		workspace.TarPlugin(withInstallProgress(tarball)),
+		pluginstorage.TarPlugin(withInstallProgress(tarball)),
 		false,
 	); err != nil {
 		return fmt.Errorf("installing plugin; run `pulumi plugin install %s %s v%s` to retry manually: %w",

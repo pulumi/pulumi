@@ -27,6 +27,7 @@ import (
 	"github.com/blang/semver"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -274,7 +275,7 @@ func installPluginSpec(
 ) error {
 	// If we got here, actually try to do the download.
 	var source string
-	var payload workspace.PluginContent
+	var payload pluginstorage.PluginContent
 	var err error
 	if file == "" {
 		withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
@@ -291,7 +292,7 @@ func installPluginSpec(
 		}
 		defer func() { contract.IgnoreError(os.Remove(r.Name())) }()
 
-		payload = workspace.TarPlugin(r)
+		payload = pluginstorage.TarPlugin(r)
 	} else {
 		source = file
 		logging.V(1).Infof("%s opening tarball from %s", label, file)
@@ -307,7 +308,7 @@ func installPluginSpec(
 	return nil
 }
 
-func getFilePayload(file string, spec workspace.PluginSpec) (workspace.PluginContent, error) {
+func getFilePayload(file string, spec workspace.PluginSpec) (pluginstorage.PluginContent, error) {
 	source := file
 	stat, err := os.Stat(file)
 	if err != nil {
@@ -315,7 +316,7 @@ func getFilePayload(file string, spec workspace.PluginSpec) (workspace.PluginCon
 	}
 
 	if stat.IsDir() {
-		return workspace.DirPlugin(file), nil
+		return pluginstorage.DirPlugin(file), nil
 	}
 
 	f, err := os.Open(file)
@@ -336,9 +337,9 @@ func getFilePayload(file string, spec workspace.PluginSpec) (workspace.PluginCon
 		if runtime.GOOS != "windows" && (stat.Mode()&0o100) == 0 {
 			return nil, fmt.Errorf("%s is not executable", source)
 		}
-		return workspace.SingleFilePlugin(f, spec), nil
+		return pluginstorage.SingleFilePlugin(f, spec), nil
 	}
-	return workspace.TarPlugin(f), nil
+	return pluginstorage.TarPlugin(f), nil
 }
 
 // resolvePluginSpec resolves plugin specifications using various resolution strategies.

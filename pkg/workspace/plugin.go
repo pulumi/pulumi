@@ -25,6 +25,7 @@ import (
 
 	"github.com/blang/semver"
 
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -98,7 +99,7 @@ func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginSpec,
 	}
 
 	logging.V(1).Infof("Automatically installing provider %s", pluginSpec.Name)
-	err = InstallPluginContent(ctx, pluginSpec, workspace.TarPlugin(downloadedFile), false)
+	err = InstallPluginContent(ctx, pluginSpec, pluginstorage.TarPlugin(downloadedFile), false)
 	if err != nil {
 		return nil, &InstallPluginError{
 			Spec: pluginSpec,
@@ -116,9 +117,9 @@ func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginSpec,
 // when a plugin needs it's dependencies to be installed before it can safely be
 // installed.
 func InstallPluginContent(
-	ctx context.Context, spec workspace.PluginSpec, content workspace.PluginContent, reinstall bool,
+	ctx context.Context, spec workspace.PluginSpec, content pluginstorage.PluginContent, reinstall bool,
 ) (err error) {
-	done, err := workspace.DownloadPluginContent(ctx, spec, content, reinstall)
+	done, err := pluginstorage.DownloadPluginContent(ctx, spec, content, reinstall)
 	if err != nil {
 		return err
 	}

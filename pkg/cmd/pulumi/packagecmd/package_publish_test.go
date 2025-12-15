@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -735,6 +736,6 @@ func installResourcePluginFromFiles(t *testing.T, spec workspace.PluginSpec, fil
 		err = os.WriteFile(path, []byte(content), 0o600)
 		require.NoError(t, err)
 	}
-	err := pkgWorkspace.InstallPluginContent(t.Context(), spec, workspace.DirPlugin(dir), true)
+	err := pkgWorkspace.InstallPluginContent(t.Context(), spec, pluginstorage.DirPlugin(dir), true)
 	require.NoError(t, err)
 }

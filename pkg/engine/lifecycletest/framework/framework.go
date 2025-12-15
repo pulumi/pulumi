@@ -41,6 +41,7 @@ import (
 	bdisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -122,7 +123,7 @@ func (NopPluginManager) DownloadPlugin(
 func (NopPluginManager) InstallPlugin(
 	ctx context.Context,
 	plugin workspace.PluginSpec,
-	content workspace.PluginContent,
+	content pluginstorage.PluginContent,
 	reinstall bool,
 ) error {
 	return nil

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package workspace
+package pluginstorage
 
 import (
 	"fmt"
@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
@@ -34,7 +35,7 @@ type PluginContent interface {
 	writeToDir(pathToDir string) error
 }
 
-func SingleFilePlugin(f *os.File, spec PluginSpec) PluginContent {
+func SingleFilePlugin(f *os.File, spec workspace.PluginSpec) PluginContent {
 	return singleFilePlugin{F: f, Kind: spec.Kind, Name: spec.Name}
 }
 
