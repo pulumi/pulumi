@@ -407,8 +407,8 @@ github.com/ianlancetaylor/demangle v0.0.0-20181102032728-5e5cf60278f6/go.mod h1:
 github.com/ianlancetaylor/demangle v0.0.0-20200824232613-28f6c0f3b639/go.mod h1:aSSvb/t6k1mPoxDqO4vJh6VOCGPwU4O0C2/Eqndh1Sc=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
-github.com/iwahbe/helpmakego v0.3.0 h1:cT9AOWNV6tWRkTklr+bn9SCWRcCYm/Wdjwx1/PCg80M=
-github.com/iwahbe/helpmakego v0.3.0/go.mod h1:SNrBTLB/hEwr4EzMfcoMFVBGP9wQfJzSDF6PWZn4qac=
+github.com/iwahbe/helpmakego v0.4.0 h1:lv+HhixKrILAvbPHkUSN/0rJpClVqdsbFDL4SZ4KrLU=
+github.com/iwahbe/helpmakego v0.4.0/go.mod h1:SNrBTLB/hEwr4EzMfcoMFVBGP9wQfJzSDF6PWZn4qac=
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 h1:BQSFePA1RWJOlocH6Fxy8MmwDt+yVQYULKfN0RoTN8A=
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99/go.mod h1:1lJo3i6rXxKeerYnT8Nvf0QmHCRC1n8sfWVwXF2Frvo=
 github.com/jmespath/go-jmespath v0.4.0 h1:BEgLn5cpjn8UN1mAw4NjwDrS35OdebyEtFe+9YPoQUg=
