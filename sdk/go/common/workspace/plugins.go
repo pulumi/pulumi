@@ -1890,18 +1890,25 @@ func GetPluginsFromDir(dir string) ([]PluginInfo, error) {
 	return plugins, nil
 }
 
-// DownloadPluginContent installs a plugin's tarball into the cache. It validates that plugin names are in the expected
-// format. Previous versions of Pulumi extracted the tarball to a temp directory first, and then renamed the temp
-// directory to the final directory. The rename operation fails often enough on Windows due to aggressive virus scanners
-// opening files in the temp directory. To address this, we now extract the tarball directly into the final directory,
-// and use file locks to prevent concurrent installs.
+// DownloadPluginContent installs a plugin's tarball into the cache. It validates that
+// plugin names are in the expected format. cleanup *must* be called to avoid leaking
+// system level resources. It should be passed `true` if the plugin was successfully
+// installed, and `false` otherwise.
 //
-// Each plugin has its own file lock, with the same name as the plugin directory, with a `.lock` suffix.
-// During installation an empty file with a `.partial` suffix is created, indicating that installation is in-progress.
-// The `.partial` file is deleted when installation is complete, indicating that the plugin has finished installing.
-// If a failure occurs during installation, the `.partial` file will remain, indicating the plugin wasn't fully
-// installed. The next time the plugin is installed, the old installation directory will be removed and replaced with
-// a fresh installation.
+// Cleanup:
+//
+// In addition to the downloaded plugin, this file creates 2 empty files on disk:
+//
+// - "<spec>.lock"
+// - "<spec>.partial"
+//
+// "<spec>.lock" establishes a process level lock on the plugin, preventing some
+// concurrent operations on the plugin from multiple versions of Pulumi. It should always
+// be removed after the plugin is installed, *or* if the install fails for any reason.
+//
+// "<spec>.partial" indicates that the plugin is not yet fully installed. "<spec>.partial"
+// should be removed after the plugin is *successfully* installed, but left if the install
+// fails for any reason.
 func DownloadPluginContent(
 	ctx context.Context, spec PluginSpec, content PluginContent, reinstall bool,
 ) (cleanup func(success bool), err error) {
@@ -1925,7 +1932,12 @@ func DownloadPluginContent(
 		}
 	}()
 
-	// Cleanup any temp dirs from failed installations of this plugin from previous versions of Pulumi.
+	// Previous versions of Pulumi extracted the tarball to a temp directory first, and then renamed the temp
+	// directory to the final directory. The rename operation fails often enough on Windows due to aggressive virus scanners
+	// opening files in the temp directory. To address this, we now extract the tarball directly into the final directory,
+	// and use file locks to prevent concurrent installs.
+	//
+	// We cleanup the old directory format here.
 	if err := cleanupTempDirs(finalDir); err != nil {
 		// We don't want to fail the installation if there was an error cleaning up these old temp dirs.
 		// Instead, log the error and continue on.
