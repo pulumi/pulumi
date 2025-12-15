@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"iter"
-	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -120,9 +119,11 @@ func replayInstallInProject(t *testing.T, args replayInstallInProjectArgs, steps
 	require.NoError(t, err)
 
 	var b bytes.Buffer
-	padding := int(math.Ceil(math.Log10(float64(len(ws.stepsTaken)))))
-	for i, s := range ws.stepsTaken {
-		b.WriteString(fmt.Sprintf("%0*d. %s\n", padding, i, s))
+	for _, s := range ws.stepsTaken {
+		// We do not write line numbers here to ensure that adding or removing a
+		// line causes a minimal diff for reviewers.
+		b.WriteString(s)
+		b.WriteRune('\n')
 	}
 	f := filepath.Join("testdata", t.Name(), "steps.txt")
 

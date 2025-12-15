@@ -74,13 +74,17 @@ type Workspace interface {
 	LinkPackage(
 		ctx context.Context,
 		project *workspace.ProjectRuntimeInfo, projectDir string, packageName string,
-		pluginDir string, params plugin.ParameterizeParameters,
+		pluginPath string, params plugin.ParameterizeParameters,
 	) error
 
 	// Run a package from a directory, parameterized by params.
+	//
+	// If the package is served from a binary, then pluginPath will point at that
+	// binary. If it's server from a directory, then pluginPath will be that
+	// directory.
 	RunPackage(
 		ctx context.Context,
-		rootDir, pluginDir string, params plugin.ParameterizeParameters,
+		rootDir, pluginPath string, params plugin.ParameterizeParameters,
 	) (plugin.Provider, error)
 }
 
@@ -139,7 +143,7 @@ func InstallPlugin(
 	}
 
 	return func(ctx context.Context, wd string) (plugin.Provider, error) {
-		return ws.RunPackage(ctx, wd, runBundle.pluginDir, runBundle.params)
+		return ws.RunPackage(ctx, wd, runBundle.pluginPath, runBundle.params)
 	}, nil
 }
 
@@ -276,8 +280,8 @@ func hashLocalPath(path string) pluginHash {
 }
 
 type runBundle struct {
-	pluginDir string
-	params    plugin.ParameterizeParameters
+	pluginPath string
+	params     plugin.ParameterizeParameters
 }
 
 type step interface {
@@ -391,6 +395,7 @@ func ensureDownloadedPluginDirHasDependenciesAndIsInstalled(
 	ctx context.Context, state state,
 	parent pdag.Node, name, projectDir string,
 	downloadCleanup *downloadCleanup,
+	runBundleOut *runBundle,
 ) error {
 	filePath, err := state.ws.DetectPluginPathAt(ctx, projectDir)
 	switch {
@@ -398,6 +403,7 @@ func ensureDownloadedPluginDirHasDependenciesAndIsInstalled(
 	// gather dependencies and install them before we can run the install
 	// here.
 	case err == nil:
+		runBundleOut.pluginPath = projectDir
 		pluginProject, err := state.ws.LoadPluginProject(ctx, filePath)
 		if err != nil {
 			return err
@@ -428,7 +434,10 @@ func ensureDownloadedPluginDirHasDependenciesAndIsInstalled(
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return err
 		} else if isExec {
+			runBundleOut.pluginPath = binaryPath
 			// A binary was found, so this plugin is done.
+			downloadCleanup.f(true)
+			downloadCleanup.called = true
 			return nil
 		}
 		return fmt.Errorf("expected %s to have an executable named %s or a PulumiPlugin file", projectDir, binaryName)
@@ -468,7 +477,7 @@ func (step linkPackageStep) run(ctx context.Context, p state) error {
 	return p.ws.LinkPackage(
 		ctx,
 		step.project.proj.RuntimeInfo(), step.project.projectDir,
-		step.packageName, step.runBundle.pluginDir, params)
+		step.packageName, step.runBundle.pluginPath, params)
 }
 
 // Resolve a spec into a plugin, then add necessary follow up steps.
@@ -578,13 +587,10 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 		}
 
 		defer ready()
-		if step.runBundleOut != nil {
-			step.runBundleOut.pluginDir = projectDir
-		}
 
 		// We don't need to download what's at a local path result, but we might
 		// need to download it's dependencies.
-		return ensureDownloadedPluginDirHasDependenciesAndIsInstalled(ctx, p, specNode, "", projectDir, nil)
+		return ensureDownloadedPluginDirHasDependenciesAndIsInstalled(ctx, p, specNode, "", projectDir, nil, step.runBundleOut)
 
 	// We have a normal spec to download and install, so let's run that process.
 	//
@@ -675,7 +681,7 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 		//
 		// TODO: Verify that (3) is a problem, then open an issue.
 		path, err := p.ws.GetPluginPath(ctx, step.spec)
-		step.runBundleOut.pluginDir = path
+		step.runBundleOut.pluginPath = path
 		return err
 	default:
 		panic(fmt.Sprintf("unexpected package resolution result of type %T: %[1]s", result))
@@ -715,9 +721,9 @@ func (step downloadStep) run(ctx context.Context, p state) error {
 	})
 	p.cleanupM.Unlock()
 
-	step.runBundleOut.pluginDir = pluginDir
+	step.runBundleOut.pluginPath = pluginDir
 	return ensureDownloadedPluginDirHasDependenciesAndIsInstalled(
-		ctx, p, step.parent, step.spec.Name, pluginDir, step.downloadCleanup)
+		ctx, p, step.parent, step.spec.Name, pluginDir, step.downloadCleanup, step.runBundleOut)
 }
 
 type installStep struct {

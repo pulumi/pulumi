@@ -182,11 +182,11 @@ func (Workspace) DetectPluginPathAt(ctx context.Context, path string) (string, e
 func (w Workspace) LinkPackage(
 	ctx context.Context,
 	runtimeInfo *workspace.ProjectRuntimeInfo, projectDir string, packageName string,
-	pluginDir string, params plugin.ParameterizeParameters,
+	pluginPath string, params plugin.ParameterizeParameters,
 ) error {
-	p, paramResp, err := w.runPackage(ctx, projectDir, pluginDir, params)
+	p, paramResp, err := w.runPackage(ctx, projectDir, pluginPath, params)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to run package for linking: %w", err)
 	}
 
 	var schemaRequest plugin.GetSchemaRequest
@@ -223,7 +223,8 @@ func (w Workspace) LinkPackage(
 	if boundSchema.Namespace != "" {
 		pkgName = boundSchema.Namespace + "-" + pkgName
 	}
-	out := filepath.Join(projectDir, "sdks", pkgName)
+	sdkDir := filepath.Join(projectDir, "sdks")
+	out := filepath.Join(sdkDir, pkgName)
 
 	// Make sure the out directory doesn't exist anymore.
 	//
@@ -233,6 +234,9 @@ func (w Workspace) LinkPackage(
 	}
 
 	// Now move the temp directory to it's final home.
+	if err := os.Mkdir(sdkDir, 0o755); err != nil && !errors.Is(err, os.ErrExist) {
+		return fmt.Errorf("unable to create %q for generated SDKs: %w", sdkDir, err)
+	}
 	if err := os.Rename(tmpDir, out); err != nil {
 		// If this failed, we still need to clean up tmpDir.
 		return errors.Join(err, os.RemoveAll(tmpDir))
@@ -326,9 +330,9 @@ func (w Workspace) genSDK(ctx context.Context, language string, pkg *schema.Pack
 
 // Run a package from a directory, parameterized by params.
 func (w Workspace) RunPackage(
-	ctx context.Context, rootDir, pluginDir string, params plugin.ParameterizeParameters,
+	ctx context.Context, rootDir, pluginPath string, params plugin.ParameterizeParameters,
 ) (plugin.Provider, error) {
-	p, _, err := w.runPackage(ctx, rootDir, pluginDir, params)
+	p, _, err := w.runPackage(ctx, rootDir, pluginPath, params)
 	return p, err
 }
 
@@ -347,10 +351,10 @@ func bindSpec(spec schema.PackageSpec, loader schema.Loader) (*schema.Package, e
 
 // Run a package from a directory, parameterized by params.
 func (w Workspace) runPackage(
-	ctx context.Context, rootDir, pluginDir string, params plugin.ParameterizeParameters,
+	ctx context.Context, rootDir, pluginPath string, params plugin.ParameterizeParameters,
 ) (plugin.Provider, *plugin.ParameterizeResponse, error) {
 	pctx := plugin.NewContextWithHost(ctx, w.sink, w.statusSink, noCloseHost{w.host}, rootDir, rootDir, w.parentSpan)
-	p, err := plugin.NewProviderFromPath(w.host, pctx, pluginDir)
+	p, err := plugin.NewProviderFromPath(w.host, pctx, pluginPath)
 	if err != nil {
 		return nil, nil, err
 	}
