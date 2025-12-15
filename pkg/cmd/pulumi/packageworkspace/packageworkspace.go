@@ -351,7 +351,7 @@ func (w Workspace) runPackage(
 	pctx := plugin.NewContextWithHost(ctx, w.sink, w.statusSink, w.host, rootDir, rootDir, w.parentSpan)
 	p, err := plugin.NewProviderFromPath(w.host, pctx, pluginPath)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("could not run plugin at %q: %w", pluginPath, err)
 	}
 	p = providerWithEmbeddedContext{p, pctx}
 	var pluginResp *plugin.ParameterizeResponse
