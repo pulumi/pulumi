@@ -375,16 +375,18 @@ func ensureProjectDependencies(
 		var version *semver.Version
 		if source.Version != "" {
 			v, err := semver.ParseTolerant(source.Version)
-			if err != nil {
-				return nil
+			if err == nil {
+				version = &v
+			} else {
+				source.Source += "@" + source.Version
 			}
-			version = &v
 		}
-		err := ensureUnresolvedSpec(ctx, state, link, workspace.PluginSpec{
-			Name:    source.Source,
-			Kind:    apitype.ResourcePlugin,
-			Version: version,
-		}, proj, runBundle)
+		spec, err := workspace.NewPluginSpec(ctx, source.Source, apitype.ResourcePlugin, version, "", nil)
+		if err != nil {
+			return err
+		}
+
+		err = ensureUnresolvedSpec(ctx, state, link, spec, proj, runBundle)
 		if err != nil {
 			return err
 		}
@@ -486,15 +488,6 @@ func (step linkPackageStep) run(ctx context.Context, p state) error {
 		step.packageName, step.runBundle.pluginPath, params)
 }
 
-// Resolve a spec into a plugin, then add necessary follow up steps.
-type resolveStep struct {
-	spec         workspace.PluginSpec
-	parentProj   project[workspace.BaseProject]
-	parent       pdag.Node
-	done         pdag.Done
-	runBundleOut *runBundle
-}
-
 // newSpecNode adds a new spec to the DAG, or de-duplicates the spec.
 //
 // Correct usage looks like this:
@@ -548,6 +541,15 @@ func newSpecNode(
 	}
 
 	return specReady, ready, false, nil
+}
+
+// Resolve a spec into a plugin, then add necessary follow up steps.
+type resolveStep struct {
+	spec         workspace.PluginSpec
+	parentProj   project[workspace.BaseProject]
+	parent       pdag.Node
+	done         pdag.Done
+	runBundleOut *runBundle
 }
 
 // Resolve a package into something that we can get.

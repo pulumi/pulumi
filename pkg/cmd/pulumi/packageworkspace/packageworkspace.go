@@ -67,7 +67,7 @@ func (Workspace) IsExternalURL(source string) bool { return workspace.IsExternal
 func (Workspace) GetPluginPath(ctx context.Context, spec workspace.PluginSpec) (string, error) {
 	path, err := spec.DirPath()
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	// This should be runnable, so we need to include the subdir if any.
 	return filepath.Join(path, spec.SubDir()), nil
