@@ -716,8 +716,9 @@ func (d *Deployment) GetErrorHook(urn resource.URN, hookType resource.HookType) 
 	}
 
 	getHookName := func(hooks []string) string {
+		contract.Assertf(len(hooks) <= 1, "expected at most one hook, got %d", len(hooks))
 		if len(hooks) > 0 {
-			return hooks[0] // There should only ever be one
+			return hooks[0]
 		}
 		return ""
 	}

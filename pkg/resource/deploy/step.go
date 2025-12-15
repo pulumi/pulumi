@@ -335,7 +335,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		var resp plugin.CreateResponse
 
 		// Retry loop with error hook support
-		for attempt := 0; attempt <= maxErrorHookRetries; attempt++ {
+		for attempt := range maxErrorHookRetries {
 			resp, err = prov.Create(context.TODO(), plugin.CreateRequest{
 				URN:                   s.URN(),
 				Name:                  s.new.URN.Name(),

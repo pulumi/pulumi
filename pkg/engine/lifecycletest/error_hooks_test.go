@@ -790,7 +790,9 @@ func TestErrorHookRetryOnceThenSucceedUpdate(t *testing.T) {
 
 	require.NoError(t, err, "operation should succeed after retry")
 	require.Equal(t, 1, hookCallCount, "hook should be called exactly once")
-	require.Len(t, snap.Resources, 2) // Default provider + resA
+	require.Len(t, snap.Resources, 2)
+
+	require.Equal(t, snap.Resources[1].Inputs, inputs)
 }
 
 func TestErrorHookRetryOnceThenSucceedDelete(t *testing.T) {
