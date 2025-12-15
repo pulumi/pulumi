@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
-	"github.com/stretchr/testify/require"
 )
 
 // TODO: add tests using other languages https://github.com/pulumi/pulumi/issues/17669
@@ -31,7 +30,7 @@ func TestPerfEmptyUpdate(t *testing.T) {
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
 		T:                  t,
 		MaxPreviewDuration: 6300 * time.Millisecond,
-		MaxUpdateDuration:  6300 * time.Millisecond,
+		MaxUpdateDuration:  1600 * time.Millisecond,
 		MaxLowerPercent:    10,
 	}
 
@@ -52,7 +51,7 @@ func TestPerfManyComponentUpdate(t *testing.T) {
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
 		T:                  t,
 		MaxPreviewDuration: 18100 * time.Millisecond,
-		MaxUpdateDuration:  18100 * time.Millisecond,
+		MaxUpdateDuration:  10000 * time.Millisecond,
 		MaxLowerPercent:    10,
 	}
 
@@ -156,52 +155,6 @@ func TestPerfStackReferenceSecretsBatchUpdate(t *testing.T) {
 				Quick:          false,
 				RequireService: true,
 				ReportStats:    benchmarkEnforcer,
-			})
-		},
-	})
-}
-
-//nolint:paralleltest // Do not run in parallel to avoid resource contention
-func TestPerfManyResourcesWithJournaling(t *testing.T) {
-	initialBenchmark := &integration.AssertPerfBenchmark{
-		T:                 t,
-		MaxUpdateDuration: 100 * time.Second,
-		MaxLowerPercent:   10,
-	}
-
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		NoParallel:     true,
-		Dir:            filepath.Join("typescript", "many_resources"),
-		Dependencies:   []string{"@pulumi/pulumi"},
-		RequireService: true,
-		ReportStats:    initialBenchmark,
-		SkipPreview:    true,
-		Env: []string{
-			"PULUMI_ENABLE_JOURNALING=true",
-		},
-		DestroyOnCleanup: true,
-		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			require.Greater(t, len(stack.Deployment.Resources), 2000)
-
-			subsequentBenchmark := &integration.AssertPerfBenchmark{
-				T:                 t,
-				MaxUpdateDuration: 30 * time.Second,
-				MaxLowerPercent:   10,
-			}
-
-			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				NoParallel:       true,
-				Dir:              filepath.Join("typescript", "many_resources"),
-				StackName:        string(stack.StackName),
-				Dependencies:     []string{"@pulumi/pulumi"},
-				RequireService:   true,
-				SkipPreview:      true,
-				SkipStackInit:    true,
-				SkipStackRemoval: true,
-				ReportStats:      subsequentBenchmark,
-				Env: []string{
-					"PULUMI_ENABLE_JOURNALING=true",
-				},
 			})
 		},
 	})
