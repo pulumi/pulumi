@@ -370,7 +370,7 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 }
 
 // NewProviderFromPath creates a new provider by loading the plugin binary located at `path`.
-func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error) {
+func NewProviderFromPath(host Host, ctx *Context, pkg tokens.Package, path string) (Provider, error) {
 	env := os.Environ()
 
 	handshake := func(
@@ -402,6 +402,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 
 	p := &provider{
 		ctx:           ctx,
+		pkg:           pkg,
 		plug:          plug,
 		clientRaw:     pulumirpc.NewResourceProviderClient(plug.Conn),
 		legacyPreview: legacyPreview,

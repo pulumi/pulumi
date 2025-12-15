@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -598,7 +599,8 @@ func setupProviderFromPath(packageSource string, pctx *plugin.Context) (Provider
 		return Provider{}, nil, fmt.Errorf("plugin at path %q not executable", packageSource)
 	}
 
-	p, err := plugin.NewProviderFromPath(pctx.Host, pctx, packageSource)
+	pkg := tokens.Package(filepath.Base(packageSource))
+	p, err := plugin.NewProviderFromPath(pctx.Host, pctx, pkg, packageSource)
 	if err != nil {
 		return Provider{}, nil, err
 	}
