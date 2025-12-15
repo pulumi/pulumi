@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -222,15 +223,103 @@ func TestInstallPluginWithDiamondDependency(t *testing.T) {
 	)
 }
 
+// TestDeduplicateRegistryBasedPlugin tests that we correctly deduplicate packages when
+// two different package names resolve to the same underlying package via registry resolution.
+//
+// Here, our graph is:
+//
+//	A -> B -> C
+//	A -> D
+//
+// Where C and D are different package names that both resolve to the same underlying package
+// (pulumi/shared-plugin v1.0.0) via registry resolution. We verify that we only download and
+// install the shared plugin once.
 func TestDeduplicateRegistryBasedPlugin(t *testing.T) {
 	t.Parallel()
-	t.Skip(`TODO: Add a test showing that if we have packages
 
-	A -> B -> C
-	A -> D
+	sharedPluginURL := "https://registry.example.com/shared-plugin-1.0.0.tar.gz"
 
-And both C and D are the same underlying package after registry resolution, that we
-correctly handle C/D: Only downloading and installing once.`)
+	replayInstallPlugin(t, replayInstallPluginArgs{
+		spec: workspace.PluginSpec{
+			Name:              "plugin-a",
+			Kind:              apitype.ResourcePlugin,
+			PluginDownloadURL: "https://example.com/plugin-a.tar.gz",
+		},
+		options: packageinstallation.Options{
+			Options: packageresolution.Options{
+				Experimental: true,
+			},
+			Concurrency: 1,
+		},
+	},
+		IsExternalURL(func(source string) bool {
+			return true
+		}),
+		StandardDownloadPlugin,
+		StandardDetectPluginPathAt,
+		StandardLoadPluginProject( // A
+			workspace.NewProjectRuntimeInfo("go", nil),
+			map[string]workspace.PackageSpec{
+				"plugin-b": {Source: "plugin-b"},
+				"plugin-d": {Source: "plugin-d"},
+			},
+		),
+		IsExternalURL(func(source string) bool {
+			return true
+		}),
+		IsExternalURL(func(source string) bool {
+			return false
+		}),
+		ListPackages(func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+			assert.Equal(t, "plugin-d", *name)
+			return func(yield func(apitype.PackageMetadata, error) bool) {
+				yield(apitype.PackageMetadata{
+					Source:            "pulumi",
+					Publisher:         "pulumi",
+					Name:              "shared-plugin",
+					Version:           semver.Version{Major: 1},
+					PluginDownloadURL: sharedPluginURL,
+				}, nil)
+			}
+		}),
+		StandardDownloadPlugin,
+		StandardDetectPluginPathAt,
+		StandardLoadPluginProject(
+			workspace.NewProjectRuntimeInfo("go", nil),
+			map[string]workspace.PackageSpec{
+				"plugin-c": {Source: "plugin-c"},
+			},
+		),
+		StandardDownloadPlugin,
+		StandardDetectPluginPathAt,
+		StandardLoadPluginProject(
+			workspace.NewProjectRuntimeInfo("go", nil),
+			map[string]workspace.PackageSpec{},
+		),
+
+		IsExternalURL(func(source string) bool {
+			return false
+		}),
+		ListPackages(func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+			assert.Equal(t, "plugin-c", *name)
+			return func(yield func(apitype.PackageMetadata, error) bool) {
+				yield(apitype.PackageMetadata{
+					Source:            "pulumi",
+					Publisher:         "pulumi",
+					Name:              "shared-plugin",
+					Version:           semver.Version{Major: 1},
+					PluginDownloadURL: sharedPluginURL,
+				}, nil)
+			}
+		}),
+		StandardInstallPluginAt,
+		StandardLinkPackage,
+		StandardLinkPackage,
+		StandardInstallPluginAt,
+		StandardLinkPackage,
+		StandardInstallPluginAt,
+		StandardRunPackage,
+	)
 }
 
 // TestInstallPluginWithCyclicDependency tests that we correctly detect and report cyclic

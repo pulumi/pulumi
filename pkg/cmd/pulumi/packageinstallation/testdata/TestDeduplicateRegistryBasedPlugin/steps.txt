@@ -1,0 +1,25 @@
+IsExternalURL{"plugin-a"} -> {true}
+DownloadPlugin{PluginSpec{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {"/tmp/plugins/resource-plugin-a", <func(bool)>, nil}
+DetectPluginPathAt{"/tmp/plugins/resource-plugin-a"} -> {"/tmp/plugins/resource-plugin-a/PulumiPlugin.yaml", nil}
+LoadPluginProject{"/tmp/plugins/resource-plugin-a/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[2]{"plugin-b":packageValue{value:"plugin-b"}, "plugin-d":packageValue{value:"plugin-d"}}}, nil}
+IsExternalURL{"plugin-b"} -> {true}
+IsExternalURL{"plugin-d"} -> {false}
+ListPackages{"plugin-d"} -> {<iter.Seq2[github.com/pulumi/pulumi/sdk/v3/go/common/apitype.PackageMetadata,error]>}
+DownloadPlugin{PluginSpec{Name:"plugin-b", Kind:"resource"}} -> {"/tmp/plugins/resource-plugin-b", <func(bool)>, nil}
+DetectPluginPathAt{"/tmp/plugins/resource-plugin-b"} -> {"/tmp/plugins/resource-plugin-b/PulumiPlugin.yaml", nil}
+LoadPluginProject{"/tmp/plugins/resource-plugin-b/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-c":packageValue{value:"plugin-c"}}}, nil}
+DownloadPlugin{PluginSpec{Name:"shared-plugin", Kind:"resource", Version:Version{Major:1}, PluginDownloadURL:"https://registry.example.com/shared-plugin-1.0.0.tar.gz"}} -> {"/tmp/plugins/resource-shared-plugin-v1.0.0", <func(bool)>, nil}
+DetectPluginPathAt{"/tmp/plugins/resource-shared-plugin-v1.0.0"} -> {"/tmp/plugins/resource-shared-plugin-v1.0.0/PulumiPlugin.yaml", nil}
+LoadPluginProject{"/tmp/plugins/resource-shared-plugin-v1.0.0/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}, nil}
+IsExternalURL{"plugin-c"} -> {false}
+ListPackages{"plugin-c"} -> {<iter.Seq2[github.com/pulumi/pulumi/sdk/v3/go/common/apitype.PackageMetadata,error]>}
+InstallPluginAt{"/tmp/plugins/resource-shared-plugin-v1.0.0", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}} -> {nil}
+MarkInstallationDone{PluginSpec{Name:"shared-plugin", Kind:"resource", Version:Version{Major:1}, PluginDownloadURL:"https://registry.example.com/shared-plugin-1.0.0.tar.gz"}, true}
+LinkPackage{ProjectRuntimeInfo{name:"go"}, "/tmp/plugins/resource-plugin-a", "plugin-d", "/tmp/plugins/resource-shared-plugin-v1.0.0", nil} -> {nil}
+LinkPackage{ProjectRuntimeInfo{name:"go"}, "/tmp/plugins/resource-plugin-b", "plugin-c", "/tmp/plugins/resource-shared-plugin-v1.0.0", nil} -> {nil}
+InstallPluginAt{"/tmp/plugins/resource-plugin-b", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-c":packageValue{value:"plugin-c"}}}} -> {nil}
+MarkInstallationDone{PluginSpec{Name:"plugin-b", Kind:"resource"}, true}
+LinkPackage{ProjectRuntimeInfo{name:"go"}, "/tmp/plugins/resource-plugin-a", "plugin-b", "/tmp/plugins/resource-plugin-b", nil} -> {nil}
+InstallPluginAt{"/tmp/plugins/resource-plugin-a", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[2]{"plugin-b":packageValue{value:"plugin-b"}, "plugin-d":packageValue{value:"plugin-d"}}}} -> {nil}
+MarkInstallationDone{PluginSpec{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}, true}
+RunPackage{"/plugin/launch/dir", "/tmp/plugins/resource-plugin-a", nil} -> {nil, nil}
