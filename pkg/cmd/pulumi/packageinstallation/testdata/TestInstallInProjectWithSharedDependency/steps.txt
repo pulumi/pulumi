@@ -7,7 +7,8 @@
 06. DetectPluginPathAt{"/tmp/plugins/resource-plugin-b"} -> {"", errorString{s:"no plugin file found"}}
 07. IsExecutable{"/tmp/plugins/resource-plugin-b/pulumi-resource-plugin-b"} -> {true, nil}
 08. LinkPackage{ProjectRuntimeInfo{name:"go"}, "/project", "plugin-b", "/tmp/plugins/resource-plugin-b", nil} -> {nil}
-09. LinkPackage{ProjectRuntimeInfo{name:"go"}, "/tmp/plugins/resource-plugin-a", "plugin-b", "/tmp/plugins/resource-plugin-b", nil} -> {nil}
-10. InstallPluginAt{"/tmp/plugins/resource-plugin-a", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-b":packageValue{value:"plugin-b"}}}} -> {nil}
-11. MarkInstallationDone{PluginSpec{Name:"plugin-a", Kind:"resource"}, true}
-12. LinkPackage{ProjectRuntimeInfo{name:"go"}, "/project", "plugin-a", "/tmp/plugins/resource-plugin-a", nil} -> {nil}
+09. IsExternalURL{"plugin-b"} -> {true}
+10. LinkPackage{ProjectRuntimeInfo{name:"go"}, "/tmp/plugins/resource-plugin-a", "plugin-b", "/tmp/plugins/resource-plugin-b", nil} -> {nil}
+11. InstallPluginAt{"/tmp/plugins/resource-plugin-a", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-b":packageValue{value:"plugin-b"}}}} -> {nil}
+12. MarkInstallationDone{PluginSpec{Name:"plugin-a", Kind:"resource"}, true}
+13. LinkPackage{ProjectRuntimeInfo{name:"go"}, "/project", "plugin-a", "/tmp/plugins/resource-plugin-a", nil} -> {nil}

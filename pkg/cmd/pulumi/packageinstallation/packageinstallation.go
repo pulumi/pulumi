@@ -181,7 +181,7 @@ func runInstall(
 
 		// Most Installs will install exactly one binary plugin, so pre-allocate
 		// for that.
-		seen:  make(map[pluginSpecHash]cachedPlugin, 1),
+		seen:  make(map[pluginHash]cachedPlugin, 1),
 		seenM: new(sync.Mutex),
 
 		cleanupFuncs: nil,
@@ -238,11 +238,11 @@ type pluginMarkerStep struct{ spec workspace.PluginSpec }
 
 func (step pluginMarkerStep) run(context.Context, state) error { return nil }
 
-type pluginSpecHash uint64
+type pluginHash uint64
 
 var mapHashSeed = maphash.MakeSeed()
 
-func hashPluginSpec(spec workspace.PluginSpec) pluginSpecHash {
+func hashPluginSpec(spec workspace.PluginSpec) pluginHash {
 	var h maphash.Hash
 	h.SetSeed(mapHashSeed)
 	write := func(b []byte) {
@@ -264,7 +264,15 @@ func hashPluginSpec(spec workspace.PluginSpec) pluginSpecHash {
 		write([]byte{'k', 'e'}) // end key
 		write(v)
 	}
-	return pluginSpecHash(h.Sum64())
+	return pluginHash(h.Sum64())
+}
+
+func hashLocalPath(path string) pluginHash {
+	var h maphash.Hash
+	h.SetSeed(mapHashSeed)
+	h.WriteString("local!")
+	h.WriteString(path)
+	return pluginHash(h.Sum64())
 }
 
 type runBundle struct {
@@ -283,7 +291,7 @@ type state struct {
 	dag      *pdag.DAG[step]
 
 	// A mapping of plugins already managed by dag.
-	seen  map[pluginSpecHash]cachedPlugin
+	seen  map[pluginHash]cachedPlugin
 	seenM *sync.Mutex
 
 	cleanupFuncs []func()
@@ -310,42 +318,8 @@ func ensureUnresolvedSpec(
 	spec workspace.PluginSpec, parentProj project[workspace.BaseProject],
 	runBundleOut *runBundle, // An async out param of where the plugin was installed
 ) error {
-	// First, check if this node is already being processed.
-	state.seenM.Lock()
-	defer state.seenM.Unlock()
-
-	hash := hashPluginSpec(spec)
-	if n, ok := state.seen[hash]; ok {
-		// After n has resolved, we need to update our runBundleOut to be the same
-		// as what is cached. That means that cached plugins have as their node format:
-		//
-		//	original plugin -> copy runBundle -> spec ready -> parent
-
-		specReady, ready := state.dag.NewNode(pluginMarkerStep{
-			spec: spec,
-		})
-		defer ready()
-		contract.AssertNoErrorf(state.dag.NewEdge(specReady, parent),
-			"linking in a new node is safe")
-
-		copyBundle, ready := state.dag.NewNode(copyStep[runBundle]{
-			src: n.runBundle,
-			dst: runBundleOut,
-		})
-		defer ready()
-		contract.AssertNoErrorf(state.dag.NewEdge(copyBundle, specReady),
-			"linking in a new node is safe")
-
-		return state.dag.NewEdge(n.node, copyBundle)
-	}
-
-	specReady, ready := state.dag.NewNode(pluginMarkerStep{spec: spec})
+	specReady, ready := state.dag.NewNode(noOpStep{})
 	contract.AssertNoErrorf(state.dag.NewEdge(specReady, parent), "linking in a new node is safe")
-
-	state.seen[hash] = cachedPlugin{
-		node:      specReady,
-		runBundle: runBundleOut,
-	}
 
 	// First, we need resolve the spec into a concrete option. Since this can involve
 	// network calls, we perform resolves in parallel.
@@ -506,9 +480,66 @@ type resolveStep struct {
 	runBundleOut *runBundle
 }
 
+// newSpecNode adds a new spec to the DAG, or de-duplicates the spec.
+//
+// Correct usage looks like this:
+//
+//	spec, ready, isDuplicate, err := newSpecNode(...)
+//	if err != nil {
+//		return err
+//	}
+//	if isDuplicate {
+//		return nil
+//	}
+//	// At this point, we are now responsible for ensuring that ready is called.
+func newSpecNode(hash pluginHash, spec workspace.PluginSpec, runBundleOut *runBundle, state state, parent pdag.Node) (pdag.Node, pdag.Done, bool, error) {
+	specReady, ready := state.dag.NewNode(pluginMarkerStep{
+		spec: spec,
+	})
+
+	state.seenM.Lock()
+	defer state.seenM.Unlock()
+	if n, ok := state.seen[hash]; ok {
+		// After n has resolved, we need to update our runBundleOut to be the same
+		// as what is cached. That means that cached plugins have as their node format:
+		//
+		//	original plugin -> copy runBundle -> spec ready -> parent
+
+		defer ready()
+		contract.AssertNoErrorf(state.dag.NewEdge(specReady, parent),
+			"linking in a new node is safe")
+
+		copyBundle, ready := state.dag.NewNode(copyStep[runBundle]{
+			src: n.runBundle,
+			dst: runBundleOut,
+		})
+		defer ready()
+		contract.AssertNoErrorf(state.dag.NewEdge(copyBundle, specReady),
+			"linking in a new node is safe")
+
+		return n.node, func() {}, true, state.dag.NewEdge(n.node, copyBundle)
+	}
+
+	err := state.dag.NewEdge(specReady, parent)
+	if err != nil {
+		ready()
+		return pdag.Node{}, nil, false, err
+	}
+	state.seen[hash] = cachedPlugin{
+		node:      specReady,
+		runBundle: runBundleOut,
+	}
+
+	return specReady, ready, false, nil
+}
+
+// Resolve a package into something that we can get.
+//
+// The resolution step is intertwined with de-duplicating nodes
 func (step resolveStep) run(ctx context.Context, p state) error {
 	defer step.done()
 
+	// TODO: The registry should be wrapped in a caching layer to de-duplicate calls.
 	result, err := packageresolution.Resolve(ctx, p.registry, p.ws, step.spec,
 		p.options.Options, step.parentProj.proj)
 	if err != nil {
@@ -520,17 +551,38 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 	// a PulumiPlugin file found.
 	case packageresolution.LocalPathResult:
 		projectDir := result.LocalPath
-		// TODO: What about [result.RelativeToWorkspace]? Right now it's always false, but I don't think it should be.
+		// TODO: What about [result.RelativeToWorkspace]? Right now it's always
+		// false, but I don't think it should be.
 		if !filepath.IsAbs(projectDir) /* && result.RelativeToWorkspace */ {
 			projectDir = filepath.Join(step.parentProj.projectDir, result.LocalPath)
 		}
+
+		// Now that we have fully resolved the file path, we can de-duplicate to
+		// make sure that we won't reference the same node twice in the graph.
+		//
+		// Local paths are identified uniquely by their paths, so we use that to
+		// de-duplicate.
+
+		absPath, err := filepath.Abs(projectDir)
+		if err != nil {
+			return err
+		}
+		specNode, ready, isDuplicate, err := newSpecNode(hashLocalPath(absPath), step.spec, step.runBundleOut, p, step.parent)
+		if err != nil {
+			return err
+		}
+		if isDuplicate {
+			return nil
+		}
+
+		defer ready()
 		if step.runBundleOut != nil {
 			step.runBundleOut.pluginDir = projectDir
 		}
+
 		// We don't need to download what's at a local path result, but we might
 		// need to download it's dependencies.
-
-		return ensureDownloadedPluginDirHasDependenciesAndIsInstalled(ctx, p, step.parent, "", projectDir, nil)
+		return ensureDownloadedPluginDirHasDependenciesAndIsInstalled(ctx, p, specNode, "", projectDir, nil)
 
 	// We have a normal spec to download and install, so let's run that process.
 	//
@@ -543,11 +595,13 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 	//
 	// 3. Install the downloaded project.
 	case packageresolution.ExternalSourceResult:
-
-		// Start by defining a new scope of work: Installing this spec (and it's
-		// dependencies).
-		specFinished, specReady := p.dag.NewNode(noOpStep{})
-		contract.AssertNoErrorf(p.dag.NewEdge(specFinished, step.parent), "new nodes cannot be cyclic")
+		specFinished, specReady, isDuplicate, err := newSpecNode(hashPluginSpec(result.Spec), result.Spec, step.runBundleOut, p, step.parent)
+		if err != nil {
+			return err
+		}
+		if isDuplicate {
+			return nil
+		}
 
 		// Start with the download. The downloadStep will take care of attaching
 		// steps for (2) and (3) to specFinished.
@@ -563,10 +617,6 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 		return nil
 
 	case packageresolution.RegistryResult:
-		// Start by defining a new scope of work: Installing this spec (and it's dependencies).
-		specFinished, specReady := p.dag.NewNode(noOpStep{})
-		contract.AssertNoErrorf(p.dag.NewEdge(specFinished, step.parent), "new nodes cannot be cyclic")
-
 		spec := workspace.PluginSpec{
 			Name:              result.Metadata.Name,
 			Kind:              apitype.ResourcePlugin,
@@ -582,6 +632,14 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 				Version: result.Metadata.Version,
 				Value:   p.Parameter,
 			}
+		}
+
+		specFinished, specReady, isDuplicate, err := newSpecNode(hashPluginSpec(spec), spec, step.runBundleOut, p, step.parent)
+		if err != nil {
+			return err
+		}
+		if isDuplicate {
+			return nil
 		}
 
 		// Start with the download. The downloadStep will take care of attaching

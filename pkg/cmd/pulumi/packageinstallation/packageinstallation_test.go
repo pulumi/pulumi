@@ -201,6 +201,9 @@ func TestInstallPluginWithDiamondDependency(t *testing.T) {
 		IsExternalURL(func(source string) bool {
 			return true
 		}),
+		IsExternalURL(func(source string) bool {
+			return true
+		}),
 		StandardDownloadPlugin,
 		StandardDetectPluginPathAt,
 		StandardLoadPluginProject(
@@ -291,6 +294,9 @@ func TestInstallPluginWithCyclicDependency(t *testing.T) {
 					"plugin-b": {Source: "plugin-b"},
 				},
 			),
+			IsExternalURL(func(source string) bool {
+				return true
+			}),
 		},
 	}
 
@@ -410,6 +416,9 @@ func TestInstallInProjectWithSharedDependency(t *testing.T) {
 			return true, nil
 		}),
 		StandardLinkPackage,
+		IsExternalURL(func(source string) bool {
+			return true
+		}),
 		StandardLinkPackage,
 		StandardInstallPluginAt,
 		StandardLinkPackage,
@@ -465,17 +474,10 @@ func TestInstallInProjectWithRelativePaths(t *testing.T) {
 			workspace.NewProjectRuntimeInfo("python", nil),
 			nil,
 		),
-		// TODO: De-duplication failed here
-		StandardDetectPluginPathAt,
-		StandardLoadPluginProject(
-			workspace.NewProjectRuntimeInfo("python", nil),
-			nil,
-		),
 		StandardInstallPluginAt,
 		StandardLinkPackage,
 		StandardInstallPluginAt,
 		StandardLinkPackage,
-		StandardInstallPluginAt,
 		StandardLinkPackage,
 		StandardInstallPluginAt,
 		StandardLinkPackage,
