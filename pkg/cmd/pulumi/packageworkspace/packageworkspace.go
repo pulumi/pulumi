@@ -203,7 +203,7 @@ func (w Workspace) LinkPackage(
 
 	boundSchema, err := bindSpec(schemaSpec, schema.NewPluginLoader(w.host))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to bind schema: %w", err)
 	}
 
 	// We _always_ want SupportPack turned on for `package add`, this is an option on schemas because it can change
@@ -213,7 +213,7 @@ func (w Workspace) LinkPackage(
 
 	tmpDir, servers, err := w.genSDK(ctx, runtimeInfo.Name(), boundSchema)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to generate SDK: %w", err)
 	}
 
 	pkgName := boundSchema.Name
