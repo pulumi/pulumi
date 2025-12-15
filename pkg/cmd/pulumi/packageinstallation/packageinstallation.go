@@ -520,7 +520,8 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 	// a PulumiPlugin file found.
 	case packageresolution.LocalPathResult:
 		projectDir := result.LocalPath
-		if result.RelativeToWorkspace {
+		// TODO: What about [result.RelativeToWorkspace]? Right now it's always false, but I don't think it should be.
+		if !filepath.IsAbs(projectDir) /* && result.RelativeToWorkspace */ {
 			projectDir = filepath.Join(step.parentProj.projectDir, result.LocalPath)
 		}
 		if step.runBundleOut != nil {

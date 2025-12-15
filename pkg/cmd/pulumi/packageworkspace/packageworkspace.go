@@ -85,6 +85,13 @@ func (w Workspace) InstallPluginAt(ctx context.Context, dirPath string, project 
 		return err
 	}
 
+	if !filepath.IsAbs(dirPath) {
+		dirPath, err = filepath.Abs(dirPath)
+		if err != nil {
+			return err
+		}
+	}
+
 	info := plugin.NewProgramInfo(dirPath, dirPath, ".", project.Runtime.Options())
 	return cmdutil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
 		Info:                    info,

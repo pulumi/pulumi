@@ -415,3 +415,69 @@ func TestInstallInProjectWithSharedDependency(t *testing.T) {
 		StandardLinkPackage,
 	)
 }
+
+// TestInstallInProjectWithRelativePaths tests that InstallPluginAt is called with paths
+// correctly resolved relative to projectDir for packages in various relative locations.
+//
+// Dependency graph:
+//
+//	P -> A -> C
+//	P -> B -> C
+//
+// Where:
+//   - P is the project at /work/project
+//   - A is a package at ".." (resolves to /work)
+//   - B is a package at "./pkg-b" (resolves to /work/project/pkg-b)
+//   - C is a shared dependency /work/pkg-c
+func TestInstallInProjectWithRelativePaths(t *testing.T) {
+	t.Parallel()
+
+	replayInstallInProject(t, replayInstallInProjectArgs{
+		project: &workspace.Project{
+			Name:    "test-project",
+			Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+		},
+		projectDir: "/work/project",
+		options: packageinstallation.Options{
+			Concurrency: 1,
+		},
+		packages: map[string]workspace.PackageSpec{
+			"a": {Source: ".."},
+			"b": {Source: "./pkg-b"},
+		},
+	},
+		StandardDetectPluginPathAt,
+		StandardLoadPluginProject(
+			workspace.NewProjectRuntimeInfo("go", nil),
+			map[string]workspace.PackageSpec{
+				"pkg-c": {Source: "./pkg-c"},
+			},
+		),
+		StandardDetectPluginPathAt,
+		StandardLoadPluginProject(
+			workspace.NewProjectRuntimeInfo("nodejs", nil),
+			map[string]workspace.PackageSpec{
+				"pkg-c": {Source: "../../pkg-c"},
+			},
+		),
+		StandardDetectPluginPathAt,
+		StandardLoadPluginProject(
+			workspace.NewProjectRuntimeInfo("python", nil),
+			nil,
+		),
+		// TODO: De-duplication failed here
+		StandardDetectPluginPathAt,
+		StandardLoadPluginProject(
+			workspace.NewProjectRuntimeInfo("python", nil),
+			nil,
+		),
+		StandardInstallPluginAt,
+		StandardLinkPackage,
+		StandardInstallPluginAt,
+		StandardLinkPackage,
+		StandardInstallPluginAt,
+		StandardLinkPackage,
+		StandardInstallPluginAt,
+		StandardLinkPackage,
+	)
+}
