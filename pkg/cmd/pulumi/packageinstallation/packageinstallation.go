@@ -492,7 +492,9 @@ type resolveStep struct {
 //		return nil
 //	}
 //	// At this point, we are now responsible for ensuring that ready is called.
-func newSpecNode(hash pluginHash, spec workspace.PluginSpec, runBundleOut *runBundle, state state, parent pdag.Node) (pdag.Node, pdag.Done, bool, error) {
+func newSpecNode(
+	hash pluginHash, spec workspace.PluginSpec, runBundleOut *runBundle, state state, parent pdag.Node,
+) (pdag.Node, pdag.Done, bool, error) {
 	specReady, ready := state.dag.NewNode(pluginMarkerStep{
 		spec: spec,
 	})
@@ -595,7 +597,8 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 	//
 	// 3. Install the downloaded project.
 	case packageresolution.ExternalSourceResult:
-		specFinished, specReady, isDuplicate, err := newSpecNode(hashPluginSpec(result.Spec), result.Spec, step.runBundleOut, p, step.parent)
+		specFinished, specReady, isDuplicate, err := newSpecNode(
+			hashPluginSpec(result.Spec), result.Spec, step.runBundleOut, p, step.parent)
 		if err != nil {
 			return err
 		}
@@ -634,7 +637,8 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 			}
 		}
 
-		specFinished, specReady, isDuplicate, err := newSpecNode(hashPluginSpec(spec), spec, step.runBundleOut, p, step.parent)
+		specFinished, specReady, isDuplicate, err := newSpecNode(
+			hashPluginSpec(spec), spec, step.runBundleOut, p, step.parent)
 		if err != nil {
 			return err
 		}
