@@ -65,17 +65,20 @@ The `pulumi` CLI installs provider plugins in a lot of places:
 #### Engine installs
 
 Engine behavior depends on what is present in the global cache, but only for plugins in
-state where the plugin doesn’t specify a version.  Installs do not handle plugins that
-themselves have dependencies at all. You can get subtly different behavior between prompt
-and lazy installs for packages that are specified in the packages section of a project.
+state where the plugin doesn’t specify a version. Installs do not handle plugins that
+themselves have plugin dependencies at all, but they handle normal dependencies[^1]. You can
+get subtly different behavior between up-front and lazy installs for packages that are
+specified in the packages section of a project.
 
-##### Prompt
+[^1]: That is, `npm instgall`, `pip install`, etc.
+
+##### Up-front
 
 Engine related installs all call `engine.EnsurePluginsAreInstalled`. For plugins specs
 that are passed to that function, we use on disk versions if present, otherwise we fetch
 the latest version. After plugins are downloaded, `pkg/workspace.InstallPluginContent` is
 called to install the plugin. This implementation is project aware, meaning that it takes
-into account what is packages are present in the `packages` section of your `Pulumi.yaml`.
+into account what packages are present in the `packages` section of your `Pulumi.yaml`.
 
 ##### Lazy
 
