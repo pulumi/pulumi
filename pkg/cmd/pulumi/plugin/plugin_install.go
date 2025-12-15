@@ -275,7 +275,7 @@ func installPluginSpec(
 ) error {
 	// If we got here, actually try to do the download.
 	var source string
-	var payload pluginstorage.PluginContent
+	var payload pluginstorage.Content
 	var err error
 	if file == "" {
 		withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
@@ -308,7 +308,7 @@ func installPluginSpec(
 	return nil
 }
 
-func getFilePayload(file string, spec workspace.PluginSpec) (pluginstorage.PluginContent, error) {
+func getFilePayload(file string, spec workspace.PluginSpec) (pluginstorage.Content, error) {
 	source := file
 	stat, err := os.Stat(file)
 	if err != nil {

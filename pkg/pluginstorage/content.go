@@ -29,13 +29,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
-type PluginContent interface {
+type Content interface {
 	io.Closer
 
 	writeToDir(pathToDir string) error
 }
 
-func SingleFilePlugin(f *os.File, spec workspace.PluginSpec) PluginContent {
+func SingleFilePlugin(f *os.File, spec workspace.PluginSpec) Content {
 	return singleFilePlugin{F: f, Kind: spec.Kind, Name: spec.Name}
 }
 
@@ -63,7 +63,7 @@ func (p singleFilePlugin) Close() error {
 	return p.F.Close()
 }
 
-func TarPlugin(tgz io.ReadCloser) PluginContent {
+func TarPlugin(tgz io.ReadCloser) Content {
 	return tarPlugin{Tgz: tgz}
 }
 
@@ -79,7 +79,7 @@ func (p tarPlugin) writeToDir(finalPath string) error {
 	return archive.ExtractTGZ(p.Tgz, finalPath)
 }
 
-func DirPlugin(rootPath string) PluginContent {
+func DirPlugin(rootPath string) Content {
 	return dirPlugin{Root: rootPath}
 }
 

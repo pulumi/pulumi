@@ -27,7 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// DownloadPluginContent installs a plugin's tarball into the cache. It validates that
+// UnpackContents installs a plugin's tarball into the cache. It validates that
 // plugin names are in the expected format. cleanup *must* be called to avoid leaking
 // system level resources. It should be passed `true` if the plugin was successfully
 // installed, and `false` otherwise.
@@ -46,8 +46,8 @@ import (
 // "<spec>.partial" indicates that the plugin is not yet fully installed. "<spec>.partial"
 // should be removed after the plugin is *successfully* installed, but left if the install
 // fails for any reason.
-func DownloadPluginContent(
-	ctx context.Context, spec workspace.PluginSpec, content PluginContent, reinstall bool,
+func UnpackContents(
+	ctx context.Context, spec workspace.PluginSpec, content Content, reinstall bool,
 ) (cleanup func(success bool), err error) {
 	defer contract.IgnoreClose(content)
 

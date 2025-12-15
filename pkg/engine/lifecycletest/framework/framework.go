@@ -123,7 +123,7 @@ func (NopPluginManager) DownloadPlugin(
 func (NopPluginManager) InstallPlugin(
 	ctx context.Context,
 	plugin workspace.PluginSpec,
-	content pluginstorage.PluginContent,
+	content pluginstorage.Content,
 	reinstall bool,
 ) error {
 	return nil

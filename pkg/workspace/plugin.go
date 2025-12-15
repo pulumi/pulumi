@@ -117,9 +117,9 @@ func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginSpec,
 // when a plugin needs it's dependencies to be installed before it can safely be
 // installed.
 func InstallPluginContent(
-	ctx context.Context, spec workspace.PluginSpec, content pluginstorage.PluginContent, reinstall bool,
+	ctx context.Context, spec workspace.PluginSpec, content pluginstorage.Content, reinstall bool,
 ) (err error) {
-	done, err := pluginstorage.DownloadPluginContent(ctx, spec, content, reinstall)
+	done, err := pluginstorage.UnpackContents(ctx, spec, content, reinstall)
 	if err != nil {
 		return err
 	}
