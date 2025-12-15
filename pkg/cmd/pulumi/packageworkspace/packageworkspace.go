@@ -27,6 +27,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -149,8 +150,8 @@ func (w Workspace) DownloadPlugin(
 	}
 
 	logging.V(1).Infof("unpacking provider %s", pluginSpec.Name)
-	cleanup, err := workspace.DownloadPluginContent(
-		ctx, pluginSpec, workspace.TarPlugin(downloadedFile), true, /* reinstall */
+	cleanup, err := pluginstorage.UnpackContents(
+		ctx, pluginSpec, pluginstorage.TarPlugin(downloadedFile), true, /* reinstall */
 	)
 	if err != nil {
 		return "", nil, err
