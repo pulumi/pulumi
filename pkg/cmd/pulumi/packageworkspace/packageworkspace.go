@@ -188,6 +188,7 @@ func (w Workspace) LinkPackage(
 	if err != nil {
 		return fmt.Errorf("failed to run package for linking: %w", err)
 	}
+	defer contract.IgnoreClose(p)
 
 	var schemaRequest plugin.GetSchemaRequest
 	if paramResp != nil {
@@ -280,7 +281,7 @@ type servers struct {
 	grpc *plugin.GrpcServer
 }
 
-func (s servers) Close() error { return errors.Join(s.lang.Close(), s.grpc.Close()) }
+func (s servers) Close() error { return errors.Join(s.lang.Close(), s.grpc.Close(), s.pctx.Close()) }
 
 func (w Workspace) servers(ctx context.Context, language string, dir string) (servers, error) {
 	languageRuntime, err := w.host.LanguageRuntime(language)
@@ -354,7 +355,7 @@ func (w Workspace) runPackage(
 	ctx context.Context, rootDir, pluginPath string, params plugin.ParameterizeParameters,
 ) (plugin.Provider, *plugin.ParameterizeResponse, error) {
 	pctx := plugin.NewContextWithHost(ctx, w.sink, w.statusSink, noCloseHost{w.host}, rootDir, rootDir, w.parentSpan)
-	p, err := plugin.NewProviderFromPath(w.host, pctx, pluginPath)
+	p, err := plugin.NewProviderFromPath(noCloseHost{w.host}, pctx, pluginPath)
 	if err != nil {
 		return nil, nil, err
 	}

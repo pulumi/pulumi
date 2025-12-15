@@ -22,6 +22,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"sync"
 
@@ -430,14 +431,19 @@ func ensureDownloadedPluginDirHasDependenciesAndIsInstalled(
 	case errors.Is(err, workspace.ErrPluginNotFound):
 		binaryName := "pulumi-resource-" + name
 		binaryPath := filepath.Join(projectDir, binaryName)
+		if runtime.GOOS == "windows" {
+			binaryPath += ".exe"
+		}
 		isExec, err := state.ws.IsExecutable(ctx, binaryPath)
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return err
 		} else if isExec {
 			runBundleOut.pluginPath = binaryPath
 			// A binary was found, so this plugin is done.
-			downloadCleanup.f(true)
-			downloadCleanup.called = true
+			if downloadCleanup != nil {
+				downloadCleanup.f(true)
+				downloadCleanup.called = true
+			}
 			return nil
 		}
 		return fmt.Errorf("expected %s to have an executable named %s or a PulumiPlugin file", projectDir, binaryName)
@@ -590,7 +596,8 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 
 		// We don't need to download what's at a local path result, but we might
 		// need to download it's dependencies.
-		return ensureDownloadedPluginDirHasDependenciesAndIsInstalled(ctx, p, specNode, "", projectDir, nil, step.runBundleOut)
+		return ensureDownloadedPluginDirHasDependenciesAndIsInstalled(ctx,
+			p, specNode, "", projectDir, nil, step.runBundleOut)
 
 	// We have a normal spec to download and install, so let's run that process.
 	//

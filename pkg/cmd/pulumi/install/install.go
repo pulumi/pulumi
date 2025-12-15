@@ -42,7 +42,6 @@ import (
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
@@ -105,31 +104,12 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 						return err
 					}
 
-					pctx, err := plugin.NewContextWithRoot(ctx,
-						cmdutil.Diag(),
-						cmdutil.Diag(),
-						nil, // host
-						cwd, // pwd
-						cwd, // rot
-						proj.Runtime.Options(),
-						false, // disableProviderPreview
-						nil,   // tracingSpan
-						nil,   // Plugins
-						proj.GetPackageSpecs(),
-						nil, // config
-						nil, // debugging
-					)
-					if err != nil {
-						return err
-					}
-					defer contract.IgnoreClose(pctx)
-
 					// Cloud registry is linked to a backend, but we don't have
 					// one available in a plugin. Use the unauthenticated
 					// registry.
 					reg := unauthenticatedregistry.New(cmdutil.Diag(), env.Global())
 
-					if err := installPackagesFromProject(pctx.Base(), proj, cwd, reg, parallel,
+					if err := installPackagesFromProject(cmd.Context(), proj, cwd, reg, parallel,
 						cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
 						return fmt.Errorf("installing `packages` from PulumiPlugin.yaml: %w", err)
 					}

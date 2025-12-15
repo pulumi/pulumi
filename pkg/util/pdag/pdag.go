@@ -270,6 +270,9 @@ func (g *DAG[T]) Walk(ctx context.Context, process func(context.Context, T) erro
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		for node, done := range g.Drain(ctx) {
+			if err := context.Cause(ctx); err != nil {
+				return err
+			}
 			err := process(ctx, node)
 			done()
 			if err != nil {
