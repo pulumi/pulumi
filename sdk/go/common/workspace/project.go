@@ -199,7 +199,7 @@ func (ps PackageSpec) MarshalYAML() (any, error) {
 	return marshalPackageSpec(ps, func(v any) (any, error) { return v, nil })
 }
 
-func (ps *PackageSpec) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (ps *PackageSpec) UnmarshalYAML(unmarshal func(any) error) error {
 	return ps.unmarshal(unmarshal)
 }
 
@@ -209,7 +209,7 @@ type customMarshal interface {
 	json.Marshaler
 	json.Unmarshaler
 	yaml.Marshaler
-	UnmarshalYAML(unmarshal func(interface{}) error) error
+	UnmarshalYAML(unmarshal func(any) error) error
 }
 
 var _ customMarshal = &PackageSpec{}
