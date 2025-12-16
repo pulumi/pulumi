@@ -477,19 +477,19 @@ None of the resources have been moved, it is safe to try again`, err)
 		destSnapshot.Resources = originalDestResources
 		errDest := cmdStack.SaveSnapshot(ctx, dest, destSnapshot, false)
 		if errDest != nil {
-			var deleteCommands string
+			var deleteCommands strings.Builder
 			// Iterate over the resources in reverse order, so resources with no dependencies will be deleted first.
 			for i := len(resourcesToMoveOrdered) - 1; i >= 0; i-- {
-				deleteCommands += fmt.Sprintf(
+				deleteCommands.WriteString(fmt.Sprintf(
 					"\n    pulumi state delete --stack %s '%s'",
 					source.Ref().FullyQualifiedName(),
-					resourcesToMoveOrdered[i].URN)
+					resourcesToMoveOrdered[i].URN))
 			}
 			return fmt.Errorf(`failed to save source snapshot: %w
 
 The resources being moved have already been appended to the destination stack, but will still also be in the
 source stack.  Please remove the resources from the source stack manually using the following commands:%v
-'`, err, deleteCommands)
+'`, err, deleteCommands.String())
 		}
 		return fmt.Errorf(`failed to save source snapshot: %w
 
