@@ -1783,6 +1783,7 @@ func (host *pythonLanguageHost) Link(
 
 	// Map of python package names to paths
 	packages := map[string]string{}
+	var imports strings.Builder
 	for _, dep := range req.Packages {
 		if dep.Package.Name == "pulumi" {
 			packages["pulumi"] = dep.Path
@@ -1844,8 +1845,9 @@ func (host *pythonLanguageHost) Link(
 			packageName = python.PyPack(pkgRef.Namespace(), pkgRef.Name())
 		}
 		packages[packageName] = dep.Path
-		instructions += fmt.Sprintf("  import %s as %s\n", packageName, importName)
+		imports.WriteString(fmt.Sprintf("  import %s as %s\n", packageName, importName))
 	}
+	instructions += imports.String()
 
 	if opts.Toolchain != toolchain.Pip {
 		pyprojectPath := filepath.Join(req.Info.ProgramDirectory, "pyproject.toml")

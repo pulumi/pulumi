@@ -921,24 +921,24 @@ func (display *ProgressDisplay) printPolicies() bool {
 			// do not break; subsequent mandatory violations will override this.
 		}
 
-		var localMark string
+		var localMark strings.Builder
 		if len(info.LocalPaths) > 0 {
-			localMark = " (local: "
+			localMark.WriteString(" (local: ")
 			sort.Strings(info.LocalPaths)
 			for i, path := range info.LocalPaths {
 				if i > 0 {
-					localMark += "; "
+					localMark.WriteString("; ")
 				}
-				localMark += path
+				localMark.WriteString(path)
 			}
-			localMark += ")"
+			localMark.WriteString(")")
 
 			if info.HasCloudPack {
-				localMark += " + (cloud)"
+				localMark.WriteString(" + (cloud)")
 			}
 		}
 
-		display.println(fmt.Sprintf("    %s %s%s%s%s", passFailWarn, colors.SpecInfo, key, colors.Reset, localMark))
+		display.println(fmt.Sprintf("    %s %s%s%s%s", passFailWarn, colors.SpecInfo, key, colors.Reset, localMark.String()))
 		subItemIndent := "        "
 
 		// First show any remediations since they happen first.

@@ -33,20 +33,20 @@ func formatMissingKeys(missingKeys []string) string {
 
 	sort.Strings(missingKeys)
 
-	formattedMissingKeys := ""
+	var formattedMissingKeys strings.Builder
 	for index, key := range missingKeys {
 		// if last index, then use and before the key
 		if index == len(missingKeys)-1 {
-			formattedMissingKeys += fmt.Sprintf("and '%s'", key)
+			formattedMissingKeys.WriteString(fmt.Sprintf("and '%s'", key))
 		} else if index == len(missingKeys)-2 {
 			// no comma before the last key
-			formattedMissingKeys += fmt.Sprintf("'%s' ", key)
+			formattedMissingKeys.WriteString(fmt.Sprintf("'%s' ", key))
 		} else {
-			formattedMissingKeys += fmt.Sprintf("'%s', ", key)
+			formattedMissingKeys.WriteString(fmt.Sprintf("'%s', ", key))
 		}
 	}
 
-	return formattedMissingKeys
+	return formattedMissingKeys.String()
 }
 
 func missingStackConfigurationKeysError(missingKeys []string, stackName string) error {

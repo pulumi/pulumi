@@ -187,11 +187,12 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	// If there exist multiple resources that have the requested URN, prompt the user to select one if we're running
 	// interactively. If we're not, early exit.
 	if !cmdutil.Interactive() {
-		errorMsg := "Resource URN ambiguously referred to multiple resources. Did you mean:\n"
+		var errorMsg strings.Builder
+		errorMsg.WriteString("Resource URN ambiguously referred to multiple resources. Did you mean:\n")
 		for _, res := range candidateResources {
-			errorMsg += fmt.Sprintf("  %s\n", res.ID)
+			errorMsg.WriteString(fmt.Sprintf("  %s\n", res.ID))
 		}
-		return nil, errors.New(errorMsg)
+		return nil, errors.New(errorMsg.String())
 	}
 
 	// Note: this is done to adhere to the same color scheme as the `pulumi new` picker, which also does this.
