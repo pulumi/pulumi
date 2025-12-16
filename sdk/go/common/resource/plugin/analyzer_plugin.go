@@ -71,7 +71,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	path, err := workspace.GetPluginPath(
 		ctx.baseContext,
 		ctx.Diag,
-		workspace.PluginSpec{
+		workspace.PluginDescriptor{
 			Name: strings.ReplaceAll(string(name), tokens.QNameDelimiter, "_"),
 			Kind: apitype.AnalyzerPlugin,
 		},
@@ -104,7 +104,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 // the plugin by path.
 func NewPolicyAnalyzer(
 	host Host, ctx *Context, name tokens.QName, policyPackPath string, opts *PolicyAnalyzerOptions,
-	hasPlugin func(workspace.PluginSpec) bool,
+	hasPlugin func(workspace.PluginDescriptor) bool,
 ) (Analyzer, error) {
 	projPath := filepath.Join(policyPackPath, "PulumiPolicy.yaml")
 	proj, err := workspace.LoadPolicyPack(projPath)
@@ -154,7 +154,7 @@ func NewPolicyAnalyzer(
 	// legacy behavior.
 	if proj.Runtime.Name() != "python" && proj.Runtime.Name() != "nodejs" {
 		if hasPlugin == nil {
-			hasPlugin = func(spec workspace.PluginSpec) bool {
+			hasPlugin = func(spec workspace.PluginDescriptor) bool {
 				path, err := workspace.GetPluginPath(
 					ctx.baseContext,
 					ctx.Diag,
@@ -164,7 +164,7 @@ func NewPolicyAnalyzer(
 			}
 		}
 
-		foundLanguagePlugin = hasPlugin(workspace.PluginSpec{Name: proj.Runtime.Name(), Kind: apitype.LanguagePlugin})
+		foundLanguagePlugin = hasPlugin(workspace.PluginDescriptor{Name: proj.Runtime.Name(), Kind: apitype.LanguagePlugin})
 	}
 	if !foundLanguagePlugin {
 		// Couldn't get a language plugin, fall back to the old behavior
@@ -180,7 +180,7 @@ func NewPolicyAnalyzer(
 		var pluginPath string
 		pluginPath, err = workspace.GetPluginPath(
 			ctx.baseContext, ctx.Diag,
-			workspace.PluginSpec{Name: policyAnalyzerName, Kind: apitype.AnalyzerPlugin}, host.GetProjectPlugins())
+			workspace.PluginDescriptor{Name: policyAnalyzerName, Kind: apitype.AnalyzerPlugin}, host.GetProjectPlugins())
 
 		var e *workspace.MissingError
 		if errors.As(err, &e) {

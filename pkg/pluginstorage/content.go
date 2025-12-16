@@ -35,7 +35,7 @@ type Content interface {
 	writeToDir(pathToDir string) error
 }
 
-func SingleFilePlugin(f *os.File, spec workspace.PluginSpec) Content {
+func SingleFilePlugin(f *os.File, spec workspace.PluginDescriptor) Content {
 	return singleFilePlugin{F: f, Kind: spec.Kind, Name: spec.Name}
 }
 

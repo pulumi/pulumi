@@ -32,18 +32,18 @@ import (
 )
 
 type mockWorkspace struct {
-	hasPlugin    func(spec workspace.PluginSpec) bool
-	hasPluginGTE func(spec workspace.PluginSpec) (bool, error)
+	hasPlugin    func(spec workspace.PluginDescriptor) bool
+	hasPluginGTE func(spec workspace.PluginDescriptor) (bool, error)
 }
 
-func (m mockWorkspace) HasPlugin(spec workspace.PluginSpec) bool {
+func (m mockWorkspace) HasPlugin(spec workspace.PluginDescriptor) bool {
 	if m.hasPlugin != nil {
 		return m.hasPlugin(spec)
 	}
 	return false
 }
 
-func (m mockWorkspace) HasPluginGTE(spec workspace.PluginSpec) (bool, error) {
+func (m mockWorkspace) HasPluginGTE(spec workspace.PluginDescriptor) (bool, error) {
 	if m.hasPluginGTE != nil {
 		return m.hasPluginGTE(spec)
 	}
@@ -71,7 +71,7 @@ packages:
 	tests := []struct {
 		name             string
 		env              *Options
-		pluginSpec       workspace.PluginSpec
+		pluginSpec       workspace.PluginDescriptor
 		workspace        PluginWorkspace
 		registryResponse func() (registry.Registry, error)
 		setupProject     bool
@@ -80,7 +80,7 @@ packages:
 	}{
 		{
 			name:       "found in IDP registry",
-			pluginSpec: workspace.PluginSpec{Name: "found-pkg"},
+			pluginSpec: workspace.PluginDescriptor{Name: "found-pkg"},
 			registryResponse: func() (registry.Registry, error) {
 				return registry.Mock{
 					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
@@ -108,7 +108,7 @@ packages:
 		},
 		{
 			name:       "not found + pre-registry package",
-			pluginSpec: workspace.PluginSpec{Name: "aws"}, // aws is in the pre-registry allowlist
+			pluginSpec: workspace.PluginDescriptor{Name: "aws"}, // aws is in the pre-registry allowlist
 			registryResponse: func() (registry.Registry, error) {
 				return registry.Mock{
 					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
@@ -116,11 +116,11 @@ packages:
 					},
 				}, nil
 			},
-			expected: ExternalSourceResult{Spec: workspace.PluginSpec{Name: "aws"}},
+			expected: ExternalSourceResult{Spec: workspace.PluginDescriptor{Name: "aws"}},
 		},
 		{
 			name:       "local project package resolves to local path",
-			pluginSpec: workspace.PluginSpec{Name: "my-local-pkg"},
+			pluginSpec: workspace.PluginDescriptor{Name: "my-local-pkg"},
 			registryResponse: func() (registry.Registry, error) {
 				return registry.Mock{
 					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
@@ -133,7 +133,7 @@ packages:
 		},
 		{
 			name:       "local path directly in spec (not from project)",
-			pluginSpec: workspace.PluginSpec{Name: "./direct-local-path"},
+			pluginSpec: workspace.PluginDescriptor{Name: "./direct-local-path"},
 			registryResponse: func() (registry.Registry, error) {
 				return registry.Mock{
 					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
@@ -145,7 +145,7 @@ packages:
 		},
 		{
 			name:       "local project package resolves to Git URL",
-			pluginSpec: workspace.PluginSpec{Name: "another-local"},
+			pluginSpec: workspace.PluginDescriptor{Name: "another-local"},
 			registryResponse: func() (registry.Registry, error) {
 				return registry.Mock{
 					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
@@ -154,11 +154,11 @@ packages:
 				}, nil
 			},
 			setupProject: true,
-			expected:     ExternalSourceResult{Spec: workspace.PluginSpec{Name: "another-local"}},
+			expected:     ExternalSourceResult{Spec: workspace.PluginDescriptor{Name: "another-local"}},
 		},
 		{
 			name:       "Git URL plugin",
-			pluginSpec: workspace.PluginSpec{Name: "example-plugin", PluginDownloadURL: "git://github.com/example/plugin"},
+			pluginSpec: workspace.PluginDescriptor{Name: "example-plugin", PluginDownloadURL: "git://github.com/example/plugin"},
 			registryResponse: func() (registry.Registry, error) {
 				return registry.Mock{
 					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
@@ -167,7 +167,7 @@ packages:
 				}, nil
 			},
 			expected: ExternalSourceResult{
-				Spec: workspace.PluginSpec{
+				Spec: workspace.PluginDescriptor{
 					Name:              "example-plugin",
 					PluginDownloadURL: "git://github.com/example/plugin",
 				},
@@ -175,7 +175,7 @@ packages:
 		},
 		{
 			name:       "not found + no fallback available",
-			pluginSpec: workspace.PluginSpec{Name: "unknown-pkg"},
+			pluginSpec: workspace.PluginDescriptor{Name: "unknown-pkg"},
 			registryResponse: func() (registry.Registry, error) {
 				return registry.Mock{
 					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
@@ -187,7 +187,7 @@ packages:
 		},
 		{
 			name:       "registry error (non-NotFound)",
-			pluginSpec: workspace.PluginSpec{Name: "any-pkg"},
+			pluginSpec: workspace.PluginDescriptor{Name: "any-pkg"},
 			registryResponse: func() (registry.Registry, error) {
 				return registry.Mock{
 					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
@@ -204,7 +204,7 @@ packages:
 		{
 			name:       "pre-registry package with registry disabled",
 			env:        &Options{DisableRegistryResolve: true, Experimental: false},
-			pluginSpec: workspace.PluginSpec{Name: "aws"},
+			pluginSpec: workspace.PluginDescriptor{Name: "aws"},
 			registryResponse: func() (registry.Registry, error) {
 				return registry.Mock{
 					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
@@ -212,12 +212,12 @@ packages:
 					},
 				}, nil
 			},
-			expected: ExternalSourceResult{Spec: workspace.PluginSpec{Name: "aws"}},
+			expected: ExternalSourceResult{Spec: workspace.PluginDescriptor{Name: "aws"}},
 		},
 		{
 			name:       "registry disabled ignores available registry package",
 			env:        &Options{DisableRegistryResolve: true, Experimental: true},
-			pluginSpec: workspace.PluginSpec{Name: "aws"},
+			pluginSpec: workspace.PluginDescriptor{Name: "aws"},
 			registryResponse: func() (registry.Registry, error) {
 				return registry.Mock{
 					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
@@ -225,14 +225,14 @@ packages:
 					},
 				}, nil
 			},
-			expected: ExternalSourceResult{Spec: workspace.PluginSpec{Name: "aws"}},
+			expected: ExternalSourceResult{Spec: workspace.PluginDescriptor{Name: "aws"}},
 		},
 
 		// Environment combination tests for unknown packages
 		{
 			name:       "unknown package with registry disabled",
 			env:        &Options{DisableRegistryResolve: true, Experimental: false},
-			pluginSpec: workspace.PluginSpec{Name: "unknown-package"},
+			pluginSpec: workspace.PluginDescriptor{Name: "unknown-package"},
 			registryResponse: func() (registry.Registry, error) {
 				return registry.Mock{
 					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
@@ -245,7 +245,7 @@ packages:
 		{
 			name:       "unknown package with experimental off",
 			env:        &Options{DisableRegistryResolve: false, Experimental: false},
-			pluginSpec: workspace.PluginSpec{Name: "unknown-package"},
+			pluginSpec: workspace.PluginDescriptor{Name: "unknown-package"},
 			registryResponse: func() (registry.Registry, error) {
 				return registry.Mock{
 					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
@@ -256,8 +256,10 @@ packages:
 			expectedErr: &PackageNotFoundError{Package: "unknown-package"},
 		},
 		{
-			name:       "project source takes precedence over plugin name",
-			pluginSpec: workspace.PluginSpec{Name: "my-local-pkg", PluginDownloadURL: "git://github.com/should-not-use/this"},
+			name: "project source takes precedence over plugin name",
+			pluginSpec: workspace.PluginDescriptor{
+				Name: "my-local-pkg", PluginDownloadURL: "git://github.com/should-not-use/this",
+			},
 			registryResponse: func() (registry.Registry, error) {
 				return registry.Mock{
 					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
@@ -269,11 +271,13 @@ packages:
 			expected:     LocalPathResult{LocalPath: "./local-path", RelativeToWorkspace: true},
 		},
 		{
-			name:       "installed in workspace with exact version",
-			env:        &Options{IncludeInstalledInWorkspace: true, Experimental: true},
-			pluginSpec: workspace.PluginSpec{Name: "installed-pkg", Version: &semver.Version{Major: 1, Minor: 2, Patch: 3}},
+			name: "installed in workspace with exact version",
+			env:  &Options{IncludeInstalledInWorkspace: true, Experimental: true},
+			pluginSpec: workspace.PluginDescriptor{
+				Name: "installed-pkg", Version: &semver.Version{Major: 1, Minor: 2, Patch: 3},
+			},
 			workspace: mockWorkspace{
-				hasPlugin: func(spec workspace.PluginSpec) bool {
+				hasPlugin: func(spec workspace.PluginDescriptor) bool {
 					return spec.Name == "installed-pkg" &&
 						spec.Version != nil &&
 						spec.Version.EQ(semver.Version{Major: 1, Minor: 2, Patch: 3})
@@ -291,9 +295,9 @@ packages:
 		{
 			name:       "installed in workspace without version (GTE check)",
 			env:        &Options{IncludeInstalledInWorkspace: true, Experimental: true},
-			pluginSpec: workspace.PluginSpec{Name: "installed-pkg"},
+			pluginSpec: workspace.PluginDescriptor{Name: "installed-pkg"},
 			workspace: mockWorkspace{
-				hasPluginGTE: func(spec workspace.PluginSpec) (bool, error) {
+				hasPluginGTE: func(spec workspace.PluginDescriptor) (bool, error) {
 					return spec.Name == "installed-pkg", nil
 				},
 			},
@@ -309,10 +313,10 @@ packages:
 		{
 			name:       "not installed in workspace, fallback to registry",
 			env:        &Options{IncludeInstalledInWorkspace: true, Experimental: true},
-			pluginSpec: workspace.PluginSpec{Name: "registry-pkg"},
+			pluginSpec: workspace.PluginDescriptor{Name: "registry-pkg"},
 			workspace: mockWorkspace{
-				hasPlugin:    func(spec workspace.PluginSpec) bool { return false },
-				hasPluginGTE: func(spec workspace.PluginSpec) (bool, error) { return false, nil },
+				hasPlugin:    func(spec workspace.PluginDescriptor) bool { return false },
+				hasPluginGTE: func(spec workspace.PluginDescriptor) (bool, error) { return false, nil },
 			},
 			registryResponse: func() (registry.Registry, error) {
 				return registry.Mock{
@@ -402,7 +406,7 @@ func TestResolvePackage_WithVersion(t *testing.T) {
 	t.Parallel()
 
 	version := semver.Version{Major: 2, Minor: 1, Patch: 0}
-	pluginSpec := workspace.PluginSpec{Name: "versioned-pkg", Version: &version}
+	pluginSpec := workspace.PluginDescriptor{Name: "versioned-pkg", Version: &version}
 	reg := registry.Mock{
 		GetPackageF: func(
 			ctx context.Context, source, publisher, name string, version *semver.Version,
@@ -464,7 +468,7 @@ packages:
 		},
 	}
 
-	pluginSpec := workspace.PluginSpec{Name: "aws"}
+	pluginSpec := workspace.PluginDescriptor{Name: "aws"}
 	result, err := Resolve(
 		context.Background(),
 		reg,
