@@ -111,10 +111,10 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 	t.Parallel()
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 
-	generatedProgram := ""
+	var generatedProgram strings.Builder
 	generator := func(_ io.Writer, p *pcl.Program) error {
 		for _, content := range p.Source() {
-			generatedProgram += content
+			generatedProgram.WriteString(content)
 		}
 		return nil
 	}
@@ -181,7 +181,7 @@ resource second "aws:s3/bucketObject:BucketObject" {
 
 }
 `
-	assert.Equal(t, expectedCode, generatedProgram)
+	assert.Equal(t, expectedCode, generatedProgram.String())
 }
 
 func TestGenerateLanguageDefinitionsAllowsGeneratingParentVariables(t *testing.T) {
@@ -189,10 +189,10 @@ func TestGenerateLanguageDefinitionsAllowsGeneratingParentVariables(t *testing.T
 
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 
-	generatedProgram := ""
+	var generatedProgram strings.Builder
 	generator := func(_ io.Writer, p *pcl.Program) error {
 		for _, content := range p.Source() {
-			generatedProgram += content
+			generatedProgram.WriteString(content)
 		}
 		return nil
 	}
@@ -250,5 +250,5 @@ parent = parentComponent
 
 }
 `
-	assert.Equal(t, expectedCode, generatedProgram)
+	assert.Equal(t, expectedCode, generatedProgram.String())
 }

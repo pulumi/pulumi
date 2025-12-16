@@ -1375,12 +1375,14 @@ func assertSameStates(t *testing.T, expecteds []*resource.State, actuals []*reso
 	na := len(actuals)
 	assert.Equal(t, ne, na, "different numbers of expected and actual states")
 
-	for i := 0; i < max(ne, na); i++ {
+	for i := range max(ne, na) {
 		var expected, actual *resource.State
 		if i < ne {
+			//#nosec G602 -- false positive, bounds check is performed
 			expected = expecteds[i]
 		}
 		if i < na {
+			//#nosec G602 -- false positive, bounds check is performed
 			actual = actuals[i]
 		}
 		assert.Samef(t, expected, actual, "expected and actual states do not match\n"+
