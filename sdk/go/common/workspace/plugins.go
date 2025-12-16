@@ -914,6 +914,17 @@ type PackageDescriptor struct {
 	Parameterization *Parameterization
 }
 
+// A resolved plugin with parameterization arguments.
+//
+// This is different then a [PackageDescriptor], which holds a parameterization value.
+type UnresolvedPackageDescriptor struct {
+	// The fully resolved plugin descriptor.
+	PluginDescriptor
+
+	// The parameterization args to be applied against the plugin descriptor.
+	ParameterizationArgs []string
+}
+
 func NewPackageDescriptor(spec PluginDescriptor, parameterization *Parameterization) PackageDescriptor {
 	return PackageDescriptor{
 		PluginDescriptor: spec,
