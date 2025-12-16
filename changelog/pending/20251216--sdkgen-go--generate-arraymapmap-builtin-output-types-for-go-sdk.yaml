@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/go
+  description: Generate ArrayMapMap builtin output types for Go SDK
