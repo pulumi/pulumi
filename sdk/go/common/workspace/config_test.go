@@ -103,51 +103,49 @@ func TestValidateStackConfigValues(t *testing.T) {
 	})
 }
 
-func TestValidateStackConfigAndApplyProjectConfig(t *testing.T) {
-	t.Run("Typed Config", func(t *testing.T) {
-		t.Parallel()
-		intType := integerTypeName
-		stringType := stringTypeName
-		boolType := booleanTypeName
-		project := &Project{
-			Name: "testProject",
-			Config: map[string]ProjectConfigType{
-				"testInt": {
-					Type: &intType,
-				},
-				"testNested1.float": {
-					Type: &intType,
-				},
-				"testNested2.bool": {
-					Type: &boolType,
-				},
-				"testSecret": {
-					Type:   &stringType,
-					Secret: true,
-				},
-				"testDefault": {
-					Type:    &intType,
-					Default: 1,
-				},
+func TestValidateStackConfigAndApplyProjectConfig_TypedConfig(t *testing.T) {
+	t.Parallel()
+	intType := integerTypeName
+	stringType := stringTypeName
+	boolType := booleanTypeName
+	project := &Project{
+		Name: "testProject",
+		Config: map[string]ProjectConfigType{
+			"testInt": {
+				Type: &intType,
 			},
-		}
-		stackCfg := config.Map{
-			config.MustMakeKey("testProject", "testInt"):     config.NewTypedValue("1", config.TypeInt),
-			config.MustMakeKey("testProject", "testNested1"): config.NewObjectValue("{\"float\":1.0}"),
-			config.MustMakeKey("testProject", "testNested2"): config.NewObjectValue("{\"bool\":true}"),
-			config.MustMakeKey("testProject", "testSecret"):  config.NewSecureValue("dGVzdFZhbHVl"),
-		}
-		crypter, _, _, calledDecryptValue, calledBatchDecrypt := getCountingBase64Crypter(t.Context(), t)
+			"testNested1.float": {
+				Type: &intType,
+			},
+			"testNested2.bool": {
+				Type: &boolType,
+			},
+			"testSecret": {
+				Type:   &stringType,
+				Secret: true,
+			},
+			"testDefault": {
+				Type:    &intType,
+				Default: 1,
+			},
+		},
+	}
+	stackCfg := config.Map{
+		config.MustMakeKey("testProject", "testInt"):     config.NewTypedValue("1", config.TypeInt),
+		config.MustMakeKey("testProject", "testNested1"): config.NewObjectValue("{\"float\":1.0}"),
+		config.MustMakeKey("testProject", "testNested2"): config.NewObjectValue("{\"bool\":true}"),
+		config.MustMakeKey("testProject", "testSecret"):  config.NewSecureValue("dGVzdFZhbHVl"),
+	}
+	crypter, _, _, calledDecryptValue, calledBatchDecrypt := getCountingBase64Crypter(t.Context(), t)
 
-		err := ValidateStackConfigAndApplyProjectConfig(
-			t.Context(), "stackA", project, esc.Value{}, stackCfg, crypter, crypter,
-		)
-		require.NoError(t, err)
+	err := ValidateStackConfigAndApplyProjectConfig(
+		t.Context(), "stackA", project, esc.Value{}, stackCfg, crypter, crypter,
+	)
+	require.NoError(t, err)
 
-		// Validate that decryption was cached appropriately.
-		require.Equal(t, 0, *calledDecryptValue)
-		require.Equal(t, 1, *calledBatchDecrypt)
-	})
+	// Validate that decryption was cached appropriately.
+	require.Equal(t, 0, *calledDecryptValue)
+	require.Equal(t, 1, *calledBatchDecrypt)
 }
 
 func getCountingBase64Crypter(ctx context.Context, t *testing.T) (config.Crypter, *int, *int, *int, *int) {
