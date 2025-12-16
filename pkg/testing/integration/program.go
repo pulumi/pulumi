@@ -2712,6 +2712,9 @@ type AssertPerfBenchmark struct {
 	T                  *testing.T
 	MaxPreviewDuration time.Duration
 	MaxUpdateDuration  time.Duration
+	// MaxEmptyUpdateDuration is the time threshold for noop updates. If zero,
+	// the MaxUpdateDuration is used.
+	MaxEmptyUpdateDuration time.Duration
 	// MaxLowerPercent is the maximum allowed percentage that a test step can be faster
 	// than the benchmark. This is to catch cases where a test step is significantly
 	// faster than expected, which indicates that we should update the benchmark.
@@ -2725,6 +2728,9 @@ func (t AssertPerfBenchmark) ReportCommand(stats TestCommandStats) {
 	}
 	if strings.HasPrefix(stats.StepName, "pulumi-update") {
 		maxDuration = &t.MaxUpdateDuration
+		if strings.HasSuffix(stats.StepName, "-empty") && t.MaxEmptyUpdateDuration != 0 {
+			maxDuration = &t.MaxEmptyUpdateDuration
+		}
 	}
 
 	if maxDuration != nil && *maxDuration != 0 {
