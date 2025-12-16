@@ -33,7 +33,7 @@ require (
 	google.golang.org/grpc v1.71.1
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
-	pgregory.net/rapid v0.5.5
+	pgregory.net/rapid v0.6.1
 )
 
 require (
@@ -50,6 +50,7 @@ require (
 	github.com/pkg/term v1.1.0
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
 	github.com/pulumi/esc v0.17.0
+	github.com/pulumi/pulumi/pkg/v3 v3.154.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	golang.org/x/sync v0.12.0
 	golang.org/x/term v0.37.0

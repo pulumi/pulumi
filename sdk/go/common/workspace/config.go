@@ -77,8 +77,7 @@ func validateStackConfigValues(
 		return nil
 	}
 
-	// Batch decrypt all stack config values once to warm the cache.
-	_, err := stackConfig.Decrypt(dec)
+	decryptedConfig, err := stackConfig.Decrypt(dec)
 	if err != nil {
 		return err
 	}
@@ -103,14 +102,8 @@ func validateStackConfigValues(
 		}
 
 		if projectConfigType.IsExplicitlyTyped() {
-			// We need to use stackValue.Value(dec) here to account for nested values.
-			// We cannot get these from the decrypted config map as it does not handle nested values.
-			// Uses the cached decrypted value from the batch decrypt above.
-			decryptedValue, err := stackValue.Value(dec)
-			if err != nil {
-				return err
-			}
-			err = validateStackConfigValue(stackName, projectConfigKey, projectConfigType, stackValue, decryptedValue)
+			decryptedValue := decryptedConfig[key]
+			err := validateStackConfigValue(stackName, projectConfigKey, projectConfigType, stackValue, decryptedValue)
 			if err != nil {
 				return err
 			}
