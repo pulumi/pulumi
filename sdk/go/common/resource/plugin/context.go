@@ -20,10 +20,12 @@ import (
 	"sync"
 
 	"github.com/opentracing/opentracing-go"
+	interceptors "github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/rpcdebug"
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -122,6 +124,22 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 		}
 		pctx.Host = h
 	}
+
+	if logFile := env.DebugGRPC.Value(); logFile != "" {
+		di, err := interceptors.NewDebugInterceptor(interceptors.DebugInterceptorOptions{
+			LogFile: logFile,
+			Mutex:   pctx.DebugTraceMutex,
+		})
+		if err != nil {
+			return nil, err
+		}
+		pctx.DialOptions = func(metadata any) []grpc.DialOption {
+			return di.DialOptions(interceptors.LogOptions{
+				Metadata: metadata,
+			})
+		}
+	}
+
 	return pctx, nil
 }
 
