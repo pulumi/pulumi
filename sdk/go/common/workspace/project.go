@@ -165,7 +165,7 @@ func (ps *PackageSpec) unmarshal(from func(any) error) error {
 		parts := strings.SplitN(s, "@", 2)
 		source = parts[0]
 		if len(parts) > 1 {
-			version = parts[2]
+			version = parts[1]
 		}
 		*ps = PackageSpec{
 			Source:  source,
