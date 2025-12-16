@@ -34,23 +34,21 @@ func DetailedError(err error) string {
 	var msg strings.Builder
 	msg.WriteString(errorMessage(err))
 
-	var stackTraces strings.Builder
-	var separators strings.Builder
 	hasstack := false
 
 	for {
 		if stackerr, ok := err.(interface {
 			StackTrace() errors.StackTrace
 		}); ok {
-			separators.WriteString("\n")
+			msg.WriteString("\n")
 			if hasstack {
-				separators.WriteString("CAUSED BY...\n")
+				msg.WriteString("CAUSED BY...\n")
 			}
 			hasstack = true
 
 			// Append the stack trace.
 			for _, f := range stackerr.StackTrace() {
-				stackTraces.WriteString(fmt.Sprintf("%+v\n", f))
+				msg.WriteString(fmt.Sprintf("%+v\n", f))
 			}
 
 			// Keep going up the causer chain, if any.
@@ -63,8 +61,6 @@ func DetailedError(err error) string {
 			break
 		}
 	}
-	msg.WriteString(stackTraces.String())
-	msg.WriteString(separators.String())
 	return msg.String()
 }
 
