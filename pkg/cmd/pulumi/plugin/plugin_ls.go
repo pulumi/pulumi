@@ -40,7 +40,7 @@ func newPluginLsCmd() *cobra.Command {
 			var plugins []workspace.PluginInfo
 			var err error
 			if projectOnly {
-				var pluginSpecs []workspace.PluginSpec
+				var pluginSpecs []workspace.PluginDescriptor
 				if pluginSpecs, err = getProjectPlugins(); err != nil {
 					return fmt.Errorf("loading project plugins: %w", err)
 				}

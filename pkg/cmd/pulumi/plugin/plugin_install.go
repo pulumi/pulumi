@@ -96,12 +96,12 @@ type pluginInstallCmd struct {
 	packageResolutionOptions packageresolution.Options
 
 	pluginGetLatestVersion func(
-		workspace.PluginSpec, context.Context,
+		workspace.PluginDescriptor, context.Context,
 	) (*semver.Version, error) // == workspace.PluginSpec.GetLatestVersion
 
 	installPluginSpec func(
 		ctx context.Context, label string,
-		install workspace.PluginSpec, file string,
+		install workspace.PluginDescriptor, file string,
 		sink diag.Sink, color colors.Colorization, reinstall bool,
 	) error // == installPluginSpec
 }
@@ -117,7 +117,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		cmd.color = cmdutil.GetGlobalColorization()
 	}
 	if cmd.pluginGetLatestVersion == nil {
-		cmd.pluginGetLatestVersion = (workspace.PluginSpec).GetLatestVersion
+		cmd.pluginGetLatestVersion = (workspace.PluginDescriptor).GetLatestVersion
 	}
 	if cmd.installPluginSpec == nil {
 		cmd.installPluginSpec = installPluginSpec
@@ -127,7 +127,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	// Parse the kind, name, and version, if specified.
-	var installs []workspace.PluginSpec
+	var installs []workspace.PluginDescriptor
 	if len(args) > 0 {
 		if !apitype.IsPluginKind(args[0]) {
 			return fmt.Errorf("unrecognized plugin kind: %s", args[0])
@@ -199,7 +199,19 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 				return err
 			}
 
-			updatedSpec, err := cmd.resolvePluginSpec(ctx, pluginSpec, project)
+			packageSpec := workspace.PackageSpec{
+				Source:            pluginSpec.Name,
+				Checksums:         checksums,
+				PluginDownloadURL: cmd.serverURL,
+			}
+			if version != nil {
+				packageSpec.Version = version.String()
+			}
+			if p, ok := project.GetPackageSpecs()[pluginSpec.Name]; ok {
+				packageSpec = p
+			}
+
+			updatedSpec, err := cmd.resolvePluginSpec(ctx, packageSpec)
 			if err != nil {
 				return err
 			}
@@ -270,7 +282,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 
 func installPluginSpec(
 	ctx context.Context, label string,
-	install workspace.PluginSpec, file string,
+	install workspace.PluginDescriptor, file string,
 	sink diag.Sink, color colors.Colorization, reinstall bool,
 ) error {
 	// If we got here, actually try to do the download.
@@ -308,7 +320,7 @@ func installPluginSpec(
 	return nil
 }
 
-func getFilePayload(file string, spec workspace.PluginSpec) (pluginstorage.Content, error) {
+func getFilePayload(file string, spec workspace.PluginDescriptor) (pluginstorage.Content, error) {
 	source := file
 	stat, err := os.Stat(file)
 	if err != nil {
@@ -344,11 +356,11 @@ func getFilePayload(file string, spec workspace.PluginSpec) (pluginstorage.Conte
 
 // resolvePluginSpec resolves plugin specifications using various resolution strategies.
 func (cmd *pluginInstallCmd) resolvePluginSpec(
-	ctx context.Context, pluginSpec workspace.PluginSpec, project workspace.BaseProject,
-) (workspace.PluginSpec, error) {
+	ctx context.Context, pluginSpec workspace.PackageSpec,
+) (workspace.PluginDescriptor, error) {
 	resolutionEnv := cmd.packageResolutionOptions
 	result, err := packageresolution.Resolve(
-		ctx, cmd.registry, packageresolution.DefaultWorkspace(), pluginSpec, resolutionEnv, project)
+		ctx, cmd.registry, packageresolution.DefaultWorkspace(), pluginSpec, resolutionEnv)
 	if err != nil {
 		var packageNotFoundErr *packageresolution.PackageNotFoundError
 		if errors.As(err, &packageNotFoundErr) {
@@ -359,20 +371,18 @@ func (cmd *pluginInstallCmd) resolvePluginSpec(
 				)
 			}
 		}
-		return workspace.PluginSpec{}, fmt.Errorf("Unable to resolve package from name: %w", err)
+		return workspace.PluginDescriptor{}, fmt.Errorf("Unable to resolve package from name: %w", err)
 	}
 
 	switch res := result.(type) {
-	case packageresolution.LocalPathResult,
-		packageresolution.ExternalSourceResult,
-		packageresolution.InstalledInWorkspaceResult:
-		return pluginSpec, nil
+	case packageresolution.LocalPathResult:
+		return workspace.PluginDescriptor{Name: res.LocalPath, Kind: apitype.ResourcePlugin}, nil
+	case packageresolution.ExternalSourceResult:
+		return res.Spec.PluginDescriptor, nil
 	case packageresolution.RegistryResult:
-		pluginSpec.Name = res.Metadata.Name
-		pluginSpec.PluginDownloadURL = res.Metadata.PluginDownloadURL
-		return pluginSpec, nil
+		return res.Pkg.PluginDescriptor, nil
 	default:
 		contract.Failf("Unexpected result type: %T", result)
-		return pluginSpec, nil
+		return workspace.PluginDescriptor{}, nil
 	}
 }

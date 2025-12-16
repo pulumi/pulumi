@@ -49,9 +49,8 @@ func NewPluginCmd() *cobra.Command {
 	}
 
 	packageResolutionOptions := packageresolution.Options{
-		DisableRegistryResolve:      env.DisableRegistryResolve.Value(),
-		Experimental:                env.Experimental.Value(),
-		IncludeInstalledInWorkspace: false,
+		DisableRegistryResolve: env.DisableRegistryResolve.Value(),
+		Experimental:           env.Experimental.Value(),
 	}
 	cmd.AddCommand(newPluginInstallCmd(packageResolutionOptions))
 	cmd.AddCommand(newPluginLsCmd())
@@ -62,7 +61,7 @@ func NewPluginCmd() *cobra.Command {
 }
 
 // getProjectPlugins fetches a list of plugins used by this project.
-func getProjectPlugins() ([]workspace.PluginSpec, error) {
+func getProjectPlugins() ([]workspace.PluginDescriptor, error) {
 	proj, root, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil {
 		return nil, err
@@ -89,7 +88,7 @@ func getProjectPlugins() ([]workspace.PluginSpec, error) {
 	return plugins, nil
 }
 
-func resolvePlugins(plugins []workspace.PluginSpec) ([]workspace.PluginInfo, error) {
+func resolvePlugins(plugins []workspace.PluginDescriptor) ([]workspace.PluginInfo, error) {
 	proj, root, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil {
 		return nil, err

@@ -360,8 +360,8 @@ func (e *PackageReferenceVersionMismatchError) Error() string {
 	)
 }
 
-func pluginSpecFromPackageDescriptor(descriptor *PackageDescriptor) workspace.PluginSpec {
-	return workspace.PluginSpec{
+func pluginSpecFromPackageDescriptor(descriptor *PackageDescriptor) workspace.PluginDescriptor {
+	return workspace.PluginDescriptor{
 		Name:              descriptor.Name,
 		Version:           descriptor.Version,
 		PluginDownloadURL: descriptor.DownloadURL,
@@ -405,7 +405,7 @@ func (l *pluginLoader) loadSchemaBytes(
 			return nil, nil, err
 		}
 
-		spec := workspace.PluginSpec{
+		spec := workspace.PluginDescriptor{
 			Kind:              apitype.ResourcePlugin,
 			Name:              descriptor.Name,
 			Version:           descriptor.Version,
@@ -466,7 +466,7 @@ func (l *pluginLoader) loadPluginSchemaBytes(
 	ctx context.Context, descriptor *PackageDescriptor,
 ) ([]byte, plugin.Provider, error) {
 	wsDescriptor := workspace.PackageDescriptor{
-		PluginSpec: workspace.PluginSpec{
+		PluginDescriptor: workspace.PluginDescriptor{
 			Name:              descriptor.Name,
 			Version:           descriptor.Version,
 			PluginDownloadURL: descriptor.DownloadURL,
