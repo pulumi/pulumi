@@ -15,10 +15,13 @@
 package workspace
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/esc"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
@@ -98,4 +101,88 @@ func TestValidateStackConfigValues(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "must be of type")
 	})
+}
+
+func TestValidateStackConfigAndApplyProjectConfig(t *testing.T) {
+	t.Run("Typed Config", func(t *testing.T) {
+		t.Parallel()
+		intType := integerTypeName
+		stringType := stringTypeName
+		boolType := booleanTypeName
+		project := &Project{
+			Name: "testProject",
+			Config: map[string]ProjectConfigType{
+				"testInt": {
+					Type: &intType,
+				},
+				"testNested1.float": {
+					Type: &intType,
+				},
+				"testNested2.bool": {
+					Type: &boolType,
+				},
+				"testSecret": {
+					Type:   &stringType,
+					Secret: true,
+				},
+				"testDefault": {
+					Type:    &intType,
+					Default: 1,
+				},
+			},
+		}
+		stackCfg := config.Map{
+			config.MustMakeKey("testProject", "testInt"):     config.NewTypedValue("1", config.TypeInt),
+			config.MustMakeKey("testProject", "testNested1"): config.NewObjectValue("{\"float\":1.0}"),
+			config.MustMakeKey("testProject", "testNested2"): config.NewObjectValue("{\"bool\":true}"),
+			config.MustMakeKey("testProject", "testSecret"):  config.NewSecureValue("dGVzdFZhbHVl"),
+		}
+		crypter, _, _, calledDecryptValue, calledBatchDecrypt := getCountingBase64Crypter(t.Context(), t)
+
+		err := ValidateStackConfigAndApplyProjectConfig(
+			t.Context(), "stackA", project, esc.Value{}, stackCfg, crypter, crypter,
+		)
+		require.NoError(t, err)
+
+		// Validate that decryption was cached appropriately.
+		require.Equal(t, 0, *calledDecryptValue)
+		require.Equal(t, 1, *calledBatchDecrypt)
+	})
+}
+
+func getCountingBase64Crypter(ctx context.Context, t *testing.T) (config.Crypter, *int, *int, *int, *int) {
+	calledEncryptValue := 0
+	calledBatchEncrypt := 0
+	calledDecryptValue := 0
+	calledBatchDecrypt := 0
+	encrypter := &secrets.MockEncrypter{
+		EncryptValueF: func(input string) string {
+			calledEncryptValue++
+			ct, err := config.Base64Crypter.EncryptValue(ctx, input)
+			require.NoError(t, err)
+			return ct
+		},
+		BatchEncryptF: func(input []string) []string {
+			calledBatchEncrypt++
+			ct, err := config.Base64Crypter.BatchEncrypt(ctx, input)
+			require.NoError(t, err)
+			return ct
+		},
+	}
+	decrypter := &secrets.MockDecrypter{
+		DecryptValueF: func(input string) string {
+			calledDecryptValue++
+			pt, err := config.Base64Crypter.DecryptValue(ctx, input)
+			require.NoError(t, err)
+			return pt
+		},
+		BatchDecryptF: func(input []string) []string {
+			calledBatchDecrypt++
+			pt, err := config.Base64Crypter.BatchDecrypt(ctx, input)
+			require.NoError(t, err)
+			return pt
+		},
+	}
+	return config.NewCiphertextToPlaintextCachedCrypter(encrypter, decrypter),
+		&calledEncryptValue, &calledBatchEncrypt, &calledDecryptValue, &calledBatchDecrypt
 }
