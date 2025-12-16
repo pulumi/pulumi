@@ -1,0 +1,3 @@
+name: perf-many-resources
+description: Performance test with 4000 resources
+runtime: nodejs

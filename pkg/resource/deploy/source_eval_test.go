@@ -2260,7 +2260,7 @@ func TestDefaultProviders(t *testing.T) {
 			d := &defaultProviders{
 				defaultProviderInfo: map[tokens.Package]workspace.PackageDescriptor{
 					tokens.Package("pkg"): {
-						PluginSpec: workspace.PluginSpec{
+						PluginDescriptor: workspace.PluginDescriptor{
 							Version:           &v1,
 							PluginDownloadURL: "github://owner/repo",
 							Checksums:         map[string][]byte{"key": []byte("expected-checksum-value")},

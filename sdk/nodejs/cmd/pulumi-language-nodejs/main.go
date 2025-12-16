@@ -2058,6 +2058,7 @@ func (host *nodeLanguageHost) Link(
 		instructions = "You can import the SDK in your TypeScript code with:\n\n"
 	}
 
+	var imports strings.Builder
 	for _, dep := range req.Packages {
 		var version *semver.Version
 		v, err := semver.New(dep.Package.Version)
@@ -2108,11 +2109,12 @@ func (host *nodeLanguageHost) Link(
 
 		importName := cgstrings.Camel(pkgRef.Name())
 		if usesModuleSyntax {
-			instructions += fmt.Sprintf("  import * as %s from \"%s\";\n", importName, packageName)
+			imports.WriteString(fmt.Sprintf("  import * as %s from \"%s\";\n", importName, packageName))
 		} else {
-			instructions += fmt.Sprintf("  const %s = require(\"%s\");\n", importName, packageName)
+			imports.WriteString(fmt.Sprintf("  const %s = require(\"%s\");\n", importName, packageName))
 		}
 	}
+	instructions += imports.String()
 
 	return &pulumirpc.LinkResponse{
 		ImportInstructions: instructions,

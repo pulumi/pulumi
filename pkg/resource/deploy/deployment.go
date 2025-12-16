@@ -28,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -40,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // BackendClient is used to retrieve information about stacks from a backend.
@@ -355,7 +355,7 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) (bool, e
 	}
 
 	// Pull the versions we'll use for default providers from the snapshot's manifest.
-	defaultProviderInfo := make(map[tokens.Package]workspace.PluginSpec)
+	defaultProviderInfo := make(map[tokens.Package]workspace.PluginDescriptor)
 	for _, p := range prev.Manifest.Plugins {
 		defaultProviderInfo[tokens.Package(p.Name)] = p.Spec()
 	}

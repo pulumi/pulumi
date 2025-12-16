@@ -21,13 +21,10 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	interceptors "github.com/pulumi/pulumi/pkg/v3/util/rpcdebug"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -59,21 +56,6 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 		projinfo.Proj.GetPackageSpecs(), config, debugging)
 	if err != nil {
 		return "", "", nil, err
-	}
-
-	if logFile := env.DebugGRPC.Value(); logFile != "" {
-		di, err := interceptors.NewDebugInterceptor(interceptors.DebugInterceptorOptions{
-			LogFile: logFile,
-			Mutex:   ctx.DebugTraceMutex,
-		})
-		if err != nil {
-			return "", "", nil, err
-		}
-		ctx.DialOptions = func(metadata any) []grpc.DialOption {
-			return di.DialOptions(interceptors.LogOptions{
-				Metadata: metadata,
-			})
-		}
 	}
 
 	// If the project wants to connect to an existing language runtime, do so now.

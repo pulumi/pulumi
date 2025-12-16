@@ -108,7 +108,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 	} else {
 		path, err := workspace.GetPluginPath(
 			ctx.baseContext, ctx.Diag,
-			workspace.PluginSpec{
+			workspace.PluginDescriptor{
 				Name: strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"),
 				Kind: apitype.LanguagePlugin,
 			},
@@ -249,7 +249,7 @@ func (h *langhost) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDes
 			packages := make([]workspace.PackageDescriptor, len(plugins))
 			for i, plugin := range plugins {
 				packages[i] = workspace.PackageDescriptor{
-					PluginSpec: plugin,
+					PluginDescriptor: plugin,
 				}
 			}
 			return packages, nil
@@ -288,7 +288,7 @@ func (h *langhost) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDes
 		}
 
 		results = append(results, workspace.PackageDescriptor{
-			PluginSpec: workspace.PluginSpec{
+			PluginDescriptor: workspace.PluginDescriptor{
 				Name:              info.Name,
 				Kind:              apitype.PluginKind(info.Kind),
 				Version:           version,
@@ -305,7 +305,7 @@ func (h *langhost) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDes
 }
 
 // getRequiredPlugins computes the complete set of anticipated plugins required by a program.
-func (h *langhost) getRequiredPlugins(info ProgramInfo) ([]workspace.PluginSpec, error) {
+func (h *langhost) getRequiredPlugins(info ProgramInfo) ([]workspace.PluginDescriptor, error) {
 	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(%s) executing",
 		h.runtime, info)
 
@@ -336,7 +336,7 @@ func (h *langhost) getRequiredPlugins(info ProgramInfo) ([]workspace.PluginSpec,
 		return nil, rpcError
 	}
 
-	results := slice.Prealloc[workspace.PluginSpec](len(resp.GetPlugins()))
+	results := slice.Prealloc[workspace.PluginDescriptor](len(resp.GetPlugins()))
 	for _, info := range resp.GetPlugins() {
 		var version *semver.Version
 		if v := info.GetVersion(); v != "" {
@@ -349,7 +349,7 @@ func (h *langhost) getRequiredPlugins(info ProgramInfo) ([]workspace.PluginSpec,
 		if !apitype.IsPluginKind(info.Kind) {
 			return nil, fmt.Errorf("unrecognized plugin kind: %s", info.Kind)
 		}
-		results = append(results, workspace.PluginSpec{
+		results = append(results, workspace.PluginDescriptor{
 			Name:              info.Name,
 			Kind:              apitype.PluginKind(info.Kind),
 			Version:           version,

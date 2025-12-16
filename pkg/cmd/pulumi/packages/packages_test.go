@@ -59,7 +59,7 @@ func TestSetSpecNamespace(t *testing.T) {
 		t.Run(tt.pluginDownloadURL, func(t *testing.T) {
 			t.Parallel()
 
-			pluginSpec := workspace.PluginSpec{
+			pluginSpec := workspace.PluginDescriptor{
 				PluginDownloadURL: tt.pluginDownloadURL,
 			}
 			schemaSpec := &schema.PackageSpec{}
