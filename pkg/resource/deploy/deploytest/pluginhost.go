@@ -518,7 +518,7 @@ func (host *pluginHost) CloseProvider(provider plugin.Provider) error {
 	return nil
 }
 
-func (host *pluginHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Flags) error {
+func (host *pluginHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds plugin.Flags) error {
 	if host.isClosed() {
 		return ErrHostIsClosed
 	}
@@ -526,7 +526,7 @@ func (host *pluginHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plug
 }
 
 func (host *pluginHost) ResolvePlugin(
-	spec workspace.PluginSpec,
+	spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
 	plugins := slice.Prealloc[workspace.PluginInfo](len(host.pluginLoaders))
 
