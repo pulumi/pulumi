@@ -1,4 +1,4 @@
-// Copyright 2018-2024, Pulumi Corporation.
+// Copyright 2018-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1961,13 +1961,13 @@ func TestPackageValueSerialization(t *testing.T) {
 		proj := &Project{
 			Name:    "test-project",
 			Runtime: NewProjectRuntimeInfo("nodejs", nil),
-			Packages: map[string]packageValue{
-				"simple": {value: "github.com/example/simple-package"},
-				"complex": {value: PackageSpec{
+			Packages: map[string]PackageSpec{
+				"simple": {Source: "github.com/example/simple-package"},
+				"complex": {
 					Source:     "github.com/example/complex-package",
 					Version:    "1.0.0",
 					Parameters: []string{"arg1", "arg2"},
-				}},
+				},
 			},
 		}
 
@@ -2007,13 +2007,13 @@ func TestPackageValueSerialization(t *testing.T) {
 		proj := &Project{
 			Name:    "test-project",
 			Runtime: NewProjectRuntimeInfo("nodejs", nil),
-			Packages: map[string]packageValue{
-				"simple": {value: "github.com/example/simple-package"},
-				"complex": {value: PackageSpec{
+			Packages: map[string]PackageSpec{
+				"simple": {Source: "github.com/example/simple-package"},
+				"complex": {
 					Source:     "github.com/example/complex-package",
 					Version:    "1.0.0",
 					Parameters: []string{"arg1", "arg2"},
-				}},
+				},
 			},
 		}
 
@@ -2078,7 +2078,7 @@ func TestGetPackageSpecs(t *testing.T) {
 	proj = &Project{
 		Name:     "test-project",
 		Runtime:  NewProjectRuntimeInfo("nodejs", nil),
-		Packages: map[string]packageValue{},
+		Packages: map[string]PackageSpec{},
 	}
 	specs = proj.GetPackageSpecs()
 	assert.Empty(t, specs)
@@ -2087,13 +2087,13 @@ func TestGetPackageSpecs(t *testing.T) {
 	proj = &Project{
 		Name:    "test-project",
 		Runtime: NewProjectRuntimeInfo("nodejs", nil),
-		Packages: map[string]packageValue{
-			"str": {value: "github.com/example/string-package@0.1.2"},
-			"obj": {value: PackageSpec{
+		Packages: map[string]PackageSpec{
+			"str": {Source: "github.com/example/string-package", Version: "0.1.2"},
+			"obj": {
 				Source:     "github.com/example/object-package",
 				Version:    "1.2.3",
 				Parameters: []string{"--arg1", "--arg2"},
-			}},
+			},
 		},
 	}
 	specs = proj.GetPackageSpecs()
@@ -2106,6 +2106,32 @@ func TestGetPackageSpecs(t *testing.T) {
 	assert.Equal(t, "github.com/example/object-package", specs["obj"].Source)
 	assert.Equal(t, "1.2.3", specs["obj"].Version)
 	assert.Equal(t, []string{"--arg1", "--arg2"}, specs["obj"].Parameters)
+}
+
+func requireTextualRepresentationIsString(t *testing.T, ps PackageSpec) string {
+	t.Helper()
+	b, err := json.Marshal(ps)
+	require.NoError(t, err)
+	var s string
+	err = json.Unmarshal(b, &s)
+	require.NoError(t, err)
+	return s
+}
+
+func requireTextualRepresentationIsSpec(t *testing.T, ps PackageSpec) PackageSpec {
+	t.Helper()
+	b, err := json.Marshal(ps)
+	require.NoError(t, err)
+	var v packageSpecMarshaller
+	err = json.Unmarshal(b, &v)
+	require.NoError(t, err)
+	return PackageSpec{
+		Source:            v.Source,
+		Version:           v.Version,
+		Parameters:        v.Parameters,
+		Checksums:         v.Checksums,
+		PluginDownloadURL: v.PluginDownloadURL,
+	}
 }
 
 func TestAddPackage(t *testing.T) {
@@ -2133,8 +2159,7 @@ func TestAddPackage(t *testing.T) {
 		require.Empty(t, specs["simple-package"].Parameters)
 
 		// The internal representation should be a string for the new package
-		_, ok := proj.Packages["simple-package"].value.(string)
-		require.True(t, ok, "Simple package should be stored as string")
+		requireTextualRepresentationIsString(t, proj.Packages["simple-package"])
 	})
 
 	// Test adding a package with source and version
@@ -2160,8 +2185,7 @@ func TestAddPackage(t *testing.T) {
 		require.Empty(t, specs["versioned-package"].Parameters)
 
 		// The internal representation should be a string for the new package
-		_, ok := proj.Packages["versioned-package"].value.(string)
-		require.True(t, ok, "Simple package should be stored as string")
+		requireTextualRepresentationIsString(t, proj.Packages["versioned-package"])
 	})
 
 	// Test adding a package with parameters (should use PackageSpec format)
@@ -2187,8 +2211,7 @@ func TestAddPackage(t *testing.T) {
 		require.Equal(t, []string{"param1", "param2"}, specs["param-package"].Parameters)
 
 		// The internal representation should be a PackageSpec for the new package
-		_, ok := proj.Packages["param-package"].value.(PackageSpec)
-		require.True(t, ok, "Parameterized package should be stored as PackageSpec")
+		requireTextualRepresentationIsSpec(t, proj.Packages["param-package"])
 	})
 
 	// Test maintaining the format consistency when adding multiple packages
@@ -2200,11 +2223,12 @@ func TestAddPackage(t *testing.T) {
 			Runtime: ProjectRuntimeInfo{
 				name: "nodejs",
 			},
-			Packages: map[string]packageValue{
-				"existing-package": {value: PackageSpec{
-					Source:  "github.com/org/existing-package",
-					Version: "v1.0.0",
-				}},
+			Packages: map[string]PackageSpec{
+				"existing-package": {
+					Source:               "github.com/org/existing-package",
+					Version:              "v1.0.0",
+					unmarshalledFromFull: true,
+				},
 			},
 		}
 
@@ -2220,8 +2244,7 @@ func TestAddPackage(t *testing.T) {
 		require.Equal(t, "v1.0.0", specs["existing-package"].Version)
 
 		// The internal representation should be a PackageSpec for the new package
-		val, ok := proj.Packages["new-package"].value.(PackageSpec)
-		require.True(t, ok, "Parameterized package should be stored as PackageSpec")
+		val := requireTextualRepresentationIsSpec(t, proj.Packages["new-package"])
 		require.Equal(t, "github.com/org/new-package", val.Source)
 		require.Empty(t, val.Version)
 		require.Empty(t, val.Parameters)
@@ -2236,8 +2259,8 @@ func TestAddPackage(t *testing.T) {
 			Runtime: ProjectRuntimeInfo{
 				name: "nodejs",
 			},
-			Packages: map[string]packageValue{
-				"existing-package": {value: "github.com/org/existing-package@v1.0.0"},
+			Packages: map[string]PackageSpec{
+				"existing-package": {Source: "github.com/org/existing-package@v1.0.0"},
 			},
 		}
 
@@ -2253,8 +2276,7 @@ func TestAddPackage(t *testing.T) {
 		require.Equal(t, "v2.0.0", specs["existing-package"].Version)
 
 		// The internal representation should be a string for the new package
-		_, ok := proj.Packages["existing-package"].value.(string)
-		require.True(t, ok, "Existing package should be stored as string")
+		requireTextualRepresentationIsString(t, proj.Packages["existing-package"])
 	})
 
 	// One existing package as string, one as spec - new one should be added as string
@@ -2266,13 +2288,13 @@ func TestAddPackage(t *testing.T) {
 			Runtime: ProjectRuntimeInfo{
 				name: "nodejs",
 			},
-			Packages: map[string]packageValue{
-				"string-package": {value: "github.com/org/string-package@v1.0.0"},
-				"spec-package": {value: PackageSpec{
+			Packages: map[string]PackageSpec{
+				"string-package": {Source: "github.com/org/string-package@v1.0.0"},
+				"spec-package": {
 					Source:     "github.com/org/spec-package",
 					Version:    "v1.0.0",
 					Parameters: []string{"--param"},
-				}},
+				},
 			},
 		}
 
@@ -2288,8 +2310,7 @@ func TestAddPackage(t *testing.T) {
 		require.Equal(t, "v1.2.3", specs["new-package"].Version)
 
 		// The internal representation should be a string for the new package
-		_, ok := proj.Packages["new-package"].value.(string)
-		require.True(t, ok, "With mixed formats, new simple package should be stored as string")
+		requireTextualRepresentationIsString(t, proj.Packages["new-package"])
 	})
 
 	// Existing package format is preserved when replacing
@@ -2301,12 +2322,16 @@ func TestAddPackage(t *testing.T) {
 			Runtime: ProjectRuntimeInfo{
 				name: "nodejs",
 			},
-			Packages: map[string]packageValue{
-				"string-package": {value: "github.com/org/string-package@v1.0.0"},
-				"spec-package": {value: PackageSpec{
-					Source:  "github.com/org/spec-package",
+			Packages: map[string]PackageSpec{
+				"string-package": {
+					Source:  "github.com/org/string-package",
 					Version: "v1.0.0",
-				}},
+				},
+				"spec-package": {
+					Source:               "github.com/org/spec-package",
+					Version:              "v1.0.0",
+					unmarshalledFromFull: true,
+				},
 			},
 		}
 
@@ -2331,11 +2356,8 @@ func TestAddPackage(t *testing.T) {
 		require.Equal(t, "v2.0.0", specs["spec-package"].Version)
 
 		// Verify the internal representation is maintained
-		_, isString := proj.Packages["string-package"].value.(string)
-		require.True(t, isString, "String package format should be preserved")
-
-		_, isSpec := proj.Packages["spec-package"].value.(PackageSpec)
-		require.True(t, isSpec, "PackageSpec format should be preserved")
+		requireTextualRepresentationIsString(t, proj.Packages["string-package"])
+		requireTextualRepresentationIsSpec(t, proj.Packages["spec-package"])
 	})
 
 	// Format conversion when parameters added to existing string package
@@ -2347,8 +2369,8 @@ func TestAddPackage(t *testing.T) {
 			Runtime: ProjectRuntimeInfo{
 				name: "nodejs",
 			},
-			Packages: map[string]packageValue{
-				"string-package": {value: "github.com/org/string-package@v1.0.0"},
+			Packages: map[string]PackageSpec{
+				"string-package": {Source: "github.com/org/string-package@v1.0.0"},
 			},
 		}
 
@@ -2366,7 +2388,6 @@ func TestAddPackage(t *testing.T) {
 		require.Equal(t, []string{"--new-param"}, specs["string-package"].Parameters)
 
 		// Verify the internal representation was converted to PackageSpec
-		_, isSpec := proj.Packages["string-package"].value.(PackageSpec)
-		require.True(t, isSpec, "Package should be converted to PackageSpec when parameters are added")
+		requireTextualRepresentationIsSpec(t, proj.Packages["string-package"])
 	})
 }
