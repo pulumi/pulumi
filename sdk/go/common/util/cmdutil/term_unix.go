@@ -13,7 +13,6 @@
 // limitations under the License.
 
 //go:build !windows && !js
-// +build !windows,!js
 
 package cmdutil
 
