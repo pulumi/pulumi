@@ -580,9 +580,10 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 			getType = "Number"
 		}
 
-		envVars := fmt.Sprintf("%q", dv.Environment[0])
+		var envVars strings.Builder
+		envVars.WriteString(fmt.Sprintf("%q", dv.Environment[0]))
 		for _, e := range dv.Environment[1:] {
-			envVars += fmt.Sprintf(", %q", e)
+			envVars.WriteString(fmt.Sprintf(", %q", e))
 		}
 
 		cast := ""
@@ -590,7 +591,7 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 			cast = "<any>"
 		}
 
-		getEnv := fmt.Sprintf("%sutilities.getEnv%s(%s)", cast, getType, envVars)
+		getEnv := fmt.Sprintf("%sutilities.getEnv%s(%s)", cast, getType, envVars.String())
 		if val != "" {
 			val = fmt.Sprintf("(%s || %s)", getEnv, val)
 		} else {

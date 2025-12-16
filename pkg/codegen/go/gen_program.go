@@ -1009,12 +1009,12 @@ func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
 		}
 
 		if strings.Contains(mod, "-") {
-			alias := ""
+			var alias strings.Builder
 			for _, part := range strings.Split(mod, "-") {
-				alias += strcase.ToLowerCamel(part)
+				alias.WriteString(strcase.ToLowerCamel(part))
 			}
 			// convert the dashed package such as package-name into packagename
-			mod = alias
+			mod = alias.String()
 		}
 		g.importer.Import(path, mod)
 		return
@@ -1980,11 +1980,11 @@ func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 	if !ok {
 		needsAliasing := strings.Contains(mod, "-")
 		if needsAliasing {
-			moduleAlias := ""
+			var moduleAlias strings.Builder
 			for part := range strings.SplitSeq(mod, "-") {
-				moduleAlias += strcase.ToLowerCamel(part)
+				moduleAlias.WriteString(strcase.ToLowerCamel(part))
 			}
-			return moduleAlias
+			return moduleAlias.String()
 		}
 		return strings.ToLower(mod)
 	}

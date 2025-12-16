@@ -17,6 +17,7 @@ package cmdutil
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -30,21 +31,24 @@ import (
 
 // DetailedError extracts a detailed error message, including stack trace, if there is one.
 func DetailedError(err error) string {
-	msg := errorMessage(err)
+	var msg strings.Builder
+	msg.WriteString(errorMessage(err))
+
 	hasstack := false
+
 	for {
 		if stackerr, ok := err.(interface {
 			StackTrace() errors.StackTrace
 		}); ok {
-			msg += "\n"
+			msg.WriteString("\n")
 			if hasstack {
-				msg += "CAUSED BY...\n"
+				msg.WriteString("CAUSED BY...\n")
 			}
 			hasstack = true
 
 			// Append the stack trace.
 			for _, f := range stackerr.StackTrace() {
-				msg += fmt.Sprintf("%+v\n", f)
+				msg.WriteString(fmt.Sprintf("%+v\n", f))
 			}
 
 			// Keep going up the causer chain, if any.
@@ -57,7 +61,7 @@ func DetailedError(err error) string {
 			break
 		}
 	}
-	return msg
+	return msg.String()
 }
 
 // RunFunc wraps an error-returning run func with standard Pulumi error handling.  All
@@ -128,11 +132,12 @@ func errorMessage(err error) string {
 		return underlying[0].Error()
 
 	default:
-		msg := fmt.Sprintf("%d errors occurred:", len(underlying))
+		var msg strings.Builder
+		msg.WriteString(fmt.Sprintf("%d errors occurred:", len(underlying)))
 		for i, werr := range underlying {
-			msg += fmt.Sprintf("\n    %d) %s", i+1, errorMessage(werr))
+			msg.WriteString(fmt.Sprintf("\n    %d) %s", i+1, errorMessage(werr)))
 		}
-		return msg
+		return msg.String()
 	}
 }
 

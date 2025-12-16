@@ -399,12 +399,14 @@ func (o *Object) hash(seen map[Formatter]bool) string {
 	}
 	sort.StringSlice(keys).Sort()
 
+	var props strings.Builder
 	for i, k := range keys {
 		if i != 0 {
-			s += ","
+			props.WriteString(",")
 		}
-		s += k + ":" + o.Properties[k].hash(seen)
+		props.WriteString(k + ":" + o.Properties[k].hash(seen))
 	}
+	s += props.String()
 	return s + ")"
 }
 
@@ -481,8 +483,9 @@ func (o *Object) string(tg *tagGenerator) string {
 
 	// reset for a mutl-line object.
 	s = tag + "{\n"
+	var multiline strings.Builder
 	for _, key := range keys {
-		s += (&indent{
+		multiline.WriteString((&indent{
 			prefix: DefaultIndent,
 			inner: &Wrap{
 				Prefix:          key + ": ",
@@ -490,8 +493,9 @@ func (o *Object) string(tg *tagGenerator) string {
 				PostfixSameline: true,
 				Value:           o.Properties[key],
 			},
-		}).columns(columns).string(tg) + "\n"
+		}).columns(columns).string(tg) + "\n")
 	}
+	s += multiline.String()
 	return s + "}"
 }
 
@@ -527,9 +531,11 @@ func (l *List) hash(seen map[Formatter]bool) string {
 	defer func() { seen[l] = false }()
 	seen[l] = true
 	s := "(l," + l.Separator
+	var elements strings.Builder
 	for _, el := range l.Elements {
-		s += "," + el.hash(seen)
+		elements.WriteString("," + el.hash(seen))
 	}
+	s += elements.String()
 	return s + ")"
 }
 
@@ -580,17 +586,20 @@ func (l *List) string(tg *tagGenerator) string {
 	s = tag
 	if l.AdjoinSeparator {
 		separator := strings.TrimRight(l.Separator, " ")
+		var adjoined strings.Builder
 		for i, el := range l.Elements {
 			v := el.columns(columns - len(separator)).string(tg)
 			if i+1 != len(l.Elements) {
 				v += separator + "\n"
 			}
-			s += v
+			adjoined.WriteString(v)
 		}
+		s += adjoined.String()
 		return s
 	}
 
 	separator := strings.TrimLeft(l.Separator, " ")
+	var separated strings.Builder
 	for i, el := range l.Elements {
 		v := (&indent{
 			prefix: strings.Repeat(" ", len(separator)),
@@ -599,8 +608,9 @@ func (l *List) string(tg *tagGenerator) string {
 		if i != 0 {
 			v = "\n" + separator + v[len(separator):]
 		}
-		s += v
+		separated.WriteString(v)
 	}
+	s += separated.String()
 	return s
 }
 
