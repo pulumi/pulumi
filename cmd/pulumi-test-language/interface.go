@@ -295,7 +295,7 @@ func (l *providerLoader) LoadPackageReferenceV2(
 
 	// Defer to the host to find the provider for the given package descriptor.
 	workspaceDescriptor := workspace.PackageDescriptor{
-		PluginSpec: workspace.PluginSpec{
+		PluginDescriptor: workspace.PluginDescriptor{
 			Kind:              apitype.ResourcePlugin,
 			Name:              descriptor.Name,
 			Version:           descriptor.Version,
@@ -1207,14 +1207,14 @@ func (eng *languageTestServer) RunLanguageTest(
 			var desc workspace.PackageDescriptor
 			if pkgDef.Parameterization == nil {
 				desc = workspace.PackageDescriptor{
-					PluginSpec: workspace.PluginSpec{
+					PluginDescriptor: workspace.PluginDescriptor{
 						Name:    pkgDef.Name,
 						Version: pkgDef.Version,
 					},
 				}
 			} else {
 				desc = workspace.PackageDescriptor{
-					PluginSpec: workspace.PluginSpec{
+					PluginDescriptor: workspace.PluginDescriptor{
 						Name:    pkgDef.Parameterization.BaseProvider.Name,
 						Version: &pkgDef.Parameterization.BaseProvider.Version,
 					},
@@ -1341,7 +1341,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			linkDeps := []workspace.LinkablePackageDescriptor{{
 				Path: token.CoreArtifact,
 				Descriptor: workspace.PackageDescriptor{
-					PluginSpec: workspace.PluginSpec{
+					PluginDescriptor: workspace.PluginDescriptor{
 						Name: "pulumi",
 					},
 				},

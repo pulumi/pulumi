@@ -152,7 +152,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				pulumiHomeDir := t.TempDir() // Create an isolated PULUMI_HOME directory to install into
 				t.Setenv(env.Home.Var().Name(), pulumiHomeDir)
 
-				installResourcePluginFromFiles(t, workspace.PluginSpec{
+				installResourcePluginFromFiles(t, workspace.PluginDescriptor{
 					Name: "testpackage",
 					Kind: apitype.ResourcePlugin,
 				}, map[string]string{
@@ -726,7 +726,7 @@ func TestFindReadme(t *testing.T) {
 //
 // This function should only be used after t.Setenv(workspace.PulumiHomeEnvVar,
 // pulumiHomeDir) has been called.
-func installResourcePluginFromFiles(t *testing.T, spec workspace.PluginSpec, files map[string]string) {
+func installResourcePluginFromFiles(t *testing.T, spec workspace.PluginDescriptor, files map[string]string) {
 	t.Helper()
 	dir := t.TempDir()
 	for path, content := range files {

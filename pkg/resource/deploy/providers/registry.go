@@ -315,7 +315,7 @@ func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Versi
 	}
 
 	descriptor := workspace.PackageDescriptor{
-		PluginSpec: workspace.PluginSpec{
+		PluginDescriptor: workspace.PluginDescriptor{
 			Kind:              apitype.ResourcePlugin,
 			Name:              string(pkg),
 			Version:           version,
@@ -349,7 +349,7 @@ func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Versi
 		host.Log(sev, "", msg, 0)
 	}
 
-	_, err = pkgWorkspace.InstallPlugin(ctx, descriptor.PluginSpec, log)
+	_, err = pkgWorkspace.InstallPlugin(ctx, descriptor.PluginDescriptor, log)
 	if err != nil {
 		return nil, err
 	}

@@ -47,7 +47,7 @@ import (
 // should be removed after the plugin is *successfully* installed, but left if the install
 // fails for any reason.
 func UnpackContents(
-	ctx context.Context, spec workspace.PluginSpec, content Content, reinstall bool,
+	ctx context.Context, spec workspace.PluginDescriptor, content Content, reinstall bool,
 ) (cleanup func(success bool), err error) {
 	defer contract.IgnoreClose(content)
 
@@ -170,7 +170,7 @@ func cleanupTempDirs(finalDir string) error {
 }
 
 // LockPluginForInstall acquires a file lock used to prevent concurrent installs.
-func lockPluginForInstall(spec workspace.PluginSpec) (func(), error) {
+func lockPluginForInstall(spec workspace.PluginDescriptor) (func(), error) {
 	finalDir, err := spec.DirPath()
 	if err != nil {
 		return nil, err
