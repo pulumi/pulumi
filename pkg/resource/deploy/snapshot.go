@@ -17,6 +17,7 @@ package deploy
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/go-test/deep"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -277,16 +278,16 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 	}
 
 	if len(snap.PendingOperations) != len(expected.PendingOperations) {
-		var snapPendingOps string
+		var snapPendingOps strings.Builder
 		for _, op := range snap.PendingOperations {
-			snapPendingOps += fmt.Sprintf("%v (%v), ", op.Type, op.Resource)
+			snapPendingOps.WriteString(fmt.Sprintf("%v (%v), ", op.Type, op.Resource))
 		}
-		var expectedPendingOps string
+		var expectedPendingOps strings.Builder
 		for _, op := range expected.PendingOperations {
-			expectedPendingOps += fmt.Sprintf("%v (%v), ", op.Type, op.Resource)
+			expectedPendingOps.WriteString(fmt.Sprintf("%v (%v), ", op.Type, op.Resource))
 		}
 		return fmt.Errorf("actual and expected pending operations differ, %d in actual (have %v), %d in expected (have %v)",
-			len(snap.PendingOperations), snapPendingOps, len(expected.PendingOperations), expectedPendingOps)
+			len(snap.PendingOperations), snapPendingOps.String(), len(expected.PendingOperations), expectedPendingOps.String())
 	}
 
 	pendingOpsMap := make(map[resource.URN][]resource.Operation)
@@ -295,12 +296,12 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 		pendingOpsMap[mop.Resource.URN] = append(pendingOpsMap[mop.Resource.URN], mop)
 	}
 	for _, jop := range snap.PendingOperations {
-		diffStr := ""
+		var diffStr strings.Builder
 		found := false
 		for _, mop := range pendingOpsMap[jop.Resource.URN] {
 			if diff := deep.Equal(jop, mop); diff != nil {
 				if jop.Resource.URN == mop.Resource.URN {
-					diffStr += fmt.Sprintf("%s\n", diff)
+					diffStr.WriteString(fmt.Sprintf("%s\n", diff))
 				}
 			} else {
 				found = true
@@ -308,31 +309,31 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 			}
 		}
 		if !found {
-			var pendingOps string
+			var pendingOps strings.Builder
 			for _, op := range snap.PendingOperations {
-				pendingOps += fmt.Sprintf("%v (%v)\n", op.Type, op.Resource)
+				pendingOps.WriteString(fmt.Sprintf("%v (%v)\n", op.Type, op.Resource))
 			}
-			var expectedPendingOps string
+			var expectedPendingOps strings.Builder
 			for _, op := range expected.PendingOperations {
-				expectedPendingOps += fmt.Sprintf("%v (%v)\n", op.Type, op.Resource)
+				expectedPendingOps.WriteString(fmt.Sprintf("%v (%v)\n", op.Type, op.Resource))
 			}
 			return fmt.Errorf("actual and expected pending operations differ, %v (%v) not found in expected\n"+
 				"Actual: %v\nExpected: %v\nDiffs: %v",
-				jop.Type, jop.Resource, pendingOps, expectedPendingOps, diffStr)
+				jop.Type, jop.Resource, pendingOps.String(), expectedPendingOps.String(), diffStr.String())
 		}
 	}
 
 	if len(snap.Resources) != len(expected.Resources) {
-		var snapResources string
+		var snapResources strings.Builder
 		for _, r := range snap.Resources {
-			snapResources += fmt.Sprintf("%v %v, ", r.URN, r.Delete)
+			snapResources.WriteString(fmt.Sprintf("%v %v, ", r.URN, r.Delete))
 		}
-		var expectedResources string
+		var expectedResources strings.Builder
 		for _, r := range expected.Resources {
-			expectedResources += fmt.Sprintf("%v %v, ", r.URN, r.Delete)
+			expectedResources.WriteString(fmt.Sprintf("%v %v, ", r.URN, r.Delete))
 		}
 		return fmt.Errorf("actual and expected resources differ, %d in actual (have %v), %d in expected (have %v)",
-			len(snap.Resources), snapResources, len(expected.Resources), expectedResources)
+			len(snap.Resources), snapResources.String(), len(expected.Resources), expectedResources.String())
 	}
 
 	resourcesMap := make(map[resource.URN][]*resource.State)
@@ -373,7 +374,7 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 		}
 
 		found := false
-		var diffStr string
+		var diffStr strings.Builder
 		// Normalize empty Outputs and Inputs.  Since we're serializing and deserializing
 		// this in the journal, we lose some information compared to the regular
 		// snapshotting algorithm.
@@ -386,7 +387,7 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 		for _, mr := range resourcesMap[jr.URN] {
 			if diff := deep.Equal(jr, mr); diff != nil {
 				if jr.URN == mr.URN {
-					diffStr += fmt.Sprintf("%s\n", diff)
+					diffStr.WriteString(fmt.Sprintf("%s\n", diff))
 				}
 			} else {
 				found = true
@@ -394,17 +395,17 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 			}
 		}
 		if !found {
-			var snapResources string
+			var snapResources strings.Builder
 			for _, jr := range snap.Resources {
-				snapResources += fmt.Sprintf("Actual resource: %v\n", jr)
+				snapResources.WriteString(fmt.Sprintf("Actual resource: %v\n", jr))
 			}
-			var expectedResources string
+			var expectedResources strings.Builder
 			for _, mr := range expected.Resources {
-				expectedResources += fmt.Sprintf("Expected resource: %v\n", mr)
+				expectedResources.WriteString(fmt.Sprintf("Expected resource: %v\n", mr))
 			}
 			return fmt.Errorf("actual and expected resources differ, %v not found in expected.\n"+
 				"Actual: %v\nExpected: %v\nDiffs: %v",
-				jr, snapResources, expectedResources, diffStr)
+				jr, snapResources.String(), expectedResources.String(), diffStr.String())
 		}
 	}
 

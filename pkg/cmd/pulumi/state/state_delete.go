@@ -17,6 +17,7 @@ package state
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -116,14 +117,15 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			if err != nil {
 				switch e := err.(type) {
 				case edit.ResourceHasDependenciesError:
-					message := string(e.Condemned.URN) + " can't be safely deleted because the following resources depend on it:\n"
+					var message strings.Builder
+					message.WriteString(string(e.Condemned.URN))
+					message.WriteString(" can't be safely deleted because the following resources depend on it:\n")
 					for _, dependentResource := range e.Dependencies {
 						depUrn := dependentResource.URN
-						message += fmt.Sprintf(" * %-15q (%s)\n", depUrn.Name(), depUrn)
+						message.WriteString(fmt.Sprintf(" * %-15q (%s)\n", depUrn.Name(), depUrn))
 					}
-
-					message += "\nDelete those resources first or pass --target-dependents."
-					return errors.New(message)
+					message.WriteString("\nDelete those resources first or pass --target-dependents.")
+					return errors.New(message.String())
 				case edit.ResourceProtectedError:
 					return fmt.Errorf(
 						"%s can't be safely deleted because it is protected. "+

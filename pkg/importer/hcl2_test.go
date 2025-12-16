@@ -106,11 +106,11 @@ func renderTemplate(t *testing.T, x *model.TemplateExpression) property.Value {
 	if len(x.Parts) == 1 {
 		return renderLiteralValue(t, x.Parts[0].(*model.LiteralValueExpression))
 	}
-	b := ""
+	var b strings.Builder
 	for _, p := range x.Parts {
-		b += p.(*model.LiteralValueExpression).Value.AsString()
+		b.WriteString(p.(*model.LiteralValueExpression).Value.AsString())
 	}
-	return property.New(b)
+	return property.New(b.String())
 }
 
 func renderObjectCons(t *testing.T, x *model.ObjectConsExpression) property.Value {

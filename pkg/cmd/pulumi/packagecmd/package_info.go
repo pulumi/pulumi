@@ -173,14 +173,14 @@ func summaryFromDescription(description string) string {
 	// still be part of the first paragraph, and may be in the middle of a sentence.
 	// Therefore we split the description into lines, and join the first paragraph, replacing
 	// newlines with spaces.
-	summary := ""
+	var summary strings.Builder
 	for _, line := range strings.Split(description, "\n") {
 		if strings.TrimSpace(line) == "" {
 			break
 		}
-		summary += line + " "
+		summary.WriteString(line + " ")
 	}
-	return strings.TrimSpace(summary)
+	return strings.TrimSpace(summary.String())
 }
 
 func simplifyModuleName(typ string, name string) (string, error) {
