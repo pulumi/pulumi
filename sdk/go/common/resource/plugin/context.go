@@ -20,7 +20,7 @@ import (
 	"sync"
 
 	"github.com/opentracing/opentracing-go"
-	interceptors "github.com/pulumi/pulumi/pkg/v3/util/rpcdebug"
+	interceptors "github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/rpcdebug"
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
