@@ -1962,7 +1962,13 @@ func TestPackageValueSerialization(t *testing.T) {
 			Name:    "test-project",
 			Runtime: NewProjectRuntimeInfo("nodejs", nil),
 			Packages: map[string]PackageSpec{
-				"simple": {Source: "github.com/example/simple-package"},
+				"simple": {
+					Source: "github.com/example/simple-package",
+				},
+				"less-simple": {
+					Source:  "github.com/example/simple-package",
+					Version: "1.0.0",
+				},
 				"complex": {
 					Source:     "github.com/example/complex-package",
 					Version:    "1.0.0",
@@ -1989,7 +1995,7 @@ func TestPackageValueSerialization(t *testing.T) {
 
 		// Verify packages were correctly deserialized
 		specs := newProj.GetPackageSpecs()
-		require.Len(t, specs, 2)
+		require.Len(t, specs, 3)
 
 		assert.Equal(t, "github.com/example/simple-package", specs["simple"].Source)
 		assert.Empty(t, specs["simple"].Version)
@@ -2008,7 +2014,13 @@ func TestPackageValueSerialization(t *testing.T) {
 			Name:    "test-project",
 			Runtime: NewProjectRuntimeInfo("nodejs", nil),
 			Packages: map[string]PackageSpec{
-				"simple": {Source: "github.com/example/simple-package"},
+				"simple": {
+					Source: "github.com/example/simple-package",
+				},
+				"less-simple": {
+					Source:  "github.com/example/simple-package",
+					Version: "1.0.0",
+				},
 				"complex": {
 					Source:     "github.com/example/complex-package",
 					Version:    "1.0.0",
@@ -2039,7 +2051,7 @@ func TestPackageValueSerialization(t *testing.T) {
 
 		// Verify packages were correctly deserialized
 		specs := newProj.GetPackageSpecs()
-		require.Len(t, specs, 2)
+		require.Len(t, specs, 3)
 
 		assert.Equal(t, "github.com/example/simple-package", specs["simple"].Source)
 		assert.Empty(t, specs["simple"].Version)
