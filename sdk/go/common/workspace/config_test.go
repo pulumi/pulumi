@@ -57,6 +57,40 @@ func TestValidateStackConfigValues(t *testing.T) {
 		require.Contains(t, err.Error(), wantErr)
 	})
 
+	t.Run("Typed Config Validates", func(t *testing.T) {
+		t.Parallel()
+		intType := integerTypeName
+		stringType := stringTypeName
+		boolType := booleanTypeName
+		project := &Project{
+			Name: "testProject",
+			Config: map[string]ProjectConfigType{
+				"testInt": {
+					Type: &intType,
+				},
+				"testNested1.float": {
+					Type: &intType,
+				},
+				"testNested2.bool": {
+					Type: &boolType,
+				},
+				"testSecret": {
+					Type:   &stringType,
+					Secret: true,
+				},
+			},
+		}
+		stackCfg := config.Map{
+			config.MustMakeKey("testProject", "testInt"):     config.NewTypedValue("1", config.TypeInt),
+			config.MustMakeKey("testProject", "testNested1"): config.NewObjectValue("{\"float\":1.0}"),
+			config.MustMakeKey("testProject", "testNested2"): config.NewObjectValue("{\"bool\":true}"),
+			config.MustMakeKey("testProject", "testSecret"):  config.NewSecureValue("dGVzdFZhbHVl"),
+		}
+
+		err := validateStackConfigValues("stackA", project, stackCfg, config.Base64Crypter)
+		require.NoError(t, err)
+	})
+
 	t.Run("Secret Enforced", func(t *testing.T) {
 		t.Parallel()
 		// When project says config is secret, stack value must be secure.

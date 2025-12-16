@@ -16,6 +16,7 @@ package fuzzing
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
@@ -134,27 +135,28 @@ func (ps *ProgramSpec) AsLanguageRuntimeF(t require.TestingT) deploytest.Languag
 // Implements PrettySpec.Pretty. Returns a human-readable representation of this ProgramSpec, suitable for use in
 // debugging output and error messages.
 func (ps *ProgramSpec) Pretty(indent string) string {
-	rendered := fmt.Sprintf("%sProgram %p", indent, ps)
+	var rendered strings.Builder
+	rendered.WriteString(fmt.Sprintf("%sProgram %p", indent, ps))
 
 	if len(ps.ResourceRegistrations) == 0 {
-		rendered += fmt.Sprintf("\n%s  No registrations", indent)
+		rendered.WriteString(fmt.Sprintf("\n%s  No registrations", indent))
 	} else {
-		rendered += fmt.Sprintf("\n%s  Registrations (%d):", indent, len(ps.ResourceRegistrations))
+		rendered.WriteString(fmt.Sprintf("\n%s  Registrations (%d):", indent, len(ps.ResourceRegistrations)))
 		for _, r := range ps.ResourceRegistrations {
-			rendered += fmt.Sprintf("\n%s    %s", indent, r.Pretty(indent+"    "))
+			rendered.WriteString(fmt.Sprintf("\n%s    %s", indent, r.Pretty(indent+"    ")))
 		}
 	}
 
 	if len(ps.Drops) == 0 {
-		rendered += fmt.Sprintf("\n%s  No drops", indent)
+		rendered.WriteString(fmt.Sprintf("\n%s  No drops", indent))
 	} else {
-		rendered += fmt.Sprintf("\n%s  Drops (%d):", indent, len(ps.Drops))
+		rendered.WriteString(fmt.Sprintf("\n%s  Drops (%d):", indent, len(ps.Drops)))
 		for _, r := range ps.Drops {
-			rendered += fmt.Sprintf("\n%s    %s", indent, r.Pretty(indent+"    "))
+			rendered.WriteString(fmt.Sprintf("\n%s    %s", indent, r.Pretty(indent+"    ")))
 		}
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // The type of tags that may be added to resources in a ProgramSpec.
