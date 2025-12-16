@@ -471,21 +471,15 @@ type Provider struct {
 func ProviderFromSource(
 	pctx *plugin.Context, packageSource string, reg registry.Registry,
 ) (Provider, *workspace.PackageSpec, error) {
-	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
-	if err != nil {
-		return Provider{}, nil, err
-	}
-	descriptor := workspace.PackageDescriptor{
-		PluginDescriptor: pluginSpec,
-	}
+	packageSpec := workspace.PackageSpec{Source: packageSource}
 
-	installDescriptor := func(descriptor workspace.PackageDescriptor) (Provider, error) {
-		p, err := pctx.Host.Provider(descriptor)
+	installDescriptor := func(descriptor workspace.PluginDescriptor) (Provider, error) {
+		p, err := pctx.Host.Provider(workspace.PackageDescriptor{
+			// Host.Provider ignores parameterization, so this is safe
+			PluginDescriptor: descriptor,
+		})
 		if err == nil {
-			return Provider{
-				Provider:             p,
-				AlreadyParameterized: descriptor.Parameterization != nil,
-			}, nil
+			return Provider{Provider: p}, nil
 		}
 
 		// There is an executable or directory with the same name, so suggest that
@@ -503,12 +497,15 @@ func ProviderFromSource(
 			pctx.Host.Log(sev, "", msg, 0)
 		}
 
-		_, err = pkgWorkspace.InstallPlugin(pctx.Base(), descriptor.PluginDescriptor, log)
+		_, err = pkgWorkspace.InstallPlugin(pctx.Base(), descriptor, log)
 		if err != nil {
 			return Provider{}, err
 		}
 
-		p, err = pctx.Host.Provider(descriptor)
+		p, err = pctx.Host.Provider(workspace.PackageDescriptor{
+			// Host.Provider ignores parameterization, so this is safe
+			PluginDescriptor: descriptor,
+		})
 		if err != nil {
 			return Provider{}, err
 		}
@@ -517,19 +514,15 @@ func ProviderFromSource(
 	}
 
 	setupProvider := func(
-		descriptor workspace.PackageDescriptor, specOverride *workspace.PackageSpec,
+		descriptor workspace.PluginDescriptor, params plugin.ParameterizeParameters, specOverride *workspace.PackageSpec,
 	) (Provider, *workspace.PackageSpec, error) {
 		p, err := installDescriptor(descriptor)
 		if err != nil {
 			return Provider{}, nil, err
 		}
-		if descriptor.Parameterization != nil {
+		if params != nil {
 			_, err := p.Provider.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
-				Parameters: &plugin.ParameterizeValue{
-					Name:    descriptor.Parameterization.Name,
-					Version: descriptor.Parameterization.Version,
-					Value:   descriptor.Parameterization.Value,
-				},
+				Parameters: params,
 			})
 			if err != nil {
 				return Provider{}, nil, fmt.Errorf("failed to parameterize %s: %w", p.Provider.Pkg().Name(), err)
@@ -549,17 +542,19 @@ func ProviderFromSource(
 		return Provider{}, nil, err
 	}
 
+	if override, ok := project.GetPackageSpecs()[packageSource]; ok {
+		packageSpec = override
+	}
+
 	result, err := packageresolution.Resolve(
 		pctx.Base(),
 		reg,
 		packageresolution.DefaultWorkspace(),
-		pluginSpec,
+		packageSpec,
 		packageresolution.Options{
-			DisableRegistryResolve:      env.DisableRegistryResolve.Value(),
-			Experimental:                env.Experimental.Value(),
-			IncludeInstalledInWorkspace: true,
+			DisableRegistryResolve: env.DisableRegistryResolve.Value(),
+			Experimental:           env.Experimental.Value(),
 		},
-		project,
 	)
 	if err != nil {
 		var packageNotFoundErr *packageresolution.PackageNotFoundError
@@ -575,10 +570,24 @@ func ProviderFromSource(
 	switch res := result.(type) {
 	case packageresolution.LocalPathResult:
 		return setupProviderFromPath(res.LocalPath, pctx)
-	case packageresolution.ExternalSourceResult, packageresolution.InstalledInWorkspaceResult:
-		return setupProvider(descriptor, nil)
+	case packageresolution.ExternalSourceResult:
+		var params plugin.ParameterizeParameters
+		if len(res.Spec.ParameterizationArgs) > 0 {
+			params = &plugin.ParameterizeArgs{
+				Args: res.Spec.ParameterizationArgs,
+			}
+		}
+		return setupProvider(res.Spec.PluginDescriptor, params, nil)
 	case packageresolution.RegistryResult:
-		return setupProviderFromRegistryMeta(res.Metadata, setupProvider)
+		var params plugin.ParameterizeParameters
+		if res.Pkg.Parameterization != nil {
+			params = &plugin.ParameterizeValue{
+				Name:    res.Pkg.Parameterization.Name,
+				Version: res.Pkg.Parameterization.Version,
+				Value:   res.Pkg.Parameterization.Value,
+			}
+		}
+		return setupProvider(res.Pkg.PluginDescriptor, params, nil)
 	default:
 		contract.Failf("Unexpected result type: %T", result)
 		return Provider{}, nil, nil
@@ -611,30 +620,4 @@ func isExecutable(info fs.FileInfo) bool {
 		return !info.IsDir()
 	}
 	return info.Mode()&0o111 != 0 && !info.IsDir()
-}
-
-func setupProviderFromRegistryMeta(
-	meta apitype.PackageMetadata,
-	setupProvider func(workspace.PackageDescriptor, *workspace.PackageSpec) (Provider, *workspace.PackageSpec, error),
-) (Provider, *workspace.PackageSpec, error) {
-	spec := workspace.PluginDescriptor{
-		Name:              meta.Name,
-		Kind:              apitype.ResourcePlugin,
-		Version:           &meta.Version,
-		PluginDownloadURL: meta.PluginDownloadURL,
-	}
-	var params *workspace.Parameterization
-	if meta.Parameterization != nil {
-		spec.Name = meta.Parameterization.BaseProvider.Name
-		spec.Version = &meta.Parameterization.BaseProvider.Version
-		params = &workspace.Parameterization{
-			Name:    meta.Name,
-			Version: meta.Version,
-			Value:   meta.Parameterization.Parameter,
-		}
-	}
-	return setupProvider(workspace.NewPackageDescriptor(spec, params), &workspace.PackageSpec{
-		Source:  meta.Source + "/" + meta.Publisher + "/" + meta.Name,
-		Version: meta.Version.String(),
-	})
 }
