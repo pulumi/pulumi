@@ -76,6 +76,7 @@ type Workspace interface {
 		ctx context.Context,
 		project *workspace.ProjectRuntimeInfo, projectDir string, packageName string,
 		pluginPath string, params plugin.ParameterizeParameters,
+		pluginDownloadURL string, version *semver.Version,
 	) error
 
 	// Run a package from a directory, parameterized by params.
@@ -363,14 +364,6 @@ func ensureProjectDependencies(
 	packages := proj.proj.GetPackageSpecs()
 	for _, name := range slices.Sorted(maps.Keys(packages)) {
 		source := packages[name]
-		runBundle := new(runBundle)
-		link, linkReady := state.dag.NewNode(linkPackageStep{
-			packageName: name,
-			project:     proj,
-			runBundle:   runBundle, // We don't know this until after we install the spec
-		})
-		defer linkReady()
-		contract.AssertNoErrorf(state.dag.NewEdge(link, parent), "new nodes cannot be cyclic")
 
 		var version *semver.Version
 		if source.Version != "" {
@@ -385,6 +378,21 @@ func ensureProjectDependencies(
 		if err != nil {
 			return err
 		}
+
+		runBundle := new(runBundle)
+		link, linkReady := state.dag.NewNode(linkPackageStep{
+			packageName: name,
+			project:     proj,
+			runBundle:   runBundle, // We don't know this until after we install the spec
+
+			// Information from the **unresolved** package descriptor, used to
+			// ensure that Git based plugins serve schema that correctly
+			// references the underlying plugin.
+			pluginDownloadURLOverride: spec.PluginDownloadURL,
+			versionOverride:           spec.Version,
+		})
+		defer linkReady()
+		contract.AssertNoErrorf(state.dag.NewEdge(link, parent), "new nodes cannot be cyclic")
 
 		err = ensureUnresolvedSpec(ctx, state, link, spec, proj, runBundle)
 		if err != nil {
@@ -468,6 +476,11 @@ type linkPackageStep struct {
 
 	// The project we are linking into.
 	project project[workspace.BaseProject]
+
+	// Allow explicitly overriding pluginDownloadURL and version for packages (git
+	// packages in particular) that don't know their name or plugin download URL.g
+	pluginDownloadURLOverride string
+	versionOverride           *semver.Version
 }
 
 func (step linkPackageStep) run(ctx context.Context, p state) error {
@@ -482,10 +495,13 @@ func (step linkPackageStep) run(ctx context.Context, p state) error {
 	} else if p := step.project.proj.GetPackageSpecs()[step.packageName].Parameters; len(p) > 0 {
 		params = &plugin.ParameterizeArgs{Args: p}
 	}
+
 	return p.ws.LinkPackage(
 		ctx,
 		step.project.proj.RuntimeInfo(), step.project.projectDir,
-		step.packageName, step.runBundle.pluginPath, params)
+		step.packageName, step.runBundle.pluginPath, params,
+		step.pluginDownloadURLOverride, step.versionOverride,
+	)
 }
 
 // newSpecNode adds a new spec to the DAG, or de-duplicates the spec.

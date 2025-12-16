@@ -25,6 +25,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/blang/semver"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
@@ -181,6 +182,7 @@ func (w Workspace) LinkPackage(
 	ctx context.Context,
 	runtimeInfo *workspace.ProjectRuntimeInfo, projectDir string, packageName string,
 	pluginPath string, params plugin.ParameterizeParameters,
+	overridePluginDownloadURL string, version *semver.Version,
 ) error {
 	p, paramResp, err := w.runPackage(ctx, projectDir, pluginPath, params)
 	if err != nil {
@@ -196,6 +198,7 @@ func (w Workspace) LinkPackage(
 	if err != nil {
 		return err
 	}
+
 	var schemaSpec schema.PackageSpec
 	if err := json.Unmarshal(schemaResponse.Schema, &schemaSpec); err != nil {
 		return err
@@ -205,6 +208,12 @@ func (w Workspace) LinkPackage(
 	if err != nil {
 		return fmt.Errorf("failed to bind schema: %w", err)
 	}
+
+	// TODO: Long comment explaining why
+	//
+	// https://pulumi.slack.com/archives/C02VCJEBT2N/p1765886431464919
+	boundSchema.PluginDownloadURL = overridePluginDownloadURL
+	boundSchema.Version = version
 
 	// We _always_ want SupportPack turned on for `package add`, this is an option on schemas because it can change
 	// things like module paths for Go and we don't want every user using gen-sdk to be affected by that. But for
@@ -220,6 +229,7 @@ func (w Workspace) LinkPackage(
 	if boundSchema.Namespace != "" {
 		pkgName = boundSchema.Namespace + "-" + pkgName
 	}
+
 	sdkDir := filepath.Join(projectDir, "sdks")
 	out := filepath.Join(sdkDir, pkgName)
 
