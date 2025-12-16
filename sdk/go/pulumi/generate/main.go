@@ -255,7 +255,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			RegisterInput: true,
 		}
 		builtins = append(builtins, mapType)
-		builtins = append(builtins, &builtin{
+		arrayMapType := &builtin{
 			Name:          name + "ArrayMap",
 			Type:          "map[string]" + name + "ArrayInput",
 			ItemType:      name + "ArrayInput",
@@ -263,7 +263,8 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			item:          arrType,
 			Example:       fmt.Sprintf("%sArrayMap{\"baz\": %sArray{%s}}", name, name, p.Example),
 			RegisterInput: true,
-		})
+		}
+		builtins = append(builtins, arrayMapType)
 		builtins = append(builtins, &builtin{
 			Name:          name + "MapArray",
 			Type:          "[]" + name + "MapInput",
@@ -316,6 +317,16 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 				elementType:   "map[string]map[string]map[string]" + p.Type,
 				item:          mapMapType,
 				Example:       fmt.Sprintf("%sMapMapMap{\"baz\": %sMapMap{\"baz\": %sMap{\"baz\": %s}}}", name, name, name, p.Example),
+				RegisterInput: true,
+			})
+			// Unblock https://github.com/pulumi/pulumi/issues/21238
+			builtins = append(builtins, &builtin{
+				Name:          name + "ArrayMapMap",
+				Type:          "map[string]" + name + "ArrayMapInput",
+				ItemType:      name + "ArrayMapInput",
+				elementType:   "map[string]map[string][]" + p.Type,
+				item:          arrayMapType,
+				Example:       fmt.Sprintf("%sArrayMapMap{\"baz\": %sArrayMap{\"baz\": %sArray{%s}}}", name, name, name, p.Example),
 				RegisterInput: true,
 			})
 		}

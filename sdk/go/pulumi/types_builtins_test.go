@@ -554,6 +554,12 @@ func TestOutputApply(t *testing.T) {
 		})
 
 		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::StringArrayMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string][]string { return *new(map[string]map[string][]string) }).(StringArrayMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) URN { return *new(URN) }).(URNOutput)
 			assert.True(t, ok)
@@ -2086,6 +2092,26 @@ func TestToOutputStringMapMapMap(t *testing.T) {
 
 	out = ToOutput(out)
 	_, ok = out.(StringMapMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputStringArrayMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(StringArrayMapMap{"baz": StringArrayMap{"baz": StringArray{String("foo")}}})
+	_, ok := out.(StringArrayMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(StringArrayMapMapInput)
 	assert.True(t, ok)
 
 	_, known, _, _, err = await(out)
@@ -4319,6 +4345,36 @@ func TestToStringMapMapMapOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	out = out.ToStringMapMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToStringArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := StringArrayMapMapInput(StringArrayMapMap{"baz": StringArrayMap{"baz": StringArray{String("foo")}}})
+
+	out := in.ToStringArrayMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToStringArrayMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToStringArrayMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToStringArrayMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7604,6 +7660,58 @@ func TestTopLevelToStringMapMapMapOutput(t *testing.T) {
 	assert.EqualValues(t, av.(map[string]map[string]map[string]string)["baz"], iv)
 }
 
+func TestStringArrayMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (StringArrayMapMap{"baz": StringArrayMap{"baz": StringArray{String("foo")}}}).ToStringArrayMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string][]string)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToStringArrayMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToStringArrayMapMap(map[string]map[string][]string{"baz": {"baz": {"foo"}}}).ToStringArrayMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string][]string)["baz"], iv)
+}
+
+func TestTopLevelToStringArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToStringArrayMapMapOutput(map[string]StringArrayMapOutput{"baz": ToOutput(StringArrayMap{"baz": StringArray{String("foo")}}).(StringArrayMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string][]string)["baz"], iv)
+}
+
 func TestURNMapIndex(t *testing.T) {
 	t.Parallel()
 
@@ -8923,6 +9031,23 @@ func TestAnyOutputAsStringMapMapMapOutput(t *testing.T) {
 
 	anyout := Any(StringMapMapMap{"baz": StringMapMap{"baz": StringMap{"baz": String("foo")}}})
 	out := anyout.AsStringMapMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsStringArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(StringArrayMapMap{"baz": StringArrayMap{"baz": StringArray{String("foo")}}})
+	out := anyout.AsStringArrayMapMapOutput()
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
