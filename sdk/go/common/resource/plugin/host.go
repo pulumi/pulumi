@@ -302,7 +302,7 @@ func parsePluginOpts(
 
 	path, err := resolvePluginPath(root, providerOpts.Path)
 	if err != nil {
-		return handleErr(err.Error())
+		return handleErr("%s", err.Error())
 	}
 
 	pluginInfo := workspace.ProjectPlugin{

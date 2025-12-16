@@ -244,14 +244,14 @@ func newPlugin[T any](
 	attachDebugger bool,
 ) (*Plugin, *T, error) {
 	if logging.V(9) {
-		var argstr string
+		var argstr strings.Builder
 		for i, arg := range args {
 			if i > 0 {
-				argstr += ","
+				argstr.WriteString(",")
 			}
-			argstr += arg
+			argstr.WriteString(arg)
 		}
-		logging.V(9).Infof("newPlugin(): Launching plugin '%v' from '%v' with args: %v", prefix, bin, argstr)
+		logging.V(9).Infof("newPlugin(): Launching plugin '%v' from '%v' with args: %v", prefix, bin, argstr.String())
 	}
 
 	// Create a span for the plugin initialization

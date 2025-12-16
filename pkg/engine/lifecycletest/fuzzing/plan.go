@@ -16,6 +16,7 @@ package fuzzing
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
@@ -93,22 +94,23 @@ func (ps *PlanSpec) Executors(t lt.TB, hostF deploytest.PluginHostFactory) (lt.T
 // Implements PrettySpec.Pretty. Returns a human-readable string representation of this PlanSpec, suitable for use in
 // debugging output and error messages.
 func (ps *PlanSpec) Pretty(indent string) string {
-	rendered := fmt.Sprintf("%sPlan %p", indent, ps)
-	rendered += fmt.Sprintf("\n%s  Operation: %s", indent, ps.Operation)
+	var rendered strings.Builder
+	rendered.WriteString(fmt.Sprintf("%sPlan %p", indent, ps))
+	rendered.WriteString(fmt.Sprintf("\n%s  Operation: %s", indent, ps.Operation))
 	if len(ps.TargetURNs) > 0 {
-		rendered += fmt.Sprintf("\n%s  Targets:", indent)
+		rendered.WriteString(fmt.Sprintf("\n%s  Targets:", indent))
 		for _, urn := range ps.TargetURNs {
-			rendered += fmt.Sprintf("\n%s    %s", indent, Colored(urn))
+			rendered.WriteString(fmt.Sprintf("\n%s    %s", indent, Colored(urn)))
 		}
 	} else {
-		rendered += fmt.Sprintf("\n%s  No targets", indent)
+		rendered.WriteString(fmt.Sprintf("\n%s  No targets", indent))
 	}
-	rendered += fmt.Sprintf("\n%s  Refresh: %t", indent, ps.Refresh)
+	rendered.WriteString(fmt.Sprintf("\n%s  Refresh: %t", indent, ps.Refresh))
 	if ps.RefreshProgram {
-		rendered += fmt.Sprintf("\n%s  Refresh Program: %t", indent, ps.RefreshProgram)
+		rendered.WriteString(fmt.Sprintf("\n%s  Refresh Program: %t", indent, ps.RefreshProgram))
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // A set of options for configuring the generation of a PlanSpec.
