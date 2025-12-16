@@ -97,7 +97,7 @@ resource "app" "scaleway:iam/application:Application" {}
 	err = parser.ParseFile(bytes.NewReader([]byte(hcl)), "infra.tf")
 	require.NoError(t, err, "parse failed")
 	program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(&plugin.MockHost{
-		ResolvePluginF: func(spec workspace.PluginSpec) (*workspace.PluginInfo, error) {
+		ResolvePluginF: func(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
 			return &workspace.PluginInfo{Name: spec.Name}, nil
 		},
 		ProviderF: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {

@@ -38,7 +38,7 @@ import (
 // InstallPluginError is returned by InstallPlugin if we couldn't install the plugin
 type InstallPluginError struct {
 	// The specification of the plugin to install
-	Spec workspace.PluginSpec
+	Spec workspace.PluginDescriptor
 	// The underlying error that occurred during the download or install.
 	Err error
 }
@@ -65,7 +65,7 @@ func (err *InstallPluginError) Unwrap() error {
 	return err.Err
 }
 
-func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginSpec,
+func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginDescriptor,
 	log func(sev diag.Severity, msg string),
 ) (*semver.Version, error) {
 	util.SetKnownPluginDownloadURL(&pluginSpec)
@@ -117,7 +117,7 @@ func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginSpec,
 // when a plugin needs it's dependencies to be installed before it can safely be
 // installed.
 func InstallPluginContent(
-	ctx context.Context, spec workspace.PluginSpec, content pluginstorage.Content, reinstall bool,
+	ctx context.Context, spec workspace.PluginDescriptor, content pluginstorage.Content, reinstall bool,
 ) (err error) {
 	done, err := pluginstorage.UnpackContents(ctx, spec, content, reinstall)
 	if err != nil {
@@ -128,7 +128,9 @@ func InstallPluginContent(
 	return installDependenciesForPluginSpec(ctx, spec, os.Stderr /* redirect stdout to stderr */, os.Stderr)
 }
 
-func installDependenciesForPluginSpec(ctx context.Context, spec workspace.PluginSpec, stdout, stderr io.Writer) error {
+func installDependenciesForPluginSpec(
+	ctx context.Context, spec workspace.PluginDescriptor, stdout, stderr io.Writer,
+) error {
 	dir, err := spec.DirPath()
 	if err != nil {
 		return err

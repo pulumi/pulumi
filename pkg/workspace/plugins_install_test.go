@@ -87,11 +87,11 @@ func prepareTestPluginTGZ(t *testing.T, files map[string][]byte) io.ReadCloser {
 // Tests should set PULUMI_HOME to a temp directory before calling this function:
 //
 //	t.Setenv(workspace.PulumiHomeEnvVar, t.TempDir())
-func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadCloser, workspace.PluginSpec) {
+func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadCloser, workspace.PluginDescriptor) {
 	tarball := prepareTestPluginTGZ(t, files)
 
 	v1 := semver.MustParse("0.1.0")
-	plugin := workspace.PluginSpec{
+	plugin := workspace.PluginDescriptor{
 		Name:    "test",
 		Kind:    apitype.ResourcePlugin,
 		Version: &v1,
@@ -106,7 +106,7 @@ func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadClose
 	return pluginDir, tarball, plugin
 }
 
-func assertPluginInstalled(t *testing.T, dir string, plugin workspace.PluginSpec) workspace.PluginInfo {
+func assertPluginInstalled(t *testing.T, dir string, plugin workspace.PluginDescriptor) workspace.PluginInfo {
 	info, err := os.Stat(filepath.Join(dir, plugin.Dir()))
 	require.NoError(t, err)
 	assert.True(t, info.IsDir())

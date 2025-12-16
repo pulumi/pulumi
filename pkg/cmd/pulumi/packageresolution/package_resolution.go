@@ -124,7 +124,7 @@ type (
 		RelativeToWorkspace bool
 	}
 	ExternalSourceResult struct {
-		Spec workspace.PluginSpec
+		Spec workspace.PluginDescriptor
 	}
 	InstalledInWorkspaceResult struct{}
 )
@@ -133,7 +133,7 @@ func Resolve(
 	ctx context.Context,
 	reg registry.Registry,
 	ws PluginWorkspace,
-	pluginSpec workspace.PluginSpec,
+	pluginSpec workspace.PluginDescriptor,
 	options Options,
 	projectOrPlugin workspace.BaseProject, // Pass nil for 'not in a project context'
 ) (Result, error) {
@@ -211,7 +211,7 @@ func Resolve(
 
 func (o Options) includeRegistryResolve() bool { return !o.DisableRegistryResolve && o.Experimental }
 
-func isAlreadyInstalled(ws PluginWorkspace, spec workspace.PluginSpec) (bool, error) {
+func isAlreadyInstalled(ws PluginWorkspace, spec workspace.PluginDescriptor) (bool, error) {
 	if spec.Version != nil {
 		return ws.HasPlugin(spec), nil
 	}
@@ -220,18 +220,18 @@ func isAlreadyInstalled(ws PluginWorkspace, spec workspace.PluginSpec) (bool, er
 
 // PluginWorkspace dictates how resolution interacts with globally installed plugins.
 type PluginWorkspace interface {
-	HasPlugin(spec workspace.PluginSpec) bool
-	HasPluginGTE(spec workspace.PluginSpec) (bool, error)
+	HasPlugin(spec workspace.PluginDescriptor) bool
+	HasPluginGTE(spec workspace.PluginDescriptor) (bool, error)
 	IsExternalURL(source string) bool
 }
 
 type defaultWorkspace struct{}
 
-func (defaultWorkspace) HasPlugin(spec workspace.PluginSpec) bool {
+func (defaultWorkspace) HasPlugin(spec workspace.PluginDescriptor) bool {
 	return workspace.HasPlugin(spec)
 }
 
-func (defaultWorkspace) HasPluginGTE(spec workspace.PluginSpec) (bool, error) {
+func (defaultWorkspace) HasPluginGTE(spec workspace.PluginDescriptor) (bool, error) {
 	return workspace.HasPluginGTE(spec)
 }
 

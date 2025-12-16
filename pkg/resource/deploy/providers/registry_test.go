@@ -90,12 +90,12 @@ func (host *testPluginHost) LanguageRuntime(root string) (plugin.LanguageRuntime
 	return nil, errors.New("unsupported")
 }
 
-func (host *testPluginHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Flags) error {
+func (host *testPluginHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds plugin.Flags) error {
 	return nil
 }
 
 func (host *testPluginHost) ResolvePlugin(
-	spec workspace.PluginSpec,
+	spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
 	return nil, nil
 }
@@ -818,7 +818,7 @@ func TestLoadProvider_missingError(t *testing.T) {
 	loader := newLoader(t, "myplugin", "1.2.3",
 		func(p tokens.Package, v semver.Version) (plugin.Provider, error) {
 			return nil, workspace.NewMissingError(
-				workspace.PluginSpec{
+				workspace.PluginDescriptor{
 					Kind:    apitype.ResourcePlugin,
 					Name:    "myplugin",
 					Version: &version,
