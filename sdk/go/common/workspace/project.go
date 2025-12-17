@@ -133,7 +133,7 @@ type PackageSpec struct {
 	unmarshalledFromFull bool
 }
 
-type packageSpecMarshaller struct {
+type packageSpecMarshalled struct {
 	Source            string            `json:"source" yaml:"source"`
 	Version           string            `json:"version" yaml:"version"`
 	Parameters        []string          `json:"parameters,omitzero" yaml:"parameters,omitempty"`
@@ -149,7 +149,7 @@ func marshalPackageSpec[T any](ps PackageSpec, from func(any) (T, error)) (T, er
 		}
 		return from(name)
 	}
-	return from(packageSpecMarshaller{
+	return from(packageSpecMarshalled{
 		Source:            ps.Source,
 		Version:           ps.Version,
 		Parameters:        ps.Parameters,
@@ -173,7 +173,7 @@ func (ps *PackageSpec) unmarshal(from func(any) error) error {
 		}
 		return nil
 	}
-	var full packageSpecMarshaller
+	var full packageSpecMarshalled
 	err := from(&full)
 	if err != nil {
 		return errors.New("package must be either a string or a package specification object")
@@ -921,16 +921,7 @@ func (proj *PluginProject) RuntimeInfo() *ProjectRuntimeInfo {
 
 // GetPackageSpecs returns a map of package names to their corresponding PackageSpecs
 func (proj *PluginProject) GetPackageSpecs() map[string]PackageSpec {
-	if proj.Packages == nil {
-		return nil
-	}
-
-	result := make(map[string]PackageSpec)
-	for name, packageValue := range proj.Packages {
-		result[name] = packageValue
-	}
-
-	return result
+	return maps.Clone(proj.Packages)
 }
 
 func (proj *PluginProject) Validate() error {
