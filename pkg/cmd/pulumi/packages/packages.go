@@ -473,7 +473,12 @@ func ProviderFromSource(
 	pctx *plugin.Context, packageSource string, reg registry.Registry,
 	e env.Env,
 ) (Provider, *workspace.PackageSpec, error) {
-	packageSpec := workspace.PackageSpec{Source: packageSource}
+	var version string
+	if parts := strings.SplitN(packageSource, "@", 2); len(parts) > 1 {
+		packageSource = parts[0]
+		version = parts[1]
+	}
+	packageSpec := workspace.PackageSpec{Source: packageSource, Version: version}
 
 	installDescriptor := func(descriptor workspace.PluginDescriptor) (Provider, error) {
 		p, err := pctx.Host.Provider(descriptor)
