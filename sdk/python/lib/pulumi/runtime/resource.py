@@ -937,10 +937,7 @@ def _struct_value_to_python(value: struct_pb2.Value) -> Any:
         return value.bool_value
     elif kind == "struct_value":
         # Recursively convert all nested struct_pb2.Value objects
-        result = {}
-        for k, v in value.struct_value.fields.items():
-            result[k] = _struct_value_to_python(v)
-        return result
+        return {k: _struct_value_to_python(v) for k, v in value.struct_value.fields.items()}
     elif kind == "list_value":
         # Recursively convert all nested struct_pb2.Value objects
         return [_struct_value_to_python(v) for v in value.list_value.values]
