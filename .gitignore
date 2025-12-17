@@ -40,7 +40,7 @@ venv/
 # Likewise, we don't want to keep the typechecked version of our codegen tests.
 tests/testdata/codegen/*/typecheck/**
 
-# We don't need to keep testing python __pycache__ either either
+# We don't need to keep testing python __pycache__ either
 tests/testdata/codegen/*-pp/*/*.csproj
 tests/testdata/codegen/*-pp/*/go.mod
 tests/testdata/codegen/*-pp/*/go.sum
@@ -48,6 +48,9 @@ tests/testdata/codegen/*-pp/*/Program.cs
 tests/testdata/codegen/*-pp/*/package.json
 tests/testdata/codegen/*-pp/*/go.sum
 tests/testdata/codegen/*-pp/*/tsconfig.json
+
+# We don't need to keep fuzzing failures around
+pkg/engine/lifecycletest/testdata/rapid/
 
 # By default, we don't check in lock files
 **/yarn.lock
