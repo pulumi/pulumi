@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package pulumiinternal and its subpackages contain internal utilities and helpers for the Pulumi Go SDK.
+// Package pulumiinternal and its subpackages contain internal utilities and helpers for use only in Pulumi code.
 //
 // This package is intended for internal use only and should not be imported by user code. The APIs in this package are
 // not subject to any stability guarantees and may change without notice.
