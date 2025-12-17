@@ -43,7 +43,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	b64secrets "github.com/pulumi/pulumi/pkg/v3/secrets/b64"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -53,6 +52,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/segmentio/encoding/json"
@@ -91,8 +91,12 @@ func installDependencies(
 	installStdout, installStderr, installDone, err := languageClient.InstallDependencies(
 		plugin.InstallDependenciesRequest{Info: programInfo, IsPlugin: isPlugin},
 	)
+	programOrPlugin := "program"
+	if isPlugin {
+		programOrPlugin = "plugin"
+	}
 	if err != nil {
-		return makeTestResponse(fmt.Sprintf("install dependencies: %v", err))
+		return makeTestResponse(fmt.Sprintf("install %s dependencies: %v", programOrPlugin, err))
 	}
 
 	// We'll use a WaitGroup to wait for the stdout (1) and stderr (2) readers to be fully drained, as well as for the
@@ -141,7 +145,7 @@ func installDependencies(
 	if err != nil {
 		return &testingrpc.RunLanguageTestResponse{
 			Success:  false,
-			Messages: []string{fmt.Sprintf("install dependencies: %v", err)},
+			Messages: []string{fmt.Sprintf("install %s dependencies: %v", programOrPlugin, err)},
 			Stdout:   string(installStdoutBytes),
 			Stderr:   string(installStderrBytes),
 		}
@@ -291,7 +295,7 @@ func (l *providerLoader) LoadPackageReferenceV2(
 
 	// Defer to the host to find the provider for the given package descriptor.
 	workspaceDescriptor := workspace.PackageDescriptor{
-		PluginSpec: workspace.PluginSpec{
+		PluginDescriptor: workspace.PluginDescriptor{
 			Kind:              apitype.ResourcePlugin,
 			Name:              descriptor.Name,
 			Version:           descriptor.Version,
@@ -1203,14 +1207,14 @@ func (eng *languageTestServer) RunLanguageTest(
 			var desc workspace.PackageDescriptor
 			if pkgDef.Parameterization == nil {
 				desc = workspace.PackageDescriptor{
-					PluginSpec: workspace.PluginSpec{
+					PluginDescriptor: workspace.PluginDescriptor{
 						Name:    pkgDef.Name,
 						Version: pkgDef.Version,
 					},
 				}
 			} else {
 				desc = workspace.PackageDescriptor{
-					PluginSpec: workspace.PluginSpec{
+					PluginDescriptor: workspace.PluginDescriptor{
 						Name:    pkgDef.Parameterization.BaseProvider.Name,
 						Version: &pkgDef.Parameterization.BaseProvider.Version,
 					},
@@ -1337,7 +1341,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			linkDeps := []workspace.LinkablePackageDescriptor{{
 				Path: token.CoreArtifact,
 				Descriptor: workspace.PackageDescriptor{
-					PluginSpec: workspace.PluginSpec{
+					PluginDescriptor: workspace.PluginDescriptor{
 						Name: "pulumi",
 					},
 				},

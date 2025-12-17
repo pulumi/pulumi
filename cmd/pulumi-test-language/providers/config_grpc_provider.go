@@ -183,9 +183,6 @@ func (p *ConfigGrpcProvider) schema() pschema.PackageSpec {
 			},
 		},
 		Functions: map[string]pschema.FunctionSpec{},
-		Language: map[string]pschema.RawMessage{
-			"nodejs": []byte(`{"respectSchemaVersion": true}`),
-		},
 	}
 
 	toSecretSchema := p.generateSchema(types, 1, 3)

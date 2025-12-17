@@ -1537,6 +1537,7 @@ func (host *goLanguageHost) Link(
 
 	// Map of moduleName to replacement paths
 	modules := map[string]string{}
+	var imports strings.Builder
 	for _, dep := range req.Packages {
 		if dep.Package.Name == "pulumi" { // TODO: should this just be github.com/pulumi/pulumi/sdk/v3?
 			modules["github.com/pulumi/pulumi/sdk/v3"] = dep.Path
@@ -1608,8 +1609,9 @@ func (host *goLanguageHost) Link(
 		if !strings.HasPrefix(dep.Path, start) {
 			modules[modulePath] = start + dep.Path
 		}
-		instructions += fmt.Sprintf("    \"%s\"\n", codegen.ExtractImportBasePath(pkg.Reference()))
+		imports.WriteString(fmt.Sprintf("    \"%s\"\n", codegen.ExtractImportBasePath(pkg.Reference())))
 	}
+	instructions += imports.String()
 	instructions += "  )\n"
 
 	gomodFilepath := filepath.Join(req.Info.ProgramDirectory, "go.mod")

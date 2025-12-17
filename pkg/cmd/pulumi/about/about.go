@@ -610,7 +610,7 @@ func (runtime projectRuntimeAbout) String() string {
 // getProjectPlugins.
 func getProjectPluginsSilently(
 	ctx *plugin.Context, proj *workspace.Project, pwd, main string,
-) ([]workspace.PluginSpec, error) {
+) ([]workspace.PluginDescriptor, error) {
 	_, w, err := os.Pipe()
 	if err != nil {
 		return nil, err

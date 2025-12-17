@@ -381,14 +381,14 @@ func moduleToPythonModule(canonicalModName string, moduleNameOverrides map[strin
 		return override
 	}
 	// A module can include fileparts, which we want to preserve.
-	var modName string
+	var modName strings.Builder
 	for i, part := range strings.Split(strings.ToLower(canonicalModName), "/") {
 		if i > 0 {
-			modName += "/"
+			modName.WriteString("/")
 		}
-		modName += PyName(part)
+		modName.WriteString(PyName(part))
 	}
-	return modName
+	return modName.String()
 }
 
 func (mod *modContext) tokenToModule(tok string) string {
@@ -492,18 +492,19 @@ func (mod *modContext) genFunctionHeader(w io.Writer, function *schema.Function,
 func relPathToRelImport(relPath string) string {
 	// Convert relative path to relative import e.g. "../.." -> "..."
 	// https://realpython.com/absolute-vs-relative-python-imports/#relative-imports
-	relImport := "."
 	if relPath == "." {
-		return relImport
+		return "."
 	}
+	var relImport strings.Builder
+	relImport.WriteString(".")
 	for _, component := range strings.Split(relPath, "/") {
 		if component == ".." {
-			relImport += "."
+			relImport.WriteString(".")
 		} else {
-			relImport += component
+			relImport.WriteString(component)
 		}
 	}
-	return relImport
+	return relImport.String()
 }
 
 func (mod *modContext) genUtilitiesFile() ([]byte, error) {
@@ -2955,14 +2956,15 @@ func getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
 			envFunc = "_utilities.get_env_float"
 		}
 
-		envVars := fmt.Sprintf("'%s'", dv.Environment[0])
+		var envVars strings.Builder
+		envVars.WriteString(fmt.Sprintf("'%s'", dv.Environment[0]))
 		for _, e := range dv.Environment[1:] {
-			envVars += fmt.Sprintf(", '%s'", e)
+			envVars.WriteString(fmt.Sprintf(", '%s'", e))
 		}
 		if defaultValue == "" {
-			defaultValue = fmt.Sprintf("%s(%s)", envFunc, envVars)
+			defaultValue = fmt.Sprintf("%s(%s)", envFunc, envVars.String())
 		} else {
-			defaultValue = fmt.Sprintf("(%s(%s) or %s)", envFunc, envVars, defaultValue)
+			defaultValue = fmt.Sprintf("(%s(%s) or %s)", envFunc, envVars.String(), defaultValue)
 		}
 	}
 

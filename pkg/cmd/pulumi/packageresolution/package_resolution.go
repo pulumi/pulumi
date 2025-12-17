@@ -16,7 +16,7 @@
 // when the source location is unknown beforehand. This is used throughout the
 // CLI to determine where to fetch packages from (registry, local paths, or external sources).
 //
-// This differs from registry.ResolvePackageFromName which specifically queries
+// This differs from [registry.ResolvePackageFromName] which specifically queries
 // the Pulumi registry. This package determines the resolution strategy first,
 // then may delegate to registry functions, local file operations, or external
 // source handling as appropriate.
@@ -26,7 +26,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -71,72 +70,121 @@ type Options struct {
 	IncludeInstalledInWorkspace bool
 }
 
+// The result of running [Resolve].
+//
+// Result will be one of 4 types:
+//
+// - [RegistryResult]: The package was resolved using Pulumi's Registry.
+// - [LocalPathResult]: The package is local and already on disk.
+// - [ExternalSourceResult]: The package is external, and should be downloaded normally.
+// - [InstalledInWorkspaceResult]: The package is already installed.
 type Result interface {
 	isResult()
 }
 
-type RegistryResult struct {
-	Metadata apitype.PackageMetadata
-}
-
-func (RegistryResult) isResult() {}
-
-type LocalPathResult struct {
-	LocalPluginPathAbs string
-}
-
-func (LocalPathResult) isResult() {}
-
-type ExternalSourceResult struct{}
-
-func (ExternalSourceResult) isResult() {}
-
-type InstalledInWorkspaceResult struct{}
-
+func (RegistryResult) isResult()             {}
+func (LocalPathResult) isResult()            {}
+func (ExternalSourceResult) isResult()       {}
 func (InstalledInWorkspaceResult) isResult() {}
+
+type (
+	// The package should be downloaded with information from the registry.
+	RegistryResult struct {
+		Metadata apitype.PackageMetadata
+	}
+	// The package is referenced by a local path.
+	//
+	// For example:
+	//
+	//	/a/nice/absolute/path/to/pulumi-resource-example
+	LocalPathResult struct {
+		// The path to the plugin on disk.
+		//
+		// If LocalPath is "./foo", that can mean one of 2 things:
+		// 1. That the spec contained workspace.PluginSpec{Name: "./foo"}.
+		//
+		// 2. That the spec contained workspace.PluginSpec{Name: "foo"} but the
+		//    Pulumi.yaml file that defined the packages contains
+		//
+		// 	packages: [ { name: foo, path: "./foo" } ]
+		//
+		// In the first case, the caller should resolve "./foo" as:
+		//
+		//	cwd, _ :=os.Getwd()
+		//	filepath.Join(cwd, "./foo")
+		//
+		// In the second case, the caller should resolve "./foo" as
+		//
+		//
+		//	filepath.Join(projectRootDirectory, "./foo")
+		//
+		LocalPath string
+		// RelativeToWorkspace is true if the local path was taken from the passed
+		// in workspace.BaseProject.
+		RelativeToWorkspace bool
+	}
+	ExternalSourceResult struct {
+		Spec workspace.PluginDescriptor
+	}
+	InstalledInWorkspaceResult struct{}
+)
 
 func Resolve(
 	ctx context.Context,
 	reg registry.Registry,
 	ws PluginWorkspace,
-	pluginSpec workspace.PluginSpec,
+	pluginSpec workspace.PluginDescriptor,
 	options Options,
-	projectRoot string, // Pass "" for 'not in a project context'
+	projectOrPlugin workspace.BaseProject, // Pass nil for 'not in a project context'
 ) (Result, error) {
 	sourceToCheck := pluginSpec.Name
 
 	if options.IncludeInstalledInWorkspace {
-		if pluginSpec.Version != nil && ws.HasPlugin(pluginSpec) {
-			return InstalledInWorkspaceResult{}, nil
+		installed, err := isAlreadyInstalled(ws, pluginSpec)
+		if err != nil {
+			return nil, err
 		}
-
-		has, _ := ws.HasPluginGTE(pluginSpec)
-		if pluginSpec.Version == nil && has {
+		if installed {
 			return InstalledInWorkspaceResult{}, nil
 		}
 	}
 
-	if projectRoot != "" {
-		localSource := getLocalProjectPackageSource(projectRoot, pluginSpec.Name)
-		if localSource != "" {
-			sourceToCheck = localSource
+	var localPathIsFromProjectOrPlugin bool
+	if projectOrPlugin != nil {
+		localSource, ok := projectOrPlugin.GetPackageSpecs()[pluginSpec.Name]
+		if ok {
+			sourceToCheck = localSource.Source
+			localPathIsFromProjectOrPlugin = true
 		}
 	}
 
 	if plugin.IsLocalPluginPath(ctx, sourceToCheck) {
-		return LocalPathResult{LocalPluginPathAbs: sourceToCheck}, nil
+		return LocalPathResult{
+			LocalPath:           sourceToCheck,
+			RelativeToWorkspace: localPathIsFromProjectOrPlugin,
+		}, nil
 	}
 
 	if ws.IsExternalURL(sourceToCheck) || pluginSpec.IsGitPlugin() {
-		return ExternalSourceResult{}, nil
+		return ExternalSourceResult{Spec: pluginSpec}, nil
 	}
 
 	var registryNotFoundErr error
 	var registryQueryErr error
 
-	if !options.DisableRegistryResolve && options.Experimental {
+	if options.includeRegistryResolve() {
 		metadata, err := registry.ResolvePackageFromName(ctx, reg, pluginSpec.Name, pluginSpec.Version)
 		if err == nil {
+			if options.IncludeInstalledInWorkspace {
+				installed, err := isAlreadyInstalled(ws, pluginSpec)
+				if err != nil {
+					return nil, err
+				}
+				if installed {
+					return InstalledInWorkspaceResult{}, nil
+				}
+			}
+
 			return RegistryResult{Metadata: metadata}, nil
 		}
 		if errors.Is(err, registry.ErrNotFound) {
@@ -147,54 +195,43 @@ func Resolve(
 	}
 
 	if registry.IsPreRegistryPackage(pluginSpec.Name) {
-		return ExternalSourceResult{}, nil
+		return ExternalSourceResult{Spec: pluginSpec}, nil
 	}
 
 	if registryQueryErr != nil {
-		return RegistryResult{}, registryQueryErr
+		return nil, registryQueryErr
 	}
 
-	return ExternalSourceResult{}, &PackageNotFoundError{
+	return nil, &PackageNotFoundError{
 		Package:     pluginSpec.Name,
 		Version:     pluginSpec.Version,
 		OriginalErr: registryNotFoundErr,
 	}
 }
 
-func getLocalProjectPackageSource(
-	projectRoot string,
-	packageName string,
-) string {
-	projPath := filepath.Join(projectRoot, "Pulumi.yaml")
-	project, err := workspace.LoadProject(projPath)
-	if err != nil {
-		return ""
-	}
+func (o Options) includeRegistryResolve() bool { return !o.DisableRegistryResolve && o.Experimental }
 
-	packages := project.GetPackageSpecs()
-	if packages == nil {
-		return ""
+func isAlreadyInstalled(ws PluginWorkspace, spec workspace.PluginDescriptor) (bool, error) {
+	if spec.Version != nil {
+		return ws.HasPlugin(spec), nil
 	}
-
-	if packageSpec, exists := packages[packageName]; exists {
-		return packageSpec.Source
-	}
-	return ""
+	return ws.HasPluginGTE(spec)
 }
 
+// PluginWorkspace dictates how resolution interacts with globally installed plugins.
 type PluginWorkspace interface {
-	HasPlugin(spec workspace.PluginSpec) bool
-	HasPluginGTE(spec workspace.PluginSpec) (bool, error)
+	HasPlugin(spec workspace.PluginDescriptor) bool
+	HasPluginGTE(spec workspace.PluginDescriptor) (bool, error)
 	IsExternalURL(source string) bool
 }
 
 type defaultWorkspace struct{}
 
-func (defaultWorkspace) HasPlugin(spec workspace.PluginSpec) bool {
+func (defaultWorkspace) HasPlugin(spec workspace.PluginDescriptor) bool {
 	return workspace.HasPlugin(spec)
 }
 
-func (defaultWorkspace) HasPluginGTE(spec workspace.PluginSpec) (bool, error) {
+func (defaultWorkspace) HasPluginGTE(spec workspace.PluginDescriptor) (bool, error) {
 	return workspace.HasPluginGTE(spec)
 }
 

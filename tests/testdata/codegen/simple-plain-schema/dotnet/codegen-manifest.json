@@ -1,7 +1,7 @@
 {
   "emittedFiles": [
     ".gitattributes",
-    ".gitingore",
+    ".gitignore",
     "Component.cs",
     "DoFoo.cs",
     "Inputs/Foo.cs",

@@ -35,6 +35,8 @@ func Global() env.Env {
 	return env.NewEnv(env.Global)
 }
 
+var Home = env.String("HOME", "The directory where Pulumi stores global configuration and plugins in.")
+
 // That Pulumi is running in experimental mode.
 //
 // This is our standard gate for an existing feature that's not quite ready to be stable
@@ -234,3 +236,8 @@ var (
 
 var EnableJournaling = env.Bool("ENABLE_JOURNALING",
 	"Enable journaling of engine operations to the backend (if the backend supports it)")
+
+var JournalingBatchSize = env.Int("JOURNALING_BATCH_SIZE", "Maximum batch size for journal entries")
+
+var JournalingBatchPeriod = env.Int("JOURNALING_BATCH_PERIOD",
+	"Maximum period in milliseconds between batches of journal entries")

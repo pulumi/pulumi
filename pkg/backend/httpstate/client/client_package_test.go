@@ -375,7 +375,7 @@ func TestPublishPackage(t *testing.T) {
 			if tt.httpClient != nil {
 				httpClient = tt.httpClient
 			} else {
-				httpClient = http.DefaultClient
+				httpClient = newHTTPClient()
 			}
 
 			// Create client pointing to our test server
@@ -385,7 +385,7 @@ func TestPublishPackage(t *testing.T) {
 				httpClient: httpClient,
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
-						client: http.DefaultClient,
+						client: newHTTPClient(),
 					},
 				},
 			}

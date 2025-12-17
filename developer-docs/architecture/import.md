@@ -125,6 +125,7 @@ Graphically, the import process looks something like this:
 
 ![`pulumi import` diagram](./pulumi-import.svg)
 
+
 ### Challenges
 
 The primary challenge in generating appropriate code for `pulumi import` lies in
@@ -150,3 +151,23 @@ A few other approaches might be:
 
 It is likely that some mix of approaches is necessary in order to arrive at a satisfactory
 solution, as none of the above solutions seems universally "correct".
+
+### Error handling
+
+Bulk import deserves a quick description of handling errors in the import process.
+
+If the error is detectable during preview, the following command fails before taking any action:
+
+    pulumi import --file=import-file.json
+
+This includes the common case of failing to find a requested resource: "resource 'x' does not exist".
+
+If preview is skipped instead of failing Pulumi imports as many resources as possible and writes them into the state
+file, listing any errors it encountered to the output:
+
+    pulumi import --file=import-file.json --skip-preview
+
+Note that repeatedly importing a resource is idempotent, so the above command admits retry.
+
+One problem to be wary of is that it is possible to accidentally import the same physical resource more than once under
+different names, creating implicit aliasing and confusing Pulumi.

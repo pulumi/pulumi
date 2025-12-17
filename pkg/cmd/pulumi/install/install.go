@@ -94,7 +94,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 					return fmt.Errorf("getting the working directory: %w", err)
 				}
 				pluginPath, err := workspace.DetectPluginPathFrom(cwd)
-				if err == nil && pluginPath != "" {
+				if err == nil {
 					// We're in a plugin. First install the packages specified
 					// in the plugin project file, and then install the plugin's
 					// dependencies.
@@ -200,7 +200,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 				pluginSet := engine.NewPluginSet()
 				for _, pkg := range packages {
-					pluginSet.Add(pkg.PluginSpec)
+					pluginSet.Add(pkg.PluginDescriptor)
 				}
 
 				if err = engine.EnsurePluginsAreInstalled(ctx, nil, pctx.Diag, pluginSet,
@@ -319,7 +319,8 @@ func installPackagesFromProject(
 		}
 	}
 
-	var wg pdag.DAG[node]
+	wg := pdag.New[node]()
+	newNode := func(n node) pdag.Node { node, done := wg.NewNode(n); done(); return node }
 	seen := map[string]pdag.Node{}
 	var findPlugins func(root pdag.Node, cwd string, proj workspace.BaseProject) error
 	findPlugins = func(root pdag.Node, cwd string, proj workspace.BaseProject) error {
@@ -341,7 +342,7 @@ func installPackagesFromProject(
 				if n, ok := seen[absPluginSource]; ok {
 					pluginInstall = &n
 				} else {
-					pkg := wg.NewNode(node{name, installPlugin(absPluginSource, pluginProject)})
+					pkg := newNode(node{name, installPlugin(absPluginSource, pluginProject)})
 					if err := wg.NewEdge(pkg, root); err != nil {
 						return err
 					}
@@ -353,7 +354,7 @@ func installPackagesFromProject(
 				}
 			}
 
-			installPkg := wg.NewNode(node{name, installPackage(cwd, name, proj, packageSpec)})
+			installPkg := newNode(node{name, installPackage(cwd, name, proj, packageSpec)})
 			if pluginInstall != nil {
 				if err := wg.NewEdge(*pluginInstall, installPkg); err != nil {
 					return err
@@ -369,7 +370,7 @@ func installPackagesFromProject(
 
 	// Search for plugins
 	if err := findPlugins(
-		wg.NewNode(node{name: "root", packageSpec: func(context.Context) error { return nil }}),
+		newNode(node{name: "root", packageSpec: func(context.Context) error { return nil }}),
 		root,
 		proj,
 	); err != nil {
@@ -426,27 +427,29 @@ func shouldInstallPluginDependencies() (bool, error) {
 		return false, fmt.Errorf("getting the working directory: %w", err)
 	}
 	pluginPath, err := workspace.DetectPluginPathFrom(cwd)
-	if err != nil {
+	pluginNotFound := errors.Is(err, workspace.ErrPluginNotFound)
+	if err != nil && !pluginNotFound {
 		return false, fmt.Errorf("detecting plugin path: %w", err)
 	}
-	if pluginPath != "" {
-		// There's a PulumiPlugin.yaml in cwd or a parent folder. The plugin might be nested
-		// within a project, or vice-vera, so we need to check if there's a Pulumi.yaml in a parent
-		// folder.
-		projectPath, err := workspace.DetectProjectPathFrom(cwd)
-		if err != nil {
-			if errors.Is(err, workspace.ErrProjectNotFound) {
-				// No project found, we should install the dependencies for the plugin.
-				return true, nil
-			}
-			return false, fmt.Errorf("detecting project path: %w", err)
-		}
-		// We have both a project and a plugin. If the project path is a parent of the plugin
-		// path, we should install dependencies for the plugin, otherwise we should
-		// install dependencies for the project.
-		baseProjectPath := filepath.Dir(projectPath)
-		basePluginPath := filepath.Dir(pluginPath)
-		return strings.Contains(basePluginPath, baseProjectPath), nil
+	if pluginNotFound {
+		return false, nil
 	}
-	return false, nil
+
+	// There's a PulumiPlugin.yaml in cwd or a parent folder. The plugin might be nested
+	// within a project, or vice-vera, so we need to check if there's a Pulumi.yaml in a parent
+	// folder.
+	projectPath, err := workspace.DetectProjectPathFrom(cwd)
+	if err != nil {
+		if errors.Is(err, workspace.ErrProjectNotFound) {
+			// No project found, we should install the dependencies for the plugin.
+			return true, nil
+		}
+		return false, fmt.Errorf("detecting project path: %w", err)
+	}
+	// We have both a project and a plugin. If the project path is a parent of the plugin
+	// path, we should install dependencies for the plugin, otherwise we should
+	// install dependencies for the project.
+	baseProjectPath := filepath.Dir(projectPath)
+	basePluginPath := filepath.Dir(pluginPath)
+	return strings.Contains(basePluginPath, baseProjectPath), nil
 }

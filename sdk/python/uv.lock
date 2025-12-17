@@ -1,6 +1,10 @@
 version = 1
 revision = 3
 requires-python = ">=3.10"
+resolution-markers = [
+    "python_full_version >= '3.14'",
+    "python_full_version < '3.14'",
+]
 
 [[package]]
 name = "backports-asyncio-runner"
@@ -392,7 +396,7 @@ name = "importlib-metadata"
 version = "8.6.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "zipp" },
+    { name = "zipp", marker = "python_full_version < '3.14'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/33/08/c1395a292bb23fd03bdf572a1357c5a733d3eecbab877641ceacab23db6e/importlib_metadata-8.6.1.tar.gz", hash = "sha256:310b41d755445d74569f993ccfc22838295d9fe005425094fad953d7f15c8580", size = 55767, upload-time = "2025-01-20T22:21:30.429Z" }
 wheels = [
@@ -615,11 +619,11 @@ wheels = [
 
 [[package]]
 name = "pip"
-version = "25.0"
+version = "25.3"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/47/3e/68beeeeb306ea20ffd30b3ed993f531d16cd884ec4f60c9b1e238f69f2af/pip-25.0.tar.gz", hash = "sha256:8e0a97f7b4c47ae4a494560da84775e9e2f671d415d8d828e052efefb206b30b", size = 1950328, upload-time = "2025-01-26T12:40:41.474Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fe/6e/74a3f0179a4a73a53d66ce57fdb4de0080a8baa1de0063de206d6167acc2/pip-25.3.tar.gz", hash = "sha256:8d0538dbbd7babbd207f261ed969c65de439f6bc9e5dbd3b3b9a77f25d95f343", size = 1803014, upload-time = "2025-10-25T00:55:41.394Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/85/8a/1ddf40be20103bcc605db840e9ade09c8e8c9f920a03e9cfe88eae97a058/pip-25.0-py3-none-any.whl", hash = "sha256:b6eb97a803356a52b2dd4bb73ba9e65b2ba16caa6bcb25a7497350a4e5859b65", size = 1841506, upload-time = "2025-01-26T12:40:39.243Z" },
+    { url = "https://files.pythonhosted.org/packages/44/3c/d717024885424591d5376220b5e836c2d5293ce2011523c9de23ff7bf068/pip-25.3-py3-none-any.whl", hash = "sha256:9655943313a94722b7774661c21049070f6bbb0a1516bf02f7c8d5d9201514cd", size = 1778622, upload-time = "2025-10-25T00:55:39.247Z" },
 ]
 
 [[package]]
@@ -647,7 +651,7 @@ wheels = [
 
 [[package]]
 name = "pulumi"
-version = "3.210.0"
+version = "3.213.0"
 source = { editable = "." }
 dependencies = [
     { name = "debugpy" },
@@ -681,7 +685,8 @@ dev = [
 requires-dist = [
     { name = "debugpy", specifier = "~=1.8.7" },
     { name = "dill", specifier = "~=0.4" },
-    { name = "grpcio", specifier = ">=1.68.1,<2" },
+    { name = "grpcio", marker = "python_full_version < '3.14'", specifier = ">=1.68.1,<2" },
+    { name = "grpcio", marker = "python_full_version >= '3.14'", specifier = ">=1.75.1,<2" },
     { name = "pip", specifier = ">=24.3.1,<26" },
     { name = "protobuf", specifier = ">=3.20.3,<6" },
     { name = "pyyaml", specifier = "~=6.0" },

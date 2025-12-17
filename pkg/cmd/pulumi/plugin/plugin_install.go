@@ -27,6 +27,7 @@ import (
 	"github.com/blang/semver"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -95,12 +96,12 @@ type pluginInstallCmd struct {
 	packageResolutionOptions packageresolution.Options
 
 	pluginGetLatestVersion func(
-		workspace.PluginSpec, context.Context,
+		workspace.PluginDescriptor, context.Context,
 	) (*semver.Version, error) // == workspace.PluginSpec.GetLatestVersion
 
 	installPluginSpec func(
 		ctx context.Context, label string,
-		install workspace.PluginSpec, file string,
+		install workspace.PluginDescriptor, file string,
 		sink diag.Sink, color colors.Colorization, reinstall bool,
 	) error // == installPluginSpec
 }
@@ -116,7 +117,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		cmd.color = cmdutil.GetGlobalColorization()
 	}
 	if cmd.pluginGetLatestVersion == nil {
-		cmd.pluginGetLatestVersion = (workspace.PluginSpec).GetLatestVersion
+		cmd.pluginGetLatestVersion = (workspace.PluginDescriptor).GetLatestVersion
 	}
 	if cmd.installPluginSpec == nil {
 		cmd.installPluginSpec = installPluginSpec
@@ -126,7 +127,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	// Parse the kind, name, and version, if specified.
-	var installs []workspace.PluginSpec
+	var installs []workspace.PluginDescriptor
 	if len(args) > 0 {
 		if !apitype.IsPluginKind(args[0]) {
 			return fmt.Errorf("unrecognized plugin kind: %s", args[0])
@@ -190,7 +191,15 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 			if err != nil {
 				return fmt.Errorf("getting current working directory: %w", err)
 			}
-			updatedSpec, err := cmd.resolvePluginSpec(ctx, pluginSpec, cwd)
+
+			var project workspace.BaseProject
+			if bp, _, err := workspace.LoadBaseProjectFrom(cwd); err == nil {
+				project = bp
+			} else if !errors.Is(err, workspace.ErrBaseProjectNotFound) {
+				return err
+			}
+
+			updatedSpec, err := cmd.resolvePluginSpec(ctx, pluginSpec, project)
 			if err != nil {
 				return err
 			}
@@ -261,12 +270,12 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 
 func installPluginSpec(
 	ctx context.Context, label string,
-	install workspace.PluginSpec, file string,
+	install workspace.PluginDescriptor, file string,
 	sink diag.Sink, color colors.Colorization, reinstall bool,
 ) error {
 	// If we got here, actually try to do the download.
 	var source string
-	var payload pkgWorkspace.PluginContent
+	var payload pluginstorage.Content
 	var err error
 	if file == "" {
 		withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
@@ -283,7 +292,7 @@ func installPluginSpec(
 		}
 		defer func() { contract.IgnoreError(os.Remove(r.Name())) }()
 
-		payload = pkgWorkspace.TarPlugin(r)
+		payload = pluginstorage.TarPlugin(r)
 	} else {
 		source = file
 		logging.V(1).Infof("%s opening tarball from %s", label, file)
@@ -299,7 +308,7 @@ func installPluginSpec(
 	return nil
 }
 
-func getFilePayload(file string, spec workspace.PluginSpec) (pkgWorkspace.PluginContent, error) {
+func getFilePayload(file string, spec workspace.PluginDescriptor) (pluginstorage.Content, error) {
 	source := file
 	stat, err := os.Stat(file)
 	if err != nil {
@@ -307,7 +316,7 @@ func getFilePayload(file string, spec workspace.PluginSpec) (pkgWorkspace.Plugin
 	}
 
 	if stat.IsDir() {
-		return pkgWorkspace.DirPlugin(file), nil
+		return pluginstorage.DirPlugin(file), nil
 	}
 
 	f, err := os.Open(file)
@@ -328,18 +337,18 @@ func getFilePayload(file string, spec workspace.PluginSpec) (pkgWorkspace.Plugin
 		if runtime.GOOS != "windows" && (stat.Mode()&0o100) == 0 {
 			return nil, fmt.Errorf("%s is not executable", source)
 		}
-		return pkgWorkspace.SingleFilePlugin(f, spec), nil
+		return pluginstorage.SingleFilePlugin(f, spec), nil
 	}
-	return pkgWorkspace.TarPlugin(f), nil
+	return pluginstorage.TarPlugin(f), nil
 }
 
 // resolvePluginSpec resolves plugin specifications using various resolution strategies.
 func (cmd *pluginInstallCmd) resolvePluginSpec(
-	ctx context.Context, pluginSpec workspace.PluginSpec, absProjectDir string,
-) (workspace.PluginSpec, error) {
+	ctx context.Context, pluginSpec workspace.PluginDescriptor, project workspace.BaseProject,
+) (workspace.PluginDescriptor, error) {
 	resolutionEnv := cmd.packageResolutionOptions
 	result, err := packageresolution.Resolve(
-		ctx, cmd.registry, packageresolution.DefaultWorkspace(), pluginSpec, resolutionEnv, absProjectDir)
+		ctx, cmd.registry, packageresolution.DefaultWorkspace(), pluginSpec, resolutionEnv, project)
 	if err != nil {
 		var packageNotFoundErr *packageresolution.PackageNotFoundError
 		if errors.As(err, &packageNotFoundErr) {
@@ -350,7 +359,7 @@ func (cmd *pluginInstallCmd) resolvePluginSpec(
 				)
 			}
 		}
-		return pluginSpec, fmt.Errorf("Unable to resolve package from name: %w", err)
+		return workspace.PluginDescriptor{}, fmt.Errorf("Unable to resolve package from name: %w", err)
 	}
 
 	switch res := result.(type) {

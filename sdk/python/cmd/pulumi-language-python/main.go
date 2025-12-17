@@ -1374,8 +1374,13 @@ func (host *pythonLanguageHost) About(ctx context.Context,
 	}
 
 	return &pulumirpc.AboutResponse{
-		Executable: info.Executable,
-		Version:    info.Version,
+		Executable: info.PythonExecutable,
+		Version:    info.PythonVersion.String(),
+		Metadata: map[string]string{
+			"toolchain":        toolchain.Name(opts.Toolchain),
+			"toolchainVersion": info.ToolchainVersion.String(),
+			"typechecker":      toolchain.TypeCheckerName(opts.Typechecker),
+		},
 	}, nil
 }
 
@@ -1774,6 +1779,7 @@ func (host *pythonLanguageHost) Link(
 
 	// Map of python package names to paths
 	packages := map[string]string{}
+	var imports strings.Builder
 	for _, dep := range req.Packages {
 		if dep.Package.Name == "pulumi" {
 			packages["pulumi"] = dep.Path
@@ -1835,8 +1841,9 @@ func (host *pythonLanguageHost) Link(
 			packageName = python.PyPack(pkgRef.Namespace(), pkgRef.Name())
 		}
 		packages[packageName] = dep.Path
-		instructions += fmt.Sprintf("  import %s as %s\n", packageName, importName)
+		imports.WriteString(fmt.Sprintf("  import %s as %s\n", packageName, importName))
 	}
+	instructions += imports.String()
 
 	if opts.Toolchain != toolchain.Pip {
 		pyprojectPath := filepath.Join(req.Info.ProgramDirectory, "pyproject.toml")

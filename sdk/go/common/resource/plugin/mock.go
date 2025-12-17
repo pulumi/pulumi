@@ -34,8 +34,8 @@ type MockHost struct {
 	ProviderF           func(descriptor workspace.PackageDescriptor) (Provider, error)
 	CloseProviderF      func(provider Provider) error
 	LanguageRuntimeF    func(runtime string) (LanguageRuntime, error)
-	EnsurePluginsF      func(plugins []workspace.PluginSpec, kinds Flags) error
-	ResolvePluginF      func(spec workspace.PluginSpec) (*workspace.PluginInfo, error)
+	EnsurePluginsF      func(plugins []workspace.PluginDescriptor, kinds Flags) error
+	ResolvePluginF      func(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error)
 	GetProjectPluginsF  func() []workspace.ProjectPlugin
 	SignalCancellationF func() error
 	CloseF              func() error
@@ -106,7 +106,7 @@ func (m *MockHost) LanguageRuntime(runtime string) (LanguageRuntime, error) {
 	return nil, errors.New("LanguageRuntime not implemented")
 }
 
-func (m *MockHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Flags) error {
+func (m *MockHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds Flags) error {
 	if m.EnsurePluginsF != nil {
 		return m.EnsurePluginsF(plugins, kinds)
 	}
@@ -114,7 +114,7 @@ func (m *MockHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Flags) er
 }
 
 func (m *MockHost) ResolvePlugin(
-	spec workspace.PluginSpec,
+	spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
 	if m.ResolvePluginF != nil {
 		return m.ResolvePluginF(spec)

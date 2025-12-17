@@ -77,10 +77,10 @@ type Host interface {
 
 	// EnsurePlugins ensures all plugins in the given array are loaded and ready to use.  If any plugins are missing,
 	// and/or there are errors loading one or more plugins, a non-nil error is returned.
-	EnsurePlugins(plugins []workspace.PluginSpec, kinds Flags) error
+	EnsurePlugins(plugins []workspace.PluginDescriptor, kinds Flags) error
 
 	// ResolvePlugin resolves a pluginspec to a candidate plugin to load.
-	ResolvePlugin(spec workspace.PluginSpec) (*workspace.PluginInfo, error)
+	ResolvePlugin(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error)
 
 	GetProjectPlugins() []workspace.ProjectPlugin
 
@@ -149,10 +149,11 @@ func collectPluginsFromPackages(
 			return nil, err
 		}
 		pluginProjectFile, err := workspace.DetectPluginPathFrom(path)
-		if err != nil {
+		pluginProjectFileNotFound := errors.Is(err, workspace.ErrPluginNotFound)
+		if err != nil && !pluginProjectFileNotFound {
 			return nil, err
 		}
-		if pluginProjectFile != "" {
+		if !pluginProjectFileNotFound {
 			pp, err := workspace.LoadPluginProject(pluginProjectFile)
 			if err != nil {
 				return nil, err
@@ -301,7 +302,7 @@ func parsePluginOpts(
 
 	path, err := resolvePluginPath(root, providerOpts.Path)
 	if err != nil {
-		return handleErr(err.Error())
+		return handleErr("%s", err.Error())
 	}
 
 	pluginInfo := workspace.ProjectPlugin{
@@ -502,7 +503,7 @@ func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provi
 		}
 
 		plug, err := NewProvider(
-			host, host.ctx, descriptor.PluginSpec,
+			host, host.ctx, descriptor.PluginDescriptor,
 			host.runtimeOptions, host.disableProviderPreview, string(jsonConfig), host.projectName)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo(host.ctx.Request())
@@ -580,7 +581,7 @@ func (host *defaultHost) LanguageRuntime(runtime string,
 
 // EnsurePlugins ensures all plugins in the given array are loaded and ready to use.  If any plugins are missing,
 // and/or there are errors loading one or more plugins, a non-nil error is returned.
-func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Flags) error {
+func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds Flags) error {
 	// Use a multieerror to track failures so we can return one big list of all failures at the end.
 	var result error
 	for _, plugin := range plugins {
@@ -601,7 +602,7 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 			}
 		case apitype.ResourcePlugin:
 			if kinds&ResourcePlugins != 0 {
-				if _, err := host.Provider(workspace.PackageDescriptor{PluginSpec: plugin}); err != nil {
+				if _, err := host.Provider(workspace.PackageDescriptor{PluginDescriptor: plugin}); err != nil {
 					result = multierror.Append(result,
 						fmt.Errorf("failed to load resource plugin %s: %w", plugin.Name, err))
 				}
@@ -614,7 +615,7 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 	return result
 }
 
-func (host *defaultHost) ResolvePlugin(spec workspace.PluginSpec) (*workspace.PluginInfo, error) {
+func (host *defaultHost) ResolvePlugin(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
 	return workspace.GetPluginInfo(host.ctx.baseContext, host.ctx.Diag, spec, host.GetProjectPlugins())
 }
 

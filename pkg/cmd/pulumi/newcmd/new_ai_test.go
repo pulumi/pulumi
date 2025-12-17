@@ -40,8 +40,10 @@ func TestErrorsOnNonHTTPBackend(t *testing.T) {
 		NameF: func() string { return "mock" },
 		GetReadOnlyCloudRegistryF: func() registry.Registry {
 			return &backend.MockCloudRegistry{
-				ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-					return func(yield func(apitype.TemplateMetadata, error) bool) {}
+				Mock: registry.Mock{
+					ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					},
 				},
 			}
 		},
@@ -87,7 +89,9 @@ func TestGeneratingProjectWithAIPromptSucceeds(t *testing.T) {
 		NameF: func() string { return "mock" },
 		GetReadOnlyCloudRegistryF: func() registry.Registry {
 			return &backend.MockCloudRegistry{
-				ListTemplatesF: listTemplates,
+				Mock: registry.Mock{
+					ListTemplatesF: listTemplates,
+				},
 			}
 		},
 	})

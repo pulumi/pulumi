@@ -43,8 +43,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
-	interceptors "github.com/pulumi/pulumi/pkg/v3/util/rpcdebug"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
@@ -60,6 +58,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
+	interceptors "github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/rpcdebug"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	mapset "github.com/deckarep/golang-set/v2"
@@ -2453,9 +2453,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	replaceOnChanges := opts.ReplaceOnChanges
 
 	replacementTrigger := resource.NewNullProperty()
-	if req.GetReplacementTrigger() != nil {
+	replacementTriggerValue := opts.GetReplacementTrigger()
+	if replacementTriggerValue != nil {
 		t, err := plugin.UnmarshalPropertyValue(
-			"replacementTrigger", req.GetReplacementTrigger(), plugin.MarshalOptions{
+			"replacementTrigger", replacementTriggerValue, plugin.MarshalOptions{
 				Label:              label,
 				KeepUnknowns:       true,
 				ComputeAssetHashes: true,

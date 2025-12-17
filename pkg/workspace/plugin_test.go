@@ -42,7 +42,7 @@ func TestInstallPluginErrorText(t *testing.T) {
 			Name: "Just name",
 			Err: InstallPluginError{
 				Err: err,
-				Spec: workspace.PluginSpec{
+				Spec: workspace.PluginDescriptor{
 					Name: "myplugin",
 					Kind: apitype.ResourcePlugin,
 				},
@@ -54,7 +54,7 @@ func TestInstallPluginErrorText(t *testing.T) {
 			Name: "Different kind",
 			Err: InstallPluginError{
 				Err: err,
-				Spec: workspace.PluginSpec{
+				Spec: workspace.PluginDescriptor{
 					Name: "myplugin",
 					Kind: apitype.ConverterPlugin,
 				},
@@ -66,7 +66,7 @@ func TestInstallPluginErrorText(t *testing.T) {
 			Name: "Name and version",
 			Err: InstallPluginError{
 				Err: err,
-				Spec: workspace.PluginSpec{
+				Spec: workspace.PluginDescriptor{
 					Name:    "myplugin",
 					Kind:    apitype.ResourcePlugin,
 					Version: &v1,
@@ -79,7 +79,7 @@ func TestInstallPluginErrorText(t *testing.T) {
 			Name: "Name and version and URL",
 			Err: InstallPluginError{
 				Err: err,
-				Spec: workspace.PluginSpec{
+				Spec: workspace.PluginDescriptor{
 					Name:              "myplugin",
 					Kind:              apitype.ResourcePlugin,
 					Version:           &v1,
@@ -94,7 +94,7 @@ func TestInstallPluginErrorText(t *testing.T) {
 			Name: "Name and URL",
 			Err: InstallPluginError{
 				Err: err,
-				Spec: workspace.PluginSpec{
+				Spec: workspace.PluginDescriptor{
 					Name:              "myplugin",
 					Kind:              apitype.ResourcePlugin,
 					PluginDownloadURL: "github://owner/repo",
@@ -124,7 +124,7 @@ func TestPluginInstallCancellation(t *testing.T) {
 	// Now proceed to try various ways of installing plugins, all of which should promptly
 	// fail because we are operating on an already-cancelled context.
 	v4 := semver.MustParse("4.0.0")
-	spec := workspace.PluginSpec{
+	spec := workspace.PluginDescriptor{
 		Name:    "random",
 		Kind:    apitype.ResourcePlugin,
 		Version: &v4,

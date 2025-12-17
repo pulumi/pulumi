@@ -5,7 +5,7 @@
         "@pulumi/policy": "^1.1.0"
     },
     "devDependencies": {
-        "@types/mocha": "^2.2.42",
-        "@types/node": "^10.12.7"
+        "@types/mocha": "2.2.48",
+        "@types/node": "10.17.60"
     }
 }

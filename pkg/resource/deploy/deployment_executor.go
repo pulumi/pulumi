@@ -86,9 +86,9 @@ func (ex *deploymentExecutor) checkTargets(targets UrnTargets) error {
 }
 
 func (ex *deploymentExecutor) printPendingOperationsWarning() {
-	pendingOperations := ""
+	var pendingOperations strings.Builder
 	for _, op := range ex.deployment.prev.PendingOperations {
-		pendingOperations = pendingOperations + fmt.Sprintf("  * %s, interrupted while %s\n", op.Resource.URN, op.Type)
+		pendingOperations.WriteString(fmt.Sprintf("  * %s, interrupted while %s\n", op.Resource.URN, op.Type))
 	}
 
 	resolutionMessage := "" +
@@ -105,7 +105,7 @@ func (ex *deploymentExecutor) printPendingOperationsWarning() {
 
 	warning := "Attempting to deploy or update resources " +
 		fmt.Sprintf("with %d pending operations from previous deployment.\n", len(ex.deployment.prev.PendingOperations)) +
-		pendingOperations +
+		pendingOperations.String() +
 		resolutionMessage
 
 	ex.deployment.Diag().Warningf(diag.RawMessage("" /*urn*/, warning))

@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // diyStack is a diy stack descriptor.
@@ -41,6 +42,9 @@ type diyStack struct {
 	// snapshotStackOutputs contains the stack outputs of the latest deployment snapshot, allocated on first use.
 	// It's valid for the outputs property map itself to be nil.
 	snapshotStackOutputs atomic.Pointer[property.Map]
+	// tags contains metadata tags describing additional, extensible properties about this stack.
+	// Loaded on first access and cached.
+	tags atomic.Pointer[map[apitype.StackTagName]string]
 	// a pointer to the backend this stack belongs to.
 	b *diyBackend
 }
@@ -100,8 +104,22 @@ func (s *diyStack) SnapshotStackOutputs(
 	return *s.snapshotStackOutputs.Load(), nil
 }
 
-func (s *diyStack) Backend() backend.Backend              { return s.b }
-func (s *diyStack) Tags() map[apitype.StackTagName]string { return nil }
+func (s *diyStack) Backend() backend.Backend { return s.b }
+
+func (s *diyStack) Tags() map[apitype.StackTagName]string {
+	if v := s.tags.Load(); v != nil {
+		return *v
+	}
+
+	tags, err := s.b.loadStackTags(context.Background(), s.ref)
+	if err != nil {
+		logging.Errorf("failed to load stack tags: %v", err)
+		return nil
+	}
+
+	s.tags.Store(&tags)
+	return tags
+}
 
 func (s *diyStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets.Manager, error) {
 	return passphrase.NewPromptingPassphraseSecretsManager(info, false /* rotatePassphraseSecretsProvider */)

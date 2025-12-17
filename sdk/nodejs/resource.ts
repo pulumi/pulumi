@@ -787,6 +787,11 @@ export interface ResourceOptions {
     replaceOnChanges?: string[];
 
     /**
+     * If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
+     */
+    replacementTrigger?: Input<any>;
+
+    /**
      * An optional version, corresponding to the version of the provider plugin that should be used when operating on
      * this resource. This version overrides the version information inferred from the current package and should
      * rarely be used.

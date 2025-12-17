@@ -859,12 +859,13 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 			getType = "Double"
 		}
 
-		envVars := fmt.Sprintf("%q", dv.Environment[0])
+		var envVars strings.Builder
+		envVars.WriteString(fmt.Sprintf("%q", dv.Environment[0]))
 		for _, e := range dv.Environment[1:] {
-			envVars += fmt.Sprintf(", %q", e)
+			envVars.WriteString(fmt.Sprintf(", %q", e))
 		}
 
-		getEnv := fmt.Sprintf("Utilities.GetEnv%s(%s)", getType, envVars)
+		getEnv := fmt.Sprintf("Utilities.GetEnv%s(%s)", getType, envVars.String())
 		if val != "" {
 			val = fmt.Sprintf("%s ?? %s", getEnv, val)
 		} else {
@@ -2675,7 +2676,7 @@ func GeneratePackage(
 	files := codegen.Fs{}
 
 	files.Add(".gitattributes", codegen.GenGitAttributesFile())
-	files.Add(".gitingore", genGitignoreFile())
+	files.Add(".gitignore", genGitignoreFile())
 
 	for p, f := range extraFiles {
 		files.Add(p, f)

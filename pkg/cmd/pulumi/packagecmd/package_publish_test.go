@@ -26,9 +26,11 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -40,20 +42,21 @@ import (
 //nolint:paralleltest // This test uses the global backendInstance variable
 func TestPackagePublishCmd_Run(t *testing.T) {
 	tests := []struct {
-		name                string
-		args                publishPackageArgs
-		packageSource       string
-		packageParams       plugin.ParameterizeParameters
-		mockSchema          *schema.PackageSpec
-		schemaExtractionErr error
-		mockOrg             string
-		mockOrgErr          error
-		publishErr          error
-		expectedErr         string
-		readmeContent       string
-		installContent      string
-		sourceDir           func(t *testing.T) string
-		pluginDir           func(t *testing.T) string
+		name                  string
+		args                  publishPackageArgs
+		packageSource         string
+		packageParams         plugin.ParameterizeParameters
+		mockSchema            *schema.PackageSpec
+		schemaExtractionErr   error
+		mockOrg               string
+		mockOrgErr            error
+		publishErr            error
+		expectedErr           string
+		readmeContent         string
+		installContent        string
+		sourceDir             func(t *testing.T) string
+		installPlugin         func(t *testing.T)
+		expectedReadmeContent string
 	}{
 		{
 			name: "successful publish with publisher from schema",
@@ -142,18 +145,19 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				Name:    "testpackage",
 				Version: "1.0.0",
 			},
-			pluginDir: func(t *testing.T) string {
+			expectedReadmeContent: "# README from the installed plugin\nThis is a test readme.",
+			installPlugin: func(t *testing.T) {
 				t.Helper()
-				dir := t.TempDir()
-				testPlugin := path.Join(dir, "resource-testpackage")
-				err := os.MkdirAll(testPlugin, 0o755)
-				require.NoError(t, err)
-				readmeFile, err := os.Create(path.Join(testPlugin, "README.md"))
-				require.NoError(t, err)
-				defer contract.IgnoreClose(readmeFile)
-				_, err = readmeFile.WriteString("# README from the installed plugin\nThis is a test readme.")
-				require.NoError(t, err)
-				return dir
+
+				pulumiHomeDir := t.TempDir() // Create an isolated PULUMI_HOME directory to install into
+				t.Setenv(env.Home.Var().Name(), pulumiHomeDir)
+
+				installResourcePluginFromFiles(t, workspace.PluginDescriptor{
+					Name: "testpackage",
+					Kind: apitype.ResourcePlugin,
+				}, map[string]string{
+					"README.md": "# README from the installed plugin\nThis is a test readme.",
+				})
 			},
 		},
 		{
@@ -291,14 +295,11 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 
 			packageSource := tt.packageSource
 			var readmePath string
-			var expectedReadmeContent string
+			expectedReadmeContent := tt.expectedReadmeContent
 			if tt.readmeContent != "" {
-				readmeFile, err := os.Create(path.Join(tempDir, "readme.md"))
+				readmePath = filepath.Join(tempDir, "readme.md")
+				err := os.WriteFile(filepath.Join(tempDir, "readme.md"), []byte(tt.readmeContent), 0o600)
 				require.NoError(t, err)
-				_, err = readmeFile.WriteString(tt.readmeContent)
-				require.NoError(t, err)
-				require.NoError(t, readmeFile.Close())
-				readmePath = readmeFile.Name()
 				tt.args.readmePath = readmePath
 				expectedReadmeContent = tt.readmeContent
 			}
@@ -312,15 +313,8 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 					expectedReadmeContent = string(readmeData)
 				}
 			}
-			var pluginDir string
-			if tt.pluginDir != nil {
-				pluginDir = tt.pluginDir(t)
-				readmePath = path.Join(pluginDir, "resource-"+tt.packageSource, "README.md")
-				if readmeFile, err := os.Stat(readmePath); err == nil && !readmeFile.IsDir() {
-					readmeData, err := os.ReadFile(readmePath)
-					require.NoError(t, err)
-					expectedReadmeContent = string(readmeData)
-				}
+			if tt.installPlugin != nil {
+				tt.installPlugin(t)
 			}
 
 			var installDocsPath string
@@ -344,15 +338,15 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 					assert.Equal(t, tt.mockSchema, packageSpec, "package schema should match input package spec")
 
 					// Verify readme and install docs content
-					if tt.args.readmePath != "" {
-						actualContents, err := io.ReadAll(op.Readme)
-						require.NoError(t, err)
-						assert.Equal(t, expectedReadmeContent, string(actualContents), "readme should match the provided markdown file")
-					}
+					actualReadme, err := io.ReadAll(op.Readme)
+					require.NoError(t, err)
+					assert.Equal(t, expectedReadmeContent, string(actualReadme), "readme should match the provided markdown file")
+
 					if tt.args.installDocsPath != "" {
-						actualContents, err := io.ReadAll(op.InstallDocs)
+						actualInstallDocs, err := io.ReadAll(op.InstallDocs)
 						require.NoError(t, err)
-						assert.Equal(t, tt.installContent, string(actualContents), "install docs should match the provided markdown file")
+						assert.Equal(t, tt.installContent, string(actualInstallDocs),
+							"install docs should match the provided markdown file")
 					}
 
 					// Verify publisher is set correctly
@@ -389,10 +383,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 					}
 					return tt.mockSchema, nil, tt.schemaExtractionErr
 				},
-				pluginDir: pluginDir,
 			}
 
-			err := cmd.Run(context.Background(), tt.args, packageSource, tt.packageParams)
+			err := cmd.Run(t.Context(), tt.args, packageSource, tt.packageParams)
 			if tt.expectedErr != "" {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.expectedErr)
@@ -613,13 +606,13 @@ func unmarshalSchema(schemaBytes []byte) (*schema.PackageSpec, error) {
 }
 
 func TestFindReadme(t *testing.T) {
-	t.Parallel()
 	tmpDir := t.TempDir()
-	ctx := context.Background()
+	ctx := t.Context()
 
-	cmd := packagePublishCmd{
-		pluginDir: tmpDir,
-	}
+	pulumiHomeDir := t.TempDir() // Create an isolated PULUMI_HOME directory to install into
+	t.Setenv(env.Home.Var().Name(), pulumiHomeDir)
+
+	cmd := packagePublishCmd{}
 
 	t.Run("NonExistentDirectory", func(t *testing.T) {
 		t.Parallel()
@@ -697,16 +690,16 @@ func TestFindReadme(t *testing.T) {
 		pluginDownloadURL := "git://github.com/pulumi/pulumi-example@v1.2.3"
 		pluginSpec, err := workspace.NewPluginSpec(ctx, pluginDownloadURL, apitype.ResourcePlugin, nil, "", nil)
 		require.NoError(t, err)
-		pluginSpec.PluginDir = cmd.pluginDir
 
-		dirPath := filepath.Join(tmpDir, pluginSpec.Dir())
-		require.NoError(t, os.Mkdir(dirPath, 0o755))
-		readmePath := filepath.Join(dirPath, "README.md")
-		require.NoError(t, os.WriteFile(readmePath, []byte("# Test Readme"), 0o600))
+		installResourcePluginFromFiles(t, pluginSpec, map[string]string{
+			"README.md": "# Test Readme",
+		})
 
 		readme, err := cmd.findReadme(ctx, pluginDownloadURL)
-		assert.Equal(t, readmePath, readme)
 		require.NoError(t, err)
+		actualReadme, err := os.ReadFile(readme)
+		require.NoError(t, err)
+		assert.Equal(t, "# Test Readme", string(actualReadme))
 	})
 
 	t.Run("Git Plugin Download URL with subdirectory", func(t *testing.T) {
@@ -714,19 +707,35 @@ func TestFindReadme(t *testing.T) {
 		pluginDownloadURL := "git://github.com/pulumi/pulumi-subdir-example/path@v1.2.3"
 		pluginSpec, err := workspace.NewPluginSpec(ctx, pluginDownloadURL, apitype.ResourcePlugin, nil, "", nil)
 		require.NoError(t, err)
-		pluginSpec.PluginDir = cmd.pluginDir
 
-		dirPath := filepath.Join(tmpDir, pluginSpec.Dir())
-		require.NoError(t, os.Mkdir(dirPath, 0o755))
-		readmePath := filepath.Join(dirPath, "README.md")
-		require.NoError(t, os.WriteFile(readmePath, []byte("# Root Readme"), 0o600))
-		subdirPath := filepath.Join(dirPath, "path")
-		require.NoError(t, os.Mkdir(subdirPath, 0o755))
-		subdirReadmePath := filepath.Join(subdirPath, "README.md")
-		require.NoError(t, os.WriteFile(subdirReadmePath, []byte("# Subdir Readme"), 0o600))
+		installResourcePluginFromFiles(t, pluginSpec, map[string]string{
+			"README.md":      "# Root Readme",
+			"path/README.md": "# Subdir Readme",
+		})
 
 		readme, err := cmd.findReadme(ctx, pluginDownloadURL)
-		assert.Equal(t, subdirReadmePath, readme)
 		require.NoError(t, err)
+		actualReadme, err := os.ReadFile(readme)
+		require.NoError(t, err)
+		assert.Equal(t, "# Subdir Readme", string(actualReadme))
 	})
+}
+
+// installResourcePluginFromFiles installs into the **global** PULUMI_HOME the files
+// described as spec.
+//
+// This function should only be used after t.Setenv(workspace.PulumiHomeEnvVar,
+// pulumiHomeDir) has been called.
+func installResourcePluginFromFiles(t *testing.T, spec workspace.PluginDescriptor, files map[string]string) {
+	t.Helper()
+	dir := t.TempDir()
+	for path, content := range files {
+		path = filepath.Join(dir, path)
+		err := os.MkdirAll(filepath.Dir(path), 0o755)
+		require.NoError(t, err)
+		err = os.WriteFile(path, []byte(content), 0o600)
+		require.NoError(t, err)
+	}
+	err := pkgWorkspace.InstallPluginContent(t.Context(), spec, pluginstorage.DirPlugin(dir), true)
+	require.NoError(t, err)
 }

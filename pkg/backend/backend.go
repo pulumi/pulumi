@@ -149,9 +149,6 @@ type Backend interface {
 	ListPolicyPacks(ctx context.Context, orgName string, inContToken ContinuationToken) (
 		apitype.ListPolicyPacksResponse, ContinuationToken, error)
 
-	// SupportsTags tells whether a stack can have associated tags stored with it in this backend.
-	SupportsTags() bool
-
 	// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
 	SupportsOrganizations() bool
 

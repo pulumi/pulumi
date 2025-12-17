@@ -27,7 +27,9 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -80,23 +82,31 @@ func prepareTestPluginTGZ(t *testing.T, files map[string][]byte) io.ReadCloser {
 	return io.NopCloser(bytes.NewReader(tgz))
 }
 
-func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadCloser, workspace.PluginSpec) {
+// prepareTestDir creates an installed plugin in PULUMI_HOME/plugins.
+//
+// Tests should set PULUMI_HOME to a temp directory before calling this function:
+//
+//	t.Setenv(workspace.PulumiHomeEnvVar, t.TempDir())
+func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadCloser, workspace.PluginDescriptor) {
 	tarball := prepareTestPluginTGZ(t, files)
 
-	dir := t.TempDir()
-
 	v1 := semver.MustParse("0.1.0")
-	plugin := workspace.PluginSpec{
-		Name:      "test",
-		Kind:      apitype.ResourcePlugin,
-		Version:   &v1,
-		PluginDir: dir,
+	plugin := workspace.PluginDescriptor{
+		Name:    "test",
+		Kind:    apitype.ResourcePlugin,
+		Version: &v1,
 	}
 
-	return dir, tarball, plugin
+	dir, err := plugin.DirPath()
+	require.NoError(t, err)
+
+	pluginDir := filepath.Dir(dir)
+	require.NoError(t, os.Mkdir(pluginDir, 0o755))
+
+	return pluginDir, tarball, plugin
 }
 
-func assertPluginInstalled(t *testing.T, dir string, plugin workspace.PluginSpec) workspace.PluginInfo {
+func assertPluginInstalled(t *testing.T, dir string, plugin workspace.PluginDescriptor) workspace.PluginInfo {
 	info, err := os.Stat(filepath.Join(dir, plugin.Dir()))
 	require.NoError(t, err)
 	assert.True(t, info.IsDir())
@@ -152,14 +162,14 @@ func testDeletePlugin(t *testing.T, plugin workspace.PluginInfo) {
 }
 
 func TestInstallNoDeps(t *testing.T) {
-	t.Parallel()
+	t.Setenv(env.Home.Var().Name(), t.TempDir())
 
 	name := "foo.txt"
 	content := []byte("hello\n")
 
 	dir, tarball, plugin := prepareTestDir(t, map[string][]byte{name: content})
 
-	err := InstallPluginContent(context.Background(), plugin, tarPlugin{tarball}, false)
+	err := InstallPluginContent(context.Background(), plugin, pluginstorage.TarPlugin(tarball), false)
 	require.NoError(t, err)
 
 	pluginInfo := assertPluginInstalled(t, dir, plugin)
@@ -172,14 +182,14 @@ func TestInstallNoDeps(t *testing.T) {
 }
 
 func TestReinstall(t *testing.T) {
-	t.Parallel()
+	t.Setenv(env.Home.Var().Name(), t.TempDir())
 
 	name := "foo.txt"
 	content := []byte("hello\n")
 
 	dir, tarball, plugin := prepareTestDir(t, map[string][]byte{name: content})
 
-	err := InstallPluginContent(context.Background(), plugin, tarPlugin{tarball}, false)
+	err := InstallPluginContent(context.Background(), plugin, pluginstorage.TarPlugin(tarball), false)
 	require.NoError(t, err)
 
 	assertPluginInstalled(t, dir, plugin)
@@ -191,7 +201,7 @@ func TestReinstall(t *testing.T) {
 	content = []byte("world\n")
 	tarball = prepareTestPluginTGZ(t, map[string][]byte{name: content})
 
-	err = InstallPluginContent(context.Background(), plugin, tarPlugin{tarball}, true)
+	err = InstallPluginContent(context.Background(), plugin, pluginstorage.TarPlugin(tarball), true)
 	require.NoError(t, err)
 
 	pluginInfo := assertPluginInstalled(t, dir, plugin)
@@ -204,7 +214,7 @@ func TestReinstall(t *testing.T) {
 }
 
 func TestConcurrentInstalls(t *testing.T) {
-	t.Parallel()
+	t.Setenv(env.Home.Var().Name(), t.TempDir())
 
 	name := "foo.txt"
 	content := []byte("hello\n")
@@ -229,7 +239,7 @@ func TestConcurrentInstalls(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			err := InstallPluginContent(context.Background(), plugin, tarPlugin{tarball}, false)
+			err := InstallPluginContent(context.Background(), plugin, pluginstorage.TarPlugin(tarball), false)
 			require.NoError(t, err)
 
 			assertSuccess()
@@ -243,7 +253,7 @@ func TestConcurrentInstalls(t *testing.T) {
 }
 
 func TestInstallCleansOldFiles(t *testing.T) {
-	t.Parallel()
+	t.Setenv(env.Home.Var().Name(), t.TempDir())
 
 	dir, tarball, plugin := prepareTestDir(t, nil)
 
@@ -263,7 +273,7 @@ func TestInstallCleansOldFiles(t *testing.T) {
 	err = os.WriteFile(partialPath, nil, 0o600)
 	require.NoError(t, err)
 
-	err = InstallPluginContent(context.Background(), plugin, tarPlugin{tarball}, false)
+	err = InstallPluginContent(context.Background(), plugin, pluginstorage.TarPlugin(tarball), false)
 	require.NoError(t, err)
 
 	pluginInfo := assertPluginInstalled(t, dir, plugin)
@@ -278,11 +288,11 @@ func TestInstallCleansOldFiles(t *testing.T) {
 }
 
 func TestGetPluginsSkipsPartial(t *testing.T) {
-	t.Parallel()
+	t.Setenv(env.Home.Var().Name(), t.TempDir())
 
 	dir, tarball, plugin := prepareTestDir(t, nil)
 
-	err := InstallPluginContent(context.Background(), plugin, tarPlugin{tarball}, false)
+	err := InstallPluginContent(context.Background(), plugin, pluginstorage.TarPlugin(tarball), false)
 	require.NoError(t, err)
 
 	err = os.WriteFile(filepath.Join(dir, plugin.Dir()+".partial"), nil, 0o600)

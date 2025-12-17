@@ -365,7 +365,7 @@ func NewPluginContext(cwd string) (*plugin.Context, error) {
 	return pluginCtx, nil
 }
 
-func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginSpec) {
+func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginDescriptor) {
 	if spec.Namespace == "" && pluginSpec.IsGitPlugin() {
 		namespaceRegex := regexp.MustCompile(`git://[^/]+/([^/]+)/`)
 		matches := namespaceRegex.FindStringSubmatch(pluginSpec.PluginDownloadURL)
@@ -476,7 +476,7 @@ func ProviderFromSource(
 		return Provider{}, nil, err
 	}
 	descriptor := workspace.PackageDescriptor{
-		PluginSpec: pluginSpec,
+		PluginDescriptor: pluginSpec,
 	}
 
 	installDescriptor := func(descriptor workspace.PackageDescriptor) (Provider, error) {
@@ -487,33 +487,10 @@ func ProviderFromSource(
 				AlreadyParameterized: descriptor.Parameterization != nil,
 			}, nil
 		}
+
 		// There is an executable or directory with the same name, so suggest that
 		if info, statErr := os.Stat(descriptor.Name); statErr == nil && (isExecutable(info) || info.IsDir()) {
 			return Provider{}, fmt.Errorf("could not find installed plugin %s, did you mean ./%[1]s: %w", descriptor.Name, err)
-		}
-
-		if descriptor.SubDir() != "" {
-			path, err := descriptor.DirPath()
-			if err != nil {
-				return Provider{}, err
-			}
-			info, statErr := os.Stat(filepath.Join(path, descriptor.SubDir()))
-			if statErr == nil && info.IsDir() {
-				// The plugin is already installed.  But since it is in a subdirectory, it could be that
-				// we previously installed a plugin in a different subdirectory of the same repository.
-				// This is why the provider might have failed to start up.  Install the dependencies
-				// and try again.
-				depErr := pkgWorkspace.InstallDependenciesForPluginSpec(pctx.Base(), descriptor.PluginSpec,
-					os.Stderr /* pipe stdout and stderr to stderr */, os.Stderr)
-				if depErr != nil {
-					return Provider{}, fmt.Errorf("installing plugin dependencies: %w", depErr)
-				}
-				p, err := pctx.Host.Provider(descriptor)
-				if err != nil {
-					return Provider{}, err
-				}
-				return Provider{Provider: p}, nil
-			}
 		}
 
 		// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
@@ -526,7 +503,7 @@ func ProviderFromSource(
 			pctx.Host.Log(sev, "", msg, 0)
 		}
 
-		_, err = pkgWorkspace.InstallPlugin(pctx.Base(), descriptor.PluginSpec, log)
+		_, err = pkgWorkspace.InstallPlugin(pctx.Base(), descriptor.PluginDescriptor, log)
 		if err != nil {
 			return Provider{}, err
 		}
@@ -561,6 +538,17 @@ func ProviderFromSource(
 		return p, specOverride, nil
 	}
 
+	var project workspace.BaseProject
+	if bp, path, err := workspace.LoadBaseProjectFrom(pctx.Root); err == nil {
+		// We have found the right base project if and only if its located at the
+		// root of the passed in plugin.
+		if filepath.Dir(path) == pctx.Root {
+			project = bp
+		}
+	} else if !errors.Is(err, workspace.ErrBaseProjectNotFound) {
+		return Provider{}, nil, err
+	}
+
 	result, err := packageresolution.Resolve(
 		pctx.Base(),
 		reg,
@@ -571,7 +559,7 @@ func ProviderFromSource(
 			Experimental:                env.Experimental.Value(),
 			IncludeInstalledInWorkspace: true,
 		},
-		pctx.Root,
+		project,
 	)
 	if err != nil {
 		var packageNotFoundErr *packageresolution.PackageNotFoundError
@@ -586,7 +574,7 @@ func ProviderFromSource(
 
 	switch res := result.(type) {
 	case packageresolution.LocalPathResult:
-		return setupProviderFromPath(res.LocalPluginPathAbs, pctx)
+		return setupProviderFromPath(res.LocalPath, pctx)
 	case packageresolution.ExternalSourceResult, packageresolution.InstalledInWorkspaceResult:
 		return setupProvider(descriptor, nil)
 	case packageresolution.RegistryResult:
@@ -629,7 +617,7 @@ func setupProviderFromRegistryMeta(
 	meta apitype.PackageMetadata,
 	setupProvider func(workspace.PackageDescriptor, *workspace.PackageSpec) (Provider, *workspace.PackageSpec, error),
 ) (Provider, *workspace.PackageSpec, error) {
-	spec := workspace.PluginSpec{
+	spec := workspace.PluginDescriptor{
 		Name:              meta.Name,
 		Kind:              apitype.ResourcePlugin,
 		Version:           &meta.Version,

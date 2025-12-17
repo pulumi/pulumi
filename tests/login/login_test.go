@@ -60,6 +60,12 @@ func TestInsecureLogin(t *testing.T) {
 			require.NoError(t, err)
 			return
 		}
+		if r.URL.Path == "/api/user/organizations/default" {
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write([]byte(`{"githubLogin":"mock-user"}`))
+			require.NoError(t, err)
+			return
+		}
 		require.Fail(t, "%v", r)
 	}))
 	t.Cleanup(server.Close)
