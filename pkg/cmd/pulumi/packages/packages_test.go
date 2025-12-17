@@ -15,12 +15,143 @@
 package packages
 
 import (
+	"context"
+	"encoding/json"
+	"iter"
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func TestProviderFromSource(t *testing.T) {
+	t.Parallel()
+
+	test := func(t *testing.T, yaml string, inputSource string) plugin.Provider {
+		t.Helper()
+		tempDir := t.TempDir()
+		if yaml != "" {
+			pulumiYaml := filepath.Join(tempDir, "Pulumi.yaml")
+			err := os.WriteFile(pulumiYaml, []byte(yaml), 0o600)
+			require.NoError(t, err)
+		}
+
+		mockProvider := &plugin.MockProvider{
+			PkgF: func() tokens.Package {
+				return "test-provider"
+			},
+			GetSchemaF: func(ctx context.Context, req plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+				schemaSpec := schema.PackageSpec{
+					Name:    "test-provider",
+					Version: "1.0.0",
+				}
+				schemaBytes, err := json.Marshal(schemaSpec)
+				if err != nil {
+					return plugin.GetSchemaResponse{}, err
+				}
+				return plugin.GetSchemaResponse{
+					Schema: schemaBytes,
+				}, nil
+			},
+		}
+
+		mockHost := &plugin.MockHost{
+			ProviderF: func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
+				require.Equal(t, workspace.PluginDescriptor{
+					Name:              "test-provider",
+					Kind:              apitype.ResourcePlugin,
+					Version:           &semver.Version{Major: 1},
+					PluginDownloadURL: "https://example.com/test-provider",
+				}, descriptor)
+				return mockProvider, nil
+			},
+		}
+
+		mockRegistry := registry.Mock{
+			GetPackageF: func(
+				ctx context.Context, source, publisher, name string, version *semver.Version,
+			) (apitype.PackageMetadata, error) {
+				if name == "test-provider" {
+					return apitype.PackageMetadata{
+						Name:              "test-provider",
+						Publisher:         publisher,
+						Source:            source,
+						Version:           semver.Version{Major: 1, Minor: 0, Patch: 0},
+						PluginDownloadURL: "https://example.com/test-provider",
+					}, nil
+				}
+				return apitype.PackageMetadata{}, registry.ErrNotFound
+			},
+			ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+				return func(yield func(apitype.PackageMetadata, error) bool) {
+					if name != nil && *name == "test-provider" {
+						yield(apitype.PackageMetadata{
+							Name:              "test-provider",
+							Publisher:         "pulumi",
+							Source:            "pulumi",
+							Version:           semver.Version{Major: 1, Minor: 0, Patch: 0},
+							PluginDownloadURL: "https://example.com/test-provider",
+						}, nil)
+					}
+				}
+			},
+		}
+
+		pctx, err := plugin.NewContext(
+			t.Context(),
+			nil,
+			nil,
+			mockHost,
+			nil,
+			tempDir,
+			nil,
+			false,
+			nil,
+		)
+		require.NoError(t, err)
+		defer pctx.Close()
+
+		provider, _, err := ProviderFromSource(pctx, inputSource, mockRegistry, env.NewEnv(env.MapStore{
+			"PULUMI_EXPERIMENTAL": "true",
+		}))
+		require.NoError(t, err)
+		return provider.Provider
+	}
+
+	t.Run("empy Pulumi.yaml", func(t *testing.T) {
+		t.Parallel()
+		provider := test(t, `name: test-project
+runtime: yaml
+`, "test-provider")
+		assert.Equal(t, tokens.Package("test-provider"), provider.Pkg())
+	})
+
+	t.Run("no Pulumi.yaml", func(t *testing.T) {
+		t.Parallel()
+		provider := test(t, "", "test-provider")
+		assert.Equal(t, tokens.Package("test-provider"), provider.Pkg())
+	})
+
+	t.Run("with Pulumi.yaml", func(t *testing.T) {
+		t.Parallel()
+		provider := test(t, `name: test-project
+runtime: yaml
+packages:
+    local-name: test-provider
+`, "test-provider")
+		assert.Equal(t, tokens.Package("test-provider"), provider.Pkg())
+	})
+}
 
 func TestSetSpecNamespace(t *testing.T) {
 	t.Parallel()

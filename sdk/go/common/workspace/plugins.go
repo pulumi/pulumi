@@ -1037,6 +1037,23 @@ var gitCommitHashRegex = sync.OnceValue(func() *regexp.Regexp {
 //
 // If you are using this to resolve a "package", consider using
 // [packageresolution.Resolve] instead.
+//
+// Deprecated: NewPluginSpec has been renamed to [NewPluginDescriptor].
+func NewPluginSpec(
+	ctx context.Context,
+	source string,
+	kind apitype.PluginKind,
+	version *semver.Version,
+	pluginDownloadURL string,
+	checksums map[string][]byte,
+) (PluginDescriptor, error) {
+	return NewPluginDescriptor(ctx, source, kind, version, pluginDownloadURL, checksums)
+}
+
+// NewPluginDescriptor creates a new [PluginDescriptor] from a source string.
+//
+// If you are using this to resolve a "package", consider using
+// [packageresolution.Resolve] instead.
 func NewPluginDescriptor(
 	ctx context.Context,
 	source string,

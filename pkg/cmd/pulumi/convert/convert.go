@@ -558,6 +558,7 @@ func generateAndLinkSdksForPackages(
 			pkg.Name,
 			&plugin.ParameterizeValue{Value: pkg.Parameterization.Value},
 			registry,
+			env.Global(),
 		)
 		if err != nil {
 			return fmt.Errorf("creating package schema: %w", err)
