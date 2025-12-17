@@ -56,6 +56,8 @@ func init() {
 					want = resource.NewPropertyMapFromMap(map[string]any{"value": false})
 					assert.Equal(l, want, simple.Inputs, "expected inputs to be {value: false}")
 					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
+
+					assert.Equal(l, component.URN, simple.Parent, "expected component to be parent of simple resource")
 				},
 			},
 		},

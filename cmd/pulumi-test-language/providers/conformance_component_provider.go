@@ -40,9 +40,8 @@ func (p *ConformanceComponentProvider) Pkg() tokens.Package {
 }
 
 func (p *ConformanceComponentProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
-	ver := semver.MustParse("22.0.0")
 	return workspace.PluginInfo{
-		Version: &ver,
+		Version: &semver.Version{Major: 22},
 	}, nil
 }
 
