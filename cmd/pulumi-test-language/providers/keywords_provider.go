@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // KeywordsProvider is used to test names that are keywords or standard library built-in names in certain languages,
@@ -202,9 +201,9 @@ func (p *KeywordsProvider) Update(
 	}, nil
 }
 
-func (p *KeywordsProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *KeywordsProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	ver := semver.MustParse(p.version())
-	return workspace.PluginInfo{
+	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
 }

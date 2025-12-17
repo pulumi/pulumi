@@ -132,7 +132,7 @@ type LanguageRuntime interface {
 	// return result.Bail immediately and not print any further messages to the user.
 	Run(info RunInfo) (string, bool, error)
 	// GetPluginInfo returns this plugin's information.
-	GetPluginInfo() (workspace.PluginInfo, error)
+	GetPluginInfo() (PluginInfo, error)
 
 	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
 	// It returns io.Readers for stdout and stderr as well as a channel that will be closed when the operation is

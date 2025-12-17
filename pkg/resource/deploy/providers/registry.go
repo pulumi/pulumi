@@ -911,9 +911,9 @@ func (r *Registry) Call(context.Context, plugin.CallRequest) (plugin.CallRespons
 	return plugin.CallResult{}, errors.New("the provider registry is not callable")
 }
 
-func (r *Registry) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (r *Registry) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	// return an error: this should not be called for the provider registry
-	return workspace.PluginInfo{}, errors.New("the provider registry does not report plugin info")
+	return plugin.PluginInfo{}, errors.New("the provider registry does not report plugin info")
 }
 
 func (r *Registry) SignalCancellation(context.Context) error {

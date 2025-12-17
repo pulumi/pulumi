@@ -605,34 +605,26 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 }
 
 // GetPluginInfo returns this plugin's information.
-func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
+func (a *analyzer) GetPluginInfo() (PluginInfo, error) {
 	label := a.label() + ".GetPluginInfo()"
 	logging.V(7).Infof("%s executing", label)
 	resp, err := a.client.GetPluginInfo(a.requestContext(), &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", a.label(), rpcError)
-		return workspace.PluginInfo{}, rpcError
+		return PluginInfo{}, rpcError
 	}
 
 	var version *semver.Version
 	if v := resp.Version; v != "" {
 		sv, err := semver.ParseTolerant(v)
 		if err != nil {
-			return workspace.PluginInfo{}, err
+			return PluginInfo{}, err
 		}
 		version = &sv
 	}
 
-	path := ""
-	if a.plug != nil {
-		path = a.plug.Bin
-	}
-
-	return workspace.PluginInfo{
-		Name:    string(a.name),
-		Path:    path,
-		Kind:    apitype.AnalyzerPlugin,
+	return PluginInfo{
 		Version: version,
 	}, nil
 }

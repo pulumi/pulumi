@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // CamelNamesProvider is used to test camel naming features in the Pulumi SDK, and that they are used
@@ -192,9 +191,9 @@ func (p *CamelNamesProvider) Update(
 	}, nil
 }
 
-func (p *CamelNamesProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *CamelNamesProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	ver := semver.MustParse("19.0.0")
-	return workspace.PluginInfo{
+	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
 }

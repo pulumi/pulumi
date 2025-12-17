@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Config provider is a small provider to test things related to provider configuration and explicit provider resources.
@@ -232,9 +231,9 @@ func (p *ConfigProvider) Create(
 	}, nil
 }
 
-func (p *ConfigProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *ConfigProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	ver := semver.MustParse("9.0.0")
-	return workspace.PluginInfo{
+	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
 }
