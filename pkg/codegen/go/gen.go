@@ -2884,7 +2884,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTy
 	returnType := f.ReturnType
 	objectReturnType, _ := returnType.(*schema.ObjectType)
 
-	if !f.OutputStyleOnly {
+	if f.Plain {
 		printCommentWithDeprecationMessage(w, f.Comment, f.DeprecationMessage, false)
 
 		// Now, emit the function signature.

@@ -1230,11 +1230,11 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 		fullFunctionName += "Output"
 		info.functionOutputVersionName = fullFunctionName
 	}
-	if !fun.OutputStyleOnly {
+	if fun.Plain {
 		info.functionName = name
 	}
 
-	if !plain || !fun.OutputStyleOnly {
+	if !plain || fun.Plain {
 		fmt.Fprintf(w, "export function %s(", fullFunctionName)
 		if fun.MultiArgumentInputs {
 			for _, prop := range fun.Inputs.Properties {
@@ -1373,7 +1373,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 		return functionFileInfo{}, err
 	}
 
-	if fun.ReturnType == nil && !fun.OutputStyleOnly {
+	if fun.ReturnType == nil && fun.Plain {
 		// no need to generate the output-versioned invoke
 		return plainFunctionInfo, nil
 	}

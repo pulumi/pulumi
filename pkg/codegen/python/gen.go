@@ -1895,7 +1895,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		fmt.Fprintf(w, "    '%s',\n", baseName)
 		fmt.Fprintf(w, "    '%s',\n", awaitableName)
 	}
-	if !fun.OutputStyleOnly {
+	if fun.Plain {
 		fmt.Fprintf(w, "    '%s',\n", name)
 	}
 	if fun.NeedsOutputVersion() {
@@ -2030,7 +2030,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	}
 
 	// generate plain invoke
-	if !fun.OutputStyleOnly {
+	if fun.Plain {
 		if err := genFunctionDef(retTypeName, true /* plain */); err != nil {
 			return "", err
 		}
