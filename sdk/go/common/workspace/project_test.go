@@ -2074,6 +2074,37 @@ func TestPackageValueSerialization(t *testing.T) {
 	})
 }
 
+func TestPackageValueDeserialization(t *testing.T) {
+	t.Parallel()
+
+	t.Run("short form for non-nil empty collections", func(t *testing.T) {
+		spec := PackageSpec{
+			Source:               "github.com/pulumi/component-test-providers",
+			Version:              "0.0.0-xd47cf0",
+			Parameters:           []string{},
+			Checksums:            map[string][]byte{},
+			PluginDownloadURL:    "",
+			unmarshalledFromFull: false,
+		}
+
+		p := Project{
+			Name:    "test",
+			Runtime: NewProjectRuntimeInfo("nodejs", nil),
+			Packages: map[string]PackageSpec{
+				"tls-self-signed-cert": spec,
+			},
+		}
+
+		b, err := yaml.Marshal(p)
+		require.NoError(t, err)
+		assert.Equal(t, `name: test
+runtime: nodejs
+packages:
+  tls-self-signed-cert: github.com/pulumi/component-test-providers@0.0.0-xd47cf0
+`, string(b))
+	})
+}
+
 func TestGetPackageSpecs(t *testing.T) {
 	t.Parallel()
 

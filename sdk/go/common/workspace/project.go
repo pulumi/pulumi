@@ -142,7 +142,7 @@ type packageSpecMarshaller struct {
 }
 
 func marshalPackageSpec[T any](ps PackageSpec, from func(any) (T, error)) (T, error) {
-	if ps.Parameters == nil && len(ps.Checksums) == 0 && ps.PluginDownloadURL == "" && !ps.unmarshalledFromFull {
+	if len(ps.Parameters) == 0 && len(ps.Checksums) == 0 && ps.PluginDownloadURL == "" && !ps.unmarshalledFromFull {
 		name := ps.Source
 		if ps.Version != "" {
 			name += "@" + ps.Version
@@ -341,7 +341,7 @@ func addPackageToMap(packages *map[string]PackageSpec, name string, spec Package
 	// - if this same package was already added using the PackageSpec format
 	// we use the PackageSpec format.
 	useStringFormat := true
-	if len(spec.Parameters) > 0 {
+	if len(spec.Parameters) > 0 || len(spec.Checksums) > 0 || spec.PluginDownloadURL != "" {
 		// Simple string format does not support parameters
 		useStringFormat = false
 	} else if existingSpec, ok := (*packages)[name]; ok && existingSpec.unmarshalledFromFull {
