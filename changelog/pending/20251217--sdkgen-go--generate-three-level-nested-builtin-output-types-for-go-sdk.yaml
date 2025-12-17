@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/go
+  description: Generate three-level nested builtin output types for Go SDK
