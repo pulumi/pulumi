@@ -125,7 +125,7 @@ func naivePackageDescriptor(
 			version = &v
 		}
 	}
-	pluginDesc, err := workspace.NewPluginSpec(ctx, pluginSpecSource, apitype.ResourcePlugin,
+	pluginDesc, err := workspace.NewPluginDescriptor(ctx, pluginSpecSource, apitype.ResourcePlugin,
 		version, spec.PluginDownloadURL, spec.Checksums)
 	return workspace.UnresolvedPackageDescriptor{
 		PluginDescriptor:     pluginDesc,

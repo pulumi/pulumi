@@ -973,7 +973,7 @@ func (pkg *Package) Descriptor(ctx context.Context) (workspace.PackageDescriptor
 	if pkg.Parameterization != nil {
 		name = pkg.Parameterization.BaseProvider.Name
 	}
-	pluginSpec, err := workspace.NewPluginSpec(ctx, name, apitype.ResourcePlugin, version,
+	pluginSpec, err := workspace.NewPluginDescriptor(ctx, name, apitype.ResourcePlugin, version,
 		pkg.PluginDownloadURL, nil)
 	if err != nil {
 		return workspace.PackageDescriptor{}, err
