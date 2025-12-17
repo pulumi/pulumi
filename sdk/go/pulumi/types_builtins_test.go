@@ -180,6 +180,50 @@ func TestOutputApply(t *testing.T) {
 		})
 
 		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::ArchiveArrayMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string][]Archive { return *new(map[string]map[string][]Archive) }).(ArchiveArrayMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::ArchiveMapArrayMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string][]map[string]Archive { return *new(map[string][]map[string]Archive) }).(ArchiveMapArrayMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::ArchiveMapMapArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []map[string]map[string]Archive { return *new([]map[string]map[string]Archive) }).(ArchiveMapMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::ArchiveArrayMapArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []map[string][]Archive { return *new([]map[string][]Archive) }).(ArchiveArrayMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::ArchiveArrayArrayMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string][][]Archive { return *new(map[string][][]Archive) }).(ArchiveArrayArrayMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::ArchiveArrayArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][][]Archive { return *new([][][]Archive) }).(ArchiveArrayArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::ArchiveMapMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]Archive {
+				return *new(map[string]map[string]map[string]Archive)
+			}).(ArchiveMapMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) Asset { return *new(Asset) }).(AssetOutput)
 			assert.True(t, ok)
@@ -222,6 +266,50 @@ func TestOutputApply(t *testing.T) {
 		})
 
 		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::AssetArrayMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string][]Asset { return *new(map[string]map[string][]Asset) }).(AssetArrayMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::AssetMapArrayMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string][]map[string]Asset { return *new(map[string][]map[string]Asset) }).(AssetMapArrayMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::AssetMapMapArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []map[string]map[string]Asset { return *new([]map[string]map[string]Asset) }).(AssetMapMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::AssetArrayMapArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []map[string][]Asset { return *new([]map[string][]Asset) }).(AssetArrayMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::AssetArrayArrayMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string][][]Asset { return *new(map[string][][]Asset) }).(AssetArrayArrayMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::AssetArrayArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][][]Asset { return *new([][][]Asset) }).(AssetArrayArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::AssetMapMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]Asset {
+				return *new(map[string]map[string]map[string]Asset)
+			}).(AssetMapMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) AssetOrArchive { return *new(AssetOrArchive) }).(AssetOrArchiveOutput)
 			assert.True(t, ok)
@@ -260,6 +348,56 @@ func TestOutputApply(t *testing.T) {
 		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveArrayArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) [][]AssetOrArchive { return *new([][]AssetOrArchive) }).(AssetOrArchiveArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::AssetOrArchiveArrayMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string][]AssetOrArchive {
+				return *new(map[string]map[string][]AssetOrArchive)
+			}).(AssetOrArchiveArrayMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::AssetOrArchiveMapArrayMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string][]map[string]AssetOrArchive {
+				return *new(map[string][]map[string]AssetOrArchive)
+			}).(AssetOrArchiveMapArrayMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::AssetOrArchiveMapMapArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []map[string]map[string]AssetOrArchive {
+				return *new([]map[string]map[string]AssetOrArchive)
+			}).(AssetOrArchiveMapMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::AssetOrArchiveArrayMapArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []map[string][]AssetOrArchive { return *new([]map[string][]AssetOrArchive) }).(AssetOrArchiveArrayMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::AssetOrArchiveArrayArrayMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string][][]AssetOrArchive { return *new(map[string][][]AssetOrArchive) }).(AssetOrArchiveArrayArrayMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::AssetOrArchiveArrayArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][][]AssetOrArchive { return *new([][][]AssetOrArchive) }).(AssetOrArchiveArrayArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::AssetOrArchiveMapMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]AssetOrArchive {
+				return *new(map[string]map[string]map[string]AssetOrArchive)
+			}).(AssetOrArchiveMapMapMapOutput)
 			assert.True(t, ok)
 		})
 
@@ -312,6 +450,48 @@ func TestOutputApply(t *testing.T) {
 		})
 
 		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::BoolArrayMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string][]bool { return *new(map[string]map[string][]bool) }).(BoolArrayMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::BoolMapArrayMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string][]map[string]bool { return *new(map[string][]map[string]bool) }).(BoolMapArrayMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::BoolMapMapArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []map[string]map[string]bool { return *new([]map[string]map[string]bool) }).(BoolMapMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::BoolArrayMapArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []map[string][]bool { return *new([]map[string][]bool) }).(BoolArrayMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::BoolArrayArrayMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string][][]bool { return *new(map[string][][]bool) }).(BoolArrayArrayMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::BoolArrayArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][][]bool { return *new([][][]bool) }).(BoolArrayArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::BoolMapMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]bool { return *new(map[string]map[string]map[string]bool) }).(BoolMapMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64Output", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) float64 { return *new(float64) }).(Float64Output)
 			assert.True(t, ok)
@@ -356,6 +536,50 @@ func TestOutputApply(t *testing.T) {
 		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64ArrayArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) [][]float64 { return *new([][]float64) }).(Float64ArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::Float64ArrayMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string][]float64 { return *new(map[string]map[string][]float64) }).(Float64ArrayMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::Float64MapArrayMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string][]map[string]float64 { return *new(map[string][]map[string]float64) }).(Float64MapArrayMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::Float64MapMapArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []map[string]map[string]float64 { return *new([]map[string]map[string]float64) }).(Float64MapMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::Float64ArrayMapArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []map[string][]float64 { return *new([]map[string][]float64) }).(Float64ArrayMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::Float64ArrayArrayMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string][][]float64 { return *new(map[string][][]float64) }).(Float64ArrayArrayMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::Float64ArrayArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][][]float64 { return *new([][][]float64) }).(Float64ArrayArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::Float64MapMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]float64 {
+				return *new(map[string]map[string]map[string]float64)
+			}).(Float64MapMapMapOutput)
 			assert.True(t, ok)
 		})
 
@@ -408,6 +632,48 @@ func TestOutputApply(t *testing.T) {
 		})
 
 		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::IDArrayMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string][]ID { return *new(map[string]map[string][]ID) }).(IDArrayMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::IDMapArrayMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string][]map[string]ID { return *new(map[string][]map[string]ID) }).(IDMapArrayMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::IDMapMapArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []map[string]map[string]ID { return *new([]map[string]map[string]ID) }).(IDMapMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::IDArrayMapArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []map[string][]ID { return *new([]map[string][]ID) }).(IDArrayMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::IDArrayArrayMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string][][]ID { return *new(map[string][][]ID) }).(IDArrayArrayMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::IDArrayArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][][]ID { return *new([][][]ID) }).(IDArrayArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::IDMapMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]ID { return *new(map[string]map[string]map[string]ID) }).(IDMapMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []any { return *new([]any) }).(ArrayOutput)
 			assert.True(t, ok)
@@ -444,8 +710,44 @@ func TestOutputApply(t *testing.T) {
 		})
 
 		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::ArrayMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string][]any { return *new(map[string]map[string][]any) }).(ArrayMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::MapArrayMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string][]map[string]any { return *new(map[string][]map[string]any) }).(MapArrayMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::MapMapArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []map[string]map[string]any { return *new([]map[string]map[string]any) }).(MapMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::ArrayMapArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []map[string][]any { return *new([]map[string][]any) }).(ArrayMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayArrayMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string][][]any { return *new(map[string][][]any) }).(ArrayArrayMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::ArrayArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][][]any { return *new([][][]any) }).(ArrayArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::MapMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]any { return *new(map[string]map[string]map[string]any) }).(MapMapMapOutput)
 			assert.True(t, ok)
 		})
 
@@ -498,6 +800,48 @@ func TestOutputApply(t *testing.T) {
 		})
 
 		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::IntArrayMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string][]int { return *new(map[string]map[string][]int) }).(IntArrayMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::IntMapArrayMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string][]map[string]int { return *new(map[string][]map[string]int) }).(IntMapArrayMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::IntMapMapArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []map[string]map[string]int { return *new([]map[string]map[string]int) }).(IntMapMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::IntArrayMapArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []map[string][]int { return *new([]map[string][]int) }).(IntArrayMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::IntArrayArrayMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string][][]int { return *new(map[string][][]int) }).(IntArrayArrayMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::IntArrayArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][][]int { return *new([][][]int) }).(IntArrayArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::IntMapMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]int { return *new(map[string]map[string]map[string]int) }).(IntMapMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) string { return *new(string) }).(StringOutput)
 			assert.True(t, ok)
@@ -546,16 +890,46 @@ func TestOutputApply(t *testing.T) {
 		})
 
 		//nolint:paralleltest // uses shared state with parent
-		t.Run("ApplyT::StringMapMapMapOutput", func(t *testing.T) {
-			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]string {
-				return *new(map[string]map[string]map[string]string)
-			}).(StringMapMapMapOutput)
+		t.Run("ApplyT::StringArrayMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string][]string { return *new(map[string]map[string][]string) }).(StringArrayMapMapOutput)
 			assert.True(t, ok)
 		})
 
 		//nolint:paralleltest // uses shared state with parent
-		t.Run("ApplyT::StringArrayMapMapOutput", func(t *testing.T) {
-			_, ok := out.ApplyT(func(v int) map[string]map[string][]string { return *new(map[string]map[string][]string) }).(StringArrayMapMapOutput)
+		t.Run("ApplyT::StringMapArrayMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string][]map[string]string { return *new(map[string][]map[string]string) }).(StringMapArrayMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::StringMapMapArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []map[string]map[string]string { return *new([]map[string]map[string]string) }).(StringMapMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::StringArrayMapArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []map[string][]string { return *new([]map[string][]string) }).(StringArrayMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::StringArrayArrayMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string][][]string { return *new(map[string][][]string) }).(StringArrayArrayMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::StringArrayArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][][]string { return *new([][][]string) }).(StringArrayArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::StringMapMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]string {
+				return *new(map[string]map[string]map[string]string)
+			}).(StringMapMapMapOutput)
 			assert.True(t, ok)
 		})
 
@@ -604,6 +978,48 @@ func TestOutputApply(t *testing.T) {
 		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNArrayArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) [][]URN { return *new([][]URN) }).(URNArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::URNArrayMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string][]URN { return *new(map[string]map[string][]URN) }).(URNArrayMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::URNMapArrayMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string][]map[string]URN { return *new(map[string][]map[string]URN) }).(URNMapArrayMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::URNMapMapArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []map[string]map[string]URN { return *new([]map[string]map[string]URN) }).(URNMapMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::URNArrayMapArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []map[string][]URN { return *new([]map[string][]URN) }).(URNArrayMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::URNArrayArrayMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string][][]URN { return *new(map[string][][]URN) }).(URNArrayArrayMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::URNArrayArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][][]URN { return *new([][][]URN) }).(URNArrayArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::URNMapMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]URN { return *new(map[string]map[string]map[string]URN) }).(URNMapMapMapOutput)
 			assert.True(t, ok)
 		})
 
@@ -859,6 +1275,146 @@ func TestToOutputArchiveArrayArray(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestToOutputArchiveArrayMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(ArchiveArrayMapMap{"baz": ArchiveArrayMap{"baz": ArchiveArray{NewFileArchive("foo.zip")}}})
+	_, ok := out.(ArchiveArrayMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(ArchiveArrayMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputArchiveMapArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(ArchiveMapArrayMap{"baz": ArchiveMapArray{ArchiveMap{"baz": NewFileArchive("foo.zip")}}})
+	_, ok := out.(ArchiveMapArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(ArchiveMapArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputArchiveMapMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(ArchiveMapMapArray{ArchiveMapMap{"baz": ArchiveMap{"baz": NewFileArchive("foo.zip")}}})
+	_, ok := out.(ArchiveMapMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(ArchiveMapMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputArchiveArrayMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(ArchiveArrayMapArray{ArchiveArrayMap{"baz": ArchiveArray{NewFileArchive("foo.zip")}}})
+	_, ok := out.(ArchiveArrayMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(ArchiveArrayMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputArchiveArrayArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(ArchiveArrayArrayMap{"baz": ArchiveArrayArray{ArchiveArray{NewFileArchive("foo.zip")}}})
+	_, ok := out.(ArchiveArrayArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(ArchiveArrayArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputArchiveArrayArrayArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(ArchiveArrayArrayArray{ArchiveArrayArray{ArchiveArray{NewFileArchive("foo.zip")}}})
+	_, ok := out.(ArchiveArrayArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(ArchiveArrayArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputArchiveMapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(ArchiveMapMapMap{"baz": ArchiveMapMap{"baz": ArchiveMap{"baz": NewFileArchive("foo.zip")}}})
+	_, ok := out.(ArchiveMapMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(ArchiveMapMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
 func TestToOutputAsset(t *testing.T) {
 	t.Parallel()
 
@@ -999,6 +1555,146 @@ func TestToOutputAssetArrayArray(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestToOutputAssetArrayMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(AssetArrayMapMap{"baz": AssetArrayMap{"baz": AssetArray{NewFileAsset("foo.txt")}}})
+	_, ok := out.(AssetArrayMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(AssetArrayMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputAssetMapArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(AssetMapArrayMap{"baz": AssetMapArray{AssetMap{"baz": NewFileAsset("foo.txt")}}})
+	_, ok := out.(AssetMapArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(AssetMapArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputAssetMapMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(AssetMapMapArray{AssetMapMap{"baz": AssetMap{"baz": NewFileAsset("foo.txt")}}})
+	_, ok := out.(AssetMapMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(AssetMapMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputAssetArrayMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(AssetArrayMapArray{AssetArrayMap{"baz": AssetArray{NewFileAsset("foo.txt")}}})
+	_, ok := out.(AssetArrayMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(AssetArrayMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputAssetArrayArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(AssetArrayArrayMap{"baz": AssetArrayArray{AssetArray{NewFileAsset("foo.txt")}}})
+	_, ok := out.(AssetArrayArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(AssetArrayArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputAssetArrayArrayArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(AssetArrayArrayArray{AssetArrayArray{AssetArray{NewFileAsset("foo.txt")}}})
+	_, ok := out.(AssetArrayArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(AssetArrayArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputAssetMapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(AssetMapMapMap{"baz": AssetMapMap{"baz": AssetMap{"baz": NewFileAsset("foo.txt")}}})
+	_, ok := out.(AssetMapMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(AssetMapMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
 func TestToOutputAssetOrArchive(t *testing.T) {
 	t.Parallel()
 
@@ -1132,6 +1828,146 @@ func TestToOutputAssetOrArchiveArrayArray(t *testing.T) {
 
 	out = ToOutput(out)
 	_, ok = out.(AssetOrArchiveArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputAssetOrArchiveArrayMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(AssetOrArchiveArrayMapMap{"baz": AssetOrArchiveArrayMap{"baz": AssetOrArchiveArray{NewFileArchive("foo.zip")}}})
+	_, ok := out.(AssetOrArchiveArrayMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(AssetOrArchiveArrayMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputAssetOrArchiveMapArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(AssetOrArchiveMapArrayMap{"baz": AssetOrArchiveMapArray{AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}}})
+	_, ok := out.(AssetOrArchiveMapArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(AssetOrArchiveMapArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputAssetOrArchiveMapMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(AssetOrArchiveMapMapArray{AssetOrArchiveMapMap{"baz": AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}}})
+	_, ok := out.(AssetOrArchiveMapMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(AssetOrArchiveMapMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputAssetOrArchiveArrayMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(AssetOrArchiveArrayMapArray{AssetOrArchiveArrayMap{"baz": AssetOrArchiveArray{NewFileArchive("foo.zip")}}})
+	_, ok := out.(AssetOrArchiveArrayMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(AssetOrArchiveArrayMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputAssetOrArchiveArrayArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(AssetOrArchiveArrayArrayMap{"baz": AssetOrArchiveArrayArray{AssetOrArchiveArray{NewFileArchive("foo.zip")}}})
+	_, ok := out.(AssetOrArchiveArrayArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(AssetOrArchiveArrayArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputAssetOrArchiveArrayArrayArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(AssetOrArchiveArrayArrayArray{AssetOrArchiveArrayArray{AssetOrArchiveArray{NewFileArchive("foo.zip")}}})
+	_, ok := out.(AssetOrArchiveArrayArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(AssetOrArchiveArrayArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputAssetOrArchiveMapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(AssetOrArchiveMapMapMap{"baz": AssetOrArchiveMapMap{"baz": AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}}})
+	_, ok := out.(AssetOrArchiveMapMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(AssetOrArchiveMapMapMapInput)
 	assert.True(t, ok)
 
 	_, known, _, _, err = await(out)
@@ -1299,6 +2135,146 @@ func TestToOutputBoolArrayArray(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestToOutputBoolArrayMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(BoolArrayMapMap{"baz": BoolArrayMap{"baz": BoolArray{Bool(true)}}})
+	_, ok := out.(BoolArrayMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(BoolArrayMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputBoolMapArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(BoolMapArrayMap{"baz": BoolMapArray{BoolMap{"baz": Bool(true)}}})
+	_, ok := out.(BoolMapArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(BoolMapArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputBoolMapMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(BoolMapMapArray{BoolMapMap{"baz": BoolMap{"baz": Bool(true)}}})
+	_, ok := out.(BoolMapMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(BoolMapMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputBoolArrayMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(BoolArrayMapArray{BoolArrayMap{"baz": BoolArray{Bool(true)}}})
+	_, ok := out.(BoolArrayMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(BoolArrayMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputBoolArrayArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(BoolArrayArrayMap{"baz": BoolArrayArray{BoolArray{Bool(true)}}})
+	_, ok := out.(BoolArrayArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(BoolArrayArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputBoolArrayArrayArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(BoolArrayArrayArray{BoolArrayArray{BoolArray{Bool(true)}}})
+	_, ok := out.(BoolArrayArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(BoolArrayArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputBoolMapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(BoolMapMapMap{"baz": BoolMapMap{"baz": BoolMap{"baz": Bool(true)}}})
+	_, ok := out.(BoolMapMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(BoolMapMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
 func TestToOutputFloat64(t *testing.T) {
 	t.Parallel()
 
@@ -1452,6 +2428,146 @@ func TestToOutputFloat64ArrayArray(t *testing.T) {
 
 	out = ToOutput(out)
 	_, ok = out.(Float64ArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputFloat64ArrayMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(Float64ArrayMapMap{"baz": Float64ArrayMap{"baz": Float64Array{Float64(999.9)}}})
+	_, ok := out.(Float64ArrayMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Float64ArrayMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputFloat64MapArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(Float64MapArrayMap{"baz": Float64MapArray{Float64Map{"baz": Float64(999.9)}}})
+	_, ok := out.(Float64MapArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Float64MapArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputFloat64MapMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(Float64MapMapArray{Float64MapMap{"baz": Float64Map{"baz": Float64(999.9)}}})
+	_, ok := out.(Float64MapMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Float64MapMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputFloat64ArrayMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(Float64ArrayMapArray{Float64ArrayMap{"baz": Float64Array{Float64(999.9)}}})
+	_, ok := out.(Float64ArrayMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Float64ArrayMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputFloat64ArrayArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(Float64ArrayArrayMap{"baz": Float64ArrayArray{Float64Array{Float64(999.9)}}})
+	_, ok := out.(Float64ArrayArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Float64ArrayArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputFloat64ArrayArrayArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(Float64ArrayArrayArray{Float64ArrayArray{Float64Array{Float64(999.9)}}})
+	_, ok := out.(Float64ArrayArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Float64ArrayArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputFloat64MapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(Float64MapMapMap{"baz": Float64MapMap{"baz": Float64Map{"baz": Float64(999.9)}}})
+	_, ok := out.(Float64MapMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(Float64MapMapMapInput)
 	assert.True(t, ok)
 
 	_, known, _, _, err = await(out)
@@ -1619,6 +2735,146 @@ func TestToOutputIDArrayArray(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestToOutputIDArrayMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(IDArrayMapMap{"baz": IDArrayMap{"baz": IDArray{ID("foo")}}})
+	_, ok := out.(IDArrayMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(IDArrayMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputIDMapArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(IDMapArrayMap{"baz": IDMapArray{IDMap{"baz": ID("foo")}}})
+	_, ok := out.(IDMapArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(IDMapArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputIDMapMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(IDMapMapArray{IDMapMap{"baz": IDMap{"baz": ID("foo")}}})
+	_, ok := out.(IDMapMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(IDMapMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputIDArrayMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(IDArrayMapArray{IDArrayMap{"baz": IDArray{ID("foo")}}})
+	_, ok := out.(IDArrayMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(IDArrayMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputIDArrayArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(IDArrayArrayMap{"baz": IDArrayArray{IDArray{ID("foo")}}})
+	_, ok := out.(IDArrayArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(IDArrayArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputIDArrayArrayArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(IDArrayArrayArray{IDArrayArray{IDArray{ID("foo")}}})
+	_, ok := out.(IDArrayArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(IDArrayArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputIDMapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(IDMapMapMap{"baz": IDMapMap{"baz": IDMap{"baz": ID("foo")}}})
+	_, ok := out.(IDMapMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(IDMapMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
 func TestToOutputArray(t *testing.T) {
 	t.Parallel()
 
@@ -1739,6 +2995,86 @@ func TestToOutputArrayArray(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestToOutputArrayMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(ArrayMapMap{"baz": ArrayMap{"baz": Array{String("any")}}})
+	_, ok := out.(ArrayMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(ArrayMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputMapArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(MapArrayMap{"baz": MapArray{Map{"baz": String("any")}}})
+	_, ok := out.(MapArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(MapArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputMapMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(MapMapArray{MapMap{"baz": Map{"baz": String("any")}}})
+	_, ok := out.(MapMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(MapMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputArrayMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(ArrayMapArray{ArrayMap{"baz": Array{String("any")}}})
+	_, ok := out.(ArrayMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(ArrayMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
 func TestToOutputArrayArrayMap(t *testing.T) {
 	t.Parallel()
 
@@ -1752,6 +3088,46 @@ func TestToOutputArrayArrayMap(t *testing.T) {
 
 	out = ToOutput(out)
 	_, ok = out.(ArrayArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputArrayArrayArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(ArrayArrayArray{ArrayArray{Array{String("any")}}})
+	_, ok := out.(ArrayArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(ArrayArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputMapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(MapMapMap{"baz": MapMap{"baz": Map{"baz": String("any")}}})
+	_, ok := out.(MapMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(MapMapMapInput)
 	assert.True(t, ok)
 
 	_, known, _, _, err = await(out)
@@ -1919,6 +3295,146 @@ func TestToOutputIntArrayArray(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestToOutputIntArrayMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(IntArrayMapMap{"baz": IntArrayMap{"baz": IntArray{Int(42)}}})
+	_, ok := out.(IntArrayMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(IntArrayMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputIntMapArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(IntMapArrayMap{"baz": IntMapArray{IntMap{"baz": Int(42)}}})
+	_, ok := out.(IntMapArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(IntMapArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputIntMapMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(IntMapMapArray{IntMapMap{"baz": IntMap{"baz": Int(42)}}})
+	_, ok := out.(IntMapMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(IntMapMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputIntArrayMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(IntArrayMapArray{IntArrayMap{"baz": IntArray{Int(42)}}})
+	_, ok := out.(IntArrayMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(IntArrayMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputIntArrayArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(IntArrayArrayMap{"baz": IntArrayArray{IntArray{Int(42)}}})
+	_, ok := out.(IntArrayArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(IntArrayArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputIntArrayArrayArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(IntArrayArrayArray{IntArrayArray{IntArray{Int(42)}}})
+	_, ok := out.(IntArrayArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(IntArrayArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputIntMapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(IntMapMapMap{"baz": IntMapMap{"baz": IntMap{"baz": Int(42)}}})
+	_, ok := out.(IntMapMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(IntMapMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
 func TestToOutputString(t *testing.T) {
 	t.Parallel()
 
@@ -2079,26 +3595,6 @@ func TestToOutputStringArrayArray(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestToOutputStringMapMapMap(t *testing.T) {
-	t.Parallel()
-
-	out := ToOutput(StringMapMapMap{"baz": StringMapMap{"baz": StringMap{"baz": String("foo")}}})
-	_, ok := out.(StringMapMapMapInput)
-	assert.True(t, ok)
-
-	_, known, _, _, err := await(out)
-	assert.True(t, known)
-	require.NoError(t, err)
-
-	out = ToOutput(out)
-	_, ok = out.(StringMapMapMapInput)
-	assert.True(t, ok)
-
-	_, known, _, _, err = await(out)
-	assert.True(t, known)
-	require.NoError(t, err)
-}
-
 func TestToOutputStringArrayMapMap(t *testing.T) {
 	t.Parallel()
 
@@ -2112,6 +3608,126 @@ func TestToOutputStringArrayMapMap(t *testing.T) {
 
 	out = ToOutput(out)
 	_, ok = out.(StringArrayMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputStringMapArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(StringMapArrayMap{"baz": StringMapArray{StringMap{"baz": String("foo")}}})
+	_, ok := out.(StringMapArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(StringMapArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputStringMapMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(StringMapMapArray{StringMapMap{"baz": StringMap{"baz": String("foo")}}})
+	_, ok := out.(StringMapMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(StringMapMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputStringArrayMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(StringArrayMapArray{StringArrayMap{"baz": StringArray{String("foo")}}})
+	_, ok := out.(StringArrayMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(StringArrayMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputStringArrayArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(StringArrayArrayMap{"baz": StringArrayArray{StringArray{String("foo")}}})
+	_, ok := out.(StringArrayArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(StringArrayArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputStringArrayArrayArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(StringArrayArrayArray{StringArrayArray{StringArray{String("foo")}}})
+	_, ok := out.(StringArrayArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(StringArrayArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputStringMapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(StringMapMapMap{"baz": StringMapMap{"baz": StringMap{"baz": String("foo")}}})
+	_, ok := out.(StringMapMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(StringMapMapMapInput)
 	assert.True(t, ok)
 
 	_, known, _, _, err = await(out)
@@ -2272,6 +3888,146 @@ func TestToOutputURNArrayArray(t *testing.T) {
 
 	out = ToOutput(out)
 	_, ok = out.(URNArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputURNArrayMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(URNArrayMapMap{"baz": URNArrayMap{"baz": URNArray{URN("foo")}}})
+	_, ok := out.(URNArrayMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(URNArrayMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputURNMapArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(URNMapArrayMap{"baz": URNMapArray{URNMap{"baz": URN("foo")}}})
+	_, ok := out.(URNMapArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(URNMapArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputURNMapMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(URNMapMapArray{URNMapMap{"baz": URNMap{"baz": URN("foo")}}})
+	_, ok := out.(URNMapMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(URNMapMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputURNArrayMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(URNArrayMapArray{URNArrayMap{"baz": URNArray{URN("foo")}}})
+	_, ok := out.(URNArrayMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(URNArrayMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputURNArrayArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(URNArrayArrayMap{"baz": URNArrayArray{URNArray{URN("foo")}}})
+	_, ok := out.(URNArrayArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(URNArrayArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputURNArrayArrayArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(URNArrayArrayArray{URNArrayArray{URNArray{URN("foo")}}})
+	_, ok := out.(URNArrayArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(URNArrayArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToOutputURNMapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(URNMapMapMap{"baz": URNMapMap{"baz": URNMap{"baz": URN("foo")}}})
+	_, ok := out.(URNMapMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(URNMapMapMapInput)
 	assert.True(t, ok)
 
 	_, known, _, _, err = await(out)
@@ -2491,6 +4247,216 @@ func TestToArchiveArrayArrayOutput(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestToArchiveArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := ArchiveArrayMapMapInput(ArchiveArrayMapMap{"baz": ArchiveArrayMap{"baz": ArchiveArray{NewFileArchive("foo.zip")}}})
+
+	out := in.ToArchiveArrayMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToArchiveArrayMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToArchiveArrayMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToArchiveArrayMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToArchiveMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := ArchiveMapArrayMapInput(ArchiveMapArrayMap{"baz": ArchiveMapArray{ArchiveMap{"baz": NewFileArchive("foo.zip")}}})
+
+	out := in.ToArchiveMapArrayMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToArchiveMapArrayMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToArchiveMapArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToArchiveMapArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToArchiveMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := ArchiveMapMapArrayInput(ArchiveMapMapArray{ArchiveMapMap{"baz": ArchiveMap{"baz": NewFileArchive("foo.zip")}}})
+
+	out := in.ToArchiveMapMapArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToArchiveMapMapArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToArchiveMapMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToArchiveMapMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToArchiveArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := ArchiveArrayMapArrayInput(ArchiveArrayMapArray{ArchiveArrayMap{"baz": ArchiveArray{NewFileArchive("foo.zip")}}})
+
+	out := in.ToArchiveArrayMapArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToArchiveArrayMapArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToArchiveArrayMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToArchiveArrayMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToArchiveArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := ArchiveArrayArrayMapInput(ArchiveArrayArrayMap{"baz": ArchiveArrayArray{ArchiveArray{NewFileArchive("foo.zip")}}})
+
+	out := in.ToArchiveArrayArrayMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToArchiveArrayArrayMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToArchiveArrayArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToArchiveArrayArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToArchiveArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := ArchiveArrayArrayArrayInput(ArchiveArrayArrayArray{ArchiveArrayArray{ArchiveArray{NewFileArchive("foo.zip")}}})
+
+	out := in.ToArchiveArrayArrayArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToArchiveArrayArrayArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToArchiveArrayArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToArchiveArrayArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToArchiveMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := ArchiveMapMapMapInput(ArchiveMapMapMap{"baz": ArchiveMapMap{"baz": ArchiveMap{"baz": NewFileArchive("foo.zip")}}})
+
+	out := in.ToArchiveMapMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToArchiveMapMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToArchiveMapMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToArchiveMapMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
 func TestToAssetOutput(t *testing.T) {
 	t.Parallel()
 
@@ -2701,6 +4667,216 @@ func TestToAssetArrayArrayOutput(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestToAssetArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := AssetArrayMapMapInput(AssetArrayMapMap{"baz": AssetArrayMap{"baz": AssetArray{NewFileAsset("foo.txt")}}})
+
+	out := in.ToAssetArrayMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetArrayMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToAssetArrayMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetArrayMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToAssetMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := AssetMapArrayMapInput(AssetMapArrayMap{"baz": AssetMapArray{AssetMap{"baz": NewFileAsset("foo.txt")}}})
+
+	out := in.ToAssetMapArrayMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetMapArrayMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToAssetMapArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetMapArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToAssetMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := AssetMapMapArrayInput(AssetMapMapArray{AssetMapMap{"baz": AssetMap{"baz": NewFileAsset("foo.txt")}}})
+
+	out := in.ToAssetMapMapArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetMapMapArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToAssetMapMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetMapMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToAssetArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := AssetArrayMapArrayInput(AssetArrayMapArray{AssetArrayMap{"baz": AssetArray{NewFileAsset("foo.txt")}}})
+
+	out := in.ToAssetArrayMapArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetArrayMapArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToAssetArrayMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetArrayMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToAssetArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := AssetArrayArrayMapInput(AssetArrayArrayMap{"baz": AssetArrayArray{AssetArray{NewFileAsset("foo.txt")}}})
+
+	out := in.ToAssetArrayArrayMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetArrayArrayMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToAssetArrayArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetArrayArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToAssetArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := AssetArrayArrayArrayInput(AssetArrayArrayArray{AssetArrayArray{AssetArray{NewFileAsset("foo.txt")}}})
+
+	out := in.ToAssetArrayArrayArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetArrayArrayArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToAssetArrayArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetArrayArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToAssetMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := AssetMapMapMapInput(AssetMapMapMap{"baz": AssetMapMap{"baz": AssetMap{"baz": NewFileAsset("foo.txt")}}})
+
+	out := in.ToAssetMapMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetMapMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToAssetMapMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetMapMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
 func TestToAssetOrArchiveOutput(t *testing.T) {
 	t.Parallel()
 
@@ -2905,6 +5081,216 @@ func TestToAssetOrArchiveArrayArrayOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	out = out.ToAssetOrArchiveArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToAssetOrArchiveArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := AssetOrArchiveArrayMapMapInput(AssetOrArchiveArrayMapMap{"baz": AssetOrArchiveArrayMap{"baz": AssetOrArchiveArray{NewFileArchive("foo.zip")}}})
+
+	out := in.ToAssetOrArchiveArrayMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetOrArchiveArrayMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToAssetOrArchiveArrayMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetOrArchiveArrayMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToAssetOrArchiveMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := AssetOrArchiveMapArrayMapInput(AssetOrArchiveMapArrayMap{"baz": AssetOrArchiveMapArray{AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}}})
+
+	out := in.ToAssetOrArchiveMapArrayMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetOrArchiveMapArrayMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToAssetOrArchiveMapArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetOrArchiveMapArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToAssetOrArchiveMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := AssetOrArchiveMapMapArrayInput(AssetOrArchiveMapMapArray{AssetOrArchiveMapMap{"baz": AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}}})
+
+	out := in.ToAssetOrArchiveMapMapArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetOrArchiveMapMapArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToAssetOrArchiveMapMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetOrArchiveMapMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToAssetOrArchiveArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := AssetOrArchiveArrayMapArrayInput(AssetOrArchiveArrayMapArray{AssetOrArchiveArrayMap{"baz": AssetOrArchiveArray{NewFileArchive("foo.zip")}}})
+
+	out := in.ToAssetOrArchiveArrayMapArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetOrArchiveArrayMapArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToAssetOrArchiveArrayMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetOrArchiveArrayMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToAssetOrArchiveArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := AssetOrArchiveArrayArrayMapInput(AssetOrArchiveArrayArrayMap{"baz": AssetOrArchiveArrayArray{AssetOrArchiveArray{NewFileArchive("foo.zip")}}})
+
+	out := in.ToAssetOrArchiveArrayArrayMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetOrArchiveArrayArrayMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToAssetOrArchiveArrayArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetOrArchiveArrayArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToAssetOrArchiveArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := AssetOrArchiveArrayArrayArrayInput(AssetOrArchiveArrayArrayArray{AssetOrArchiveArrayArray{AssetOrArchiveArray{NewFileArchive("foo.zip")}}})
+
+	out := in.ToAssetOrArchiveArrayArrayArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetOrArchiveArrayArrayArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToAssetOrArchiveArrayArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetOrArchiveArrayArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToAssetOrArchiveMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := AssetOrArchiveMapMapMapInput(AssetOrArchiveMapMapMap{"baz": AssetOrArchiveMapMap{"baz": AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}}})
+
+	out := in.ToAssetOrArchiveMapMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetOrArchiveMapMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToAssetOrArchiveMapMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToAssetOrArchiveMapMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -3151,6 +5537,216 @@ func TestToBoolArrayArrayOutput(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestToBoolArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := BoolArrayMapMapInput(BoolArrayMapMap{"baz": BoolArrayMap{"baz": BoolArray{Bool(true)}}})
+
+	out := in.ToBoolArrayMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToBoolArrayMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToBoolArrayMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToBoolArrayMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToBoolMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := BoolMapArrayMapInput(BoolMapArrayMap{"baz": BoolMapArray{BoolMap{"baz": Bool(true)}}})
+
+	out := in.ToBoolMapArrayMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToBoolMapArrayMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToBoolMapArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToBoolMapArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToBoolMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := BoolMapMapArrayInput(BoolMapMapArray{BoolMapMap{"baz": BoolMap{"baz": Bool(true)}}})
+
+	out := in.ToBoolMapMapArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToBoolMapMapArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToBoolMapMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToBoolMapMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToBoolArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := BoolArrayMapArrayInput(BoolArrayMapArray{BoolArrayMap{"baz": BoolArray{Bool(true)}}})
+
+	out := in.ToBoolArrayMapArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToBoolArrayMapArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToBoolArrayMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToBoolArrayMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToBoolArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := BoolArrayArrayMapInput(BoolArrayArrayMap{"baz": BoolArrayArray{BoolArray{Bool(true)}}})
+
+	out := in.ToBoolArrayArrayMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToBoolArrayArrayMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToBoolArrayArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToBoolArrayArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToBoolArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := BoolArrayArrayArrayInput(BoolArrayArrayArray{BoolArrayArray{BoolArray{Bool(true)}}})
+
+	out := in.ToBoolArrayArrayArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToBoolArrayArrayArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToBoolArrayArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToBoolArrayArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToBoolMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := BoolMapMapMapInput(BoolMapMapMap{"baz": BoolMapMap{"baz": BoolMap{"baz": Bool(true)}}})
+
+	out := in.ToBoolMapMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToBoolMapMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToBoolMapMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToBoolMapMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
 func TestToFloat64Output(t *testing.T) {
 	t.Parallel()
 
@@ -3385,6 +5981,216 @@ func TestToFloat64ArrayArrayOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	out = out.ToFloat64ArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToFloat64ArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := Float64ArrayMapMapInput(Float64ArrayMapMap{"baz": Float64ArrayMap{"baz": Float64Array{Float64(999.9)}}})
+
+	out := in.ToFloat64ArrayMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToFloat64ArrayMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToFloat64ArrayMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToFloat64ArrayMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToFloat64MapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := Float64MapArrayMapInput(Float64MapArrayMap{"baz": Float64MapArray{Float64Map{"baz": Float64(999.9)}}})
+
+	out := in.ToFloat64MapArrayMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToFloat64MapArrayMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToFloat64MapArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToFloat64MapArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToFloat64MapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := Float64MapMapArrayInput(Float64MapMapArray{Float64MapMap{"baz": Float64Map{"baz": Float64(999.9)}}})
+
+	out := in.ToFloat64MapMapArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToFloat64MapMapArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToFloat64MapMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToFloat64MapMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToFloat64ArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := Float64ArrayMapArrayInput(Float64ArrayMapArray{Float64ArrayMap{"baz": Float64Array{Float64(999.9)}}})
+
+	out := in.ToFloat64ArrayMapArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToFloat64ArrayMapArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToFloat64ArrayMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToFloat64ArrayMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToFloat64ArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := Float64ArrayArrayMapInput(Float64ArrayArrayMap{"baz": Float64ArrayArray{Float64Array{Float64(999.9)}}})
+
+	out := in.ToFloat64ArrayArrayMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToFloat64ArrayArrayMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToFloat64ArrayArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToFloat64ArrayArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToFloat64ArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := Float64ArrayArrayArrayInput(Float64ArrayArrayArray{Float64ArrayArray{Float64Array{Float64(999.9)}}})
+
+	out := in.ToFloat64ArrayArrayArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToFloat64ArrayArrayArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToFloat64ArrayArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToFloat64ArrayArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToFloat64MapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := Float64MapMapMapInput(Float64MapMapMap{"baz": Float64MapMap{"baz": Float64Map{"baz": Float64(999.9)}}})
+
+	out := in.ToFloat64MapMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToFloat64MapMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToFloat64MapMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToFloat64MapMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -3631,6 +6437,216 @@ func TestToIDArrayArrayOutput(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestToIDArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := IDArrayMapMapInput(IDArrayMapMap{"baz": IDArrayMap{"baz": IDArray{ID("foo")}}})
+
+	out := in.ToIDArrayMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIDArrayMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToIDArrayMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIDArrayMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToIDMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := IDMapArrayMapInput(IDMapArrayMap{"baz": IDMapArray{IDMap{"baz": ID("foo")}}})
+
+	out := in.ToIDMapArrayMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIDMapArrayMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToIDMapArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIDMapArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToIDMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := IDMapMapArrayInput(IDMapMapArray{IDMapMap{"baz": IDMap{"baz": ID("foo")}}})
+
+	out := in.ToIDMapMapArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIDMapMapArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToIDMapMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIDMapMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToIDArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := IDArrayMapArrayInput(IDArrayMapArray{IDArrayMap{"baz": IDArray{ID("foo")}}})
+
+	out := in.ToIDArrayMapArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIDArrayMapArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToIDArrayMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIDArrayMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToIDArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := IDArrayArrayMapInput(IDArrayArrayMap{"baz": IDArrayArray{IDArray{ID("foo")}}})
+
+	out := in.ToIDArrayArrayMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIDArrayArrayMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToIDArrayArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIDArrayArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToIDArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := IDArrayArrayArrayInput(IDArrayArrayArray{IDArrayArray{IDArray{ID("foo")}}})
+
+	out := in.ToIDArrayArrayArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIDArrayArrayArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToIDArrayArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIDArrayArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToIDMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := IDMapMapMapInput(IDMapMapMap{"baz": IDMapMap{"baz": IDMap{"baz": ID("foo")}}})
+
+	out := in.ToIDMapMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIDMapMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToIDMapMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIDMapMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
 func TestToArrayOutput(t *testing.T) {
 	t.Parallel()
 
@@ -3811,6 +6827,126 @@ func TestToArrayArrayOutput(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestToArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := ArrayMapMapInput(ArrayMapMap{"baz": ArrayMap{"baz": Array{String("any")}}})
+
+	out := in.ToArrayMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToArrayMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToArrayMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToArrayMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := MapArrayMapInput(MapArrayMap{"baz": MapArray{Map{"baz": String("any")}}})
+
+	out := in.ToMapArrayMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToMapArrayMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToMapArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToMapArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := MapMapArrayInput(MapMapArray{MapMap{"baz": Map{"baz": String("any")}}})
+
+	out := in.ToMapMapArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToMapMapArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToMapMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToMapMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := ArrayMapArrayInput(ArrayMapArray{ArrayMap{"baz": Array{String("any")}}})
+
+	out := in.ToArrayMapArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToArrayMapArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToArrayMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToArrayMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
 func TestToArrayArrayMapOutput(t *testing.T) {
 	t.Parallel()
 
@@ -3835,6 +6971,66 @@ func TestToArrayArrayMapOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	out = out.ToArrayArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := ArrayArrayArrayInput(ArrayArrayArray{ArrayArray{Array{String("any")}}})
+
+	out := in.ToArrayArrayArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToArrayArrayArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToArrayArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToArrayArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := MapMapMapInput(MapMapMap{"baz": MapMap{"baz": Map{"baz": String("any")}}})
+
+	out := in.ToMapMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToMapMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToMapMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToMapMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4081,6 +7277,216 @@ func TestToIntArrayArrayOutput(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestToIntArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := IntArrayMapMapInput(IntArrayMapMap{"baz": IntArrayMap{"baz": IntArray{Int(42)}}})
+
+	out := in.ToIntArrayMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIntArrayMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToIntArrayMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIntArrayMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToIntMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := IntMapArrayMapInput(IntMapArrayMap{"baz": IntMapArray{IntMap{"baz": Int(42)}}})
+
+	out := in.ToIntMapArrayMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIntMapArrayMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToIntMapArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIntMapArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToIntMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := IntMapMapArrayInput(IntMapMapArray{IntMapMap{"baz": IntMap{"baz": Int(42)}}})
+
+	out := in.ToIntMapMapArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIntMapMapArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToIntMapMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIntMapMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToIntArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := IntArrayMapArrayInput(IntArrayMapArray{IntArrayMap{"baz": IntArray{Int(42)}}})
+
+	out := in.ToIntArrayMapArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIntArrayMapArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToIntArrayMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIntArrayMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToIntArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := IntArrayArrayMapInput(IntArrayArrayMap{"baz": IntArrayArray{IntArray{Int(42)}}})
+
+	out := in.ToIntArrayArrayMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIntArrayArrayMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToIntArrayArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIntArrayArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToIntArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := IntArrayArrayArrayInput(IntArrayArrayArray{IntArrayArray{IntArray{Int(42)}}})
+
+	out := in.ToIntArrayArrayArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIntArrayArrayArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToIntArrayArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIntArrayArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToIntMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := IntMapMapMapInput(IntMapMapMap{"baz": IntMapMap{"baz": IntMap{"baz": Int(42)}}})
+
+	out := in.ToIntMapMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIntMapMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToIntMapMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToIntMapMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
 func TestToStringOutput(t *testing.T) {
 	t.Parallel()
 
@@ -4321,36 +7727,6 @@ func TestToStringArrayArrayOutput(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestToStringMapMapMapOutput(t *testing.T) {
-	t.Parallel()
-
-	in := StringMapMapMapInput(StringMapMapMap{"baz": StringMapMap{"baz": StringMap{"baz": String("foo")}}})
-
-	out := in.ToStringMapMapMapOutput()
-
-	_, known, _, _, err := await(out)
-	assert.True(t, known)
-	require.NoError(t, err)
-
-	out = out.ToStringMapMapMapOutput()
-
-	_, known, _, _, err = await(out)
-	assert.True(t, known)
-	require.NoError(t, err)
-
-	out = in.ToStringMapMapMapOutputWithContext(context.Background())
-
-	_, known, _, _, err = await(out)
-	assert.True(t, known)
-	require.NoError(t, err)
-
-	out = out.ToStringMapMapMapOutputWithContext(context.Background())
-
-	_, known, _, _, err = await(out)
-	assert.True(t, known)
-	require.NoError(t, err)
-}
-
 func TestToStringArrayMapMapOutput(t *testing.T) {
 	t.Parallel()
 
@@ -4375,6 +7751,186 @@ func TestToStringArrayMapMapOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	out = out.ToStringArrayMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToStringMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := StringMapArrayMapInput(StringMapArrayMap{"baz": StringMapArray{StringMap{"baz": String("foo")}}})
+
+	out := in.ToStringMapArrayMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToStringMapArrayMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToStringMapArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToStringMapArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToStringMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := StringMapMapArrayInput(StringMapMapArray{StringMapMap{"baz": StringMap{"baz": String("foo")}}})
+
+	out := in.ToStringMapMapArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToStringMapMapArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToStringMapMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToStringMapMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToStringArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := StringArrayMapArrayInput(StringArrayMapArray{StringArrayMap{"baz": StringArray{String("foo")}}})
+
+	out := in.ToStringArrayMapArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToStringArrayMapArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToStringArrayMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToStringArrayMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToStringArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := StringArrayArrayMapInput(StringArrayArrayMap{"baz": StringArrayArray{StringArray{String("foo")}}})
+
+	out := in.ToStringArrayArrayMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToStringArrayArrayMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToStringArrayArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToStringArrayArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToStringArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := StringArrayArrayArrayInput(StringArrayArrayArray{StringArrayArray{StringArray{String("foo")}}})
+
+	out := in.ToStringArrayArrayArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToStringArrayArrayArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToStringArrayArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToStringArrayArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToStringMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := StringMapMapMapInput(StringMapMapMap{"baz": StringMapMap{"baz": StringMap{"baz": String("foo")}}})
+
+	out := in.ToStringMapMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToStringMapMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToStringMapMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToStringMapMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4615,6 +8171,216 @@ func TestToURNArrayArrayOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	out = out.ToURNArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToURNArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := URNArrayMapMapInput(URNArrayMapMap{"baz": URNArrayMap{"baz": URNArray{URN("foo")}}})
+
+	out := in.ToURNArrayMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToURNArrayMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToURNArrayMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToURNArrayMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToURNMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := URNMapArrayMapInput(URNMapArrayMap{"baz": URNMapArray{URNMap{"baz": URN("foo")}}})
+
+	out := in.ToURNMapArrayMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToURNMapArrayMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToURNMapArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToURNMapArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToURNMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := URNMapMapArrayInput(URNMapMapArray{URNMapMap{"baz": URNMap{"baz": URN("foo")}}})
+
+	out := in.ToURNMapMapArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToURNMapMapArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToURNMapMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToURNMapMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToURNArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := URNArrayMapArrayInput(URNArrayMapArray{URNArrayMap{"baz": URNArray{URN("foo")}}})
+
+	out := in.ToURNArrayMapArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToURNArrayMapArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToURNArrayMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToURNArrayMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToURNArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := URNArrayArrayMapInput(URNArrayArrayMap{"baz": URNArrayArray{URNArray{URN("foo")}}})
+
+	out := in.ToURNArrayArrayMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToURNArrayArrayMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToURNArrayArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToURNArrayArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToURNArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := URNArrayArrayArrayInput(URNArrayArrayArray{URNArrayArray{URNArray{URN("foo")}}})
+
+	out := in.ToURNArrayArrayArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToURNArrayArrayArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToURNArrayArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToURNArrayArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+}
+
+func TestToURNMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := URNMapMapMapInput(URNMapMapMap{"baz": URNMapMap{"baz": URNMap{"baz": URN("foo")}}})
+
+	out := in.ToURNMapMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToURNMapMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = in.ToURNMapMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	out = out.ToURNMapMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4938,6 +8704,162 @@ func TestTopLevelToArchiveArrayArrayOutput(t *testing.T) {
 	assert.EqualValues(t, av.([][]Archive)[0], iv)
 }
 
+func TestArchiveMapMapArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (ArchiveMapMapArray{ArchiveMapMap{"baz": ArchiveMap{"baz": NewFileArchive("foo.zip")}}}).ToArchiveMapMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([]map[string]map[string]Archive)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToArchiveMapMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToArchiveMapMapArray([]map[string]map[string]Archive{{"baz": {"baz": NewFileArchive("foo.zip")}}}).ToArchiveMapMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]map[string]Archive)[0], iv)
+}
+
+func TestTopLevelToArchiveMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToArchiveMapMapArrayOutput([]ArchiveMapMapOutput{ToOutput(ArchiveMapMap{"baz": ArchiveMap{"baz": NewFileArchive("foo.zip")}}).(ArchiveMapMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]map[string]Archive)[0], iv)
+}
+
+func TestArchiveArrayMapArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (ArchiveArrayMapArray{ArchiveArrayMap{"baz": ArchiveArray{NewFileArchive("foo.zip")}}}).ToArchiveArrayMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([]map[string][]Archive)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToArchiveArrayMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToArchiveArrayMapArray([]map[string][]Archive{{"baz": {NewFileArchive("foo.zip")}}}).ToArchiveArrayMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string][]Archive)[0], iv)
+}
+
+func TestTopLevelToArchiveArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToArchiveArrayMapArrayOutput([]ArchiveArrayMapOutput{ToOutput(ArchiveArrayMap{"baz": ArchiveArray{NewFileArchive("foo.zip")}}).(ArchiveArrayMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string][]Archive)[0], iv)
+}
+
+func TestArchiveArrayArrayArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (ArchiveArrayArrayArray{ArchiveArrayArray{ArchiveArray{NewFileArchive("foo.zip")}}}).ToArchiveArrayArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([][][]Archive)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToArchiveArrayArrayArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToArchiveArrayArrayArray([][][]Archive{{{NewFileArchive("foo.zip")}}}).ToArchiveArrayArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([][][]Archive)[0], iv)
+}
+
+func TestTopLevelToArchiveArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToArchiveArrayArrayArrayOutput([]ArchiveArrayArrayOutput{ToOutput(ArchiveArrayArray{ArchiveArray{NewFileArchive("foo.zip")}}).(ArchiveArrayArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([][][]Archive)[0], iv)
+}
+
 func TestAssetArrayIndex(t *testing.T) {
 	t.Parallel()
 
@@ -5094,6 +9016,162 @@ func TestTopLevelToAssetArrayArrayOutput(t *testing.T) {
 	assert.EqualValues(t, av.([][]Asset)[0], iv)
 }
 
+func TestAssetMapMapArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (AssetMapMapArray{AssetMapMap{"baz": AssetMap{"baz": NewFileAsset("foo.txt")}}}).ToAssetMapMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([]map[string]map[string]Asset)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToAssetMapMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToAssetMapMapArray([]map[string]map[string]Asset{{"baz": {"baz": NewFileAsset("foo.txt")}}}).ToAssetMapMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]map[string]Asset)[0], iv)
+}
+
+func TestTopLevelToAssetMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToAssetMapMapArrayOutput([]AssetMapMapOutput{ToOutput(AssetMapMap{"baz": AssetMap{"baz": NewFileAsset("foo.txt")}}).(AssetMapMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]map[string]Asset)[0], iv)
+}
+
+func TestAssetArrayMapArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (AssetArrayMapArray{AssetArrayMap{"baz": AssetArray{NewFileAsset("foo.txt")}}}).ToAssetArrayMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([]map[string][]Asset)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToAssetArrayMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToAssetArrayMapArray([]map[string][]Asset{{"baz": {NewFileAsset("foo.txt")}}}).ToAssetArrayMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string][]Asset)[0], iv)
+}
+
+func TestTopLevelToAssetArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToAssetArrayMapArrayOutput([]AssetArrayMapOutput{ToOutput(AssetArrayMap{"baz": AssetArray{NewFileAsset("foo.txt")}}).(AssetArrayMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string][]Asset)[0], iv)
+}
+
+func TestAssetArrayArrayArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (AssetArrayArrayArray{AssetArrayArray{AssetArray{NewFileAsset("foo.txt")}}}).ToAssetArrayArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([][][]Asset)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToAssetArrayArrayArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToAssetArrayArrayArray([][][]Asset{{{NewFileAsset("foo.txt")}}}).ToAssetArrayArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([][][]Asset)[0], iv)
+}
+
+func TestTopLevelToAssetArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToAssetArrayArrayArrayOutput([]AssetArrayArrayOutput{ToOutput(AssetArrayArray{AssetArray{NewFileAsset("foo.txt")}}).(AssetArrayArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([][][]Asset)[0], iv)
+}
+
 func TestAssetOrArchiveArrayIndex(t *testing.T) {
 	t.Parallel()
 
@@ -5147,6 +9225,66 @@ func TestAssetOrArchiveArrayArrayIndex(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 	assert.EqualValues(t, av.([][]AssetOrArchive)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestAssetOrArchiveMapMapArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (AssetOrArchiveMapMapArray{AssetOrArchiveMapMap{"baz": AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}}}).ToAssetOrArchiveMapMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([]map[string]map[string]AssetOrArchive)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestAssetOrArchiveArrayMapArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (AssetOrArchiveArrayMapArray{AssetOrArchiveArrayMap{"baz": AssetOrArchiveArray{NewFileArchive("foo.zip")}}}).ToAssetOrArchiveArrayMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([]map[string][]AssetOrArchive)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestAssetOrArchiveArrayArrayArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (AssetOrArchiveArrayArrayArray{AssetOrArchiveArrayArray{AssetOrArchiveArray{NewFileArchive("foo.zip")}}}).ToAssetOrArchiveArrayArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([][][]AssetOrArchive)[0], iv)
 
 	iv, known, _, _, err = await(out.Index(Int(-1)))
 	assert.True(t, known)
@@ -5310,6 +9448,162 @@ func TestTopLevelToBoolArrayArrayOutput(t *testing.T) {
 	assert.EqualValues(t, av.([][]bool)[0], iv)
 }
 
+func TestBoolMapMapArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (BoolMapMapArray{BoolMapMap{"baz": BoolMap{"baz": Bool(true)}}}).ToBoolMapMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([]map[string]map[string]bool)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToBoolMapMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToBoolMapMapArray([]map[string]map[string]bool{{"baz": {"baz": true}}}).ToBoolMapMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]map[string]bool)[0], iv)
+}
+
+func TestTopLevelToBoolMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToBoolMapMapArrayOutput([]BoolMapMapOutput{ToOutput(BoolMapMap{"baz": BoolMap{"baz": Bool(true)}}).(BoolMapMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]map[string]bool)[0], iv)
+}
+
+func TestBoolArrayMapArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (BoolArrayMapArray{BoolArrayMap{"baz": BoolArray{Bool(true)}}}).ToBoolArrayMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([]map[string][]bool)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToBoolArrayMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToBoolArrayMapArray([]map[string][]bool{{"baz": {true}}}).ToBoolArrayMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string][]bool)[0], iv)
+}
+
+func TestTopLevelToBoolArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToBoolArrayMapArrayOutput([]BoolArrayMapOutput{ToOutput(BoolArrayMap{"baz": BoolArray{Bool(true)}}).(BoolArrayMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string][]bool)[0], iv)
+}
+
+func TestBoolArrayArrayArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (BoolArrayArrayArray{BoolArrayArray{BoolArray{Bool(true)}}}).ToBoolArrayArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([][][]bool)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToBoolArrayArrayArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToBoolArrayArrayArray([][][]bool{{{true}}}).ToBoolArrayArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([][][]bool)[0], iv)
+}
+
+func TestTopLevelToBoolArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToBoolArrayArrayArrayOutput([]BoolArrayArrayOutput{ToOutput(BoolArrayArray{BoolArray{Bool(true)}}).(BoolArrayArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([][][]bool)[0], iv)
+}
+
 func TestFloat64ArrayIndex(t *testing.T) {
 	t.Parallel()
 
@@ -5464,6 +9758,162 @@ func TestTopLevelToFloat64ArrayArrayOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([][]float64)[0], iv)
+}
+
+func TestFloat64MapMapArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (Float64MapMapArray{Float64MapMap{"baz": Float64Map{"baz": Float64(999.9)}}}).ToFloat64MapMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([]map[string]map[string]float64)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToFloat64MapMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToFloat64MapMapArray([]map[string]map[string]float64{{"baz": {"baz": 999.9}}}).ToFloat64MapMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]map[string]float64)[0], iv)
+}
+
+func TestTopLevelToFloat64MapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToFloat64MapMapArrayOutput([]Float64MapMapOutput{ToOutput(Float64MapMap{"baz": Float64Map{"baz": Float64(999.9)}}).(Float64MapMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]map[string]float64)[0], iv)
+}
+
+func TestFloat64ArrayMapArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (Float64ArrayMapArray{Float64ArrayMap{"baz": Float64Array{Float64(999.9)}}}).ToFloat64ArrayMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([]map[string][]float64)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToFloat64ArrayMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToFloat64ArrayMapArray([]map[string][]float64{{"baz": {999.9}}}).ToFloat64ArrayMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string][]float64)[0], iv)
+}
+
+func TestTopLevelToFloat64ArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToFloat64ArrayMapArrayOutput([]Float64ArrayMapOutput{ToOutput(Float64ArrayMap{"baz": Float64Array{Float64(999.9)}}).(Float64ArrayMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string][]float64)[0], iv)
+}
+
+func TestFloat64ArrayArrayArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (Float64ArrayArrayArray{Float64ArrayArray{Float64Array{Float64(999.9)}}}).ToFloat64ArrayArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([][][]float64)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToFloat64ArrayArrayArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToFloat64ArrayArrayArray([][][]float64{{{999.9}}}).ToFloat64ArrayArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([][][]float64)[0], iv)
+}
+
+func TestTopLevelToFloat64ArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToFloat64ArrayArrayArrayOutput([]Float64ArrayArrayOutput{ToOutput(Float64ArrayArray{Float64Array{Float64(999.9)}}).(Float64ArrayArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([][][]float64)[0], iv)
 }
 
 func TestIDArrayIndex(t *testing.T) {
@@ -5622,6 +10072,162 @@ func TestTopLevelToIDArrayArrayOutput(t *testing.T) {
 	assert.EqualValues(t, av.([][]ID)[0], iv)
 }
 
+func TestIDMapMapArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (IDMapMapArray{IDMapMap{"baz": IDMap{"baz": ID("foo")}}}).ToIDMapMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([]map[string]map[string]ID)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToIDMapMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToIDMapMapArray([]map[string]map[string]ID{{"baz": {"baz": ID("foo")}}}).ToIDMapMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]map[string]ID)[0], iv)
+}
+
+func TestTopLevelToIDMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToIDMapMapArrayOutput([]IDMapMapOutput{ToOutput(IDMapMap{"baz": IDMap{"baz": ID("foo")}}).(IDMapMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]map[string]ID)[0], iv)
+}
+
+func TestIDArrayMapArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (IDArrayMapArray{IDArrayMap{"baz": IDArray{ID("foo")}}}).ToIDArrayMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([]map[string][]ID)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToIDArrayMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToIDArrayMapArray([]map[string][]ID{{"baz": {ID("foo")}}}).ToIDArrayMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string][]ID)[0], iv)
+}
+
+func TestTopLevelToIDArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToIDArrayMapArrayOutput([]IDArrayMapOutput{ToOutput(IDArrayMap{"baz": IDArray{ID("foo")}}).(IDArrayMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string][]ID)[0], iv)
+}
+
+func TestIDArrayArrayArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (IDArrayArrayArray{IDArrayArray{IDArray{ID("foo")}}}).ToIDArrayArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([][][]ID)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToIDArrayArrayArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToIDArrayArrayArray([][][]ID{{{ID("foo")}}}).ToIDArrayArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([][][]ID)[0], iv)
+}
+
+func TestTopLevelToIDArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToIDArrayArrayArrayOutput([]IDArrayArrayOutput{ToOutput(IDArrayArray{IDArray{ID("foo")}}).(IDArrayArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([][][]ID)[0], iv)
+}
+
 func TestArrayIndex(t *testing.T) {
 	t.Parallel()
 
@@ -5776,6 +10382,162 @@ func TestTopLevelToArrayArrayOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([][]any)[0], iv)
+}
+
+func TestMapMapArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (MapMapArray{MapMap{"baz": Map{"baz": String("any")}}}).ToMapMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([]map[string]map[string]any)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToMapMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToMapMapArray([]map[string]map[string]any{{"baz": {"baz": String("any")}}}).ToMapMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]map[string]any)[0], iv)
+}
+
+func TestTopLevelToMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToMapMapArrayOutput([]MapMapOutput{ToOutput(MapMap{"baz": Map{"baz": String("any")}}).(MapMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]map[string]any)[0], iv)
+}
+
+func TestArrayMapArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (ArrayMapArray{ArrayMap{"baz": Array{String("any")}}}).ToArrayMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([]map[string][]any)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToArrayMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToArrayMapArray([]map[string][]any{{"baz": {String("any")}}}).ToArrayMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string][]any)[0], iv)
+}
+
+func TestTopLevelToArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToArrayMapArrayOutput([]ArrayMapOutput{ToOutput(ArrayMap{"baz": Array{String("any")}}).(ArrayMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string][]any)[0], iv)
+}
+
+func TestArrayArrayArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (ArrayArrayArray{ArrayArray{Array{String("any")}}}).ToArrayArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([][][]any)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToArrayArrayArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToArrayArrayArray([][][]any{{{String("any")}}}).ToArrayArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([][][]any)[0], iv)
+}
+
+func TestTopLevelToArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToArrayArrayArrayOutput([]ArrayArrayOutput{ToOutput(ArrayArray{Array{String("any")}}).(ArrayArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([][][]any)[0], iv)
 }
 
 func TestIntArrayIndex(t *testing.T) {
@@ -5934,6 +10696,162 @@ func TestTopLevelToIntArrayArrayOutput(t *testing.T) {
 	assert.EqualValues(t, av.([][]int)[0], iv)
 }
 
+func TestIntMapMapArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (IntMapMapArray{IntMapMap{"baz": IntMap{"baz": Int(42)}}}).ToIntMapMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([]map[string]map[string]int)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToIntMapMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToIntMapMapArray([]map[string]map[string]int{{"baz": {"baz": 42}}}).ToIntMapMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]map[string]int)[0], iv)
+}
+
+func TestTopLevelToIntMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToIntMapMapArrayOutput([]IntMapMapOutput{ToOutput(IntMapMap{"baz": IntMap{"baz": Int(42)}}).(IntMapMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]map[string]int)[0], iv)
+}
+
+func TestIntArrayMapArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (IntArrayMapArray{IntArrayMap{"baz": IntArray{Int(42)}}}).ToIntArrayMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([]map[string][]int)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToIntArrayMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToIntArrayMapArray([]map[string][]int{{"baz": {42}}}).ToIntArrayMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string][]int)[0], iv)
+}
+
+func TestTopLevelToIntArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToIntArrayMapArrayOutput([]IntArrayMapOutput{ToOutput(IntArrayMap{"baz": IntArray{Int(42)}}).(IntArrayMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string][]int)[0], iv)
+}
+
+func TestIntArrayArrayArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (IntArrayArrayArray{IntArrayArray{IntArray{Int(42)}}}).ToIntArrayArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([][][]int)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToIntArrayArrayArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToIntArrayArrayArray([][][]int{{{42}}}).ToIntArrayArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([][][]int)[0], iv)
+}
+
+func TestTopLevelToIntArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToIntArrayArrayArrayOutput([]IntArrayArrayOutput{ToOutput(IntArrayArray{IntArray{Int(42)}}).(IntArrayArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([][][]int)[0], iv)
+}
+
 func TestStringArrayIndex(t *testing.T) {
 	t.Parallel()
 
@@ -6090,6 +11008,162 @@ func TestTopLevelToStringArrayArrayOutput(t *testing.T) {
 	assert.EqualValues(t, av.([][]string)[0], iv)
 }
 
+func TestStringMapMapArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (StringMapMapArray{StringMapMap{"baz": StringMap{"baz": String("foo")}}}).ToStringMapMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([]map[string]map[string]string)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToStringMapMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToStringMapMapArray([]map[string]map[string]string{{"baz": {"baz": "foo"}}}).ToStringMapMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]map[string]string)[0], iv)
+}
+
+func TestTopLevelToStringMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToStringMapMapArrayOutput([]StringMapMapOutput{ToOutput(StringMapMap{"baz": StringMap{"baz": String("foo")}}).(StringMapMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]map[string]string)[0], iv)
+}
+
+func TestStringArrayMapArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (StringArrayMapArray{StringArrayMap{"baz": StringArray{String("foo")}}}).ToStringArrayMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([]map[string][]string)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToStringArrayMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToStringArrayMapArray([]map[string][]string{{"baz": {"foo"}}}).ToStringArrayMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string][]string)[0], iv)
+}
+
+func TestTopLevelToStringArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToStringArrayMapArrayOutput([]StringArrayMapOutput{ToOutput(StringArrayMap{"baz": StringArray{String("foo")}}).(StringArrayMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string][]string)[0], iv)
+}
+
+func TestStringArrayArrayArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (StringArrayArrayArray{StringArrayArray{StringArray{String("foo")}}}).ToStringArrayArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([][][]string)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToStringArrayArrayArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToStringArrayArrayArray([][][]string{{{"foo"}}}).ToStringArrayArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([][][]string)[0], iv)
+}
+
+func TestTopLevelToStringArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToStringArrayArrayArrayOutput([]StringArrayArrayOutput{ToOutput(StringArrayArray{StringArray{String("foo")}}).(StringArrayArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([][][]string)[0], iv)
+}
+
 func TestURNArrayIndex(t *testing.T) {
 	t.Parallel()
 
@@ -6244,6 +11318,162 @@ func TestTopLevelToURNArrayArrayOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.EqualValues(t, av.([][]URN)[0], iv)
+}
+
+func TestURNMapMapArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (URNMapMapArray{URNMapMap{"baz": URNMap{"baz": URN("foo")}}}).ToURNMapMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([]map[string]map[string]URN)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToURNMapMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToURNMapMapArray([]map[string]map[string]URN{{"baz": {"baz": URN("foo")}}}).ToURNMapMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]map[string]URN)[0], iv)
+}
+
+func TestTopLevelToURNMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToURNMapMapArrayOutput([]URNMapMapOutput{ToOutput(URNMapMap{"baz": URNMap{"baz": URN("foo")}}).(URNMapMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]map[string]URN)[0], iv)
+}
+
+func TestURNArrayMapArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (URNArrayMapArray{URNArrayMap{"baz": URNArray{URN("foo")}}}).ToURNArrayMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([]map[string][]URN)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToURNArrayMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToURNArrayMapArray([]map[string][]URN{{"baz": {URN("foo")}}}).ToURNArrayMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string][]URN)[0], iv)
+}
+
+func TestTopLevelToURNArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToURNArrayMapArrayOutput([]URNArrayMapOutput{ToOutput(URNArrayMap{"baz": URNArray{URN("foo")}}).(URNArrayMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string][]URN)[0], iv)
+}
+
+func TestURNArrayArrayArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (URNArrayArrayArray{URNArrayArray{URNArray{URN("foo")}}}).ToURNArrayArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.([][][]URN)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToURNArrayArrayArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToURNArrayArrayArray([][][]URN{{{URN("foo")}}}).ToURNArrayArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([][][]URN)[0], iv)
+}
+
+func TestTopLevelToURNArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToURNArrayArrayArrayOutput([]URNArrayArrayOutput{ToOutput(URNArrayArray{URNArray{URN("foo")}}).(URNArrayArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.([][][]URN)[0], iv)
 }
 
 // Test map indexers.
@@ -6404,6 +11634,214 @@ func TestTopLevelToArchiveMapMapOutput(t *testing.T) {
 	assert.EqualValues(t, av.(map[string]map[string]Archive)["baz"], iv)
 }
 
+func TestArchiveArrayMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (ArchiveArrayMapMap{"baz": ArchiveArrayMap{"baz": ArchiveArray{NewFileArchive("foo.zip")}}}).ToArchiveArrayMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string][]Archive)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToArchiveArrayMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToArchiveArrayMapMap(map[string]map[string][]Archive{"baz": {"baz": {NewFileArchive("foo.zip")}}}).ToArchiveArrayMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string][]Archive)["baz"], iv)
+}
+
+func TestTopLevelToArchiveArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToArchiveArrayMapMapOutput(map[string]ArchiveArrayMapOutput{"baz": ToOutput(ArchiveArrayMap{"baz": ArchiveArray{NewFileArchive("foo.zip")}}).(ArchiveArrayMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string][]Archive)["baz"], iv)
+}
+
+func TestArchiveMapArrayMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (ArchiveMapArrayMap{"baz": ArchiveMapArray{ArchiveMap{"baz": NewFileArchive("foo.zip")}}}).ToArchiveMapArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string][]map[string]Archive)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToArchiveMapArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToArchiveMapArrayMap(map[string][]map[string]Archive{"baz": {{"baz": NewFileArchive("foo.zip")}}}).ToArchiveMapArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]map[string]Archive)["baz"], iv)
+}
+
+func TestTopLevelToArchiveMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToArchiveMapArrayMapOutput(map[string]ArchiveMapArrayOutput{"baz": ToOutput(ArchiveMapArray{ArchiveMap{"baz": NewFileArchive("foo.zip")}}).(ArchiveMapArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]map[string]Archive)["baz"], iv)
+}
+
+func TestArchiveArrayArrayMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (ArchiveArrayArrayMap{"baz": ArchiveArrayArray{ArchiveArray{NewFileArchive("foo.zip")}}}).ToArchiveArrayArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string][][]Archive)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToArchiveArrayArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToArchiveArrayArrayMap(map[string][][]Archive{"baz": {{NewFileArchive("foo.zip")}}}).ToArchiveArrayArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][][]Archive)["baz"], iv)
+}
+
+func TestTopLevelToArchiveArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToArchiveArrayArrayMapOutput(map[string]ArchiveArrayArrayOutput{"baz": ToOutput(ArchiveArrayArray{ArchiveArray{NewFileArchive("foo.zip")}}).(ArchiveArrayArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][][]Archive)["baz"], iv)
+}
+
+func TestArchiveMapMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (ArchiveMapMapMap{"baz": ArchiveMapMap{"baz": ArchiveMap{"baz": NewFileArchive("foo.zip")}}}).ToArchiveMapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string]map[string]Archive)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToArchiveMapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToArchiveMapMapMap(map[string]map[string]map[string]Archive{"baz": {"baz": {"baz": NewFileArchive("foo.zip")}}}).ToArchiveMapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]map[string]Archive)["baz"], iv)
+}
+
+func TestTopLevelToArchiveMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToArchiveMapMapMapOutput(map[string]ArchiveMapMapOutput{"baz": ToOutput(ArchiveMapMap{"baz": ArchiveMap{"baz": NewFileArchive("foo.zip")}}).(ArchiveMapMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]map[string]Archive)["baz"], iv)
+}
+
 func TestAssetMapIndex(t *testing.T) {
 	t.Parallel()
 
@@ -6560,6 +11998,214 @@ func TestTopLevelToAssetMapMapOutput(t *testing.T) {
 	assert.EqualValues(t, av.(map[string]map[string]Asset)["baz"], iv)
 }
 
+func TestAssetArrayMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (AssetArrayMapMap{"baz": AssetArrayMap{"baz": AssetArray{NewFileAsset("foo.txt")}}}).ToAssetArrayMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string][]Asset)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToAssetArrayMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToAssetArrayMapMap(map[string]map[string][]Asset{"baz": {"baz": {NewFileAsset("foo.txt")}}}).ToAssetArrayMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string][]Asset)["baz"], iv)
+}
+
+func TestTopLevelToAssetArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToAssetArrayMapMapOutput(map[string]AssetArrayMapOutput{"baz": ToOutput(AssetArrayMap{"baz": AssetArray{NewFileAsset("foo.txt")}}).(AssetArrayMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string][]Asset)["baz"], iv)
+}
+
+func TestAssetMapArrayMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (AssetMapArrayMap{"baz": AssetMapArray{AssetMap{"baz": NewFileAsset("foo.txt")}}}).ToAssetMapArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string][]map[string]Asset)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToAssetMapArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToAssetMapArrayMap(map[string][]map[string]Asset{"baz": {{"baz": NewFileAsset("foo.txt")}}}).ToAssetMapArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]map[string]Asset)["baz"], iv)
+}
+
+func TestTopLevelToAssetMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToAssetMapArrayMapOutput(map[string]AssetMapArrayOutput{"baz": ToOutput(AssetMapArray{AssetMap{"baz": NewFileAsset("foo.txt")}}).(AssetMapArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]map[string]Asset)["baz"], iv)
+}
+
+func TestAssetArrayArrayMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (AssetArrayArrayMap{"baz": AssetArrayArray{AssetArray{NewFileAsset("foo.txt")}}}).ToAssetArrayArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string][][]Asset)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToAssetArrayArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToAssetArrayArrayMap(map[string][][]Asset{"baz": {{NewFileAsset("foo.txt")}}}).ToAssetArrayArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][][]Asset)["baz"], iv)
+}
+
+func TestTopLevelToAssetArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToAssetArrayArrayMapOutput(map[string]AssetArrayArrayOutput{"baz": ToOutput(AssetArrayArray{AssetArray{NewFileAsset("foo.txt")}}).(AssetArrayArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][][]Asset)["baz"], iv)
+}
+
+func TestAssetMapMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (AssetMapMapMap{"baz": AssetMapMap{"baz": AssetMap{"baz": NewFileAsset("foo.txt")}}}).ToAssetMapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string]map[string]Asset)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToAssetMapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToAssetMapMapMap(map[string]map[string]map[string]Asset{"baz": {"baz": {"baz": NewFileAsset("foo.txt")}}}).ToAssetMapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]map[string]Asset)["baz"], iv)
+}
+
+func TestTopLevelToAssetMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToAssetMapMapMapOutput(map[string]AssetMapMapOutput{"baz": ToOutput(AssetMapMap{"baz": AssetMap{"baz": NewFileAsset("foo.txt")}}).(AssetMapMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]map[string]Asset)["baz"], iv)
+}
+
 func TestAssetOrArchiveMapIndex(t *testing.T) {
 	t.Parallel()
 
@@ -6613,6 +12259,86 @@ func TestAssetOrArchiveMapMapIndex(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 	assert.EqualValues(t, av.(map[string]map[string]AssetOrArchive)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestAssetOrArchiveArrayMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (AssetOrArchiveArrayMapMap{"baz": AssetOrArchiveArrayMap{"baz": AssetOrArchiveArray{NewFileArchive("foo.zip")}}}).ToAssetOrArchiveArrayMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string][]AssetOrArchive)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestAssetOrArchiveMapArrayMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (AssetOrArchiveMapArrayMap{"baz": AssetOrArchiveMapArray{AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}}}).ToAssetOrArchiveMapArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string][]map[string]AssetOrArchive)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestAssetOrArchiveArrayArrayMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (AssetOrArchiveArrayArrayMap{"baz": AssetOrArchiveArrayArray{AssetOrArchiveArray{NewFileArchive("foo.zip")}}}).ToAssetOrArchiveArrayArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string][][]AssetOrArchive)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestAssetOrArchiveMapMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (AssetOrArchiveMapMapMap{"baz": AssetOrArchiveMapMap{"baz": AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}}}).ToAssetOrArchiveMapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string]map[string]AssetOrArchive)["baz"], iv)
 
 	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
 	assert.True(t, known)
@@ -6776,6 +12502,214 @@ func TestTopLevelToBoolMapMapOutput(t *testing.T) {
 	assert.EqualValues(t, av.(map[string]map[string]bool)["baz"], iv)
 }
 
+func TestBoolArrayMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (BoolArrayMapMap{"baz": BoolArrayMap{"baz": BoolArray{Bool(true)}}}).ToBoolArrayMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string][]bool)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToBoolArrayMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToBoolArrayMapMap(map[string]map[string][]bool{"baz": {"baz": {true}}}).ToBoolArrayMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string][]bool)["baz"], iv)
+}
+
+func TestTopLevelToBoolArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToBoolArrayMapMapOutput(map[string]BoolArrayMapOutput{"baz": ToOutput(BoolArrayMap{"baz": BoolArray{Bool(true)}}).(BoolArrayMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string][]bool)["baz"], iv)
+}
+
+func TestBoolMapArrayMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (BoolMapArrayMap{"baz": BoolMapArray{BoolMap{"baz": Bool(true)}}}).ToBoolMapArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string][]map[string]bool)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToBoolMapArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToBoolMapArrayMap(map[string][]map[string]bool{"baz": {{"baz": true}}}).ToBoolMapArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]map[string]bool)["baz"], iv)
+}
+
+func TestTopLevelToBoolMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToBoolMapArrayMapOutput(map[string]BoolMapArrayOutput{"baz": ToOutput(BoolMapArray{BoolMap{"baz": Bool(true)}}).(BoolMapArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]map[string]bool)["baz"], iv)
+}
+
+func TestBoolArrayArrayMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (BoolArrayArrayMap{"baz": BoolArrayArray{BoolArray{Bool(true)}}}).ToBoolArrayArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string][][]bool)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToBoolArrayArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToBoolArrayArrayMap(map[string][][]bool{"baz": {{true}}}).ToBoolArrayArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][][]bool)["baz"], iv)
+}
+
+func TestTopLevelToBoolArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToBoolArrayArrayMapOutput(map[string]BoolArrayArrayOutput{"baz": ToOutput(BoolArrayArray{BoolArray{Bool(true)}}).(BoolArrayArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][][]bool)["baz"], iv)
+}
+
+func TestBoolMapMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (BoolMapMapMap{"baz": BoolMapMap{"baz": BoolMap{"baz": Bool(true)}}}).ToBoolMapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string]map[string]bool)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToBoolMapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToBoolMapMapMap(map[string]map[string]map[string]bool{"baz": {"baz": {"baz": true}}}).ToBoolMapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]map[string]bool)["baz"], iv)
+}
+
+func TestTopLevelToBoolMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToBoolMapMapMapOutput(map[string]BoolMapMapOutput{"baz": ToOutput(BoolMapMap{"baz": BoolMap{"baz": Bool(true)}}).(BoolMapMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]map[string]bool)["baz"], iv)
+}
+
 func TestFloat64MapIndex(t *testing.T) {
 	t.Parallel()
 
@@ -6930,6 +12864,214 @@ func TestTopLevelToFloat64MapMapOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string]float64)["baz"], iv)
+}
+
+func TestFloat64ArrayMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (Float64ArrayMapMap{"baz": Float64ArrayMap{"baz": Float64Array{Float64(999.9)}}}).ToFloat64ArrayMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string][]float64)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToFloat64ArrayMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToFloat64ArrayMapMap(map[string]map[string][]float64{"baz": {"baz": {999.9}}}).ToFloat64ArrayMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string][]float64)["baz"], iv)
+}
+
+func TestTopLevelToFloat64ArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToFloat64ArrayMapMapOutput(map[string]Float64ArrayMapOutput{"baz": ToOutput(Float64ArrayMap{"baz": Float64Array{Float64(999.9)}}).(Float64ArrayMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string][]float64)["baz"], iv)
+}
+
+func TestFloat64MapArrayMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (Float64MapArrayMap{"baz": Float64MapArray{Float64Map{"baz": Float64(999.9)}}}).ToFloat64MapArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string][]map[string]float64)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToFloat64MapArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToFloat64MapArrayMap(map[string][]map[string]float64{"baz": {{"baz": 999.9}}}).ToFloat64MapArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]map[string]float64)["baz"], iv)
+}
+
+func TestTopLevelToFloat64MapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToFloat64MapArrayMapOutput(map[string]Float64MapArrayOutput{"baz": ToOutput(Float64MapArray{Float64Map{"baz": Float64(999.9)}}).(Float64MapArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]map[string]float64)["baz"], iv)
+}
+
+func TestFloat64ArrayArrayMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (Float64ArrayArrayMap{"baz": Float64ArrayArray{Float64Array{Float64(999.9)}}}).ToFloat64ArrayArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string][][]float64)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToFloat64ArrayArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToFloat64ArrayArrayMap(map[string][][]float64{"baz": {{999.9}}}).ToFloat64ArrayArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][][]float64)["baz"], iv)
+}
+
+func TestTopLevelToFloat64ArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToFloat64ArrayArrayMapOutput(map[string]Float64ArrayArrayOutput{"baz": ToOutput(Float64ArrayArray{Float64Array{Float64(999.9)}}).(Float64ArrayArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][][]float64)["baz"], iv)
+}
+
+func TestFloat64MapMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (Float64MapMapMap{"baz": Float64MapMap{"baz": Float64Map{"baz": Float64(999.9)}}}).ToFloat64MapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string]map[string]float64)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToFloat64MapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToFloat64MapMapMap(map[string]map[string]map[string]float64{"baz": {"baz": {"baz": 999.9}}}).ToFloat64MapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]map[string]float64)["baz"], iv)
+}
+
+func TestTopLevelToFloat64MapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToFloat64MapMapMapOutput(map[string]Float64MapMapOutput{"baz": ToOutput(Float64MapMap{"baz": Float64Map{"baz": Float64(999.9)}}).(Float64MapMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]map[string]float64)["baz"], iv)
 }
 
 func TestIDMapIndex(t *testing.T) {
@@ -7088,6 +13230,214 @@ func TestTopLevelToIDMapMapOutput(t *testing.T) {
 	assert.EqualValues(t, av.(map[string]map[string]ID)["baz"], iv)
 }
 
+func TestIDArrayMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (IDArrayMapMap{"baz": IDArrayMap{"baz": IDArray{ID("foo")}}}).ToIDArrayMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string][]ID)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToIDArrayMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToIDArrayMapMap(map[string]map[string][]ID{"baz": {"baz": {ID("foo")}}}).ToIDArrayMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string][]ID)["baz"], iv)
+}
+
+func TestTopLevelToIDArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToIDArrayMapMapOutput(map[string]IDArrayMapOutput{"baz": ToOutput(IDArrayMap{"baz": IDArray{ID("foo")}}).(IDArrayMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string][]ID)["baz"], iv)
+}
+
+func TestIDMapArrayMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (IDMapArrayMap{"baz": IDMapArray{IDMap{"baz": ID("foo")}}}).ToIDMapArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string][]map[string]ID)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToIDMapArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToIDMapArrayMap(map[string][]map[string]ID{"baz": {{"baz": ID("foo")}}}).ToIDMapArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]map[string]ID)["baz"], iv)
+}
+
+func TestTopLevelToIDMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToIDMapArrayMapOutput(map[string]IDMapArrayOutput{"baz": ToOutput(IDMapArray{IDMap{"baz": ID("foo")}}).(IDMapArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]map[string]ID)["baz"], iv)
+}
+
+func TestIDArrayArrayMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (IDArrayArrayMap{"baz": IDArrayArray{IDArray{ID("foo")}}}).ToIDArrayArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string][][]ID)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToIDArrayArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToIDArrayArrayMap(map[string][][]ID{"baz": {{ID("foo")}}}).ToIDArrayArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][][]ID)["baz"], iv)
+}
+
+func TestTopLevelToIDArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToIDArrayArrayMapOutput(map[string]IDArrayArrayOutput{"baz": ToOutput(IDArrayArray{IDArray{ID("foo")}}).(IDArrayArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][][]ID)["baz"], iv)
+}
+
+func TestIDMapMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (IDMapMapMap{"baz": IDMapMap{"baz": IDMap{"baz": ID("foo")}}}).ToIDMapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string]map[string]ID)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToIDMapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToIDMapMapMap(map[string]map[string]map[string]ID{"baz": {"baz": {"baz": ID("foo")}}}).ToIDMapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]map[string]ID)["baz"], iv)
+}
+
+func TestTopLevelToIDMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToIDMapMapMapOutput(map[string]IDMapMapOutput{"baz": ToOutput(IDMapMap{"baz": IDMap{"baz": ID("foo")}}).(IDMapMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]map[string]ID)["baz"], iv)
+}
+
 func TestMapIndex(t *testing.T) {
 	t.Parallel()
 
@@ -7244,6 +13594,110 @@ func TestTopLevelToMapMapOutput(t *testing.T) {
 	assert.EqualValues(t, av.(map[string]map[string]any)["baz"], iv)
 }
 
+func TestArrayMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (ArrayMapMap{"baz": ArrayMap{"baz": Array{String("any")}}}).ToArrayMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string][]any)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToArrayMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToArrayMapMap(map[string]map[string][]any{"baz": {"baz": {String("any")}}}).ToArrayMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string][]any)["baz"], iv)
+}
+
+func TestTopLevelToArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToArrayMapMapOutput(map[string]ArrayMapOutput{"baz": ToOutput(ArrayMap{"baz": Array{String("any")}}).(ArrayMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string][]any)["baz"], iv)
+}
+
+func TestMapArrayMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (MapArrayMap{"baz": MapArray{Map{"baz": String("any")}}}).ToMapArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string][]map[string]any)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToMapArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToMapArrayMap(map[string][]map[string]any{"baz": {{"baz": String("any")}}}).ToMapArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]map[string]any)["baz"], iv)
+}
+
+func TestTopLevelToMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToMapArrayMapOutput(map[string]MapArrayOutput{"baz": ToOutput(MapArray{Map{"baz": String("any")}}).(MapArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]map[string]any)["baz"], iv)
+}
+
 func TestArrayArrayMapIndex(t *testing.T) {
 	t.Parallel()
 
@@ -7294,6 +13748,58 @@ func TestTopLevelToArrayArrayMapOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string][][]any)["baz"], iv)
+}
+
+func TestMapMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (MapMapMap{"baz": MapMap{"baz": Map{"baz": String("any")}}}).ToMapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string]map[string]any)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToMapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToMapMapMap(map[string]map[string]map[string]any{"baz": {"baz": {"baz": String("any")}}}).ToMapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]map[string]any)["baz"], iv)
+}
+
+func TestTopLevelToMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToMapMapMapOutput(map[string]MapMapOutput{"baz": ToOutput(MapMap{"baz": Map{"baz": String("any")}}).(MapMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]map[string]any)["baz"], iv)
 }
 
 func TestIntMapIndex(t *testing.T) {
@@ -7452,6 +13958,214 @@ func TestTopLevelToIntMapMapOutput(t *testing.T) {
 	assert.EqualValues(t, av.(map[string]map[string]int)["baz"], iv)
 }
 
+func TestIntArrayMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (IntArrayMapMap{"baz": IntArrayMap{"baz": IntArray{Int(42)}}}).ToIntArrayMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string][]int)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToIntArrayMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToIntArrayMapMap(map[string]map[string][]int{"baz": {"baz": {42}}}).ToIntArrayMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string][]int)["baz"], iv)
+}
+
+func TestTopLevelToIntArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToIntArrayMapMapOutput(map[string]IntArrayMapOutput{"baz": ToOutput(IntArrayMap{"baz": IntArray{Int(42)}}).(IntArrayMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string][]int)["baz"], iv)
+}
+
+func TestIntMapArrayMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (IntMapArrayMap{"baz": IntMapArray{IntMap{"baz": Int(42)}}}).ToIntMapArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string][]map[string]int)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToIntMapArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToIntMapArrayMap(map[string][]map[string]int{"baz": {{"baz": 42}}}).ToIntMapArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]map[string]int)["baz"], iv)
+}
+
+func TestTopLevelToIntMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToIntMapArrayMapOutput(map[string]IntMapArrayOutput{"baz": ToOutput(IntMapArray{IntMap{"baz": Int(42)}}).(IntMapArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]map[string]int)["baz"], iv)
+}
+
+func TestIntArrayArrayMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (IntArrayArrayMap{"baz": IntArrayArray{IntArray{Int(42)}}}).ToIntArrayArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string][][]int)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToIntArrayArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToIntArrayArrayMap(map[string][][]int{"baz": {{42}}}).ToIntArrayArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][][]int)["baz"], iv)
+}
+
+func TestTopLevelToIntArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToIntArrayArrayMapOutput(map[string]IntArrayArrayOutput{"baz": ToOutput(IntArrayArray{IntArray{Int(42)}}).(IntArrayArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][][]int)["baz"], iv)
+}
+
+func TestIntMapMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (IntMapMapMap{"baz": IntMapMap{"baz": IntMap{"baz": Int(42)}}}).ToIntMapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string]map[string]int)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToIntMapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToIntMapMapMap(map[string]map[string]map[string]int{"baz": {"baz": {"baz": 42}}}).ToIntMapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]map[string]int)["baz"], iv)
+}
+
+func TestTopLevelToIntMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToIntMapMapMapOutput(map[string]IntMapMapOutput{"baz": ToOutput(IntMapMap{"baz": IntMap{"baz": Int(42)}}).(IntMapMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]map[string]int)["baz"], iv)
+}
+
 func TestStringMapIndex(t *testing.T) {
 	t.Parallel()
 
@@ -7608,58 +14322,6 @@ func TestTopLevelToStringMapMapOutput(t *testing.T) {
 	assert.EqualValues(t, av.(map[string]map[string]string)["baz"], iv)
 }
 
-func TestStringMapMapMapIndex(t *testing.T) {
-	t.Parallel()
-
-	out := (StringMapMapMap{"baz": StringMapMap{"baz": StringMap{"baz": String("foo")}}}).ToStringMapMapMapOutput()
-
-	av, known, _, _, err := await(out)
-	assert.True(t, known)
-	require.NoError(t, err)
-
-	iv, known, _, _, err := await(out.MapIndex(String("baz")))
-	assert.True(t, known)
-	require.NoError(t, err)
-	assert.EqualValues(t, av.(map[string]map[string]map[string]string)["baz"], iv)
-
-	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
-	assert.True(t, known)
-	require.NoError(t, err)
-	assert.Zero(t, iv)
-}
-
-func TestToStringMapMapMap(t *testing.T) {
-	t.Parallel()
-
-	out := ToStringMapMapMap(map[string]map[string]map[string]string{"baz": {"baz": {"baz": "foo"}}}).ToStringMapMapMapOutput()
-
-	av, known, _, _, err := await(out)
-	assert.True(t, known)
-	require.NoError(t, err)
-
-	iv, known, _, _, err := await(out.MapIndex(String("baz")))
-	assert.True(t, known)
-	require.NoError(t, err)
-
-	assert.EqualValues(t, av.(map[string]map[string]map[string]string)["baz"], iv)
-}
-
-func TestTopLevelToStringMapMapMapOutput(t *testing.T) {
-	t.Parallel()
-
-	out := ToStringMapMapMapOutput(map[string]StringMapMapOutput{"baz": ToOutput(StringMapMap{"baz": StringMap{"baz": String("foo")}}).(StringMapMapOutput)})
-
-	av, known, _, _, err := await(out)
-	assert.True(t, known)
-	require.NoError(t, err)
-
-	iv, known, _, _, err := await(out.MapIndex(String("baz")))
-	assert.True(t, known)
-	require.NoError(t, err)
-
-	assert.EqualValues(t, av.(map[string]map[string]map[string]string)["baz"], iv)
-}
-
 func TestStringArrayMapMapIndex(t *testing.T) {
 	t.Parallel()
 
@@ -7710,6 +14372,162 @@ func TestTopLevelToStringArrayMapMapOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string][]string)["baz"], iv)
+}
+
+func TestStringMapArrayMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (StringMapArrayMap{"baz": StringMapArray{StringMap{"baz": String("foo")}}}).ToStringMapArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string][]map[string]string)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToStringMapArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToStringMapArrayMap(map[string][]map[string]string{"baz": {{"baz": "foo"}}}).ToStringMapArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]map[string]string)["baz"], iv)
+}
+
+func TestTopLevelToStringMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToStringMapArrayMapOutput(map[string]StringMapArrayOutput{"baz": ToOutput(StringMapArray{StringMap{"baz": String("foo")}}).(StringMapArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]map[string]string)["baz"], iv)
+}
+
+func TestStringArrayArrayMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (StringArrayArrayMap{"baz": StringArrayArray{StringArray{String("foo")}}}).ToStringArrayArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string][][]string)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToStringArrayArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToStringArrayArrayMap(map[string][][]string{"baz": {{"foo"}}}).ToStringArrayArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][][]string)["baz"], iv)
+}
+
+func TestTopLevelToStringArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToStringArrayArrayMapOutput(map[string]StringArrayArrayOutput{"baz": ToOutput(StringArrayArray{StringArray{String("foo")}}).(StringArrayArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][][]string)["baz"], iv)
+}
+
+func TestStringMapMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (StringMapMapMap{"baz": StringMapMap{"baz": StringMap{"baz": String("foo")}}}).ToStringMapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string]map[string]string)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToStringMapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToStringMapMapMap(map[string]map[string]map[string]string{"baz": {"baz": {"baz": "foo"}}}).ToStringMapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]map[string]string)["baz"], iv)
+}
+
+func TestTopLevelToStringMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToStringMapMapMapOutput(map[string]StringMapMapOutput{"baz": ToOutput(StringMapMap{"baz": StringMap{"baz": String("foo")}}).(StringMapMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]map[string]string)["baz"], iv)
 }
 
 func TestURNMapIndex(t *testing.T) {
@@ -7868,6 +14686,214 @@ func TestTopLevelToURNMapMapOutput(t *testing.T) {
 	assert.EqualValues(t, av.(map[string]map[string]URN)["baz"], iv)
 }
 
+func TestURNArrayMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (URNArrayMapMap{"baz": URNArrayMap{"baz": URNArray{URN("foo")}}}).ToURNArrayMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string][]URN)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToURNArrayMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToURNArrayMapMap(map[string]map[string][]URN{"baz": {"baz": {URN("foo")}}}).ToURNArrayMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string][]URN)["baz"], iv)
+}
+
+func TestTopLevelToURNArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToURNArrayMapMapOutput(map[string]URNArrayMapOutput{"baz": ToOutput(URNArrayMap{"baz": URNArray{URN("foo")}}).(URNArrayMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string][]URN)["baz"], iv)
+}
+
+func TestURNMapArrayMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (URNMapArrayMap{"baz": URNMapArray{URNMap{"baz": URN("foo")}}}).ToURNMapArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string][]map[string]URN)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToURNMapArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToURNMapArrayMap(map[string][]map[string]URN{"baz": {{"baz": URN("foo")}}}).ToURNMapArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]map[string]URN)["baz"], iv)
+}
+
+func TestTopLevelToURNMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToURNMapArrayMapOutput(map[string]URNMapArrayOutput{"baz": ToOutput(URNMapArray{URNMap{"baz": URN("foo")}}).(URNMapArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]map[string]URN)["baz"], iv)
+}
+
+func TestURNArrayArrayMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (URNArrayArrayMap{"baz": URNArrayArray{URNArray{URN("foo")}}}).ToURNArrayArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string][][]URN)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToURNArrayArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToURNArrayArrayMap(map[string][][]URN{"baz": {{URN("foo")}}}).ToURNArrayArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][][]URN)["baz"], iv)
+}
+
+func TestTopLevelToURNArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToURNArrayArrayMapOutput(map[string]URNArrayArrayOutput{"baz": ToOutput(URNArrayArray{URNArray{URN("foo")}}).(URNArrayArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][][]URN)["baz"], iv)
+}
+
+func TestURNMapMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (URNMapMapMap{"baz": URNMapMap{"baz": URNMap{"baz": URN("foo")}}}).ToURNMapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string]map[string]URN)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	require.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToURNMapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToURNMapMapMap(map[string]map[string]map[string]URN{"baz": {"baz": {"baz": URN("foo")}}}).ToURNMapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]map[string]URN)["baz"], iv)
+}
+
+func TestTopLevelToURNMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToURNMapMapMapOutput(map[string]URNMapMapOutput{"baz": ToOutput(URNMapMap{"baz": URNMap{"baz": URN("foo")}}).(URNMapMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]map[string]URN)["baz"], iv)
+}
+
 // Test AnyOutput `To*Output` functions
 
 func TestAnyOutputAsArchiveOutput(t *testing.T) {
@@ -7977,6 +15003,125 @@ func TestAnyOutputAsArchiveArrayArrayOutput(t *testing.T) {
 
 	anyout := Any(ArchiveArrayArray{ArchiveArray{NewFileArchive("foo.zip")}})
 	out := anyout.AsArchiveArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsArchiveArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ArchiveArrayMapMap{"baz": ArchiveArrayMap{"baz": ArchiveArray{NewFileArchive("foo.zip")}}})
+	out := anyout.AsArchiveArrayMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsArchiveMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ArchiveMapArrayMap{"baz": ArchiveMapArray{ArchiveMap{"baz": NewFileArchive("foo.zip")}}})
+	out := anyout.AsArchiveMapArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsArchiveMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ArchiveMapMapArray{ArchiveMapMap{"baz": ArchiveMap{"baz": NewFileArchive("foo.zip")}}})
+	out := anyout.AsArchiveMapMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsArchiveArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ArchiveArrayMapArray{ArchiveArrayMap{"baz": ArchiveArray{NewFileArchive("foo.zip")}}})
+	out := anyout.AsArchiveArrayMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsArchiveArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ArchiveArrayArrayMap{"baz": ArchiveArrayArray{ArchiveArray{NewFileArchive("foo.zip")}}})
+	out := anyout.AsArchiveArrayArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsArchiveArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ArchiveArrayArrayArray{ArchiveArrayArray{ArchiveArray{NewFileArchive("foo.zip")}}})
+	out := anyout.AsArchiveArrayArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsArchiveMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ArchiveMapMapMap{"baz": ArchiveMapMap{"baz": ArchiveMap{"baz": NewFileArchive("foo.zip")}}})
+	out := anyout.AsArchiveMapMapMapOutput()
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
@@ -8108,6 +15253,125 @@ func TestAnyOutputAsAssetArrayArrayOutput(t *testing.T) {
 	assert.EqualValues(t, ev, av)
 }
 
+func TestAnyOutputAsAssetArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetArrayMapMap{"baz": AssetArrayMap{"baz": AssetArray{NewFileAsset("foo.txt")}}})
+	out := anyout.AsAssetArrayMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetMapArrayMap{"baz": AssetMapArray{AssetMap{"baz": NewFileAsset("foo.txt")}}})
+	out := anyout.AsAssetMapArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetMapMapArray{AssetMapMap{"baz": AssetMap{"baz": NewFileAsset("foo.txt")}}})
+	out := anyout.AsAssetMapMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetArrayMapArray{AssetArrayMap{"baz": AssetArray{NewFileAsset("foo.txt")}}})
+	out := anyout.AsAssetArrayMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetArrayArrayMap{"baz": AssetArrayArray{AssetArray{NewFileAsset("foo.txt")}}})
+	out := anyout.AsAssetArrayArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetArrayArrayArray{AssetArrayArray{AssetArray{NewFileAsset("foo.txt")}}})
+	out := anyout.AsAssetArrayArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetMapMapMap{"baz": AssetMapMap{"baz": AssetMap{"baz": NewFileAsset("foo.txt")}}})
+	out := anyout.AsAssetMapMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
 func TestAnyOutputAsAssetOrArchiveOutput(t *testing.T) {
 	t.Parallel()
 
@@ -8215,6 +15479,125 @@ func TestAnyOutputAsAssetOrArchiveArrayArrayOutput(t *testing.T) {
 
 	anyout := Any(AssetOrArchiveArrayArray{AssetOrArchiveArray{NewFileArchive("foo.zip")}})
 	out := anyout.AsAssetOrArchiveArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetOrArchiveArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetOrArchiveArrayMapMap{"baz": AssetOrArchiveArrayMap{"baz": AssetOrArchiveArray{NewFileArchive("foo.zip")}}})
+	out := anyout.AsAssetOrArchiveArrayMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetOrArchiveMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetOrArchiveMapArrayMap{"baz": AssetOrArchiveMapArray{AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}}})
+	out := anyout.AsAssetOrArchiveMapArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetOrArchiveMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetOrArchiveMapMapArray{AssetOrArchiveMapMap{"baz": AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}}})
+	out := anyout.AsAssetOrArchiveMapMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetOrArchiveArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetOrArchiveArrayMapArray{AssetOrArchiveArrayMap{"baz": AssetOrArchiveArray{NewFileArchive("foo.zip")}}})
+	out := anyout.AsAssetOrArchiveArrayMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetOrArchiveArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetOrArchiveArrayArrayMap{"baz": AssetOrArchiveArrayArray{AssetOrArchiveArray{NewFileArchive("foo.zip")}}})
+	out := anyout.AsAssetOrArchiveArrayArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetOrArchiveArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetOrArchiveArrayArrayArray{AssetOrArchiveArrayArray{AssetOrArchiveArray{NewFileArchive("foo.zip")}}})
+	out := anyout.AsAssetOrArchiveArrayArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetOrArchiveMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetOrArchiveMapMapMap{"baz": AssetOrArchiveMapMap{"baz": AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}}})
+	out := anyout.AsAssetOrArchiveMapMapMapOutput()
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
@@ -8363,6 +15746,125 @@ func TestAnyOutputAsBoolArrayArrayOutput(t *testing.T) {
 	assert.EqualValues(t, ev, av)
 }
 
+func TestAnyOutputAsBoolArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(BoolArrayMapMap{"baz": BoolArrayMap{"baz": BoolArray{Bool(true)}}})
+	out := anyout.AsBoolArrayMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsBoolMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(BoolMapArrayMap{"baz": BoolMapArray{BoolMap{"baz": Bool(true)}}})
+	out := anyout.AsBoolMapArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsBoolMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(BoolMapMapArray{BoolMapMap{"baz": BoolMap{"baz": Bool(true)}}})
+	out := anyout.AsBoolMapMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsBoolArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(BoolArrayMapArray{BoolArrayMap{"baz": BoolArray{Bool(true)}}})
+	out := anyout.AsBoolArrayMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsBoolArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(BoolArrayArrayMap{"baz": BoolArrayArray{BoolArray{Bool(true)}}})
+	out := anyout.AsBoolArrayArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsBoolArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(BoolArrayArrayArray{BoolArrayArray{BoolArray{Bool(true)}}})
+	out := anyout.AsBoolArrayArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsBoolMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(BoolMapMapMap{"baz": BoolMapMap{"baz": BoolMap{"baz": Bool(true)}}})
+	out := anyout.AsBoolMapMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
 func TestAnyOutputAsFloat64Output(t *testing.T) {
 	t.Parallel()
 
@@ -8487,6 +15989,125 @@ func TestAnyOutputAsFloat64ArrayArrayOutput(t *testing.T) {
 
 	anyout := Any(Float64ArrayArray{Float64Array{Float64(999.9)}})
 	out := anyout.AsFloat64ArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsFloat64ArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(Float64ArrayMapMap{"baz": Float64ArrayMap{"baz": Float64Array{Float64(999.9)}}})
+	out := anyout.AsFloat64ArrayMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsFloat64MapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(Float64MapArrayMap{"baz": Float64MapArray{Float64Map{"baz": Float64(999.9)}}})
+	out := anyout.AsFloat64MapArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsFloat64MapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(Float64MapMapArray{Float64MapMap{"baz": Float64Map{"baz": Float64(999.9)}}})
+	out := anyout.AsFloat64MapMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsFloat64ArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(Float64ArrayMapArray{Float64ArrayMap{"baz": Float64Array{Float64(999.9)}}})
+	out := anyout.AsFloat64ArrayMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsFloat64ArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(Float64ArrayArrayMap{"baz": Float64ArrayArray{Float64Array{Float64(999.9)}}})
+	out := anyout.AsFloat64ArrayArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsFloat64ArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(Float64ArrayArrayArray{Float64ArrayArray{Float64Array{Float64(999.9)}}})
+	out := anyout.AsFloat64ArrayArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsFloat64MapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(Float64MapMapMap{"baz": Float64MapMap{"baz": Float64Map{"baz": Float64(999.9)}}})
+	out := anyout.AsFloat64MapMapMapOutput()
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
@@ -8635,6 +16256,125 @@ func TestAnyOutputAsIDArrayArrayOutput(t *testing.T) {
 	assert.EqualValues(t, ev, av)
 }
 
+func TestAnyOutputAsIDArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IDArrayMapMap{"baz": IDArrayMap{"baz": IDArray{ID("foo")}}})
+	out := anyout.AsIDArrayMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIDMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IDMapArrayMap{"baz": IDMapArray{IDMap{"baz": ID("foo")}}})
+	out := anyout.AsIDMapArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIDMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IDMapMapArray{IDMapMap{"baz": IDMap{"baz": ID("foo")}}})
+	out := anyout.AsIDMapMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIDArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IDArrayMapArray{IDArrayMap{"baz": IDArray{ID("foo")}}})
+	out := anyout.AsIDArrayMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIDArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IDArrayArrayMap{"baz": IDArrayArray{IDArray{ID("foo")}}})
+	out := anyout.AsIDArrayArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIDArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IDArrayArrayArray{IDArrayArray{IDArray{ID("foo")}}})
+	out := anyout.AsIDArrayArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIDMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IDMapMapMap{"baz": IDMapMap{"baz": IDMap{"baz": ID("foo")}}})
+	out := anyout.AsIDMapMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
 func TestAnyOutputAsArrayOutput(t *testing.T) {
 	t.Parallel()
 
@@ -8737,11 +16477,113 @@ func TestAnyOutputAsArrayArrayOutput(t *testing.T) {
 	assert.EqualValues(t, ev, av)
 }
 
+func TestAnyOutputAsArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ArrayMapMap{"baz": ArrayMap{"baz": Array{String("any")}}})
+	out := anyout.AsArrayMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(MapArrayMap{"baz": MapArray{Map{"baz": String("any")}}})
+	out := anyout.AsMapArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(MapMapArray{MapMap{"baz": Map{"baz": String("any")}}})
+	out := anyout.AsMapMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ArrayMapArray{ArrayMap{"baz": Array{String("any")}}})
+	out := anyout.AsArrayMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
 func TestAnyOutputAsArrayArrayMapOutput(t *testing.T) {
 	t.Parallel()
 
 	anyout := Any(ArrayArrayMap{"baz": ArrayArray{Array{String("any")}}})
 	out := anyout.AsArrayArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ArrayArrayArray{ArrayArray{Array{String("any")}}})
+	out := anyout.AsArrayArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(MapMapMap{"baz": MapMap{"baz": Map{"baz": String("any")}}})
+	out := anyout.AsMapMapMapOutput()
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
@@ -8890,6 +16732,125 @@ func TestAnyOutputAsIntArrayArrayOutput(t *testing.T) {
 	assert.EqualValues(t, ev, av)
 }
 
+func TestAnyOutputAsIntArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IntArrayMapMap{"baz": IntArrayMap{"baz": IntArray{Int(42)}}})
+	out := anyout.AsIntArrayMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIntMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IntMapArrayMap{"baz": IntMapArray{IntMap{"baz": Int(42)}}})
+	out := anyout.AsIntMapArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIntMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IntMapMapArray{IntMapMap{"baz": IntMap{"baz": Int(42)}}})
+	out := anyout.AsIntMapMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIntArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IntArrayMapArray{IntArrayMap{"baz": IntArray{Int(42)}}})
+	out := anyout.AsIntArrayMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIntArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IntArrayArrayMap{"baz": IntArrayArray{IntArray{Int(42)}}})
+	out := anyout.AsIntArrayArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIntArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IntArrayArrayArray{IntArrayArray{IntArray{Int(42)}}})
+	out := anyout.AsIntArrayArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIntMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IntMapMapMap{"baz": IntMapMap{"baz": IntMap{"baz": Int(42)}}})
+	out := anyout.AsIntMapMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
 func TestAnyOutputAsStringOutput(t *testing.T) {
 	t.Parallel()
 
@@ -9026,11 +16987,11 @@ func TestAnyOutputAsStringArrayArrayOutput(t *testing.T) {
 	assert.EqualValues(t, ev, av)
 }
 
-func TestAnyOutputAsStringMapMapMapOutput(t *testing.T) {
+func TestAnyOutputAsStringArrayMapMapOutput(t *testing.T) {
 	t.Parallel()
 
-	anyout := Any(StringMapMapMap{"baz": StringMapMap{"baz": StringMap{"baz": String("foo")}}})
-	out := anyout.AsStringMapMapMapOutput()
+	anyout := Any(StringArrayMapMap{"baz": StringArrayMap{"baz": StringArray{String("foo")}}})
+	out := anyout.AsStringArrayMapMapOutput()
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
@@ -9043,11 +17004,96 @@ func TestAnyOutputAsStringMapMapMapOutput(t *testing.T) {
 	assert.EqualValues(t, ev, av)
 }
 
-func TestAnyOutputAsStringArrayMapMapOutput(t *testing.T) {
+func TestAnyOutputAsStringMapArrayMapOutput(t *testing.T) {
 	t.Parallel()
 
-	anyout := Any(StringArrayMapMap{"baz": StringArrayMap{"baz": StringArray{String("foo")}}})
-	out := anyout.AsStringArrayMapMapOutput()
+	anyout := Any(StringMapArrayMap{"baz": StringMapArray{StringMap{"baz": String("foo")}}})
+	out := anyout.AsStringMapArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsStringMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(StringMapMapArray{StringMapMap{"baz": StringMap{"baz": String("foo")}}})
+	out := anyout.AsStringMapMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsStringArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(StringArrayMapArray{StringArrayMap{"baz": StringArray{String("foo")}}})
+	out := anyout.AsStringArrayMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsStringArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(StringArrayArrayMap{"baz": StringArrayArray{StringArray{String("foo")}}})
+	out := anyout.AsStringArrayArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsStringArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(StringArrayArrayArray{StringArrayArray{StringArray{String("foo")}}})
+	out := anyout.AsStringArrayArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsStringMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(StringMapMapMap{"baz": StringMapMap{"baz": StringMap{"baz": String("foo")}}})
+	out := anyout.AsStringMapMapMapOutput()
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
@@ -9184,6 +17230,125 @@ func TestAnyOutputAsURNArrayArrayOutput(t *testing.T) {
 
 	anyout := Any(URNArrayArray{URNArray{URN("foo")}})
 	out := anyout.AsURNArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsURNArrayMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(URNArrayMapMap{"baz": URNArrayMap{"baz": URNArray{URN("foo")}}})
+	out := anyout.AsURNArrayMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsURNMapArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(URNMapArrayMap{"baz": URNMapArray{URNMap{"baz": URN("foo")}}})
+	out := anyout.AsURNMapArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsURNMapMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(URNMapMapArray{URNMapMap{"baz": URNMap{"baz": URN("foo")}}})
+	out := anyout.AsURNMapMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsURNArrayMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(URNArrayMapArray{URNArrayMap{"baz": URNArray{URN("foo")}}})
+	out := anyout.AsURNArrayMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsURNArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(URNArrayArrayMap{"baz": URNArrayArray{URNArray{URN("foo")}}})
+	out := anyout.AsURNArrayArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsURNArrayArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(URNArrayArrayArray{URNArrayArray{URNArray{URN("foo")}}})
+	out := anyout.AsURNArrayArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsURNMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(URNMapMapMap{"baz": URNMapMap{"baz": URNMap{"baz": URN("foo")}}})
+	out := anyout.AsURNMapMapMapOutput()
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)
