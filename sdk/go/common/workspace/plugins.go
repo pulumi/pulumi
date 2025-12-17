@@ -1007,6 +1007,12 @@ type Parameterization struct {
 	Value []byte
 }
 
+// PluginSpec is a resolved plugin, ready for download.
+//
+// Deprecated: workspace.PluginSpec has been renamed to [PluginDescriptor]. If you are
+// looking for the unresolved variant, see [PackageSpec].
+type PluginSpec = PluginDescriptor
+
 // PluginDescriptor is a resolved plugin, ready for download.
 type PluginDescriptor struct {
 	Name              string             // the simple name of the plugin.
@@ -1032,6 +1038,23 @@ func IsExternalURL(source string) bool {
 var gitCommitHashRegex = sync.OnceValue(func() *regexp.Regexp {
 	return regexp.MustCompile(`^[0-9a-fA-F]{4,64}$`)
 })
+
+// NewPluginDescriptor creates a new [PluginDescriptor] from a source string.
+//
+// If you are using this to resolve a "package", consider using
+// [packageresolution.Resolve] instead.
+//
+// Deprecated: NewPluginSpec has been renamed to [NewPluginDescriptor].
+func NewPluginSpec(
+	ctx context.Context,
+	source string,
+	kind apitype.PluginKind,
+	version *semver.Version,
+	pluginDownloadURL string,
+	checksums map[string][]byte,
+) (PluginDescriptor, error) {
+	return NewPluginDescriptor(ctx, source, kind, version, pluginDownloadURL, checksums)
+}
 
 // NewPluginDescriptor creates a new [PluginDescriptor] from a source string.
 //
