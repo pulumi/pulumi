@@ -6,6 +6,7 @@ import builtins as _builtins
 from . import _utilities
 import typing
 # Export this package's modules as members:
+from .do_hello_world import *
 from .hello_world import *
 from .hello_world_component import *
 from .provider import *

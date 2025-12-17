@@ -15,6 +15,7 @@
 package pcl
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hashicorp/hcl/v2"
@@ -121,15 +122,21 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		return b.zeroSignature(), diagnostics
 	}
 
-	pkgInfo := PackageInfo{
-		name: pkg,
+	var pkgSchema *packageSchema
+	var err error
+	if packageDescriptor, ok := b.packageDescriptors[pkg]; ok {
+		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
+	} else {
+		pkgSchema, err = b.options.packageCache.loadPackageSchema(context.TODO(), b.options.loader, pkg, "", "")
 	}
-	pkgSchema, ok := b.options.packageCache.entries[pkgInfo]
-	if !ok {
+	if err != nil {
 		if b.options.skipInvokeTypecheck {
 			return b.zeroSignature(), nil
 		}
-		return b.zeroSignature(), hcl.Diagnostics{unknownPackage(pkg, tokenRange)}
+
+		e := unknownPackage(pkg, tokenRange)
+		e.Detail = err.Error()
+		return b.zeroSignature(), hcl.Diagnostics{asWarningDiagnostic(e)}
 	}
 
 	fn, tk, ok, err := pkgSchema.LookupFunction(token)
