@@ -294,20 +294,11 @@ func (l *providerLoader) LoadPackageReferenceV2(
 	}
 
 	// Defer to the host to find the provider for the given package descriptor.
-	workspaceDescriptor := workspace.PackageDescriptor{
-		PluginDescriptor: workspace.PluginDescriptor{
-			Kind:              apitype.ResourcePlugin,
-			Name:              descriptor.Name,
-			Version:           descriptor.Version,
-			PluginDownloadURL: descriptor.DownloadURL,
-		},
-	}
-	if descriptor.Parameterization != nil {
-		workspaceDescriptor.Parameterization = &workspace.Parameterization{
-			Name:    descriptor.Parameterization.Name,
-			Version: descriptor.Parameterization.Version,
-			Value:   descriptor.Parameterization.Value,
-		}
+	workspaceDescriptor := workspace.PluginDescriptor{
+		Kind:              apitype.ResourcePlugin,
+		Name:              descriptor.Name,
+		Version:           descriptor.Version,
+		PluginDownloadURL: descriptor.DownloadURL,
 	}
 
 	provider, err := l.host.Provider(workspaceDescriptor)

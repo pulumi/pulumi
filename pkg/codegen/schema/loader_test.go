@@ -159,7 +159,7 @@ func TestLoadParameterized(t *testing.T) {
 	}
 
 	host := &plugin.MockHost{
-		ProviderF: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+		ProviderF: func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
 			assert.Equal(t, "terraform-provider", descriptor.Name)
 			assert.Equal(t, semver.MustParse("1.0.0"), *descriptor.Version)
 			return mockProvider, nil
@@ -227,7 +227,7 @@ func TestLoadNameMismatch(t *testing.T) {
 	}
 
 	host := &plugin.MockHost{
-		ProviderF: func(workspace.PackageDescriptor) (plugin.Provider, error) {
+		ProviderF: func(workspace.PluginDescriptor) (plugin.Provider, error) {
 			return provider, nil
 		},
 		ResolvePluginF: func(workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
@@ -298,7 +298,7 @@ func TestLoadVersionMismatch(t *testing.T) {
 	}
 
 	host := &plugin.MockHost{
-		ProviderF: func(workspace.PackageDescriptor) (plugin.Provider, error) {
+		ProviderF: func(workspace.PluginDescriptor) (plugin.Provider, error) {
 			return provider, nil
 		},
 		ResolvePluginF: func(workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
