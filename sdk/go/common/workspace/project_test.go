@@ -2165,7 +2165,7 @@ func requireTextualRepresentationIsSpec(t *testing.T, ps PackageSpec) PackageSpe
 	t.Helper()
 	b, err := json.Marshal(ps)
 	require.NoError(t, err)
-	var v packageSpecMarshaller
+	var v packageSpecMarshalled
 	err = json.Unmarshal(b, &v)
 	require.NoError(t, err)
 	return PackageSpec{
