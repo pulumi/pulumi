@@ -22,6 +22,7 @@ import (
 )
 
 func TestPanicRecovery(t *testing.T) {
+	t.Setenv("PULUMI_DEV", "true")
 	t.Setenv("PULUMI_GOROUTINE_PANIC_RECOVERY", "true")
 	t.Run("panic is caught and sent to error channel", func(t *testing.T) {
 		t.Parallel()
