@@ -41,13 +41,13 @@ var (
 
 type PackageNotFoundError struct {
 	Package     string
-	Version     *semver.Version
+	Version     string
 	OriginalErr error
 }
 
 func (e PackageNotFoundError) Error() string {
-	if e.Version != nil {
-		return fmt.Sprintf("package %s@%s not found", e.Package, e.Version.String())
+	if e.Version != "" {
+		return fmt.Sprintf("package %s@%s not found", e.Package, e.Version)
 	}
 	return fmt.Sprintf("package %s not found", e.Package)
 }
@@ -65,9 +65,8 @@ func (e PackageNotFoundError) Suggestions() []apitype.PackageMetadata {
 }
 
 type Options struct {
-	DisableRegistryResolve      bool
-	Experimental                bool
-	IncludeInstalledInWorkspace bool
+	DisableRegistryResolve bool
+	Experimental           bool
 }
 
 // The result of running [Resolve].
@@ -82,15 +81,20 @@ type Result interface {
 	isResult()
 }
 
-func (RegistryResult) isResult()             {}
-func (LocalPathResult) isResult()            {}
-func (ExternalSourceResult) isResult()       {}
-func (InstalledInWorkspaceResult) isResult() {}
+func (RegistryResult) isResult()       {}
+func (LocalPathResult) isResult()      {}
+func (ExternalSourceResult) isResult() {}
 
 type (
 	// The package should be downloaded with information from the registry.
 	RegistryResult struct {
+		// The full metadata from the registry lookup
 		Metadata apitype.PackageMetadata
+		// The package descriptor that corresponds with Metadata
+		Pkg workspace.PackageDescriptor
+
+		// If the package is already installed in the workspace.
+		InstalledInWorkspace bool
 	}
 	// The package is referenced by a local path.
 	//
@@ -99,93 +103,94 @@ type (
 	//	/a/nice/absolute/path/to/pulumi-resource-example
 	LocalPathResult struct {
 		// The path to the plugin on disk.
-		//
-		// If LocalPath is "./foo", that can mean one of 2 things:
-		// 1. That the spec contained workspace.PluginSpec{Name: "./foo"}.
-		//
-		// 2. That the spec contained workspace.PluginSpec{Name: "foo"} but the
-		//    Pulumi.yaml file that defined the packages contains
-		//
-		// 	packages: [ { name: foo, path: "./foo" } ]
-		//
-		// In the first case, the caller should resolve "./foo" as:
-		//
-		//	cwd, _ :=os.Getwd()
-		//	filepath.Join(cwd, "./foo")
-		//
-		// In the second case, the caller should resolve "./foo" as
-		//
-		//
-		//	filepath.Join(projectRootDirectory, "./foo")
-		//
 		LocalPath string
-		// RelativeToWorkspace is true if the local path was taken from the passed
-		// in workspace.BaseProject.
-		RelativeToWorkspace bool
 	}
 	ExternalSourceResult struct {
-		Spec workspace.PluginDescriptor
+		Spec workspace.UnresolvedPackageDescriptor
+
+		// If the package is already installed in the workspace.
+		InstalledInWorkspace bool
 	}
-	InstalledInWorkspaceResult struct{}
 )
+
+func naivePackageDescriptor(
+	ctx context.Context, spec workspace.PackageSpec,
+) (workspace.UnresolvedPackageDescriptor, error) {
+	pluginSpecSource := spec.Source
+	var version *semver.Version
+	if spec.Version != "" {
+		if v, err := semver.ParseTolerant(spec.Version); err != nil {
+			pluginSpecSource += "@" + spec.Version
+		} else {
+			version = &v
+		}
+	}
+	pluginDesc, err := workspace.NewPluginSpec(ctx, pluginSpecSource, apitype.ResourcePlugin,
+		version, spec.PluginDownloadURL, spec.Checksums)
+	return workspace.UnresolvedPackageDescriptor{
+		PluginDescriptor:     pluginDesc,
+		ParameterizationArgs: spec.Parameters,
+	}, err
+}
 
 func Resolve(
 	ctx context.Context,
 	reg registry.Registry,
 	ws PluginWorkspace,
-	pluginSpec workspace.PluginDescriptor,
+	spec workspace.PackageSpec,
 	options Options,
-	projectOrPlugin workspace.BaseProject, // Pass nil for 'not in a project context'
 ) (Result, error) {
-	sourceToCheck := pluginSpec.Name
-
-	if options.IncludeInstalledInWorkspace {
-		installed, err := isAlreadyInstalled(ws, pluginSpec)
-		if err != nil {
-			return nil, err
-		}
-		if installed {
-			return InstalledInWorkspaceResult{}, nil
-		}
-	}
-
-	var localPathIsFromProjectOrPlugin bool
-	if projectOrPlugin != nil {
-		localSource, ok := projectOrPlugin.GetPackageSpecs()[pluginSpec.Name]
-		if ok {
-			sourceToCheck = localSource.Source
-			localPathIsFromProjectOrPlugin = true
-		}
-	}
-
-	if plugin.IsLocalPluginPath(ctx, sourceToCheck) {
+	if plugin.IsLocalPluginPath(ctx, spec.Source) {
 		return LocalPathResult{
-			LocalPath:           sourceToCheck,
-			RelativeToWorkspace: localPathIsFromProjectOrPlugin,
+			LocalPath: spec.Source,
 		}, nil
 	}
 
-	if ws.IsExternalURL(sourceToCheck) || pluginSpec.IsGitPlugin() {
-		return ExternalSourceResult{Spec: pluginSpec}, nil
+	naivePackageDescriptor, err := naivePackageDescriptor(ctx, spec)
+	if err != nil {
+		return nil, err
+	}
+
+	installed, err := isAlreadyInstalled(ws, naivePackageDescriptor.PluginDescriptor)
+	if err != nil {
+		return nil, err
+	}
+
+	if ws.IsExternalURL(spec.Source) || naivePackageDescriptor.IsGitPlugin() || installed {
+		return ExternalSourceResult{Spec: naivePackageDescriptor, InstalledInWorkspace: installed}, nil
 	}
 
 	var registryNotFoundErr error
 	var registryQueryErr error
 
 	if options.includeRegistryResolve() {
-		metadata, err := registry.ResolvePackageFromName(ctx, reg, pluginSpec.Name, pluginSpec.Version)
+		metadata, err := registry.ResolvePackageFromName(ctx, reg, spec.Source, naivePackageDescriptor.Version)
 		if err == nil {
-			if options.IncludeInstalledInWorkspace {
-				installed, err := isAlreadyInstalled(ws, pluginSpec)
-				if err != nil {
-					return nil, err
+			pkgDescriptor := workspace.PackageDescriptor{
+				PluginDescriptor: workspace.PluginDescriptor{
+					Name:              metadata.Name,
+					Kind:              apitype.ResourcePlugin,
+					Version:           &metadata.Version,
+					PluginDownloadURL: metadata.PluginDownloadURL,
+					Checksums:         spec.Checksums,
+				},
+			}
+			if metadata.Parameterization != nil {
+				pkgDescriptor.Parameterization = &workspace.Parameterization{
+					Name:    metadata.Name,
+					Version: metadata.Version,
+					Value:   metadata.Parameterization.Parameter,
 				}
-				if installed {
-					return InstalledInWorkspaceResult{}, nil
-				}
+				pkgDescriptor.Name = metadata.Parameterization.BaseProvider.Name
+				pkgDescriptor.Version = &metadata.Parameterization.BaseProvider.Version
 			}
 
-			return RegistryResult{Metadata: metadata}, nil
+			installed, err := isAlreadyInstalled(ws, pkgDescriptor.PluginDescriptor)
+			if err != nil {
+				return nil, err
+			}
+
+			return RegistryResult{Metadata: metadata, Pkg: pkgDescriptor, InstalledInWorkspace: installed}, nil
 		}
 		if errors.Is(err, registry.ErrNotFound) {
 			registryNotFoundErr = err
@@ -194,8 +199,8 @@ func Resolve(
 		}
 	}
 
-	if registry.IsPreRegistryPackage(pluginSpec.Name) {
-		return ExternalSourceResult{Spec: pluginSpec}, nil
+	if registry.IsPreRegistryPackage(spec.Source) {
+		return ExternalSourceResult{Spec: naivePackageDescriptor}, nil
 	}
 
 	if registryQueryErr != nil {
@@ -203,8 +208,8 @@ func Resolve(
 	}
 
 	return nil, &PackageNotFoundError{
-		Package:     pluginSpec.Name,
-		Version:     pluginSpec.Version,
+		Package:     spec.Source,
+		Version:     spec.Version,
 		OriginalErr: registryNotFoundErr,
 	}
 }

@@ -192,14 +192,24 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 				return fmt.Errorf("getting current working directory: %w", err)
 			}
 
-			var project workspace.BaseProject
+			packageSpec := workspace.PackageSpec{
+				Source:            pluginSpec.Name,
+				Checksums:         checksums,
+				PluginDownloadURL: cmd.serverURL,
+			}
+			if pluginSpec.Version != nil {
+				packageSpec.Version = pluginSpec.Version.String()
+			}
+
 			if bp, _, err := workspace.LoadBaseProjectFrom(cwd); err == nil {
-				project = bp
+				if p, ok := bp.GetPackageSpecs()[pluginSpec.Name]; ok {
+					packageSpec = p
+				}
 			} else if !errors.Is(err, workspace.ErrBaseProjectNotFound) {
 				return err
 			}
 
-			updatedSpec, err := cmd.resolvePluginSpec(ctx, pluginSpec, project)
+			updatedSpec, err := cmd.resolvePluginSpec(ctx, packageSpec)
 			if err != nil {
 				return err
 			}
@@ -344,11 +354,11 @@ func getFilePayload(file string, spec workspace.PluginDescriptor) (pluginstorage
 
 // resolvePluginSpec resolves plugin specifications using various resolution strategies.
 func (cmd *pluginInstallCmd) resolvePluginSpec(
-	ctx context.Context, pluginSpec workspace.PluginDescriptor, project workspace.BaseProject,
+	ctx context.Context, pluginSpec workspace.PackageSpec,
 ) (workspace.PluginDescriptor, error) {
 	resolutionEnv := cmd.packageResolutionOptions
 	result, err := packageresolution.Resolve(
-		ctx, cmd.registry, packageresolution.DefaultWorkspace(), pluginSpec, resolutionEnv, project)
+		ctx, cmd.registry, packageresolution.DefaultWorkspace(), pluginSpec, resolutionEnv)
 	if err != nil {
 		var packageNotFoundErr *packageresolution.PackageNotFoundError
 		if errors.As(err, &packageNotFoundErr) {
@@ -363,16 +373,14 @@ func (cmd *pluginInstallCmd) resolvePluginSpec(
 	}
 
 	switch res := result.(type) {
-	case packageresolution.LocalPathResult,
-		packageresolution.ExternalSourceResult,
-		packageresolution.InstalledInWorkspaceResult:
-		return pluginSpec, nil
+	case packageresolution.LocalPathResult:
+		return workspace.PluginDescriptor{Name: res.LocalPath, Kind: apitype.ResourcePlugin}, nil
+	case packageresolution.ExternalSourceResult:
+		return res.Spec.PluginDescriptor, nil
 	case packageresolution.RegistryResult:
-		pluginSpec.Name = res.Metadata.Name
-		pluginSpec.PluginDownloadURL = res.Metadata.PluginDownloadURL
-		return pluginSpec, nil
+		return res.Pkg.PluginDescriptor, nil
 	default:
 		contract.Failf("Unexpected result type: %T", result)
-		return pluginSpec, nil
+		return workspace.PluginDescriptor{}, nil
 	}
 }
