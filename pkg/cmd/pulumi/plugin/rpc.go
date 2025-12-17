@@ -42,7 +42,7 @@ func newInstallPluginFunc(pctx *plugin.Context) func(string) *semver.Version {
 			return nil
 		}
 
-		pluginSpec := workspace.PluginSpec{
+		pluginSpec := workspace.PluginDescriptor{
 			Name: pluginName,
 			Kind: apitype.ResourcePlugin,
 		}

@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"math/rand/v2"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -552,5 +553,156 @@ func TestSendBatchesWaitsForInFlightBatches(t *testing.T) {
 	case <-done:
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("sendBatches did not return after send completed")
+	}
+}
+
+type (
+	delayFunc func(int) time.Duration
+	sender    func([]apitype.JournalEntry) error
+)
+
+func runBenchmark(sender sender, period time.Duration, delayFunc delayFunc, count int) {
+	entries := make(chan saveJournalEntry, 100)
+	tick := &realTicker{time.NewTicker(period)}
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		sendBatches(100, period, entries, sender, tick)
+	}()
+
+	results := make([]chan error, count)
+	for j := 0; j < count; j++ {
+		if delay := delayFunc(j); delay > 0 {
+			time.Sleep(delay)
+		}
+
+		results[j] = make(chan error, 1)
+		entries <- saveJournalEntry{
+			entry:  apitype.JournalEntry{SequenceID: int64(j)},
+			result: results[j],
+		}
+	}
+
+	for _, result := range results {
+		<-result
+	}
+
+	close(entries)
+	<-done
+}
+
+// BenchmarkSendBatches benchmarks the sendBatches function across multiple dimensions:
+// - Period: the timer tick duration
+// - Entries: the number of entries to send
+// - Entry pattern: The pattern the journal entries should follow
+func BenchmarkSendBatches(b *testing.B) {
+	type networkSim struct {
+		name          string
+		baseLatency   time.Duration
+		jitterPercent int
+	}
+
+	networks := []networkSim{
+		{"Fast", 50 * time.Millisecond, 20},
+		{"Medium", 200 * time.Millisecond, 30},
+		{"Slow", 500 * time.Millisecond, 40},
+	}
+
+	periods := []struct {
+		name   string
+		period time.Duration
+	}{
+		{"10ms", 10 * time.Millisecond},
+		{"50ms", 50 * time.Millisecond},
+		{"100ms", 100 * time.Millisecond},
+	}
+
+	entryCounts := []struct {
+		name  string
+		count int
+	}{
+		{"100", 100},
+		{"1000", 1000},
+		{"4000", 10000},
+	}
+
+	type entryPattern struct {
+		name        string
+		description string
+		delayFunc   func(i int) time.Duration
+	}
+
+	patterns := []entryPattern{
+		{
+			name:        "SmallBursts",
+			description: "5 resources in parallel, then 50ms pause (simulating small dependency chains)",
+			delayFunc: func(i int) time.Duration {
+				if i%5 == 0 {
+					return 50 * time.Millisecond
+				}
+				return 0
+			},
+		},
+		{
+			name:        "LargeBursts",
+			description: "20 resources in parallel, then 100ms pause (simulating larger parallel groups)",
+			delayFunc: func(i int) time.Duration {
+				if i%20 == 0 {
+					return 100 * time.Millisecond
+				}
+				return 0 // No delay within burst
+			},
+		},
+		{
+			name:        "BottleneckPattern",
+			description: "10 parallel resources, then single slow resource (200ms), simulating dependencies",
+			delayFunc: func(i int) time.Duration {
+				if i%11 == 10 {
+					return 400 * time.Millisecond
+				}
+				if i%11 == 0 {
+					return 20 * time.Millisecond
+				}
+				return 0
+			},
+		},
+	}
+
+	for _, net := range networks {
+		b.Run(net.name, func(b *testing.B) {
+			sender := func(batch []apitype.JournalEntry) error {
+				latency := net.baseLatency
+				if net.jitterPercent > 0 {
+					maxJitter := time.Duration(float64(net.baseLatency) *
+						float64(net.jitterPercent) / 100.0)
+					//nolint:gosec // not security relevant
+					jitterAmount := time.Duration(float64(maxJitter) * (2.0*rand.Float64() - 1.0))
+					latency += jitterAmount
+				}
+				time.Sleep(latency)
+				return nil
+			}
+
+			for _, period := range periods {
+				b.Run(period.name, func(b *testing.B) {
+					for _, count := range entryCounts {
+						b.Run(count.name, func(b *testing.B) {
+							for _, pattern := range patterns {
+								b.Run(pattern.name, func(b *testing.B) {
+									for b.Loop() {
+										runBenchmark(
+											sender,
+											period.period,
+											pattern.delayFunc,
+											count.count)
+									}
+								})
+							}
+						})
+					}
+				})
+			}
+		})
 	}
 }

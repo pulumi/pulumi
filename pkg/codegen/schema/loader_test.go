@@ -164,7 +164,7 @@ func TestLoadParameterized(t *testing.T) {
 			assert.Equal(t, semver.MustParse("1.0.0"), *descriptor.Version)
 			return mockProvider, nil
 		},
-		ResolvePluginF: func(spec workspace.PluginSpec) (*workspace.PluginInfo, error) {
+		ResolvePluginF: func(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
 			assert.Equal(t, apitype.ResourcePlugin, spec.Kind)
 			assert.Equal(t, "terraform-provider", spec.Name)
 			assert.Equal(t, semver.MustParse("1.0.0"), *spec.Version)
@@ -230,7 +230,7 @@ func TestLoadNameMismatch(t *testing.T) {
 		ProviderF: func(workspace.PackageDescriptor) (plugin.Provider, error) {
 			return provider, nil
 		},
-		ResolvePluginF: func(workspace.PluginSpec) (*workspace.PluginInfo, error) {
+		ResolvePluginF: func(workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
 			return &workspace.PluginInfo{
 				Name:    notPkg,
 				Kind:    apitype.ResourcePlugin,
@@ -301,7 +301,7 @@ func TestLoadVersionMismatch(t *testing.T) {
 		ProviderF: func(workspace.PackageDescriptor) (plugin.Provider, error) {
 			return provider, nil
 		},
-		ResolvePluginF: func(workspace.PluginSpec) (*workspace.PluginInfo, error) {
+		ResolvePluginF: func(workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
 			return &workspace.PluginInfo{
 				Name:    pkg,
 				Kind:    apitype.ResourcePlugin,

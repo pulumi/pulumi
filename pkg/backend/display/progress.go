@@ -34,7 +34,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -42,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // DiagInfo contains the bundle of diagnostic information for a single resource.
@@ -921,24 +921,24 @@ func (display *ProgressDisplay) printPolicies() bool {
 			// do not break; subsequent mandatory violations will override this.
 		}
 
-		var localMark string
+		var localMark strings.Builder
 		if len(info.LocalPaths) > 0 {
-			localMark = " (local: "
+			localMark.WriteString(" (local: ")
 			sort.Strings(info.LocalPaths)
 			for i, path := range info.LocalPaths {
 				if i > 0 {
-					localMark += "; "
+					localMark.WriteString("; ")
 				}
-				localMark += path
+				localMark.WriteString(path)
 			}
-			localMark += ")"
+			localMark.WriteString(")")
 
 			if info.HasCloudPack {
-				localMark += " + (cloud)"
+				localMark.WriteString(" + (cloud)")
 			}
 		}
 
-		display.println(fmt.Sprintf("    %s %s%s%s%s", passFailWarn, colors.SpecInfo, key, colors.Reset, localMark))
+		display.println(fmt.Sprintf("    %s %s%s%s%s", passFailWarn, colors.SpecInfo, key, colors.Reset, localMark.String()))
 		subItemIndent := "        "
 
 		// First show any remediations since they happen first.
