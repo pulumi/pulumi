@@ -26,20 +26,16 @@ import (
 // If a panic occurs, it logs the panic and stack trace, then sends the error to the provided error channel.
 // The function will not send to the error channel if panicErrs is nil.
 func PanicRecovery(panicErrs chan<- error, fn func()) {
-	if env.GoroutinePanicRecovery.Value() {
+	if env.GoroutinePanicRecovery.Value() && panicErrs != nil {
 		defer func() {
 			if r := recover(); r != nil {
 				stack := debug.Stack()
 				err := fmt.Errorf("panic in goroutine: %v\nStack trace:\n%s", r, string(stack))
 				logging.V(3).Infof("Recovered from panic: %v", err)
 
-				if panicErrs != nil {
-					select {
-					case panicErrs <- err:
-					default:
-						panic(r)
-					}
-				} else {
+				select {
+				case panicErrs <- err:
+				default:
 					panic(r)
 				}
 			}
