@@ -996,6 +996,12 @@ type Parameterization struct {
 	Value []byte
 }
 
+// PluginSpec is a resolved plugin, ready for download.
+//
+// Deprecated: workspace.PluginSpec has been renamed to [PluginDescriptor]. If you are
+// looking for the unresolved variant, see [PackageSpec].
+type PluginSpec = PluginDescriptor
+
 // PluginDescriptor is a resolved plugin, ready for download.
 type PluginDescriptor struct {
 	Name              string             // the simple name of the plugin.
