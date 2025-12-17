@@ -44,6 +44,7 @@ func TestFuzz(t *testing.T) {
 		t.Skip("PULUMI_LIFECYCLE_TEST_FUZZ not set")
 	}
 
+	t.Setenv("PULUMI_DEV", "true")
 	t.Setenv("PULUMI_GOROUTINE_PANIC_RECOVERY", "true")
 
 	rapid.Check(t, fuzzing.GeneratedFixture(fuzzing.FixtureOptions{}))
@@ -66,6 +67,7 @@ func TestFuzzFromStateFile(t *testing.T) {
 		t.Skip("PULUMI_LIFECYCLE_TEST_FUZZ_FROM_STATE_FILE not set")
 	}
 
+	t.Setenv("PULUMI_DEV", "true")
 	t.Setenv("PULUMI_GOROUTINE_PANIC_RECOVERY", "true")
 
 	reader, err := os.Open(stateFile)
