@@ -1229,6 +1229,8 @@ class TestLocalWorkspace(unittest.TestCase):
         destroy_res = stack.destroy(refresh=True)
         self.assertRegex(destroy_res.stdout, r".*refreshing.*")
 
+        stack.workspace.remove_stack(stack_name)
+
     def test_pulumi_command(self):
         p = PulumiCommand()
         ws = LocalWorkspace(pulumi_command=p)
