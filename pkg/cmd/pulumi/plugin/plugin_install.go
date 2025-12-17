@@ -192,23 +192,21 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 				return fmt.Errorf("getting current working directory: %w", err)
 			}
 
-			var project workspace.BaseProject
-			if bp, _, err := workspace.LoadBaseProjectFrom(cwd); err == nil {
-				project = bp
-			} else if !errors.Is(err, workspace.ErrBaseProjectNotFound) {
-				return err
-			}
-
 			packageSpec := workspace.PackageSpec{
 				Source:            pluginSpec.Name,
 				Checksums:         checksums,
 				PluginDownloadURL: cmd.serverURL,
 			}
-			if version != nil {
-				packageSpec.Version = version.String()
+			if pluginSpec.Version != nil {
+				packageSpec.Version = pluginSpec.Version.String()
 			}
-			if p, ok := project.GetPackageSpecs()[pluginSpec.Name]; ok {
-				packageSpec = p
+
+			if bp, _, err := workspace.LoadBaseProjectFrom(cwd); err == nil {
+				if p, ok := bp.GetPackageSpecs()[pluginSpec.Name]; ok {
+					packageSpec = p
+				}
+			} else if !errors.Is(err, workspace.ErrBaseProjectNotFound) {
+				return err
 			}
 
 			updatedSpec, err := cmd.resolvePluginSpec(ctx, packageSpec)
