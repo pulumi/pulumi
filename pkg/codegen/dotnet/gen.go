@@ -1635,8 +1635,13 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 			fmt.Fprintf(w, "        public static Output%s Invoke(%sInvokeOptions? options = null)\n",
 				typeParamOrEmpty(typeParameter), outputArgsParamDef)
 		}
-		fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.%s%s(\"%s\", %s, options.WithDefaults());\n",
+
+		fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.%s%s(\"%s\", %s, options.WithDefaults()",
 			invokeCall, typeParamOrEmpty(typeParameter), fun.Token, outputArgsParamRef)
+		if mod.parameterization != nil {
+			fmt.Fprint(w, ", Utilities.PackageParameterization()")
+		}
+		fmt.Fprint(w, ");\n")
 	} else {
 		fmt.Fprintf(w, "        public static Output%s Invoke(", typeParamOrEmpty(typeParameter))
 		for _, prop := range fun.Inputs.Properties {
@@ -1666,8 +1671,12 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 			}
 		}
 		fmt.Fprint(w, "            var args = new global::Pulumi.DictionaryInvokeArgs(builder.ToImmutableDictionary());\n")
-		fmt.Fprintf(w, "            return global::Pulumi.Deployment.Instance.%s%s(\"%s\", args, invokeOptions.WithDefaults());\n",
+		fmt.Fprintf(w, "            return global::Pulumi.Deployment.Instance.%s%s(\"%s\", args, invokeOptions.WithDefaults()",
 			invokeCall, typeParamOrEmpty(typeParameter), fun.Token)
+		if mod.parameterization != nil {
+			fmt.Fprint(w, ", Utilities.PackageParameterization()")
+		}
+		fmt.Fprint(w, ");\n")
 		fmt.Fprint(w, "        }\n")
 	}
 
