@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -140,6 +141,7 @@ func Resolve(
 	spec workspace.PackageSpec,
 	options Options,
 ) (Result, error) {
+	logging.V(3).Infof("Resolving package from %#v\n", spec)
 	if plugin.IsLocalPluginPath(ctx, spec.Source) {
 		return LocalPathResult{
 			LocalPath: spec.Source,
@@ -157,6 +159,8 @@ func Resolve(
 	}
 
 	if ws.IsExternalURL(spec.Source) || naivePackageDescriptor.IsGitPlugin() || installed {
+		logging.V(3).Infof("Resolved package %#v to an external source %#v (installedInWorkspace=%t)\n",
+			spec, naivePackageDescriptor, installed)
 		return ExternalSourceResult{Spec: naivePackageDescriptor, InstalledInWorkspace: installed}, nil
 	}
 
@@ -190,6 +194,8 @@ func Resolve(
 				return nil, err
 			}
 
+			logging.V(3).Infof("Resolved package %#v via the registry to %#v (installedInWorkspace=%t)\n",
+				spec.Source, pkgDescriptor, installed)
 			return RegistryResult{Metadata: metadata, Pkg: pkgDescriptor, InstalledInWorkspace: installed}, nil
 		}
 		if errors.Is(err, registry.ErrNotFound) {
@@ -200,13 +206,17 @@ func Resolve(
 	}
 
 	if registry.IsPreRegistryPackage(spec.Source) {
+		logging.V(3).Infof("Resolved package %#v to an external source %#v (installedInWorkspace=false)\n",
+			spec, naivePackageDescriptor)
 		return ExternalSourceResult{Spec: naivePackageDescriptor}, nil
 	}
 
 	if registryQueryErr != nil {
+		logging.V(3).Infof("Failed to resolve package %#v\n", spec)
 		return nil, registryQueryErr
 	}
 
+	logging.V(3).Infof("Failed to resolve package %#v\n", spec)
 	return nil, &PackageNotFoundError{
 		Package:     spec.Source,
 		Version:     spec.Version,
