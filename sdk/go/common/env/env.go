@@ -241,3 +241,6 @@ var JournalingBatchSize = env.Int("JOURNALING_BATCH_SIZE", "Maximum batch size f
 
 var JournalingBatchPeriod = env.Int("JOURNALING_BATCH_PERIOD",
 	"Maximum period in milliseconds between batches of journal entries")
+
+var GoroutinePanicRecovery = env.Bool("GOROUTINE_PANIC_RECOVERY",
+	"Enable recovery from panics in goroutines to prevent the process from crashing.", env.Needs(Dev))

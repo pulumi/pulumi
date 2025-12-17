@@ -115,7 +115,7 @@ func TestSourceFuncCancellation(t *testing.T) {
 	// Create a source func that waits for cancellation.
 	sourceF := func(ctx context.Context,
 		client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
-		target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks,
+		target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks, panicErrs chan<- error,
 	) (deploy.Source, error) {
 		// Send ops completion then wait for the cancellation signal.
 		close(ops)
