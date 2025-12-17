@@ -31,6 +31,8 @@ func DefaultExclusionRules() ExclusionRules {
 	return []ExclusionRule{
 		// TODO[pulumi/pulumi#21277]
 		ExcludeProtectedResourceWithDuplicateProviderDestroyV2,
+		// TODO[pulumi/pulumi#21282]
+		ExcludeTargetedAliasDestroyV2,
 	}
 }
 
@@ -47,6 +49,31 @@ func (er ExclusionRules) ShouldExclude(
 			return true
 		}
 	}
+	return false
+}
+
+// ExcludeTargetedAlias excludes programs where a resource is renamed with an old
+// alias, and the new name of the resource is targeted for deletion.
+func ExcludeTargetedAliasDestroyV2(
+	_ *SnapshotSpec,
+	program *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationDestroyV2 {
+		return false
+	}
+
+	hasTargetedResources := len(plan.TargetURNs) > 0
+	for _, res := range program.ResourceRegistrations {
+		if hasTargetedResources && len(res.Aliases) > 0 {
+			// If there are targeted resources, and a resource registrations with
+			// aliases happens, we need to exclude this snapshot, as there are
+			// different issues with the handling of this.
+			return true
+		}
+	}
+
 	return false
 }
 
