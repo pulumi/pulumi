@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -1030,4 +1031,189 @@ func TestDestroyV2ProtectedWithProviderDependencies(t *testing.T) {
 	require.ErrorContains(t, err, "BAIL: step executor errored: step application failed: resource"+
 		" \"urn:pulumi:test::test::pkgA:m:typA::resA\" cannot be deleted")
 	require.NotContains(t, err.Error(), "validation error")
+}
+
+func TestDestroyV2TargetChildWithNewParent(t *testing.T) {
+	t.Parallel()
+
+	initialSnap := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type:   "pulumi:providers:pkgA",
+				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::prov",
+				Custom: true,
+				ID:     "prov",
+			},
+			{
+				Type:     "pkgA:m:typA",
+				URN:      "urn:pulumi:test::test::pkgA:m:typA::future-parent",
+				Provider: "urn:pulumi:test::test::pulumi:providers:pkgA::prov::prov",
+			},
+			{
+				Type:   "pulumi:providers:pkgB",
+				URN:    "urn:pulumi:test::test::pulumi:providers:pkgB::future-child",
+				Custom: true,
+				ID:     "prov",
+			},
+		},
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		prov0, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		prov0Ref, err := providers.NewReference(prov0.URN, prov0.ID)
+		require.NoError(t, err)
+
+		res1, err := monitor.RegisterResource("pkgA:m:typA", "future-parent", false, deploytest.ResourceOptions{
+			RetainOnDelete: ptr(true),
+			Provider:       prov0Ref.String(),
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pulumi:providers:pkgB", "future-child", true, deploytest.ResourceOptions{
+			Parent: res1.URN,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{
+				"urn:pulumi:test::test::pkgA:m:typA::future-parent",
+				"urn:pulumi:test::test::pulumi:providers:pkgB::future-child",
+			}),
+		},
+	}
+
+	p := &lt.TestPlan{
+		Options: opts,
+	}
+
+	_, err := lt.TestOp(DestroyV2).RunStep(
+		p.GetProject(), p.GetTarget(t, initialSnap), opts, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, event []Event, err error) error {
+			for _, e := range event {
+				if e.Type == "diag" {
+					payload := e.Payload().(DiagEventPayload)
+					t.Log(payload.Message)
+				}
+			}
+			return err
+		},
+		"0")
+
+	require.NoError(t, err)
+}
+
+func TestDestroyV2ChildResourceNotTargeted(t *testing.T) {
+	t.Parallel()
+
+	initialSnap := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type:   "pulumi:providers:pkgA",
+				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::prov",
+				Custom: true,
+				ID:     "prov",
+			},
+			{
+				Type:     "pkgA:m:typA",
+				URN:      "urn:pulumi:test::test::pkgA:m:typA::future-parent",
+				Provider: "urn:pulumi:test::test::pulumi:providers:pkgA::prov::prov",
+			},
+			{
+				Type:   "pulumi:providers:pkgB",
+				URN:    "urn:pulumi:test::test::pulumi:providers:pkgB::future-child",
+				Custom: true,
+				ID:     "prov",
+			},
+			{
+				Type:     "pkgB:m:typB",
+				URN:      "urn:pulumi:test::test::pkgB:m:typB::a-res",
+				Provider: "urn:pulumi:test::test::pulumi:providers:pkgB::future-child::prov",
+				Parent:   "urn:pulumi:test::test::pkgA:m:typA::future-parent",
+			},
+		},
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		prov0, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		prov0Ref, err := providers.NewReference(prov0.URN, prov0.ID)
+		require.NoError(t, err)
+
+		res1, err := monitor.RegisterResource("pkgA:m:typA", "future-parent", false, deploytest.ResourceOptions{
+			RetainOnDelete: ptr(true),
+			Provider:       prov0Ref.String(),
+		})
+		require.NoError(t, err)
+
+		prov1, err := monitor.RegisterResource("pulumi:providers:pkgB", "future-child", true, deploytest.ResourceOptions{
+			Parent: res1.URN,
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgB:m:typB", "a-res", true, deploytest.ResourceOptions{
+			Parent: prov1.URN,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{
+				"urn:pulumi:test::test::pkgA:m:typA::future-parent",
+				"urn:pulumi:test::test::pulumi:providers:pkgB::future-child",
+			}),
+		},
+	}
+
+	p := &lt.TestPlan{
+		Options: opts,
+	}
+
+	_, err := lt.TestOp(DestroyV2).RunStep(
+		p.GetProject(), p.GetTarget(t, initialSnap), opts, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, event []Event, err error) error {
+			for _, e := range event {
+				if e.Type == "diag" {
+					payload := e.Payload().(DiagEventPayload)
+					t.Log(payload.Message)
+				}
+			}
+			return err
+		},
+		"0")
+
+	require.NoError(t, err)
 }

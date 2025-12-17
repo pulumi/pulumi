@@ -930,6 +930,11 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 			new.Inputs = old.Inputs
 			return []Step{NewSameStep(sg.deployment, event, old, new)}, false, nil
 		}
+		if goal.Custom && providers.IsProviderType(goal.Type) {
+			if old != nil && new.Parent != old.Parent {
+				new.Parent = old.Parent
+			}
+		}
 		// All other resources are handled as normal but need to be tagged as 'toDelete' for after we
 		// create/update them. We can use the new inputs for these so that providers get fresh configuration.
 		sg.toDelete = append(sg.toDelete, new)
