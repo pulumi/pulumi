@@ -14,12 +14,12 @@
 
 import { readFileSync } from "fs";
 import * as path from "path";
+import { Input, Inputs } from "../../output";
 import { ComponentResource, ComponentResourceOptions } from "../../resource";
 import { ConstructResult, Provider } from "../provider";
-import { Input, Inputs, Output } from "../../output";
 import { main } from "../server";
-import { generateSchema } from "./schema";
 import { Analyzer, ComponentDefinition } from "./analyzer";
+import { generateSchema } from "./schema";
 
 function getComponentOutputs<T extends ComponentResource>(
     componentDefinition: ComponentDefinition,
@@ -138,6 +138,19 @@ export class ComponentProvider implements Provider {
         }
     }
 
+     /**
+     * Creates a new ComponentProvider instance.
+     *
+     * @param options - Configuration options for the component provider, including:
+     *   - components: Array of Pulumi ComponentResource constructors to register.
+     *   - dirname: Directory containing the provider's package.json (required).
+     *   - name: The Pulumi package name for this provider.
+     *   - namespace: Optional namespace for the provider.
+     *   - version: Optional version string for the provider; defaults to package.json version or "0.0.0".
+     *      Will be overridden by git version if plugin is downloaded via git.
+     *
+     * Throws an error if dirname is not provided or if package.json cannot be read.
+     */
     constructor(readonly options: ComponentProviderOptions & { version?: string }) {
         if (!options.dirname) {
             throw new Error("dirname is required");
