@@ -26,6 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -1030,4 +1031,58 @@ func TestDestroyV2ProtectedWithProviderDependencies(t *testing.T) {
 	require.ErrorContains(t, err, "BAIL: step executor errored: step application failed: resource"+
 		" \"urn:pulumi:test::test::pkgA:m:typA::resA\" cannot be deleted")
 	require.NotContains(t, err.Error(), "validation error")
+}
+
+// TestDestroyWithProgramProtectedResourceWithProvider tests that a protected resource that references a provider
+// can be deleted by DestroyV2 without causing a snapshot integrity error.
+func TestDestroyWithProgramProtectedResourceWithProvider(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#21277]: Remove this once the underlying issue is fixed.
+	t.Skip("Skipping test, see pulumi/pulumi#21277")
+
+	initialSnap := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type:   "pulumi:providers:pkgA",
+				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::prov",
+				Custom: true,
+				ID:     "id-123",
+			},
+			{
+				Type:     "pkgA:m:typA",
+				URN:      "urn:pulumi:test::test::pkgA:m:typA::resA",
+				Custom:   false,
+				ID:       "",
+				Protect:  true,
+				Provider: "urn:pulumi:test::test::pulumi:providers:pkgA::prov::id-123",
+			},
+		},
+	}
+
+	require.NoError(t, initialSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	_, err := lt.TestOp(engine.DestroyV2).
+		RunStep(p.GetProject(), p.GetTarget(t, initialSnap), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
 }
