@@ -580,9 +580,13 @@ func ProviderFromSource(
 				Args: res.Spec.ParameterizationArgs,
 			}
 		}
+		var version string
+		if res.Spec.Version != nil {
+			version = res.Spec.Version.String()
+		}
 		return setupProvider(res.Spec.PluginDescriptor, params, workspace.PackageSpec{
 			Source:            res.Spec.Name,
-			Version:           res.Spec.Version.String(),
+			Version:           version,
 			PluginDownloadURL: res.Spec.PluginDownloadURL,
 			Checksums:         res.Spec.Checksums,
 			Parameters:        res.Spec.ParameterizationArgs,
