@@ -131,25 +131,9 @@ from the parameters, as in:
 				return nil
 			}
 
-			version := ""
-			if pkg.Version != nil {
-				version = pkg.Version.String()
-			} else if len(pluginSplit) == 2 {
-				version = pluginSplit[1]
-			}
-			if pkg.Parameterization != nil {
-				source = pkg.Parameterization.BaseProvider.Name
-				version = pkg.Parameterization.BaseProvider.Version.String()
-			}
-			if len(parameters.Args) > 0 && packageSpec != nil {
-				packageSpec.Parameters = parameters.Args
-			} else if packageSpec == nil {
-				packageSpec = &workspace.PackageSpec{
-					Source:     source,
-					Version:    version,
-					Parameters: parameters.Args,
-				}
-			}
+			contract.Assertf(packageSpec != nil, "packageSpec should be nil if & only if source is file based")
+			packageSpec.Parameters = parameters.Args
+
 			pluginOrProject.proj.AddPackage(pkg.Name, *packageSpec)
 
 			fileName := filepath.Base(pluginOrProject.projectFilePath)
