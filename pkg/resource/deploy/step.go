@@ -354,7 +354,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 				break
 			}
 
-			failures = append(failures, err.Error())
+			failures = append([]string{err.Error()}, failures...)
 			if resp.Status != resource.StatusPartialFailure {
 				return resp.Status, nil, err
 			}
@@ -663,7 +663,7 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 				break
 			}
 
-			failures = append(failures, err.Error())
+			failures = append([]string{err.Error()}, failures...)
 			if resp.Status != resource.StatusPartialFailure {
 				return resp.Status, nil, err
 			}
@@ -976,7 +976,7 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 				break
 			}
 
-			failures = append(failures, err.Error())
+			failures = append([]string{err.Error()}, failures...)
 			if resp.Status != resource.StatusPartialFailure {
 				return resp.Status, nil, err
 			}

@@ -1,3 +1,3 @@
 <{%reset%}>retrying update due to on-error hook request (1/100)<{%reset%}>
-<{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>
+<{%fg 1%}>error: <{%reset%}><{%reset%}>update failed 2<{%reset%}>
 <{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>

@@ -17,6 +17,7 @@ package lifecycletest
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -1466,7 +1467,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Create(t *testing.T) {
 						return plugin.CreateResponse{
 							ID:     resource.ID("partial-id-" + req.URN.Name()),
 							Status: resource.StatusPartialFailure,
-						}, errors.New("create failed")
+						}, errors.New(fmt.Sprintf("create failed %d", createCalls))
 					}
 					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
 				},
@@ -1483,9 +1484,14 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Create(t *testing.T) {
 
 		h, err := deploytest.NewHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_, _, _, _ resource.PropertyMap, _ string, errs []string,
 			) (bool, error) {
 				hookCalls++
+				if hookCalls == 1 {
+					require.Equal(t, []string{"create failed 1"}, errs)
+				} else if hookCalls == 2 {
+					require.Equal(t, []string{"create failed 2", "create failed 1"}, errs)
+				}
 				return hookCalls == 1, nil
 			}, true)
 		require.NoError(t, err)
@@ -1529,7 +1535,8 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Update(t *testing.T) {
 					}
 					updateCalls++
 					if updateCalls <= 2 {
-						return plugin.UpdateResponse{Status: resource.StatusPartialFailure}, errors.New("update failed")
+						return plugin.UpdateResponse{Status: resource.StatusPartialFailure},
+							errors.New(fmt.Sprintf("update failed %d", updateCalls))
 					}
 					return plugin.UpdateResponse{Properties: req.NewInputs, Status: resource.StatusOK}, nil
 				},
@@ -1547,9 +1554,14 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Update(t *testing.T) {
 
 		h, err := deploytest.NewHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_, _, _, _ resource.PropertyMap, _ string, errs []string,
 			) (bool, error) {
 				hookCalls++
+				if hookCalls == 1 {
+					require.Equal(t, []string{"update failed 1"}, errs)
+				} else if hookCalls == 2 {
+					require.Equal(t, []string{"update failed 2", "update failed 1"}, errs)
+				}
 				return hookCalls == 1, nil
 			}, true)
 		require.NoError(t, err)
@@ -1600,7 +1612,8 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Delete(t *testing.T) {
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					deleteCalls++
 					if deleteCalls <= 2 {
-						return plugin.DeleteResponse{Status: resource.StatusPartialFailure}, errors.New("delete failed")
+						return plugin.DeleteResponse{Status: resource.StatusPartialFailure},
+							errors.New(fmt.Sprintf("delete failed %d", deleteCalls))
 					}
 					return plugin.DeleteResponse{Status: resource.StatusOK}, nil
 				},
@@ -1618,9 +1631,14 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Delete(t *testing.T) {
 
 		h, err := deploytest.NewHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_, _, _, _ resource.PropertyMap, _ string, errs []string,
 			) (bool, error) {
 				hookCalls++
+				if hookCalls == 1 {
+					require.Equal(t, []string{"delete failed 1"}, errs)
+				} else if hookCalls == 2 {
+					require.Equal(t, []string{"delete failed 2", "delete failed 1"}, errs)
+				}
 				return hookCalls == 1, nil
 			}, true)
 		require.NoError(t, err)

@@ -3,9 +3,9 @@
 
  <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
  <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resB <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
- <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resB <{%bold%}><{%fg 1%}>deleting<{%reset%}> <{%reset%}>retrying delete due to on-error hook request (1/100)<{%reset%}>
  <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 1%}>deleting<{%reset%}> <{%reset%}>retrying delete due to on-error hook request (1/100)<{%reset%}>
  <{%fg 1%}>- <{%reset%}> pkgA:m:typA resA <{%fg 1%}>deleted<{%reset%}> <{%reset%}>retrying delete due to on-error hook request (1/100)<{%reset%}>
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resB <{%bold%}><{%fg 1%}>deleting<{%reset%}> <{%reset%}>retrying delete due to on-error hook request (1/100)<{%reset%}>
  <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resB <{%bold%}><{%fg 1%}>deleting<{%reset%}> <{%reset%}>retrying delete due to on-error hook request (2/100)<{%reset%}>
  <{%fg 1%}>- <{%reset%}> pkgA:m:typA resB <{%fg 1%}>deleted<{%reset%}> <{%reset%}>retrying delete due to on-error hook request (2/100)<{%reset%}>
  <{%bold%}><{%fg 1%}>- <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
