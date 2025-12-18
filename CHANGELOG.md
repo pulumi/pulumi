@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.213.0 (2025-12-17)
+
+
+### Bug Fixes
+
+- [sdkgen/go] Generate three-level nested builtin output types for Go SDK
+  [#21248](https://github.com/pulumi/pulumi/pull/21248)
+
+
+### Miscellaneous
+
+- [pkg] Move plugin downloading from pkg into sdk
+  [#21220](https://github.com/pulumi/pulumi/pull/21220)
+
 ## 3.212.0 (2025-12-12)
 
 
