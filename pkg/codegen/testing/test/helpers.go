@@ -381,4 +381,4 @@ const (
 )
 
 // PulumiDotnetSDKVersion is the version of the Pulumi .NET SDK to use in program-gen tests
-const PulumiDotnetSDKVersion = "3.95.0"
+const PulumiDotnetSDKVersion = "3.96.0"

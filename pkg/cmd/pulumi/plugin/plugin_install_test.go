@@ -173,7 +173,7 @@ func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), []string{"resource", "foo@2.0.0"})
+	err := cmd.Run(t.Context(), []string{"resource", "foo@2.0.0"})
 	require.NoError(t, err)
 }
 
