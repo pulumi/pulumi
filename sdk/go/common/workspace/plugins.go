@@ -63,6 +63,8 @@ const (
 
 var enableLegacyPluginBehavior = os.Getenv("PULUMI_ENABLE_LEGACY_PLUGIN_SEARCH") != ""
 
+var ErrGetLatestVersionNotSupported = errors.New("GetLatestVersion is not supported for plugins from http sources")
+
 // pluginDownloadURLOverrides is a variable instead of a constant so it can be set using the `-X` `ldflag` at build
 // time, if necessary. When non-empty, it's parsed into `pluginDownloadURLOverridesParsed` in `init()`. The expected
 // format is `regexp=URL`, and multiple pairs can be specified separated by commas, e.g. `regexp1=URL1,regexp2=URL2`.
@@ -694,7 +696,7 @@ func (source *httpSource) GetLatestVersion(
 	ctx context.Context,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (*semver.Version, error) {
-	return nil, errors.New("GetLatestVersion is not supported for plugins from http sources")
+	return nil, ErrGetLatestVersionNotSupported
 }
 
 func interpolateURL(serverURL string, name string, version semver.Version, os, arch string) string {
@@ -1788,17 +1790,18 @@ func HasPlugin(spec PluginDescriptor) bool {
 	return false
 }
 
-// HasPluginGTE returns true if the given plugin exists at the given version number or greater.
-func HasPluginGTE(spec PluginDescriptor) (bool, error) {
+// HasPluginGTE returns the version selected if the given plugin exists at the given
+// version number or greater.
+func HasPluginGTE(spec PluginDescriptor) (bool, *semver.Version, error) {
 	// If an exact match, return true right away.
 	if HasPlugin(spec) {
-		return true, nil
+		return true, spec.Version, nil
 	}
 
 	// Otherwise, load up the list of plugins and find one with the same name/type and >= version.
 	plugs, err := GetPlugins()
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 
 	// If we're not doing the legacy plugin behavior and we've been asked for a specific version, do the same plugin
@@ -1810,7 +1813,10 @@ func HasPluginGTE(spec PluginDescriptor) (bool, error) {
 	} else {
 		match = LegacySelectCompatiblePlugin(plugs, spec)
 	}
-	return match != nil, nil
+	if match != nil {
+		return true, match.Version, nil
+	}
+	return false, nil, nil
 }
 
 // GetPolicyDir returns the directory in which an organization's Policy Packs on the current machine are managed.

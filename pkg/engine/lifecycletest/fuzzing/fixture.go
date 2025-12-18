@@ -154,6 +154,10 @@ func GeneratedFixture(fo FixtureOptions) func(t *rapid.T) {
 				failWithError(err)
 			}
 
+			if err != nil && strings.Contains(err.Error(), "panic") {
+				failWithError(err)
+			}
+
 			// In all other cases, we expect errors to be "expected", or "bails" in our terminology.
 			assert.True(t, err == nil || result.IsBail(err), "unexpected error: %v", err)
 			close(done)

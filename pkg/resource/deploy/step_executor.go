@@ -122,6 +122,9 @@ type stepExecutor struct {
 	erroredStepLock sync.RWMutex
 	erroredSteps    []Step
 
+	// Channel to collect panic errors from goroutines in this step executor
+	panicErrs chan error
+
 	// ExecuteRegisterResourceOutputs will save the event for the stack resource so that the stack outputs
 	// can be finalized at the end of the deployment. We do this so we can determine whether or not the
 	// deployment succeeded. If there were errors, we update any stack outputs that were updated, but don't delete
@@ -177,17 +180,17 @@ func (se *stepExecutor) ExecuteParallel(antichain antichain) completionToken {
 	wg.Add(len(antichain))
 	for _, step := range antichain {
 		tok := se.ExecuteSerial(chain{step})
-		go func() {
+		go PanicRecovery(se.panicErrs, func() {
 			defer wg.Done()
 			tok.Wait(se.ctx)
-		}()
+		})
 	}
 
 	done := make(chan bool)
-	go func() {
+	go PanicRecovery(se.panicErrs, func() {
 		wg.Wait()
 		close(done)
-	}()
+	})
 
 	return completionToken{channel: done}
 }
@@ -655,7 +658,9 @@ func (se *stepExecutor) worker(workerID int, launchAsync bool) {
 
 			se.log(workerID, "worker received chain for execution")
 			if !launchAsync {
-				se.executeChain(workerID, request.Chain)
+				PanicRecovery(se.panicErrs, func() {
+					se.executeChain(workerID, request.Chain)
+				})
 				close(request.CompletionChan)
 				continue
 			}
@@ -664,12 +669,14 @@ func (se *stepExecutor) worker(workerID int, launchAsync bool) {
 			// launch with our worker wait group.
 			se.workers.Add(1)
 			newWorkerID := oneshotWorkerID
-			go func() {
+			completionChan := request.CompletionChan
+			chain := request.Chain
+			go PanicRecovery(se.panicErrs, func() {
 				defer se.workers.Done()
 				se.log(newWorkerID, "launching oneshot worker")
-				se.executeChain(newWorkerID, request.Chain)
-				close(request.CompletionChan)
-			}()
+				se.executeChain(newWorkerID, chain)
+				close(completionChan)
+			})
 
 			oneshotWorkerID++
 		case <-se.ctx.Done():
@@ -691,13 +698,26 @@ func newStepExecutor(
 		incomingChains: make(chan incomingChain),
 		ctx:            ctx,
 		cancel:         cancel,
+		panicErrs:      make(chan error, 1),
 	}
+
+	// Start a goroutine to monitor for panic errors and handle them
+	go func() {
+		for panicErr := range exec.panicErrs {
+			exec.cancelDueToError(panicErr, nil)
+			if deployment.panicErrs != nil {
+				deployment.panicErrs <- panicErr
+			}
+		}
+	}()
 
 	// If we're being asked to run as parallel as possible, spawn a single worker that launches chain executions
 	// asynchronously.
 	if deployment.opts.InfiniteParallelism() {
 		exec.workers.Add(1)
-		go exec.worker(infiniteWorkerID, true /*launchAsync*/)
+		go PanicRecovery(exec.panicErrs, func() {
+			exec.worker(infiniteWorkerID, true /*launchAsync*/)
+		})
 		return exec
 	}
 
@@ -705,7 +725,10 @@ func newStepExecutor(
 	fanout := deployment.opts.DegreeOfParallelism()
 	for i := 0; i < int(fanout); i++ {
 		exec.workers.Add(1)
-		go exec.worker(i, false /*launchAsync*/)
+		workerID := i
+		go PanicRecovery(exec.panicErrs, func() {
+			exec.worker(workerID, false /*launchAsync*/)
+		})
 	}
 
 	return exec

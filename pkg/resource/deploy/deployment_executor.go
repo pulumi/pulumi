@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -135,7 +135,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	ex.skipped = mapset.NewSet[urn.URN]()
 	done := make(chan bool)
 	defer close(done)
-	go func() {
+	go PanicRecovery(ex.deployment.panicErrs, func() {
 		select {
 		case <-callerCtx.Done():
 			logging.V(4).Infof("deploymentExecutor.Execute(...): signalling cancellation to providers...")
@@ -146,7 +146,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 		case <-done:
 			logging.V(4).Infof("deploymentExecutor.Execute(...): exiting provider canceller")
 		}
-	}()
+	})
 
 	// Close the deployment when we're finished.
 	defer contract.IgnoreClose(ex.deployment)
@@ -239,7 +239,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 		Error error
 	}
 	incomingEvents := make(chan nextEvent)
-	go func() {
+	go PanicRecovery(ex.deployment.panicErrs, func() {
 		for {
 			event, err := src.Next()
 			select {
@@ -252,7 +252,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 				return
 			}
 		}
-	}()
+	})
 
 	// The main loop. We'll continuously select for incoming events and the cancellation signal. There are three ways
 	// we can exit this loop:

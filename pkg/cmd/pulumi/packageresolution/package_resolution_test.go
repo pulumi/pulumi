@@ -30,8 +30,16 @@ import (
 )
 
 type mockWorkspace struct {
-	hasPlugin    func(spec workspace.PluginDescriptor) bool
-	hasPluginGTE func(spec workspace.PluginDescriptor) (bool, error)
+	hasPlugin        func(spec workspace.PluginDescriptor) bool
+	hasPluginGTE     func(spec workspace.PluginDescriptor) (bool, *semver.Version, error)
+	getLatestVersion func(ctx context.Context, spec workspace.PluginDescriptor) (*semver.Version, error)
+}
+
+func (m mockWorkspace) GetLatestVersion(ctx context.Context, spec workspace.PluginDescriptor) (*semver.Version, error) {
+	if m.getLatestVersion != nil {
+		return m.getLatestVersion(ctx, spec)
+	}
+	return nil, workspace.ErrGetLatestVersionNotSupported
 }
 
 func (m mockWorkspace) HasPlugin(spec workspace.PluginDescriptor) bool {
@@ -41,11 +49,11 @@ func (m mockWorkspace) HasPlugin(spec workspace.PluginDescriptor) bool {
 	return false
 }
 
-func (m mockWorkspace) HasPluginGTE(spec workspace.PluginDescriptor) (bool, error) {
+func (m mockWorkspace) HasPluginGTE(spec workspace.PluginDescriptor) (bool, *semver.Version, error) {
 	if m.hasPluginGTE != nil {
 		return m.hasPluginGTE(spec)
 	}
-	return false, nil
+	return false, nil, nil
 }
 
 func (m mockWorkspace) IsExternalURL(source string) bool {
@@ -57,11 +65,10 @@ func TestResolvePackage(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		env              *Options
+		options          *Options
 		pluginSpec       workspace.PackageSpec
 		workspace        PluginWorkspace
 		registryResponse func() (registry.Registry, error)
-		setupProject     bool
 		expected         Result
 		expectedErr      error
 	}{
@@ -131,6 +138,13 @@ func TestResolvePackage(t *testing.T) {
 		{
 			name:       "Git URL plugin",
 			pluginSpec: workspace.PackageSpec{Source: "example-plugin", PluginDownloadURL: "git://github.com/example/plugin"},
+			workspace: mockWorkspace{
+				getLatestVersion: func(_ context.Context, spec workspace.PluginDescriptor) (*semver.Version, error) {
+					require.Equal(t, "example-plugin", spec.Name)
+					require.Equal(t, "git://github.com/example/plugin", spec.PluginDownloadURL)
+					return &semver.Version{Build: []string{"xGIT_HASH"}}, nil
+				},
+			},
 			registryResponse: func() (registry.Registry, error) {
 				return registry.Mock{
 					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
@@ -143,6 +157,7 @@ func TestResolvePackage(t *testing.T) {
 					Name:              "example-plugin",
 					PluginDownloadURL: "git://github.com/example/plugin",
 					Kind:              apitype.ResourcePlugin,
+					Version:           &semver.Version{Build: []string{"xGIT_HASH"}},
 				}},
 			},
 		},
@@ -176,7 +191,7 @@ func TestResolvePackage(t *testing.T) {
 		// Environment combination tests for pre-registry packages
 		{
 			name:       "pre-registry package with registry disabled",
-			env:        &Options{DisableRegistryResolve: true, Experimental: false},
+			options:    &Options{DisableRegistryResolve: true, Experimental: false},
 			pluginSpec: workspace.PackageSpec{Source: "aws"},
 			registryResponse: func() (registry.Registry, error) {
 				return registry.Mock{
@@ -194,7 +209,7 @@ func TestResolvePackage(t *testing.T) {
 		},
 		{
 			name:       "registry disabled ignores available registry package",
-			env:        &Options{DisableRegistryResolve: true, Experimental: true},
+			options:    &Options{DisableRegistryResolve: true, Experimental: true},
 			pluginSpec: workspace.PackageSpec{Source: "aws"},
 			registryResponse: func() (registry.Registry, error) {
 				return registry.Mock{
@@ -214,7 +229,7 @@ func TestResolvePackage(t *testing.T) {
 		// Environment combination tests for unknown packages
 		{
 			name:       "unknown package with registry disabled",
-			env:        &Options{DisableRegistryResolve: true, Experimental: false},
+			options:    &Options{DisableRegistryResolve: true, Experimental: false},
 			pluginSpec: workspace.PackageSpec{Source: "unknown-package"},
 			registryResponse: func() (registry.Registry, error) {
 				return registry.Mock{
@@ -227,7 +242,7 @@ func TestResolvePackage(t *testing.T) {
 		},
 		{
 			name:       "unknown package with experimental off",
-			env:        &Options{DisableRegistryResolve: false, Experimental: false},
+			options:    &Options{DisableRegistryResolve: false, Experimental: false},
 			pluginSpec: workspace.PackageSpec{Source: "unknown-package"},
 			registryResponse: func() (registry.Registry, error) {
 				return registry.Mock{
@@ -240,7 +255,10 @@ func TestResolvePackage(t *testing.T) {
 		},
 		{
 			name: "installed in workspace with exact version",
-			env:  &Options{Experimental: true},
+			options: &Options{
+				AllowNonInvertableLocalWorkspaceResolution: true,
+				Experimental: true,
+			},
 			pluginSpec: workspace.PackageSpec{
 				Source: "installed-pkg", Version: "1.2.3",
 			},
@@ -270,12 +288,15 @@ func TestResolvePackage(t *testing.T) {
 			},
 		},
 		{
-			name:       "installed in workspace without version (GTE check)",
-			env:        &Options{Experimental: true},
+			name: "installed in workspace without version (GTE check)",
+			options: &Options{
+				AllowNonInvertableLocalWorkspaceResolution: true,
+				Experimental: true,
+			},
 			pluginSpec: workspace.PackageSpec{Source: "installed-pkg"},
 			workspace: mockWorkspace{
-				hasPluginGTE: func(spec workspace.PluginDescriptor) (bool, error) {
-					return spec.Name == "installed-pkg", nil
+				hasPluginGTE: func(spec workspace.PluginDescriptor) (bool, *semver.Version, error) {
+					return spec.Name == "installed-pkg", nil, nil
 				},
 			},
 			registryResponse: func() (registry.Registry, error) {
@@ -297,11 +318,11 @@ func TestResolvePackage(t *testing.T) {
 		},
 		{
 			name:       "not installed in workspace, fallback to registry",
-			env:        &Options{Experimental: true},
+			options:    &Options{Experimental: true},
 			pluginSpec: workspace.PackageSpec{Source: "registry-pkg"},
 			workspace: mockWorkspace{
 				hasPlugin:    func(spec workspace.PluginDescriptor) bool { return false },
-				hasPluginGTE: func(spec workspace.PluginDescriptor) (bool, error) { return false, nil },
+				hasPluginGTE: func(spec workspace.PluginDescriptor) (bool, *semver.Version, error) { return false, nil, nil },
 			},
 			registryResponse: func() (registry.Registry, error) {
 				return registry.Mock{
@@ -347,8 +368,8 @@ func TestResolvePackage(t *testing.T) {
 				DisableRegistryResolve: false,
 				Experimental:           true,
 			}
-			if tt.env != nil {
-				env = *tt.env
+			if tt.options != nil {
+				env = *tt.options
 			}
 
 			ws := tt.workspace
@@ -357,7 +378,7 @@ func TestResolvePackage(t *testing.T) {
 			}
 
 			result, err := Resolve(
-				context.Background(),
+				t.Context(),
 				reg,
 				ws,
 				tt.pluginSpec,
@@ -416,7 +437,7 @@ func TestResolvePackage_WithVersion(t *testing.T) {
 	}
 
 	result, err := Resolve(
-		context.Background(),
+		t.Context(),
 		reg,
 		DefaultWorkspace(),
 		pluginSpec,

@@ -124,7 +124,7 @@ func assertPluginInstalled(t *testing.T, dir string, plugin workspace.PluginDesc
 
 	assert.True(t, workspace.HasPlugin(plugin))
 
-	has, err := workspace.HasPluginGTE(plugin)
+	has, _, err := workspace.HasPluginGTE(plugin)
 	require.NoError(t, err)
 	assert.True(t, has)
 
@@ -300,7 +300,7 @@ func TestGetPluginsSkipsPartial(t *testing.T) {
 
 	assert.False(t, workspace.HasPlugin(plugin))
 
-	has, err := workspace.HasPluginGTE(plugin)
+	has, _, err := workspace.HasPluginGTE(plugin)
 	require.NoError(t, err)
 	assert.False(t, has)
 
