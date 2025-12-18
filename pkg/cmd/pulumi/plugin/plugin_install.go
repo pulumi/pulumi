@@ -193,7 +193,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 			}
 
 			packageSpec := workspace.PackageSpec{
-				Source:            pluginSpec.Name,
+				Source:            args[1],
 				Checksums:         checksums,
 				PluginDownloadURL: cmd.serverURL,
 			}
@@ -261,7 +261,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 					continue
 				}
 			} else {
-				if has, _ := workspace.HasPluginGTE(install); has {
+				if has, _, _ := workspace.HasPluginGTE(install); has {
 					logging.V(1).Infof("%s skipping install (existing >= match)", label)
 					continue
 				}
