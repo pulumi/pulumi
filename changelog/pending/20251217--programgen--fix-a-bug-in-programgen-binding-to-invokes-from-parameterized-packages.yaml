@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen
+  description: Fix a bug in programgen binding to invokes from parameterized packages
