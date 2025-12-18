@@ -640,7 +640,7 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		var resp plugin.DeleteResponse
 		failures := []string{}
 		var resourceError error
-		resourceStatus := resource.StatusOK
+		var resourceStatus resource.Status
 
 		for {
 			resp, err = prov.Delete(context.TODO(), plugin.DeleteRequest{

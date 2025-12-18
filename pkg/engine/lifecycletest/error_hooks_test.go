@@ -341,6 +341,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create(t *testing.T) {
 
 	for _, s := range scenarios {
 		t.Run(s.name, func(t *testing.T) {
+			t.Parallel()
 			loaders := []*deploytest.ProviderLoader{
 				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 					createCalls := 0
@@ -432,6 +433,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update(t *testing.T) {
 
 	for _, s := range scenarios {
 		t.Run(s.name, func(t *testing.T) {
+			t.Parallel()
 			loaders := []*deploytest.ProviderLoader{
 				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 					updateCalls := 0
@@ -536,6 +538,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Delete(t *testing.T) {
 
 	for _, s := range scenarios {
 		t.Run(s.name, func(t *testing.T) {
+			t.Parallel()
 			loaders := []*deploytest.ProviderLoader{
 				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 					deleteCalls := 0
@@ -1160,9 +1163,25 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 	}
 
 	project := p.GetProject()
-	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validateCreate, "0")
+	snap, err := lt.TestOp(Update).RunStep(
+		project,
+		p.GetTarget(t, nil),
+		p.Options,
+		false,
+		p.BackendClient,
+		validateCreate,
+		"0",
+	)
 	require.NoError(t, err)
-	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validateWarn, "1")
+	_, err = lt.TestOp(Update).RunStep(
+		project,
+		p.GetTarget(t, snap),
+		p.Options,
+		false,
+		p.BackendClient,
+		validateWarn,
+		"1",
+	)
 	require.Error(t, err)
 }
 
@@ -1241,9 +1260,25 @@ func TestErrorHooks_RetryLimitWarningAt100_Delete(t *testing.T) {
 	}
 
 	project := p.GetProject()
-	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validateCreate, "0")
+	snap, err := lt.TestOp(Update).RunStep(
+		project,
+		p.GetTarget(t, nil),
+		p.Options,
+		false,
+		p.BackendClient,
+		validateCreate,
+		"0",
+	)
 	require.NoError(t, err)
-	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validateWarn, "1")
+	_, err = lt.TestOp(Update).RunStep(
+		project,
+		p.GetTarget(t, snap),
+		p.Options,
+		false,
+		p.BackendClient,
+		validateWarn,
+		"1",
+	)
 	require.Error(t, err)
 }
 
@@ -1467,7 +1502,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Create(t *testing.T) {
 						return plugin.CreateResponse{
 							ID:     resource.ID("partial-id-" + req.URN.Name()),
 							Status: resource.StatusPartialFailure,
-						}, errors.New(fmt.Sprintf("create failed %d", createCalls))
+						}, fmt.Errorf("create failed %d", createCalls)
 					}
 					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
 				},
@@ -1487,9 +1522,10 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Create(t *testing.T) {
 				_, _, _, _ resource.PropertyMap, _ string, errs []string,
 			) (bool, error) {
 				hookCalls++
-				if hookCalls == 1 {
+				switch hookCalls {
+				case 1:
 					require.Equal(t, []string{"create failed 1"}, errs)
-				} else if hookCalls == 2 {
+				case 2:
 					require.Equal(t, []string{"create failed 2", "create failed 1"}, errs)
 				}
 				return hookCalls == 1, nil
@@ -1536,7 +1572,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Update(t *testing.T) {
 					updateCalls++
 					if updateCalls <= 2 {
 						return plugin.UpdateResponse{Status: resource.StatusPartialFailure},
-							errors.New(fmt.Sprintf("update failed %d", updateCalls))
+							fmt.Errorf("update failed %d", updateCalls)
 					}
 					return plugin.UpdateResponse{Properties: req.NewInputs, Status: resource.StatusOK}, nil
 				},
@@ -1557,9 +1593,10 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Update(t *testing.T) {
 				_, _, _, _ resource.PropertyMap, _ string, errs []string,
 			) (bool, error) {
 				hookCalls++
-				if hookCalls == 1 {
+				switch hookCalls {
+				case 1:
 					require.Equal(t, []string{"update failed 1"}, errs)
-				} else if hookCalls == 2 {
+				case 2:
 					require.Equal(t, []string{"update failed 2", "update failed 1"}, errs)
 				}
 				return hookCalls == 1, nil
@@ -1613,7 +1650,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Delete(t *testing.T) {
 					deleteCalls++
 					if deleteCalls <= 2 {
 						return plugin.DeleteResponse{Status: resource.StatusPartialFailure},
-							errors.New(fmt.Sprintf("delete failed %d", deleteCalls))
+							fmt.Errorf("delete failed %d", deleteCalls)
 					}
 					return plugin.DeleteResponse{Status: resource.StatusOK}, nil
 				},
@@ -1634,9 +1671,10 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Delete(t *testing.T) {
 				_, _, _, _ resource.PropertyMap, _ string, errs []string,
 			) (bool, error) {
 				hookCalls++
-				if hookCalls == 1 {
+				switch hookCalls {
+				case 1:
 					require.Equal(t, []string{"delete failed 1"}, errs)
-				} else if hookCalls == 2 {
+				case 2:
 					require.Equal(t, []string{"delete failed 2", "delete failed 1"}, errs)
 				}
 				return hookCalls == 1, nil
@@ -1702,7 +1740,11 @@ func TestErrorHooks_IndependentPerResource_Create(t *testing.T) {
 							}, errors.New("resB create failed")
 						}
 					}
-					return plugin.CreateResponse{ID: resource.ID("id-" + req.URN.Name()), Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{
+						ID:         resource.ID("id-" + req.URN.Name()),
+						Properties: resource.PropertyMap{},
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -1780,7 +1822,11 @@ func TestErrorHooks_IndependentPerResource_Update(t *testing.T) {
 			resBUpdates := 0
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: resource.ID("id-" + req.URN.Name()), Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{
+						ID:         resource.ID("id-" + req.URN.Name()),
+						Properties: resource.PropertyMap{},
+						Status:     resource.StatusOK,
+					}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					if req.Preview {
@@ -1883,7 +1929,11 @@ func TestErrorHooks_IndependentPerResource_Delete(t *testing.T) {
 			resBDeletes := 0
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: resource.ID("id-" + req.URN.Name()), Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{
+						ID:         resource.ID("id-" + req.URN.Name()),
+						Properties: resource.PropertyMap{},
+						Status:     resource.StatusOK,
+					}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					switch req.URN.Name() {

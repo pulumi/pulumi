@@ -174,8 +174,16 @@ type ResourceHookBindings struct {
 	OnError      []*ResourceHook
 }
 
-type ResourceHookFunc func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
-	newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, failedOperation string, errors []string) (retry bool, err error)
+type ResourceHookFunc func(
+	ctx context.Context,
+	urn resource.URN,
+	id resource.ID,
+	name string,
+	typ tokens.Type,
+	newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+	failedOperation string,
+	errors []string,
+) (retry bool, err error)
 
 func (binding ResourceHookBindings) marshal() *pulumirpc.RegisterResourceRequest_ResourceHooksBinding {
 	m := &pulumirpc.RegisterResourceRequest_ResourceHooksBinding{}
@@ -265,7 +273,7 @@ func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onD
 			case "create", "update", "delete":
 				failedOperation = *req.FailedOperation
 			default:
-				return nil, fmt.Errorf("invalid failed operation: %s", req.FailedOperation)
+				return nil, fmt.Errorf("invalid failed operation: %q", *req.FailedOperation)
 			}
 		}
 

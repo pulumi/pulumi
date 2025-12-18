@@ -745,7 +745,13 @@ func (d *Deployment) RunHooks(hooks []string, hookType resource.HookType, id res
 			continue
 		}
 		logging.V(9).Infof("calling hook %q for urn %s", hookName, urn)
-		retry, err := hook.Callback(d.Ctx().Base(), urn, id, name, typ, newInputs, oldInputs, newOutputs, oldOutputs, failedOperation, errors)
+		retry, err := hook.Callback(
+			d.Ctx().Base(),
+			urn, id, name, typ,
+			newInputs, oldInputs, newOutputs, oldOutputs,
+			failedOperation,
+			errors,
+		)
 		if err != nil {
 			switch {
 			case resource.IsBeforeHook(hookType):
