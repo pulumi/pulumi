@@ -84,6 +84,9 @@ message PrepareLanguageTestsRequest {
 
     // If true, tests will be run in "local" mode, meaning all SDKs will be generated with the `--local` flag and not packed.
     bool local = 11;
+
+    // The path to a directory containing provider plugins to be used for the "provider-" tests.
+    string providers_directory = 12;
 }
 
 message PrepareLanguageTestsResponse {
