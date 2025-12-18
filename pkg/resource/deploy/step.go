@@ -34,6 +34,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
+// maxErrorHookRetries is the maximum number of times to allow an error hook
+// to retry before giving up.
+const maxErrorHookRetries = 100
+
 // StepCompleteFunc is the type of functions returned from Step.Apply. These
 // functions are to be called when the engine has fully retired a step. You
 // _should not_ modify the resource state in these functions -- doing so will
@@ -290,9 +294,9 @@ func (s *CreateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.de
 func (s *CreateStep) Logical() bool                                { return !s.replacing }
 
 func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
-	if err := s.Deployment().RunHooks(
+	if _, err := s.Deployment().RunHooks(
 		s.new.ResourceHooks[resource.BeforeCreate],
-		true, /* isBeforeHook */
+		resource.BeforeCreate,
 		s.new.ID,
 		s.new.URN,
 		s.URN().Name(),
@@ -301,6 +305,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		nil, /* oldInputs */
 		nil, /* newOutputs */
 		nil, /* oldOutputs */
+		"",  /* failedOperation */
+		nil, /* errorMessages */
 	); err != nil {
 		return resource.StatusOK, nil, err
 	}
@@ -326,17 +332,29 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			return resource.StatusOK, nil, err
 		}
 
-		resp, err := prov.Create(context.TODO(), plugin.CreateRequest{
-			URN:                   s.URN(),
-			Name:                  s.new.URN.Name(),
-			Type:                  s.new.URN.Type(),
-			Properties:            s.new.Inputs,
-			Timeout:               s.new.CustomTimeouts.Create,
-			Preview:               s.deployment.opts.DryRun,
-			ResourceStatusAddress: resourceStatusAddress,
-			ResourceStatusToken:   resourceStatusToken,
-		})
-		if err != nil {
+		var resp plugin.CreateResponse
+		failures := []string{}
+
+		for {
+			resp, err = prov.Create(context.TODO(), plugin.CreateRequest{
+				URN:                   s.URN(),
+				Name:                  s.new.URN.Name(),
+				Type:                  s.new.URN.Type(),
+				Properties:            s.new.Inputs,
+				Timeout:               s.new.CustomTimeouts.Create,
+				Preview:               s.deployment.opts.DryRun,
+				ResourceStatusAddress: resourceStatusAddress,
+				ResourceStatusToken:   resourceStatusToken,
+			})
+
+			if err == nil {
+				// Clear any prior partial-failure error if we eventually succeed after retries.
+				resourceError = nil
+				resourceStatus = resource.StatusOK
+				break
+			}
+
+			failures = append(failures, err.Error())
 			if resp.Status != resource.StatusPartialFailure {
 				return resp.Status, nil, err
 			}
@@ -347,14 +365,56 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
 				s.new.InitErrors = initErr.Reasons
 			}
+
+			if len(failures) >= maxErrorHookRetries {
+				s.Deployment().Diag().Warningf(&diag.Diag{
+					URN:     s.URN(),
+					Message: fmt.Sprintf("maximum number of error hook retries (%d) reached", maxErrorHookRetries),
+				})
+				return resourceStatus, nil, errors.New("maximum number of error hook retries reached")
+			}
+
+			shouldRetry, err := s.Deployment().RunHooks(
+				s.new.ResourceHooks[resource.OnError],
+				resource.OnError,
+				s.new.ID,
+				s.new.URN,
+				s.URN().Name(),
+				s.Type(),
+				s.new.Inputs,
+				nil, /* oldInputs */
+				nil, /* newOutputs */
+				nil, /* oldOutputs */
+				"create",
+				failures,
+			)
+			if err != nil {
+				return resourceStatus, nil, fmt.Errorf("error hooks execution failed: %w", err)
+			}
+
+			if !shouldRetry {
+				break
+			}
+
+			s.Deployment().Diag().Infof(&diag.Diag{
+				URN: s.URN(),
+				Message: fmt.Sprintf(
+					"retrying create due to on-error hook request (%d/%d)",
+					len(failures), maxErrorHookRetries,
+				),
+			})
 		}
 
-		id = resp.ID
-		outs = resp.Properties
-		refreshBeforeUpdate = resp.RefreshBeforeUpdate
+		// Only use the provider's response if Create ultimately succeeded. If Create failed (e.g. partial failure
+		// and we decided not to retry), we must not override the original error with a missing-ID error.
+		if err == nil {
+			id = resp.ID
+			outs = resp.Properties
+			refreshBeforeUpdate = resp.RefreshBeforeUpdate
 
-		if !s.deployment.opts.DryRun && id == "" {
-			return resourceStatus, nil, errors.New("provider did not return an ID from Create")
+			if !s.deployment.opts.DryRun && id == "" {
+				return resourceStatus, nil, errors.New("provider did not return an ID from Create")
+			}
 		}
 	}
 
@@ -388,9 +448,9 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 
 	if s.new.Custom {
-		if err := s.Deployment().RunHooks(
+		if _, err := s.Deployment().RunHooks(
 			s.new.ResourceHooks[resource.AfterCreate],
-			false, /* isBeforeHook */
+			resource.AfterCreate,
 			s.new.ID,
 			s.new.URN,
 			s.new.URN.Name(),
@@ -399,6 +459,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			nil, /* oldInputs */
 			s.new.Outputs,
 			nil, /* oldOutputs */
+			"",  /* failedOperation */
+			nil, /* errorMessages */
 		); err != nil {
 			return resourceStatus, complete, err
 		}
@@ -524,9 +586,9 @@ func (d deleteProtectedError) Error() string {
 }
 
 func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
-	if err := s.Deployment().RunHooks(
+	if _, err := s.Deployment().RunHooks(
 		s.old.ResourceHooks[resource.BeforeDelete],
-		true, /* isBeforeHook */
+		resource.BeforeDelete,
 		s.old.ID,
 		s.old.URN,
 		s.URN().Name(),
@@ -535,6 +597,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.Inputs,
 		nil, /* newOutputs */
 		s.old.Outputs,
+		"",  /* failedOperation */
+		nil, /* errorMessages */
 	); err != nil {
 		return resource.StatusOK, nil, err
 	}
@@ -575,19 +639,81 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			return resource.StatusOK, nil, err
 		}
 
-		if rst, err := prov.Delete(context.TODO(), plugin.DeleteRequest{
-			URN:                   s.URN(),
-			Name:                  s.URN().Name(),
-			Type:                  s.URN().Type(),
-			ID:                    s.old.ID,
-			Inputs:                s.old.Inputs,
-			Outputs:               s.old.Outputs,
-			Timeout:               s.old.CustomTimeouts.Delete,
-			ResourceStatusAddress: resourceStatusAddress,
-			ResourceStatusToken:   resourceStatusToken,
-			OldViews:              s.oldViews,
-		}); err != nil {
-			return rst.Status, nil, err
+		var resp plugin.DeleteResponse
+		failures := []string{}
+		var resourceError error
+		resourceStatus := resource.StatusOK
+
+		for {
+			resp, err = prov.Delete(context.TODO(), plugin.DeleteRequest{
+				URN:                   s.URN(),
+				Name:                  s.URN().Name(),
+				Type:                  s.URN().Type(),
+				ID:                    s.old.ID,
+				Inputs:                s.old.Inputs,
+				Outputs:               s.old.Outputs,
+				Timeout:               s.old.CustomTimeouts.Delete,
+				ResourceStatusAddress: resourceStatusAddress,
+				ResourceStatusToken:   resourceStatusToken,
+				OldViews:              s.oldViews,
+			})
+
+			if err == nil {
+				// Clear any prior partial-failure error if we eventually succeed after retries.
+				resourceError = nil
+				resourceStatus = resource.StatusOK
+				break
+			}
+
+			failures = append(failures, err.Error())
+			if resp.Status != resource.StatusPartialFailure {
+				return resp.Status, nil, err
+			}
+
+			resourceError = err
+			resourceStatus = resp.Status
+
+			if len(failures) >= maxErrorHookRetries {
+				s.Deployment().Diag().Warningf(&diag.Diag{
+					URN:     s.URN(),
+					Message: fmt.Sprintf("maximum number of error hook retries (%d) reached", maxErrorHookRetries),
+				})
+				return resourceStatus, nil, errors.New("maximum number of error hook retries reached")
+			}
+
+			shouldRetry, err := s.Deployment().RunHooks(
+				s.old.ResourceHooks[resource.OnError],
+				resource.OnError,
+				s.old.ID,
+				s.old.URN,
+				s.URN().Name(),
+				s.Type(),
+				nil, /* newInputs */
+				s.old.Inputs,
+				nil, /* newOutputs */
+				s.old.Outputs,
+				"delete",
+				failures,
+			)
+			if err != nil {
+				return resp.Status, nil, fmt.Errorf("error hooks execution failed: %w", err)
+			}
+
+			if !shouldRetry {
+				break
+			}
+
+			s.Deployment().Diag().Infof(&diag.Diag{
+				URN: s.URN(),
+				Message: fmt.Sprintf(
+					"retrying delete due to on-error hook request (%d/%d)",
+					len(failures), maxErrorHookRetries,
+				),
+			})
+		}
+
+		if resourceError != nil {
+			return resourceStatus, nil, resourceError
 		}
 	}
 
@@ -622,9 +748,9 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// custom and component resources here in the step. When a component resource
 	// is deleted, we of course never run its constructor, and so there's never
 	// any `RegisterResourceOutputs` call.
-	if err := s.Deployment().RunHooks(
+	if _, err := s.Deployment().RunHooks(
 		s.old.ResourceHooks[resource.AfterDelete],
-		false, /* isBeforeHook */
+		resource.AfterDelete,
 		s.old.ID,
 		s.old.URN,
 		s.old.URN.Name(),
@@ -633,6 +759,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.Inputs,
 		nil, /* newOutputs */
 		s.old.Outputs,
+		"",  /* failedOperation */
+		nil, /* errorMessages */
 	); err != nil {
 		return resource.StatusOK, nil, err
 	}
@@ -789,9 +917,9 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	s.new.Modified = s.old.Modified
 	s.new.Lock.Unlock()
 
-	if err := s.Deployment().RunHooks(
+	if _, err := s.Deployment().RunHooks(
 		s.new.ResourceHooks[resource.BeforeUpdate],
-		true, /* isBeforeHook */
+		resource.BeforeUpdate,
 		s.new.ID,
 		s.new.URN,
 		s.URN().Name(),
@@ -800,6 +928,8 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.Inputs,
 		nil, /* newOutputs */
 		s.old.Outputs,
+		"",  /* failedOperation */
+		nil, /* errorMessages */
 	); err != nil {
 		return resource.StatusOK, nil, err
 	}
@@ -821,37 +951,86 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 
 		// Update to the combination of the old "all" state, but overwritten with new inputs.
-		resp, upderr := prov.Update(context.TODO(), plugin.UpdateRequest{
-			URN:                   s.URN(),
-			Name:                  s.URN().Name(),
-			Type:                  s.URN().Type(),
-			ID:                    s.old.ID,
-			OldInputs:             s.old.Inputs,
-			OldOutputs:            s.old.Outputs,
-			NewInputs:             s.new.Inputs,
-			Timeout:               s.new.CustomTimeouts.Update,
-			IgnoreChanges:         s.ignoreChanges,
-			Preview:               s.deployment.opts.DryRun,
-			ResourceStatusAddress: resourceStatusAddress,
-			ResourceStatusToken:   resourceStatusToken,
-			OldViews:              s.oldViews,
-		})
+		var resp plugin.UpdateResponse
+		failures := []string{}
+
+		for {
+			resp, err = prov.Update(context.TODO(), plugin.UpdateRequest{
+				URN:                   s.URN(),
+				Name:                  s.URN().Name(),
+				Type:                  s.URN().Type(),
+				ID:                    s.old.ID,
+				OldInputs:             s.old.Inputs,
+				OldOutputs:            s.old.Outputs,
+				NewInputs:             s.new.Inputs,
+				Timeout:               s.new.CustomTimeouts.Update,
+				IgnoreChanges:         s.ignoreChanges,
+				Preview:               s.deployment.opts.DryRun,
+				ResourceStatusAddress: resourceStatusAddress,
+				ResourceStatusToken:   resourceStatusToken,
+				OldViews:              s.oldViews,
+			})
+
+			if err == nil {
+				resourceError = nil
+				resourceStatus = resource.StatusOK
+
+				break
+			}
+
+			failures = append(failures, err.Error())
+			if resp.Status != resource.StatusPartialFailure {
+				return resp.Status, nil, err
+			}
+
+			resourceError = err
+			resourceStatus = resp.Status
+
+			if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
+				s.new.InitErrors = initErr.Reasons
+			}
+
+			if len(failures) >= maxErrorHookRetries {
+				s.Deployment().Diag().Warningf(&diag.Diag{
+					URN:     s.URN(),
+					Message: fmt.Sprintf("maximum number of error hook retries (%d) reached", maxErrorHookRetries),
+				})
+				return resourceStatus, nil, errors.New("maximum number of error hook retries reached")
+			}
+
+			shouldRetry, err := s.Deployment().RunHooks(
+				s.new.ResourceHooks[resource.OnError],
+				resource.OnError,
+				s.new.ID,
+				s.new.URN,
+				s.URN().Name(),
+				s.Type(),
+				s.new.Inputs,
+				s.old.Inputs,
+				s.new.Outputs,
+				s.old.Outputs,
+				"update",
+				failures,
+			)
+			if err != nil {
+				return resourceStatus, nil, fmt.Errorf("error hooks execution failed: %w", err)
+			}
+
+			if !shouldRetry {
+				break
+			}
+
+			s.Deployment().Diag().Infof(&diag.Diag{
+				URN: s.URN(),
+				Message: fmt.Sprintf(
+					"retrying update due to on-error hook request (%d/%d)",
+					len(failures), maxErrorHookRetries,
+				),
+			})
+		}
 
 		s.new.Lock.Lock()
 		defer s.new.Lock.Unlock()
-
-		if upderr != nil {
-			if resp.Status != resource.StatusPartialFailure {
-				return resp.Status, nil, upderr
-			}
-
-			resourceError = upderr
-			resourceStatus = resp.Status
-
-			if initErr, isInitErr := upderr.(*plugin.InitError); isInitErr {
-				s.new.InitErrors = initErr.Reasons
-			}
-		}
 
 		// Now copy any output state back in case the update triggered cascading updates to other properties.
 		s.new.Outputs = resp.Properties
@@ -877,9 +1056,9 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// `RegisterResourceOutputs` is called for the resource. This happens in
 	// `stepExecutor.executeRegisterResourceOutputs.`
 	if s.old.Custom {
-		if err := s.Deployment().RunHooks(
+		if _, err := s.Deployment().RunHooks(
 			s.new.ResourceHooks[resource.AfterUpdate],
-			false, /* isBeforeHook */
+			resource.AfterUpdate,
 			s.new.ID,
 			s.new.URN,
 			s.new.URN.Name(),
@@ -888,6 +1067,8 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			s.old.Inputs,
 			s.new.Outputs,
 			s.old.Outputs,
+			"",  /* failedOperation */
+			nil, /* errorMessages */
 		); err != nil {
 			return resourceStatus, nil, err
 		}

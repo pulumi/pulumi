@@ -171,10 +171,11 @@ type ResourceHookBindings struct {
 	AfterUpdate  []*ResourceHook
 	BeforeDelete []*ResourceHook
 	AfterDelete  []*ResourceHook
+	OnError      []*ResourceHook
 }
 
 type ResourceHookFunc func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
-	newInputs, oldInpts, newOutputs, oldOutputs resource.PropertyMap) error
+	newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, failedOperation string, errors []string) (retry bool, err error)
 
 func (binding ResourceHookBindings) marshal() *pulumirpc.RegisterResourceRequest_ResourceHooksBinding {
 	m := &pulumirpc.RegisterResourceRequest_ResourceHooksBinding{}
@@ -195,6 +196,9 @@ func (binding ResourceHookBindings) marshal() *pulumirpc.RegisterResourceRequest
 	}
 	for _, hook := range binding.AfterDelete {
 		m.AfterDelete = append(m.AfterDelete, hook.Name)
+	}
+	for _, hook := range binding.OnError {
+		m.OnError = append(m.OnError, hook.Name)
 	}
 	return m
 }
@@ -225,6 +229,7 @@ func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onD
 			return nil, fmt.Errorf("unmarshaling request: %w", err)
 		}
 		var newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap
+		var failedOperation string
 		mOpts := plugin.MarshalOptions{
 			KeepUnknowns:     true,
 			KeepSecrets:      true,
@@ -255,13 +260,25 @@ func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onD
 				return nil, fmt.Errorf("unmarshaling old outputs: %w", err)
 			}
 		}
-		if err := f(context.Background(), resource.URN(req.Urn), resource.ID(req.Id), req.Name, tokens.Type(req.Type),
-			newInputs, oldInputs, newOutputs, oldOutputs); err != nil {
+		if req.FailedOperation != nil {
+			switch *req.FailedOperation {
+			case "create", "update", "delete":
+				failedOperation = *req.FailedOperation
+			default:
+				return nil, fmt.Errorf("invalid failed operation: %s", req.FailedOperation)
+			}
+		}
+
+		retry, err := f(context.Background(), resource.URN(req.Urn), resource.ID(req.Id), req.Name, tokens.Type(req.Type),
+			newInputs, oldInputs, newOutputs, oldOutputs, failedOperation, req.Errors)
+		if err != nil {
 			return &pulumirpc.ResourceHookResponse{
 				Error: err.Error(),
 			}, nil
 		}
-		return &pulumirpc.ResourceHookResponse{}, nil
+		return &pulumirpc.ResourceHookResponse{
+			Retry: retry,
+		}, nil
 	}
 	callback, err := callbacks.Allocate(wrapped)
 	if err != nil {

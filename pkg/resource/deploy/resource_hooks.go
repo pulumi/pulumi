@@ -35,7 +35,9 @@ type ResourceHookFunction func(
 	oldInputs resource.PropertyMap,
 	newOutputs resource.PropertyMap,
 	oldOutputs resource.PropertyMap,
-) error
+	failedOperation string,
+	errors []string,
+) (bool, error)
 
 // ResourceHook represents a resource hook with its (wrapped) callback and options.
 type ResourceHook struct {

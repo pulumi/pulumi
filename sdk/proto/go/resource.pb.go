@@ -1672,17 +1672,19 @@ func (x *TransformInvokeOptions) GetPluginChecksums() map[string][]byte {
 
 // ResourceHookRequest is the request object for resource hook callbacks in CallbackInvokeRequest.
 type ResourceHookRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Urn           string                 `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`                                 // the urn of the resource for which the hook is called.
-	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`                                   // the optional urn of the resource for which the hook is called.
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`                               // the name of the resource for which the hook is called.
-	Type          string                 `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`                               // the type of the resource for which the hook is called.
-	NewInputs     *structpb.Struct       `protobuf:"bytes,5,opt,name=new_inputs,json=newInputs,proto3" json:"new_inputs,omitempty"`    // the optional checked new inputs of the resource.
-	OldInputs     *structpb.Struct       `protobuf:"bytes,6,opt,name=old_inputs,json=oldInputs,proto3" json:"old_inputs,omitempty"`    // the optional checked old inputs of the resource.
-	NewOutputs    *structpb.Struct       `protobuf:"bytes,7,opt,name=new_outputs,json=newOutputs,proto3" json:"new_outputs,omitempty"` // the optional new outputs of the resource.
-	OldOutputs    *structpb.Struct       `protobuf:"bytes,8,opt,name=old_outputs,json=oldOutputs,proto3" json:"old_outputs,omitempty"` // the optional old outputs of the resource.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Urn             string                 `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`                                                      // the urn of the resource for which the hook is called.
+	Id              string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`                                                        // the optional urn of the resource for which the hook is called.
+	Name            string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`                                                    // the name of the resource for which the hook is called.
+	Type            string                 `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`                                                    // the type of the resource for which the hook is called.
+	NewInputs       *structpb.Struct       `protobuf:"bytes,5,opt,name=new_inputs,json=newInputs,proto3" json:"new_inputs,omitempty"`                         // the optional checked new inputs of the resource.
+	OldInputs       *structpb.Struct       `protobuf:"bytes,6,opt,name=old_inputs,json=oldInputs,proto3" json:"old_inputs,omitempty"`                         // the optional checked old inputs of the resource.
+	NewOutputs      *structpb.Struct       `protobuf:"bytes,7,opt,name=new_outputs,json=newOutputs,proto3" json:"new_outputs,omitempty"`                      // the optional new outputs of the resource.
+	OldOutputs      *structpb.Struct       `protobuf:"bytes,8,opt,name=old_outputs,json=oldOutputs,proto3" json:"old_outputs,omitempty"`                      // the optional old outputs of the resource.
+	FailedOperation *string                `protobuf:"bytes,9,opt,name=failed_operation,json=failedOperation,proto3,oneof" json:"failed_operation,omitempty"` // for on_error, the operation that failed (create, update, or delete).
+	Errors          []string               `protobuf:"bytes,10,rep,name=errors,proto3" json:"errors,omitempty"`                                               // for on_error, the errors that have been seen so far.
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ResourceHookRequest) Reset() {
@@ -1771,10 +1773,25 @@ func (x *ResourceHookRequest) GetOldOutputs() *structpb.Struct {
 	return nil
 }
 
+func (x *ResourceHookRequest) GetFailedOperation() string {
+	if x != nil && x.FailedOperation != nil {
+		return *x.FailedOperation
+	}
+	return ""
+}
+
+func (x *ResourceHookRequest) GetErrors() []string {
+	if x != nil {
+		return x.Errors
+	}
+	return nil
+}
+
 // ResourceHookResponse is the response object for resource hook callbacks in CallbackInvokeResponse.
 type ResourceHookResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Error         string                 `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"` // an optional error message to return from the hook.
+	Error         string                 `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`  // an optional error message to return from the hook.
+	Retry         bool                   `protobuf:"varint,2,opt,name=retry,proto3" json:"retry,omitempty"` // for on_error, whether we should retry the operation.
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1814,6 +1831,13 @@ func (x *ResourceHookResponse) GetError() string {
 		return x.Error
 	}
 	return ""
+}
+
+func (x *ResourceHookResponse) GetRetry() bool {
+	if x != nil {
+		return x.Retry
+	}
+	return false
 }
 
 type RegisterPackageRequest struct {
@@ -2175,6 +2199,7 @@ type RegisterResourceRequest_ResourceHooksBinding struct {
 	AfterUpdate   []string               `protobuf:"bytes,4,rep,name=after_update,json=afterUpdate,proto3" json:"after_update,omitempty"`
 	BeforeDelete  []string               `protobuf:"bytes,5,rep,name=before_delete,json=beforeDelete,proto3" json:"before_delete,omitempty"`
 	AfterDelete   []string               `protobuf:"bytes,6,rep,name=after_delete,json=afterDelete,proto3" json:"after_delete,omitempty"`
+	OnError       []string               `protobuf:"bytes,7,rep,name=on_error,json=onError,proto3" json:"on_error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2247,6 +2272,13 @@ func (x *RegisterResourceRequest_ResourceHooksBinding) GetBeforeDelete() []strin
 func (x *RegisterResourceRequest_ResourceHooksBinding) GetAfterDelete() []string {
 	if x != nil {
 		return x.AfterDelete
+	}
+	return nil
+}
+
+func (x *RegisterResourceRequest_ResourceHooksBinding) GetOnError() []string {
+	if x != nil {
+		return x.OnError
 	}
 	return nil
 }
@@ -2384,7 +2416,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x03urn\x18\x01 \x01(\tR\x03urn\x127\n" +
 	"\n" +
 	"properties\x18\x02 \x01(\v2\x17.google.protobuf.StructR\n" +
-	"properties\"\xff\x13\n" +
+	"properties\"\x9a\x14\n" +
 	"\x17RegisterResourceRequest\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -2448,14 +2480,15 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aB\n" +
 	"\x14PluginChecksumsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\x1a\xee\x01\n" +
+	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\x1a\x89\x02\n" +
 	"\x14ResourceHooksBinding\x12#\n" +
 	"\rbefore_create\x18\x01 \x03(\tR\fbeforeCreate\x12!\n" +
 	"\fafter_create\x18\x02 \x03(\tR\vafterCreate\x12#\n" +
 	"\rbefore_update\x18\x03 \x03(\tR\fbeforeUpdate\x12!\n" +
 	"\fafter_update\x18\x04 \x03(\tR\vafterUpdate\x12#\n" +
 	"\rbefore_delete\x18\x05 \x03(\tR\fbeforeDelete\x12!\n" +
-	"\fafter_delete\x18\x06 \x03(\tR\vafterDeleteB\n" +
+	"\fafter_delete\x18\x06 \x03(\tR\vafterDelete\x12\x19\n" +
+	"\bon_error\x18\a \x03(\tR\aonErrorB\n" +
 	"\n" +
 	"\b_protectB\x11\n" +
 	"\x0f_retainOnDeleteB\b\n" +
@@ -2583,7 +2616,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x10plugin_checksums\x18\x04 \x03(\v26.pulumirpc.TransformInvokeOptions.PluginChecksumsEntryR\x0fpluginChecksums\x1aB\n" +
 	"\x14PluginChecksumsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"\xc3\x02\n" +
+	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"\xa0\x03\n" +
 	"\x13ResourceHookRequest\x12\x10\n" +
 	"\x03urn\x18\x01 \x01(\tR\x03urn\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\x12\x12\n" +
@@ -2596,9 +2629,14 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\vnew_outputs\x18\a \x01(\v2\x17.google.protobuf.StructR\n" +
 	"newOutputs\x128\n" +
 	"\vold_outputs\x18\b \x01(\v2\x17.google.protobuf.StructR\n" +
-	"oldOutputs\",\n" +
+	"oldOutputs\x12.\n" +
+	"\x10failed_operation\x18\t \x01(\tH\x00R\x0ffailedOperation\x88\x01\x01\x12\x16\n" +
+	"\x06errors\x18\n" +
+	" \x03(\tR\x06errorsB\x13\n" +
+	"\x11_failed_operation\"B\n" +
 	"\x14ResourceHookResponse\x12\x14\n" +
-	"\x05error\x18\x01 \x01(\tR\x05error\"\xc0\x02\n" +
+	"\x05error\x18\x01 \x01(\tR\x05error\x12\x14\n" +
+	"\x05retry\x18\x02 \x01(\bR\x05retry\"\xc0\x02\n" +
 	"\x16RegisterPackageRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12!\n" +
@@ -2795,6 +2833,7 @@ func file_pulumi_resource_proto_init() {
 	file_pulumi_callback_proto_init()
 	file_pulumi_resource_proto_msgTypes[4].OneofWrappers = []any{}
 	file_pulumi_resource_proto_msgTypes[9].OneofWrappers = []any{}
+	file_pulumi_resource_proto_msgTypes[15].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

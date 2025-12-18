@@ -727,33 +727,46 @@ func (d *Deployment) Close() error {
 	return nil
 }
 
-// RunHooks runs all the hooks on the given state. If `isBeforeHook` is set to
-// true, a hook that returns an error will cause an error return. If
-// `isBeforeHook` is false, a hook returning an error will only generate a
-// warning.
-func (d *Deployment) RunHooks(hooks []string, isBeforeHook bool, id resource.ID, urn resource.URN,
+// RunHooks runs all the hooks on the given state. If `hookType` is an after
+// hook, a hook that returns an error will only generate a warning. Otherwise,
+// it will cause an error return.
+func (d *Deployment) RunHooks(hooks []string, hookType resource.HookType, id resource.ID, urn resource.URN,
 	name string, typ tokens.Type, newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
-) error {
+	failedOperation string, errors []string,
+) (bool, error) {
+	shouldRetry := false
+
 	for _, hookName := range hooks {
 		hook, err := d.resourceHooks.GetResourceHook(hookName)
 		if err != nil {
-			return fmt.Errorf("hook %q was not registered", hookName)
+			return false, fmt.Errorf("hook %q was not registered", hookName)
 		}
 		if d.opts != nil && d.opts.DryRun && !hook.OnDryRun {
 			continue
 		}
 		logging.V(9).Infof("calling hook %q for urn %s", hookName, urn)
-		err = hook.Callback(d.Ctx().Base(), urn, id, name, typ, newInputs, oldInputs, newOutputs, oldOutputs)
+		retry, err := hook.Callback(d.Ctx().Base(), urn, id, name, typ, newInputs, oldInputs, newOutputs, oldOutputs, failedOperation, errors)
 		if err != nil {
-			if isBeforeHook {
-				return fmt.Errorf("before hook %q failed: %w", hookName, err)
+			switch {
+			case resource.IsBeforeHook(hookType):
+				return false, fmt.Errorf("before hook %q failed: %w", hookName, err)
+			case resource.IsAfterHook(hookType):
+				// Errors on after hooks report a diagnostic, but do not fail the step.
+				d.Diag().Warningf(&diag.Diag{
+					URN:     urn,
+					Message: fmt.Sprintf("after hook %q failed: %s", hookName, err),
+				})
+				continue
+			case resource.IsErrorHook(hookType):
+				return false, fmt.Errorf("error hook %q failed: %w", hookName, err)
+			default:
+				return false, fmt.Errorf("unknown hook type %q: %w", hookType, err)
 			}
-			// Errors on after hooks report a diagnostic, but do not fail the step.
-			d.Diag().Warningf(&diag.Diag{
-				URN:     urn,
-				Message: fmt.Sprintf("after hook %q failed: %s", hookName, err),
-			})
+		}
+
+		if resource.IsErrorHook(hookType) {
+			shouldRetry = shouldRetry || retry
 		}
 	}
-	return nil
+	return shouldRetry, nil
 }

@@ -281,9 +281,9 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 		// `ComponentResources `now that `RegisterResourceOutputs `is about to
 		// complete.
 		if s, ok := reg.(*CreateStep); ok {
-			if err := s.Deployment().RunHooks(
+			if _, err := s.Deployment().RunHooks(
 				s.new.ResourceHooks[resource.AfterCreate],
-				false, /* isBeforeHook */
+				resource.AfterCreate,
 				s.new.ID,
 				s.new.URN,
 				s.new.URN.Name(),
@@ -292,13 +292,15 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 				nil, /* oldInputs */
 				s.new.Outputs,
 				nil, /* oldOutputs */
+				"",  /* failedOperation */
+				nil, /* errorMessages */
 			); err != nil {
 				return err
 			}
 		} else if s, ok := reg.(*UpdateStep); ok {
-			if err := s.Deployment().RunHooks(
+			if _, err := s.Deployment().RunHooks(
 				s.new.ResourceHooks[resource.AfterUpdate],
-				false, /* isBeforeHook */
+				resource.AfterUpdate,
 				s.new.ID,
 				s.new.URN,
 				s.new.URN.Name(),
@@ -307,6 +309,8 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 				s.old.Inputs,
 				s.new.Outputs,
 				s.old.Outputs,
+				"",  /* failedOperation */
+				nil, /* errorMessages */
 			); err != nil {
 				return err
 			}
