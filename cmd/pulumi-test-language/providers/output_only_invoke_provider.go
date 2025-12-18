@@ -67,7 +67,7 @@ func (p *OutputOnlyInvokeProvider) GetSchema(
 	}
 	resourceRequired := []string{"text"}
 
-	bfalse := false
+	ref := func(b bool) *bool { return &b }
 
 	pkg := schema.PackageSpec{
 		Name:    "output-only-invoke",
@@ -86,7 +86,7 @@ func (p *OutputOnlyInvokeProvider) GetSchema(
 		},
 		Functions: map[string]schema.FunctionSpec{
 			"output-only-invoke:index:myInvoke": {
-				Plain: &bfalse,
+				Plain: ref(false),
 				Inputs: &schema.ObjectTypeSpec{
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{
@@ -113,7 +113,7 @@ func (p *OutputOnlyInvokeProvider) GetSchema(
 				},
 			},
 			"output-only-invoke:index:unit": {
-				Plain: &bfalse,
+				Plain: ref(false),
 				Inputs: &schema.ObjectTypeSpec{
 					Type: "object",
 				},
@@ -132,7 +132,7 @@ func (p *OutputOnlyInvokeProvider) GetSchema(
 				},
 			},
 			"output-only-invoke:index:secretInvoke": {
-				Plain: &bfalse,
+				Plain: ref(false),
 				Inputs: &schema.ObjectTypeSpec{
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{
