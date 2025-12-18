@@ -111,10 +111,12 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Create(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
-	p.Steps = []lt.TestStep{{Op: Update, SkipPreview: true}}
-	snap := p.Run(t, nil)
+	project := p.GetProject()
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
 
 	require.True(t, hook1Called)
 	require.True(t, hook2Called)
@@ -202,7 +204,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Update(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 	project := p.GetProject()
 
@@ -300,7 +302,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Delete(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 	project := p.GetProject()
 
@@ -395,14 +397,15 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create(t *testing.T) {
 
 			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 			p := &lt.TestPlan{
-				Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+				Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 			}
-			p.Steps = []lt.TestStep{{
-				Op:            Update,
-				SkipPreview:   true,
-				ExpectFailure: s.expectFailure,
-			}}
-			p.Run(t, nil)
+			project := p.GetProject()
+			_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+			if s.expectFailure {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
 
 			if s.withHooks {
 				require.Equal(t, 1, hookCalls)
@@ -491,7 +494,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update(t *testing.T) {
 
 			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 			p := &lt.TestPlan{
-				Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+				Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 			}
 			project := p.GetProject()
 
@@ -588,7 +591,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Delete(t *testing.T) {
 
 			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 			p := &lt.TestPlan{
-				Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+				Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 			}
 			project := p.GetProject()
 
@@ -664,11 +667,11 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Create(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
-
-	p.Steps = []lt.TestStep{{Op: Update, SkipPreview: true, ExpectFailure: true}}
-	p.Run(t, nil)
+	project := p.GetProject()
+	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.Error(t, err)
 	require.Equal(t, 1, hookCalls)
 }
 
@@ -733,7 +736,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Update(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 	project := p.GetProject()
 
@@ -796,7 +799,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Delete(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 	project := p.GetProject()
 
@@ -855,10 +858,11 @@ func TestErrorHooks_NotCalledOnSuccess_Create(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
-	p.Steps = []lt.TestStep{{Op: Update, SkipPreview: true}}
-	p.Run(t, nil)
+	project := p.GetProject()
+	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
 
 	require.Equal(t, 0, hookCalls)
 }
@@ -916,7 +920,7 @@ func TestErrorHooks_NotCalledOnSuccess_Update(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 	project := p.GetProject()
 
@@ -981,7 +985,7 @@ func TestErrorHooks_NotCalledOnSuccess_Delete(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 	project := p.GetProject()
 
@@ -1046,34 +1050,31 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
-	p.Steps = []lt.TestStep{{
-		Op:            Update,
-		SkipPreview:   true,
-		ExpectFailure: true,
-		Validate: func(_ workspace.Project, _ deploy.Target, _ JournalEntries, evts []Event, err error) error {
-			require.Error(t, err)
-			require.ErrorContains(t, err, "maximum number of error hook retries reached")
+	validateWarn := func(_ workspace.Project, _ deploy.Target, _ JournalEntries, evts []Event, err error) error {
+		require.Error(t, err)
+		require.ErrorContains(t, err, "maximum number of error hook retries reached")
 
-			sawWarning := false
-			for _, evt := range evts {
-				if evt.Type != DiagEvent {
-					continue
-				}
-				d := evt.Payload().(DiagEventPayload)
-				if d.Severity == diag.Warning && strings.Contains(d.Message, "maximum number of error hook retries") {
-					sawWarning = true
-					break
-				}
+		sawWarning := false
+		for _, evt := range evts {
+			if evt.Type != DiagEvent {
+				continue
 			}
-			require.True(t, sawWarning, "expected a warning diagnostic when retry limit is hit")
-			return err
-		},
-	}}
+			d := evt.Payload().(DiagEventPayload)
+			if d.Severity == diag.Warning && strings.Contains(d.Message, "maximum number of error hook retries") {
+				sawWarning = true
+				break
+			}
+		}
+		require.True(t, sawWarning, "expected a warning diagnostic when retry limit is hit")
+		return err
+	}
 
-	p.Run(t, nil)
+	project := p.GetProject()
+	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validateWarn, "0")
+	require.Error(t, err)
 }
 
 func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
@@ -1131,45 +1132,37 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+	validateCreate := func(_ workspace.Project, _ deploy.Target, _ JournalEntries, _ []Event, err error) error {
+		require.NoError(t, err)
+		isUpdate = true
+		return nil
+	}
+	validateWarn := func(_ workspace.Project, _ deploy.Target, _ JournalEntries, evts []Event, err error) error {
+		require.Error(t, err)
+		require.ErrorContains(t, err, "maximum number of error hook retries reached")
+
+		sawWarning := false
+		for _, evt := range evts {
+			if evt.Type != DiagEvent {
+				continue
+			}
+			d := evt.Payload().(DiagEventPayload)
+			if d.Severity == diag.Warning && strings.Contains(d.Message, "maximum number of error hook retries") {
+				sawWarning = true
+				break
+			}
+		}
+		require.True(t, sawWarning, "expected a warning diagnostic when retry limit is hit")
+		return err
 	}
 
-	p.Steps = []lt.TestStep{
-		{
-			Op:          Update,
-			SkipPreview: true,
-			Validate: func(_ workspace.Project, _ deploy.Target, _ JournalEntries, _ []Event, err error) error {
-				require.NoError(t, err)
-				isUpdate = true
-				return nil
-			},
-		},
-		{
-			Op:            Update,
-			SkipPreview:   true,
-			ExpectFailure: true,
-			Validate: func(_ workspace.Project, _ deploy.Target, _ JournalEntries, evts []Event, err error) error {
-				require.Error(t, err)
-				require.ErrorContains(t, err, "maximum number of error hook retries reached")
-
-				sawWarning := false
-				for _, evt := range evts {
-					if evt.Type != DiagEvent {
-						continue
-					}
-					d := evt.Payload().(DiagEventPayload)
-					if d.Severity == diag.Warning && strings.Contains(d.Message, "maximum number of error hook retries") {
-						sawWarning = true
-						break
-					}
-				}
-				require.True(t, sawWarning, "expected a warning diagnostic when retry limit is hit")
-				return err
-			},
-		},
-	}
-
-	p.Run(t, nil)
+	project := p.GetProject()
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validateCreate, "0")
+	require.NoError(t, err)
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validateWarn, "1")
+	require.Error(t, err)
 }
 
 func TestErrorHooks_RetryLimitWarningAt100_Delete(t *testing.T) {
@@ -1220,45 +1213,37 @@ func TestErrorHooks_RetryLimitWarningAt100_Delete(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+	validateCreate := func(_ workspace.Project, _ deploy.Target, _ JournalEntries, _ []Event, err error) error {
+		require.NoError(t, err)
+		programCreate = false
+		return nil
+	}
+	validateWarn := func(_ workspace.Project, _ deploy.Target, _ JournalEntries, evts []Event, err error) error {
+		require.Error(t, err)
+		require.ErrorContains(t, err, "maximum number of error hook retries reached")
+
+		sawWarning := false
+		for _, evt := range evts {
+			if evt.Type != DiagEvent {
+				continue
+			}
+			d := evt.Payload().(DiagEventPayload)
+			if d.Severity == diag.Warning && strings.Contains(d.Message, "maximum number of error hook retries") {
+				sawWarning = true
+				break
+			}
+		}
+		require.True(t, sawWarning, "expected a warning diagnostic when retry limit is hit")
+		return err
 	}
 
-	p.Steps = []lt.TestStep{
-		{
-			Op:          Update,
-			SkipPreview: true,
-			Validate: func(_ workspace.Project, _ deploy.Target, _ JournalEntries, _ []Event, err error) error {
-				require.NoError(t, err)
-				programCreate = false
-				return nil
-			},
-		},
-		{
-			Op:            Update,
-			SkipPreview:   true,
-			ExpectFailure: true,
-			Validate: func(_ workspace.Project, _ deploy.Target, _ JournalEntries, evts []Event, err error) error {
-				require.Error(t, err)
-				require.ErrorContains(t, err, "maximum number of error hook retries reached")
-
-				sawWarning := false
-				for _, evt := range evts {
-					if evt.Type != DiagEvent {
-						continue
-					}
-					d := evt.Payload().(DiagEventPayload)
-					if d.Severity == diag.Warning && strings.Contains(d.Message, "maximum number of error hook retries") {
-						sawWarning = true
-						break
-					}
-				}
-				require.True(t, sawWarning, "expected a warning diagnostic when retry limit is hit")
-				return err
-			},
-		},
-	}
-
-	p.Run(t, nil)
+	project := p.GetProject()
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validateCreate, "0")
+	require.NoError(t, err)
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validateWarn, "1")
+	require.Error(t, err)
 }
 
 func TestErrorHooks_RetryOnceThenSuccess_HookCalledOnce_Create(t *testing.T) {
@@ -1316,10 +1301,11 @@ func TestErrorHooks_RetryOnceThenSuccess_HookCalledOnce_Create(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
-	p.Steps = []lt.TestStep{{Op: Update, SkipPreview: true}}
-	p.Run(t, nil)
+	project := p.GetProject()
+	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
 	require.Equal(t, 1, hookCalls)
 }
 
@@ -1384,7 +1370,7 @@ func TestErrorHooks_RetryOnceThenSuccess_HookCalledOnce_Update(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 	project := p.GetProject()
 
@@ -1451,7 +1437,7 @@ func TestErrorHooks_RetryOnceThenSuccess_HookCalledOnce_Delete(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 	project := p.GetProject()
 
@@ -1519,10 +1505,11 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Create(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
-	p.Steps = []lt.TestStep{{Op: Update, SkipPreview: true, ExpectFailure: true}}
-	p.Run(t, nil)
+	project := p.GetProject()
+	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.Error(t, err)
 	require.Equal(t, 2, hookCalls)
 }
 
@@ -1587,7 +1574,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Update(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 	project := p.GetProject()
 
@@ -1654,7 +1641,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Delete(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 	project := p.GetProject()
 
@@ -1754,10 +1741,12 @@ func TestErrorHooks_IndependentPerResource_Create(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
-	p.Steps = []lt.TestStep{{Op: Update, SkipPreview: true}}
-	snap := p.Run(t, nil)
+	project := p.GetProject()
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
 
 	require.Len(t, snap.Resources, 3) // default + 2 resources
 	require.GreaterOrEqual(t, resAHooks, 1)
@@ -1853,7 +1842,7 @@ func TestErrorHooks_IndependentPerResource_Update(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 	project := p.GetProject()
 
@@ -1946,7 +1935,7 @@ func TestErrorHooks_IndependentPerResource_Delete(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 	project := p.GetProject()
 

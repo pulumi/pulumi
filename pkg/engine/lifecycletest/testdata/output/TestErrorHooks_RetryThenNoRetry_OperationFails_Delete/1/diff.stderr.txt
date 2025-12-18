@@ -1,0 +1,3 @@
+<{%reset%}>retrying delete due to on-error hook request (1/100)<{%reset%}>
+<{%fg 1%}>error: <{%reset%}><{%reset%}>delete failed<{%reset%}>
+<{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>
