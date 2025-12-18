@@ -116,7 +116,7 @@ func TestGetLatestPluginIncludedVersion(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), []string{"resource", "aws@1000.78.0"})
+	err := cmd.Run(t.Context(), []string{"resource", "aws@1000.78.0"})
 	require.NoError(t, err)
 }
 
@@ -173,7 +173,7 @@ func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), []string{"resource", "foo@2.0.0"})
+	err := cmd.Run(t.Context(), []string{"resource", "foo@2.0.0"})
 	require.NoError(t, err)
 }
 
@@ -371,14 +371,14 @@ packages:
 			_ context.Context, _ string, install workspace.PluginDescriptor, _ string,
 			_ diag.Sink, _ colors.Colorization, _ bool,
 		) error {
-			require.Equal(t, "my-local-provider", install.Name)
+			require.Equal(t, "./my-provider", install.Name)
 			require.NotContains(t, install.PluginDownloadURL, "github.com/pulumi/pulumi-my-local-provider")
 			installCalled = true
 			return nil
 		},
 	}
 
-	err = cmd.Run(context.Background(), []string{"resource", "my-local-provider"})
+	err = cmd.Run(t.Context(), []string{"resource", "my-local-provider"})
 	require.NoError(t, err)
 }
 

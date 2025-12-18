@@ -49,9 +49,9 @@ func NewPluginCmd() *cobra.Command {
 	}
 
 	packageResolutionOptions := packageresolution.Options{
-		DisableRegistryResolve:      env.DisableRegistryResolve.Value(),
-		Experimental:                env.Experimental.Value(),
-		IncludeInstalledInWorkspace: false,
+		DisableRegistryResolve: env.DisableRegistryResolve.Value(),
+		Experimental:           env.Experimental.Value(),
+		AllowNonInvertableLocalWorkspaceResolution: true,
 	}
 	cmd.AddCommand(newPluginInstallCmd(packageResolutionOptions))
 	cmd.AddCommand(newPluginLsCmd())

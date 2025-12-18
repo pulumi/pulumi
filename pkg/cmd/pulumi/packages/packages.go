@@ -22,6 +22,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -63,7 +64,7 @@ func InstallPackage(proj workspace.BaseProject, pctx *plugin.Context, language, 
 	schemaSource string, parameters plugin.ParameterizeParameters,
 	registry registry.Registry,
 ) (*schema.Package, *workspace.PackageSpec, hcl.Diagnostics, error) {
-	pkgSpec, specOverride, err := SchemaFromSchemaSource(pctx, schemaSource, parameters, registry)
+	pkgSpec, specOverride, err := SchemaFromSchemaSource(pctx, schemaSource, parameters, registry, env.Global())
 	if err != nil {
 		var diagErr hcl.Diagnostics
 		if errors.As(err, &diagErr) {
@@ -380,8 +381,12 @@ func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginDescr
 // optional version:
 //
 //	FILE.[json|y[a]ml] | PLUGIN[@VERSION] | PATH_TO_PLUGIN
+//
+// The returned workspace.PackageSpec will be non-nil if and only if the schema is sourced
+// from a plugin.
 func SchemaFromSchemaSource(
 	pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
+	env env.Env,
 ) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 	var spec schema.PackageSpec
 	if ext := filepath.Ext(packageSource); ext == ".yaml" || ext == ".yml" {
@@ -413,7 +418,7 @@ func SchemaFromSchemaSource(
 		return &spec, nil, nil
 	}
 
-	p, specOverride, err := ProviderFromSource(pctx, packageSource, registry)
+	p, packageSpec, err := ProviderFromSource(pctx, packageSource, registry, env)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -456,7 +461,7 @@ func SchemaFromSchemaSource(
 		spec.PluginDownloadURL = pluginSpec.PluginDownloadURL
 	}
 	setSpecNamespace(&spec, pluginSpec)
-	return &spec, specOverride, nil
+	return &spec, &packageSpec, nil
 }
 
 type Provider struct {
@@ -470,22 +475,22 @@ type Provider struct {
 // PLUGIN[@VERSION] | PATH_TO_PLUGIN
 func ProviderFromSource(
 	pctx *plugin.Context, packageSource string, reg registry.Registry,
-) (Provider, *workspace.PackageSpec, error) {
-	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
-	if err != nil {
-		return Provider{}, nil, err
+	e env.Env,
+) (Provider, workspace.PackageSpec, error) {
+	var version string
+	if parts := strings.SplitN(packageSource, "@", 2); len(parts) > 1 {
+		packageSource = parts[0]
+		version = parts[1]
 	}
-	descriptor := workspace.PackageDescriptor{
-		PluginDescriptor: pluginSpec,
-	}
+	packageSpec := workspace.PackageSpec{Source: packageSource, Version: version}
 
-	installDescriptor := func(descriptor workspace.PackageDescriptor) (Provider, error) {
-		p, err := pctx.Host.Provider(descriptor)
+	installDescriptor := func(descriptor workspace.PluginDescriptor) (Provider, error) {
+		p, err := pctx.Host.Provider(workspace.PackageDescriptor{
+			// Host.Provider ignores parameterization, so this is safe
+			PluginDescriptor: descriptor,
+		})
 		if err == nil {
-			return Provider{
-				Provider:             p,
-				AlreadyParameterized: descriptor.Parameterization != nil,
-			}, nil
+			return Provider{Provider: p}, nil
 		}
 
 		// There is an executable or directory with the same name, so suggest that
@@ -495,7 +500,7 @@ func ProviderFromSource(
 
 		// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
 		var missingError *workspace.MissingError
-		if !errors.As(err, &missingError) || env.DisableAutomaticPluginAcquisition.Value() {
+		if !errors.As(err, &missingError) || e.GetBool(env.DisableAutomaticPluginAcquisition) {
 			return Provider{}, err
 		}
 
@@ -503,12 +508,15 @@ func ProviderFromSource(
 			pctx.Host.Log(sev, "", msg, 0)
 		}
 
-		_, err = pkgWorkspace.InstallPlugin(pctx.Base(), descriptor.PluginDescriptor, log)
+		_, err = pkgWorkspace.InstallPlugin(pctx.Base(), descriptor, log)
 		if err != nil {
 			return Provider{}, err
 		}
 
-		p, err = pctx.Host.Provider(descriptor)
+		p, err = pctx.Host.Provider(workspace.PackageDescriptor{
+			// Host.Provider ignores parameterization, so this is safe
+			PluginDescriptor: descriptor,
+		})
 		if err != nil {
 			return Provider{}, err
 		}
@@ -517,49 +525,47 @@ func ProviderFromSource(
 	}
 
 	setupProvider := func(
-		descriptor workspace.PackageDescriptor, specOverride *workspace.PackageSpec,
-	) (Provider, *workspace.PackageSpec, error) {
+		descriptor workspace.PluginDescriptor, params plugin.ParameterizeParameters, specOverride workspace.PackageSpec,
+	) (Provider, workspace.PackageSpec, error) {
 		p, err := installDescriptor(descriptor)
 		if err != nil {
-			return Provider{}, nil, err
+			return Provider{}, workspace.PackageSpec{}, err
 		}
-		if descriptor.Parameterization != nil {
+		if params != nil {
 			_, err := p.Provider.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
-				Parameters: &plugin.ParameterizeValue{
-					Name:    descriptor.Parameterization.Name,
-					Version: descriptor.Parameterization.Version,
-					Value:   descriptor.Parameterization.Value,
-				},
+				Parameters: params,
 			})
 			if err != nil {
-				return Provider{}, nil, fmt.Errorf("failed to parameterize %s: %w", p.Provider.Pkg().Name(), err)
+				return Provider{}, workspace.PackageSpec{},
+					fmt.Errorf("failed to parameterize %s: %w", p.Provider.Pkg().Name(), err)
 			}
 		}
 		return p, specOverride, nil
 	}
 
-	var project workspace.BaseProject
 	if bp, path, err := workspace.LoadBaseProjectFrom(pctx.Root); err == nil {
 		// We have found the right base project if and only if its located at the
 		// root of the passed in plugin.
 		if filepath.Dir(path) == pctx.Root {
-			project = bp
+			if override, ok := bp.GetPackageSpecs()[packageSource]; ok {
+				packageSpec = override
+			}
 		}
 	} else if !errors.Is(err, workspace.ErrBaseProjectNotFound) {
-		return Provider{}, nil, err
+		return Provider{}, workspace.PackageSpec{}, err
 	}
 
 	result, err := packageresolution.Resolve(
 		pctx.Base(),
 		reg,
 		packageresolution.DefaultWorkspace(),
-		pluginSpec,
+		packageSpec,
 		packageresolution.Options{
-			DisableRegistryResolve:      env.DisableRegistryResolve.Value(),
-			Experimental:                env.Experimental.Value(),
-			IncludeInstalledInWorkspace: true,
+			DisableRegistryResolve:                     e.GetBool(env.DisableRegistryResolve),
+			Experimental:                               e.GetBool(env.Experimental),
+			ResolveVersionWithLocalWorkspace:           true,
+			AllowNonInvertableLocalWorkspaceResolution: true,
 		},
-		project,
 	)
 	if err != nil {
 		var packageNotFoundErr *packageresolution.PackageNotFoundError
@@ -569,40 +575,79 @@ func ProviderFromSource(
 					suggested.Source, suggested.Publisher, suggested.Name, suggested.Version)
 			}
 		}
-		return Provider{}, nil, fmt.Errorf("Unable to resolve package from name: %w", err)
+		return Provider{}, workspace.PackageSpec{}, fmt.Errorf("Unable to resolve package from name: %w", err)
 	}
 
 	switch res := result.(type) {
 	case packageresolution.LocalPathResult:
 		return setupProviderFromPath(res.LocalPath, pctx)
-	case packageresolution.ExternalSourceResult, packageresolution.InstalledInWorkspaceResult:
-		return setupProvider(descriptor, nil)
+	case packageresolution.ExternalSourceResult:
+		var params plugin.ParameterizeParameters
+		if len(res.Spec.ParameterizationArgs) > 0 {
+			params = &plugin.ParameterizeArgs{
+				Args: res.Spec.ParameterizationArgs,
+			}
+		}
+		var version string
+		if res.Spec.Version != nil {
+			version = res.Spec.Version.String()
+		}
+		spec := workspace.PackageSpec{
+			Source:            res.Spec.Name,
+			Version:           version,
+			PluginDownloadURL: res.Spec.PluginDownloadURL,
+			Checksums:         res.Spec.Checksums,
+			Parameters:        res.Spec.ParameterizationArgs,
+		}
+
+		// A workspace.PluginSpec (as returned in res.Spec) doesn't translate
+		// cleanly for git based plugins. There isn't a way to write down the
+		// "Name" of a git based plugin, only it's URL.
+		if res.Spec.IsGitPlugin() {
+			spec.Source = strings.TrimPrefix(spec.PluginDownloadURL, "git://")
+			spec.PluginDownloadURL = ""
+		}
+		return setupProvider(res.Spec.PluginDescriptor, params, spec)
 	case packageresolution.RegistryResult:
-		return setupProviderFromRegistryMeta(res.Metadata, setupProvider)
+		var params plugin.ParameterizeParameters
+		if res.Pkg.Parameterization != nil {
+			params = &plugin.ParameterizeValue{
+				Name:    res.Pkg.Parameterization.Name,
+				Version: res.Pkg.Parameterization.Version,
+				Value:   res.Pkg.Parameterization.Value,
+			}
+		}
+		return setupProvider(res.Pkg.PluginDescriptor, params, workspace.PackageSpec{
+			Source:  path.Join(res.Metadata.Source, res.Metadata.Publisher, res.Metadata.Name),
+			Version: res.Metadata.Version.String(),
+			// We only want parameters that are derived from packageSource
+			// (none), not those handled by the registry itself.
+			Parameters: nil,
+		})
 	default:
 		contract.Failf("Unexpected result type: %T", result)
-		return Provider{}, nil, nil
+		return Provider{}, workspace.PackageSpec{}, nil
 	}
 }
 
-func setupProviderFromPath(packageSource string, pctx *plugin.Context) (Provider, *workspace.PackageSpec, error) {
+func setupProviderFromPath(packageSource string, pctx *plugin.Context) (Provider, workspace.PackageSpec, error) {
 	info, err := os.Stat(packageSource)
 	if os.IsNotExist(err) {
-		return Provider{}, nil, fmt.Errorf("could not find file %s", packageSource)
+		return Provider{}, workspace.PackageSpec{}, fmt.Errorf("could not find file %s", packageSource)
 	} else if err != nil {
-		return Provider{}, nil, err
+		return Provider{}, workspace.PackageSpec{}, err
 	} else if !info.IsDir() && !isExecutable(info) {
 		if p, err := filepath.Abs(packageSource); err == nil {
 			packageSource = p
 		}
-		return Provider{}, nil, fmt.Errorf("plugin at path %q not executable", packageSource)
+		return Provider{}, workspace.PackageSpec{}, fmt.Errorf("plugin at path %q not executable", packageSource)
 	}
 
 	p, err := plugin.NewProviderFromPath(pctx.Host, pctx, packageSource)
 	if err != nil {
-		return Provider{}, nil, err
+		return Provider{}, workspace.PackageSpec{}, err
 	}
-	return Provider{Provider: p}, nil, nil
+	return Provider{Provider: p}, workspace.PackageSpec{Source: packageSource}, nil
 }
 
 func isExecutable(info fs.FileInfo) bool {
@@ -611,30 +656,4 @@ func isExecutable(info fs.FileInfo) bool {
 		return !info.IsDir()
 	}
 	return info.Mode()&0o111 != 0 && !info.IsDir()
-}
-
-func setupProviderFromRegistryMeta(
-	meta apitype.PackageMetadata,
-	setupProvider func(workspace.PackageDescriptor, *workspace.PackageSpec) (Provider, *workspace.PackageSpec, error),
-) (Provider, *workspace.PackageSpec, error) {
-	spec := workspace.PluginDescriptor{
-		Name:              meta.Name,
-		Kind:              apitype.ResourcePlugin,
-		Version:           &meta.Version,
-		PluginDownloadURL: meta.PluginDownloadURL,
-	}
-	var params *workspace.Parameterization
-	if meta.Parameterization != nil {
-		spec.Name = meta.Parameterization.BaseProvider.Name
-		spec.Version = &meta.Parameterization.BaseProvider.Version
-		params = &workspace.Parameterization{
-			Name:    meta.Name,
-			Version: meta.Version,
-			Value:   meta.Parameterization.Parameter,
-		}
-	}
-	return setupProvider(workspace.NewPackageDescriptor(spec, params), &workspace.PackageSpec{
-		Source:  meta.Source + "/" + meta.Publisher + "/" + meta.Name,
-		Version: meta.Version.String(),
-	})
 }
