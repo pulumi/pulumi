@@ -739,7 +739,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			linkDeps := []workspace.LinkablePackageDescriptor{{
 				Path: token.CoreArtifact,
 				Descriptor: workspace.PackageDescriptor{
-					PluginSpec: workspace.PluginSpec{
+					PluginDescriptor: workspace.PluginDescriptor{
 						Name: "pulumi",
 					},
 				},
