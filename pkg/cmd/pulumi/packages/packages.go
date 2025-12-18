@@ -418,7 +418,7 @@ func SchemaFromSchemaSource(
 		return &spec, nil, nil
 	}
 
-	p, specOverride, err := ProviderFromSource(pctx, packageSource, registry, env)
+	p, packageSpec, err := ProviderFromSource(pctx, packageSource, registry, env)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -461,7 +461,7 @@ func SchemaFromSchemaSource(
 		spec.PluginDownloadURL = pluginSpec.PluginDownloadURL
 	}
 	setSpecNamespace(&spec, pluginSpec)
-	return &spec, &specOverride, nil
+	return &spec, &packageSpec, nil
 }
 
 type Provider struct {
@@ -555,8 +555,10 @@ func ProviderFromSource(
 		packageresolution.DefaultWorkspace(),
 		packageSpec,
 		packageresolution.Options{
-			DisableRegistryResolve: e.GetBool(env.DisableRegistryResolve),
-			Experimental:           e.GetBool(env.Experimental),
+			DisableRegistryResolve:                     e.GetBool(env.DisableRegistryResolve),
+			Experimental:                               e.GetBool(env.Experimental),
+			ResolveVersionWithLocalWorkspace:           true,
+			AllowNonInvertableLocalWorkspaceResolution: true,
 		},
 	)
 	if err != nil {
@@ -584,13 +586,22 @@ func ProviderFromSource(
 		if res.Spec.Version != nil {
 			version = res.Spec.Version.String()
 		}
-		return setupProvider(res.Spec.PluginDescriptor, params, workspace.PackageSpec{
+		spec := workspace.PackageSpec{
 			Source:            res.Spec.Name,
 			Version:           version,
 			PluginDownloadURL: res.Spec.PluginDownloadURL,
 			Checksums:         res.Spec.Checksums,
 			Parameters:        res.Spec.ParameterizationArgs,
-		})
+		}
+
+		// A workspace.PluginSpec (as returned in res.Spec) doesn't translate
+		// cleanly for git based plugins. There isn't a way to write down the
+		// "Name" of a git based plugin, only it's URL.
+		if res.Spec.IsGitPlugin() {
+			spec.Source = strings.TrimPrefix(spec.PluginDownloadURL, "git://")
+			spec.PluginDownloadURL = ""
+		}
+		return setupProvider(res.Spec.PluginDescriptor, params, spec)
 	case packageresolution.RegistryResult:
 		var params plugin.ParameterizeParameters
 		if res.Pkg.Parameterization != nil {
