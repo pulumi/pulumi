@@ -198,6 +198,11 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 			if parts := strings.SplitN(args[1], "@", 2); len(parts) > 1 {
 				source = parts[0]
 				version = parts[1]
+				if len(args) > 2 {
+					return fmt.Errorf(`cannot specify both "@%s" and "%s" as a version`, version, args[2])
+				}
+			} else if len(args) > 2 {
+				version = args[2]
 			}
 			packageSpec := workspace.PackageSpec{
 				Source:            source,
