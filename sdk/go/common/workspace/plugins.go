@@ -893,7 +893,7 @@ type ProjectPlugin struct {
 
 // Spec Return a PluginSpec object for this project plugin.
 func (pp ProjectPlugin) Spec(ctx context.Context) (PluginDescriptor, error) {
-	return NewPluginSpec(ctx, pp.Name, pp.Kind, pp.Version, "", nil)
+	return NewPluginDescriptor(ctx, pp.Name, pp.Kind, pp.Version, "", nil)
 }
 
 // LinkablePackageDescriptor contains the information necessary to link an SDK for a package specified by a
@@ -1041,7 +1041,28 @@ var gitCommitHashRegex = sync.OnceValue(func() *regexp.Regexp {
 	return regexp.MustCompile(`^[0-9a-fA-F]{4,64}$`)
 })
 
+// NewPluginDescriptor creates a new [PluginDescriptor] from a source string.
+//
+// If you are using this to resolve a "package", consider using
+// [packageresolution.Resolve] instead.
+//
+// Deprecated: NewPluginSpec has been renamed to [NewPluginDescriptor].
 func NewPluginSpec(
+	ctx context.Context,
+	source string,
+	kind apitype.PluginKind,
+	version *semver.Version,
+	pluginDownloadURL string,
+	checksums map[string][]byte,
+) (PluginDescriptor, error) {
+	return NewPluginDescriptor(ctx, source, kind, version, pluginDownloadURL, checksums)
+}
+
+// NewPluginDescriptor creates a new [PluginDescriptor] from a source string.
+//
+// If you are using this to resolve a "package", consider using
+// [packageresolution.Resolve] instead.
+func NewPluginDescriptor(
 	ctx context.Context,
 	source string,
 	kind apitype.PluginKind,

@@ -453,7 +453,7 @@ func SchemaFromSchemaSource(
 	if err != nil {
 		return nil, nil, err
 	}
-	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginDescriptor(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return nil, nil, err
 	}
