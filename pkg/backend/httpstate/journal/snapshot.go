@@ -158,6 +158,12 @@ func (t *realTicker) C() <-chan time.Time {
 	return t.Ticker.C
 }
 
+// flushRequest represents a request to flush a batch of journal entries.
+type flushRequest struct {
+	batch   []apitype.JournalEntry
+	results []chan<- error
+}
+
 // sendBatches reads journal entries off of the entries channel and sends batches when either the maximum batch size
 // or the maximum period between batches is reached. Batches are sent sequentially.
 func sendBatches(
@@ -169,22 +175,27 @@ func sendBatches(
 ) {
 	results := make([]chan<- error, 0, maxBatchSize)
 	batch := make([]apitype.JournalEntry, 0, maxBatchSize)
-	var lock sync.Mutex
-	flush := func(batch []apitype.JournalEntry, results []chan<- error) {
-		if len(batch) != 0 {
-			lock.Lock()
-			defer lock.Unlock()
 
-			logging.V(11).Infof("flushing journal entries: len=%v, cap=%v", len(batch), cap(batch))
+	// Use a buffered channel, so we can queue up multiple batches
+	// that can then be sent as quickly as the network allows. This
+	// unblocks the engine and allows it to continue working.
+	flushCh := make(chan flushRequest, 100)
 
-			err := sender(batch)
-			for _, r := range results {
-				r <- err
+	flushDone := make(chan struct{})
+	go func() {
+		defer close(flushDone)
+		for req := range flushCh {
+			if len(req.batch) != 0 {
+				logging.V(11).Infof("flushing journal entries: len=%v, cap=%v", len(req.batch), cap(req.batch))
+
+				err := sender(req.batch)
+				for _, r := range req.results {
+					r <- err
+				}
 			}
+			ticker.Reset(period)
 		}
-	}
-
-	var wg sync.WaitGroup
+	}()
 
 	// Wait for the entries channel to close, a journal entry to arrive, or a periodic send. Then flush the current
 	// batch if necessary.
@@ -193,8 +204,9 @@ func sendBatches(
 		case req, ok := <-entries:
 			if !ok {
 				// Channel closed, we're done
-				flush(batch, results)
-				wg.Wait()
+				flushCh <- flushRequest{batch: batch, results: results}
+				close(flushCh)
+				<-flushDone
 				return
 			}
 
@@ -204,25 +216,17 @@ func sendBatches(
 			}
 			if len(batch) == cap(batch) {
 				ticker.Stop()
-				sendBatch, sendResults := batch, results
-				batch, results = make([]apitype.JournalEntry, 0, maxBatchSize), make([]chan<- error, 0, maxBatchSize)
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-					flush(sendBatch, sendResults)
-					ticker.Reset(period)
-				}()
+				flushCh <- flushRequest{batch: batch, results: results}
+				batch = make([]apitype.JournalEntry, 0, maxBatchSize)
+				results = make([]chan<- error, 0, maxBatchSize)
 			}
 		case <-ticker.C():
-			ticker.Stop()
-			sendBatch, sendResults := batch, results
-			batch, results = make([]apitype.JournalEntry, 0, maxBatchSize), make([]chan<- error, 0, maxBatchSize)
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				flush(sendBatch, sendResults)
-				ticker.Reset(period)
-			}()
+			if len(batch) > 0 {
+				ticker.Stop()
+				flushCh <- flushRequest{batch: batch, results: results}
+				batch = make([]apitype.JournalEntry, 0, maxBatchSize)
+				results = make([]chan<- error, 0, maxBatchSize)
+			}
 		}
 	}
 }

@@ -124,7 +124,7 @@ func TestPluginHostProvider(t *testing.T) {
 		expectedVersion := semver.MustParse("1.0.0")
 		host := &pluginHost{}
 		_, err := host.Provider(workspace.PackageDescriptor{
-			PluginSpec: workspace.PluginSpec{
+			PluginDescriptor: workspace.PluginDescriptor{
 				Name:    "pkgA",
 				Version: &expectedVersion,
 			},
@@ -137,7 +137,7 @@ func TestPluginHostProvider(t *testing.T) {
 			t.Parallel()
 			host := &pluginHost{closed: true}
 			_, err := host.Provider(workspace.PackageDescriptor{
-				PluginSpec: workspace.PluginSpec{
+				PluginDescriptor: workspace.PluginDescriptor{
 					Name:    "pkgA",
 					Version: &semver.Version{},
 				},

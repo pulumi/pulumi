@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.212.0 (2025-12-12)
+
+
+### Bug Fixes
+
+- [yaml] Update pulumi-yaml to v1.26.1
+
 ## 3.211.0 (2025-12-11)
 
 

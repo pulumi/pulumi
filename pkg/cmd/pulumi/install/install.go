@@ -200,7 +200,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 				pluginSet := engine.NewPluginSet()
 				for _, pkg := range packages {
-					pluginSet.Add(pkg.PluginSpec)
+					pluginSet.Add(pkg.PluginDescriptor)
 				}
 
 				if err = engine.EnsurePluginsAreInstalled(ctx, nil, pctx.Diag, pluginSet,

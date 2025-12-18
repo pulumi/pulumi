@@ -16,6 +16,8 @@ package lifecycletest
 
 import (
 	"context"
+	"maps"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -24,7 +26,6 @@ import (
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/maps"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
@@ -281,12 +282,12 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 			assert.Empty(t, res.PropertyDependencies)
 		case urnC:
 			assert.ElementsMatch(t, []resource.URN{urnA, urnB}, res.Dependencies)
-			assert.ElementsMatch(t, []resource.PropertyKey{"A", "B"}, maps.Keys(res.PropertyDependencies))
+			assert.ElementsMatch(t, []resource.PropertyKey{"A", "B"}, slices.Collect(maps.Keys(res.PropertyDependencies)))
 			assert.ElementsMatch(t, res.Dependencies, res.PropertyDependencies["A"])
 			assert.ElementsMatch(t, res.Dependencies, res.PropertyDependencies["B"])
 		case urnD:
 			assert.ElementsMatch(t, []resource.URN{urnA, urnB, urnC}, res.Dependencies)
-			assert.ElementsMatch(t, []resource.PropertyKey{"A", "B"}, maps.Keys(res.PropertyDependencies))
+			assert.ElementsMatch(t, []resource.PropertyKey{"A", "B"}, slices.Collect(maps.Keys(res.PropertyDependencies)))
 			assert.ElementsMatch(t, []resource.URN{urnB}, res.PropertyDependencies["A"])
 			assert.ElementsMatch(t, []resource.URN{urnA, urnC}, res.PropertyDependencies["B"])
 		}

@@ -16,13 +16,15 @@ package fuzzing
 
 import (
 	"fmt"
+	"maps"
+	"slices"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"golang.org/x/exp/maps"
 	"pgregory.net/rapid"
 )
 
@@ -102,17 +104,18 @@ func (s *SnapshotSpec) AsSnapshot() *deploy.Snapshot {
 // Implements PrettySpec.Pretty. Returns a human-readable string representation of this SnapshotSpec, suitable for use
 // in debugging output and error messages.
 func (s *SnapshotSpec) Pretty(indent string) string {
-	rendered := fmt.Sprintf("%sSnapshot %p", indent, s)
+	var rendered strings.Builder
+	rendered.WriteString(fmt.Sprintf("%sSnapshot %p", indent, s))
 	if len(s.Resources) == 0 {
-		rendered += fmt.Sprintf("\n%s  No resources", indent)
+		rendered.WriteString(fmt.Sprintf("\n%s  No resources", indent))
 	} else {
-		rendered += fmt.Sprintf("\n%s  Resources (%d):", indent, len(s.Resources))
+		rendered.WriteString(fmt.Sprintf("\n%s  Resources (%d):", indent, len(s.Resources)))
 		for _, r := range s.Resources {
-			rendered += fmt.Sprintf("\n%s    %s", indent, r.Pretty(indent+"    "))
+			rendered.WriteString(fmt.Sprintf("\n%s    %s", indent, r.Pretty(indent+"    ")))
 		}
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // A ResourceDependenciesSpec specifies the dependencies of a resource in a snapshot.
@@ -179,7 +182,7 @@ func GeneratedResourceDependencies(
 				rds.Dependencies = append(rds.Dependencies, sr.URN())
 			case resource.ResourcePropertyDependency:
 				k := rapid.SampledFrom(append(
-					maps.Keys(rds.PropertyDependencies),
+					slices.Collect(maps.Keys(rds.PropertyDependencies)),
 					resource.PropertyKey(
 						rapid.StringMatching("^prop-[a-z][A-Za-z0-9]{3}$").Draw(t, "SnapshotDependencies.NewPropertyKey"),
 					),
@@ -235,6 +238,10 @@ type SnapshotSpecOptions struct {
 
 	// A set of options for configuring the generation of resources in the snapshot.
 	ResourceOpts ResourceSpecOptions
+
+	// Exclusion rules to apply to generated snapshots. If a snapshot matches any exclusion rule,
+	// it will be rejected and a new one will be generated.
+	ExclusionRules ExclusionRules
 }
 
 // Returns a copy of the given SnapshotSpecOptions with the given overrides applied.
@@ -247,6 +254,9 @@ func (sso SnapshotSpecOptions) With(overrides SnapshotSpecOptions) SnapshotSpecO
 	}
 	if overrides.Action != nil {
 		sso.Action = overrides.Action
+	}
+	if overrides.ExclusionRules != nil {
+		sso.ExclusionRules = overrides.ExclusionRules
 	}
 	sso.ResourceOpts = sso.ResourceOpts.With(overrides.ResourceOpts)
 
@@ -273,6 +283,7 @@ var defaultSnapshotSpecOptions = SnapshotSpecOptions{
 	ResourceCount:      rapid.IntRange(2, 5),
 	Action:             rapid.SampledFrom(snapshotSpecActions),
 	ResourceOpts:       defaultResourceSpecOptions,
+	ExclusionRules:     DefaultExclusionRules(),
 }
 
 var snapshotSpecActions = []SnapshotSpecAction{

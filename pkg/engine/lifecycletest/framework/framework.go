@@ -41,12 +41,12 @@ import (
 	bdisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -90,30 +90,30 @@ type NopPluginManager struct{}
 func (NopPluginManager) GetPluginPath(
 	ctx context.Context,
 	d diag.Sink,
-	spec workspace.PluginSpec,
+	spec workspace.PluginDescriptor,
 	projectPlugins []workspace.ProjectPlugin,
 ) (string, error) {
 	return "installed", nil
 }
 
-func (NopPluginManager) HasPlugin(spec workspace.PluginSpec) bool {
+func (NopPluginManager) HasPlugin(spec workspace.PluginDescriptor) bool {
 	return true
 }
 
-func (NopPluginManager) HasPluginGTE(spec workspace.PluginSpec) (bool, error) {
+func (NopPluginManager) HasPluginGTE(spec workspace.PluginDescriptor) (bool, error) {
 	return true, nil
 }
 
 func (NopPluginManager) GetLatestPluginVersion(
 	ctx context.Context,
-	spec workspace.PluginSpec,
+	spec workspace.PluginDescriptor,
 ) (*semver.Version, error) {
 	return semver.New("1.0.0")
 }
 
 func (NopPluginManager) DownloadPlugin(
 	ctx context.Context,
-	plugin workspace.PluginSpec,
+	plugin workspace.PluginDescriptor,
 	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
 	retry func(err error, attempt int, limit int, delay time.Duration),
 ) (io.ReadCloser, int64, error) {
@@ -122,8 +122,8 @@ func (NopPluginManager) DownloadPlugin(
 
 func (NopPluginManager) InstallPlugin(
 	ctx context.Context,
-	plugin workspace.PluginSpec,
-	content pkgWorkspace.PluginContent,
+	plugin workspace.PluginDescriptor,
+	content pluginstorage.Content,
 	reinstall bool,
 ) error {
 	return nil
