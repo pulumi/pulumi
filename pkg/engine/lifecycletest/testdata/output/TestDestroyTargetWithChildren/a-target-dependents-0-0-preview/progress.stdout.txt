@@ -9,11 +9,11 @@
  <{%bold%}><{%reset%}>  <{%reset%}> pkgA:index:Resource J <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%reset%}>  <{%reset%}> pkgA:index:Resource L <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%reset%}>  <{%reset%}> pkgA:index:Resource M <{%bold%}><{%reset%}><{%reset%}> 
- <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:index:Resource K <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
- <{%fg 1%}>- <{%reset%}> pkgA:index:Resource K <{%fg 1%}>deleted<{%reset%}> 
  <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:index:Resource I <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
  <{%fg 1%}>- <{%reset%}> pkgA:index:Resource I <{%fg 1%}>deleted<{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:index:Resource K <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
  <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:index:Resource N <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%fg 1%}>- <{%reset%}> pkgA:index:Resource K <{%fg 1%}>deleted<{%reset%}> 
  <{%fg 1%}>- <{%reset%}> pkgA:index:Resource N <{%fg 1%}>deleted<{%reset%}> 
  <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:index:Resource G <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
  <{%fg 1%}>- <{%reset%}> pkgA:index:Resource G <{%fg 1%}>deleted<{%reset%}> 

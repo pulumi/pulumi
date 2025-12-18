@@ -7,8 +7,8 @@
  <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgB:m:typB failing <{%bold%}><{%fg 2%}>creating<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
  <{%fg 2%}>+ <{%reset%}> pkgB:m:typB failing <{%fg 1%}>**creating failed**<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
  <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgB:m:typB failing2 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
- <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgB:m:typB failing2 <{%bold%}><{%fg 2%}>creating<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
- <{%fg 2%}>+ <{%reset%}> pkgB:m:typB failing2 <{%fg 1%}>**creating failed**<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgB:m:typB failing2 <{%bold%}><{%fg 2%}>creating<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>provider did not return an ID from Create<{%reset%}>
+ <{%fg 2%}>+ <{%reset%}> pkgB:m:typB failing2 <{%fg 1%}>**creating failed**<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>provider did not return an ID from Create<{%reset%}>
  <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgB:m:typB failing3 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgB:m:typB failing3 <{%bold%}><{%fg 2%}>creating<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
  <{%fg 2%}>+ <{%reset%}> pkgB:m:typB failing3 <{%fg 1%}>**creating failed**<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
@@ -27,7 +27,7 @@
     <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
 
   <{%fg 12%}>pkgB:m:typB (failing2):<{%reset%}>
-    <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>provider did not return an ID from Create<{%reset%}>
 
   <{%fg 12%}>pkgB:m:typB (failing3):<{%reset%}>
     <{%fg 1%}>error: <{%reset%}><{%reset%}>intentionally failed create<{%reset%}>

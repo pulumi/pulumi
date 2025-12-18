@@ -7,14 +7,14 @@
  <{%bold%}><{%fg 2%}>= <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 2%}>importing<{%reset%}> 
  <{%bold%}><{%fg 2%}>= <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 2%}>importing<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>resource 'urn:pulumi:test::test::pkgA:m:typA::resA' already exists<{%reset%}>
  <{%fg 2%}>= <{%reset%}> pkgA:m:typA resA <{%fg 1%}>**importing failed**<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>resource 'urn:pulumi:test::test::pkgA:m:typA::resA' already exists<{%reset%}>
- <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack test running <{%fg 1%}>error: <{%reset%}><{%reset%}>update failed: step application failed: resource 'urn:pulumi:test::test::pkgA:m:typA::resA' already exists<{%reset%}>
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack test running <{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack test <{%fg 1%}>**failed**<{%reset%}> 1 <{%fg 1%}>error<{%reset%}>
 <{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
   <{%fg 12%}>pkgA:m:typA (resA):<{%reset%}>
     <{%fg 1%}>error: <{%reset%}><{%reset%}>resource 'urn:pulumi:test::test::pkgA:m:typA::resA' already exists<{%reset%}>
 
   <{%fg 12%}>pulumi:pulumi:Stack (test):<{%reset%}>
-    <{%fg 1%}>error: <{%reset%}><{%reset%}>update failed: step application failed: resource 'urn:pulumi:test::test::pkgA:m:typA::resA' already exists<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     2 unchanged

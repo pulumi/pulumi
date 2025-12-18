@@ -36,10 +36,10 @@
 <{%reset%}><{%fg 1%}>            A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 1%}>- pkgA:index:Resource: (delete)
 <{%fg 1%}>    [id=10]
-<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::G]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::H]
 <{%reset%}><{%reset%}><{%fg 1%}>- pkgA:index:Resource: (delete)
 <{%fg 1%}>    [id=11]
-<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::H]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::G]
 <{%reset%}><{%reset%}><{%fg 1%}>- pkgA:index:Component: (delete)
 <{%fg 1%}>    [id=2]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component::D]

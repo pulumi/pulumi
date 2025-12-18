@@ -405,8 +405,6 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			})
 		}
 
-		// Only use the provider's response if Create ultimately succeeded. If Create failed (e.g. partial failure
-		// and we decided not to retry), we must not override the original error with a missing-ID error.
 		if err == nil {
 			id = resp.ID
 			outs = resp.Properties
