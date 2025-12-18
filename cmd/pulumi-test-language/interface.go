@@ -43,7 +43,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	b64secrets "github.com/pulumi/pulumi/pkg/v3/secrets/b64"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -53,6 +52,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/segmentio/encoding/json"
@@ -295,7 +295,7 @@ func (l *providerLoader) LoadPackageReferenceV2(
 
 	// Defer to the host to find the provider for the given package descriptor.
 	workspaceDescriptor := workspace.PackageDescriptor{
-		PluginSpec: workspace.PluginSpec{
+		PluginDescriptor: workspace.PluginDescriptor{
 			Kind:              apitype.ResourcePlugin,
 			Name:              descriptor.Name,
 			Version:           descriptor.Version,
@@ -1269,14 +1269,14 @@ func (eng *languageTestServer) RunLanguageTest(
 			var desc workspace.PackageDescriptor
 			if pkgDef.Parameterization == nil {
 				desc = workspace.PackageDescriptor{
-					PluginSpec: workspace.PluginSpec{
+					PluginDescriptor: workspace.PluginDescriptor{
 						Name:    pkgDef.Name,
 						Version: pkgDef.Version,
 					},
 				}
 			} else {
 				desc = workspace.PackageDescriptor{
-					PluginSpec: workspace.PluginSpec{
+					PluginDescriptor: workspace.PluginDescriptor{
 						Name:    pkgDef.Parameterization.BaseProvider.Name,
 						Version: &pkgDef.Parameterization.BaseProvider.Version,
 					},
@@ -1403,7 +1403,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			linkDeps := []workspace.LinkablePackageDescriptor{{
 				Path: token.CoreArtifact,
 				Descriptor: workspace.PackageDescriptor{
-					PluginSpec: workspace.PluginSpec{
+					PluginDescriptor: workspace.PluginDescriptor{
 						Name: "pulumi",
 					},
 				},

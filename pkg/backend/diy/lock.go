@@ -24,6 +24,7 @@ import (
 	"os/user"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -81,8 +82,9 @@ func (b *diyBackend) checkForLock(ctx context.Context, stackRef backend.StackRef
 	}
 
 	if len(lockKeys) > 0 {
-		errorString := fmt.Sprintf("the stack is currently locked by %v lock(s). Either wait for the other "+
-			"process(es) to end or delete the lock file with `pulumi cancel`.", len(lockKeys))
+		var errorString strings.Builder
+		errorString.WriteString(fmt.Sprintf("the stack is currently locked by %v lock(s). Either wait for the other "+
+			"process(es) to end or delete the lock file with `pulumi cancel`.", len(lockKeys)))
 
 		for _, lock := range lockKeys {
 			content, err := b.bucket.ReadAll(ctx, lock)
@@ -95,16 +97,16 @@ func (b *diyBackend) checkForLock(ctx context.Context, stackRef backend.StackRef
 				return err
 			}
 
-			errorString += fmt.Sprintf("\n  %v: created by %v@%v (pid %v) at %v",
+			errorString.WriteString(fmt.Sprintf("\n  %v: created by %v@%v (pid %v) at %v",
 				b.lockURLForError(lock),
 				l.Username,
 				l.Hostname,
 				l.Pid,
 				l.Timestamp.Format(time.RFC3339),
-			)
+			))
 		}
 
-		return errors.New(errorString)
+		return errors.New(errorString.String())
 	}
 	return nil
 }

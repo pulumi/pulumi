@@ -105,13 +105,18 @@ func readConsolePlain(stdout io.Writer, stdin io.Reader, prompt string) (string,
 	var raw strings.Builder
 	for {
 		var b [1]byte
-		if _, err := os.Stdin.Read(b[:]); err != nil {
+		n, err := os.Stdin.Read(b[:])
+		if err != nil {
 			return "", err
 		}
-		if b[0] == '\n' {
+		if n == 0 {
+			continue
+		}
+		ch := b[0]
+		if ch == '\n' {
 			break
 		}
-		raw.WriteByte(b[0])
+		raw.WriteByte(ch)
 	}
 	return RemoveTrailingNewline(raw.String()), nil
 }

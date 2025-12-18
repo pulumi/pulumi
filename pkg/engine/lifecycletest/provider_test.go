@@ -1513,7 +1513,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 			versions: []string{"1.0.0", "1.1.0"},
 			packages: []workspace.PackageDescriptor{
 				{
-					PluginSpec: workspace.PluginSpec{
+					PluginDescriptor: workspace.PluginDescriptor{
 						Name:              "pkgA",
 						Version:           &semver.Version{Major: 1, Minor: 1},
 						PluginDownloadURL: "example.com/default",
@@ -1533,7 +1533,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 			name:     "specified-provider",
 			versions: []string{"1.0.0", "1.1.0"},
 			packages: []workspace.PackageDescriptor{{
-				PluginSpec: workspace.PluginSpec{
+				PluginDescriptor: workspace.PluginDescriptor{
 					Name:    "pkgA",
 					Version: &semver.Version{Major: 1, Minor: 1},
 					Kind:    apitype.ResourcePlugin,
@@ -1553,7 +1553,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 			versions: []string{"1.3.0", "1.1.0"},
 			prog:     prog(),
 			packages: []workspace.PackageDescriptor{{
-				PluginSpec: workspace.PluginSpec{
+				PluginDescriptor: workspace.PluginDescriptor{
 					Name:    "pkgA",
 					Version: &semver.Version{Major: 1, Minor: 1},
 					Kind:    apitype.ResourcePlugin,

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 //go:build freebsd || linux || netbsd || openbsd || solaris || dragonfly
-// +build freebsd linux netbsd openbsd solaris dragonfly
 
 package nosleep
 

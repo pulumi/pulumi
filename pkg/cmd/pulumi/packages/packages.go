@@ -365,7 +365,7 @@ func NewPluginContext(cwd string) (*plugin.Context, error) {
 	return pluginCtx, nil
 }
 
-func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginSpec) {
+func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginDescriptor) {
 	if spec.Namespace == "" && pluginSpec.IsGitPlugin() {
 		namespaceRegex := regexp.MustCompile(`git://[^/]+/([^/]+)/`)
 		matches := namespaceRegex.FindStringSubmatch(pluginSpec.PluginDownloadURL)
@@ -476,7 +476,7 @@ func ProviderFromSource(
 		return Provider{}, nil, err
 	}
 	descriptor := workspace.PackageDescriptor{
-		PluginSpec: pluginSpec,
+		PluginDescriptor: pluginSpec,
 	}
 
 	installDescriptor := func(descriptor workspace.PackageDescriptor) (Provider, error) {
@@ -503,7 +503,7 @@ func ProviderFromSource(
 			pctx.Host.Log(sev, "", msg, 0)
 		}
 
-		_, err = pkgWorkspace.InstallPlugin(pctx.Base(), descriptor.PluginSpec, log)
+		_, err = pkgWorkspace.InstallPlugin(pctx.Base(), descriptor.PluginDescriptor, log)
 		if err != nil {
 			return Provider{}, err
 		}
@@ -617,7 +617,7 @@ func setupProviderFromRegistryMeta(
 	meta apitype.PackageMetadata,
 	setupProvider func(workspace.PackageDescriptor, *workspace.PackageSpec) (Provider, *workspace.PackageSpec, error),
 ) (Provider, *workspace.PackageSpec, error) {
-	spec := workspace.PluginSpec{
+	spec := workspace.PluginDescriptor{
 		Name:              meta.Name,
 		Kind:              apitype.ResourcePlugin,
 		Version:           &meta.Version,

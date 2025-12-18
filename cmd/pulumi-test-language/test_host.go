@@ -99,7 +99,7 @@ func (h *testHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 func (h *testHost) PolicyAnalyzer(
 	name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
 ) (plugin.Analyzer, error) {
-	hasPlugin := func(spec workspace.PluginSpec) bool {
+	hasPlugin := func(spec workspace.PluginDescriptor) bool {
 		// This is only called for the language runtime, so we can just do a simple check.
 		return spec.Kind == apitype.LanguagePlugin && spec.Name == h.runtimeName
 	}
@@ -187,9 +187,9 @@ func (h *testHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, erro
 	return h.runtime, nil
 }
 
-func (h *testHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Flags) error {
+func (h *testHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds plugin.Flags) error {
 	// Remove the builtin "pulumi" provider, as that's always available.
-	filtered := make([]workspace.PluginSpec, 0, len(plugins))
+	filtered := make([]workspace.PluginDescriptor, 0, len(plugins))
 	for _, plugin := range plugins {
 		if plugin.Kind == apitype.ResourcePlugin && plugin.Name == "pulumi" {
 			continue
@@ -233,7 +233,7 @@ func (h *testHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Fl
 }
 
 func (h *testHost) ResolvePlugin(
-	spec workspace.PluginSpec,
+	spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
 	if spec.Kind == apitype.ResourcePlugin {
 		for name, provider := range h.providers {

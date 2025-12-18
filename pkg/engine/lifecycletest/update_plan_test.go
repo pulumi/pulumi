@@ -1506,8 +1506,8 @@ func TestPluginsAreDownloaded(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	},
-		workspace.PackageDescriptor{PluginSpec: workspace.PluginSpec{Name: "pkgA"}},
-		workspace.PackageDescriptor{PluginSpec: workspace.PluginSpec{Name: "pkgB", Version: &semver10}})
+		workspace.PackageDescriptor{PluginDescriptor: workspace.PluginDescriptor{Name: "pkgA"}},
+		workspace.PackageDescriptor{PluginDescriptor: workspace.PluginDescriptor{Name: "pkgB", Version: &semver10}})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &lt.TestPlan{

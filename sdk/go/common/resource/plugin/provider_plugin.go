@@ -166,7 +166,7 @@ func GetProviderAttachPort(pkg tokens.Package) (*int, error) {
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
-func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
+func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 	options map[string]any, disableProviderPreview bool, jsonConfig string,
 	projectName tokens.PackageName,
 ) (Provider, error) {

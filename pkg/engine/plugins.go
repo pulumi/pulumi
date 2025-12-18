@@ -26,6 +26,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -52,23 +53,23 @@ type PluginManager interface {
 	GetPluginPath(
 		ctx context.Context,
 		d diag.Sink,
-		spec workspace.PluginSpec,
+		spec workspace.PluginDescriptor,
 		projectPlugins []workspace.ProjectPlugin,
 	) (string, error)
-	HasPlugin(spec workspace.PluginSpec) bool
-	HasPluginGTE(spec workspace.PluginSpec) (bool, error)
+	HasPlugin(spec workspace.PluginDescriptor) bool
+	HasPluginGTE(spec workspace.PluginDescriptor) (bool, error)
 
-	GetLatestPluginVersion(ctx context.Context, spec workspace.PluginSpec) (*semver.Version, error)
+	GetLatestPluginVersion(ctx context.Context, spec workspace.PluginDescriptor) (*semver.Version, error)
 	DownloadPlugin(
 		ctx context.Context,
-		plugin workspace.PluginSpec,
+		plugin workspace.PluginDescriptor,
 		wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
 		retry func(err error, attempt int, limit int, delay time.Duration),
 	) (io.ReadCloser, int64, error)
 	InstallPlugin(
 		ctx context.Context,
-		plugin workspace.PluginSpec,
-		content pkgWorkspace.PluginContent,
+		plugin workspace.PluginDescriptor,
+		content pluginstorage.Content,
 		reinstall bool,
 	) error
 }
@@ -94,30 +95,30 @@ type defaultPluginManager struct{}
 func (defaultPluginManager) GetPluginPath(
 	ctx context.Context,
 	d diag.Sink,
-	spec workspace.PluginSpec,
+	spec workspace.PluginDescriptor,
 	projectPlugins []workspace.ProjectPlugin,
 ) (string, error) {
 	return workspace.GetPluginPath(ctx, d, spec, projectPlugins)
 }
 
-func (defaultPluginManager) HasPlugin(spec workspace.PluginSpec) bool {
+func (defaultPluginManager) HasPlugin(spec workspace.PluginDescriptor) bool {
 	return workspace.HasPlugin(spec)
 }
 
-func (defaultPluginManager) HasPluginGTE(spec workspace.PluginSpec) (bool, error) {
+func (defaultPluginManager) HasPluginGTE(spec workspace.PluginDescriptor) (bool, error) {
 	return workspace.HasPluginGTE(spec)
 }
 
 func (defaultPluginManager) GetLatestPluginVersion(
 	ctx context.Context,
-	spec workspace.PluginSpec,
+	spec workspace.PluginDescriptor,
 ) (*semver.Version, error) {
 	return spec.GetLatestVersion(ctx)
 }
 
 func (defaultPluginManager) DownloadPlugin(
 	ctx context.Context,
-	plugin workspace.PluginSpec,
+	plugin workspace.PluginDescriptor,
 	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
 	retry func(err error, attempt int, limit int, delay time.Duration),
 ) (io.ReadCloser, int64, error) {
@@ -132,19 +133,19 @@ func (defaultPluginManager) DownloadPlugin(
 
 func (defaultPluginManager) InstallPlugin(
 	ctx context.Context,
-	plugin workspace.PluginSpec,
-	content pkgWorkspace.PluginContent,
+	plugin workspace.PluginDescriptor,
+	content pluginstorage.Content,
 	reinstall bool,
 ) error {
 	return pkgWorkspace.InstallPluginContent(ctx, plugin, content, reinstall)
 }
 
 // PluginSet represents a set of plugins.
-type PluginSet map[string]workspace.PluginSpec
+type PluginSet map[string]workspace.PluginDescriptor
 
 // NewPluginSet creates a new PluginSet from the specified PluginSpecs.
-func NewPluginSet(plugins ...workspace.PluginSpec) PluginSet {
-	var s PluginSet = make(map[string]workspace.PluginSpec, len(plugins))
+func NewPluginSet(plugins ...workspace.PluginDescriptor) PluginSet {
+	var s PluginSet = make(map[string]workspace.PluginDescriptor, len(plugins))
 	for _, p := range plugins {
 		s.Add(p)
 	}
@@ -152,7 +153,7 @@ func NewPluginSet(plugins ...workspace.PluginSpec) PluginSet {
 }
 
 // Add adds a plugin to this plugin set.
-func (p PluginSet) Add(plug workspace.PluginSpec) {
+func (p PluginSet) Add(plug workspace.PluginDescriptor) {
 	p[plug.String()] = plug
 }
 
@@ -160,9 +161,9 @@ func (p PluginSet) Add(plug workspace.PluginSpec) {
 //
 // For example, the plugin aws would be removed if there was an already existing plugin aws-5.4.0.
 func (p PluginSet) Deduplicate() PluginSet {
-	existing := map[string]workspace.PluginSpec{}
+	existing := map[string]workspace.PluginDescriptor{}
 	newSet := NewPluginSet()
-	add := func(p workspace.PluginSpec) {
+	add := func(p workspace.PluginDescriptor) {
 		prev, ok := existing[p.Name]
 		if ok {
 			// If either `pluginDownloadURL`, `Version` or both are set we consider the
@@ -193,8 +194,8 @@ func (p PluginSet) Deduplicate() PluginSet {
 }
 
 // Values returns a slice of all of the plugins contained within this set.
-func (p PluginSet) Values() []workspace.PluginSpec {
-	plugins := slice.Prealloc[workspace.PluginSpec](len(p))
+func (p PluginSet) Values() []workspace.PluginDescriptor {
+	plugins := slice.Prealloc[workspace.PluginDescriptor](len(p))
 	for _, value := range p {
 		plugins = append(plugins, value)
 	}
@@ -234,7 +235,7 @@ func (p PackageSet) Union(other PackageSet) PackageSet {
 func (p PackageSet) ToPluginSet() PluginSet {
 	newSet := NewPluginSet()
 	for _, value := range p {
-		newSet.Add(value.PluginSpec)
+		newSet.Add(value.PluginDescriptor)
 	}
 	return newSet
 }
@@ -297,8 +298,8 @@ func GetRequiredPlugins(
 	host plugin.Host,
 	runtime string,
 	info plugin.ProgramInfo,
-) ([]workspace.PluginSpec, error) {
-	plugins := make([]workspace.PluginSpec, 0, 1)
+) ([]workspace.PluginDescriptor, error) {
+	plugins := make([]workspace.PluginDescriptor, 0, 1)
 
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
@@ -311,12 +312,12 @@ func GetRequiredPlugins(
 	if err != nil {
 		// Don't error if this fails, just warn and return the version as unknown.
 		host.Log(diag.Warning, "", fmt.Sprintf("failed to get plugin info for language plugin %s: %v", runtime, err), 0)
-		plugins = append(plugins, workspace.PluginSpec{
+		plugins = append(plugins, workspace.PluginDescriptor{
 			Name: runtime,
 			Kind: apitype.LanguagePlugin,
 		})
 	} else {
-		plugins = append(plugins, workspace.PluginSpec{
+		plugins = append(plugins, workspace.PluginDescriptor{
 			Name:    langInfo.Name,
 			Kind:    langInfo.Kind,
 			Version: langInfo.Version,
@@ -332,7 +333,7 @@ func GetRequiredPlugins(
 		return nil, fmt.Errorf("failed to discover plugin requirements: %w", err)
 	}
 	for _, dep := range deps {
-		plugins = append(plugins, dep.PluginSpec)
+		plugins = append(plugins, dep.PluginDescriptor)
 	}
 
 	return plugins, nil
@@ -414,7 +415,7 @@ func gatherPackagesFromSnapshot(plugctx *plugin.Context, target *deploy.Target) 
 		logging.V(preparePluginLog).Infof(
 			"gatherPackagesFromSnapshot(): package %s %s is required by first-class provider %q", name, version, urn)
 		set.Add(workspace.PackageDescriptor{
-			PluginSpec: workspace.PluginSpec{
+			PluginDescriptor: workspace.PluginDescriptor{
 				Name:              name.String(),
 				Kind:              apitype.ResourcePlugin,
 				Version:           version,
@@ -518,7 +519,7 @@ func installPlugin(
 	ctx context.Context,
 	opts *deploymentOptions,
 	pluginManager PluginManager,
-	plugin workspace.PluginSpec,
+	plugin workspace.PluginDescriptor,
 ) error {
 	logging.V(preparePluginLog).Infof("installPlugin(%s, %s): beginning install", plugin.Name, plugin.Version)
 
@@ -611,7 +612,7 @@ func installPlugin(
 	if err := pluginManager.InstallPlugin(
 		ctx,
 		plugin,
-		pkgWorkspace.TarPlugin(withInstallProgress(tarball)),
+		pluginstorage.TarPlugin(withInstallProgress(tarball)),
 		false,
 	); err != nil {
 		return fmt.Errorf("installing plugin; run `pulumi plugin install %s %s v%s` to retry manually: %w",

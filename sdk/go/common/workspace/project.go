@@ -102,88 +102,117 @@ type PluginOptions struct {
 	Path    string `json:"path" yaml:"path"`
 }
 
-// PackageSpec defines the structured format for a package dependency
+// PackageSpec defines the structured format for a package dependency, as represented on disk.
+//
+// When marshaling, PackageSpec will be represented as <source>@<version> if that is
+// sufficient to represent the struct. Otherwise the full object will be used.
+//
+// PackageSpecs are unresolved, and must be resolved before usage.
 type PackageSpec struct {
-	Source     string   `json:"source" yaml:"source"`
-	Version    string   `json:"version,omitempty" yaml:"version,omitempty"`
-	Parameters []string `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	// The "name" of the plugin.
+	//
+	// Source may be one of:
+	// - A simple name, like "pkg"
+	// - A registry double or triple: "org/pkg", "source/org/pkg"
+	// - A git URL, "git://github.com/pulumi/pulumi-example/path"
+	// - A local path, like /usr/bin/pkg
+	Source string
+	// The version of the provider, may be Semver 2.0 or a git hash.
+	Version string
+	// Any parameters needed to configure the package.
+	Parameters []string
+
+	// if set will be used to validate the plugin downloaded matches. This is keyed by
+	// "$os-$arch", e.g. "linux-x64".
+	Checksums map[string][]byte
+
+	// The server to download the plugin from, if needed.
+	PluginDownloadURL string
+
+	// When marshaling, prefer to unmarshal without the <name>@<version> shorthand.
+	unmarshalledFromFull bool
 }
 
-// packageValue can be either a string or a PackageSpec
-// This is a private implementation type that handles the dual-format parsing
-type packageValue struct {
-	// The underlying value, either a string or a PackageSpec
-	value any
+type packageSpecMarshalled struct {
+	Source            string            `json:"source" yaml:"source"`
+	Version           string            `json:"version" yaml:"version"`
+	Parameters        []string          `json:"parameters,omitzero" yaml:"parameters,omitempty"`
+	Checksums         map[string][]byte `json:"checksums,omitzero" yaml:"checksums,omitempty"`
+	PluginDownloadURL string            `json:"pluginDownloadURL,omitzero" yaml:"pluginDownloadURL,omitempty"`
 }
 
-// Spec returns the package as a PackageSpec if it's a PackageSpec,
-// or creates a simple PackageSpec from its string representation.
-func (pv *packageValue) Spec() PackageSpec {
-	switch v := pv.value.(type) {
-	case PackageSpec:
-		return v
-	case string:
-		// Check if the string contains a version specifier in the format "source@version"
-		parts := strings.Split(v, "@")
-		if len(parts) == 2 {
-			return PackageSpec{
-				Source:  parts[0],
-				Version: parts[1],
-			}
+func marshalPackageSpec[T any](ps PackageSpec, from func(any) (T, error)) (T, error) {
+	if len(ps.Parameters) == 0 && len(ps.Checksums) == 0 && ps.PluginDownloadURL == "" && !ps.unmarshalledFromFull {
+		name := ps.Source
+		if ps.Version != "" {
+			name += "@" + ps.Version
 		}
-		return PackageSpec{Source: v}
-	default:
-		panic("unexpected type in PackageValue")
+		return from(name)
 	}
+	return from(packageSpecMarshalled{
+		Source:            ps.Source,
+		Version:           ps.Version,
+		Parameters:        ps.Parameters,
+		Checksums:         ps.Checksums,
+		PluginDownloadURL: ps.PluginDownloadURL,
+	})
 }
 
-// UnmarshalJSON implements the json.Unmarshaler interface
-func (pv *packageValue) UnmarshalJSON(data []byte) error {
-	// First try to unmarshal as a string
+func (ps *PackageSpec) unmarshal(from func(any) error) error {
 	var s string
-	if err := json.Unmarshal(data, &s); err == nil {
-		pv.value = s
+	if err := from(&s); err == nil {
+		var source, version string
+		parts := strings.SplitN(s, "@", 2)
+		source = parts[0]
+		if len(parts) > 1 {
+			version = parts[1]
+		}
+		*ps = PackageSpec{
+			Source:  source,
+			Version: version,
+		}
 		return nil
 	}
-
-	// If that fails, try to unmarshal as a PackageSpec
-	var spec PackageSpec
-	if err := json.Unmarshal(data, &spec); err == nil {
-		pv.value = spec
-		return nil
+	var full packageSpecMarshalled
+	err := from(&full)
+	if err != nil {
+		return errors.New("package must be either a string or a package specification object")
 	}
-
-	return errors.New("package must be either a string or a package specification object")
-}
-
-// MarshalJSON implements the json.Marshaler interface
-func (pv packageValue) MarshalJSON() ([]byte, error) {
-	return json.Marshal(pv.value)
-}
-
-// UnmarshalYAML implements the yaml.Unmarshaler interface
-func (pv *packageValue) UnmarshalYAML(unmarshal func(any) error) error {
-	// First try to unmarshal as a string
-	var s string
-	if err := unmarshal(&s); err == nil {
-		pv.value = s
-		return nil
+	*ps = PackageSpec{
+		Source:               full.Source,
+		Version:              full.Version,
+		Parameters:           full.Parameters,
+		Checksums:            full.Checksums,
+		PluginDownloadURL:    full.PluginDownloadURL,
+		unmarshalledFromFull: true,
 	}
-
-	// If that fails, try to unmarshal as a PackageSpec
-	var spec PackageSpec
-	if err := unmarshal(&spec); err == nil {
-		pv.value = spec
-		return nil
-	}
-
-	return errors.New("package must be either a string or a package specification object")
+	return nil
 }
 
-// MarshalYAML implements the yaml.Marshaler interface
-func (pv packageValue) MarshalYAML() (any, error) {
-	return pv.value, nil
+func (ps PackageSpec) MarshalJSON() ([]byte, error) { return marshalPackageSpec(ps, json.Marshal) }
+
+func (ps *PackageSpec) UnmarshalJSON(bytes []byte) error {
+	return ps.unmarshal(func(v any) error { return json.Unmarshal(bytes, v) })
 }
+
+func (ps PackageSpec) MarshalYAML() (any, error) {
+	return marshalPackageSpec(ps, func(v any) (any, error) { return v, nil })
+}
+
+func (ps *PackageSpec) UnmarshalYAML(unmarshal func(any) error) error {
+	return ps.unmarshal(unmarshal)
+}
+
+// The set of interfaces needed to implement custom marshaling for the formats that Pulumi
+// supports.
+type customMarshal interface {
+	json.Marshaler
+	json.Unmarshaler
+	yaml.Marshaler
+	UnmarshalYAML(unmarshal func(any) error) error
+}
+
+var _ customMarshal = &PackageSpec{}
 
 type Plugins struct {
 	Providers []PluginOptions `json:"providers,omitempty" yaml:"providers,omitempty"`
@@ -271,7 +300,7 @@ type Project struct {
 	Options *ProjectOptions `json:"options,omitempty" yaml:"options,omitempty"`
 
 	// Packages is a map of package dependencies that can be either strings or PackageSpecs
-	Packages map[string]packageValue `json:"packages,omitempty" yaml:"packages,omitempty"`
+	Packages map[string]PackageSpec `json:"packages,omitempty" yaml:"packages,omitempty"`
 
 	Plugins *Plugins `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 
@@ -294,24 +323,16 @@ func (proj Project) RuntimeInfo() *ProjectRuntimeInfo {
 
 // GetPackageSpecs returns a map of package names to their corresponding PackageSpecs
 func (proj *Project) GetPackageSpecs() map[string]PackageSpec {
-	if proj.Packages == nil {
-		return nil
-	}
-
-	result := make(map[string]PackageSpec)
-	for name, packageValue := range proj.Packages {
-		result[name] = packageValue.Spec()
-	}
-	return result
+	return maps.Clone(proj.Packages)
 }
 
 func (proj *Project) AddPackage(name string, spec PackageSpec) {
 	addPackageToMap(&proj.Packages, name, spec)
 }
 
-func addPackageToMap(packages *map[string]packageValue, name string, spec PackageSpec) {
+func addPackageToMap(packages *map[string]PackageSpec, name string, spec PackageSpec) {
 	if *packages == nil {
-		*packages = make(map[string]packageValue)
+		*packages = make(map[string]PackageSpec)
 	}
 
 	// We default to using the simple string format, but if the package
@@ -320,20 +341,18 @@ func addPackageToMap(packages *map[string]packageValue, name string, spec Packag
 	// - if this same package was already added using the PackageSpec format
 	// we use the PackageSpec format.
 	useStringFormat := true
-	if len(spec.Parameters) > 0 {
+	if len(spec.Parameters) > 0 || len(spec.Checksums) > 0 || spec.PluginDownloadURL != "" {
 		// Simple string format does not support parameters
 		useStringFormat = false
-	} else if existingSpec, ok := (*packages)[name]; ok {
-		if _, ok := existingSpec.value.(PackageSpec); ok {
-			// If the existing spec is a PackageSpec, keep its format
-			useStringFormat = false
-		}
+	} else if existingSpec, ok := (*packages)[name]; ok && existingSpec.unmarshalledFromFull {
+		// If the existing spec is a PackageSpec, keep its format
+		useStringFormat = false
 	} else if len(*packages) > 0 {
 		// Check if all existing packages are PackageSpec
 		// If all packages are already using the PackageSpec format, maintain consistency
 		allPackageSpecs := true
 		for _, existingPackage := range *packages {
-			if _, ok := existingPackage.value.(PackageSpec); !ok {
+			if !existingPackage.unmarshalledFromFull {
 				allPackageSpecs = false
 				break
 			}
@@ -343,16 +362,8 @@ func addPackageToMap(packages *map[string]packageValue, name string, spec Packag
 		}
 	}
 
-	// Add the package to the project
-	if useStringFormat {
-		specString := spec.Source
-		if spec.Version != "" {
-			specString = fmt.Sprintf("%s@%s", spec.Source, spec.Version)
-		}
-		(*packages)[name] = packageValue{value: specString}
-	} else {
-		(*packages)[name] = packageValue{value: spec}
-	}
+	spec.unmarshalledFromFull = !useStringFormat
+	(*packages)[name] = spec
 }
 
 func isPrimitiveValue(value any) bool {
@@ -888,7 +899,7 @@ type PluginProject struct {
 	// Runtime is a required runtime that executes code.
 	Runtime ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`
 	// Packages is a map of package dependencies that can be either strings or PackageSpecs
-	Packages map[string]packageValue `json:"packages,omitempty" yaml:"packages,omitempty"`
+	Packages map[string]PackageSpec `json:"packages,omitempty" yaml:"packages,omitempty"`
 }
 
 var _ BaseProject = (*PluginProject)(nil)
@@ -910,16 +921,7 @@ func (proj *PluginProject) RuntimeInfo() *ProjectRuntimeInfo {
 
 // GetPackageSpecs returns a map of package names to their corresponding PackageSpecs
 func (proj *PluginProject) GetPackageSpecs() map[string]PackageSpec {
-	if proj.Packages == nil {
-		return nil
-	}
-
-	result := make(map[string]PackageSpec)
-	for name, packageValue := range proj.Packages {
-		result[name] = packageValue.Spec()
-	}
-
-	return result
+	return maps.Clone(proj.Packages)
 }
 
 func (proj *PluginProject) Validate() error {
