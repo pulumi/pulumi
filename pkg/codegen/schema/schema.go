@@ -1274,6 +1274,11 @@ func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
 		return FunctionSpec{}, err
 	}
 
+	var plain *bool
+	if !f.Plain {
+		plain = &f.Plain
+	}
+
 	return FunctionSpec{
 		Description:               f.Comment,
 		DeprecationMessage:        f.DeprecationMessage,
@@ -1284,7 +1289,7 @@ func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
 		Outputs:                   outputs,
 		ReturnType:                returnType,
 		Language:                  lang,
-		Plain:                     &f.Plain,
+		Plain:                     plain,
 	}, nil
 }
 
