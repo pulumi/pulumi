@@ -314,14 +314,12 @@ func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Versi
 		return builtins, nil
 	}
 
-	descriptor := workspace.PackageDescriptor{
-		PluginDescriptor: workspace.PluginDescriptor{
-			Kind:              apitype.ResourcePlugin,
-			Name:              string(pkg),
-			Version:           version,
-			PluginDownloadURL: downloadURL,
-			Checksums:         checksums,
-		},
+	descriptor := workspace.PluginDescriptor{
+		Kind:              apitype.ResourcePlugin,
+		Name:              string(pkg),
+		Version:           version,
+		PluginDownloadURL: downloadURL,
+		Checksums:         checksums,
 	}
 
 	provider, err := host.Provider(descriptor)
@@ -349,7 +347,7 @@ func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Versi
 		host.Log(sev, "", msg, 0)
 	}
 
-	_, err = pkgWorkspace.InstallPlugin(ctx, descriptor.PluginDescriptor, log)
+	_, err = pkgWorkspace.InstallPlugin(ctx, descriptor, log)
 	if err != nil {
 		return nil, err
 	}

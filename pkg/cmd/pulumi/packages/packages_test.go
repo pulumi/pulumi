@@ -66,7 +66,13 @@ func TestProviderFromSource(t *testing.T) {
 		}
 
 		mockHost := &plugin.MockHost{
-			ProviderF: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+			ProviderF: func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
+				require.Equal(t, workspace.PluginDescriptor{
+					Name:              "test-provider",
+					Kind:              apitype.ResourcePlugin,
+					Version:           &semver.Version{Major: 1},
+					PluginDownloadURL: "https://example.com/test-provider",
+				}, descriptor)
 				return mockProvider, nil
 			},
 		}

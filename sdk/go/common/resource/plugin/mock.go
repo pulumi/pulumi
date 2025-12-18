@@ -31,7 +31,7 @@ type MockHost struct {
 	AnalyzerF           func(nm tokens.QName) (Analyzer, error)
 	PolicyAnalyzerF     func(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error)
 	ListAnalyzersF      func() []Analyzer
-	ProviderF           func(descriptor workspace.PackageDescriptor) (Provider, error)
+	ProviderF           func(descriptor workspace.PluginDescriptor) (Provider, error)
 	CloseProviderF      func(provider Provider) error
 	LanguageRuntimeF    func(runtime string) (LanguageRuntime, error)
 	EnsurePluginsF      func(plugins []workspace.PluginDescriptor, kinds Flags) error
@@ -85,7 +85,7 @@ func (m *MockHost) ListAnalyzers() []Analyzer {
 	return nil
 }
 
-func (m *MockHost) Provider(descriptor workspace.PackageDescriptor) (Provider, error) {
+func (m *MockHost) Provider(descriptor workspace.PluginDescriptor) (Provider, error) {
 	if m.ProviderF != nil {
 		return m.ProviderF(descriptor)
 	}

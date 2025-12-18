@@ -485,10 +485,7 @@ func ProviderFromSource(
 	packageSpec := workspace.PackageSpec{Source: packageSource, Version: version}
 
 	installDescriptor := func(descriptor workspace.PluginDescriptor) (Provider, error) {
-		p, err := pctx.Host.Provider(workspace.PackageDescriptor{
-			// Host.Provider ignores parameterization, so this is safe
-			PluginDescriptor: descriptor,
-		})
+		p, err := pctx.Host.Provider(descriptor)
 		if err == nil {
 			return Provider{Provider: p}, nil
 		}
@@ -513,10 +510,7 @@ func ProviderFromSource(
 			return Provider{}, err
 		}
 
-		p, err = pctx.Host.Provider(workspace.PackageDescriptor{
-			// Host.Provider ignores parameterization, so this is safe
-			PluginDescriptor: descriptor,
-		})
+		p, err = pctx.Host.Provider(descriptor)
 		if err != nil {
 			return Provider{}, err
 		}

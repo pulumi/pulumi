@@ -100,7 +100,7 @@ resource "app" "scaleway:iam/application:Application" {}
 		ResolvePluginF: func(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
 			return &workspace.PluginInfo{Name: spec.Name}, nil
 		},
-		ProviderF: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+		ProviderF: func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
 			return &plugin.MockProvider{
 				GetSchemaF: func(
 					ctx context.Context,
