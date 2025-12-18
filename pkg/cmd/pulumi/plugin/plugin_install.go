@@ -22,6 +22,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/blang/semver"
@@ -192,13 +193,17 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 				return fmt.Errorf("getting current working directory: %w", err)
 			}
 
+			source := args[1]
+			var version string
+			if parts := strings.SplitN(args[1], "@", 2); len(parts) > 1 {
+				source = parts[0]
+				version = parts[1]
+			}
 			packageSpec := workspace.PackageSpec{
-				Source:            args[1],
+				Source:            source,
 				Checksums:         checksums,
 				PluginDownloadURL: cmd.serverURL,
-			}
-			if pluginSpec.Version != nil {
-				packageSpec.Version = pluginSpec.Version.String()
+				Version:           version,
 			}
 
 			if bp, _, err := workspace.LoadBaseProjectFrom(cwd); err == nil {
