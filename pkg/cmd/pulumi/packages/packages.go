@@ -448,7 +448,7 @@ func SchemaFromSchemaSource(
 	if err != nil {
 		return nil, nil, err
 	}
-	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginDescriptor(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -471,7 +471,7 @@ type Provider struct {
 func ProviderFromSource(
 	pctx *plugin.Context, packageSource string, reg registry.Registry,
 ) (Provider, *workspace.PackageSpec, error) {
-	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginDescriptor(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return Provider{}, nil, err
 	}
