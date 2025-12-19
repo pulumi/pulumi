@@ -405,12 +405,12 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			})
 		}
 
-		if err == nil {
+		if err == nil || resourceStatus == resource.StatusPartialFailure {
 			id = resp.ID
 			outs = resp.Properties
 			refreshBeforeUpdate = resp.RefreshBeforeUpdate
 
-			if !s.deployment.opts.DryRun && id == "" {
+			if err == nil && !s.deployment.opts.DryRun && id == "" {
 				return resourceStatus, nil, errors.New("provider did not return an ID from Create")
 			}
 		}
