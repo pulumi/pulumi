@@ -780,6 +780,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	}
 
 	// Reference: https://www.pulumi.com/docs/iac/concepts/options/
+	if opts.Aliases != nil {
+		appendOption("aliases", opts.Aliases)
+	}
 	if opts.Parent != nil {
 		appendOption("parent", opts.Parent)
 	}

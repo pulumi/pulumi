@@ -901,6 +901,9 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	}
 
 	// Reference: https://www.pulumi.com/docs/iac/concepts/options/
+	if opts.Aliases != nil {
+		appendOption("aliases", opts.Aliases)
+	}
 	if opts.Parent != nil {
 		appendOption("parent", opts.Parent)
 	}

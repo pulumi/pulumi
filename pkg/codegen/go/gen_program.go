@@ -1106,6 +1106,10 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	}
 
 	// Reference: https://www.pulumi.com/docs/iac/concepts/options/
+
+	if opts.Aliases != nil {
+		appendOption("Aliases", opts.Aliases, model.NewListType(model.StringType))
+	}
 	if opts.Parent != nil {
 		appendOption("Parent", opts.Parent, model.DynamicType)
 	}
@@ -1189,6 +1193,16 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 		// Some resource options have syntactic/type transformations.
 		valBuffer := &bytes.Buffer{}
 		switch attr.Name {
+		case "Aliases":
+			// Aliases is a []string, but we need to lift it to pulumi.Alias[]
+			g.Fgenf(valBuffer, "[]pulumi.Alias{")
+			for i, expr := range attr.Value.(*model.TupleConsExpression).Expressions {
+				if i > 0 {
+					g.Fgenf(valBuffer, ", ")
+				}
+				g.Fgenf(valBuffer, "pulumi.Alias{ URN: pulumi.URN(%v) }", expr)
+			}
+			g.Fgenf(valBuffer, "}")
 		case "Import":
 			g.Fgenf(valBuffer, "pulumi.ID(%v)", attr.Value)
 		case "ReplacementTrigger":

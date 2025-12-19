@@ -1,0 +1,6 @@
+import * as pulumi from "@pulumi/pulumi";
+import * as simple from "@pulumi/simple";
+
+// Make a simple resource to use as a parent
+const parent = new simple.Resource("parent", {value: true});
+const aliasURN = new simple.Resource("aliasURN", {value: true});
