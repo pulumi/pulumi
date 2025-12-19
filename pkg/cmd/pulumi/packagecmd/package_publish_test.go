@@ -692,7 +692,7 @@ func TestFindReadme(t *testing.T) {
 	t.Run("Git Plugin Download URL", func(t *testing.T) {
 		t.Parallel()
 		pluginDownloadURL := "git://github.com/pulumi/pulumi-example@v1.2.3"
-		pluginSpec, err := workspace.NewPluginSpec(ctx, pluginDownloadURL, apitype.ResourcePlugin, nil, "", nil)
+		pluginSpec, err := workspace.NewPluginDescriptor(ctx, pluginDownloadURL, apitype.ResourcePlugin, nil, "", nil)
 		require.NoError(t, err)
 
 		installResourcePluginFromFiles(t, pluginSpec, map[string]string{
@@ -709,7 +709,7 @@ func TestFindReadme(t *testing.T) {
 	t.Run("Git Plugin Download URL with subdirectory", func(t *testing.T) {
 		t.Parallel()
 		pluginDownloadURL := "git://github.com/pulumi/pulumi-subdir-example/path@v1.2.3"
-		pluginSpec, err := workspace.NewPluginSpec(ctx, pluginDownloadURL, apitype.ResourcePlugin, nil, "", nil)
+		pluginSpec, err := workspace.NewPluginDescriptor(ctx, pluginDownloadURL, apitype.ResourcePlugin, nil, "", nil)
 		require.NoError(t, err)
 
 		installResourcePluginFromFiles(t, pluginSpec, map[string]string{

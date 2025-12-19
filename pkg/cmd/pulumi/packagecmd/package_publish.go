@@ -315,7 +315,7 @@ func (cmd *packagePublishCmd) findReadme(ctx context.Context, packageSrc string)
 	}
 
 	// Otherwise, try to retrieve the readme from the installed plugin.
-	pluginSpec, err := workspace.NewPluginSpec(ctx, packageSrc, apitype.ResourcePlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginDescriptor(ctx, packageSrc, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create plugin spec: %w", err)
 	}
