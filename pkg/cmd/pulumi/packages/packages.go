@@ -61,9 +61,9 @@ func BindSpec(spec schema.PackageSpec) (*schema.Package, error) {
 // It returns the path to the installed package.
 func InstallPackage(proj workspace.BaseProject, pctx *plugin.Context, language, root,
 	schemaSource string, parameters plugin.ParameterizeParameters,
-	registry registry.Registry,
+	registry registry.Registry, e env.Env,
 ) (*schema.Package, *workspace.PackageSpec, hcl.Diagnostics, error) {
-	pkgSpec, specOverride, err := SchemaFromSchemaSource(pctx, schemaSource, parameters, registry)
+	pkgSpec, specOverride, err := SchemaFromSchemaSource(pctx, schemaSource, parameters, registry, e)
 	if err != nil {
 		var diagErr hcl.Diagnostics
 		if errors.As(err, &diagErr) {
@@ -382,6 +382,7 @@ func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginDescr
 //	FILE.[json|y[a]ml] | PLUGIN[@VERSION] | PATH_TO_PLUGIN
 func SchemaFromSchemaSource(
 	pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
+	env env.Env,
 ) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 	var spec schema.PackageSpec
 	if ext := filepath.Ext(packageSource); ext == ".yaml" || ext == ".yml" {
@@ -413,7 +414,7 @@ func SchemaFromSchemaSource(
 		return &spec, nil, nil
 	}
 
-	p, specOverride, err := ProviderFromSource(pctx, packageSource, registry)
+	p, specOverride, err := ProviderFromSource(pctx, packageSource, registry, env)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -470,6 +471,7 @@ type Provider struct {
 // PLUGIN[@VERSION] | PATH_TO_PLUGIN
 func ProviderFromSource(
 	pctx *plugin.Context, packageSource string, reg registry.Registry,
+	e env.Env,
 ) (Provider, *workspace.PackageSpec, error) {
 	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
@@ -495,7 +497,7 @@ func ProviderFromSource(
 
 		// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
 		var missingError *workspace.MissingError
-		if !errors.As(err, &missingError) || env.DisableAutomaticPluginAcquisition.Value() {
+		if !errors.As(err, &missingError) || e.GetBool(env.DisableAutomaticPluginAcquisition) {
 			return Provider{}, err
 		}
 
@@ -555,8 +557,8 @@ func ProviderFromSource(
 		packageresolution.DefaultWorkspace(),
 		pluginSpec,
 		packageresolution.Options{
-			DisableRegistryResolve:      env.DisableRegistryResolve.Value(),
-			Experimental:                env.Experimental.Value(),
+			DisableRegistryResolve:      e.GetBool(env.DisableRegistryResolve),
+			Experimental:                e.GetBool(env.Experimental),
 			IncludeInstalledInWorkspace: true,
 		},
 		project,
