@@ -157,9 +157,6 @@ type runParams struct {
 func parseRunParams(flag *flag.FlagSet, args []string) (*runParams, error) {
 	var p runParams
 	flag.StringVar(&p.tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
-	flag.String("binary", "", "[obsolete] Look on path for a binary executable with this name")
-	flag.String("buildTarget", "", "[obsolete] Path to use to output the compiled Pulumi Go program")
-	flag.String("root", "", "[obsolete] Project root path to use")
 
 	if err := flag.Parse(args); err != nil {
 		return nil, err
