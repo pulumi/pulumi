@@ -17,7 +17,6 @@ package workspace
 import (
 	"encoding/base64"
 	"encoding/json"
-	"os"
 	"sync"
 	"testing"
 
@@ -100,7 +99,6 @@ func TestNewAuthContextForTokenExchange(t *testing.T) {
 		user         string
 		token        string
 		expiration   string
-		setupEnv     func(*testing.T) func()
 		wantErr      bool
 		wantOrg      string
 		wantTeam     string
@@ -176,17 +174,6 @@ func TestNewAuthContextForTokenExchange(t *testing.T) {
 			expiration:   "invalid",
 			wantErr:      true,
 			errContains:  "could not parse expiration duration",
-		},
-		{
-			name:         "access token set in environment",
-			organization: "my-org",
-			token:        createTestJWT(map[string]any{"aud": "urn:pulumi:org:my-org"}),
-			setupEnv: func(t *testing.T) func() {
-				os.Setenv("PULUMI_ACCESS_TOKEN", "existing-token")
-				return func() { os.Unsetenv("PULUMI_ACCESS_TOKEN") }
-			},
-			wantErr:     true,
-			errContains: "cannot perform token exchange when an access token is set",
 		},
 		{
 			name:         "team extracted from JWT scope claim",
@@ -286,9 +273,11 @@ func TestNewAuthContextForTokenExchange(t *testing.T) {
 			organization: "",
 			team:         "",
 			user:         "",
-			token:        createTestJWT(map[string]any{"aud": "urn:pulumi:org:test-org", "scope": "team:dev-team user:test-user"}),
-			wantErr:      true,
-			errContains:  "JWT scope contains both team",
+			token: createTestJWT(map[string]any{
+				"aud": "urn:pulumi:org:test-org", "scope": "team:dev-team user:test-user",
+			}),
+			wantErr:     true,
+			errContains: "JWT scope contains both team",
 		},
 		{
 			name:         "aud with extra parts is ignored",
@@ -302,15 +291,7 @@ func TestNewAuthContextForTokenExchange(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Don't use t.Parallel() for tests that modify environment
-			if tt.setupEnv == nil {
-				t.Parallel()
-			}
-
-			if tt.setupEnv != nil {
-				cleanup := tt.setupEnv(t)
-				defer cleanup()
-			}
+			t.Parallel()
 
 			authContext, err := NewAuthContextForTokenExchange(
 				tt.organization, tt.team, tt.user, tt.token, tt.expiration)
@@ -349,4 +330,14 @@ func TestNewAuthContextForTokenExchange(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNewAuthContextForTokenExchange_WithAccessTokenInEnvironment(t *testing.T) {
+	t.Setenv("PULUMI_ACCESS_TOKEN", "existing-token")
+
+	token := createTestJWT(map[string]any{"aud": "urn:pulumi:org:my-org"})
+	_, err := NewAuthContextForTokenExchange("my-org", "", "", token, "")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot perform token exchange when an access token is set")
 }

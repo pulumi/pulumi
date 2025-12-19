@@ -464,7 +464,7 @@ func TestOIDCLoginErrors(t *testing.T) {
 		t.Parallel()
 
 		// Create a JWT with team in scope claim
-		testJWTWithTeam := createJWTWithClaims(map[string]interface{}{
+		testJWTWithTeam := createJWTWithClaims(map[string]any{
 			"aud":   "urn:pulumi:org:test-org",
 			"scope": "team:dev-team",
 			"iss":   "https://oidc.example.com",
@@ -520,7 +520,7 @@ func TestOIDCLoginErrors(t *testing.T) {
 		t.Parallel()
 
 		// Create a JWT with user in scope claim
-		testJWTWithUser := createJWTWithClaims(map[string]interface{}{
+		testJWTWithUser := createJWTWithClaims(map[string]any{
 			"aud":   "urn:pulumi:org:test-org",
 			"scope": "user:test-user-123",
 		})
@@ -625,8 +625,8 @@ func TestOIDCLoginErrors(t *testing.T) {
 
 // createJWTWithClaims creates a test JWT with the given claims.
 // Note: This creates an unsigned JWT for testing purposes only.
-func createJWTWithClaims(claims map[string]interface{}) string {
-	header := map[string]interface{}{
+func createJWTWithClaims(claims map[string]any) string {
+	header := map[string]any{
 		"alg": "RS256",
 		"typ": "JWT",
 	}

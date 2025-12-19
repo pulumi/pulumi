@@ -186,7 +186,7 @@ func NewAuthContextForTokenExchange(organization, team, user, token, expirationD
 			case string:
 				// Single scope as string, may be space-separated
 				scopes = strings.Fields(v)
-			case []interface{}:
+			case []any:
 				// Array of scopes
 				for _, s := range v {
 					if str, ok := s.(string); ok {
