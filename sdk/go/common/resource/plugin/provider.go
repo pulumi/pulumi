@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type GetSchemaRequest struct {
@@ -457,7 +456,7 @@ type Provider interface {
 	Call(context.Context, CallRequest) (CallResponse, error)
 
 	// GetPluginInfo returns this plugin's information.
-	GetPluginInfo(context.Context) (workspace.PluginInfo, error)
+	GetPluginInfo(context.Context) (PluginInfo, error)
 
 	// SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing
 	// operations. Operation aborted in this way will return an error (e.g., `Update` and `Create`

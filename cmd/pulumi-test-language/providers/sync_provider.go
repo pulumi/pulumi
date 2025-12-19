@@ -28,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type SyncProvider struct {
@@ -49,10 +48,6 @@ func (p *SyncProvider) Configure(
 	_ context.Context, req plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *SyncProvider) Pkg() tokens.Package {
-	return "sync"
 }
 
 func (p *SyncProvider) GetSchema(
@@ -138,8 +133,12 @@ func (p *SyncProvider) waitWithTimeout(wg *sync.WaitGroup) error {
 	}
 }
 
-func (p *SyncProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
-	return workspace.PluginInfo{
+func (p *SyncProvider) Pkg() tokens.Package {
+	return "sync"
+}
+
+func (p *SyncProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
+	return plugin.PluginInfo{
 		Version: &syncVersion,
 	}, nil
 }

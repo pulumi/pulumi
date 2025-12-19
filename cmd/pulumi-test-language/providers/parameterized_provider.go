@@ -27,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type ParameterizedProvider struct {
@@ -274,9 +273,9 @@ func (p *ParameterizedProvider) Create(
 	}, nil
 }
 
-func (p *ParameterizedProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *ParameterizedProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	ver := semver.MustParse("1.2.3")
-	return workspace.PluginInfo{
+	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
 }

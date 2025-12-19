@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type SimpleInvokeWithScalarReturnProvider struct {
@@ -48,9 +47,9 @@ func (p *SimpleInvokeWithScalarReturnProvider) Pkg() tokens.Package {
 	return "simple-invoke-with-scalar-return"
 }
 
-func (p *SimpleInvokeWithScalarReturnProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *SimpleInvokeWithScalarReturnProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	ver := semver.MustParse("17.0.0")
-	return workspace.PluginInfo{
+	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
 }

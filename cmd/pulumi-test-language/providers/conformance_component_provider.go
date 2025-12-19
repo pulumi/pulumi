@@ -22,7 +22,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type ConformanceComponentProvider struct {
@@ -39,8 +38,8 @@ func (p *ConformanceComponentProvider) Pkg() tokens.Package {
 	return "conformance-component"
 }
 
-func (p *ConformanceComponentProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
-	return workspace.PluginInfo{
+func (p *ConformanceComponentProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
+	return plugin.PluginInfo{
 		Version: &semver.Version{Major: 22},
 	}, nil
 }

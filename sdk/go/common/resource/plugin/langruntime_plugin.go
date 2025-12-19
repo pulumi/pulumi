@@ -416,30 +416,23 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 }
 
 // GetPluginInfo returns this plugin's information.
-func (h *langhost) GetPluginInfo() (workspace.PluginInfo, error) {
+func (h *langhost) GetPluginInfo() (PluginInfo, error) {
 	logging.V(7).Infof("langhost[%v].GetPluginInfo() executing", h.runtime)
-
-	plugInfo := workspace.PluginInfo{
-		Name: h.runtime,
-		Kind: apitype.LanguagePlugin,
-	}
-
-	if h.plug != nil {
-		plugInfo.Path = h.plug.Bin
-	}
 
 	resp, err := h.client.GetPluginInfo(h.ctx.Request(), &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("langhost[%v].GetPluginInfo() failed: err=%v", h.runtime, rpcError)
-		return workspace.PluginInfo{}, rpcError
+		return PluginInfo{}, rpcError
 	}
 	vers := resp.Version
+
+	plugInfo := PluginInfo{}
 
 	if vers != "" {
 		sv, err := semver.ParseTolerant(vers)
 		if err != nil {
-			return workspace.PluginInfo{}, err
+			return PluginInfo{}, err
 		}
 		plugInfo.Version = &sv
 	}

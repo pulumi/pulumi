@@ -27,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
@@ -355,9 +354,9 @@ func (p *builtinProvider) Call(context.Context, plugin.CallRequest) (plugin.Call
 	return plugin.CallResult{}, errors.New("the builtin provider does not implement call")
 }
 
-func (p *builtinProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *builtinProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	// return an error: this should not be called for the builtin provider
-	return workspace.PluginInfo{}, errors.New("the builtin provider does not report plugin info")
+	return plugin.PluginInfo{}, errors.New("the builtin provider does not report plugin info")
 }
 
 func (p *builtinProvider) SignalCancellation(context.Context) error {

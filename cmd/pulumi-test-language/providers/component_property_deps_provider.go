@@ -27,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -61,9 +60,9 @@ func (p *ComponentPropertyDepsProvider) Pkg() tokens.Package {
 	return "component-property-deps"
 }
 
-func (p *ComponentPropertyDepsProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *ComponentPropertyDepsProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	version := semver.MustParse("1.33.7")
-	info := workspace.PluginInfo{Version: &version}
+	info := plugin.PluginInfo{Version: &version}
 	return info, nil
 }
 

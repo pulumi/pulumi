@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type AssetArchiveProvider struct {
@@ -177,9 +176,9 @@ func (p *AssetArchiveProvider) Create(
 	}, nil
 }
 
-func (p *AssetArchiveProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *AssetArchiveProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	ver := semver.MustParse("5.0.0")
-	return workspace.PluginInfo{
+	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
 }

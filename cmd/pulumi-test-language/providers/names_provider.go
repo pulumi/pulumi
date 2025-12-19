@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // This provider offers resources with names that could potentially cause problems in go
@@ -192,9 +191,9 @@ func (p *NamesProvider) Update(
 	}, nil
 }
 
-func (p *NamesProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *NamesProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	ver := semver.MustParse("6.0.0")
-	return workspace.PluginInfo{
+	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
 }

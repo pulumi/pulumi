@@ -27,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // LargeProvider is a test provider that exercises the provider protocol by returning really large strings, lists, and
@@ -170,9 +169,9 @@ func (p *LargeProvider) Create(
 	}, nil
 }
 
-func (p *LargeProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *LargeProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	ver := semver.MustParse("4.3.2")
-	return workspace.PluginInfo{
+	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
 }

@@ -318,8 +318,8 @@ func GetRequiredPlugins(
 		})
 	} else {
 		plugins = append(plugins, workspace.PluginDescriptor{
-			Name:    langInfo.Name,
-			Kind:    langInfo.Kind,
+			Name:    runtime,
+			Kind:    apitype.LanguagePlugin,
 			Version: langInfo.Version,
 		})
 	}

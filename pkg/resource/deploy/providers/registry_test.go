@@ -163,9 +163,8 @@ func (prov *testProvider) Configure(
 	return plugin.ConfigureResponse{}, nil
 }
 
-func (prov *testProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
-	return workspace.PluginInfo{
-		Name:    "testProvider",
+func (prov *testProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
+	return plugin.PluginInfo{
 		Version: &prov.version,
 	}, nil
 }

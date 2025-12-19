@@ -2141,7 +2141,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 }
 
 // GetPluginInfo returns this plugin's information.
-func (p *provider) GetPluginInfo(ctx context.Context) (workspace.PluginInfo, error) {
+func (p *provider) GetPluginInfo(ctx context.Context) (PluginInfo, error) {
 	label := p.label() + ".GetPluginInfo()"
 	logging.V(7).Infof("%s executing", label)
 
@@ -2155,28 +2155,20 @@ func (p *provider) GetPluginInfo(ctx context.Context) (workspace.PluginInfo, err
 		if err != nil {
 			rpcError := rpcerror.Convert(err)
 			logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
-			return workspace.PluginInfo{}, rpcError
+			return PluginInfo{}, rpcError
 		}
 
 		if v := resp.Version; v != "" {
 			sv, err := semver.ParseTolerant(v)
 			if err != nil {
-				return workspace.PluginInfo{}, err
+				return PluginInfo{}, err
 			}
 			version = &sv
 		}
 	}
 
-	path := ""
-	if p.plug != nil {
-		path = p.plug.Bin
-	}
-
 	logging.V(7).Infof("%s success (#version=%v) success", label, version)
-	return workspace.PluginInfo{
-		Name:    string(p.pkg),
-		Path:    path,
-		Kind:    apitype.ResourcePlugin,
+	return PluginInfo{
 		Version: version,
 	}, nil
 }

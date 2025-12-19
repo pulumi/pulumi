@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type AnyTypeFunctionProvider struct {
@@ -132,9 +131,9 @@ func (p *AnyTypeFunctionProvider) Create(
 	return plugin.CreateResponse{}, nil
 }
 
-func (p *AnyTypeFunctionProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *AnyTypeFunctionProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	ver := semver.MustParse("15.0.0")
-	return workspace.PluginInfo{
+	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
 }
