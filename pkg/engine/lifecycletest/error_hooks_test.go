@@ -1138,11 +1138,6 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
-	validateCreate := func(_ workspace.Project, _ deploy.Target, _ JournalEntries, _ []Event, err error) error {
-		require.NoError(t, err)
-		isUpdate = true
-		return nil
-	}
 	validateWarn := func(_ workspace.Project, _ deploy.Target, _ JournalEntries, evts []Event, err error) error {
 		require.Error(t, err)
 		require.ErrorContains(t, err, "maximum number of error hook retries reached")
@@ -1169,9 +1164,10 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 		p.Options,
 		false,
 		p.BackendClient,
-		validateCreate,
+		nil,
 		"0",
 	)
+	isUpdate = true
 	require.NoError(t, err)
 	_, err = lt.TestOp(Update).RunStep(
 		project,
@@ -1916,8 +1912,8 @@ func TestErrorHooks_IndependentPerResource_Update(t *testing.T) {
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 
-	require.GreaterOrEqual(t, resAHooks, 1)
-	require.GreaterOrEqual(t, resBHooks, 2)
+	require.Equal(t, resAHooks, 1)
+	require.Equal(t, resBHooks, 2)
 }
 
 func TestErrorHooks_IndependentPerResource_Delete(t *testing.T) {

@@ -396,7 +396,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 				break
 			}
 
-			s.Deployment().Diag().Infof(&diag.Diag{
+			s.Deployment().Diag().Warningf(&diag.Diag{
 				URN: s.URN(),
 				Message: fmt.Sprintf(
 					"retrying create due to on-error hook request (%d/%d)",
@@ -664,9 +664,6 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			}
 
 			failures = append([]string{err.Error()}, failures...)
-			if resp.Status != resource.StatusPartialFailure {
-				return resp.Status, nil, err
-			}
 
 			resourceError = err
 			resourceStatus = resp.Status
@@ -701,7 +698,7 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 				break
 			}
 
-			s.Deployment().Diag().Infof(&diag.Diag{
+			s.Deployment().Diag().Warningf(&diag.Diag{
 				URN: s.URN(),
 				Message: fmt.Sprintf(
 					"retrying delete due to on-error hook request (%d/%d)",
@@ -1018,7 +1015,7 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 				break
 			}
 
-			s.Deployment().Diag().Infof(&diag.Diag{
+			s.Deployment().Diag().Warningf(&diag.Diag{
 				URN: s.URN(),
 				Message: fmt.Sprintf(
 					"retrying update due to on-error hook request (%d/%d)",
