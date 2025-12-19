@@ -1,0 +1,7 @@
+changes:
+- type: fix
+  scope: cli
+  description: Fix OIDC login to correctly default cloud URL when using token exchange
+- type: feat
+  scope: cli
+  description: Extract organization, team, and user from OIDC JWT claims during login

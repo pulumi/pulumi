@@ -21,8 +21,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/rogpeppe/go-internal/lockedfile"
 
@@ -152,8 +154,104 @@ func NewAuthContextForTokenExchange(organization, team, user, token, expirationD
 	if env.AccessToken.Value() != "" {
 		return AuthContext{}, errors.New("cannot perform token exchange when an access token is set as environment variable")
 	}
+
+	// Parse JWT claims to extract organization and scope
+	// Security Note: ParseUnverified is safe here because:
+	// 1. We only extract metadata (org/team/user) to validate against explicit flags
+	// 2. The full JWT is sent to Pulumi Cloud for proper signature verification
+	// 3. We never use these claims for authentication - only for validation and user convenience
+	var jwtOrg, jwtTeam, jwtUser string
+	parser := jwt.NewParser()
+	claims := jwt.MapClaims{}
+	_, _, err := parser.ParseUnverified(token, claims)
+	if err == nil {
+		// Extract organization from aud claim
+		// Format: urn:pulumi:org:<org-name>
+		if aud, ok := claims["aud"].(string); ok {
+			if strings.HasPrefix(aud, "urn:pulumi:org:") {
+				parts := strings.Split(aud, ":")
+				// urn:pulumi:org:<org-name> - 4 parts
+				if len(parts) == 4 {
+					jwtOrg = parts[3]
+				}
+			}
+		}
+
+		// Extract team, user, or runner from scope claim
+		// Scope can be a string or array of strings
+		// Formats: "team:<team-name>", "user:<user-login>", "runner:<runner-name>"
+		if scopeClaim, ok := claims["scope"]; ok {
+			var scopes []string
+			switch v := scopeClaim.(type) {
+			case string:
+				// Single scope as string, may be space-separated
+				scopes = strings.Fields(v)
+			case []interface{}:
+				// Array of scopes
+				for _, s := range v {
+					if str, ok := s.(string); ok {
+						scopes = append(scopes, str)
+					}
+				}
+			}
+
+			// Parse each scope
+			for _, scope := range scopes {
+				if strings.HasPrefix(scope, "team:") {
+					jwtTeam = strings.TrimPrefix(scope, "team:")
+				} else if strings.HasPrefix(scope, "user:") {
+					jwtUser = strings.TrimPrefix(scope, "user:")
+				}
+				// Note: runner scope not yet implemented in CLI
+			}
+		}
+	}
+
+	// Validate that JWT doesn't contain both team and user in scope
+	// This is not supported by the backend - team and user are mutually exclusive
+	if jwtTeam != "" && jwtUser != "" {
+		return AuthContext{}, fmt.Errorf(
+			"JWT scope contains both team '%s' and user '%s'. "+
+				"Only one of team or user may be specified for token exchange",
+			jwtTeam, jwtUser)
+	}
+
+	// Validate that explicit flags don't conflict with JWT claims
+	if organization != "" && jwtOrg != "" && organization != jwtOrg {
+		return AuthContext{}, fmt.Errorf(
+			"--oidc-org '%s' conflicts with JWT aud claim organization '%s'. "+
+				"The JWT aud claim takes precedence during token exchange. "+
+				"Either omit --oidc-org to use the JWT value, or ensure they match",
+			organization, jwtOrg)
+	}
+	if team != "" && jwtTeam != "" && team != jwtTeam {
+		return AuthContext{}, fmt.Errorf(
+			"--oidc-team '%s' conflicts with JWT scope team '%s'. "+
+				"The JWT scope takes precedence during token exchange. "+
+				"Either omit --oidc-team to use the JWT value, or ensure they match",
+			team, jwtTeam)
+	}
+	if user != "" && jwtUser != "" && user != jwtUser {
+		return AuthContext{}, fmt.Errorf(
+			"--oidc-user '%s' conflicts with JWT scope user '%s'. "+
+				"The JWT scope takes precedence during token exchange. "+
+				"Either omit --oidc-user to use the JWT value, or ensure they match",
+			user, jwtUser)
+	}
+
+	// Use JWT values if explicit flags not provided
+	if organization == "" && jwtOrg != "" {
+		organization = jwtOrg
+	}
+	if team == "" && jwtTeam != "" {
+		team = jwtTeam
+	}
+	if user == "" && jwtUser != "" {
+		user = jwtUser
+	}
+
 	if organization == "" {
-		return AuthContext{}, errors.New("organization must be specified for token exchange")
+		return AuthContext{}, errors.New("org must be set via --oidc-org or the JWT aud claim as 'urn:pulumi:org:<org-name>'")
 	}
 	if team != "" && user != "" {
 		return AuthContext{}, errors.New("only one of team or user may be specified for token exchange")

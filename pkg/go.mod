@@ -76,7 +76,7 @@ require (
 	github.com/go-git/go-git/v5 v5.13.1
 	github.com/go-test/deep v1.1.1
 	github.com/godbus/dbus/v5 v5.1.0
-	github.com/golang-jwt/jwt/v5 v5.2.2
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/go-github/v55 v55.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/google/uuid v1.6.0

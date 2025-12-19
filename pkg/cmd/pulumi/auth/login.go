@@ -29,12 +29,12 @@ import (
 	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -156,22 +156,23 @@ func NewLoginCmd(ws pkgWorkspace.Context) *cobra.Command {
 					cloudURL = act
 				}
 			}
-			if cloudURL == "" {
-				var err error
-				cloudURL, err = pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
-				if err != nil {
-					return fmt.Errorf("could not determine current cloud: %w", err)
-				}
-			} else if url := strings.TrimPrefix(strings.TrimPrefix(
+			// Use ValueOrDefaultURL to get the cloud URL, which will:
+			// 1. Use the provided cloudURL if specified
+			// 2. Check PULUMI_API environment variable
+			// 3. Use the current cloud URL if one is set
+			// 4. Default to https://api.pulumi.com
+			cloudURL = httpstate.ValueOrDefaultURL(ws, cloudURL)
+
+			if url := strings.TrimPrefix(strings.TrimPrefix(
 				cloudURL, "https://"), "http://"); strings.HasPrefix(url, "app.pulumi.com/") ||
 				strings.HasPrefix(url, "pulumi.com") {
 				return fmt.Errorf("%s is not a valid self-hosted backend, "+
 					"use `pulumi login` without arguments to log into the Pulumi Cloud backend", cloudURL)
-			} else {
-				// Ensure we have the correct cloudurl type before logging in
-				if err := validateCloudBackendType(cloudURL); err != nil {
-					return err
-				}
+			}
+
+			// Ensure we have the correct cloudurl type before logging in
+			if err := validateCloudBackendType(cloudURL); err != nil {
+				return err
 			}
 
 			if diy.IsDIYBackendURL(cloudURL) {

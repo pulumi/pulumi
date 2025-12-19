@@ -15,6 +15,7 @@
 package tests
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -31,10 +32,13 @@ import (
 )
 
 const (
+	testOrg = "test-org"
 	// A sample JWT token (expired and not real) for testing purposes
 	//nolint:lll // JWT token is long
 	testJWT = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IlRlc3QgVXNlciIsImlhdCI6MTUxNjIzOTAyMiwiZXhwIjoxNTE2MjM5MDIyfQ.Placeholder"
-	testOrg = "test-org"
+	// A JWT with an aud claim containing the org name in Pulumi format
+	//nolint:lll // JWT token is long
+	testJWTWithAud = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IlRlc3QgVXNlciIsImlhdCI6MTUxNjIzOTAyMiwiZXhwIjoxNTE2MjM5MDIyLCJhdWQiOiJ1cm46cHVsdW1pOm9yZzp0ZXN0LW9yZyJ9.Placeholder"
 )
 
 func TestOIDCLogin(t *testing.T) {
@@ -329,11 +333,66 @@ func TestOIDCLoginErrors(t *testing.T) {
 		// Ensure PULUMI_ACCESS_TOKEN is not set to force OIDC login path
 		e.Env = append(e.Env, "PULUMI_ACCESS_TOKEN=")
 
-		// Should fail when both --team and --user are specified
+		// Should fail when no org is provided and JWT doesn't have Pulumi aud
 		_, stderr := e.RunCommandExpectError("pulumi", "login",
 			"--oidc-token", testJWT)
 
-		assert.Contains(t, stderr, "organization must be specified for token exchange")
+		assert.Contains(t, stderr, "org must be set via --oidc-org or the JWT aud claim")
+	})
+
+	t.Run("OrgExtractedFromJWTAudClaim", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup a mock server to handle OIDC token exchange
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Path {
+			case "/api/oauth/token":
+				require.NoError(t, r.ParseForm())
+
+				// Verify the token exchange request has the org extracted from the JWT aud claim
+				assert.Equal(t, "urn:ietf:params:oauth:grant-type:token-exchange", r.FormValue("grant_type"))
+				assert.Equal(t, "urn:pulumi:org:"+testOrg, r.FormValue("audience"))
+				assert.Equal(t, testJWTWithAud, r.FormValue("subject_token"))
+
+				// Return a mock Pulumi access token
+				resp := apitype.TokenExchangeGrantResponse{
+					AccessToken:     "pul-test-access-token",
+					IssuedTokenType: "urn:pulumi:token-type:access_token:organization",
+					TokenType:       "Bearer",
+					ExpiresIn:       7200,
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				err := json.NewEncoder(w).Encode(resp)
+				require.NoError(t, err)
+			case "/api/user":
+				// Reply with mock user info
+				w.WriteHeader(http.StatusOK)
+				_, err := w.Write([]byte(`{"githubLogin":"test-user","name":"Test User","email":"test@example.com"}`))
+				require.NoError(t, err)
+			case "/api/capabilities":
+				w.WriteHeader(http.StatusOK)
+				_, err := w.Write([]byte(`{}`))
+				require.NoError(t, err)
+			default:
+				t.Logf("Unexpected request: %s %s", r.Method, r.URL.Path)
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+		defer server.Close()
+
+		e := ptesting.NewEnvironment(t)
+		defer e.DeleteIfNotFailed()
+		// Ensure PULUMI_ACCESS_TOKEN is not set to force OIDC login path
+		e.Env = append(e.Env, "PULUMI_ACCESS_TOKEN=")
+
+		// Login with OIDC token WITHOUT --oidc-org flag - org should be extracted from JWT
+		e.RunCommand("pulumi", "login", "--cloud-url", server.URL, "--insecure",
+			"--oidc-token", testJWTWithAud)
+
+		// Verify we're logged in by running whoami
+		stdout, _ := e.RunCommand("pulumi", "whoami")
+		assert.Contains(t, stdout, "test-user")
 	})
 
 	t.Run("TeamAndUserMutuallyExclusive", func(t *testing.T) {
@@ -400,4 +459,185 @@ func TestOIDCLoginErrors(t *testing.T) {
 
 		assert.Contains(t, stderr, "invalid_token")
 	})
+
+	t.Run("TeamExtractedFromJWTScopeClaim", func(t *testing.T) {
+		t.Parallel()
+
+		// Create a JWT with team in scope claim
+		testJWTWithTeam := createJWTWithClaims(map[string]interface{}{
+			"aud":   "urn:pulumi:org:test-org",
+			"scope": "team:dev-team",
+			"iss":   "https://oidc.example.com",
+		})
+
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Path {
+			case "/api/oauth/token":
+				require.NoError(t, r.ParseForm())
+
+				// Verify team was extracted from JWT
+				assert.Equal(t, "urn:pulumi:org:test-org", r.FormValue("audience"))
+				assert.Equal(t, "team:dev-team", r.FormValue("scope"))
+				assert.Equal(t, "urn:pulumi:token-type:access_token:team", r.FormValue("requested_token_type"))
+
+				resp := apitype.TokenExchangeGrantResponse{
+					AccessToken:     "pul-test-team-token",
+					IssuedTokenType: "urn:pulumi:token-type:access_token:team",
+					TokenType:       "Bearer",
+					ExpiresIn:       7200,
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				err := json.NewEncoder(w).Encode(resp)
+				require.NoError(t, err)
+			case "/api/user":
+				w.WriteHeader(http.StatusOK)
+				_, err := w.Write([]byte(`{"githubLogin":"test-user","name":"Test User","email":"test@example.com"}`))
+				require.NoError(t, err)
+			case "/api/capabilities":
+				w.WriteHeader(http.StatusOK)
+				_, err := w.Write([]byte(`{}`))
+				require.NoError(t, err)
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+		defer server.Close()
+
+		e := ptesting.NewEnvironment(t)
+		defer e.DeleteIfNotFailed()
+		e.Env = append(e.Env, "PULUMI_ACCESS_TOKEN=")
+
+		// Login with JWT that has team in scope claim - should extract both org and team
+		e.RunCommand("pulumi", "login", "--cloud-url", server.URL, "--insecure",
+			"--oidc-token", testJWTWithTeam)
+
+		stdout, _ := e.RunCommand("pulumi", "whoami")
+		assert.Contains(t, stdout, "test-user")
+	})
+
+	t.Run("UserExtractedFromScopeClaim", func(t *testing.T) {
+		t.Parallel()
+
+		// Create a JWT with user in scope claim
+		testJWTWithUser := createJWTWithClaims(map[string]interface{}{
+			"aud":   "urn:pulumi:org:test-org",
+			"scope": "user:test-user-123",
+		})
+
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Path {
+			case "/api/oauth/token":
+				require.NoError(t, r.ParseForm())
+
+				// Verify user was extracted from scope claim
+				assert.Equal(t, "urn:pulumi:org:test-org", r.FormValue("audience"))
+				assert.Equal(t, "user:test-user-123", r.FormValue("scope"))
+				assert.Equal(t, "urn:pulumi:token-type:access_token:personal", r.FormValue("requested_token_type"))
+
+				resp := apitype.TokenExchangeGrantResponse{
+					AccessToken:     "pul-test-personal-token",
+					IssuedTokenType: "urn:pulumi:token-type:access_token:personal",
+					TokenType:       "Bearer",
+					ExpiresIn:       7200,
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				err := json.NewEncoder(w).Encode(resp)
+				require.NoError(t, err)
+			case "/api/user":
+				w.WriteHeader(http.StatusOK)
+				_, err := w.Write([]byte(`{"githubLogin":"test-user","name":"Test User","email":"test@example.com"}`))
+				require.NoError(t, err)
+			case "/api/capabilities":
+				w.WriteHeader(http.StatusOK)
+				_, err := w.Write([]byte(`{}`))
+				require.NoError(t, err)
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+		defer server.Close()
+
+		e := ptesting.NewEnvironment(t)
+		defer e.DeleteIfNotFailed()
+		e.Env = append(e.Env, "PULUMI_ACCESS_TOKEN=")
+
+		// Login with JWT that has user in scope claim - should extract both org and user
+		e.RunCommand("pulumi", "login", "--cloud-url", server.URL, "--insecure",
+			"--oidc-token", testJWTWithUser)
+
+		stdout, _ := e.RunCommand("pulumi", "whoami")
+		assert.Contains(t, stdout, "test-user")
+	})
+
+	t.Run("ExplicitFlagsUsedAsFallback", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Path {
+			case "/api/oauth/token":
+				require.NoError(t, r.ParseForm())
+
+				// Verify explicit flags are used when JWT lacks Pulumi claims
+				assert.Equal(t, "urn:pulumi:org:explicit-org", r.FormValue("audience"))
+				assert.Equal(t, "team:explicit-team", r.FormValue("scope"))
+				assert.Equal(t, testJWT, r.FormValue("subject_token"))
+
+				resp := apitype.TokenExchangeGrantResponse{
+					AccessToken:     "pul-test-token",
+					IssuedTokenType: "urn:pulumi:token-type:access_token:team",
+					TokenType:       "Bearer",
+					ExpiresIn:       7200,
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				err := json.NewEncoder(w).Encode(resp)
+				require.NoError(t, err)
+			case "/api/user":
+				w.WriteHeader(http.StatusOK)
+				_, err := w.Write([]byte(`{"githubLogin":"test-user","name":"Test User","email":"test@example.com"}`))
+				require.NoError(t, err)
+			case "/api/capabilities":
+				w.WriteHeader(http.StatusOK)
+				_, err := w.Write([]byte(`{}`))
+				require.NoError(t, err)
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+		defer server.Close()
+
+		e := ptesting.NewEnvironment(t)
+		defer e.DeleteIfNotFailed()
+		e.Env = append(e.Env, "PULUMI_ACCESS_TOKEN=")
+
+		// Explicit flags used as fallback when JWT lacks Pulumi-specific claims
+		e.RunCommand("pulumi", "login", "--cloud-url", server.URL, "--insecure",
+			"--oidc-token", testJWT,
+			"--oidc-org", "explicit-org",
+			"--oidc-team", "explicit-team")
+
+		stdout, _ := e.RunCommand("pulumi", "whoami")
+		assert.Contains(t, stdout, "test-user")
+	})
+}
+
+// createJWTWithClaims creates a test JWT with the given claims.
+// Note: This creates an unsigned JWT for testing purposes only.
+func createJWTWithClaims(claims map[string]interface{}) string {
+	header := map[string]interface{}{
+		"alg": "RS256",
+		"typ": "JWT",
+	}
+
+	headerJSON, _ := json.Marshal(header)
+	claimsJSON, _ := json.Marshal(claims)
+
+	// Use encoding/base64 RawURLEncoding (no padding) as per JWT spec
+	headerEncoded := base64.RawURLEncoding.EncodeToString(headerJSON)
+	claimsEncoded := base64.RawURLEncoding.EncodeToString(claimsJSON)
+	signature := base64.RawURLEncoding.EncodeToString([]byte("fake-signature"))
+
+	return headerEncoded + "." + claimsEncoded + "." + signature
 }
