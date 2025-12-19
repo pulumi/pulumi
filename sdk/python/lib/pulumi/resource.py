@@ -460,6 +460,12 @@ class ResourceOptions:
     require replacement instead of update only if `"*"` is passed.
     """
 
+    replacement_trigger: Optional["Input[Any]"]
+    """
+    If set, the engine will diff this with the last recorded value, and trigger
+    a replace if they are not equal.
+    """
+
     retain_on_delete: Optional[bool]
     """
     If set to True, the providers Delete method will not be called for this resource.
@@ -507,6 +513,7 @@ class ResourceOptions:
         hooks: Optional[ResourceHookBinding] = None,
         urn: Optional[str] = None,
         replace_on_changes: Optional[list[str]] = None,
+        replacement_trigger: Optional["Input[Any]"] = None,
         plugin_download_url: Optional[str] = None,
         retain_on_delete: Optional[bool] = None,
         deleted_with: Optional["Resource"] = None,
@@ -579,6 +586,7 @@ class ResourceOptions:
         self.hooks = hooks
         self.urn = urn
         self.replace_on_changes = replace_on_changes
+        self.replacement_trigger = replacement_trigger
         self.depends_on = depends_on
         self.retain_on_delete = retain_on_delete
         self.deleted_with = deleted_with
@@ -705,6 +713,11 @@ class ResourceOptions:
         dest.ignore_changes = _merge_lists(dest.ignore_changes, source.ignore_changes)
         dest.replace_on_changes = _merge_lists(
             dest.replace_on_changes, source.replace_on_changes
+        )
+        dest.replacement_trigger = (
+            dest.replacement_trigger
+            if source.replacement_trigger is None
+            else source.replacement_trigger
         )
         dest.aliases = _merge_lists(dest.aliases, source.aliases)
         dest.additional_secret_outputs = _merge_lists(
