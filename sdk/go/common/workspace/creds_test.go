@@ -90,7 +90,9 @@ func TestConcurrentCredentialsWrites(t *testing.T) {
 }
 
 func TestNewAuthContextForTokenExchange(t *testing.T) {
-	t.Parallel()
+	// Clear PULUMI_ACCESS_TOKEN for these tests (CI may have it set)
+	// Note: Cannot use t.Parallel() here because we need t.Setenv()
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 
 	tests := []struct {
 		name         string
