@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"unicode"
 
 	"github.com/blang/semver"
 
@@ -52,6 +53,13 @@ func (p *ParameterizedProvider) Pkg() tokens.Package {
 	return "parameterized"
 }
 
+func title(s string) string {
+	if s == "" {
+		return s
+	}
+	return string(unicode.ToUpper(rune(s[0]))) + s[1:]
+}
+
 func (p *ParameterizedProvider) GetSchema(
 	_ context.Context, req plugin.GetSchemaRequest,
 ) (plugin.GetSchemaResponse, error) {
@@ -73,6 +81,7 @@ func (p *ParameterizedProvider) GetSchema(
 	}
 
 	token := fmt.Sprintf("%s:index:%s", subpackage, parameterizedResource)
+	functionToken := fmt.Sprintf("%s:index:do%s", subpackage, title(parameterizedResource))
 	componentToken := token + "Component"
 	parameterizedResourceSpec := schema.ObjectTypeSpec{
 		Type: "object",
@@ -105,6 +114,32 @@ func (p *ParameterizedProvider) GetSchema(
 			componentToken: {
 				IsComponent:    true,
 				ObjectTypeSpec: parameterizedResourceSpec,
+			},
+		},
+		Functions: map[string]schema.FunctionSpec{
+			functionToken: {
+				Inputs: &schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"input": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+					Required: []string{"input"},
+				},
+				Outputs: &schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"output": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+					Required: []string{"output"},
+				},
 			},
 		},
 		Parameterization: &schema.ParameterizationSpec{
@@ -257,6 +292,32 @@ func (p *ParameterizedProvider) Construct(
 		Outputs: resource.PropertyMap{
 			"parameterValue": resource.NewProperty(string(p.parameterValue) + "Component"),
 		},
+	}, nil
+}
+
+func (p *ParameterizedProvider) Invoke(
+	ctx context.Context,
+	req plugin.InvokeRequest,
+) (plugin.InvokeResponse, error) {
+	functionToken := fmt.Sprintf("%s:index:do%s", p.parameterPackage, title(string(p.parameterValue)))
+	if string(req.Tok) != functionToken {
+		return plugin.InvokeResponse{}, fmt.Errorf("invalid function token: %s. Expected %s", req.Tok, functionToken)
+	}
+
+	input, ok := req.Args["input"]
+	if !ok {
+		return plugin.InvokeResponse{}, errors.New("missing required argument 'input'")
+	}
+	if !input.IsString() {
+		return plugin.InvokeResponse{}, fmt.Errorf("expected input to be a string, got %s", input.TypeString())
+	}
+
+	outputs := resource.PropertyMap{
+		"output": resource.NewProperty(input.StringValue() + string(p.parameterValue)),
+	}
+
+	return plugin.InvokeResponse{
+		Properties: outputs,
 	}, nil
 }
 

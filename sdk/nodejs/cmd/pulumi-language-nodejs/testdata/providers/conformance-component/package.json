@@ -1,0 +1,11 @@
+{
+  "name": "conformance-component",
+  "version": "22.0.0",
+  "dependencies": {
+    "@pulumi/pulumi": "^3.0.0",
+    "@pulumi/simple": "file:sdks/simple-2.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

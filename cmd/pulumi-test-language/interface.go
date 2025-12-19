@@ -448,6 +448,7 @@ type testToken struct {
 	ProgramOverrides     map[string]programOverride
 	PolicyPackDirectory  string
 	Local                bool
+	ProvidersDirectory   string
 }
 
 func (eng *languageTestServer) PrepareLanguageTests(
@@ -560,6 +561,15 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		}
 	}
 
+	var providersDirectory string
+	// Same as the policy pack directory, absolute the providers directory if set.
+	if req.ProvidersDirectory != "" {
+		providersDirectory, err = filepath.Abs(req.ProvidersDirectory)
+		if err != nil {
+			return nil, fmt.Errorf("get absolute path for providers directory %s: %w", req.ProvidersDirectory, err)
+		}
+	}
+
 	tokenBytes, err := json.Marshal(&testToken{
 		LanguagePluginName:   req.LanguagePluginName,
 		LanguagePluginTarget: req.LanguagePluginTarget,
@@ -572,6 +582,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		ProgramOverrides:     programOverrides,
 		PolicyPackDirectory:  policyPackDirectory,
 		Local:                req.Local,
+		ProvidersDirectory:   providersDirectory,
 	})
 	contract.AssertNoErrorf(err, "could not marshal test token")
 
@@ -671,30 +682,19 @@ func (eng *languageTestServer) RunLanguageTest(
 		pctx, token.LanguagePluginName, pulumirpc.NewLanguageRuntimeClient(conn))
 
 	// And now replace the context host with our own test host
-	providers := make(map[string]func() plugin.Provider)
-	for _, provider := range test.Providers {
-		p := provider()
-
-		version, err := getProviderVersion(p)
-		if err != nil {
-			return nil, err
-		}
-		providers[fmt.Sprintf("%s@%s", p.Pkg(), version)] = provider
-	}
-
 	host := &testHost{
 		engine:      eng,
 		ctx:         pctx,
 		host:        pctx.Host,
 		runtime:     languageClient,
 		runtimeName: token.LanguagePluginName,
-		providers:   providers,
+		providers:   make(map[string]func() (plugin.Provider, error)),
 		connections: make(map[plugin.Provider]io.Closer),
 	}
 
 	pctx.Host = host
 
-	// Generate SDKs for all the packages we need
+	// Setup a schema loader for any package lookups, installs and code generation.
 	loader := &providerLoader{
 		language:     token.LanguagePluginName,
 		languageInfo: token.LanguageInfo,
@@ -707,6 +707,68 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 	defer contract.IgnoreClose(grpcServer)
 
+	// And fill that host with our test providers
+	for _, provider := range test.Providers {
+		p := provider()
+		version, err := getProviderVersion(p)
+		if err != nil {
+			return nil, err
+		}
+		key := fmt.Sprintf("%s@%s", p.Pkg(), version)
+
+		// If this is a provider that should be overridden using the languages plugin directory try and do that now.
+		pkg := p.Pkg().String()
+		if slices.Contains(test.LanguageProviders, pkg) {
+			if token.ProvidersDirectory == "" {
+				return nil, fmt.Errorf("provider %s should be loaded from language providers directory, "+
+					"but no providers directory was specified", pkg)
+			}
+
+			sourceDirectory := filepath.Join(token.ProvidersDirectory, pkg)
+
+			// Copy to a new targetDirectory so we don't mutate the original test data
+			targetDirectory := filepath.Join(token.TemporaryDirectory, "providers", pkg)
+			err = copyDirectory(os.DirFS(sourceDirectory), ".", targetDirectory, nil, nil)
+			if err != nil {
+				return nil, fmt.Errorf("copy provider test data: %w", err)
+			}
+
+			// Link the provider program to the core SDK and install its dependencies
+			providerInfo := plugin.NewProgramInfo(targetDirectory, targetDirectory, ".", nil)
+
+			linkDeps := []workspace.LinkablePackageDescriptor{{
+				Path: token.CoreArtifact,
+				Descriptor: workspace.PackageDescriptor{
+					PluginDescriptor: workspace.PluginDescriptor{
+						Name: "pulumi",
+					},
+				},
+			}}
+			_, err = languageClient.Link(providerInfo, linkDeps, grpcServer.Addr())
+			if err != nil {
+				return makeTestResponse(fmt.Sprintf("link program: %v", err)), nil
+			}
+
+			resp := installDependencies(languageClient, providerInfo, true /* isPlugin */)
+			if resp != nil {
+				return resp, nil
+			}
+
+			host.providers[key] = func() (plugin.Provider, error) {
+				pluginProvider, err := plugin.NewProviderFromPath(host, pctx, p.Pkg(), targetDirectory)
+				if err != nil {
+					return nil, fmt.Errorf("load provider %s from %s: %w", pkg, targetDirectory, err)
+				}
+				return pluginProvider, nil
+			}
+		} else {
+			host.providers[key] = func() (plugin.Provider, error) {
+				return provider(), nil
+			}
+		}
+	}
+
+	// Generate SDKs for all the packages we need
 	artifactsDir := filepath.Join(token.TemporaryDirectory, "artifacts")
 
 	// For each test run collect the packages reported by PCL

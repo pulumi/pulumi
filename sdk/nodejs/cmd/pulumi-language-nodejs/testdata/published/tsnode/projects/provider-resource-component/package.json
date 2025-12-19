@@ -1,0 +1,12 @@
+{
+	"name": "provider-resource-component",
+	"devDependencies": {
+		"@types/node": "^18"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/conformance-component": "ROOT/artifacts/pulumi-conformance-component-22.0.0.tgz",
+		"@pulumi/simple": "ROOT/artifacts/pulumi-simple-2.0.0.tgz"
+	}
+}

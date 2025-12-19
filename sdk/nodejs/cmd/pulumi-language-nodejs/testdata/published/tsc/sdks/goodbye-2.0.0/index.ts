@@ -5,6 +5,11 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
+export { DoGoodbyeArgs, DoGoodbyeResult, DoGoodbyeOutputArgs } from "./doGoodbye";
+export const doGoodbye: typeof import("./doGoodbye").doGoodbye = null as any;
+export const doGoodbyeOutput: typeof import("./doGoodbye").doGoodbyeOutput = null as any;
+utilities.lazyLoad(exports, ["doGoodbye","doGoodbyeOutput"], () => require("./doGoodbye"));
+
 export { GoodbyeArgs } from "./goodbye";
 export type Goodbye = import("./goodbye").Goodbye;
 export const Goodbye: typeof import("./goodbye").Goodbye = null as any;

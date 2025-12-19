@@ -29,7 +29,7 @@ import (
 
 func testProvider(ctx context.Context, host plugin.Host, pCtx *plugin.Context, name string) error {
 	providerLocation := filepath.Join("..", name)
-	prov, err := plugin.NewProviderFromPath(host, pCtx, providerLocation)
+	prov, err := plugin.NewProviderFromPath(host, pCtx, "", providerLocation)
 	if err != nil {
 		return err
 	}

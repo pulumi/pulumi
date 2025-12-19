@@ -221,6 +221,9 @@ var (
 type LanguageTest struct {
 	Providers []func() plugin.Provider
 
+	// A list of provider names that should be loaded from the languages providers directory.
+	LanguageProviders []string
+
 	// stackReferences specifies other stack data that this test depends on.
 	StackReferences map[string]resource.PropertyMap
 
