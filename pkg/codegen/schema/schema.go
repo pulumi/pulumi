@@ -569,6 +569,10 @@ type Function struct {
 	// the Resource is an Overlay (IsOverlay == true).
 	// Supported values are "nodejs", "python", "go", "csharp", "java", "yaml"
 	OverlaySupportedLanguages []string
+	// Plain is a marker field to indicate that this function should only generate plain and output style methods. It
+	// defaults to true, that is to emit both plain and output style methods. Setting this to false will emit only
+	// output style methods.
+	Plain bool
 }
 
 // NeedsOutputVersion determines if codegen should emit a ${fn}Output version that
@@ -1270,6 +1274,11 @@ func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
 		return FunctionSpec{}, err
 	}
 
+	var plain *bool
+	if !f.Plain {
+		plain = &f.Plain
+	}
+
 	return FunctionSpec{
 		Description:               f.Comment,
 		DeprecationMessage:        f.DeprecationMessage,
@@ -1280,6 +1289,7 @@ func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
 		Outputs:                   outputs,
 		ReturnType:                returnType,
 		Language:                  lang,
+		Plain:                     plain,
 	}, nil
 }
 
@@ -1863,6 +1873,10 @@ type FunctionSpec struct {
 	// the Resource is an Overlay (IsOverlay == true).
 	// Supported values are "nodejs", "python", "go", "csharp", "java", "yaml"
 	OverlaySupportedLanguages []string `json:"overlaySupportedLanguages,omitempty" yaml:"overlaySupportedLanguages,omitempty"` //nolint:lll
+	// Plain is a marker field to indicate that this function should only generate plain and output style methods. It
+	// defaults to true, that is to emit both plain and output style methods. Setting this to false will emit only
+	// output style methods.
+	Plain *bool `json:"plain,omitempty" yaml:"plain,omitempty"`
 }
 
 func emptyObject(data RawMessage) (bool, error) {
@@ -1936,6 +1950,12 @@ func unmarshalFunctionSpec(funcSpec *FunctionSpec, data map[string]RawMessage) e
 		}
 	}
 
+	if plain, ok := data["plain"]; ok {
+		if err := json.Unmarshal(plain, &funcSpec.Plain); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -2002,6 +2022,10 @@ func (funcSpec FunctionSpec) marshalFunctionSpec() (map[string]any, error) {
 
 	if len(funcSpec.Language) > 0 {
 		data["language"] = funcSpec.Language
+	}
+
+	if funcSpec.Plain != nil {
+		data["plain"] = funcSpec.Plain
 	}
 
 	return data, nil

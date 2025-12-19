@@ -692,6 +692,11 @@
                         "type": "string",
                         "enum": ["nodejs", "python", "go", "csharp", "java", "yaml"]
                     }
+                },
+                "plain": {
+                    "description": "Plain is a marker field to indicate that this function should only generate plain and output style methods. It defaults to true, that is to emit both plain and output style methods. Setting this to false will emit only output style methods.",
+                    "type": "boolean",
+                    "default": true
                 }
             }
         },

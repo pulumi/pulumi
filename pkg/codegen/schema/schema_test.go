@@ -2081,6 +2081,7 @@ func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
 				Token:            "token",
 				ReturnType:       IntType,
 				ReturnTypePlain:  true,
+				Plain:            true,
 			},
 			fspec: FunctionSpec{
 				ReturnType: &ReturnTypeSpec{

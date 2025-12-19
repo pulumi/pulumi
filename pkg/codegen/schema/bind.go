@@ -1882,6 +1882,11 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 		}
 	}
 
+	plain := true
+	if spec.Plain != nil {
+		plain = *spec.Plain
+	}
+
 	fn := &Function{
 		PackageReference:          t.externalPackage(),
 		Token:                     token,
@@ -1896,6 +1901,7 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 		Language:                  makeLanguageMap(spec.Language),
 		IsOverlay:                 spec.IsOverlay,
 		OverlaySupportedLanguages: spec.OverlaySupportedLanguages,
+		Plain:                     plain,
 	}
 	t.functionDefs[token] = fn
 
