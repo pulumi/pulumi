@@ -357,6 +357,7 @@ async def serialize_property(
     typ: Optional[type] = None,
     keep_output_values: bool = False,
     exclude_resource_refs_from_deps: bool = False,
+    return_protobuf_value: bool = False,
 ) -> Any:
     """
     Serializes a single Input into a form suitable for remoting to the engine, awaiting
@@ -385,10 +386,53 @@ async def serialize_property(
     `deps` during serialization (only if the monitor supports resource references). This is
     useful for remote components (i.e. MLCs) and resource method calls where we want property
     dependencies to be empty for a property that only contains resource references.
+
+    :param bool return_protobuf_value: If true, the serialized value will be returned as a protobuf Value, rather
+    than just a value that is google.protobuf compatible.
     """
 
     # Set typ to T if it's Optional[T], Input[T], or InputType[T].
     typ = _types.unwrap_type(typ) if typ else typ
+
+    if return_protobuf_value:
+
+        async def _to_protobuf_value(value: Any) -> struct_pb2.Value:
+            if value is None:
+                return struct_pb2.Value(null_value=struct_pb2.NULL_VALUE)
+            if value == UNKNOWN:
+                # Preserve UNKNOWN as a string value so the engine can detect it as unknown
+                return struct_pb2.Value(string_value=UNKNOWN)
+            if isinstance(value, struct_pb2.Value):
+                return value
+            if isinstance(value, bool):
+                return struct_pb2.Value(bool_value=value)
+            if isinstance(value, (int, float)):
+                return struct_pb2.Value(number_value=float(value))
+            if isinstance(value, str):
+                return struct_pb2.Value(string_value=value)
+            if isinstance(value, dict):
+                fields = {}
+                for k, v in value.items():
+                    fields[k] = await _to_protobuf_value(v)
+                return struct_pb2.Value(struct_value=struct_pb2.Struct(fields=fields))
+            if isinstance(value, (list, tuple)):
+                values = [await _to_protobuf_value(v) for v in value]
+                return struct_pb2.Value(list_value=struct_pb2.ListValue(values=values))
+
+            return struct_pb2.Value(string_value=str(value))
+
+        serialized = await serialize_property(
+            value,
+            deps,
+            property_key,
+            resource_obj,
+            input_transformer,
+            typ,
+            keep_output_values,
+            exclude_resource_refs_from_deps,
+            return_protobuf_value=False,
+        )
+        return await _to_protobuf_value(serialized)
 
     # If the typ is Any, set it to None to treat it as if we don't have any type information,
     # to avoid raising errors about unexpected types, since it could be any type.
@@ -719,6 +763,20 @@ async def serialize_property(
             )
 
         return obj
+
+    if isinstance(value, struct_pb2.Value):
+        from .resource import _struct_value_to_python
+
+        return await serialize_property(
+            _struct_value_to_python(value),
+            deps,
+            property_key,
+            resource_obj,
+            input_transformer,
+            typ,
+            keep_output_values,
+            exclude_resource_refs_from_deps,
+        )
 
     # Ensure that we have a value that Protobuf understands.
     if not isLegalProtobufValue(value):

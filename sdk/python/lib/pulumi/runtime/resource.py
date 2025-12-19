@@ -34,7 +34,7 @@ from ..output import Input, Output, _safe_str
 from ..runtime.proto import alias_pb2, resource_pb2, source_pb2, callback_pb2
 from . import known_types, rpc, settings
 from ._depends_on import _resolve_depends_on_urns
-from .rpc import _expand_dependencies
+from .rpc import _expand_dependencies, serialize_property
 from .settings import (
     _get_callbacks,
     _get_rpc_manager,
@@ -105,6 +105,11 @@ class ResourceResolverOperations(NamedTuple):
     replace_with_urns: list[str]
     """
     URNs of resources whose replacement should trigger a replace of this resource.
+    """
+
+    replacement_trigger: Optional[Any]
+    """
+    If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
     """
 
     supports_alias_specs: bool
@@ -248,6 +253,10 @@ async def prepare_resource(
         dependencies |= urns
         property_dependencies[key] = list(urns)
 
+    replacement_trigger: Optional[Any] = None
+    if opts is not None and opts.replacement_trigger is not None:
+        replacement_trigger = opts.replacement_trigger
+
     supports_alias_specs = await settings.monitor_supports_alias_specs()
     aliases = await prepare_aliases(res, opts, supports_alias_specs)
     deleted_with_urn: Optional[str] = ""
@@ -273,6 +282,7 @@ async def prepare_resource(
         aliases,
         deleted_with_urn,
         replace_with_urns,
+        replacement_trigger,
         supports_alias_specs,
     )
 
@@ -911,6 +921,32 @@ def _create_custom_timeouts(
     return result
 
 
+def _struct_value_to_python(value: struct_pb2.Value) -> Any:
+    """
+    Converts a struct_pb2.Value to Python native types recursively.
+    This is used when we receive a struct_pb2.Value from transforms and need to re-serialize it.
+    """
+    kind = value.WhichOneof("kind")
+    if kind == "null_value":
+        return None
+    elif kind == "number_value":
+        return value.number_value
+    elif kind == "string_value":
+        return value.string_value
+    elif kind == "bool_value":
+        return value.bool_value
+    elif kind == "struct_value":
+        # Recursively convert all nested struct_pb2.Value objects
+        return {
+            k: _struct_value_to_python(v) for k, v in value.struct_value.fields.items()
+        }
+    elif kind == "list_value":
+        # Recursively convert all nested struct_pb2.Value objects
+        return [_struct_value_to_python(v) for v in value.list_value.values]
+    else:
+        return None
+
+
 def register_resource(
     res: "Resource",
     ty: str,
@@ -1054,6 +1090,17 @@ def register_resource(
             hook_prefix = f"{ty}_{name}"
             hooks = await _prepare_resource_hooks(opts.hooks, hook_prefix)
 
+            replacement_trigger: Optional[Any] = None
+            if resolver.replacement_trigger is not None:
+                replacement_trigger = await serialize_property(
+                    resolver.replacement_trigger,
+                    [],
+                    property_key="replacement_trigger",
+                    resource_obj=res,
+                    keep_output_values=False,
+                    return_protobuf_value=True,
+                )
+
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
                 name=name,
@@ -1080,6 +1127,7 @@ def register_resource(
                 supportsPartialValues=True,
                 remote=remote,
                 replaceOnChanges=replace_on_changes or [],
+                replacement_trigger=replacement_trigger,
                 retainOnDelete=opts.retain_on_delete,
                 deletedWith=resolver.deleted_with_urn or "",
                 replace_with=resolver.replace_with_urns or [],

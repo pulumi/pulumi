@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdkgen
+  description: Add `OutputStyleOnly` flag to functions to not emit their plain variants

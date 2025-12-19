@@ -2884,101 +2884,103 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTy
 	returnType := f.ReturnType
 	objectReturnType, _ := returnType.(*schema.ObjectType)
 
-	printCommentWithDeprecationMessage(w, f.Comment, f.DeprecationMessage, false)
+	if f.Plain {
+		printCommentWithDeprecationMessage(w, f.Comment, f.DeprecationMessage, false)
 
-	// Now, emit the function signature.
-	argsig := "ctx *pulumi.Context"
-	if f.Inputs != nil {
-		argsig = fmt.Sprintf("%s, args *%sArgs", argsig, name)
-	}
-	var retty string
-	if objectReturnType != nil {
-		retty = fmt.Sprintf("(*%sResult, error)", name)
-	} else if returnType != nil {
-		retty = fmt.Sprintf("(%s, error)", pkg.typeString(returnType))
-	} else {
-		retty = "error"
-	}
-	fmt.Fprintf(w, "func %s(%s, opts ...pulumi.InvokeOption) %s {\n", name, argsig, retty)
+		// Now, emit the function signature.
+		argsig := "ctx *pulumi.Context"
+		if f.Inputs != nil {
+			argsig = fmt.Sprintf("%s, args *%sArgs", argsig, name)
+		}
+		var retty string
+		if objectReturnType != nil {
+			retty = fmt.Sprintf("(*%sResult, error)", name)
+		} else if returnType != nil {
+			retty = fmt.Sprintf("(%s, error)", pkg.typeString(returnType))
+		} else {
+			retty = "error"
+		}
+		fmt.Fprintf(w, "func %s(%s, opts ...pulumi.InvokeOption) %s {\n", name, argsig, retty)
 
-	// Make a map of inputs to pass to the runtime function.
-	var inputsVar string
-	if f.Inputs == nil {
-		inputsVar = "nil"
-	} else if codegen.IsProvideDefaultsFuncRequired(f.Inputs) && !pkg.disableObjectDefaults {
-		inputsVar = "args.Defaults()"
-	} else {
-		inputsVar = "args"
-	}
+		// Make a map of inputs to pass to the runtime function.
+		var inputsVar string
+		if f.Inputs == nil {
+			inputsVar = "nil"
+		} else if codegen.IsProvideDefaultsFuncRequired(f.Inputs) && !pkg.disableObjectDefaults {
+			inputsVar = "args.Defaults()"
+		} else {
+			inputsVar = "args"
+		}
 
-	// Now simply invoke the runtime function with the arguments.
-	var outputsType string
-	if returnType == nil {
-		outputsType = "struct{}"
-	} else if objectReturnType == nil {
-		outputsType = "map[string]" + pkg.typeString(returnType)
-	} else {
-		outputsType = name + "Result"
-	}
+		// Now simply invoke the runtime function with the arguments.
+		var outputsType string
+		if returnType == nil {
+			outputsType = "struct{}"
+		} else if objectReturnType == nil {
+			outputsType = "map[string]" + pkg.typeString(returnType)
+		} else {
+			outputsType = name + "Result"
+		}
 
-	err := pkg.GenPkgDefaultsOptsCall(w, true /*invoke*/)
-	if err != nil {
-		return err
-	}
-
-	// If this is a parameterized resource we need the package ref.
-	def, err := pkg.pkg.Definition()
-	if err != nil {
-		return err
-	}
-	assignment := ":="
-	packageRef := ""
-	packageArg := ""
-	if def.Parameterization != nil {
-		assignment = "="
-		packageRef = "Package"
-		packageArg = "ref, "
-		err = pkg.GenPkgGetPackageRefCall(w, "nil")
+		err := pkg.GenPkgDefaultsOptsCall(w, true /*invoke*/)
 		if err != nil {
 			return err
 		}
-	}
 
-	fmt.Fprintf(w, "\tvar rv %s\n", outputsType)
-	fmt.Fprintf(w, "\terr %s ctx.Invoke%s(\"%s\", %s, &rv, %sopts...)\n",
-		assignment, packageRef, f.Token, inputsVar, packageArg)
-
-	if returnType == nil {
-		fmt.Fprintf(w, "\treturn err\n")
-	} else if objectReturnType == nil {
-		// Check the error before proceeding.
-		typ := pkg.typeString(returnType)
-		fmt.Fprintf(w, "\tvar result %s\n", typ)
-		fmt.Fprintf(w, "\tif err != nil {\n")
-		fmt.Fprintf(w, "\t\treturn result, err\n")
-		fmt.Fprintf(w, "\t}\n")
-		// Loop and collect the result
-		fmt.Fprintf(w, "\tfor _, v := range rv {\n")
-		fmt.Fprintf(w, "\t\tresult = v\n")
-		fmt.Fprintf(w, "\t\tbreak\n")
-		fmt.Fprintf(w, "\t}\n")
-		fmt.Fprintf(w, "\treturn result, nil\n")
-	} else {
-		// Check the error before proceeding.
-		fmt.Fprintf(w, "\tif err != nil {\n")
-		fmt.Fprintf(w, "\t\treturn nil, err\n")
-		fmt.Fprintf(w, "\t}\n")
-
-		// Return the result.
-		var retValue string
-		if codegen.IsProvideDefaultsFuncRequired(objectReturnType) && !pkg.disableObjectDefaults {
-			retValue = "rv.Defaults()"
-		} else {
-			retValue = "&rv"
+		// If this is a parameterized resource we need the package ref.
+		def, err := pkg.pkg.Definition()
+		if err != nil {
+			return err
 		}
-		fmt.Fprintf(w, "\treturn %s, nil\n", retValue)
+		assignment := ":="
+		packageRef := ""
+		packageArg := ""
+		if def.Parameterization != nil {
+			assignment = "="
+			packageRef = "Package"
+			packageArg = "ref, "
+			err = pkg.GenPkgGetPackageRefCall(w, "nil")
+			if err != nil {
+				return err
+			}
+		}
+
+		fmt.Fprintf(w, "\tvar rv %s\n", outputsType)
+		fmt.Fprintf(w, "\terr %s ctx.Invoke%s(\"%s\", %s, &rv, %sopts...)\n",
+			assignment, packageRef, f.Token, inputsVar, packageArg)
+
+		if returnType == nil {
+			fmt.Fprintf(w, "\treturn err\n")
+		} else if objectReturnType == nil {
+			// Check the error before proceeding.
+			typ := pkg.typeString(returnType)
+			fmt.Fprintf(w, "\tvar result %s\n", typ)
+			fmt.Fprintf(w, "\tif err != nil {\n")
+			fmt.Fprintf(w, "\t\treturn result, err\n")
+			fmt.Fprintf(w, "\t}\n")
+			// Loop and collect the result
+			fmt.Fprintf(w, "\tfor _, v := range rv {\n")
+			fmt.Fprintf(w, "\t\tresult = v\n")
+			fmt.Fprintf(w, "\t\tbreak\n")
+			fmt.Fprintf(w, "\t}\n")
+			fmt.Fprintf(w, "\treturn result, nil\n")
+		} else {
+			// Check the error before proceeding.
+			fmt.Fprintf(w, "\tif err != nil {\n")
+			fmt.Fprintf(w, "\t\treturn nil, err\n")
+			fmt.Fprintf(w, "\t}\n")
+
+			// Return the result.
+			var retValue string
+			if codegen.IsProvideDefaultsFuncRequired(objectReturnType) && !pkg.disableObjectDefaults {
+				retValue = "rv.Defaults()"
+			} else {
+				retValue = "&rv"
+			}
+			fmt.Fprintf(w, "\treturn %s, nil\n", retValue)
+		}
+		fmt.Fprintf(w, "}\n")
 	}
-	fmt.Fprintf(w, "}\n")
 
 	// If there are argument and/or return types, emit them.
 	if f.Inputs != nil {

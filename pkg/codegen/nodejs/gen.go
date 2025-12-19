@@ -1193,7 +1193,7 @@ func runtimeInvokeFunction(fun *schema.Function, plain bool) string {
 
 func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, plain bool) (functionFileInfo, error) {
 	name := tokenToFunctionName(fun.Token)
-	info := functionFileInfo{functionName: name}
+	info := functionFileInfo{}
 
 	// Write the TypeDoc/JSDoc for the data source function.
 	printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), "", "")
@@ -1231,85 +1231,90 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 		fullFunctionName += "Output"
 		info.functionOutputVersionName = fullFunctionName
 	}
-
-	fmt.Fprintf(w, "export function %s(", fullFunctionName)
-	if fun.MultiArgumentInputs {
-		for _, prop := range fun.Inputs.Properties {
-			propertyType := codegen.UnwrapType(prop.Type)
-			isInput := false
-			if !plain {
-				isInput = true
-				propertyType = &schema.InputType{ElementType: prop.Type}
-			}
-			fmt.Fprintf(w, "%s", prop.Name)
-			if prop.IsRequired() {
-				fmt.Fprintf(w, ": ")
-			} else {
-				fmt.Fprintf(w, "?: ")
-			}
-			fmt.Fprintf(w, "%s, ", mod.typeString(propertyType, isInput, nil))
-		}
-	} else {
-		fmt.Fprintf(w, "%s", argsig)
+	if fun.Plain {
+		info.functionName = name
 	}
 
-	returnType := fmt.Sprintf("Promise<%s>", funReturnType)
-	if !plain {
-		returnType = fmt.Sprintf("pulumi.Output<%s>", funReturnType)
-	}
-
-	invokeOptionsType := "pulumi.InvokeOptions"
-	if !plain {
-		invokeOptionsType = "pulumi.InvokeOutputOptions"
-	}
-	fmt.Fprintf(w, "opts?: %s): %s {\n", invokeOptionsType, returnType)
-	if fun.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
-		fmt.Fprintf(w, "    pulumi.log.warn(\"%s is deprecated: %s\")\n", name, escape(fun.DeprecationMessage))
-	}
-
-	// Zero initialize the args if empty and necessary.
-	if fun.Inputs != nil && argsOptional && !fun.MultiArgumentInputs && argsig != "" {
-		fmt.Fprintf(w, "    args = args || {};\n")
-	}
-
-	// If the caller didn't request a specific version, supply one using the version of this library.
-	fmt.Fprintf(w, "    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});\n")
-	invokeCall := runtimeInvokeFunction(fun, plain)
-	// Now simply invoke the runtime function with the arguments, returning the results.
-	fmt.Fprintf(w, "    return pulumi.runtime.%s(\"%s\", {\n", invokeCall, fun.Token)
-	if fun.Inputs != nil {
-		for _, p := range fun.Inputs.Properties {
-			// Pass the argument to the invocation.
-			body := "args." + p.Name
-			if fun.MultiArgumentInputs {
-				body = p.Name
-			}
-
-			if name := mod.provideDefaultsFuncName(p.Type, true /*input*/); name != "" {
-				if codegen.IsNOptionalInput(p.Type) || !plain {
-					body = fmt.Sprintf("pulumi.output(%s).apply(%s)", body, name)
+	if !plain || fun.Plain {
+		fmt.Fprintf(w, "export function %s(", fullFunctionName)
+		if fun.MultiArgumentInputs {
+			for _, prop := range fun.Inputs.Properties {
+				propertyType := codegen.UnwrapType(prop.Type)
+				isInput := false
+				if !plain {
+					isInput = true
+					propertyType = &schema.InputType{ElementType: prop.Type}
+				}
+				fmt.Fprintf(w, "%s", prop.Name)
+				if prop.IsRequired() {
+					fmt.Fprintf(w, ": ")
 				} else {
-					body = fmt.Sprintf("%s(%s)", name, body)
+					fmt.Fprintf(w, "?: ")
+				}
+				fmt.Fprintf(w, "%s, ", mod.typeString(propertyType, isInput, nil))
+			}
+		} else {
+			fmt.Fprintf(w, "%s", argsig)
+		}
+
+		returnType := fmt.Sprintf("Promise<%s>", funReturnType)
+		if !plain {
+			returnType = fmt.Sprintf("pulumi.Output<%s>", funReturnType)
+		}
+
+		invokeOptionsType := "pulumi.InvokeOptions"
+		if !plain {
+			invokeOptionsType = "pulumi.InvokeOutputOptions"
+		}
+		fmt.Fprintf(w, "opts?: %s): %s {\n", invokeOptionsType, returnType)
+		if fun.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
+			fmt.Fprintf(w, "    pulumi.log.warn(\"%s is deprecated: %s\")\n", name, escape(fun.DeprecationMessage))
+		}
+
+		// Zero initialize the args if empty and necessary.
+		if fun.Inputs != nil && argsOptional && !fun.MultiArgumentInputs && argsig != "" {
+			fmt.Fprintf(w, "    args = args || {};\n")
+		}
+
+		// If the caller didn't request a specific version, supply one using the version of this library.
+		fmt.Fprintf(w, "    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});\n")
+		invokeCall := runtimeInvokeFunction(fun, plain)
+		// Now simply invoke the runtime function with the arguments, returning the results.
+		fmt.Fprintf(w, "    return pulumi.runtime.%s(\"%s\", {\n", invokeCall, fun.Token)
+		if fun.Inputs != nil {
+			for _, p := range fun.Inputs.Properties {
+				// Pass the argument to the invocation.
+				body := "args." + p.Name
+				if fun.MultiArgumentInputs {
+					body = p.Name
 				}
 
-				body = fmt.Sprintf("args.%s ? %s : undefined", p.Name, body)
+				if name := mod.provideDefaultsFuncName(p.Type, true /*input*/); name != "" {
+					if codegen.IsNOptionalInput(p.Type) || !plain {
+						body = fmt.Sprintf("pulumi.output(%s).apply(%s)", body, name)
+					} else {
+						body = fmt.Sprintf("%s(%s)", name, body)
+					}
+
+					body = fmt.Sprintf("args.%s ? %s : undefined", p.Name, body)
+				}
+				fmt.Fprintf(w, "        \"%[1]s\": %[2]s,\n", p.Name, body)
 			}
-			fmt.Fprintf(w, "        \"%[1]s\": %[2]s,\n", p.Name, body)
 		}
-	}
 
-	fmt.Fprintf(w, "    }, opts")
+		fmt.Fprintf(w, "    }, opts")
 
-	// If the invoke is on a parameterized package, make sure we pass the parameter.
-	pkg, err := fun.PackageReference.Definition()
-	if err != nil {
-		return info, err
-	}
-	if pkg.Parameterization != nil {
-		fmt.Fprintf(w, ", utilities.getPackage()")
-	}
+		// If the invoke is on a parameterized package, make sure we pass the parameter.
+		pkg, err := fun.PackageReference.Definition()
+		if err != nil {
+			return info, err
+		}
+		if pkg.Parameterization != nil {
+			fmt.Fprintf(w, ", utilities.getPackage()")
+		}
 
-	fmt.Fprintf(w, ");\n}\n")
+		fmt.Fprintf(w, ");\n}\n")
+	}
 
 	// If there are argument and/or return types, emit them.
 	if fun.Inputs != nil && !fun.MultiArgumentInputs {
@@ -1369,7 +1374,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 		return functionFileInfo{}, err
 	}
 
-	if fun.ReturnType == nil {
+	if fun.ReturnType == nil && fun.Plain {
 		// no need to generate the output-versioned invoke
 		return plainFunctionInfo, nil
 	}
