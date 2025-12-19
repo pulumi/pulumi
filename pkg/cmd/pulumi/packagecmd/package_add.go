@@ -115,6 +115,7 @@ from the parameters, as in:
 				pluginSource,
 				parameters,
 				pluginOrProject.reg,
+				env.Global(),
 			)
 			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
