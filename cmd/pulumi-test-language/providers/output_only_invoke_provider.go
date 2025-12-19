@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type OutputOnlyInvokeProvider struct {
@@ -48,9 +47,9 @@ func (p *OutputOnlyInvokeProvider) Pkg() tokens.Package {
 	return "output-only-invoke"
 }
 
-func (p *OutputOnlyInvokeProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *OutputOnlyInvokeProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	ver := semver.MustParse("24.0.0")
-	return workspace.PluginInfo{
+	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
 }
