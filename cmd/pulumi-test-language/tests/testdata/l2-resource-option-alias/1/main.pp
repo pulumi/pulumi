@@ -9,3 +9,10 @@ resource "aliasURN" "simple:index:Resource" {
         aliases = ["urn:pulumi:test::l2-resource-option-alias::simple:index:Resource::aliasURN"]
     }
 }
+
+resource "aliasNewName"  "simple:index:Resource" {
+    value = true
+    options {
+        aliases = [{name = "aliasName"}]
+    }
+}

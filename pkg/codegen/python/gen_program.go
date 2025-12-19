@@ -839,7 +839,41 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block, hasInput
 				g.Fprintf(w, ",\n%s", g.Indent)
 			}
 			attr := item.(*model.Attribute)
-			g.Fgenf(w, "%s=%v", attr.Name, attr.Value)
+
+			if attr.Name == "aliases" {
+				// aliases might be a list of strings or Alias objects
+				g.Fprintf(w, "aliases=[")
+				for i, expr := range attr.Value.(*model.TupleConsExpression).Expressions {
+					if i > 0 {
+						g.Fprintf(w, ", ")
+					}
+					// If the expression is a string literal, we can inline it directly.
+					if expr.Type().Equals(model.StringType) {
+						g.Fprintf(w, "%v", expr)
+						continue
+					}
+					// Otherwise pull off the fields dynamically.
+					obj := expr.(*model.ObjectConsExpression)
+					g.Fprintf(w, "pulumi.Alias(")
+					for j, item := range obj.Items {
+						if j > 0 {
+							g.Fprintf(w, ", ")
+						}
+						// We need a literal key here.
+						key, diags := item.Key.Evaluate(&hcl.EvalContext{})
+						contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
+
+						switch key.AsString() {
+						case "name":
+							g.Fgenf(w, "name=%v", item.Value)
+						}
+					}
+					g.Fprintf(w, ")")
+				}
+				g.Fprintf(w, "]")
+			} else {
+				g.Fgenf(w, "%s=%v", attr.Name, attr.Value)
+			}
 		}
 	})
 	g.Fprint(w, ")")

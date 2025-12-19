@@ -6,3 +6,7 @@ resource "parent" "simple:index:Resource" {
 resource "aliasURN" "simple:index:Resource" {
     value = true
 }
+
+resource "aliasName" "simple:index:Resource" {
+    value = true
+}

@@ -109,6 +109,11 @@ var (
 	StringType = NewOpaqueType("string")
 	// DynamicType represents the set of all values.
 	DynamicType = NewOpaqueType("dynamic")
+	// AliasType represents a type for the alias resource option. Aliases are either a string (single URN) or an object
+	// (with "name" and "parent", etc fields).
+	AliasType = NewUnionType(StringType, NewObjectType(map[string]Type{
+		"name": StringType,
+	}))
 )
 
 func assignableFrom(dest, src Type, assignableFromImpl func() bool) bool {

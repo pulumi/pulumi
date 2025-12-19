@@ -6,3 +6,8 @@ const aliasURN = new simple.Resource("aliasURN", {value: true}, {
     aliases: ["urn:pulumi:test::l2-resource-option-alias::simple:index:Resource::aliasURN"],
     parent: parent,
 });
+const aliasNewName = new simple.Resource("aliasNewName", {value: true}, {
+    aliases: [{
+        name: "aliasName",
+    }],
+});

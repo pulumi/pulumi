@@ -19,6 +19,12 @@ func main() {
 		if err != nil {
 			return err
 		}
+		_, err = simple.NewResource(ctx, "aliasNewName", &simple.ResourceArgs{
+			Value: pulumi.Bool(true),
+		}, pulumi.Aliases([]pulumi.Alias{pulumi.Alias{Name: pulumi.String("aliasName")}}))
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 }
