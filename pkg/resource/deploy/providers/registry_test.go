@@ -39,7 +39,7 @@ import (
 
 type testPluginHost struct {
 	t             *testing.T
-	provider      func(descriptor workspace.PackageDescriptor) (plugin.Provider, error)
+	provider      func(descriptor workspace.PluginDescriptor) (plugin.Provider, error)
 	closeProvider func(provider plugin.Provider) error
 }
 
@@ -78,7 +78,7 @@ func (host *testPluginHost) ListAnalyzers() []plugin.Analyzer {
 	return nil
 }
 
-func (host *testPluginHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+func (host *testPluginHost) Provider(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
 	return host.provider(descriptor)
 }
 
@@ -190,7 +190,7 @@ type providerLoader struct {
 func newPluginHost(t *testing.T, loaders []*providerLoader) plugin.Host {
 	return &testPluginHost{
 		t: t,
-		provider: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+		provider: func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
 			var best *providerLoader
 			for _, l := range loaders {
 				if string(l.pkg) != descriptor.Name {

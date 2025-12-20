@@ -481,52 +481,44 @@ func ProviderFromSource(
 		PluginDescriptor: pluginSpec,
 	}
 
-	installDescriptor := func(descriptor workspace.PackageDescriptor) (Provider, error) {
+	installDescriptor := func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
 		p, err := pctx.Host.Provider(descriptor)
 		if err == nil {
-			return Provider{
-				Provider:             p,
-				AlreadyParameterized: descriptor.Parameterization != nil,
-			}, nil
+			return p, nil
 		}
 
 		// There is an executable or directory with the same name, so suggest that
 		if info, statErr := os.Stat(descriptor.Name); statErr == nil && (isExecutable(info) || info.IsDir()) {
-			return Provider{}, fmt.Errorf("could not find installed plugin %s, did you mean ./%[1]s: %w", descriptor.Name, err)
+			return nil, fmt.Errorf("could not find installed plugin %s, did you mean ./%[1]s: %w", descriptor.Name, err)
 		}
 
 		// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
 		var missingError *workspace.MissingError
 		if !errors.As(err, &missingError) || e.GetBool(env.DisableAutomaticPluginAcquisition) {
-			return Provider{}, err
+			return nil, err
 		}
 
 		log := func(sev diag.Severity, msg string) {
 			pctx.Host.Log(sev, "", msg, 0)
 		}
 
-		_, err = pkgWorkspace.InstallPlugin(pctx.Base(), descriptor.PluginDescriptor, log)
+		_, err = pkgWorkspace.InstallPlugin(pctx.Base(), descriptor, log)
 		if err != nil {
-			return Provider{}, err
+			return nil, err
 		}
 
-		p, err = pctx.Host.Provider(descriptor)
-		if err != nil {
-			return Provider{}, err
-		}
-
-		return Provider{Provider: p}, nil
+		return pctx.Host.Provider(descriptor)
 	}
 
 	setupProvider := func(
 		descriptor workspace.PackageDescriptor, specOverride *workspace.PackageSpec,
 	) (Provider, *workspace.PackageSpec, error) {
-		p, err := installDescriptor(descriptor)
+		p, err := installDescriptor(descriptor.PluginDescriptor)
 		if err != nil {
 			return Provider{}, nil, err
 		}
 		if descriptor.Parameterization != nil {
-			_, err := p.Provider.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
+			_, err := p.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
 				Parameters: &plugin.ParameterizeValue{
 					Name:    descriptor.Parameterization.Name,
 					Version: descriptor.Parameterization.Version,
@@ -534,10 +526,10 @@ func ProviderFromSource(
 				},
 			})
 			if err != nil {
-				return Provider{}, nil, fmt.Errorf("failed to parameterize %s: %w", p.Provider.Pkg().Name(), err)
+				return Provider{}, nil, fmt.Errorf("failed to parameterize %s: %w", p.Pkg().Name(), err)
 			}
 		}
-		return p, specOverride, nil
+		return Provider{p, descriptor.Parameterization != nil}, specOverride, nil
 	}
 
 	var project workspace.BaseProject
