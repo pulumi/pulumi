@@ -16,3 +16,11 @@ resource "aliasNewName"  "simple:index:Resource" {
         aliases = [{name = "aliasName"}]
     }
 }
+
+resource "aliasNoParent" "simple:index:Resource" { 
+    value = true
+    options { 
+        parent = parent
+        aliases = [{noParent = true}]
+    }
+}

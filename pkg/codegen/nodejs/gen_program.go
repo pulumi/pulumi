@@ -886,18 +886,12 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	}
 
 	// Turn the resource options into an ObjectConsExpression and generate it.
-	var object *model.ObjectConsExpression
+	var object map[string]model.Expression
 	appendOption := func(name string, value model.Expression) {
 		if object == nil {
-			object = &model.ObjectConsExpression{}
+			object = make(map[string]model.Expression)
 		}
-		object.Items = append(object.Items, model.ObjectConsItem{
-			Key: &model.LiteralValueExpression{
-				Tokens: syntax.NewLiteralValueTokens(cty.StringVal(name)),
-				Value:  cty.StringVal(name),
-			},
-			Value: value,
-		})
+		object[name] = value
 	}
 
 	// Reference: https://www.pulumi.com/docs/iac/concepts/options/
@@ -946,7 +940,53 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	}
 
 	var buffer bytes.Buffer
-	g.Fgenf(&buffer, ", %v", g.lowerExpression(object, nil))
+	g.Fprintf(&buffer, ", {")
+	i := 0
+	for key, value := range object {
+		if i > 0 {
+			g.Fprintf(&buffer, ",\n%s", g.Indent)
+		}
+		i++
+
+		if key == "aliases" {
+			// aliases might be a list of strings or Alias objects
+			g.Fprintf(&buffer, "aliases:[")
+			for i, expr := range value.(*model.TupleConsExpression).Expressions {
+				if i > 0 {
+					g.Fprintf(&buffer, ", ")
+				}
+				// If the expression is a string literal, we can inline it directly.
+				if expr.Type().Equals(model.StringType) {
+					g.Fprintf(&buffer, "%v", expr)
+					continue
+				}
+				// Otherwise pull off the fields dynamically.
+				obj := expr.(*model.ObjectConsExpression)
+				g.Fprintf(&buffer, "{")
+				for j, item := range obj.Items {
+					if j > 0 {
+						g.Fprintf(&buffer, ", ")
+					}
+					// We need a literal key here.
+					key, diags := item.Key.Evaluate(&hcl.EvalContext{})
+					contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
+
+					switch key.AsString() {
+					case "name":
+						g.Fgenf(&buffer, "name: %v", item.Value)
+					case "noParent":
+						g.Fgenf(&buffer, "parent: (%v ? pulumi.rootStackResource : undefined)", item.Value)
+					}
+				}
+				g.Fprintf(&buffer, "}")
+			}
+			g.Fprintf(&buffer, "]")
+		} else {
+			g.Fgenf(&buffer, "%s: %v", key, g.lowerExpression(value, nil))
+		}
+	}
+	g.Fprintf(&buffer, "}")
+
 	return buffer.String()
 }
 

@@ -112,7 +112,8 @@ var (
 	// AliasType represents a type for the alias resource option. Aliases are either a string (single URN) or an object
 	// (with "name" and "parent", etc fields).
 	AliasType = NewUnionType(StringType, NewObjectType(map[string]Type{
-		"name": StringType,
+		"name":     NewOptionalType(StringType),
+		"noParent": NewOptionalType(BoolType),
 	}))
 )
 
