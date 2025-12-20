@@ -7,3 +7,5 @@ parent: parent});
 const aliasNewName = new simple.Resource("aliasNewName", {value: true}, {aliases:[{name: "aliasName"}]});
 const aliasNoParent = new simple.Resource("aliasNoParent", {value: true}, {aliases:[{parent: (true ? pulumi.rootStackResource : undefined)}],
 parent: parent});
+const aliasParent = new simple.Resource("aliasParent", {value: true}, {aliases:[{parent: aliasURN}],
+parent: parent});

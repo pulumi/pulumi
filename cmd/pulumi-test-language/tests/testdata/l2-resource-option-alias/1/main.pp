@@ -24,3 +24,11 @@ resource "aliasNoParent" "simple:index:Resource" {
         aliases = [{noParent = true}]
     }
 }
+
+resource "aliasParent" "simple:index:Resource" { 
+    value = true
+    options {
+        parent = parent
+        aliases = [{parent = aliasURN}]
+    }
+}

@@ -38,7 +38,7 @@ func init() {
 				) {
 					RequireStackResource(l, err, changes)
 
-					require.Len(l, snap.Resources, 6, "expected 6 resources in snapshot")
+					require.Len(l, snap.Resources, 7, "expected 7 resources in snapshot")
 				},
 			},
 			{
@@ -50,7 +50,7 @@ func init() {
 					// Don't expect any replacements.
 					require.Equal(l, 0, changes[deploy.OpCreate], "expected no create operations")
 
-					require.Len(l, snap.Resources, 6, "expected 6 resources in snapshot")
+					require.Len(l, snap.Resources, 7, "expected 7 resources in snapshot")
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
@@ -62,6 +62,9 @@ func init() {
 
 					aliasNoParent := RequireSingleNamedResource(l, snap.Resources, "aliasNoParent")
 					assert.Equal(l, parent.URN, aliasNoParent.Parent, "expected parent to be parent of aliasNoParent resource")
+
+					aliasParent := RequireSingleNamedResource(l, snap.Resources, "aliasParent")
+					assert.Equal(l, parent.URN, aliasParent.Parent, "expected parent to be parent of aliasParent resource")
 				},
 			},
 		},

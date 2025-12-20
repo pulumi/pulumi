@@ -976,6 +976,8 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 						g.Fgenf(&buffer, "name: %v", item.Value)
 					case "noParent":
 						g.Fgenf(&buffer, "parent: (%v ? pulumi.rootStackResource : undefined)", item.Value)
+					case "parent":
+						g.Fgenf(&buffer, "parent: %v", item.Value)
 					}
 				}
 				g.Fprintf(&buffer, "}")

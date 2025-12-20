@@ -114,6 +114,7 @@ var (
 	AliasType = NewUnionType(StringType, NewObjectType(map[string]Type{
 		"name":     NewOptionalType(StringType),
 		"noParent": NewOptionalType(BoolType),
+		"parent":   NewOptionalType(DynamicType),
 	}))
 )
 
