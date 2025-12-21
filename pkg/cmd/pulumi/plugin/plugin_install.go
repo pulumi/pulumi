@@ -125,14 +125,6 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		cmd.registry = cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmd.diag, cmd.env)
 	}
 
-	// If --server flag is not set, check for PULUMI_PLUGIN_SERVER environment variable
-	if cmd.serverURL == "" {
-		if serverFromEnv := env.PluginServer.Value(); serverFromEnv != "" {
-			cmd.serverURL = serverFromEnv
-			logging.V(1).Infof("Using plugin server from PULUMI_PLUGIN_SERVER: %s", serverFromEnv)
-		}
-	}
-
 	// Parse the kind, name, and version, if specified.
 	var installs []workspace.PluginSpec
 	if len(args) > 0 {
