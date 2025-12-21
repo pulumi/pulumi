@@ -153,12 +153,6 @@ var RunProgram = env.Bool("RUN_PROGRAM",
 // will capture any GitHub-hosted plugin and redirect to its corresponding folder under https://foo.com/downloads
 var PluginDownloadURLOverrides = env.String("PLUGIN_DOWNLOAD_URL_OVERRIDES", "")
 
-// PluginServer is a URL to download plugins from. When set, this overrides the default plugin download
-// behavior and forces Pulumi to download plugins from the specified server instead of GitHub or get.pulumi.com.
-// This is useful for air-gapped environments or when using a custom plugin mirror/CDN.
-// Can be used as an alternative to the --server flag in `pulumi plugin install`.
-var PluginServer = env.String("PLUGIN_SERVER", "A URL to download plugins from, bypassing GitHub and get.pulumi.com.")
-
 // By default `pulumi preview --json` emits a "PreviewDigest" JSON object to stdout. Setting this envvar changes
 // the behavior of `pulumi preview --json` to match the behavior of `pulumi up|destroy|refresh --json`, that is,
 // to stream JSON events to stdout.
