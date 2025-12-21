@@ -18,9 +18,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -940,54 +942,53 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	}
 
 	var buffer bytes.Buffer
-	g.Fprintf(&buffer, ", {")
-	i := 0
-	for key, value := range object {
-		if i > 0 {
-			g.Fprintf(&buffer, ",\n%s", g.Indent)
-		}
-		i++
-
-		if key == "aliases" {
-			// aliases might be a list of strings or Alias objects
-			g.Fprintf(&buffer, "aliases:[")
-			for i, expr := range value.(*model.TupleConsExpression).Expressions {
-				if i > 0 {
-					g.Fprintf(&buffer, ", ")
-				}
-				// If the expression is a string literal, we can inline it directly.
-				if expr.Type().Equals(model.StringType) {
-					g.Fprintf(&buffer, "%v", expr)
-					continue
-				}
-				// Otherwise pull off the fields dynamically.
-				obj := expr.(*model.ObjectConsExpression)
-				g.Fprintf(&buffer, "{")
-				for j, item := range obj.Items {
-					if j > 0 {
-						g.Fprintf(&buffer, ", ")
+	g.Indented(func() {
+		g.Fprint(&buffer, ", {\n")
+		for _, key := range slices.Sorted(maps.Keys(object)) {
+			value := object[key]
+			g.Fprintf(&buffer, "%s", g.Indent)
+			if key == "aliases" {
+				// aliases might be a list of strings or Alias objects
+				g.Fprint(&buffer, "aliases:[")
+				for i, expr := range value.(*model.TupleConsExpression).Expressions {
+					if i > 0 {
+						g.Fprint(&buffer, ", ")
 					}
-					// We need a literal key here.
-					key, diags := item.Key.Evaluate(&hcl.EvalContext{})
-					contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
+					// If the expression is a string literal, we can inline it directly.
+					if expr.Type().Equals(model.StringType) {
+						g.Fgenf(&buffer, "%v", expr)
+					} else {
+						// Otherwise pull off the fields dynamically.
+						obj := expr.(*model.ObjectConsExpression)
+						g.Fprint(&buffer, "{")
+						for j, item := range obj.Items {
+							if j > 0 {
+								g.Fprint(&buffer, ", ")
+							}
+							// We need a literal key here.
+							key, diags := item.Key.Evaluate(&hcl.EvalContext{})
+							contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
 
-					switch key.AsString() {
-					case "name":
-						g.Fgenf(&buffer, "name: %v", item.Value)
-					case "noParent":
-						g.Fgenf(&buffer, "parent: (%v ? pulumi.rootStackResource : undefined)", item.Value)
-					case "parent":
-						g.Fgenf(&buffer, "parent: %v", item.Value)
+							switch key.AsString() {
+							case "name":
+								g.Fgenf(&buffer, "name: %v", item.Value)
+							case "noParent":
+								g.Fgenf(&buffer, "parent: (%v ? pulumi.rootStackResource : undefined)", item.Value)
+							case "parent":
+								g.Fgenf(&buffer, "parent: %v", item.Value)
+							}
+						}
+						g.Fprint(&buffer, "}")
 					}
 				}
-				g.Fprintf(&buffer, "}")
+				g.Fprint(&buffer, "]")
+			} else {
+				g.Fgenf(&buffer, "%s: %v", key, g.lowerExpression(value, nil))
 			}
-			g.Fprintf(&buffer, "]")
-		} else {
-			g.Fgenf(&buffer, "%s: %v", key, g.lowerExpression(value, nil))
+			g.Fprint(&buffer, ",\n")
 		}
-	}
-	g.Fprintf(&buffer, "}")
+	})
+	g.Fprintf(&buffer, "%s}", g.Indent)
 
 	return buffer.String()
 }
