@@ -19,7 +19,6 @@ import (
 	"os/exec"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -60,14 +59,11 @@ func TestAzureLoginAzLogin(t *testing.T) {
 	t.Setenv("AZURE_STORAGE_SAS_TOKEN", "")
 
 	//nolint:gosec // this is a test
-	err := exec.Command("az", "login", "--service-principal",
+	out, err := exec.Command("az", "login", "--service-principal",
 		"--username", os.Getenv("AZURE_CLIENT_ID"),
 		"--password", os.Getenv("AZURE_CLIENT_SECRET"),
-		"--tenant", os.Getenv("AZURE_TENANT_ID")).Run()
-	if err != nil {
-		err = errutil.ErrorWithStderr(err, "az login failed")
-	}
-	require.NoError(t, err)
+		"--tenant", os.Getenv("AZURE_TENANT_ID")).Output()
+	require.NoError(t, err, "%s: out: %q, err: %q", err, out, err.(*exec.ExitError).Stderr)
 
 	t.Cleanup(func() {
 		err := exec.Command("az", "logout").Run()
