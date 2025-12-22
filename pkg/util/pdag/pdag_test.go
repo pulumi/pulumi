@@ -852,3 +852,17 @@ func TestWalk_ContextCancellation(t *testing.T) {
 	})
 	assert.ErrorIs(t, err, context.Canceled)
 }
+
+func TestWalk_CatchPanic(t *testing.T) {
+	t.Parallel()
+
+	dag := pdag.New[int]()
+	_, done := dag.NewNode(1)
+	done()
+
+	assert.PanicsWithValue(t, "value", func() {
+		_ = dag.Walk(t.Context(), func(_ context.Context, v int) error {
+			panic("value")
+		}, pdag.MaxProcs(8))
+	})
+}
