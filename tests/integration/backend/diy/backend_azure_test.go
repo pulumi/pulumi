@@ -1,4 +1,4 @@
-// Copyright 2024-2024, Pulumi Corporation.
+// Copyright 2024-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -62,11 +62,11 @@ func TestAzureLoginAzLogin(t *testing.T) {
 	t.Setenv("AZURE_STORAGE_SAS_TOKEN", "")
 
 	//nolint:gosec // this is a test
-	err := exec.Command("az", "login", "--service-principal",
+	out, err := exec.Command("az", "login", "--service-principal",
 		"--username", os.Getenv("AZURE_CLIENT_ID"),
 		"--password", os.Getenv("AZURE_CLIENT_SECRET"),
-		"--tenant", os.Getenv("AZURE_TENANT_ID")).Run()
-	require.NoError(t, err)
+		"--tenant", os.Getenv("AZURE_TENANT_ID")).CombinedOutput()
+	require.NoError(t, err, "%s: %q", err, out)
 
 	t.Cleanup(func() {
 		err := exec.Command("az", "logout").Run()
