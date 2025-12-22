@@ -1,4 +1,4 @@
-// Copyright 2024-2024, Pulumi Corporation.
+// Copyright 2024-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import (
 	"os/exec"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -63,6 +64,9 @@ func TestAzureLoginAzLogin(t *testing.T) {
 		"--username", os.Getenv("AZURE_CLIENT_ID"),
 		"--password", os.Getenv("AZURE_CLIENT_SECRET"),
 		"--tenant", os.Getenv("AZURE_TENANT_ID")).Run()
+	if err != nil {
+		err = errutil.ErrorWithStderr(err, "az login failed")
+	}
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
