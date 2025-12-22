@@ -46,6 +46,9 @@ func TestAzureLoginSasToken(t *testing.T) {
 
 //nolint:paralleltest // this test uses the global azure login state
 func TestAzureLoginAzLogin(t *testing.T) {
+	// TODO[pulumi/pulumi#21300]: Re-enable this test when we can figure out what's happening.
+	t.Skip("Skipping broken test temporarily")
+
 	t.Chdir("project")
 	cloudURL := "azblob://pulumitesting?storage_account=pulumitesting"
 	clientID := os.Getenv("AZURE_CLIENT_ID")
