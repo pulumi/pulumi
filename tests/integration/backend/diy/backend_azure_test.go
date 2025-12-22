@@ -48,7 +48,7 @@ func TestAzureLoginSasToken(t *testing.T) {
 func TestAzureLoginAzLogin(t *testing.T) {
 	// NOTE: This test requires a valid AZURE_CLIENT_SECRET. Unfortunately the longest time these
 	// can be valid is 2 years. When this test fails (after 2027-12-22), the secret will need to
-	// be rotate. This can be done by navigating to the `pulumi-test` app in the Azure portal, and
+	// be rotated. This can be done by navigating to the `pulumi-test` app in the Azure portal, and
 	// creating a new client secret under "Certificates & secrets". Create a new client secret from
 	// there and update the GitHub Actions secret `AZURE_CLIENT_SECRET` with the new value.
 
