@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add --config and --config-path options to destroy and refresh
