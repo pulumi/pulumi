@@ -18,12 +18,18 @@ updates, reading and writing stack state whenever appropriate.
 (diy)=
 ### DIY backends
 
-A *DIY* (*do it yourself*) backend is one in which a state JSON file is
-persisted to a medium controlled and managed by the Pulumi user. Under the hood,
-Pulumi uses the [Go Cloud Development Kit](https://gocloud.dev/) (specifically,
-its [`blob` package](https://gocloud.dev/howto/blob/)) to support a number of
-storage implementations, from local files to cloud storage services such as AWS
-S3, Google Cloud Storage, and Azure Blob Storage.
+A *DIY* (*do it yourself*) backend is one in which a state JSON is persisted
+to a medium controlled and managed by the Pulumi user.
+
+For the DIY file backend Pulumi uses the
+[Go Cloud Development Kit](https://gocloud.dev/) (specifically, its
+[`blob` package](https://gocloud.dev/howto/blob/)) to support a number of
+storage implementations, from local files to cloud storage services such as
+AWS S3, Google Cloud Storage, and Azure Blob Storage.
+
+The [PostgreSQL backend](/pkg/backend/diy/postgres/README.md) is an altnerative
+DIY backend that provides a PostgreSQL-based backend imlementation for storing
+the state.
 
 (httpstate)=
 ### HTTP state backends
@@ -446,3 +452,10 @@ a single operation.
 [^sie-p1]:
     Snapshot integrity issues are generally "P1" issues, meaning that they are
     picked up as soon as possible in the development process.
+
+:::{toctree}
+:maxdepth: 1
+:titlesonly:
+
+/pkg/backend/diy/postgres/README
+:::

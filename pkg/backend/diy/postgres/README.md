@@ -1,5 +1,6 @@
+(postgresql-backend)=
 # PostgreSQL Backend for Pulumi
-This package provides a PostgreSQL-based backend implementation for Pulumi state storage. It stores Pulumi state in a PostgreSQL database table, allowing you to use PostgreSQL as your state storage mechanism.
+The `pkg/backend/diy/postgres` package provides a PostgreSQL-based backend implementation for Pulumi state storage. It stores Pulumi state in a PostgreSQL database table, allowing you to use PostgreSQL as your state storage mechanism.
 
 ## Features
 - Store Pulumi state in a PostgreSQL database
