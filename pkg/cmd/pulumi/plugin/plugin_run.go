@@ -86,7 +86,7 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 				pluginPath = source
 			} else {
 				// TODO: Add support for --server and --checksums.
-				pluginSpec, err := workspace.NewPluginSpec(ctx, args[0], kind, nil, "", nil)
+				pluginSpec, err := workspace.NewPluginDescriptor(ctx, args[0], kind, nil, "", nil)
 				if err != nil {
 					return err
 				}

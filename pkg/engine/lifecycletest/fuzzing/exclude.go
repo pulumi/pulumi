@@ -14,6 +14,10 @@
 
 package fuzzing
 
+import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
+)
+
 // ExclusionRule represents a rule that determines if a snapshot should be excluded from fuzzing.
 // If the rule returns true, the snapshot will be rejected and a new one will be generated.
 type ExclusionRule func(*SnapshotSpec, *ProgramSpec, *ProviderSpec, *PlanSpec) bool
@@ -24,7 +28,10 @@ type ExclusionRules []ExclusionRule
 // DefaultExclusionRules returns the default set of exclusion rules that prevent known
 // problematic patterns from being generated.
 func DefaultExclusionRules() ExclusionRules {
-	return []ExclusionRule{}
+	return []ExclusionRule{
+		// TODO[pulumi/pulumi#21277]
+		ExcludeProtectedResourceWithDuplicateProviderDestroyV2,
+	}
 }
 
 // ShouldExclude checks if a snapshot should be excluded based on the configured exclusion rules.
@@ -40,5 +47,49 @@ func (er ExclusionRules) ShouldExclude(
 			return true
 		}
 	}
+	return false
+}
+
+// ExcludeProtectedResourceWithDuplicateProvider excludes snapshots where a protected component
+// resource references a provider that will be deleted during the destroy.
+func ExcludeProtectedResourceWithDuplicateProviderDestroyV2(
+	snap *SnapshotSpec,
+	_ *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationDestroyV2 {
+		return false
+	}
+	providersByURN := make(map[string][]*ResourceSpec)
+	for _, res := range snap.Resources {
+		if providers.IsProviderType(res.Type) {
+			urn := string(res.URN())
+			providersByURN[urn] = append(providersByURN[urn], res)
+		}
+	}
+
+	for _, res := range snap.Resources {
+		if !res.Protect {
+			continue
+		}
+
+		if res.Provider == "" {
+			continue
+		}
+
+		providerRef, err := providers.ParseReference(res.Provider)
+		if err != nil {
+			continue
+		}
+
+		providerURN := string(providerRef.URN())
+
+		_, ok := providersByURN[providerURN]
+		if ok {
+			return true
+		}
+	}
+
 	return false
 }

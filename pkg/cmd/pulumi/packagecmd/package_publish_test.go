@@ -376,7 +376,8 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 			cmd := &packagePublishCmd{
 				defaultOrg: defaultOrg,
 				extractSchema: func(
-					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
+					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
+					registry registry.Registry, _ env.Env,
 				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 					if tt.mockSchema == nil && tt.schemaExtractionErr == nil {
 						return nil, nil, errors.New("mock schema extraction failed")
@@ -472,7 +473,8 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 					return "default-org", nil
 				},
 				extractSchema: func(
-					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
+					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
+					registry registry.Registry, _ env.Env,
 				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 					return tt.mockSchema, nil, nil
 				},
@@ -530,7 +532,8 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 					return "default-org", nil
 				},
 				extractSchema: func(
-					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
+					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
+					registry registry.Registry, _ env.Env,
 				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 					return validSchema, nil, nil
 				},
@@ -577,6 +580,7 @@ func TestPackagePublishCmd_Run_ReadProjectError(t *testing.T) {
 			packageSource string,
 			parameters plugin.ParameterizeParameters,
 			registry registry.Registry,
+			_ env.Env,
 		) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 			pkg := &schema.PackageSpec{
 				Name:    "test-package",
@@ -688,7 +692,7 @@ func TestFindReadme(t *testing.T) {
 	t.Run("Git Plugin Download URL", func(t *testing.T) {
 		t.Parallel()
 		pluginDownloadURL := "git://github.com/pulumi/pulumi-example@v1.2.3"
-		pluginSpec, err := workspace.NewPluginSpec(ctx, pluginDownloadURL, apitype.ResourcePlugin, nil, "", nil)
+		pluginSpec, err := workspace.NewPluginDescriptor(ctx, pluginDownloadURL, apitype.ResourcePlugin, nil, "", nil)
 		require.NoError(t, err)
 
 		installResourcePluginFromFiles(t, pluginSpec, map[string]string{
@@ -705,7 +709,7 @@ func TestFindReadme(t *testing.T) {
 	t.Run("Git Plugin Download URL with subdirectory", func(t *testing.T) {
 		t.Parallel()
 		pluginDownloadURL := "git://github.com/pulumi/pulumi-subdir-example/path@v1.2.3"
-		pluginSpec, err := workspace.NewPluginSpec(ctx, pluginDownloadURL, apitype.ResourcePlugin, nil, "", nil)
+		pluginSpec, err := workspace.NewPluginDescriptor(ctx, pluginDownloadURL, apitype.ResourcePlugin, nil, "", nil)
 		require.NoError(t, err)
 
 		installResourcePluginFromFiles(t, pluginSpec, map[string]string{

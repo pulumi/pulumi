@@ -68,7 +68,7 @@ type Host interface {
 
 	// Provider loads a new copy of the provider for a given package.  If a provider for this package could not be
 	// found, or an error occurs while creating it, a non-nil error is returned.
-	Provider(descriptor workspace.PackageDescriptor) (Provider, error)
+	Provider(descriptor workspace.PluginDescriptor) (Provider, error)
 	// CloseProvider closes the given provider plugin and deregisters it from this host.
 	CloseProvider(provider Provider) error
 	// LanguageRuntime fetches the language runtime plugin for a given language, lazily allocating if necessary.  If
@@ -111,7 +111,7 @@ func IsLocalPluginPath(ctx context.Context, source string) bool {
 
 	// For other cases, we need to be careful about how we interpret the source, so let's parse the spec
 	// and check if it has a download URL.
-	pluginSpec, err := workspace.NewPluginSpec(ctx, source, apitype.ResourcePlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginDescriptor(ctx, source, apitype.ResourcePlugin, nil, "", nil)
 	var pluginErr workspace.PluginVersionNotFoundError
 	if err != nil && !errors.As(err, &pluginErr) {
 		// If we can't parse it as a plugin spec, assume it's a local path
@@ -486,7 +486,7 @@ func (host *defaultHost) ListAnalyzers() []Analyzer {
 	return analyzers
 }
 
-func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provider, error) {
+func (host *defaultHost) Provider(descriptor workspace.PluginDescriptor) (Provider, error) {
 	plugin, err := host.loadPlugin(host.loadRequests, func() (any, error) {
 		pkg := descriptor.Name
 		version := descriptor.Version
@@ -506,7 +506,7 @@ func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provi
 		}
 
 		plug, err := NewProvider(
-			host, host.ctx, descriptor.PluginDescriptor,
+			host, host.ctx, descriptor,
 			host.runtimeOptions, host.disableProviderPreview, string(jsonConfig), host.projectName)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo(host.ctx.Request())
@@ -605,7 +605,7 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kin
 			}
 		case apitype.ResourcePlugin:
 			if kinds&ResourcePlugins != 0 {
-				if _, err := host.Provider(workspace.PackageDescriptor{PluginDescriptor: plugin}); err != nil {
+				if _, err := host.Provider(plugin); err != nil {
 					result = multierror.Append(result,
 						fmt.Errorf("failed to load resource plugin %s: %w", plugin.Name, err))
 				}

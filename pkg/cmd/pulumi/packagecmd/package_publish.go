@@ -61,7 +61,8 @@ type publishPackageArgs struct {
 type packagePublishCmd struct {
 	defaultOrg    func(context.Context, backend.Backend, *workspace.Project) (string, error)
 	extractSchema func(
-		pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
+		pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
+		registry registry.Registry, e env.Env,
 	) (*schema.PackageSpec, *workspace.PackageSpec, error)
 }
 
@@ -151,7 +152,7 @@ func (cmd *packagePublishCmd) Run(
 	}
 	defer contract.IgnoreClose(pctx)
 
-	pkg, _, err := cmd.extractSchema(pctx, packageSrc, packageParams, b.GetReadOnlyCloudRegistry())
+	pkg, _, err := cmd.extractSchema(pctx, packageSrc, packageParams, b.GetReadOnlyCloudRegistry(), env.Global())
 	if err != nil {
 		return fmt.Errorf("failed to get schema: %w", err)
 	}
@@ -314,7 +315,7 @@ func (cmd *packagePublishCmd) findReadme(ctx context.Context, packageSrc string)
 	}
 
 	// Otherwise, try to retrieve the readme from the installed plugin.
-	pluginSpec, err := workspace.NewPluginSpec(ctx, packageSrc, apitype.ResourcePlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginDescriptor(ctx, packageSrc, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create plugin spec: %w", err)
 	}

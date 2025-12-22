@@ -36,7 +36,7 @@ func ProviderFactoryFromHost(ctx context.Context, host plugin.Host) ProviderFact
 			return nil, fmt.Errorf("provider factory must be a resource plugin package, was %v", descriptor.Kind)
 		}
 
-		provider, err := host.Provider(descriptor)
+		provider, err := host.Provider(descriptor.PluginDescriptor)
 		if err != nil {
 			desc := descriptor.PackageName()
 			v := descriptor.PackageVersion()

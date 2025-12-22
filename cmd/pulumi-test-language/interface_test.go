@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -280,12 +281,20 @@ func TestBindPrograms(t *testing.T) {
 
 		src := filepath.Join("tests/testdata", name)
 		loader := &inMemoryProviderLoader{providers: test.Providers}
-		_, diags, err := pcl.BindDirectory(src, loader)
-		for _, diag := range diags {
-			t.Logf("%s: %v", name, diag)
+
+		for i := range test.Runs {
+			path := filepath.Join(src, strconv.Itoa(i))
+			if len(test.Runs) == 1 || test.RunsShareSource {
+				path = src
+			}
+
+			_, diags, err := pcl.BindDirectory(path, loader)
+			for _, diag := range diags {
+				t.Logf("%s: %v", name, diag)
+			}
+			require.NoError(t, err, "bind program for test %s: %v", name, err)
+			require.False(t, diags.HasErrors(), "bind program for test %s: %v", name, diags)
 		}
-		require.NoError(t, err, "bind program for test %s: %v", name, err)
-		require.False(t, diags.HasErrors(), "bind program for test %s: %v", name, diags)
 	}
 }
 

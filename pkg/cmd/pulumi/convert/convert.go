@@ -327,7 +327,7 @@ func runConvert(
 			return nil
 		}
 
-		pluginSpec, err := workspace.NewPluginSpec(ctx, pluginName, apitype.ResourcePlugin, nil, "", nil)
+		pluginSpec, err := workspace.NewPluginDescriptor(ctx, pluginName, apitype.ResourcePlugin, nil, "", nil)
 		if err != nil {
 			pCtx.Diag.Errorf(diag.Message("", "failed to create plugin spec for %q: %v"), pluginName, err)
 			return nil
@@ -558,6 +558,7 @@ func generateAndLinkSdksForPackages(
 			pkg.Name,
 			&plugin.ParameterizeValue{Value: pkg.Parameterization.Value},
 			registry,
+			env.Global(),
 		)
 		if err != nil {
 			return fmt.Errorf("creating package schema: %w", err)
