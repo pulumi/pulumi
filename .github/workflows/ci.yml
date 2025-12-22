@@ -75,7 +75,7 @@ on:
         description: "Azure client ID, required to run tests against Azure"
       AZURE_CLIENT_SECRET:
         required: false
-        description: "Azure clients secret, needs to be rotated before 2025-12-21 (see the pulumi-test user in Azure portal)"
+        description: "Azure clients secret, needs to be rotated before 2027-12-22 (see the TestAzureLoginAzLogin test for detailed instructions)"
       AZURE_STORAGE_SAS_TOKEN:
         required: false
         description: "Azure storage SAS token, required to run tests against Azure"
