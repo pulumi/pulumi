@@ -1,0 +1,30 @@
+IsExternalURL{"plugin-a"} -> {true}
+DownloadPlugin{PluginSpec{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {"/tmp/plugins/resource-plugin-a", <func(bool)>, nil}
+DetectPluginPathAt{"/tmp/plugins/resource-plugin-a"} -> {"/tmp/plugins/resource-plugin-a/PulumiPlugin.yaml", nil}
+LoadPluginProject{"/tmp/plugins/resource-plugin-a/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[2]{"plugin-b":packageValue{value:"plugin-b"}, "plugin-c":packageValue{value:"plugin-c"}}}, nil}
+IsExternalURL{"plugin-b"} -> {true}
+IsExternalURL{"plugin-c"} -> {true}
+DownloadPlugin{PluginSpec{Name:"plugin-b", Kind:"resource"}} -> {"/tmp/plugins/resource-plugin-b", <func(bool)>, nil}
+DetectPluginPathAt{"/tmp/plugins/resource-plugin-b"} -> {"/tmp/plugins/resource-plugin-b/PulumiPlugin.yaml", nil}
+LoadPluginProject{"/tmp/plugins/resource-plugin-b/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-d":packageValue{value:"plugin-d"}}}, nil}
+DownloadPlugin{PluginSpec{Name:"plugin-c", Kind:"resource"}} -> {"/tmp/plugins/resource-plugin-c", <func(bool)>, nil}
+DetectPluginPathAt{"/tmp/plugins/resource-plugin-c"} -> {"/tmp/plugins/resource-plugin-c/PulumiPlugin.yaml", nil}
+LoadPluginProject{"/tmp/plugins/resource-plugin-c/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-d":packageValue{value:"plugin-d"}}}, nil}
+IsExternalURL{"plugin-d"} -> {true}
+IsExternalURL{"plugin-d"} -> {true}
+DownloadPlugin{PluginSpec{Name:"plugin-d", Kind:"resource"}} -> {"/tmp/plugins/resource-plugin-d", <func(bool)>, nil}
+DetectPluginPathAt{"/tmp/plugins/resource-plugin-d"} -> {"/tmp/plugins/resource-plugin-d/PulumiPlugin.yaml", nil}
+LoadPluginProject{"/tmp/plugins/resource-plugin-d/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}, nil}
+InstallPluginAt{"/tmp/plugins/resource-plugin-d", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}} -> {nil}
+MarkInstallationDone{PluginSpec{Name:"plugin-d", Kind:"resource"}, true}
+LinkPackage{ProjectRuntimeInfo{name:"go"}, "/tmp/plugins/resource-plugin-b", "plugin-d", "/tmp/plugins/resource-plugin-d", nil} -> {nil}
+InstallPluginAt{"/tmp/plugins/resource-plugin-b", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-d":packageValue{value:"plugin-d"}}}} -> {nil}
+MarkInstallationDone{PluginSpec{Name:"plugin-b", Kind:"resource"}, true}
+LinkPackage{ProjectRuntimeInfo{name:"go"}, "/tmp/plugins/resource-plugin-a", "plugin-b", "/tmp/plugins/resource-plugin-b", nil} -> {nil}
+LinkPackage{ProjectRuntimeInfo{name:"go"}, "/tmp/plugins/resource-plugin-c", "plugin-d", "/tmp/plugins/resource-plugin-d", nil} -> {nil}
+InstallPluginAt{"/tmp/plugins/resource-plugin-c", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-d":packageValue{value:"plugin-d"}}}} -> {nil}
+MarkInstallationDone{PluginSpec{Name:"plugin-c", Kind:"resource"}, true}
+LinkPackage{ProjectRuntimeInfo{name:"go"}, "/tmp/plugins/resource-plugin-a", "plugin-c", "/tmp/plugins/resource-plugin-c", nil} -> {nil}
+InstallPluginAt{"/tmp/plugins/resource-plugin-a", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[2]{"plugin-b":packageValue{value:"plugin-b"}, "plugin-c":packageValue{value:"plugin-c"}}}} -> {nil}
+MarkInstallationDone{PluginSpec{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}, true}
+RunPackage{"/plugin/launch/dir", "/tmp/plugins/resource-plugin-a", nil} -> {nil, nil}

@@ -1,0 +1,7 @@
+HasPluginGTE{PluginSpec{Name:"external-package", Kind:"resource", PluginDownloadURL:"https://example.com/external-package.tar.gz"}} -> {false, nil}
+IsExternalURL{"external-package"} -> {true}
+DownloadPlugin{PluginSpec{Name:"external-package", Kind:"resource", PluginDownloadURL:"https://example.com/external-package.tar.gz"}} -> {"/tmp/plugins/resource-external-package", <func(bool)>, nil}
+DetectPluginPathAt{"/tmp/plugins/resource-external-package"} -> {"", errorString{s:"no plugin file found"}}
+IsExecutable{"/tmp/plugins/resource-external-package/pulumi-resource-external-package"} -> {true, nil}
+MarkInstallationDone{PluginSpec{Name:"external-package", Kind:"resource", PluginDownloadURL:"https://example.com/external-package.tar.gz"}, true}
+RunPackage{"/plugin/launch/dir", "/tmp/plugins/resource-external-package/pulumi-resource-external-package", nil} -> {nil, nil}

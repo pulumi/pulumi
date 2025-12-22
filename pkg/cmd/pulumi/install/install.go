@@ -26,9 +26,11 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -38,10 +40,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
@@ -104,31 +104,12 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 						return err
 					}
 
-					pctx, err := plugin.NewContextWithRoot(ctx,
-						cmdutil.Diag(),
-						cmdutil.Diag(),
-						nil, // host
-						cwd, // pwd
-						cwd, // rot
-						proj.Runtime.Options(),
-						false, // disableProviderPreview
-						nil,   // tracingSpan
-						nil,   // Plugins
-						proj.GetPackageSpecs(),
-						nil, // config
-						nil, // debugging
-					)
-					if err != nil {
-						return err
-					}
-					defer contract.IgnoreClose(pctx)
-
 					// Cloud registry is linked to a backend, but we don't have
 					// one available in a plugin. Use the unauthenticated
 					// registry.
 					reg := unauthenticatedregistry.New(cmdutil.Diag(), env.Global())
 
-					if err := installPackagesFromProject(pctx.Base(), proj, cwd, reg, parallel,
+					if err := installPackagesFromProject(cmd.Context(), proj, cwd, reg, parallel,
 						cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
 						return fmt.Errorf("installing `packages` from PulumiPlugin.yaml: %w", err)
 					}
@@ -235,160 +216,29 @@ func installPackagesFromProject(
 	parallelism int,
 	stdout, stderr io.Writer,
 ) error {
-	pkgs := proj.GetPackageSpecs()
-	if len(pkgs) == 0 {
-		return nil
-	}
-
-	fmt.Println("Installing packages...")
-
-	type node struct {
-		name        string
-		packageSpec func(context.Context) error
-	}
-
-	installPackage := func(
-		cwd, name string, proj workspace.BaseProject, packageSpec workspace.PackageSpec,
-	) func(context.Context) error {
-		return func(ctx context.Context) error {
-			fmt.Printf("Installing package '%s'...\n", name)
-
-			pctx, err := plugin.NewContextWithRoot(ctx,
-				cmdutil.Diag(),
-				cmdutil.Diag(),
-				nil, // host
-				cwd, // pwd
-				cwd, // root
-				proj.RuntimeInfo().Options(),
-				false, // disableProviderPreview
-				nil,   // tracingSpan
-				nil,   // Plugins
-				proj.GetPackageSpecs(),
-				nil, // config
-				nil, // debugging
-			)
-			if err != nil {
-				return err
-			}
-
-			installSource := packageSpec.Source
-			if !plugin.IsLocalPluginPath(ctx, installSource) && packageSpec.Version != "" {
-				installSource = fmt.Sprintf("%s@%s", installSource, packageSpec.Version)
-			}
-
-			parameters := &plugin.ParameterizeArgs{Args: packageSpec.Parameters}
-			_, _, diags, err := packages.InstallPackage(
-				proj, pctx, proj.RuntimeInfo().Name(), pctx.Root, installSource, parameters, registry,
-				env.Global())
-			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
-			if err != nil {
-				return errors.Join(
-					fmt.Errorf("failed to install package '%s': %w", name, err),
-					pctx.Close(),
-				)
-			}
-
-			fmt.Printf("Package '%s' installed successfully\n", name)
-			return pctx.Close()
-		}
-	}
-
-	installPlugin := func(path string, proj *workspace.PluginProject) func(context.Context) error {
-		return func(ctx context.Context) error {
-			pctx, err := plugin.NewContextWithRoot(ctx,
-				cmdutil.Diag(),
-				cmdutil.Diag(),
-				nil,  // host
-				path, // pwd
-				path, // root
-				proj.RuntimeInfo().Options(),
-				false, // disableProviderPreview
-				nil,   // tracingSpan
-				nil,   // Plugins
-				proj.GetPackageSpecs(),
-				nil, // config
-				nil, // debugging
-			)
-			if err != nil {
-				return err
-			}
-
-			if err := pkgWorkspace.InstallPluginAtPath(pctx, proj, stdout, stderr); err != nil {
-				return errors.Join(fmt.Errorf("installing at '%s': %w", pctx.Pwd, err), pctx.Close())
-			}
-			return pctx.Close()
-		}
-	}
-
-	wg := pdag.New[node]()
-	newNode := func(n node) pdag.Node { node, done := wg.NewNode(n); done(); return node }
-	seen := map[string]pdag.Node{}
-	var findPlugins func(root pdag.Node, cwd string, proj workspace.BaseProject) error
-	findPlugins = func(root pdag.Node, cwd string, proj workspace.BaseProject) error {
-		for name, packageSpec := range proj.GetPackageSpecs() {
-			var pluginInstall *pdag.Node
-			if plugin.IsLocalPluginPath(ctx, packageSpec.Source) {
-				// If the package is a local spec, then we need to install it and the
-				// packages that it depends on.
-				pluginYaml := filepath.Join(packageSpec.Source, "PulumiPlugin.yaml")
-				pluginProject, err := workspace.LoadPluginProject(pluginYaml)
-				if err != nil {
-					return fmt.Errorf("Failed to load plugin project '%s': %w", name, err)
-				}
-				absPluginSource, err := filepath.Abs(packageSpec.Source)
-				if err != nil {
-					return err
-				}
-
-				if n, ok := seen[absPluginSource]; ok {
-					pluginInstall = &n
-				} else {
-					pkg := newNode(node{name, installPlugin(absPluginSource, pluginProject)})
-					if err := wg.NewEdge(pkg, root); err != nil {
-						return err
-					}
-					pluginInstall = &pkg
-					seen[absPluginSource] = pkg
-					if err := findPlugins(pkg, packageSpec.Source, pluginProject); err != nil {
-						return err
-					}
-				}
-			}
-
-			installPkg := newNode(node{name, installPackage(cwd, name, proj, packageSpec)})
-			if pluginInstall != nil {
-				if err := wg.NewEdge(*pluginInstall, installPkg); err != nil {
-					return err
-				}
-			}
-			// Ensure that we install this package before we install the plugin.
-			if err := wg.NewEdge(installPkg, root); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
-	// Search for plugins
-	if err := findPlugins(
-		newNode(node{name: "root", packageSpec: func(context.Context) error { return nil }}),
-		root,
-		proj,
-	); err != nil {
-		var cycle pdag.ErrorCycle[node]
-		if errors.As(err, &cycle) {
-			cyclePath := make([]string, len(cycle.Cycle))
-			for i, n := range cycle.Cycle {
-				cyclePath[i] = n.name
-			}
-			return fmt.Errorf("Cycle found: %s", strings.Join(cyclePath, " -> "))
-		}
+	d := diag.DefaultSink(stdout, stderr, diag.FormatOptions{
+		Color: cmdutil.GetGlobalColorization(),
+	})
+	pctx, err := plugin.NewContext(ctx, d, d, nil, nil, root, nil, false, nil)
+	if err != nil {
 		return err
 	}
-
-	return wg.Walk(ctx, func(ctx context.Context, f node) error {
-		return f.packageSpec(ctx)
-	}, pdag.MaxProcs(parallelism))
+	ws := packageworkspace.New(pctx.Host, stdout, stderr, d, d, nil, packageworkspace.Options{
+		UseLanguageVersionTools: false, // TODO: Is this correct?
+	})
+	opts := packageinstallation.Options{
+		Options: packageresolution.Options{
+			ResolveWithRegistry: env.Experimental.Value() &&
+				!env.DisableRegistryResolve.Value(),
+			ResolveVersionWithLocalWorkspace:           true,
+			AllowNonInvertableLocalWorkspaceResolution: true,
+		},
+		Concurrency: parallelism,
+	}
+	return errors.Join(
+		packageinstallation.InstallInProject(ctx, proj, root, opts, registry, ws),
+		pctx.Close(),
+	)
 }
 
 func shouldInstallPolicyPackDependencies() (bool, error) {

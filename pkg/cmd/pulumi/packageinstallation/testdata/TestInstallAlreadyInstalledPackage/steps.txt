@@ -1,0 +1,3 @@
+HasPluginGTE{PluginSpec{Name:"already-installed", Kind:"resource"}} -> {true, nil}
+GetPluginPath{PluginSpec{Name:"already-installed", Kind:"resource"}} -> {"/path/to/plugin", nil}
+RunPackage{"/plugin/launch/dir", "/path/to/plugin", nil} -> {nil, nil}
