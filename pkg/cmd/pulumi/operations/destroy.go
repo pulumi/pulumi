@@ -54,6 +54,8 @@ func NewDestroyCmd() *cobra.Command {
 	var message string
 	var execKind string
 	var execAgent string
+	var configArray []string
+	var path bool
 	var client string
 
 	// Flags for remote operations.
@@ -204,6 +206,10 @@ func NewDestroyCmd() *cobra.Command {
 				opts.Display,
 			)
 			if err != nil {
+				return err
+			}
+
+			if err := parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, path); err != nil {
 				return err
 			}
 
@@ -373,6 +379,12 @@ func NewDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&cmdStack.ConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
+	cmd.PersistentFlags().StringArrayVarP(
+		&configArray, "config", "c", []string{},
+		"Config to use during the destroy and save to the stack config file")
+	cmd.PersistentFlags().BoolVar(
+		&path, "config-path", false,
+		"Config keys contain a path to a property in a map or list to set")
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
 		"Optional message to associate with the destroy operation")

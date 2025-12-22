@@ -2059,3 +2059,42 @@ func TestPluginLs(t *testing.T) {
 	require.Equal(t, "resource", random["kind"].(string))
 	require.Greater(t, random["size"].(float64), 0.0)
 }
+
+func TestConfigFlag(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("config_flag")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "install")
+
+	e.RunCommand("pulumi", "stack", "init", "config-flag-test")
+	stdout, _ := e.RunCommand(
+		"pulumi", "up", "--skip-preview", "--yes", "--config", "config-flag:example=an-example")
+	require.Contains(t, stdout, "an-example")
+
+	configPath := filepath.Join(e.CWD, "Pulumi.config-flag-test.yaml")
+	configContent, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+	require.Contains(t, string(configContent), "config-flag:example: an-example")
+
+	e.RunCommand("rm", "Pulumi.config-flag-test.yaml")
+
+	e.RunCommandExpectError("pulumi", "refresh", "--run-program", "--yes")
+	stdout, _ = e.RunCommand("pulumi", "refresh", "--run-program", "--yes", "--config", "config-flag:example=an-example")
+	require.Contains(t, stdout, "an-example")
+
+	configContent, err = os.ReadFile(configPath)
+	require.NoError(t, err)
+	require.Contains(t, string(configContent), "config-flag:example: an-example")
+
+	e.RunCommand("rm", "Pulumi.config-flag-test.yaml")
+
+	e.RunCommandExpectError("pulumi", "destroy", "--run-program", "--yes")
+	stdout, _ = e.RunCommand("pulumi", "destroy", "--run-program", "--yes", "--config", "config-flag:example=an-example")
+	require.Contains(t, stdout, "an-example")
+
+	configContent, err = os.ReadFile(configPath)
+	require.NoError(t, err)
+	require.Contains(t, string(configContent), "config-flag:example: an-example")
+}
