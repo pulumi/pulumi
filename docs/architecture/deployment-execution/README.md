@@ -51,7 +51,7 @@ as follows:
 Both these operations now take a `--run-program` option, which currently defaults to false. When set to true
 these operations will run the step generator in either `destroy` or `refresh` mode. This changes how the step
 generator generates steps for custom resources. Note that providers and component resources behave similarly
-the same in `destroy`, `refresh`, and `up`.
+in `destroy`, `refresh`, and `up`.
 
 In `refresh` mode the step generator generates a `RefreshStep` or `SkippedCreateStep` for each custom
 resource. `SkippedCreateStep` is generated for custom resources that aren't currently in state, as we're doing
