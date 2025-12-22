@@ -62,8 +62,8 @@ func TestAzureLoginAzLogin(t *testing.T) {
 	out, err := exec.Command("az", "login", "--service-principal",
 		"--username", os.Getenv("AZURE_CLIENT_ID"),
 		"--password", os.Getenv("AZURE_CLIENT_SECRET"),
-		"--tenant", os.Getenv("AZURE_TENANT_ID")).Output()
-	require.NoError(t, err, "%s: out: %q, err: %q", err, out, err.(*exec.ExitError).Stderr)
+		"--tenant", os.Getenv("AZURE_TENANT_ID")).CombinedOutput()
+	require.NoError(t, err, "%s: %q", err, out)
 
 	t.Cleanup(func() {
 		err := exec.Command("az", "logout").Run()
