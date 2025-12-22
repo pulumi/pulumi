@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWs "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/require"
 )
 
@@ -92,22 +91,14 @@ func TestShowCmd(t *testing.T) {
 		},
 	}
 
-	mws := pkgWs.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
-			return &workspace.Project{
-				Name: "test-ws",
-			}, "", nil
-		},
-	}
-
 	tests := []struct {
 		name string
 		args []string
 	}{
-		{name: "ShowCmdWithoutArgs"},
+		{name: "ShowCmdWithoutArgs", args: []string{"--stack", msName}},
 		{
 			name: "ShowCmdWithKeysOnlyFlag",
-			args: []string{"--keys-only"},
+			args: []string{"--keys-only", "--stack", msName},
 		},
 	}
 
@@ -117,7 +108,12 @@ func TestShowCmd(t *testing.T) {
 	for _, tst := range tests {
 		t.Run(tst.name, func(t *testing.T) {
 			var cmdOut bytes.Buffer
-			showCmd := NewShowCmd(&mws, msName)
+			cmdOpts := ShowCmdOpts{
+				Lm: cmdBackend.DefaultLoginManager,
+				Sp: &secrets.MockProvider{},
+				Ws: pkgWs.Instance,
+			}
+			showCmd := NewShowCmd(cmdOpts)
 			showCmd.SetArgs(tst.args)
 			showCmd.SetOut(&cmdOut)
 			require.NoError(t, showCmd.Execute())
@@ -130,7 +126,7 @@ func TestShowCmd(t *testing.T) {
 
 			var expectedOut bytes.Buffer
 			for _, res := range ss.Resources {
-				expectedOut.Write([]byte(renderResourceState(res, CmdPrintopts)))
+				printResourceState(res, CmdPrintopts, &expectedOut)
 			}
 
 			require.Equal(t, cmdOut, expectedOut)

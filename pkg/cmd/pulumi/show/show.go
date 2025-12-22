@@ -15,12 +15,14 @@
 package show
 
 import (
+	"fmt"
+	"io"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -28,10 +30,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewShowCmd(ws workspace.Context, sn string) *cobra.Command {
+type ShowCmdOpts struct {
+	Lm backend.LoginManager
+	Sp secrets.Provider
+	Ws workspace.Context
+}
+
+func NewShowCmd(cmdOpts ShowCmdOpts) *cobra.Command {
 	var stackName string
 	var name string
 	var pOpts printOptions
+
 	cmd := &cobra.Command{
 		Use:   "show",
 		Short: "Show resources in the stack",
@@ -44,19 +53,15 @@ func NewShowCmd(ws workspace.Context, sn string) *cobra.Command {
 			cmdOut := cmd.OutOrStdout()
 			ctx := cmd.Context()
 			snk := cmdutil.Diag()
-
-			var stckName string
-			if sn != "" {
-				stckName = sn
-			} else {
-				stckName = stackName
-			}
-			s, err := stack.RequireStack(ctx, snk, ws, backend.DefaultLoginManager, stckName, stack.OfferNew, display.Options{})
+			lm := cmdOpts.Lm
+			sp := cmdOpts.Sp
+			ws := cmdOpts.Ws
+			s, err := stack.RequireStack(ctx, snk, ws, lm, stackName, stack.OfferNew, display.Options{})
 			if err != nil {
 				return err
 			}
 
-			ss, err := s.Snapshot(ctx, secrets.DefaultProvider)
+			ss, err := s.Snapshot(ctx, sp)
 			if err != nil {
 				return err
 			}
@@ -64,7 +69,7 @@ func NewShowCmd(ws workspace.Context, sn string) *cobra.Command {
 			resources := ss.Resources
 			for _, res := range resources {
 				if strings.Contains(res.URN.Name(), name) {
-					cmdOut.Write([]byte(renderResourceState(res, pOpts)))
+					printResourceState(res, pOpts, cmdOut)
 				}
 			}
 
@@ -83,78 +88,36 @@ type printOptions struct {
 	keysOnly bool
 }
 
-func renderResourceState(rs *resource.State, pOpts printOptions) string {
-	var resStateString string
-
-	resStateString += "\n"
+func printResourceState(rs *resource.State, popts printOptions, outputDest io.Writer) {
 	name := colors.Always.Colorize(colors.Bold+"Name: "+colors.Reset) + rs.URN.Name()
-	resStateString += name + "\n"
+	fmt.Fprintln(outputDest, name)
+
 	urn := colors.Always.Colorize(colors.Bold+"URN: "+colors.Reset) + string(rs.URN)
-	resStateString += urn + "\n"
+	fmt.Fprintln(outputDest, urn)
+
 	properties := colors.Always.Colorize(colors.Bold + "Properties: " + colors.Reset)
-	resStateString += properties
-
-	resourcePropertiesString := ""
-	if pOpts.keysOnly {
-		mapKeys := rs.Outputs.StableKeys()
-		for _, k := range mapKeys {
-			if strings.HasPrefix(string(k), "__") {
-				continue
-			}
-			resourcePropertiesString += " " + string(k) + ","
-		}
-		resourcePropertiesString = strings.TrimSuffix(resourcePropertiesString, ",")
-		resourcePropertiesString += "\n"
-	} else {
-		resourcePropertiesString += "\n"
-		keys := rs.Outputs.StableKeys()
-		propMap := rs.Outputs
+	fmt.Fprintln(outputDest, properties)
+	if popts.keysOnly {
+		propertiesStr := ""
+		keys := resource.PropertyMap.StableKeys(rs.Outputs)
 		for _, k := range keys {
 			if strings.HasPrefix(string(k), "__") {
 				continue
 			}
-			resourcePropertiesString += "    " + string(k) + ": " + renderPropertyVal(propMap[k], "    ") + "\n"
+			propertiesStr += string(k) + ", "
 		}
+		strings.TrimSuffix(propertiesStr, ", ")
+		propertiesStr += "\n\n"
+		fmt.Fprint(outputDest, propertiesStr)
+		return
 	}
-	resStateString += resourcePropertiesString
-	return resStateString
-}
+	for k, v := range rs.Outputs {
+		propKeyStr := string(k)
 
-// render resource properties , properties can be nested Arrays or maps
-// we recursively render property values.
-
-func renderPropertyVal(rsp resource.PropertyValue, currIdent string) string {
-	if rsp.IsObject() {
-		newIdent := currIdent + "    "
-		var res string
-		objMap := rsp.ObjectValue()
-		keys := objMap.StableKeys()
-		for _, k := range keys {
-			res += "\n" + newIdent + string(k) + ": " + renderPropertyVal(objMap[k], newIdent)
+		if strings.HasPrefix(propKeyStr, "__") {
+			continue
 		}
-		return res
+		fmt.Fprintln(outputDest, propKeyStr+":")
+		fmt.Fprintln(outputDest, display.PropertyValueToString(v, false, false))
 	}
-	if rsp.IsArray() {
-		var res string
-		for _, v := range rsp.ArrayValue() {
-			newIdent := currIdent + "    "
-			if v.IsObject() {
-				return renderPropertyVal(v, newIdent)
-			}
-			if v.IsArray() {
-				return renderPropertyVal(v, newIdent)
-			}
-			res += "\n" + newIdent + "- " + trimBrackets(v.String())
-		}
-		return res
-	}
-
-	return trimBrackets(rsp.String())
-}
-
-func trimBrackets(propertyVal string) string {
-	var trimmedPropertyStr string
-	trimmedPropertyStr = strings.TrimPrefix(propertyVal, "{")
-	trimmedPropertyStr = strings.TrimSuffix(trimmedPropertyStr, "}")
-	return trimmedPropertyStr
 }
