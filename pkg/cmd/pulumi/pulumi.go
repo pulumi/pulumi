@@ -75,7 +75,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/trace"
 	cmdVersion "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/version"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/whoami"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
+
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -378,7 +379,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				install.NewInstallCmd(pkgWorkspace.Instance),
 				show.NewShowCmd(show.ShowCmdOpts{
 					Lm: cmdBackend.DefaultLoginManager, Ws: pkgWorkspace.Instance,
-					Sp: &secrets.MockProvider{},
+					Sp: secrets.DefaultProvider,
 				}),
 			},
 		},

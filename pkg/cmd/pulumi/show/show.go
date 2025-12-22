@@ -111,13 +111,14 @@ func printResourceState(rs *resource.State, popts printOptions, outputDest io.Wr
 		fmt.Fprint(outputDest, propertiesStr)
 		return
 	}
-	for k, v := range rs.Outputs {
-		propKeyStr := string(k)
+	keys := resource.PropertyMap.StableKeys(rs.Outputs)
+	for _, v := range keys {
+		propKeyStr := string(v)
 
 		if strings.HasPrefix(propKeyStr, "__") {
 			continue
 		}
 		fmt.Fprintln(outputDest, propKeyStr+":")
-		fmt.Fprintln(outputDest, display.PropertyValueToString(v, false, false))
+		fmt.Fprintln(outputDest, display.PropertyValueToString(rs.Outputs[v], false, false))
 	}
 }
