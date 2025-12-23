@@ -31,7 +31,7 @@ func TestPerfEmptyUpdate(t *testing.T) {
 		T:                  t,
 		MaxPreviewDuration: 6300 * time.Millisecond,
 		MaxUpdateDuration:  1600 * time.Millisecond,
-		MaxLowerPercent:    10,
+		MaxLowerPercent:    75,
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -52,7 +52,7 @@ func TestPerfManyComponentUpdate(t *testing.T) {
 		T:                  t,
 		MaxPreviewDuration: 18100 * time.Millisecond,
 		MaxUpdateDuration:  10000 * time.Millisecond,
-		MaxLowerPercent:    10,
+		MaxLowerPercent:    75,
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -74,9 +74,9 @@ func TestPerfManyComponentUpdate(t *testing.T) {
 func TestPerfParentChainUpdate(t *testing.T) {
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
 		T:                  t,
-		MaxPreviewDuration: 19300 * time.Millisecond,
-		MaxUpdateDuration:  19300 * time.Millisecond,
-		MaxLowerPercent:    10,
+		MaxPreviewDuration: 7000 * time.Millisecond,
+		MaxUpdateDuration:  7000 * time.Millisecond,
+		MaxLowerPercent:    75,
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -97,11 +97,10 @@ func TestPerfParentChainUpdate(t *testing.T) {
 //nolint:paralleltest // Do not run in parallel to avoid resource contention
 func TestPerfSecretsBatchUpdate(t *testing.T) {
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
-		T: t,
-		// TODO https://github.com/pulumi/pulumi/issues/20476: lower threshold back to 5 seconds
-		MaxPreviewDuration: 10 * time.Second,
-		MaxUpdateDuration:  10 * time.Second,
-		MaxLowerPercent:    10,
+		T:                  t,
+		MaxPreviewDuration: 4 * time.Second,
+		MaxUpdateDuration:  4 * time.Second,
+		MaxLowerPercent:    75,
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -119,11 +118,10 @@ func TestPerfSecretsBatchUpdate(t *testing.T) {
 //nolint:paralleltest // Do not run in parallel to avoid resource contention
 func TestPerfStackReferenceSecretsBatchUpdate(t *testing.T) {
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
-		T: t,
-		// TODO https://github.com/pulumi/pulumi/issues/20476: lower threshold back to 5 seconds
-		MaxPreviewDuration: 10 * time.Second,
-		MaxUpdateDuration:  10 * time.Second,
-		MaxLowerPercent:    10,
+		T:                  t,
+		MaxPreviewDuration: 4 * time.Second,
+		MaxUpdateDuration:  4 * time.Second,
+		MaxLowerPercent:    75,
 	}
 
 	// Create an initial stack that contains secrets.
