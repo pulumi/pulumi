@@ -1,3 +1,5 @@
-HasPluginGTE{PluginSpec{Name:"already-installed", Kind:"resource"}} -> {true, nil}
-GetPluginPath{PluginSpec{Name:"already-installed", Kind:"resource"}} -> {"/path/to/plugin", nil}
-RunPackage{"/plugin/launch/dir", "/path/to/plugin", nil} -> {nil, nil}
+HasPlugin{PluginDescriptor{Name:"already-installed", Kind:"resource"}} -> {true}
+GetPluginPath{ctx, PluginDescriptor{Name:"already-installed", Kind:"resource"}} -> {"$HOME/.pulumi/plugins/resource-already-installed", nil}
+DetectPluginPathAt{ctx, "$HOME/.pulumi/plugins/resource-already-installed"} -> {"", wrapErrors{msg:"no project file found and no plugin file found", errs:[2]{errorString{s:"no project file found"}, errorString{s:"no plugin file found"}}}}
+IsExecutable{ctx, "$HOME/.pulumi/plugins/resource-already-installed/pulumi-resource-already-installed"} -> {true, nil}
+RunPackage{ctx, "/tmp", "$HOME/.pulumi/plugins/resource-already-installed/pulumi-resource-already-installed", "already-installed", nil} -> {nil, nil}

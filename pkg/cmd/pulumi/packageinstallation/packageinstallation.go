@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -38,6 +39,9 @@ import (
 // the environment.
 type Workspace interface {
 	packageresolution.PluginWorkspace
+
+	// Get the path that a plugin is at.
+	GetPluginPath(ctx context.Context, plugin workspace.PluginDescriptor) (string, error)
 
 	// Install an already downloaded plugin at a specific path.
 	//
@@ -69,7 +73,7 @@ type Workspace interface {
 	// should be run from pluginDir.
 	LinkPackage(
 		ctx context.Context,
-		project *workspace.ProjectRuntimeInfo, projectDir string, packageName string,
+		project *workspace.ProjectRuntimeInfo, projectDir string, packageName tokens.Package,
 		pluginPath string, params plugin.ParameterizeParameters,
 		originalSpec workspace.PackageSpec,
 	) error
@@ -81,7 +85,7 @@ type Workspace interface {
 	// directory.
 	RunPackage(
 		ctx context.Context,
-		rootDir, pluginPath string, params plugin.ParameterizeParameters,
+		rootDir, pluginPath string, pkgName tokens.Package, params plugin.ParameterizeParameters,
 	) (plugin.Provider, error)
 }
 
@@ -140,7 +144,7 @@ func InstallPlugin(
 	}
 
 	return func(ctx context.Context, wd string) (plugin.Provider, error) {
-		return ws.RunPackage(ctx, wd, runBundle.pluginPath, runBundle.params)
+		return ws.RunPackage(ctx, wd, runBundle.pluginPath, tokens.Package(runBundle.name), runBundle.params)
 	}, nil
 }
 
@@ -277,6 +281,7 @@ func hashLocalPath(path string) pluginHash {
 }
 
 type runBundle struct {
+	name       string
 	pluginPath string
 	params     plugin.ParameterizeParameters
 }
@@ -395,6 +400,7 @@ func ensureDownloadedPluginDirHasDependenciesAndIsInstalled(
 	// here.
 	case err == nil:
 		runBundleOut.pluginPath = projectDir
+		runBundleOut.name = name
 		pluginProject, err := state.ws.LoadPluginProject(ctx, filePath)
 		if err != nil {
 			return err
@@ -429,6 +435,7 @@ func ensureDownloadedPluginDirHasDependenciesAndIsInstalled(
 			return err
 		} else if isExec {
 			runBundleOut.pluginPath = binaryPath
+			runBundleOut.name = name
 			// A binary was found, so this plugin is done.
 			if downloadCleanup != nil {
 				downloadCleanup.f(true)
@@ -476,7 +483,7 @@ func (step linkPackageStep) run(ctx context.Context, p state) error {
 	return p.ws.LinkPackage(
 		ctx,
 		step.project.proj.RuntimeInfo(), step.project.projectDir,
-		step.packageName, step.runBundle.pluginPath, params,
+		tokens.Package(step.packageName), step.runBundle.pluginPath, params,
 		step.specSource,
 	)
 }
@@ -562,16 +569,16 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 	result, err := packageresolution.Resolve(ctx, p.registry, p.ws, step.spec,
 		p.options.Options)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to resolve: %w", err)
 	}
 
 	switch result := result.(type) {
 	// Just check that the project is there, and install any dependencies if there is
 	// a PulumiPlugin file found.
-	case packageresolution.LocalPathResult:
-		projectDir := result.LocalPath
+	case packageresolution.PathResolution:
+		projectDir := result.Path
 		if !filepath.IsAbs(projectDir) {
-			projectDir = filepath.Join(step.parentProj.projectDir, result.LocalPath)
+			projectDir = filepath.Join(step.parentProj.projectDir, result.Path)
 		}
 
 		// Now that we have fully resolved the file path, we can de-duplicate to
@@ -610,8 +617,8 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 	// *and* installed.
 	//
 	// 3. Install the downloaded project.
-	case packageresolution.ExternalSourceResult:
-		descriptor := result.Spec.PluginDescriptor
+	case packageresolution.PackageResolution:
+		descriptor := result.Pkg.PluginDescriptor
 		specFinished, specReady, isDuplicate, err := newSpecNode(
 			hashPluginSpec(descriptor), descriptor, step.runBundleOut, p, step.parent)
 		if err != nil {
@@ -623,7 +630,10 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 
 		if result.InstalledInWorkspace {
 			defer specReady()
-			pluginDir := p.ws.GetPluginPath(descriptor) // descriptor.GetDir()
+			pluginDir, err := p.ws.GetPluginPath(ctx, descriptor)
+			if err != nil {
+				return err
+			}
 			// If it's already installed, we should just load it, but we still
 			// need to run install for it & it's dependencies.
 			//
@@ -636,7 +646,7 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 		// Start with the download. The downloadStep will take care of attaching
 		// steps for (2) and (3) to specFinished.
 		download, downloadReady := p.dag.NewNode(downloadStep{
-			spec:            result.Spec.PluginDescriptor,
+			spec:            result.Pkg.PluginDescriptor,
 			parent:          specFinished,
 			done:            specReady,
 			runBundleOut:    step.runBundleOut,
@@ -646,7 +656,7 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 		contract.AssertNoErrorf(p.dag.NewEdge(download, specFinished), "new nodes cannot be cyclic")
 		return nil
 
-	case packageresolution.RegistryResult:
+	case packageresolution.PluginResolution:
 		descriptor := result.Pkg.PluginDescriptor
 
 		specFinished, specReady, isDuplicate, err := newSpecNode(
