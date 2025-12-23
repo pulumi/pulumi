@@ -1438,7 +1438,8 @@ func TestFallbackSource_URLOverride(t *testing.T) {
 	var requestReceived bool
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestReceived = true
-		// Return a 404 to avoid needing to create a valid plugin archive
+		t.Logf("Test server received request: %s", r.URL.String())
+		// Return a 404 to simulate plugin not found
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	t.Cleanup(server.Close)
@@ -1461,16 +1462,23 @@ func TestFallbackSource_URLOverride(t *testing.T) {
 	// which should be overridden to our test server
 	version := semver.MustParse("1.0.0")
 	_, _, err := source.Download(context.Background(), version, "linux", "amd64", func(req *http.Request) (io.ReadCloser, int64, error) {
+		t.Logf("Download attempt to: %s", req.URL.String())
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
+			t.Logf("Request failed with error: %v", err)
 			return nil, -1, err
+		}
+		t.Logf("Response status: %d", resp.StatusCode)
+		if resp.StatusCode < 200 || resp.StatusCode > 299 {
+			resp.Body.Close()
+			return nil, -1, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
 		}
 		return resp.Body, resp.ContentLength, nil
 	})
 
 	// We expect an error (404 from our test server), but the important thing is
 	// that our test server received the request, proving the override worked
-	assert.Error(t, err)
+	assert.Error(t, err, "expected download to fail")
 	assert.True(t, requestReceived, "expected override URL to be used")
 }
 
