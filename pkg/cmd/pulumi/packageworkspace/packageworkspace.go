@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -61,7 +62,7 @@ type Workspace struct {
 	parentSpan       opentracing.Span
 }
 
-func (Workspace) GetPluginPath(ctx context.Context, spec workspace.PackageDescriptor) (string, error) {
+func (Workspace) GetPluginPath(ctx context.Context, spec workspace.PluginDescriptor) (string, error) {
 	path, err := spec.DirPath()
 	if err != nil {
 		return "", err
@@ -176,11 +177,11 @@ func (Workspace) DetectPluginPathAt(ctx context.Context, path string) (string, e
 // should be run from pluginDir.
 func (w Workspace) LinkPackage(
 	ctx context.Context,
-	runtimeInfo *workspace.ProjectRuntimeInfo, projectDir string, packageName string,
+	runtimeInfo *workspace.ProjectRuntimeInfo, projectDir string, packageName tokens.Package,
 	pluginPath string, params plugin.ParameterizeParameters,
 	originalSpec workspace.PackageSpec,
 ) error {
-	p, paramResp, err := w.runPackage(ctx, projectDir, pluginPath, params)
+	p, paramResp, err := w.runPackage(ctx, projectDir, pluginPath, packageName, params)
 	if err != nil {
 		return fmt.Errorf("failed to run package for linking: %w", err)
 	}
@@ -340,9 +341,9 @@ func (w Workspace) genSDK(ctx context.Context, language string, pkg *schema.Pack
 
 // Run a package from a directory, parameterized by params.
 func (w Workspace) RunPackage(
-	ctx context.Context, rootDir, pluginPath string, params plugin.ParameterizeParameters,
+	ctx context.Context, rootDir, pluginPath string, pkgName tokens.Package, params plugin.ParameterizeParameters,
 ) (plugin.Provider, error) {
-	p, _, err := w.runPackage(ctx, rootDir, pluginPath, params)
+	p, _, err := w.runPackage(ctx, rootDir, pluginPath, pkgName, params)
 	return p, err
 }
 
@@ -361,10 +362,10 @@ func bindSpec(spec schema.PackageSpec, loader schema.Loader) (*schema.Package, e
 
 // Run a package from a directory, parameterized by params.
 func (w Workspace) runPackage(
-	ctx context.Context, rootDir, pluginPath string, params plugin.ParameterizeParameters,
+	ctx context.Context, rootDir, pluginPath string, pkgName tokens.Package, params plugin.ParameterizeParameters,
 ) (plugin.Provider, *plugin.ParameterizeResponse, error) {
 	pctx := plugin.NewContextWithHost(ctx, w.sink, w.statusSink, w.host, rootDir, rootDir, w.parentSpan)
-	p, err := plugin.NewProviderFromPath(w.host, pctx, pluginPath)
+	p, err := plugin.NewProviderFromPath(w.host, pctx, pkgName, pluginPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not run plugin at %q: %w", pluginPath, err)
 	}
