@@ -391,7 +391,6 @@ func TestLanguageImportSmoke(t *testing.T) {
 	t.Parallel()
 
 	for _, runtime := range Runtimes {
-		runtime := runtime
 		t.Run(runtime, func(t *testing.T) {
 			t.Parallel()
 			e := ptesting.NewEnvironment(t)
