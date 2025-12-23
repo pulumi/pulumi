@@ -93,7 +93,7 @@ func printResourceState(rs *resource.State, popts printOptions, outputDest io.Wr
 	name := colors.Always.Colorize(colors.Bold+"Name: "+colors.Reset) + rs.URN.Name()
 	fmt.Fprintln(outputDest, name)
 
-	urn := colors.Always.Colorize(colors.Bold+"URN: "+colors.Reset) + string(rs.URN)
+	urn := colors.Always.Colorize(colors.Bold+"Type: "+colors.Reset) + string(rs.Type.String())
 	fmt.Fprintln(outputDest, urn)
 
 	properties := colors.Always.Colorize(colors.Bold + "Properties: " + colors.Reset)
