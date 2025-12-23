@@ -158,7 +158,7 @@ func TestReadingGitRepo(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		require.NoError(t, addGitMetadata(e.RootPath, test))
+		require.NoError(t, addGitMetadata("/", test))
 		name, ok := test.Environment[backend.GitHeadName]
 		t.Log(name)
 		assert.True(t, ok, "Expected 'git.headName' key, from CI util.")
