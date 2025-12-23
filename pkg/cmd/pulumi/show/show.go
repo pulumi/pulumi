@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -67,6 +67,7 @@ func NewShowCmd(cmdOpts ShowCmdOpts) *cobra.Command {
 			}
 
 			resources := ss.Resources
+			resources = resources[1:]
 			for _, res := range resources {
 				if strings.Contains(res.URN.Name(), name) {
 					printResourceState(res, pOpts, cmdOut)

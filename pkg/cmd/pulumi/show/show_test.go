@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -102,7 +102,7 @@ func TestShowCmd(t *testing.T) {
 		},
 	}
 
-	ss, err := ms.Snapshot(context.TODO(), &secrets.MockProvider{})
+	ss, err := ms.Snapshot(t.Context(), &secrets.MockProvider{})
 	require.NoError(t, err)
 
 	for _, tst := range tests {
