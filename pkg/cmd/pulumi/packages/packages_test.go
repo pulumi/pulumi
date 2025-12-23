@@ -184,11 +184,10 @@ func TestSetSpecNamespace(t *testing.T) {
 		t.Run(tt.pluginDownloadURL, func(t *testing.T) {
 			t.Parallel()
 
-			pluginSpec := workspace.PluginDescriptor{
+			schemaSpec := schema.PackageSpec{
 				PluginDownloadURL: tt.pluginDownloadURL,
 			}
-			schemaSpec := &schema.PackageSpec{}
-			setSpecNamespace(schemaSpec, pluginSpec)
+			setSpecNamespace(&schemaSpec)
 			assert.Equal(t, tt.wantNamespace, schemaSpec.Namespace)
 		})
 	}
