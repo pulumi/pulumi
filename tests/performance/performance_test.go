@@ -31,7 +31,8 @@ func TestPerfEmptyUpdate(t *testing.T) {
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
 		T:                  t,
 		MaxPreviewDuration: 6300 * time.Millisecond,
-		MaxUpdateDuration:  6300 * time.Millisecond,
+		MaxUpdateDuration:  1600 * time.Millisecond,
+		MaxLowerPercent:    10,
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -51,7 +52,8 @@ func TestPerfManyComponentUpdate(t *testing.T) {
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
 		T:                  t,
 		MaxPreviewDuration: 18100 * time.Millisecond,
-		MaxUpdateDuration:  18100 * time.Millisecond,
+		MaxUpdateDuration:  10000 * time.Millisecond,
+		MaxLowerPercent:    10,
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -75,6 +77,7 @@ func TestPerfParentChainUpdate(t *testing.T) {
 		T:                  t,
 		MaxPreviewDuration: 19300 * time.Millisecond,
 		MaxUpdateDuration:  19300 * time.Millisecond,
+		MaxLowerPercent:    10,
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -99,6 +102,7 @@ func TestPerfSecretsBatchUpdate(t *testing.T) {
 		// TODO https://github.com/pulumi/pulumi/issues/20476: lower threshold back to 5 seconds
 		MaxPreviewDuration: 10 * time.Second,
 		MaxUpdateDuration:  10 * time.Second,
+		MaxLowerPercent:    10,
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -120,6 +124,7 @@ func TestPerfStackReferenceSecretsBatchUpdate(t *testing.T) {
 		// TODO https://github.com/pulumi/pulumi/issues/20476: lower threshold back to 5 seconds
 		MaxPreviewDuration: 10 * time.Second,
 		MaxUpdateDuration:  10 * time.Second,
+		MaxLowerPercent:    10,
 	}
 
 	// Create an initial stack that contains secrets.
