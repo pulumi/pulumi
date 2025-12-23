@@ -1,8 +1,8 @@
 # SDK Codegen Tests
 
-> [!NOTE]  
-> We are moving away from codegen tests. 
-> When authoring new tests, please use the 
+> [!NOTE]
+> We are moving away from codegen tests.
+> When authoring new tests, please use the
 > [conformance test system](https://github.com/pulumi/pulumi/blob/master/cmd/pulumi-test-language/README.md) instead.
 
 TestSDKCodegen runs the complete set of SDK code generation tests
