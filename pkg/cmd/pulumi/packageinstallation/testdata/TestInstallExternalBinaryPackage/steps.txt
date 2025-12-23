@@ -1,7 +1,9 @@
-HasPluginGTE{PluginSpec{Name:"external-package", Kind:"resource", PluginDownloadURL:"https://example.com/external-package.tar.gz"}} -> {false, nil}
+HasPlugin{PluginDescriptor{Name:"external-package", Kind:"resource", PluginDownloadURL:"https://example.com/external-package.tar.gz"}} -> {false}
+HasPluginGTE{PluginDescriptor{Name:"external-package", Kind:"resource", PluginDownloadURL:"https://example.com/external-package.tar.gz"}} -> {false, nil, nil}
 IsExternalURL{"external-package"} -> {true}
-DownloadPlugin{PluginSpec{Name:"external-package", Kind:"resource", PluginDownloadURL:"https://example.com/external-package.tar.gz"}} -> {"/tmp/plugins/resource-external-package", <func(bool)>, nil}
-DetectPluginPathAt{"/tmp/plugins/resource-external-package"} -> {"", errorString{s:"no plugin file found"}}
-IsExecutable{"/tmp/plugins/resource-external-package/pulumi-resource-external-package"} -> {true, nil}
-MarkInstallationDone{PluginSpec{Name:"external-package", Kind:"resource", PluginDownloadURL:"https://example.com/external-package.tar.gz"}, true}
-RunPackage{"/plugin/launch/dir", "/tmp/plugins/resource-external-package/pulumi-resource-external-package", nil} -> {nil, nil}
+GetLatestVersion{PluginDescriptor{Name:"external-package", Kind:"resource", PluginDownloadURL:"https://example.com/external-package.tar.gz"}} -> {Version{Major:1, Patch:3}, nil}
+DownloadPlugin{PluginDescriptor{Name:"external-package", Kind:"resource", Version:Version{Major:1, Patch:3}, PluginDownloadURL:"https://example.com/external-package.tar.gz"}} -> {"/tmp/plugins/resource-external-package-v1.0.3", <func(bool)>, nil}
+DetectPluginPathAt{"/tmp/plugins/resource-external-package-v1.0.3"} -> {"", errorString{s:"no plugin file found"}}
+IsExecutable{"/tmp/plugins/resource-external-package-v1.0.3/pulumi-resource-external-package"} -> {true, nil}
+MarkInstallationDone{PluginDescriptor{Name:"external-package", Kind:"resource", Version:Version{Major:1, Patch:3}, PluginDownloadURL:"https://example.com/external-package.tar.gz"}, true}
+RunPackage{"/plugin/launch/dir", "/tmp/plugins/resource-external-package-v1.0.3/pulumi-resource-external-package", "external-package", nil} -> {nil, nil}
