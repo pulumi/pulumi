@@ -70,7 +70,7 @@ themselves have plugin dependencies at all, but they handle normal dependencies[
 get subtly different behavior between up-front and lazy installs for packages that are
 specified in the packages section of a project.
 
-[^1]: That is, `npm instgall`, `pip install`, etc.
+[^1]: That is, `npm install`, `pip install`, etc.
 
 ##### Up-front
 
