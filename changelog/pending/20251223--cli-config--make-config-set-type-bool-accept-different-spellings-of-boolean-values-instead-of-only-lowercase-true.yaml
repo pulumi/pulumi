@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/config
+  description: Make `config set --type bool` accept different spellings of boolean values instead of only lowercase "true"
