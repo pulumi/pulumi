@@ -429,6 +429,9 @@ func TestTell(t *testing.T) {
 func TestBlockUntilExists(t *testing.T) {
 	t.Parallel()
 
+	// TODO[pulumi/pulumi#19888]: Skipping flaky test
+	t.Skip("Skipping because the tail library is flaky.  See pulumi/pulumi#19888")
+
 	tailTest, cleanup := NewTailTest("block-until-file-exists", t)
 	defer cleanup()
 	config := Config{
