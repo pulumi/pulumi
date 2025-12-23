@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 )
 
@@ -158,9 +159,14 @@ func TestReadingGitRepo(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		require.NoError(t, addGitMetadata(e.RootPath, test))
+		_, _ = fsutil.WalkUpDirs(t.TempDir(), func(s string) bool {
+			t.Logf("Checking for .git in %s", s)
+			_, err := os.Stat(filepath.Join(s, ".git"))
+			return !os.IsNotExist(err)
+		})
+
+		require.NoError(t, addGitMetadata(t.TempDir(), test))
 		name, ok := test.Environment[backend.GitHeadName]
-		t.Log(name)
 		assert.True(t, ok, "Expected 'git.headName' key, from CI util.")
 		assert.Equal(t, "branch-from-ci", name)
 	}

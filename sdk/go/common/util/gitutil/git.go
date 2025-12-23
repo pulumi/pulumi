@@ -88,13 +88,18 @@ type VCSInfo struct {
 // GetGitRepository returns the git repository by walking up from the provided directory.
 // If no repository is found, will return (nil, nil).
 func GetGitRepository(dir string) (*git.Repository, error) {
-	gitRoot, err := fsutil.WalkUp(dir, func(s string) bool { return filepath.Base(s) == ".git" }, nil)
+	gitRoot, err := fsutil.WalkUpDirs(dir, func(s string) bool {
+		_, err := os.Stat(filepath.Join(s, ".git"))
+		return !os.IsNotExist(err)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("searching for git repository from %v: %w", dir, err)
 	}
 	if gitRoot == "" {
 		return nil, nil
 	}
+
+	gitRoot = filepath.Join(gitRoot, ".git")
 
 	// Open the git repo in the .git folder's parent, not the .git folder itself.
 	repo, err := git.PlainOpenWithOptions(filepath.Dir(gitRoot), &git.PlainOpenOptions{
