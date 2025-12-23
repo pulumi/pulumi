@@ -46,8 +46,11 @@ func TestAzureLoginSasToken(t *testing.T) {
 
 //nolint:paralleltest // this test uses the global azure login state
 func TestAzureLoginAzLogin(t *testing.T) {
-	// TODO[pulumi/pulumi#21300]: Re-enable this test when we can figure out what's happening.
-	t.Skip("Skipping broken test temporarily")
+	// NOTE: This test requires a valid AZURE_CLIENT_SECRET. Unfortunately the longest time these
+	// can be valid is 2 years. When this test fails (after 2027-12-22), the secret will need to
+	// be rotated. This can be done by navigating to the `pulumi-test` app in the Azure portal, and
+	// creating a new client secret under "Certificates & secrets". Create a new client secret from
+	// there and update the GitHub Actions secret `AZURE_CLIENT_SECRET` with the new value.
 
 	t.Chdir("project")
 	cloudURL := "azblob://pulumitesting?storage_account=pulumitesting"
