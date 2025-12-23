@@ -45,6 +45,10 @@ func (w *recordingWorkspace) save(t *testing.T) {
 	t.Helper()
 
 	if t.Failed() {
+		t.Log("STEPS:")
+		for _, s := range w.steps {
+			t.Log(s)
+		}
 		return
 	}
 
@@ -72,7 +76,6 @@ func (w *recordingWorkspace) save(t *testing.T) {
 	require.NoError(t, err, "Unable to read golden file, run PULUMI_ACCEPT=1 to overwrite the golden file")
 
 	assert.Equal(t, string(expected), b.String(), "%s did not match test output", f)
-
 }
 
 type recordingWorkspace struct {
@@ -109,7 +112,9 @@ func (w *recordingWorkspace) IsExternalURL(source string) bool {
 	return result
 }
 
-func (w *recordingWorkspace) GetLatestVersion(ctx context.Context, spec workspace.PluginDescriptor) (*semver.Version, error) {
+func (w *recordingWorkspace) GetLatestVersion(
+	ctx context.Context, spec workspace.PluginDescriptor,
+) (*semver.Version, error) {
 	w.start("GetLatestVersion", ctx, spec)
 	version, err := w.w.GetLatestVersion(ctx, spec)
 	w.finish(version, err)
@@ -123,7 +128,9 @@ func (w *recordingWorkspace) GetPluginPath(ctx context.Context, plugin workspace
 	return path, err
 }
 
-func (w *recordingWorkspace) InstallPluginAt(ctx context.Context, dirPath string, project *workspace.PluginProject) error {
+func (w *recordingWorkspace) InstallPluginAt(
+	ctx context.Context, dirPath string, project *workspace.PluginProject,
+) error {
 	w.start("InstallPluginAt", ctx, dirPath, project)
 	err := w.w.InstallPluginAt(ctx, dirPath, project)
 	w.finish(err)
@@ -144,11 +151,17 @@ func (w *recordingWorkspace) LoadPluginProject(ctx context.Context, path string)
 	return project, err
 }
 
-func (w *recordingWorkspace) DownloadPlugin(ctx context.Context, plugin workspace.PluginDescriptor) (string, packageinstallation.MarkInstallationDone, error) {
+func (w *recordingWorkspace) DownloadPlugin(
+	ctx context.Context, plugin workspace.PluginDescriptor,
+) (string, packageinstallation.MarkInstallationDone, error) {
 	w.start("DownloadPlugin", ctx, plugin)
 	path, markDone, err := w.w.DownloadPlugin(ctx, plugin)
 	w.finish(path, markDone, err)
-	return path, markDone, err
+	return path, func(success bool) {
+		w.start("DownloadPlugin.MarkInstallationDone", plugin, success)
+		markDone(success)
+		w.finish()
+	}, err
 }
 
 func (w *recordingWorkspace) DetectPluginPathAt(ctx context.Context, path string) (string, error) {

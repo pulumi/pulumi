@@ -1,15 +1,30 @@
-IsExternalURL{"plugin-a"} -> {true}
-IsExternalURL{"plugin-b"} -> {true}
-DownloadPlugin{PluginSpec{Name:"plugin-a", Kind:"resource"}} -> {"/tmp/plugins/resource-plugin-a", <func(bool)>, nil}
-DetectPluginPathAt{"/tmp/plugins/resource-plugin-a"} -> {"/tmp/plugins/resource-plugin-a/PulumiPlugin.yaml", nil}
-LoadPluginProject{"/tmp/plugins/resource-plugin-a/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-b":packageValue{value:"plugin-b"}}}, nil}
-DownloadPlugin{PluginSpec{Name:"plugin-b", Kind:"resource"}} -> {"/tmp/plugins/resource-plugin-b", <func(bool)>, nil}
-DetectPluginPathAt{"/tmp/plugins/resource-plugin-b"} -> {"", errorString{s:"no plugin file found"}}
-IsExecutable{"/tmp/plugins/resource-plugin-b/pulumi-resource-plugin-b"} -> {true, nil}
-MarkInstallationDone{PluginSpec{Name:"plugin-b", Kind:"resource"}, true}
-LinkPackage{ProjectRuntimeInfo{name:"go"}, "/project", "plugin-b", "/tmp/plugins/resource-plugin-b/pulumi-resource-plugin-b", nil} -> {nil}
-IsExternalURL{"plugin-b"} -> {true}
-LinkPackage{ProjectRuntimeInfo{name:"go"}, "/tmp/plugins/resource-plugin-a", "plugin-b", "/tmp/plugins/resource-plugin-b/pulumi-resource-plugin-b", nil} -> {nil}
-InstallPluginAt{"/tmp/plugins/resource-plugin-a", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-b":packageValue{value:"plugin-b"}}}} -> {nil}
-MarkInstallationDone{PluginSpec{Name:"plugin-a", Kind:"resource"}, true}
-LinkPackage{ProjectRuntimeInfo{name:"go"}, "/project", "plugin-a", "/tmp/plugins/resource-plugin-a", nil} -> {nil}
+HasPlugin{PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {false}
+HasPluginGTE{PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {false, nil, nil}
+IsExternalURL{"plugin-a"} -> {false}
+HasPlugin{PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {false}
+HasPluginGTE{PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {false, nil, nil}
+GetLatestVersion{ctx, PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {nil, nil}
+HasPlugin{PluginDescriptor{Name:"plugin-b", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {false}
+HasPluginGTE{PluginDescriptor{Name:"plugin-b", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {false, nil, nil}
+IsExternalURL{"plugin-b"} -> {false}
+HasPlugin{PluginDescriptor{Name:"plugin-b", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {false}
+HasPluginGTE{PluginDescriptor{Name:"plugin-b", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {false, nil, nil}
+GetLatestVersion{ctx, PluginDescriptor{Name:"plugin-b", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {nil, nil}
+DownloadPlugin{ctx, PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {"$HOME/.pulumi/plugins/resource-plugin-a", <func(bool)>, nil}
+DetectPluginPathAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-a"} -> {"$HOME/.pulumi/plugins/resource-plugin-a/PulumiPlugin.yaml", nil}
+LoadPluginProject{ctx, "$HOME/.pulumi/plugins/resource-plugin-a/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-b":PackageSpec{Source:"plugin-b", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}}}, nil}
+DownloadPlugin{ctx, PluginDescriptor{Name:"plugin-b", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {"$HOME/.pulumi/plugins/resource-plugin-b", <func(bool)>, nil}
+DetectPluginPathAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-b"} -> {"", wrapErrors{msg:"no project file found and no plugin file found", errs:[2]{errorString{s:"no project file found"}, errorString{s:"no plugin file found"}}}}
+IsExecutable{ctx, "$HOME/.pulumi/plugins/resource-plugin-b/pulumi-resource-plugin-b"} -> {true, nil}
+DownloadPlugin.MarkInstallationDone{PluginDescriptor{Name:"plugin-b", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}, true} -> {}
+LinkPackage{ctx, ProjectRuntimeInfo{name:"go"}, "/project", "plugin-b", "$HOME/.pulumi/plugins/resource-plugin-b/pulumi-resource-plugin-b", nil, PackageSpec{Source:"plugin-b", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {nil}
+HasPlugin{PluginDescriptor{Name:"plugin-b", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {false}
+HasPluginGTE{PluginDescriptor{Name:"plugin-b", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {false, nil, nil}
+IsExternalURL{"plugin-b"} -> {false}
+HasPlugin{PluginDescriptor{Name:"plugin-b", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {false}
+HasPluginGTE{PluginDescriptor{Name:"plugin-b", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {false, nil, nil}
+GetLatestVersion{ctx, PluginDescriptor{Name:"plugin-b", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {nil, nil}
+LinkPackage{ctx, ProjectRuntimeInfo{name:"go"}, "$HOME/.pulumi/plugins/resource-plugin-a", "plugin-b", "$HOME/.pulumi/plugins/resource-plugin-b/pulumi-resource-plugin-b", nil, PackageSpec{Source:"plugin-b", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {nil}
+InstallPluginAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-a", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-b":PackageSpec{Source:"plugin-b", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}}}} -> {nil}
+DownloadPlugin.MarkInstallationDone{PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}, true} -> {}
+LinkPackage{ctx, ProjectRuntimeInfo{name:"go"}, "/project", "plugin-a", "$HOME/.pulumi/plugins/resource-plugin-a", nil, PackageSpec{Source:"plugin-a", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {nil}
