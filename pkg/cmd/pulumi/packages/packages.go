@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"gopkg.in/yaml.v2"
 )
@@ -307,7 +308,7 @@ func linkPackage(ctx *LinkPackagesContext) error {
 		if err = pkgCmdUtil.InstallDependencies(languagePlugin, plugin.InstallDependenciesRequest{
 			Info: programInfo,
 		}, ctx.Writer, ctx.Writer); err != nil {
-			return fmt.Errorf("installing dependencies: %w", err)
+			return errutil.ErrorWithStderr(err, "installing dependencies")
 		}
 	}
 
