@@ -1,8 +1,10 @@
+HasPlugin{PluginDescriptor{Name:"registry-package", Kind:"resource"}} -> {false}
+HasPluginGTE{PluginDescriptor{Name:"registry-package", Kind:"resource"}} -> {false, nil, nil}
 IsExternalURL{"registry-package"} -> {false}
-ListPackages{"registry-package"} -> {<iter.Seq2[github.com/pulumi/pulumi/sdk/v3/go/common/apitype.PackageMetadata,error]>}
-DownloadPlugin{PluginSpec{Name:"registry-package", Kind:"resource", Version:Version{Major:1}, PluginDownloadURL:"https://registry.example.com/registry-package-1.0.0.tar.gz"}} -> {"/tmp/plugins/resource-registry-package-v1.0.0", <func(bool)>, nil}
-DetectPluginPathAt{"/tmp/plugins/resource-registry-package-v1.0.0"} -> {"/tmp/plugins/resource-registry-package-v1.0.0/PulumiPlugin.yaml", nil}
-LoadPluginProject{"/tmp/plugins/resource-registry-package-v1.0.0/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}, nil}
-InstallPluginAt{"/tmp/plugins/resource-registry-package-v1.0.0", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}} -> {nil}
-MarkInstallationDone{PluginSpec{Name:"registry-package", Kind:"resource", Version:Version{Major:1}, PluginDownloadURL:"https://registry.example.com/registry-package-1.0.0.tar.gz"}, true}
-RunPackage{"/plugin/launch/dir", "/tmp/plugins/resource-registry-package-v1.0.0", nil} -> {nil, nil}
+HasPluginGTE{PluginDescriptor{Name:"registry-package", Kind:"resource", Version:Version{Major:1}, PluginDownloadURL:"https://registry.example.com/registry-package-1.0.0.tar.gz"}} -> {false, nil, nil}
+DownloadPlugin{ctx, PluginDescriptor{Name:"registry-package", Kind:"resource", Version:Version{Major:1}, PluginDownloadURL:"https://registry.example.com/registry-package-1.0.0.tar.gz"}} -> {"$HOME/.pulumi/plugins/resource-registry-package-v1.0.0", <func(bool)>, nil}
+DetectPluginPathAt{ctx, "$HOME/.pulumi/plugins/resource-registry-package-v1.0.0"} -> {"$HOME/.pulumi/plugins/resource-registry-package-v1.0.0/PulumiPlugin.yaml", nil}
+LoadPluginProject{ctx, "$HOME/.pulumi/plugins/resource-registry-package-v1.0.0/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}, nil}
+InstallPluginAt{ctx, "$HOME/.pulumi/plugins/resource-registry-package-v1.0.0", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}} -> {nil}
+DownloadPlugin.MarkInstallationDone{PluginDescriptor{Name:"registry-package", Kind:"resource", Version:Version{Major:1}, PluginDownloadURL:"https://registry.example.com/registry-package-1.0.0.tar.gz"}, true} -> {}
+RunPackage{ctx, "/tmp", "$HOME/.pulumi/plugins/resource-registry-package-v1.0.0", "registry-package", nil} -> {nil, nil}
