@@ -62,6 +62,36 @@ describe("Analyzer", function () {
         });
     });
 
+    it("infers chained inheritance", async function () {
+        const dir = path.join(__dirname, "testdata", "chained-inheritance");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent", "MyInheritingComponent"]));
+        const { components } = analyzer.analyze();
+
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    aNumber: { type: "number" },
+                    aString: { type: "string" },
+                },
+                outputs: {
+                    outNumber: { type: "number" },
+                },
+            },
+            MyInheritingComponent: {
+                name: "MyInheritingComponent",
+                inputs: {
+                    aNumber: { type: "number" },
+                    aString: { type: "string" },
+                },
+                outputs: {
+                    outString: { type: "string" },
+                    outNumber: { type: "number" },
+                },
+            },
+        });
+    });
+
     it("infers optional types", async function () {
         const dir = path.join(__dirname, "testdata", "optional-types");
         const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
