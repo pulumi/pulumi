@@ -1,18 +1,21 @@
 HasPlugin{PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {false}
 HasPluginGTE{PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {false, nil, nil}
-IsExternalURL{"plugin-a"} -> {true}
-GetLatestVersion{PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {Version{Major:4}, nil}
-DownloadPlugin{PluginDescriptor{Name:"plugin-a", Kind:"resource", Version:Version{Major:4}, PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {"/tmp/plugins/resource-plugin-a-v4.0.0", <func(bool)>, nil}
-DetectPluginPathAt{"/tmp/plugins/resource-plugin-a-v4.0.0"} -> {"/tmp/plugins/resource-plugin-a-v4.0.0/PulumiPlugin.yaml", nil}
-LoadPluginProject{"/tmp/plugins/resource-plugin-a-v4.0.0/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-b":PackageSpec{Source:"plugin-b", Version:"3.0.0", Parameters:[2]{"param1", "param2"}, unmarshalledFromFull:true}}}, nil}
-HasPlugin{PluginDescriptor{Name:"plugin-b", Kind:"resource", Version:Version{Major:3}}} -> {false}
-IsExternalURL{"plugin-b"} -> {true}
-DownloadPlugin{PluginDescriptor{Name:"plugin-b", Kind:"resource", Version:Version{Major:3}}} -> {"/tmp/plugins/resource-plugin-b-v3.0.0", <func(bool)>, nil}
-DetectPluginPathAt{"/tmp/plugins/resource-plugin-b-v3.0.0"} -> {"/tmp/plugins/resource-plugin-b-v3.0.0/PulumiPlugin.yaml", nil}
-LoadPluginProject{"/tmp/plugins/resource-plugin-b-v3.0.0/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}, nil}
-InstallPluginAt{"/tmp/plugins/resource-plugin-b-v3.0.0", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}} -> {nil}
-MarkInstallationDone{PluginDescriptor{Name:"plugin-b", Kind:"resource", Version:Version{Major:3}}, true}
-LinkPackage{ProjectRuntimeInfo{name:"go"}, "/tmp/plugins/resource-plugin-a-v4.0.0", "plugin-b", "/tmp/plugins/resource-plugin-b-v3.0.0", ParameterizeArgs{Args:[2]{"param1", "param2"}}, PackageSpec{Source:"plugin-b", Version:"3.0.0", Parameters:[2]{"param1", "param2"}, unmarshalledFromFull:true}} -> {nil}
-InstallPluginAt{"/tmp/plugins/resource-plugin-a-v4.0.0", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-b":PackageSpec{Source:"plugin-b", Version:"3.0.0", Parameters:[2]{"param1", "param2"}, unmarshalledFromFull:true}}}} -> {nil}
-MarkInstallationDone{PluginDescriptor{Name:"plugin-a", Kind:"resource", Version:Version{Major:4}, PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}, true}
-RunPackage{"/plugin/launch/dir", "/tmp/plugins/resource-plugin-a-v4.0.0", "plugin-a", nil} -> {nil, nil}
+IsExternalURL{"plugin-a"} -> {false}
+HasPlugin{PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {false}
+HasPluginGTE{PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {false, nil, nil}
+GetLatestVersion{ctx, PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {Version{Major:4}, nil}
+DownloadPlugin{ctx, PluginDescriptor{Name:"plugin-a", Kind:"resource", Version:Version{Major:4}, PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {"$HOME/.pulumi/plugins/resource-plugin-a-v4.0.0", <func(bool)>, nil}
+DetectPluginPathAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-a-v4.0.0"} -> {"$HOME/.pulumi/plugins/resource-plugin-a-v4.0.0/PulumiPlugin.yaml", nil}
+LoadPluginProject{ctx, "$HOME/.pulumi/plugins/resource-plugin-a-v4.0.0/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-b":PackageSpec{Source:"plugin-b", Version:"3.0.0", Parameters:[2]{"param1", "param2"}, PluginDownloadURL:"example.com/plugin-b"}}}, nil}
+HasPlugin{PluginDescriptor{Name:"plugin-b", Kind:"resource", Version:Version{Major:3}, PluginDownloadURL:"example.com/plugin-b"}} -> {false}
+IsExternalURL{"plugin-b"} -> {false}
+HasPlugin{PluginDescriptor{Name:"plugin-b", Kind:"resource", Version:Version{Major:3}, PluginDownloadURL:"example.com/plugin-b"}} -> {false}
+DownloadPlugin{ctx, PluginDescriptor{Name:"plugin-b", Kind:"resource", Version:Version{Major:3}, PluginDownloadURL:"example.com/plugin-b"}} -> {"$HOME/.pulumi/plugins/resource-plugin-b-v3.0.0", <func(bool)>, nil}
+DetectPluginPathAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-b-v3.0.0"} -> {"$HOME/.pulumi/plugins/resource-plugin-b-v3.0.0/PulumiPlugin.yaml", nil}
+LoadPluginProject{ctx, "$HOME/.pulumi/plugins/resource-plugin-b-v3.0.0/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}, nil}
+InstallPluginAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-b-v3.0.0", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}} -> {nil}
+DownloadPlugin.MarkInstallationDone{PluginDescriptor{Name:"plugin-b", Kind:"resource", Version:Version{Major:3}, PluginDownloadURL:"example.com/plugin-b"}, true} -> {}
+LinkPackage{ctx, ProjectRuntimeInfo{name:"go"}, "$HOME/.pulumi/plugins/resource-plugin-a-v4.0.0", "plugin-b", "$HOME/.pulumi/plugins/resource-plugin-b-v3.0.0", ParameterizeArgs{Args:[2]{"param1", "param2"}}, PackageSpec{Source:"plugin-b", Version:"3.0.0", Parameters:[2]{"param1", "param2"}, PluginDownloadURL:"example.com/plugin-b"}} -> {nil}
+InstallPluginAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-a-v4.0.0", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-b":PackageSpec{Source:"plugin-b", Version:"3.0.0", Parameters:[2]{"param1", "param2"}, PluginDownloadURL:"example.com/plugin-b"}}}} -> {nil}
+DownloadPlugin.MarkInstallationDone{PluginDescriptor{Name:"plugin-a", Kind:"resource", Version:Version{Major:4}, PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}, true} -> {}
+RunPackage{ctx, "/tmp", "$HOME/.pulumi/plugins/resource-plugin-a-v4.0.0", "plugin-a", nil} -> {nil, nil}

@@ -399,7 +399,7 @@ func Resolve(
 		if errors.Is(err, registry.ErrNotFound) {
 			registryNotFoundErr = err
 		} else {
-			registryQueryErr = fmt.Errorf("%w: %v", ErrRegistryQuery, err)
+			registryQueryErr = fmt.Errorf("%w: %w", ErrRegistryQuery, err)
 		}
 	}
 
@@ -453,32 +453,4 @@ func (defaultWorkspace) GetLatestVersion(
 
 func DefaultWorkspace() PluginWorkspace {
 	return defaultWorkspace{}
-}
-
-func memoize1[T any](f func() T) func() T {
-	var b bool
-	var t T
-	return func() T {
-		if b {
-			return t
-		}
-		t = f()
-		b = true
-		return t
-	}
-}
-
-func memoize3[T1, T2, T3 any](f func() (T1, T2, T3)) func() (T1, T2, T3) {
-	var b bool
-	var t1 T1
-	var t2 T2
-	var t3 T3
-	return func() (T1, T2, T3) {
-		if b {
-			return t1, t2, t3
-		}
-		t1, t2, t3 = f()
-		b = true
-		return t1, t2, t3
-	}
 }

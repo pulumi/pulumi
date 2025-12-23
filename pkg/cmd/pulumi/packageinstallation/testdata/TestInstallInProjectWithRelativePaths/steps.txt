@@ -1,13 +1,13 @@
-DetectPluginPathAt{"/work"} -> {"/work/PulumiPlugin.yaml", nil}
-LoadPluginProject{"/work/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"pkg-c":PackageSpec{Source:"./pkg-c"}}}, nil}
-DetectPluginPathAt{"/work/project/pkg-b"} -> {"/work/project/pkg-b/PulumiPlugin.yaml", nil}
-LoadPluginProject{"/work/project/pkg-b/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"nodejs"}, Packages:map[1]{"pkg-c":PackageSpec{Source:"../../pkg-c"}}}, nil}
-DetectPluginPathAt{"/work/pkg-c"} -> {"/work/pkg-c/PulumiPlugin.yaml", nil}
-LoadPluginProject{"/work/pkg-c/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"python"}}, nil}
-InstallPluginAt{"/work/pkg-c", PluginProject{Runtime:ProjectRuntimeInfo{name:"python"}}} -> {nil}
-LinkPackage{ProjectRuntimeInfo{name:"go"}, "/work", "pkg-c", "/work/pkg-c", nil, PackageSpec{Source:"./pkg-c"}} -> {nil}
-InstallPluginAt{"/work", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"pkg-c":PackageSpec{Source:"./pkg-c"}}}} -> {nil}
-LinkPackage{ProjectRuntimeInfo{name:"go"}, "/work/project", "a", "/work", nil, PackageSpec{Source:".."}} -> {nil}
-LinkPackage{ProjectRuntimeInfo{name:"nodejs"}, "/work/project/pkg-b", "pkg-c", "/work/pkg-c", nil, PackageSpec{Source:"../../pkg-c"}} -> {nil}
-InstallPluginAt{"/work/project/pkg-b", PluginProject{Runtime:ProjectRuntimeInfo{name:"nodejs"}, Packages:map[1]{"pkg-c":PackageSpec{Source:"../../pkg-c"}}}} -> {nil}
-LinkPackage{ProjectRuntimeInfo{name:"go"}, "/work/project", "b", "/work/project/pkg-b", nil, PackageSpec{Source:"./pkg-b"}} -> {nil}
+DetectPluginPathAt{ctx, "/work"} -> {"/work/PulumiPlugin.yaml", nil}
+LoadPluginProject{ctx, "/work/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"pkg-c":PackageSpec{Source:"./pkg-c"}}}, nil}
+DetectPluginPathAt{ctx, "/work/project/pkg-b"} -> {"/work/project/pkg-b/PulumiPlugin.yaml", nil}
+LoadPluginProject{ctx, "/work/project/pkg-b/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"nodejs"}, Packages:map[1]{"pkg-c":PackageSpec{Source:"../../pkg-c"}}}, nil}
+DetectPluginPathAt{ctx, "/work/pkg-c"} -> {"/work/pkg-c/PulumiPlugin.yaml", nil}
+LoadPluginProject{ctx, "/work/pkg-c/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"python"}}, nil}
+InstallPluginAt{ctx, "/work/pkg-c", PluginProject{Runtime:ProjectRuntimeInfo{name:"python"}}} -> {nil}
+LinkPackage{ctx, ProjectRuntimeInfo{name:"go"}, "/work", "pkg-c", "/work/pkg-c", nil, PackageSpec{Source:"./pkg-c"}} -> {nil}
+InstallPluginAt{ctx, "/work", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"pkg-c":PackageSpec{Source:"./pkg-c"}}}} -> {nil}
+LinkPackage{ctx, ProjectRuntimeInfo{name:"go"}, "/work/project", "a", "/work", nil, PackageSpec{Source:".."}} -> {nil}
+LinkPackage{ctx, ProjectRuntimeInfo{name:"nodejs"}, "/work/project/pkg-b", "pkg-c", "/work/pkg-c", nil, PackageSpec{Source:"../../pkg-c"}} -> {nil}
+InstallPluginAt{ctx, "/work/project/pkg-b", PluginProject{Runtime:ProjectRuntimeInfo{name:"nodejs"}, Packages:map[1]{"pkg-c":PackageSpec{Source:"../../pkg-c"}}}} -> {nil}
+LinkPackage{ctx, ProjectRuntimeInfo{name:"go"}, "/work/project", "b", "/work/project/pkg-b", nil, PackageSpec{Source:"./pkg-b"}} -> {nil}

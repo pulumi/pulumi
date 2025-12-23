@@ -443,7 +443,7 @@ func ensureDownloadedPluginDirHasDependenciesAndIsInstalled(
 			}
 			return nil
 		}
-		return fmt.Errorf("expected %s to have an executable named %s or a PulumiPlugin file", projectDir, binaryName)
+		return fmt.Errorf("expected %q to have an executable named %q or a PulumiPlugin file", name, binaryName)
 
 	// An unknown error was returned, so bubble the error up.
 	default:
