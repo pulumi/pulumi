@@ -53,15 +53,13 @@ func NewShowCmd(cmdOpts ShowCmdOpts) *cobra.Command {
 			cmdOut := cmd.OutOrStdout()
 			ctx := cmd.Context()
 			snk := cmdutil.Diag()
-			lm := cmdOpts.Lm
-			sp := cmdOpts.Sp
-			ws := cmdOpts.Ws
-			s, err := stack.RequireStack(ctx, snk, ws, lm, stackName, stack.OfferNew, display.Options{})
+
+			s, err := stack.RequireStack(ctx, snk, cmdOpts.Ws, cmdOpts.Lm, stackName, stack.OfferNew, display.Options{})
 			if err != nil {
 				return err
 			}
 
-			ss, err := s.Snapshot(ctx, sp)
+			ss, err := s.Snapshot(ctx, cmdOpts.Sp)
 			if err != nil {
 				return err
 			}
@@ -93,8 +91,8 @@ func printResourceState(rs *resource.State, popts printOptions, outputDest io.Wr
 	name := colors.Always.Colorize(colors.Bold+"Name: "+colors.Reset) + rs.URN.Name()
 	fmt.Fprintln(outputDest, name)
 
-	urn := colors.Always.Colorize(colors.Bold+"Type: "+colors.Reset) + string(rs.Type.String())
-	fmt.Fprintln(outputDest, urn)
+	rsType := colors.Always.Colorize(colors.Bold+"Type: "+colors.Reset) + rs.Type.String()
+	fmt.Fprintln(outputDest, rsType)
 
 	properties := colors.Always.Colorize(colors.Bold + "Properties: " + colors.Reset)
 	fmt.Fprintln(outputDest, properties)
@@ -107,7 +105,7 @@ func printResourceState(rs *resource.State, popts printOptions, outputDest io.Wr
 			}
 			propertiesStr += string(k) + ", "
 		}
-		strings.TrimSuffix(propertiesStr, ", ")
+		propertiesStr = strings.TrimSuffix(propertiesStr, ", ")
 		propertiesStr += "\n\n"
 		fmt.Fprint(outputDest, propertiesStr)
 		return

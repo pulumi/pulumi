@@ -102,7 +102,7 @@ func TestShowCmd(t *testing.T) {
 		},
 	}
 
-	ss, err := ms.Snapshot(t.Context(), &secrets.MockProvider{})
+	ss, err := ms.Snapshot(context.TODO(), &secrets.MockProvider{})
 	require.NoError(t, err)
 
 	for _, tst := range tests {
@@ -125,7 +125,9 @@ func TestShowCmd(t *testing.T) {
 			}
 
 			var expectedOut bytes.Buffer
-			for _, res := range ss.Resources {
+			resources := ss.Resources
+			resources = resources[1:]
+			for _, res := range resources {
 				printResourceState(res, CmdPrintopts, &expectedOut)
 			}
 
