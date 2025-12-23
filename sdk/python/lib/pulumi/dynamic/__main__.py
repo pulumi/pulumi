@@ -219,9 +219,19 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
 
         loop = asyncio.new_event_loop()
         outs_proto = loop.run_until_complete(rpc.serialize_properties(outs, {}))
-        loop.close()
 
         fields = {"id": result.id, "properties": outs_proto}
+
+        # If the provider returned explicit inputs, use them for subsequent diffs.
+        # This allows the provider to update inputs to match refreshed outputs.
+        if result.inputs is not None:
+            inputs = result.inputs.copy()
+            inputs[PROVIDER_KEY] = props[PROVIDER_KEY]
+            inputs_proto = loop.run_until_complete(rpc.serialize_properties(inputs, {}))
+            fields["inputs"] = inputs_proto
+
+        loop.close()
+
         return proto.ReadResponse(**fields)
 
     def __init__(self):

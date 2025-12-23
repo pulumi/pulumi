@@ -167,13 +167,22 @@ class ReadResult:
     The current property state read from the live environment.
     """
 
+    inputs: Optional[dict[str, Any]]
+    """
+    The input properties to use for subsequent diffs. If not provided, inputs will remain unchanged.
+    This is useful when a refresh operation detects drift and wants to update the inputs to match
+    the current outputs, ensuring subsequent diffs compare against the refreshed state.
+    """
+
     def __init__(
         self,
         id_: Optional[str] = None,
         outs: Optional[dict[str, Any]] = None,
+        inputs: Optional[dict[str, Any]] = None,
     ) -> None:
         self.id = id_
         self.outs = outs
+        self.inputs = inputs
 
 
 class UpdateResult:
