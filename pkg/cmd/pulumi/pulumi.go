@@ -377,9 +377,9 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				state.NewStateCmd(),
 				install.NewInstallCmd(pkgWorkspace.Instance),
 				show.NewShowCmd(show.ShowCmdOpts{
-					Lm: cmdBackend.DefaultLoginManager,
-					Ws: pkgWorkspace.Instance,
-					Sp: secrets.DefaultProvider,
+					LoginManager:     cmdBackend.DefaultLoginManager,
+					Worspace:         pkgWorkspace.Instance,
+					SecretesProvider: secrets.DefaultProvider,
 				}),
 			},
 		},

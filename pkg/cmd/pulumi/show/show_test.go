@@ -109,9 +109,9 @@ func TestShowCmd(t *testing.T) {
 		t.Run(tst.name, func(t *testing.T) {
 			var cmdOut bytes.Buffer
 			cmdOpts := ShowCmdOpts{
-				Lm: cmdBackend.DefaultLoginManager,
-				Sp: &secrets.MockProvider{},
-				Ws: pkgWs.Instance,
+				LoginManager:     cmdBackend.DefaultLoginManager,
+				SecretesProvider: &secrets.MockProvider{},
+				Worspace:         pkgWs.Instance,
 			}
 			showCmd := NewShowCmd(cmdOpts)
 			showCmd.SetArgs(tst.args)

@@ -31,9 +31,9 @@ import (
 )
 
 type ShowCmdOpts struct {
-	Lm backend.LoginManager
-	Sp secrets.Provider
-	Ws workspace.Context
+	LoginManager     backend.LoginManager
+	SecretesProvider secrets.Provider
+	Worspace         workspace.Context
 }
 
 func NewShowCmd(cmdOpts ShowCmdOpts) *cobra.Command {
@@ -54,12 +54,13 @@ func NewShowCmd(cmdOpts ShowCmdOpts) *cobra.Command {
 			ctx := cmd.Context()
 			snk := cmdutil.Diag()
 
-			s, err := stack.RequireStack(ctx, snk, cmdOpts.Ws, cmdOpts.Lm, stackName, stack.OfferNew, display.Options{})
+			s, err := stack.RequireStack(ctx, snk, cmdOpts.Worspace, cmdOpts.LoginManager, stackName,
+				stack.OfferNew, display.Options{})
 			if err != nil {
 				return err
 			}
 
-			ss, err := s.Snapshot(ctx, cmdOpts.Sp)
+			ss, err := s.Snapshot(ctx, cmdOpts.SecretesProvider)
 			if err != nil {
 				return err
 			}
