@@ -1451,21 +1451,22 @@ func TestFallbackSource_URLOverride(t *testing.T) {
 
 	source := newFallbackSource("test-plugin", apitype.ResourcePlugin)
 	version := semver.MustParse("1.0.0")
-	_, _, err := source.Download(context.Background(), version, "linux", "amd64", func(req *http.Request) (io.ReadCloser, int64, error) {
-		if strings.Contains(req.URL.String(), "api.github.com/pulumi") {
-			return nil, -1, fmt.Errorf("GitHub API: 404 not found")
-		}
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			return nil, -1, err
-		}
-		if resp.StatusCode < 200 || resp.StatusCode > 299 {
-			resp.Body.Close()
-			return nil, -1, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
-		}
-		return resp.Body, resp.ContentLength, nil
-	})
-
+	_, _, err := source.Download(
+		context.Background(), version, "linux", "amd64",
+		func(req *http.Request) (io.ReadCloser, int64, error) {
+			if strings.Contains(req.URL.String(), "api.github.com/pulumi") {
+				return nil, -1, errors.New("GitHub API: 404 not found")
+			}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				return nil, -1, err
+			}
+			if resp.StatusCode < 200 || resp.StatusCode > 299 {
+				resp.Body.Close()
+				return nil, -1, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+			}
+			return resp.Body, resp.ContentLength, nil
+		})
 	assert.ErrorContains(t, err, "404")
 	assert.True(t, requestReceived, "expected override URL to be used")
 }
