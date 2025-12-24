@@ -26,6 +26,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
@@ -235,10 +236,12 @@ func installPackagesFromProject(
 		},
 		Concurrency: parallelism,
 	}
-	return errors.Join(
-		packageinstallation.InstallInProject(ctx, proj, root, opts, registry, ws),
-		pctx.Close(),
-	)
+	err = packageinstallation.InstallInProject(ctx, proj, root, opts, registry, ws)
+	if e := (packageinstallation.ErrorCyclicDependencies{}); errors.As(err, &e) {
+		err = cmdDiag.FormatCyclicInstallError(ctx, e, root)
+	}
+
+	return errors.Join(err, pctx.Close())
 }
 
 func shouldInstallPolicyPackDependencies() (bool, error) {

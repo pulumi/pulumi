@@ -2823,7 +2823,7 @@ func TestInstallLocalPluginCycle(t *testing.T) {
 	// The install command should detect and report this cycle.
 	stdout, stderr := e.RunCommandExpectError("pulumi", "install")
 	require.Containsf(t, stderr,
-		"Cycle found: typescript-a -> typescript-b -> typescript-a\n",
+		"installing `packages` from Pulumi.yaml: cycle found: ../ts-provider-a -> ../ts-provider-b -> ../ts-provider-a\n",
 		"Stdout is %q", stdout)
 }
 
