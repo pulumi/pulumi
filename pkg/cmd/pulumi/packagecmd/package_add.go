@@ -117,6 +117,7 @@ from the parameters, as in:
 				parameters,
 				pluginOrProject.reg,
 				env.Global(),
+				0, /* unbounded concurrency */
 			)
 			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {

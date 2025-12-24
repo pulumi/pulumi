@@ -117,7 +117,7 @@ func TestProviderFromSource(t *testing.T) {
 
 		provider, _, err := ProviderFromSource(pctx, inputSource, mockRegistry, env.NewEnv(env.MapStore{
 			"PULUMI_EXPERIMENTAL": "true",
-		}))
+		}), 0)
 		require.NoError(t, err)
 		return provider.Provider
 	}

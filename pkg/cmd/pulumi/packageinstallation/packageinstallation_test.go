@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -52,7 +53,7 @@ func TestInstallAlreadyInstalledPackage(t *testing.T) {
 	rws := &recordingWorkspace{ws, nil}
 	defer rws.save(t)
 
-	run, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+	run, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
 		Source: "already-installed",
 	}, nil, "", packageinstallation.Options{
 		Options: packageresolution.Options{
@@ -64,6 +65,9 @@ func TestInstallAlreadyInstalledPackage(t *testing.T) {
 	require.NoError(t, err)
 	_, err = run(t.Context(), "/tmp")
 	require.NoError(t, err)
+	assert.Equal(t, workspace.PackageSpec{
+		Source: "already-installed",
+	}, spec)
 }
 
 func TestInstallAlreadyInstalledPlugin(t *testing.T) {
@@ -167,7 +171,7 @@ func TestInstallExternalBinaryPackage(t *testing.T) {
 	rws := &recordingWorkspace{ws, nil}
 	defer rws.save(t)
 
-	run, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+	run, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
 		Source:            "external-package",
 		PluginDownloadURL: "https://example.com/external-package.tar.gz",
 	}, nil, "", packageinstallation.Options{
@@ -180,6 +184,11 @@ func TestInstallExternalBinaryPackage(t *testing.T) {
 	require.NoError(t, err)
 	_, err = run(t.Context(), "/tmp")
 	require.NoError(t, err)
+	assert.Equal(t, workspace.PackageSpec{
+		Source:            "external-package",
+		Version:           "6.0.0",
+		PluginDownloadURL: "https://example.com/external-package.tar.gz",
+	}, spec)
 }
 
 func TestInstallPluginWithParameterizedDependency(t *testing.T) {
@@ -219,7 +228,7 @@ func TestInstallPluginWithParameterizedDependency(t *testing.T) {
 	rws := &recordingWorkspace{ws, nil}
 	defer rws.save(t)
 
-	run, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+	run, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
 		Source:            "plugin-a",
 		PluginDownloadURL: "https://example.com/plugin-a.tar.gz",
 	}, nil, "", packageinstallation.Options{
@@ -232,6 +241,11 @@ func TestInstallPluginWithParameterizedDependency(t *testing.T) {
 	require.NoError(t, err)
 	_, err = run(t.Context(), "/tmp")
 	require.NoError(t, err)
+	assert.Equal(t, workspace.PackageSpec{
+		Source:            "plugin-a",
+		Version:           "4.0.0",
+		PluginDownloadURL: "https://example.com/plugin-a.tar.gz",
+	}, spec)
 }
 
 // TestInstallPluginWithDiamondDependency tests that we de-duplicate dependencies that are
@@ -314,7 +328,7 @@ func TestInstallPluginWithDiamondDependency(t *testing.T) {
 	rws := &recordingWorkspace{ws, nil}
 	defer rws.save(t)
 
-	run, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+	run, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
 		Source:            "plugin-a",
 		PluginDownloadURL: "https://example.com/plugin-a.tar.gz",
 	}, nil, "", packageinstallation.Options{
@@ -327,6 +341,11 @@ func TestInstallPluginWithDiamondDependency(t *testing.T) {
 	require.NoError(t, err)
 	_, err = run(t.Context(), "/tmp")
 	require.NoError(t, err)
+	assert.Equal(t, workspace.PackageSpec{
+		Source:            "plugin-a",
+		Version:           "1.0.0",
+		PluginDownloadURL: "https://example.com/plugin-a.tar.gz",
+	}, spec)
 }
 
 // TestDeduplicateRegistryBasedPlugin tests that we correctly deduplicate packages when
@@ -406,7 +425,7 @@ func TestDeduplicateRegistryBasedPlugin(t *testing.T) {
 		},
 	}
 
-	run, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+	run, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
 		Source:            "plugin-a",
 		PluginDownloadURL: "https://example.com/plugin-a.tar.gz",
 	}, nil, "", packageinstallation.Options{
@@ -420,6 +439,10 @@ func TestDeduplicateRegistryBasedPlugin(t *testing.T) {
 	require.NoError(t, err)
 	_, err = run(t.Context(), "/tmp")
 	require.NoError(t, err)
+	assert.Equal(t, workspace.PackageSpec{
+		Source:            "plugin-a",
+		PluginDownloadURL: "https://example.com/plugin-a.tar.gz",
+	}, spec)
 }
 
 // TestInstallPluginWithCyclicDependency tests that we correctly detect and report cyclic
@@ -483,7 +506,7 @@ func TestInstallPluginWithCyclicDependency(t *testing.T) {
 		},
 	})
 
-	_, err := packageinstallation.InstallPlugin(
+	_, _, err := packageinstallation.InstallPlugin(
 		t.Context(),
 		workspace.PackageSpec{
 			Source:            "plugin-a",
@@ -551,7 +574,7 @@ func TestInstallRegistryPackage(t *testing.T) {
 		},
 	}
 
-	run, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+	run, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
 		Source: "registry-package",
 	}, nil, "", packageinstallation.Options{
 		Options: packageresolution.Options{
@@ -564,6 +587,10 @@ func TestInstallRegistryPackage(t *testing.T) {
 	require.NoError(t, err)
 	_, err = run(t.Context(), "/tmp")
 	require.NoError(t, err)
+	assert.Equal(t, workspace.PackageSpec{
+		Source:  "pulumi/pulumi/registry-package",
+		Version: "1.0.0",
+	}, spec)
 }
 
 // TestInstallInProjectWithSharedDependency tests installing dependencies in a project where
@@ -815,7 +842,7 @@ func TestInstallPluginWithMultipleVersions(t *testing.T) {
 	rws := &recordingWorkspace{ws, nil}
 	defer rws.save(t)
 
-	run, err := packageinstallation.InstallPlugin(
+	run, spec, err := packageinstallation.InstallPlugin(
 		t.Context(),
 		workspace.PackageSpec{
 			Source:            "root",
@@ -836,6 +863,10 @@ func TestInstallPluginWithMultipleVersions(t *testing.T) {
 	require.NoError(t, err)
 	_, runErr := run(t.Context(), "/tmp")
 	require.NoError(t, runErr)
+	assert.Equal(t, workspace.PackageSpec{
+		Source:            "root",
+		PluginDownloadURL: "https://example.com/root.tar.gz",
+	}, spec)
 
 	sharedV1Path := "$HOME/.pulumi/plugins/resource-shared-plugin-v1.0.0"
 	sharedV2Path := "$HOME/.pulumi/plugins/resource-shared-plugin-v2.0.0"
@@ -914,7 +945,7 @@ func TestDuplicateParameterizationSources(t *testing.T) {
 		},
 	}
 
-	_, err := packageinstallation.InstallPlugin(
+	_, _, err := packageinstallation.InstallPlugin(
 		t.Context(),
 		workspace.PackageSpec{
 			Source:            "root",
@@ -953,7 +984,7 @@ func TestMissingBinaryAndProject(t *testing.T) {
 		},
 	})
 
-	_, err := packageinstallation.InstallPlugin(
+	_, _, err := packageinstallation.InstallPlugin(
 		t.Context(),
 		workspace.PackageSpec{
 			Source:            "invalid-plugin",
@@ -999,7 +1030,7 @@ func TestRegistryLookupFailure(t *testing.T) {
 			},
 		}
 
-		_, err := packageinstallation.InstallPlugin(
+		_, _, err := packageinstallation.InstallPlugin(
 			t.Context(),
 			workspace.PackageSpec{
 				Source: "unavailable-package",
@@ -1033,7 +1064,7 @@ func TestRegistryLookupFailure(t *testing.T) {
 			},
 		}
 
-		_, err := packageinstallation.InstallPlugin(
+		_, _, err := packageinstallation.InstallPlugin(
 			t.Context(),
 			workspace.PackageSpec{
 				Source: "nonexistent-package",
@@ -1094,7 +1125,7 @@ func TestInstallParameterizedProviderFromRegistry(t *testing.T) {
 		},
 	}
 
-	run, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+	run, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
 		Source:  "opentofu/airbytehq/airbyte",
 		Version: "0.13.0",
 	}, nil, "", packageinstallation.Options{
@@ -1106,6 +1137,10 @@ func TestInstallParameterizedProviderFromRegistry(t *testing.T) {
 	require.NoError(t, err)
 	_, err = run(t.Context(), "/tmp")
 	require.NoError(t, err)
+	assert.Equal(t, workspace.PackageSpec{
+		Source:  "opentofu/airbytehq/airbyte",
+		Version: "0.13.0",
+	}, spec)
 }
 
 func TestConcurrency(t *testing.T) {
@@ -1269,7 +1304,7 @@ func TestConcurrency(t *testing.T) {
 	}
 
 	baselineWs := createWorkspace()
-	run, err := packageinstallation.InstallPlugin(
+	run, spec, err := packageinstallation.InstallPlugin(
 		t.Context(),
 		workspace.PackageSpec{
 			Source:            "root",
@@ -1290,10 +1325,14 @@ func TestConcurrency(t *testing.T) {
 	require.NoError(t, err)
 	_, err = run(t.Context(), "/tmp")
 	require.NoError(t, err)
+	assert.Equal(t, workspace.PackageSpec{
+		Source:            "root",
+		PluginDownloadURL: "https://example.com/root.tar.gz",
+	}, spec)
 
 	for range 100 {
 		ws := createWorkspace()
-		run, err := packageinstallation.InstallPlugin(
+		run, spec, err := packageinstallation.InstallPlugin(
 			t.Context(),
 			workspace.PackageSpec{
 				Source:            "root",
@@ -1313,6 +1352,10 @@ func TestConcurrency(t *testing.T) {
 		require.NoError(t, err)
 		_, err = run(t.Context(), "/tmp")
 		require.NoError(t, err)
+		assert.Equal(t, workspace.PackageSpec{
+			Source:            "root",
+			PluginDownloadURL: "https://example.com/root.tar.gz",
+		}, spec)
 
 		assertInvariantWorkspaceEqual(t, *baselineWs, *ws)
 	}

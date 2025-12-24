@@ -64,7 +64,7 @@ empty string.`,
 			}()
 
 			registry := cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
-			p, _, err := packages.ProviderFromSource(pctx, source, registry, env.Global())
+			p, _, err := packages.ProviderFromSource(pctx, source, registry, env.Global(), 0 /* unbounded concurrency */)
 			if err != nil {
 				return fmt.Errorf("load provider: %w", err)
 			}
