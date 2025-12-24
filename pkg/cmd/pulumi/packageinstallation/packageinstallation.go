@@ -128,22 +128,23 @@ func InstallPlugin(
 	baseProject workspace.BaseProject, projectDir string,
 	options Options,
 	registry registry.Registry, ws Workspace,
-) (RunPlugin, error) {
+) (RunPlugin, workspace.PackageSpec, error) {
 	var runBundle runBundle
+	var resolvedSpec workspace.PackageSpec
 
 	err := runInstall(ctx, options, registry, ws, func(ctx context.Context, state state, root pdag.Node) error {
 		return ensureUnresolvedSpec(ctx, state, root, spec, project[workspace.BaseProject]{
 			proj:       baseProject,
 			projectDir: projectDir,
-		}, &runBundle)
+		}, &runBundle, &resolvedSpec)
 	})
 	if err != nil {
-		return nil, err
+		return nil, resolvedSpec, err
 	}
 
 	return func(ctx context.Context, wd string) (plugin.Provider, error) {
 		return ws.RunPackage(ctx, wd, runBundle.pluginPath, tokens.Package(runBundle.name), runBundle.params)
-	}, nil
+	}, resolvedSpec, nil
 }
 
 // Install all plugins in a project, linking them in as necessary.
@@ -320,7 +321,8 @@ func ensureUnresolvedSpec(
 	_ context.Context,
 	state state, parent pdag.Node,
 	spec workspace.PackageSpec, parentProj project[workspace.BaseProject],
-	runBundleOut *runBundle, // An async out param of where the plugin was installed
+	runBundleOut *runBundle, // An async out param of where the plugin was installed.
+	resolvedSpec *workspace.PackageSpec, // An async out param of the resolved spec.
 ) error {
 	specReady, ready := state.dag.NewNode(noOpStep{})
 	contract.AssertNoErrorf(state.dag.NewEdge(specReady, parent), "linking in a new node is safe")
@@ -334,6 +336,7 @@ func ensureUnresolvedSpec(
 		parent:       specReady,
 		done:         ready,
 		runBundleOut: runBundleOut,
+		resolvedSpec: resolvedSpec,
 	})
 	// We know that resolving a spec doesn't have any concrete dependencies, so we can kick that off immediately.
 	resolveReady()
@@ -377,7 +380,7 @@ func ensureProjectDependencies(
 		defer linkReady()
 		contract.AssertNoErrorf(state.dag.NewEdge(link, parent), "new nodes cannot be cyclic")
 
-		err := ensureUnresolvedSpec(ctx, state, link, source, proj, runBundle)
+		err := ensureUnresolvedSpec(ctx, state, link, source, proj, runBundle, new(workspace.PackageSpec))
 		if err != nil {
 			return err
 		}
@@ -538,6 +541,7 @@ type resolveStep struct {
 	parent       pdag.Node
 	done         pdag.Done
 	runBundleOut *runBundle
+	resolvedSpec *workspace.PackageSpec
 }
 
 // Resolve a package into something that we can get.
@@ -564,6 +568,7 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 	// Just check that the project is there, and install any dependencies if there is
 	// a PulumiPlugin file found.
 	case packageresolution.PathResolution:
+		*step.resolvedSpec = result.Spec
 		projectDir := result.Path
 		if !filepath.IsAbs(projectDir) {
 			projectDir = filepath.Join(step.parentProj.projectDir, result.Path)
@@ -606,6 +611,7 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 	//
 	// 3. Install the downloaded project.
 	case packageresolution.PackageResolution:
+		*step.resolvedSpec = result.Spec
 		descriptor := result.Pkg.PluginDescriptor
 		specFinished, specReady, isDuplicate, err := newSpecNode(
 			hashPluginSpec(descriptor), descriptor, step.runBundleOut, p, step.parent)
@@ -653,6 +659,7 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 		return nil
 
 	case packageresolution.PluginResolution:
+		*step.resolvedSpec = result.Spec
 		descriptor := result.Pkg.PluginDescriptor
 
 		specFinished, specReady, isDuplicate, err := newSpecNode(
