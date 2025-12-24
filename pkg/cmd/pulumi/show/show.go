@@ -118,7 +118,8 @@ func printResourceState(rs *resource.State, popts printOptions, outputDest io.Wr
 		if strings.HasPrefix(propKeyStr, "__") {
 			continue
 		}
-		fmt.Fprintln(outputDest, propKeyStr+":")
-		fmt.Fprintln(outputDest, display.PropertyValueToString(rs.Outputs[v], false, false))
+		fmt.Fprint(outputDest, propKeyStr+":")
+		fmt.Fprint(outputDest, display.PropertyValueToString(rs.Outputs[v], false, false))
 	}
+	fmt.Fprintln(outputDest, "")
 }

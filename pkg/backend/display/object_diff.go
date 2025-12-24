@@ -1487,7 +1487,9 @@ func PropertyValueToString(pv resource.PropertyValue, truncateOutput, showSecret
 		showSecrets:    showSecrets,
 		op:             deploy.OpSame,
 	}
+
 	pp.printPropertyValue(pv)
+
 	propValStr := propValBuffer.String()
 	propValStr = strings.ReplaceAll(propValStr, "<{%reset%}>", "")
 	return propValStr
