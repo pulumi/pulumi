@@ -216,7 +216,7 @@ func (w Workspace) LinkPackage(
 		}
 		s, err := workspace.NewPluginDescriptor(ctx, source, apitype.ResourcePlugin, nil, "", nil)
 		if err == nil && s.IsGitPlugin() {
-			boundSchema.PluginDownloadURL = originalSpec.Source
+			boundSchema.PluginDownloadURL = s.PluginDownloadURL
 			boundSchema.Version = s.Version
 		}
 	}
