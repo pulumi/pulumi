@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Pass ignoreChanges when issuing no-diff updates that resolve initErrors
