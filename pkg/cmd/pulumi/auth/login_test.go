@@ -112,12 +112,20 @@ func TestLoginURLResolution(t *testing.T) {
 				},
 				GetStoredCredentialsF: credsF,
 			},
+			// Clear PULUMI_BACKEND_URL to ensure project backend is used
+			envVars: map[string]string{
+				"PULUMI_BACKEND_URL": "",
+			},
 			expectedURL: "https://project-backend.example.com",
 		},
 		{
 			name: "stored credentials used as fallback",
 			ws: &pkgWorkspace.MockContext{
 				GetStoredCredentialsF: credsF,
+			},
+			// Clear PULUMI_BACKEND_URL to ensure stored credentials are used
+			envVars: map[string]string{
+				"PULUMI_BACKEND_URL": "",
 			},
 			expectedURL: "https://stored-creds.example.com",
 		},
@@ -127,7 +135,11 @@ func TestLoginURLResolution(t *testing.T) {
 				"oidc-token": "test-token",
 				"oidc-org":   "test-org",
 			},
-			ws:          &pkgWorkspace.MockContext{},
+			ws: &pkgWorkspace.MockContext{},
+			// Clear PULUMI_ACCESS_TOKEN to allow OIDC token exchange
+			envVars: map[string]string{
+				"PULUMI_ACCESS_TOKEN": "",
+			},
 			expectedURL: "https://api.pulumi.com",
 		},
 		{
@@ -137,7 +149,11 @@ func TestLoginURLResolution(t *testing.T) {
 				"oidc-token": "test-token",
 				"oidc-org":   "test-org",
 			},
-			ws:          &pkgWorkspace.MockContext{},
+			ws: &pkgWorkspace.MockContext{},
+			// Clear PULUMI_ACCESS_TOKEN to allow OIDC token exchange
+			envVars: map[string]string{
+				"PULUMI_ACCESS_TOKEN": "",
+			},
 			expectedURL: "https://custom.example.com",
 		},
 		{
@@ -148,13 +164,18 @@ func TestLoginURLResolution(t *testing.T) {
 			},
 			ws: &pkgWorkspace.MockContext{},
 			envVars: map[string]string{
-				"PULUMI_BACKEND_URL": "https://env-backend.example.com",
+				"PULUMI_ACCESS_TOKEN": "",
+				"PULUMI_BACKEND_URL":  "https://env-backend.example.com",
 			},
 			expectedURL: "https://env-backend.example.com",
 		},
 		{
-			name:        "empty URL without OIDC triggers interactive (captured as empty)",
-			ws:          &pkgWorkspace.MockContext{},
+			name: "empty URL without OIDC triggers interactive (captured as empty)",
+			ws:   &pkgWorkspace.MockContext{},
+			// Clear environment variables to test fallback to empty/interactive
+			envVars: map[string]string{
+				"PULUMI_BACKEND_URL": "",
+			},
 			expectedURL: "",
 		},
 	}
