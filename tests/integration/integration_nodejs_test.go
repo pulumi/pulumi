@@ -2823,7 +2823,8 @@ func TestInstallLocalPluginCycle(t *testing.T) {
 	// The install command should detect and report this cycle.
 	stdout, stderr := e.RunCommandExpectError("pulumi", "install")
 	require.Containsf(t, stderr,
-		"installing `packages` from Pulumi.yaml: cycle found: ../ts-provider-a -> ../ts-provider-b -> ../ts-provider-a\n",
+		"installing `packages` from Pulumi.yaml: cycle found: "+filepath.Join("..", "ts-provider-a")+" -> "+
+			filepath.Join("..", "ts-provider-b")+" -> "+filepath.Join("..", "ts-provider-a")+"\n",
 		"Stdout is %q", stdout)
 }
 
