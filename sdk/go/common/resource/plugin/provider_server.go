@@ -829,6 +829,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		hooks[resource.AfterUpdate] = binding.GetAfterUpdate()
 		hooks[resource.BeforeDelete] = binding.GetBeforeDelete()
 		hooks[resource.AfterDelete] = binding.GetAfterDelete()
+		hooks[resource.OnError] = binding.GetOnError()
 	}
 
 	replaceWith := make([]resource.URN, len(req.GetReplaceWith()))

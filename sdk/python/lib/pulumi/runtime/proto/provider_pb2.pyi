@@ -1700,6 +1700,7 @@ class ConstructRequest(google.protobuf.message.Message):
         AFTER_UPDATE_FIELD_NUMBER: builtins.int
         BEFORE_DELETE_FIELD_NUMBER: builtins.int
         AFTER_DELETE_FIELD_NUMBER: builtins.int
+        ON_ERROR_FIELD_NUMBER: builtins.int
         @property
         def before_create(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
         @property
@@ -1712,6 +1713,8 @@ class ConstructRequest(google.protobuf.message.Message):
         def before_delete(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
         @property
         def after_delete(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+        @property
+        def on_error(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
         def __init__(
             self,
             *,
@@ -1721,8 +1724,9 @@ class ConstructRequest(google.protobuf.message.Message):
             after_update: collections.abc.Iterable[builtins.str] | None = ...,
             before_delete: collections.abc.Iterable[builtins.str] | None = ...,
             after_delete: collections.abc.Iterable[builtins.str] | None = ...,
+            on_error: collections.abc.Iterable[builtins.str] | None = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing.Literal["after_create", b"after_create", "after_delete", b"after_delete", "after_update", b"after_update", "before_create", b"before_create", "before_delete", b"before_delete", "before_update", b"before_update"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["after_create", b"after_create", "after_delete", b"after_delete", "after_update", b"after_update", "before_create", b"before_create", "before_delete", b"before_delete", "before_update", b"before_update", "on_error", b"on_error"]) -> None: ...
 
     PROJECT_FIELD_NUMBER: builtins.int
     STACK_FIELD_NUMBER: builtins.int

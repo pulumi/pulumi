@@ -1109,6 +1109,7 @@ message ConstructRequest {
         repeated string after_update = 4;
         repeated string before_delete = 5;
         repeated string after_delete = 6;
+        repeated string on_error = 7;
     }
     optional ResourceHooksBinding resource_hooks = 26;
 
