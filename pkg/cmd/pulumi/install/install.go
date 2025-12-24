@@ -111,7 +111,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 					reg := unauthenticatedregistry.New(cmdutil.Diag(), env.Global())
 
 					if err := installPackagesFromProject(cmd.Context(), proj, cwd, reg, parallel,
-						cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
+						useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
 						return fmt.Errorf("installing `packages` from PulumiPlugin.yaml: %w", err)
 					}
 
@@ -147,7 +147,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 			// so that the SDKs folder is present and references to it from package.json etc are valid.
 			if err := installPackagesFromProject(cmd.Context(), proj, root,
 				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global()),
-				parallel, cmd.OutOrStdout(), cmd.ErrOrStderr(),
+				parallel, useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(),
 			); err != nil {
 				return fmt.Errorf("installing `packages` from Pulumi.yaml: %w", err)
 			}
@@ -214,7 +214,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 // and installs them using similar logic to the 'pulumi package add' command
 func installPackagesFromProject(
 	ctx context.Context, proj workspace.BaseProject, root string, registry registry.Registry,
-	parallelism int,
+	parallelism int, useLanguageVersionTools bool,
 	stdout, stderr io.Writer,
 ) error {
 	d := diag.DefaultSink(stdout, stderr, diag.FormatOptions{
@@ -225,7 +225,7 @@ func installPackagesFromProject(
 		return err
 	}
 	ws := packageworkspace.New(pctx.Host, stdout, stderr, d, d, nil, packageworkspace.Options{
-		UseLanguageVersionTools: false, // TODO: Is this correct?
+		UseLanguageVersionTools: useLanguageVersionTools,
 	})
 	opts := packageinstallation.Options{
 		Options: packageresolution.Options{
