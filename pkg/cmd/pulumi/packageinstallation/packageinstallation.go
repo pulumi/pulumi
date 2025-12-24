@@ -131,14 +131,12 @@ func InstallPlugin(
 ) (RunPlugin, error) {
 	var runBundle runBundle
 
-	setup := func(ctx context.Context, state state, root pdag.Node) error {
+	err := runInstall(ctx, options, registry, ws, func(ctx context.Context, state state, root pdag.Node) error {
 		return ensureUnresolvedSpec(ctx, state, root, spec, project[workspace.BaseProject]{
 			proj:       baseProject,
 			projectDir: projectDir,
 		}, &runBundle)
-	}
-
-	err := runInstall(ctx, options, registry, ws, setup)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -469,21 +467,11 @@ type linkPackageStep struct {
 
 func (step linkPackageStep) run(ctx context.Context, p state) error {
 	contract.Assertf(step.runBundle != nil, "must set run bundle before running this step")
-	if step.runBundle.params != nil && !step.runBundle.params.Empty() &&
-		len(step.project.proj.GetPackageSpecs()[step.packageName].Parameters) > 0 {
-		return fmt.Errorf("%s specified duplicate parameter sources", step.packageName)
-	}
-	var params plugin.ParameterizeParameters
-	if step.runBundle.params != nil && !step.runBundle.params.Empty() {
-		params = step.runBundle.params
-	} else if p := step.project.proj.GetPackageSpecs()[step.packageName].Parameters; len(p) > 0 {
-		params = &plugin.ParameterizeArgs{Args: p}
-	}
 
 	return p.ws.LinkPackage(
 		ctx,
 		step.project.proj.RuntimeInfo(), step.project.projectDir,
-		tokens.Package(step.packageName), step.runBundle.pluginPath, params,
+		tokens.Package(step.packageName), step.runBundle.pluginPath, step.runBundle.params,
 		step.specSource,
 	)
 }
@@ -628,6 +616,14 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 			return nil
 		}
 
+		if p := result.Pkg.Parameterization; p != nil {
+			step.runBundleOut.params = &plugin.ParameterizeValue{
+				Name:    p.Name,
+				Version: p.Version,
+				Value:   p.Value,
+			}
+		}
+
 		if result.InstalledInWorkspace {
 			defer specReady()
 			pluginDir, err := p.ws.GetPluginPath(ctx, descriptor)
@@ -666,6 +662,12 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 		}
 		if isDuplicate {
 			return nil
+		}
+
+		if p := result.Pkg.ParameterizationArgs; len(p) > 0 {
+			step.runBundleOut.params = &plugin.ParameterizeArgs{
+				Args: p,
+			}
 		}
 
 		// Start with the download. The downloadStep will take care of attaching
