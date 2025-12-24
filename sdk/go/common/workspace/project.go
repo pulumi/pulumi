@@ -115,6 +115,7 @@ type PackageSpec struct {
 	// - A simple name, like "pkg"
 	// - A registry double or triple: "org/pkg", "source/org/pkg"
 	// - A git URL, "git://github.com/pulumi/pulumi-example/path"
+	// - An un-prefixed URL, like github.com/pulumi/pulumi-example/path
 	// - A local path, like /usr/bin/pkg
 	Source string
 	// The version of the provider, may be Semver 2.0 or a git hash.

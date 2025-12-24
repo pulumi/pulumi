@@ -2725,7 +2725,7 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	yamlString := string(yamlContent)
 	require.Contains(t, yamlString, "packages:")
 	require.Contains(t, yamlString, "tls-self-signed-cert: "+
-		"github.com/pulumi/component-test-providers/test-provider@0.0.0-xd47cf0910e0450400775594609ee82566d1fb355")
+		"github.com/pulumi/component-test-providers/test-provider@d47cf0910e0450400775594609ee82566d1fb355")
 }
 
 func TestPackagesInstall(t *testing.T) {
@@ -2897,7 +2897,7 @@ func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	require.Contains(t, yamlString, "packages:")
 	require.Contains(t, yamlString,
 		"tls-self-signed-cert: github.com/pulumi/component-test-providers/test-provider@"+
-			"0.0.0-x52a8a71555d964542b308da197755c64dbe63352")
+			"52a8a71555d964542b308da197755c64dbe63352")
 
 	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"}
 	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
