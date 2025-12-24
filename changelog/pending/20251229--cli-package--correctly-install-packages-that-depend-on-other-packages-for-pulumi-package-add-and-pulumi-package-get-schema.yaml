@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/package
+  description: Correctly install packages that depend on other packages for `pulumi package add` and `pulumi package get-schema`.
