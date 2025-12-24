@@ -1431,20 +1431,13 @@ func TestPluginSpec_GetSource(t *testing.T) {
 
 //nolint:paralleltest // mutates pluginDownloadURLOverridesParsed
 func TestFallbackSource_URLOverride(t *testing.T) {
-	// Test that fallbackSource respects URL overrides for get.pulumi.com
-	// when falling back from GitHub.
-
-	// Create a test server to serve as the override destination
 	var requestReceived bool
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestReceived = true
-		t.Logf("Test server received request: %s", r.URL.String())
-		// Return a 404 to simulate plugin not found
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	t.Cleanup(server.Close)
 
-	// Set up URL override for get.pulumi.com to point to our test server
 	pluginDownloadURLOverridesParsed = pluginDownloadOverrideArray{
 		{
 			reg: regexp.MustCompile(`^https://get\.pulumi\.com/releases/plugins$`),
@@ -1455,20 +1448,16 @@ func TestFallbackSource_URLOverride(t *testing.T) {
 		pluginDownloadURLOverridesParsed = nil
 	})
 
-	// Create a fallbackSource
 	source := newFallbackSource("test-plugin", apitype.ResourcePlugin)
-
-	// Attempt to download - this should fail at GitHub, then try get.pulumi.com,
-	// which should be overridden to our test server
 	version := semver.MustParse("1.0.0")
 	_, _, err := source.Download(context.Background(), version, "linux", "amd64", func(req *http.Request) (io.ReadCloser, int64, error) {
-		t.Logf("Download attempt to: %s", req.URL.String())
+		if req.URL.Host == "api.github.com" {
+			return nil, -1, fmt.Errorf("GitHub API: 404 not found")
+		}
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
-			t.Logf("Request failed with error: %v", err)
 			return nil, -1, err
 		}
-		t.Logf("Response status: %d", resp.StatusCode)
 		if resp.StatusCode < 200 || resp.StatusCode > 299 {
 			resp.Body.Close()
 			return nil, -1, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
@@ -1476,9 +1465,7 @@ func TestFallbackSource_URLOverride(t *testing.T) {
 		return resp.Body, resp.ContentLength, nil
 	})
 
-	// We expect an error (404 from our test server), but the important thing is
-	// that our test server received the request, proving the override worked
-	assert.Error(t, err, "expected download to fail")
+	assert.ErrorContains(t, err, "404")
 	assert.True(t, requestReceived, "expected override URL to be used")
 }
 
