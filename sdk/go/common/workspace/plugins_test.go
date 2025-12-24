@@ -30,6 +30,7 @@ import (
 	"reflect"
 	"regexp"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -1451,7 +1452,7 @@ func TestFallbackSource_URLOverride(t *testing.T) {
 	source := newFallbackSource("test-plugin", apitype.ResourcePlugin)
 	version := semver.MustParse("1.0.0")
 	_, _, err := source.Download(context.Background(), version, "linux", "amd64", func(req *http.Request) (io.ReadCloser, int64, error) {
-		if req.URL.Host == "api.github.com" {
+		if strings.Contains(req.URL.String(), "api.github.com/pulumi") {
 			return nil, -1, fmt.Errorf("GitHub API: 404 not found")
 		}
 		resp, err := http.DefaultClient.Do(req)
