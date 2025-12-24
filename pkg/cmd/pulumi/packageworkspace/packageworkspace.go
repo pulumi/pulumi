@@ -208,9 +208,12 @@ func (w Workspace) LinkPackage(
 		return fmt.Errorf("failed to bind schema: %w", err)
 	}
 
-	// TODO: Long comment explaining why
+	// Git based plugins are allowed to not be self-referential: know their version
+	// and pluginDownloadURL. That requires the launching infrastructure to inject
+	// that information into the returned schema.
 	//
-	// https://pulumi.slack.com/archives/C02VCJEBT2N/p1765886431464919
+	// TODO[https://github.com/pulumi/pulumi/issues/21258]: Download lock files would
+	// allow us to push this deeper through the plugin loading process.
 	{
 		source := originalSpec.Source
 		if originalSpec.Version != "" {
@@ -267,9 +270,10 @@ func (w Workspace) LinkPackage(
 
 	// We have now generated a SDK, the only thing left to do is link it into the existing project.
 
-	// TODO: Copied from [packages.LinkPackage]. This might be true, but we should
-	// still call into the YAML language host (which can then do nothing). Languages
-	// should not be special here.
+	// TODO[https://github.com/pulumi/pulumi/issues/21323]: Copied from
+	// [packages.LinkPackage]. This might be true, but we should still call into the
+	// YAML language host (which can then do nothing). Languages should not be special
+	// here.
 	if runtimeInfo.Name() == "yaml" {
 		return nil // Nothing to do for YAML
 	}
