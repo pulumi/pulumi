@@ -22,7 +22,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -218,6 +220,14 @@ func (w Workspace) LinkPackage(
 		if err == nil && s.IsGitPlugin() {
 			boundSchema.PluginDownloadURL = s.PluginDownloadURL
 			boundSchema.Version = s.Version
+
+			if boundSchema.Namespace == "" {
+				namespaceRegex := regexp.MustCompile(`git://[^/]+/([^/]+)/`)
+				matches := namespaceRegex.FindStringSubmatch(s.PluginDownloadURL)
+				if len(matches) == 2 {
+					boundSchema.Namespace = strings.ToLower(matches[1])
+				}
+			}
 		}
 	}
 
