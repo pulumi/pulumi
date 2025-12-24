@@ -969,6 +969,60 @@ func TestRegistryLookupFailure(t *testing.T) {
 	})
 }
 
+func TestInstallParameterizedProviderFromRegistry(t *testing.T) {
+	t.Parallel()
+
+	ws := newInvariantWorkspace(t, nil, []invariantPlugin{
+		{
+			d: workspace.PluginDescriptor{
+				Name:    "terraform-provider",
+				Version: &semver.Version{Major: 1, Patch: 2},
+				Kind:    apitype.ResourcePlugin,
+			},
+			hasBinary: true,
+		},
+	})
+
+	rws := &recordingWorkspace{ws, nil}
+	defer rws.save(t)
+
+	mockRegistry := registry.Mock{
+		GetPackageF: func(
+			ctx context.Context, source, publisher, name string, version *semver.Version,
+		) (apitype.PackageMetadata, error) {
+			if name == "airbyte" {
+				return apitype.PackageMetadata{
+					Source:    "opentofu",
+					Publisher: "airbytehq",
+					Name:      "airbyte",
+					Version:   semver.Version{Major: 0, Minor: 13, Patch: 0},
+					Parameterization: &apitype.PackageParameterization{
+						BaseProvider: apitype.ArtifactVersionNameSpec{
+							Name:    "terraform-provider",
+							Version: semver.Version{Major: 1, Patch: 2},
+						},
+						Parameter: []byte("opentofu/airbytehq/airbyte"),
+					},
+				}, nil
+			}
+			return apitype.PackageMetadata{}, registry.ErrNotFound
+		},
+	}
+
+	run, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+		Source:  "opentofu/airbytehq/airbyte",
+		Version: "0.13.0",
+	}, nil, "", packageinstallation.Options{
+		Options: packageresolution.Options{
+			ResolveWithRegistry: true,
+		},
+		Concurrency: 1,
+	}, mockRegistry, rws)
+	require.NoError(t, err)
+	_, err = run(t.Context(), "/tmp")
+	require.NoError(t, err)
+}
+
 func TestConcurrency(t *testing.T) {
 	t.Parallel()
 
