@@ -256,9 +256,16 @@ func (b *cloudBackend) getTarget(ctx context.Context, secretsProvider secrets.Pr
 		return nil, stack.FormatDeploymentDeserializationError(err, stackRef.Name().String())
 	}
 
-	stk, err := b.client.GetStack(ctx, stackID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get stack tags for %s: %w", stackRef.Name().String(), err)
+	var tags map[apitype.StackTagName]string
+	if b.cachedUpdateData != nil && b.cachedUpdateData.stackRef.String() == stackRef.String() {
+		logging.V(7).Infof("Using cached stack tags from begin-update for %s", stackRef)
+		tags = b.cachedUpdateData.stackTags
+	} else {
+		stk, err := b.client.GetStack(ctx, stackID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get stack tags for %s: %w", stackRef.Name().String(), err)
+		}
+		tags = stk.Tags
 	}
 
 	return &deploy.Target{
@@ -267,7 +274,7 @@ func (b *cloudBackend) getTarget(ctx context.Context, secretsProvider secrets.Pr
 		Config:       cfg,
 		Decrypter:    dec,
 		Snapshot:     snapshot,
-		Tags:         stk.Tags,
+		Tags:         tags,
 	}, nil
 }
 
