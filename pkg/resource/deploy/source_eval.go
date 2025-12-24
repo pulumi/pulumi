@@ -2561,9 +2561,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 		// Invoke the provider's Construct RPC method.
 		options := plugin.ConstructOptions{
-			// We don't actually need to send a list of aliases to construct anymore because the engine does
-			// all alias construction.
-			Aliases:                 []resource.Alias{},
+			Aliases:                 parsedAliases,
 			Dependencies:            rawDependencies,
 			Protect:                 protect,
 			PropertyDependencies:    rawPropertyDependencies,

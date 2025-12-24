@@ -23,6 +23,7 @@ import google.protobuf.internal.containers
 import google.protobuf.internal.enum_type_wrapper
 import google.protobuf.message
 import google.protobuf.struct_pb2
+import pulumi.alias_pb2
 import sys
 import typing
 
@@ -1740,7 +1741,6 @@ class ConstructRequest(google.protobuf.message.Message):
     CONFIGSECRETKEYS_FIELD_NUMBER: builtins.int
     ORGANIZATION_FIELD_NUMBER: builtins.int
     PROTECT_FIELD_NUMBER: builtins.int
-    ALIASES_FIELD_NUMBER: builtins.int
     ADDITIONALSECRETOUTPUTS_FIELD_NUMBER: builtins.int
     CUSTOMTIMEOUTS_FIELD_NUMBER: builtins.int
     DELETEDWITH_FIELD_NUMBER: builtins.int
@@ -1752,6 +1752,7 @@ class ConstructRequest(google.protobuf.message.Message):
     RESOURCE_HOOKS_FIELD_NUMBER: builtins.int
     STACK_TRACE_HANDLE_FIELD_NUMBER: builtins.int
     REPLACE_WITH_FIELD_NUMBER: builtins.int
+    ALIASES_FIELD_NUMBER: builtins.int
     project: builtins.str
     """The project to which this resource and its nested resources will belong."""
     stack: builtins.str
@@ -1840,13 +1841,6 @@ class ConstructRequest(google.protobuf.message.Message):
         """A set of configuration keys whose values are [secret](output-secrets)."""
 
     @property
-    def aliases(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """A list of additional URNs that should be considered the same as this component's URN (and which will therefore be
-        used to build aliases for its nested resource URNs). These may be URNs that previously referred to this component
-        e.g. if it had its parent (and consequently URN) changed.
-        """
-
-    @property
     def additionalSecretOutputs(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """A list of input properties whose values should be treated as [secret](output-secrets)."""
 
@@ -1870,6 +1864,10 @@ class ConstructRequest(google.protobuf.message.Message):
     def replace_with(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """The URNs of resources whose replaces will trigger a replace on this resource."""
 
+    @property
+    def aliases(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.alias_pb2.Alias]:
+        """a list of additional aliases that should be considered the same."""
+
     def __init__(
         self,
         *,
@@ -1889,7 +1887,6 @@ class ConstructRequest(google.protobuf.message.Message):
         configSecretKeys: collections.abc.Iterable[builtins.str] | None = ...,
         organization: builtins.str = ...,
         protect: builtins.bool | None = ...,
-        aliases: collections.abc.Iterable[builtins.str] | None = ...,
         additionalSecretOutputs: collections.abc.Iterable[builtins.str] | None = ...,
         customTimeouts: global___ConstructRequest.CustomTimeouts | None = ...,
         deletedWith: builtins.str = ...,
@@ -1901,6 +1898,7 @@ class ConstructRequest(google.protobuf.message.Message):
         resource_hooks: global___ConstructRequest.ResourceHooksBinding | None = ...,
         stack_trace_handle: builtins.str = ...,
         replace_with: collections.abc.Iterable[builtins.str] | None = ...,
+        aliases: collections.abc.Iterable[pulumi.alias_pb2.Alias] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["_deleteBeforeReplace", b"_deleteBeforeReplace", "_protect", b"_protect", "_resource_hooks", b"_resource_hooks", "_retainOnDelete", b"_retainOnDelete", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "inputs", b"inputs", "protect", b"protect", "resource_hooks", b"resource_hooks", "retainOnDelete", b"retainOnDelete"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing.Literal["_deleteBeforeReplace", b"_deleteBeforeReplace", "_protect", b"_protect", "_resource_hooks", b"_resource_hooks", "_retainOnDelete", b"_retainOnDelete", "accepts_output_values", b"accepts_output_values", "additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "config", b"config", "configSecretKeys", b"configSecretKeys", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "dryRun", b"dryRun", "ignoreChanges", b"ignoreChanges", "inputDependencies", b"inputDependencies", "inputs", b"inputs", "monitorEndpoint", b"monitorEndpoint", "name", b"name", "organization", b"organization", "parallel", b"parallel", "parent", b"parent", "project", b"project", "protect", b"protect", "providers", b"providers", "replaceOnChanges", b"replaceOnChanges", "replace_with", b"replace_with", "resource_hooks", b"resource_hooks", "retainOnDelete", b"retainOnDelete", "stack", b"stack", "stack_trace_handle", b"stack_trace_handle", "type", b"type"]) -> None: ...
