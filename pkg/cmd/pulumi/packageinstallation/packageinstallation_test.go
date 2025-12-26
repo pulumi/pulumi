@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"iter"
-	"path/filepath"
 	"sync"
 	"testing"
 
@@ -63,7 +62,7 @@ func TestInstallAlreadyInstalledPackage(t *testing.T) {
 		Concurrency: 1,
 	}, nil, rws)
 	require.NoError(t, err)
-	_, err = run(t.Context(), filepath.FromSlash("/tmp"))
+	_, err = run(t.Context(), "/tmp")
 	require.NoError(t, err)
 }
 
@@ -94,7 +93,7 @@ func TestInstallExternalBinaryPackage(t *testing.T) {
 		Concurrency: 1,
 	}, nil, rws)
 	require.NoError(t, err)
-	_, err = run(t.Context(), filepath.FromSlash("/tmp"))
+	_, err = run(t.Context(), "/tmp")
 	require.NoError(t, err)
 }
 
@@ -146,7 +145,7 @@ func TestInstallPluginWithParameterizedDependency(t *testing.T) {
 		Concurrency: 1,
 	}, nil, rws)
 	require.NoError(t, err)
-	_, err = run(t.Context(), filepath.FromSlash("/tmp"))
+	_, err = run(t.Context(), "/tmp")
 	require.NoError(t, err)
 }
 
@@ -241,7 +240,7 @@ func TestInstallPluginWithDiamondDependency(t *testing.T) {
 		Concurrency: 1,
 	}, nil, rws)
 	require.NoError(t, err)
-	_, err = run(t.Context(), filepath.FromSlash("/tmp"))
+	_, err = run(t.Context(), "/tmp")
 	require.NoError(t, err)
 }
 
@@ -334,7 +333,7 @@ func TestDeduplicateRegistryBasedPlugin(t *testing.T) {
 		Concurrency: 1,
 	}, mockRegistry, rws)
 	require.NoError(t, err)
-	_, err = run(t.Context(), filepath.FromSlash("/tmp"))
+	_, err = run(t.Context(), "/tmp")
 	require.NoError(t, err)
 }
 
@@ -478,7 +477,7 @@ func TestInstallRegistryPackage(t *testing.T) {
 		Concurrency: 1,
 	}, mockRegistry, rws)
 	require.NoError(t, err)
-	_, err = run(t.Context(), filepath.FromSlash("/tmp"))
+	_, err = run(t.Context(), "/tmp")
 	require.NoError(t, err)
 }
 
@@ -495,8 +494,7 @@ func TestInstallRegistryPackage(t *testing.T) {
 func TestInstallInProjectWithSharedDependency(t *testing.T) {
 	t.Parallel()
 
-	projectDir := filepath.FromSlash("/project")
-	ws := newInvariantWorkspace(t, []string{projectDir}, []invariantPlugin{
+	ws := newInvariantWorkspace(t, []string{"/project"}, []invariantPlugin{
 		{
 			d: workspace.PluginDescriptor{
 				Name: "plugin-a",
@@ -537,7 +535,7 @@ func TestInstallInProjectWithSharedDependency(t *testing.T) {
 				PluginDownloadURL: "https://example.com/plugin-b.tar.gz",
 			},
 		},
-	}, projectDir, packageinstallation.Options{
+	}, "/project", packageinstallation.Options{
 		Options: packageresolution.Options{
 			ResolveVersionWithLocalWorkspace:           true,
 			AllowNonInvertableLocalWorkspaceResolution: true,
@@ -564,14 +562,11 @@ func TestInstallInProjectWithRelativePaths(t *testing.T) {
 	t.Parallel()
 
 	// Create a custom workspace with plugins at specific local paths
-	workDir := filepath.FromSlash("/work")
-	projectDir := filepath.Join(workDir, "project")
-
 	ws := &invariantWorkspace{
 		t:  t,
 		rw: new(sync.RWMutex),
 		plugins: map[string]*invariantPlugin{
-			workDir: {
+			"/work": {
 				d: workspace.PluginDescriptor{
 					Name: "a",
 					Kind: apitype.ResourcePlugin,
@@ -586,7 +581,7 @@ func TestInstallInProjectWithRelativePaths(t *testing.T) {
 				pathVisible:     true,
 				projectDetected: true,
 			},
-			filepath.Join(projectDir, "pkg-b"): {
+			"/work/project/pkg-b": {
 				d: workspace.PluginDescriptor{
 					Name: "b",
 					Kind: apitype.ResourcePlugin,
@@ -601,7 +596,7 @@ func TestInstallInProjectWithRelativePaths(t *testing.T) {
 				pathVisible:     true,
 				projectDetected: true,
 			},
-			filepath.Join(workDir, "pkg-c"): {
+			"/work/pkg-c": {
 				d: workspace.PluginDescriptor{
 					Name: "pkg-c",
 					Kind: apitype.ResourcePlugin,
@@ -616,7 +611,7 @@ func TestInstallInProjectWithRelativePaths(t *testing.T) {
 		},
 		binaryPaths: map[string]string{},
 		downloadedWorkspace: map[string]*invariantWorkDir{
-			projectDir: {},
+			"/work/project": {},
 		},
 	}
 
@@ -630,7 +625,7 @@ func TestInstallInProjectWithRelativePaths(t *testing.T) {
 			"a": {Source: ".."},
 			"b": {Source: "./pkg-b"},
 		},
-	}, projectDir, packageinstallation.Options{
+	}, "/work/project", packageinstallation.Options{
 		Options: packageresolution.Options{
 			ResolveVersionWithLocalWorkspace:           true,
 			AllowNonInvertableLocalWorkspaceResolution: true,
@@ -754,13 +749,13 @@ func TestInstallPluginWithMultipleVersions(t *testing.T) {
 		rws,
 	)
 	require.NoError(t, err)
-	_, runErr := run(t.Context(), filepath.FromSlash("/tmp"))
+	_, runErr := run(t.Context(), "/tmp")
 	require.NoError(t, runErr)
 
-	sharedV1Path := filepath.Join("$HOME", ".pulumi", "plugins", "resource-shared-plugin-v1.0.0")
-	sharedV2Path := filepath.Join("$HOME", ".pulumi", "plugins", "resource-shared-plugin-v2.0.0")
-	pluginAPath := filepath.Join("$HOME", ".pulumi", "plugins", "resource-plugin-a")
-	pluginBPath := filepath.Join("$HOME", ".pulumi", "plugins", "resource-plugin-b")
+	sharedV1Path := "$HOME/.pulumi/plugins/resource-shared-plugin-v1.0.0"
+	sharedV2Path := "$HOME/.pulumi/plugins/resource-shared-plugin-v2.0.0"
+	pluginAPath := "$HOME/.pulumi/plugins/resource-plugin-a"
+	pluginBPath := "$HOME/.pulumi/plugins/resource-plugin-b"
 
 	require.True(t, ws.plugins[sharedV1Path].downloaded, "shared-plugin v1.0.0 should be downloaded")
 	require.True(t, ws.plugins[sharedV1Path].installed, "shared-plugin v1.0.0 should be installed")
@@ -1024,7 +1019,7 @@ func TestInstallParameterizedProviderFromRegistry(t *testing.T) {
 		Concurrency: 1,
 	}, mockRegistry, rws)
 	require.NoError(t, err)
-	_, err = run(t.Context(), filepath.FromSlash("/tmp"))
+	_, err = run(t.Context(), "/tmp")
 	require.NoError(t, err)
 }
 
@@ -1208,7 +1203,7 @@ func TestConcurrency(t *testing.T) {
 		baselineWs,
 	)
 	require.NoError(t, err)
-	_, err = run(t.Context(), filepath.FromSlash("/tmp"))
+	_, err = run(t.Context(), "/tmp")
 	require.NoError(t, err)
 
 	for range 100 {
@@ -1231,7 +1226,7 @@ func TestConcurrency(t *testing.T) {
 			ws,
 		)
 		require.NoError(t, err)
-		_, err = run(t.Context(), filepath.FromSlash("/tmp"))
+		_, err = run(t.Context(), "/tmp")
 		require.NoError(t, err)
 
 		assertInvariantWorkspaceEqual(t, *baselineWs, *ws)
