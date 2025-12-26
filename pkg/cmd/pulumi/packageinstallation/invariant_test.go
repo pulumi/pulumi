@@ -37,12 +37,12 @@ var _ packageinstallation.Workspace = invariantWorkspace{}
 func newInvariantWorkspace(t *testing.T, workDirs []string, plugins []invariantPlugin) *invariantWorkspace {
 	pluginMap := make(map[string]*invariantPlugin, len(plugins))
 	for _, v := range plugins {
-		p := filepath.Join("$HOME", ".pulumi", "plugins", v.d.Dir(), v.d.SubDir())
+		p := filepath.ToSlash(filepath.Join("$HOME", ".pulumi", "plugins", v.d.Dir(), v.d.SubDir()))
 		pluginMap[p] = &v
 	}
 	downloadedWorkspace := make(map[string]*invariantWorkDir, len(workDirs))
 	for _, dir := range workDirs {
-		downloadedWorkspace[dir] = &invariantWorkDir{}
+		downloadedWorkspace[filepath.ToSlash(dir)] = &invariantWorkDir{}
 	}
 	return &invariantWorkspace{
 		t:                   t,
@@ -157,7 +157,7 @@ func (w invariantWorkspace) GetLatestVersion(
 }
 
 func (w invariantWorkspace) GetPluginPath(ctx context.Context, plugin workspace.PluginDescriptor) (string, error) {
-	p := filepath.Join("$HOME", ".pulumi", "plugins", plugin.Dir(), plugin.SubDir())
+	p := filepath.ToSlash(filepath.Join("$HOME", ".pulumi", "plugins", plugin.Dir(), plugin.SubDir()))
 	pl, ok := w.plugins[p]
 	if !ok || !pl.downloaded {
 		assert.Fail(w.t, "GetPluginPath() called on non-present plugin")
@@ -172,6 +172,7 @@ func (w invariantWorkspace) InstallPluginAt(
 ) error {
 	w.rw.Lock()
 	defer w.rw.Unlock()
+	dirPath = filepath.ToSlash(dirPath)
 	p, ok := w.plugins[dirPath]
 	if !ok || !p.downloaded {
 		assert.Failf(w.t, "", "InstallPluginAt(%q) called on non-revealed plugin dir", dirPath)
@@ -183,21 +184,21 @@ func (w invariantWorkspace) InstallPluginAt(
 }
 
 func (w invariantWorkspace) IsExecutable(ctx context.Context, binaryPath string) (bool, error) {
-	p := filepath.Dir(binaryPath)
+	p := filepath.ToSlash(filepath.Dir(binaryPath))
 	pl, ok := w.plugins[p]
 	if !ok || !pl.pathVisible {
 		assert.Failf(w.t, "", "IsExecutable(%q) called on non-existent plugin (pathVisible=%t) ", binaryPath, pl.pathVisible)
 		return false, assert.AnError
 	}
 	if pl.hasBinary {
-		w.binaryPaths[binaryPath] = p
+		w.binaryPaths[filepath.ToSlash(binaryPath)] = p
 		return true, nil
 	}
 	return false, nil
 }
 
 func (w invariantWorkspace) LoadPluginProject(ctx context.Context, path string) (*workspace.PluginProject, error) {
-	pluginPath := filepath.Dir(path)
+	pluginPath := filepath.ToSlash(filepath.Dir(path))
 	pl, ok := w.plugins[pluginPath]
 	if !ok {
 		assert.Failf(w.t, "", "LoadPluginProject(%q) called on non-existent plugin", pluginPath)
@@ -214,7 +215,7 @@ func (w invariantWorkspace) LoadPluginProject(ctx context.Context, path string) 
 func (w invariantWorkspace) DownloadPlugin(
 	ctx context.Context, plugin workspace.PluginDescriptor,
 ) (string, packageinstallation.MarkInstallationDone, error) {
-	p := filepath.Join("$HOME", ".pulumi", "plugins", plugin.Dir(), plugin.SubDir())
+	p := filepath.ToSlash(filepath.Join("$HOME", ".pulumi", "plugins", plugin.Dir(), plugin.SubDir()))
 	pl, ok := w.plugins[p]
 	if !ok {
 		assert.Failf(w.t, "Unknown plugin", "could not find %q in %#v", p, slices.Collect(maps.Keys(w.plugins)))
@@ -226,6 +227,7 @@ func (w invariantWorkspace) DownloadPlugin(
 }
 
 func (w invariantWorkspace) DetectPluginPathAt(ctx context.Context, path string) (string, error) {
+	path = filepath.ToSlash(path)
 	pl, ok := w.plugins[path]
 	if !ok || !pl.pathVisible {
 		assert.Failf(w.t, "", "DetectPluginPathAt(%q) called on non-existent plugin (pathVisible=%t)", path, pl.pathVisible)
@@ -235,7 +237,7 @@ func (w invariantWorkspace) DetectPluginPathAt(ctx context.Context, path string)
 		return "", workspace.ErrBaseProjectNotFound
 	}
 	pl.projectDetected = true
-	return filepath.Join(path, "PulumiPlugin.yaml"), nil
+	return filepath.ToSlash(filepath.Join(path, "PulumiPlugin.yaml")), nil
 }
 
 func (w invariantWorkspace) LinkPackage(
@@ -244,6 +246,9 @@ func (w invariantWorkspace) LinkPackage(
 	pluginPath string, params plugin.ParameterizeParameters,
 	originalSpec workspace.PackageSpec,
 ) error {
+	projectDir = filepath.ToSlash(projectDir)
+	pluginPath = filepath.ToSlash(pluginPath)
+
 	var links *[]string
 	if dst, ok := w.plugins[projectDir]; ok {
 		if !dst.downloaded {
@@ -287,6 +292,8 @@ func (w invariantWorkspace) RunPackage(
 	ctx context.Context,
 	rootDir, pluginPath string, pkgName tokens.Package, params plugin.ParameterizeParameters,
 ) (plugin.Provider, error) {
+	pluginPath = filepath.ToSlash(pluginPath)
+
 	if p, ok := w.binaryPaths[pluginPath]; ok {
 		pluginPath = p
 	}

@@ -56,6 +56,8 @@ func (w *recordingWorkspace) save(t *testing.T) {
 	for _, s := range w.steps {
 		// Replace \ with / to account for [filepath]'s windows specific features.
 		s = strings.ReplaceAll(s, "\\", "/")
+		// Strip .exe extensions to keep golden files platform-neutral
+		s = strings.ReplaceAll(s, ".exe", "")
 		// We do not write line numbers here to ensure that adding or removing a
 		// line causes a minimal diff for reviewers.
 		b.WriteString(s)
