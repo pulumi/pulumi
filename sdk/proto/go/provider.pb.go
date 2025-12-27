@@ -3752,13 +3752,18 @@ func (x *ConstructRequest_CustomTimeouts) GetDelete() string {
 }
 
 type ConstructRequest_ResourceHooksBinding struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BeforeCreate  []string               `protobuf:"bytes,1,rep,name=before_create,json=beforeCreate,proto3" json:"before_create,omitempty"`
-	AfterCreate   []string               `protobuf:"bytes,2,rep,name=after_create,json=afterCreate,proto3" json:"after_create,omitempty"`
-	BeforeUpdate  []string               `protobuf:"bytes,3,rep,name=before_update,json=beforeUpdate,proto3" json:"before_update,omitempty"`
-	AfterUpdate   []string               `protobuf:"bytes,4,rep,name=after_update,json=afterUpdate,proto3" json:"after_update,omitempty"`
-	BeforeDelete  []string               `protobuf:"bytes,5,rep,name=before_delete,json=beforeDelete,proto3" json:"before_delete,omitempty"`
-	AfterDelete   []string               `protobuf:"bytes,6,rep,name=after_delete,json=afterDelete,proto3" json:"after_delete,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Lifecycle hooks
+	BeforeCreate []string `protobuf:"bytes,1,rep,name=before_create,json=beforeCreate,proto3" json:"before_create,omitempty"`
+	AfterCreate  []string `protobuf:"bytes,2,rep,name=after_create,json=afterCreate,proto3" json:"after_create,omitempty"`
+	BeforeUpdate []string `protobuf:"bytes,3,rep,name=before_update,json=beforeUpdate,proto3" json:"before_update,omitempty"`
+	AfterUpdate  []string `protobuf:"bytes,4,rep,name=after_update,json=afterUpdate,proto3" json:"after_update,omitempty"`
+	BeforeDelete []string `protobuf:"bytes,5,rep,name=before_delete,json=beforeDelete,proto3" json:"before_delete,omitempty"`
+	AfterDelete  []string `protobuf:"bytes,6,rep,name=after_delete,json=afterDelete,proto3" json:"after_delete,omitempty"`
+	// Error hooks (single hook per type)
+	OnErrorCreate *string `protobuf:"bytes,7,opt,name=on_error_create,json=onErrorCreate,proto3,oneof" json:"on_error_create,omitempty"`
+	OnErrorUpdate *string `protobuf:"bytes,8,opt,name=on_error_update,json=onErrorUpdate,proto3,oneof" json:"on_error_update,omitempty"`
+	OnErrorDelete *string `protobuf:"bytes,9,opt,name=on_error_delete,json=onErrorDelete,proto3,oneof" json:"on_error_delete,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3833,6 +3838,27 @@ func (x *ConstructRequest_ResourceHooksBinding) GetAfterDelete() []string {
 		return x.AfterDelete
 	}
 	return nil
+}
+
+func (x *ConstructRequest_ResourceHooksBinding) GetOnErrorCreate() string {
+	if x != nil && x.OnErrorCreate != nil {
+		return *x.OnErrorCreate
+	}
+	return ""
+}
+
+func (x *ConstructRequest_ResourceHooksBinding) GetOnErrorUpdate() string {
+	if x != nil && x.OnErrorUpdate != nil {
+		return *x.OnErrorUpdate
+	}
+	return ""
+}
+
+func (x *ConstructRequest_ResourceHooksBinding) GetOnErrorDelete() string {
+	if x != nil && x.OnErrorDelete != nil {
+		return *x.OnErrorDelete
+	}
+	return ""
 }
 
 // A `PropertyDependencies` list is a set of URNs that a particular property may depend on.
@@ -4124,7 +4150,7 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\x17resource_status_address\x18\b \x01(\tR\x15resourceStatusAddress\x122\n" +
 	"\x15resource_status_token\x18\t \x01(\tR\x13resourceStatusToken\x12,\n" +
 	"\told_views\x18\n" +
-	" \x03(\v2\x0f.pulumirpc.ViewR\boldViews\"\xa6\x0f\n" +
+	" \x03(\v2\x0f.pulumirpc.ViewR\boldViews\"\xe9\x10\n" +
 	"\x10ConstructRequest\x12\x18\n" +
 	"\aproject\x18\x01 \x01(\tR\aproject\x12\x14\n" +
 	"\x05stack\x18\x02 \x01(\tR\x05stack\x12?\n" +
@@ -4169,14 +4195,20 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\v20.pulumirpc.ConstructRequest.PropertyDependenciesR\x05value:\x028\x01\x1a<\n" +
 	"\x0eProvidersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a\xee\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a\xb1\x03\n" +
 	"\x14ResourceHooksBinding\x12#\n" +
 	"\rbefore_create\x18\x01 \x03(\tR\fbeforeCreate\x12!\n" +
 	"\fafter_create\x18\x02 \x03(\tR\vafterCreate\x12#\n" +
 	"\rbefore_update\x18\x03 \x03(\tR\fbeforeUpdate\x12!\n" +
 	"\fafter_update\x18\x04 \x03(\tR\vafterUpdate\x12#\n" +
 	"\rbefore_delete\x18\x05 \x03(\tR\fbeforeDelete\x12!\n" +
-	"\fafter_delete\x18\x06 \x03(\tR\vafterDeleteB\n" +
+	"\fafter_delete\x18\x06 \x03(\tR\vafterDelete\x12+\n" +
+	"\x0fon_error_create\x18\a \x01(\tH\x00R\ronErrorCreate\x88\x01\x01\x12+\n" +
+	"\x0fon_error_update\x18\b \x01(\tH\x01R\ronErrorUpdate\x88\x01\x01\x12+\n" +
+	"\x0fon_error_delete\x18\t \x01(\tH\x02R\ronErrorDelete\x88\x01\x01B\x12\n" +
+	"\x10_on_error_createB\x12\n" +
+	"\x10_on_error_updateB\x12\n" +
+	"\x10_on_error_deleteB\n" +
 	"\n" +
 	"\b_protectB\x16\n" +
 	"\x14_deleteBeforeReplaceB\x11\n" +
@@ -4438,6 +4470,7 @@ func file_pulumi_provider_proto_init() {
 	}
 	file_pulumi_provider_proto_msgTypes[6].OneofWrappers = []any{}
 	file_pulumi_provider_proto_msgTypes[26].OneofWrappers = []any{}
+	file_pulumi_provider_proto_msgTypes[50].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

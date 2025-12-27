@@ -449,7 +449,8 @@ type RegisterResourceRequest struct {
 	Transforms              []*Callback     `protobuf:"bytes,31,rep,name=transforms,proto3" json:"transforms,omitempty"`                            // a list of transforms to apply to the resource before registering it.
 	SupportsResultReporting bool            `protobuf:"varint,32,opt,name=supportsResultReporting,proto3" json:"supportsResultReporting,omitempty"` // true if the request is from an SDK that supports the result field in the response.
 	PackageRef              string          `protobuf:"bytes,33,opt,name=packageRef,proto3" json:"packageRef,omitempty"`                            // a reference from RegisterPackageRequest.
-	// The resource hooks that should run at certain points in the resource's lifecycle.
+	// The resource hooks that should run at certain points in the resource's lifecycle
+	// and when errors occur during resource operations.
 	Hooks         *RegisterResourceRequest_ResourceHooksBinding `protobuf:"bytes,34,opt,name=hooks,proto3,oneof" json:"hooks,omitempty"`
 	HideDiffs     []string                                      `protobuf:"bytes,37,rep,name=hideDiffs,proto3" json:"hideDiffs,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1681,6 +1682,7 @@ type ResourceHookRequest struct {
 	OldInputs     *structpb.Struct       `protobuf:"bytes,6,opt,name=old_inputs,json=oldInputs,proto3" json:"old_inputs,omitempty"`    // the optional checked old inputs of the resource.
 	NewOutputs    *structpb.Struct       `protobuf:"bytes,7,opt,name=new_outputs,json=newOutputs,proto3" json:"new_outputs,omitempty"` // the optional new outputs of the resource.
 	OldOutputs    *structpb.Struct       `protobuf:"bytes,8,opt,name=old_outputs,json=oldOutputs,proto3" json:"old_outputs,omitempty"` // the optional old outputs of the resource.
+	Errors        []string               `protobuf:"bytes,9,rep,name=errors,proto3" json:"errors,omitempty"`                           // For error hooks: error messages that occurred (most recent first).
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1771,10 +1773,18 @@ func (x *ResourceHookRequest) GetOldOutputs() *structpb.Struct {
 	return nil
 }
 
+func (x *ResourceHookRequest) GetErrors() []string {
+	if x != nil {
+		return x.Errors
+	}
+	return nil
+}
+
 // ResourceHookResponse is the response object for resource hook callbacks in CallbackInvokeResponse.
 type ResourceHookResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Error         string                 `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"` // an optional error message to return from the hook.
+	Error         string                 `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`  // an optional error message to return from the hook.
+	Retry         bool                   `protobuf:"varint,2,opt,name=retry,proto3" json:"retry,omitempty"` // For error hooks: whether to retry the operation.
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1814,6 +1824,13 @@ func (x *ResourceHookResponse) GetError() string {
 		return x.Error
 	}
 	return ""
+}
+
+func (x *ResourceHookResponse) GetRetry() bool {
+	if x != nil {
+		return x.Retry
+	}
+	return false
 }
 
 type RegisterPackageRequest struct {
@@ -2168,13 +2185,18 @@ func (x *RegisterResourceRequest_CustomTimeouts) GetDelete() string {
 }
 
 type RegisterResourceRequest_ResourceHooksBinding struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BeforeCreate  []string               `protobuf:"bytes,1,rep,name=before_create,json=beforeCreate,proto3" json:"before_create,omitempty"`
-	AfterCreate   []string               `protobuf:"bytes,2,rep,name=after_create,json=afterCreate,proto3" json:"after_create,omitempty"`
-	BeforeUpdate  []string               `protobuf:"bytes,3,rep,name=before_update,json=beforeUpdate,proto3" json:"before_update,omitempty"`
-	AfterUpdate   []string               `protobuf:"bytes,4,rep,name=after_update,json=afterUpdate,proto3" json:"after_update,omitempty"`
-	BeforeDelete  []string               `protobuf:"bytes,5,rep,name=before_delete,json=beforeDelete,proto3" json:"before_delete,omitempty"`
-	AfterDelete   []string               `protobuf:"bytes,6,rep,name=after_delete,json=afterDelete,proto3" json:"after_delete,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Lifecycle hooks
+	BeforeCreate []string `protobuf:"bytes,1,rep,name=before_create,json=beforeCreate,proto3" json:"before_create,omitempty"`
+	AfterCreate  []string `protobuf:"bytes,2,rep,name=after_create,json=afterCreate,proto3" json:"after_create,omitempty"`
+	BeforeUpdate []string `protobuf:"bytes,3,rep,name=before_update,json=beforeUpdate,proto3" json:"before_update,omitempty"`
+	AfterUpdate  []string `protobuf:"bytes,4,rep,name=after_update,json=afterUpdate,proto3" json:"after_update,omitempty"`
+	BeforeDelete []string `protobuf:"bytes,5,rep,name=before_delete,json=beforeDelete,proto3" json:"before_delete,omitempty"`
+	AfterDelete  []string `protobuf:"bytes,6,rep,name=after_delete,json=afterDelete,proto3" json:"after_delete,omitempty"`
+	// Error hooks (single hook per type)
+	OnErrorCreate *string `protobuf:"bytes,7,opt,name=on_error_create,json=onErrorCreate,proto3,oneof" json:"on_error_create,omitempty"`
+	OnErrorUpdate *string `protobuf:"bytes,8,opt,name=on_error_update,json=onErrorUpdate,proto3,oneof" json:"on_error_update,omitempty"`
+	OnErrorDelete *string `protobuf:"bytes,9,opt,name=on_error_delete,json=onErrorDelete,proto3,oneof" json:"on_error_delete,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2249,6 +2271,27 @@ func (x *RegisterResourceRequest_ResourceHooksBinding) GetAfterDelete() []string
 		return x.AfterDelete
 	}
 	return nil
+}
+
+func (x *RegisterResourceRequest_ResourceHooksBinding) GetOnErrorCreate() string {
+	if x != nil && x.OnErrorCreate != nil {
+		return *x.OnErrorCreate
+	}
+	return ""
+}
+
+func (x *RegisterResourceRequest_ResourceHooksBinding) GetOnErrorUpdate() string {
+	if x != nil && x.OnErrorUpdate != nil {
+		return *x.OnErrorUpdate
+	}
+	return ""
+}
+
+func (x *RegisterResourceRequest_ResourceHooksBinding) GetOnErrorDelete() string {
+	if x != nil && x.OnErrorDelete != nil {
+		return *x.OnErrorDelete
+	}
+	return ""
 }
 
 // PropertyDependencies describes the resources that a particular property depends on.
@@ -2384,7 +2427,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x03urn\x18\x01 \x01(\tR\x03urn\x127\n" +
 	"\n" +
 	"properties\x18\x02 \x01(\v2\x17.google.protobuf.StructR\n" +
-	"properties\"\xff\x13\n" +
+	"properties\"\xc2\x15\n" +
 	"\x17RegisterResourceRequest\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -2448,14 +2491,20 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aB\n" +
 	"\x14PluginChecksumsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\x1a\xee\x01\n" +
+	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\x1a\xb1\x03\n" +
 	"\x14ResourceHooksBinding\x12#\n" +
 	"\rbefore_create\x18\x01 \x03(\tR\fbeforeCreate\x12!\n" +
 	"\fafter_create\x18\x02 \x03(\tR\vafterCreate\x12#\n" +
 	"\rbefore_update\x18\x03 \x03(\tR\fbeforeUpdate\x12!\n" +
 	"\fafter_update\x18\x04 \x03(\tR\vafterUpdate\x12#\n" +
 	"\rbefore_delete\x18\x05 \x03(\tR\fbeforeDelete\x12!\n" +
-	"\fafter_delete\x18\x06 \x03(\tR\vafterDeleteB\n" +
+	"\fafter_delete\x18\x06 \x03(\tR\vafterDelete\x12+\n" +
+	"\x0fon_error_create\x18\a \x01(\tH\x00R\ronErrorCreate\x88\x01\x01\x12+\n" +
+	"\x0fon_error_update\x18\b \x01(\tH\x01R\ronErrorUpdate\x88\x01\x01\x12+\n" +
+	"\x0fon_error_delete\x18\t \x01(\tH\x02R\ronErrorDelete\x88\x01\x01B\x12\n" +
+	"\x10_on_error_createB\x12\n" +
+	"\x10_on_error_updateB\x12\n" +
+	"\x10_on_error_deleteB\n" +
 	"\n" +
 	"\b_protectB\x11\n" +
 	"\x0f_retainOnDeleteB\b\n" +
@@ -2583,7 +2632,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x10plugin_checksums\x18\x04 \x03(\v26.pulumirpc.TransformInvokeOptions.PluginChecksumsEntryR\x0fpluginChecksums\x1aB\n" +
 	"\x14PluginChecksumsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"\xc3\x02\n" +
+	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"\xdb\x02\n" +
 	"\x13ResourceHookRequest\x12\x10\n" +
 	"\x03urn\x18\x01 \x01(\tR\x03urn\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\x12\x12\n" +
@@ -2596,9 +2645,11 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\vnew_outputs\x18\a \x01(\v2\x17.google.protobuf.StructR\n" +
 	"newOutputs\x128\n" +
 	"\vold_outputs\x18\b \x01(\v2\x17.google.protobuf.StructR\n" +
-	"oldOutputs\",\n" +
+	"oldOutputs\x12\x16\n" +
+	"\x06errors\x18\t \x03(\tR\x06errors\"B\n" +
 	"\x14ResourceHookResponse\x12\x14\n" +
-	"\x05error\x18\x01 \x01(\tR\x05error\"\xc0\x02\n" +
+	"\x05error\x18\x01 \x01(\tR\x05error\x12\x14\n" +
+	"\x05retry\x18\x02 \x01(\bR\x05retry\"\xc0\x02\n" +
 	"\x16RegisterPackageRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12!\n" +
@@ -2795,6 +2846,7 @@ func file_pulumi_resource_proto_init() {
 	file_pulumi_callback_proto_init()
 	file_pulumi_resource_proto_msgTypes[4].OneofWrappers = []any{}
 	file_pulumi_resource_proto_msgTypes[9].OneofWrappers = []any{}
+	file_pulumi_resource_proto_msgTypes[27].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

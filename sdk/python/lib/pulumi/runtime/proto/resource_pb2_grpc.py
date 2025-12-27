@@ -131,7 +131,7 @@ class ResourceMonitorServicer(object):
 
     def RegisterResourceHook(self, request, context):
         """Register a resource hook that can be called by the engine during certain
-        steps of a resource's lifecycle.
+        steps of a resource's lifecycle or when errors occur during resource operations.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')

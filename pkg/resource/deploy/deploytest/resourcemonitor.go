@@ -171,10 +171,15 @@ type ResourceHookBindings struct {
 	AfterUpdate  []*ResourceHook
 	BeforeDelete []*ResourceHook
 	AfterDelete  []*ResourceHook
+
+	// Error hooks (single hook per type)
+	OnErrorCreate *ResourceHook
+	OnErrorUpdate *ResourceHook
+	OnErrorDelete *ResourceHook
 }
 
 type ResourceHookFunc func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
-	newInputs, oldInpts, newOutputs, oldOutputs resource.PropertyMap) error
+	newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap, errors []error) (retry bool, err error)
 
 func (binding ResourceHookBindings) marshal() *pulumirpc.RegisterResourceRequest_ResourceHooksBinding {
 	m := &pulumirpc.RegisterResourceRequest_ResourceHooksBinding{}
@@ -195,6 +200,15 @@ func (binding ResourceHookBindings) marshal() *pulumirpc.RegisterResourceRequest
 	}
 	for _, hook := range binding.AfterDelete {
 		m.AfterDelete = append(m.AfterDelete, hook.Name)
+	}
+	if binding.OnErrorCreate != nil {
+		m.OnErrorCreate = &binding.OnErrorCreate.Name
+	}
+	if binding.OnErrorUpdate != nil {
+		m.OnErrorUpdate = &binding.OnErrorUpdate.Name
+	}
+	if binding.OnErrorDelete != nil {
+		m.OnErrorDelete = &binding.OnErrorDelete.Name
 	}
 	return m
 }
@@ -255,13 +269,23 @@ func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onD
 				return nil, fmt.Errorf("unmarshaling old outputs: %w", err)
 			}
 		}
-		if err := f(context.Background(), resource.URN(req.Urn), resource.ID(req.Id), req.Name, tokens.Type(req.Type),
-			newInputs, oldInputs, newOutputs, oldOutputs); err != nil {
+
+		errors := make([]error, len(req.Errors))
+		for i, errStr := range req.Errors {
+			errors[i] = fmt.Errorf("%s", errStr)
+		}
+
+		retry, err := f(context.Background(), resource.URN(req.Urn), resource.ID(req.Id), req.Name, tokens.Type(req.Type),
+			newInputs, oldInputs, newOutputs, oldOutputs, errors)
+		if err != nil {
 			return &pulumirpc.ResourceHookResponse{
+				Retry: false,
 				Error: err.Error(),
 			}, nil
 		}
-		return &pulumirpc.ResourceHookResponse{}, nil
+		return &pulumirpc.ResourceHookResponse{
+			Retry: retry,
+		}, nil
 	}
 	callback, err := callbacks.Allocate(wrapped)
 	if err != nil {

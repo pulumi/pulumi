@@ -64,7 +64,7 @@ type ResourceMonitorClient interface {
 	// Register an invoke transform for the stack
 	RegisterStackInvokeTransform(ctx context.Context, in *Callback, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Register a resource hook that can be called by the engine during certain
-	// steps of a resource's lifecycle.
+	// steps of a resource's lifecycle or when errors occur during resource operations.
 	RegisterResourceHook(ctx context.Context, in *RegisterResourceHookRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
 	// Multiple requests are idempotent and guaranteed to return the same result.
@@ -213,7 +213,7 @@ type ResourceMonitorServer interface {
 	// Register an invoke transform for the stack
 	RegisterStackInvokeTransform(context.Context, *Callback) (*emptypb.Empty, error)
 	// Register a resource hook that can be called by the engine during certain
-	// steps of a resource's lifecycle.
+	// steps of a resource's lifecycle or when errors occur during resource operations.
 	RegisterResourceHook(context.Context, *RegisterResourceHookRequest) (*emptypb.Empty, error)
 	// Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
 	// Multiple requests are idempotent and guaranteed to return the same result.
