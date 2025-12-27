@@ -54,8 +54,9 @@ func (w *recordingWorkspace) save(t *testing.T) {
 
 	var b bytes.Buffer
 	for _, s := range w.steps {
-		// Replace \ with / to account for [filepath]'s windows specific features.
-		s = strings.ReplaceAll(s, "\\", "/")
+		// Replace \\ with / to account for [filepath]'s windows specific features.
+		// Note: formatValue uses %q which escapes backslashes, so Windows paths have \\ that need to become /
+		s = strings.ReplaceAll(s, "\\\\", "/")
 		// Strip .exe extensions to keep golden files platform-neutral
 		s = strings.ReplaceAll(s, ".exe", "")
 		// We do not write line numbers here to ensure that adding or removing a
