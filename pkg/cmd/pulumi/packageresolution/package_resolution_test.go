@@ -211,7 +211,7 @@ func TestResolvePackage(t *testing.T) {
 					},
 				}, nil
 			},
-			expectedErr: fmt.Errorf("%w: %v", ErrRegistryQuery, errors.New("network error")),
+			expectedErr: fmt.Errorf("%w: %w", ErrRegistryQuery, errors.New("network error")),
 		},
 		{
 			name:       "pre-registry package with registry disabled",
