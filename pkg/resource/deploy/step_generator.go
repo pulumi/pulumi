@@ -391,11 +391,13 @@ func (sg *stepGenerator) validateSteps(steps []Step) ([]Step, error) {
 				// This op has been attempted, it just might fail its constraint.
 				resourcePlan.Ops = resourcePlan.Ops[1:]
 				if !ConstrainedTo(s.Op(), constraint) {
-					return nil, fmt.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
+					return nil, NewConstraintError(fmt.Errorf(
+						"%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint))
 				}
 			} else {
 				if !ConstrainedTo(s.Op(), OpSame) {
-					return nil, fmt.Errorf("%v is not allowed by the plan: no steps were expected for this resource", s.Op())
+					return nil, NewConstraintError(fmt.Errorf(
+						"%v is not allowed by the plan: no steps were expected for this resource", s.Op()))
 				}
 			}
 		}
@@ -411,7 +413,7 @@ func (sg *stepGenerator) validateSteps(steps []Step) ([]Step, error) {
 				// If the resource is in the plan, add the operation to the plan.
 				resourcePlan.Ops = append(resourcePlan.Ops, s.Op())
 			} else if !ConstrainedTo(s.Op(), OpSame) {
-				return nil, fmt.Errorf("Expected a new resource plan for %v", urn)
+				return nil, NewConstraintError(fmt.Errorf("Expected a new resource plan for %v", urn))
 			}
 		}
 	}
@@ -2251,13 +2253,13 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 				resourcePlan.Ops = resourcePlan.Ops[1:]
 
 				if !ConstrainedTo(s.Op(), constraint) {
-					return nil, nil, fmt.Errorf(
-						"%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
+					return nil, nil, NewConstraintError(fmt.Errorf(
+						"%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint))
 				}
 			} else {
 				if !ConstrainedTo(s.Op(), OpSame) {
-					return nil, nil, fmt.Errorf(
-						"%v is not allowed by the plan: no steps were expected for this resource", s.Op())
+					return nil, nil, NewConstraintError(fmt.Errorf(
+						"%v is not allowed by the plan: no steps were expected for this resource", s.Op()))
 				}
 			}
 		}
@@ -3339,4 +3341,28 @@ func unwrapSecrets(value resource.PropertyValue) resource.PropertyValue {
 	}
 
 	return value
+}
+
+func NewConstraintError(err error) *ConstraintError {
+	return &ConstraintError{inner: err}
+}
+
+var _ error = &ConstraintError{}
+
+type ConstraintError struct {
+	inner error
+}
+
+func (e *ConstraintError) Error() string {
+	return e.inner.Error()
+}
+
+func (e *ConstraintError) Unwrap() error {
+	return e.inner
+}
+
+func IsConstraintError(err error) bool {
+	var ce *ConstraintError
+	ok := errors.As(err, &ce)
+	return ok
 }
