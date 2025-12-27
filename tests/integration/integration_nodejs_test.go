@@ -2658,6 +2658,7 @@ func TestNodejsSourcemapTest(t *testing.T) {
 func TestNodejsSourcemapProgramTypescript(t *testing.T) {
 	stderr := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Verbose:       true,
 		Dir:           filepath.Join("nodejs", "sourcemap-in-program"),
 		Dependencies:  []string{"@pulumi/pulumi"},
 		ExpectFailure: true,
@@ -2666,18 +2667,33 @@ func TestNodejsSourcemapProgramTypescript(t *testing.T) {
 			require.Regexp(t, "Error: this is a test error\n.*at willThrow.*index.ts:6:15", stderr.String())
 		},
 	})
+	t.Logf("stderr: %s", stderr.String())
+}
+
+type writer struct {
+	buffer bytes.Buffer
+	t      *testing.T
+}
+
+func (w *writer) Write(p []byte) (n int, err error) {
+	w.buffer.Write(p)
+	w.t.Logf("%s", p)
+	return len(p), nil
 }
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestNodejsSourcemapProgramJavascript(t *testing.T) {
-	stderr := &bytes.Buffer{}
+	stderr := &writer{t: t}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           filepath.Join("nodejs", "sourcemap-in-program-precompiled"),
 		Dependencies:  []string{"@pulumi/pulumi"},
 		ExpectFailure: true,
+		Stdout:        &writer{t: t},
 		Stderr:        stderr,
+		Verbose:       true,
+		DebugLogLevel: 10,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			require.Regexp(t, "Error: this is a test error\n.*at willThrow.*index.ts:6:15", stderr.String())
+			require.Regexp(t, "Error: this is a test error\n.*at willThrow.*index.ts:6:15", stderr.buffer.String())
 		},
 	})
 }
