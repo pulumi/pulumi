@@ -79,8 +79,10 @@ func (w *recordingWorkspace) save(t *testing.T) {
 
 	expected, err := os.ReadFile(f)
 	require.NoError(t, err, "Unable to read golden file, run PULUMI_ACCEPT=1 to overwrite the golden file")
+	// Normalize line endings to Unix-style for cross-platform compatibility
+	expectedStr := strings.ReplaceAll(string(expected), "\r\n", "\n")
 
-	assert.Equal(t, string(expected), b.String(), "%s did not match test output", f)
+	assert.Equal(t, expectedStr, b.String(), "%s did not match test output", f)
 }
 
 type recordingWorkspace struct {
