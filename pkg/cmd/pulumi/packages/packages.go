@@ -422,9 +422,7 @@ func SchemaFromSchemaSource(
 	if err != nil {
 		return nil, nil, err
 	}
-	defer func() {
-		contract.IgnoreError(pctx.Host.CloseProvider(p.Provider))
-	}()
+	defer func() { contract.IgnoreClose(p.Provider) }()
 
 	var request plugin.GetSchemaRequest
 	if !parameters.Empty() {
