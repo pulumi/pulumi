@@ -30,6 +30,7 @@ import (
 	"reflect"
 	"regexp"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -1426,6 +1427,47 @@ func TestPluginSpec_GetSource(t *testing.T) {
 			assert.Equal(t, tt.expectedURL, source.URL())
 		})
 	}
+}
+
+//nolint:paralleltest // mutates pluginDownloadURLOverridesParsed
+func TestFallbackSource_URLOverride(t *testing.T) {
+	var requestReceived bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestReceived = true
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+
+	pluginDownloadURLOverridesParsed = pluginDownloadOverrideArray{
+		{
+			reg: regexp.MustCompile(`^https://get\.pulumi\.com/releases/plugins$`),
+			url: server.URL,
+		},
+	}
+	t.Cleanup(func() {
+		pluginDownloadURLOverridesParsed = nil
+	})
+
+	source := newFallbackSource("test-plugin", apitype.ResourcePlugin)
+	version := semver.MustParse("1.0.0")
+	_, _, err := source.Download(
+		context.Background(), version, "linux", "amd64",
+		func(req *http.Request) (io.ReadCloser, int64, error) {
+			if strings.Contains(req.URL.String(), "api.github.com/pulumi") {
+				return nil, -1, errors.New("GitHub API: 404 not found")
+			}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				return nil, -1, err
+			}
+			if resp.StatusCode < 200 || resp.StatusCode > 299 {
+				resp.Body.Close()
+				return nil, -1, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+			}
+			return resp.Body, resp.ContentLength, nil
+		})
+	assert.ErrorContains(t, err, "404")
+	assert.True(t, requestReceived, "expected override URL to be used")
 }
 
 func TestMissingErrorText(t *testing.T) {
