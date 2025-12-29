@@ -84,6 +84,10 @@ type generator struct {
 	// from an array
 	listInitializer         string
 	deferredOutputVariables []*pcl.DeferredOutputVariable
+	// Some of our names interfere with one another. For example, `Pulumi.Output` is a module, and `Output` exists in
+	// `Pulumi`, so programs that import `Pulumi` and `Pulumi.Output` hit name collisions. For this reason, we'll import
+	// the latter as `OutputProvider` rather than `Output`.
+	namespaceAliases map[string]string
 }
 
 func (g *generator) resetListInitializer() {
@@ -138,14 +142,15 @@ func GenerateProgramWithOptions(
 	}
 
 	g := &generator{
-		program:         program,
-		namespaces:      namespaces,
-		compatibilities: compatibilities,
-		tokenToModules:  tokenToModules,
-		functionArgs:    functionArgs,
-		functionInvokes: map[string]*schema.Function{},
-		generateOptions: options,
-		listInitializer: "new[]",
+		program:          program,
+		namespaces:       namespaces,
+		compatibilities:  compatibilities,
+		tokenToModules:   tokenToModules,
+		functionArgs:     functionArgs,
+		functionInvokes:  map[string]*schema.Function{},
+		generateOptions:  options,
+		listInitializer:  "new[]",
+		namespaceAliases: map[string]string{},
 	}
 
 	g.Formatter = format.NewFormatter(g)
@@ -496,7 +501,6 @@ func (g *generator) usingStatements(program *pcl.Program) programUsings {
 			pcl.FixupPulumiPackageTokens(r)
 			pkg, _, _, _ := r.DecomposeToken()
 			if pkg != pulumiPackage {
-				namespace := namespaceName(g.namespaces[pkg], pkg)
 				var info CSharpPackageInfo
 				if r.Schema != nil && r.Schema.PackageReference != nil {
 					def, err := r.Schema.PackageReference.Definition()
@@ -508,7 +512,19 @@ func (g *generator) usingStatements(program *pcl.Program) programUsings {
 						info.RootNamespace = namespaceName(nil, r.Schema.PackageReference.Namespace())
 					}
 				}
-				pulumiUsings.Add(fmt.Sprintf("%s = %[2]s.%[1]s", namespace, info.GetRootNamespace()))
+
+				// To avoid problems with e.g. `Pulumi.Output` conflicting with `Output` in `Pulumi`.
+				pkgNamespace := namespaceName(g.namespaces[pkg], pkg)
+				safeAlias := makeSafePulumiNamespace(pkgNamespace)
+				g.namespaceAliases[pkgNamespace] = safeAlias
+
+				rootNamespace := info.GetRootNamespace()
+				if rootNamespace == "" {
+					rootNamespace = "Pulumi"
+				}
+
+				pkgFullNamespace := fmt.Sprintf("%s.%s", rootNamespace, pkgNamespace)
+				pulumiUsings.Add(fmt.Sprintf("%s = %s", safeAlias, pkgFullNamespace))
 			}
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
@@ -1052,6 +1068,20 @@ func (g *generator) resourceTypeName(r *pcl.Resource) string {
 	}
 	namespace = strings.Join(namespaceTokens, ".")
 
+	fullNamespace := rootNamespace
+	if namespace != "" {
+		fullNamespace = fmt.Sprintf("%s.%s", fullNamespace, namespace)
+	}
+
+	pkgNamespace := namespaceName(namespaces, pkg)
+	if alias, ok := g.namespaceAliases[pkgNamespace]; ok {
+		typePrefix := alias
+		if namespace != "" {
+			typePrefix = fmt.Sprintf("%s.%s", alias, namespace)
+		}
+		return fmt.Sprintf("%s.%s", typePrefix, Title(member))
+	}
+
 	if namespace != "" {
 		namespace = "." + namespace
 	}
@@ -1320,6 +1350,9 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 	}
 	if opts.HideDiffs != nil {
 		appendOption("HideDiffs", opts.HideDiffs)
+	}
+	if opts.ReplacementTrigger != nil {
+		appendOption("ReplacementTrigger", opts.ReplacementTrigger)
 	}
 
 	if result.Len() != 0 {
