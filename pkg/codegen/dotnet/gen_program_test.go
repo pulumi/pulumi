@@ -244,7 +244,8 @@ func TestGenerateProgramWithNamespaceCollision(t *testing.T) {
 	programText := string(programFile)
 	t.Logf("Generated Program.cs:\n%s", programText)
 
-	require.Contains(t, programText, `using PulumiOutput = Pulumi.Output;`, "generated code should contain PulumiOutput alias")
+	require.Contains(t, programText, `using PulumiOutput = Pulumi.Output;`,
+		"generated code should contain PulumiOutput alias")
 	require.Contains(t, programText, `new PulumiOutput.Resource`, "generated code should use PulumiOutput alias")
 }
 
@@ -256,7 +257,9 @@ func (l *inlineLoader) LoadPackageReference(pkg string, version *semver.Version)
 	return l.LoadPackageReferenceV2(context.TODO(), &schema.PackageDescriptor{Name: pkg, Version: version})
 }
 
-func (l *inlineLoader) LoadPackageReferenceV2(ctx context.Context, descriptor *schema.PackageDescriptor) (schema.PackageReference, error) {
+func (l *inlineLoader) LoadPackageReferenceV2(
+	ctx context.Context, descriptor *schema.PackageDescriptor,
+) (schema.PackageReference, error) {
 	if descriptor.Name == "pulumi" {
 		return schema.DefaultPulumiPackage.Reference(), nil
 	}
@@ -279,7 +282,9 @@ func (l *inlineLoader) LoadPackage(pkg string, version *semver.Version) (*schema
 	return ref.Definition()
 }
 
-func (l *inlineLoader) LoadPackageV2(ctx context.Context, descriptor *schema.PackageDescriptor) (*schema.Package, error) {
+func (l *inlineLoader) LoadPackageV2(
+	ctx context.Context, descriptor *schema.PackageDescriptor,
+) (*schema.Package, error) {
 	ref, err := l.LoadPackageReferenceV2(ctx, descriptor)
 	if err != nil || ref == nil {
 		return nil, err

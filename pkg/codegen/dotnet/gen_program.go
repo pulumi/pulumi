@@ -1068,11 +1068,6 @@ func (g *generator) resourceTypeName(r *pcl.Resource) string {
 	}
 	namespace = strings.Join(namespaceTokens, ".")
 
-	fullNamespace := rootNamespace
-	if namespace != "" {
-		fullNamespace = fmt.Sprintf("%s.%s", fullNamespace, namespace)
-	}
-
 	pkgNamespace := namespaceName(namespaces, pkg)
 	if alias, ok := g.namespaceAliases[pkgNamespace]; ok {
 		typePrefix := alias
