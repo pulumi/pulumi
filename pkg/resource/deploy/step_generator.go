@@ -2020,7 +2020,17 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 	if hasInitErrors {
 		sg.updates[urn] = true
 		oldViews := sg.deployment.GetOldViews(old.URN)
-		return []Step{NewUpdateStep(sg.deployment, event, old, new, diff.StableKeys, nil, nil, nil, oldViews)}, nil
+		return []Step{NewUpdateStep(
+			sg.deployment,
+			event,
+			old,
+			new,
+			diff.StableKeys,
+			diff.ChangedKeys,
+			diff.DetailedDiff,
+			goal.IgnoreChanges,
+			oldViews,
+		)}, nil
 	}
 
 	// Else there are no changes needed
