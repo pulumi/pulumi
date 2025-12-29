@@ -51,8 +51,7 @@ type Context struct {
 
 	tracingSpan opentracing.Span // the OpenTracing span to parent requests within.
 
-	cancelFuncs []context.CancelFunc
-	cancelLock  *sync.Mutex // Guards cancelFuncs.
+	cancel      context.CancelFunc
 	baseContext context.Context
 }
 
@@ -104,6 +103,8 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 		}
 	}
 
+	ctx, cancel := context.WithCancel(ctx)
+
 	pctx := &Context{
 		Diag:            d,
 		StatusDiag:      statusD,
@@ -112,8 +113,8 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 		Root:            root,
 		tracingSpan:     parentSpan,
 		DebugTraceMutex: &sync.Mutex{},
-		cancelLock:      &sync.Mutex{},
 		baseContext:     ctx,
+		cancel:          cancel,
 	}
 	if host == nil {
 		h, err := NewDefaultHost(
@@ -150,30 +151,13 @@ func (ctx *Context) Base() context.Context {
 
 // Request allocates a request sub-context.
 func (ctx *Context) Request() context.Context {
-	c := ctx.baseContext
-	contract.Assertf(c != nil, "Context must have a base context")
-	c = opentracing.ContextWithSpan(c, ctx.tracingSpan)
-	c, cancel := context.WithCancel(c)
-	ctx.cancelLock.Lock()
-	ctx.cancelFuncs = append(ctx.cancelFuncs, cancel)
-	ctx.cancelLock.Unlock()
-	return c
+	contract.Assertf(ctx.baseContext != nil, "Context must have a base context")
+	return opentracing.ContextWithSpan(ctx.baseContext, ctx.tracingSpan)
 }
 
 // Close reclaims all resources associated with this context.
 func (ctx *Context) Close() error {
-	defer func() {
-		// It is possible that cancelFuncs may be appended while this function is running.
-		// Capture the current value of cancelFuncs and set cancelFuncs to nil to prevent cancelFuncs
-		// from being appended to while we are iterating over it.
-		ctx.cancelLock.Lock()
-		cancelFuncs := ctx.cancelFuncs
-		ctx.cancelFuncs = nil
-		ctx.cancelLock.Unlock()
-		for _, cancel := range cancelFuncs {
-			cancel()
-		}
-	}()
+	defer ctx.cancel()
 	if ctx.tracingSpan != nil {
 		ctx.tracingSpan.Finish()
 	}
@@ -182,17 +166,4 @@ func (ctx *Context) Close() error {
 		return err
 	}
 	return nil
-}
-
-// WithCancelChannel registers a close channel which will close the returned Context when
-// the channel is closed.
-//
-// WARNING: Calling this function without ever closing `c` will leak go routines.
-func (ctx *Context) WithCancelChannel(c <-chan struct{}) *Context {
-	newCtx := *ctx
-	go func() {
-		<-c
-		newCtx.Close()
-	}()
-	return &newCtx
 }
