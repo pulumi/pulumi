@@ -181,15 +181,16 @@ func GenerateProgramWithOptions(
 		componentNodes := pcl.Linearize(component.Program)
 
 		componentGenerator := &generator{
-			program:         component.Program,
-			namespaces:      namespaces,
-			compatibilities: compatibilities,
-			tokenToModules:  tokenToModules,
-			functionArgs:    functionArgs,
-			functionInvokes: map[string]*schema.Function{},
-			generateOptions: options,
-			isComponent:     true,
-			listInitializer: "new[]",
+			program:          component.Program,
+			namespaces:       namespaces,
+			compatibilities:  compatibilities,
+			tokenToModules:   tokenToModules,
+			functionArgs:     functionArgs,
+			functionInvokes:  map[string]*schema.Function{},
+			generateOptions:  options,
+			isComponent:      true,
+			listInitializer:  "new[]",
+			namespaceAliases: g.namespaceAliases,
 		}
 
 		componentGenerator.Formatter = format.NewFormatter(componentGenerator)
