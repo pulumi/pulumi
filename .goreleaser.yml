@@ -18,12 +18,16 @@ builds:
   flags:
     - -trimpath
   ldflags:
-    - -w -s -X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=v{{.Env.PULUMI_VERSION}}
+    - -w -s
   mod_timestamp: '{{ .CommitTimestamp }}'
   tags:
     # Enforce the pure Go implementation of os/user, even when cgo is available.
     # See https://pkg.go.dev/os/user#pkg-overview.
     - osusergo
+  hooks:
+    pre:
+      # Overwrite version.go with our release version.
+      - sh -c "PULUMI_VERSION=v{{.Env.PULUMI_VERSION}} go run -C sdk ./cmd/gen-version"
 - <<: *pulumibin
   id: pulumi-language-go
   binary: pulumi-language-go

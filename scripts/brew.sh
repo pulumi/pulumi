@@ -6,10 +6,11 @@ set -x
 PROJECT="$1"
 BREW_VERSION=$(./scripts/get-version HEAD)
 
+# Generate version.go with the brew version
+PULUMI_VERSION=${BREW_VERSION} go run -C sdk ./cmd/gen-version
+
 # Rebuild and install pulumi CLI binaries into $GOPATH/bin
-(cd pkg && go install \
-              -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${BREW_VERSION}" \
-              ${PROJECT})
+(cd pkg && go install ${PROJECT})
 
 # Fetch extra language binaries like YAML and Java from GitHub releases.
 ./scripts/prep-for-goreleaser.sh "local"

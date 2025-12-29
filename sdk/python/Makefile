@@ -33,10 +33,9 @@ build_plugin: ../../bin/pulumi-language-python
 	cp ./dist/pulumi-analyzer-policy-python ../../bin/
 
 .PHONY: ../../bin/pulumi-language-python
-../../bin/pulumi-language-python:
+../../bin/pulumi-language-python: ../../sdk/go/common/version/version.go
 	go build -C cmd/pulumi-language-python \
 		-o ../../$@ \
-		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
 		${LANGHOST_PKG}
 
 build:: build_package build_plugin
@@ -62,8 +61,7 @@ install_package:: build_package
 	cp ./dist/pulumi-analyzer-policy-python "$(PULUMI_BIN)"
 
 install_plugin:: build_plugin
-	GOBIN=$(PULUMI_BIN) go install -C cmd/pulumi-language-python \
-		  -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+	GOBIN=$(PULUMI_BIN) go install -C cmd/pulumi-language-python ${LANGHOST_PKG}
 
 install:: install_package install_plugin
 
@@ -90,17 +88,16 @@ test_all_lowest_deps:: test_fast_lowest_deps test_auto_lowest_deps
 PULUMI_TEST_ORG ?= $(shell pulumi whoami --json | jq ".organizations[0]")
 
 dist:: GOBIN=$(or $(shell go env GOBIN),$(shell go env GOPATH)/bin)
-dist::
-	go install -C cmd/pulumi-language-python \
-		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+dist:: ../../sdk/go/common/version/version.go
+	go install -C cmd/pulumi-language-python ${LANGHOST_PKG}
 	cp ./cmd/pulumi-language-python-exec "${GOBIN}"
 	cp ./dist/pulumi-resource-pulumi-python "${GOBIN}"
 	cp ./dist/pulumi-analyzer-policy-python "${GOBIN}"
 
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
-	go install -C cmd/pulumi-language-python \
-		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${BREW_VERSION}" ${LANGHOST_PKG}
+	PULUMI_VERSION=${BREW_VERSION} go run ../cmd/gen-version
+	go install -C cmd/pulumi-language-python ${LANGHOST_PKG}
 	cp ./cmd/pulumi-language-python-exec "$$(go env GOPATH)"/bin/
 	cp ./dist/pulumi-resource-pulumi-python "$$(go env GOPATH)"/bin/
 	cp ./dist/pulumi-analyzer-policy-python "$$(go env GOPATH)"/bin/

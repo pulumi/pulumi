@@ -77,12 +77,16 @@ generate::
 	$(call STEP_MESSAGE)
 	echo "This command does not do anything anymore. It will be removed in a future version."
 
-bin/pulumi: proto/.checksum.txt .make/ensure/go $(shell bin/helpmakego pkg/cmd/pulumi)
-	go build -C pkg -o ../$@ -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
+bin/pulumi: proto/.checksum.txt .make/ensure/go sdk/go/common/version/version.go $(shell bin/helpmakego pkg/cmd/pulumi)
+	go build -C pkg -o ../$@ ${PROJECT}
+
+.PHONY: sdk/go/common/version/version.go
+sdk/go/common/version/version.go:
+	PULUMI_VERSION=${VERSION} go run -C sdk ./cmd/gen-version
 
 .PHONY: bin/pulumi-display.wasm
-bin/pulumi-display.wasm:: .make/ensure/go .make/ensure/phony pkg/backend/display/wasm/gold-size.txt
-	cd pkg && GOOS=js GOARCH=wasm go build -o ../bin/pulumi-display.wasm -ldflags "-w -s -X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" -trimpath ./backend/display/wasm
+bin/pulumi-display.wasm:: .make/ensure/go .make/ensure/phony sdk/go/common/version/version.go pkg/backend/display/wasm/gold-size.txt
+	cd pkg && GOOS=js GOARCH=wasm go build -o ../bin/pulumi-display.wasm -ldflags "-w -s" -trimpath ./backend/display/wasm
 	python3 scripts/wasm-size-check.py bin/pulumi-display.wasm pkg/backend/display/wasm/gold-size.txt
 
 .PHONY: build
@@ -92,13 +96,13 @@ build:: build_proto .make/ensure/go bin/pulumi bin/pulumi-display.wasm
 install:: bin/pulumi
 	cp $< $(PULUMI_BIN)/pulumi
 
-build_debug::
-	cd pkg && go install -gcflags="all=-N -l" -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
+build_debug:: sdk/go/common/version/version.go
+	cd pkg && go install -gcflags="all=-N -l" ${PROJECT}
 
-build_cover::
+build_cover:: sdk/go/common/version/version.go
 	cd pkg && go build -cover -o ../bin/pulumi \
 		-coverpkg github.com/pulumi/pulumi/pkg/v3/...,github.com/pulumi/pulumi/sdk/v3/... \
-		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
+		${PROJECT}
 
 install_cover:: build_cover
 	cp bin/pulumi $(PULUMI_BIN)
@@ -106,8 +110,8 @@ install_cover:: build_cover
 developer_docs::
 	cd developer-docs && make html
 
-dist::
-	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
+dist:: sdk/go/common/version/version.go
+	cd pkg && go install ${PROJECT}
 
 .PHONY: brew
 # NOTE: the brew target intentionally avoids the dependency on `build`, as each language SDK has its own brew target

@@ -53,10 +53,9 @@ build_plugin: ../../bin/pulumi-language-nodejs
 	cp ./dist/pulumi-analyzer-policy ../../bin
 
 .PHONY: ../../bin/pulumi-language-nodejs
-../../bin/pulumi-language-nodejs:
+../../bin/pulumi-language-nodejs: ../../sdk/go/common/version/version.go
 	go build -C cmd/pulumi-language-nodejs \
 	-o ../../$@ \
-		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
 		${LANGHOST_PKG}
 
 build:: build_package build_plugin
@@ -66,8 +65,7 @@ install_package:: build
 	cp dist/pulumi-analyzer-policy* "$(PULUMI_BIN)"
 
 install_plugin:: build
-	GOBIN=$(PULUMI_BIN) go install -C cmd/pulumi-language-nodejs \
-	   -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+	GOBIN=$(PULUMI_BIN) go install -C cmd/pulumi-language-nodejs ${LANGHOST_PKG}
 
 install:: install_package install_plugin
 
@@ -131,16 +129,15 @@ test_watch::
 	PULUMI_TEST_ORG=$(PULUMI_TEST_ORG) yarn mocha "**/*.spec.ts" --timeout 300000 --bail -j 1 --watch --watch-files "**/*.ts" --grep "$(TEST_GREP)"
 
 dist:: GOBIN=$(or $(shell go env GOBIN),$(shell go env GOPATH)/bin)
-dist::
-	go install -C cmd/pulumi-language-nodejs \
-		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+dist:: ../../sdk/go/common/version/version.go
+	go install -C cmd/pulumi-language-nodejs ${LANGHOST_PKG}
 	cp dist/pulumi-resource-pulumi-nodejs "${GOBIN}"
 	cp dist/pulumi-analyzer-policy "${GOBIN}"
 
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
-	go install -C cmd/pulumi-language-nodejs \
-	   -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+	PULUMI_VERSION=${BREW_VERSION} go run ../cmd/gen-version
+	go install -C cmd/pulumi-language-nodejs ${LANGHOST_PKG}
 	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
 	cp dist/pulumi-analyzer-policy "$$(go env GOPATH)"/bin/
 

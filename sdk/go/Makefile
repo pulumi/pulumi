@@ -23,9 +23,8 @@ ensure: .make/ensure/go
 build:: gen ../../bin/pulumi-language-go
 
 .PHONY: ../../bin/pulumi-language-go
-../../bin/pulumi-language-go:
+../../bin/pulumi-language-go: ../../sdk/go/common/version/version.go
 	go build -C pulumi-language-go -o ../../../bin/pulumi-language-go \
-		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
 		${LANGHOST_PKG}
 
 .PHONY: install_plugin
@@ -60,8 +59,8 @@ endif
 
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
-	go install -C pulumi-language-go \
-		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${BREW_VERSION}" ${LANGHOST_PKG}
+	PULUMI_VERSION=${BREW_VERSION} go run ../cmd/gen-version
+	go install -C pulumi-language-go ${LANGHOST_PKG}
 
 lint:: .make/ensure/golangci-lint
 	cd .. && golangci-lint run -c ../.golangci.yml --timeout 5m --path-prefix ..
