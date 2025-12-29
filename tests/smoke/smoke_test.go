@@ -606,13 +606,10 @@ func TestInstall(t *testing.T) {
 // A smoke test to ensure that secrets providers are correctly initialized and persisted to state upon stack creation.
 // We check also that when stack configuration exists before stack initialization, any compatible secrets provider
 // configuration is respected and not clobbered or overwritten.
-//
-//nolint:paralleltest
 func TestSecretsProvidersInitializationSmoke(t *testing.T) {
-	// Ensure we have a passphrase set for the default secrets provider.
-	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test-passphrase")
+	t.Parallel()
 
-	// This example salt must be generated using the test passphrase configured above.
+	// This example salt was generated using the default passphrase from ptesting.Environment.
 	testEncryptionSalt := "v1:3ZcVRCMzEbk=:v1:A4wYnaSVLIkK0AhS:2SrOnSDh9wVGmoyZt97KYJN3WfDDHA=="
 
 	cases := []struct {
@@ -652,8 +649,6 @@ func TestSecretsProvidersInitializationSmoke(t *testing.T) {
 
 				// Make sure we can download needed plugins
 				e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
-				// Ensure we have a passphrase set for the default secrets provider
-				// e.Env = append(e.Env, "PULUMI_CONFIG_PASSPHRASE=test-passphrase")
 
 				projectDir := filepath.Join(e.RootPath, "project")
 				err := os.Mkdir(projectDir, 0o700)
