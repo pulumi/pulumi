@@ -607,11 +607,11 @@ func TestInstall(t *testing.T) {
 // We check also that when stack configuration exists before stack initialization, any compatible secrets provider
 // configuration is respected and not clobbered or overwritten.
 //
-// Tests seem to leak passphrases when run in parallel. CI fails with: smoke_test.go:690:
-// STDERR: error: could not create secrets manager for new stack: incorrect passphrase
-//
 //nolint:paralleltest
 func TestSecretsProvidersInitializationSmoke(t *testing.T) {
+	// Ensure we have a passphrase set for the default secrets provider.
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test-passphrase")
+
 	// This example salt must be generated using the test passphrase configured above.
 	testEncryptionSalt := "v1:3ZcVRCMzEbk=:v1:A4wYnaSVLIkK0AhS:2SrOnSDh9wVGmoyZt97KYJN3WfDDHA=="
 
@@ -646,13 +646,14 @@ func TestSecretsProvidersInitializationSmoke(t *testing.T) {
 		for _, c := range cases {
 			name := fmt.Sprintf("%s %s", runtime, c.name)
 			t.Run(name, func(t *testing.T) {
+				t.Parallel()
 				e := ptesting.NewEnvironment(t)
 				defer e.DeleteIfNotFailed()
 
 				// Make sure we can download needed plugins
 				e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
 				// Ensure we have a passphrase set for the default secrets provider
-				e.Env = append(e.Env, "PULUMI_CONFIG_PASSPHRASE=test-passphrase")
+				// e.Env = append(e.Env, "PULUMI_CONFIG_PASSPHRASE=test-passphrase")
 
 				projectDir := filepath.Join(e.RootPath, "project")
 				err := os.Mkdir(projectDir, 0o700)
