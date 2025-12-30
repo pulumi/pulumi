@@ -84,6 +84,10 @@ type ProviderHandshakeResponse struct {
 	// True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
 	// user.
 	SupportsAutonamingConfiguration bool
+
+	// The CLI version range required for this provider to work correctly. Empty if the provider does not have a version
+	// requirement.
+	PulumiVersionRange string
 }
 
 // ParameterizeParameters can either be of concrete type ParameterizeArgs or ParameterizeValue, for when parameterizing

@@ -290,6 +290,9 @@ message ProviderHandshakeResponse {
     // True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
     // user. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
     bool supports_autonaming_configuration = 4;
+
+    // The CLI version range required for this provider to work correctly.
+    optional string pulumi_version_range = 5;
 }
 
 // `ParameterizeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Parameterize) call. A

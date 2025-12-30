@@ -48,6 +48,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
@@ -289,6 +290,10 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 	}
 
 	if handshakeRes != nil {
+		if err := validatePulumiVersionRange(handshakeRes.PulumiVersionRange, version.Version, string(pkg)); err != nil {
+			return nil, err
+		}
+
 		p.protocol = &pluginProtocol{
 			acceptSecrets:                   handshakeRes.AcceptSecrets,
 			acceptResources:                 handshakeRes.AcceptResources,
@@ -342,6 +347,7 @@ func handshake(
 		AcceptResources:                 res.GetAcceptResources(),
 		AcceptOutputs:                   res.GetAcceptOutputs(),
 		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
+		PulumiVersionRange:              res.GetPulumiVersionRange(),
 	}, nil
 }
 
@@ -410,6 +416,10 @@ func NewProviderFromPath(host Host, ctx *Context, pkg tokens.Package, path strin
 	}
 
 	if handshakeRes != nil {
+		if err := validatePulumiVersionRange(handshakeRes.PulumiVersionRange, version.Version, string(pkg)); err != nil {
+			return nil, err
+		}
+
 		p.protocol = &pluginProtocol{
 			acceptSecrets:                   handshakeRes.AcceptSecrets,
 			acceptResources:                 handshakeRes.AcceptResources,
@@ -512,6 +522,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		AcceptResources:                 res.GetAcceptResources(),
 		AcceptOutputs:                   res.GetAcceptOutputs(),
 		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
+		PulumiVersionRange:              res.GetPulumiVersionRange(),
 	}, nil
 }
 

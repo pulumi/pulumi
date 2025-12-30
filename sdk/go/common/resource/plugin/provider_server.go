@@ -160,6 +160,7 @@ func (p *providerServer) Handshake(
 
 		// For features we don't shim, we just pass through the response from the provider as expected.
 		SupportsAutonamingConfiguration: res.SupportsAutonamingConfiguration,
+		PulumiVersionRange:              &res.PulumiVersionRange,
 	}, nil
 }
 

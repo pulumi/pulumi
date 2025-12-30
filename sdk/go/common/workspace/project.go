@@ -901,6 +901,8 @@ type PluginProject struct {
 	Runtime ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`
 	// Packages is a map of package dependencies that can be either strings or PackageSpecs
 	Packages map[string]PackageSpec `json:"packages,omitempty" yaml:"packages,omitempty"`
+	//
+	PulumiVersionRange string `json:"pulumiVersionRange" yaml:"pulumiVersionRange"`
 }
 
 var _ BaseProject = (*PluginProject)(nil)

@@ -32,6 +32,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/blang/semver"
 	multierror "github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
@@ -47,6 +48,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -458,6 +460,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		}
 
 		var runtimeInfo workspace.ProjectRuntimeInfo
+		var pulumiVersionRange string
 		switch kind { //nolint:exhaustive // golangci-lint v2 upgrade
 		case apitype.ResourcePlugin, apitype.ConverterPlugin:
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPlugin.yaml"))
@@ -465,14 +468,20 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 				return nil, fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
 			}
 			runtimeInfo = proj.Runtime
+			pulumiVersionRange = proj.PulumiVersionRange
 		case apitype.AnalyzerPlugin:
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPolicy.yaml"))
 			if err != nil {
 				return nil, fmt.Errorf("loading PulumiPolicy.yaml: %w", err)
 			}
 			runtimeInfo = proj.Runtime
+			pulumiVersionRange = proj.PulumiVersionRange
 		default:
 			return nil, errors.New("language plugins must be executable binaries")
+		}
+
+		if err := validatePulumiVersionRange(pulumiVersionRange, version.Version, pluginDir); err != nil {
+			return nil, err
 		}
 
 		logging.V(9).Infof("Launching plugin '%v' from '%v' via runtime '%s'", prefix, pluginDir, runtimeInfo.Name())
@@ -616,6 +625,27 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			return 0, err
 		},
 	}, nil
+}
+
+// validatePulumiVersionRange validates that the CLI version satisfies the passed version range.
+func validatePulumiVersionRange(pulumiVersionRange, cliVersion, provider string) error {
+	if pulumiVersionRange != "" {
+		rg, err := semver.ParseRange(pulumiVersionRange)
+		if err != nil {
+			return fmt.Errorf("parsing CLI version range %q: %w", pulumiVersionRange, err)
+		}
+		cliVersion, err := semver.ParseTolerant(cliVersion)
+		if err != nil {
+			return fmt.Errorf("parsing CLI version %q: %w", version.Version, err)
+		}
+		if !rg(cliVersion) {
+			return fmt.Errorf(
+				"Pulumi CLI version %s does not satisfy the version range %q requested by the provider %s.",
+				cliVersion, pulumiVersionRange, provider,
+			)
+		}
+	}
+	return nil
 }
 
 type pluginArgumentOptions struct {

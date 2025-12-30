@@ -101,6 +101,7 @@ class ProviderHandshakeResponse(google.protobuf.message.Message):
     ACCEPT_RESOURCES_FIELD_NUMBER: builtins.int
     ACCEPT_OUTPUTS_FIELD_NUMBER: builtins.int
     SUPPORTS_AUTONAMING_CONFIGURATION_FIELD_NUMBER: builtins.int
+    PULUMI_VERSION_RANGE_FIELD_NUMBER: builtins.int
     accept_secrets: builtins.bool
     """True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
     values to the provider. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
@@ -119,6 +120,8 @@ class ProviderHandshakeResponse(google.protobuf.message.Message):
     """True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
     user. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
     """
+    pulumi_version_range: builtins.str
+    """The CLI version range required for this provider to work correctly."""
     def __init__(
         self,
         *,
@@ -126,8 +129,11 @@ class ProviderHandshakeResponse(google.protobuf.message.Message):
         accept_resources: builtins.bool = ...,
         accept_outputs: builtins.bool = ...,
         supports_autonaming_configuration: builtins.bool = ...,
+        pulumi_version_range: builtins.str | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["accept_outputs", b"accept_outputs", "accept_resources", b"accept_resources", "accept_secrets", b"accept_secrets", "supports_autonaming_configuration", b"supports_autonaming_configuration"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["_pulumi_version_range", b"_pulumi_version_range", "pulumi_version_range", b"pulumi_version_range"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["_pulumi_version_range", b"_pulumi_version_range", "accept_outputs", b"accept_outputs", "accept_resources", b"accept_resources", "accept_secrets", b"accept_secrets", "pulumi_version_range", b"pulumi_version_range", "supports_autonaming_configuration", b"supports_autonaming_configuration"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing.Literal["_pulumi_version_range", b"_pulumi_version_range"]) -> typing.Literal["pulumi_version_range"] | None: ...
 
 global___ProviderHandshakeResponse = ProviderHandshakeResponse
 

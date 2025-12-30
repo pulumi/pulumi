@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -312,4 +313,119 @@ func TestZeroExitcode(t *testing.T) {
 	// separately.
 	require.ErrorContains(t, err, "could not read plugin [")
 	require.ErrorContains(t, err, "test-plugin-exit]: EOF")
+}
+
+func TestCheckVersionRange(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name               string
+		cliVersion         string
+		pulumiVersionRange string
+		expectedError      string
+	}{
+		{
+			name:               "exact match",
+			cliVersion:         "3.0.0",
+			pulumiVersionRange: "3.0.0",
+		},
+		{
+			name:               "greater than",
+			cliVersion:         "3.1.0",
+			pulumiVersionRange: ">=3.0.0",
+		},
+		{
+			name:               "within range",
+			cliVersion:         "3.5.0",
+			pulumiVersionRange: ">=3.0.0 <4.0.0",
+		},
+		{
+			name:               "too old",
+			cliVersion:         "2.9.0",
+			pulumiVersionRange: ">=3.0.0",
+			//nolint:lll
+			expectedError: "CLI version 2.9.0 does not satisfy the version range \">=3.0.0\" requested by the provider test.",
+		},
+		{
+			name:               "too new",
+			cliVersion:         "4.0.0",
+			pulumiVersionRange: "<4.0.0",
+			//nolint:lll
+			expectedError: "CLI version 4.0.0 does not satisfy the version range \"<4.0.0\" requested by the provider test.",
+		},
+		{
+			name:               "exclude",
+			cliVersion:         "3.1.0",
+			pulumiVersionRange: ">=3.0.0 !3.1.0",
+			//nolint:lll
+			expectedError: "CLI version 3.1.0 does not satisfy the version range \">=3.0.0 !3.1.0\" requested by the provider test.",
+		},
+		{
+			name:               "exclude 2",
+			cliVersion:         "3.1.1",
+			pulumiVersionRange: ">=3.0.0 !3.1.0",
+		},
+		{
+			name:               "exclude 3",
+			cliVersion:         "3.0.1",
+			pulumiVersionRange: ">=3.0.0 !3.1.0",
+		},
+		{
+			name:               "no range",
+			cliVersion:         "1.0.0",
+			pulumiVersionRange: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := validatePulumiVersionRange(tt.pulumiVersionRange, tt.cliVersion, "test")
+
+			if tt.expectedError != "" {
+				require.ErrorContains(t, err, tt.expectedError)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+// Test a provider that has an incompatible version range in its `PulumiPlugin.yaml`.
+//
+//nolint:paralleltest // Modifying the global version.Version
+func TestPulumiVersionRangeYaml(t *testing.T) {
+	d := diagtest.LogSink(t)
+	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil)
+	require.NoError(t, err)
+
+	version.Version = "3.0.0"
+
+	_, err = NewProviderFromPath(ctx.Host, ctx, "", filepath.Join("testdata", "test-plugin-cli-version"))
+	require.ErrorContains(t, err, "failed to load plugin testdata/test-plugin-cli-version: Pulumi CLI version 3.0.0 "+
+		"does not satisfy the version range \">=4.0.0\" requested by the provider testdata/test-plugin-cli-version.")
+}
+
+// Test a provider that returns an incompatible version range from `Handshake`.
+//
+//nolint:paralleltest // Modifying the global version.Version
+func TestPulumiVersionRangeHandshake(t *testing.T) {
+	dir := t.TempDir()
+	providerBin := filepath.Join(dir, "provider")
+	cmd := exec.Command("go", "build", "-o", providerBin,
+		filepath.Join("testdata", "pulumi-version-range-handshake", "main.go"))
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "%s: err=%s, out=%s", cmd.String(), err, out)
+
+	d := diagtest.LogSink(t)
+	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil)
+	require.NoError(t, err)
+
+	oldVersion := version.Version
+	defer func() { version.Version = oldVersion }()
+	version.Version = "3.1.2"
+
+	_, err = NewProviderFromPath(ctx.Host, ctx, "the-provider", providerBin)
+	require.ErrorContains(t, err,
+		"Pulumi CLI version 3.1.2 does not satisfy the version range \">=4.0.0\" requested by the provider the-provider.")
 }
