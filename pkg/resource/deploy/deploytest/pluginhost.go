@@ -507,17 +507,6 @@ func (host *pluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 	return host.PolicyAnalyzer(nm, "", nil)
 }
 
-func (host *pluginHost) CloseProvider(provider plugin.Provider) error {
-	if host.isClosed() {
-		return ErrHostIsClosed
-	}
-	host.m.Lock()
-	defer host.m.Unlock()
-
-	delete(host.plugins, provider)
-	return nil
-}
-
 func (host *pluginHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds plugin.Flags) error {
 	if host.isClosed() {
 		return ErrHostIsClosed

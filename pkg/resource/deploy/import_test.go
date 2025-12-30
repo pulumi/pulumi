@@ -256,9 +256,6 @@ func TestImporterParameterizedProvider(t *testing.T) {
 					assert.Equal(t, "1.0.0", descriptor.Version.String())
 					return &mockProvider, nil
 				},
-				CloseProviderF: func(provider plugin.Provider) error {
-					return nil
-				},
 			}, true, nil),
 			imports: []Import{
 				{
