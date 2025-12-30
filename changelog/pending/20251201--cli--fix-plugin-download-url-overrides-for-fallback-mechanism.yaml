@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/plugin
-  description: "Fix plugin download URL overrides for fallback mechanism"

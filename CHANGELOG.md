@@ -1,5 +1,36 @@
 # Changelog
 
+## 3.214.0 (2025-12-30)
+
+
+### Features
+
+- [cli] Add --config and --config-path options to destroy and refresh
+  [#21299](https://github.com/pulumi/pulumi/pull/21299)
+
+- [sdkgen] Add `OutputStyleOnly` flag to functions to not emit their plain variants
+  [#21198](https://github.com/pulumi/pulumi/pull/21198)
+
+- [sdk/python] Add support for `replacement_trigger` in the Python SDK
+  [#20940](https://github.com/pulumi/pulumi/pull/20940)
+
+
+### Bug Fixes
+
+- [engine] Pass ignoreChanges when issuing no-diff updates that resolve initErrors
+  [#21319](https://github.com/pulumi/pulumi/pull/21319)
+
+- [programgen] Fix a bug in programgen binding to invokes from parameterized packages
+  [#21284](https://github.com/pulumi/pulumi/pull/21284)
+
+- [cli/plugin] Fix plugin download URL overrides for fallback mechanism
+  [#21095](https://github.com/pulumi/pulumi/pull/21095)
+
+
+### Miscellaneous
+
+- [pkg] Upgrade pulumi-java to 1.20.0
+
 ## 3.213.0 (2025-12-17)
 
 
