@@ -15,7 +15,10 @@
 package pcl
 
 import (
+	"cmp"
 	"io"
+	"iter"
+	"slices"
 	"sort"
 	"strings"
 	"unicode"
@@ -31,6 +34,48 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
+
+func newOrderedSet[E comparable]() *orderedSet[E] {
+	return &orderedSet[E]{m: make(map[E]int)}
+}
+
+type orderedSet[E comparable] struct {
+	m   map[E]int
+	idx int
+}
+
+func (o *orderedSet[E]) Add(v E) {
+	if _, ok := o.m[v]; ok {
+		return
+	}
+	o.m[v] = o.idx
+	o.idx++
+}
+
+func (o *orderedSet[E]) Delete(v E) { delete(o.m, v) }
+
+func (o *orderedSet[E]) Iter() iter.Seq[E] {
+	type value struct {
+		i int
+		v E
+	}
+	values := make([]value, 0, len(o.m))
+	for v, i := range o.m {
+		values = append(values, value{i, v})
+	}
+	slices.SortFunc(values, func(a, b value) int {
+		return cmp.Compare(a.i, b.i)
+	})
+	return func(yield func(v E) bool) {
+		for _, v := range values {
+			if !yield(v.v) {
+				return
+			}
+		}
+	}
+}
+
+func (o *orderedSet[E]) Len() int { return len(o.m) }
 
 // titleCase replaces the first character in the given string with its upper-case equivalent.
 func titleCase(s string) string {
