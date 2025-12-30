@@ -233,6 +233,7 @@ func testConnection(ctx context.Context, bin string, prefix string, conn *grpc.C
 
 func newPlugin[T any](
 	ctx *Context,
+	host Host,
 	pwd string,
 	bin string,
 	prefix string,
@@ -267,7 +268,7 @@ func newPlugin[T any](
 	defer tracingSpan.Finish()
 
 	// Try to execute the binary.
-	plug, err := ExecPlugin(ctx, bin, prefix, kind, args, pwd, env, attachDebugger)
+	plug, err := ExecPlugin(ctx, host, bin, prefix, kind, args, pwd, env, attachDebugger)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load plugin %s: %w", bin, err)
 	}
@@ -437,7 +438,7 @@ func parsePort(portString string) (int, error) {
 }
 
 // ExecPlugin starts a plugin executable either via a direct exec or via a language runtime.
-func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
+func ExecPlugin(ctx *Context, host Host, bin, prefix string, kind apitype.PluginKind,
 	pluginArgs []string, pwd string, env []string, attachDebugger bool,
 ) (*Plugin, error) {
 	args := buildPluginArguments(pluginArgumentOptions{
@@ -483,7 +484,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			return nil, fmt.Errorf("getting absolute path for plugin directory: %w", err)
 		}
 
-		runtime, err := ctx.Host.LanguageRuntime(runtimeInfo.Name())
+		runtime, err := host.LanguageRuntime(runtimeInfo.Name(), pwd)
 		if err != nil {
 			return nil, fmt.Errorf("loading runtime: %w", err)
 		}
@@ -493,7 +494,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		info := NewProgramInfo(pluginDir, pluginDir, ".", runtimeInfo.Options())
 		stdout, stderr, done, err := runtime.RunPlugin(rctx, RunPluginInfo{
 			Info:             info,
-			WorkingDirectory: ctx.Pwd,
+			WorkingDirectory: pwd,
 			Args:             args,
 			Env:              env,
 			Kind:             string(kind),

@@ -127,6 +127,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 
 		plug, _, err = newPlugin(
 			ctx,
+			host,
 			workingDirectory,
 			path,
 			runtime,

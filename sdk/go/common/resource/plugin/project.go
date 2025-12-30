@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"errors"
 	"path/filepath"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -59,3 +60,27 @@ func NewProject(ctx Context, host Host, pwd, root string, runtimeOptions map[str
 		config:                 map[config.Key]string{},
 	}
 }
+
+func (p Project) Provider(descriptor workspace.PluginDescriptor) (Provider, error) {
+	return p.Host.Provider(descriptor, p.config, p.runtimeOptions, p.projectName, p.disableProviderPreview, p.Pwd)
+}
+
+func (p Project) Analyzer(nm tokens.QName) (Analyzer, error) {
+	return p.Host.Analyzer(nm, p.Pwd)
+}
+
+func (p Project) PolicyAnalyzer(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error) {
+	return p.Host.PolicyAnalyzer(name, path, opts, p.Pwd)
+}
+
+func (p Project) LanguageRuntime(runtime string) (LanguageRuntime, error) {
+	return p.Host.LanguageRuntime(runtime, p.Pwd)
+}
+
+func (p Project) EnsurePlugins(
+	plugins []workspace.PluginDescriptor, kinds Flags,
+) error {
+	return p.Host.EnsurePlugins(plugins, kinds, p.config, p.runtimeOptions, p.projectName, p.disableProviderPreview, p.Pwd)
+}
+
+func (p Project) Close() error { return errors.Join(p.Host.Close(), p.Context.Close()) }

@@ -20,19 +20,24 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type MockHost struct {
-	ServerAddrF         func() string
-	LogF                func(sev diag.Severity, urn resource.URN, msg string, streamID int32)
-	LogStatusF          func(sev diag.Severity, urn resource.URN, msg string, streamID int32)
-	AnalyzerF           func(nm tokens.QName) (Analyzer, error)
-	PolicyAnalyzerF     func(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error)
-	ListAnalyzersF      func() []Analyzer
-	ProviderF           func(descriptor workspace.PluginDescriptor) (Provider, error)
-	LanguageRuntimeF    func(runtime string) (LanguageRuntime, error)
+	ServerAddrF     func() string
+	LogF            func(sev diag.Severity, urn resource.URN, msg string, streamID int32)
+	LogStatusF      func(sev diag.Severity, urn resource.URN, msg string, streamID int32)
+	AnalyzerF       func(nm tokens.QName) (Analyzer, error)
+	PolicyAnalyzerF func(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error)
+	ListAnalyzersF  func() []Analyzer
+	ProviderF       func(
+		descriptor workspace.PluginDescriptor,
+		config map[config.Key]string, runtimeOptions map[string]any, projectName tokens.PackageName,
+		disableProviderPreview bool, pwd string,
+	) (Provider, error)
+	LanguageRuntimeF    func(runtime, pwd string) (LanguageRuntime, error)
 	EnsurePluginsF      func(plugins []workspace.PluginDescriptor, kinds Flags) error
 	ResolvePluginF      func(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error)
 	GetProjectPluginsF  func() []workspace.ProjectPlugin
@@ -63,14 +68,14 @@ func (m *MockHost) LogStatus(sev diag.Severity, urn resource.URN, msg string, st
 	}
 }
 
-func (m *MockHost) Analyzer(nm tokens.QName) (Analyzer, error) {
+func (m *MockHost) Analyzer(nm tokens.QName, pwd string) (Analyzer, error) {
 	if m.AnalyzerF != nil {
 		return m.AnalyzerF(nm)
 	}
 	return nil, errors.New("Analyzer not implemented")
 }
 
-func (m *MockHost) PolicyAnalyzer(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error) {
+func (m *MockHost) PolicyAnalyzer(name tokens.QName, path string, opts *PolicyAnalyzerOptions, pwd string) (Analyzer, error) {
 	if m.PolicyAnalyzerF != nil {
 		return m.PolicyAnalyzerF(name, path, opts)
 	}
@@ -84,21 +89,29 @@ func (m *MockHost) ListAnalyzers() []Analyzer {
 	return nil
 }
 
-func (m *MockHost) Provider(descriptor workspace.PluginDescriptor) (Provider, error) {
+func (m *MockHost) Provider(
+	descriptor workspace.PluginDescriptor,
+	config map[config.Key]string, runtimeOptions map[string]any, projectName tokens.PackageName,
+	disableProviderPreview bool, pwd string,
+) (Provider, error) {
 	if m.ProviderF != nil {
-		return m.ProviderF(descriptor)
+		return m.ProviderF(descriptor, config, runtimeOptions, projectName, disableProviderPreview, pwd)
 	}
 	return nil, errors.New("Provider not implemented")
 }
 
-func (m *MockHost) LanguageRuntime(runtime string) (LanguageRuntime, error) {
+func (m *MockHost) LanguageRuntime(runtime, pwd string) (LanguageRuntime, error) {
 	if m.LanguageRuntimeF != nil {
-		return m.LanguageRuntimeF(runtime)
+		return m.LanguageRuntimeF(runtime, pwd)
 	}
 	return nil, errors.New("LanguageRuntime not implemented")
 }
 
-func (m *MockHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds Flags) error {
+func (m *MockHost) EnsurePlugins(
+	plugins []workspace.PluginDescriptor, kinds Flags,
+	config map[config.Key]string, runtimeOptions map[string]any, projectName tokens.PackageName,
+	disableProviderPreview bool, pwd string,
+) error {
 	if m.EnsurePluginsF != nil {
 		return m.EnsurePluginsF(plugins, kinds)
 	}

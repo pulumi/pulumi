@@ -83,7 +83,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName, pwd string) (Analyz
 
 	dialOpts := rpcutil.OpenTracingInterceptorDialOptions()
 
-	plug, _, err := newPlugin(ctx, pwd, path, fmt.Sprintf("%v (analyzer)", name),
+	plug, _, err := newPlugin(ctx, host, pwd, path, fmt.Sprintf("%v (analyzer)", name),
 		apitype.AnalyzerPlugin, []string{host.ServerAddr(), pwd}, nil, /*env*/
 		testConnection, dialOpts, host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))
 	if err != nil {
@@ -213,14 +213,14 @@ func NewPolicyAnalyzer(
 			return nil, err
 		}
 
-		plug, _, err = newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
+		plug, _, err = newPlugin(ctx, host, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
 			apitype.AnalyzerPlugin, args, env, handshake,
 			analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)),
 			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))
 	} else {
 		// Else we _did_ get a lanuage plugin so just use RunPlugin to invoke the policy pack.
 
-		plug, _, err = newPlugin(ctx, pwd, policyPackPath, fmt.Sprintf("%v (analyzer)", name),
+		plug, _, err = newPlugin(ctx, host, pwd, policyPackPath, fmt.Sprintf("%v (analyzer)", name),
 			apitype.AnalyzerPlugin, []string{host.ServerAddr()}, os.Environ(),
 			handshake, analyzerPluginDialOptions(ctx, string(name)),
 			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))

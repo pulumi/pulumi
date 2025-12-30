@@ -30,7 +30,7 @@ type ProviderFactory func(descriptor workspace.PackageDescriptor) (plugin.Provid
 
 // ProviderFactoryFromHost builds a ProviderFactory that uses the given plugin host to create providers and manage their
 // lifecycles.
-func ProviderFactoryFromHost(ctx context.Context, host plugin.Host) ProviderFactory {
+func ProviderFactoryFromHost(ctx context.Context, host plugin.Project) ProviderFactory {
 	return func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
 		if descriptor.Kind != apitype.ResourcePlugin {
 			return nil, fmt.Errorf("provider factory must be a resource plugin package, was %v", descriptor.Kind)

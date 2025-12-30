@@ -259,7 +259,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 			return handshake(ctx, bin, prefix, conn, req)
 		}
 
-		plug, handshakeRes, err = newPlugin(ctx, pwd, path, prefix,
+		plug, handshakeRes, err = newPlugin(ctx, host, pwd, path, prefix,
 			apitype.ResourcePlugin, []string{host.ServerAddr()}, env,
 			handshake, providerPluginDialOptions(ctx, pkg, ""),
 			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: spec.Name}))
@@ -370,7 +370,7 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 }
 
 // NewProviderFromPath creates a new provider by loading the plugin binary located at `path`.
-func NewProviderFromPath(host Host, ctx *Context, pkg tokens.Package, path string) (Provider, error) {
+func NewProviderFromPath(host Host, ctx *Context, pkg tokens.Package, path, pwd string) (Provider, error) {
 	env := os.Environ()
 
 	handshake := func(
@@ -389,7 +389,7 @@ func NewProviderFromPath(host Host, ctx *Context, pkg tokens.Package, path strin
 		return handshake(ctx, bin, prefix, conn, req)
 	}
 
-	plug, handshakeRes, err := newPlugin(ctx, ctx.Pwd, path, "",
+	plug, handshakeRes, err := newPlugin(ctx, host, pwd, path, "",
 		apitype.ResourcePlugin, []string{host.ServerAddr()}, env,
 		handshake, providerPluginDialOptions(ctx, "", path),
 		host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: path}))
