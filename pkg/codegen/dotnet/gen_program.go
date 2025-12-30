@@ -1132,11 +1132,27 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string) {
 	rootNamespace := namespaceName(namespaces, pkg)
 	namespace := namespaceName(namespaces, module)
 
+	namespaceTokens := strings.Split(namespace, "/")
+	for i, name := range namespaceTokens {
+		namespaceTokens[i] = Title(name)
+	}
+	namespace = strings.Join(namespaceTokens, ".")
+
+	pkgNamespace := namespaceName(namespaces, pkg)
+	if alias, ok := g.namespaceAliases[pkgNamespace]; ok {
+		typePrefix := alias
+		if namespace != "" {
+			typePrefix = fmt.Sprintf("%s.%s", alias, namespace)
+		}
+		return alias, fmt.Sprintf("%s.%s", typePrefix, Title(member))
+	}
+
 	if namespace != "" {
 		namespace = "." + namespace
 	}
 
-	return rootNamespace, fmt.Sprintf("%s%s.%s", rootNamespace, namespace, Title(member))
+	qualifiedMemberName := fmt.Sprintf("%s%s.%s", rootNamespace, namespace, Title(member))
+	return rootNamespace, qualifiedMemberName
 }
 
 func (g *generator) toSchemaType(destType model.Type) (schema.Type, bool) {
