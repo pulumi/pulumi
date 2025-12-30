@@ -84,7 +84,14 @@ func (tt *SDKTest) ShouldSkipCodegen(language string) bool {
 	return tt.Skip.Has(language + "/any")
 }
 
-var allLanguages = codegen.NewStringSet("python/any", "nodejs/any", "dotnet/any", "go/any", "docs/any")
+var allLanguages = codegen.NewStringSet(
+	"docs/any",
+	"dotnet/any",
+	"go/any",
+	"java/any",
+	"nodejs/any",
+	"python/any",
+)
 
 var PulumiPulumiSDKTests = []*SDKTest{
 	{
