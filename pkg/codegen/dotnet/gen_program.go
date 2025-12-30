@@ -514,7 +514,6 @@ func (g *generator) usingStatements(program *pcl.Program) programUsings {
 					}
 				}
 
-				// To avoid problems with e.g. `Pulumi.Output` conflicting with `Output` in `Pulumi`.
 				pkgNamespace := namespaceName(g.namespaces[pkg], pkg)
 				safeAlias := makeSafePulumiNamespace(pkgNamespace)
 				g.namespaceAliases[pkgNamespace] = safeAlias
