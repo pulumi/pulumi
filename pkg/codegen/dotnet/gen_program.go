@@ -1043,21 +1043,9 @@ func requiresAsyncInit(r *pcl.Resource) bool {
 	return model.ContainsPromises(r.Options.Range.Type())
 }
 
-// resourceTypeName computes the C# class name for the given resource.
-func (g *generator) resourceTypeName(r *pcl.Resource) string {
-	pcl.FixupPulumiPackageTokens(r)
-	// Compute the resource type from the Pulumi type token.
-	pkg, module, member, diags := r.DecomposeToken()
-	contract.Assertf(len(diags) == 0, "error decomposing token: %v", diags)
-
-	if r.Schema != nil {
-		if val1, ok := r.Schema.Language["csharp"]; ok {
-			val2, ok := val1.(CSharpResourceInfo)
-			contract.Assertf(ok, "dotnet specific settings for resources should be of type CSharpResourceInfo")
-			member = val2.Name
-		}
-	}
-
+// qualifiedTypeName processes namespace information and returns the root namespace and qualified type name.
+// It handles namespace token processing and namespace alias resolution.
+func (g *generator) qualifiedTypeName(pkg, module, member string) (string, string) {
 	namespaces := g.namespaces[pkg]
 	rootNamespace := namespaceName(namespaces, pkg)
 
@@ -1074,7 +1062,7 @@ func (g *generator) resourceTypeName(r *pcl.Resource) string {
 		if namespace != "" {
 			typePrefix = fmt.Sprintf("%s.%s", alias, namespace)
 		}
-		return fmt.Sprintf("%s.%s", typePrefix, Title(member))
+		return alias, fmt.Sprintf("%s.%s", typePrefix, Title(member))
 	}
 
 	if namespace != "" {
@@ -1082,7 +1070,26 @@ func (g *generator) resourceTypeName(r *pcl.Resource) string {
 	}
 
 	qualifiedMemberName := fmt.Sprintf("%s%s.%s", rootNamespace, namespace, Title(member))
-	return qualifiedMemberName
+	return rootNamespace, qualifiedMemberName
+}
+
+// resourceTypeName computes the C# class name for the given resource.
+func (g *generator) resourceTypeName(r *pcl.Resource) string {
+	pcl.FixupPulumiPackageTokens(r)
+	// Compute the resource type from the Pulumi type token.
+	pkg, module, member, diags := r.DecomposeToken()
+	contract.Assertf(len(diags) == 0, "error decomposing token: %v", diags)
+
+	if r.Schema != nil {
+		if val1, ok := r.Schema.Language["csharp"]; ok {
+			val2, ok := val1.(CSharpResourceInfo)
+			contract.Assertf(ok, "dotnet specific settings for resources should be of type CSharpResourceInfo")
+			member = val2.Name
+		}
+	}
+
+	_, qualifiedName := g.qualifiedTypeName(pkg, module, member)
+	return qualifiedName
 }
 
 func (g *generator) extractInputPropertyNameMap(r *pcl.Resource) map[string]string {
@@ -1128,31 +1135,7 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string) {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diags := pcl.DecomposeToken(token, tokenRange)
 	contract.Assertf(len(diags) == 0, "error decomposing token: %v", diags)
-	namespaces := g.namespaces[pkg]
-	rootNamespace := namespaceName(namespaces, pkg)
-	namespace := namespaceName(namespaces, module)
-
-	namespaceTokens := strings.Split(namespace, "/")
-	for i, name := range namespaceTokens {
-		namespaceTokens[i] = Title(name)
-	}
-	namespace = strings.Join(namespaceTokens, ".")
-
-	pkgNamespace := namespaceName(namespaces, pkg)
-	if alias, ok := g.namespaceAliases[pkgNamespace]; ok {
-		typePrefix := alias
-		if namespace != "" {
-			typePrefix = fmt.Sprintf("%s.%s", alias, namespace)
-		}
-		return alias, fmt.Sprintf("%s.%s", typePrefix, Title(member))
-	}
-
-	if namespace != "" {
-		namespace = "." + namespace
-	}
-
-	qualifiedMemberName := fmt.Sprintf("%s%s.%s", rootNamespace, namespace, Title(member))
-	return rootNamespace, qualifiedMemberName
+	return g.qualifiedTypeName(pkg, module, member)
 }
 
 func (g *generator) toSchemaType(destType model.Type) (schema.Type, bool) {
