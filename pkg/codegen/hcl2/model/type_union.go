@@ -17,7 +17,6 @@ package model
 import (
 	"fmt"
 	"slices"
-	"sort"
 	"strings"
 	"sync/atomic"
 
@@ -57,24 +56,7 @@ func NewUnionTypeAnnotated(types []Type, annotations ...any) Type {
 		}
 	}
 
-	// Remove duplicate types
-	// We first sort the types so duplicates will be adjacent
-	sort.Slice(elementTypes, func(i, j int) bool {
-		return elementTypes[i].String() < elementTypes[j].String()
-	})
-	// We then filter out adjacent duplicates
-	dst := 0
-	for src := 0; src < len(elementTypes); {
-		for src < len(elementTypes) && elementTypes[src].Equals(elementTypes[dst]) {
-			src++
-		}
-		dst++
-
-		if src < len(elementTypes) {
-			elementTypes[dst] = elementTypes[src]
-		}
-	}
-	elementTypes = elementTypes[:dst]
+	elementTypes = deduplicateSliceFunc(elementTypes, Type.String, Type.Equals)
 
 	// If the union turns out to be the union of a single type, just return the underlying
 	// type.

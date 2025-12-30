@@ -78,7 +78,7 @@ func TestGetSchemaForType(t *testing.T) {
 		}, t), t
 	}
 
-	objects := make([]model.Type, 10)
+	objects := make([]model.Type, 100)
 	types := make([]schema.Type, len(objects))
 	for i := range objects {
 		obj, typ := newObj(i)

@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
 package model
 
 import (
+	"cmp"
+	"slices"
 	"sort"
 
 	"github.com/hashicorp/hcl/v2"
@@ -24,6 +26,39 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
+
+// deduplicateSliceFunc provides a stable de-duplication on a slice of arbitrary elements.
+//
+// projection must return a order-able version of E, such that duplicate elements will be
+// next to each-other.
+func deduplicateSliceFunc[E any, S ~[]E, Projection cmp.Ordered](
+	arr S, projection func(E) Projection, equality func(E, E) bool,
+) S {
+	type element struct {
+		value      E
+		idx        int
+		projection Projection
+	}
+	elements := make([]element, 0, len(arr))
+	for idx, v := range arr {
+		elements = append(elements, element{v, idx, projection(v)})
+	}
+
+	slices.SortFunc(elements, func(a, b element) int {
+		return cmp.Compare(a.projection, b.projection)
+	})
+	elements = slices.CompactFunc(elements, func(a, b element) bool {
+		return equality(a.value, b.value)
+	})
+	slices.SortFunc(elements, func(a, b element) int {
+		return cmp.Compare(a.idx, b.idx)
+	})
+	result := make(S, len(elements))
+	for i, v := range elements {
+		result[i] = v.value
+	}
+	return result
+}
 
 func syntaxOrNone(node hclsyntax.Node) hclsyntax.Node {
 	if node == nil {
