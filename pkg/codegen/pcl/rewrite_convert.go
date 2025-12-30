@@ -358,21 +358,22 @@ func literalExprValue(expr model.Expression) (cty.Value, bool) {
 func lowerConversion(from model.Expression, to model.Type) (model.Type, bool) {
 	switch to := to.(type) {
 	case *model.UnionType:
-		// Assignment: it just works
-		for _, to := range to.ElementTypes {
-			// in general, strings are not assignable to enums, but we allow it here
-			// if the enum has an element that matches the `from` expression
-			switch enumType := to.(type) {
-			case *model.EnumType:
-				if literal, ok := literalExprValue(from); ok {
+		// For literal values, check all enum types first to find a matching enum
+		// member. This ensures we prefer enum types over equivalent string types
+		// for literal values, regardless of the order of elements in the union.
+		if literal, ok := literalExprValue(from); ok {
+			for _, elemType := range to.ElementTypes {
+				if enumType, ok := elemType.(*model.EnumType); ok {
 					for _, enumCase := range enumType.Elements {
 						if enumCase.RawEquals(literal) {
-							return to, true
+							return elemType, true
 						}
 					}
 				}
 			}
+		}
 
+		for _, to := range to.ElementTypes {
 			if to.AssignableFrom(from.Type()) {
 				return to, true
 			}

@@ -24,14 +24,14 @@ func TestPrettyPrintingUnionType(t *testing.T) {
 	t.Parallel()
 	union := NewUnionType(StringType, IntType)
 	pretty := union.Pretty().String()
-	assert.Equal(t, "int | string", pretty)
+	assert.Equal(t, "string | int", pretty)
 }
 
 func TestPrettyPrintingNestedUnionType(t *testing.T) {
 	t.Parallel()
 	union := NewUnionType(StringType, NewUnionType(IntType, BoolType))
 	pretty := union.Pretty().String()
-	assert.Equal(t, "bool | int | string", pretty)
+	assert.Equal(t, "string | int | bool", pretty)
 }
 
 func TestPrettyPrintingSelfReferencingUnionType(t *testing.T) {
