@@ -41,24 +41,24 @@ type converter struct {
 	clientRaw pulumirpc.ConverterClient // the raw provider client; usually unsafe to use directly.
 }
 
-func NewConverter(ctx *Context, name string, version *semver.Version) (Converter, error) {
+func NewConverter(ctx *Context, host Host, name string, version *semver.Version, pwd string) (Converter, error) {
 	prefix := fmt.Sprintf("%v (converter)", name)
 
 	// Load the plugin's path by using the standard workspace logic.
 	path, err := workspace.GetPluginPath(
 		ctx.baseContext, ctx.Diag,
 		workspace.PluginDescriptor{Name: name, Version: version, Kind: apitype.ConverterPlugin},
-		ctx.Host.GetProjectPlugins())
+		host.GetProjectPlugins())
 	if err != nil {
 		return nil, err
 	}
 
 	contract.Assertf(path != "", "unexpected empty path for plugin %s", name)
 
-	plug, _, err := newPlugin(ctx, ctx.Pwd, path, prefix,
+	plug, _, err := newPlugin(ctx, pwd, path, prefix,
 		apitype.ConverterPlugin, []string{}, os.Environ(),
 		testConnection, converterPluginDialOptions(ctx, name, ""),
-		ctx.Host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: name}))
+		host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: name}))
 	if err != nil {
 		return nil, err
 	}

@@ -66,7 +66,7 @@ var _ Analyzer = (*analyzer)(nil)
 
 // NewAnalyzer binds to a given analyzer's plugin by name and creates a gRPC connection to it.  If the associated plugin
 // could not be found by name on the PATH, or an error occurs while creating the child process, an error is returned.
-func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
+func NewAnalyzer(host Host, ctx *Context, name tokens.QName, pwd string) (Analyzer, error) {
 	// Load the plugin's path by using the standard workspace logic.
 	path, err := workspace.GetPluginPath(
 		ctx.baseContext,
@@ -83,8 +83,8 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 
 	dialOpts := rpcutil.OpenTracingInterceptorDialOptions()
 
-	plug, _, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
-		apitype.AnalyzerPlugin, []string{host.ServerAddr(), ctx.Pwd}, nil, /*env*/
+	plug, _, err := newPlugin(ctx, pwd, path, fmt.Sprintf("%v (analyzer)", name),
+		apitype.AnalyzerPlugin, []string{host.ServerAddr(), pwd}, nil, /*env*/
 		testConnection, dialOpts, host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))
 	if err != nil {
 		return nil, err
@@ -104,7 +104,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 // the plugin by path.
 func NewPolicyAnalyzer(
 	host Host, ctx *Context, name tokens.QName, policyPackPath string, opts *PolicyAnalyzerOptions,
-	hasPlugin func(workspace.PluginDescriptor) bool,
+	hasPlugin func(workspace.PluginDescriptor) bool, pwd string,
 ) (Analyzer, error) {
 	projPath := filepath.Join(policyPackPath, "PulumiPolicy.yaml")
 	proj, err := workspace.LoadPolicyPack(projPath)
@@ -220,7 +220,7 @@ func NewPolicyAnalyzer(
 	} else {
 		// Else we _did_ get a lanuage plugin so just use RunPlugin to invoke the policy pack.
 
-		plug, _, err = newPlugin(ctx, ctx.Pwd, policyPackPath, fmt.Sprintf("%v (analyzer)", name),
+		plug, _, err = newPlugin(ctx, pwd, policyPackPath, fmt.Sprintf("%v (analyzer)", name),
 			apitype.AnalyzerPlugin, []string{host.ServerAddr()}, os.Environ(),
 			handshake, analyzerPluginDialOptions(ctx, string(name)),
 			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))

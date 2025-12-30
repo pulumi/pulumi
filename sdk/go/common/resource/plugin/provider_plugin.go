@@ -168,7 +168,7 @@ func GetProviderAttachPort(pkg tokens.Package) (*int, error) {
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 	options map[string]any, disableProviderPreview bool, jsonConfig string,
-	projectName tokens.PackageName,
+	projectName tokens.PackageName, pwd string,
 ) (Provider, error) {
 	// See if this is a provider we just want to attach to
 	var plug *Plugin
@@ -259,7 +259,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 			return handshake(ctx, bin, prefix, conn, req)
 		}
 
-		plug, handshakeRes, err = newPlugin(ctx, ctx.Pwd, path, prefix,
+		plug, handshakeRes, err = newPlugin(ctx, pwd, path, prefix,
 			apitype.ResourcePlugin, []string{host.ServerAddr()}, env,
 			handshake, providerPluginDialOptions(ctx, pkg, ""),
 			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: spec.Name}))
