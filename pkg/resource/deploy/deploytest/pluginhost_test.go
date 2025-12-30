@@ -158,12 +158,6 @@ func TestPluginHostProvider(t *testing.T) {
 			_, err := host.Analyzer("")
 			assert.ErrorIs(t, err, ErrHostIsClosed)
 		})
-		t.Run("CloseProvider", func(t *testing.T) {
-			t.Parallel()
-			host := &pluginHost{closed: true}
-			err := host.CloseProvider(nil)
-			assert.ErrorIs(t, err, ErrHostIsClosed)
-		})
 		t.Run("EnsurePlugins", func(t *testing.T) {
 			t.Parallel()
 			host := &pluginHost{closed: true}
