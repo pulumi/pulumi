@@ -182,7 +182,7 @@ func newDeployment(
 	}
 
 	// Keep the plugin context open until the context is terminated, to allow for graceful provider cancellation.
-	plugctx = plugctx.WithCancelChannel(ctx.Cancel.Terminated())
+	go func() { <-ctx.Cancel.Terminated(); contract.IgnoreClose(plugctx) }()
 
 	// Set up a goroutine that will signal cancellation to the source if the caller context
 	// is cancelled.
