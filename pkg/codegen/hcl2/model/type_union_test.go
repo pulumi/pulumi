@@ -24,14 +24,14 @@ func TestPrettyPrintingUnionType(t *testing.T) {
 	t.Parallel()
 	union := NewUnionType(StringType, IntType)
 	pretty := union.Pretty().String()
-	assert.Equal(t, "int | string", pretty)
+	assert.Equal(t, "string | int", pretty)
 }
 
 func TestPrettyPrintingNestedUnionType(t *testing.T) {
 	t.Parallel()
 	union := NewUnionType(StringType, NewUnionType(IntType, BoolType))
 	pretty := union.Pretty().String()
-	assert.Equal(t, "bool | int | string", pretty)
+	assert.Equal(t, "string | int | bool", pretty)
 }
 
 func TestPrettyPrintingSelfReferencingUnionType(t *testing.T) {
@@ -54,4 +54,53 @@ func TestPrettyPrintingSelfReferencingUnionType(t *testing.T) {
 
 	pretty := union.Pretty().String()
 	assert.Equal(t, "string | list({ selfReferences: string | int })", pretty)
+}
+
+func TestUnionEqual(t *testing.T) {
+	t.Parallel()
+
+	t.Run("equal-order", func(t *testing.T) {
+		t.Parallel()
+		u1 := &UnionType{ElementTypes: []Type{
+			StringType,
+			IntType,
+		}}
+
+		u2 := &UnionType{ElementTypes: []Type{
+			IntType,
+			StringType,
+		}}
+
+		assert.True(t, u1.Equals(u2), "Expected types to be equal")
+	})
+
+	t.Run("equal", func(t *testing.T) {
+		t.Parallel()
+		u1 := &UnionType{ElementTypes: []Type{
+			IntType,
+			StringType,
+		}}
+
+		u2 := &UnionType{ElementTypes: []Type{
+			IntType,
+			StringType,
+		}}
+
+		assert.True(t, u1.Equals(u2), "Expected types to be equal")
+	})
+
+	t.Run("not equal", func(t *testing.T) {
+		t.Parallel()
+		u1 := &UnionType{ElementTypes: []Type{
+			IntType,
+			NoneType,
+		}}
+
+		u2 := &UnionType{ElementTypes: []Type{
+			IntType,
+			StringType,
+		}}
+
+		assert.False(t, u1.Equals(u2), "Expected types to be equal")
+	})
 }

@@ -558,7 +558,7 @@ func TestInputType(t *testing.T) {
 		NewOutputType(NewListType(BoolType))), InputType(NewListType(BoolType)))
 
 	assert.Equal(t, NewUnionType(
-		NewUnionType(BoolType, IntType, NewOutputType(BoolType), NewOutputType(IntType)),
+		NewUnionType(BoolType, NewOutputType(BoolType), IntType, NewOutputType(IntType)),
 		NewOutputType(NewUnionType(BoolType, IntType))),
 		InputType(NewUnionType(BoolType, IntType)))
 
