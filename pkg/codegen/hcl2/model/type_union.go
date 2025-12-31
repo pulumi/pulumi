@@ -186,11 +186,22 @@ func (t *UnionType) equals(other Type, seen map[Type]struct{}) bool {
 	if len(t.ElementTypes) != len(otherUnion.ElementTypes) {
 		return false
 	}
-	for i, t := range t.ElementTypes {
-		if !t.equals(otherUnion.ElementTypes[i], seen) {
-			return false
-		}
+
+	taken := make([]int, len(otherUnion.ElementTypes))
+	for i := range len(otherUnion.ElementTypes) {
+		taken[i] = i
 	}
+outer:
+	for _, v := range t.ElementTypes {
+		for idx, otherIdx := range taken {
+			if v.equals(otherUnion.ElementTypes[otherIdx], seen) {
+				taken = slices.Delete(taken, idx, idx+1)
+				continue outer
+			}
+		}
+		return false
+	}
+
 	return true
 }
 
