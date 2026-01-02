@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -627,7 +627,11 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	}, nil
 }
 
-// validatePulumiVersionRange validates that the CLI version satisfies the passed version range.
+// validatePulumiVersionRange validates that the CLI version satisfies the passed version range. The supported syntax
+// for ranges is that of https://pkg.go.dev/github.com/blang/semver#ParseRange. For example ">=3.0.0", or "!3.1.2".
+// Ranges can be AND-ed together by concatenating with spaces ">=3.5.0 !3.7.7", meaning greater-or-equal to 3.5.0 and
+// not exactly 3.7.7. Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or
+// greater-than 3.8.0.
 func validatePulumiVersionRange(pulumiVersionRange, cliVersion, provider string) error {
 	if pulumiVersionRange != "" && cliVersion != "" {
 		rg, err := semver.ParseRange(pulumiVersionRange)

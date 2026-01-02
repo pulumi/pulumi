@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -411,28 +411,4 @@ func TestPulumiVersionRangeYaml(t *testing.T) {
 	_, err = NewProviderFromPath(ctx.Host, ctx, "", filepath.Join("testdata", "test-plugin-cli-version"))
 	require.ErrorContains(t, err, "failed to load plugin testdata/test-plugin-cli-version: Pulumi CLI version 3.1.2 "+
 		"does not satisfy the version range \">=100.0.0\" requested by the provider testdata/test-plugin-cli-version.")
-}
-
-// Test a provider that returns an incompatible version range from `Handshake`.
-//
-//nolint:paralleltest // Modifying the global version.Version
-func TestPulumiVersionRangeHandshake(t *testing.T) {
-	dir := t.TempDir()
-	providerBin := filepath.Join(dir, "provider")
-	cmd := exec.Command("go", "build", "-o", providerBin,
-		filepath.Join("testdata", "pulumi-version-range-handshake", "main.go"))
-	out, err := cmd.CombinedOutput()
-	require.NoError(t, err, "%s: err=%s, out=%s", cmd.String(), err, out)
-
-	d := diagtest.LogSink(t)
-	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil)
-	require.NoError(t, err)
-
-	oldVersion := version.Version
-	defer func() { version.Version = oldVersion }()
-	version.Version = "3.1.2"
-
-	_, err = NewProviderFromPath(ctx.Host, ctx, "the-provider", providerBin)
-	require.ErrorContains(t, err,
-		"Pulumi CLI version 3.1.2 does not satisfy the version range \">=100.0.0\" requested by the provider the-provider.")
 }

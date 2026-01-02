@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,10 +38,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
@@ -2097,4 +2100,28 @@ func TestConfigFlag(t *testing.T) {
 	configContent, err = os.ReadFile(configPath)
 	require.NoError(t, err)
 	require.Contains(t, string(configContent), "config-flag:example: an-example")
+}
+
+// Test a provider that returns an incompatible version range from `Handshake`.
+//
+//nolint:paralleltest // Modifying the global version.Version
+func TestPulumiVersionRangeHandshake(t *testing.T) {
+	dir := t.TempDir()
+	providerBin := filepath.Join(dir, "provider")
+	cmd := exec.Command("go", "build", "-o", providerBin,
+		filepath.Join("pulumi-version-range-handshake", "main.go"))
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "%s: err=%s, out=%s", cmd.String(), err, out)
+
+	d := diagtest.LogSink(t)
+	ctx, err := plugin.NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil)
+	require.NoError(t, err)
+
+	oldVersion := version.Version
+	defer func() { version.Version = oldVersion }()
+	version.Version = "3.1.2"
+
+	_, err = plugin.NewProviderFromPath(ctx.Host, ctx, "the-provider", providerBin)
+	require.ErrorContains(t, err,
+		"Pulumi CLI version 3.1.2 does not satisfy the version range \">=100.0.0\" requested by the provider the-provider.")
 }
