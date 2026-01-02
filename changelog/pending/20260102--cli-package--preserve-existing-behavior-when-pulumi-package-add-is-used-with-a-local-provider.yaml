@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/package
+  description: Preserve existing behavior when `pulumi package add` is used with a local provider
