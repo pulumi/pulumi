@@ -157,7 +157,6 @@ resource "test-organization" "tfe:index/organization:Organization" {
 	return program
 }
 
-// Tests that replacement triggers are correctly generated in the .NET code.
 func TestGenerateProgramWithReplacementTrigger(t *testing.T) {
 	t.Parallel()
 
@@ -167,15 +166,11 @@ func TestGenerateProgramWithReplacementTrigger(t *testing.T) {
 	require.False(t, diags.HasErrors(), "unexpected diags: %v", diags)
 	require.NotNil(t, files)
 
-	// Find the Program.cs file
 	programFile, ok := files["Program.cs"]
 	require.True(t, ok, "Program.cs should be generated")
 
 	programText := string(programFile)
-	// Print the generated code for inspection
-	t.Logf("Generated Program.cs:\n%s", programText)
 
-	// Check that replacement triggers are correctly generated
 	require.Contains(t, programText, "ReplacementTrigger", "generated code should contain ReplacementTrigger")
 	require.Contains(t, programText, "Output.CreateSecret", "generated code should contain secret replacement trigger")
 }
