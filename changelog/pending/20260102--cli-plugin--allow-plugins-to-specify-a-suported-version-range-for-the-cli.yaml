@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/plugin
+  description: Allow plugins to specify a suported version range for the CLI
