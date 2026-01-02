@@ -336,6 +336,14 @@ func TestBoolValue(t *testing.T) {
 			Val:      NewTypedValue("True", TypeBool),
 			Expected: true,
 		},
+		{
+			Val:      NewTypedValue("invalid", TypeBool),
+			Expected: false,
+		},
+		{
+			Val:      NewTypedValue("yes", TypeBool),
+			Expected: false,
+		},
 	}
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test.Val), func(t *testing.T) {

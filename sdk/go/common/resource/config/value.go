@@ -19,6 +19,7 @@ import (
 	"strconv"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 type Type int
@@ -184,7 +185,8 @@ func (c Value) unmarshalObject() (object, error) {
 	case TypeBool:
 		b, err := strconv.ParseBool(c.value)
 		if err != nil {
-			return object{}, err
+			logging.Warningf("Failed to parse boolean value '%s': %v. Defaulting to false.", c.value, err)
+			return newObject(false), nil
 		}
 		return newObject(b), nil
 	case TypeFloat:
