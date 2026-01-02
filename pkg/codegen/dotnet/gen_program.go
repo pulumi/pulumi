@@ -508,9 +508,6 @@ func (g *generator) setupNamespaceAlias(
 	}
 
 	pkgNamespace := namespaceName(g.namespaces[pkg], pkg)
-	if _, exists := g.namespaceAliases[pkgNamespace]; exists {
-		return
-	}
 
 	// Get CSharpPackageInfo from the package reference
 	var info CSharpPackageInfo
@@ -542,12 +539,17 @@ func (g *generator) setupNamespaceAlias(
 		}
 	}
 
-	safeAlias := makeSafePulumiNamespace(pkgNamespace)
-	g.namespaceAliases[pkgNamespace] = safeAlias
-
 	rootNamespace := info.GetRootNamespace()
 	if rootNamespace == "" {
 		rootNamespace = "Pulumi"
+	}
+
+	var safeAlias string
+	if existingAlias, exists := g.namespaceAliases[pkgNamespace]; exists {
+		safeAlias = existingAlias
+	} else {
+		safeAlias = makeSafePulumiNamespace(pkgNamespace)
+		g.namespaceAliases[pkgNamespace] = safeAlias
 	}
 
 	pkgFullNamespace := fmt.Sprintf("%s.%s", rootNamespace, pkgNamespace)
