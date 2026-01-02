@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli/package
+  description: Remove superfluous version string
