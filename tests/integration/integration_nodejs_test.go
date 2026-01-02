@@ -3024,33 +3024,33 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 
 // Tests that we can run a Node.js component provider using component_provider_host
 func TestNodejsComponentProviderRun(t *testing.T) {
+	t.Parallel()
+
+	//nolint:paralleltest // t.Parallel is called by integration.ProgramTest
 	for _, runtime := range []string{"yaml", "python", "nodejs-pnpm", "nodejs-npm"} {
 		t.Run(runtime, func(t *testing.T) {
-			// This uses the random plugin so needs to be able to download it
-			t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
-
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				NoParallel: true,
 				PrepareProject: func(info *engine.Projinfo) error {
 					providerPath := filepath.Join(info.Root, "..", "provider")
 					installNodejsProviderDependencies(t, providerPath)
 
 					cmd := exec.Command("pulumi", "package", "add", providerPath)
 					cmd.Dir = info.Root
+					cmd.Env = append(os.Environ(), "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
 					out, err := cmd.CombinedOutput()
 					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
 
-					if runtime != "yaml" {
-						cmd := exec.Command("pulumi", "install")
-						cmd.Dir = info.Root
-						out, err := cmd.CombinedOutput()
-						require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
-					}
+					cmd = exec.Command("pulumi", "install")
+					cmd.Dir = info.Root
+					cmd.Env = append(os.Environ(), "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+					out, err = cmd.CombinedOutput()
+					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
 
 					return nil
 				},
 				Dir:             filepath.Join("component_provider", "nodejs", "component-provider-host"),
 				RelativeWorkDir: runtime,
+				Env:             []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false"},
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 					t.Logf("Outputs: %v", stack.Outputs)
 					urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
