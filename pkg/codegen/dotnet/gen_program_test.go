@@ -309,7 +309,8 @@ func TestGenerateProgramWithFunctionNamespaceCollision(t *testing.T) {
 
 	require.Contains(t, programText, `using PulumiOutput = Pulumi.Output;`,
 		"generated code should contain PulumiOutput alias for Pulumi.Output namespace")
-	require.Contains(t, programText, `PulumiOutput.Output.Invoke`, "generated code should use PulumiOutput alias for function")
+	require.Contains(t, programText, `PulumiOutput.Output.Invoke`,
+		"generated code should use PulumiOutput alias for function")
 }
 
 type inlineLoader struct {
