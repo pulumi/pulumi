@@ -75,3 +75,24 @@ func Test_makeValidIdentifier(t *testing.T) {
 		})
 	}
 }
+
+func Test_makeSafePulumiNamespace(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"Output", "PulumiOutput"},
+		{"InputUnion", "InputUnion"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+
+			if got := makeSafePulumiNamespace(tt.input); got != tt.expected {
+				t.Errorf("makeSafePulumiNamespace() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
