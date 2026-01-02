@@ -2108,6 +2108,9 @@ func TestConfigFlag(t *testing.T) {
 func TestPulumiVersionRangeHandshake(t *testing.T) {
 	dir := t.TempDir()
 	providerBin := filepath.Join(dir, "provider")
+	if runtime.GOOS == "windows" {
+		providerBin += ".exe"
+	}
 	cmd := exec.Command("go", "build", "-o", providerBin,
 		filepath.Join("pulumi-version-range-handshake", "main.go"))
 	out, err := cmd.CombinedOutput()
