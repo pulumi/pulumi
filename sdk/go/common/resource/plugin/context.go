@@ -165,6 +165,8 @@ func NewContextWithHost(
 		statusD = diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
 	}
 
+	ctx, cancel := context.WithCancel(ctx)
+
 	return &Context{
 		Diag:            d,
 		StatusDiag:      statusD,
@@ -173,7 +175,7 @@ func NewContextWithHost(
 		Root:            root,
 		tracingSpan:     parentSpan,
 		DebugTraceMutex: &sync.Mutex{},
-		cancelLock:      &sync.Mutex{},
+		cancel:          cancel,
 		baseContext:     ctx,
 	}
 }
