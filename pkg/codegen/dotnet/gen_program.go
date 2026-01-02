@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/zclconf/go-cty/cty"
 )
 
 type GenerateProgramOptions struct {
@@ -493,6 +494,66 @@ type programUsings struct {
 	pulumiHelperMethods codegen.StringSet
 }
 
+// setupNamespaceAlias sets up a namespace alias for the given package if it doesn't already exist.
+// It extracts CSharpPackageInfo, creates a safe alias using makeSafePulumiNamespace, stores it,
+// and adds the appropriate using statement to pulumiUsings.
+func (g *generator) setupNamespaceAlias(
+	pkg string,
+	pkgRef schema.PackageReference,
+	program *pcl.Program,
+	pulumiUsings codegen.StringSet,
+) {
+	if pkg == pulumiPackage {
+		return
+	}
+
+	pkgNamespace := namespaceName(g.namespaces[pkg], pkg)
+	if _, exists := g.namespaceAliases[pkgNamespace]; exists {
+		return
+	}
+
+	// Get CSharpPackageInfo from the package reference
+	var info CSharpPackageInfo
+	if pkgRef != nil {
+		def, err := pkgRef.Definition()
+		if err == nil {
+			if csharpinfo, ok := def.Language["csharp"].(CSharpPackageInfo); ok {
+				info = csharpinfo
+			}
+			if info.RootNamespace == "" && pkgRef.Namespace() != "" {
+				info.RootNamespace = namespaceName(nil, pkgRef.Namespace())
+			}
+		}
+	} else {
+		// Look up the package reference from the program
+		for _, ref := range program.PackageReferences() {
+			if ref.Name() == pkg {
+				def, err := ref.Definition()
+				if err == nil {
+					if csharpinfo, ok := def.Language["csharp"].(CSharpPackageInfo); ok {
+						info = csharpinfo
+					}
+					if info.RootNamespace == "" && ref.Namespace() != "" {
+						info.RootNamespace = namespaceName(nil, ref.Namespace())
+					}
+				}
+				break
+			}
+		}
+	}
+
+	safeAlias := makeSafePulumiNamespace(pkgNamespace)
+	g.namespaceAliases[pkgNamespace] = safeAlias
+
+	rootNamespace := info.GetRootNamespace()
+	if rootNamespace == "" {
+		rootNamespace = "Pulumi"
+	}
+
+	pkgFullNamespace := fmt.Sprintf("%s.%s", rootNamespace, pkgNamespace)
+	pulumiUsings.Add(fmt.Sprintf("%s = %s", safeAlias, pkgFullNamespace))
+}
+
 func (g *generator) usingStatements(program *pcl.Program) programUsings {
 	systemUsings := codegen.NewStringSet("System.Linq", "System.Collections.Generic")
 	pulumiUsings := codegen.NewStringSet()
@@ -501,34 +562,31 @@ func (g *generator) usingStatements(program *pcl.Program) programUsings {
 		if r, isResource := n.(*pcl.Resource); isResource {
 			pcl.FixupPulumiPackageTokens(r)
 			pkg, _, _, _ := r.DecomposeToken()
-			if pkg != pulumiPackage {
-				var info CSharpPackageInfo
-				if r.Schema != nil && r.Schema.PackageReference != nil {
-					def, err := r.Schema.PackageReference.Definition()
-					contract.AssertNoErrorf(err, "error loading definition for package %q", r.Schema.PackageReference.Name())
-					if csharpinfo, ok := def.Language["csharp"].(CSharpPackageInfo); ok {
-						info = csharpinfo
-					}
-					if info.RootNamespace == "" && r.Schema.PackageReference.Namespace() != "" {
-						info.RootNamespace = namespaceName(nil, r.Schema.PackageReference.Namespace())
-					}
-				}
-
-				pkgNamespace := namespaceName(g.namespaces[pkg], pkg)
-				safeAlias := makeSafePulumiNamespace(pkgNamespace)
-				g.namespaceAliases[pkgNamespace] = safeAlias
-
-				rootNamespace := info.GetRootNamespace()
-				if rootNamespace == "" {
-					rootNamespace = "Pulumi"
-				}
-
-				pkgFullNamespace := fmt.Sprintf("%s.%s", rootNamespace, pkgNamespace)
-				pulumiUsings.Add(fmt.Sprintf("%s = %s", safeAlias, pkgFullNamespace))
+			var pkgRef schema.PackageReference
+			if r.Schema != nil && r.Schema.PackageReference != nil {
+				pkgRef = r.Schema.PackageReference
 			}
+			g.setupNamespaceAlias(pkg, pkgRef, program, pulumiUsings)
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
+				if call.Name == pcl.Invoke && len(call.Args) > 0 {
+					if tokenExpr, ok := call.Args[0].(*model.TemplateExpression); ok {
+						if len(tokenExpr.Parts) > 0 {
+							if literal, ok := tokenExpr.Parts[0].(*model.LiteralValueExpression); ok {
+								if literal.Value.Type().Equals(cty.String) {
+									token := literal.Value.AsString()
+									tokenRange := call.Args[0].SyntaxNode().Range()
+									pkg, _, _, diags := pcl.DecomposeToken(token, tokenRange)
+									if len(diags) == 0 {
+										g.setupNamespaceAlias(pkg, nil, program, pulumiUsings)
+									}
+								}
+							}
+						}
+					}
+				}
+
 				for _, i := range g.genFunctionUsings(call) {
 					if strings.HasPrefix(i, "System") {
 						systemUsings.Add(i)

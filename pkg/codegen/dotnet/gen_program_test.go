@@ -244,6 +244,74 @@ func TestGenerateProgramWithNamespaceCollision(t *testing.T) {
 	require.Contains(t, programText, `new PulumiOutput.Resource`, "generated code should use PulumiOutput alias")
 }
 
+func bindProgramWithFunctionNamespaceCollision(t *testing.T) *pcl.Program {
+	source := `
+result = invoke("output:index:Output", {
+    value = "test"
+})
+`
+
+	parser := syntax.NewParser()
+	err := parser.ParseFile(strings.NewReader(source), "main.pp")
+	require.NoError(t, err)
+	if parser.Diagnostics.HasErrors() {
+		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
+	}
+
+	loader := &inlineLoader{
+		schemas: map[string]schema.PackageSpec{
+			"output": {
+				Name:    "output",
+				Version: "1.0.0",
+				Functions: map[string]schema.FunctionSpec{
+					"output:index:Output": {
+						Description: "A function named Output that causes namespace collision",
+						Inputs: &schema.ObjectTypeSpec{
+							Type: "object",
+							Properties: map[string]schema.PropertySpec{
+								"value": {TypeSpec: schema.TypeSpec{Type: "string"}},
+							},
+							Required: []string{"value"},
+						},
+						ReturnType: &schema.ReturnTypeSpec{
+							TypeSpec: &schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	program, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader))
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors(), "unexpected diags: %v", diags)
+	require.NotNil(t, program)
+
+	return program
+}
+
+func TestGenerateProgramWithFunctionNamespaceCollision(t *testing.T) {
+	t.Parallel()
+
+	program := bindProgramWithFunctionNamespaceCollision(t)
+	files, diags, err := GenerateProgram(program)
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors(), "unexpected diags: %v", diags)
+	require.NotNil(t, files)
+
+	programFile, ok := files["Program.cs"]
+	require.True(t, ok, "Program.cs should be generated")
+
+	programText := string(programFile)
+	t.Logf("Generated Program.cs:\n%s", programText)
+
+	require.Contains(t, programText, `using PulumiOutput = Pulumi.Output;`,
+		"generated code should contain PulumiOutput alias for Pulumi.Output namespace")
+	require.Contains(t, programText, `PulumiOutput.Output.Invoke`, "generated code should use PulumiOutput alias for function")
+}
+
 type inlineLoader struct {
 	schemas map[string]schema.PackageSpec
 }
