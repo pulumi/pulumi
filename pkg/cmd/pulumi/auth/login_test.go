@@ -1,4 +1,4 @@
-// Copyright 2025, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,7 +33,6 @@ import (
 // including command-line arguments, flags, environment variables, project settings,
 // stored credentials, and OIDC token defaults.
 func TestLoginURLResolution(t *testing.T) {
-	// Helper to create a mock backend that captures the URL it was called with
 	type capturedLogin struct {
 		url       string
 		oidcToken string
@@ -44,13 +43,14 @@ func TestLoginURLResolution(t *testing.T) {
 	}
 
 	tests := []struct {
-		name        string
-		args        []string             // command-line arguments
-		flags       map[string]string    // flag values to set
-		ws          pkgWorkspace.Context // workspace mock
-		envVars     map[string]string    // environment variables to set
-		expectedURL string               // URL that should be passed to Login/LoginFromAuthContext
-		expectError bool                 // whether an error is expected
+		name          string
+		args          []string
+		flags         map[string]string
+		ws            pkgWorkspace.Context
+		envVars       map[string]string
+		expectedURL   string
+		expectError   bool
+		expectedError string
 	}{
 		{
 			name:        "command argument takes precedence",
@@ -80,8 +80,9 @@ func TestLoginURLResolution(t *testing.T) {
 				"local":     "true",
 				"cloud-url": "https://example.com",
 			},
-			ws:          &pkgWorkspace.MockContext{},
-			expectError: true,
+			ws:            &pkgWorkspace.MockContext{},
+			expectError:   true,
+			expectedError: "a URL may not be specified when --local mode is enabled",
 		},
 		{
 			name: "argument and cloud-url flag conflict",
@@ -89,8 +90,9 @@ func TestLoginURLResolution(t *testing.T) {
 			flags: map[string]string{
 				"cloud-url": "https://example.com",
 			},
-			ws:          &pkgWorkspace.MockContext{},
-			expectError: true,
+			ws:            &pkgWorkspace.MockContext{},
+			expectError:   true,
+			expectedError: "only one of --cloud-url or argument URL may be specified",
 		},
 		{
 			name: "environment variable used when no explicit URL",
@@ -136,7 +138,6 @@ func TestLoginURLResolution(t *testing.T) {
 				"oidc-org":   "test-org",
 			},
 			ws: &pkgWorkspace.MockContext{},
-			// Clear PULUMI_ACCESS_TOKEN to allow OIDC token exchange
 			envVars: map[string]string{
 				"PULUMI_ACCESS_TOKEN": "",
 			},
@@ -150,7 +151,6 @@ func TestLoginURLResolution(t *testing.T) {
 				"oidc-org":   "test-org",
 			},
 			ws: &pkgWorkspace.MockContext{},
-			// Clear PULUMI_ACCESS_TOKEN to allow OIDC token exchange
 			envVars: map[string]string{
 				"PULUMI_ACCESS_TOKEN": "",
 			},
@@ -172,7 +172,6 @@ func TestLoginURLResolution(t *testing.T) {
 		{
 			name: "empty URL without OIDC triggers interactive (captured as empty)",
 			ws:   &pkgWorkspace.MockContext{},
-			// Clear environment variables to test fallback to empty/interactive
 			envVars: map[string]string{
 				"PULUMI_BACKEND_URL": "",
 			},
@@ -182,14 +181,10 @@ func TestLoginURLResolution(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Cannot use t.Parallel() with t.Setenv()
-
-			// Set environment variables for this test
 			for k, v := range tt.envVars {
 				t.Setenv(k, v)
 			}
 
-			// Track what URL was passed to the login manager
 			var captured capturedLogin
 			mockLoginManager := &backend.MockLoginManager{
 				LoginF: func(
@@ -232,33 +227,29 @@ func TestLoginURLResolution(t *testing.T) {
 				},
 			}
 
-			// Replace the default login manager temporarily
-			// Create and execute command
 			cmd := NewLoginCmd(tt.ws, mockLoginManager)
 			cmd.SetOut(io.Discard)
 			cmd.SetErr(io.Discard)
-			cmd.SetContext(context.Background())
+			cmd.SetContext(t.Context())
 
-			// Set args first
 			cmd.SetArgs(tt.args)
 
-			// Parse flags to populate persistent flags
-			// We need to call ParseFlags to process the flags before setting them manually
 			if err := cmd.ParseFlags(tt.args); err != nil {
-				t.Fatalf("failed to parse flags: %v", err)
+				require.NoError(t, err, "failed to parse flags")
 			}
 
-			// Set flags using PersistentFlags since that's where they're defined
 			for name, value := range tt.flags {
 				err := cmd.PersistentFlags().Set(name, value)
 				require.NoError(t, err, "failed to set flag %s=%s", name, value)
 			}
 
-			// Execute
 			err := cmd.Execute()
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
+				if tt.expectedError != "" {
+					require.ErrorContains(t, err, tt.expectedError)
+				}
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, tt.expectedURL, captured.url,
