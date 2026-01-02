@@ -629,7 +629,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 
 // validatePulumiVersionRange validates that the CLI version satisfies the passed version range.
 func validatePulumiVersionRange(pulumiVersionRange, cliVersion, provider string) error {
-	if pulumiVersionRange != "" {
+	if pulumiVersionRange != "" && cliVersion != "" {
 		rg, err := semver.ParseRange(pulumiVersionRange)
 		if err != nil {
 			return fmt.Errorf("parsing CLI version range %q: %w", pulumiVersionRange, err)

@@ -23,7 +23,7 @@ func (p *Provider) Handshake(
 	context.Context, plugin.ProviderHandshakeRequest,
 ) (*plugin.ProviderHandshakeResponse, error) {
 	return &plugin.ProviderHandshakeResponse{
-		PulumiVersionRange: ">=4.0.0",
+		PulumiVersionRange: ">=100.0.0",
 	}, nil
 }
 

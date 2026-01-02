@@ -901,7 +901,8 @@ type PluginProject struct {
 	Runtime ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`
 	// Packages is a map of package dependencies that can be either strings or PackageSpecs
 	Packages map[string]PackageSpec `json:"packages,omitempty" yaml:"packages,omitempty"`
-	//
+	// The CLI version range required for this provider to work correctly. If no version range is specified, the
+	// provider will be considered compatible with any CLI version.
 	PulumiVersionRange string `json:"pulumiVersionRange" yaml:"pulumiVersionRange"`
 }
 

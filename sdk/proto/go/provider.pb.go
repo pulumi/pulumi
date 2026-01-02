@@ -334,7 +334,8 @@ type ProviderHandshakeResponse struct {
 	// True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
 	// user. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
 	SupportsAutonamingConfiguration bool `protobuf:"varint,4,opt,name=supports_autonaming_configuration,json=supportsAutonamingConfiguration,proto3" json:"supports_autonaming_configuration,omitempty"`
-	// The CLI version range required for this provider to work correctly.
+	// The CLI version range required for this provider to work correctly. If no version range is specified, the
+	// provider will be considered compatible with any CLI version.
 	PulumiVersionRange *string `protobuf:"bytes,5,opt,name=pulumi_version_range,json=pulumiVersionRange,proto3,oneof" json:"pulumi_version_range,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache

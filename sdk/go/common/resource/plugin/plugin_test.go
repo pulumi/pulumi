@@ -374,6 +374,11 @@ func TestCheckVersionRange(t *testing.T) {
 			cliVersion:         "1.0.0",
 			pulumiVersionRange: "",
 		},
+		{
+			name:               "no cli version",
+			cliVersion:         "",
+			pulumiVersionRange: "1.2.3",
+		},
 	}
 
 	for _, tt := range tests {
@@ -399,11 +404,13 @@ func TestPulumiVersionRangeYaml(t *testing.T) {
 	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil)
 	require.NoError(t, err)
 
-	version.Version = "3.0.0"
+	oldVersion := version.Version
+	defer func() { version.Version = oldVersion }()
+	version.Version = "3.1.2"
 
 	_, err = NewProviderFromPath(ctx.Host, ctx, "", filepath.Join("testdata", "test-plugin-cli-version"))
 	require.ErrorContains(t, err, "failed to load plugin testdata/test-plugin-cli-version: Pulumi CLI version 3.0.0 "+
-		"does not satisfy the version range \">=4.0.0\" requested by the provider testdata/test-plugin-cli-version.")
+		"does not satisfy the version range \">=100.0.0\" requested by the provider testdata/test-plugin-cli-version.")
 }
 
 // Test a provider that returns an incompatible version range from `Handshake`.
@@ -427,5 +434,5 @@ func TestPulumiVersionRangeHandshake(t *testing.T) {
 
 	_, err = NewProviderFromPath(ctx.Host, ctx, "the-provider", providerBin)
 	require.ErrorContains(t, err,
-		"Pulumi CLI version 3.1.2 does not satisfy the version range \">=4.0.0\" requested by the provider the-provider.")
+		"Pulumi CLI version 3.1.2 does not satisfy the version range \">=100.0.0\" requested by the provider the-provider.")
 }

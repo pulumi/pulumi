@@ -291,7 +291,8 @@ message ProviderHandshakeResponse {
     // user. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
     bool supports_autonaming_configuration = 4;
 
-    // The CLI version range required for this provider to work correctly.
+    // The CLI version range required for this provider to work correctly. If no version range is specified, the
+    // provider will be considered compatible with any CLI version.
     optional string pulumi_version_range = 5;
 }
 

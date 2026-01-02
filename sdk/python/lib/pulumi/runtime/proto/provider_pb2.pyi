@@ -121,7 +121,9 @@ class ProviderHandshakeResponse(google.protobuf.message.Message):
     user. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
     """
     pulumi_version_range: builtins.str
-    """The CLI version range required for this provider to work correctly."""
+    """The CLI version range required for this provider to work correctly. If no version range is specified, the
+    provider will be considered compatible with any CLI version.
+    """
     def __init__(
         self,
         *,
