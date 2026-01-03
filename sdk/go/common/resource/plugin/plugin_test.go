@@ -405,8 +405,8 @@ func TestPulumiVersionRangeYaml(t *testing.T) {
 	require.NoError(t, err)
 
 	oldVersion := version.Version
-	defer func() { version.Version = oldVersion }()
 	version.Version = "3.1.2"
+	t.Cleanup(func() { version.Version = oldVersion })
 
 	_, err = NewProviderFromPath(ctx.Host, ctx, "", filepath.Join("testdata", "test-plugin-cli-version"))
 	require.ErrorContains(t, err, "failed to load plugin testdata/test-plugin-cli-version: Pulumi CLI version 3.1.2 "+

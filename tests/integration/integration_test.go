@@ -2119,10 +2119,11 @@ func TestPulumiVersionRangeHandshake(t *testing.T) {
 	d := diagtest.LogSink(t)
 	ctx, err := plugin.NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil)
 	require.NoError(t, err)
+	t.Cleanup(func() { ctx.Close() })
 
 	oldVersion := version.Version
-	defer func() { version.Version = oldVersion }()
 	version.Version = "3.1.2"
+	t.Cleanup(func() { version.Version = oldVersion })
 
 	_, err = plugin.NewProviderFromPath(ctx.Host, ctx, "the-provider", providerBin)
 	require.ErrorContains(t, err,
