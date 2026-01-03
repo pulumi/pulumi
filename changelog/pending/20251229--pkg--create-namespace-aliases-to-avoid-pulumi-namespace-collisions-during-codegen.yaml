@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: pkg
-  description: Create namespace aliases to avoid Pulumi namespace collisions during codegen
