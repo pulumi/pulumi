@@ -490,7 +490,8 @@ func ProviderFromSource(
 			AllowNonInvertableLocalWorkspaceResolution: true,
 		},
 		Concurrency: concurrency,
-	}, reg, packageworkspace.New(pctx.Host, os.Stdout, os.Stderr, pctx.Diag, pctx.StatusDiag, nil, packageworkspace.Options{}))
+	}, reg, packageworkspace.New(pctx.Host, os.Stderr, os.Stderr, pctx.Diag, pctx.StatusDiag,
+		nil, packageworkspace.Options{}))
 	if err != nil {
 		return Provider{}, workspace.PackageSpec{}, fmt.Errorf("unable to install %q: %w", packageSource, err)
 	}

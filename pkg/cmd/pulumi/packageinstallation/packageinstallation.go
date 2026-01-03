@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
@@ -594,6 +595,19 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 		}
 
 		defer ready()
+
+		if isExec, err := p.ws.IsExecutable(ctx, projectDir); err != nil {
+			return err
+		} else if isExec {
+			step.runBundleOut.pluginPath = projectDir
+			if name, found := strings.CutPrefix(filepath.Base(projectDir), "pulumi-resource-"); found {
+				if runtime.GOOS == "windows" {
+					name = strings.TrimSuffix(name, ".exe")
+				}
+				step.runBundleOut.name = name
+			}
+			return nil
+		}
 
 		// We don't need to download what's at a local path result, but we might
 		// need to download it's dependencies.
