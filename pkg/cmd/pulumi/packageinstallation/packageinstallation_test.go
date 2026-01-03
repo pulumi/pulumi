@@ -39,7 +39,7 @@ var _ packageinstallation.Context = packageworkspace.Workspace{}
 func TestInstallAlreadyInstalledPackage(t *testing.T) {
 	t.Parallel()
 
-	ws := newInvariantWorkspace(t, nil, []invariantPlugin{
+	ws := newInvariantWorkspace(t, nil, nil, []invariantPlugin{
 		{
 			d: workspace.PluginDescriptor{
 				Name: "already-installed",
@@ -158,7 +158,7 @@ func TestDoNotInstallDependenciesOfAlreadyInstalledPackage(t *testing.T) {
 func TestInstallExternalBinaryPackage(t *testing.T) {
 	t.Parallel()
 
-	ws := newInvariantWorkspace(t, nil, []invariantPlugin{
+	ws := newInvariantWorkspace(t, nil, nil, []invariantPlugin{
 		{
 			d: workspace.PluginDescriptor{
 				Name:    "external-package",
@@ -194,7 +194,7 @@ func TestInstallExternalBinaryPackage(t *testing.T) {
 func TestInstallPluginWithParameterizedDependency(t *testing.T) {
 	t.Parallel()
 
-	ws := newInvariantWorkspace(t, nil, []invariantPlugin{
+	ws := newInvariantWorkspace(t, nil, nil, []invariantPlugin{
 		{
 			d: workspace.PluginDescriptor{
 				Name:    "plugin-a",
@@ -260,7 +260,7 @@ func TestInstallPluginWithParameterizedDependency(t *testing.T) {
 func TestInstallPluginWithDiamondDependency(t *testing.T) {
 	t.Parallel()
 
-	ws := newInvariantWorkspace(t, nil, []invariantPlugin{
+	ws := newInvariantWorkspace(t, nil, nil, []invariantPlugin{
 		{
 			d: workspace.PluginDescriptor{
 				Name:    "plugin-a",
@@ -364,7 +364,7 @@ func TestDeduplicateRegistryBasedPlugin(t *testing.T) {
 
 	sharedPluginURL := "https://registry.example.com/shared-plugin-1.0.0.tar.gz"
 
-	ws := newInvariantWorkspace(t, nil, []invariantPlugin{
+	ws := newInvariantWorkspace(t, nil, nil, []invariantPlugin{
 		{
 			d: workspace.PluginDescriptor{
 				Name: "plugin-a",
@@ -458,7 +458,7 @@ func TestDeduplicateRegistryBasedPlugin(t *testing.T) {
 func TestInstallPluginWithCyclicDependency(t *testing.T) {
 	t.Parallel()
 
-	ws := newInvariantWorkspace(t, nil, []invariantPlugin{
+	ws := newInvariantWorkspace(t, nil, nil, []invariantPlugin{
 		{
 			d: workspace.PluginDescriptor{
 				Name: "plugin-a",
@@ -541,7 +541,7 @@ func TestInstallRegistryPackage(t *testing.T) {
 
 	registryPackageURL := "https://registry.example.com/registry-package-1.0.0.tar.gz"
 
-	ws := newInvariantWorkspace(t, nil, []invariantPlugin{
+	ws := newInvariantWorkspace(t, nil, nil, []invariantPlugin{
 		{
 			d: workspace.PluginDescriptor{
 				Name:              "registry-package",
@@ -606,7 +606,7 @@ func TestInstallRegistryPackage(t *testing.T) {
 func TestInstallInProjectWithSharedDependency(t *testing.T) {
 	t.Parallel()
 
-	ws := newInvariantWorkspace(t, []string{"/project"}, []invariantPlugin{
+	ws := newInvariantWorkspace(t, []string{"/project"}, nil, []invariantPlugin{
 		{
 			d: workspace.PluginDescriptor{
 				Name: "plugin-a",
@@ -747,6 +747,30 @@ func TestInstallInProjectWithRelativePaths(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestInstallInProjectWithBinaryPaths tests
+func TestInstallPluginWithBinaryPaths(t *testing.T) {
+	t.Parallel()
+
+	ws := newInvariantWorkspace(t, nil, []string{
+		"/path/to/binary/pulumi-resource-test-provider",
+	}, []invariantPlugin{})
+
+	rws := &recordingWorkspace{ws, nil}
+	defer rws.save(t)
+
+	runPlugin, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+		Source: "/path/to/binary/pulumi-resource-test-provider",
+	}, nil, "", packageinstallation.Options{
+		Concurrency: 1,
+	}, nil, rws)
+	require.NoError(t, err)
+	assert.Equal(t, workspace.PackageSpec{
+		Source: "/path/to/binary/pulumi-resource-test-provider",
+	}, spec)
+	_, err = runPlugin(t.Context(), "/tmp")
+	require.NoError(t, err)
+}
+
 // TestInstallPluginWithMultipleVersions tests that when two dependencies require
 // different versions of the same plugin, both versions are installed side-by-side
 // and each dependent gets linked to its requested version.
@@ -765,7 +789,7 @@ func TestInstallInProjectWithRelativePaths(t *testing.T) {
 func TestInstallPluginWithMultipleVersions(t *testing.T) {
 	t.Parallel()
 
-	ws := newInvariantWorkspace(t, nil, []invariantPlugin{
+	ws := newInvariantWorkspace(t, nil, nil, []invariantPlugin{
 		{
 			d: workspace.PluginDescriptor{
 				Name: "plugin-a",
@@ -892,7 +916,7 @@ func TestDuplicateParameterizationSources(t *testing.T) {
 
 	parameterizedPluginURL := "https://registry.example.com/param-plugin-1.0.0.tar.gz"
 
-	ws := newInvariantWorkspace(t, nil, []invariantPlugin{
+	ws := newInvariantWorkspace(t, nil, nil, []invariantPlugin{
 		{
 			d: workspace.PluginDescriptor{
 				Name:              "param-plugin",
@@ -975,7 +999,7 @@ func TestMissingBinaryAndProject(t *testing.T) {
 
 	// Create a plugin that will be downloaded but has neither a PulumiPlugin.yaml
 	// nor a valid binary executable
-	ws := newInvariantWorkspace(t, nil, []invariantPlugin{
+	ws := newInvariantWorkspace(t, nil, nil, []invariantPlugin{
 		{
 			d: workspace.PluginDescriptor{
 				Name: "invalid-plugin",
@@ -1014,7 +1038,7 @@ func TestRegistryLookupFailure(t *testing.T) {
 	t.Run("generic error", func(t *testing.T) {
 		t.Parallel()
 
-		ws := newInvariantWorkspace(t, nil, []invariantPlugin{})
+		ws := newInvariantWorkspace(t, nil, nil, []invariantPlugin{})
 
 		registryError := errors.New("registry API error")
 
@@ -1053,7 +1077,7 @@ func TestRegistryLookupFailure(t *testing.T) {
 	t.Run("not found", func(t *testing.T) {
 		t.Parallel()
 
-		ws := newInvariantWorkspace(t, nil, []invariantPlugin{})
+		ws := newInvariantWorkspace(t, nil, nil, []invariantPlugin{})
 
 		// Mock registry that returns empty results (package doesn't exist)
 		mockRegistry := registry.Mock{
@@ -1088,7 +1112,7 @@ func TestRegistryLookupFailure(t *testing.T) {
 func TestInstallParameterizedProviderFromRegistry(t *testing.T) {
 	t.Parallel()
 
-	ws := newInvariantWorkspace(t, nil, []invariantPlugin{
+	ws := newInvariantWorkspace(t, nil, nil, []invariantPlugin{
 		{
 			d: workspace.PluginDescriptor{
 				Name:    "terraform-provider",
@@ -1155,7 +1179,7 @@ func TestConcurrency(t *testing.T) {
 	// This creates 3 parallel chains that can be installed concurrently.
 
 	createWorkspace := func() *invariantWorkspace {
-		return newInvariantWorkspace(t, nil, []invariantPlugin{
+		return newInvariantWorkspace(t, nil, nil, []invariantPlugin{
 			// Level 0: root
 			{
 				d: workspace.PluginDescriptor{
