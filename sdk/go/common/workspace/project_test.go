@@ -1954,11 +1954,8 @@ config:
 func TestPackageValueSerialization(t *testing.T) {
 	t.Parallel()
 
-	t.Run("JSON", func(t *testing.T) {
-		t.Parallel()
-
-		// Test both simple string and complex object packages in the same Project
-		proj := &Project{
+	proj := func() *Project {
+		return &Project{
 			Name:    "test-project",
 			Runtime: NewProjectRuntimeInfo("nodejs", nil),
 			Packages: map[string]PackageSpec{
@@ -1974,92 +1971,56 @@ func TestPackageValueSerialization(t *testing.T) {
 					Version:    "1.0.0",
 					Parameters: []string{"arg1", "arg2"},
 				},
+				"complex-without-version": {
+					Source:     "github.com/example/simple-package",
+					Parameters: []string{"arg1"},
+				},
 			},
 		}
+	}
 
-		// Serialize to JSON
-		bytes, err := json.Marshal(proj)
+	test := func(
+		t *testing.T,
+		marshal func(any) ([]byte, error),
+		unmarshal func([]byte, any) error,
+		checkMarshalled func(t *testing.T, s string),
+	) {
+		bytes, err := marshal(proj())
 		require.NoError(t, err)
 
-		// Verify JSON contains the expected package formats
-		jsonStr := string(bytes)
-		assert.Contains(t, jsonStr, `"packages":`)
-		assert.Contains(t, jsonStr, `"simple":"github.com/example/simple-package"`)
-		assert.Contains(t, jsonStr,
-			`"complex":{"source":"github.com/example/complex-package","version":"1.0.0","parameters":["arg1","arg2"]}`)
+		checkMarshalled(t, string(bytes))
 
-		// Deserialize back
-		var newProj Project
-		err = json.Unmarshal(bytes, &newProj)
-		require.NoError(t, err)
+		newProj := new(Project)
+		require.NoError(t, unmarshal(bytes, newProj))
+		assert.EqualExportedValues(t, proj(), newProj)
+	}
 
-		// Verify packages were correctly deserialized
-		specs := newProj.GetPackageSpecs()
-		require.Len(t, specs, 3)
+	t.Run("JSON", func(t *testing.T) {
+		t.Parallel()
 
-		assert.Equal(t, "github.com/example/simple-package", specs["simple"].Source)
-		assert.Empty(t, specs["simple"].Version)
-		assert.Empty(t, specs["simple"].Parameters)
-
-		assert.Equal(t, "github.com/example/complex-package", specs["complex"].Source)
-		assert.Equal(t, "1.0.0", specs["complex"].Version)
-		assert.Equal(t, []string{"arg1", "arg2"}, specs["complex"].Parameters)
+		test(t, json.Marshal, json.Unmarshal, func(t *testing.T, jsonStr string) {
+			assert.Contains(t, jsonStr, `"packages":`)
+			assert.Contains(t, jsonStr, `"simple":"github.com/example/simple-package"`)
+			assert.Contains(t, jsonStr,
+				`"complex":{"source":"github.com/example/complex-package","version":"1.0.0","parameters":["arg1","arg2"]}`)
+			assert.NotContains(t, jsonStr, `"version":""`)
+		})
 	})
 
 	t.Run("YAML", func(t *testing.T) {
 		t.Parallel()
 
-		// Test both simple string and complex object packages in the same Project
-		proj := &Project{
-			Name:    "test-project",
-			Runtime: NewProjectRuntimeInfo("nodejs", nil),
-			Packages: map[string]PackageSpec{
-				"simple": {
-					Source: "github.com/example/simple-package",
-				},
-				"less-simple": {
-					Source:  "github.com/example/simple-package",
-					Version: "1.0.0",
-				},
-				"complex": {
-					Source:     "github.com/example/complex-package",
-					Version:    "1.0.0",
-					Parameters: []string{"arg1", "arg2"},
-				},
-			},
-		}
-
-		// Serialize to YAML
-		bytes, err := yaml.Marshal(proj)
-		require.NoError(t, err)
-
-		// Verify YAML contains the expected package formats
-		yamlStr := string(bytes)
-		assert.Contains(t, yamlStr, "packages:")
-		assert.Contains(t, yamlStr, "simple: github.com/example/simple-package")
-		assert.Contains(t, yamlStr, "complex:")
-		assert.Contains(t, yamlStr, "source: github.com/example/complex-package")
-		assert.Contains(t, yamlStr, "version: 1.0.0")
-		assert.Contains(t, yamlStr, "parameters:")
-		assert.Contains(t, yamlStr, "- arg1")
-		assert.Contains(t, yamlStr, "- arg2")
-
-		// Deserialize back
-		var newProj Project
-		err = yaml.Unmarshal(bytes, &newProj)
-		require.NoError(t, err)
-
-		// Verify packages were correctly deserialized
-		specs := newProj.GetPackageSpecs()
-		require.Len(t, specs, 3)
-
-		assert.Equal(t, "github.com/example/simple-package", specs["simple"].Source)
-		assert.Empty(t, specs["simple"].Version)
-		assert.Empty(t, specs["simple"].Parameters)
-
-		assert.Equal(t, "github.com/example/complex-package", specs["complex"].Source)
-		assert.Equal(t, "1.0.0", specs["complex"].Version)
-		assert.Equal(t, []string{"arg1", "arg2"}, specs["complex"].Parameters)
+		test(t, yaml.Marshal, yaml.Unmarshal, func(t *testing.T, yamlStr string) {
+			assert.Contains(t, yamlStr, "packages:")
+			assert.Contains(t, yamlStr, "simple: github.com/example/simple-package")
+			assert.Contains(t, yamlStr, "complex:")
+			assert.Contains(t, yamlStr, "source: github.com/example/complex-package")
+			assert.Contains(t, yamlStr, "version: 1.0.0")
+			assert.Contains(t, yamlStr, "parameters:")
+			assert.Contains(t, yamlStr, "- arg1")
+			assert.Contains(t, yamlStr, "- arg2")
+			assert.NotContains(t, yamlStr, `version: ""`)
+		})
 	})
 
 	t.Run("Deserialization Edge Cases", func(t *testing.T) {
