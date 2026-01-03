@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.214.1 (2026-01-03)
+
+
+### Bug Fixes
+
+- [cli/package] Preserve existing behavior when `pulumi package add` is used with a local provider
+  [#21350](https://github.com/pulumi/pulumi/pull/21350)
+
+- [pkg] Create namespace aliases to avoid Pulumi namespace collisions during codegen
+  [#21325](https://github.com/pulumi/pulumi/pull/21325)
+
 ## 3.214.0 (2025-12-30)
 
 
