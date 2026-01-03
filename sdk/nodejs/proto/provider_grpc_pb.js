@@ -18,6 +18,7 @@
 'use strict';
 var grpc = require('@grpc/grpc-js');
 var pulumi_provider_pb = require('./provider_pb.js');
+var pulumi_alias_pb = require('./alias_pb.js');
 var pulumi_plugin_pb = require('./plugin_pb.js');
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');

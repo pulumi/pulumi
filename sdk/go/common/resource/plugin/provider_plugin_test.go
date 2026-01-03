@@ -516,9 +516,9 @@ func TestProvider_ConstructOptions(t *testing.T) {
 				},
 			},
 			want: &pulumirpc.ConstructRequest{
-				Aliases: []string{
-					"urn:pulumi:stack::project::type::oldName",
-					"urn:pulumi:stack::project::type::anotherOldName",
+				Aliases: []*pulumirpc.Alias{
+					{Alias: &pulumirpc.Alias_Urn{Urn: "urn:pulumi:stack::project::type::oldName"}},
+					{Alias: &pulumirpc.Alias_Urn{Urn: "urn:pulumi:stack::project::type::anotherOldName"}},
 				},
 			},
 		},
