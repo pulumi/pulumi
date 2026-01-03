@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -901,6 +901,9 @@ type PluginProject struct {
 	Runtime ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`
 	// Packages is a map of package dependencies that can be either strings or PackageSpecs
 	Packages map[string]PackageSpec `json:"packages,omitempty" yaml:"packages,omitempty"`
+	// The CLI version range required for this provider to work correctly. If no version range is specified, the
+	// provider will be considered compatible with any CLI version.
+	PulumiVersionRange string `json:"pulumiVersionRange" yaml:"pulumiVersionRange"`
 }
 
 var _ BaseProject = (*PluginProject)(nil)

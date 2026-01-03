@@ -1,0 +1,2 @@
+runtime: test
+pulumiVersionRange: ">=100.0.0"

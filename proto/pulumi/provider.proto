@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -290,6 +290,10 @@ message ProviderHandshakeResponse {
     // True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
     // user. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
     bool supports_autonaming_configuration = 4;
+
+    // The CLI version range required for this provider to work correctly. If no version range is specified, the
+    // provider will be considered compatible with any CLI version.
+    optional string pulumi_version_range = 5;
 }
 
 // `ParameterizeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Parameterize) call. A
