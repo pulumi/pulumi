@@ -1,0 +1,9 @@
+{
+    "name": "nodejs-dynamic-provider-read-inputs",
+    "devDependencies": {
+        "@types/node": "^18"
+    },
+    "peerDependencies": {
+        "@pulumi/pulumi": "^3.113.0"
+    }
+}

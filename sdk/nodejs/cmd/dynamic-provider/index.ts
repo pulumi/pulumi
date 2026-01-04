@@ -278,6 +278,13 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
                 resp.setId(result.id);
                 const resultProps = resultIncludingProvider(result.props, props);
                 resp.setProperties(structproto.Struct.fromJavaScript(resultProps));
+
+                // If the provider returned explicit inputs, use them for subsequent diffs.
+                // This allows the provider to update inputs to match refreshed outputs.
+                if (result.inputs) {
+                    const resultInputs = resultIncludingProvider(result.inputs, props);
+                    resp.setInputs(structproto.Struct.fromJavaScript(resultInputs));
+                }
             } else {
                 // In the event of a missing read, simply return back the input state.
                 resp.setId(id);

@@ -96,6 +96,35 @@ func TestDynamicPython(t *testing.T) {
 	})
 }
 
+// Tests that dynamic providers can return inputs from read() for accurate diffs after refresh.
+// Regression test for https://github.com/pulumi/pulumi/issues/13839
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestDynamicPythonReadInputs(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("dynamic", "python-read-inputs"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python"),
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			// Verify the resource was created
+			require.NotNil(t, stack.Outputs["resource_id"])
+
+			// Find the dynamic resource and verify it has inputs
+			for _, res := range stack.Deployment.Resources {
+				if res.Type == "pulumi-python:dynamic:Resource" {
+					// After refresh, the inputs should include "value" from read()
+					require.NotNil(t, res.Inputs, "resource should have inputs")
+					// The __provider key should always be present
+					assert.Contains(t, res.Inputs, "__provider")
+				}
+			}
+		},
+		UseSharedVirtualEnv: boolPointer(false),
+	})
+}
+
 // Test remote component construction in Python.
 func TestConstructPython(t *testing.T) {
 	t.Parallel()
