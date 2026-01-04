@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -309,6 +309,50 @@ func TestCopyValue(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, test.Expected, newConfig)
+		})
+	}
+}
+
+func TestBoolValue(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		Val      Value
+		Expected bool
+	}{
+		{
+			Val:      NewTypedValue("true", TypeBool),
+			Expected: true,
+		},
+		{
+			Val:      NewTypedValue("false", TypeBool),
+			Expected: false,
+		},
+		{
+			Val:      NewTypedValue("TRUE", TypeBool),
+			Expected: true,
+		},
+		{
+			Val:      NewTypedValue("True", TypeBool),
+			Expected: true,
+		},
+		{
+			Val:      NewTypedValue("invalid", TypeBool),
+			Expected: false,
+		},
+		{
+			Val:      NewTypedValue("yes", TypeBool),
+			Expected: false,
+		},
+	}
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v", test.Val), func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := test.Val.ToObject()
+			require.NoError(t, err)
+			a := actual.(bool)
+			assert.Equal(t, test.Expected, a)
 		})
 	}
 }
