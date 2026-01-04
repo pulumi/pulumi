@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Filter internal properties like __defaults from diff display
