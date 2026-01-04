@@ -403,6 +403,7 @@ func TestPulumiVersionRangeYaml(t *testing.T) {
 	d := diagtest.LogSink(t)
 	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil)
 	require.NoError(t, err)
+	t.Cleanup(func() { ctx.Close() })
 
 	oldVersion := version.Version
 	version.Version = "3.1.2"

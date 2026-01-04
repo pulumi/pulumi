@@ -291,6 +291,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 
 	if handshakeRes != nil {
 		if err := validatePulumiVersionRange(handshakeRes.PulumiVersionRange, version.Version, string(pkg)); err != nil {
+			contract.IgnoreClose(p)
 			return nil, err
 		}
 
@@ -417,6 +418,7 @@ func NewProviderFromPath(host Host, ctx *Context, pkg tokens.Package, path strin
 
 	if handshakeRes != nil {
 		if err := validatePulumiVersionRange(handshakeRes.PulumiVersionRange, version.Version, string(pkg)); err != nil {
+			contract.IgnoreClose(p)
 			return nil, err
 		}
 
