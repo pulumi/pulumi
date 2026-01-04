@@ -94,63 +94,63 @@ func TestGetDiffInfo_FiltersInternalProperties(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name        string
-		oldInputs   resource.PropertyMap
-		newInputs   resource.PropertyMap
-		expectDiff  bool
-		shouldMatch string
+		name           string
+		oldInputs      resource.PropertyMap
+		newInputs      resource.PropertyMap
+		expectDiff     bool
+		shouldMatch    string
 		shouldNotMatch string
 	}{
 		{
 			name: "__defaults should be filtered out",
 			oldInputs: resource.PropertyMap{
-				"normalProp": resource.NewStringProperty("value1"),
+				"normalProp": resource.NewProperty("value1"),
 			},
 			newInputs: resource.PropertyMap{
-				"normalProp": resource.NewStringProperty("value1"),
-				"__defaults": resource.NewArrayProperty([]resource.PropertyValue{
-					resource.NewStringProperty("default1"),
+				"normalProp": resource.NewProperty("value1"),
+				"__defaults": resource.NewProperty([]resource.PropertyValue{
+					resource.NewProperty("default1"),
 				}),
 			},
-			expectDiff: false,
+			expectDiff:     false,
 			shouldNotMatch: "__defaults",
 		},
 		{
 			name: "normal property changes should still be shown",
 			oldInputs: resource.PropertyMap{
-				"normalProp": resource.NewStringProperty("value1"),
+				"normalProp": resource.NewProperty("value1"),
 			},
 			newInputs: resource.PropertyMap{
-				"normalProp": resource.NewStringProperty("value2"),
+				"normalProp": resource.NewProperty("value2"),
 			},
-			expectDiff: true,
+			expectDiff:  true,
 			shouldMatch: "normalProp",
 		},
 		{
 			name: "both normal and __defaults changes - only normal shown",
 			oldInputs: resource.PropertyMap{
-				"normalProp": resource.NewStringProperty("value1"),
+				"normalProp": resource.NewProperty("value1"),
 			},
 			newInputs: resource.PropertyMap{
-				"normalProp": resource.NewStringProperty("value2"),
-				"__defaults": resource.NewArrayProperty([]resource.PropertyValue{
-					resource.NewStringProperty("default1"),
+				"normalProp": resource.NewProperty("value2"),
+				"__defaults": resource.NewProperty([]resource.PropertyValue{
+					resource.NewProperty("default1"),
 				}),
 			},
-			expectDiff: true,
-			shouldMatch: "normalProp",
+			expectDiff:     true,
+			shouldMatch:    "normalProp",
 			shouldNotMatch: "__defaults",
 		},
 		{
 			name: "other internal properties should also be filtered",
 			oldInputs: resource.PropertyMap{
-				"normalProp": resource.NewStringProperty("value1"),
+				"normalProp": resource.NewProperty("value1"),
 			},
 			newInputs: resource.PropertyMap{
-				"normalProp": resource.NewStringProperty("value1"),
-				"__meta": resource.NewStringProperty("metadata"),
+				"normalProp": resource.NewProperty("value1"),
+				"__meta":     resource.NewProperty("metadata"),
 			},
-			expectDiff: false,
+			expectDiff:     false,
 			shouldNotMatch: "__meta",
 		},
 	}
