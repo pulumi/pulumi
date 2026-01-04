@@ -16,6 +16,7 @@ package fuzzing
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // ExclusionRule represents a rule that determines if a snapshot should be excluded from fuzzing.
@@ -31,6 +32,8 @@ func DefaultExclusionRules() ExclusionRules {
 	return []ExclusionRule{
 		// TODO[pulumi/pulumi#21277]
 		ExcludeProtectedResourceWithDuplicateProviderDestroyV2,
+		// TODO[pulumi/pulumi#21347]
+		ExcludeTargetedChildWithNewParentDestroyV2,
 	}
 }
 
@@ -47,6 +50,42 @@ func (er ExclusionRules) ShouldExclude(
 			return true
 		}
 	}
+	return false
+}
+
+// ExcludeTargetedChildWithNewParent excludes snapshots where a targeted child resource have a
+// new parent in the program during the destroy operation.
+func ExcludeTargetedChildWithNewParentDestroyV2(
+	spec *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationDestroyV2 {
+		return false
+	}
+
+	specParents := make(map[resource.URN]resource.URN)
+	for _, res := range spec.Resources {
+		specParents[res.URN()] = res.Parent
+	}
+
+	targetURNs := make(map[resource.URN]bool)
+	for _, urn := range plan.TargetURNs {
+		targetURNs[urn] = true
+	}
+
+	for _, res := range prog.ResourceRegistrations {
+		if res.Parent == "" {
+			continue
+		}
+
+		targeted, ok := targetURNs[res.URN()]
+		if ok && targeted && res.Parent != "" && res.Parent != specParents[res.URN()] {
+			return true
+		}
+	}
+
 	return false
 }
 
