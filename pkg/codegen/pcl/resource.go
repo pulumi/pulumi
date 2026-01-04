@@ -27,6 +27,8 @@ type ResourceOptions struct {
 	// The definition of the resource options.
 	Definition *model.Block
 
+	// An experession that evaluates to a list of aliases for the resource.
+	Aliases model.Expression
 	// An expression to range over when instantiating the resource.
 	Range model.Expression
 	// The resource's parent, if any.
