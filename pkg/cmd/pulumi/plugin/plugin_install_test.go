@@ -25,7 +25,6 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -130,9 +129,9 @@ func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
 
 	cmd := &pluginInstallCmd{
 		diag: diagtest.LogSink(t),
-		packageResolutionOptions: packageresolution.Options{
-			ResolveWithRegistry: true,
-		},
+		env: env.NewEnv(env.MapStore{
+			"PULUMI_EXPERIMENTAL": "true",
+		}),
 		pluginGetLatestVersion: func(ps workspace.PluginDescriptor, ctx context.Context) (*semver.Version, error) {
 			assert.Fail(t, "GetLatestVersion should not have been called")
 			return nil, nil
@@ -248,9 +247,9 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 
 		cmd := &pluginInstallCmd{
 			diag: diagtest.LogSink(t),
-			packageResolutionOptions: packageresolution.Options{
-				ResolveWithRegistry: true,
-			},
+			env: env.NewEnv(env.MapStore{
+				"PULUMI_EXPERIMENTAL": "true",
+			}),
 			pluginGetLatestVersion: func(ps workspace.PluginDescriptor, ctx context.Context) (*semver.Version, error) {
 				assert.Fail(t, "GetLatestVersion should not have been called")
 				return nil, nil
@@ -276,9 +275,9 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 
 		cmd := &pluginInstallCmd{
 			diag: diagtest.LogSink(t),
-			packageResolutionOptions: packageresolution.Options{
-				ResolveWithRegistry: true,
-			},
+			env: env.NewEnv(env.MapStore{
+				"PULUMI_EXPERIMENTAL": "true",
+			}),
 			pluginGetLatestVersion: func(ps workspace.PluginDescriptor, ctx context.Context) (*semver.Version, error) {
 				assert.Fail(t, "GetLatestVersion should not have been called")
 				return nil, nil
@@ -303,10 +302,8 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 func TestRegistryIsNotUsedWhenAFileIsSpecified(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-
 	var wasInstalled bool
-	defer func() { assert.True(t, wasInstalled) }()
+	defer func() { assert.True(t, wasInstalled, "Plugin was not installed") }()
 	cmd := &pluginInstallCmd{
 		diag: diagtest.LogSink(t),
 		pluginGetLatestVersion: func(ps workspace.PluginDescriptor, ctx context.Context) (*semver.Version, error) {
@@ -331,7 +328,7 @@ func TestRegistryIsNotUsedWhenAFileIsSpecified(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, cmd.Run(ctx, []string{"resource", "some-file", "v1.0.0"}))
+	require.NoError(t, cmd.Run(t.Context(), []string{"resource", "some-file", "v1.0.0"}))
 }
 
 //nolint:paralleltest // uses t.Chdir
@@ -387,9 +384,9 @@ func TestSuggestedPackagesDisplay(t *testing.T) {
 
 	cmd := &pluginInstallCmd{
 		diag: sink,
-		packageResolutionOptions: packageresolution.Options{
-			ResolveWithRegistry: true,
-		},
+		env: env.NewEnv(env.MapStore{
+			"PULUMI_EXPERIMENTAL": "true",
+		}),
 		pluginGetLatestVersion: func(ps workspace.PluginDescriptor, ctx context.Context) (*semver.Version, error) {
 			assert.Fail(t, "GetLatestVersion should not have been called")
 			return nil, nil
