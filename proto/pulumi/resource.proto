@@ -176,6 +176,7 @@ message RegisterResourceRequest {
         repeated string after_update = 4;
         repeated string before_delete = 5;
         repeated string after_delete = 6;
+        repeated string on_error = 7;
     }
 
     // The resource hooks that should run at certain points in the resource's lifecycle.
@@ -324,11 +325,14 @@ message ResourceHookRequest {
     google.protobuf.Struct old_inputs = 6; // the optional checked old inputs of the resource.
     google.protobuf.Struct new_outputs = 7; // the optional new outputs of the resource.
     google.protobuf.Struct old_outputs = 8; // the optional old outputs of the resource.
+    optional string failed_operation = 9; // for on_error, the operation that failed (create, update, or delete).
+    repeated string errors = 10; // for on_error, the errors that have been seen so far.
 }
 
 // ResourceHookResponse is the response object for resource hook callbacks in CallbackInvokeResponse.
 message ResourceHookResponse {
     string error = 1; // an optional error message to return from the hook.
+    bool retry = 2; // for on_error, whether we should retry the operation.
 }
 
 message RegisterPackageRequest {
