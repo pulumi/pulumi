@@ -39,7 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func NewLoginCmd(ws pkgWorkspace.Context) *cobra.Command {
+func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager) *cobra.Command {
 	var cloudURL string
 	var defaultOrg string
 	var localMode bool
@@ -162,6 +162,10 @@ func NewLoginCmd(ws pkgWorkspace.Context) *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("could not determine current cloud: %w", err)
 				}
+				// If still no URL and using OIDC token, default to Pulumi Cloud
+				if cloudURL == "" && oidcToken != "" {
+					cloudURL = "https://api.pulumi.com"
+				}
 			} else if url := strings.TrimPrefix(strings.TrimPrefix(
 				cloudURL, "https://"), "http://"); strings.HasPrefix(url, "app.pulumi.com/") ||
 				strings.HasPrefix(url, "pulumi.com") {
@@ -188,10 +192,10 @@ func NewLoginCmd(ws pkgWorkspace.Context) *cobra.Command {
 				if innerErr != nil {
 					return fmt.Errorf("problem logging in: %w", innerErr)
 				}
-				be, err = backend.DefaultLoginManager.LoginFromAuthContext(
+				be, err = lm.LoginFromAuthContext(
 					ctx, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, authContext)
 			} else {
-				be, err = backend.DefaultLoginManager.Login(
+				be, err = lm.Login(
 					ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, displayOptions.Color)
 			}
 
