@@ -16,11 +16,13 @@ package display
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 )
@@ -82,6 +84,112 @@ func TestResourceRowDataColorizedColumns(t *testing.T) {
 			cols := row.ColorizedColumns()
 			name := cols[nameColumn]
 			require.Equal(t, tt.expected, name)
+		})
+	}
+}
+
+// TestGetDiffInfo_FiltersInternalProperties tests that internal properties like __defaults
+// are not shown in the short diff display. This is a regression test for issue #2586.
+func TestGetDiffInfo_FiltersInternalProperties(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		oldInputs   resource.PropertyMap
+		newInputs   resource.PropertyMap
+		expectDiff  bool
+		shouldMatch string
+		shouldNotMatch string
+	}{
+		{
+			name: "__defaults should be filtered out",
+			oldInputs: resource.PropertyMap{
+				"normalProp": resource.NewStringProperty("value1"),
+			},
+			newInputs: resource.PropertyMap{
+				"normalProp": resource.NewStringProperty("value1"),
+				"__defaults": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewStringProperty("default1"),
+				}),
+			},
+			expectDiff: false,
+			shouldNotMatch: "__defaults",
+		},
+		{
+			name: "normal property changes should still be shown",
+			oldInputs: resource.PropertyMap{
+				"normalProp": resource.NewStringProperty("value1"),
+			},
+			newInputs: resource.PropertyMap{
+				"normalProp": resource.NewStringProperty("value2"),
+			},
+			expectDiff: true,
+			shouldMatch: "normalProp",
+		},
+		{
+			name: "both normal and __defaults changes - only normal shown",
+			oldInputs: resource.PropertyMap{
+				"normalProp": resource.NewStringProperty("value1"),
+			},
+			newInputs: resource.PropertyMap{
+				"normalProp": resource.NewStringProperty("value2"),
+				"__defaults": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewStringProperty("default1"),
+				}),
+			},
+			expectDiff: true,
+			shouldMatch: "normalProp",
+			shouldNotMatch: "__defaults",
+		},
+		{
+			name: "other internal properties should also be filtered",
+			oldInputs: resource.PropertyMap{
+				"normalProp": resource.NewStringProperty("value1"),
+			},
+			newInputs: resource.PropertyMap{
+				"normalProp": resource.NewStringProperty("value1"),
+				"__meta": resource.NewStringProperty("metadata"),
+			},
+			expectDiff: false,
+			shouldNotMatch: "__meta",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			step := engine.StepEventMetadata{
+				Op: deploy.OpUpdate,
+				Old: &engine.StepEventStateMetadata{
+					Inputs: tt.oldInputs,
+				},
+				New: &engine.StepEventStateMetadata{
+					Inputs: tt.newInputs,
+				},
+			}
+
+			result := getDiffInfo(step, apitype.UpdateUpdate)
+
+			if tt.expectDiff {
+				require.NotEmpty(t, result, "expected diff output but got none")
+			}
+
+			if tt.shouldMatch != "" {
+				require.Contains(t, result, tt.shouldMatch,
+					"expected diff to contain %q but got: %s", tt.shouldMatch, result)
+			}
+
+			if tt.shouldNotMatch != "" {
+				require.NotContains(t, result, tt.shouldNotMatch,
+					"expected diff to NOT contain %q but got: %s", tt.shouldNotMatch, result)
+			}
+
+			// Verify that if there's a diff output, it doesn't contain any internal properties
+			if result != "" && strings.Contains(result, "diff:") {
+				require.NotContains(t, result, "__",
+					"diff output should not contain any internal properties (starting with __): %s", result)
+			}
 		})
 	}
 }
