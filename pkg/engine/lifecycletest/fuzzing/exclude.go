@@ -39,6 +39,8 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludeTargetedAliasDestroyV2,
 		// TODO[pulumi/pulumi#21364]
 		ExcludeTargetedResourceWithAliasedParentDestroyV2,
+		// TODO[pulumi/pulumi#21384]
+		ExcludeResourceWithDependencyOnDeletedResourceDestroyV2,
 	}
 }
 
@@ -234,6 +236,58 @@ func ExcludeTargetedResourceWithAliasedParentDestroyV2(
 		if newParentURN, hasAlias := aliasMap[parentURN]; hasAlias {
 			if snapParents[parentURN] != progParents[newParentURN] {
 				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// ExcludeResourceWithPropertyDependencyOnDeletedResourceDestroyV2 excludes snapshots where a resource
+// has a dependency on another resource that will be deleted during a DestroyV2 operation.
+// This causes a snapshot integrity error.
+func ExcludeResourceWithDependencyOnDeletedResourceDestroyV2(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationDestroyV2 {
+		return false
+	}
+
+	progURNs := make(map[resource.URN]bool)
+	for _, res := range prog.ResourceRegistrations {
+		progURNs[res.URN()] = true
+	}
+
+	deletedURNs := make(map[resource.URN]bool)
+	for _, res := range snap.Resources {
+		if !progURNs[res.URN()] {
+			deletedURNs[res.URN()] = true
+		}
+	}
+
+	for _, res := range snap.Resources {
+		if res.Parent != "" && deletedURNs[res.Parent] {
+			return true
+		}
+
+		if res.DeletedWith != "" && deletedURNs[res.DeletedWith] {
+			return true
+		}
+
+		for _, dep := range res.Dependencies {
+			if deletedURNs[dep] {
+				return true
+			}
+		}
+
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if deletedURNs[dep] {
+					return true
+				}
 			}
 		}
 	}
