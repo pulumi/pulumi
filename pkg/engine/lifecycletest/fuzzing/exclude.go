@@ -29,6 +29,7 @@ type ExclusionRules []ExclusionRule
 // problematic patterns from being generated.
 func DefaultExclusionRules() ExclusionRules {
 	return []ExclusionRule{
+		ExcludeDestroyAndRefreshProgramSet,
 		// TODO[pulumi/pulumi#21277]
 		ExcludeProtectedResourceWithDuplicateProviderDestroyV2,
 		// TODO[pulumi/pulumi#21282]
@@ -48,6 +49,18 @@ func (er ExclusionRules) ShouldExclude(
 		if rule(snap, program, provider, plan) {
 			return true
 		}
+	}
+	return false
+}
+
+func ExcludeDestroyAndRefreshProgramSet(
+	_ *SnapshotSpec,
+	_ *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation == PlanOperationDestroyV2 && plan.RefreshProgram {
+		return true
 	}
 	return false
 }
